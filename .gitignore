@@ -1,6 +1,11 @@
 .DS_Store
-app.tar.gz
 原项目/
 户型图.png
 *.db
 upgrade-backups/
+.venv/
+__pycache__/
+*.py[cod]
+data/
+register/data/
+app.tar.gz
