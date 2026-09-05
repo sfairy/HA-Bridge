@@ -2,10 +2,13 @@
 原项目/
 户型图.png
 *.db
+*.db-wal
+*.db-shm
 upgrade-backups/
 .venv/
 __pycache__/
 *.py[cod]
 data/
 register/data/
+/app/
 app.tar.gz
