@@ -1,0 +1,39 @@
+{
+  "artifacts": {
+    "alembic_runtime": {
+      "files": 14,
+      "sha256": "66fafb0a0b7536e972cc80c9d63f97c26d25102a4e99c26b1e970f0a8dfbb5e8"
+    },
+    "backend": {
+      "files": 44,
+      "sha256": "19b5efc71a252c001ba69edb6de28dc222ad94461f0f34544bab27497208dfd0"
+    },
+    "frontend": {
+      "files": 7763,
+      "sha256": "4de233d9e5cc00a18396357ea653777722d39b9f3e676ab79070964e619cea46"
+    },
+    "image": {
+      "files": 61,
+      "sha256": "c7d3345d531893c3d527980c84039a8e693bcceef5ef09a7f857478f14f9bc94"
+    },
+    "keys": {
+      "files": 2,
+      "sha256": "e49c95142588cc1db35b3db14d6a900bf1f13ea2b00a3b60267abe0e0479c7c1"
+    },
+    "migrations": {
+      "files": 14,
+      "sha256": "767f2e1d9241d20360cce835346151a591d9997ca0c64331d2a971347ba45df5"
+    }
+  },
+  "customerFingerprintSha256": "1c332cd11682bcc51255b498d1ec0b977d475db58cc7409b8f390c2fcf3500a5",
+  "files": {
+    "VERSION": "aee8cd7067db4ba68b056e2e49072621d7dbcdf9b3952e98e6d9e5b024200e83",
+    "alembic.ini": "20b40e325f79c624b08d7467e454420d2d867e7ebbe0aacb18a41f8eebf1abea",
+    "sbom.cdx.json": "21fc1899b4f31cb1ed1acd529c2b9c7d2da9cb7079093deced210e4a34035147"
+  },
+  "product": "ha-bridge",
+  "releaseBatch": "2026-09-a",
+  "releaseId": "8b3528fb02ef4fb48b30643ae9e57797",
+  "schemaVersion": 1,
+  "version": "0.4.6"
+}

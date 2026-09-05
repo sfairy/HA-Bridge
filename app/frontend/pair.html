@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta name="ha-bridge-release" content="8b3528fb02ef4fb48b30643ae9e57797">
+    <meta charset="utf-8">
+    <script src="/bridge-static/js/shared/client-log.js?v=20260905-client-log-v1"></script>
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="theme-color" content="#172029">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HA Bridge">
+    <title>配对中控设备 · HA Bridge</title>
+    <link rel="icon" href="/bridge-static/assets/brand/ha-bridge-favicon-h5.ico" sizes="16x16 32x32 48x48">
+    <link rel="icon" href="/bridge-static/assets/brand/ha-bridge-favicon-h5.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/bridge-static/assets/brand/ha-bridge-icon-180-h5.png" sizes="180x180">
+    <link rel="manifest" href="/bridge-static/assets/manifests/dashboard.webmanifest">
+    <link rel="stylesheet" href="/bridge-static/css/auth/auth.css?v=20260803-display-pairing-v1">
+</head>
+
+<body>
+    <main class="login-shell">
+        <section class="login-showcase" aria-label="HA Bridge 中控设备配对">
+            <div class="showcase-grid" aria-hidden="true"></div>
+            <div class="showcase-orb orb-one" aria-hidden="true"></div>
+            <div class="showcase-orb orb-two" aria-hidden="true"></div>
+            <div class="showcase-brand"><img class="brand-mark"
+                    src="/bridge-static/assets/brand/ha-bridge-mark-black-orange.svg?v=20260726-h2" alt=""><span>HA Bridge</span>
+            </div>
+            <div class="home-characters is-entered" aria-hidden="true">
+                <div class="character character-orange"><i></i><i></i></div>
+                <div class="character character-purple"><i></i><i></i></div>
+                <div class="character character-dark"><i></i><i></i></div>
+                <div class="character character-yellow"><i></i><i></i><span class="character-mouth yellow-mouth"></span>
+                </div>
+            </div>
+        </section>
+        <section class="login-panel">
+            <div class="mobile-brand"><img class="brand-mark"
+                    src="/bridge-static/assets/brand/ha-bridge-mark-white-orange.svg?v=20260726-h2" alt=""><span>HA Bridge</span>
+            </div>
+            <div class="login-card">
+                <header>
+                    <p class="eyebrow">DISPLAY PAIRING</p>
+                    <h1>配对中控设备</h1>
+                    <p>输入管理员为这台中控设置的固定 6 位配对码。</p>
+                </header>
+                <form id="pair-form" class="auth-form"> <label><span>6 位配对码</span><input name="code" inputmode="numeric"
+                            pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="000000"
+                            autocomplete="one-time-code" required></label>
+                    <p id="message" class="login-error" role="alert" hidden></p> <button class="login-submit"
+                        type="submit"><span>完成配对</span><b>→</b></button>
+                </form>
+            </div>
+        </section>
+    </main>
+    <script type="module" src="/bridge-static/js/auth/auth-shell.js"></script>
+    <script type="module" src="/bridge-static/js/auth/pair.js?v=20260803-display-pairing-v1"></script>
+</body>
+
+</html>

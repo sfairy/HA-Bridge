@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta name="ha-bridge-release" content="8b3528fb02ef4fb48b30643ae9e57797">
+    <meta charset="utf-8">
+    <script src="/bridge-static/js/shared/client-log.js?v=20260905-client-log-v1"></script>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#172029">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HA Bridge">
+    <title>激活授权 · HA Bridge</title>
+    <link rel="icon" href="/bridge-static/assets/brand/ha-bridge-favicon-h5.ico" sizes="16x16 32x32 48x48">
+    <link rel="icon" href="/bridge-static/assets/brand/ha-bridge-favicon-h5.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/bridge-static/assets/brand/ha-bridge-icon-180-h5.png" sizes="180x180">
+    <link rel="apple-touch-icon-precomposed" href="/bridge-static/assets/brand/ha-bridge-icon-180-h5.png" sizes="180x180">
+    <link rel="manifest" href="/bridge-static/assets/manifests/manifest-h5.webmanifest">
+    <link rel="stylesheet" href="/bridge-static/css/auth/auth.css?v=20260726-brand-v1">
+</head>
+
+<body>
+    <main class="login-shell">
+        <section class="login-showcase" aria-label="HA Bridge介绍">
+            <div class="showcase-grid" aria-hidden="true"></div>
+            <div class="showcase-orb orb-one" aria-hidden="true"></div>
+            <div class="showcase-orb orb-two" aria-hidden="true"></div>
+            <div class="showcase-brand"><img class="brand-mark"
+                    src="/bridge-static/assets/brand/ha-bridge-mark-black-orange.svg?v=20260726-h2" alt=""><span>HA Bridge</span>
+            </div>
+            <div class="home-characters" aria-hidden="true">
+                <div class="character character-orange"><i></i><i></i></div>
+                <div class="character character-purple"><i></i><i></i></div>
+                <div class="character character-dark"><i></i><i></i></div>
+                <div class="character character-yellow"><i></i><i></i><span class="character-mouth yellow-mouth"></span>
+                </div>
+            </div>
+        </section>
+        <section class="login-panel"> <button id="logout" class="license-logout" type="button" aria-label="退出登录"> <svg
+                    viewBox="0 0 24 24" aria-hidden="true">
+                    <path
+                        d="M14.08 15.59 16.67 13H7v-2h9.67l-2.59-2.59L15.5 7l5 5-5 5-1.42-1.41M19 3a2 2 0 0 1 2 2v4.67l-2-2V5H5v14h14v-2.67l2-2V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14Z" />
+                </svg> <span>退出登录</span> </button>
+            <div class="mobile-brand"><img class="brand-mark"
+                    src="/bridge-static/assets/brand/ha-bridge-mark-white-orange.svg?v=20260726-h2" alt=""><span>HA Bridge</span>
+            </div>
+            <div class="login-card">
+                <header>
+                    <p class="eyebrow">LICENSE INFORMATION · 0.4.6</p>
+                    <h1>激活 HA Bridge</h1>
+                    <p id="license-status-text">正在读取授权状态…</p>
+                </header>
+                <form id="license-form" class="auth-form"> <label><span>授权邮箱</span><input name="email" type="email"
+                            maxlength="255" autocomplete="email" placeholder="本机商店注册时使用的邮箱" required></label>
+                    <label><span>激活码</span><input name="activationCode" maxlength="128" autocomplete="off"
+                            placeholder="HB-XXXX-XXXX-XXXX" required></label>
+                    <p id="message" class="login-error" role="alert" hidden></p> <button class="login-submit"
+                        type="submit"><span>激活当前安装</span><b>→</b></button>
+                </form>
+                <nav class="login-links" aria-label="本机授权商店">
+                    <a href="http://127.0.0.1:18082/" target="_blank" rel="noopener noreferrer">领取激活码</a>
+                    <a href="http://127.0.0.1:18082/lookup" target="_blank" rel="noopener noreferrer">查询激活码</a>
+                </nav>
+            </div>
+        </section>
+    </main>
+    <script type="module" src="/bridge-static/js/auth/auth-shell.js"></script>
+    <script type="module" src="/bridge-static/js/auth/license.js?v=20260801-email-activation-v1"></script>
+</body>
+
+</html>

@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.py[cod]
+data/
+*.db
+register/data/
+upgrade-backups/
+.DS_Store
+原项目/

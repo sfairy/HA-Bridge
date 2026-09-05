@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <script src="/bridge-static/js/shared/client-log.js?v=20260905-client-log-v1"></script>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#172029">
+    <title>注册授权 · HA Bridge</title>
+    <link rel="icon" href="/bridge-static/assets/brand/ha-bridge-favicon-h5.ico" sizes="16x16 32x32 48x48">
+    <link rel="icon" href="/bridge-static/assets/brand/ha-bridge-favicon-h5.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/bridge-static/css/auth/auth.css?v=20260726-brand-v1">
+    <link rel="stylesheet" href="/store-static/register.css?v=20260905-license-store-v1">
+</head>
+
+<body>
+    <main class="login-shell">
+        <section class="login-showcase" aria-label="HA Bridge介绍">
+            <div class="showcase-grid" aria-hidden="true"></div>
+            <div class="showcase-orb orb-one" aria-hidden="true"></div>
+            <div class="showcase-orb orb-two" aria-hidden="true"></div>
+            <div class="showcase-brand"><img class="brand-mark"
+                    src="/bridge-static/assets/brand/ha-bridge-mark-black-orange.svg?v=20260726-h2" alt=""><span>HA Bridge</span>
+            </div>
+            <div class="home-characters" aria-hidden="true">
+                <div class="character character-orange"><i></i><i></i></div>
+                <div class="character character-purple"><i></i><i></i></div>
+                <div class="character character-dark"><i></i><i></i></div>
+                <div class="character character-yellow"><i></i><i></i><span class="character-mouth yellow-mouth"></span>
+                </div>
+            </div>
+        </section>
+        <section class="login-panel">
+            <div class="mobile-brand"><img class="brand-mark"
+                    src="/bridge-static/assets/brand/ha-bridge-mark-white-orange.svg?v=20260726-h2" alt=""><span>HA Bridge</span>
+            </div>
+            <div class="login-card is-wide">
+                <header>
+                    <p class="eyebrow">LICENSE STORE · 0.4.6</p>
+                    <h1>注册 HA Bridge 授权</h1>
+                    <p>填写购买授权时使用的邮箱。完成后会得到激活码，再到本机 HA Bridge 的激活页绑定当前安装。</p>
+                </header>
+                <div class="plan-card" aria-label="授权商品">
+                    <strong>HA Bridge 基础版</strong>
+                    <span>含编辑器、展示页、HA 同步与控件资源。激活时请使用同一邮箱和激活码。</span>
+                </div>
+                <form id="register-form" class="auth-form">
+                    <label><span>授权邮箱</span><input name="email" type="email" maxlength="255" autocomplete="email"
+                            placeholder="购买授权时使用的邮箱" required></label>
+                    <label><span>联系人姓名</span><input name="contactName" maxlength="64" autocomplete="name"
+                            placeholder="选填"></label>
+                    <p id="message" class="login-error" role="alert" hidden></p>
+                    <button class="login-submit" type="submit"><span>生成激活码</span><b>→</b></button>
+                </form>
+                <nav class="login-links" aria-label="授权商店导航">
+                    <a href="/lookup">查询激活码</a>
+                </nav>
+            </div>
+        </section>
+    </main>
+    <script type="module" src="/bridge-static/js/auth/auth-shell.js"></script>
+    <script type="module" src="/store-static/register.js?v=20260905-license-store-v1"></script>
+</body>
+
+</html>
