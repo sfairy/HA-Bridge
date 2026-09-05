@@ -46,6 +46,7 @@ HA-Bridge/
 ├── requirements.txt
 ├── alembic.ini
 ├── VERSION
+├── start.py                # 本地一键启动
 └── container_entrypoint.py
 ```
 
@@ -56,40 +57,20 @@ HA-Bridge/
 ## 环境
 
 - Python 3.11+（本地已在 3.14 验证）
-- 本机同时跑两个进程：主应用 **18080**、授权店 **18082**
+- 本机同时跑两个进程：主应用 **18081**、授权店 **18082**
 - 连接 Home Assistant 时，主应用需要能访问 HA 的 HTTP 与 WebSocket
 
 依赖见 [requirements.txt](requirements.txt)：FastAPI、SQLAlchemy、Alembic、httpx、Pillow、argon2、cryptography 等。
 
 ## 本地启动
 
-在仓库根目录：
+仓库根目录一条命令：
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+python3 start.py
 ```
 
-先开授权店，再开主应用。`PYTHONPATH=backend/app` 必须设置，后端按 `from database import Base` 这种方式导入。
-
-```bash
-# 终端 1：本机授权店
-REGISTER_DATA_DIR=./register/data \
-  uvicorn register.app:app --host 127.0.0.1 --port 18082
-
-# 终端 2：主应用
-APP_DATA_DIR=./data PYTHONPATH=backend/app \
-  uvicorn backend.app.main:app --host 127.0.0.1 --port 18080 --reload
-```
-
-打开 <http://127.0.0.1:18080/setup>。
-
-```bash
-curl -s http://127.0.0.1:18080/health/live
-curl -s http://127.0.0.1:18080/health/ready
-curl -s http://127.0.0.1:18082/health/live
-```
+首次运行会自动创建 `.venv` 并安装依赖。之后会同时拉起主应用 **18081** 和授权店 **18082**。打开 <http://127.0.0.1:18081/setup>。
 
 数据库迁移在主应用启动时自动执行。需要手工升级时：
 
@@ -165,7 +146,7 @@ APP_DATA_DIR=./data PYTHONPATH=backend/app alembic upgrade head
 | --- | --- | --- |
 | `APP_DATA_DIR` | `<仓库>/data` | 运行时数据目录 |
 | `APP_BASE_URL` | 空 | 对外访问根地址；反代时建议设置，供 WebSocket 校验 Origin |
-| `APP_PORT` | `18080` | 容器监听端口 |
+| `APP_PORT` | `18081` | 容器监听端口 |
 | `APP_SESSION_MAX_AGE_SECONDS` | `28800` | 登录会话时长 |
 | `APP_COOKIE_SECURE` | `false` | HTTPS 下设为 `true` |
 | `APP_HA_REQUEST_TIMEOUT_SECONDS` | `10` | 调用 HA 的超时 |
@@ -182,7 +163,7 @@ APP_DATA_DIR=./data PYTHONPATH=backend/app alembic upgrade head
 
 ## Docker
 
-官方镜像监听 **18080**，数据和密钥分卷挂载。容器启动后访问 `http://<主机>:18080/setup`。容器内默认路径：
+官方镜像监听 **18081**，数据和密钥分卷挂载。容器启动后访问 `http://<主机>:18081/setup`。容器内默认路径：
 
 | 用途 | 路径 |
 | --- | --- |
