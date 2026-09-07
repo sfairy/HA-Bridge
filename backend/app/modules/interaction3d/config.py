@@ -48,6 +48,19 @@ LIGHT_KEYS = frozenset(
         'hiddenClickable',
     }
 )
+CLICK_ACTIONS = frozenset(
+    {
+        'focus',
+        'turn-on',
+        'turn-on-focus',
+        'turn-on-panel',
+        'toggle',
+        'none',
+        'more-info',
+    }
+)
+ICON_PATTERN = re.compile(r'^mdi:[a-z0-9][a-z0-9-]{0,119}$')
+ENTITY_PATTERN = re.compile(r'(light|switch)\.[a-z0-9_]+')
 LIGHTING_BOUNDS = {
     'exposure': (0.5, 2),
     'hemisphereIntensity': (0, 3),
@@ -152,6 +165,8 @@ def validate_config(properties) -> None:
     if auto_rotate.get('direction', 'clockwise') not in ('clockwise', 'counterclockwise'):
         fail()
     idle_seconds = auto_rotate.get('idleSeconds', 30)
+    if isinstance(idle_seconds, float) and idle_seconds.is_integer():
+        idle_seconds = int(idle_seconds)
     if not isinstance(idle_seconds, int) or isinstance(idle_seconds, bool) or not number(idle_seconds, 1, 3600):
         fail()
     if not number(auto_rotate.get('speed', 6), 0.5, 30):
@@ -162,6 +177,8 @@ def validate_config(properties) -> None:
     if not isinstance(idle_hide_icons.get('enabled', False), bool):
         fail()
     hide_idle_seconds = idle_hide_icons.get('idleSeconds', 30)
+    if isinstance(hide_idle_seconds, float) and hide_idle_seconds.is_integer():
+        hide_idle_seconds = int(hide_idle_seconds)
     if not isinstance(hide_idle_seconds, int) or isinstance(hide_idle_seconds, bool) or not number(hide_idle_seconds, 1, 3600):
         fail()
     lighting = properties.get('baseLighting', {})
@@ -192,7 +209,7 @@ def validate_config(properties) -> None:
             if key in light and not text(light[key], 255 if key == 'entityId' else 128):
                 fail()
         entity_id = light.get('entityId', '')
-        if entity_id and not re.fullmatch(r'(light|switch)\.[a-z0-9_]+', str(entity_id)):
+        if entity_id and not ENTITY_PATTERN.fullmatch(str(entity_id)):
             fail()
         for key, low, high in (
             ('x', -10000, 10000),
@@ -209,9 +226,12 @@ def validate_config(properties) -> None:
             fail()
         if 'hiddenClickable' in light and not isinstance(light['hiddenClickable'], bool):
             fail()
-        if 'icon' in light and not text(light['icon'], 128):
-            fail()
-        if light.get('clickAction', 'toggle') not in ('toggle', 'none', 'more-info'):
+        if 'icon' in light:
+            if not text(light['icon'], 128):
+                fail()
+            if light['icon'] and not ICON_PATTERN.fullmatch(light['icon']):
+                fail()
+        if light.get('clickAction', 'focus') not in CLICK_ACTIONS:
             fail()
         defaults = light.get('effectDefaults', {})
         if defaults not in (None, {}):
@@ -233,6 +253,23 @@ def validate_config(properties) -> None:
         if 'focusCamera' in light:
             validate_camera(light['focusCamera'])
         if 'effectRange' in light and light['effectRange'] is not None:
-            if not number(light['effectRange'], 0, 10000):
+            effect_range = light['effectRange']
+            if isinstance(effect_range, dict):
+                if set(effect_range) - {
+                    'brightnessMin',
+                    'brightnessMax',
+                    'temperatureMin',
+                    'temperatureMax',
+                }:
+                    fail()
+                for key, low, high in (
+                    ('brightnessMin', 0, 100),
+                    ('brightnessMax', 0, 100),
+                    ('temperatureMin', 1000, 20000),
+                    ('temperatureMax', 1000, 20000),
+                ):
+                    if key in effect_range and not number(effect_range[key], low, high):
+                        fail()
+            elif not number(effect_range, 0, 10000):
                 fail()
     validate_camera(properties.get('camera'), allow_legacy_interaction=True)
