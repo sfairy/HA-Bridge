@@ -8,7 +8,7 @@ import {
   registerUiPackDefinition,
   timeComponentDimensions,
   weatherComponentDimensions,
-} from "../templates/component-templates.js?v=20260814-effect-image-align-v45-20260815-component-thumbnails-v2-20260822-light-feedback-controls-v1-20260824-light-statistics-v4-20260828-count-statistics-v1-20260901-camera-snapshot-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1";
+} from "../templates/component-templates.js?v=20260814-effect-image-align-v45-20260815-component-thumbnails-v2-20260822-light-feedback-controls-v1-20260824-light-statistics-v4-20260828-count-statistics-v1-20260901-camera-snapshot-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260907-interaction3d-v1";
 const runtimeLoads = new Map();
 export async function ensureUiPackRuntime(uiPack) {
   if (!uiPack?.id) {

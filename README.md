@@ -1,6 +1,6 @@
 # HA Bridge
 
-面向 [Home Assistant](https://www.home-assistant.io/) 的本机仪表盘与中控平台，当前版本 **0.4.6**。
+面向 [Home Assistant](https://www.home-assistant.io/) 的本机仪表盘与中控平台，当前版本 **0.4.8**。
 
 提供可视化编辑器、3D 户型工作室、全屏展示页和中控配对。后端是 FastAPI，前端是原生 HTML / CSS / JavaScript，数据默认落在本机 SQLite。
 
@@ -12,6 +12,7 @@
 - 正式展示：`/display/{项目ID}` 或 `/habridge/{项目名称}` 打开全屏中控页
 - 中控配对：6 位固定配对码，适合墙面平板或独立浏览器
 - 3D 户型：建模、导入、按楼层或全楼自动导图并回写到仪表盘
+- 3D 交互：仪表盘控件嵌入户型舞台；从工作室草稿快照场景，在舞台里开关已绑定的灯和开关；展示页用 iframe 打开同一舞台
 - Home Assistant：HTTP / WebSocket 同步实体与状态，代理摄像头和媒体
 - 全局日志：按级别、分类和关键词筛选，导出时遮盖敏感信息
 - 本机授权店：邮箱领取激活码，签发含全部基础能力的本地租约
@@ -26,16 +27,20 @@ HA-Bridge/
 │   ├── api/                # 认证、项目、HA、资源、3D、日志、中控
 │   ├── ha/                 # HA 客户端、同步、状态推送
 │   ├── panel/              # 仪表盘文档与校验
+│   ├── modules/            # 增量能力（3D 交互）
 │   ├── license/            # 授权校验（本机店租约）
 │   └── main.py
 ├── frontend/               # 页面与静态资源
 │   ├── *.html
+│   ├── modules/            # 3D 交互舞台与配置编辑器（经 /api/v1/modules/interaction3d 下发）
 │   └── static/             # 挂载为 /bridge-static
 │       ├── js/             # auth / editor / display / shared
 │       ├── css/
 │       ├── assets/         # 品牌图、manifest
 │       ├── renderer/       # 仪表盘运行时
 │       ├── 3d-studio/
+│       ├── modules/        # 3D 交互编辑器桥接、封面、定义
+│       ├── utils/          # 户型工作室与 3D 交互共用工具
 │       └── vendor/         # three.js、hls.js、MDI
 ├── register/               # 本机授权店（默认 18082）
 ├── migrations/             # Alembic 迁移 0001–0013
@@ -82,13 +87,14 @@ APP_DATA_DIR=./data PYTHONPATH=backend/app alembic upgrade head
 1. 打开 `/setup`，创建管理员（用户名 3–64 个字符，密码至少 8 位）。
 2. 登录后进入 `/license`。另开 <http://127.0.0.1:18082/>，用邮箱领取激活码，再回到授权页激活。
 3. 在编辑器里配置 Home Assistant 的地址和长期访问令牌，创建空白仪表盘或导入「栖光」模板。
-4. 墙面中控：在编辑器生成 6 位配对码，设备打开 `/pair` 完成配对。
+4. 使用 3D 交互：先在 `/3d-studio` 保存户型，再在编辑器添加「3D 交互」控件并载入户型快照，绑定 `light.*` / `switch.*` 后即可在舞台里开关。
+5. 墙面中控：在编辑器生成 6 位配对码，设备打开 `/pair` 完成配对。
 
 未初始化时任意页面都会跳到 `/setup`。未激活时编辑器跳到 `/license`，展示页和受保护静态资源返回 401 / 403。
 
 忘记管理员账号或密码：停掉进程，删除 `data/admin-account.json` 再启动。系统回到设置页。户型、HA 配置、授权和中控配对不会被删。
 
-本机店签发的租约包含：`api`、`assets`、`editor`、`display`、`ha.sync`、`ha.configure`、`ha.control`、`projects.write`、`runtime.websocket`、`ui.base`。
+本机店签发的租约包含：`api`、`assets`、`editor`、`display`、`ha.sync`、`ha.configure`、`ha.control`、`projects.write`、`runtime.websocket`、`ui.base`、`module.3d_interaction`。已开通编辑器的本地租约即可使用 3D 交互，不必重新领取激活码。不连接官方授权云。
 
 ## 页面与接口
 
@@ -105,6 +111,7 @@ APP_DATA_DIR=./data PYTHONPATH=backend/app alembic upgrade head
 | `/health/live` | 进程存活 |
 | `/health/ready` | 数据库就绪 |
 | `/api/v1/*` | 业务 API |
+| `/api/v1/modules/interaction3d/*` | 3D 交互：场景快照、舞台页、灯光缓存、配置编辑脚本 |
 | `/api/v1/ws/runtime` | 实时状态 WebSocket |
 | `/bridge-static/*` | 前端静态资源 |
 
@@ -132,6 +139,7 @@ APP_DATA_DIR=./data PYTHONPATH=backend/app alembic upgrade head
 | `secrets/` | HA、配对、授权、本机店公钥缓存 |
 | `assets/` | 用户上传图片 |
 | `studio3d/` | 3D 草稿 |
+| `modules/interaction3d/` | 3D 交互场景快照与灯光渲染缓存 |
 | `exports/` | 3D 导出 |
 | `logs/` | 全局事件日志 |
 | `cache/effect-variants/` | 灯光效果变体缓存 |
@@ -187,13 +195,22 @@ docker exec ha-bridge rm /tmp/app.tar.gz
 
 ## 开发注意
 
-- 修改业务 JavaScript 后，保留 HTML / `import` 里的 `?v=` 缓存标记。
+- 修改业务 JavaScript 后，保留 HTML / `import` 里的 `?v=` 缓存标记。`home.js` 与 `renderer.js` 必须使用同一条 `registry.js?v=`，否则会出现两份控件注册表。
 - 不要改 `frontend/static/vendor/` 下的 three.js、hls.js、OrbitControls 等第三方文件。
 - 界面中文文案保持原词。
 - `migrations/env.py` 必须从 `backend/app` 导入 `database` 和 `models`，不要写成 `from backend.app import models`，否则会重复注册表。
-- 旧扁平静态路径（如 `/bridge-static/home.js`）已改为 `js/`、`css/`、`assets/`，页面引用和后端匿名白名单已对齐。
+- 旧扁平静态路径（如 `/bridge-static/home.js`）已改为 `js/`、`css/`、`assets/`。户型工作室与 3D 交互还会引用 `/bridge-static/utils/`（与 dump 0.4.8 一致）。
+- 3D 交互舞台脚本由 `/api/v1/modules/interaction3d/{filename}` 下发，需要已登录或已配对，且当前授权允许编辑器。
 
 ## 更新日志
+
+### v0.4.8
+
+新增
+
+- 3D 交互控件：从户型工作室草稿生成场景快照，仪表盘与展示页用 iframe 嵌入同一舞台；舞台内仅控制已绑定的灯和开关。
+- 3D 灯光配置编辑器：绑定实体、灯光按钮、聚焦视角与进阶光照，图层 PNG 缓存走本机数据目录。
+- 本机授权将 3D 交互计入基础能力。已开通编辑器的旧租约可直接使用；不接入官方授权云与商城付费墙。
 
 ### v0.4.6
 

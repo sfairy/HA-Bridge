@@ -1,3 +1,5 @@
+import { interaction3dTemplate } from "../../modules/interaction3d/definition.js?v=20260905-interaction3d-v1";
+
 const index = new Map();
 const index2 = new Map();
 const u = {
@@ -23,6 +25,7 @@ const u = {
     "camera",
     "line-chart",
     "panel-frame",
+    "interaction3d",
   ],
 };
 const componentDefaults = {
@@ -584,6 +587,7 @@ registerUiPackDefinition({
   },
   componentDefaults: componentDefaults,
 });
+registerComponentTemplate(interaction3dTemplate);
 export function registerComponentTemplate(value) {
   if (!value?.id || typeof value.create != "function") {
     throw new Error("控件模板必须包含 id 和 create。");

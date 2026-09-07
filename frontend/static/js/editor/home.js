@@ -3,11 +3,11 @@ import {
   airflowCanvasOffsetBounds,
   setBuiltinAssetVersions,
   syncedLineChartProperties,
-} from "../../renderer/renderer.js?v=20260821-electric-bed-load-v20-generic-popup-v1-color-picker-v3-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-realtime-capabilities-v2-20260822-line-chart-performance-v6-20260822-button-hit-area-v2-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-airflow-canvas-drag-v1-20260823-effect-light-visual-v1-20260823-effect-variant-v1-20260823-touch-popup-motion-v12-20260823-navigation-current-page-v1-20260824-light-statistics-v5-20260825-effect-load-queue-v2-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-bath-heater-primary-v1-20260825-editor-media-preview-v1-20260825-history-mode-switch-v1-20260826-button-sound-v2-20260826-line-chart-initial-state-v1-20260827-dashboard-live-scope-v1-20260827-light-preset-settle-v1-20260827-runtime-placeholder-retry-v2-20260828-legacy-group-compat-v2-vacuum-dialog-layout-v1-20260830-light-statistics-selection-v1-20260830-editor-local-refresh-v4-20260831-background-media-v1-20260831-bound-entity-v1-20260831-vacuum-map-background-v1-20260831-action-rules-v1-20260831-sensor-popup-v1-20260901-renderer-transform-geometry-v1-20260901-renderer-effect-geometry-v2-20260901-renderer-light-runtime-v1-20260901-renderer-vacuum-runtime-v1-20260901-renderer-cover-runtime-v1-20260901-renderer-dialog-motion-v1-20260901-renderer-runtime-caches-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-runtime-v2-20260901-renderer-date-time-runtime-v1-20260901-renderer-runtime-document-v1-20260901-camera-prewarm-v1-20260901-hidden-selection-bounds-v2-20260901-effect-state-stability-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-popup-module-note-v1-20260901-runtime-dialog-layout-v8-20260901-light-effect-layering-v2-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-climate-capability-options-v3-20260904-auto-diagram-floor-v1-20260904-climate-option-fit-v3-20260905-client-log-v1";
+} from "../../renderer/renderer.js?v=20260821-electric-bed-load-v20-generic-popup-v1-color-picker-v3-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-realtime-capabilities-v2-20260822-line-chart-performance-v6-20260822-button-hit-area-v2-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-airflow-canvas-drag-v1-20260823-effect-light-visual-v1-20260823-effect-variant-v1-20260823-touch-popup-motion-v12-20260823-navigation-current-page-v1-20260824-light-statistics-v5-20260825-effect-load-queue-v2-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-bath-heater-primary-v1-20260825-editor-media-preview-v1-20260825-history-mode-switch-v1-20260826-button-sound-v2-20260826-line-chart-initial-state-v1-20260827-dashboard-live-scope-v1-20260827-light-preset-settle-v1-20260827-runtime-placeholder-retry-v2-20260828-legacy-group-compat-v2-vacuum-dialog-layout-v1-20260830-light-statistics-selection-v1-20260830-editor-local-refresh-v4-20260831-background-media-v1-20260831-bound-entity-v1-20260831-vacuum-map-background-v1-20260831-action-rules-v1-20260831-sensor-popup-v1-20260901-renderer-transform-geometry-v1-20260901-renderer-effect-geometry-v2-20260901-renderer-light-runtime-v1-20260901-renderer-vacuum-runtime-v1-20260901-renderer-cover-runtime-v1-20260901-renderer-dialog-motion-v1-20260901-renderer-runtime-caches-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-runtime-v2-20260901-renderer-date-time-runtime-v1-20260901-renderer-runtime-document-v1-20260901-camera-prewarm-v1-20260901-hidden-selection-bounds-v2-20260901-effect-state-stability-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-popup-module-note-v1-20260901-runtime-dialog-layout-v8-20260901-light-effect-layering-v2-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-climate-capability-options-v3-20260904-auto-diagram-floor-v1-20260904-climate-option-fit-v3-20260905-client-log-v1-20260907-interaction3d-v1-v2-20260907-i3d-align-v1";
 import {
   lightStatisticsEntityStateStatus,
   lightStatisticsEntitySupport,
-} from "../../renderer/registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-bound-entity-v1-20260831-vacuum-map-background-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-runtime-v2-20260901-renderer-date-time-runtime-v1-20260904-auto-diagram-floor-v1-20260905-client-log-v1";
+} from "../../renderer/registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-vacuum-map-background-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-v2-20260901-renderer-date-time-runtime-v1-20260901-camera-prewarm-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-light-effect-layering-v2-20260901-light-effect-color-cache-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260905-client-log-v1-20260907-interaction3d-v1-20260907-i3d-align-v1";
 import {
   applyUiPackToDocument,
   createComponentFromTemplate,
@@ -16,7 +16,7 @@ import {
   listComponentTemplates,
   timeComponentDimensions,
   weatherComponentDimensions,
-} from "../ui-packs/loader.js?v=20260811-water-heater-popup-v44-20260815-component-thumbnails-v2-20260822-light-feedback-controls-v1-20260824-light-statistics-v6-20260828-count-statistics-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1";
+} from "../ui-packs/loader.js?v=20260811-water-heater-popup-v44-20260815-component-thumbnails-v2-20260822-light-feedback-controls-v1-20260824-light-statistics-v6-20260828-count-statistics-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260907-interaction3d-v1";
 import {
   clone,
   newId,
@@ -94,13 +94,20 @@ import {
   nextTemplateInstanceName,
   refreshComponentIds,
   syncSharedComponentReferenceOrder,
-} from "./editor-component-collections.js?v=20260831-editor-component-collections-v1";
+} from "./editor-component-collections.js?v=20260831-editor-component-collections-v1-20260907-interaction3d-v1";
 import {
   fitInspectorComponentToDimensions,
   iconButtonEffectInspectorLayer,
   inspectorComponentMetrics,
   setInspectorToggle,
 } from "./editor-basic-inspectors.js?v=20260901-editor-basic-inspectors-v4";
+import { createInteraction3dEditorPickers } from "../../modules/interaction3d/editor-pickers.js?v=20260906-i3d-buttons-v1";
+import {
+  guardInteraction3dChanges,
+  renderInteraction3dInspector,
+  renderInteraction3dThumbnail,
+  updateInteraction3dCard,
+} from "../../modules/interaction3d/editor.js?v=20260907-browser-compat-v1";
 import {
   clonePageWithFreshIds,
   findCustomPopup,
@@ -2556,19 +2563,18 @@ function Oc(
   _e();
   Z();
 }
-function L(fn9, value = W.value) {
-  Cr = Cr.catch(() => {})
-    .then(async () => {
-      if (!h) {
-        throw new Error("请先选择仪表盘。");
-      }
-      const value2 = clone(h.document);
-      const value3 = await fn9(value2);
-      await vt(value2, value);
-      return value3;
-    })
-    .catch(onError);
-  return Cr;
+function L(fn9, value = W.value, { throwOnError: throwOnError = false } = {}) {
+  const pending = Cr.catch(() => {}).then(async () => {
+    if (!h) {
+      throw new Error("请先选择仪表盘。");
+    }
+    const value2 = clone(h.document);
+    const value3 = await fn9(value2);
+    await vt(value2, value);
+    return value3;
+  });
+  Cr = pending.catch(onError);
+  return throwOnError ? pending : Cr;
 }
 function kN(value, value2) {
   const value3 = [...bag];
@@ -3463,14 +3469,18 @@ function WN() {
       const value5 = document.createElement("span");
       value5.className = "component-template-preview";
       value5.setAttribute("aria-hidden", "true");
-      const value6 = document.createElement("img");
-      const value7 = value3.thumbnailId || value3.id;
-      value6.src =
-        "/bridge-static/component-thumbnails/" +
-        encodeURIComponent(value7) +
-        ".jpg?v=20260902-component-thumbnails-v3";
-      value6.alt = "";
-      value5.append(value6);
+      if (value3.id === "interaction3d") {
+        renderInteraction3dThumbnail(value5);
+      } else {
+        const value6 = document.createElement("img");
+        const value7 = value3.thumbnailId || value3.id;
+        value6.src =
+          "/bridge-static/component-thumbnails/" +
+          encodeURIComponent(value7) +
+          ".jpg?v=20260902-component-thumbnails-v3";
+        value6.alt = "";
+        value5.append(value6);
+      }
       const value8 = document.createElement("span");
       value8.className = "component-template-copy";
       const element = document.createElement("strong");
@@ -3479,6 +3489,9 @@ function WN() {
       element2.textContent = value3.description;
       value8.append(element, element2);
       value4.append(value5, value8);
+      if (value3.id === "interaction3d") {
+        updateInteraction3dCard(value4);
+      }
       return value4;
     }),
   );
@@ -5283,6 +5296,28 @@ const {
   assetPreviewUrl: pp,
   bindEditorIconNameTooltip: oE,
   mdiIconUrl: Fi,
+});
+const i3dEditorPickers = createInteraction3dEditorPickers({
+  openPicker: (opts) => qi(opts),
+  fetchIcons: (query, limit, offset) =>
+    J(
+      "/icons?query=" +
+        encodeURIComponent(query) +
+        "&limit=" +
+        limit +
+        "&offset=" +
+        offset,
+    ),
+  getEntities: () => le,
+  ensureEntities: () => (Tu ? Promise.resolve() : Po || jc()),
+  entityPickerText: ct,
+  elements: {
+    createEditorPickerCurrentIcon: sE,
+    createIconPickerOption: B0,
+    createEditorPickerCurrentEntity: mp,
+    createEditorEntityPickerOption: _n,
+    editorPickerClearAction: zr,
+  },
 });
 const { editorEntityMatches: $0, editorPickerComponentTypeLabel: lE } =
   createEditorPickerQueries({
@@ -7134,6 +7169,46 @@ function TE(component) {
 function Z() {
   window.requestAnimationFrame(CN);
   const component = O();
+  renderInteraction3dInspector(g1, component, {
+    document: h?.document,
+    entities: le,
+    states: x?.states,
+    pickers: i3dEditorPickers,
+    prepareCanvas: () => {
+      if (!component) {
+        throw new Error("3D 控件已不存在。");
+      }
+      const loc = findComponent(h?.document, component.id);
+      if (!loc) {
+        throw new Error("3D 控件已不存在。");
+      }
+      const path = loc.page?.path || W.value;
+      const needSwitch = Te !== "edit" || x?.page?.path !== path;
+      W.value = path;
+      oe(W);
+      if (needSwitch) {
+        Mt("edit");
+      }
+      _e();
+      Ac();
+    },
+    onError: onError,
+    onChange: (patch, { replaceProperties = false } = {}) =>
+      L(
+        (doc) => {
+          const c = findComponent(doc, component.id)?.component;
+          if (!c || c.type !== "interaction3d") {
+            throw new Error("3D 控件已不存在。");
+          }
+          for (const [k, v] of Object.entries(patch)) {
+            c[k] =
+              k === "properties" && replaceProperties ? v : { ...c[k], ...v };
+          }
+        },
+        W.value,
+        { throwOnError: true },
+      ),
+  });
   const value = component?.type === "image";
   const value2 = component?.type === "floorplan-auto-diagram";
   const value3 = component?.type === "icon-button-effect";
@@ -7152,6 +7227,7 @@ function Z() {
   const value14 = component?.type === "panel-frame";
   const value15 = component?.type === "navigation-button";
   const value16 = component?.type === "group";
+  const valueI3d = component?.type === "interaction3d";
   for (const value24 of [...Pi.keys()]) {
     if (!value15 || value24 !== component.id) {
       Pi.delete(value24);
@@ -7192,7 +7268,8 @@ function Z() {
     value12 ||
     value13 ||
     value14 ||
-    value15;
+    value15 ||
+    valueI3d;
   Ol.hidden = value17;
   if (value16) {
     Ol.querySelector("p").textContent =
@@ -9400,6 +9477,7 @@ async function vt(
     throw new Error("请先选择仪表盘。");
   }
   const document = h.document;
+  await guardInteraction3dChanges(document, value);
   const value4 = BE(document, value, value2);
   const value5 = Uc();
   if (documentSignature(value5.document) === documentSignature(value)) {
@@ -22401,7 +22479,10 @@ wl.addEventListener("click", (value) => {
                                     : value2.dataset.templateId ===
                                         "panel-frame"
                                       ? "底图框"
-                                      : "图片";
+                                      : value2.dataset.templateId ===
+                                          "interaction3d"
+                                        ? "3D 交互"
+                                        : "图片";
     const instanceName = nextTemplateInstanceName(value14, value15);
     const value16 = createComponentFromTemplate(value2.dataset.templateId, {
       id: id2,

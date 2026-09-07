@@ -39,6 +39,7 @@ BASE_FEATURES = {
     'ha.configure',
     'projects.write',
     'runtime.websocket',
+    'module.3d_interaction',
 }
 
 
@@ -180,6 +181,7 @@ class LicenseService:
         async with httpx.AsyncClient(
             transport=self._transport,
             timeout=self.settings.license_request_timeout_seconds,
+            trust_env=False,
         ) as client:
             try:
                 key_response = await client.get(f'{base_url}/api/v1/store/public-key')
@@ -220,6 +222,7 @@ class LicenseService:
         async with httpx.AsyncClient(
             transport=self._transport,
             timeout=self.settings.license_request_timeout_seconds,
+            trust_env=False,
         ) as client:
             try:
                 key_response = await client.get(f'{base_url}/api/v1/store/public-key')
@@ -475,6 +478,8 @@ class LicenseService:
             visible_features = sorted(BASE_FEATURES)
         else:
             visible_features = [item for item in stored_features if isinstance(item, str)]
+        if allowed and editor_allowed:
+            visible_features = sorted(set(visible_features) | BASE_FEATURES)
         visible_products = []
         if state.signed_lease:
             try:
@@ -570,8 +575,8 @@ class LicenseService:
         if 'all' in features:
             return feature in BASE_FEATURES
         entitlements = payload.get('entitlements')
+        active_features = set()
         if isinstance(entitlements, list):
-            active_features = set()
             for entitlement in entitlements:
                 if not isinstance(entitlement, dict) or not isinstance(entitlement.get('code'), str):
                     continue
@@ -583,8 +588,14 @@ class LicenseService:
                     except (LicenseCryptoError, TypeError, ValueError):
                         continue
                 active_features.add(entitlement['code'])
-            return feature in active_features
-        return feature in features
+            granted = feature in active_features
+            has_editor = 'editor' in active_features
+        else:
+            granted = feature in features
+            has_editor = 'editor' in features
+        if not granted and feature in BASE_FEATURES and has_editor:
+            return True
+        return granted
 
     def allows(self, feature: str | None = None) -> bool:
         with self.database.session_factory() as database:

@@ -88,7 +88,7 @@ class HAClient:
                 verify=self.verify_tls,
                 timeout=self.timeout,
                 headers=self.headers,
-                trust_env=not self._is_ipv6_literal,
+                trust_env=False,
             ) as client:
                 response = await client.get(f'{self.base_url}/api/config')
                 response.raise_for_status()
@@ -115,7 +115,7 @@ class HAClient:
             verify=self.verify_tls,
             timeout=self.timeout,
             headers=self.headers,
-            trust_env=not self._is_ipv6_literal,
+            trust_env=False,
         ) as client:
             async def fetch_one(entity_id: str) -> dict[str, Any] | None:
                 async with semaphore:
@@ -158,7 +158,7 @@ class HAClient:
             websocket = await websockets.connect(
                 websocket_url(self.base_url),
                 ssl=self._ssl_context(),
-                proxy=None if self._is_ipv6_literal else True,
+                proxy=None,
                 open_timeout=self.timeout,
                 ping_interval=20,
                 ping_timeout=20,
@@ -335,7 +335,7 @@ class HAClient:
                 verify=self.verify_tls,
                 timeout=self.timeout,
                 headers=self.headers,
-                trust_env=not self._is_ipv6_literal,
+                trust_env=False,
             ) as client:
                 response = await client.post(f'{self.base_url}/api/services/{domain}/{service}', json=payload)
                 response.raise_for_status()
@@ -371,7 +371,7 @@ class HAClient:
                 verify=self.verify_tls,
                 timeout=self.timeout,
                 headers=self.headers,
-                trust_env=not self._is_ipv6_literal,
+                trust_env=False,
             ) as client:
                 response = await client.get(
                     f'{self.base_url}/api/history/period/{encoded_start}',

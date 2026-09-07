@@ -19,7 +19,7 @@ import {
   setBuiltinAssetVersions,
   staticAssetImageSource,
   vacuumMapImageSource,
-} from "./registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-vacuum-map-background-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-v2-20260901-renderer-date-time-runtime-v1-20260901-camera-prewarm-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-light-effect-layering-v2-20260901-light-effect-color-cache-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260905-client-log-v1";
+} from "./registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-vacuum-map-background-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-v2-20260901-renderer-date-time-runtime-v1-20260901-camera-prewarm-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-light-effect-layering-v2-20260901-light-effect-color-cache-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260905-client-log-v1-20260907-interaction3d-v1-20260907-i3d-align-v1";
 import { randomUuid } from "../js/utils/random-id.js?v=20260724-revert-hold-popup-shield-v324";
 import { popupLayoutMetrics } from "../js/editor/popup-layout.js?v=20260821-electric-bed-combo-v2";
 import {
@@ -1806,12 +1806,14 @@ export class PanelRenderer {
     window.addEventListener("pointercancel", value14, true);
     window.addEventListener("blur", value14);
   }
-  cleanupComponents(value = false) {
+  cleanupComponents(value = false, preserveIds = new Set()) {
     for (const fn of this.cleanups.splice(0)) {
       fn();
     }
     for (const value2 of [...this.componentCleanups.keys()]) {
-      this.cleanupRenderedComponent(value2);
+      if (!preserveIds.has(value2)) {
+        this.cleanupRenderedComponent(value2);
+      }
     }
     if (!value) {
       for (const value2 of this.cameraCleanups.values()) {
@@ -1917,13 +1919,29 @@ export class PanelRenderer {
     const index2 = new Map([
       ...(value
         ? [...this.componentHosts].filter(([value7]) =>
-            ["camera", "vacuum-map", "floorplan-auto-diagram"].includes(
+            ["camera", "vacuum-map", "floorplan-auto-diagram", "interaction3d"].includes(
               this.componentRecords.get(value7)?.type,
             ),
           )
         : []),
       ...(value2 && typeof value2[Symbol.iterator] == "function" ? value2 : []),
     ]);
+    const preserveInteraction3d = new Set();
+    const currentById = new Map(
+      collectComponents(
+        [...(this.page.components || []), ...value4],
+        () => true,
+      ).map((value7) => [value7.id, value7]),
+    );
+    for (const [value7] of index2) {
+      if (this.componentRecords.get(value7)?.type === "interaction3d") {
+        if (currentById.get(value7)?.type === "interaction3d") {
+          preserveInteraction3d.add(value7);
+        } else {
+          index2.delete(value7);
+        }
+      }
+    }
     const index3 = new Map(
       [
         ...this.canvas.querySelectorAll(
@@ -1931,13 +1949,14 @@ export class PanelRenderer {
         ),
       ].map((value7) => [value7.dataset.effectFor, value7]),
     );
-    this.cleanupComponents(value);
+    this.cleanupComponents(value, preserveInteraction3d);
     const allowed2 = new Set(
       [...index2.values()].filter(
         (value7) =>
           value7.parentElement === this.canvas &&
           allowed.has(value7.dataset.componentId) &&
-          value7.querySelector(".hb-floorplan-auto-diagram-preview"),
+          (value7.querySelector(".hb-floorplan-auto-diagram-preview") ||
+            value7.querySelector(".hb-interaction3d-host")),
       ),
     );
     if (allowed2.size) {
@@ -2059,6 +2078,12 @@ export class PanelRenderer {
     const value2 = this.componentRecords.get(value);
     const value3 = this.componentHosts.get(value);
     if (!value2 || !value3 || !value3.isConnected) {
+      return;
+    }
+    if (value2.type === "interaction3d") {
+      value3
+        .querySelector(".hb-interaction3d-host")
+        ?.updateInteraction3d?.(value2, this.document);
       return;
     }
     this.cleanupRenderedComponent(value);
@@ -2221,6 +2246,53 @@ export class PanelRenderer {
         this.updateTransformHandleScale(element, component);
         return true;
       }
+    }
+    if (component.type === "interaction3d") {
+      const value4 = component.position || {};
+      const value5 =
+        parentElement === this.canvas &&
+        component.properties?.layoutMode === "fill";
+      const value6 = value5
+        ? {
+            ...value4,
+            x: 0,
+            y: 0,
+            width: Number(this.document.canvas?.width || 2778),
+            height: Number(this.document.canvas?.height || 1940),
+            rotation: 0,
+          }
+        : value4;
+      const count = Math.max(
+        0.01,
+        Math.min(5, Number(component.style?.scale || 1)),
+      );
+      const numeric = Number(value6.zIndex || 1);
+      const value7 = componentHostZIndex(
+        component,
+        numeric,
+        parentElement === this.canvas,
+      );
+      Object.assign(element.style, {
+        left: (value6.x || 0) + "px",
+        top: (value6.y || 0) + "px",
+        width: (value6.width || 100) + "px",
+        height: (value6.height || 100) + "px",
+        zIndex: String(value7),
+        transform:
+          "rotate(" +
+          (value6.rotation || 0) +
+          "deg) scale(" +
+          (value5 ? 1 : count) +
+          ")",
+      });
+      element.style.setProperty("--hb-component-z", String(value7));
+      element.classList.toggle("layout-fill", value5);
+      element
+        .querySelector(".hb-interaction3d-host")
+        ?.updateInteraction3d?.(component, this.document);
+      this.syncSelection();
+      this.updateTransformHandleScale(element, component);
+      return true;
     }
     const nextSibling = element.nextSibling;
     this.cleanupRenderedComponent(value);
@@ -2907,7 +2979,7 @@ export class PanelRenderer {
     const iconButtonEffectComponent =
       normalizeIconButtonEffectComponent(component);
     const component2 = this.runtimePowerComponent(iconButtonEffectComponent);
-    const element = ["camera", "vacuum-map", "floorplan-auto-diagram"].includes(
+    const element = ["camera", "vacuum-map", "floorplan-auto-diagram", "interaction3d"].includes(
       component.type,
     )
       ? value3?.get(component.id)
@@ -2916,7 +2988,7 @@ export class PanelRenderer {
       const value13 = component.position || {};
       const value14 =
         value === this.canvas &&
-        component.type === "floorplan-auto-diagram" &&
+        ["floorplan-auto-diagram", "interaction3d"].includes(component.type) &&
         component.properties?.layoutMode === "fill";
       const value15 = value14
         ? {
@@ -2949,6 +3021,11 @@ export class PanelRenderer {
       element.style.setProperty("--hb-component-z", String(value16));
       element.hidden = component.style?.visible === false;
       element.classList.toggle("layout-fill", value14);
+      if (component.type === "interaction3d") {
+        element
+          .querySelector(".hb-interaction3d-host")
+          ?.updateInteraction3d?.(component, this.document);
+      }
       if (component.type === "floorplan-auto-diagram") {
         const value17 = component.properties?.interactionMode === "view";
         const hbFloorplanAutoDiagramPreview = element.querySelector(
@@ -2991,7 +3068,7 @@ export class PanelRenderer {
     const value6 = component.position || {};
     const value7 =
       value === this.canvas &&
-      ["image", "floorplan-auto-diagram"].includes(component.type) &&
+      ["image", "floorplan-auto-diagram", "interaction3d"].includes(component.type) &&
       component.properties?.layoutMode === "fill";
     const value8 = value7
       ? {

@@ -1,0 +1,238 @@
+"""The 3D add-on's configuration contract, independent of the panel popup schema."""
+from __future__ import annotations
+
+import math
+import re
+
+from fastapi import HTTPException
+
+PROPERTY_KEYS = frozenset(
+    {
+        'label',
+        'camera',
+        'lights',
+        'sceneId',
+        'autoRotate',
+        'layoutMode',
+        'interaction',
+        'renderScale',
+        'baseLighting',
+        'instanceName',
+        'popupOpacity',
+        'idleHideIcons',
+        'floorSelection',
+        'backgroundVisible',
+        'focusVignetteStrength',
+    }
+)
+LIGHT_KEYS = frozenset(
+    {
+        'x',
+        'y',
+        'id',
+        'icon',
+        'size',
+        'label',
+        'height',
+        'floorId',
+        'groupId',
+        'hitSize',
+        'visible',
+        'entityId',
+        'iconSize',
+        'clickAction',
+        'effectRange',
+        'focusCamera',
+        'fadeDuration',
+        'effectDefaults',
+        'hiddenClickable',
+    }
+)
+LIGHTING_BOUNDS = {
+    'exposure': (0.5, 2),
+    'hemisphereIntensity': (0, 3),
+    'ambientIntensity': (0, 2),
+    'mainIntensity': (0, 5),
+    'mainAzimuth': (-180, 180),
+    'mainElevation': (5, 89),
+    'mainShadowIntensity': (0, 1),
+    'fillIntensity': (0, 3),
+    'fillAzimuth': (-180, 180),
+    'fillElevation': (0, 89),
+    'topIntensity': (0, 3),
+    'topAzimuth': (-180, 180),
+    'topElevation': (0, 89),
+}
+
+
+def validate_config(properties) -> None:
+    def fail() -> None:
+        raise HTTPException(422, detail='3D 交互配置无效，请检查户型、灯光及图标设置。')
+
+    def number(value, low, high) -> bool:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return False
+        try:
+            return math.isfinite(value) and low <= value <= high
+        except OverflowError:
+            return False
+
+    def text(value, length=128) -> bool:
+        return isinstance(value, str) and len(value) <= length
+
+    def validate_camera(camera, *, allow_legacy_interaction: bool = False) -> None:
+        if camera in (None, {}):
+            return
+        if not isinstance(camera, dict):
+            fail()
+        allowed = {'mode', 'zoom', 'target', 'position', 'up', 'view', 'frameSize', 'focalLength', 'topRotation'}
+        if allow_legacy_interaction:
+            allowed |= {'panEnabled', 'zoomEnabled', 'rotationMode'}
+        if set(camera) - allowed:
+            fail()
+        if camera.get('mode', 'perspective') not in ('orthographic', 'perspective'):
+            fail()
+        if 'zoom' in camera and not number(camera['zoom'], 0.01, 100):
+            fail()
+        for key in ('position', 'target', 'up'):
+            if key not in camera:
+                continue
+            vector = camera[key]
+            if not isinstance(vector, list) or len(vector) != 3:
+                fail()
+            if not all(isinstance(item, (int, float)) and not isinstance(item, bool) and math.isfinite(item) for item in vector):
+                fail()
+            if any(abs(item) > 10000 for item in vector):
+                fail()
+        for key, low, high in (('frameSize', 0.001, 20000), ('topRotation', 0, 360), ('focalLength', 18, 120)):
+            if key in camera and not number(camera[key], low, high):
+                fail()
+        if camera.get('view', 'free') not in ('free', 'top'):
+            fail()
+        if allow_legacy_interaction:
+            if camera.get('rotationMode', 'free') not in ('free', 'horizontal', 'vertical'):
+                fail()
+            for key in ('panEnabled', 'zoomEnabled'):
+                if key in camera and not isinstance(camera[key], bool):
+                    fail()
+
+    if not isinstance(properties, dict) or set(properties) - PROPERTY_KEYS:
+        fail()
+    if properties.get('layoutMode', 'free') not in frozenset({'fill', 'free'}):
+        fail()
+    if not isinstance(properties.get('backgroundVisible', True), bool):
+        fail()
+    if not number(properties.get('renderScale', 1), 0.25, 2):
+        fail()
+    if not number(properties.get('focusVignetteStrength', 14), 0, 60):
+        fail()
+    if not number(properties.get('popupOpacity', 74), 0, 100):
+        fail()
+    interaction = properties.get('interaction', {})
+    if not isinstance(interaction, dict) or set(interaction) - {'panEnabled', 'zoomEnabled', 'rotationMode'}:
+        fail()
+    if interaction.get('rotationMode', 'free') not in frozenset({'free', 'vertical', 'horizontal'}):
+        fail()
+    for key in ('panEnabled', 'zoomEnabled'):
+        if key in interaction and not isinstance(interaction[key], bool):
+            fail()
+    auto_rotate = properties.get('autoRotate', {})
+    if not isinstance(auto_rotate, dict) or set(auto_rotate) - {
+        'speed',
+        'enabled',
+        'direction',
+        'idleSeconds',
+        'returnToDefault',
+    }:
+        fail()
+    if not isinstance(auto_rotate.get('enabled', False), bool):
+        fail()
+    if not isinstance(auto_rotate.get('returnToDefault', False), bool):
+        fail()
+    if auto_rotate.get('direction', 'clockwise') not in ('clockwise', 'counterclockwise'):
+        fail()
+    idle_seconds = auto_rotate.get('idleSeconds', 30)
+    if not isinstance(idle_seconds, int) or isinstance(idle_seconds, bool) or not number(idle_seconds, 1, 3600):
+        fail()
+    if not number(auto_rotate.get('speed', 6), 0.5, 30):
+        fail()
+    idle_hide_icons = properties.get('idleHideIcons', {})
+    if not isinstance(idle_hide_icons, dict) or set(idle_hide_icons) - {'enabled', 'idleSeconds'}:
+        fail()
+    if not isinstance(idle_hide_icons.get('enabled', False), bool):
+        fail()
+    hide_idle_seconds = idle_hide_icons.get('idleSeconds', 30)
+    if not isinstance(hide_idle_seconds, int) or isinstance(hide_idle_seconds, bool) or not number(hide_idle_seconds, 1, 3600):
+        fail()
+    lighting = properties.get('baseLighting', {})
+    if lighting not in (None, {}):
+        if not isinstance(lighting, dict) or set(lighting) - set(LIGHTING_BOUNDS):
+            fail()
+        for key, (low, high) in LIGHTING_BOUNDS.items():
+            if key in lighting and not number(lighting[key], low, high):
+                fail()
+    for key in ('label', 'instanceName', 'floorSelection'):
+        if key in properties and not text(properties[key]):
+            fail()
+    scene_id = properties.get('sceneId', '')
+    if scene_id not in ('', None) and not (isinstance(scene_id, str) and re.fullmatch('[0-9a-f]{32}', scene_id)):
+        fail()
+    lights = properties.get('lights', [])
+    if not isinstance(lights, list) or len(lights) > 128:
+        fail()
+    ids = set()
+    for light in lights:
+        if not isinstance(light, dict) or set(light) - LIGHT_KEYS:
+            fail()
+        light_id = light.get('id')
+        if not isinstance(light_id, str) or not light_id or light_id in ids or len(light_id) > 128:
+            fail()
+        ids.add(light_id)
+        for key in ('floorId', 'groupId', 'entityId', 'label'):
+            if key in light and not text(light[key], 255 if key == 'entityId' else 128):
+                fail()
+        entity_id = light.get('entityId', '')
+        if entity_id and not re.fullmatch(r'(light|switch)\.[a-z0-9_]+', str(entity_id)):
+            fail()
+        for key, low, high in (
+            ('x', -10000, 10000),
+            ('y', -10000, 10000),
+            ('size', 0, 10000),
+            ('height', -10000, 10000),
+            ('hitSize', 0, 10000),
+            ('iconSize', 0, 10000),
+            ('fadeDuration', 0, 60),
+        ):
+            if key in light and not number(light[key], low, high):
+                fail()
+        if 'visible' in light and not isinstance(light['visible'], bool):
+            fail()
+        if 'hiddenClickable' in light and not isinstance(light['hiddenClickable'], bool):
+            fail()
+        if 'icon' in light and not text(light['icon'], 128):
+            fail()
+        if light.get('clickAction', 'toggle') not in ('toggle', 'none', 'more-info'):
+            fail()
+        defaults = light.get('effectDefaults', {})
+        if defaults not in (None, {}):
+            if not isinstance(defaults, dict):
+                fail()
+            if set(defaults) - {'brightness', 'kelvin', 'brightnessMin', 'brightnessMax', 'temperatureMin', 'temperatureMax'}:
+                fail()
+            for key in ('brightness', 'kelvin'):
+                if key in defaults and not number(defaults[key], 0, 20000):
+                    fail()
+            for low_key, high_key, low, high in (
+                ('brightnessMin', 'brightnessMax', 0, 100),
+                ('temperatureMin', 'temperatureMax', 1000, 20000),
+            ):
+                if low_key in defaults and not number(defaults[low_key], low, high):
+                    fail()
+                if high_key in defaults and not number(defaults[high_key], low, high):
+                    fail()
+        if 'focusCamera' in light:
+            validate_camera(light['focusCamera'])
+        if 'effectRange' in light and light['effectRange'] is not None:
+            if not number(light['effectRange'], 0, 10000):
+                fail()
+    validate_camera(properties.get('camera'), allow_legacy_interaction=True)

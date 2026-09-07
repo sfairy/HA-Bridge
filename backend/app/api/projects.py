@@ -13,6 +13,7 @@ from global_popups import clear_popup_references, global_popup_state, global_pop
 from models import GlobalCustomPopupState, Project, ProjectDraft
 from panel.documents import create_blank_project
 from panel.schema import validate_panel_document
+from modules.interaction3d.access import require_document_changes as require_interaction3d_changes
 from ui_packs import DEFAULT_UI_PACK_ID, get_ui_pack_for_asset_path, load_dashboard_template, require_ui_pack_access
 from schemas import ProjectCreateRequest, ProjectDeleteRequest, ProjectDraftUpdate, ProjectDuplicateRequest
 
@@ -163,6 +164,7 @@ def create_project(payload: ProjectCreateRequest, request: Request, database: Da
             'version': template.version,
         }
         document = validate_panel_document(document)
+        require_interaction3d_changes(request, document)
         require_document_ui_access(request, document)
         validate_document_assets(request, document)
         document = merge_document_popups(database, document, updated_by=user.id)
@@ -220,6 +222,7 @@ def duplicate_project(
     document['projectId'] = duplicate_id
     document['name'] = payload.name
     document = validate_panel_document(document)
+    require_interaction3d_changes(request, document)
     duplicate = Project(
         id=duplicate_id,
         name=payload.name,
@@ -348,6 +351,8 @@ def update_project_draft(
         document = validate_panel_document(document_value)
     except ValueError as error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
+    previous_document = json.loads(draft.document_json)
+    require_interaction3d_changes(request, document, previous_document)
     require_document_ui_access(request, document)
     user_asset_ids = validate_document_assets(request, document)
     if document['projectId'] != project_id:

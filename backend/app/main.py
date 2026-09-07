@@ -38,6 +38,7 @@ from api.license import router as license_router
 from api.projects import router as projects_router
 from api.studio3d import router as studio3d_router
 from api.ui_packs import router as ui_packs_router
+from modules.interaction3d.api import router as interaction3d_router
 from auth_limiter import LoginAttemptLimiter
 from config import Settings, load_settings
 from database import Database
@@ -326,6 +327,7 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
     app.include_router(ui_packs_router, prefix='/api/v1')
     app.include_router(icons_router, prefix='/api/v1')
     app.include_router(license_router, prefix='/api/v1')
+    app.include_router(interaction3d_router, prefix='/api/v1')
     app.include_router(global_logs_router, prefix='/api/v1')
     app.mount(
         '/bridge-static',
@@ -450,6 +452,7 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
         )
         if app_surface:
             embedded_auto_diagram = path == '/3d-studio' and request.query_params.get('auto-diagram-embed') == '1'
+            embedded_i3d_stage = path == '/api/v1/modules/interaction3d/stage.html'
             if path.startswith('/api/v1/assets/user/') and response.headers.get('content-type', '').startswith(
                 'image/svg+xml'
             ):
@@ -458,7 +461,7 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
                 )
                 response.headers['Cross-Origin-Resource-Policy'] = 'same-origin'
             else:
-                frame_ancestors = "'self'" if embedded_auto_diagram else "'none'"
+                frame_ancestors = "'self'" if embedded_auto_diagram or embedded_i3d_stage else "'none'"
                 response.headers['Content-Security-Policy'] = (
                     "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ws: wss:; worker-src 'self' blob:; frame-src 'self'; frame-ancestors "
                     f'{frame_ancestors}'
@@ -466,7 +469,7 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
                 )
             response.headers['Referrer-Policy'] = 'no-referrer'
             response.headers['X-Content-Type-Options'] = 'nosniff'
-            response.headers['X-Frame-Options'] = 'SAMEORIGIN' if embedded_auto_diagram else 'DENY'
+            response.headers['X-Frame-Options'] = 'SAMEORIGIN' if embedded_auto_diagram or embedded_i3d_stage else 'DENY'
             response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
         if (
             path in frozenset({'/', '/pair', '/login', '/setup', '/license', '/3d-studio'})

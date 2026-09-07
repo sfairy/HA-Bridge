@@ -22,6 +22,7 @@ BASE_FEATURES = (
     'ha.configure',
     'projects.write',
     'runtime.websocket',
+    'module.3d_interaction',
 )
 
 

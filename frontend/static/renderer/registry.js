@@ -10,6 +10,7 @@ import {
 } from "./climate.js?v=20260812-presence-phase-v79-20260904-climate-capability-options-v3";
 import { entityPowerIsOn } from "./entity-power.js?v=20260813-generic-device-power-v2";
 import { lightRealtimeCapabilities } from "./light-runtime.js?v=20260901-renderer-light-runtime-v1";
+import { renderInteraction3d } from "../modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6";
 const ue = new Map();
 const index = new Map();
 const index2 = new Map();
@@ -94,6 +95,7 @@ export function setBuiltinAssetVersions(value = []) {
 export function registerComponent(value, value2) {
   ue.set(value, value2);
 }
+registerComponent("interaction3d", { render: renderInteraction3d });
 export function renderRegisteredComponent(value, value2) {
   const value3 = ue.get(value.type);
   if (value3) {

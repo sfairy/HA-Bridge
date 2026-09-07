@@ -35,14 +35,20 @@ export function componentLabel(component) {
                                     ? "图标按钮（效果）"
                                     : component.type === "group"
                                       ? "组合"
-                                      : component.type;
+                                      : component.type === "floorplan-auto-diagram"
+                                        ? "户型图自动导图"
+                                        : component.type === "interaction3d"
+                                          ? "3D 交互"
+                                          : component.type;
   const instanceName = component.properties?.instanceName;
   const value2 =
     component.type === "light-statistics"
       ? /^(?:灯光统计|开灯统计)(_副本\d*)?$/.exec(String(instanceName || ""))
       : null;
   const value3 =
-    component.type === "light-statistics" && instanceName === "图片"
+    (component.type === "light-statistics" ||
+      component.type === "interaction3d") &&
+    instanceName === "图片"
       ? value
       : value2
         ? "" + value + (value2[1] || "")

@@ -161,7 +161,7 @@ async def _refresh_camera_snapshot(
     timeout: float,
 ) -> None:
     try:
-        async with httpx.AsyncClient(verify=verify_tls, timeout=timeout, follow_redirects=False) as client:
+        async with httpx.AsyncClient(verify=verify_tls, timeout=timeout, follow_redirects=False, trust_env=False) as client:
             upstream = await client.get(target, headers=dict(headers))
         if 200 <= upstream.status_code < 300 and upstream.content:
             _remember_camera_snapshot(
@@ -225,6 +225,7 @@ async def proxy_http(request: Request) -> Response:
         verify=client_config.verify_tls,
         timeout=None if stream_response else client_config.timeout,
         follow_redirects=False,
+        trust_env=False,
     )
     try:
         upstream_request = client.build_request(request.method, target, headers=headers)
