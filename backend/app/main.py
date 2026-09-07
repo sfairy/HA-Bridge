@@ -106,7 +106,7 @@ def migrate_secret_key(source: os.PathLike[str], target: os.PathLike[str]) -> bo
     return True
 
 
-def create_app(settings: Settings | None = None, license_transport=None, license_endpoint_pool=None) -> FastAPI:
+def create_app(settings: Settings | None = None, license_transport=None) -> FastAPI:
     app_settings = settings or load_settings()
 
     @asynccontextmanager
@@ -160,7 +160,6 @@ def create_app(settings: Settings | None = None, license_transport=None, license
                 app_settings,
                 app.state.database,
                 license_transport,
-                endpoint_pool=license_endpoint_pool,
                 event_log=app.state.global_log,
             )
             await app.state.license_service.start()

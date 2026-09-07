@@ -10094,11 +10094,11 @@ function cw(value) {
     UNACTIVATED: "尚未激活",
     ACTIVE: "授权有效",
     CONNECTION_WARNING: "授权连接异常",
-    STARTUP_VALIDATION_REQUIRED: "等待启动校验",
+    STARTUP_VALIDATION_REQUIRED: "授权店未连接",
     LEASE_EXPIRED: "租约已到期",
     INSTANCE_MISMATCH: "实例不匹配",
     INVALID: "租约无效",
-    DEACTIVATED: "后台已释放",
+    DEACTIVATED: "授权已停用",
     REVOKED: "授权已撤销",
   };
   const value3 = value?.status || "UNACTIVATED";

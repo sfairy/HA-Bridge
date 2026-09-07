@@ -4,7 +4,7 @@
 
 提供可视化编辑器、3D 户型工作室、全屏展示页和中控配对。后端是 FastAPI，前端是原生 HTML / CSS / JavaScript，数据默认落在本机 SQLite。
 
-本仓库是可本地运行的源码树。授权校验仍然开启，但激活走仓库内的本机授权店，不依赖官方商店。
+本仓库是可本地运行的源码树。授权校验仍然开启，激活只走仓库内的本机授权店。
 
 ## 功能
 
@@ -26,7 +26,7 @@ HA-Bridge/
 │   ├── api/                # 认证、项目、HA、资源、3D、日志、中控
 │   ├── ha/                 # HA 客户端、同步、状态推送
 │   ├── panel/              # 仪表盘文档与校验
-│   ├── license/            # 授权校验（本机店或官方租约）
+│   ├── license/            # 授权校验（本机店租约）
 │   └── main.py
 ├── frontend/               # 页面与静态资源
 │   ├── *.html
@@ -41,7 +41,6 @@ HA-Bridge/
 ├── migrations/             # Alembic 迁移 0001–0013
 ├── dashboard_templates/    # 栖光成品仪表盘（dwell-light-v1.json.gz）
 ├── image/                  # 内置素材
-├── keys/                   # 官方授权验签公钥
 ├── data/                   # 运行时数据（不入库）
 ├── requirements.txt
 ├── alembic.ini
@@ -50,7 +49,7 @@ HA-Bridge/
 └── container_entrypoint.py
 ```
 
-不要删除 `frontend/`、`image/`、`keys/`、`dashboard_templates/`。缺公钥或素材会导致授权校验或内置资源失败。
+不要删除 `frontend/`、`image/`、`dashboard_templates/`。缺素材会导致内置资源失败。
 
 `data/`、`register/data/`、`.venv/`、`*.db`、`原项目/` 已写入 `.gitignore`。
 
@@ -159,7 +158,7 @@ APP_DATA_DIR=./data PYTHONPATH=backend/app alembic upgrade head
 | `APP_LICENSE_CREDENTIAL_FILE` | 数据目录内默认路径 | 授权密钥文件 |
 | `REGISTER_DATA_DIR` | `register/data` | 授权店数据库和密钥目录 |
 
-授权校验始终开启，不能通过环境变量关闭。`APP_LICENSE_STORE_URL` 为空时，主应用会改走官方授权服务器。
+授权校验始终开启，不能通过环境变量关闭。激活只连接本机授权店，不再访问官方授权云。
 
 ## Docker
 

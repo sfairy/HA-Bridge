@@ -9,9 +9,9 @@ const STATUS_COPY = {
   INSTANCE_MISMATCH: "当前安装 UUID 与授权记录不一致，请联系授权管理员。",
   CLOCK_ROLLBACK: "检测到系统时间回拨，请校准时间后重新验证。",
   STARTUP_VALIDATION_REQUIRED:
-    "服务重启后正在等待授权后台确认，请恢复网络；成功后会自动进入系统。",
+    "无法连接本机授权店，请确认授权店已启动后重新激活。",
   INVALID: "本地授权凭证无效，请重新激活。",
-  REVOKED: "后台已删除或撤销此授权，请输入新的激活码。",
+  REVOKED: "此授权已失效，请输入新的激活码。",
 };
 let activationPending = false;
 let navigating = false;
