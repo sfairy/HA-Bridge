@@ -44,7 +44,7 @@ HA-Bridge/
 │       └── vendor/         # three.js、hls.js、MDI
 ├── register/               # 本机授权店（默认 18082）
 ├── migrations/             # Alembic 迁移 0001–0013
-├── image/                  # 内置素材
+├── image/                  # 内置素材目录（当前为空，可自行放入）
 ├── data/                   # 运行时数据（不入库）
 ├── requirements.txt
 ├── alembic.ini
@@ -53,7 +53,7 @@ HA-Bridge/
 └── container_entrypoint.py
 ```
 
-不要删除 `frontend/`、`image/`。缺素材会导致内置资源失败。
+不要删除 `frontend/`。内置素材目录 `image/` 可为空，编辑器里可改用用户上传图片。
 
 `data/`、`register/data/`、`.venv/`、`*.db`、`原项目/` 已写入 `.gitignore`。
 

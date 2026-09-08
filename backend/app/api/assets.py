@@ -513,6 +513,9 @@ class AssetCatalog:
         with self.mutation_lock:
             if self._builtin_loaded:
                 return
+            if not self.built_in_root.is_dir():
+                self._builtin_loaded = True
+                return
             for path in self.built_in_root.rglob('*'):
                 if not path.is_file() or path.name.startswith('.') or path.suffix.lower() not in SUPPORTED_IMAGE_SUFFIXES:
                     continue
