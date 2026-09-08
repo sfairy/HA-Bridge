@@ -1764,7 +1764,7 @@ function Tc(value = jt()) {
     (value === "ui.base"
       ? {
           id: "ui.base",
-          name: "栖光",
+          name: "默认",
           englishName: "DWELL LIGHT",
           version: "1.0.0",
           featureCode: "ui.base",
@@ -9842,7 +9842,7 @@ function Yc(value = be) {
     {
       id: "",
       name: "空白仪表盘",
-      description: "使用栖光 UI 创建空白画布，不预置页面、控件或弹窗。",
+      description: "使用默认 UI 创建空白画布，不预置页面、控件或弹窗。",
       previewUrls: [],
       previewLabels: [],
       canvasWidth: null,
@@ -9900,7 +9900,7 @@ function Yc(value = be) {
         const value9 = document.createElement("div");
         value9.className = "project-template-carousel-meta";
         const element5 = document.createElement("strong");
-        element5.textContent = value4.previewLabels[0] || "栖光预览";
+        element5.textContent = value4.previewLabels[0] || "默认预览";
         const element6 = document.createElement("span");
         element6.textContent = "1 / " + value4.previewUrls.length;
         value9.append(element5, element6);
@@ -9935,7 +9935,7 @@ function Yc(value = be) {
     ro.classList.toggle("fixed", value5);
     ro.classList.remove("name-only");
     Om.textContent = value5
-      ? "栖光使用固定画布分辨率，创建时会完整保留页面布局与比例。"
+      ? "默认使用固定画布分辨率，创建时会完整保留页面布局与比例。"
       : "编辑器和仪表盘将共用该分辨率与比例，显示时只做等比缩放。";
     Ur();
     Lp(value5);
@@ -9969,10 +9969,10 @@ function qE(value, value2) {
   const element3 = value.querySelector(".project-template-carousel-meta span");
   if (element) {
     element.src = value3[value5];
-    element.alt = value4[value5] || "栖光预览 " + (value5 + 1);
+    element.alt = value4[value5] || "默认预览 " + (value5 + 1);
   }
   if (element2) {
-    element2.textContent = value4[value5] || "栖光预览";
+    element2.textContent = value4[value5] || "默认预览";
   }
   if (element3) {
     element3.textContent = value5 + 1 + " / " + value3.length;
@@ -9982,8 +9982,8 @@ function Gr() {
   if (To.length) {
     gt = ((gt % To.length) + To.length) % To.length;
     km.src = To[gt];
-    km.alt = Su[gt] || "栖光预览 " + (gt + 1);
-    NS.textContent = Su[gt] || "栖光预览";
+    km.alt = Su[gt] || "默认预览 " + (gt + 1);
+    NS.textContent = Su[gt] || "默认预览";
     ES.textContent = gt + 1 + " / " + To.length;
   }
 }
@@ -10078,7 +10078,7 @@ function Lp(value = !!be) {
   ta.classList.toggle("locked", value2);
   AS.textContent = value ? "固定" : value2 ? "已锁定" : "锁定";
   ta.title = value
-    ? "栖光画布使用固定比例"
+    ? "默认画布使用固定比例"
     : value2
       ? "点击解锁画布比例"
       : "锁定当前画布比例";
@@ -10618,7 +10618,7 @@ Qi.addEventListener("submit", async (event) => {
       : At === "edit"
         ? "正在保存仪表盘名称…"
         : be
-          ? "正在套用栖光整套模板…"
+          ? "正在套用默认整套模板…"
           : "正在创建空白仪表盘…",
   );
   try {
@@ -21917,7 +21917,7 @@ function tI(triggerButton) {
   qi({
     kind: value + "-asset",
     title: value2 ? "选择控件图片" : "选择效果图片",
-    subtitle: "我的图片与栖光素材 · 固定分页加载",
+    subtitle: "我的图片与默认素材 · 固定分页加载",
     searchPlaceholder: "搜索图片名称",
     triggerButton: triggerButton,
     pageSize: EDITOR_PICKER_PAGE_SIZES.asset,

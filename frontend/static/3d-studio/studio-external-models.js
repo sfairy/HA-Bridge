@@ -1,1 +1,1376 @@
-const _0x4cc129=_0x1950;(function(_0x597f64,_0x4ef212){const _0x1d7fa9=_0x1950,_0x5427df=_0x597f64();while(!![]){try{const _0x3caf93=parseInt(_0x1d7fa9(0x1b9))/0x1+-parseInt(_0x1d7fa9(0x1e0))/0x2*(-parseInt(_0x1d7fa9(0x1c5))/0x3)+-parseInt(_0x1d7fa9(0x1e3))/0x4+-parseInt(_0x1d7fa9(0x1fb))/0x5*(parseInt(_0x1d7fa9(0x1d5))/0x6)+-parseInt(_0x1d7fa9(0x1df))/0x7*(-parseInt(_0x1d7fa9(0x1b0))/0x8)+parseInt(_0x1d7fa9(0x1a7))/0x9*(parseInt(_0x1d7fa9(0x1f4))/0xa)+parseInt(_0x1d7fa9(0x22c))/0xb*(parseInt(_0x1d7fa9(0x1af))/0xc);if(_0x3caf93===_0x4ef212)break;else _0x5427df['push'](_0x5427df['shift']());}catch(_0x39abc){_0x5427df['push'](_0x5427df['shift']());}}}(_0x266b,0x359d9));function _0x1950(_0x3d8747,_0x138a70){const _0x266b56=_0x266b();return _0x1950=function(_0x19504f,_0x4f8db4){_0x19504f=_0x19504f-0x1a6;let _0x14637a=_0x266b56[_0x19504f];return _0x14637a;},_0x1950(_0x3d8747,_0x138a70);}import{finite as _0x2fce4c}from'./studio-normalization.js?v=20260903-studio-normalization-v2';const ve='20260903-home-lite-v1',Me='20260903-appliance-lite-v1';function o(_0x43eece,_0x3132fb,_0x2d96e6){const _0x4cfd5f=_0x1950;return Object['freeze']({'url':'/bridge-static/3d-studio/models/'+_0x43eece+'-lite.glb?v='+ve,'fallbackUrl':_0x4cfd5f(0x216)+_0x43eece+'.glb?v='+_0x3132fb,..._0x2d96e6});}function p(_0x1c63cd,_0x96d58){const _0x14cf93=_0x1950;return Object[_0x14cf93(0x1b5)]({'url':'/bridge-static/3d-studio/models/'+_0x1c63cd+'-lite.glb?v='+Me,'fallbackUrl':'/bridge-static/3d-studio/models/'+_0x1c63cd+'.glb?v=20260901-all-appliance-models-v1',..._0x96d58});}function _0x266b(){const _0x441e82=['745184ETPBzu','normalScale','side','furniture','shoecabinet','urinal','color','get','isMesh','size','stairs','tvstand','bar','setScalar','premultipliedAlpha','type','stencilFail','710IUhzmO','desk','needsUpdate','furnitureSoft','/bridge-static/3d-studio/models/piano-lite.glb?v=20260902-piano-lite-v1','constructor','rounddiningtable','3610BXVQBU','20260901-all-home-furniture-v1','includes','scale','castShadow','accent','opacity','curtain_right','resolve','floorlamp','MeshStandardMaterial','glassstairs','shadowSide','findIndex','storagewaterheater','floorac','Box3','map','kitchencooktop','roundTableTurntable','polygonOffsetUnits','bed','width','steamoven','clone','toilet','rounddiningtableturntable','/bridge-static/3d-studio/models/','unique','name','tv_mobile','envMap','\x20的尺寸无效','getZ','fridge','endsWith','stencilWriteMask','laptop','groups','toLowerCase','transparent','ricecooker','set','specularColorMap','roughnessMap','some','kitchenbase','scaleBasis','clearcoatNormalScale','143099TCJchF','push','fallbackUrl','7317jFCrAh','clearcoatRoughness','depthWrite','squarecoffeetable','curtain','color_009','Color','ShaderMaterial','36gSiLEB','17144XErJUc','position','dryer','microwave','isFinite','freeze','-dark','min','left','141588vSmfud','chair','elevator','standard','material','curtainPosition','fog','bookcase','externalModelSharedMaterial','FrontSide','debug','preserveAspect','44106ExUBEc','metalnessMap','setY','cabinet','rug','Material','isArray','computeBoundingSphere','start','desktop','normalMap','nightstand','/bridge-static/3d-studio/models/glass-stairs.glb?v=20260821-stairs-v1','sofa','20260901-home-furniture-v1','furnitureDark','2238IyttnB','\x20没有可用资源','__haBridgeDeferExternalModel','robotvacuum','\x20·\x20HA\x20Bridge\x20palette','studio-model-load','anonymous','stencilFuncMask','curtain_split','curtain_left','1379egdCew','2UdqQmj','NaN','-light'];_0x266b=function(){return _0x441e82;};return _0x266b();}export const EXTERNAL_ITEM_MODELS=Object['freeze']({'sofa':{'url':'/bridge-static/3d-studio/models/sofa-lite.glb?v=20260903-sofa-lite-v1','fallbackUrl':'/bridge-static/3d-studio/models/sofa.glb?v=20260901-sofa-draco-v1','scaleBasis':[2.2,0.82,0.9],'preserveOrigin':!0x0,'groundAlign':!0x0,'groundOffset':-0.008},'coffeetable':o('coffeetable','20260901-home-assets-v2',{'scaleBasis':[1.7,0.5,1.25],'preserveOrigin':!0x0}),'squarecoffeetable':o('squarecoffeetable','20260901-home-assets-v1',{'url':'/bridge-static/3d-studio/models/squarecoffeetable-lite.glb?v=20260903-square-coffee-table-v2','fallbackUrl':'/bridge-static/3d-studio/models/squarecoffeetable.glb?v=20260903-square-coffee-table-v2','scaleBasis':[1.4,0.46,0.7],'preserveOrigin':!0x0}),'tvstand':o('tvstand','20260901-home-assets-v1',{'url':'/bridge-static/3d-studio/models/tvstand-lite.glb?v=20260903-tvstand-top-board-v3','fallbackUrl':'/bridge-static/3d-studio/models/tvstand.glb?v=20260903-tvstand-top-board-v3','scaleBasis':[1.8,0.48,0.42],'preserveOrigin':!0x0}),'rug':o(_0x4cc129(0x1c9),'20260901-home-assets-v1',{'scaleBasis':[0x2,0.012,1.4],'preserveOrigin':!0x0}),'plant':o('plant','20260901-home-assets-v1',{'scaleBasis':[0.75,1.6,0.75],'preserveOrigin':!0x0}),'bed':o('bed','20260901-home-furniture-v1',{'scaleBasis':[1.8,0.62,0x2],'preserveOrigin':!0x0}),'nightstand':o(_0x4cc129(0x1d0),'20260901-home-furniture-v1',{'scaleBasis':[0.5,0.55,0.42],'preserveOrigin':!0x0}),'vanity':o('vanity','20260901-home-furniture-v1',{'scaleBasis':[1.2,1.55,0.5],'preserveOrigin':!0x0}),'desk':o('desk','20260901-home-furniture-v1',{'scaleBasis':[1.4,0.76,0.65],'preserveOrigin':!0x0}),'bookcase':o(_0x4cc129(0x1c0),_0x4cc129(0x1d3),{'scaleBasis':[1.2,1.9,0.32],'preserveOrigin':!0x0}),'smallcar':{'url':'/bridge-static/3d-studio/models/car-lite.glb?v=20260902-car-lite-v1','fallbackUrl':'/bridge-static/3d-studio/models/car.glb?v=20260811-car1'},'airoutlet':{'url':'/bridge-static/3d-studio/models/air-outlet-lite.glb?v=20260902-air-outlet-lite-v1','fallbackUrl':'/bridge-static/3d-studio/models/air-outlet.glb?v=20260812-air-outlet1'},'pipelinewaterpurifier':{'url':'/bridge-static/3d-studio/models/pipeline-water-purifier-lite.glb?v=20260902-pipeline-water-purifier-lite-v1','fallbackUrl':'/bridge-static/3d-studio/models/pipeline-water-purifier.glb?v=20260821-glb-material-v1'},'tea_bar_machine':{'url':'/bridge-static/3d-studio/models/tea-bar-machine-lite.glb?v=20260902-tea-bar-machine-lite-v1','fallbackUrl':'/bridge-static/3d-studio/models/tea-bar-machine.glb?v=20260821-glb-material-v1'},'elevator':{'url':'/bridge-static/3d-studio/models/elevator-lite.glb?v=20260902-elevator-lite-v1','fallbackUrl':'/bridge-static/3d-studio/models/elevator.glb?v=20260825-elevator-material-v1'},'steelstairs':{'url':'/bridge-static/3d-studio/models/steel-stairs-lite.glb?v=20260902-steel-stairs-lite-v1','fallbackUrl':'/bridge-static/3d-studio/models/steel-stairs.glb?v=20260821-stairs-v1'},'glassstairs':{'url':'/bridge-static/3d-studio/models/glass-stairs-lite.glb?v=20260902-glass-stairs-lite-v1','fallbackUrl':_0x4cc129(0x1d1)},'piano':{'url':_0x4cc129(0x1f8),'fallbackUrl':'/bridge-static/3d-studio/models/piano.glb?v=20260824-piano-v3','preserveAspect':!0x0}}),ALL_ITEM_MODELS=Object['freeze']({...EXTERNAL_ITEM_MODELS,'bed':o(_0x4cc129(0x210),'20260901-all-home-furniture-v1',{'scaleBasis':[1.8,0.62,0x2],'preserveOrigin':!0x0}),'nightstand':o('nightstand','20260901-all-home-furniture-v1',{'scaleBasis':[0.5,0.55,0.42],'preserveOrigin':!0x0}),'vanity':o('vanity','20260901-all-home-furniture-v1',{'scaleBasis':[1.2,1.55,0.5],'preserveOrigin':!0x0}),'desk':o('desk','20260901-all-home-furniture-v1',{'scaleBasis':[1.4,0.76,0.65],'preserveOrigin':!0x0}),'bookcase':o('bookcase','20260901-all-home-furniture-v1',{'scaleBasis':[1.2,1.9,0.32],'preserveOrigin':!0x0}),'aquarium':o('aquarium','20260901-all-home-furniture-v1',{'scaleBasis':[1.5,1.4,0.55],'preserveOrigin':!0x0}),'table':o('table','20260901-all-home-furniture-v1',{'scaleBasis':[2.4,0.82,1.8],'preserveOrigin':!0x0}),'rounddiningtable':o('rounddiningtable',_0x4cc129(0x1fc),{'scaleBasis':[2.2,0.78,2.2],'preserveOrigin':!0x0}),'chair':o(_0x4cc129(0x1ba),'20260901-all-home-furniture-v1',{'scaleBasis':[0.5,0.86,0.5],'preserveOrigin':!0x0}),'bar':o(_0x4cc129(0x1ef),'20260901-all-home-furniture-v1',{'scaleBasis':[2.2,1.05,0.65],'preserveOrigin':!0x0}),'sideboard':o('sideboard','20260901-all-home-furniture-v1',{'scaleBasis':[1.6,2.2,0.45],'preserveOrigin':!0x0}),'shoecabinet':o('shoecabinet','20260901-all-home-furniture-v1',{'scaleBasis':[1.8,2.25,0.42],'preserveOrigin':!0x0}),'cabinet':o(_0x4cc129(0x1c8),'20260901-all-home-furniture-v1',{'scaleBasis':[1.6,1.9,0.45],'preserveOrigin':!0x0}),'glasscabinet':o('glasscabinet','20260901-all-home-furniture-v1',{'scaleBasis':[1.2,1.9,0.4],'preserveOrigin':!0x0}),'shelf':o('shelf','20260901-all-home-furniture-v1',{'scaleBasis':[1.2,1.8,0.45],'preserveOrigin':!0x0}),'wallcabinet':o('wallcabinet',_0x4cc129(0x1fc),{'scaleBasis':[1.5,0.82,0.35],'preserveOrigin':!0x0}),'kitchenbase':o(_0x4cc129(0x229),'20260901-all-home-furniture-v1',{'scaleBasis':[2.4,0.85,0.6],'preserveOrigin':!0x0}),'kitchensink':o('kitchensink',_0x4cc129(0x1fc),{'scaleBasis':[1.2,0.85,0.6],'preserveOrigin':!0x0}),'kitchencooktop':o('kitchencooktop','20260901-all-home-furniture-v1',{'scaleBasis':[1.2,0.85,0.6],'preserveOrigin':!0x0}),'basin':o('basin','20260901-all-home-furniture-v1',{'scaleBasis':[0.9,0.88,0.5],'preserveOrigin':!0x0}),'toilet':o(_0x4cc129(0x214),'20260901-all-home-furniture-v1',{'scaleBasis':[0.42,0.52,0.7],'preserveOrigin':!0x0}),'squattoilet':o('squattoilet','20260901-all-home-furniture-v1',{'scaleBasis':[0.45,0.18,0.65],'preserveOrigin':!0x0}),'urinal':o('urinal','20260901-all-home-furniture-v1',{'scaleBasis':[0.38,0.72,0.34],'preserveOrigin':!0x0}),'shower':o('shower','20260901-all-home-furniture-v1',{'scaleBasis':[0.9,2.1,0.9],'preserveOrigin':!0x0}),'bathtub':o('bathtub','20260901-all-home-furniture-v1',{'scaleBasis':[1.7,0.58,0.78],'preserveOrigin':!0x0}),'glasspartition':o('glasspartition',_0x4cc129(0x1fc),{'scaleBasis':[1.2,0x2,0.08],'preserveOrigin':!0x0}),'stairs':o(_0x4cc129(0x1ed),'20260901-all-home-furniture-v1',{'scaleBasis':[0x1,1.65,2.8],'preserveOrigin':!0x0}),'pillar':o('pillar','20260901-all-home-furniture-v1',{'scaleBasis':[0.45,2.8,0.45],'preserveOrigin':!0x0}),'curtain_left':o(_0x4cc129(0x1de),'20260901-all-home-furniture-v1',{'scaleBasis':[1.8,2.4,0.18],'preserveOrigin':!0x0}),'curtain_right':o('curtain_right','20260901-all-home-furniture-v1',{'scaleBasis':[1.8,2.4,0.18],'preserveOrigin':!0x0}),'curtain_split':o(_0x4cc129(0x1dd),_0x4cc129(0x1fc),{'scaleBasis':[1.8,2.4,0.18],'preserveOrigin':!0x0}),'rounddiningtable_turntable':o('rounddiningtable_turntable','20260901-all-home-furniture-v1',{'scaleBasis':[2.2,0.78,2.2],'preserveOrigin':!0x0}),'tv_standard':p('tv_standard',{'scaleBasis':[1.5,0.92,0.18],'preserveOrigin':!0x0}),'tv_tabletop':p('tv_tabletop',{'scaleBasis':[1.5,0.92,0.18],'preserveOrigin':!0x0}),'tv_mobile':p('tv_mobile',{'scaleBasis':[1.5,0.92,0.18],'preserveOrigin':!0x0}),'wallac':p('wallac',{'scaleBasis':[0.9,0.28,0.22],'preserveOrigin':!0x0}),'floorac':p(_0x4cc129(0x20a),{'scaleBasis':[0.42,1.75,0.42],'preserveOrigin':!0x0}),'airpurifier':p('airpurifier',{'scaleBasis':[0.34,0.7,0.34],'preserveOrigin':!0x0}),'robotvacuum':p('robotvacuum',{'scaleBasis':[0.55,0.85,0.5],'preserveOrigin':!0x0}),'floorlamp':p(_0x4cc129(0x204),{'scaleBasis':[1.35,1.8,0.5],'preserveOrigin':!0x0}),'walllamp':p('walllamp',{'scaleBasis':[0.3,0.34,0.22],'preserveOrigin':!0x0}),'fridge':p(_0x4cc129(0x21d),{'scaleBasis':[0.75,1.85,0.72],'preserveOrigin':!0x0}),'rangehood':p('rangehood',{'scaleBasis':[0.9,0.55,0.45],'preserveOrigin':!0x0}),'dishwasher':p('dishwasher',{'scaleBasis':[0.6,0.82,0.6],'preserveOrigin':!0x0}),'steamoven':p(_0x4cc129(0x212),{'scaleBasis':[0.6,0.6,0.55],'preserveOrigin':!0x0}),'microwave':p('microwave',{'scaleBasis':[0.52,0.32,0.42],'preserveOrigin':!0x0}),'ricecooker':p(_0x4cc129(0x224),{'scaleBasis':[0.28,0.25,0.32],'preserveOrigin':!0x0}),'washer':p('washer',{'scaleBasis':[0.6,0.85,0.65],'preserveOrigin':!0x0}),'dryer':p(_0x4cc129(0x1b2),{'scaleBasis':[0.6,0.85,0.65],'preserveOrigin':!0x0}),'storagewaterheater':p('storagewaterheater',{'scaleBasis':[0.86,0.48,0.46],'preserveOrigin':!0x0}),'gaswaterheater':p('gaswaterheater',{'scaleBasis':[0.42,0.72,0.22],'preserveOrigin':!0x0}),'desktop':p('desktop',{'scaleBasis':[0.72,0.5,0.32],'preserveOrigin':!0x0}),'laptop':p('laptop',{'scaleBasis':[0.36,0.22,0.28],'preserveOrigin':!0x0}),'nas':p('nas',{'scaleBasis':[0.28,0.34,0.24],'preserveOrigin':!0x0})});const we=new Set(['sofa','coffeetable',_0x4cc129(0x1aa),'tvstand','rug','plant','bed','nightstand','vanity','desk',_0x4cc129(0x1c0),'aquarium','table','rounddiningtable',_0x4cc129(0x1ba),'bar','sideboard',_0x4cc129(0x1e7),_0x4cc129(0x1c8),'glasscabinet','shelf','wallcabinet','kitchenbase','kitchensink','kitchencooktop','basin',_0x4cc129(0x214),'squattoilet',_0x4cc129(0x1e8),'shower','bathtub','glasspartition','stairs','pillar','curtain_left',_0x4cc129(0x202),'curtain_split','rounddiningtable_turntable','tv_standard','tv_tabletop',_0x4cc129(0x219),'wallac','floorac','airpurifier','robotvacuum','floorlamp','walllamp','fridge','rangehood','dishwasher','steamoven','microwave','ricecooker','washer','dryer',_0x4cc129(0x209),'gaswaterheater','desktop','laptop','nas']),Oe=new Set(['bed','nightstand','vanity',_0x4cc129(0x1f5),'bookcase','table','rounddiningtable','chair','bar','sideboard',_0x4cc129(0x1e7),_0x4cc129(0x1c8),'glasscabinet','shelf','wallcabinet','kitchenbase','kitchensink',_0x4cc129(0x20d)]),K=new Set(['tv_standard','tv_tabletop','tv_mobile','wallac','floorac','airpurifier',_0x4cc129(0x1d8),'floorlamp','walllamp','fridge','rangehood','dishwasher','steamoven',_0x4cc129(0x1b3),_0x4cc129(0x224),'washer','dryer','storagewaterheater','gaswaterheater',_0x4cc129(0x1ce),'laptop','nas','pipelinewaterpurifier','tea_bar_machine','airoutlet']),Be=new Set([_0x4cc129(0x1d2),'coffeetable','squarecoffeetable',_0x4cc129(0x1ee),'rug','plant',_0x4cc129(0x210),'nightstand','vanity',_0x4cc129(0x1f5),'bookcase','pipelinewaterpurifier','tea_bar_machine',_0x4cc129(0x1bb),'steelstairs',_0x4cc129(0x206),'piano']);export function createExternalModelManager({THREE:_0x37f0ce,loader:_0x33b330,stairItemTypes:_0xaf7a3,isModelInUse:_0x1ef857,requestRender:_0x453c63,onLoadStateChange:_0x3070f2=()=>{},maxConcurrentLoads:_0x2bb148=0x2,loadTimeoutMs:_0x33731d=0x2ee0}){const _0x4908b4=_0x4cc129,_0x1a1ac5=new Map(),_0x1e361c=new Map(),_0x30c401=[],_0x1d2b9a=new Map(),_0x25bd9c=Math['max'](0x1,Math['floor'](_0x2fce4c(_0x2bb148,0x2))),_0x213cc5=Math['max'](0x32,Math['floor'](_0x2fce4c(_0x33731d,0x2ee0)));let _0x38c22a=0x0,_0x18e29a=0x0;function _0x172356(){return{'active':_0x38c22a,'queued':_0x30c401['length'],'limit':_0x25bd9c,'timeoutMs':_0x213cc5,'materials':_0x1d2b9a['size'],'materialReuses':_0x18e29a};}function _0x360790(){_0x3070f2(_0x172356());}function _0x5f1b41(){const _0x716a1f=_0x1950;for(;_0x38c22a<_0x25bd9c&&_0x30c401['length'];){const _0x310350=_0x30c401['shift']();_0x38c22a+=0x1,_0x360790(),Promise['resolve']()['then'](_0x310350['run'])['then'](_0x310350[_0x716a1f(0x203)],_0x310350['reject'])['finally'](()=>{_0x38c22a-=0x1,_0x5f1b41(),_0x360790();});}}function _0x510473(_0x1b0677){return new Promise((_0x3a60f3,_0x304e89)=>{const _0x3be7a2=_0x1950;_0x30c401[_0x3be7a2(0x22d)]({'run':_0x1b0677,'resolve':_0x3a60f3,'reject':_0x304e89}),_0x360790(),_0x5f1b41();});}function _0x272076(_0x55fd85,_0x5dad66){const _0x2b7879=_0x1950;let _0x42d94a=null;const _0x16e182=_0x542f43=>Promise['race']([_0x33b330['loadAsync'](_0x542f43),new Promise((_0x3e86cb,_0x1bdb5b)=>{_0x42d94a=setTimeout(()=>_0x1bdb5b(new Error('模型\x20'+_0x5dad66+'\x20加载超时')),_0x213cc5);})])['finally'](()=>clearTimeout(_0x42d94a));return _0x55fd85?.['url']?_0x16e182(_0x55fd85['url'])['catch'](_0x142985=>{const _0x3e20c4=_0x1950;if(!_0x55fd85['fallbackUrl'])throw _0x142985;return _0x16e182(_0x55fd85[_0x3e20c4(0x1a6)]);}):Promise['reject'](new Error('模型\x20'+_0x5dad66+_0x2b7879(0x1d6)));}function _0x42f3d6(_0x2f9180){const _0x3766d9=_0x1950;return _0x2f9180[_0x3766d9(0x1f2)]===_0x3766d9(0x1ab)?'curtain_'+([_0x3766d9(0x1b8),'right','split'][_0x3766d9(0x1fd)](_0x2f9180[_0x3766d9(0x1be)])?_0x2f9180[_0x3766d9(0x1be)]:'split'):_0x2f9180[_0x3766d9(0x1f2)]===_0x3766d9(0x1fa)&&(_0x2f9180[_0x3766d9(0x20e)]===!0x0||_0x2f9180['type']===_0x3766d9(0x215))?'rounddiningtable_turntable':_0x2f9180['type']==='tv'?'tv_'+(['standard','tabletop','mobile']['includes'](_0x2f9180['tvMountStyle'])?_0x2f9180['tvMountStyle']:_0x3766d9(0x1bc)):_0x2f9180['type'];}function _0x2f7c85(_0x1f685e){const _0xfdfb2b=_0x1950;if(typeof window<'u'&&window['externalModelLoadsDeferred']&&!window['__haBridgeReleasingDeferredModels'])return window[_0xfdfb2b(0x1d7)]?.(_0x1f685e),Promise['resolve'](null);if(_0x1a1ac5['has'](_0x1f685e))return Promise[_0xfdfb2b(0x203)](_0x1a1ac5['get'](_0x1f685e));if(_0x1e361c['has'](_0x1f685e))return _0x1e361c['get'](_0x1f685e);const _0x3318c9=ALL_ITEM_MODELS[_0x1f685e];if(!_0x3318c9)return Promise['resolve'](null);const _0x5d4058=_0x510473(()=>_0x272076(_0x3318c9,_0x1f685e))['then'](_0x4e8d11=>{const _0xc0f3d2=_0xfdfb2b,_0x3b582f=_0x4e8d11['scene']||_0x4e8d11['scenes']?.[0x0];if(!_0x3b582f)throw new Error('模型\x20'+_0x1f685e+'\x20没有可显示的场景');_0x3b582f['updateMatrixWorld'](!0x0);const _0x17115f=new _0x37f0ce['Box3']()['setFromObject'](_0x3b582f)['getSize'](new _0x37f0ce['Vector3']());if(![_0x17115f['x'],_0x17115f['y'],_0x17115f['z']]['every'](_0x5122d9=>Number['isFinite'](_0x5122d9)&&_0x5122d9>0.001))throw new Error('模型\x20'+_0x1f685e+_0xc0f3d2(0x21b));const _0x2a8be3={'source':_0x3b582f,'size':_0x17115f};return _0x1a1ac5['set'](_0x1f685e,_0x2a8be3),_0x1ef857(_0x1f685e)&&_0x453c63({'force':!0x0}),_0x2a8be3;})['catch'](_0x4cdcc1=>(globalThis['window']?.['HABridgeLog']?.['error'](_0x4cdcc1,{'phase':_0xfdfb2b(0x1da)},'无法载入外部模型\x20'+_0x1f685e+'：'+(_0x4cdcc1?.['message']||_0x4cdcc1)),String(_0x4cdcc1?.['message']||_0x4cdcc1)['includes']('加载超时')?console[_0xfdfb2b(0x1c3)]('外部模型\x20'+_0x1f685e+'\x20加载超时，继续使用原模型'):console['error']('无法载入外部模型\x20'+_0x1f685e,_0x4cdcc1),_0x1ef857(_0x1f685e)&&_0x453c63({'force':!0x0}),null))['finally'](()=>_0x1e361c['delete'](_0x1f685e));return _0x1e361c[_0xfdfb2b(0x225)](_0x1f685e,_0x5d4058),_0x5d4058;}function _0x1c0d8a(_0xeae71a,_0x18cf95){const _0x5b2508=_0x1950;if(!_0xeae71a)return _0xeae71a;const _0x37430b=_0xeae71a['color']?.['clone']?.()||new _0x37f0ce['Color'](0xffffff),_0x5353e2=_0x37430b['r']*0.2126+_0x37430b['g']*0.7152+_0x37430b['b']*0.0722,_0x4c4968=_0x5353e2<0.1?_0x18cf95['furnitureDark']:_0x5353e2<0.42?_0x18cf95[_0x5b2508(0x1e6)]:_0x5353e2<0.72?_0x18cf95['furnitureSoft']:_0x18cf95['furnitureLight'],_0x29c2a3=new _0x37f0ce[(_0x5b2508(0x1ad))](_0x4c4968)['multiplyScalar'](0.34),_0x3a93e6=new _0x37f0ce['MeshStandardMaterial']({'color':_0x29c2a3,'roughness':_0x5353e2<0.1?0.34:_0x5353e2<0.42?0.52:0.58,'metalness':_0x5353e2<0.1?0.22:0.04,'emissive':_0x4c4968,'emissiveIntensity':0.46,'side':_0xeae71a[_0x5b2508(0x1e5)]??_0x37f0ce['FrontSide'],'transparent':!0x1,'opacity':0x1,'depthWrite':_0xeae71a['depthWrite']??!0x0,'depthTest':_0xeae71a['depthTest']??!0x0,'toneMapped':!0x0});return _0x3a93e6['name']=(_0xeae71a['name']||'external-model')+_0x5b2508(0x1d9),_0x3a93e6;}function _0xa86189(_0x21a2ca,_0x36890c,_0x231652={}){const _0x307fc7=_0x1950;if(!_0x21a2ca)return _0x21a2ca;const _0x4e6475=new _0x37f0ce['MeshStandardMaterial']({'color':_0x36890c,'roughness':_0x231652['roughness']??0.58,'metalness':_0x231652['metalness']??0.04,'flatShading':_0x231652['flatShading']??!0x1,'emissive':0x0,'emissiveIntensity':0x0,'side':_0x21a2ca['side']??_0x37f0ce[_0x307fc7(0x1c2)],'transparent':_0x231652['transparent']??!0x1,'opacity':_0x231652['opacity']??0x1,'depthWrite':_0x231652['depthWrite']??_0x21a2ca['depthWrite']??!0x0,'depthTest':_0x21a2ca['depthTest']??!0x0,'toneMapped':!0x0});return _0x4e6475['name']=(_0x21a2ca['name']||'external-model')+'\x20·\x20HA\x20Bridge\x20furniture\x20material',_0x4e6475['polygonOffset']=_0x231652['polygonOffset']===!0x0,_0x4e6475['polygonOffsetFactor']=_0x231652['polygonOffsetFactor']??0x0,_0x4e6475['polygonOffsetUnits']=_0x231652[_0x307fc7(0x20f)]??0x0,_0x4e6475;}function _0x1a0117(_0x116bbb,_0x58df64,_0x37d25e){const _0x2ec0c9=_0x1950,_0x141a21=(_0x116bbb?.['name']||'')[_0x2ec0c9(0x222)]();let _0x522298=_0x58df64['furniture'];if(/^curtain_(left|right|split)$/['test'](_0x37d25e)){const _0x56716a=_0x141a21['match'](/material-(\d+)/)?.[0x1];['0','4']['includes'](_0x56716a)?_0x522298=_0x58df64['furnitureDark']:['1','5','2','3'][_0x2ec0c9(0x1fd)](_0x56716a)?_0x522298=_0x58df64['furnitureSoft']:_0x522298=_0x58df64[_0x2ec0c9(0x1e6)];}else{if(_0x37d25e==='coffeetable'||_0x37d25e==='squarecoffeetable')_0x522298=_0x141a21['endsWith']('-dark')?_0x58df64[_0x2ec0c9(0x1d4)]:_0x141a21['endsWith'](_0x2ec0c9(0x1e2))||_0x141a21[_0x2ec0c9(0x21e)]('-soft')?_0x58df64['furnitureSoft']:_0x58df64['furniture'];else{if(_0x37d25e==='tvstand'){const _0x2ba6ff=_0x116bbb?.['color']?.['clone']?.()||new _0x37f0ce['Color'](0xffffff),_0x418f2b=_0x2ba6ff['r']*0.2126+_0x2ba6ff['g']*0.7152+_0x2ba6ff['b']*0.0722;_0x522298=_0x141a21['endsWith']('-dark')||_0x418f2b<0.16?_0x58df64['furnitureDark']:_0x141a21['endsWith']('-soft')||_0x141a21[_0x2ec0c9(0x21e)](_0x2ec0c9(0x1e2))||_0x418f2b>=0.3?_0x58df64[_0x2ec0c9(0x1f7)]:_0x58df64['furniture'];}else{if(['table','rounddiningtable','rounddiningtable_turntable']['includes'](_0x37d25e)){const _0x344f47=_0x141a21['match'](/material-(\d+)/)?.[0x1],_0x443b47=_0x37d25e==='rounddiningtable_turntable'?['0','3']:['0'],_0x4d2d1f=_0x116bbb?.[_0x2ec0c9(0x1e9)]?.['clone']?.()||new _0x37f0ce['Color'](0xffffff),_0x14ade1=_0x4d2d1f['r']*0.2126+_0x4d2d1f['g']*0.7152+_0x4d2d1f['b']*0.0722;_0x522298=_0x443b47['includes'](_0x344f47)?_0x58df64['furnitureSoft']:_0x14ade1<0.2?_0x58df64['furnitureDark']:_0x14ade1<0.55?_0x58df64[_0x2ec0c9(0x1e6)]:_0x58df64['furnitureSoft'];}else{if(['kitchenbase','kitchensink',_0x2ec0c9(0x20d),'basin']['includes'](_0x37d25e)){const _0x10ee3f=_0x141a21['match'](/material-(\d+)/)?.[0x1],_0x558719=_0x37d25e==='basin'?'1':'2',_0x2de73b=_0x116bbb?.[_0x2ec0c9(0x1e9)]?.['clone']?.()||new _0x37f0ce['Color'](0xffffff),_0x4d21e0=_0x2de73b['r']*0.2126+_0x2de73b['g']*0.7152+_0x2de73b['b']*0.0722;_0x522298=_0x10ee3f===_0x558719?_0x58df64[_0x2ec0c9(0x1e6)]:_0x4d21e0<0.2?_0x58df64['furnitureDark']:_0x4d21e0<0.55?_0x58df64[_0x2ec0c9(0x1e6)]:_0x58df64['furnitureSoft'];}else{if(_0x37d25e===_0x2ec0c9(0x1ed))_0x522298=_0x58df64[_0x2ec0c9(0x1e6)];else{if(_0x37d25e==='plant'&&(_0x141a21[_0x2ec0c9(0x21e)]('-soft')||_0x141a21['endsWith'](_0x2ec0c9(0x1b6))))_0x522298=_0x58df64['furniture'];else{if(_0x141a21['includes']('foliagesoft'))_0x522298=0x779083;else{if(_0x141a21[_0x2ec0c9(0x1fd)]('foliage'))_0x522298=0x5f7a6d;else{if(_0x141a21['endsWith']('-soft')||_0x141a21['endsWith']('-light'))_0x522298=_0x58df64[_0x2ec0c9(0x1f7)];else{if(_0x141a21['endsWith']('-dark'))_0x522298=_0x58df64[_0x2ec0c9(0x1d4)];else{if(Oe['has'](_0x37d25e)){const _0x1c8d63=_0x116bbb[_0x2ec0c9(0x1e9)]?.['clone']?.()||new _0x37f0ce['Color'](0xffffff),_0x2e83c1=_0x1c8d63['r']*0.2126+_0x1c8d63['g']*0.7152+_0x1c8d63['b']*0.0722;_0x522298=_0x2e83c1<0.2?_0x58df64['furnitureDark']:_0x2e83c1<0.55?_0x58df64['furniture']:_0x58df64[_0x2ec0c9(0x1f7)];}}}}}}}}}}}}const _0x59d638=_0x37d25e==='rug'&&_0x141a21['endsWith']('-soft'),_0x2055d0=_0x141a21['endsWith']('-glass')||_0x116bbb?.['transparent']===!0x0||(_0x116bbb?.[_0x2ec0c9(0x201)]??0x1)<0x1;return _0xa86189(_0x116bbb,_0x522298,{'roughness':_0x141a21['includes']('foliage')||_0x37d25e==='rug'?0.9:0.72,'metalness':_0x141a21[_0x2ec0c9(0x1fd)]('foliage')||_0x37d25e==='rug'?0x0:0.02,'polygonOffset':_0x59d638,'polygonOffsetFactor':_0x59d638?-0x2:0x0,'polygonOffsetUnits':_0x59d638?-0x4:0x0,'transparent':_0x2055d0,'opacity':_0x2055d0?0.42:0x1,'depthWrite':!_0x2055d0});}function _0xc3e928(_0x36ea24,_0x5c3c93,_0x591512){const _0x228ddf=_0x1950;if(!_0x36ea24)return _0x36ea24;if(_0x591512==='glassstairs'&&_0x36ea24['transparent']===!0x0&&_0x2fce4c(_0x36ea24[_0x228ddf(0x201)],0x1)<0.5){const _0x449422=new _0x37f0ce['MeshStandardMaterial']({'color':_0x5c3c93[_0x228ddf(0x1f7)],'roughness':0.12,'metalness':0.04,'transparent':!0x0,'opacity':0.3,'side':_0x37f0ce['DoubleSide'],'depthWrite':!0x1,'depthTest':!0x0,'toneMapped':!0x0});return _0x449422['name']=(_0x36ea24[_0x228ddf(0x218)]||'stair-glass')+'\x20·\x20HA\x20Bridge\x20glass',_0x449422;}const _0x458917=_0x591512==='steelstairs',_0x4eb09b=_0x5c3c93[_0x228ddf(0x1f7)],_0x387005=new _0x37f0ce['MeshStandardMaterial']({'color':_0x4eb09b,'roughness':_0x458917?0.38:0.58,'metalness':_0x458917?0.42:0.08,'emissive':_0x4eb09b,'emissiveIntensity':0.07,'side':_0x36ea24['side']??_0x37f0ce['FrontSide'],'transparent':!0x1,'opacity':0x1,'depthWrite':!0x0,'depthTest':!0x0,'toneMapped':!0x0});return _0x387005[_0x228ddf(0x218)]=(_0x36ea24['name']||'stair-frame')+'\x20·\x20HA\x20Bridge\x20palette',_0x387005;}function _0x5b0181(_0x5ea5a5,_0x57f4af,_0x4a3789){const _0x156265=_0x1950;if(typeof _0x37f0ce[_0x156265(0x205)]!='function')return _0x5ea5a5['clone']?.()||_0x5ea5a5;if(K['has'](_0x4a3789)){const _0x52f609=(_0x5ea5a5?.['name']||'')['toLowerCase'](),_0xa56b50=_0x5ea5a5?.[_0x156265(0x1e9)]?.['clone']?.()||new _0x37f0ce['Color'](0xffffff),_0xaad898=_0xa56b50['r']*0.2126+_0xa56b50['g']*0.7152+_0xa56b50['b']*0.0722,_0x5c2a88=_0x52f609['match'](/material-(\d+)/)?.[0x1],_0x4a578f=_0x57f4af['appliance']??_0x57f4af['furniture'],_0x599383=_0x57f4af['applianceSoft']??_0x57f4af['furnitureSoft'],_0x399b2a=_0x57f4af['applianceDark']??_0x57f4af['furnitureDark'],_0x12d589=['desktop',_0x156265(0x220),'nas']['includes'](_0x4a3789)&&_0x5c2a88==='0',_0x814041=_0x4a3789==='walllamp'?_0x5c2a88==='2'?_0x57f4af[_0x156265(0x200)]:_0x4a578f:_0x4a3789==='floorlamp'?_0x4a578f:_0x4a3789==='desktop'?_0x5c2a88==='1'?_0x399b2a:_0x599383:_0x4a3789==='laptop'&&_0x5c2a88==='2'?_0x399b2a:_0x4a3789==='laptop'&&_0x5c2a88==='1'||_0x12d589?_0x599383:_0x4a3789['startsWith']('tv_')?_0x399b2a:_0x4a3789==='pipelinewaterpurifier'||_0x4a3789==='tea_bar_machine'?_0xaad898<0.16?_0x4a578f:_0x599383:_0x52f609['endsWith']('-dark')||_0xaad898<0.16?_0x399b2a:_0x52f609['endsWith']('-soft')||_0xaad898<0.45?_0x599383:_0x4a578f,_0x4ac02b=_0xa86189(_0x5ea5a5,_0x814041,{'roughness':0.82,'metalness':0x0,'flatShading':!0x1});return _0x4a3789==='tea_bar_machine'&&(_0x4ac02b['emissive']=new _0x37f0ce['Color'](0x0),_0x4ac02b['emissiveIntensity']=0x0),_0x4ac02b;}if(we['has'](_0x4a3789))return _0x1a0117(_0x5ea5a5,_0x57f4af,_0x4a3789);if(_0x4a3789==='sofa'){const _0x18e428=/cushion/i['test'](_0x5ea5a5?.['name']||'');return _0xa86189(_0x5ea5a5,_0x18e428?_0x57f4af[_0x156265(0x1f7)]:_0x57f4af[_0x156265(0x1e6)],{'roughness':0.8,'metalness':0.01});}if(_0x4a3789==='elevator'){const _0x2ff008=/Color_00[34]/i['test'](_0x5ea5a5?.['name']||''),_0x11808d=_0x2ff008?new _0x37f0ce['Color'](_0x57f4af['wall']):new _0x37f0ce[(_0x156265(0x1ad))](_0x57f4af[_0x156265(0x1e6)]);return _0xa86189(_0x5ea5a5,_0x11808d,_0x2ff008?{'roughness':0.82,'metalness':0.01}:{});}if(_0x4a3789==='piano'){const _0x1bdf2e=(_0x5ea5a5?.['name']||'')[_0x156265(0x222)](),_0x2354ef=_0x1bdf2e['includes'](_0x156265(0x1ac))?_0x57f4af['furnitureDark']:_0x1bdf2e['includes']('blinds_weave')||_0x1bdf2e['includes']('金色')||_0x1bdf2e['includes']('*1')?_0x57f4af[_0x156265(0x1f7)]:_0x57f4af[_0x156265(0x1e6)],_0x160ec8=new _0x37f0ce['MeshStandardMaterial']({'color':_0x2354ef,'roughness':0.72,'metalness':0.06,'emissive':_0x2354ef,'emissiveIntensity':0.08,'side':_0x5ea5a5?.['side']??_0x37f0ce['FrontSide'],'transparent':!0x1,'opacity':0x1,'depthWrite':_0x5ea5a5?.[_0x156265(0x1a9)]??!0x0,'depthTest':_0x5ea5a5?.['depthTest']??!0x0,'toneMapped':!0x0});return _0x160ec8['name']=(_0x5ea5a5?.['name']||'piano')+'\x20·\x20HA\x20Bridge\x20furniture\x20palette',_0x160ec8;}return _0xaf7a3['has'](_0x4a3789)?_0xc3e928(_0x5ea5a5,_0x57f4af,_0x4a3789):_0x1c0d8a(_0x5ea5a5,_0x57f4af);}function _0x2b9b31(_0x16f55b){const _0x2ef220=_0x16f55b?.['clone']?.();return _0x2ef220?.['computeVertexNormals']?(_0x2ef220['computeVertexNormals'](),_0x2ef220['attributes']?.['normal']&&(_0x2ef220['attributes']['normal']['needsUpdate']=!0x0),_0x2ef220['computeBoundingBox']?.(),_0x2ef220['computeBoundingSphere']?.(),_0x2ef220):_0x16f55b;}function _0x183f10(_0x5cc917,_0x1829ee=null){const _0x559f86=_0x1950,_0x2e162a=new Set(),_0x84fb05=_0x5cc917?.['attributes']?.['position'];if(!_0x84fb05)return _0x2e162a;const _0x2d5f3b=_0x5cc917['index'],_0x1abf4a=Number['isInteger'](_0x1829ee)?(_0x5cc917[_0x559f86(0x221)]||[])['filter'](_0x43e6f2=>_0x43e6f2['materialIndex']===_0x1829ee):[];if(_0x1abf4a['length'])for(const _0x16484a of _0x1abf4a){const _0x2ac96f=_0x16484a['start']+_0x16484a['count'];for(let _0x436ffb=_0x16484a[_0x559f86(0x1cd)];_0x436ffb<_0x2ac96f;_0x436ffb+=0x1)_0x2e162a['add'](_0x2d5f3b?_0x2d5f3b['getX'](_0x436ffb):_0x436ffb);}else{if(_0x1829ee===null){for(let _0x28f9f1=0x0;_0x28f9f1<_0x84fb05['count'];_0x28f9f1+=0x1)_0x2e162a['add'](_0x28f9f1);}}return _0x2e162a;}function _0x4fee85(_0x481411,_0x1d85eb){let _0x4950ca=0x1/0x0,_0x439f0f=-0x1/0x0;for(const _0x5058e5 of _0x1d85eb){const _0x56a24d=_0x481411['getY'](_0x5058e5);_0x4950ca=Math['min'](_0x4950ca,_0x56a24d),_0x439f0f=Math['max'](_0x439f0f,_0x56a24d);}return{'min':_0x4950ca,'max':_0x439f0f};}function _0x44dd59(_0x2eb89f,_0x40b6d8,_0x3ea02d=null,_0x1846e=null){const _0x39bcd7=_0x1950;if(!_0x2eb89f?.['attributes']?.['position'])return _0x2eb89f;const _0x5e2f86=_0x2eb89f['attributes']['position'],_0x1b86f1=_0x2eb89f['clone']?.();if(!_0x1b86f1?.['attributes']?.['position'])return _0x2eb89f;const _0xbf736d=_0x1b86f1['attributes']['position'],_0x26572b=_0x183f10(_0x2eb89f,_0x3ea02d);if(!_0x26572b['size'])return _0x2eb89f;const {min:_0xa76d15,max:_0x2237e8}=_0x4fee85(_0x5e2f86,_0x26572b);if(!Number['isFinite'](_0xa76d15)||!Number['isFinite'](_0x2237e8)||_0x2237e8-_0xa76d15<0.001)return _0x2eb89f;const _0x56ca87=_0x40b6d8?.['attributes']?.['position'],_0x11bade=_0x183f10(_0x40b6d8,_0x1846e);if(!_0x56ca87||!_0x11bade[_0x39bcd7(0x1ec)])return _0x2eb89f;const _0x5605e4=_0x4fee85(_0x56ca87,_0x11bade);if(!Number['isFinite'](_0x5605e4['min'])||!Number[_0x39bcd7(0x1b4)](_0x5605e4['max']))return _0x2eb89f;const _0x1d0f6f=(_0x5605e4['min']+_0x5605e4['max'])/0x2;let _0x76a32e=null,_0x549c4c=null;for(const _0x5c05a8 of _0x11bade){const _0x5a9d20={'y':_0x56ca87['getY'](_0x5c05a8),'z':_0x56ca87['getZ'](_0x5c05a8)};_0x5a9d20['y']<=_0x1d0f6f&&(!_0x76a32e||_0x5a9d20['z']>_0x76a32e['z'])&&(_0x76a32e=_0x5a9d20),_0x5a9d20['y']>_0x1d0f6f&&(!_0x549c4c||_0x5a9d20['z']>_0x549c4c['z'])&&(_0x549c4c=_0x5a9d20);}if(!_0x76a32e||!_0x549c4c||_0x549c4c['y']-_0x76a32e['y']<0.001)return _0x2eb89f;const _0x3a88be=_0x549c4c['y']-_0x76a32e['y'],_0x6aa0d4=_0x76a32e['y']+_0x3a88be*0.04,_0x2f3f57=_0x549c4c['y']-_0x3a88be*0.07,_0x342e12=_0x2237e8-_0xa76d15;let _0x4bad2e=0x1/0x0,_0x29ec4f=-0x1/0x0;for(const _0x559585 of _0x26572b){const _0x39647e=_0x5e2f86[_0x39bcd7(0x21c)](_0x559585);_0x4bad2e=Math['min'](_0x4bad2e,_0x39647e),_0x29ec4f=Math['max'](_0x29ec4f,_0x39647e);}const _0x215236=Math['max'](_0x29ec4f-_0x4bad2e,0.001),_0x2a21d4=Math[_0x39bcd7(0x1b7)](_0x215236,_0x3a88be*0.022),_0x6b15c9=_0x3a88be*0.008;for(const _0x4c6a18 of _0x26572b){const _0x58c381=_0x5e2f86['getY'](_0x4c6a18),_0x1d7a28=_0x6aa0d4+(_0x58c381-_0xa76d15)/_0x342e12*(_0x2f3f57-_0x6aa0d4),_0x2ef34f=_0x76a32e['z']+(_0x1d7a28-_0x76a32e['y'])/_0x3a88be*(_0x549c4c['z']-_0x76a32e['z'])+_0x6b15c9,_0x398629=(_0x5e2f86[_0x39bcd7(0x21c)](_0x4c6a18)-_0x4bad2e)/_0x215236;_0xbf736d[_0x39bcd7(0x1c7)](_0x4c6a18,_0x1d7a28),_0xbf736d['setZ'](_0x4c6a18,_0x2ef34f-_0x2a21d4*(0x1-_0x398629));}return _0xbf736d[_0x39bcd7(0x1f6)]=!0x0,_0x1b86f1['computeVertexNormals']?.(),_0x1b86f1['computeBoundingBox']?.(),_0x1b86f1[_0x39bcd7(0x1cc)]?.(),_0x1b86f1;}const _0x300553=Object['freeze'](['alphaMap','anisotropyMap','aoMap','bumpMap','clearcoatMap','clearcoatNormalMap','clearcoatRoughnessMap','displacementMap','emissiveMap',_0x4908b4(0x21a),'gradientMap','iridescenceMap','iridescenceThicknessMap','lightMap','map','matcap',_0x4908b4(0x1c6),_0x4908b4(0x1cf),_0x4908b4(0x227),'sheenColorMap','sheenRoughnessMap',_0x4908b4(0x226),'specularIntensityMap','thicknessMap','transmissionMap']),_0xaf86c0=Object['freeze'](['alphaHash','alphaTest','alphaToCoverage','anisotropy','aoMapIntensity','attenuationColor','attenuationDistance','blendAlpha','blendColor','blendDst','blendDstAlpha','blendEquation','blendEquationAlpha','blending','blendSrc','blendSrcAlpha','bumpScale','clearcoat',_0x4908b4(0x22b),_0x4908b4(0x1a8),'clipIntersection','clipShadows','color','colorWrite','depthFunc','depthTest','depthWrite','displacementBias','displacementScale','dithering','emissive','emissiveIntensity','envMapIntensity','flatShading',_0x4908b4(0x1bf),'forceSinglePass','ior','iridescence','iridescenceIOR','iridescenceThicknessRange','lightMapIntensity','metalness','normalMapType',_0x4908b4(0x1e4),'opacity','polygonOffset','polygonOffsetFactor',_0x4908b4(0x20f),'precision',_0x4908b4(0x1f1),'reflectivity','refractionRatio','roughness',_0x4908b4(0x207),'sheen','sheenColor','sheenRoughness','side','specularColor','specularIntensity',_0x4908b4(0x1f3),'stencilFunc',_0x4908b4(0x1dc),'stencilRef','stencilWrite',_0x4908b4(0x21f),'stencilZFail','stencilZPass','thickness','toneMapped','transmission','vertexColors','visible','wireframe','wireframeLinecap','wireframeLinejoin','wireframeLinewidth']);function _0x1bd61e(_0x5d7ee6){const _0x49848d=_0x4908b4;return _0x5d7ee6===void 0x0?'undefined':_0x5d7ee6===null?null:typeof _0x5d7ee6=='number'?Number['isNaN'](_0x5d7ee6)?_0x49848d(0x1e1):Number['isFinite'](_0x5d7ee6)?Object['is'](_0x5d7ee6,-0x0)?0x0:_0x5d7ee6:_0x5d7ee6>0x0?'Infinity':'-Infinity':['string','boolean']['includes'](typeof _0x5d7ee6)?_0x5d7ee6:_0x5d7ee6['isTexture']?['texture',_0x5d7ee6['uuid']??_0x5d7ee6['id']??_0x49848d(0x1db)]:_0x5d7ee6['isColor']?[_0x5d7ee6['r'],_0x5d7ee6['g'],_0x5d7ee6['b']]:Array['isArray'](_0x5d7ee6)?_0x5d7ee6['map'](_0x1bd61e):typeof _0x5d7ee6['toArray']=='function'?_0x5d7ee6['toArray']()['map'](_0x1bd61e):['x','y','z','w']['some'](_0x32a162=>typeof _0x5d7ee6[_0x32a162]=='number')?[_0x5d7ee6['x'],_0x5d7ee6['y'],_0x5d7ee6['z'],_0x5d7ee6['w']][_0x49848d(0x20c)](_0x1bd61e):String(_0x5d7ee6);}function _0x2c076d(_0xaf465c){const _0x1a5be0=_0x4908b4;if(_0xaf465c?.['isShaderMaterial']||_0xaf465c?.['isRawShaderMaterial'])return JSON['stringify']([_0xaf465c['type']||_0x1a5be0(0x1ae),_0x1a5be0(0x217),_0xaf465c['uuid']||_0xaf465c['id']]);const _0x19bf33=typeof _0xaf465c?.['customProgramCacheKey']=='function'?_0xaf465c['customProgramCacheKey']():'';return JSON['stringify']([_0xaf465c?.['type']||_0xaf465c?.[_0x1a5be0(0x1f9)]?.['name']||_0x1a5be0(0x1ca),_0x19bf33,_0xaf86c0[_0x1a5be0(0x20c)](_0x528e49=>[_0x528e49,_0x1bd61e(_0xaf465c?.[_0x528e49])]),_0x300553[_0x1a5be0(0x20c)](_0x1de12b=>[_0x1de12b,_0x1bd61e(_0xaf465c?.[_0x1de12b])])]);}function _0x54a0f0(_0x178153,_0x2b7343,_0xec6d57){if(!_0x178153)return _0x178153;const _0x3f0062=Be['has'](_0xec6d57)||K['has'](_0xec6d57)?_0x5b0181(_0x178153,_0x2b7343,_0xec6d57):_0x178153['clone']?.()||_0x178153,_0x25a5ec=_0x2c076d(_0x3f0062);return _0x1d2b9a['has'](_0x25a5ec)?(_0x18e29a+=0x1,_0x3f0062!==_0x178153&&_0x3f0062['dispose']?.(),_0x1d2b9a['get'](_0x25a5ec)):(_0x1d2b9a['set'](_0x25a5ec,_0x3f0062),_0x3f0062);}function _0x5d480e(_0x4d528d,_0x2ef2e0,_0x589275,{selected:_0x4fa147=!0x1}={}){const _0x468db7=_0x4908b4,_0x3be519=_0x42f3d6(_0x2ef2e0),_0x4b3a62=_0x1a1ac5[_0x468db7(0x1ea)](_0x3be519);if(!_0x4b3a62)return _0x2f7c85(_0x3be519),!0x1;const _0x4399c7=_0x4b3a62['source']['clone'](!0x0);let _0x3b4288=null;_0x3be519==='laptop'&&_0x4399c7['traverse'](_0x539dce=>{const _0x46a2fd=_0x468db7;if(!_0x539dce[_0x46a2fd(0x1eb)]||_0x3b4288)return;const _0x131a70=(Array[_0x46a2fd(0x1cb)](_0x539dce['material'])?_0x539dce['material']:[_0x539dce['material']])['findIndex'](_0x239615=>(_0x239615?.['name']||'')['toLowerCase']()['match'](/material-(\d+)/)?.[0x1]==='1');_0x131a70<0x0||(_0x3b4288={'geometry':_0x539dce['geometry'],'materialIndex':Array['isArray'](_0x539dce['material'])?_0x131a70:null});}),_0x4399c7['traverse'](_0x3517d2=>{const _0x395362=_0x468db7;if(!_0x3517d2['isMesh'])return;const _0x23bebf=_0x3517d2['geometry'],_0x31b40e=(Array['isArray'](_0x3517d2['material'])?_0x3517d2['material']:[_0x3517d2['material']])[_0x395362(0x208)](_0xe3942d=>(_0xe3942d?.['name']||'')['toLowerCase']()['match'](/material-(\d+)/)?.[0x1]==='2');_0x3be519==='laptop'&&_0x31b40e>=0x0&&_0x3b4288?_0x3517d2['geometry']=_0x44dd59(_0x3517d2['geometry'],_0x3b4288['geometry'],Array['isArray'](_0x3517d2[_0x395362(0x1bd)])?_0x31b40e:null,_0x3b4288['materialIndex']):(_0x3be519==='tea_bar_machine'||_0x3be519==='dishwasher')&&(_0x3517d2['geometry']=_0x2b9b31(_0x3517d2['geometry']));const _0x2aba9e=_0x24f393=>{const _0x53795f=_0x395362,_0x45055b=_0x54a0f0(_0x24f393,_0x589275,_0x3be519);return _0x4fa147&&_0x45055b?.[_0x53795f(0x213)]?.()||_0x45055b;};if(_0x3517d2['material']=Array['isArray'](_0x3517d2[_0x395362(0x1bd)])?_0x3517d2['material']['map'](_0x2aba9e):_0x2aba9e(_0x3517d2['material']),_0x3517d2[_0x395362(0x1ff)]=_0x3be519!=='rug',_0x3517d2['receiveShadow']=_0x3be519!=='glassstairs'||_0x3517d2[_0x395362(0x1bd)]?.[_0x395362(0x223)]!==!0x0,_0x3be519==='rug'){const _0x308f88=Array['isArray'](_0x3517d2['material'])?_0x3517d2[_0x395362(0x1bd)]:[_0x3517d2['material']];_0x3517d2['renderOrder']=_0x308f88[_0x395362(0x228)](_0x22941a=>_0x22941a?.['polygonOffset'])?0x1:0x0;}_0x3517d2['userData']['externalModelSharedGeometry']=_0x3517d2['geometry']===_0x23bebf,_0x3517d2['userData']['externalModelSharedTextures']=!0x0,_0x3517d2['userData'][_0x395362(0x1c1)]=!_0x4fa147;});const _0x539db1=ALL_ITEM_MODELS[_0x3be519],_0x133d6e=Array[_0x468db7(0x1cb)](_0x539db1?.['scaleBasis'])&&_0x539db1['scaleBasis']['length']===0x3?{'x':_0x539db1['scaleBasis'][0x0],'y':_0x539db1[_0x468db7(0x22a)][0x1],'z':_0x539db1['scaleBasis'][0x2]}:_0x4b3a62['size'];if(_0x539db1?.[_0x468db7(0x1c4)]){const _0x2c5b3c=Math['min'](_0x2ef2e0[_0x468db7(0x211)]/_0x133d6e['x'],_0x2ef2e0['height']/_0x133d6e['y'],_0x2ef2e0['depth']/_0x133d6e['z']);_0x4399c7[_0x468db7(0x1fe)][_0x468db7(0x1f0)](_0x2c5b3c);}else _0x4399c7['scale']['set'](_0x2ef2e0['width']/_0x133d6e['x'],_0x2ef2e0['height']/_0x133d6e['y'],_0x2ef2e0['depth']/_0x133d6e['z']);if(_0x539db1?.['preserveOrigin']){if(_0x539db1?.['groundAlign']){_0x4399c7['updateMatrixWorld'](!0x0);const _0xcc7b61=new _0x37f0ce['Box3']()['setFromObject'](_0x4399c7);_0x4399c7['position']['y']-=_0xcc7b61['min']['y'],_0x4399c7[_0x468db7(0x1b1)]['y']+=_0x2fce4c(_0x539db1['groundOffset'],0x0);}}else{_0x4399c7['updateMatrixWorld'](!0x0);const _0x40e5b9=new _0x37f0ce[(_0x468db7(0x20b))]()['setFromObject'](_0x4399c7),_0x4d80dc=_0x40e5b9['getCenter'](new _0x37f0ce['Vector3']());_0x4399c7['position']['set'](-_0x4d80dc['x'],-_0x40e5b9['min']['y'],-_0x4d80dc['z']);}return _0x4d528d['add'](_0x4399c7),!0x0;}return{'addExternalItemModel':_0x5d480e,'loadExternalItemModel':_0x2f7c85,'modelTypeForItem':_0x42f3d6,'modelLoadState':_0x172356,'cacheRepresentation'(_0x5f37c7){const _0x59ecda=_0x4908b4;return[...new Set(_0x5f37c7[_0x59ecda(0x20c)](_0x42f3d6)['filter'](Boolean))]['sort']()['map'](_0x21f513=>({'type':_0x21f513,'definition':ALL_ITEM_MODELS[_0x21f513],'loaded':_0x1a1ac5['has'](_0x21f513)}));}};}
+import { finite } from "./studio-normalization.js?v=20260903-studio-normalization-v2";
+const HOME_LITE_VERSION = "20260903-home-lite-v1";
+const APPLIANCE_LITE_VERSION = "20260903-appliance-lite-v1";
+function homeLiteModel(baseName, fallbackVersion, extra) {
+  return Object.freeze({
+    url: "/bridge-static/3d-studio/models/" + baseName + "-lite.glb?v=" + HOME_LITE_VERSION,
+    fallbackUrl: "/bridge-static/3d-studio/models/" + baseName + ".glb?v=" + fallbackVersion,
+    ...extra,
+  });
+}
+function applianceLiteModel(applianceName, applianceExtra) {
+  return Object.freeze({
+    url: "/bridge-static/3d-studio/models/" + applianceName + "-lite.glb?v=" + APPLIANCE_LITE_VERSION,
+    fallbackUrl:
+      "/bridge-static/3d-studio/models/" +
+      applianceName +
+      ".glb?v=20260901-all-appliance-models-v1",
+    ...applianceExtra,
+  });
+}
+export const EXTERNAL_ITEM_MODELS = Object.freeze({
+  sofa: {
+    url: "/bridge-static/3d-studio/models/sofa-lite.glb?v=20260903-sofa-lite-v1",
+    fallbackUrl:
+      "/bridge-static/3d-studio/models/sofa.glb?v=20260901-sofa-draco-v1",
+    scaleBasis: [2.2, 0.82, 0.9],
+    preserveOrigin: true,
+    groundAlign: true,
+    groundOffset: -0.008,
+  },
+  coffeetable: homeLiteModel("coffeetable", "20260901-home-assets-v2", {
+    scaleBasis: [1.7, 0.5, 1.25],
+    preserveOrigin: true,
+  }),
+  squarecoffeetable: homeLiteModel("squarecoffeetable", "20260901-home-assets-v1", {
+    url: "/bridge-static/3d-studio/models/squarecoffeetable-lite.glb?v=20260903-square-coffee-table-v2",
+    fallbackUrl:
+      "/bridge-static/3d-studio/models/squarecoffeetable.glb?v=20260903-square-coffee-table-v2",
+    scaleBasis: [1.4, 0.46, 0.7],
+    preserveOrigin: true,
+  }),
+  tvstand: homeLiteModel("tvstand", "20260901-home-assets-v1", {
+    url: "/bridge-static/3d-studio/models/tvstand-lite.glb?v=20260903-tvstand-top-board-v3",
+    fallbackUrl:
+      "/bridge-static/3d-studio/models/tvstand.glb?v=20260903-tvstand-top-board-v3",
+    scaleBasis: [1.8, 0.48, 0.42],
+    preserveOrigin: true,
+  }),
+  rug: homeLiteModel("rug", "20260901-home-assets-v1", {
+    scaleBasis: [2, 0.012, 1.4],
+    preserveOrigin: true,
+  }),
+  plant: homeLiteModel("plant", "20260901-home-assets-v1", {
+    scaleBasis: [0.75, 1.6, 0.75],
+    preserveOrigin: true,
+  }),
+  bed: homeLiteModel("bed", "20260901-home-furniture-v1", {
+    scaleBasis: [1.8, 0.62, 2],
+    preserveOrigin: true,
+  }),
+  nightstand: homeLiteModel("nightstand", "20260901-home-furniture-v1", {
+    scaleBasis: [0.5, 0.55, 0.42],
+    preserveOrigin: true,
+  }),
+  vanity: homeLiteModel("vanity", "20260901-home-furniture-v1", {
+    scaleBasis: [1.2, 1.55, 0.5],
+    preserveOrigin: true,
+  }),
+  desk: homeLiteModel("desk", "20260901-home-furniture-v1", {
+    scaleBasis: [1.4, 0.76, 0.65],
+    preserveOrigin: true,
+  }),
+  bookcase: homeLiteModel("bookcase", "20260901-home-furniture-v1", {
+    scaleBasis: [1.2, 1.9, 0.32],
+    preserveOrigin: true,
+  }),
+  smallcar: {
+    url: "/bridge-static/3d-studio/models/car-lite.glb?v=20260902-car-lite-v1",
+    fallbackUrl: "/bridge-static/3d-studio/models/car.glb?v=20260811-car1",
+  },
+  airoutlet: {
+    url: "/bridge-static/3d-studio/models/air-outlet-lite.glb?v=20260902-air-outlet-lite-v1",
+    fallbackUrl:
+      "/bridge-static/3d-studio/models/air-outlet.glb?v=20260812-air-outlet1",
+  },
+  pipelinewaterpurifier: {
+    url: "/bridge-static/3d-studio/models/pipeline-water-purifier-lite.glb?v=20260902-pipeline-water-purifier-lite-v1",
+    fallbackUrl:
+      "/bridge-static/3d-studio/models/pipeline-water-purifier.glb?v=20260821-glb-material-v1",
+  },
+  tea_bar_machine: {
+    url: "/bridge-static/3d-studio/models/tea-bar-machine-lite.glb?v=20260902-tea-bar-machine-lite-v1",
+    fallbackUrl:
+      "/bridge-static/3d-studio/models/tea-bar-machine.glb?v=20260821-glb-material-v1",
+  },
+  elevator: {
+    url: "/bridge-static/3d-studio/models/elevator-lite.glb?v=20260902-elevator-lite-v1",
+    fallbackUrl:
+      "/bridge-static/3d-studio/models/elevator.glb?v=20260825-elevator-material-v1",
+  },
+  steelstairs: {
+    url: "/bridge-static/3d-studio/models/steel-stairs-lite.glb?v=20260902-steel-stairs-lite-v1",
+    fallbackUrl:
+      "/bridge-static/3d-studio/models/steel-stairs.glb?v=20260821-stairs-v1",
+  },
+  glassstairs: {
+    url: "/bridge-static/3d-studio/models/glass-stairs-lite.glb?v=20260902-glass-stairs-lite-v1",
+    fallbackUrl:
+      "/bridge-static/3d-studio/models/glass-stairs.glb?v=20260821-stairs-v1",
+  },
+  piano: {
+    url: "/bridge-static/3d-studio/models/piano-lite.glb?v=20260902-piano-lite-v1",
+    fallbackUrl:
+      "/bridge-static/3d-studio/models/piano.glb?v=20260824-piano-v3",
+    preserveAspect: true,
+  },
+});
+export const ALL_ITEM_MODELS = Object.freeze({
+  ...EXTERNAL_ITEM_MODELS,
+  bed: homeLiteModel("bed", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.8, 0.62, 2],
+    preserveOrigin: true,
+  }),
+  nightstand: homeLiteModel("nightstand", "20260901-all-home-furniture-v1", {
+    scaleBasis: [0.5, 0.55, 0.42],
+    preserveOrigin: true,
+  }),
+  vanity: homeLiteModel("vanity", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.2, 1.55, 0.5],
+    preserveOrigin: true,
+  }),
+  desk: homeLiteModel("desk", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.4, 0.76, 0.65],
+    preserveOrigin: true,
+  }),
+  bookcase: homeLiteModel("bookcase", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.2, 1.9, 0.32],
+    preserveOrigin: true,
+  }),
+  aquarium: homeLiteModel("aquarium", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.5, 1.4, 0.55],
+    preserveOrigin: true,
+  }),
+  table: homeLiteModel("table", "20260901-all-home-furniture-v1", {
+    scaleBasis: [2.4, 0.82, 1.8],
+    preserveOrigin: true,
+  }),
+  rounddiningtable: homeLiteModel("rounddiningtable", "20260901-all-home-furniture-v1", {
+    scaleBasis: [2.2, 0.78, 2.2],
+    preserveOrigin: true,
+  }),
+  chair: homeLiteModel("chair", "20260901-all-home-furniture-v1", {
+    scaleBasis: [0.5, 0.86, 0.5],
+    preserveOrigin: true,
+  }),
+  bar: homeLiteModel("bar", "20260901-all-home-furniture-v1", {
+    scaleBasis: [2.2, 1.05, 0.65],
+    preserveOrigin: true,
+  }),
+  sideboard: homeLiteModel("sideboard", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.6, 2.2, 0.45],
+    preserveOrigin: true,
+  }),
+  shoecabinet: homeLiteModel("shoecabinet", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.8, 2.25, 0.42],
+    preserveOrigin: true,
+  }),
+  cabinet: homeLiteModel("cabinet", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.6, 1.9, 0.45],
+    preserveOrigin: true,
+  }),
+  glasscabinet: homeLiteModel("glasscabinet", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.2, 1.9, 0.4],
+    preserveOrigin: true,
+  }),
+  shelf: homeLiteModel("shelf", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.2, 1.8, 0.45],
+    preserveOrigin: true,
+  }),
+  wallcabinet: homeLiteModel("wallcabinet", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.5, 0.82, 0.35],
+    preserveOrigin: true,
+  }),
+  kitchenbase: homeLiteModel("kitchenbase", "20260901-all-home-furniture-v1", {
+    scaleBasis: [2.4, 0.85, 0.6],
+    preserveOrigin: true,
+  }),
+  kitchensink: homeLiteModel("kitchensink", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.2, 0.85, 0.6],
+    preserveOrigin: true,
+  }),
+  kitchencooktop: homeLiteModel("kitchencooktop", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.2, 0.85, 0.6],
+    preserveOrigin: true,
+  }),
+  basin: homeLiteModel("basin", "20260901-all-home-furniture-v1", {
+    scaleBasis: [0.9, 0.88, 0.5],
+    preserveOrigin: true,
+  }),
+  toilet: homeLiteModel("toilet", "20260901-all-home-furniture-v1", {
+    scaleBasis: [0.42, 0.52, 0.7],
+    preserveOrigin: true,
+  }),
+  squattoilet: homeLiteModel("squattoilet", "20260901-all-home-furniture-v1", {
+    scaleBasis: [0.45, 0.18, 0.65],
+    preserveOrigin: true,
+  }),
+  urinal: homeLiteModel("urinal", "20260901-all-home-furniture-v1", {
+    scaleBasis: [0.38, 0.72, 0.34],
+    preserveOrigin: true,
+  }),
+  shower: homeLiteModel("shower", "20260901-all-home-furniture-v1", {
+    scaleBasis: [0.9, 2.1, 0.9],
+    preserveOrigin: true,
+  }),
+  bathtub: homeLiteModel("bathtub", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.7, 0.58, 0.78],
+    preserveOrigin: true,
+  }),
+  glasspartition: homeLiteModel("glasspartition", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.2, 2, 0.08],
+    preserveOrigin: true,
+  }),
+  stairs: homeLiteModel("stairs", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1, 1.65, 2.8],
+    preserveOrigin: true,
+  }),
+  pillar: homeLiteModel("pillar", "20260901-all-home-furniture-v1", {
+    scaleBasis: [0.45, 2.8, 0.45],
+    preserveOrigin: true,
+  }),
+  curtain_left: homeLiteModel("curtain_left", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.8, 2.4, 0.18],
+    preserveOrigin: true,
+  }),
+  curtain_right: homeLiteModel("curtain_right", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.8, 2.4, 0.18],
+    preserveOrigin: true,
+  }),
+  curtain_split: homeLiteModel("curtain_split", "20260901-all-home-furniture-v1", {
+    scaleBasis: [1.8, 2.4, 0.18],
+    preserveOrigin: true,
+  }),
+  rounddiningtable_turntable: homeLiteModel(
+    "rounddiningtable_turntable",
+    "20260901-all-home-furniture-v1",
+    {
+      scaleBasis: [2.2, 0.78, 2.2],
+      preserveOrigin: true,
+    },
+  ),
+  tv_standard: applianceLiteModel("tv_standard", {
+    scaleBasis: [1.5, 0.92, 0.18],
+    preserveOrigin: true,
+  }),
+  tv_tabletop: applianceLiteModel("tv_tabletop", {
+    scaleBasis: [1.5, 0.92, 0.18],
+    preserveOrigin: true,
+  }),
+  tv_mobile: applianceLiteModel("tv_mobile", {
+    scaleBasis: [1.5, 0.92, 0.18],
+    preserveOrigin: true,
+  }),
+  wallac: applianceLiteModel("wallac", {
+    scaleBasis: [0.9, 0.28, 0.22],
+    preserveOrigin: true,
+  }),
+  floorac: applianceLiteModel("floorac", {
+    scaleBasis: [0.42, 1.75, 0.42],
+    preserveOrigin: true,
+  }),
+  airpurifier: applianceLiteModel("airpurifier", {
+    scaleBasis: [0.34, 0.7, 0.34],
+    preserveOrigin: true,
+  }),
+  robotvacuum: applianceLiteModel("robotvacuum", {
+    scaleBasis: [0.55, 0.85, 0.5],
+    preserveOrigin: true,
+  }),
+  floorlamp: applianceLiteModel("floorlamp", {
+    scaleBasis: [1.35, 1.8, 0.5],
+    preserveOrigin: true,
+  }),
+  walllamp: applianceLiteModel("walllamp", {
+    scaleBasis: [0.3, 0.34, 0.22],
+    preserveOrigin: true,
+  }),
+  fridge: applianceLiteModel("fridge", {
+    scaleBasis: [0.75, 1.85, 0.72],
+    preserveOrigin: true,
+  }),
+  rangehood: applianceLiteModel("rangehood", {
+    scaleBasis: [0.9, 0.55, 0.45],
+    preserveOrigin: true,
+  }),
+  dishwasher: applianceLiteModel("dishwasher", {
+    scaleBasis: [0.6, 0.82, 0.6],
+    preserveOrigin: true,
+  }),
+  steamoven: applianceLiteModel("steamoven", {
+    scaleBasis: [0.6, 0.6, 0.55],
+    preserveOrigin: true,
+  }),
+  microwave: applianceLiteModel("microwave", {
+    scaleBasis: [0.52, 0.32, 0.42],
+    preserveOrigin: true,
+  }),
+  ricecooker: applianceLiteModel("ricecooker", {
+    scaleBasis: [0.28, 0.25, 0.32],
+    preserveOrigin: true,
+  }),
+  washer: applianceLiteModel("washer", {
+    scaleBasis: [0.6, 0.85, 0.65],
+    preserveOrigin: true,
+  }),
+  dryer: applianceLiteModel("dryer", {
+    scaleBasis: [0.6, 0.85, 0.65],
+    preserveOrigin: true,
+  }),
+  storagewaterheater: applianceLiteModel("storagewaterheater", {
+    scaleBasis: [0.86, 0.48, 0.46],
+    preserveOrigin: true,
+  }),
+  gaswaterheater: applianceLiteModel("gaswaterheater", {
+    scaleBasis: [0.42, 0.72, 0.22],
+    preserveOrigin: true,
+  }),
+  desktop: applianceLiteModel("desktop", {
+    scaleBasis: [0.72, 0.5, 0.32],
+    preserveOrigin: true,
+  }),
+  laptop: applianceLiteModel("laptop", {
+    scaleBasis: [0.36, 0.22, 0.28],
+    preserveOrigin: true,
+  }),
+  nas: applianceLiteModel("nas", {
+    scaleBasis: [0.28, 0.34, 0.24],
+    preserveOrigin: true,
+  }),
+});
+const FURNITURE_MODEL_TYPES = new Set([
+  "sofa",
+  "coffeetable",
+  "squarecoffeetable",
+  "tvstand",
+  "rug",
+  "plant",
+  "bed",
+  "nightstand",
+  "vanity",
+  "desk",
+  "bookcase",
+  "aquarium",
+  "table",
+  "rounddiningtable",
+  "chair",
+  "bar",
+  "sideboard",
+  "shoecabinet",
+  "cabinet",
+  "glasscabinet",
+  "shelf",
+  "wallcabinet",
+  "kitchenbase",
+  "kitchensink",
+  "kitchencooktop",
+  "basin",
+  "toilet",
+  "squattoilet",
+  "urinal",
+  "shower",
+  "bathtub",
+  "glasspartition",
+  "stairs",
+  "pillar",
+  "curtain_left",
+  "curtain_right",
+  "curtain_split",
+  "rounddiningtable_turntable",
+  "tv_standard",
+  "tv_tabletop",
+  "tv_mobile",
+  "wallac",
+  "floorac",
+  "airpurifier",
+  "robotvacuum",
+  "floorlamp",
+  "walllamp",
+  "fridge",
+  "rangehood",
+  "dishwasher",
+  "steamoven",
+  "microwave",
+  "ricecooker",
+  "washer",
+  "dryer",
+  "storagewaterheater",
+  "gaswaterheater",
+  "desktop",
+  "laptop",
+  "nas",
+]);
+const WOOD_TONE_MODEL_TYPES = new Set([
+  "bed",
+  "nightstand",
+  "vanity",
+  "desk",
+  "bookcase",
+  "table",
+  "rounddiningtable",
+  "chair",
+  "bar",
+  "sideboard",
+  "shoecabinet",
+  "cabinet",
+  "glasscabinet",
+  "shelf",
+  "wallcabinet",
+  "kitchenbase",
+  "kitchensink",
+  "kitchencooktop",
+]);
+const APPLIANCE_MODEL_TYPES = new Set([
+  "tv_standard",
+  "tv_tabletop",
+  "tv_mobile",
+  "wallac",
+  "floorac",
+  "airpurifier",
+  "robotvacuum",
+  "floorlamp",
+  "walllamp",
+  "fridge",
+  "rangehood",
+  "dishwasher",
+  "steamoven",
+  "microwave",
+  "ricecooker",
+  "washer",
+  "dryer",
+  "storagewaterheater",
+  "gaswaterheater",
+  "desktop",
+  "laptop",
+  "nas",
+  "pipelinewaterpurifier",
+  "tea_bar_machine",
+  "airoutlet",
+]);
+const PALETTE_OVERRIDE_MODEL_TYPES = new Set([
+  "sofa",
+  "coffeetable",
+  "squarecoffeetable",
+  "tvstand",
+  "rug",
+  "plant",
+  "bed",
+  "nightstand",
+  "vanity",
+  "desk",
+  "bookcase",
+  "pipelinewaterpurifier",
+  "tea_bar_machine",
+  "elevator",
+  "steelstairs",
+  "glassstairs",
+  "piano",
+]);
+export function createExternalModelManager({
+  THREE: THREE,
+  loader: loader,
+  stairItemTypes: stairItemTypes,
+  isModelInUse: isModelInUse,
+  requestRender: requestRender,
+  onLoadStateChange: onLoadStateChange = () => {},
+  maxConcurrentLoads: maxConcurrentLoads = 2,
+  loadTimeoutMs: loadTimeoutMs = 12000,
+}) {
+  const loadedModels = new Map();
+  const pendingLoads = new Map();
+  const loadQueue = [];
+  const materialCache = new Map();
+  const concurrencyLimit = Math.max(1, Math.floor(finite(maxConcurrentLoads, 2)));
+  const timeoutMs = Math.max(50, Math.floor(finite(loadTimeoutMs, 12000)));
+  let activeLoads = 0;
+  let materialReuseCount = 0;
+  function modelLoadState() {
+    return {
+      active: activeLoads,
+      queued: loadQueue.length,
+      limit: concurrencyLimit,
+      timeoutMs: timeoutMs,
+      materials: materialCache.size,
+      materialReuses: materialReuseCount,
+    };
+  }
+  function notifyLoadState() {
+    onLoadStateChange(modelLoadState());
+  }
+  function pumpQueue() {
+    while (activeLoads < concurrencyLimit && loadQueue.length) {
+      const queuedJob = loadQueue.shift();
+      activeLoads += 1;
+      notifyLoadState();
+      Promise.resolve()
+        .then(queuedJob.run)
+        .then(queuedJob.resolve, queuedJob.reject)
+        .finally(() => {
+          activeLoads -= 1;
+          pumpQueue();
+          notifyLoadState();
+        });
+    }
+  }
+  function enqueueLoad(runLoad) {
+    return new Promise((resolveLoad, rejectLoad) => {
+      loadQueue.push({
+        run: runLoad,
+        resolve: resolveLoad,
+        reject: rejectLoad,
+      });
+      notifyLoadState();
+      pumpQueue();
+    });
+  }
+  function loadModelAsset(modelDef, modelKey) {
+    let timeoutId = null;
+    const loadWithTimeout = (url) =>
+      Promise.race([
+        loader.loadAsync(url),
+        new Promise((resolveRace, rejectRace) => {
+          timeoutId = setTimeout(
+            () => rejectRace(new Error("模型 " + modelKey + " 加载超时")),
+            timeoutMs,
+          );
+        }),
+      ]).finally(() => clearTimeout(timeoutId));
+    if (modelDef?.url) {
+      return loadWithTimeout(modelDef.url).catch((primaryError) => {
+        if (!modelDef.fallbackUrl) {
+          throw primaryError;
+        }
+        return loadWithTimeout(modelDef.fallbackUrl);
+      });
+    } else {
+      return Promise.reject(new Error("模型 " + modelKey + " 没有可用资源"));
+    }
+  }
+  function modelTypeForItem(item) {
+    if (item.type === "curtain") {
+      return (
+        "curtain_" +
+        (["left", "right", "split"].includes(item.curtainPosition)
+          ? item.curtainPosition
+          : "split")
+      );
+    } else if (
+      item.type === "rounddiningtable" &&
+      (item.roundTableTurntable === true ||
+        item.type === "rounddiningtableturntable")
+    ) {
+      return "rounddiningtable_turntable";
+    } else if (item.type === "tv") {
+      return (
+        "tv_" +
+        (["standard", "tabletop", "mobile"].includes(item.tvMountStyle)
+          ? item.tvMountStyle
+          : "standard")
+      );
+    } else {
+      return item.type;
+    }
+  }
+  function loadExternalItemModel(typeKey) {
+    if (
+      typeof window !== "undefined" &&
+      window.externalModelLoadsDeferred &&
+      !window.__haBridgeReleasingDeferredModels
+    ) {
+      window.__haBridgeDeferExternalModel?.(typeKey);
+      return Promise.resolve(null);
+    }
+    if (loadedModels.has(typeKey)) {
+      return Promise.resolve(loadedModels.get(typeKey));
+    }
+    if (pendingLoads.has(typeKey)) {
+      return pendingLoads.get(typeKey);
+    }
+    const definition = ALL_ITEM_MODELS[typeKey];
+    if (!definition) {
+      return Promise.resolve(null);
+    }
+    const loadPromise = enqueueLoad(() => loadModelAsset(definition, typeKey))
+      .then((gltf) => {
+        const sceneRoot = gltf.scene || gltf.scenes?.[0];
+        if (!sceneRoot) {
+          throw new Error("模型 " + typeKey + " 没有可显示的场景");
+        }
+        sceneRoot.updateMatrixWorld(true);
+        const modelSize = new THREE.Box3().setFromObject(sceneRoot).getSize(new THREE.Vector3());
+        if (
+          ![modelSize.x, modelSize.y, modelSize.z].every(
+            (axisSize) => Number.isFinite(axisSize) && axisSize > 0.001,
+          )
+        ) {
+          throw new Error("模型 " + typeKey + " 的尺寸无效");
+        }
+        const cached = {
+          source: sceneRoot,
+          size: modelSize,
+        };
+        loadedModels.set(typeKey, cached);
+        if (isModelInUse(typeKey)) {
+          requestRender({
+            force: true,
+          });
+        }
+        return cached;
+      })
+      .catch((loadError) => {
+        globalThis.window?.HABridgeLog?.error(
+          loadError,
+          {
+            phase: "studio-model-load",
+          },
+          "无法载入外部模型 " + typeKey + "：" + (loadError?.message || loadError),
+        );
+        if (String(loadError?.message || loadError).includes("加载超时")) {
+          console.debug("外部模型 " + typeKey + " 加载超时，继续使用原模型");
+        } else {
+          console.error("无法载入外部模型 " + typeKey, loadError);
+        }
+        if (isModelInUse(typeKey)) {
+          requestRender({
+            force: true,
+          });
+        }
+        return null;
+      })
+      .finally(() => pendingLoads.delete(typeKey));
+    pendingLoads.set(typeKey, loadPromise);
+    return loadPromise;
+  }
+  function paletteFromLuminance(sourceMaterial, palette) {
+    if (!sourceMaterial) {
+      return sourceMaterial;
+    }
+    const sourceColor = sourceMaterial.color?.clone?.() || new THREE.Color(16777215);
+    const luminance = sourceColor.r * 0.2126 + sourceColor.g * 0.7152 + sourceColor.b * 0.0722;
+    const emissiveColor =
+      luminance < 0.1
+        ? palette.furnitureDark
+        : luminance < 0.42
+          ? palette.furniture
+          : luminance < 0.72
+            ? palette.furnitureSoft
+            : palette.furnitureLight;
+    const baseColor = new THREE.Color(emissiveColor).multiplyScalar(0.34);
+    const paletteMaterial = new THREE.MeshStandardMaterial({
+      color: baseColor,
+      roughness: luminance < 0.1 ? 0.34 : luminance < 0.42 ? 0.52 : 0.58,
+      metalness: luminance < 0.1 ? 0.22 : 0.04,
+      emissive: emissiveColor,
+      emissiveIntensity: 0.46,
+      side: sourceMaterial.side ?? THREE.FrontSide,
+      transparent: false,
+      opacity: 1,
+      depthWrite: sourceMaterial.depthWrite ?? true,
+      depthTest: sourceMaterial.depthTest ?? true,
+      toneMapped: true,
+    });
+    paletteMaterial.name = (sourceMaterial.name || "external-model") + " · HA Bridge palette";
+    return paletteMaterial;
+  }
+  function makeFurnitureMaterial(baseMaterial, color, options = {}) {
+    if (!baseMaterial) {
+      return baseMaterial;
+    }
+    const furnitureMaterial = new THREE.MeshStandardMaterial({
+      color: color,
+      roughness: options.roughness ?? 0.58,
+      metalness: options.metalness ?? 0.04,
+      flatShading: options.flatShading ?? false,
+      emissive: 0,
+      emissiveIntensity: 0,
+      side: baseMaterial.side ?? THREE.FrontSide,
+      transparent: options.transparent ?? false,
+      opacity: options.opacity ?? 1,
+      depthWrite: options.depthWrite ?? baseMaterial.depthWrite ?? true,
+      depthTest: baseMaterial.depthTest ?? true,
+      toneMapped: true,
+    });
+    furnitureMaterial.name =
+      (baseMaterial.name || "external-model") + " · HA Bridge furniture material";
+    furnitureMaterial.polygonOffset = options.polygonOffset === true;
+    furnitureMaterial.polygonOffsetFactor = options.polygonOffsetFactor ?? 0;
+    furnitureMaterial.polygonOffsetUnits = options.polygonOffsetUnits ?? 0;
+    return furnitureMaterial;
+  }
+  function furnitureTint(material, colors, modelType) {
+    const materialName = (material?.name || "").toLowerCase();
+    let tint = colors.furniture;
+    if (/^curtain_(left|right|split)$/.test(modelType)) {
+      const curtainMatIndex = materialName.match(/material-(\d+)/)?.[1];
+      if (["0", "4"].includes(curtainMatIndex)) {
+        tint = colors.furnitureDark;
+      } else if (["1", "5", "2", "3"].includes(curtainMatIndex)) {
+        tint = colors.furnitureSoft;
+      } else {
+        tint = colors.furniture;
+      }
+    } else if (modelType === "coffeetable" || modelType === "squarecoffeetable") {
+      tint = materialName.endsWith("-dark")
+        ? colors.furnitureDark
+        : materialName.endsWith("-light") || materialName.endsWith("-soft")
+          ? colors.furnitureSoft
+          : colors.furniture;
+    } else if (modelType === "tvstand") {
+      const tvstandColor = material?.color?.clone?.() || new THREE.Color(16777215);
+      const tvstandLum = tvstandColor.r * 0.2126 + tvstandColor.g * 0.7152 + tvstandColor.b * 0.0722;
+      tint =
+        materialName.endsWith("-dark") || tvstandLum < 0.16
+          ? colors.furnitureDark
+          : materialName.endsWith("-soft") || materialName.endsWith("-light") || tvstandLum >= 0.3
+            ? colors.furnitureSoft
+            : colors.furniture;
+    } else if (
+      ["table", "rounddiningtable", "rounddiningtable_turntable"].includes(modelType)
+    ) {
+      const tableMatIndex = materialName.match(/material-(\d+)/)?.[1];
+      const softMatIndexes = modelType === "rounddiningtable_turntable" ? ["0", "3"] : ["0"];
+      const tableColor = material?.color?.clone?.() || new THREE.Color(16777215);
+      const tableLum = tableColor.r * 0.2126 + tableColor.g * 0.7152 + tableColor.b * 0.0722;
+      tint = softMatIndexes.includes(tableMatIndex)
+        ? colors.furnitureSoft
+        : tableLum < 0.2
+          ? colors.furnitureDark
+          : tableLum < 0.55
+            ? colors.furniture
+            : colors.furnitureSoft;
+    } else if (
+      ["kitchenbase", "kitchensink", "kitchencooktop", "basin"].includes(modelType)
+    ) {
+      const kitchenMatIndex = materialName.match(/material-(\d+)/)?.[1];
+      const kitchenHardIndex = modelType === "basin" ? "1" : "2";
+      const kitchenColor = material?.color?.clone?.() || new THREE.Color(16777215);
+      const kitchenLum = kitchenColor.r * 0.2126 + kitchenColor.g * 0.7152 + kitchenColor.b * 0.0722;
+      tint =
+        kitchenMatIndex === kitchenHardIndex
+          ? colors.furniture
+          : kitchenLum < 0.2
+            ? colors.furnitureDark
+            : kitchenLum < 0.55
+              ? colors.furniture
+              : colors.furnitureSoft;
+    } else if (modelType === "stairs") {
+      tint = colors.furniture;
+    } else if (
+      modelType === "plant" &&
+      (materialName.endsWith("-soft") || materialName.endsWith("-dark"))
+    ) {
+      tint = colors.furniture;
+    } else if (materialName.includes("foliagesoft")) {
+      tint = 7835779;
+    } else if (materialName.includes("foliage")) {
+      tint = 6257261;
+    } else if (materialName.endsWith("-soft") || materialName.endsWith("-light")) {
+      tint = colors.furnitureSoft;
+    } else if (materialName.endsWith("-dark")) {
+      tint = colors.furnitureDark;
+    } else if (WOOD_TONE_MODEL_TYPES.has(modelType)) {
+      const furnitureColor = material.color?.clone?.() || new THREE.Color(16777215);
+      const furnitureLum = furnitureColor.r * 0.2126 + furnitureColor.g * 0.7152 + furnitureColor.b * 0.0722;
+      tint =
+        furnitureLum < 0.2
+          ? colors.furnitureDark
+          : furnitureLum < 0.55
+            ? colors.furniture
+            : colors.furnitureSoft;
+    }
+    const rugSoftOffset = modelType === "rug" && materialName.endsWith("-soft");
+    const isGlass =
+      materialName.endsWith("-glass") ||
+      material?.transparent === true ||
+      (material?.opacity ?? 1) < 1;
+    return makeFurnitureMaterial(material, tint, {
+      roughness: materialName.includes("foliage") || modelType === "rug" ? 0.9 : 0.72,
+      metalness: materialName.includes("foliage") || modelType === "rug" ? 0 : 0.02,
+      polygonOffset: rugSoftOffset,
+      polygonOffsetFactor: rugSoftOffset ? -2 : 0,
+      polygonOffsetUnits: rugSoftOffset ? -4 : 0,
+      transparent: isGlass,
+      opacity: isGlass ? 0.42 : 1,
+      depthWrite: !isGlass,
+    });
+  }
+  function stairMaterial(stairSource, stairPalette, stairType) {
+    if (!stairSource) {
+      return stairSource;
+    }
+    if (
+      stairType === "glassstairs" &&
+      stairSource.transparent === true &&
+      finite(stairSource.opacity, 1) < 0.5
+    ) {
+      const glassMaterial = new THREE.MeshStandardMaterial({
+        color: stairPalette.furnitureSoft,
+        roughness: 0.12,
+        metalness: 0.04,
+        transparent: true,
+        opacity: 0.3,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        depthTest: true,
+        toneMapped: true,
+      });
+      glassMaterial.name = (stairSource.name || "stair-glass") + " · HA Bridge glass";
+      return glassMaterial;
+    }
+    const isSteel = stairType === "steelstairs";
+    const frameColor = stairPalette.furnitureSoft;
+    const frameMaterial = new THREE.MeshStandardMaterial({
+      color: frameColor,
+      roughness: isSteel ? 0.38 : 0.58,
+      metalness: isSteel ? 0.42 : 0.08,
+      emissive: frameColor,
+      emissiveIntensity: 0.07,
+      side: stairSource.side ?? THREE.FrontSide,
+      transparent: false,
+      opacity: 1,
+      depthWrite: true,
+      depthTest: true,
+      toneMapped: true,
+    });
+    frameMaterial.name = (stairSource.name || "stair-frame") + " · HA Bridge palette";
+    return frameMaterial;
+  }
+  function resolveMaterial(rawMaterial, colorPalette, itemType) {
+    if (typeof THREE.MeshStandardMaterial != "function") {
+      return rawMaterial.clone?.() || rawMaterial;
+    }
+    if (APPLIANCE_MODEL_TYPES.has(itemType)) {
+      const applianceMatName = (rawMaterial?.name || "").toLowerCase();
+      const applianceColor = rawMaterial?.color?.clone?.() || new THREE.Color(16777215);
+      const applianceLum = applianceColor.r * 0.2126 + applianceColor.g * 0.7152 + applianceColor.b * 0.0722;
+      const matIndex = applianceMatName.match(/material-(\d+)/)?.[1];
+      const applianceBase = colorPalette.appliance ?? colorPalette.furniture;
+      const applianceSoft = colorPalette.applianceSoft ?? colorPalette.furnitureSoft;
+      const applianceDark = colorPalette.applianceDark ?? colorPalette.furnitureDark;
+      const isNasScreen = ["desktop", "laptop", "nas"].includes(itemType) && matIndex === "0";
+      const applianceTint =
+        itemType === "walllamp"
+          ? matIndex === "2"
+            ? colorPalette.accent
+            : applianceBase
+          : itemType === "floorlamp"
+            ? applianceBase
+            : itemType === "desktop"
+              ? matIndex === "1"
+                ? applianceDark
+                : applianceSoft
+              : itemType === "laptop" && matIndex === "2"
+                ? applianceDark
+                : (itemType === "laptop" && matIndex === "1") || isNasScreen
+                  ? applianceSoft
+                  : itemType.startsWith("tv_")
+                    ? applianceDark
+                    : itemType === "pipelinewaterpurifier" ||
+                        itemType === "tea_bar_machine"
+                      ? applianceLum < 0.16
+                        ? applianceBase
+                        : applianceSoft
+                      : applianceMatName.endsWith("-dark") || applianceLum < 0.16
+                        ? applianceDark
+                        : applianceMatName.endsWith("-soft") || applianceLum < 0.45
+                          ? applianceSoft
+                          : applianceBase;
+      const applianceMaterial = makeFurnitureMaterial(rawMaterial, applianceTint, {
+        roughness: 0.82,
+        metalness: 0,
+        flatShading: false,
+      });
+      if (itemType === "tea_bar_machine") {
+        applianceMaterial.emissive = new THREE.Color(0);
+        applianceMaterial.emissiveIntensity = 0;
+      }
+      return applianceMaterial;
+    }
+    if (FURNITURE_MODEL_TYPES.has(itemType)) {
+      return furnitureTint(rawMaterial, colorPalette, itemType);
+    }
+    if (itemType === "sofa") {
+      const isCushion = /cushion/i.test(rawMaterial?.name || "");
+      return makeFurnitureMaterial(rawMaterial, isCushion ? colorPalette.furnitureSoft : colorPalette.furniture, {
+        roughness: 0.8,
+        metalness: 0.01,
+      });
+    }
+    if (itemType === "elevator") {
+      const isElevatorAccent = /Color_00[34]/i.test(rawMaterial?.name || "");
+      const elevatorColor = isElevatorAccent ? new THREE.Color(colorPalette.wall) : new THREE.Color(colorPalette.furniture);
+      return makeFurnitureMaterial(
+        rawMaterial,
+        elevatorColor,
+        isElevatorAccent
+          ? {
+              roughness: 0.82,
+              metalness: 0.01,
+            }
+          : {},
+      );
+    }
+    if (itemType === "piano") {
+      const pianoMatName = (rawMaterial?.name || "").toLowerCase();
+      const pianoTint = pianoMatName.includes("color_009")
+        ? colorPalette.furnitureDark
+        : pianoMatName.includes("blinds_weave") ||
+            pianoMatName.includes("金色") ||
+            pianoMatName.includes("*1")
+          ? colorPalette.furnitureSoft
+          : colorPalette.furniture;
+      const pianoMaterial = new THREE.MeshStandardMaterial({
+        color: pianoTint,
+        roughness: 0.72,
+        metalness: 0.06,
+        emissive: pianoTint,
+        emissiveIntensity: 0.08,
+        side: rawMaterial?.side ?? THREE.FrontSide,
+        transparent: false,
+        opacity: 1,
+        depthWrite: rawMaterial?.depthWrite ?? true,
+        depthTest: rawMaterial?.depthTest ?? true,
+        toneMapped: true,
+      });
+      pianoMaterial.name = (rawMaterial?.name || "piano") + " · HA Bridge furniture palette";
+      return pianoMaterial;
+    }
+    if (stairItemTypes.has(itemType)) {
+      return stairMaterial(rawMaterial, colorPalette, itemType);
+    } else {
+      return paletteFromLuminance(rawMaterial, colorPalette);
+    }
+  }
+  function recomputeNormals(geometry) {
+    const clonedGeometry = geometry?.clone?.();
+    if (clonedGeometry?.computeVertexNormals) {
+      clonedGeometry.computeVertexNormals();
+      if (clonedGeometry.attributes?.normal) {
+        clonedGeometry.attributes.normal.needsUpdate = true;
+      }
+      clonedGeometry.computeBoundingBox?.();
+      clonedGeometry.computeBoundingSphere?.();
+      return clonedGeometry;
+    } else {
+      return geometry;
+    }
+  }
+  function collectVertexIndexes(geom, materialIndex = null) {
+    const indexes = new Set();
+    const positions = geom?.attributes?.position;
+    if (!positions) {
+      return indexes;
+    }
+    const indexAttr = geom.index;
+    const groups = Number.isInteger(materialIndex)
+      ? (geom.groups || []).filter((group) => group.materialIndex === materialIndex)
+      : [];
+    if (groups.length) {
+      for (const matchedGroup of groups) {
+        const groupEnd = matchedGroup.start + matchedGroup.count;
+        for (let idx = matchedGroup.start; idx < groupEnd; idx += 1) {
+          indexes.add(indexAttr ? indexAttr.getX(idx) : idx);
+        }
+      }
+    } else if (materialIndex === null) {
+      for (let vertIdx = 0; vertIdx < positions.count; vertIdx += 1) {
+        indexes.add(vertIdx);
+      }
+    }
+    return indexes;
+  }
+  function yExtent(positionAttr, vertexSet) {
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const vertexIndex of vertexSet) {
+      const yValue = positionAttr.getY(vertexIndex);
+      minY = Math.min(minY, yValue);
+      maxY = Math.max(maxY, yValue);
+    }
+    return {
+      min: minY,
+      max: maxY,
+    };
+  }
+  function reshapeLaptopScreen(screenGeometry, referenceGeometry, screenMaterialIndex = null, refMaterialIndex = null) {
+    if (!screenGeometry?.attributes?.position) {
+      return screenGeometry;
+    }
+    const screenPositions = screenGeometry.attributes.position;
+    const resultGeometry = screenGeometry.clone?.();
+    if (!resultGeometry?.attributes?.position) {
+      return screenGeometry;
+    }
+    const resultPositions = resultGeometry.attributes.position;
+    const screenVerts = collectVertexIndexes(screenGeometry, screenMaterialIndex);
+    if (!screenVerts.size) {
+      return screenGeometry;
+    }
+    const { min: screenMinY, max: screenMaxY } = yExtent(screenPositions, screenVerts);
+    if (
+      !Number.isFinite(screenMinY) ||
+      !Number.isFinite(screenMaxY) ||
+      screenMaxY - screenMinY < 0.001
+    ) {
+      return screenGeometry;
+    }
+    const refPositions = referenceGeometry?.attributes?.position;
+    const refVerts = collectVertexIndexes(referenceGeometry, refMaterialIndex);
+    if (!refPositions || !refVerts.size) {
+      return screenGeometry;
+    }
+    const refExtent = yExtent(refPositions, refVerts);
+    if (!Number.isFinite(refExtent.min) || !Number.isFinite(refExtent.max)) {
+      return screenGeometry;
+    }
+    const midY = (refExtent.min + refExtent.max) / 2;
+    let lowerFront = null;
+    let upperFront = null;
+    for (const refVert of refVerts) {
+      const point = {
+        y: refPositions.getY(refVert),
+        z: refPositions.getZ(refVert),
+      };
+      if (point.y <= midY && (!lowerFront || point.z > lowerFront.z)) {
+        lowerFront = point;
+      }
+      if (point.y > midY && (!upperFront || point.z > upperFront.z)) {
+        upperFront = point;
+      }
+    }
+    if (!lowerFront || !upperFront || upperFront.y - lowerFront.y < 0.001) {
+      return screenGeometry;
+    }
+    const spanY = upperFront.y - lowerFront.y;
+    const targetMinY = lowerFront.y + spanY * 0.04;
+    const targetMaxY = upperFront.y - spanY * 0.07;
+    const screenSpanY = screenMaxY - screenMinY;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (const screenVert of screenVerts) {
+      const zValue = screenPositions.getZ(screenVert);
+      minZ = Math.min(minZ, zValue);
+      maxZ = Math.max(maxZ, zValue);
+    }
+    const spanZ = Math.max(maxZ - minZ, 0.001);
+    const insetDepth = Math.min(spanZ, spanY * 0.022);
+    const zBias = spanY * 0.008;
+    for (const screenVertIdx of screenVerts) {
+      const sourceY = screenPositions.getY(screenVertIdx);
+      const mappedY = targetMinY + ((sourceY - screenMinY) / screenSpanY) * (targetMaxY - targetMinY);
+      const mappedZ = lowerFront.z + ((mappedY - lowerFront.y) / spanY) * (upperFront.z - lowerFront.z) + zBias;
+      const normalizedZ = (screenPositions.getZ(screenVertIdx) - minZ) / spanZ;
+      resultPositions.setY(screenVertIdx, mappedY);
+      resultPositions.setZ(screenVertIdx, mappedZ - insetDepth * (1 - normalizedZ));
+    }
+    resultPositions.needsUpdate = true;
+    resultGeometry.computeVertexNormals?.();
+    resultGeometry.computeBoundingBox?.();
+    resultGeometry.computeBoundingSphere?.();
+    return resultGeometry;
+  }
+  const textureProps = Object.freeze([
+    "alphaMap",
+    "anisotropyMap",
+    "aoMap",
+    "bumpMap",
+    "clearcoatMap",
+    "clearcoatNormalMap",
+    "clearcoatRoughnessMap",
+    "displacementMap",
+    "emissiveMap",
+    "envMap",
+    "gradientMap",
+    "iridescenceMap",
+    "iridescenceThicknessMap",
+    "lightMap",
+    "map",
+    "matcap",
+    "metalnessMap",
+    "normalMap",
+    "roughnessMap",
+    "sheenColorMap",
+    "sheenRoughnessMap",
+    "specularColorMap",
+    "specularIntensityMap",
+    "thicknessMap",
+    "transmissionMap",
+  ]);
+  const scalarProps = Object.freeze([
+    "alphaHash",
+    "alphaTest",
+    "alphaToCoverage",
+    "anisotropy",
+    "aoMapIntensity",
+    "attenuationColor",
+    "attenuationDistance",
+    "blendAlpha",
+    "blendColor",
+    "blendDst",
+    "blendDstAlpha",
+    "blendEquation",
+    "blendEquationAlpha",
+    "blending",
+    "blendSrc",
+    "blendSrcAlpha",
+    "bumpScale",
+    "clearcoat",
+    "clearcoatNormalScale",
+    "clearcoatRoughness",
+    "clipIntersection",
+    "clipShadows",
+    "color",
+    "colorWrite",
+    "depthFunc",
+    "depthTest",
+    "depthWrite",
+    "displacementBias",
+    "displacementScale",
+    "dithering",
+    "emissive",
+    "emissiveIntensity",
+    "envMapIntensity",
+    "flatShading",
+    "fog",
+    "forceSinglePass",
+    "ior",
+    "iridescence",
+    "iridescenceIOR",
+    "iridescenceThicknessRange",
+    "lightMapIntensity",
+    "metalness",
+    "normalMapType",
+    "normalScale",
+    "opacity",
+    "polygonOffset",
+    "polygonOffsetFactor",
+    "polygonOffsetUnits",
+    "precision",
+    "premultipliedAlpha",
+    "reflectivity",
+    "refractionRatio",
+    "roughness",
+    "shadowSide",
+    "sheen",
+    "sheenColor",
+    "sheenRoughness",
+    "side",
+    "specularColor",
+    "specularIntensity",
+    "stencilFail",
+    "stencilFunc",
+    "stencilFuncMask",
+    "stencilRef",
+    "stencilWrite",
+    "stencilWriteMask",
+    "stencilZFail",
+    "stencilZPass",
+    "thickness",
+    "toneMapped",
+    "transmission",
+    "vertexColors",
+    "visible",
+    "wireframe",
+    "wireframeLinecap",
+    "wireframeLinejoin",
+    "wireframeLinewidth",
+  ]);
+  function canonicalizeValue(propValue) {
+    if (propValue === undefined) {
+      return "undefined";
+    } else if (propValue === null) {
+      return null;
+    } else if (typeof propValue == "number") {
+      if (Number.isNaN(propValue)) {
+        return "NaN";
+      } else if (Number.isFinite(propValue)) {
+        if (Object.is(propValue, -0)) {
+          return 0;
+        } else {
+          return propValue;
+        }
+      } else if (propValue > 0) {
+        return "Infinity";
+      } else {
+        return "-Infinity";
+      }
+    } else if (["string", "boolean"].includes(typeof propValue)) {
+      return propValue;
+    } else if (propValue.isTexture) {
+      return ["texture", propValue.uuid ?? propValue.id ?? "anonymous"];
+    } else if (propValue.isColor) {
+      return [propValue.r, propValue.g, propValue.b];
+    } else if (Array.isArray(propValue)) {
+      return propValue.map(canonicalizeValue);
+    } else if (typeof propValue.toArray == "function") {
+      return propValue.toArray().map(canonicalizeValue);
+    } else if (
+      ["x", "y", "z", "w"].some((axisKey) => typeof propValue[axisKey] == "number")
+    ) {
+      return [propValue.x, propValue.y, propValue.z, propValue.w].map(canonicalizeValue);
+    } else {
+      return String(propValue);
+    }
+  }
+  function materialCacheKey(mat) {
+    if (mat?.isShaderMaterial || mat?.isRawShaderMaterial) {
+      return JSON.stringify([
+        mat.type || "ShaderMaterial",
+        "unique",
+        mat.uuid || mat.id,
+      ]);
+    }
+    const customKey =
+      typeof mat?.customProgramCacheKey == "function"
+        ? mat.customProgramCacheKey()
+        : "";
+    return JSON.stringify([
+      mat?.type || mat?.constructor?.name || "Material",
+      customKey,
+      scalarProps.map((scalarKey) => [scalarKey, canonicalizeValue(mat?.[scalarKey])]),
+      textureProps.map((textureKey) => [textureKey, canonicalizeValue(mat?.[textureKey])]),
+    ]);
+  }
+  function cacheMaterial(inputMaterial, cachePalette, cacheModelType) {
+    if (!inputMaterial) {
+      return inputMaterial;
+    }
+    const resolvedMaterial =
+      PALETTE_OVERRIDE_MODEL_TYPES.has(cacheModelType) || APPLIANCE_MODEL_TYPES.has(cacheModelType)
+        ? resolveMaterial(inputMaterial, cachePalette, cacheModelType)
+        : inputMaterial.clone?.() || inputMaterial;
+    const cacheKey = materialCacheKey(resolvedMaterial);
+    if (materialCache.has(cacheKey)) {
+      materialReuseCount += 1;
+      if (resolvedMaterial !== inputMaterial) {
+        resolvedMaterial.dispose?.();
+      }
+      return materialCache.get(cacheKey);
+    } else {
+      materialCache.set(cacheKey, resolvedMaterial);
+      return resolvedMaterial;
+    }
+  }
+  function addExternalItemModel(parent, itemData, itemPalette, { selected: selected = false } = {}) {
+    const resolvedType = modelTypeForItem(itemData);
+    const modelEntry = loadedModels.get(resolvedType);
+    if (!modelEntry) {
+      loadExternalItemModel(resolvedType);
+      return false;
+    }
+    const clonedRoot = modelEntry.source.clone(true);
+    let laptopScreenRef = null;
+    if (resolvedType === "laptop") {
+      clonedRoot.traverse((node) => {
+        if (!node.isMesh || laptopScreenRef) {
+          return;
+        }
+        const screenMatIndex = (
+          Array.isArray(node.material) ? node.material : [node.material]
+        ).findIndex(
+          (candidateMat) =>
+            (candidateMat?.name || "").toLowerCase().match(/material-(\d+)/)?.[1] ===
+            "1",
+        );
+        if (!(screenMatIndex < 0)) {
+          laptopScreenRef = {
+            geometry: node.geometry,
+            materialIndex: Array.isArray(node.material) ? screenMatIndex : null,
+          };
+        }
+      });
+    }
+    clonedRoot.traverse((mesh) => {
+      if (!mesh.isMesh) {
+        return;
+      }
+      const originalGeometry = mesh.geometry;
+      const screenSlotIndex = (
+        Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+      ).findIndex(
+        (slotMat) =>
+          (slotMat?.name || "").toLowerCase().match(/material-(\d+)/)?.[1] === "2",
+      );
+      if (resolvedType === "laptop" && screenSlotIndex >= 0 && laptopScreenRef) {
+        mesh.geometry = reshapeLaptopScreen(
+          mesh.geometry,
+          laptopScreenRef.geometry,
+          Array.isArray(mesh.material) ? screenSlotIndex : null,
+          laptopScreenRef.materialIndex,
+        );
+      } else if (resolvedType === "tea_bar_machine" || resolvedType === "dishwasher") {
+        mesh.geometry = recomputeNormals(mesh.geometry);
+      }
+      const mapMaterial = (matCandidate) => {
+        const sharedMaterial = cacheMaterial(matCandidate, itemPalette, resolvedType);
+        return (selected && sharedMaterial?.clone?.()) || sharedMaterial;
+      };
+      mesh.material = Array.isArray(mesh.material)
+        ? mesh.material.map(mapMaterial)
+        : mapMaterial(mesh.material);
+      mesh.castShadow = resolvedType !== "rug";
+      mesh.receiveShadow =
+        resolvedType !== "glassstairs" || mesh.material?.transparent !== true;
+      if (resolvedType === "rug") {
+        const rugMaterials = Array.isArray(mesh.material)
+          ? mesh.material
+          : [mesh.material];
+        mesh.renderOrder = rugMaterials.some((rugMat) => rugMat?.polygonOffset) ? 1 : 0;
+      }
+      mesh.userData.externalModelSharedGeometry = mesh.geometry === originalGeometry;
+      mesh.userData.externalModelSharedTextures = true;
+      mesh.userData.externalModelSharedMaterial = !selected;
+    });
+    const modelMeta = ALL_ITEM_MODELS[resolvedType];
+    const basisSize =
+      Array.isArray(modelMeta?.scaleBasis) && modelMeta.scaleBasis.length === 3
+        ? {
+            x: modelMeta.scaleBasis[0],
+            y: modelMeta.scaleBasis[1],
+            z: modelMeta.scaleBasis[2],
+          }
+        : modelEntry.size;
+    if (modelMeta?.preserveAspect) {
+      const aspectScale = Math.min(
+        itemData.width / basisSize.x,
+        itemData.height / basisSize.y,
+        itemData.depth / basisSize.z,
+      );
+      clonedRoot.scale.setScalar(aspectScale);
+    } else {
+      clonedRoot.scale.set(
+        itemData.width / basisSize.x,
+        itemData.height / basisSize.y,
+        itemData.depth / basisSize.z,
+      );
+    }
+    if (modelMeta?.preserveOrigin) {
+      if (modelMeta?.groundAlign) {
+        clonedRoot.updateMatrixWorld(true);
+        const groundBox = new THREE.Box3().setFromObject(clonedRoot);
+        clonedRoot.position.y -= groundBox.min.y;
+        clonedRoot.position.y += finite(modelMeta.groundOffset, 0);
+      }
+    } else {
+      clonedRoot.updateMatrixWorld(true);
+      const bounds = new THREE.Box3().setFromObject(clonedRoot);
+      const center = bounds.getCenter(new THREE.Vector3());
+      clonedRoot.position.set(-center.x, -bounds.min.y, -center.z);
+    }
+    parent.add(clonedRoot);
+    return true;
+  }
+  return {
+    addExternalItemModel: addExternalItemModel,
+    loadExternalItemModel: loadExternalItemModel,
+    modelTypeForItem: modelTypeForItem,
+    modelLoadState: modelLoadState,
+    cacheRepresentation(items) {
+      return [...new Set(items.map(modelTypeForItem).filter(Boolean))].sort().map((cachedType) => ({
+        type: cachedType,
+        definition: ALL_ITEM_MODELS[cachedType],
+        loaded: loadedModels.has(cachedType),
+      }));
+    },
+  };
+}

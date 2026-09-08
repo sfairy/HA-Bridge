@@ -1,1 +1,240 @@
-(function(_0x152c4e,_0x1bf93b){const _0x3618a9=_0x4141,_0x4c42ac=_0x152c4e();while(!![]){try{const _0x1304e3=-parseInt(_0x3618a9(0x1a9))/0x1*(-parseInt(_0x3618a9(0x1a3))/0x2)+-parseInt(_0x3618a9(0x1b9))/0x3*(-parseInt(_0x3618a9(0x1ab))/0x4)+-parseInt(_0x3618a9(0x1b1))/0x5+parseInt(_0x3618a9(0x1a1))/0x6*(parseInt(_0x3618a9(0x1bd))/0x7)+parseInt(_0x3618a9(0x1aa))/0x8*(-parseInt(_0x3618a9(0x1bc))/0x9)+parseInt(_0x3618a9(0x19e))/0xa*(parseInt(_0x3618a9(0x1af))/0xb)+-parseInt(_0x3618a9(0x1ba))/0xc*(-parseInt(_0x3618a9(0x1b7))/0xd);if(_0x1304e3===_0x1bf93b)break;else _0x4c42ac['push'](_0x4c42ac['shift']());}catch(_0x373a0c){_0x4c42ac['push'](_0x4c42ac['shift']());}}}(_0x5034,0x4d688));import{createAccessMonitor as _0x4a3152}from'./access-monitor.js?v=20260905-interaction3d-v1-20260905-i3d-polish-v1-20260906-access-state-v2';import{createInteraction3dCover as _0x2976c5}from'./cover.js?v=20260905-interaction3d-cover-v1';function _0x5034(){const _0x19ccd2=['href','3dxXMQP','612156zLVHfp','pending','192033BFvgNZ','1389353RDHPTI','no-store','aria-label','dispose','access','json','editable','i3d-access-pending','replaceChildren','10UZMCpb','section','3D\x20户型暂不可用，请检查授权或重新载入。','6zfpHjB','visibilitychange','20EhFYnu','3D\x20交互授权不可用，请在授权信息中查看。','createElement','setAttribute','ready','role','10399LyauJL','152AviSLZ','918072lxFJpr','aria-busy','status','signal','5986805xBzkQn','delete','2789135ARnNcC','pagehide','addEventListener','updateInteraction3d','setActive','dataset','52MONydy'];_0x5034=function(){return _0x19ccd2;};return _0x5034();}import{createInteraction3dFocusLayout as _0x2589ee}from'./focus-layout.js?v=20260906-i3d-complete-v6';export async function requestInteraction3dAccess(){const _0x5d140b=_0x4141,_0xdff5c5=new AbortController(),_0x3bd736=setTimeout(()=>_0xdff5c5['abort'](),0x1388);try{const _0x3f8f71=await fetch('/api/v1/modules/interaction3d/access',{'cache':_0x5d140b(0x1be),'credentials':'same-origin','signal':_0xdff5c5[_0x5d140b(0x1ae)]});if(!_0x3f8f71['ok']){const _0xad1326=new Error(_0x3f8f71[_0x5d140b(0x1ad)]===0x193?_0x5d140b(0x1a4):_0x3f8f71[_0x5d140b(0x1ad)]===0x191?'登录状态已失效，请重新登录。':'暂时无法验证\x203D\x20交互授权，请稍候重试。');throw _0xad1326['status']=_0x3f8f71['status'],_0xad1326;}return await _0x3f8f71[_0x5d140b(0x1c2)]();}finally{clearTimeout(_0x3bd736);}}let c;const f=new Map(),u=new Map();function b(_0x3ec9b0,_0x2b11be){for(const _0x4454c8 of u['get'](_0x3ec9b0)||[])_0x4454c8(_0x2b11be);}export function getInteraction3dEditorView(_0x421411){return f['get'](_0x421411);}export function waitInteraction3dEditorView(_0x4c6478){return new Promise((_0x3d7b4d,_0x424846)=>{const _0x283aa1=()=>{const _0x4fe7af=_0x4141;clearTimeout(_0x1de6cf),u['get'](_0x4c6478)?.[_0x4fe7af(0x1b0)](_0x80cb5b),u['get'](_0x4c6478)?.['size']||u['delete'](_0x4c6478);},_0x80cb5b=_0x280681=>{const _0x564956=_0x4141,_0x4b62b9=f['get'](_0x4c6478);_0x280681?(_0x283aa1(),_0x424846(_0x280681)):_0x4b62b9?.[_0x564956(0x1a7)]&&_0x4b62b9['metadata']&&(_0x283aa1(),_0x3d7b4d(_0x4b62b9));},_0x1de6cf=setTimeout(()=>{_0x283aa1(),_0x424846(new Error('户型准备较慢，请稍候重试。'));},0x61a8);u['has'](_0x4c6478)||u['set'](_0x4c6478,new Set()),u['get'](_0x4c6478)['add'](_0x80cb5b),_0x80cb5b();});}export function cancelOtherInteraction3dViews(_0x273994){for(const [_0x32c728,_0x5d9c5d]of f)_0x32c728!==_0x273994&&_0x5d9c5d['viewEditing']&&_0x5d9c5d['setViewEditing'](!0x1);}function C(){const _0x5cd6ad=_0x4141;return c||(c=_0x4a3152({'requestGrant':requestInteraction3dAccess}),document['addEventListener'](_0x5cd6ad(0x1a2),()=>document['hidden']?c['suspend']():c['resume']()),window['addEventListener'](_0x5cd6ad(0x1b2),()=>c['suspend']()),window[_0x5cd6ad(0x1b3)]('pageshow',()=>{document['hidden']||c['resume']();}),document['hidden']&&c['suspend'](),c);}export function subscribeInteraction3dAccess(_0x5290c6){return C()['subscribe'](_0x5290c6);}function _0x4141(_0x5ddd0b,_0x54a40c){const _0x5034b7=_0x5034();return _0x4141=function(_0x414115,_0x3c6b2c){_0x414115=_0x414115-0x19c;let _0x4094f1=_0x5034b7[_0x414115];return _0x4094f1;},_0x4141(_0x5ddd0b,_0x54a40c);}export function renderInteraction3d(_0x2b74eb,_0x2ccff7={}){const _0x13b821=_0x4141,_0x694e10=document['createElement'](_0x13b821(0x19f));_0x694e10['className']='hb-interaction3d-host',_0x694e10['setAttribute']('aria-label','3D\x20交互');let _0x57df60=!0x1,_0x246e84=!0x1,_0x4c1448=!0x1,_0x575536=0x0,_0x2b7710,_0x29f50a;const _0x3b62fd=_0x2589ee(_0x694e10,_0x2ccff7);_0x694e10['classList']['toggle']('is-background-hidden',_0x2b74eb['properties']?.['backgroundVisible']===!0x1),_0x694e10[_0x13b821(0x1b4)]=(_0x5100e0,_0x3c9af5)=>{_0x2b74eb=_0x5100e0,_0x2ccff7['document']=_0x3c9af5,_0x694e10['classList']['toggle']('is-background-hidden',_0x2b74eb['properties']?.['backgroundVisible']===!0x1),_0x2b7710?.['update'](_0x2b74eb['properties']||{}),_0x3b62fd['refresh']();};function _0x3b058e(){const _0x3a131f=_0x13b821;_0x3b62fd[_0x3a131f(0x1b5)](!0x1),_0x575536+=0x1,_0x246e84=!0x1,_0x4c1448=!0x1,f['get'](_0x2b74eb['id'])===_0x2b7710&&f[_0x3a131f(0x1b0)](_0x2b74eb['id']),_0x57df60||b(_0x2b74eb['id'],new Error(_0x3a131f(0x1a0))),_0x2b7710?.(),_0x2b7710=null,_0x29f50a?.['remove'](),_0x29f50a=null,_0x694e10['replaceChildren'](_0x2976c5()),_0x694e10[_0x3a131f(0x1b6)]['access']='locked';}const _0x15d3d3=subscribeInteraction3dAccess(async _0x36e45a=>{const _0x4095f9=_0x13b821;if(_0x57df60)return;if(!_0x36e45a['allowed']){if(_0x36e45a[_0x4095f9(0x1ad)]==='denied')return _0x3b058e(_0x36e45a['message']);if(_0x2b7710?.['setAuthorized'](!0x1),_0x694e10['dataset']['access']='pending',_0x694e10['setAttribute']('aria-busy','true'),!_0x4c1448){_0x575536+=0x1,_0x246e84=!0x1;const _0x1dd908=document[_0x4095f9(0x1a5)]('div');_0x1dd908['className']=_0x4095f9(0x19c),_0x1dd908[_0x4095f9(0x1a6)](_0x4095f9(0x1a8),'status'),_0x1dd908['setAttribute'](_0x4095f9(0x1bf),'正在准备\x203D\x20户型'),_0x694e10[_0x4095f9(0x19d)](_0x1dd908);}return;}if(_0x4c1448){_0x2b7710?.['setAuthorized'](!0x0),_0x694e10[_0x4095f9(0x1b6)]['access']='allowed',_0x694e10[_0x4095f9(0x1a6)]('aria-busy','false'),_0x2ccff7['editable']&&b(_0x2b74eb['id']);return;}if(_0x246e84)return;_0x246e84=!0x0;const _0x47696e=++_0x575536;try{const _0x8e5c55=await import('/api/v1/modules/interaction3d/runtime.js?v=20260907-layout-v2-20260905-interaction3d-v1-20260905-i3d-lighting-v1-20260906-i3d-preload-v1-20260906-i3d-marker-v1-20260907-coherence-v1');if(_0x57df60||_0x47696e!==_0x575536||document['hidden'])return;_0x29f50a=document['createElement']('link'),_0x29f50a['rel']='stylesheet',_0x29f50a[_0x4095f9(0x1b8)]='/api/v1/modules/interaction3d/runtime.css?v=20260906-i3d-complete-v6',_0x694e10['append'](_0x29f50a);const _0x5cc758=document['createElement']('div');_0x694e10['replaceChildren'](_0x29f50a,_0x5cc758),_0x2b7710=_0x8e5c55['mountInteraction3d'](_0x5cc758,{'component':_0x2b74eb,'context':_0x2ccff7,'onPresented':()=>{_0x2ccff7['editable']&&b(_0x2b74eb['id']);},'onLoadError':_0x15922b=>{_0x2ccff7['editable']&&b(_0x2b74eb['id'],_0x15922b);},'onFocusChange':_0xebd3ae=>_0x3b62fd[_0x4095f9(0x1b5)](_0xebd3ae)}),_0x2ccff7['editable']&&f['set'](_0x2b74eb['id'],_0x2b7710),_0x694e10['dataset'][_0x4095f9(0x1c1)]='allowed',_0x694e10['setAttribute'](_0x4095f9(0x1ac),'false'),_0x4c1448=!0x0;}catch{if(!_0x57df60&&_0x47696e===_0x575536){_0x29f50a?.['remove'](),_0x29f50a=null;const _0xcf35a1=document['createElement']('div');_0xcf35a1['className']='i3d-access-pending',_0xcf35a1['textContent']='户型暂时无法载入，请稍候重试。',_0xcf35a1['setAttribute']('role','status'),_0x694e10['replaceChildren'](_0xcf35a1),_0x694e10['dataset']['access']=_0x4095f9(0x1bb),_0x2ccff7[_0x4095f9(0x1c3)]&&b(_0x2b74eb['id'],new Error(_0xcf35a1['textContent']));}}finally{_0x47696e===_0x575536&&(_0x246e84=!0x1);}});return _0x2ccff7['cleanup']?.(()=>{const _0x575a56=_0x13b821;_0x57df60=!0x0,_0x15d3d3(),_0x3b058e('3D\x20交互已停止。'),_0x3b62fd[_0x575a56(0x1c0)]();}),_0x694e10;}
+import { createAccessMonitor } from "./access-monitor.js?v=20260905-interaction3d-v1-20260905-i3d-polish-v1-20260906-access-state-v2";
+import { createInteraction3dCover } from "./cover.js?v=20260905-interaction3d-cover-v1";
+import { createInteraction3dFocusLayout } from "./focus-layout.js?v=20260906-i3d-complete-v6";
+export async function requestInteraction3dAccess() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch("/api/v1/modules/interaction3d/access", {
+      cache: "no-store",
+      credentials: "same-origin",
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const error = new Error(
+        response.status === 403
+          ? "3D 交互授权不可用，请在授权信息中查看。"
+          : response.status === 401
+            ? "登录状态已失效，请重新登录。"
+            : "暂时无法验证 3D 交互授权，请稍候重试。",
+      );
+      error.status = response.status;
+      throw error;
+    }
+    return await response.json();
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+let accessMonitor;
+const editorViews = new Map();
+const viewWaiters = new Map();
+function notifyViewWaiters(componentId, error) {
+  for (const listener of viewWaiters.get(componentId) || []) {
+    listener(error);
+  }
+}
+export function getInteraction3dEditorView(componentId) {
+  return editorViews.get(componentId);
+}
+export function waitInteraction3dEditorView(componentId) {
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      viewWaiters.get(componentId)?.delete(onNotify);
+      if (!viewWaiters.get(componentId)?.size) {
+        viewWaiters.delete(componentId);
+      }
+    };
+    const onNotify = (error) => {
+      const view = editorViews.get(componentId);
+      if (error) {
+        cleanup();
+        reject(error);
+      } else if (view?.ready && view.metadata) {
+        cleanup();
+        resolve(view);
+      }
+    };
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      reject(new Error("户型准备较慢，请稍候重试。"));
+    }, 25000);
+    if (!viewWaiters.has(componentId)) {
+      viewWaiters.set(componentId, new Set());
+    }
+    viewWaiters.get(componentId).add(onNotify);
+    onNotify();
+  });
+}
+export function cancelOtherInteraction3dViews(keepId) {
+  for (const [componentId, view] of editorViews) {
+    if (componentId !== keepId && view.viewEditing) {
+      view.setViewEditing(false);
+    }
+  }
+}
+function getAccessMonitor() {
+  return (
+    accessMonitor ||
+    ((accessMonitor = createAccessMonitor({
+      requestGrant: requestInteraction3dAccess,
+    })),
+    document.addEventListener("visibilitychange", () =>
+      document.hidden ? accessMonitor.suspend() : accessMonitor.resume(),
+    ),
+    window.addEventListener("pagehide", () => accessMonitor.suspend()),
+    window.addEventListener("pageshow", () => {
+      if (!document.hidden) {
+        accessMonitor.resume();
+      }
+    }),
+    document.hidden && accessMonitor.suspend(),
+    accessMonitor)
+  );
+}
+export function subscribeInteraction3dAccess(listener) {
+  return getAccessMonitor().subscribe(listener);
+}
+export function renderInteraction3d(component, context = {}) {
+  const host = document.createElement("section");
+  host.className = "hb-interaction3d-host";
+  host.setAttribute("aria-label", "3D 交互");
+  let disposed = false;
+  let loading = false;
+  let mounted = false;
+  let loadGeneration = 0;
+  let runtimeView;
+  let stylesheetLink;
+  const focusLayout = createInteraction3dFocusLayout(host, context);
+  host.classList.toggle(
+    "is-background-hidden",
+    component.properties?.backgroundVisible === false,
+  );
+  host.updateInteraction3d = (nextComponent, documentRef) => {
+    component = nextComponent;
+    context.document = documentRef;
+    host.classList.toggle(
+      "is-background-hidden",
+      component.properties?.backgroundVisible === false,
+    );
+    runtimeView?.update(component.properties || {});
+    focusLayout.refresh();
+  };
+  function lockView() {
+    focusLayout.setActive(false);
+    loadGeneration += 1;
+    loading = false;
+    mounted = false;
+    if (editorViews.get(component.id) === runtimeView) {
+      editorViews.delete(component.id);
+    }
+    if (!disposed) {
+      notifyViewWaiters(component.id, new Error("3D 户型暂不可用，请检查授权或重新载入。"));
+    }
+    runtimeView?.();
+    runtimeView = null;
+    stylesheetLink?.remove();
+    stylesheetLink = null;
+    host.replaceChildren(createInteraction3dCover());
+    host.dataset.access = "locked";
+  }
+  const unsubscribeAccess = subscribeInteraction3dAccess(async (grant) => {
+    if (disposed) {
+      return;
+    }
+    if (!grant.allowed) {
+      if (grant.status === "denied") {
+        return lockView(grant.message);
+      }
+      runtimeView?.setAuthorized(false);
+      host.dataset.access = "pending";
+      host.setAttribute("aria-busy", "true");
+      if (!mounted) {
+        loadGeneration += 1;
+        loading = false;
+        const pending = document.createElement("div");
+        pending.className = "i3d-access-pending";
+        pending.setAttribute("role", "status");
+        pending.setAttribute("aria-label", "正在准备 3D 户型");
+        host.replaceChildren(pending);
+      }
+      return;
+    }
+    if (mounted) {
+      runtimeView?.setAuthorized(true);
+      host.dataset.access = "allowed";
+      host.setAttribute("aria-busy", "false");
+      if (context.editable) {
+        notifyViewWaiters(component.id);
+      }
+      return;
+    }
+    if (loading) {
+      return;
+    }
+    loading = true;
+    const generation = ++loadGeneration;
+    try {
+      const runtime = await import(
+        "/api/v1/modules/interaction3d/runtime.js?v=20260907-layout-v2-20260905-interaction3d-v1-20260905-i3d-lighting-v1-20260906-i3d-preload-v1-20260906-i3d-marker-v1-20260907-coherence-v1"
+      );
+      if (disposed || generation !== loadGeneration || document.hidden) {
+        return;
+      }
+      stylesheetLink = document.createElement("link");
+      stylesheetLink.rel = "stylesheet";
+      stylesheetLink.href =
+        "/api/v1/modules/interaction3d/runtime.css?v=20260906-i3d-complete-v6";
+      host.append(stylesheetLink);
+      const mountRoot = document.createElement("div");
+      host.replaceChildren(stylesheetLink, mountRoot);
+      runtimeView = runtime.mountInteraction3d(mountRoot, {
+        component,
+        context,
+        onPresented: () => {
+          if (context.editable) {
+            notifyViewWaiters(component.id);
+          }
+        },
+        onLoadError: (error) => {
+          if (context.editable) {
+            notifyViewWaiters(component.id, error);
+          }
+        },
+        onFocusChange: (focused) => focusLayout.setActive(focused),
+      });
+      if (context.editable) {
+        editorViews.set(component.id, runtimeView);
+      }
+      host.dataset.access = "allowed";
+      host.setAttribute("aria-busy", "false");
+      mounted = true;
+    } catch {
+      if (!disposed && generation === loadGeneration) {
+        stylesheetLink?.remove();
+        stylesheetLink = null;
+        const pending = document.createElement("div");
+        pending.className = "i3d-access-pending";
+        pending.textContent = "户型暂时无法载入，请稍候重试。";
+        pending.setAttribute("role", "status");
+        host.replaceChildren(pending);
+        host.dataset.access = "pending";
+        if (context.editable) {
+          notifyViewWaiters(component.id, new Error(pending.textContent));
+        }
+      }
+    } finally {
+      if (generation === loadGeneration) {
+        loading = false;
+      }
+    }
+  });
+  context.cleanup?.(() => {
+    disposed = true;
+    unsubscribeAccess();
+    lockView("3D 交互已停止。");
+    focusLayout.dispose();
+  });
+  return host;
+}

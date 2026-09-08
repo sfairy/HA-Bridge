@@ -1,1 +1,190 @@
-(function(_0x1986f8,_0xf22120){const _0x43048f=_0x4cf1,_0xf85a2b=_0x1986f8();while(!![]){try{const _0xbcd360=-parseInt(_0x43048f(0x1c7))/0x1*(-parseInt(_0x43048f(0x1c6))/0x2)+-parseInt(_0x43048f(0x1cd))/0x3+parseInt(_0x43048f(0x1c2))/0x4+parseInt(_0x43048f(0x1bf))/0x5*(-parseInt(_0x43048f(0x1c3))/0x6)+-parseInt(_0x43048f(0x1d7))/0x7*(parseInt(_0x43048f(0x1d4))/0x8)+-parseInt(_0x43048f(0x1c4))/0x9+-parseInt(_0x43048f(0x1c1))/0xa*(-parseInt(_0x43048f(0x1cb))/0xb);if(_0xbcd360===_0xf22120)break;else _0xf85a2b['push'](_0xf85a2b['shift']());}catch(_0x1dca43){_0xf85a2b['push'](_0xf85a2b['shift']());}}}(_0x5447,0xc3782));const A=1e-8,P=0x2710,y=(_0x322999,_0x3d0b73,_0x289a86)=>Math['max'](_0x3d0b73,Math['min'](_0x289a86,_0x322999)),i=(_0xd2879f,_0x88660b)=>Number['isFinite'](_0xd2879f)?_0xd2879f:_0x88660b;function I(_0x494d00){const _0x2a9cee=_0x4cf1;return Object[_0x2a9cee(0x1d2)](Object['entries'](_0x494d00)['map'](([_0x433a09,_0x37e806])=>[_0x433a09,Array['isArray'](_0x37e806)?[..._0x37e806]:_0x37e806]));}function d(_0x277904,_0x5ced62,_0x5b519b){const _0x3c609a=_0x4cf1;return new _0x277904['Vector3'](...[0x0,0x1,0x2][_0x3c609a(0x1d0)](_0x30dff6=>i(_0x5ced62?.[_0x30dff6],_0x5b519b[_0x30dff6])));}function _0x5447(){const _0x21b7fe=['negate','cross','Vector3','639755FHCjdu','sub','10IVABQW','4457332ybnQXu','60zVmMZN','577035lXzlnp','clone','306122ERJarZ','3tKnbct','zoom','divideScalar','min','34268190sZJJCC','abs','3854844AOJceK','max','normalize','map','view','fromEntries','isNaN','170792NOeJGT','makeBasis','setFromRotationMatrix','413HViTyL','lengthSq'];_0x5447=function(){return _0x21b7fe;};return _0x5447();}function M(_0x10e52d,_0x591ffa){const _0x29bf61=_0x4cf1,_0xa9011=d(_0x10e52d,_0x591ffa['target'],[0x0,0x0,0x0]),_0x2c01d2=d(_0x10e52d,_0x591ffa['position'],[0x0,0x3,0x6])['clone']()[_0x29bf61(0x1c0)](_0xa9011),_0xfa1ed8=Math['max'](_0x2c01d2['length'](),1e-8);_0x2c01d2['lengthSq']()<1e-8*1e-8&&_0x2c01d2['set'](0x0,0x0,0x1),_0x2c01d2['normalize']();const _0x4a250b=d(_0x10e52d,_0x591ffa['up'],[0x0,0x1,0x0]);_0x4a250b['addScaledVector'](_0x2c01d2,-_0x4a250b['dot'](_0x2c01d2)),_0x4a250b[_0x29bf61(0x1d8)]()<1e-8*1e-8&&(_0x4a250b['set'](0x0,Math[_0x29bf61(0x1cc)](_0x2c01d2['y'])<0.9?0x1:0x0,Math[_0x29bf61(0x1cc)](_0x2c01d2['y'])<0.9?0x0:-0x1),_0x4a250b['addScaledVector'](_0x2c01d2,-_0x4a250b['dot'](_0x2c01d2))),_0x4a250b['normalize']();const _0x291837=_0x4a250b['clone']()['cross'](_0x2c01d2)['normalize']();_0x4a250b['crossVectors'](_0x2c01d2,_0x291837)['normalize']();const _0x2ae4ae=new _0x10e52d['Quaternion']()[_0x29bf61(0x1d6)](new _0x10e52d['Matrix4']()[_0x29bf61(0x1d5)](_0x291837,_0x4a250b,_0x2c01d2));return{'target':_0xa9011,'distance':_0xfa1ed8,'rotation':_0x2ae4ae};}function x(_0xb469a3,_0x4c0891,_0x3ea4a8){return-Math['expm1'](-_0x3ea4a8*_0xb469a3/0x3e8)/-Math['expm1'](-_0x3ea4a8*_0x4c0891/0x3e8);}export function sampleFocusCamera(_0x52e6d3,_0x5cf1ab,_0x99bc52,_0x720c8d,_0x4f8bf8=0x44c){return createFocusCameraSampler(_0x52e6d3,_0x5cf1ab,_0x99bc52,_0x4f8bf8)(_0x720c8d);}export function createFocusCameraSampler(_0x105864,_0x275327,_0xb19df,_0xc1da5b=0x44c){_0x275327=I(_0x275327),_0xb19df=I(_0xb19df);const _0x568a7a=Math['max'](0x0,i(_0xc1da5b,0x44c));let _0x331402,_0x5f3f23;return function(_0x4cdd09){const _0xe0bd4b=_0x4cf1,_0x33419c=Number[_0xe0bd4b(0x1d3)](_0x4cdd09)?0x0:_0x4cdd09;if(_0x568a7a===0x0||_0x33419c>=_0x568a7a)return I(_0xb19df);if(!(_0x33419c>0x0))return I(_0x275327);_0x331402||=M(_0x105864,_0x275327),_0x5f3f23||=M(_0x105864,_0xb19df);const _0x3e00d6=x(_0x33419c,_0x568a7a,0x5),_0x2cc831=x(_0x33419c,_0x568a7a,0x4),_0x5019bf=_0x331402['rotation']['clone']()['slerp'](_0x5f3f23['rotation'],_0x2cc831)['normalize'](),_0x521313=_0x331402['target']['clone']()['lerp'](_0x5f3f23['target'],_0x3e00d6),_0x2d691f=Math[_0xe0bd4b(0x1ce)](1e-8,_0x331402['distance']+(_0x5f3f23['distance']-_0x331402['distance'])*_0x3e00d6),_0x698fe2=new _0x105864['Vector3'](0x0,0x0,_0x2d691f)['applyQuaternion'](_0x5019bf)['add'](_0x521313),_0x5980b7=new _0x105864[(_0xe0bd4b(0x1be))](0x0,0x1,0x0)['applyQuaternion'](_0x5019bf)[_0xe0bd4b(0x1cf)](),_0x50accb={...I(_0x275327),...I(_0xb19df),'position':_0x698fe2['toArray'](),'target':_0x521313['toArray'](),'up':_0x5980b7['toArray']()};for(const [_0x1d32bd,_0x5e18bf]of[[_0xe0bd4b(0x1c8),0x1],['focalLength',0x32],['frameSize',0xa]])if(_0x1d32bd in _0x275327||_0x1d32bd in _0xb19df){const _0x2ddefe=i(_0x275327[_0x1d32bd],_0x5e18bf),_0x3599aa=i(_0xb19df[_0x1d32bd],_0x5e18bf);_0x50accb[_0x1d32bd]=_0x2ddefe+(_0x3599aa-_0x2ddefe)*_0x3e00d6;}return _0x50accb;};}function w(_0xeee4,_0x1e7b07,_0x5e117c,_0x44f5d3){const _0x5782a2=_0x4cf1;let _0x3a753e=_0x44f5d3;for(const _0x4ce59e of['x','y','z'])if(Math[_0x5782a2(0x1cc)](_0x5e117c[_0x4ce59e])>1e-8){const _0x5c41ca=Math['sign'](_0x5e117c[_0x4ce59e])*0x2710;_0x3a753e=Math[_0x5782a2(0x1ca)](_0x3a753e,Math['max'](0x0,(_0x5c41ca-_0x1e7b07[_0x4ce59e])/_0x5e117c[_0x4ce59e]));}return _0x3a753e<1e-8?(_0x5e117c['copy'](_0x1e7b07)[_0x5782a2(0x1d9)](),_0x5e117c['lengthSq']()<1e-8&&_0x5e117c['set'](0x0,0x0,0x1),_0x5e117c[_0x5782a2(0x1cf)](),w(_0xeee4,_0x1e7b07,_0x5e117c,Math['min'](_0x44f5d3,0x2710))):_0x1e7b07['clone']()['addScaledVector'](_0x5e117c,_0x3a753e);}function _0x4cf1(_0x143c14,_0x51c09d){const _0x54477a=_0x5447();return _0x4cf1=function(_0x4cf19f,_0x39a350){_0x4cf19f=_0x4cf19f-0x1be;let _0x4444b8=_0x54477a[_0x4cf19f];return _0x4444b8;},_0x4cf1(_0x143c14,_0x51c09d);}export function automaticLightCamera(_0x417beb,_0xc0c917,_0x2c30aa){const _0x210870=_0x4cf1,_0x513636=_0xc0c917||{},{distance:_0x2f5bdd,rotation:_0x5b745b}=M(_0x417beb,_0x513636),_0x190645=d(_0x417beb,_0x2c30aa,[0x0,0x0,0x0])['clampScalar'](-0x2710,0x2710),_0x5c656f=_0x513636['mode']==='perspective',_0x39ae9f=new _0x417beb['Vector3'](0x0,0x0,0x1)['applyQuaternion'](_0x5b745b)['normalize'](),_0x53710e=_0x5c656f?Math['max'](0x3,_0x2f5bdd*0.5):Math[_0x210870(0x1ce)](0x3,_0x2f5bdd),_0x492b27=w(_0x417beb,_0x190645,_0x39ae9f,_0x53710e),_0x3c8c5a=_0x492b27['clone']()[_0x210870(0x1c0)](_0x190645)[_0x210870(0x1cf)](),_0xa840aa=d(_0x417beb,_0x513636['up'],[0x0,0x1,0x0]),_0x59677f=_0xa840aa['length'](),_0x28b2f5=_0x59677f>1e-8&&_0xa840aa[_0x210870(0x1c5)]()[_0x210870(0x1c9)](_0x59677f)[_0x210870(0x1da)](_0x3c8c5a)[_0x210870(0x1d8)]()>1e-8*1e-8,_0x38be7a=_0x28b2f5?_0xa840aa:new _0x417beb['Vector3'](0x0,0x1,0x0)['applyQuaternion'](_0x5b745b)[_0x210870(0x1cf)](),_0x4327f5={'mode':_0x5c656f?'perspective':'orthographic','position':_0x492b27['toArray'](),'target':_0x190645['toArray'](),'up':_0x38be7a['toArray'](),'zoom':y(i(_0x513636['zoom'],0x1)*(_0x5c656f?0x1:2.2),0.01,0x64),'frameSize':y(i(_0x513636['frameSize'],0xa),0.001,0x4e20),'focalLength':y(i(_0x513636['focalLength'],0x32),0x12,0x78),'view':_0x513636[_0x210870(0x1d1)]==='top'?'top':'free','topRotation':y(i(_0x513636['topRotation'],0x0),0x0,0x168)};if(!_0x28b2f5){const _0x32dab7=M(_0x417beb,_0x4327f5);_0x4327f5['up']=new _0x417beb['Vector3'](0x0,0x1,0x0)['applyQuaternion'](_0x32dab7['rotation'])['normalize']()['toArray']();}return _0x4327f5;}
+const EPSILON = 1e-8;
+const WORLD_LIMIT = 10000;
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const finite = (value, fallback) => (Number.isFinite(value) ? value : fallback);
+
+function cloneCameraState(state) {
+  return Object.fromEntries(
+    Object.entries(state).map(([key, value]) => [
+      key,
+      Array.isArray(value) ? [...value] : value,
+    ]),
+  );
+}
+
+function vectorFrom(THREE, values, fallback) {
+  return new THREE.Vector3(
+    ...[0, 1, 2].map((index) => finite(values?.[index], fallback[index])),
+  );
+}
+
+function cameraFrame(THREE, camera) {
+  const target = vectorFrom(THREE, camera.target, [0, 0, 0]);
+  const offset = vectorFrom(THREE, camera.position, [0, 3, 6])
+    .clone()
+    .sub(target);
+  const distance = Math.max(offset.length(), EPSILON);
+  if (offset.lengthSq() < EPSILON * EPSILON) {
+    offset.set(0, 0, 1);
+  }
+  offset.normalize();
+  const up = vectorFrom(THREE, camera.up, [0, 1, 0]);
+  up.addScaledVector(offset, -up.dot(offset));
+  if (up.lengthSq() < EPSILON * EPSILON) {
+    up.set(
+      0,
+      Math.abs(offset.y) < 0.9 ? 1 : 0,
+      Math.abs(offset.y) < 0.9 ? 0 : -1,
+    );
+    up.addScaledVector(offset, -up.dot(offset));
+  }
+  up.normalize();
+  const right = up.clone().cross(offset).normalize();
+  up.crossVectors(offset, right).normalize();
+  const rotation = new THREE.Quaternion().setFromRotationMatrix(
+    new THREE.Matrix4().makeBasis(right, up, offset),
+  );
+  return { target, distance, rotation };
+}
+
+function easeProgress(elapsed, duration, rate) {
+  return (
+    -Math.expm1((-rate * elapsed) / 1000) /
+    -Math.expm1((-rate * duration) / 1000)
+  );
+}
+
+export function sampleFocusCamera(THREE, from, to, elapsed, durationMs = 1100) {
+  return createFocusCameraSampler(THREE, from, to, durationMs)(elapsed);
+}
+
+export function createFocusCameraSampler(
+  THREE,
+  fromCamera,
+  toCamera,
+  durationMs = 1100,
+) {
+  fromCamera = cloneCameraState(fromCamera);
+  toCamera = cloneCameraState(toCamera);
+  const duration = Math.max(0, finite(durationMs, 1100));
+  let fromFrame;
+  let toFrame;
+  return function (elapsed) {
+    const time = Number.isNaN(elapsed) ? 0 : elapsed;
+    if (duration === 0 || time >= duration) {
+      return cloneCameraState(toCamera);
+    }
+    if (!(time > 0)) {
+      return cloneCameraState(fromCamera);
+    }
+    fromFrame ||= cameraFrame(THREE, fromCamera);
+    toFrame ||= cameraFrame(THREE, toCamera);
+    const positionT = easeProgress(time, duration, 5);
+    const rotationT = easeProgress(time, duration, 4);
+    const rotation = fromFrame.rotation
+      .clone()
+      .slerp(toFrame.rotation, rotationT)
+      .normalize();
+    const target = fromFrame.target.clone().lerp(toFrame.target, positionT);
+    const distance = Math.max(
+      EPSILON,
+      fromFrame.distance + (toFrame.distance - fromFrame.distance) * positionT,
+    );
+    const position = new THREE.Vector3(0, 0, distance)
+      .applyQuaternion(rotation)
+      .add(target);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(rotation).normalize();
+    const next = {
+      ...cloneCameraState(fromCamera),
+      ...cloneCameraState(toCamera),
+      position: position.toArray(),
+      target: target.toArray(),
+      up: up.toArray(),
+    };
+    for (const [key, fallback] of [
+      ["zoom", 1],
+      ["focalLength", 50],
+      ["frameSize", 10],
+    ]) {
+      if (key in fromCamera || key in toCamera) {
+        const fromValue = finite(fromCamera[key], fallback);
+        const toValue = finite(toCamera[key], fallback);
+        next[key] = fromValue + (toValue - fromValue) * positionT;
+      }
+    }
+    return next;
+  };
+}
+
+function projectAlongRay(THREE, origin, direction, maxDistance) {
+  let distance = maxDistance;
+  for (const axis of ["x", "y", "z"]) {
+    if (Math.abs(direction[axis]) > EPSILON) {
+      const limit = Math.sign(direction[axis]) * WORLD_LIMIT;
+      distance = Math.min(
+        distance,
+        Math.max(0, (limit - origin[axis]) / direction[axis]),
+      );
+    }
+  }
+  if (distance < EPSILON) {
+    direction.copy(origin).negate();
+    if (direction.lengthSq() < EPSILON) {
+      direction.set(0, 0, 1);
+    }
+    direction.normalize();
+    return projectAlongRay(
+      THREE,
+      origin,
+      direction,
+      Math.min(maxDistance, WORLD_LIMIT),
+    );
+  }
+  return origin.clone().addScaledVector(direction, distance);
+}
+
+export function automaticLightCamera(THREE, camera, lightTarget) {
+  const source = camera || {};
+  const { distance, rotation } = cameraFrame(THREE, source);
+  const target = vectorFrom(THREE, lightTarget, [0, 0, 0]).clampScalar(
+    -WORLD_LIMIT,
+    WORLD_LIMIT,
+  );
+  const perspective = source.mode === "perspective";
+  const forward = new THREE.Vector3(0, 0, 1)
+    .applyQuaternion(rotation)
+    .normalize();
+  const maxDistance = perspective
+    ? Math.max(3, distance * 0.5)
+    : Math.max(3, distance);
+  const position = projectAlongRay(THREE, target, forward, maxDistance);
+  const look = position.clone().sub(target).normalize();
+  const preferredUp = vectorFrom(THREE, source.up, [0, 1, 0]);
+  const preferredLength = preferredUp.length();
+  const preferredUsable =
+    preferredLength > EPSILON &&
+    preferredUp.clone().divideScalar(preferredLength).cross(look).lengthSq() >
+      EPSILON * EPSILON;
+  const up = preferredUsable
+    ? preferredUp
+    : new THREE.Vector3(0, 1, 0).applyQuaternion(rotation).normalize();
+  const next = {
+    mode: perspective ? "perspective" : "orthographic",
+    position: position.toArray(),
+    target: target.toArray(),
+    up: up.toArray(),
+    zoom: clamp(finite(source.zoom, 1) * (perspective ? 1 : 2.2), 0.01, 100),
+    frameSize: clamp(finite(source.frameSize, 10), 0.001, 20000),
+    focalLength: clamp(finite(source.focalLength, 50), 18, 120),
+    view: source.view === "top" ? "top" : "free",
+    topRotation: clamp(finite(source.topRotation, 0), 0, 360),
+  };
+  if (!preferredUsable) {
+    const frame = cameraFrame(THREE, next);
+    next.up = new THREE.Vector3(0, 1, 0)
+      .applyQuaternion(frame.rotation)
+      .normalize()
+      .toArray();
+  }
+  return next;
+}

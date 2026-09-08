@@ -1,1 +1,47 @@
-(function(_0x3e95f1,_0x16e078){const _0xde2aee=_0xb219,_0x29caf9=_0x3e95f1();while(!![]){try{const _0x42e3b7=parseInt(_0xde2aee(0xfe))/0x1+parseInt(_0xde2aee(0xfa))/0x2*(parseInt(_0xde2aee(0xfd))/0x3)+-parseInt(_0xde2aee(0xfb))/0x4*(parseInt(_0xde2aee(0xf9))/0x5)+-parseInt(_0xde2aee(0x102))/0x6+-parseInt(_0xde2aee(0xfc))/0x7*(-parseInt(_0xde2aee(0x101))/0x8)+-parseInt(_0xde2aee(0x100))/0x9+-parseInt(_0xde2aee(0xff))/0xa;if(_0x42e3b7===_0x16e078)break;else _0x29caf9['push'](_0x29caf9['shift']());}catch(_0x23114e){_0x29caf9['push'](_0x29caf9['shift']());}}}(_0xecef,0x73c77));function _0xb219(_0x42a4a2,_0x447051){const _0xecefaa=_0xecef();return _0xb219=function(_0xb219e9,_0xe31b65){_0xb219e9=_0xb219e9-0xf9;let _0x418a9d=_0xecefaa[_0xb219e9];return _0x418a9d;},_0xb219(_0x42a4a2,_0x447051);}export function startSceneSync({eligible:_0x15521f,read:_0x36e0b9,apply:_0x21ba9d,interval:_0x5e26cc=0x1388,schedule:_0x591257=setTimeout,cancel:_0x24e989=clearTimeout}){let _0x55ba08=!0x1,_0x549da0,_0x1d71cb,_0x206171=0x0;async function _0x32d135(){const _0x5b6706=_0xb219;if(!_0x55ba08)try{if(!_0x15521f())return;_0x1d71cb=new AbortController();const _0x55d5d2=await _0x36e0b9(_0x1d71cb['signal']);!_0x55ba08&&_0x55d5d2&&_0x15521f()&&await _0x21ba9d(_0x55d5d2),_0x206171=0x0;}catch{_0x206171++;}finally{_0x1d71cb=null,_0x55ba08||(_0x549da0=_0x591257(_0x32d135,Math['min'](0xea60,_0x5e26cc*0x2**Math[_0x5b6706(0x103)](_0x206171,0x4))));}}return _0x549da0=_0x591257(_0x32d135,_0x5e26cc),()=>{_0x55ba08=!0x0,_0x24e989(_0x549da0),_0x1d71cb?.['abort']();};}function _0xecef(){const _0x5b8c2e=['min','118935aarHDa','8RdaGOZ','96uowLms','1435SegZlr','698682mpZcGW','806583BuJnnH','3171140xWHVQi','1990287cHCBsz','1832HiWAyS','1210368ijRRDY'];_0xecef=function(){return _0x5b8c2e;};return _0xecef();}
+export function startSceneSync({
+  eligible,
+  read,
+  apply,
+  interval = 5000,
+  schedule = setTimeout,
+  cancel = clearTimeout,
+}) {
+  let stopped = false;
+  let timer;
+  let controller;
+  let failures = 0;
+
+  async function tick() {
+    if (stopped) {
+      return;
+    }
+    try {
+      if (!eligible()) {
+        return;
+      }
+      controller = new AbortController();
+      const payload = await read(controller.signal);
+      if (!stopped && payload && eligible()) {
+        await apply(payload);
+      }
+      failures = 0;
+    } catch {
+      failures++;
+    } finally {
+      controller = null;
+      if (!stopped) {
+        timer = schedule(
+          tick,
+          Math.min(60000, interval * 2 ** Math.min(failures, 4)),
+        );
+      }
+    }
+  }
+
+  timer = schedule(tick, interval);
+  return () => {
+    stopped = true;
+    cancel(timer);
+    controller?.abort();
+  };
+}

@@ -1,1 +1,25 @@
-const _0x2ec6cd=_0x212e;function _0xd127(){const _0x3b1215=['2537808qlOELI','75265KQxHyN','5613buxcOR','properties','2172UcnleG','fill','138aeigBy','382302gHLyLo','2408508UeyeUU','7217000AQgbOL','isFinite','70XsYFPw','3756627uFIgmR'];_0xd127=function(){return _0x3b1215;};return _0xd127();}(function(_0x3a94f0,_0x5bf44b){const _0x4b1f20=_0x212e,_0x1dd261=_0x3a94f0();while(!![]){try{const _0x495dde=-parseInt(_0x4b1f20(0x18c))/0x1+parseInt(_0x4b1f20(0x18d))/0x2+parseInt(_0x4b1f20(0x194))/0x3*(parseInt(_0x4b1f20(0x196))/0x4)+parseInt(_0x4b1f20(0x193))/0x5*(parseInt(_0x4b1f20(0x198))/0x6)+parseInt(_0x4b1f20(0x18e))/0x7+parseInt(_0x4b1f20(0x192))/0x8+-parseInt(_0x4b1f20(0x191))/0x9*(parseInt(_0x4b1f20(0x190))/0xa);if(_0x495dde===_0x5bf44b)break;else _0x1dd261['push'](_0x1dd261['shift']());}catch(_0x213a7e){_0x1dd261['push'](_0x1dd261['shift']());}}}(_0xd127,0x950e1));const i=(_0x3b8078,_0x1809cd)=>Number[_0x2ec6cd(0x18f)](Number(_0x3b8078))&&Number(_0x3b8078)>0x0?Number(_0x3b8078):_0x1809cd;function _0x212e(_0xb7e868,_0xd00f04){const _0xd12751=_0xd127();return _0x212e=function(_0x212ef3,_0x4202a8){_0x212ef3=_0x212ef3-0x18c;let _0x332b1e=_0xd12751[_0x212ef3];return _0x332b1e;},_0x212e(_0xb7e868,_0xd00f04);}export function interaction3dPreviewSize(_0x3ff47f,_0x4d3c43,_0x15eed2,_0x2069e4){const _0x331f0e=_0x2ec6cd,_0x274a2f=_0x3ff47f[_0x331f0e(0x195)]?.['layoutMode']===_0x331f0e(0x197),_0x27be4e=_0x274a2f?_0x4d3c43?.['canvas']:_0x3ff47f['position'],_0x479be2=i(_0x27be4e?.['width'],_0x274a2f?0xada:0x64),_0x1ae74a=i(_0x27be4e?.['height'],_0x274a2f?0x794:0x64),_0x260d08=Math['min'](i(_0x15eed2,0x0)/_0x479be2,i(_0x2069e4,0x0)/_0x1ae74a);return{'width':_0x479be2*_0x260d08,'height':_0x1ae74a*_0x260d08,'aspectRatio':_0x479be2/_0x1ae74a};}
+const positiveSize = (value, fallback) =>
+  Number.isFinite(Number(value)) && Number(value) > 0
+    ? Number(value)
+    : fallback;
+
+export function interaction3dPreviewSize(
+  component,
+  document,
+  maxWidth,
+  maxHeight,
+) {
+  const fill = component.properties?.layoutMode === "fill";
+  const box = fill ? document?.canvas : component.position;
+  const width = positiveSize(box?.width, fill ? 2778 : 100);
+  const height = positiveSize(box?.height, fill ? 1940 : 100);
+  const scale = Math.min(
+    positiveSize(maxWidth, 0) / width,
+    positiveSize(maxHeight, 0) / height,
+  );
+  return {
+    width: width * scale,
+    height: height * scale,
+    aspectRatio: width / height,
+  };
+}

@@ -1,1 +1,1909 @@
-const _0x4e1bef=_0x2e72;(function(_0x31df6,_0x34611c){const _0x3a39e2=_0x2e72,_0x511d35=_0x31df6();while(!![]){try{const _0x4bfdd2=parseInt(_0x3a39e2(0x13e))/0x1+-parseInt(_0x3a39e2(0x162))/0x2*(parseInt(_0x3a39e2(0x1af))/0x3)+-parseInt(_0x3a39e2(0x134))/0x4+-parseInt(_0x3a39e2(0x175))/0x5*(parseInt(_0x3a39e2(0x18d))/0x6)+parseInt(_0x3a39e2(0x193))/0x7*(-parseInt(_0x3a39e2(0x142))/0x8)+-parseInt(_0x3a39e2(0x165))/0x9*(-parseInt(_0x3a39e2(0x161))/0xa)+parseInt(_0x3a39e2(0x152))/0xb;if(_0x4bfdd2===_0x34611c)break;else _0x511d35['push'](_0x511d35['shift']());}catch(_0xc2660a){_0x511d35['push'](_0x511d35['shift']());}}}(_0x56d0,0xdfa61));import{startSceneSync as _0x241980}from'./scene-sync.js?v=20260907-scene-sync-v1';import{lightCommand as _0x291c14,createLightPreview as _0x578742,createLightStateCache as _0x3bd052,lightRenderState as _0x2e549f}from'./light-state.js?v=20260907-demand-v1';function _0x56d0(){const _0x3626e2=['i3d-focus-vignette','--i3d-marker-size','editing','camera','aria-label','configId','panel','i3dLightHistoryScope','button','service','is-on','popupOpacity','classList','i3d-device-status','activeElement','edit-light-camera','requestId','held','此设备不支持灯光预设。','setCameraProjection','key','append','header','stopPropagation','setPresentedVisible','postMessage','max','3bSxTLH','activeFloorId','设备不可用','灯光预设','top','brightness','get','applyCameraPose','turn_on','original','next','floorSelection','restoreCamera','focus-state','states','timeout','configure','add','setAvailable','duration','ready','delete','aria-pressed','is-open','minimum','input','type','pointermove','defaults','change','dot','height','textContent','i3d-power','pointerId','assign','visible','edit','2796776WEMxrZ','aria-busy','available','small','some','remove','setLightStates','setAttribute','inert','floors','1683334TVUlNb','length','effectColor','data','1784328SXsSSI','message','setProperty','label','hidden','isFinite','hitSize','clickAction','iconSize','value','readSceneUpdate','idle','runtime','previewToken','zoom','idleHideIcons','14262083pjpSbT','started','rgb(','div','find','rotationMode','preset','nextDelay','brightness_pct','pointercancel','icon','i3d-light-heading-text','span','title','webkitMaskImage','4630SyHeDP','957558NGyJue','worldPoint','position','612KqBtdP','dataset','activity','observe','size','save-light-camera','kind','lights','map','entityId','reconcile','autoRotate','set','exp','focus','appearance','10oPjgpN','setCameraFocalLength','min','command','startsWith','parent','click','removeAttribute','<svg\x20viewBox=\x220\x200\x2024\x2024\x22\x20fill=\x22none\x22\x20stroke=\x22currentColor\x22\x20stroke-width=\x221.7\x22\x20aria-hidden=\x22true\x22><path\x20d=\x22M8\x2015c0-2-3-3-3-7a7\x207\x200\x200\x201\x2014\x200c0\x204-3\x205-3\x207l-1\x203H9l-1-3Z\x22/><path\x20d=\x22M9\x2021h6M9\x2015h6\x22/></svg>','toggle','turn-on-panel','sub','cameraState','tabindex','addEventListener','hiddenClickable','kelvin','immediate','pointerup','6500','removeEventListener','abs','round','style','2082876IxauYK','name','properties','is-command-pending','temperatureSupported','hb-i3d-v1','7GbSQmD'];_0x56d0=function(){return _0x3626e2;};return _0x56d0();}import{createFocusCameraSampler as _0x467b0f,automaticLightCamera as _0x191b9c}from'./camera-motion.js?v=20260907-focus-work-v1';function _0x2e72(_0x8071ce,_0x134ee6){const _0x56d007=_0x56d0();return _0x2e72=function(_0x2e7241,_0xdba729){_0x2e7241=_0x2e7241-0x113;let _0xc878e2=_0x56d007[_0x2e7241];return _0xc878e2;},_0x2e72(_0x8071ce,_0x134ee6);}import{createIdleRotation as _0x328131,createIdleIconVisibility as _0x417520}from'./idle-rotation.js?v=20260907-demand-v1';const Tt=_0x4e1bef(0x17d),wt=[{'label':'柔和','brightness':0x19,'temperaturePercent':0xa},{'label':'日常','brightness':0x3c,'temperaturePercent':0x32},{'label':'明亮','brightness':0x64,'temperaturePercent':0x64}];export function mountStage(_0x43a04b){const _0x4a464f=_0x4e1bef,{THREE:_0x13d118,container:_0x18adee,canvas:_0x40463b}=_0x43a04b;let _0x219ee9={'lights':[]},_0x219a33={},_0x34f69b=!0x1,_0x248f77=!0x1,_0x1a392a=!0x1,_0x2dc3aa='',_0x32b6d3='',_0x575966='',_0x133d1d=!0x1,_0x2c6c7d=0x0,_0x420f8e=null,_0x804434=null,_0x568378=!0x1,_0x3d3d85=0x0,_0x58a186='',_0x7d8284=null,_0x42440c=null,_0xab70a=0x0,_0x6931f4=!0x1,_0x566a40=!0x1,_0x15594c=!0x1,_0xd0bf0f=null,_0x1d08c4=null,_0x1c085c=!0x1,_0x53d542=!0x0;const _0x146ac9=()=>_0x1d08c4?.['wake']();let _0x3b3704=!0x1,_0x1d4110=!0x1;const _0x4f344c=new Set(),_0x5e21b9=new Set(),_0x59c40b=new Map(),_0x31695b=new Map(),_0x3b260b=new Map(),_0x36581b=new _0x13d118['Vector3']();let _0x49df96,_0x268341,_0xa914c2=null;const _0x4664ae=_0x578742(),_0x26b6a5=document['body']?.['dataset']?.[_0x4a464f(0x19b)];let _0x54aa15;if(_0x26b6a5)try{_0x54aa15=window['localStorage'];}catch{}const _0x1bf90f=_0x3bd052({'storage':_0x54aa15,'scope':_0x26b6a5}),_0x467230=_0x139bdf=>_0x1bf90f['resolve'](_0x139bdf||'',_0x219a33[_0x139bdf]);let _0xe4d18b=null,_0x37bca1={'lights':[]},_0x369660=!0x1,_0xa3c2d1=!0x1,_0x46f52b=null,_0x568391=-0x1/0x0;const _0x3ec112=(_0x15aa65,_0x29f081=_0x219ee9['floorSelection'],_0x373f57=!0x1)=>_0x43a04b['transformCamera']?.(_0x15aa65,_0x29f081,_0x373f57)??_0x15aa65,_0x16c181=()=>_0x3ec112(_0x43a04b['cameraState'](!0x0),_0x219ee9['floorSelection'],!0x0);function _0x97600b(_0x2c73c4){const _0x4e5908=_0x4a464f,_0x106f60=structuredClone(_0x2c73c4);return _0x106f60[_0x4e5908(0x197)]=_0x3ec112(_0x106f60['camera'],_0x106f60['floorSelection']),_0x106f60['lights']=(_0x106f60['lights']||[])[_0x4e5908(0x16d)](_0x436f12=>({..._0x436f12,..._0x436f12['focusCamera']?{'focusCamera':_0x3ec112(_0x436f12['focusCamera'],_0x106f60['floorSelection'])}:{}})),_0x106f60;}const _0x2d170a=_0x29bb9a=>window[_0x4a464f(0x17a)][_0x4a464f(0x1ad)]({'channel':_0x4a464f(0x192),..._0x29bb9a},location['origin']),_0x2f605c=(_0x1adb53,_0x5e8348,_0x423831)=>{const _0x24d666=document['createElement'](_0x1adb53);return _0x24d666['className']=_0x5e8348||'',_0x423831&&(_0x24d666['textContent']=_0x423831),_0x24d666;},_0x1c783b=_0x2f605c('div','i3d-markers'),_0x270a19=_0x2f605c('div','i3d-presentation');let _0x15ee66=null,_0x29dc03=0x1;const _0x32fe0f=_0x2f605c('div',_0x4a464f(0x194));_0x32fe0f['setAttribute']('aria-hidden','true');const _0x8cbbca=_0x2f605c('nav','i3d-toolbar'),_0x49df93=_0x2f605c(_0x4a464f(0x19c),'','恢复视角');_0x49df93['type']='button',_0x8cbbca['append'](_0x49df93);const _0x535d56=_0x2f605c('section','i3d-light-panel');_0x535d56['setAttribute']('aria-label','灯光控制'),_0x535d56[_0x4a464f(0x13b)]('inert','');const _0x5ab232=_0x2f605c(_0x4a464f(0x1aa)),_0x88b04d=_0x2f605c('div',_0x4a464f(0x15d)),_0x301812=_0x2f605c('strong','','灯光'),_0x517d75=_0x2f605c('p',_0x4a464f(0x1a1));_0x88b04d['append'](_0x301812,_0x517d75);const _0x1e7f35=_0x2f605c('button',_0x4a464f(0x12f));_0x1e7f35[_0x4a464f(0x128)]='button';const _0x511ffa=_0x2f605c('span','i3d-lamp-drawing');_0x511ffa[_0x4a464f(0x13b)]('aria-hidden','true');const _0x2751bb=_0x2f605c('span','i3d-lamp-aura'),_0xabf0e9=_0x2f605c('span','i3d-lamp-body');for(const _0x2dc731 of['cord','shade','bulb','filament'])_0xabf0e9['append'](_0x2f605c('i','i3d-lamp-'+_0x2dc731));_0x511ffa['append'](_0x2751bb,_0xabf0e9),_0x1e7f35[_0x4a464f(0x1a9)](_0x511ffa),_0x5ab232['append'](_0x88b04d,_0x1e7f35);const _0x3992df=_0x2f605c('div','i3d-light-controls');function _0x5db86c(_0x219d62,_0x499a02,_0x2e7e4f,_0x84725c){const _0x1a712d=_0x4a464f,_0x1543be=_0x2f605c('label','i3d-slider\x20i3d-'+_0x499a02),_0x2a62ac=_0x2f605c('span','',_0x219d62),_0xeb86d6=_0x2f605c('output'),_0x18a2c6=_0x2f605c(_0x1a712d(0x127));_0x18a2c6['name']='i3d-light-'+_0x499a02,_0x18a2c6['type']='range',_0x18a2c6['min']=_0x2e7e4f,_0x18a2c6['max']=_0x84725c,_0x18a2c6['step']=_0x499a02==='temperature'?'10':'1',_0x18a2c6['setAttribute']('aria-label',_0x219d62);const _0x45493e=_0x2f605c(_0x1a712d(0x155),'i3d-slider-heading');_0x45493e['append'](_0x2a62ac,_0xeb86d6);const _0x28f800=_0x2f605c('span','i3d-slider-legend');return _0x28f800['append'](_0x2f605c('small','',_0x499a02==='temperature'?'暖色':'暗'),_0x2f605c(_0x1a712d(0x137),'',_0x499a02==='temperature'?'冷色':'亮')),_0x1543be['append'](_0x45493e,_0x18a2c6,_0x28f800),_0x18a2c6[_0x1a712d(0x183)]('input',()=>{const _0x2add7b=_0x1a712d;_0xeb86d6[_0x2add7b(0x14b)]=''+_0x18a2c6['value']+(_0x499a02==='temperature'?'\x20K':'%');const _0x48c016=_0x54e30b();!_0x48c016||_0x34f69b||!_0x467230(_0x48c016['entityId'])['available']||(_0x4664ae['set'](_0x48c016['entityId'],_0x499a02,Number(_0x18a2c6['value'])),_0x146ac9(),_0x21e3b9(),_0x2478fb({'preview':!0x0}));}),_0x18a2c6['addEventListener']('change',()=>void _0x3814f7(_0x499a02,Number(_0x18a2c6['value']))),_0x3992df['append'](_0x1543be),{'root':_0x1543be,'input':_0x18a2c6,'value':_0xeb86d6};}const _0xd810b5=_0x5db86c('色温','temperature','2000',_0x4a464f(0x188)),_0x4d3008=_0x5db86c('亮度','brightness','1','100'),_0x36f47c=_0x2f605c('div','i3d-light-presets');_0x36f47c[_0x4a464f(0x13b)]('role','group'),_0x36f47c['setAttribute']('aria-label',_0x4a464f(0x1b2));const _0x4cb193=wt['map'](_0xff4437=>{const _0x25b8c4=_0x4a464f,_0xdf7fc7=_0x2f605c('button','i3d-light-preset');_0xdf7fc7['type']=_0x25b8c4(0x19c);const _0x38ea04=_0x2f605c(_0x25b8c4(0x137),'',_0xff4437[_0x25b8c4(0x113)]+'%');return _0xdf7fc7['append'](_0x2f605c('strong','',_0xff4437['label']),_0x38ea04),_0xdf7fc7['addEventListener']('click',()=>void _0x3814f7('preset',_0xff4437)),_0x36f47c['append'](_0xdf7fc7),{..._0xff4437,'button':_0xdf7fc7,'detail':_0x38ea04};});_0x3992df['append'](_0x36f47c);const _0x11b991=_0x2f605c('p','i3d-control-error');_0x11b991[_0x4a464f(0x13b)]('role','status'),_0x535d56['append'](_0x5ab232,_0x3992df,_0x11b991);const _0x66a35=_0x2f605c('p','i3d-view-help','拖动旋转\x20·\x20右键平移\x20·\x20滚轮缩放。调整完成后固定视角。');_0x66a35['hidden']=!0x0,_0x270a19['append'](_0x1c783b,_0x8cbbca,_0x535d56,_0x66a35),_0x18adee['append'](_0x32fe0f,_0x270a19);const _0x595ef2=_0x4b1ee3=>(_0x219ee9['lights']||[])[_0x4a464f(0x156)](_0x499ca5=>_0x499ca5['id']===_0x4b1ee3),_0x54e30b=()=>_0x595ef2(_0x32b6d3),_0x26ea8f=_0x5c2fe3=>_0x4664ae['state'](_0x5c2fe3,_0x467230(_0x5c2fe3));function _0x23c518(_0x4dac3e){const _0x5a859f=_0x4a464f,_0x3bc160=_0x26ea8f(_0x4dac3e['entityId']);return _0x34f69b&&_0xe4d18b?.['id']===_0x4dac3e['id']&&(_0x3bc160['on']=!0x0,_0x3bc160['available']=!0x0,_0xe4d18b['kind']!=='defaults'&&(_0x3bc160['brightness']=_0xe4d18b['kind']==='brightnessMin'?0x1:0x64),_0xe4d18b['kind'][_0x5a859f(0x179)]('brightness')&&(_0x3bc160['brightnessSupported']=!0x0),_0xe4d18b['kind']['startsWith']('temperature')&&(_0x3bc160['temperatureSupported']=!0x0,_0x3bc160['kelvin']=_0xe4d18b[_0x5a859f(0x16b)]['endsWith']('Min')?_0x3bc160['minimum']:_0x3bc160['maximum'])),_0x3bc160;}function _0x2478fb(_0x24ab6a){const _0x41e990=_0x4a464f;_0x43a04b[_0x41e990(0x13a)]((_0x219ee9['lights']||[])['filter'](_0x11392b=>_0x11392b['entityId'])['map'](_0x25ccc1=>{const _0x3212d1=_0x23c518(_0x25ccc1);return{..._0x25ccc1,..._0x34f69b&&_0xe4d18b?.['id']===_0x25ccc1['id']?_0x3212d1:_0x2e549f(_0x3212d1)};}),_0x24ab6a);}function _0x197772(){const _0x2c3357=_0x4a464f,_0x1133d9={..._0x219ee9[_0x2c3357(0x197)],..._0x219ee9['interaction']},_0x3989f2=_0x248f77||_0x58a186===_0x2c3357(0x133);_0x43a04b['setCameraInteraction']({'enabled':_0x3989f2||_0x1a392a&&(!_0x58a186||_0x58a186==='panel')&&!_0x42440c&&!_0x566a40,'rotationMode':_0x3989f2?'free':_0x1133d9[_0x2c3357(0x157)],'panEnabled':_0x3989f2,'zoomEnabled':_0x3989f2});}const _0x14a430=()=>Math['min'](0.7,(_0x535d56['getBoundingClientRect']()['width']+0x18*_0x29dc03)/Math['max'](_0x18adee['clientWidth'],0x1));function _0x22a77b(){const _0x4eeff3=_0x4a464f,_0x595601=_0x18adee['getBoundingClientRect'](),_0x41932c=_0x15ee66?.['width']||_0x595601['width'],_0x2d11a4=_0x15ee66?.['height']||_0x595601['height'];_0x41932c>0x0&&_0x2d11a4>0x0&&_0x595601['width']>0x0&&_0x595601['height']>0x0&&(_0x29dc03=_0x595601['width']/_0x41932c,Object[_0x4eeff3(0x131)](_0x270a19['style'],{'width':_0x41932c+'px','height':_0x2d11a4+'px','transform':'scale('+_0x29dc03+','+_0x595601['height']/_0x2d11a4+')'}),_0x42440c?.['focused']&&(_0x42440c['targetInset']=_0x14a430()),_0x58a186&&_0x58a186!=='panel'&&!_0x42440c&&(_0xab70a=_0x14a430(),_0x43a04b['setFocusViewport'](_0xab70a)),_0x2d51ba(!0x0));}function _0x450309(_0x4e02e9,_0x1379fa=_0x40463b){const _0x4dfae4=_0x4a464f,_0x57e4ce=document['activeElement'];!_0x57e4ce||!_0x4e02e9['contains'](_0x57e4ce)||(_0x1379fa['setAttribute'](_0x4dfae4(0x182),'-1'),_0x1379fa[_0x4dfae4(0x173)]({'preventScroll':!0x0}),_0x4e02e9['contains'](document['activeElement'])&&_0x1379fa!==_0x40463b&&(_0x40463b['setAttribute']('tabindex','-1'),_0x40463b['focus']({'preventScroll':!0x0})),_0x4e02e9['contains'](document[_0x4dfae4(0x1a2)])&&_0x57e4ce['blur']());}function _0x46d026(){const _0x2731b0=_0x4a464f,_0x4b1829=!_0x34f69b&&!_0x248f77&&(_0x219ee9[_0x2731b0(0x16c)]||[])['some'](_0x287656=>_0x287656[_0x2731b0(0x132)]!==!0x1&&_0x287656['hiddenClickable']===!0x0),_0x9fe8cc=_0xa3c2d1||_0x3b3704&&!_0x4b1829||_0x15594c||!!(_0x58a186&&!['edit','panel']['includes'](_0x58a186));for(const [_0x291368,_0xb3fb44]of _0x59c40b){const _0x50b864=!_0x34f69b&&!_0x248f77&&_0x595ef2(_0x291368)?.[_0x2731b0(0x184)]===!0x0,_0xd5400e=_0x3b3704&&!_0x50b864&&!_0x34f69b&&!_0x248f77;_0xb3fb44['classList']['toggle']('is-hidden-clickable',_0x50b864),_0xb3fb44['classList'][_0x2731b0(0x17e)]('is-idle-hidden',_0xd5400e),_0xd5400e?(_0x450309(_0xb3fb44),_0xb3fb44[_0x2731b0(0x13b)](_0x2731b0(0x13c),'')):_0xb3fb44[_0x2731b0(0x17c)]('inert'),_0xb3fb44['title']=_0x50b864?'':_0xb3fb44['getAttribute']('aria-label')||'';}_0x9fe8cc?(_0x450309(_0x1c783b,_0x535d56['classList']['contains']('is-open')?_0x535d56:_0x40463b),_0x1c783b['setAttribute']('inert','')):_0x1c783b['removeAttribute']('inert'),_0x1c783b['removeAttribute']('aria-hidden'),_0x9fe8cc&&_0xa914c2===null?_0xa914c2=performance['now']():_0x9fe8cc||(_0xa914c2=null),_0x1c783b[_0x2731b0(0x1a0)]['toggle']('is-concealed',_0x9fe8cc);}function _0x4db518(){const _0x106d0d=_0x4a464f,_0x5f4250=Number[_0x106d0d(0x147)](_0x219ee9[_0x106d0d(0x19f)])?Math['max'](0x0,Math[_0x106d0d(0x177)](0x64,_0x219ee9['popupOpacity'])):0x4a;_0x535d56['style']['setProperty']('--i3d-panel-opacity',String(_0x5f4250/0x64));const _0x5d9e0a=Number['isFinite'](_0x219ee9['focusVignetteStrength'])?Math['max'](0x0,Math['min'](0x3c,_0x219ee9['focusVignetteStrength'])):0xe;_0x32fe0f['style'][_0x106d0d(0x144)]('--i3d-vignette-opacity',String(_0x5d9e0a/0x64)),_0x32fe0f['hidden']=_0x248f77||_0x58a186==='edit'||_0x58a186==='panel',_0x32fe0f['classList']['toggle']('is-active',_0x5d9e0a>0x0&&!!_0x32b6d3&&!!_0x58a186&&!_0x32fe0f['hidden']),_0x66a35['hidden']=!_0x248f77&&_0x58a186!==_0x106d0d(0x133),_0x66a35['textContent']=_0x58a186==='edit'?'拖动旋转\x20·\x20右键平移\x20·\x20滚轮缩放。调整完成后保存此灯视角。':'拖动旋转\x20·\x20右键平移\x20·\x20滚轮缩放。调整完成后固定视角。',_0x1c783b['classList']['toggle']('is-view-editing',_0x248f77||_0x58a186===_0x106d0d(0x133)),_0x535d56[_0x106d0d(0x1a0)]['toggle']('is-preview',_0x34f69b),_0x46d026();}function _0x296a09(_0x2156c6){const _0x436127=_0x4a464f;if(!_0x42440c)return;const _0x43ef6a=_0x42440c,_0x7c3ccb=Math['max'](0x0,_0x2156c6-_0x42440c[_0x436127(0x153)]),_0x11387d=_0x42440c[_0x436127(0x121)]?Math['min'](0x1,_0x7c3ccb/_0x42440c[_0x436127(0x121)]):0x1,_0x2d7b44=_0x11387d===0x1?0x1:(0x1-Math['exp'](-0x5*_0x7c3ccb/0x3e8))/(0x1-Math[_0x436127(0x172)](-0x5*_0x42440c['duration']/0x3e8));_0xab70a=_0x42440c['inset']+(_0x42440c['targetInset']-_0x42440c['inset'])*_0x2d7b44;const _0x56f856=_0x42440c['sample'](_0x7c3ccb);_0x43a04b['applyCameraFrame']?_0x43a04b['applyCameraFrame'](_0x56f856,_0x2d7b44,_0xab70a):(_0x43a04b[_0x436127(0x115)](_0x56f856,_0x2d7b44),_0x43a04b['setFocusViewport'](_0xab70a)),_0x11387d===0x1&&_0x42440c===_0x43ef6a&&(_0x42440c=null,_0x43a04b['endCameraMotion'](),_0x197772(),_0x43ef6a['done']?.(),_0x25a08e());}function _0x2fd4e8(_0xdf9519){const _0x15c0f8=_0x4a464f;return _0xdf9519&&_0xdf9519['view']!==_0x15c0f8(0x1b3)?{..._0xdf9519,'up':[0x0,0x1,0x0]}:_0xdf9519;}function _0x18d091(_0x3fcc8a,_0xe1b6d2,_0x2cad09=!0x1,_0x5dadf5,_0x31b4fa='focus'){const _0x36c8f=_0x2fd4e8(_0x3fcc8a),_0x3fc711=_0x43a04b['beginCameraMotion'](_0x36c8f['mode'],_0x36c8f),_0x5a85a1=_0x2cad09||window['matchMedia']?.('(prefers-reduced-motion:\x20reduce)')['matches']?0x0:0x44c;_0x42440c={'from':_0x3fc711,'to':structuredClone(_0x36c8f),'inset':_0xab70a,'targetInset':_0xe1b6d2?_0x14a430():0x0,'sample':_0x467b0f(_0x13d118,_0x3fc711,_0x36c8f,_0x5a85a1),'focused':_0xe1b6d2,'owner':_0x31b4fa,'started':performance['now'](),'duration':_0x5a85a1,'done':_0x5dadf5},_0x25a08e(),_0x197772(),_0x296a09(_0x42440c['started']),_0x146ac9();}function _0x191a78(_0x1c9813,_0x5e59bd){const _0xeeb8a0=_0x4a464f;return _0x1c9813['mode']===_0x5e59bd['mode']&&Math[_0xeeb8a0(0x18a)](_0x1c9813[_0xeeb8a0(0x150)]-_0x5e59bd['zoom'])<0.000001&&['position','target','up']['every'](_0x47e9a9=>(_0x1c9813[_0x47e9a9]||[0x0,0x1,0x0])['every']((_0x5af166,_0x598858)=>Math['abs'](_0x5af166-(_0x5e59bd[_0x47e9a9]||[0x0,0x1,0x0])[_0x598858])<0.000001))&&['frameSize','focalLength']['every'](_0x37e350=>Math['abs']((_0x1c9813[_0x37e350]||0x0)-(_0x5e59bd[_0x37e350]||0x0))<0.000001);}const _0xb2b766=_0x328131({'returnToBase'(_0x36c457){const _0x2ed5f6=_0x4a464f;_0x15594c=!0x0,_0xd0bf0f=structuredClone(_0x219ee9[_0x2ed5f6(0x170)]?.['returnToDefault']===!0x0?_0x2fd4e8(_0x219ee9[_0x2ed5f6(0x197)]||_0x804434||_0x43a04b['cameraState']()):_0x43a04b['cameraState'](!0x0));const _0x26a28a=!!(_0x32b6d3||_0x58a186);_0x32b6d3='',_0x58a186='',_0x7d8284=null,_0x450309(_0x535d56),_0x535d56['classList']['remove'](_0x2ed5f6(0x125)),_0x535d56['setAttribute']('inert',''),_0x4db518(),_0x26a28a&&_0x2d170a({'type':_0x2ed5f6(0x11b),'active':!0x1}),_0x43a04b['setOrbitPivot'](null),!_0x42440c&&!_0xab70a&&_0x191a78(_0x43a04b[_0x2ed5f6(0x181)](),_0xd0bf0f)?_0x36c457():_0x18d091(_0xd0bf0f,!0x1,!0x1,_0x36c457,'idle');},'start'(){_0x566a40=!0x0,_0x43a04b['beginCameraMotion'](_0xd0bf0f['mode']),_0x197772();},'rotate'(_0x21afcc){_0x43a04b['applyCameraPose'](_0x43a04b['orbitCameraPose'](_0xd0bf0f,_0x21afcc));},'stop'(){const _0x542fbd=_0x42440c?.['owner']==='idle',_0x360275=_0x566a40;_0x566a40=!0x1,_0x15594c=!0x1,_0x46d026(),_0x542fbd&&(_0x42440c=null),(_0x542fbd||_0x360275)&&_0x43a04b['endCameraMotion'](),_0x197772();}}),_0x2d9351=_0x417520({'onChange'(_0x1bfaf4){_0x3b3704=_0x1bfaf4,_0x46d026();}});function _0x25a08e(){const _0x485df4=_0x4a464f,_0x4733eb=_0x568378&&_0x6931f4&&_0x1a392a&&!_0x34f69b&&!_0x248f77&&!document['hidden']&&!_0x133d1d;_0x4733eb||_0x1fac2e(),_0xb2b766[_0x485df4(0x120)](_0x4733eb&&!_0x32b6d3&&!_0x58a186&&!(_0x42440c&&_0x42440c['owner']!==_0x485df4(0x14d))),_0x2d9351['setAvailable'](_0x4733eb),_0x1d08c4?.['setAvailable'](!document['hidden']&&(!_0x1c085c||_0x53d542)),_0x146ac9();}function _0x273769(){const _0x2e40fa=_0x4a464f,_0x166d30=_0x1d4110||_0x4f344c['size']>0x0||_0x5e21b9[_0x2e40fa(0x169)]>0x0;_0xb2b766['hold'](_0x166d30),_0x2d9351['hold'](_0x166d30),_0x146ac9();}function _0x5b38ab(_0x57b06f){const _0x3b17c7=_0x4a464f;_0x568391=performance['now'](),_0xa3c2d1=!0x1,_0x46d026(),_0x57b06f['type']==='pointerdown'&&_0x4f344c['add'](_0x57b06f[_0x3b17c7(0x130)]),(_0x57b06f['type']===_0x3b17c7(0x187)||_0x57b06f['type']===_0x3b17c7(0x15b))&&_0x4f344c['delete'](_0x57b06f['pointerId']),_0x57b06f['type']==='keydown'&&_0x5e21b9['add'](_0x57b06f['code']||_0x57b06f[_0x3b17c7(0x1a8)]),_0x57b06f['type']==='keyup'&&_0x5e21b9['delete'](_0x57b06f['code']||_0x57b06f['key']),_0x273769();}const _0x52e0b2=['pointerdown',_0x4a464f(0x129),'pointerup','pointercancel','wheel','keydown','keyup'];for(const _0xe1f3f0 of _0x52e0b2)window[_0x4a464f(0x183)](_0xe1f3f0,_0x5b38ab,{'capture':!0x0,'passive':!0x0});function _0x1fac2e(){_0x4f344c['clear'](),_0x5e21b9['clear'](),_0x1d4110=!0x1,_0x273769();}window['addEventListener']('blur',_0x1fac2e),document['addEventListener']&&document['addEventListener']('visibilitychange',_0x25a08e);function _0x31011a(_0x103d6f={}){const _0x47f312=_0x4a464f;if(!_0x32b6d3&&!_0x58a186&&(!_0x7d8284||_0x103d6f['immediate']!==!0x0))return;const _0x3e19be=!!_0xe4d18b;_0xe4d18b=null;const _0x33dd27=!!(_0x58a186&&_0x34f69b);_0x32b6d3='',_0x58a186='',_0x450309(_0x535d56),_0x535d56[_0x47f312(0x1a0)][_0x47f312(0x139)]('is-open'),_0x535d56['setAttribute']('inert',''),_0x4db518(),_0x2d170a({'type':_0x47f312(0x11b),'active':!0x1}),_0x7d8284&&_0x18d091(_0x7d8284,!0x1,_0x103d6f[_0x47f312(0x186)]===!0x0,()=>{_0x7d8284=null,_0x43a04b['setOrbitPivot'](null);}),_0x25a08e(),_0x33dd27&&_0x2d170a({'type':'edit','action':'focus-exited'}),_0x3e19be&&_0x2478fb(),_0x197772();}function _0x2b1b3f(_0x16ac56,_0x45b61a='runtime',_0x2846b4=!0x1){const _0xf88369=_0x4a464f,_0x1a4a85=_0x595ef2(_0x16ac56);if(!_0x1a4a85)return;if(_0xe4d18b&&(_0xe4d18b=null,_0x2478fb()),_0x32b6d3===_0x16ac56&&_0x58a186===_0x45b61a&&_0x45b61a==='runtime'){_0x31011a();return;}if([_0xf88369(0x14e),_0xf88369(0x19a)]['includes'](_0x45b61a)&&!_0x1a392a)return;if(_0x45b61a==='panel'){(_0x7d8284||_0x42440c)&&_0x31011a({'immediate':!0x0}),_0x32b6d3=_0x16ac56,_0x58a186='panel',_0x11b991[_0xf88369(0x12e)]='',_0x535d56['removeAttribute']('inert'),_0x535d56['classList'][_0xf88369(0x11f)]('is-open'),_0x4db518(),_0x21e3b9(),_0x197772(),_0x25a08e(),_0x2d170a({'type':'focus-state','active':!0x1,'panelOpen':!0x0,'id':_0x16ac56});return;}_0x7d8284||=_0x43a04b['cameraState'](!0x0);const _0x5f220b=_0x43a04b['worldPoint'](_0x1a4a85['floorId'],_0x1a4a85['x'],_0x1a4a85['y'],_0x1a4a85['height'])?.['toArray']();if(!_0x5f220b)return;_0x32b6d3=_0x16ac56,_0x58a186=_0x45b61a,_0x11b991['textContent']='',_0x535d56['removeAttribute'](_0xf88369(0x13c)),_0x535d56[_0xf88369(0x1a0)][_0xf88369(0x11f)]('is-open'),_0x43a04b['setOrbitPivot'](null),_0x4db518(),_0x21e3b9();const _0x2f7f23=_0x1a4a85['focusCamera']||_0x191b9c(_0x13d118,_0x219ee9['camera']||_0x804434||_0x7d8284,_0x5f220b);_0x18d091(_0x2f7f23,!0x0,_0x2846b4),_0x34f69b||_0x2d170a({'type':_0xf88369(0x11b),'active':!0x0,'id':_0x16ac56});}_0x49df93['addEventListener']('click',()=>{const _0x47b021=_0x4a464f;_0x58a186||_0x7d8284||_0x42440c?_0x31011a():_0x43a04b[_0x47b021(0x11a)](_0x2fd4e8(_0x219ee9['camera']||_0x804434));}),_0x1e7f35['addEventListener'](_0x4a464f(0x17b),()=>{const _0xd45731=_0x54e30b();_0xd45731&&_0x3814f7('power',!_0x26ea8f(_0xd45731['entityId'])['on']);});function _0x53d9bd(_0x39f7f1){const _0x5985a7=_0x4a464f,_0x59d8b9=Number[_0x5985a7(0x147)](_0x39f7f1['effectColor'])?Math['max'](0x0,Math['min'](0x64,Number(_0x39f7f1['brightness'])||0x0)):Math['max'](0x1,Math[_0x5985a7(0x177)](0x64,Number(_0x39f7f1['brightness'])||(_0x39f7f1['brightnessSupported']?0x1:0x64))),_0x22bcc6=(Math['max'](0x7d0,Math['min'](0x1964,Number(_0x39f7f1[_0x5985a7(0x185)])||0xbb8))-0x7d0)/0x1194,_0x1d6c9d=[0xff,0x84,0x2a],_0x353df9=[0xac,0xe1,0xff],_0x2d41a1=_0x1d6c9d['map']((_0x343bce,_0xa80ae6)=>Math['round'](_0x343bce+(_0x353df9[_0xa80ae6]-_0x343bce)*_0x22bcc6));_0x1e7f35['classList']['toggle'](_0x5985a7(0x19e),_0x39f7f1['on']),_0x1e7f35['setAttribute'](_0x5985a7(0x124),String(_0x39f7f1['on'])),_0x1e7f35['setAttribute'](_0x5985a7(0x198),''+(_0x54e30b()?.['label']||_0x39f7f1['name'])+(_0x39f7f1['available']?_0x39f7f1['on']?'已开启，点击关闭':'已关闭，点击开启':'当前不可用')),_0x1e7f35['style']['setProperty']('--i3d-lamp-color',Number['isFinite'](_0x39f7f1[_0x5985a7(0x140)])?'#'+_0x39f7f1['effectColor']['toString'](0x10)['padStart'](0x6,'0'):_0x5985a7(0x154)+_0x2d41a1['join'](',')+')'),_0x1e7f35[_0x5985a7(0x18c)]['setProperty']('--i3d-lamp-opacity',_0x39f7f1['on']&&_0x59d8b9>0x0?String(0.08+_0x59d8b9/0x64*0.92):'0'),_0x1e7f35[_0x5985a7(0x18c)]['setProperty']('--i3d-lamp-scale',String(0.62+_0x59d8b9/0x64*1.05));}function _0x21e3b9(){const _0x436142=_0x4a464f,_0x17b902=_0x54e30b();if(!_0x17b902)return _0x31011a();let _0x116218=_0x23c518(_0x17b902);const _0x455e96=_0x34f69b&&_0xe4d18b?.['id']===_0x17b902['id'];let _0x2a1a0f=0x1,_0x4a699a=0x64;if(_0x455e96){const _0xb85bdf={..._0x17b902,..._0x116218},_0x47d7d5=_0x43a04b['mapLightEffectState'](_0xb85bdf),_0x580247=_0x43a04b['mapLightEffectState']({..._0xb85bdf,'brightness':0x1,'kelvin':_0x116218['minimum']}),_0x99a804=_0x43a04b['mapLightEffectState']({..._0xb85bdf,'brightness':0x64,'kelvin':_0x116218['maximum']});_0x2a1a0f=_0x580247['brightness'],_0x4a699a=_0x99a804['brightness'],_0x116218={..._0x116218,'brightness':Number['isFinite'](_0x47d7d5['brightness'])?Math['round'](_0x47d7d5['brightness']):_0x47d7d5['brightness'],'kelvin':Number[_0x436142(0x147)](_0x47d7d5['kelvin'])?Math['round'](_0x47d7d5['kelvin']):_0x47d7d5[_0x436142(0x185)],'minimum':_0x580247['kelvin'],'maximum':_0x99a804['kelvin'],'effectColor':_0x43a04b['lightEffectColorHex'](_0x47d7d5['kelvin'])};}_0x301812['textContent']=_0x17b902[_0x436142(0x145)]||_0x116218['name'],_0x517d75['textContent']=_0x455e96?'效果预览':_0x17b902['entityId']?_0x116218['available']?_0x116218['on']?'已开启':'已关闭':_0x436142(0x1b1):'尚未绑定设备',_0x301812[_0x436142(0x15f)]=_0x301812[_0x436142(0x12e)],_0x11b991['title']=_0x11b991['textContent'],_0x53d9bd(_0x116218),_0x517d75['classList']['toggle']('is-on',_0x116218['available']&&_0x116218['on']);const _0x2cbc83=[..._0x31695b['values']()][_0x436142(0x138)](_0x52c0f2=>_0x52c0f2[_0x436142(0x16e)]===_0x17b902[_0x436142(0x16e)]);_0x535d56['classList']['toggle'](_0x436142(0x190),_0x2cbc83&&_0x116218[_0x436142(0x136)]&&!_0x34f69b),_0x535d56[_0x436142(0x13b)](_0x436142(0x135),String(_0x2cbc83));const _0x2a1007=_0x116218['available']&&_0x116218['on']&&(_0x116218['brightnessSupported']||_0x116218['temperatureSupported']);_0x535d56['classList']['toggle']('has-light-controls',_0x2a1007),_0x535d56[_0x436142(0x1a0)]['toggle']('has-error',!!_0x11b991['textContent']),_0x2a1007?_0x3992df['removeAttribute']('inert'):(_0x450309(_0x3992df,_0x535d56),_0x3992df['setAttribute'](_0x436142(0x13c),'')),_0x3992df[_0x436142(0x17c)]('aria-hidden'),_0x1e7f35['disabled']=_0x34f69b||!_0x116218['available'],_0x4d3008[_0x436142(0x127)]['min']=_0x2a1a0f,_0x4d3008['input'][_0x436142(0x1ae)]=_0x4a699a,_0xd810b5['input']['min']=_0x116218['minimum'],_0xd810b5['input']['max']=_0x116218['maximum'];for(const [_0x2aae2e,_0x59f35c,_0x35ab1e,_0x591024]of[[_0x4d3008,_0x116218['brightnessSupported'],_0x116218['brightness'],'%'],[_0xd810b5,_0x116218['temperatureSupported'],_0x116218[_0x436142(0x185)],'\x20K']])_0x2aae2e['root']['hidden']=!_0x59f35c,_0x2aae2e['input']['disabled']=_0x34f69b||!_0x116218['available']||!_0x116218['on'],document['activeElement']!==_0x2aae2e['input']&&(_0x2aae2e['input']['value']=_0x35ab1e??(_0x2aae2e===_0x4d3008?0x64:_0x116218['minimum']),_0x2aae2e['value']['value']=_0x35ab1e===null?'—':''+_0x35ab1e+_0x591024);_0x36f47c['hidden']=!_0x116218['brightnessSupported']&&!_0x116218['temperatureSupported'];for(const _0x4fe7ce of _0x4cb193){const _0x322d09=Math['round'](_0x116218['minimum']+(_0x116218['maximum']-_0x116218[_0x436142(0x126)])*_0x4fe7ce['temperaturePercent']/0x64),_0x18c82c=!_0x455e96&&_0x116218['on']&&(!_0x116218['brightnessSupported']||Math['abs'](_0x116218['brightness']-_0x4fe7ce['brightness'])<=0x4)&&(!_0x116218['temperatureSupported']||Math['abs'](_0x116218['kelvin']-_0x322d09)<=Math['max'](0x32,(_0x116218['maximum']-_0x116218['minimum'])*0.06));_0x4fe7ce[_0x436142(0x19c)]['disabled']=_0x34f69b||!_0x116218['available']||!_0x116218['on']||_0x36f47c[_0x436142(0x146)],_0x4fe7ce['button']['classList'][_0x436142(0x17e)]('is-active',_0x18c82c),_0x4fe7ce['button']['setAttribute']('aria-pressed',String(_0x18c82c)),_0x4fe7ce['detail']['textContent']=_0x116218['brightnessSupported']?_0x4fe7ce['brightness']+'%':'开启';}}function _0x1e2d24(_0x48731,_0x538008){const _0x3451c9=String(++_0x2c6c7d),_0x3c0823=_0x48731['entityId'];_0x4664ae['retain'](_0x3c0823,_0x538008);const _0x300fb8=setTimeout(()=>_0x53d1ff(_0x3451c9,'请求超时，请检查设备状态。',!0x0),0x36b0);_0x31695b['set'](_0x3451c9,{'entityId':_0x3c0823,'command':_0x48731,'previewToken':_0x538008,'timeout':_0x300fb8,'next':null}),_0x2d170a({'type':'control','requestId':_0x3451c9,'command':_0x48731});}function _0x205061(_0x4b3327,_0x42eee2){const _0x34292a=_0x4a464f,_0x3b2877=[..._0x31695b['values']()]['find'](_0x4167f0=>_0x4167f0['entityId']===_0x4b3327['entityId']);if(!_0x3b2877)return _0x1e2d24(_0x4b3327,_0x42eee2);const _0x4ea859=_0x3b2877['next']?.['command']||_0x3b2877[_0x34292a(0x178)];if(_0x4ea859['service']==='turn_on'&&_0x4b3327[_0x34292a(0x19d)]===_0x34292a(0x116)){const _0x50dbe7={..._0x4ea859[_0x34292a(0x141)]};(_0x34292a(0x113)in _0x4b3327['data']||'brightness_pct'in _0x4b3327['data'])&&(delete _0x50dbe7['brightness'],delete _0x50dbe7[_0x34292a(0x15a)]),_0x4b3327={..._0x4b3327,'data':{..._0x50dbe7,..._0x4b3327[_0x34292a(0x141)]}};}_0x3b2877['next']={'command':_0x4b3327,'previewToken':_0x42eee2},_0x4664ae['hold'](_0x4b3327['entityId'],_0x42eee2);}function _0x53d1ff(_0x4554f5,_0x505184='',_0x51e6d3=!0x1){const _0x464770=_0x4a464f,_0x22e578=_0x31695b[_0x464770(0x114)](_0x4554f5);if(!_0x22e578)return;clearTimeout(_0x22e578['timeout']),_0x31695b['delete'](_0x4554f5);const _0x8fde48=_0x22e578[_0x464770(0x118)],_0x40087b=_0x8fde48&&!_0x51e6d3&&!_0x133d1d&&!_0x34f69b&&_0x1a392a&&(_0x219ee9['lights']||[])[_0x464770(0x138)](_0x1b0154=>_0x1b0154['entityId']===_0x22e578[_0x464770(0x16e)])&&_0x467230(_0x22e578['entityId'])['available'];_0x505184?_0x4664ae['reject'](_0x22e578['entityId'],_0x22e578[_0x464770(0x14f)]):_0x4664ae['acknowledge'](_0x22e578[_0x464770(0x16e)],_0x22e578['previewToken']),_0x40087b?_0x1e2d24(_0x8fde48['command'],_0x8fde48['previewToken']):_0x8fde48&&_0x4664ae['reject'](_0x22e578['entityId'],_0x8fde48['previewToken']),_0x54e30b()?.['entityId']===_0x22e578['entityId']&&(_0x11b991[_0x464770(0x12e)]=_0x40087b?'':_0x505184),_0x54079c();}async function _0x3814f7(_0x548a2a,_0x49a09b,_0x39093b=_0x54e30b()){const _0x375e71=_0x4a464f;if(!(!_0x39093b||_0x34f69b||_0x133d1d))try{const _0x4c8b55=_0x467230(_0x39093b['entityId']);let _0x3637bc,_0x35d2a3=_0x49a09b;if(_0x548a2a===_0x375e71(0x158)){if(!wt['includes'](_0x49a09b))throw new Error('灯光预设无效。');const _0x148cca=[];if(_0x35d2a3={},_0x4c8b55['brightnessSupported']&&(_0x148cca['push'](['brightness',_0x49a09b['brightness']]),_0x35d2a3[_0x375e71(0x113)]=_0x49a09b['brightness']),_0x4c8b55[_0x375e71(0x191)]&&(_0x35d2a3['kelvin']=Math[_0x375e71(0x18b)](_0x4c8b55['minimum']+(_0x4c8b55['maximum']-_0x4c8b55['minimum'])*_0x49a09b['temperaturePercent']/0x64),_0x148cca['push'](['temperature',_0x35d2a3[_0x375e71(0x185)]])),!_0x148cca[_0x375e71(0x13f)])throw new Error(_0x375e71(0x1a6));const _0x3eef38=_0x148cca['map'](([_0x3ec0c1,_0x55a1cd])=>_0x291c14(_0x39093b[_0x375e71(0x16e)],_0x3ec0c1,_0x55a1cd,_0x4c8b55));_0x3637bc={..._0x3eef38[0x0],'data':Object[_0x375e71(0x131)]({},..._0x3eef38['map'](_0x5b8e7c=>_0x5b8e7c['data']))},_0x4c8b55['brightnessSupported']&&_0x49a09b['brightness']<0x64&&(delete _0x3637bc[_0x375e71(0x141)][_0x375e71(0x113)],_0x3637bc['data'][_0x375e71(0x15a)]=_0x49a09b['brightness']);}else _0x3637bc=_0x291c14(_0x39093b['entityId'],_0x548a2a,_0x49a09b,_0x4c8b55);const _0x3d4554=_0x4664ae['set'](_0x39093b['entityId'],_0x548a2a,_0x35d2a3,!0x0);_0x2478fb({'preview':_0x548a2a!=='power'}),_0x205061(_0x3637bc,_0x3d4554),_0x11b991['textContent']='',_0x54079c();}catch(_0x241099){_0x11b991['textContent']=_0x241099['message'],_0x21e3b9();}}let _0x21431e='';function _0x2d51ba(_0x39a1f5=!0x1){const _0x493bcc=_0x4a464f;if(_0x369660||_0x133d1d)return;if(_0x43a04b['camera']['updateMatrixWorld'](),_0xa914c2!==null&&performance['now']()-_0xa914c2>=0xf0){_0x21431e='';return;}(_0x49df96!==_0x43a04b['document']||_0x268341!==_0x575966)&&(_0x3b260b['clear'](),_0x49df96=_0x43a04b['document'],_0x268341=_0x575966);const _0x39fe72=_0x18adee['getBoundingClientRect'](),_0x311f9d=_0x15ee66?.['width']||_0x39fe72['width'],_0x5127a9=_0x15ee66?.['height']||_0x39fe72[_0x493bcc(0x12d)],_0x4ca2e7=_0x311f9d+':'+_0x5127a9+':'+_0x43a04b[_0x493bcc(0x197)]['matrixWorld']['elements']+':'+_0x43a04b['camera']['projectionMatrix']['elements'];if(!(_0x39a1f5!==!0x0&&_0x4ca2e7===_0x21431e)){_0x21431e=_0x4ca2e7;for(const _0x5eb939 of _0x219ee9['lights']||[]){const _0x303436=_0x5eb939['id'],_0x306b19=_0x59c40b[_0x493bcc(0x114)](_0x303436);if(!_0x306b19)continue;const _0x18fddb=_0x5eb939[_0x493bcc(0x132)]!==!0x1&&(_0x575966==='all'||_0x5eb939['floorId']===_0x575966);let _0x3bbf42=_0x3b260b['get'](_0x303436);_0x18fddb&&(!_0x3bbf42||_0x3bbf42['floorId']!==_0x5eb939['floorId']||_0x3bbf42['x']!==_0x5eb939['x']||_0x3bbf42['y']!==_0x5eb939['y']||_0x3bbf42['height']!==_0x5eb939['height'])&&(_0x3bbf42={'floorId':_0x5eb939['floorId'],'x':_0x5eb939['x'],'y':_0x5eb939['y'],'height':_0x5eb939['height'],'point':_0x43a04b['worldPoint'](_0x5eb939['floorId'],_0x5eb939['x'],_0x5eb939['y'],_0x5eb939[_0x493bcc(0x12d)])},_0x3b260b[_0x493bcc(0x171)](_0x303436,_0x3bbf42));const _0x5a77a3=_0x18fddb&&_0x3bbf42?.['point'];if(!_0x5a77a3){_0x306b19['hidden']=!0x0;continue;}const _0x158959=_0x36581b['copy'](_0x5a77a3)['project'](_0x43a04b['camera']);_0x306b19['hidden']=_0x158959['z']<-0x1||_0x158959['z']>0x1||Math[_0x493bcc(0x18a)](_0x158959['x'])>1.05||Math['abs'](_0x158959['y'])>1.05,_0x306b19['style']['left']=(_0x158959['x']+0x1)*_0x311f9d/0x2+'px',_0x306b19[_0x493bcc(0x18c)]['top']=(0x1-_0x158959['y'])*_0x5127a9/0x2+'px';}}}function _0x54079c(){const _0x26c397=_0x4a464f;if(_0x369660)return;_0x146ac9();const _0x296688=new Set((_0x219ee9['lights']||[])[_0x26c397(0x16d)](_0x120a38=>_0x120a38['id']));for(const [_0x5bf104,_0x1edd98]of _0x59c40b)_0x296688['has'](_0x5bf104)||(_0x1edd98['remove'](),_0x59c40b[_0x26c397(0x123)](_0x5bf104),_0x3b260b[_0x26c397(0x123)](_0x5bf104));for(const _0x5699a3 of _0x219ee9['lights']||[]){let _0x5c955a=_0x59c40b['get'](_0x5699a3['id']);_0x5c955a||(_0x5c955a=_0x2f605c('button','i3d-marker'),_0x5c955a['type']='button',_0x5c955a['addEventListener']('click',_0xf5c117=>{const _0x5ca3ca=_0x26c397;if(_0xf5c117['stopPropagation'](),!(_0x369660||_0x248f77||_0x58a186==='edit')){if(_0x5c955a['dataset']['dragged']==='true'){_0x5c955a['dataset']['dragged']='';return;}if(_0x34f69b)_0x2dc3aa=_0x5699a3['id'],_0x2d170a({'type':_0x5ca3ca(0x133),'action':'select','id':_0x5699a3['id']}),_0x54079c();else{const _0x3693b8=_0x595ef2(_0x5699a3['id']),_0x560b6a=_0x3693b8&&_0x26ea8f(_0x3693b8[_0x5ca3ca(0x16e)]);if(['turn-on',_0x5ca3ca(0x17f)]['includes'](_0x3693b8?.[_0x5ca3ca(0x149)])){_0x3693b8['clickAction']==='turn-on-panel'&&_0x2b1b3f(_0x5699a3['id'],_0x5ca3ca(0x19a)),_0x560b6a['available']&&!_0x560b6a['on']&&_0x3814f7('power',!0x0,_0x3693b8);return;}_0x2b1b3f(_0x5699a3['id']);const _0x494bab=_0x595ef2(_0x5699a3['id']),_0x1ca100=_0x494bab&&_0x26ea8f(_0x494bab['entityId']);_0x32b6d3===_0x5699a3['id']&&_0x58a186==='runtime'&&_0x494bab?.['clickAction']==='turn-on-focus'&&_0x1ca100['available']&&!_0x1ca100['on']&&_0x3814f7('power',!0x0);}}}),_0x5c955a['addEventListener']('pointerdown',_0x59f9ff=>_0x250e86(_0x59f9ff,_0x5699a3['id'])),_0x5c955a['addEventListener']('pointermove',_0x1bd607),_0x5c955a[_0x26c397(0x183)]('pointerup',_0x179795),_0x5c955a['addEventListener']('pointercancel',_0x484e89),_0x1c783b['append'](_0x5c955a),_0x59c40b['set'](_0x5699a3['id'],_0x5c955a));const _0x627a8c=/^mdi:[a-z0-9-]+$/['test'](_0x5699a3['icon']||'')?_0x5699a3[_0x26c397(0x15c)]:'';if(_0x5c955a['dataset']['icon']!==_0x627a8c){if(_0x5c955a['dataset']['icon']=_0x627a8c,_0x627a8c){const _0x43a4b5=_0x2f605c(_0x26c397(0x15e),'i3d-marker-icon');_0x43a4b5['setAttribute']('aria-hidden','true'),_0x43a4b5['style']['maskImage']='url(\x22/bridge-static/vendor/mdi/7.4.47/svg/'+_0x627a8c['slice'](0x4)+'.svg\x22)',_0x43a4b5['style'][_0x26c397(0x160)]=_0x43a4b5[_0x26c397(0x18c)]['maskImage'],_0x5c955a['replaceChildren'](_0x43a4b5);}else _0x5c955a['innerHTML']=Tt;}const _0x420e2f=_0x26ea8f(_0x5699a3['entityId']),_0x3f4831=Number['isFinite'](_0x5699a3['size'])&&_0x5699a3['size']>0x0?_0x5699a3['size']:0x2c,_0x3ebc93=Number['isFinite'](_0x5699a3['iconSize'])&&_0x5699a3[_0x26c397(0x14a)]>0x0?_0x5699a3['iconSize']:Math['min'](_0x3f4831,Math[_0x26c397(0x1ae)](0x4,_0x3f4831-0x12)),_0x36d36a=Number[_0x26c397(0x147)](_0x5699a3['hitSize'])&&_0x5699a3[_0x26c397(0x148)]>0x0?_0x5699a3['hitSize']:Math['max'](0x2c,_0x3f4831);_0x5c955a['style']['width']=_0x5c955a['style']['height']=_0x36d36a+'px',_0x5c955a['style']['setProperty'](_0x26c397(0x195),_0x3f4831+'px'),_0x5c955a['style']['setProperty']('--i3d-marker-icon-size',_0x3ebc93+'px'),_0x5c955a['setAttribute']('aria-label',_0x5699a3['label']||_0x420e2f[_0x26c397(0x18e)]||'灯光'),_0x5c955a['title']=_0x5699a3[_0x26c397(0x145)]||_0x420e2f['name'],_0x5c955a['classList']['toggle']('is-on',_0x420e2f['on']),_0x5c955a[_0x26c397(0x1a0)][_0x26c397(0x17e)]('is-offline',!_0x34f69b&&!_0x420e2f['available']),_0x5c955a['classList']['toggle']('is-selected',_0x34f69b&&_0x2dc3aa===_0x5699a3['id']);}_0x2478fb(),_0x21e3b9(),_0x46d026(),_0x2d51ba(!0x0);}function _0x3e2fda(_0x37d9a3,_0x23fc35){const _0x27029e=_0x4a464f,_0x31afd0=_0x43a04b[_0x27029e(0x163)](_0x23fc35['floorId'],0x0,0x0,_0x23fc35['height']);if(!_0x31afd0)return null;const _0x17f966=_0x18adee['getBoundingClientRect'](),_0x5b87dc=new _0x13d118['Raycaster']();_0x5b87dc['setFromCamera'](new _0x13d118['Vector2']((_0x37d9a3['clientX']-_0x17f966['left'])/_0x17f966['width']*0x2-0x1,0x1-(_0x37d9a3['clientY']-_0x17f966['top'])/_0x17f966['height']*0x2),_0x43a04b['camera']);const _0xee9794=_0x5b87dc['ray']['intersectPlane'](new _0x13d118['Plane'](new _0x13d118['Vector3'](0x0,0x1,0x0),-_0x31afd0['y']),new _0x13d118['Vector3']());if(!_0xee9794)return null;const _0x498f06=_0x43a04b[_0x27029e(0x163)](_0x23fc35['floorId'],0x1,0x0,_0x23fc35[_0x27029e(0x12d)])[_0x27029e(0x180)](_0x31afd0),_0x463331=_0x43a04b['worldPoint'](_0x23fc35['floorId'],0x0,0x1,_0x23fc35['height'])['sub'](_0x31afd0),_0x43c4f8=_0xee9794[_0x27029e(0x180)](_0x31afd0);return{'x':Math['round'](_0x43c4f8['dot'](_0x498f06)/_0x498f06['lengthSq']()*0x64)/0x64,'y':Math['round'](_0x43c4f8[_0x27029e(0x12c)](_0x463331)/_0x463331['lengthSq']()*0x64)/0x64};}function _0x250e86(_0x5a77b0,_0x5d783c){const _0x34a457=_0x4a464f;if(!_0x34f69b||_0x58a186||_0x5a77b0['button']!==0x0)return;_0x5a77b0['preventDefault'](),_0x5a77b0[_0x34a457(0x1ab)]();const _0x3314c2=_0x595ef2(_0x5d783c);_0x2dc3aa=_0x5d783c,_0x2d170a({'type':'edit','action':'select','id':_0x5d783c});const _0x162ac6=_0x3e2fda(_0x5a77b0,_0x3314c2);_0x420f8e={'id':_0x5d783c,'pointerId':_0x5a77b0['pointerId'],'clientX':_0x5a77b0['clientX'],'clientY':_0x5a77b0['clientY'],'original':{'x':_0x3314c2['x'],'y':_0x3314c2['y']},'offset':_0x162ac6?{'x':_0x3314c2['x']-_0x162ac6['x'],'y':_0x3314c2['y']-_0x162ac6['y']}:{'x':0x0,'y':0x0},'moved':!0x1},_0x5a77b0['currentTarget']['setPointerCapture'](_0x5a77b0['pointerId']),_0x43a04b['controls']['enabled']=!0x1;}function _0x1bd607(_0x38f9a5){const _0x231dfb=_0x4a464f;if(!_0x420f8e||_0x420f8e['pointerId']!==_0x38f9a5['pointerId']||Math['hypot'](_0x38f9a5['clientX']-_0x420f8e['clientX'],_0x38f9a5['clientY']-_0x420f8e['clientY'])<0x4&&!_0x420f8e['moved'])return;const _0x153ab6=_0x3e2fda(_0x38f9a5,_0x595ef2(_0x420f8e['id']));_0x153ab6&&(_0x420f8e['moved']=!0x0,Object[_0x231dfb(0x131)](_0x595ef2(_0x420f8e['id']),{'x':Math[_0x231dfb(0x18b)]((_0x153ab6['x']+_0x420f8e['offset']['x'])*0x64)/0x64,'y':Math['round']((_0x153ab6['y']+_0x420f8e['offset']['y'])*0x64)/0x64}),_0x2d51ba(!0x0));}function _0x179795(_0x5136c0){const _0x2afed9=_0x4a464f;if(!(!_0x420f8e||_0x420f8e[_0x2afed9(0x130)]!==_0x5136c0['pointerId'])){if(_0x420f8e['moved']){_0x5136c0['currentTarget'][_0x2afed9(0x166)]['dragged']='true';const _0xb4c261=_0x595ef2(_0x420f8e['id']);_0x2d170a({'type':'edit','action':_0x2afed9(0x164),'id':_0xb4c261['id'],'x':_0xb4c261['x'],'y':_0xb4c261['y']});}_0x420f8e=null,_0x197772();}}function _0x484e89(){const _0x1ec5a3=_0x4a464f;_0x420f8e&&Object['assign'](_0x595ef2(_0x420f8e['id']),_0x420f8e[_0x1ec5a3(0x117)]),_0x420f8e=null,_0x197772(),_0x2d51ba(!0x0);}let _0x1d1b86;_0x40463b['addEventListener']('pointerdown',_0xb5297a=>{_0x1d1b86={'x':_0xb5297a['clientX'],'y':_0xb5297a['clientY']};}),_0x40463b['addEventListener']('pointerup',_0x4a5764=>{_0x58a186!=='edit'&&_0x1d1b86&&Math['hypot'](_0x4a5764['clientX']-_0x1d1b86['x'],_0x4a5764['clientY']-_0x1d1b86['y'])<0x5&&_0x31011a(),_0x1d1b86=null;}),window['addEventListener']('keydown',_0x21e229=>{_0x21e229['key']==='Escape'&&_0x31011a();});function _0x19d252(_0x5b86c9){const _0x223e18=_0x4a464f;if(_0x5b86c9['origin']!==location['origin']||_0x5b86c9['source']!==window['parent']||_0x5b86c9['data']?.['channel']!=='hb-i3d-v1')return;const _0x24a690=_0x5b86c9['data'];if(_0x146ac9(),_0x24a690[_0x223e18(0x128)]==='presentation-layout')Number['isFinite'](_0x24a690['width'])&&_0x24a690['width']>0x0&&Number['isFinite'](_0x24a690[_0x223e18(0x12d)])&&_0x24a690['height']>0x0&&(_0x15ee66={'width':_0x24a690['width'],'height':_0x24a690['height']},_0x22a77b());else{if(_0x24a690['type']==='config'){if(_0x369660){_0x46f52b=_0x5b86c9;return;}_0xa3c2d1=!0x1,_0x37bca1=structuredClone(_0x24a690[_0x223e18(0x18f)]),_0x24a690['properties']=_0x97600b(_0x37bca1),_0xb2b766['activity'](),_0x2d9351['activity']();const _0x4ffa48=_0x248f77&&_0x24a690['viewEditing']!==!0x0||JSON['stringify'](_0x219ee9[_0x223e18(0x197)])!==JSON['stringify'](_0x24a690['properties']['camera']);(_0x58a186||_0x7d8284||_0x42440c)&&(_0x4ffa48||_0x219ee9['floorSelection']!==_0x24a690['properties']['floorSelection']||_0x34f69b!==(_0x24a690['editing']===!0x0)||_0x24a690['viewEditing']===!0x0||_0x34f69b&&_0x2dc3aa!==(_0x24a690['selectedId']||''))&&_0x31011a({'immediate':!0x0}),_0x219ee9=structuredClone(_0x24a690[_0x223e18(0x18f)]),_0x34f69b=_0x24a690[_0x223e18(0x196)]===!0x0,_0x248f77=_0x24a690['viewEditing']===!0x0,_0x2dc3aa=_0x24a690['selectedId']||'',_0x219a33=_0x24a690[_0x223e18(0x11c)]||{},_0x1a392a=!_0x34f69b&&_0x24a690['interactive']===!0x0;for(const _0x5ecba1 of _0x31695b['values']())_0x5ecba1['next']&&(!_0x1a392a||!(_0x219ee9[_0x223e18(0x16c)]||[])['some'](_0x2b0b1b=>_0x2b0b1b['entityId']===_0x5ecba1['entityId']))&&(_0x4664ae['reject'](_0x5ecba1[_0x223e18(0x16e)],_0x5ecba1[_0x223e18(0x118)]['previewToken']),_0x5ecba1['next']=null);_0xb2b766['configure'](_0x219ee9['autoRotate']),_0x2d9351[_0x223e18(0x11e)](_0x219ee9[_0x223e18(0x151)]),_0x25a08e(),_0x43a04b[_0x223e18(0x174)](_0x219ee9);const _0xb9aa4e=_0x43a04b['document'][_0x223e18(0x13d)]['some'](_0x349427=>_0x349427['id']===_0x219ee9['floorSelection'])||_0x219ee9[_0x223e18(0x119)]==='all'?_0x219ee9[_0x223e18(0x119)]:_0x43a04b['document']['floors'][0x0]['id'];_0x575966!==_0xb9aa4e?(_0x575966=_0xb9aa4e,_0x43a04b['setFloor'](_0xb9aa4e),_0x43a04b[_0x223e18(0x11a)](_0x2fd4e8(_0x219ee9['camera'])),_0x804434=_0x43a04b['cameraState']()):_0x4ffa48&&(_0x43a04b['restoreCamera'](_0x2fd4e8(_0x219ee9['camera']||_0x804434)),_0x804434=_0x43a04b['cameraState']()),_0x197772(),_0x8cbbca['hidden']=!0x0,_0x4db518(),(_0x248f77||!_0x34f69b&&!_0x1a392a)&&_0x31011a({'immediate':!0x0}),_0x54079c();const _0x5ebb06=++_0x3d3d85;(_0x568378?Promise['resolve']():_0x43a04b['whenPresented']())['then'](()=>{const _0x29c0a6=_0x223e18;_0x133d1d||_0x5ebb06!==_0x3d3d85||(_0x568378=!0x0,_0x25a08e(),_0x2d51ba(!0x0),_0x2d170a({'type':'presented','configId':_0x24a690[_0x29c0a6(0x199)],'camera':_0x3ec112(_0x43a04b[_0x29c0a6(0x181)](),_0x219ee9[_0x29c0a6(0x119)],!0x0)}));})['catch'](_0x18999c=>{!_0x133d1d&&_0x5ebb06===_0x3d3d85&&_0x2d170a({'type':'error','message':_0x18999c['message']||'户型画面准备失败，请重新载入。'});});}else{if(_0x24a690[_0x223e18(0x128)]==='activity-state')_0x1c085c=!0x0,_0x6931f4=_0x24a690['visible']===!0x0,_0x53d542=_0x24a690['presentedVisible']===void 0x0?_0x6931f4:_0x24a690['presentedVisible']===!0x0,_0x43a04b[_0x223e18(0x1ac)]?.(_0x53d542),_0x6931f4||(_0xa3c2d1=!0x1),_0x25a08e();else{if(_0x24a690['type']==='user-activity')_0xa3c2d1=!0x1,_0x568391=performance['now'](),_0x46d026(),_0x1d4110=_0x24a690[_0x223e18(0x1a5)]===!0x0,_0x273769();else{if(_0x24a690['type']==='dismiss-focus')_0xb2b766[_0x223e18(0x167)](),_0x2d9351['activity'](),_0x31011a({'immediate':_0x24a690['immediate']===!0x0});else{if(_0x24a690['type']==='states'){_0x219a33=_0x24a690['states']||{};for(const _0x41dc72 of _0x219ee9['lights']||[])_0x4664ae[_0x223e18(0x16f)](_0x41dc72['entityId'],_0x467230(_0x41dc72[_0x223e18(0x16e)]));_0x54079c();}else{if(_0x24a690['type']==='control-result')_0x53d1ff(_0x24a690['requestId'],_0x24a690['error']||'',_0x24a690['timedOut']===!0x0);else{if(_0x24a690['type']==='editor-command'&&_0x34f69b)try{if(_0x24a690['command']===_0x223e18(0x1a3))_0x2b1b3f(_0x24a690['id'],_0x223e18(0x133),!0x0);else{if(_0x24a690['command']==='preview-light-camera')_0x2b1b3f(_0x24a690['id'],'preview');else{if(_0x24a690['command']==='preview-light-effect'){if(!['brightnessMin','brightnessMax','temperatureMin','temperatureMax','defaults']['includes'](_0x24a690['value']))throw new Error('请选择要预览的效果。');if(!_0x595ef2(_0x24a690['id']))throw new Error('灯光按钮已移除。');if(!_0x595ef2(_0x24a690['id'])['entityId'])throw new Error('请先绑定实体，再预览灯光效果。');_0x2b1b3f(_0x24a690['id'],'preview'),_0xe4d18b={'id':_0x24a690['id'],'kind':_0x24a690['value']},_0x2478fb({'preview':!0x0}),_0x21e3b9();}else{if(_0x24a690[_0x223e18(0x178)]==='cancel-light-camera')_0x31011a({'immediate':!0x0});else{if(_0x58a186!=='edit'||_0x24a690['id']!==_0x32b6d3)throw new Error('请先调整这盏灯的聚焦视角。');_0x24a690['command']==='focus-projection'&&_0x43a04b[_0x223e18(0x1a7)](_0x24a690['value']),_0x24a690['command']==='focus-focal-length'&&_0x43a04b[_0x223e18(0x176)](_0x24a690['value']);}}}}_0x197772();const _0x10beca=_0x16c181();_0x2d170a({'type':_0x223e18(0x133),'action':'focus-camera','requestId':_0x24a690['requestId'],'id':_0x24a690['id'],'camera':_0x10beca}),_0x24a690[_0x223e18(0x178)]===_0x223e18(0x16a)&&_0x31011a({'immediate':!0x0});}catch(_0x47cccd){_0x2d170a({'type':'edit','action':'focus-camera','requestId':_0x24a690['requestId'],'error':_0x47cccd[_0x223e18(0x143)]});}else _0x24a690['type']==='editor-command'&&_0x248f77&&(_0x24a690[_0x223e18(0x178)]==='projection'&&_0x43a04b['setCameraProjection'](_0x24a690[_0x223e18(0x14b)]),_0x24a690['command']==='focal-length'&&_0x43a04b[_0x223e18(0x176)](_0x24a690['value']),_0x197772(),(_0x24a690['command']==='save-camera'||_0x24a690['requestId'])&&_0x2d170a({'type':'edit','action':'camera','requestId':_0x24a690[_0x223e18(0x1a4)],'camera':_0x16c181()}));}}}}}}}}window[_0x4a464f(0x183)]('message',_0x19d252);const _0x5b95e6=_0x43a04b['controls'],_0x196f65=_0x43a04b['onCameraChange']?.(_0x2d51ba);_0x196f65||_0x5b95e6['addEventListener']('change',_0x2d51ba);const _0x492057=new ResizeObserver(_0x22a77b);_0x492057[_0x4a464f(0x168)](_0x18adee);async function _0x3f4616(_0x2a15e2){const _0x413f04=_0x43a04b['savedScene'],_0x205c9e=_0x16c181();_0xa3c2d1=_0xa3c2d1||_0x15594c||_0x3b3704,_0x369660=!0x0,_0xb2b766['activity'](),_0x46d026();let _0x448ed2=()=>{},_0x49b84e=!0x1;const _0x7889dc=async _0x32bc4b=>{if(await _0x43a04b['replaceScene'](_0x32bc4b),_0x133d1d)return;_0x219ee9=_0x97600b(_0x37bca1);const _0x1397ef=_0x43a04b['document']['floors']['some'](_0x3a538b=>_0x3a538b['id']===_0x219ee9['floorSelection'])||_0x219ee9['floorSelection']==='all'?_0x219ee9['floorSelection']:_0x43a04b['document']['floors'][0x0]['id'];_0x575966=_0x1397ef,_0x43a04b['setFloor'](_0x1397ef),_0x43a04b['appearance'](_0x219ee9),_0x804434=_0x3ec112(_0x37bca1['camera']||_0x205c9e,_0x1397ef),_0x43a04b['restoreCamera'](_0x3ec112(_0x205c9e,_0x1397ef)),_0x2478fb({'immediate':!0x0}),await _0x43a04b['whenPresented']();};try{_0x448ed2=_0x43a04b['coverSceneUpdate'](),_0x43a04b['setCameraInteraction']({'enabled':!0x1}),_0x49b84e=!0x0,await _0x7889dc(_0x2a15e2),_0x133d1d||_0x2d170a({'type':'model-metadata','metadata':_0x581ae8()});}catch(_0x42b2fb){throw _0x49b84e&&!_0x133d1d&&await _0x7889dc(_0x413f04),_0x42b2fb;}finally{if(_0x448ed2(),_0x369660=!0x1,_0x3b260b['clear'](),!_0x133d1d&&(_0x197772(),_0x54079c(),_0x46f52b)){const _0x1699ed=_0x46f52b;_0x46f52b=null,_0x19d252(_0x1699ed);}}}const _0x30c33b=_0x43a04b[_0x4a464f(0x14c)]?_0x241980({'eligible':()=>!_0x133d1d&&_0x568378&&_0x6931f4&&!document[_0x4a464f(0x146)]&&!_0x34f69b&&!_0x248f77&&!_0x58a186&&!_0x42440c&&!_0x420f8e&&!_0x369660&&!_0x31695b[_0x4a464f(0x169)]&&!_0x1d4110&&!_0x4f344c[_0x4a464f(0x169)]&&!_0x5e21b9['size']&&performance['now']()-_0x568391>0x4b0,'read':_0x42b005=>_0x43a04b['readSceneUpdate'](_0x42b005),'apply':_0x3f4616}):()=>{};_0x1d08c4=_0x43a04b['createFrameLoop']({'step'(_0x2e2580){const _0x345688=_0x4a464f;return _0x133d1d||document['hidden']||_0x369660?0x1/0x0:(_0x296a09(_0x2e2580),_0xb2b766['tick'](_0x2e2580),_0x2d9351['tick'](_0x2e2580),_0x4664ae['expire']()&&_0x54079c(),_0x2d51ba(),_0x40463b[_0x345688(0x166)]['stageFrameChecks']=String(_0x1d08c4['stats']['frames']),Math['min'](_0x42440c?0x0:0x1/0x0,_0xb2b766[_0x345688(0x159)](_0x2e2580),_0x2d9351['nextDelay'](_0x2e2580),_0x4664ae['nextDelay'](_0x2e2580)));}}),_0x25a08e(),window['addEventListener']('pagehide',()=>{const _0x1a1cc2=_0x4a464f;_0x1bf90f['flush'](),_0x30c33b(),_0x133d1d=!0x0,_0xb2b766['dispose'](),_0x2d9351['dispose'](),_0x42440c=null,_0x2d170a({'type':'focus-state','active':!0x1});for(const _0x306d62 of _0x52e0b2)window['removeEventListener'](_0x306d62,_0x5b38ab,!0x0);window['removeEventListener']('blur',_0x1fac2e),document['removeEventListener']?.('visibilitychange',_0x25a08e),_0x1d08c4['dispose'](),_0x196f65?.(),_0x196f65||_0x5b95e6[_0x1a1cc2(0x189)](_0x1a1cc2(0x12b),_0x2d51ba),_0x492057['disconnect'](),_0x31695b['forEach'](_0x2bcd2e=>clearTimeout(_0x2bcd2e[_0x1a1cc2(0x11d)])),_0x31695b['clear']();});function _0x581ae8(){const _0x41e6d0=_0x4a464f;return{'camera':_0x3ec112(_0x43a04b['cameraState'](),_0x219ee9['floorSelection']||_0x43a04b['document'][_0x41e6d0(0x1b0)],!0x0),'baseLighting':_0x43a04b['document']['baseLighting'],'defaults':_0x43a04b[_0x41e6d0(0x12a)],'floors':_0x43a04b['document'][_0x41e6d0(0x13d)][_0x41e6d0(0x16d)](_0x29c14e=>{const _0x5c7e36=_0x41e6d0,_0x2eba41=_0x29c14e['scene']['settings']?.['wallHeight'],_0x2c3d19=_0x29c14e['scene']['walls']['map'](_0x53b6e0=>_0x53b6e0[_0x5c7e36(0x12d)])['filter'](_0x27b823=>Number['isFinite'](_0x27b823)&&_0x27b823>0x0),_0x3cb9be=Math['max'](0.01,Math['min'](0x6,Number['isFinite'](_0x2eba41)&&_0x2eba41>0x0?_0x2eba41:Math[_0x5c7e36(0x1ae)](0x0,..._0x2c3d19)||2.8));return{'id':_0x29c14e['id'],'name':_0x29c14e['name'],'wallHeight':_0x3cb9be,'groups':_0x29c14e['scene']['lightGroups']['map'](_0x3d3f8c=>{const _0x1fb327=_0x29c14e['scene']['items']['filter'](_0x300ad2=>_0x300ad2['lightGroupId']===_0x3d3f8c['id']),_0x5eb179=_0x1fb327['length']?_0x1fb327:_0x29c14e['scene']['walls']['map'](_0x3f6515=>_0x3f6515['start']);return{'id':_0x3d3f8c['id'],'name':_0x3d3f8c['name'],'height':_0x3cb9be,'x':_0x5eb179['length']?_0x5eb179['reduce']((_0x4360b3,_0x4ed7e3)=>_0x4360b3+_0x4ed7e3['x'],0x0)/_0x5eb179['length']:0x0,'y':_0x5eb179['length']?_0x5eb179['reduce']((_0x54d515,_0x482dc8)=>_0x54d515+_0x482dc8['y'],0x0)/_0x5eb179['length']:0x0};})};})};}_0x2d170a({'type':_0x4a464f(0x122),'metadata':_0x581ae8()});}
+import { startSceneSync } from "./scene-sync.js?v=20260907-scene-sync-v1";
+import {
+  lightCommand,
+  createLightPreview,
+  createLightStateCache,
+  lightRenderState,
+} from "./light-state.js?v=20260907-demand-v1";
+import {
+  createFocusCameraSampler,
+  automaticLightCamera,
+} from "./camera-motion.js?v=20260907-focus-work-v1";
+import {
+  createIdleRotation,
+  createIdleIconVisibility,
+} from "./idle-rotation.js?v=20260907-demand-v1";
+const defaultMarkerSvg =
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 15c0-2-3-3-3-7a7 7 0 0 1 14 0c0 4-3 5-3 7l-1 3H9l-1-3Z"/><path d="M9 21h6M9 15h6"/></svg>';
+const lightPresets = [
+  {
+    label: "柔和",
+    brightness: 25,
+    temperaturePercent: 10,
+  },
+  {
+    label: "日常",
+    brightness: 60,
+    temperaturePercent: 50,
+  },
+  {
+    label: "明亮",
+    brightness: 100,
+    temperaturePercent: 100,
+  },
+];
+export function mountStage(options) {
+  const { THREE, container, canvas } = options;
+  let properties = {
+    lights: [],
+  };
+  let states = {};
+  let editing = false;
+  let viewEditing = false;
+  let interactive = false;
+  let selectedId = "";
+  let focusedLightId = "";
+  let activeFloorId = "";
+  let disposed = false;
+  let controlRequestSeq = 0;
+  let dragState = null;
+  let baseCameraState = null;
+  let presented = false;
+  let presentGeneration = 0;
+  let focusMode = "";
+  let preFocusCamera = null;
+  let cameraMotion = null;
+  let focusViewport = 0;
+  let activityVisible = false;
+  let idleRotating = false;
+  let idleReturning = false;
+  let idleCameraBase = null;
+  let frameLoop = null;
+  let activityTracked = false;
+  let presentedVisible = true;
+  const wakeFrameLoop = () => frameLoop?.wake();
+  let idleIconsHidden = false;
+  let userHeld = false;
+  const activePointers = new Set();
+  const activeKeys = new Set();
+  const markersById = new Map();
+  const pendingCommands = new Map();
+  const markerWorldCache = new Map();
+  const projectedPoint = new THREE.Vector3();
+  let markerDocRef;
+  let markerFloorRef;
+  let markersConcealedAt = null;
+  const lightPreview = createLightPreview();
+  const lightHistoryScope = document.body?.dataset?.i3dLightHistoryScope;
+  let lightHistoryStorage;
+  if (lightHistoryScope) {
+    try {
+      lightHistoryStorage = window.localStorage;
+    } catch {}
+  }
+  const lightStateCache = createLightStateCache({
+    storage: lightHistoryStorage,
+    scope: lightHistoryScope,
+  });
+  const resolveLightState = (entityId) =>
+    lightStateCache.resolve(entityId || "", states[entityId]);
+  let effectPreview = null;
+  let rawProperties = {
+    lights: [],
+  };
+  let sceneUpdating = false;
+  let markersSuppressedByActivity = false;
+  let deferredMessage = null;
+  let lastUserActivityAt = -Infinity;
+  const transformCamera = (
+    camera,
+    floorSelection = properties.floorSelection,
+    preserve = false,
+  ) => options.transformCamera?.(camera, floorSelection, preserve) ?? camera;
+  const currentCamera = () =>
+    transformCamera(options.cameraState(true), properties.floorSelection, true);
+  function transformProperties(nextProperties) {
+    const clonedProperties = structuredClone(nextProperties);
+    clonedProperties.camera = transformCamera(
+      clonedProperties.camera,
+      clonedProperties.floorSelection,
+    );
+    clonedProperties.lights = (clonedProperties.lights || []).map((light) => ({
+      ...light,
+      ...(light.focusCamera
+        ? {
+            focusCamera: transformCamera(
+              light.focusCamera,
+              clonedProperties.floorSelection,
+            ),
+          }
+        : {}),
+    }));
+    return clonedProperties;
+  }
+  const postToParent = (payload) =>
+    window.parent.postMessage(
+      {
+        channel: "hb-i3d-v1",
+        ...payload,
+      },
+      location.origin,
+    );
+  const createElement = (tagName, className, text) => {
+    const element = document.createElement(tagName);
+    element.className = className || "";
+    if (text) {
+      element.textContent = text;
+    }
+    return element;
+  };
+  const markersRoot = createElement("div", "i3d-markers");
+  const presentationRoot = createElement("div", "i3d-presentation");
+  let presentationLayout = null;
+  let presentationScale = 1;
+  const focusVignette = createElement("div", "i3d-focus-vignette");
+  focusVignette.setAttribute("aria-hidden", "true");
+  const toolbar = createElement("nav", "i3d-toolbar");
+  const restoreViewButton = createElement("button", "", "恢复视角");
+  restoreViewButton.type = "button";
+  toolbar.append(restoreViewButton);
+  const lightPanel = createElement("section", "i3d-light-panel");
+  lightPanel.setAttribute("aria-label", "灯光控制");
+  lightPanel.setAttribute("inert", "");
+  const lightPanelHeader = createElement("header");
+  const lightHeadingText = createElement("div", "i3d-light-heading-text");
+  const lightTitle = createElement("strong", "", "灯光");
+  const deviceStatus = createElement("p", "i3d-device-status");
+  lightHeadingText.append(lightTitle, deviceStatus);
+  const powerButton = createElement("button", "i3d-power");
+  powerButton.type = "button";
+  const lampDrawing = createElement("span", "i3d-lamp-drawing");
+  lampDrawing.setAttribute("aria-hidden", "true");
+  const lampAura = createElement("span", "i3d-lamp-aura");
+  const lampBody = createElement("span", "i3d-lamp-body");
+  for (const lampPart of ["cord", "shade", "bulb", "filament"]) {
+    lampBody.append(createElement("i", "i3d-lamp-" + lampPart));
+  }
+  lampDrawing.append(lampAura, lampBody);
+  powerButton.append(lampDrawing);
+  lightPanelHeader.append(lightHeadingText, powerButton);
+  const lightControls = createElement("div", "i3d-light-controls");
+  function createSlider(label, kind, min, max) {
+    const root = createElement("label", "i3d-slider i3d-" + kind);
+    const labelEl = createElement("span", "", label);
+    const output = createElement("output");
+    const input = createElement("input");
+    input.name = "i3d-light-" + kind;
+    input.type = "range";
+    input.min = min;
+    input.max = max;
+    input.step = kind === "temperature" ? "10" : "1";
+    input.setAttribute("aria-label", label);
+    const heading = createElement("div", "i3d-slider-heading");
+    heading.append(labelEl, output);
+    const legend = createElement("span", "i3d-slider-legend");
+    legend.append(
+      createElement("small", "", kind === "temperature" ? "暖色" : "暗"),
+      createElement("small", "", kind === "temperature" ? "冷色" : "亮"),
+    );
+    root.append(heading, input, legend);
+    input.addEventListener("input", () => {
+      output.value = "" + input.value + (kind === "temperature" ? " K" : "%");
+      const focusedLight = focusedLightBinding();
+      if (
+        !!focusedLight &&
+        !editing &&
+        !!resolveLightState(focusedLight.entityId).available
+      ) {
+        lightPreview.set(focusedLight.entityId, kind, Number(input.value));
+        wakeFrameLoop();
+        syncLightPanel();
+        applyLightStates({
+          preview: true,
+        });
+      }
+    });
+    input.addEventListener(
+      "change",
+      () => void sendLightCommand(kind, Number(input.value)),
+    );
+    lightControls.append(root);
+    return {
+      root: root,
+      input: input,
+      value: output,
+    };
+  }
+  const temperatureSlider = createSlider("色温", "temperature", "2000", "6500");
+  const brightnessSlider = createSlider("亮度", "brightness", "1", "100");
+  const presetsRoot = createElement("div", "i3d-light-presets");
+  presetsRoot.setAttribute("role", "group");
+  presetsRoot.setAttribute("aria-label", "灯光预设");
+  const presets = lightPresets.map((preset) => {
+    const button = createElement("button", "i3d-light-preset");
+    button.type = "button";
+    const detail = createElement("small", "", preset.brightness + "%");
+    button.append(createElement("strong", "", preset.label), detail);
+    button.addEventListener(
+      "click",
+      () => void sendLightCommand("preset", preset),
+    );
+    presetsRoot.append(button);
+    return {
+      ...preset,
+      button: button,
+      detail: detail,
+    };
+  });
+  lightControls.append(presetsRoot);
+  const controlError = createElement("p", "i3d-control-error");
+  controlError.setAttribute("role", "status");
+  lightPanel.append(lightPanelHeader, lightControls, controlError);
+  const viewHelp = createElement(
+    "p",
+    "i3d-view-help",
+    "拖动旋转 · 右键平移 · 滚轮缩放。调整完成后固定视角。",
+  );
+  viewHelp.hidden = true;
+  presentationRoot.append(markersRoot, toolbar, lightPanel, viewHelp);
+  container.append(focusVignette, presentationRoot);
+  const findLight = (lightId) =>
+    (properties.lights || []).find((light) => light.id === lightId);
+  const focusedLightBinding = () => findLight(focusedLightId);
+  const previewState = (entityId) =>
+    lightPreview.state(entityId, resolveLightState(entityId));
+  function displayLightState(light) {
+    const state = previewState(light.entityId);
+    if (editing && effectPreview?.id === light.id) {
+      state.on = true;
+      state.available = true;
+      if (effectPreview.kind !== "defaults") {
+        state.brightness = effectPreview.kind === "brightnessMin" ? 1 : 100;
+      }
+      if (effectPreview.kind.startsWith("brightness")) {
+        state.brightnessSupported = true;
+      }
+      if (effectPreview.kind.startsWith("temperature")) {
+        state.temperatureSupported = true;
+        state.kelvin = effectPreview.kind.endsWith("Min")
+          ? state.minimum
+          : state.maximum;
+      }
+    }
+    return state;
+  }
+  function applyLightStates(applyOptions) {
+    options.setLightStates(
+      (properties.lights || [])
+        .filter((light) => light.entityId)
+        .map((light) => {
+          const state = displayLightState(light);
+          return {
+            ...light,
+            ...(editing && effectPreview?.id === light.id
+              ? state
+              : lightRenderState(state)),
+          };
+        }),
+      applyOptions,
+    );
+  }
+  function syncCameraInteraction() {
+    const interaction = {
+      ...properties.camera,
+      ...properties.interaction,
+    };
+    const freeCamera = viewEditing || focusMode === "edit";
+    options.setCameraInteraction({
+      enabled:
+        freeCamera ||
+        (interactive &&
+          (!focusMode || focusMode === "panel") &&
+          !cameraMotion &&
+          !idleRotating),
+      rotationMode: freeCamera ? "free" : interaction.rotationMode,
+      panEnabled: freeCamera,
+      zoomEnabled: freeCamera,
+    });
+  }
+  const panelInset = () =>
+    Math.min(
+      0.7,
+      (lightPanel.getBoundingClientRect().width + presentationScale * 24) /
+        Math.max(container.clientWidth, 1),
+    );
+  function syncPresentationLayout() {
+    const bounds = container.getBoundingClientRect();
+    const layoutWidth = presentationLayout?.width || bounds.width;
+    const layoutHeight = presentationLayout?.height || bounds.height;
+    if (
+      layoutWidth > 0 &&
+      layoutHeight > 0 &&
+      bounds.width > 0 &&
+      bounds.height > 0
+    ) {
+      presentationScale = bounds.width / layoutWidth;
+      Object.assign(presentationRoot.style, {
+        width: layoutWidth + "px",
+        height: layoutHeight + "px",
+        transform:
+          "scale(" +
+          presentationScale +
+          "," +
+          bounds.height / layoutHeight +
+          ")",
+      });
+      if (cameraMotion?.focused) {
+        cameraMotion.targetInset = panelInset();
+      }
+      if (focusMode && focusMode !== "panel" && !cameraMotion) {
+        focusViewport = panelInset();
+        options.setFocusViewport(focusViewport);
+      }
+      updateMarkerPositions(true);
+    }
+  }
+  function moveFocusOut(root, fallback = canvas) {
+    const active = document.activeElement;
+    if (!!active && !!root.contains(active)) {
+      fallback.setAttribute("tabindex", "-1");
+      fallback.focus({
+        preventScroll: true,
+      });
+      if (root.contains(document.activeElement) && fallback !== canvas) {
+        canvas.setAttribute("tabindex", "-1");
+        canvas.focus({
+          preventScroll: true,
+        });
+      }
+      if (root.contains(document.activeElement)) {
+        active.blur();
+      }
+    }
+  }
+  function syncMarkerVisibility() {
+    const hasHiddenClickable =
+      !editing &&
+      !viewEditing &&
+      (properties.lights || []).some(
+        (light) => light.visible !== false && light.hiddenClickable === true,
+      );
+    const concealMarkers =
+      markersSuppressedByActivity ||
+      (idleIconsHidden && !hasHiddenClickable) ||
+      idleReturning ||
+      (!!focusMode && !["edit", "panel"].includes(focusMode));
+    for (const [lightId, marker] of markersById) {
+      const hiddenClickable =
+        !editing &&
+        !viewEditing &&
+        findLight(lightId)?.hiddenClickable === true;
+      const idleHidden =
+        idleIconsHidden && !hiddenClickable && !editing && !viewEditing;
+      marker.classList.toggle("is-hidden-clickable", hiddenClickable);
+      marker.classList.toggle("is-idle-hidden", idleHidden);
+      if (idleHidden) {
+        moveFocusOut(marker);
+        marker.setAttribute("inert", "");
+      } else {
+        marker.removeAttribute("inert");
+      }
+      marker.title = hiddenClickable
+        ? ""
+        : marker.getAttribute("aria-label") || "";
+    }
+    if (concealMarkers) {
+      moveFocusOut(
+        markersRoot,
+        lightPanel.classList.contains("is-open") ? lightPanel : canvas,
+      );
+      markersRoot.setAttribute("inert", "");
+    } else {
+      markersRoot.removeAttribute("inert");
+    }
+    markersRoot.removeAttribute("aria-hidden");
+    if (concealMarkers && markersConcealedAt === null) {
+      markersConcealedAt = performance.now();
+    } else if (!concealMarkers) {
+      markersConcealedAt = null;
+    }
+    markersRoot.classList.toggle("is-concealed", concealMarkers);
+  }
+  function syncPresentationChrome() {
+    const popupOpacity = Number.isFinite(properties.popupOpacity)
+      ? Math.max(0, Math.min(100, properties.popupOpacity))
+      : 74;
+    lightPanel.style.setProperty(
+      "--i3d-panel-opacity",
+      String(popupOpacity / 100),
+    );
+    const vignetteStrength = Number.isFinite(properties.focusVignetteStrength)
+      ? Math.max(0, Math.min(60, properties.focusVignetteStrength))
+      : 14;
+    focusVignette.style.setProperty(
+      "--i3d-vignette-opacity",
+      String(vignetteStrength / 100),
+    );
+    focusVignette.hidden =
+      viewEditing || focusMode === "edit" || focusMode === "panel";
+    focusVignette.classList.toggle(
+      "is-active",
+      vignetteStrength > 0 &&
+        !!focusedLightId &&
+        !!focusMode &&
+        !focusVignette.hidden,
+    );
+    viewHelp.hidden = !viewEditing && focusMode !== "edit";
+    viewHelp.textContent =
+      focusMode === "edit"
+        ? "拖动旋转 · 右键平移 · 滚轮缩放。调整完成后保存此灯视角。"
+        : "拖动旋转 · 右键平移 · 滚轮缩放。调整完成后固定视角。";
+    markersRoot.classList.toggle(
+      "is-view-editing",
+      viewEditing || focusMode === "edit",
+    );
+    lightPanel.classList.toggle("is-preview", editing);
+    syncMarkerVisibility();
+  }
+  function tickCameraMotion(now) {
+    if (!cameraMotion) {
+      return;
+    }
+    const motion = cameraMotion;
+    const elapsed = Math.max(0, now - cameraMotion.started);
+    const linearProgress = cameraMotion.duration
+      ? Math.min(1, elapsed / cameraMotion.duration)
+      : 1;
+    const easedProgress =
+      linearProgress === 1
+        ? 1
+        : (1 - Math.exp((elapsed * -5) / 1000)) /
+          (1 - Math.exp((cameraMotion.duration * -5) / 1000));
+    focusViewport =
+      cameraMotion.inset +
+      (cameraMotion.targetInset - cameraMotion.inset) * easedProgress;
+    const sample = cameraMotion.sample(elapsed);
+    if (options.applyCameraFrame) {
+      options.applyCameraFrame(sample, easedProgress, focusViewport);
+    } else {
+      options.applyCameraPose(sample, easedProgress);
+      options.setFocusViewport(focusViewport);
+    }
+    if (linearProgress === 1 && cameraMotion === motion) {
+      cameraMotion = null;
+      options.endCameraMotion();
+      syncCameraInteraction();
+      motion.done?.();
+      syncIdleAvailability();
+    }
+  }
+  function normalizeCameraUp(camera) {
+    if (camera && camera.view !== "top") {
+      return {
+        ...camera,
+        up: [0, 1, 0],
+      };
+    } else {
+      return camera;
+    }
+  }
+  function startCameraMotion(
+    camera,
+    focused,
+    immediate = false,
+    done,
+    owner = "focus",
+  ) {
+    const targetCamera = normalizeCameraUp(camera);
+    const fromCamera = options.beginCameraMotion(
+      targetCamera.mode,
+      targetCamera,
+    );
+    const duration =
+      immediate ||
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+        ? 0
+        : 1100;
+    cameraMotion = {
+      from: fromCamera,
+      to: structuredClone(targetCamera),
+      inset: focusViewport,
+      targetInset: focused ? panelInset() : 0,
+      sample: createFocusCameraSampler(
+        THREE,
+        fromCamera,
+        targetCamera,
+        duration,
+      ),
+      focused: focused,
+      owner: owner,
+      started: performance.now(),
+      duration: duration,
+      done: done,
+    };
+    syncIdleAvailability();
+    syncCameraInteraction();
+    tickCameraMotion(cameraMotion.started);
+    wakeFrameLoop();
+  }
+  function camerasEqual(a, b) {
+    return (
+      a.mode === b.mode &&
+      Math.abs(a.zoom - b.zoom) < 0.000001 &&
+      ["position", "target", "up"].every((key) =>
+        (a[key] || [0, 1, 0]).every(
+          (value, index) =>
+            Math.abs(value - (b[key] || [0, 1, 0])[index]) < 0.000001,
+        ),
+      ) &&
+      ["frameSize", "focalLength"].every(
+        (key) => Math.abs((a[key] || 0) - (b[key] || 0)) < 0.000001,
+      )
+    );
+  }
+  const idleRotation = createIdleRotation({
+    returnToBase(done) {
+      idleReturning = true;
+      idleCameraBase = structuredClone(
+        properties.autoRotate?.returnToDefault === true
+          ? normalizeCameraUp(
+              properties.camera || baseCameraState || options.cameraState(),
+            )
+          : options.cameraState(true),
+      );
+      const hadFocus = !!focusedLightId || !!focusMode;
+      focusedLightId = "";
+      focusMode = "";
+      preFocusCamera = null;
+      moveFocusOut(lightPanel);
+      lightPanel.classList.remove("is-open");
+      lightPanel.setAttribute("inert", "");
+      syncPresentationChrome();
+      if (hadFocus) {
+        postToParent({
+          type: "focus-state",
+          active: false,
+        });
+      }
+      options.setOrbitPivot(null);
+      if (
+        !cameraMotion &&
+        !focusViewport &&
+        camerasEqual(options.cameraState(), idleCameraBase)
+      ) {
+        done();
+      } else {
+        startCameraMotion(idleCameraBase, false, false, done, "idle");
+      }
+    },
+    start() {
+      idleRotating = true;
+      options.beginCameraMotion(idleCameraBase.mode);
+      syncCameraInteraction();
+    },
+    rotate(angle) {
+      options.applyCameraPose(options.orbitCameraPose(idleCameraBase, angle));
+    },
+    stop() {
+      const idleMotion = cameraMotion?.owner === "idle";
+      const wasRotating = idleRotating;
+      idleRotating = false;
+      idleReturning = false;
+      syncMarkerVisibility();
+      if (idleMotion) {
+        cameraMotion = null;
+      }
+      if (idleMotion || wasRotating) {
+        options.endCameraMotion();
+      }
+      syncCameraInteraction();
+    },
+  });
+  const idleIconVisibility = createIdleIconVisibility({
+    onChange(hidden) {
+      idleIconsHidden = hidden;
+      syncMarkerVisibility();
+    },
+  });
+  function syncIdleAvailability() {
+    const idleAllowed =
+      presented &&
+      activityVisible &&
+      interactive &&
+      !editing &&
+      !viewEditing &&
+      !document.hidden &&
+      !disposed;
+    if (!idleAllowed) {
+      clearInputHold();
+    }
+    idleRotation.setAvailable(
+      idleAllowed &&
+        !focusedLightId &&
+        !focusMode &&
+        (!cameraMotion || cameraMotion.owner === "idle"),
+    );
+    idleIconVisibility.setAvailable(idleAllowed);
+    frameLoop?.setAvailable(
+      !document.hidden && (!activityTracked || presentedVisible),
+    );
+    wakeFrameLoop();
+  }
+  function syncInputHold() {
+    const held = userHeld || activePointers.size > 0 || activeKeys.size > 0;
+    idleRotation.hold(held);
+    idleIconVisibility.hold(held);
+    wakeFrameLoop();
+  }
+  function onUserInput(event) {
+    lastUserActivityAt = performance.now();
+    markersSuppressedByActivity = false;
+    syncMarkerVisibility();
+    if (event.type === "pointerdown") {
+      activePointers.add(event.pointerId);
+    }
+    if (event.type === "pointerup" || event.type === "pointercancel") {
+      activePointers.delete(event.pointerId);
+    }
+    if (event.type === "keydown") {
+      activeKeys.add(event.code || event.key);
+    }
+    if (event.type === "keyup") {
+      activeKeys.delete(event.code || event.key);
+    }
+    syncInputHold();
+  }
+  const inputEvents = [
+    "pointerdown",
+    "pointermove",
+    "pointerup",
+    "pointercancel",
+    "wheel",
+    "keydown",
+    "keyup",
+  ];
+  for (const type of inputEvents) {
+    window.addEventListener(type, onUserInput, {
+      capture: true,
+      passive: true,
+    });
+  }
+  function clearInputHold() {
+    activePointers.clear();
+    activeKeys.clear();
+    userHeld = false;
+    syncInputHold();
+  }
+  window.addEventListener("blur", clearInputHold);
+  if (document.addEventListener) {
+    document.addEventListener("visibilitychange", syncIdleAvailability);
+  }
+  function clearFocus(clearOptions = {}) {
+    if (
+      !focusedLightId &&
+      !focusMode &&
+      (!preFocusCamera || clearOptions.immediate !== true)
+    ) {
+      return;
+    }
+    const hadEffectPreview = !!effectPreview;
+    effectPreview = null;
+    const wasEditingFocus = !!focusMode && !!editing;
+    focusedLightId = "";
+    focusMode = "";
+    moveFocusOut(lightPanel);
+    lightPanel.classList.remove("is-open");
+    lightPanel.setAttribute("inert", "");
+    syncPresentationChrome();
+    postToParent({
+      type: "focus-state",
+      active: false,
+    });
+    if (preFocusCamera) {
+      startCameraMotion(
+        preFocusCamera,
+        false,
+        clearOptions.immediate === true,
+        () => {
+          preFocusCamera = null;
+          options.setOrbitPivot(null);
+        },
+      );
+    }
+    syncIdleAvailability();
+    if (wasEditingFocus) {
+      postToParent({
+        type: "edit",
+        action: "focus-exited",
+      });
+    }
+    if (hadEffectPreview) {
+      applyLightStates();
+    }
+    syncCameraInteraction();
+  }
+  function focusLight(lightId, mode = "runtime", immediate = false) {
+    const light = findLight(lightId);
+    if (!light) {
+      return;
+    }
+    if (effectPreview) {
+      effectPreview = null;
+      applyLightStates();
+    }
+    if (
+      focusedLightId === lightId &&
+      focusMode === mode &&
+      mode === "runtime"
+    ) {
+      clearFocus();
+      return;
+    }
+    if (["runtime", "panel"].includes(mode) && !interactive) {
+      return;
+    }
+    if (mode === "panel") {
+      if (preFocusCamera || cameraMotion) {
+        clearFocus({
+          immediate: true,
+        });
+      }
+      focusedLightId = lightId;
+      focusMode = "panel";
+      controlError.textContent = "";
+      lightPanel.removeAttribute("inert");
+      lightPanel.classList.add("is-open");
+      syncPresentationChrome();
+      syncLightPanel();
+      syncCameraInteraction();
+      syncIdleAvailability();
+      postToParent({
+        type: "focus-state",
+        active: false,
+        panelOpen: true,
+        id: lightId,
+      });
+      return;
+    }
+    preFocusCamera ||= options.cameraState(true);
+    const worldTarget = options
+      .worldPoint(light.floorId, light.x, light.y, light.height)
+      ?.toArray();
+    if (!worldTarget) {
+      return;
+    }
+    focusedLightId = lightId;
+    focusMode = mode;
+    controlError.textContent = "";
+    lightPanel.removeAttribute("inert");
+    lightPanel.classList.add("is-open");
+    options.setOrbitPivot(null);
+    syncPresentationChrome();
+    syncLightPanel();
+    const focusCamera =
+      light.focusCamera ||
+      automaticLightCamera(
+        THREE,
+        properties.camera || baseCameraState || preFocusCamera,
+        worldTarget,
+      );
+    startCameraMotion(focusCamera, true, immediate);
+    if (!editing) {
+      postToParent({
+        type: "focus-state",
+        active: true,
+        id: lightId,
+      });
+    }
+  }
+  restoreViewButton.addEventListener("click", () => {
+    if (focusMode || preFocusCamera || cameraMotion) {
+      clearFocus();
+    } else {
+      options.restoreCamera(
+        normalizeCameraUp(properties.camera || baseCameraState),
+      );
+    }
+  });
+  powerButton.addEventListener("click", () => {
+    const light = focusedLightBinding();
+    if (light) {
+      sendLightCommand("power", !previewState(light.entityId).on);
+    }
+  });
+  function syncPowerButton(state) {
+    const brightness = Number.isFinite(state.effectColor)
+      ? Math.max(0, Math.min(100, Number(state.brightness) || 0))
+      : Math.max(
+          1,
+          Math.min(
+            100,
+            Number(state.brightness) || (state.brightnessSupported ? 1 : 100),
+          ),
+        );
+    const temperatureRatio =
+      (Math.max(2000, Math.min(6500, Number(state.kelvin) || 3000)) - 2000) /
+      4500;
+    const warmRgb = [255, 132, 42];
+    const coolRgb = [172, 225, 255];
+    const rgb = warmRgb.map((channel, index) =>
+      Math.round(channel + (coolRgb[index] - channel) * temperatureRatio),
+    );
+    powerButton.classList.toggle("is-on", state.on);
+    powerButton.setAttribute("aria-pressed", String(state.on));
+    powerButton.setAttribute(
+      "aria-label",
+      "" +
+        (focusedLightBinding()?.label || state.name) +
+        (state.available
+          ? state.on
+            ? "已开启，点击关闭"
+            : "已关闭，点击开启"
+          : "当前不可用"),
+    );
+    powerButton.style.setProperty(
+      "--i3d-lamp-color",
+      Number.isFinite(state.effectColor)
+        ? "#" + state.effectColor.toString(16).padStart(6, "0")
+        : "rgb(" + rgb.join(",") + ")",
+    );
+    powerButton.style.setProperty(
+      "--i3d-lamp-opacity",
+      state.on && brightness > 0
+        ? String(0.08 + (brightness / 100) * 0.92)
+        : "0",
+    );
+    powerButton.style.setProperty(
+      "--i3d-lamp-scale",
+      String(0.62 + (brightness / 100) * 1.05),
+    );
+  }
+  function syncLightPanel() {
+    const light = focusedLightBinding();
+    if (!light) {
+      return clearFocus();
+    }
+    let state = displayLightState(light);
+    const effectPreviewActive = editing && effectPreview?.id === light.id;
+    let brightnessMin = 1;
+    let brightnessMax = 100;
+    if (effectPreviewActive) {
+      const combined = {
+        ...light,
+        ...state,
+      };
+      const mapped = options.mapLightEffectState(combined);
+      const mappedMin = options.mapLightEffectState({
+        ...combined,
+        brightness: 1,
+        kelvin: state.minimum,
+      });
+      const mappedMax = options.mapLightEffectState({
+        ...combined,
+        brightness: 100,
+        kelvin: state.maximum,
+      });
+      brightnessMin = mappedMin.brightness;
+      brightnessMax = mappedMax.brightness;
+      state = {
+        ...state,
+        brightness: Number.isFinite(mapped.brightness)
+          ? Math.round(mapped.brightness)
+          : mapped.brightness,
+        kelvin: Number.isFinite(mapped.kelvin)
+          ? Math.round(mapped.kelvin)
+          : mapped.kelvin,
+        minimum: mappedMin.kelvin,
+        maximum: mappedMax.kelvin,
+        effectColor: options.lightEffectColorHex(mapped.kelvin),
+      };
+    }
+    lightTitle.textContent = light.label || state.name;
+    deviceStatus.textContent = effectPreviewActive
+      ? "效果预览"
+      : light.entityId
+        ? state.available
+          ? state.on
+            ? "已开启"
+            : "已关闭"
+          : "设备不可用"
+        : "尚未绑定设备";
+    lightTitle.title = lightTitle.textContent;
+    controlError.title = controlError.textContent;
+    syncPowerButton(state);
+    deviceStatus.classList.toggle("is-on", state.available && state.on);
+    const commandPending = [...pendingCommands.values()].some(
+      (pending) => pending.entityId === light.entityId,
+    );
+    lightPanel.classList.toggle(
+      "is-command-pending",
+      commandPending && state.available && !editing,
+    );
+    lightPanel.setAttribute("aria-busy", String(commandPending));
+    const showControls =
+      state.available &&
+      state.on &&
+      (state.brightnessSupported || state.temperatureSupported);
+    lightPanel.classList.toggle("has-light-controls", showControls);
+    lightPanel.classList.toggle("has-error", !!controlError.textContent);
+    if (showControls) {
+      lightControls.removeAttribute("inert");
+    } else {
+      moveFocusOut(lightControls, lightPanel);
+      lightControls.setAttribute("inert", "");
+    }
+    lightControls.removeAttribute("aria-hidden");
+    powerButton.disabled = editing || !state.available;
+    brightnessSlider.input.min = brightnessMin;
+    brightnessSlider.input.max = brightnessMax;
+    temperatureSlider.input.min = state.minimum;
+    temperatureSlider.input.max = state.maximum;
+    for (const [slider, supported, value, unit] of [
+      [brightnessSlider, state.brightnessSupported, state.brightness, "%"],
+      [temperatureSlider, state.temperatureSupported, state.kelvin, " K"],
+    ]) {
+      slider.root.hidden = !supported;
+      slider.input.disabled = editing || !state.available || !state.on;
+      if (document.activeElement !== slider.input) {
+        slider.input.value =
+          value ?? (slider === brightnessSlider ? 100 : state.minimum);
+        slider.value.value = value === null ? "—" : "" + value + unit;
+      }
+    }
+    presetsRoot.hidden =
+      !state.brightnessSupported && !state.temperatureSupported;
+    for (const preset of presets) {
+      const kelvin = Math.round(
+        state.minimum +
+          ((state.maximum - state.minimum) * preset.temperaturePercent) / 100,
+      );
+      const active =
+        !effectPreviewActive &&
+        state.on &&
+        (!state.brightnessSupported ||
+          Math.abs(state.brightness - preset.brightness) <= 4) &&
+        (!state.temperatureSupported ||
+          Math.abs(state.kelvin - kelvin) <=
+            Math.max(50, (state.maximum - state.minimum) * 0.06));
+      preset.button.disabled =
+        editing || !state.available || !state.on || presetsRoot.hidden;
+      preset.button.classList.toggle("is-active", active);
+      preset.button.setAttribute("aria-pressed", String(active));
+      preset.detail.textContent = state.brightnessSupported
+        ? preset.brightness + "%"
+        : "开启";
+    }
+  }
+  function enqueueCommand(command, previewToken) {
+    const requestId = String(++controlRequestSeq);
+    const entityId = command.entityId;
+    lightPreview.retain(entityId, previewToken);
+    const timeout = setTimeout(
+      () => finishCommand(requestId, "请求超时，请检查设备状态。", true),
+      14000,
+    );
+    pendingCommands.set(requestId, {
+      entityId: entityId,
+      command: command,
+      previewToken: previewToken,
+      timeout: timeout,
+      next: null,
+    });
+    postToParent({
+      type: "control",
+      requestId: requestId,
+      command: command,
+    });
+  }
+  function queueOrSendCommand(command, previewToken) {
+    const pending = [...pendingCommands.values()].find(
+      (entry) => entry.entityId === command.entityId,
+    );
+    if (!pending) {
+      return enqueueCommand(command, previewToken);
+    }
+    const baseCommand = pending.next?.command || pending.command;
+    if (baseCommand.service === "turn_on" && command.service === "turn_on") {
+      const data = {
+        ...baseCommand.data,
+      };
+      if ("brightness" in command.data || "brightness_pct" in command.data) {
+        delete data.brightness;
+        delete data.brightness_pct;
+      }
+      command = {
+        ...command,
+        data: {
+          ...data,
+          ...command.data,
+        },
+      };
+    }
+    pending.next = {
+      command: command,
+      previewToken: previewToken,
+    };
+    lightPreview.hold(command.entityId, previewToken);
+  }
+  function finishCommand(requestId, error = "", timedOut = false) {
+    const pending = pendingCommands.get(requestId);
+    if (!pending) {
+      return;
+    }
+    clearTimeout(pending.timeout);
+    pendingCommands.delete(requestId);
+    const next = pending.next;
+    const shouldContinue =
+      next &&
+      !timedOut &&
+      !disposed &&
+      !editing &&
+      interactive &&
+      (properties.lights || []).some(
+        (light) => light.entityId === pending.entityId,
+      ) &&
+      resolveLightState(pending.entityId).available;
+    if (error) {
+      lightPreview.reject(pending.entityId, pending.previewToken);
+    } else {
+      lightPreview.acknowledge(pending.entityId, pending.previewToken);
+    }
+    if (shouldContinue) {
+      enqueueCommand(next.command, next.previewToken);
+    } else if (next) {
+      lightPreview.reject(pending.entityId, next.previewToken);
+    }
+    if (focusedLightBinding()?.entityId === pending.entityId) {
+      controlError.textContent = shouldContinue ? "" : error;
+    }
+    syncMarkers();
+  }
+  async function sendLightCommand(kind, value, light = focusedLightBinding()) {
+    if (!!light && !editing && !disposed) {
+      try {
+        const state = resolveLightState(light.entityId);
+        let command;
+        let previewValue = value;
+        if (kind === "preset") {
+          if (!lightPresets.includes(value)) {
+            throw new Error("灯光预设无效。");
+          }
+          const fields = [];
+          previewValue = {};
+          if (state.brightnessSupported) {
+            fields.push(["brightness", value.brightness]);
+            previewValue.brightness = value.brightness;
+          }
+          if (state.temperatureSupported) {
+            previewValue.kelvin = Math.round(
+              state.minimum +
+                ((state.maximum - state.minimum) * value.temperaturePercent) /
+                  100,
+            );
+            fields.push(["temperature", previewValue.kelvin]);
+          }
+          if (!fields.length) {
+            throw new Error("此设备不支持灯光预设。");
+          }
+          const commands = fields.map(([field, fieldValue]) =>
+            lightCommand(light.entityId, field, fieldValue, state),
+          );
+          command = {
+            ...commands[0],
+            data: Object.assign({}, ...commands.map((part) => part.data)),
+          };
+          if (state.brightnessSupported && value.brightness < 100) {
+            delete command.data.brightness;
+            command.data.brightness_pct = value.brightness;
+          }
+        } else {
+          command = lightCommand(light.entityId, kind, value, state);
+        }
+        const previewToken = lightPreview.set(
+          light.entityId,
+          kind,
+          previewValue,
+          true,
+        );
+        applyLightStates({
+          preview: kind !== "power",
+        });
+        queueOrSendCommand(command, previewToken);
+        controlError.textContent = "";
+        syncMarkers();
+      } catch (error) {
+        controlError.textContent = error.message;
+        syncLightPanel();
+      }
+    }
+  }
+  let markerProjectionKey = "";
+  function updateMarkerPositions(force = false) {
+    if (sceneUpdating || disposed) {
+      return;
+    }
+    options.camera.updateMatrixWorld();
+    if (
+      markersConcealedAt !== null &&
+      performance.now() - markersConcealedAt >= 240
+    ) {
+      markerProjectionKey = "";
+      return;
+    }
+    if (markerDocRef !== options.document || markerFloorRef !== activeFloorId) {
+      markerWorldCache.clear();
+      markerDocRef = options.document;
+      markerFloorRef = activeFloorId;
+    }
+    const containerRect = container.getBoundingClientRect();
+    const layoutWidth = presentationLayout?.width || containerRect.width;
+    const layoutHeight = presentationLayout?.height || containerRect.height;
+    const projectionKey =
+      layoutWidth +
+      ":" +
+      layoutHeight +
+      ":" +
+      options.camera.matrixWorld.elements +
+      ":" +
+      options.camera.projectionMatrix.elements;
+    if (force === true || projectionKey !== markerProjectionKey) {
+      markerProjectionKey = projectionKey;
+      for (const light of properties.lights || []) {
+        const lightId = light.id;
+        const marker = markersById.get(lightId);
+        if (!marker) {
+          continue;
+        }
+        const onFloor =
+          light.visible !== false &&
+          (activeFloorId === "all" || light.floorId === activeFloorId);
+        let cached = markerWorldCache.get(lightId);
+        if (
+          onFloor &&
+          (!cached ||
+            cached.floorId !== light.floorId ||
+            cached.x !== light.x ||
+            cached.y !== light.y ||
+            cached.height !== light.height)
+        ) {
+          cached = {
+            floorId: light.floorId,
+            x: light.x,
+            y: light.y,
+            height: light.height,
+            point: options.worldPoint(
+              light.floorId,
+              light.x,
+              light.y,
+              light.height,
+            ),
+          };
+          markerWorldCache.set(lightId, cached);
+        }
+        const worldPoint = onFloor && cached?.point;
+        if (!worldPoint) {
+          marker.hidden = true;
+          continue;
+        }
+        const projected = projectedPoint
+          .copy(worldPoint)
+          .project(options.camera);
+        marker.hidden =
+          projected.z < -1 ||
+          projected.z > 1 ||
+          Math.abs(projected.x) > 1.05 ||
+          Math.abs(projected.y) > 1.05;
+        marker.style.left = ((projected.x + 1) * layoutWidth) / 2 + "px";
+        marker.style.top = ((1 - projected.y) * layoutHeight) / 2 + "px";
+      }
+    }
+  }
+  function syncMarkers() {
+    if (sceneUpdating) {
+      return;
+    }
+    wakeFrameLoop();
+    const lightIds = new Set(
+      (properties.lights || []).map((light) => light.id),
+    );
+    for (const [lightId, marker] of markersById) {
+      if (!lightIds.has(lightId)) {
+        marker.remove();
+        markersById.delete(lightId);
+        markerWorldCache.delete(lightId);
+      }
+    }
+    for (const light of properties.lights || []) {
+      let marker = markersById.get(light.id);
+      if (!marker) {
+        marker = createElement("button", "i3d-marker");
+        marker.type = "button";
+        marker.addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (!sceneUpdating && !viewEditing && focusMode !== "edit") {
+            if (marker.dataset.dragged === "true") {
+              marker.dataset.dragged = "";
+              return;
+            }
+            if (editing) {
+              selectedId = light.id;
+              postToParent({
+                type: "edit",
+                action: "select",
+                id: light.id,
+              });
+              syncMarkers();
+            } else {
+              let targetLight = findLight(light.id);
+              let state = targetLight && previewState(targetLight.entityId);
+              if (
+                ["turn-on", "turn-on-panel"].includes(targetLight?.clickAction)
+              ) {
+                if (targetLight.clickAction === "turn-on-panel") {
+                  focusLight(targetLight.id, "panel");
+                }
+                if (state.available && !state.on) {
+                  sendLightCommand("power", true, targetLight);
+                }
+                return;
+              }
+              focusLight(targetLight.id);
+              targetLight = findLight(targetLight.id);
+              state = targetLight && previewState(targetLight.entityId);
+              if (
+                focusedLightId === targetLight.id &&
+                focusMode === "runtime" &&
+                targetLight?.clickAction === "turn-on-focus" &&
+                state.available &&
+                !state.on
+              ) {
+                sendLightCommand("power", true);
+              }
+            }
+          }
+        });
+        marker.addEventListener("pointerdown", (event) =>
+          onMarkerPointerDown(event, light.id),
+        );
+        marker.addEventListener("pointermove", onMarkerPointerMove);
+        marker.addEventListener("pointerup", onMarkerPointerUp);
+        marker.addEventListener("pointercancel", onMarkerPointerCancel);
+        markersRoot.append(marker);
+        markersById.set(light.id, marker);
+      }
+      const icon = /^mdi:[a-z0-9-]+$/.test(light.icon || "") ? light.icon : "";
+      if (marker.dataset.icon !== icon) {
+        marker.dataset.icon = icon;
+        if (icon) {
+          const iconEl = createElement("span", "i3d-marker-icon");
+          iconEl.setAttribute("aria-hidden", "true");
+          iconEl.style.maskImage =
+            'url("/bridge-static/vendor/mdi/7.4.47/svg/' +
+            icon.slice(4) +
+            '.svg")';
+          iconEl.style.webkitMaskImage = iconEl.style.maskImage;
+          marker.replaceChildren(iconEl);
+        } else {
+          marker.innerHTML = defaultMarkerSvg;
+        }
+      }
+      const state = previewState(light.entityId);
+      const markerSize =
+        Number.isFinite(light.size) && light.size > 0 ? light.size : 44;
+      const iconSize =
+        Number.isFinite(light.iconSize) && light.iconSize > 0
+          ? light.iconSize
+          : Math.min(markerSize, Math.max(4, markerSize - 18));
+      const hitSize =
+        Number.isFinite(light.hitSize) && light.hitSize > 0
+          ? light.hitSize
+          : Math.max(44, markerSize);
+      marker.style.width = marker.style.height = hitSize + "px";
+      marker.style.setProperty("--i3d-marker-size", markerSize + "px");
+      marker.style.setProperty("--i3d-marker-icon-size", iconSize + "px");
+      marker.setAttribute("aria-label", light.label || state.name || "灯光");
+      marker.title = light.label || state.name;
+      marker.classList.toggle("is-on", state.on);
+      marker.classList.toggle("is-offline", !editing && !state.available);
+      marker.classList.toggle(
+        "is-selected",
+        editing && selectedId === light.id,
+      );
+    }
+    applyLightStates();
+    syncLightPanel();
+    syncMarkerVisibility();
+    updateMarkerPositions(true);
+  }
+  function pointerToFloorPoint(event, light) {
+    const origin = options.worldPoint(light.floorId, 0, 0, light.height);
+    if (!origin) {
+      return null;
+    }
+    const rect = container.getBoundingClientRect();
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(
+      new THREE.Vector2(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        1 - ((event.clientY - rect.top) / rect.height) * 2,
+      ),
+      options.camera,
+    );
+    const hit = raycaster.ray.intersectPlane(
+      new THREE.Plane(new THREE.Vector3(0, 1, 0), -origin.y),
+      new THREE.Vector3(),
+    );
+    if (!hit) {
+      return null;
+    }
+    const xAxis = options
+      .worldPoint(light.floorId, 1, 0, light.height)
+      .sub(origin);
+    const yAxis = options
+      .worldPoint(light.floorId, 0, 1, light.height)
+      .sub(origin);
+    const local = hit.sub(origin);
+    return {
+      x: Math.round((local.dot(xAxis) / xAxis.lengthSq()) * 100) / 100,
+      y: Math.round((local.dot(yAxis) / yAxis.lengthSq()) * 100) / 100,
+    };
+  }
+  function onMarkerPointerDown(event, lightId) {
+    if (!editing || focusMode || event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const light = findLight(lightId);
+    selectedId = lightId;
+    postToParent({
+      type: "edit",
+      action: "select",
+      id: lightId,
+    });
+    const pointerPoint = pointerToFloorPoint(event, light);
+    dragState = {
+      id: lightId,
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      original: {
+        x: light.x,
+        y: light.y,
+      },
+      offset: pointerPoint
+        ? {
+            x: light.x - pointerPoint.x,
+            y: light.y - pointerPoint.y,
+          }
+        : {
+            x: 0,
+            y: 0,
+          },
+      moved: false,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    options.controls.enabled = false;
+  }
+  function onMarkerPointerMove(event) {
+    if (
+      !dragState ||
+      dragState.pointerId !== event.pointerId ||
+      (Math.hypot(
+        event.clientX - dragState.clientX,
+        event.clientY - dragState.clientY,
+      ) < 4 &&
+        !dragState.moved)
+    ) {
+      return;
+    }
+    const point = pointerToFloorPoint(event, findLight(dragState.id));
+    if (point) {
+      dragState.moved = true;
+      Object.assign(findLight(dragState.id), {
+        x: Math.round((point.x + dragState.offset.x) * 100) / 100,
+        y: Math.round((point.y + dragState.offset.y) * 100) / 100,
+      });
+      updateMarkerPositions(true);
+    }
+  }
+  function onMarkerPointerUp(event) {
+    if (!!dragState && dragState.pointerId === event.pointerId) {
+      if (dragState.moved) {
+        event.currentTarget.dataset.dragged = "true";
+        const light = findLight(dragState.id);
+        postToParent({
+          type: "edit",
+          action: "position",
+          id: light.id,
+          x: light.x,
+          y: light.y,
+        });
+      }
+      dragState = null;
+      syncCameraInteraction();
+    }
+  }
+  function onMarkerPointerCancel() {
+    if (dragState) {
+      Object.assign(findLight(dragState.id), dragState.original);
+    }
+    dragState = null;
+    syncCameraInteraction();
+    updateMarkerPositions(true);
+  }
+  let canvasPointerDown;
+  canvas.addEventListener("pointerdown", (event) => {
+    canvasPointerDown = {
+      x: event.clientX,
+      y: event.clientY,
+    };
+  });
+  canvas.addEventListener("pointerup", (event) => {
+    if (
+      focusMode !== "edit" &&
+      canvasPointerDown &&
+      Math.hypot(
+        event.clientX - canvasPointerDown.x,
+        event.clientY - canvasPointerDown.y,
+      ) < 5
+    ) {
+      clearFocus();
+    }
+    canvasPointerDown = null;
+  });
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      clearFocus();
+    }
+  });
+  function onParentMessage(event) {
+    if (
+      event.origin !== location.origin ||
+      event.source !== window.parent ||
+      event.data?.channel !== "hb-i3d-v1"
+    ) {
+      return;
+    }
+    const data = event.data;
+    wakeFrameLoop();
+    if (data.type === "presentation-layout") {
+      if (
+        Number.isFinite(data.width) &&
+        data.width > 0 &&
+        Number.isFinite(data.height) &&
+        data.height > 0
+      ) {
+        presentationLayout = {
+          width: data.width,
+          height: data.height,
+        };
+        syncPresentationLayout();
+      }
+    } else if (data.type === "config") {
+      if (sceneUpdating) {
+        deferredMessage = event;
+        return;
+      }
+      markersSuppressedByActivity = false;
+      rawProperties = structuredClone(data.properties);
+      data.properties = transformProperties(rawProperties);
+      idleRotation.activity();
+      idleIconVisibility.activity();
+      const cameraChanged =
+        (viewEditing && data.viewEditing !== true) ||
+        JSON.stringify(properties.camera) !==
+          JSON.stringify(data.properties.camera);
+      if (
+        (focusMode || preFocusCamera || cameraMotion) &&
+        (cameraChanged ||
+          properties.floorSelection !== data.properties.floorSelection ||
+          editing !== (data.editing === true) ||
+          data.viewEditing === true ||
+          (editing && selectedId !== (data.selectedId || "")))
+      ) {
+        clearFocus({
+          immediate: true,
+        });
+      }
+      properties = structuredClone(data.properties);
+      editing = data.editing === true;
+      viewEditing = data.viewEditing === true;
+      selectedId = data.selectedId || "";
+      states = data.states || {};
+      interactive = !editing && data.interactive === true;
+      for (const pending of pendingCommands.values()) {
+        if (
+          pending.next &&
+          (!interactive ||
+            !(properties.lights || []).some(
+              (light) => light.entityId === pending.entityId,
+            ))
+        ) {
+          lightPreview.reject(pending.entityId, pending.next.previewToken);
+          pending.next = null;
+        }
+      }
+      idleRotation.configure(properties.autoRotate);
+      idleIconVisibility.configure(properties.idleHideIcons);
+      syncIdleAvailability();
+      options.appearance(properties);
+      const floorId =
+        options.document.floors.some(
+          (floor) => floor.id === properties.floorSelection,
+        ) || properties.floorSelection === "all"
+          ? properties.floorSelection
+          : options.document.floors[0].id;
+      if (activeFloorId !== floorId) {
+        activeFloorId = floorId;
+        options.setFloor(floorId);
+        options.restoreCamera(normalizeCameraUp(properties.camera));
+        baseCameraState = options.cameraState();
+      } else if (cameraChanged) {
+        options.restoreCamera(
+          normalizeCameraUp(properties.camera || baseCameraState),
+        );
+        baseCameraState = options.cameraState();
+      }
+      syncCameraInteraction();
+      toolbar.hidden = true;
+      syncPresentationChrome();
+      if (viewEditing || (!editing && !interactive)) {
+        clearFocus({
+          immediate: true,
+        });
+      }
+      syncMarkers();
+      const generation = ++presentGeneration;
+      (presented ? Promise.resolve() : options.whenPresented())
+        .then(() => {
+          if (!disposed && generation === presentGeneration) {
+            presented = true;
+            syncIdleAvailability();
+            updateMarkerPositions(true);
+            postToParent({
+              type: "presented",
+              configId: data.configId,
+              camera: transformCamera(
+                options.cameraState(),
+                properties.floorSelection,
+                true,
+              ),
+            });
+          }
+        })
+        .catch((error) => {
+          if (!disposed && generation === presentGeneration) {
+            postToParent({
+              type: "error",
+              message: error.message || "户型画面准备失败，请重新载入。",
+            });
+          }
+        });
+    } else if (data.type === "activity-state") {
+      activityTracked = true;
+      activityVisible = data.visible === true;
+      presentedVisible =
+        data.presentedVisible === undefined
+          ? activityVisible
+          : data.presentedVisible === true;
+      options.setPresentedVisible?.(presentedVisible);
+      if (!activityVisible) {
+        markersSuppressedByActivity = false;
+      }
+      syncIdleAvailability();
+    } else if (data.type === "user-activity") {
+      markersSuppressedByActivity = false;
+      lastUserActivityAt = performance.now();
+      syncMarkerVisibility();
+      userHeld = data.held === true;
+      syncInputHold();
+    } else if (data.type === "dismiss-focus") {
+      idleRotation.activity();
+      idleIconVisibility.activity();
+      clearFocus({
+        immediate: data.immediate === true,
+      });
+    } else if (data.type === "states") {
+      states = data.states || {};
+      for (const light of properties.lights || []) {
+        lightPreview.reconcile(
+          light.entityId,
+          resolveLightState(light.entityId),
+        );
+      }
+      syncMarkers();
+    } else if (data.type === "control-result") {
+      finishCommand(data.requestId, data.error || "", data.timedOut === true);
+    } else if (data.type === "editor-command" && editing) {
+      try {
+        if (data.command === "edit-light-camera") {
+          focusLight(data.id, "edit", true);
+        } else if (data.command === "preview-light-camera") {
+          focusLight(data.id, "preview");
+        } else if (data.command === "preview-light-effect") {
+          if (
+            ![
+              "brightnessMin",
+              "brightnessMax",
+              "temperatureMin",
+              "temperatureMax",
+              "defaults",
+            ].includes(data.value)
+          ) {
+            throw new Error("请选择要预览的效果。");
+          }
+          if (!findLight(data.id)) {
+            throw new Error("灯光按钮已移除。");
+          }
+          if (!findLight(data.id).entityId) {
+            throw new Error("请先绑定实体，再预览灯光效果。");
+          }
+          focusLight(data.id, "preview");
+          effectPreview = {
+            id: data.id,
+            kind: data.value,
+          };
+          applyLightStates({
+            preview: true,
+          });
+          syncLightPanel();
+        } else if (data.command === "cancel-light-camera") {
+          clearFocus({
+            immediate: true,
+          });
+        } else {
+          if (focusMode !== "edit" || data.id !== focusedLightId) {
+            throw new Error("请先调整这盏灯的聚焦视角。");
+          }
+          if (data.command === "focus-projection") {
+            options.setCameraProjection(data.value);
+          }
+          if (data.command === "focus-focal-length") {
+            options.setCameraFocalLength(data.value);
+          }
+        }
+        syncCameraInteraction();
+        const camera = currentCamera();
+        postToParent({
+          type: "edit",
+          action: "focus-camera",
+          requestId: data.requestId,
+          id: data.id,
+          camera: camera,
+        });
+        if (data.command === "save-light-camera") {
+          clearFocus({
+            immediate: true,
+          });
+        }
+      } catch (error) {
+        postToParent({
+          type: "edit",
+          action: "focus-camera",
+          requestId: data.requestId,
+          error: error.message,
+        });
+      }
+    } else if (data.type === "editor-command" && viewEditing) {
+      if (data.command === "projection") {
+        options.setCameraProjection(data.value);
+      }
+      if (data.command === "focal-length") {
+        options.setCameraFocalLength(data.value);
+      }
+      syncCameraInteraction();
+      if (data.command === "save-camera" || data.requestId) {
+        postToParent({
+          type: "edit",
+          action: "camera",
+          requestId: data.requestId,
+          camera: currentCamera(),
+        });
+      }
+    }
+  }
+  window.addEventListener("message", onParentMessage);
+  const controls = options.controls;
+  const unsubscribeCameraChange = options.onCameraChange?.(
+    updateMarkerPositions,
+  );
+  if (!unsubscribeCameraChange) {
+    controls.addEventListener("change", updateMarkerPositions);
+  }
+  const resizeObserver = new ResizeObserver(syncPresentationLayout);
+  resizeObserver.observe(container);
+  async function applySceneUpdate(scene) {
+    const savedScene = options.savedScene;
+    const cameraBeforeUpdate = currentCamera();
+    markersSuppressedByActivity =
+      markersSuppressedByActivity || idleReturning || idleIconsHidden;
+    sceneUpdating = true;
+    idleRotation.activity();
+    syncMarkerVisibility();
+    let uncover = () => {};
+    let replaced = false;
+    const replaceAndRestore = async (nextScene) => {
+      await options.replaceScene(nextScene);
+      if (disposed) {
+        return;
+      }
+      properties = transformProperties(rawProperties);
+      const floorId =
+        options.document.floors.some(
+          (floor) => floor.id === properties.floorSelection,
+        ) || properties.floorSelection === "all"
+          ? properties.floorSelection
+          : options.document.floors[0].id;
+      activeFloorId = floorId;
+      options.setFloor(floorId);
+      options.appearance(properties);
+      baseCameraState = transformCamera(
+        rawProperties.camera || cameraBeforeUpdate,
+        floorId,
+      );
+      options.restoreCamera(transformCamera(cameraBeforeUpdate, floorId));
+      applyLightStates({
+        immediate: true,
+      });
+      await options.whenPresented();
+    };
+    try {
+      uncover = options.coverSceneUpdate();
+      options.setCameraInteraction({
+        enabled: false,
+      });
+      replaced = true;
+      await replaceAndRestore(scene);
+      if (!disposed) {
+        postToParent({
+          type: "model-metadata",
+          metadata: collectMetadata(),
+        });
+      }
+    } catch (error) {
+      if (replaced && !disposed) {
+        await replaceAndRestore(savedScene);
+      }
+      throw error;
+    } finally {
+      uncover();
+      sceneUpdating = false;
+      markerWorldCache.clear();
+      if (
+        !disposed &&
+        (syncCameraInteraction(), syncMarkers(), deferredMessage)
+      ) {
+        const message = deferredMessage;
+        deferredMessage = null;
+        onParentMessage(message);
+      }
+    }
+  }
+  const stopSceneSync = options.readSceneUpdate
+    ? startSceneSync({
+        eligible: () =>
+          !disposed &&
+          presented &&
+          activityVisible &&
+          !document.hidden &&
+          !editing &&
+          !viewEditing &&
+          !focusMode &&
+          !cameraMotion &&
+          !dragState &&
+          !sceneUpdating &&
+          !pendingCommands.size &&
+          !userHeld &&
+          !activePointers.size &&
+          !activeKeys.size &&
+          performance.now() - lastUserActivityAt > 1200,
+        read: (signal) => options.readSceneUpdate(signal),
+        apply: applySceneUpdate,
+      })
+    : () => {};
+  frameLoop = options.createFrameLoop({
+    step(now) {
+      if (disposed || document.hidden || sceneUpdating) {
+        return Infinity;
+      } else {
+        tickCameraMotion(now);
+        idleRotation.tick(now);
+        idleIconVisibility.tick(now);
+        if (lightPreview.expire()) {
+          syncMarkers();
+        }
+        updateMarkerPositions();
+        canvas.dataset.stageFrameChecks = String(frameLoop.stats.frames);
+        return Math.min(
+          cameraMotion ? 0 : Infinity,
+          idleRotation.nextDelay(now),
+          idleIconVisibility.nextDelay(now),
+          lightPreview.nextDelay(now),
+        );
+      }
+    },
+  });
+  syncIdleAvailability();
+  window.addEventListener("pagehide", () => {
+    lightStateCache.flush();
+    stopSceneSync();
+    disposed = true;
+    idleRotation.dispose();
+    idleIconVisibility.dispose();
+    cameraMotion = null;
+    postToParent({
+      type: "focus-state",
+      active: false,
+    });
+    for (const type of inputEvents) {
+      window.removeEventListener(type, onUserInput, true);
+    }
+    window.removeEventListener("blur", clearInputHold);
+    document.removeEventListener?.("visibilitychange", syncIdleAvailability);
+    frameLoop.dispose();
+    unsubscribeCameraChange?.();
+    if (!unsubscribeCameraChange) {
+      controls.removeEventListener("change", updateMarkerPositions);
+    }
+    resizeObserver.disconnect();
+    pendingCommands.forEach((pending) => clearTimeout(pending.timeout));
+    pendingCommands.clear();
+  });
+  function collectMetadata() {
+    return {
+      camera: transformCamera(
+        options.cameraState(),
+        properties.floorSelection || options.document.activeFloorId,
+        true,
+      ),
+      baseLighting: options.document.baseLighting,
+      defaults: options.defaults,
+      floors: options.document.floors.map((floor) => {
+        const settingsWallHeight = floor.scene.settings?.wallHeight;
+        const wallHeights = floor.scene.walls
+          .map((wall) => wall.height)
+          .filter((height) => Number.isFinite(height) && height > 0);
+        const wallHeight = Math.max(
+          0.01,
+          Math.min(
+            6,
+            Number.isFinite(settingsWallHeight) && settingsWallHeight > 0
+              ? settingsWallHeight
+              : Math.max(0, ...wallHeights) || 2.8,
+          ),
+        );
+        return {
+          id: floor.id,
+          name: floor.name,
+          wallHeight: wallHeight,
+          groups: floor.scene.lightGroups.map((group) => {
+            const items = floor.scene.items.filter(
+              (item) => item.lightGroupId === group.id,
+            );
+            const points = items.length
+              ? items
+              : floor.scene.walls.map((wall) => wall.start);
+            return {
+              id: group.id,
+              name: group.name,
+              height: wallHeight,
+              x: points.length
+                ? points.reduce((sum, point) => sum + point.x, 0) /
+                  points.length
+                : 0,
+              y: points.length
+                ? points.reduce((sum, point) => sum + point.y, 0) /
+                  points.length
+                : 0,
+            };
+          }),
+        };
+      }),
+    };
+  }
+  postToParent({
+    type: "ready",
+    metadata: collectMetadata(),
+  });
+}

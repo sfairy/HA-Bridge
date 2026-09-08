@@ -74,7 +74,7 @@ class UIPack:
 UI_PACKS = (
     UIPack(
         id=DEFAULT_UI_PACK_ID,
-        name='栖光',
+        name='默认',
         english_name='DWELL LIGHT',
         version='1.0.0',
         feature_code='ui.base',

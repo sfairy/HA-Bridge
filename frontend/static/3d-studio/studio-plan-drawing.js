@@ -1,1 +1,193 @@
-function _0x5bbe(){const _0x45e761=['lineTo','318581nfTImc','textAlign','measureText','beginPath','#fff','floor','restore','stroke','5358000KuwkBM','6830890uPsmRQ','554382JcFQWy','arc','4txDnMw','rgba(255,\x2084,\x2076,\x20.75)','left','lineWidth','round','moveTo','roundRect','strokeStyle','18bdBvtw','1167450bOfhDq','save','3238842AOXDlp','2411088XcPGbK','7SLYDYb','fillStyle'];_0x5bbe=function(){return _0x45e761;};return _0x5bbe();}function _0x13ae(_0x41abd0,_0x4ccff4){const _0x5bbe4d=_0x5bbe();return _0x13ae=function(_0x13ae08,_0x34b4ee){_0x13ae08=_0x13ae08-0x1c0;let _0x2cec33=_0x5bbe4d[_0x13ae08];return _0x2cec33;},_0x13ae(_0x41abd0,_0x4ccff4);}(function(_0xed90c7,_0x434053){const _0x46769c=_0x13ae,_0x352a7e=_0xed90c7();while(!![]){try{const _0x4f6097=-parseInt(_0x46769c(0x1d3))/0x1*(-parseInt(_0x46769c(0x1c3))/0x2)+parseInt(_0x46769c(0x1ce))/0x3+-parseInt(_0x46769c(0x1cf))/0x4+parseInt(_0x46769c(0x1cc))/0x5+-parseInt(_0x46769c(0x1c1))/0x6*(-parseInt(_0x46769c(0x1d0))/0x7)+parseInt(_0x46769c(0x1db))/0x8+-parseInt(_0x46769c(0x1cb))/0x9*(parseInt(_0x46769c(0x1c0))/0xa);if(_0x4f6097===_0x434053)break;else _0x352a7e['push'](_0x352a7e['shift']());}catch(_0x396873){_0x352a7e['push'](_0x352a7e['shift']());}}}(_0x5bbe,0xb5827));export function drawTrackedText(_0x5c3743,_0x4b2137,_0x376a08,_0x494884,_0x5c5667,_0x56ca0e){const _0x3d62ff=_0x13ae,_0x3ce999=[...String(_0x4b2137||'')];if(!_0x3ce999['length'])return 0x0;const _0x561c32=_0x3ce999['map'](_0x209907=>_0x5c3743['measureText'](_0x209907)['width']),_0x2c7478=_0x561c32['reduce']((_0x496fb7,_0x255eed)=>_0x496fb7+_0x255eed,0x0)+Math['max'](_0x3ce999['length']-0x1,0x0)*_0x5c5667,_0x5dc395=_0x2c7478>0x0?Math['min'](0x1,_0x56ca0e/_0x2c7478):0x1;_0x5c3743[_0x3d62ff(0x1cd)](),_0x5c3743['translate'](_0x376a08,_0x494884),_0x5c3743['scale'](_0x5dc395,0x1),_0x5c3743[_0x3d62ff(0x1d4)]=_0x3d62ff(0x1c5),_0x5c3743['textBaseline']='middle';let _0x38763e=0x0;return _0x3ce999['forEach']((_0x1fa810,_0x5d0244)=>{_0x5c3743['fillText'](_0x1fa810,_0x38763e,0x0),_0x38763e+=_0x561c32[_0x5d0244]+(_0x5d0244<_0x3ce999['length']-0x1?_0x5c5667:0x0);}),_0x5c3743[_0x3d62ff(0x1d9)](),_0x2c7478*_0x5dc395;}export function createPlanDrawingTools({context:_0x286475,planToScreen:_0x4f8038,screenToPlan:_0x5d88d3,pixelsPerMeter:_0x37e7e7,getCanvasSize:_0x491fea,getViewZoom:_0x1fb5dd}){function _0x5bcfe1(){const _0x20a7fb=_0x13ae,_0x204414=_0x37e7e7();if(!_0x204414)return;const {width:_0x374a4f,height:_0x4706b7}=_0x491fea(),_0x2b1419=_0x1fb5dd();let _0x169127=_0x204414*0.5;for(;_0x169127*_0x2b1419<0x12;)_0x169127*=0x2;for(;_0x169127*_0x2b1419>0x64;)_0x169127/=0x2;const _0x3f0ab2=[{'x':0x0,'y':0x0},{'x':_0x374a4f,'y':0x0},{'x':_0x374a4f,'y':_0x4706b7},{'x':0x0,'y':_0x4706b7}]['map'](_0x5d88d3),_0x45caf4=Math['min'](..._0x3f0ab2['map'](_0x225a49=>_0x225a49['x'])),_0x4376c5=Math['max'](..._0x3f0ab2['map'](_0x1a5e41=>_0x1a5e41['x'])),_0x3d7768=Math['min'](..._0x3f0ab2['map'](_0x2cff25=>_0x2cff25['y'])),_0x10041e=Math['max'](..._0x3f0ab2['map'](_0x182d83=>_0x182d83['y']));_0x286475['save'](),_0x286475['lineWidth']=0x1;for(let _0x3a37d5=Math['floor'](_0x45caf4/_0x169127)*_0x169127;_0x3a37d5<=_0x4376c5;_0x3a37d5+=_0x169127){const _0x3f7bd5=_0x4f8038({'x':_0x3a37d5,'y':_0x3d7768}),_0x1ca168=_0x4f8038({'x':_0x3a37d5,'y':_0x10041e}),_0xbe1056=Math['round'](_0x3a37d5/_0x204414*0x2);_0x286475['strokeStyle']=_0xbe1056%0x2===0x0?'rgba(91,\x20119,\x20139,\x20.13)':'rgba(91,\x20119,\x20139,\x20.065)',_0x286475['beginPath'](),_0x286475[_0x20a7fb(0x1c8)](_0x3f7bd5['x'],_0x3f7bd5['y']),_0x286475['lineTo'](_0x1ca168['x'],_0x1ca168['y']),_0x286475[_0x20a7fb(0x1da)]();}for(let _0x583374=Math[_0x20a7fb(0x1d8)](_0x3d7768/_0x169127)*_0x169127;_0x583374<=_0x10041e;_0x583374+=_0x169127){const _0x5db974=_0x4f8038({'x':_0x45caf4,'y':_0x583374}),_0x4329eb=_0x4f8038({'x':_0x4376c5,'y':_0x583374}),_0x255e79=Math['round'](_0x583374/_0x204414*0x2);_0x286475['strokeStyle']=_0x255e79%0x2===0x0?'rgba(91,\x20119,\x20139,\x20.13)':'rgba(91,\x20119,\x20139,\x20.065)',_0x286475['beginPath'](),_0x286475['moveTo'](_0x5db974['x'],_0x5db974['y']),_0x286475['lineTo'](_0x4329eb['x'],_0x4329eb['y']),_0x286475['stroke']();}_0x286475['restore']();}function _0x27acef(_0x5557e7,_0x301ce6,_0x2ee1e4={}){const _0x1ece40=_0x13ae,_0x44efa4=_0x4f8038(_0x5557e7),_0x2a53ac=_0x4f8038(_0x301ce6);_0x286475['save'](),_0x286475['strokeStyle']=_0x2ee1e4['color']||_0x1ece40(0x1d7),_0x286475[_0x1ece40(0x1c6)]=_0x2ee1e4['width']||0x1,_0x286475['lineCap']=_0x2ee1e4['cap']||_0x1ece40(0x1c7),_0x2ee1e4['dash']&&_0x286475['setLineDash'](_0x2ee1e4['dash']),_0x286475['beginPath'](),_0x286475['moveTo'](_0x44efa4['x'],_0x44efa4['y']),_0x286475[_0x1ece40(0x1d2)](_0x2a53ac['x'],_0x2a53ac['y']),_0x286475['stroke'](),_0x286475['restore']();}function _0x28b9d2(_0x2a9c47,_0x5e90da,_0x3435b9=0x4){const _0x1d263e=_0x13ae,_0x412a73=_0x4f8038(_0x2a9c47);_0x286475['save'](),_0x286475[_0x1d263e(0x1d1)]='#0e151b',_0x286475['strokeStyle']=_0x5e90da,_0x286475['lineWidth']=0x2,_0x286475['beginPath'](),_0x286475[_0x1d263e(0x1c2)](_0x412a73['x'],_0x412a73['y'],_0x3435b9,0x0,Math['PI']*0x2),_0x286475['fill'](),_0x286475['stroke'](),_0x286475['restore']();}function _0x238982(_0x1a91f1){const _0x2a4e9a=_0x13ae,_0x375fc6=_0x4f8038(_0x1a91f1);_0x286475['save'](),_0x286475['globalAlpha']=0x1,_0x286475['shadowColor']=_0x2a4e9a(0x1c4),_0x286475['shadowBlur']=0xc,_0x286475['fillStyle']='rgba(255,\x2084,\x2076,\x20.18)',_0x286475[_0x2a4e9a(0x1ca)]='#ff6258',_0x286475['lineWidth']=2.5,_0x286475['beginPath'](),_0x286475['arc'](_0x375fc6['x'],_0x375fc6['y'],0x9,0x0,Math['PI']*0x2),_0x286475['fill'](),_0x286475['stroke'](),_0x286475['shadowBlur']=0x0,_0x286475['fillStyle']='#ff6258',_0x286475['beginPath'](),_0x286475[_0x2a4e9a(0x1c2)](_0x375fc6['x'],_0x375fc6['y'],3.2,0x0,Math['PI']*0x2),_0x286475['fill'](),_0x286475['restore']();}function _0x4c0dfe(_0x551710,_0x321ee9,_0xef6b52='#dce3e8'){const _0x1119a5=_0x13ae;if(!_0x321ee9)return;const _0x4c8b1d=_0x4f8038(_0x551710);_0x286475['save'](),_0x286475['font']='600\x2010px\x20ui-monospace,\x20monospace',_0x286475['textAlign']='center',_0x286475['textBaseline']='middle';const _0x9b55f5=_0x286475[_0x1119a5(0x1d5)](_0x321ee9)['width']+0xc;_0x286475['fillStyle']='rgba(8,\x2013,\x2018,\x20.88)',_0x286475['strokeStyle']='rgba(255,\x20255,\x20255,\x20.11)',_0x286475['lineWidth']=0x1,_0x286475[_0x1119a5(0x1d6)](),_0x286475[_0x1119a5(0x1c9)](_0x4c8b1d['x']-_0x9b55f5/0x2,_0x4c8b1d['y']-0x19,_0x9b55f5,0x12,0x5),_0x286475['fill'](),_0x286475['stroke'](),_0x286475['fillStyle']=_0xef6b52,_0x286475['fillText'](_0x321ee9,_0x4c8b1d['x'],_0x4c8b1d['y']-0x10),_0x286475['restore']();}return{'drawMetricGrid':_0x5bcfe1,'drawLine':_0x27acef,'drawPoint':_0x28b9d2,'drawOpenEndpointWarning':_0x238982,'drawFloatingLabel':_0x4c0dfe};}
+export function drawTrackedText(
+  context,
+  text,
+  x,
+  y,
+  letterSpacing,
+  maxWidth,
+) {
+  const characters = [...String(text || "")];
+  if (!characters.length) {
+    return 0;
+  }
+  const widths = characters.map((character) => context.measureText(character).width);
+  const naturalWidth =
+    widths.reduce((sum, width) => sum + width, 0) +
+    Math.max(characters.length - 1, 0) * letterSpacing;
+  const scale = naturalWidth > 0 ? Math.min(1, maxWidth / naturalWidth) : 1;
+  context.save();
+  context.translate(x, y);
+  context.scale(scale, 1);
+  context.textAlign = "left";
+  context.textBaseline = "middle";
+  let cursorX = 0;
+  characters.forEach((character, index) => {
+    context.fillText(character, cursorX, 0);
+    cursorX += widths[index] + (index < characters.length - 1 ? letterSpacing : 0);
+  });
+  context.restore();
+  return naturalWidth * scale;
+}
+export function createPlanDrawingTools({
+  context,
+  planToScreen,
+  screenToPlan,
+  pixelsPerMeter,
+  getCanvasSize,
+  getViewZoom,
+}) {
+  function drawMetricGrid() {
+    const ppm = pixelsPerMeter();
+    if (!ppm) {
+      return;
+    }
+    const { width, height } = getCanvasSize();
+    const zoom = getViewZoom();
+    let step = ppm * 0.5;
+    while (step * zoom < 18) {
+      step *= 2;
+    }
+    while (step * zoom > 100) {
+      step /= 2;
+    }
+    const corners = [
+      {
+        x: 0,
+        y: 0,
+      },
+      {
+        x: width,
+        y: 0,
+      },
+      {
+        x: width,
+        y: height,
+      },
+      {
+        x: 0,
+        y: height,
+      },
+    ].map(screenToPlan);
+    const minX = Math.min(...corners.map((point) => point.x));
+    const maxX = Math.max(...corners.map((point) => point.x));
+    const minY = Math.min(...corners.map((point) => point.y));
+    const maxY = Math.max(...corners.map((point) => point.y));
+    context.save();
+    context.lineWidth = 1;
+    for (let gridX = Math.floor(minX / step) * step; gridX <= maxX; gridX += step) {
+      const start = planToScreen({
+        x: gridX,
+        y: minY,
+      });
+      const end = planToScreen({
+        x: gridX,
+        y: maxY,
+      });
+      const halfMeterIndex = Math.round((gridX / ppm) * 2);
+      context.strokeStyle =
+        halfMeterIndex % 2 === 0
+          ? "rgba(91, 119, 139, .13)"
+          : "rgba(91, 119, 139, .065)";
+      context.beginPath();
+      context.moveTo(start.x, start.y);
+      context.lineTo(end.x, end.y);
+      context.stroke();
+    }
+    for (let gridY = Math.floor(minY / step) * step; gridY <= maxY; gridY += step) {
+      const start = planToScreen({
+        x: minX,
+        y: gridY,
+      });
+      const end = planToScreen({
+        x: maxX,
+        y: gridY,
+      });
+      const halfMeterIndex = Math.round((gridY / ppm) * 2);
+      context.strokeStyle =
+        halfMeterIndex % 2 === 0
+          ? "rgba(91, 119, 139, .13)"
+          : "rgba(91, 119, 139, .065)";
+      context.beginPath();
+      context.moveTo(start.x, start.y);
+      context.lineTo(end.x, end.y);
+      context.stroke();
+    }
+    context.restore();
+  }
+  function drawLine(from, to, options = {}) {
+    const start = planToScreen(from);
+    const end = planToScreen(to);
+    context.save();
+    context.strokeStyle = options.color || "#fff";
+    context.lineWidth = options.width || 1;
+    context.lineCap = options.cap || "round";
+    if (options.dash) {
+      context.setLineDash(options.dash);
+    }
+    context.beginPath();
+    context.moveTo(start.x, start.y);
+    context.lineTo(end.x, end.y);
+    context.stroke();
+    context.restore();
+  }
+  function drawPoint(point, color, radius = 4) {
+    const screen = planToScreen(point);
+    context.save();
+    context.fillStyle = "#0e151b";
+    context.strokeStyle = color;
+    context.lineWidth = 2;
+    context.beginPath();
+    context.arc(screen.x, screen.y, radius, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+    context.restore();
+  }
+  function drawOpenEndpointWarning(point) {
+    const screen = planToScreen(point);
+    context.save();
+    context.globalAlpha = 1;
+    context.shadowColor = "rgba(255, 84, 76, .75)";
+    context.shadowBlur = 12;
+    context.fillStyle = "rgba(255, 84, 76, .18)";
+    context.strokeStyle = "#ff6258";
+    context.lineWidth = 2.5;
+    context.beginPath();
+    context.arc(screen.x, screen.y, 9, 0, Math.PI * 2);
+    context.fill();
+    context.stroke();
+    context.shadowBlur = 0;
+    context.fillStyle = "#ff6258";
+    context.beginPath();
+    context.arc(screen.x, screen.y, 3.2, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+  }
+  function drawFloatingLabel(point, text, color = "#dce3e8") {
+    if (!text) {
+      return;
+    }
+    const screen = planToScreen(point);
+    context.save();
+    context.font = "600 10px ui-monospace, monospace";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    const labelWidth = context.measureText(text).width + 12;
+    context.fillStyle = "rgba(8, 13, 18, .88)";
+    context.strokeStyle = "rgba(255, 255, 255, .11)";
+    context.lineWidth = 1;
+    context.beginPath();
+    context.roundRect(screen.x - labelWidth / 2, screen.y - 25, labelWidth, 18, 5);
+    context.fill();
+    context.stroke();
+    context.fillStyle = color;
+    context.fillText(text, screen.x, screen.y - 16);
+    context.restore();
+  }
+  return {
+    drawMetricGrid: drawMetricGrid,
+    drawLine: drawLine,
+    drawPoint: drawPoint,
+    drawOpenEndpointWarning: drawOpenEndpointWarning,
+    drawFloatingLabel: drawFloatingLabel,
+  };
+}

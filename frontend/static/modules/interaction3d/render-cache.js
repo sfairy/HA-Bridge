@@ -1,1 +1,529 @@
-(function(_0x347659,_0x130dd9){const _0x755968=_0x2713,_0x5e7d82=_0x347659();while(!![]){try{const _0x12362d=parseInt(_0x755968(0x1e2))/0x1+parseInt(_0x755968(0x1f9))/0x2+parseInt(_0x755968(0x1e0))/0x3*(parseInt(_0x755968(0x1f5))/0x4)+-parseInt(_0x755968(0x1fc))/0x5*(-parseInt(_0x755968(0x1ec))/0x6)+parseInt(_0x755968(0x1d6))/0x7*(parseInt(_0x755968(0x1f0))/0x8)+parseInt(_0x755968(0x1e9))/0x9*(-parseInt(_0x755968(0x1e5))/0xa)+-parseInt(_0x755968(0x1d7))/0xb;if(_0x12362d===_0x130dd9)break;else _0x5e7d82['push'](_0x5e7d82['shift']());}catch(_0x4eafcc){_0x5e7d82['push'](_0x5e7d82['shift']());}}}(_0x1721,0x3cb2e));export const RENDER_CACHE_VERSION='i3d-light-delta-20260907-v5';export function stableCacheJSON(_0x48470c){const _0x1f2ba2=_0x2713;return JSON[_0x1f2ba2(0x1d9)](_0x48470c,(_0x580611,_0x2d0c50)=>_0x2d0c50&&typeof _0x2d0c50==_0x1f2ba2(0x1fd)&&!Array['isArray'](_0x2d0c50)?Object['fromEntries'](Object[_0x1f2ba2(0x1dc)](_0x2d0c50)['sort']()[_0x1f2ba2(0x1de)](_0x5d22ce=>[_0x5d22ce,_0x2d0c50[_0x5d22ce]])):_0x2d0c50);}function _0x2713(_0x513b09,_0x43cd16){const _0x172152=_0x1721();return _0x2713=function(_0x27131b,_0xf3d1c1){_0x27131b=_0x27131b-0x1d4;let _0x38ae15=_0x172152[_0x27131b];return _0x38ae15;},_0x2713(_0x513b09,_0x43cd16);}function _0x1721(){const _0x32a798=['add','livePreviewEnabled','set','close','97480kEymgG','memoryHits','width','includes','672752XuTmcw','item','value','8315swrTeH','object','cameraFocalLength','length','entries','843367hCZIvx','10875887tlIQai','scene','stringify','height','entry','keys','delete','map','image','51dULieT','fromEntries','26972TgSbgG','same-origin','size','510RlXplX','lightGroups','previewPanelRatio','cameraTopRotation','21429VwIHzd','stale\x20image','key','1662YvQkdX','push','bytes','some','8FOdjmI'];_0x1721=function(){return _0x32a798;};return _0x1721();}export function sha256(_0x38cd8c){const _0x4471fe=_0x2713,_0x164115=new TextEncoder()['encode'](_0x38cd8c),_0x3f466f=_0x164115['length'],_0x4c11f7=new Uint8Array(Math['ceil']((_0x3f466f+0x9)/0x40)*0x40);_0x4c11f7['set'](_0x164115),_0x4c11f7[_0x3f466f]=0x80;const _0x4f0c2b=new DataView(_0x4c11f7['buffer']);_0x4f0c2b['setUint32'](_0x4c11f7[_0x4471fe(0x1d4)]-0x8,Math['floor'](_0x3f466f/0x20000000)),_0x4f0c2b['setUint32'](_0x4c11f7['length']-0x4,_0x3f466f*0x8);const _0x51f65b=[],_0x1064ec=[],_0x8eb666=[];for(let _0x3d3c6c=0x2;_0x51f65b['length']<0x40;_0x3d3c6c++)_0x51f65b['some'](_0x134825=>_0x3d3c6c%_0x134825===0x0)||(_0x51f65b[_0x4471fe(0x1ed)](_0x3d3c6c),_0x1064ec['push'](Math['cbrt'](_0x3d3c6c)%0x1*0x100000000>>>0x0),_0x8eb666['length']<0x8&&_0x8eb666['push'](Math['sqrt'](_0x3d3c6c)%0x1*0x100000000>>>0x0));const _0x10b2d0=(_0xa48265,_0x3407eb)=>_0xa48265>>>_0x3407eb|_0xa48265<<0x20-_0x3407eb,_0x1ea641=new Uint32Array(0x40),_0x54374d=_0x8eb666;for(let _0x318522=0x0;_0x318522<_0x4c11f7['length'];_0x318522+=0x40){for(let _0x272b71=0x0;_0x272b71<0x10;_0x272b71++)_0x1ea641[_0x272b71]=_0x4f0c2b['getUint32'](_0x318522+_0x272b71*0x4);for(let _0x25d0cf=0x10;_0x25d0cf<0x40;_0x25d0cf++){const _0x16029c=_0x1ea641[_0x25d0cf-0xf],_0x3c2c27=_0x1ea641[_0x25d0cf-0x2];_0x1ea641[_0x25d0cf]=_0x1ea641[_0x25d0cf-0x10]+(_0x10b2d0(_0x16029c,0x7)^_0x10b2d0(_0x16029c,0x12)^_0x16029c>>>0x3)+_0x1ea641[_0x25d0cf-0x7]+(_0x10b2d0(_0x3c2c27,0x11)^_0x10b2d0(_0x3c2c27,0x13)^_0x3c2c27>>>0xa);}let [_0x3684d8,_0x1ba85f,_0x49c072,_0x38556c,_0x340d76,_0x71ab1e,_0x562b36,_0x1b781b]=_0x54374d;for(let _0x22cb25=0x0;_0x22cb25<0x40;_0x22cb25++){const _0x632388=_0x1b781b+(_0x10b2d0(_0x340d76,0x6)^_0x10b2d0(_0x340d76,0xb)^_0x10b2d0(_0x340d76,0x19))+(_0x340d76&_0x71ab1e^~_0x340d76&_0x562b36)+_0x1064ec[_0x22cb25]+_0x1ea641[_0x22cb25]>>>0x0,_0x31aa17=(_0x10b2d0(_0x3684d8,0x2)^_0x10b2d0(_0x3684d8,0xd)^_0x10b2d0(_0x3684d8,0x16))+(_0x3684d8&_0x1ba85f^_0x3684d8&_0x49c072^_0x1ba85f&_0x49c072)>>>0x0;_0x1b781b=_0x562b36,_0x562b36=_0x71ab1e,_0x71ab1e=_0x340d76,_0x340d76=_0x38556c+_0x632388>>>0x0,_0x38556c=_0x49c072,_0x49c072=_0x1ba85f,_0x1ba85f=_0x3684d8,_0x3684d8=_0x632388+_0x31aa17>>>0x0;}[_0x3684d8,_0x1ba85f,_0x49c072,_0x38556c,_0x340d76,_0x71ab1e,_0x562b36,_0x1b781b]['forEach']((_0x11cda8,_0x2be7e7)=>{_0x54374d[_0x2be7e7]=_0x54374d[_0x2be7e7]+_0x11cda8>>>0x0;});}return _0x54374d[_0x4471fe(0x1de)](_0x4e31fe=>_0x4e31fe['toString'](0x10)['padStart'](0x8,'0'))['join']('');}export function lightLayerKey(_0x5330ad,_0x469918){const _0x24bb9a=_0x2713;return sha256(stableCacheJSON({'version':RENDER_CACHE_VERSION,'base':_0x5330ad,'lamp':_0x469918[_0x24bb9a(0x1fa)],'floor':_0x469918['floor']['id']}));}export function cacheSceneDescriptor(_0x1c5f20){const _0x20a62e=_0x2713,_0x1f3b60=(_0xa0dfa0,_0x375dfc)=>Object[_0x20a62e(0x1e1)](Object[_0x20a62e(0x1d5)](_0xa0dfa0||{})['filter'](([_0x4d7e2d])=>!_0x375dfc[_0x20a62e(0x1f8)](_0x4d7e2d)));return _0x1c5f20['map'](_0x1e3f1d=>({..._0x1e3f1d,'name':void 0x0,'scene':{..._0x1e3f1d[_0x20a62e(0x1d8)],'settings':_0x1f3b60(_0x1e3f1d['scene']['settings'],['cameraView','cameraMode',_0x20a62e(0x1fe),_0x20a62e(0x1e8),'fixedCameraView','planViewRotation',_0x20a62e(0x1f2),_0x20a62e(0x1e7),'detailsPanelWidthRatio']),'lightGroups':_0x1e3f1d['scene'][_0x20a62e(0x1e6)]?.['map'](_0x1761a7=>_0x1f3b60(_0x1761a7,['enabled','name'])),'items':_0x1e3f1d[_0x20a62e(0x1d8)]['items']['map'](_0x5a2e4c=>['downlight','ceilinglight','striplight']['includes'](_0x5a2e4c['type'])?_0x1f3b60(_0x5a2e4c,['lightBrightness','lightTemperature']):_0x5a2e4c)}}));}export function createRenderCache({sceneId:_0x9262c7,projectId:_0x32a1ac,fetcher:_0xc17272=globalThis['fetch'],decode:_0x41d2e1=_0x2e3126=>createImageBitmap(_0x2e3126),maxBytes:_0x150f3d=0x20*0x400*0x400,timeoutMs:_0x403f03=0x708,now:_0x2d4753=Date['now'],report:_0xef421b=()=>{},makeCanvas:_0x3605d2=()=>document['createElement']('canvas'),maxDecodedBytes:_0x3eb784=0x20*0x400*0x400,maxDecodedFrames:_0x2cad94=0x3}={}){const _0x557f94=new Map(),_0x4cdb02=new Set(),_0x536189=new Map(),_0x2a289e=new Map(),_0x293e4d=new Map();let _0x31f338=0x0,_0xd733f1=0x0,_0x8e46c7=0x0,_0x577e29=!0x1,_0x37a452=!0x1,_0x52ccd1=0x0;const _0x212724={'memoryHits':0x0,'serverHits':0x0,'misses':0x0,'generated':0x0,'uploads':0x0,'errors':0x0,'decodedHits':0x0},_0x220809=()=>_0xef421b({..._0x212724,'memoryBytes':_0xd733f1,'pendingBytes':_0x8e46c7,'decodedBytes':_0x31f338,'decodedFrames':_0x2a289e['size']});function _0xd2bc4f(_0x57455e){const _0x2ce9c6=_0x2713;_0x57455e['refs']--,!_0x57455e['retained']&&_0x57455e['refs']===0x0&&_0x57455e[_0x2ce9c6(0x1df)]['close']();}function _0x4a3b42(_0x3527de){const _0x1fc817=_0x2713,_0x49895e=_0x2a289e['get'](_0x3527de);_0x49895e&&(_0x2a289e['delete'](_0x3527de),_0x31f338-=_0x49895e[_0x1fc817(0x1ee)],_0x49895e['retained']=!0x1,_0x49895e['refs']||_0x49895e['image'][_0x1fc817(0x1f4)]());}function _0x102138(_0x53246e,_0x22df75,_0x3c97b0,_0x279fa9){_0x4a3b42(_0x53246e);const _0x1fe519={'image':_0x22df75,'width':_0x3c97b0,'height':_0x279fa9,'bytes':_0x3c97b0*_0x279fa9*0x4,'refs':0x1,'retained':!0x0};for(_0x2a289e['set'](_0x53246e,_0x1fe519),_0x31f338+=_0x1fe519['bytes'];_0x31f338>_0x3eb784||_0x2a289e['size']>_0x2cad94;)_0x4a3b42(_0x2a289e['keys']()['next']()['value']);return _0x1fe519;}function _0x22b379(_0x4f30e4){_0x4f30e4['refs']++;let _0x5c242b=!0x1;return{'image':_0x4f30e4['image'],'width':_0x4f30e4['width'],'height':_0x4f30e4['height'],'close'(){_0x5c242b||(_0x5c242b=!0x0,_0xd2bc4f(_0x4f30e4));}};}const _0x16f01c=_0x7fccc=>'/api/v1/modules/interaction3d/scenes/'+encodeURIComponent(_0x9262c7)+'/render-cache/'+_0x7fccc+'?projectId='+encodeURIComponent(_0x32a1ac||'');function _0x1032bd(_0x5ee9dd,_0x3303b1){const _0x1b97b2=_0x2713;for(_0x557f94['has'](_0x5ee9dd)&&(_0xd733f1-=_0x557f94['get'](_0x5ee9dd)['size']),_0x557f94['delete'](_0x5ee9dd),_0x3303b1['size']<=_0x150f3d&&(_0x557f94[_0x1b97b2(0x1f3)](_0x5ee9dd,_0x3303b1),_0xd733f1+=_0x3303b1['size']);_0xd733f1>_0x150f3d||_0x557f94[_0x1b97b2(0x1e4)]>0x40;){const _0x3c1ed1=_0x557f94[_0x1b97b2(0x1dc)]()['next']()[_0x1b97b2(0x1fb)];_0xd733f1-=_0x557f94['get'](_0x3c1ed1)['size'],_0x557f94[_0x1b97b2(0x1dd)](_0x3c1ed1);}}async function _0x1321a9(_0x1c7cd8,_0x3e8cc3={},_0x35ccd5=()=>!0x0){const _0xd6d559=_0x2713;if(_0x37a452||_0x2d4753()<_0x52ccd1)return null;const _0x1f6645=new AbortController();_0x4cdb02['add'](_0x1f6645);const _0x243197=setTimeout(()=>_0x1f6645['abort'](),_0x403f03),_0x576355=_0x3e8cc3['method']?null:setInterval(()=>{_0x35ccd5()||_0x1f6645['abort']('stale');},0x32);try{const _0x49835f=await _0xc17272(_0x16f01c(_0x1c7cd8),{..._0x3e8cc3,'credentials':_0xd6d559(0x1e3),'signal':_0x1f6645['signal']}),_0x2d9631=!_0x3e8cc3['method']&&_0x49835f['status']===0x194&&!_0x49835f['headers']?.['get']('content-type')?.['includes']('application/json');if(!_0x49835f['ok']&&!_0x2d9631)throw new Error('cache\x20unavailable');return!_0x3e8cc3['method']&&(_0x49835f['status']===0xcc||_0x2d9631)?null:_0x3e8cc3['method']?_0x49835f:_0x49835f['ok']?await _0x49835f['blob']():null;}catch{return!_0x37a452&&_0x35ccd5()&&(_0x212724['errors']++,_0x52ccd1=_0x2d4753()+0x3a98),null;}finally{clearTimeout(_0x243197),clearInterval(_0x576355),_0x4cdb02[_0xd6d559(0x1dd)](_0x1f6645);}}async function _0x1bae66(){if(!(_0x577e29||_0x37a452)){_0x577e29=!0x0;try{for(;_0x536189['size']&&!_0x37a452;){const [_0x3d3351,_0x400682]=_0x536189['entries']()['next']()['value'];_0x536189['delete'](_0x3d3351),_0x8e46c7-=_0x400682['size'],(await _0x1321a9(_0x3d3351,{'method':'PUT','headers':{'Content-Type':'image/png'},'body':_0x400682}))?.['ok']&&_0x212724['uploads']++,_0x220809();}}finally{_0x577e29=!0x1;}}}const _0x3dddb4=(_0x1cd9d0,_0x11db7f,_0x1fdfad)=>{const _0x5e3f9c=[];for(let _0x16cbab=0x0;_0x16cbab<_0x1fdfad;_0x16cbab+=0x400)for(let _0x4da44e=0x0;_0x4da44e<_0x11db7f;_0x4da44e+=0x400)_0x5e3f9c['push']({'x':_0x4da44e,'y':_0x16cbab,'width':Math['min'](0x400,_0x11db7f-_0x4da44e),'height':Math['min'](0x400,_0x1fdfad-_0x16cbab),'key':sha256(_0x1cd9d0+':tile-v1:'+_0x11db7f+':'+_0x1fdfad+':'+_0x4da44e+':'+_0x16cbab)});return _0x5e3f9c;},_0x30d2a7={'stats':_0x212724,get 'closed'(){return _0x37a452;},async 'acquire'(_0x1a9eb3,_0x30c560,_0x10d96b,_0x5bf84f=()=>!0x0){const _0x7bb41=_0x2713;if(_0x37a452||!_0x1a9eb3||!_0x5bf84f())return null;const _0x1c2a78=_0x1a9eb3+':'+_0x30c560+':'+_0x10d96b,_0x5b88f3=_0x2a289e['get'](_0x1c2a78);if(_0x5b88f3)return _0x2a289e['delete'](_0x1c2a78),_0x2a289e['set'](_0x1c2a78,_0x5b88f3),_0x212724['decodedHits']++,_0x220809(),_0x22b379(_0x5b88f3);let _0x17fd03=_0x293e4d['get'](_0x1c2a78);_0x17fd03||(_0x17fd03={'waiters':new Set(),'entry':null},_0x293e4d[_0x7bb41(0x1f3)](_0x1c2a78,_0x17fd03));const _0x21613b=()=>!_0x37a452&&_0x5bf84f();_0x17fd03['waiters'][_0x7bb41(0x1f1)](_0x21613b),_0x17fd03['promise']||(_0x17fd03['promise']=_0x30d2a7['read'](_0x1a9eb3,_0x30c560,_0x10d96b,()=>[..._0x17fd03['waiters']][_0x7bb41(0x1ef)](_0x18bb4e=>_0x18bb4e()))['then'](_0x9e10c9=>_0x9e10c9?_0x37a452||![..._0x17fd03['waiters']]['some'](_0x259ffd=>_0x259ffd())?(_0x9e10c9[_0x7bb41(0x1f4)](),null):(_0x17fd03['entry']=_0x102138(_0x1c2a78,_0x9e10c9,_0x30c560,_0x10d96b),_0x220809(),_0x17fd03['entry']):null));try{const _0x2c957d=await _0x17fd03['promise'];return _0x2c957d&&_0x21613b()?_0x22b379(_0x2c957d):null;}finally{_0x17fd03['waiters']['delete'](_0x21613b),_0x17fd03['waiters']['size']||(_0x293e4d['delete'](_0x1c2a78),_0x17fd03['entry']&&_0xd2bc4f(_0x17fd03[_0x7bb41(0x1db)]));}},async 'read'(_0x2ad568,_0x4f769f,_0x39ffc7,_0x231548=()=>!0x0){const _0x30f3f4=_0x2713;if(_0x37a452||!_0x2ad568||!_0x231548())return null;if(_0x4f769f*_0x39ffc7>0x200000){const _0x39a346=_0x3605d2();_0x39a346['width']=_0x4f769f,_0x39a346['height']=_0x39ffc7;let _0x417109=!0x1;try{const _0x1d670c=_0x39a346['getContext']('2d');if(!_0x1d670c)return null;for(const _0x510583 of _0x3dddb4(_0x2ad568,_0x4f769f,_0x39ffc7)){const _0x372866=await _0x30d2a7['read'](_0x510583[_0x30f3f4(0x1eb)],_0x510583['width'],_0x510583['height'],_0x231548);if(!_0x372866)return null;try{if(_0x37a452||!_0x231548())return null;_0x1d670c['drawImage'](_0x372866,_0x510583['x'],_0x510583['y']);}finally{_0x372866[_0x30f3f4(0x1f4)]();}}return _0x39a346[_0x30f3f4(0x1f4)]=()=>{const _0x458584=_0x30f3f4;_0x39a346['width']=_0x39a346[_0x458584(0x1da)]=0x0;},_0x417109=!0x0,_0x39a346;}finally{_0x417109||(_0x39a346['width']=_0x39a346[_0x30f3f4(0x1da)]=0x0);}}let _0x26985f=_0x557f94['get'](_0x2ad568),_0x41ad4f=_0x26985f?_0x30f3f4(0x1f6):'serverHits';if(_0x26985f||(_0x26985f=await _0x1321a9(_0x2ad568,{},_0x231548)),_0x37a452||!_0x231548())return null;if(!_0x26985f||_0x26985f['size']>0xa*0x400*0x400||_0x26985f['type']!=='image/png')return _0x212724['misses']++,_0x220809(),null;let _0x2d8c02;try{if(_0x2d8c02=await _0x41d2e1(_0x26985f),_0x37a452||!_0x231548()||_0x2d8c02['width']!==_0x4f769f||_0x2d8c02['height']!==_0x39ffc7)throw new Error(_0x30f3f4(0x1ea));return _0x1032bd(_0x2ad568,_0x26985f),_0x212724[_0x41ad4f]++,_0x220809(),_0x2d8c02;}catch{return _0x2d8c02?.['close']?.(),_0x557f94['has'](_0x2ad568)&&(_0xd733f1-=_0x557f94['get'](_0x2ad568)['size'],_0x557f94['delete'](_0x2ad568)),_0x212724['misses']++,_0x220809(),null;}},async 'write'(_0x3c963a,_0x5281cb,_0x2224d1=()=>!0x0){const _0x47dbf5=_0x2713;if(_0x37a452||!_0x3c963a||!_0x2224d1())return;if(_0x5281cb['width']*_0x5281cb[_0x47dbf5(0x1da)]>0x200000){const _0x5b097d=_0x3605d2();try{for(const _0x5f4870 of _0x3dddb4(_0x3c963a,_0x5281cb['width'],_0x5281cb['height'])){if(_0x37a452||!_0x2224d1())return;_0x5b097d['width']=_0x5f4870['width'],_0x5b097d['height']=_0x5f4870['height'];const _0x4fefc7=_0x5b097d['getContext']('2d');if(!_0x4fefc7)return;_0x4fefc7['drawImage'](_0x5281cb,_0x5f4870['x'],_0x5f4870['y'],_0x5f4870['width'],_0x5f4870[_0x47dbf5(0x1da)],0x0,0x0,_0x5f4870[_0x47dbf5(0x1f7)],_0x5f4870['height']),await _0x30d2a7['write'](_0x5f4870['key'],_0x5b097d,_0x2224d1);}}finally{_0x5b097d['width']=_0x5b097d['height']=0x0;}return;}let _0x541a76;try{_0x541a76=await new Promise(_0x420fb6=>_0x5281cb['toBlob'](_0x420fb6,'image/png'));}catch{_0x212724['errors']++,_0x220809();return;}_0x37a452||!_0x2224d1()||!_0x541a76||_0x541a76['size']>0xa*0x400*0x400||(_0x1032bd(_0x3c963a,_0x541a76),_0x212724['generated']++,_0x8e46c7+_0x541a76['size']<=0x10*0x400*0x400&&_0x536189[_0x47dbf5(0x1e4)]<0x20&&_0x2d4753()>=_0x52ccd1&&!_0x536189['has'](_0x3c963a)&&(_0x536189['set'](_0x3c963a,_0x541a76),_0x8e46c7+=_0x541a76['size'],_0x1bae66()),_0x220809());},'close'(){_0x37a452=!0x0;for(const _0x137035 of _0x4cdb02)_0x137035['abort']();for(const _0x443a75 of _0x2a289e['keys']())_0x4a3b42(_0x443a75);_0x557f94['clear'](),_0x536189['clear'](),_0xd733f1=_0x8e46c7=0x0,_0x220809();}};return _0x30d2a7;}
+export const RENDER_CACHE_VERSION = "i3d-light-delta-20260907-v5";
+export function stableCacheJSON(value) {
+  return JSON.stringify(value, (key, nested) =>
+    nested && typeof nested == "object" && !Array.isArray(nested)
+      ? Object.fromEntries(
+          Object.keys(nested)
+            .sort()
+            .map((sortedKey) => [sortedKey, nested[sortedKey]]),
+        )
+      : nested,
+  );
+}
+export function sha256(input) {
+  const encoded = new TextEncoder().encode(input);
+  const byteLength = encoded.length;
+  const padded = new Uint8Array(Math.ceil((byteLength + 9) / 64) * 64);
+  padded.set(encoded);
+  padded[byteLength] = 128;
+  const view = new DataView(padded.buffer);
+  view.setUint32(padded.length - 8, Math.floor(byteLength / 536870912));
+  view.setUint32(padded.length - 4, byteLength * 8);
+  const primes = [];
+  const roundConstants = [];
+  const hashState = [];
+  for (let candidate = 2; primes.length < 64; candidate++) {
+    if (!primes.some((prime) => candidate % prime === 0)) {
+      primes.push(candidate);
+      roundConstants.push(((Math.cbrt(candidate) % 1) * 4294967296) >>> 0);
+      if (hashState.length < 8) {
+        hashState.push(((Math.sqrt(candidate) % 1) * 4294967296) >>> 0);
+      }
+    }
+  }
+  const rotateRight = (value, bits) => (value >>> bits) | (value << (32 - bits));
+  const schedule = new Uint32Array(64);
+  const workingHash = hashState;
+  for (let offset = 0; offset < padded.length; offset += 64) {
+    for (let wordIndex = 0; wordIndex < 16; wordIndex++) {
+      schedule[wordIndex] = view.getUint32(offset + wordIndex * 4);
+    }
+    for (let wordIndex = 16; wordIndex < 64; wordIndex++) {
+      const s0Word = schedule[wordIndex - 15];
+      const s1Word = schedule[wordIndex - 2];
+      schedule[wordIndex] =
+        schedule[wordIndex - 16] +
+        (rotateRight(s0Word, 7) ^ rotateRight(s0Word, 18) ^ (s0Word >>> 3)) +
+        schedule[wordIndex - 7] +
+        (rotateRight(s1Word, 17) ^ rotateRight(s1Word, 19) ^ (s1Word >>> 10));
+    }
+    let [a, b, c, d, e, f, g, h] = workingHash;
+    for (let round = 0; round < 64; round++) {
+      const temp1 =
+        (h +
+          (rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25)) +
+          ((e & f) ^ (~e & g)) +
+          roundConstants[round] +
+          schedule[round]) >>>
+        0;
+      const temp2 =
+        ((rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22)) +
+          ((a & b) ^ (a & c) ^ (b & c))) >>>
+        0;
+      h = g;
+      g = f;
+      f = e;
+      e = (d + temp1) >>> 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (temp1 + temp2) >>> 0;
+    }
+    [a, b, c, d, e, f, g, h].forEach((lane, laneIndex) => {
+      workingHash[laneIndex] = (workingHash[laneIndex] + lane) >>> 0;
+    });
+  }
+  return workingHash.map((lane) => lane.toString(16).padStart(8, "0")).join("");
+}
+export function lightLayerKey(baseDescriptor, lampEntry) {
+  return sha256(
+    stableCacheJSON({
+      version: RENDER_CACHE_VERSION,
+      base: baseDescriptor,
+      lamp: lampEntry.item,
+      floor: lampEntry.floor.id,
+    }),
+  );
+}
+export function cacheSceneDescriptor(floors) {
+  const omitKeys = (object, keys) =>
+    Object.fromEntries(
+      Object.entries(object || {}).filter(([key]) => !keys.includes(key)),
+    );
+  return floors.map((floor) => ({
+    ...floor,
+    name: undefined,
+    scene: {
+      ...floor.scene,
+      settings: omitKeys(floor.scene.settings, [
+        "cameraView",
+        "cameraMode",
+        "cameraFocalLength",
+        "cameraTopRotation",
+        "fixedCameraView",
+        "planViewRotation",
+        "livePreviewEnabled",
+        "previewPanelRatio",
+        "detailsPanelWidthRatio",
+      ]),
+      lightGroups: floor.scene.lightGroups?.map((group) =>
+        omitKeys(group, ["enabled", "name"]),
+      ),
+      items: floor.scene.items.map((item) =>
+        ["downlight", "ceilinglight", "striplight"].includes(item.type)
+          ? omitKeys(item, ["lightBrightness", "lightTemperature"])
+          : item,
+      ),
+    },
+  }));
+}
+export function createRenderCache({
+  sceneId,
+  projectId,
+  fetcher = globalThis.fetch,
+  decode = (blob) => createImageBitmap(blob),
+  maxBytes = 33554432,
+  timeoutMs = 1800,
+  now = Date.now,
+  report = () => {},
+  makeCanvas = () => document.createElement("canvas"),
+  maxDecodedBytes = 33554432,
+  maxDecodedFrames = 3,
+} = {}) {
+  const memoryBlobs = new Map();
+  const pendingControllers = new Set();
+  const uploadQueue = new Map();
+  const decodedFrames = new Map();
+  const decodeWaiters = new Map();
+  let decodedBytes = 0;
+  let memoryBytes = 0;
+  let pendingBytes = 0;
+  let uploadRunning = false;
+  let closed = false;
+  let backoffUntil = 0;
+  const stats = {
+    memoryHits: 0,
+    serverHits: 0,
+    misses: 0,
+    generated: 0,
+    uploads: 0,
+    errors: 0,
+    decodedHits: 0,
+  };
+  const emitStats = () =>
+    report({
+      ...stats,
+      memoryBytes,
+      pendingBytes,
+      decodedBytes,
+      decodedFrames: decodedFrames.size,
+    });
+  function releaseDecodedEntry(entry) {
+    entry.refs--;
+    if (!entry.retained && entry.refs === 0) {
+      entry.image.close();
+    }
+  }
+  function evictDecodedKey(key) {
+    const entry = decodedFrames.get(key);
+    if (entry) {
+      decodedFrames.delete(key);
+      decodedBytes -= entry.bytes;
+      entry.retained = false;
+      if (!entry.refs) {
+        entry.image.close();
+      }
+    }
+  }
+  function retainDecodedFrame(key, image, width, height) {
+    evictDecodedKey(key);
+    const entry = {
+      image,
+      width,
+      height,
+      bytes: width * height * 4,
+      refs: 1,
+      retained: true,
+    };
+    decodedFrames.set(key, entry);
+    decodedBytes += entry.bytes;
+    while (decodedBytes > maxDecodedBytes || decodedFrames.size > maxDecodedFrames) {
+      evictDecodedKey(decodedFrames.keys().next().value);
+    }
+    return entry;
+  }
+  function borrowDecodedEntry(entry) {
+    entry.refs++;
+    let released = false;
+    return {
+      image: entry.image,
+      width: entry.width,
+      height: entry.height,
+      close() {
+        if (!released) {
+          released = true;
+          releaseDecodedEntry(entry);
+        }
+      },
+    };
+  }
+  const cacheUrl = (cacheKey) =>
+    "/api/v1/modules/interaction3d/scenes/" +
+    encodeURIComponent(sceneId) +
+    "/render-cache/" +
+    cacheKey +
+    "?projectId=" +
+    encodeURIComponent(projectId || "");
+  function putMemoryBlob(cacheKey, blob) {
+    if (memoryBlobs.has(cacheKey)) {
+      memoryBytes -= memoryBlobs.get(cacheKey).size;
+    }
+    memoryBlobs.delete(cacheKey);
+    if (blob.size <= maxBytes) {
+      memoryBlobs.set(cacheKey, blob);
+      memoryBytes += blob.size;
+    }
+    while (memoryBytes > maxBytes || memoryBlobs.size > 64) {
+      const oldestKey = memoryBlobs.keys().next().value;
+      memoryBytes -= memoryBlobs.get(oldestKey).size;
+      memoryBlobs.delete(oldestKey);
+    }
+  }
+  async function fetchCache(cacheKey, init = {}, isFresh = () => true) {
+    if (closed || now() < backoffUntil) {
+      return null;
+    }
+    const controller = new AbortController();
+    pendingControllers.add(controller);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    const staleCheckId = init.method
+      ? null
+      : setInterval(() => {
+          if (!isFresh()) {
+            controller.abort("stale");
+          }
+        }, 50);
+    try {
+      const response = await fetcher(cacheUrl(cacheKey), {
+        ...init,
+        credentials: "same-origin",
+        signal: controller.signal,
+      });
+      const softMiss =
+        !init.method &&
+        response.status === 404 &&
+        !response.headers?.get("content-type")?.includes("application/json");
+      if (!response.ok && !softMiss) {
+        throw new Error("cache unavailable");
+      }
+      if (!init.method && (response.status === 204 || softMiss)) {
+        return null;
+      } else if (init.method) {
+        return response;
+      } else if (response.ok) {
+        return await response.blob();
+      } else {
+        return null;
+      }
+    } catch {
+      if (!closed && isFresh()) {
+        stats.errors++;
+        backoffUntil = now() + 15000;
+      }
+      return null;
+    } finally {
+      clearTimeout(timeoutId);
+      clearInterval(staleCheckId);
+      pendingControllers.delete(controller);
+    }
+  }
+  async function drainUploadQueue() {
+    if (!uploadRunning && !closed) {
+      uploadRunning = true;
+      try {
+        while (uploadQueue.size && !closed) {
+          const [cacheKey, blob] = uploadQueue.entries().next().value;
+          uploadQueue.delete(cacheKey);
+          pendingBytes -= blob.size;
+          if (
+            (
+              await fetchCache(cacheKey, {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "image/png",
+                },
+                body: blob,
+              })
+            )?.ok
+          ) {
+            stats.uploads++;
+          }
+          emitStats();
+        }
+      } finally {
+        uploadRunning = false;
+      }
+    }
+  }
+  const buildTiles = (cacheKey, width, height) => {
+    const tiles = [];
+    for (let y = 0; y < height; y += 1024) {
+      for (let x = 0; x < width; x += 1024) {
+        tiles.push({
+          x,
+          y,
+          width: Math.min(1024, width - x),
+          height: Math.min(1024, height - y),
+          key: sha256(
+            cacheKey + ":tile-v1:" + width + ":" + height + ":" + x + ":" + y,
+          ),
+        });
+      }
+    }
+    return tiles;
+  };
+  const cacheApi = {
+    stats,
+    get closed() {
+      return closed;
+    },
+    async acquire(cacheKey, width, height, isFresh = () => true) {
+      if (closed || !cacheKey || !isFresh()) {
+        return null;
+      }
+      const frameKey = cacheKey + ":" + width + ":" + height;
+      const cachedFrame = decodedFrames.get(frameKey);
+      if (cachedFrame) {
+        decodedFrames.delete(frameKey);
+        decodedFrames.set(frameKey, cachedFrame);
+        stats.decodedHits++;
+        emitStats();
+        return borrowDecodedEntry(cachedFrame);
+      }
+      let waiterGroup = decodeWaiters.get(frameKey);
+      if (!waiterGroup) {
+        waiterGroup = {
+          waiters: new Set(),
+          entry: null,
+        };
+        decodeWaiters.set(frameKey, waiterGroup);
+      }
+      const stillFresh = () => !closed && isFresh();
+      waiterGroup.waiters.add(stillFresh);
+      waiterGroup.promise ||= cacheApi
+        .read(cacheKey, width, height, () => [...waiterGroup.waiters].some((waiter) => waiter()))
+        .then((image) =>
+          image
+            ? closed || ![...waiterGroup.waiters].some((waiter) => waiter())
+              ? (image.close(), null)
+              : ((waiterGroup.entry = retainDecodedFrame(frameKey, image, width, height)), emitStats(), waiterGroup.entry)
+            : null,
+        );
+      try {
+        const entry = await waiterGroup.promise;
+        if (entry && stillFresh()) {
+          return borrowDecodedEntry(entry);
+        } else {
+          return null;
+        }
+      } finally {
+        waiterGroup.waiters.delete(stillFresh);
+        if (!waiterGroup.waiters.size) {
+          decodeWaiters.delete(frameKey);
+          if (waiterGroup.entry) {
+            releaseDecodedEntry(waiterGroup.entry);
+          }
+        }
+      }
+    },
+    async read(cacheKey, width, height, isFresh = () => true) {
+      if (closed || !cacheKey || !isFresh()) {
+        return null;
+      }
+      if (width * height > 2097152) {
+        const canvas = makeCanvas();
+        canvas.width = width;
+        canvas.height = height;
+        let handedOff = false;
+        try {
+          const context = canvas.getContext("2d");
+          if (!context) {
+            return null;
+          }
+          for (const tile of buildTiles(cacheKey, width, height)) {
+            const tileImage = await cacheApi.read(
+              tile.key,
+              tile.width,
+              tile.height,
+              isFresh,
+            );
+            if (!tileImage) {
+              return null;
+            }
+            try {
+              if (closed || !isFresh()) {
+                return null;
+              }
+              context.drawImage(tileImage, tile.x, tile.y);
+            } finally {
+              tileImage.close();
+            }
+          }
+          canvas.close = () => {
+            canvas.width = canvas.height = 0;
+          };
+          handedOff = true;
+          return canvas;
+        } finally {
+          if (!handedOff) {
+            canvas.width = canvas.height = 0;
+          }
+        }
+      }
+      let blob = memoryBlobs.get(cacheKey);
+      let hitStat = blob ? "memoryHits" : "serverHits";
+      blob ||= await fetchCache(cacheKey, {}, isFresh);
+      if (closed || !isFresh()) {
+        return null;
+      }
+      if (!blob || blob.size > 10485760 || blob.type !== "image/png") {
+        stats.misses++;
+        emitStats();
+        return null;
+      }
+      let image;
+      try {
+        image = await decode(blob);
+        if (closed || !isFresh() || image.width !== width || image.height !== height) {
+          throw new Error("stale image");
+        }
+        putMemoryBlob(cacheKey, blob);
+        stats[hitStat]++;
+        emitStats();
+        return image;
+      } catch {
+        image?.close?.();
+        if (memoryBlobs.has(cacheKey)) {
+          memoryBytes -= memoryBlobs.get(cacheKey).size;
+          memoryBlobs.delete(cacheKey);
+        }
+        stats.misses++;
+        emitStats();
+        return null;
+      }
+    },
+    async write(cacheKey, source, isFresh = () => true) {
+      if (closed || !cacheKey || !isFresh()) {
+        return;
+      }
+      if (source.width * source.height > 2097152) {
+        const tileCanvas = makeCanvas();
+        try {
+          for (const tile of buildTiles(cacheKey, source.width, source.height)) {
+            if (closed || !isFresh()) {
+              return;
+            }
+            tileCanvas.width = tile.width;
+            tileCanvas.height = tile.height;
+            const context = tileCanvas.getContext("2d");
+            if (!context) {
+              return;
+            }
+            context.drawImage(
+              source,
+              tile.x,
+              tile.y,
+              tile.width,
+              tile.height,
+              0,
+              0,
+              tile.width,
+              tile.height,
+            );
+            await cacheApi.write(tile.key, tileCanvas, isFresh);
+          }
+        } finally {
+          tileCanvas.width = tileCanvas.height = 0;
+        }
+        return;
+      }
+      let blob;
+      try {
+        blob = await new Promise((resolve) => source.toBlob(resolve, "image/png"));
+      } catch {
+        stats.errors++;
+        emitStats();
+        return;
+      }
+      if (!closed && !!isFresh() && !!blob && !(blob.size > 10485760)) {
+        putMemoryBlob(cacheKey, blob);
+        stats.generated++;
+        if (
+          pendingBytes + blob.size <= 16777216 &&
+          uploadQueue.size < 32 &&
+          now() >= backoffUntil &&
+          !uploadQueue.has(cacheKey)
+        ) {
+          uploadQueue.set(cacheKey, blob);
+          pendingBytes += blob.size;
+          drainUploadQueue();
+        }
+        emitStats();
+      }
+    },
+    close() {
+      closed = true;
+      for (const controller of pendingControllers) {
+        controller.abort();
+      }
+      for (const frameKey of decodedFrames.keys()) {
+        evictDecodedKey(frameKey);
+      }
+      memoryBlobs.clear();
+      uploadQueue.clear();
+      memoryBytes = pendingBytes = 0;
+      emitStats();
+    },
+  };
+  return cacheApi;
+}

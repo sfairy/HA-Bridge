@@ -1,1 +1,127 @@
-(function(_0x516054,_0x2559fd){const _0x453d86=_0x29b9,_0x1847ef=_0x516054();while(!![]){try{const _0x5ce6fe=-parseInt(_0x453d86(0xc1))/0x1*(parseInt(_0x453d86(0xca))/0x2)+-parseInt(_0x453d86(0xcd))/0x3*(-parseInt(_0x453d86(0xc4))/0x4)+parseInt(_0x453d86(0xd5))/0x5*(-parseInt(_0x453d86(0xc8))/0x6)+parseInt(_0x453d86(0xd6))/0x7*(-parseInt(_0x453d86(0xd1))/0x8)+parseInt(_0x453d86(0xd8))/0x9+-parseInt(_0x453d86(0xda))/0xa*(parseInt(_0x453d86(0xc7))/0xb)+-parseInt(_0x453d86(0xce))/0xc*(-parseInt(_0x453d86(0xc6))/0xd);if(_0x5ce6fe===_0x2559fd)break;else _0x1847ef['push'](_0x1847ef['shift']());}catch(_0x583b3c){_0x1847ef['push'](_0x1847ef['shift']());}}}(_0x53e2,0x3ea1f));import{EDITOR_PICKER_PAGE_SIZES as _0x576d04,editorEntityPickerInitialPage as _0x4abab0,editorEntityPickerPage as _0x36b316}from'../../js/editor/editor-picker-pagination.js?v=20260830-editor-picker-pagination-v1';import{createEditorPickerQueries as _0x488e1a}from'../../js/editor/editor-picker-queries.js?v=20260830-editor-picker-queries-v1';function _0x29b9(_0x56289e,_0x2695fb){const _0x53e2d9=_0x53e2();return _0x29b9=function(_0x29b9cc,_0x2744d5){_0x29b9cc=_0x29b9cc-0xc1;let _0xd314ae=_0x53e2d9[_0x29b9cc];return _0xd314ae;},_0x29b9(_0x56289e,_0x2695fb);}function _0x53e2(){const _0x281e1b=['toLocaleLowerCase','includes','283555XiLWqW','2894087uMxROQ','some','2039157lxtvef','（当前未找到）','2924060vbYcmn','8626tVWtPU','搜索图标名称','light.','36Bqlecq','items','117bKKOKf','11DwBYLH','30dBPiQv','split','20dzROIA','搜索实体名称或\x20ID','entity','69963xzKBiA','1194324XdYFln','entityId','editorPickerClearAction','8bPYWYi','createEditorPickerCurrentEntity'];_0x53e2=function(){return _0x281e1b;};return _0x53e2();}const g='mdi:lightbulb-outline',k=_0x3441bf=>typeof _0x3441bf=='string'&&/^mdi:[a-z0-9][a-z0-9-]{0,119}$/['test'](_0x3441bf);export function createInteraction3dEditorPickers({openPicker:_0x112a1b,fetchIcons:_0x284892,getEntities:_0x5c7694,ensureEntities:_0x5bb2ef,entityPickerText:_0x399770,elements:_0x469288}){const _0x566380=_0x29b9,{editorEntityMatches:_0x2169fd}=_0x488e1a({'entityPickerConfig':()=>({'recommended':_0x14ccea=>_0x14ccea['entityId']['startsWith'](_0x566380(0xc3))}),'pickerEntitiesForComponentType':()=>_0x5c7694()['filter'](_0x3bc552=>/^(light|switch)\.[a-z0-9_]+$/['test'](_0x3bc552[_0x566380(0xcf)])),'entityPickerText':_0x399770,'entityDomain':_0x4fbed8=>_0x4fbed8['entityId'][_0x566380(0xc9)]('.')[0x0]});return{'icon'({trigger:_0x34ceb7,current:_0xbd2f3e=g,onSelect:_0x344f32}){const _0xae8b5a=_0x566380;return _0x112a1b({'kind':'icon','title':'选择灯光按钮图标','searchPlaceholder':_0xae8b5a(0xc2),'triggerButton':_0x34ceb7,'pageSize':_0x576d04['icon'],'emptyText':'没有匹配的图标','itemClass':'icon-grid',async 'getPage'({query:_0x11d4c5,page:_0x32b8e9,pageSize:_0x3d1209}){const _0x19a87e=_0xae8b5a,_0x30e80d=await _0x284892(_0x11d4c5,_0x3d1209,(_0x32b8e9-0x1)*_0x3d1209);return{'items':_0x30e80d[_0x19a87e(0xc5)]||[],'total':Number(_0x30e80d['total'])||0x0};},'renderSelectedActions':()=>[_0x469288['createEditorPickerCurrentIcon'](_0xbd2f3e||g)],'renderItem':_0x45a06e=>_0x469288['createIconPickerOption'](_0x45a06e,_0xbd2f3e,'editorPickerValue'),'onSelect':_0xfc7da7=>{k(_0xfc7da7)&&_0x344f32(_0xfc7da7);}});},async 'entity'({trigger:_0x5aca04,current:_0x7903c7='',onSelect:_0x89da8c}){const _0x1f56ca=_0x566380;if(await _0x5bb2ef(),!_0x5aca04['isConnected'])return null;const _0x46f79c=_0x7903c7&&/^(light|switch)\.[a-z0-9_]+$/['test'](_0x7903c7)&&!_0x5c7694()['some'](_0x46d23f=>_0x46d23f[_0x1f56ca(0xcf)]===_0x7903c7)?{'entityId':_0x7903c7,'name':_0x7903c7+_0x1f56ca(0xd9)}:null,_0x180d35=_0x42e847=>{const _0xf99d24=_0x1f56ca,_0x5a9521=_0x2169fd('interaction3d',_0x42e847);return _0x46f79c&&(!_0x42e847||_0x399770(_0x46f79c)['toLocaleLowerCase']('zh-CN')[_0xf99d24(0xd4)](String(_0x42e847)['trim']()[_0xf99d24(0xd3)]('zh-CN')))&&_0x5a9521['push'](_0x46f79c),_0x5a9521;},_0x499470=_0x180d35(''),_0x191bef=_0x499470['find'](_0x4cd28d=>_0x4cd28d['entityId']===_0x7903c7)||null;return _0x112a1b({'kind':_0x1f56ca(0xcc),'title':'选择灯光实体','searchPlaceholder':_0x1f56ca(0xcb),'triggerButton':_0x5aca04,'pageSize':_0x576d04['entity'],'initialPage':_0x4abab0(_0x499470['findIndex'](_0x74508e=>_0x74508e['entityId']===_0x7903c7),null),'selectedText':_0x7903c7||'不使用实体','emptyText':'没有匹配的灯光或开关','itemClass':'entity-list','getPage':({query:_0x3ac6db,page:_0x18ad68})=>_0x36b316(_0x180d35(_0x3ac6db),_0x18ad68,null),'renderSelectedContent':()=>[_0x469288[_0x1f56ca(0xd2)](_0x191bef)],'renderSelectedActions':()=>[_0x469288[_0x1f56ca(0xd0)]('不使用实体',!_0x7903c7)],'renderItem':_0x11a705=>_0x469288['createEditorEntityPickerOption'](_0x11a705,_0x7903c7),'onSelect':_0x5f2e21=>{const _0x5ac3af=_0x1f56ca;(!_0x5f2e21||_0x5f2e21===_0x46f79c?.['entityId']||_0x5c7694()[_0x5ac3af(0xd7)](_0x8f9e47=>_0x8f9e47['entityId']===_0x5f2e21&&/^(light|switch)\./['test'](_0x5f2e21)))&&_0x89da8c(_0x5f2e21);}});}};}
+import {
+  EDITOR_PICKER_PAGE_SIZES,
+  editorEntityPickerInitialPage,
+  editorEntityPickerPage,
+} from "../../js/editor/editor-picker-pagination.js?v=20260830-editor-picker-pagination-v1";
+import { createEditorPickerQueries } from "../../js/editor/editor-picker-queries.js?v=20260830-editor-picker-queries-v1";
+const DEFAULT_LIGHT_ICON = "mdi:lightbulb-outline";
+const isValidMdiIcon = (iconId) =>
+  typeof iconId == "string" && /^mdi:[a-z0-9][a-z0-9-]{0,119}$/.test(iconId);
+export function createInteraction3dEditorPickers({
+  openPicker,
+  fetchIcons,
+  getEntities,
+  ensureEntities,
+  entityPickerText,
+  elements,
+}) {
+  const { editorEntityMatches } = createEditorPickerQueries({
+    entityPickerConfig: () => ({
+      recommended: (entity) => entity.entityId.startsWith("light."),
+    }),
+    pickerEntitiesForComponentType: () =>
+      getEntities().filter((entity) =>
+        /^(light|switch)\.[a-z0-9_]+$/.test(entity.entityId),
+      ),
+    entityPickerText,
+    entityDomain: (entity) => entity.entityId.split(".")[0],
+  });
+  return {
+    icon({ trigger, current = DEFAULT_LIGHT_ICON, onSelect }) {
+      return openPicker({
+        kind: "icon",
+        title: "选择灯光按钮图标",
+        searchPlaceholder: "搜索图标名称",
+        triggerButton: trigger,
+        pageSize: EDITOR_PICKER_PAGE_SIZES.icon,
+        emptyText: "没有匹配的图标",
+        itemClass: "icon-grid",
+        async getPage({ query, page, pageSize }) {
+          const result = await fetchIcons(query, pageSize, (page - 1) * pageSize);
+          return {
+            items: result.items || [],
+            total: Number(result.total) || 0,
+          };
+        },
+        renderSelectedActions: () => [
+          elements.createEditorPickerCurrentIcon(current || DEFAULT_LIGHT_ICON),
+        ],
+        renderItem: (iconId) =>
+          elements.createIconPickerOption(iconId, current, "editorPickerValue"),
+        onSelect: (iconId) => {
+          if (isValidMdiIcon(iconId)) {
+            onSelect(iconId);
+          }
+        },
+      });
+    },
+    async entity({ trigger, current = "", onSelect }) {
+      await ensureEntities();
+      if (!trigger.isConnected) {
+        return null;
+      }
+      const missingCurrentEntity =
+        current &&
+        /^(light|switch)\.[a-z0-9_]+$/.test(current) &&
+        !getEntities().some((entity) => entity.entityId === current)
+          ? {
+              entityId: current,
+              name: current + "（当前未找到）",
+            }
+          : null;
+      const matchedEntities = (query) => {
+        const matches = editorEntityMatches("interaction3d", query);
+        if (
+          missingCurrentEntity &&
+          (!query ||
+            entityPickerText(missingCurrentEntity)
+              .toLocaleLowerCase("zh-CN")
+              .includes(String(query).trim().toLocaleLowerCase("zh-CN")))
+        ) {
+          matches.push(missingCurrentEntity);
+        }
+        return matches;
+      };
+      const initialMatches = matchedEntities("");
+      const selectedEntity =
+        initialMatches.find((entity) => entity.entityId === current) || null;
+      return openPicker({
+        kind: "entity",
+        title: "选择灯光实体",
+        searchPlaceholder: "搜索实体名称或 ID",
+        triggerButton: trigger,
+        pageSize: EDITOR_PICKER_PAGE_SIZES.entity,
+        initialPage: editorEntityPickerInitialPage(
+          initialMatches.findIndex((entity) => entity.entityId === current),
+          null,
+        ),
+        selectedText: current || "不使用实体",
+        emptyText: "没有匹配的灯光或开关",
+        itemClass: "entity-list",
+        getPage: ({ query, page }) =>
+          editorEntityPickerPage(matchedEntities(query), page, null),
+        renderSelectedContent: () => [
+          elements.createEditorPickerCurrentEntity(selectedEntity),
+        ],
+        renderSelectedActions: () => [
+          elements.editorPickerClearAction("不使用实体", !current),
+        ],
+        renderItem: (entity) =>
+          elements.createEditorEntityPickerOption(entity, current),
+        onSelect: (entityId) => {
+          if (
+            !entityId ||
+            entityId === missingCurrentEntity?.entityId ||
+            getEntities().some(
+              (entity) =>
+                entity.entityId === entityId &&
+                /^(light|switch)\./.test(entityId),
+            )
+          ) {
+            onSelect(entityId);
+          }
+        },
+      });
+    },
+  };
+}

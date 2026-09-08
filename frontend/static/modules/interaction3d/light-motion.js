@@ -1,1 +1,145 @@
-function _0x2060(){const _0x4f08d8=['5YGubJp','7056604ZjvWOm','isFinite','3047840spNQmh','temperatureSupported','1383744OsZXbh','temperatureMin','56EJRWVj','duration','17254989ELRWBi','max','79306ZorIZl','kelvin','immediate','4477623yxvsFR','brightness','1064945yLOliH','from'];_0x2060=function(){return _0x4f08d8;};return _0x2060();}const _0x4d24cc=_0x1d1d;(function(_0x26698d,_0x4e86e0){const _0x47b5e3=_0x1d1d,_0x3938d0=_0x26698d();while(!![]){try{const _0x5d9019=parseInt(_0x47b5e3(0x160))/0x1+parseInt(_0x47b5e3(0x15b))/0x2+parseInt(_0x47b5e3(0x15e))/0x3+-parseInt(_0x47b5e3(0x163))/0x4*(-parseInt(_0x47b5e3(0x162))/0x5)+-parseInt(_0x47b5e3(0x167))/0x6*(parseInt(_0x47b5e3(0x169))/0x7)+parseInt(_0x47b5e3(0x165))/0x8+-parseInt(_0x47b5e3(0x159))/0x9;if(_0x5d9019===_0x4e86e0)break;else _0x3938d0['push'](_0x3938d0['shift']());}catch(_0x53d9c0){_0x3938d0['push'](_0x3938d0['shift']());}}}(_0x2060,0xef459));const s=(_0x12ed49,_0x2711c7,_0x584e87)=>Math[_0x4d24cc(0x15a)](_0x2711c7,Math['min'](_0x584e87,_0x12ed49)),c=(_0x2bb129,_0x462850)=>Number['isFinite'](_0x2bb129)?_0x2bb129:_0x462850,m=_0x306b54=>({'intensity':Math['max'](0x0,c(_0x306b54?.['intensity'],0x0)),'color':[0x0,0x1,0x2]['map'](_0x8c5bd=>s(c(_0x306b54?.['color']?.[_0x8c5bd],0x1),0x0,0x1))});function _0x1d1d(_0x4ca502,_0x1db7e2){const _0x20606e=_0x2060();return _0x1d1d=function(_0x1d1ded,_0x57292a){_0x1d1ded=_0x1d1ded-0x158;let _0x6c6aba=_0x20606e[_0x1d1ded];return _0x6c6aba;},_0x1d1d(_0x4ca502,_0x1db7e2);}function f(_0x2f40e4,_0x16b969,_0x3337ab,_0x1870e7){const _0x1358ff=s(c(_0x2f40e4,_0x3337ab[0x0]),_0x1870e7[0x0],_0x1870e7[0x1]),_0x86cff2=s(c(_0x16b969,_0x3337ab[0x1]),_0x1870e7[0x0],_0x1870e7[0x1]);return[Math['min'](_0x1358ff,_0x86cff2),Math['max'](_0x1358ff,_0x86cff2)];}export function mapLightEffectState(_0x5c2b46){const _0x34ed42=_0x4d24cc,_0x11be3a={'brightness':_0x5c2b46?.[_0x34ed42(0x15f)],'kelvin':_0x5c2b46?.['kelvin']},_0x3bcdec=_0x5c2b46?.['effectRange'];if(Number[_0x34ed42(0x164)](_0x11be3a['brightness'])){const _0x33a9d1=s(_0x11be3a['brightness'],0x0,0x64),[_0x452acd,_0x2f372c]=f(_0x3bcdec?.['brightnessMin'],_0x3bcdec?.['brightnessMax'],[0x1,0x64],[0x0,0x64]);_0x11be3a[_0x34ed42(0x15f)]=_0x33a9d1===0x0?0x0:_0x452acd+(_0x2f372c-_0x452acd)*(s(_0x33a9d1,0x1,0x64)-0x1)/0x63;}if(Number[_0x34ed42(0x164)](_0x11be3a['kelvin'])&&(Number['isFinite'](_0x3bcdec?.[_0x34ed42(0x168)])||Number['isFinite'](_0x3bcdec?.['temperatureMax']))){const _0xb19f81=f(_0x5c2b46['minimum'],_0x5c2b46['maximum'],[0x7d0,0x1964],[0x3e8,0x4e20]),[_0x4dd7a0,_0x1815d9]=f(_0x3bcdec['temperatureMin'],_0x3bcdec['temperatureMax'],_0xb19f81,[0x3e8,0x4e20]),_0x4f20ae=_0xb19f81[0x1]>_0xb19f81[0x0]?s((_0x11be3a['kelvin']-_0xb19f81[0x0])/(_0xb19f81[0x1]-_0xb19f81[0x0]),0x0,0x1):0x0;_0x11be3a[_0x34ed42(0x15c)]=_0x4dd7a0+(_0x1815d9-_0x4dd7a0)*_0x4f20ae;}return _0x5c2b46?.['brightnessSupported']===!0x1&&Number[_0x34ed42(0x164)](_0x5c2b46['effectDefaults']?.['brightness'])&&(_0x11be3a['brightness']=s(_0x5c2b46['effectDefaults'][_0x34ed42(0x15f)],0x0,0x64)),_0x5c2b46?.[_0x34ed42(0x166)]===!0x1&&Number['isFinite'](_0x5c2b46['effectDefaults']?.[_0x34ed42(0x15c)])&&(_0x11be3a['kelvin']=s(_0x5c2b46['effectDefaults']['kelvin'],0x3e8,0x4e20)),_0x11be3a;}export function lightEffectColorHex(_0x21769a){const _0x581ac6=s(c(_0x21769a,0xbb8),0x3e8,0x4e20)/0x64,_0x193e5b=_0x581ac6<=0x42?0xff:329.698727446*Math['pow'](_0x581ac6-0x3c,-0.1332047592),_0x1661c6=_0x581ac6<=0x42?99.4708025861*Math['log'](_0x581ac6)-161.1195681661:288.1221695283*Math['pow'](_0x581ac6-0x3c,-0.0755148492),_0x553292=_0x581ac6>=0x42?0xff:_0x581ac6<=0x13?0x0:138.5177312231*Math['log'](_0x581ac6-0xa)-305.0447927307,_0x423318=_0x3f7c9b=>Math['round'](s(_0x3f7c9b,0x0,0xff));return _0x423318(_0x193e5b)<<0x10|_0x423318(_0x1661c6)<<0x8|_0x423318(_0x553292);}export function lightTransitionDurationMs(_0x5041ef,_0x260ccb,_0x52e59d,_0xc25111={}){const _0x2f1d89=_0x4d24cc;return _0xc25111[_0x2f1d89(0x15d)]?0x0:_0x5041ef!==_0x260ccb?s(c(_0x52e59d,0.3),0x0,0xa)*0x3e8:_0xc25111['preview']?0x5a:0xdc;}export function createLightTransition(_0x2308dd,_0x6430d7,_0x1a3eee,_0x16cc12){const _0x378094=_0x4d24cc;return{'from':m(_0x2308dd),'to':m(_0x6430d7),'started':c(_0x1a3eee,0x0),'duration':Math[_0x378094(0x15a)](0x0,c(_0x16cc12,0x0))};}export function sampleLightTransition(_0x41b85e,_0x16290c){const _0x1d5b2e=_0x4d24cc,_0x4da068=_0x41b85e[_0x1d5b2e(0x158)]?s((c(_0x16290c,_0x41b85e['started'])-_0x41b85e['started'])/_0x41b85e['duration'],0x0,0x1):0x1,_0x13930d=_0x4da068*_0x4da068*(0x3-0x2*_0x4da068);return{'intensity':_0x41b85e[_0x1d5b2e(0x161)]['intensity']+(_0x41b85e['to']['intensity']-_0x41b85e['from']['intensity'])*_0x13930d,'color':_0x41b85e['from']['color']['map']((_0x5576db,_0x47759a)=>_0x5576db+(_0x41b85e['to']['color'][_0x47759a]-_0x5576db)*_0x13930d),'complete':_0x4da068===0x1};}
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const finite = (value, fallback) => (Number.isFinite(value) ? value : fallback);
+
+const normalizeSample = (sample) => ({
+  intensity: Math.max(0, finite(sample?.intensity, 0)),
+  color: [0, 1, 2].map((index) =>
+    clamp(finite(sample?.color?.[index], 1), 0, 1),
+  ),
+});
+
+function orderedRange(minValue, maxValue, defaults, bounds) {
+  const min = clamp(finite(minValue, defaults[0]), bounds[0], bounds[1]);
+  const max = clamp(finite(maxValue, defaults[1]), bounds[0], bounds[1]);
+  return [Math.min(min, max), Math.max(min, max)];
+}
+
+export function mapLightEffectState(state) {
+  const next = {
+    brightness: state?.brightness,
+    kelvin: state?.kelvin,
+  };
+  const effectRange = state?.effectRange;
+  if (Number.isFinite(next.brightness)) {
+    const brightness = clamp(next.brightness, 0, 100);
+    const [min, max] = orderedRange(
+      effectRange?.brightnessMin,
+      effectRange?.brightnessMax,
+      [1, 100],
+      [0, 100],
+    );
+    next.brightness =
+      brightness === 0
+        ? 0
+        : min + ((max - min) * (clamp(brightness, 1, 100) - 1)) / 99;
+  }
+  if (
+    Number.isFinite(next.kelvin) &&
+    (Number.isFinite(effectRange?.temperatureMin) ||
+      Number.isFinite(effectRange?.temperatureMax))
+  ) {
+    const nativeRange = orderedRange(
+      state.minimum,
+      state.maximum,
+      [2000, 6500],
+      [1000, 20000],
+    );
+    const [min, max] = orderedRange(
+      effectRange.temperatureMin,
+      effectRange.temperatureMax,
+      nativeRange,
+      [1000, 20000],
+    );
+    const t =
+      nativeRange[1] > nativeRange[0]
+        ? clamp(
+            (next.kelvin - nativeRange[0]) / (nativeRange[1] - nativeRange[0]),
+            0,
+            1,
+          )
+        : 0;
+    next.kelvin = min + (max - min) * t;
+  }
+  if (
+    state?.brightnessSupported === false &&
+    Number.isFinite(state.effectDefaults?.brightness)
+  ) {
+    next.brightness = clamp(state.effectDefaults.brightness, 0, 100);
+  }
+  if (
+    state?.temperatureSupported === false &&
+    Number.isFinite(state.effectDefaults?.kelvin)
+  ) {
+    next.kelvin = clamp(state.effectDefaults.kelvin, 1000, 20000);
+  }
+  return next;
+}
+
+export function lightEffectColorHex(kelvin) {
+  const temperature = clamp(finite(kelvin, 3000), 1000, 20000) / 100;
+  const red =
+    temperature <= 66
+      ? 255
+      : Math.pow(temperature - 60, -0.1332047592) * 329.698727446;
+  const green =
+    temperature <= 66
+      ? Math.log(temperature) * 99.4708025861 - 161.1195681661
+      : Math.pow(temperature - 60, -0.0755148492) * 288.1221695283;
+  const blue =
+    temperature >= 66
+      ? 255
+      : temperature <= 19
+        ? 0
+        : Math.log(temperature - 10) * 138.5177312231 - 305.0447927307;
+  const channel = (value) => Math.round(clamp(value, 0, 255));
+  return (channel(red) << 16) | (channel(green) << 8) | channel(blue);
+}
+
+export function lightTransitionDurationMs(
+  previousOn,
+  nextOn,
+  transitionSeconds,
+  options = {},
+) {
+  if (options.immediate) {
+    return 0;
+  }
+  if (previousOn !== nextOn) {
+    return clamp(finite(transitionSeconds, 0.3), 0, 10) * 1000;
+  }
+  if (options.preview) {
+    return 90;
+  }
+  return 220;
+}
+
+export function createLightTransition(from, to, started, duration) {
+  return {
+    from: normalizeSample(from),
+    to: normalizeSample(to),
+    started: finite(started, 0),
+    duration: Math.max(0, finite(duration, 0)),
+  };
+}
+
+export function sampleLightTransition(transition, now) {
+  const progress = transition.duration
+    ? clamp(
+        (finite(now, transition.started) - transition.started) /
+          transition.duration,
+        0,
+        1,
+      )
+    : 1;
+  const eased = progress * progress * (3 - progress * 2);
+  return {
+    intensity:
+      transition.from.intensity +
+      (transition.to.intensity - transition.from.intensity) * eased,
+    color: transition.from.color.map(
+      (channel, index) =>
+        channel + (transition.to.color[index] - channel) * eased,
+    ),
+    complete: progress === 1,
+  };
+}

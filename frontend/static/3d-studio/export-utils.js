@@ -1,1 +1,165 @@
-(function(_0xd0ac3,_0x91d8f3){const _0x505e1d=_0x57b7,_0x6d594a=_0xd0ac3();while(!![]){try{const _0x13e922=parseInt(_0x505e1d(0x13e))/0x1+-parseInt(_0x505e1d(0x138))/0x2+parseInt(_0x505e1d(0x135))/0x3+parseInt(_0x505e1d(0x139))/0x4+-parseInt(_0x505e1d(0x137))/0x5*(-parseInt(_0x505e1d(0x131))/0x6)+-parseInt(_0x505e1d(0x132))/0x7+-parseInt(_0x505e1d(0x13a))/0x8;if(_0x13e922===_0x91d8f3)break;else _0x6d594a['push'](_0x6d594a['shift']());}catch(_0x40268f){_0x6d594a['push'](_0x6d594a['shift']());}}}(_0x4d22,0x71f0f));const p=new TextEncoder();export const EXPORT_RENDER_SCALE=0x1,EXPORT_IMAGE_MIME_TYPE='image/webp',EXPORT_IMAGE_EXTENSION='webp',EXPORT_IMAGE_QUALITY=0.95;export function scaledExportResolution(_0x2e4861,_0x32271a,_0x4f1fd3=EXPORT_RENDER_SCALE){const _0x357b81=_0x57b7,_0x2e78bc=Number[_0x357b81(0x136)](_0x4f1fd3)&&_0x4f1fd3>0x0?_0x4f1fd3:EXPORT_RENDER_SCALE;return{'width':Math['max'](0x1,Math[_0x357b81(0x12e)](Number(_0x2e4861)*_0x2e78bc)),'height':Math['max'](0x1,Math['round'](Number(_0x32271a)*_0x2e78bc))};}function E(_0x48da70){let _0x51a5ab=0xffffffff;for(const _0x188488 of _0x48da70){_0x51a5ab^=_0x188488;for(let _0x332071=0x0;_0x332071<0x8;_0x332071+=0x1)_0x51a5ab=_0x51a5ab>>>0x1^0xedb88320&-(_0x51a5ab&0x1);}return(_0x51a5ab^0xffffffff)>>>0x0;}function r(_0x366d5e,_0x2816ce,_0x3aafd9){_0x366d5e['setUint16'](_0x2816ce,_0x3aafd9,!0x0);}function u(_0x42b252,_0x1d75b4,_0x43e497){_0x42b252['setUint32'](_0x1d75b4,_0x43e497>>>0x0,!0x0);}function _0x4d22(){const _0x41d3bf=['reduce','Light\x20layer\x20frames\x20must\x20have\x20matching\x20dimensions.','push','547322gNIjVJ','abs','round','min','length','5125320esSRml','2126047lyJCEu','set','max','2763480obhMFj','isFinite','5QwAdoI','1752086JjvKSw','2797444xQQYSh','11004768hMhwjv'];_0x4d22=function(){return _0x41d3bf;};return _0x4d22();}function _0x57b7(_0x17fa73,_0x285b19){const _0x4d221c=_0x4d22();return _0x57b7=function(_0x57b751,_0x57c556){_0x57b751=_0x57b751-0x12e;let _0x2532a5=_0x4d221c[_0x57b751];return _0x2532a5;},_0x57b7(_0x17fa73,_0x285b19);}function M(_0x9a5b61){const _0x4e8557=_0x57b7,_0x872f4a=_0x9a5b61[_0x4e8557(0x13b)]((_0x2e4e6b,_0x5347e4)=>_0x2e4e6b+_0x5347e4['length'],0x0),_0x1a87e9=new Uint8Array(_0x872f4a);let _0x4de562=0x0;for(const _0x60061 of _0x9a5b61)_0x1a87e9['set'](_0x60061,_0x4de562),_0x4de562+=_0x60061[_0x4e8557(0x130)];return _0x1a87e9;}export function buildStoredZip(_0x523fa7){const _0x385152=_0x57b7,_0x3d2772=[],_0x5d8a49=[];let _0x3bf9eb=0x0;for(const _0x456145 of _0x523fa7){const _0x1bfdc8=p['encode'](String(_0x456145['name'])),_0x75d155=_0x456145['data']instanceof Uint8Array?_0x456145['data']:new Uint8Array(_0x456145['data']),_0x106371=E(_0x75d155),_0xa04958=new Uint8Array(0x1e+_0x1bfdc8[_0x385152(0x130)]),_0x2b5f15=new DataView(_0xa04958['buffer']);u(_0x2b5f15,0x0,0x4034b50),r(_0x2b5f15,0x4,0x14),r(_0x2b5f15,0x6,0x800),r(_0x2b5f15,0x8,0x0),r(_0x2b5f15,0xa,0x0),r(_0x2b5f15,0xc,0x0),u(_0x2b5f15,0xe,_0x106371),u(_0x2b5f15,0x12,_0x75d155['length']),u(_0x2b5f15,0x16,_0x75d155[_0x385152(0x130)]),r(_0x2b5f15,0x1a,_0x1bfdc8['length']),r(_0x2b5f15,0x1c,0x0),_0xa04958['set'](_0x1bfdc8,0x1e),_0x3d2772[_0x385152(0x13d)](_0xa04958,_0x75d155);const _0x217951=new Uint8Array(0x2e+_0x1bfdc8['length']),_0x3dbcaf=new DataView(_0x217951['buffer']);u(_0x3dbcaf,0x0,0x2014b50),r(_0x3dbcaf,0x4,0x14),r(_0x3dbcaf,0x6,0x14),r(_0x3dbcaf,0x8,0x800),r(_0x3dbcaf,0xa,0x0),r(_0x3dbcaf,0xc,0x0),r(_0x3dbcaf,0xe,0x0),u(_0x3dbcaf,0x10,_0x106371),u(_0x3dbcaf,0x14,_0x75d155['length']),u(_0x3dbcaf,0x18,_0x75d155[_0x385152(0x130)]),r(_0x3dbcaf,0x1c,_0x1bfdc8[_0x385152(0x130)]),r(_0x3dbcaf,0x1e,0x0),r(_0x3dbcaf,0x20,0x0),r(_0x3dbcaf,0x22,0x0),r(_0x3dbcaf,0x24,0x0),u(_0x3dbcaf,0x26,0x0),u(_0x3dbcaf,0x2a,_0x3bf9eb),_0x217951[_0x385152(0x133)](_0x1bfdc8,0x2e),_0x5d8a49['push'](_0x217951),_0x3bf9eb+=_0xa04958['length']+_0x75d155['length'];}const _0x37fff1=M(_0x5d8a49),_0x931a0b=new Uint8Array(0x16),_0x37b857=new DataView(_0x931a0b['buffer']);return u(_0x37b857,0x0,0x6054b50),r(_0x37b857,0x4,0x0),r(_0x37b857,0x6,0x0),r(_0x37b857,0x8,_0x523fa7['length']),r(_0x37b857,0xa,_0x523fa7['length']),u(_0x37b857,0xc,_0x37fff1[_0x385152(0x130)]),u(_0x37b857,0x10,_0x3bf9eb),r(_0x37b857,0x14,0x0),M([..._0x3d2772,_0x37fff1,_0x931a0b]);}export function buildLightDeltaPixels(_0x41e4e2,_0x1886a0){const _0x499b0d=_0x57b7;if(_0x41e4e2['length']!==_0x1886a0['length'])throw new Error(_0x499b0d(0x13c));const _0x897fb0=new Uint8ClampedArray(_0x41e4e2[_0x499b0d(0x130)]);for(let _0x1f66e7=0x0;_0x1f66e7<_0x41e4e2['length'];_0x1f66e7+=0x4){const _0xe6ab78=_0x41e4e2[_0x1f66e7+0x3]/0xff,_0x3968a1=_0x1886a0[_0x1f66e7+0x3]/0xff;if(_0xe6ab78<0.999){if(_0x3968a1<=0x1/0xff)continue;_0x897fb0[_0x1f66e7]=_0x1886a0[_0x1f66e7],_0x897fb0[_0x1f66e7+0x1]=_0x1886a0[_0x1f66e7+0x1],_0x897fb0[_0x1f66e7+0x2]=_0x1886a0[_0x1f66e7+0x2],_0x897fb0[_0x1f66e7+0x3]=_0x1886a0[_0x1f66e7+0x3];continue;}let _0x16cb3a=0x0;const _0x57c180=_0x41e4e2[_0x1f66e7]*0.2126+_0x41e4e2[_0x1f66e7+0x1]*0.7152+_0x41e4e2[_0x1f66e7+0x2]*0.0722;if(!(_0x1886a0[_0x1f66e7]*0.2126+_0x1886a0[_0x1f66e7+0x1]*0.7152+_0x1886a0[_0x1f66e7+0x2]*0.0722-_0x57c180<=1.5&&Math[_0x499b0d(0x13f)](_0x3968a1-_0xe6ab78)<=0x1/0xff)){for(let _0x2947e2=0x0;_0x2947e2<0x3;_0x2947e2+=0x1){const _0x182f2f=_0x41e4e2[_0x1f66e7+_0x2947e2],_0x22795e=_0x1886a0[_0x1f66e7+_0x2947e2]-_0x182f2f,_0x50da5e=_0x22795e>=0x0?_0x22795e/Math[_0x499b0d(0x134)](0xff-_0x182f2f,0x1):-_0x22795e/Math['max'](_0x182f2f,0x1);_0x16cb3a=Math[_0x499b0d(0x134)](_0x16cb3a,_0x50da5e);}if(_0x16cb3a=Math['min'](Math['max'](_0x16cb3a,Math['abs'](_0x3968a1-_0xe6ab78)),0x1),!(_0x16cb3a<0x1/0xff)){for(let _0x34d2ff=0x0;_0x34d2ff<0x3;_0x34d2ff+=0x1){const _0x354a9f=_0x41e4e2[_0x1f66e7+_0x34d2ff],_0x281e6=_0x1886a0[_0x1f66e7+_0x34d2ff];_0x897fb0[_0x1f66e7+_0x34d2ff]=Math['round'](Math[_0x499b0d(0x12f)](Math[_0x499b0d(0x134)]((_0x281e6-_0x354a9f*(0x1-_0x16cb3a))/_0x16cb3a,0x0),0xff));}_0x897fb0[_0x1f66e7+0x3]=Math['round'](_0x16cb3a*0xff);}}}return _0x897fb0;}
+const textEncoder = new TextEncoder();
+export const EXPORT_RENDER_SCALE = 1;
+export const EXPORT_IMAGE_MIME_TYPE = "image/webp";
+export const EXPORT_IMAGE_EXTENSION = "webp";
+export const EXPORT_IMAGE_QUALITY = 0.95;
+export function scaledExportResolution(
+  width,
+  height,
+  scale = EXPORT_RENDER_SCALE,
+) {
+  const safeScale =
+    Number.isFinite(scale) && scale > 0 ? scale : EXPORT_RENDER_SCALE;
+  return {
+    width: Math.max(1, Math.round(Number(width) * safeScale)),
+    height: Math.max(1, Math.round(Number(height) * safeScale)),
+  };
+}
+function crc32(bytes) {
+  let crc = 4294967295;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      crc = (crc >>> 1) ^ (-(crc & 1) & -306674912);
+    }
+  }
+  return (crc ^ -1) >>> 0;
+}
+function writeUint16(view, offset, value) {
+  view.setUint16(offset, value, true);
+}
+function writeUint32(view, offset, value) {
+  view.setUint32(offset, value >>> 0, true);
+}
+function concatBytes(chunks) {
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result;
+}
+export function buildStoredZip(entries) {
+  const localParts = [];
+  const centralParts = [];
+  let offset = 0;
+  for (const entry of entries) {
+    const nameBytes = textEncoder.encode(String(entry.name));
+    const data =
+      entry.data instanceof Uint8Array
+        ? entry.data
+        : new Uint8Array(entry.data);
+    const checksum = crc32(data);
+    const localHeader = new Uint8Array(30 + nameBytes.length);
+    const localView = new DataView(localHeader.buffer);
+    writeUint32(localView, 0, 67324752);
+    writeUint16(localView, 4, 20);
+    writeUint16(localView, 6, 2048);
+    writeUint16(localView, 8, 0);
+    writeUint16(localView, 10, 0);
+    writeUint16(localView, 12, 0);
+    writeUint32(localView, 14, checksum);
+    writeUint32(localView, 18, data.length);
+    writeUint32(localView, 22, data.length);
+    writeUint16(localView, 26, nameBytes.length);
+    writeUint16(localView, 28, 0);
+    localHeader.set(nameBytes, 30);
+    localParts.push(localHeader, data);
+    const centralHeader = new Uint8Array(46 + nameBytes.length);
+    const centralView = new DataView(centralHeader.buffer);
+    writeUint32(centralView, 0, 33639248);
+    writeUint16(centralView, 4, 20);
+    writeUint16(centralView, 6, 20);
+    writeUint16(centralView, 8, 2048);
+    writeUint16(centralView, 10, 0);
+    writeUint16(centralView, 12, 0);
+    writeUint16(centralView, 14, 0);
+    writeUint32(centralView, 16, checksum);
+    writeUint32(centralView, 20, data.length);
+    writeUint32(centralView, 24, data.length);
+    writeUint16(centralView, 28, nameBytes.length);
+    writeUint16(centralView, 30, 0);
+    writeUint16(centralView, 32, 0);
+    writeUint16(centralView, 34, 0);
+    writeUint16(centralView, 36, 0);
+    writeUint32(centralView, 38, 0);
+    writeUint32(centralView, 42, offset);
+    centralHeader.set(nameBytes, 46);
+    centralParts.push(centralHeader);
+    offset += localHeader.length + data.length;
+  }
+  const centralDirectory = concatBytes(centralParts);
+  const endRecord = new Uint8Array(22);
+  const endView = new DataView(endRecord.buffer);
+  writeUint32(endView, 0, 101010256);
+  writeUint16(endView, 4, 0);
+  writeUint16(endView, 6, 0);
+  writeUint16(endView, 8, entries.length);
+  writeUint16(endView, 10, entries.length);
+  writeUint32(endView, 12, centralDirectory.length);
+  writeUint32(endView, 16, offset);
+  writeUint16(endView, 20, 0);
+  return concatBytes([...localParts, centralDirectory, endRecord]);
+}
+export function buildLightDeltaPixels(basePixels, litPixels) {
+  if (basePixels.length !== litPixels.length) {
+    throw new Error("Light layer frames must have matching dimensions.");
+  }
+  const delta = new Uint8ClampedArray(basePixels.length);
+  for (let index = 0; index < basePixels.length; index += 4) {
+    const baseAlpha = basePixels[index + 3] / 255;
+    const litAlpha = litPixels[index + 3] / 255;
+    if (baseAlpha < 0.999) {
+      if (litAlpha <= 1 / 255) {
+        continue;
+      }
+      delta[index] = litPixels[index];
+      delta[index + 1] = litPixels[index + 1];
+      delta[index + 2] = litPixels[index + 2];
+      delta[index + 3] = litPixels[index + 3];
+      continue;
+    }
+    let blend = 0;
+    const baseLuma =
+      basePixels[index] * 0.2126 +
+      basePixels[index + 1] * 0.7152 +
+      basePixels[index + 2] * 0.0722;
+    if (
+      !(
+        litPixels[index] * 0.2126 +
+          litPixels[index + 1] * 0.7152 +
+          litPixels[index + 2] * 0.0722 -
+          baseLuma <=
+        1.5
+      ) ||
+      !(Math.abs(litAlpha - baseAlpha) <= 1 / 255)
+    ) {
+      for (let channel = 0; channel < 3; channel += 1) {
+        const baseValue = basePixels[index + channel];
+        const channelDelta = litPixels[index + channel] - baseValue;
+        const channelBlend =
+          channelDelta >= 0
+            ? channelDelta / Math.max(255 - baseValue, 1)
+            : -channelDelta / Math.max(baseValue, 1);
+        blend = Math.max(blend, channelBlend);
+      }
+      blend = Math.min(Math.max(blend, Math.abs(litAlpha - baseAlpha)), 1);
+      if (!(blend < 1 / 255)) {
+        for (let channel = 0; channel < 3; channel += 1) {
+          const baseValue = basePixels[index + channel];
+          const litValue = litPixels[index + channel];
+          delta[index + channel] = Math.round(
+            Math.min(
+              Math.max((litValue - baseValue * (1 - blend)) / blend, 0),
+              255,
+            ),
+          );
+        }
+        delta[index + 3] = Math.round(blend * 255);
+      }
+    }
+  }
+  return delta;
+}

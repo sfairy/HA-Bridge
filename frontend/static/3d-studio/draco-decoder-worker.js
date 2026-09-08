@@ -1,1 +1,251 @@
-(function(_0xd011dc,_0x3a8d80){const _0x4d3b66=_0x5d61,_0x270e60=_0xd011dc();while(!![]){try{const _0x17c9f9=parseInt(_0x4d3b66(0x1ae))/0x1+parseInt(_0x4d3b66(0x1b5))/0x2*(-parseInt(_0x4d3b66(0x1c3))/0x3)+parseInt(_0x4d3b66(0x1bf))/0x4+-parseInt(_0x4d3b66(0x1af))/0x5*(parseInt(_0x4d3b66(0x1c5))/0x6)+parseInt(_0x4d3b66(0x1ad))/0x7+parseInt(_0x4d3b66(0x1bd))/0x8+-parseInt(_0x4d3b66(0x1c4))/0x9*(-parseInt(_0x4d3b66(0x1be))/0xa);if(_0x17c9f9===_0x3a8d80)break;else _0x270e60['push'](_0x270e60['shift']());}catch(_0x19002d){_0x270e60['push'](_0x270e60['shift']());}}}(_0x41da,0x4d22e));let decoderPending=null;function _0x5d61(_0x2050eb,_0x5072c5){const _0x41da75=_0x41da();return _0x5d61=function(_0x5d61f1,_0x1f00c3){_0x5d61f1=_0x5d61f1-0x1ad;let _0x5c5441=_0x41da75[_0x5d61f1];return _0x5c5441;},_0x5d61(_0x2050eb,_0x5072c5);}self['onmessage']=_0x34ea23=>{const _0x1d91bd=_0x5d61,_0xddec3d=_0x34ea23['data']||{};if(_0xddec3d['type']===_0x1d91bd(0x1c7)){decoderPending=initializeDecoder(_0xddec3d);return;}if(_0xddec3d['type']!==_0x1d91bd(0x1b7))return;(decoderPending||Promise['reject'](new Error('Draco\x20decoder\x20is\x20not\x20initialized')))['then'](({draco:_0x501ce4})=>{const _0x426fe5=_0x1d91bd,_0xea902e=new _0x501ce4['Decoder']();try{const _0x3f29a9=decodeGeometry(_0x501ce4,_0xea902e,new Int8Array(_0xddec3d['buffer']),_0xddec3d['taskConfig']),_0x4614c0=_0x3f29a9['attributes']['map'](_0x49623a=>_0x49623a['array']['buffer']);_0x3f29a9['index']&&_0x4614c0['push'](_0x3f29a9['index']['array']['buffer']),self[_0x426fe5(0x1bc)]({'type':'decode','id':_0xddec3d['id'],'geometry':_0x3f29a9},_0x4614c0);}catch(_0x6c0550){self['postMessage']({'type':'error','id':_0xddec3d['id'],'error':_0x6c0550?.[_0x426fe5(0x1b9)]||String(_0x6c0550)});}finally{_0x501ce4['destroy'](_0xea902e);}})[_0x1d91bd(0x1c6)](_0x385d8a=>{const _0x3c2083=_0x1d91bd;self['postMessage']({'type':_0x3c2083(0x1ba),'id':_0xddec3d['id'],'error':_0x385d8a?.['message']||String(_0x385d8a)});});};function initializeDecoder(_0x8ab6ca){const _0x4365ad=_0x5d61,_0x336b75=String(_0x8ab6ca['decoderPath']||''),_0x2ac9ed={..._0x8ab6ca['decoderConfig']||{}},_0x278a26=_0x2ac9ed['type']==='js'?'draco_decoder.js':'draco_wasm_wrapper.js';try{self['importScripts'](''+_0x336b75+_0x278a26);}catch(_0x2d0f8a){return Promise['reject'](_0x2d0f8a);}return _0x2ac9ed['locateFile']=_0x3751c8=>''+_0x336b75+(_0x3751c8==='draco_decoder_gltf.wasm'?_0x4365ad(0x1b2):_0x3751c8),new Promise((_0x1f0e79,_0x448bef)=>{const _0x398655=_0x4365ad;let _0x9ee098=!0x1;_0x2ac9ed['onModuleLoaded']=_0x47dbe3=>{_0x9ee098=!0x0,_0x1f0e79({'draco':_0x47dbe3});};try{const _0x12f1a=self['DracoDecoderModule'](_0x2ac9ed);_0x12f1a&&typeof _0x12f1a[_0x398655(0x1b6)]=='function'&&_0x12f1a[_0x398655(0x1b6)](_0x5e027e=>{_0x9ee098||_0x1f0e79({'draco':_0x5e027e});},_0x448bef);}catch(_0xe5e285){_0x448bef(_0xe5e285);}});}function decodeGeometry(_0x4c2083,_0x392fb8,_0x39dfe8,_0x38ee95){const _0x1ad589=_0x5d61,_0x13d338=_0x38ee95['attributeIDs'],_0x3d3e07=_0x38ee95['attributeTypes'];let _0x16f83e,_0x29b62c;const _0xe99d4c=_0x392fb8['GetEncodedGeometryType'](_0x39dfe8);if(_0xe99d4c===_0x4c2083['TRIANGULAR_MESH'])_0x16f83e=new _0x4c2083['Mesh'](),_0x29b62c=_0x392fb8['DecodeArrayToMesh'](_0x39dfe8,_0x39dfe8['byteLength'],_0x16f83e);else{if(_0xe99d4c===_0x4c2083['POINT_CLOUD'])_0x16f83e=new _0x4c2083['PointCloud'](),_0x29b62c=_0x392fb8['DecodeArrayToPointCloud'](_0x39dfe8,_0x39dfe8['byteLength'],_0x16f83e);else throw new Error('THREE.DRACOLoader:\x20Unexpected\x20geometry\x20type.');}if(!_0x29b62c['ok']()||_0x16f83e['ptr']===0x0)throw new Error('THREE.DRACOLoader:\x20Decoding\x20failed:\x20'+_0x29b62c['error_msg']());const _0x5772e3={'index':null,'attributes':[]};for(const _0x1bb9f5 in _0x13d338){const _0x5535ef=self[_0x3d3e07[_0x1bb9f5]];let _0x277deb;if(_0x38ee95['useUniqueIDs'])_0x277deb=_0x392fb8['GetAttributeByUniqueId'](_0x16f83e,_0x13d338[_0x1bb9f5]);else{const _0x5d9572=_0x392fb8['GetAttributeId'](_0x16f83e,_0x4c2083[_0x13d338[_0x1bb9f5]]);if(_0x5d9572===-0x1)continue;_0x277deb=_0x392fb8[_0x1ad589(0x1b4)](_0x16f83e,_0x5d9572);}const _0x49dd0b=decodeAttribute(_0x4c2083,_0x392fb8,_0x16f83e,_0x1bb9f5,_0x5535ef,_0x277deb);_0x1bb9f5==='color'&&(_0x49dd0b[_0x1ad589(0x1b8)]=_0x38ee95[_0x1ad589(0x1b8)]),_0x5772e3['attributes']['push'](_0x49dd0b);}return _0xe99d4c===_0x4c2083[_0x1ad589(0x1c1)]&&(_0x5772e3['index']=decodeIndex(_0x4c2083,_0x392fb8,_0x16f83e)),_0x4c2083['destroy'](_0x16f83e),_0x5772e3;}function decodeIndex(_0x3146f0,_0x4103fa,_0x29e593){const _0x54a968=_0x5d61,_0x4fdbbb=_0x29e593[_0x54a968(0x1b3)]()*0x3,_0x5b487a=_0x4fdbbb*0x4,_0x4f4f85=_0x3146f0['_malloc'](_0x5b487a);_0x4103fa['GetTrianglesUInt32Array'](_0x29e593,_0x5b487a,_0x4f4f85);const _0x2dff98=new Uint32Array(_0x3146f0['HEAPF32']['buffer'],_0x4f4f85,_0x4fdbbb)['slice']();return _0x3146f0['_free'](_0x4f4f85),{'array':_0x2dff98,'itemSize':0x1};}function _0x41da(){const _0x45686c=['catch','init','1913961GYBjhd','9771xjpIRH','3955YwaVhC','num_points','DT_FLOAT32','draco_decoder.wasm','num_faces','GetAttribute','214aBaYvK','then','decode','vertexColorSpace','message','error','length','postMessage','4049064XsnPuD','9650TzBEZX','484444OpUGqT','HEAPF32','TRIANGULAR_MESH','slice','15384YzalCO','4014EWbeNB','3612iOiaCU'];_0x41da=function(){return _0x45686c;};return _0x41da();}function decodeAttribute(_0x302602,_0x295f03,_0x87a225,_0x95bad6,_0x5da616,_0x48597d){const _0x6fa7e4=_0x5d61,_0xce8c1d=_0x87a225[_0x6fa7e4(0x1b0)](),_0x5d6fdb=_0x48597d['num_components'](),_0x50d796=getDracoDataType(_0x302602,_0x5da616),_0x5da7f7=_0x5d6fdb*_0x5da616['BYTES_PER_ELEMENT'],_0x1c4000=Math['ceil'](_0x5da7f7/0x4)*0x4,_0x23ee98=_0x1c4000/_0x5da616['BYTES_PER_ELEMENT'],_0x1850ef=_0xce8c1d*_0x5da7f7,_0xc9ce58=_0xce8c1d*_0x1c4000,_0x26a062=_0x302602['_malloc'](_0x1850ef);_0x295f03['GetAttributeDataArrayForAllPoints'](_0x87a225,_0x48597d,_0x50d796,_0x1850ef,_0x26a062);const _0x21aba7=new _0x5da616(_0x302602[_0x6fa7e4(0x1c0)]['buffer'],_0x26a062,_0x1850ef/_0x5da616['BYTES_PER_ELEMENT']);let _0x5beda6;if(_0x5da7f7===_0x1c4000)_0x5beda6=_0x21aba7[_0x6fa7e4(0x1c2)]();else{_0x5beda6=new _0x5da616(_0xc9ce58/_0x5da616['BYTES_PER_ELEMENT']);let _0x2b3f41=0x0;for(let _0xd4b6e6=0x0;_0xd4b6e6<_0x21aba7[_0x6fa7e4(0x1bb)];_0xd4b6e6+=_0x5d6fdb){for(let _0x3175be=0x0;_0x3175be<_0x5d6fdb;_0x3175be+=0x1)_0x5beda6[_0x2b3f41+_0x3175be]=_0x21aba7[_0xd4b6e6+_0x3175be];_0x2b3f41+=_0x23ee98;}}return _0x302602['_free'](_0x26a062),{'name':_0x95bad6,'count':_0xce8c1d,'itemSize':_0x5d6fdb,'array':_0x5beda6,'stride':_0x23ee98};}function getDracoDataType(_0xf008bc,_0x5e5c63){const _0x3308a8=_0x5d61;if(_0x5e5c63===Float32Array)return _0xf008bc[_0x3308a8(0x1b1)];if(_0x5e5c63===Int8Array)return _0xf008bc['DT_INT8'];if(_0x5e5c63===Int16Array)return _0xf008bc['DT_INT16'];if(_0x5e5c63===Int32Array)return _0xf008bc['DT_INT32'];if(_0x5e5c63===Uint8Array)return _0xf008bc['DT_UINT8'];if(_0x5e5c63===Uint16Array)return _0xf008bc['DT_UINT16'];if(_0x5e5c63===Uint32Array)return _0xf008bc['DT_UINT32'];throw new Error('THREE.DRACOLoader:\x20Unsupported\x20attribute\x20array\x20type.');}
+let decoderPending = null;
+self.onmessage = (event) => {
+  const message = event.data || {};
+  if (message.type === "init") {
+    decoderPending = initializeDecoder(message);
+    return;
+  }
+  if (message.type !== "decode") {
+    return;
+  }
+  (
+    decoderPending ||
+    Promise.reject(new Error("Draco decoder is not initialized"))
+  )
+    .then(({ draco }) => {
+      const decoder = new draco.Decoder();
+      try {
+        const geometry = decodeGeometry(
+          draco,
+          decoder,
+          new Int8Array(message.buffer),
+          message.taskConfig,
+        );
+        const transferables = geometry.attributes.map(
+          (attribute) => attribute.array.buffer,
+        );
+        if (geometry.index) {
+          transferables.push(geometry.index.array.buffer);
+        }
+        self.postMessage(
+          {
+            type: "decode",
+            id: message.id,
+            geometry: geometry,
+          },
+          transferables,
+        );
+      } catch (error) {
+        self.postMessage({
+          type: "error",
+          id: message.id,
+          error: error?.message || String(error),
+        });
+      } finally {
+        draco.destroy(decoder);
+      }
+    })
+    .catch((error) => {
+      self.postMessage({
+        type: "error",
+        id: message.id,
+        error: error?.message || String(error),
+      });
+    });
+};
+function initializeDecoder(message) {
+  const decoderPath = String(message.decoderPath || "");
+  const decoderConfig = {
+    ...(message.decoderConfig || {}),
+  };
+  const scriptName =
+    decoderConfig.type === "js" ? "draco_decoder.js" : "draco_wasm_wrapper.js";
+  try {
+    self.importScripts("" + decoderPath + scriptName);
+  } catch (error) {
+    return Promise.reject(error);
+  }
+  decoderConfig.locateFile = (fileName) =>
+    "" +
+    decoderPath +
+    (fileName === "draco_decoder_gltf.wasm" ? "draco_decoder.wasm" : fileName);
+  return new Promise((resolve, reject) => {
+    let resolvedFromCallback = false;
+    decoderConfig.onModuleLoaded = (module) => {
+      resolvedFromCallback = true;
+      resolve({
+        draco: module,
+      });
+    };
+    try {
+      const moduleOrPromise = self.DracoDecoderModule(decoderConfig);
+      if (moduleOrPromise && typeof moduleOrPromise.then == "function") {
+        moduleOrPromise.then((module) => {
+          if (!resolvedFromCallback) {
+            resolve({
+              draco: module,
+            });
+          }
+        }, reject);
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+function decodeGeometry(draco, decoder, buffer, taskConfig) {
+  const attributeIDs = taskConfig.attributeIDs;
+  const attributeTypes = taskConfig.attributeTypes;
+  let geometry;
+  let decodingStatus;
+  const geometryType = decoder.GetEncodedGeometryType(buffer);
+  if (geometryType === draco.TRIANGULAR_MESH) {
+    geometry = new draco.Mesh();
+    decodingStatus = decoder.DecodeArrayToMesh(
+      buffer,
+      buffer.byteLength,
+      geometry,
+    );
+  } else if (geometryType === draco.POINT_CLOUD) {
+    geometry = new draco.PointCloud();
+    decodingStatus = decoder.DecodeArrayToPointCloud(
+      buffer,
+      buffer.byteLength,
+      geometry,
+    );
+  } else {
+    throw new Error("THREE.DRACOLoader: Unexpected geometry type.");
+  }
+  if (!decodingStatus.ok() || geometry.ptr === 0) {
+    throw new Error(
+      "THREE.DRACOLoader: Decoding failed: " + decodingStatus.error_msg(),
+    );
+  }
+  const result = {
+    index: null,
+    attributes: [],
+  };
+  for (const attributeName in attributeIDs) {
+    const attributeType = self[attributeTypes[attributeName]];
+    let attribute;
+    if (taskConfig.useUniqueIDs) {
+      attribute = decoder.GetAttributeByUniqueId(
+        geometry,
+        attributeIDs[attributeName],
+      );
+    } else {
+      const attributeId = decoder.GetAttributeId(
+        geometry,
+        draco[attributeIDs[attributeName]],
+      );
+      if (attributeId === -1) {
+        continue;
+      }
+      attribute = decoder.GetAttribute(geometry, attributeId);
+    }
+    const decoded = decodeAttribute(
+      draco,
+      decoder,
+      geometry,
+      attributeName,
+      attributeType,
+      attribute,
+    );
+    if (attributeName === "color") {
+      decoded.vertexColorSpace = taskConfig.vertexColorSpace;
+    }
+    result.attributes.push(decoded);
+  }
+  if (geometryType === draco.TRIANGULAR_MESH) {
+    result.index = decodeIndex(draco, decoder, geometry);
+  }
+  draco.destroy(geometry);
+  return result;
+}
+function decodeIndex(draco, decoder, geometry) {
+  const indexCount = geometry.num_faces() * 3;
+  const byteLength = indexCount * 4;
+  const pointer = draco._malloc(byteLength);
+  decoder.GetTrianglesUInt32Array(geometry, byteLength, pointer);
+  const array = new Uint32Array(draco.HEAPF32.buffer, pointer, indexCount).slice();
+  draco._free(pointer);
+  return {
+    array: array,
+    itemSize: 1,
+  };
+}
+function decodeAttribute(
+  draco,
+  decoder,
+  geometry,
+  attributeName,
+  attributeType,
+  attribute,
+) {
+  const numPoints = geometry.num_points();
+  const numComponents = attribute.num_components();
+  const dataType = getDracoDataType(draco, attributeType);
+  const byteStride = numComponents * attributeType.BYTES_PER_ELEMENT;
+  const alignedByteStride = Math.ceil(byteStride / 4) * 4;
+  const alignedItemSize = alignedByteStride / attributeType.BYTES_PER_ELEMENT;
+  const dataByteLength = numPoints * byteStride;
+  const alignedByteLength = numPoints * alignedByteStride;
+  const pointer = draco._malloc(dataByteLength);
+  decoder.GetAttributeDataArrayForAllPoints(
+    geometry,
+    attribute,
+    dataType,
+    dataByteLength,
+    pointer,
+  );
+  const packed = new attributeType(
+    draco.HEAPF32.buffer,
+    pointer,
+    dataByteLength / attributeType.BYTES_PER_ELEMENT,
+  );
+  let array;
+  if (byteStride === alignedByteStride) {
+    array = packed.slice();
+  } else {
+    array = new attributeType(alignedByteLength / attributeType.BYTES_PER_ELEMENT);
+    let writeOffset = 0;
+    for (let readOffset = 0; readOffset < packed.length; readOffset += numComponents) {
+      for (let component = 0; component < numComponents; component += 1) {
+        array[writeOffset + component] = packed[readOffset + component];
+      }
+      writeOffset += alignedItemSize;
+    }
+  }
+  draco._free(pointer);
+  return {
+    name: attributeName,
+    count: numPoints,
+    itemSize: numComponents,
+    array: array,
+    stride: alignedItemSize,
+  };
+}
+function getDracoDataType(draco, attributeType) {
+  if (attributeType === Float32Array) {
+    return draco.DT_FLOAT32;
+  }
+  if (attributeType === Int8Array) {
+    return draco.DT_INT8;
+  }
+  if (attributeType === Int16Array) {
+    return draco.DT_INT16;
+  }
+  if (attributeType === Int32Array) {
+    return draco.DT_INT32;
+  }
+  if (attributeType === Uint8Array) {
+    return draco.DT_UINT8;
+  }
+  if (attributeType === Uint16Array) {
+    return draco.DT_UINT16;
+  }
+  if (attributeType === Uint32Array) {
+    return draco.DT_UINT32;
+  }
+  throw new Error("THREE.DRACOLoader: Unsupported attribute array type.");
+}

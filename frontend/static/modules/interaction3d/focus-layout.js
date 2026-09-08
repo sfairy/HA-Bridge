@@ -1,1 +1,251 @@
-(function(_0x800472,_0x4f5452){const _0x1a2b7a=_0x168f,_0x2cf076=_0x800472();while(!![]){try{const _0x5b51e4=parseInt(_0x1a2b7a(0xe1))/0x1*(-parseInt(_0x1a2b7a(0xc6))/0x2)+-parseInt(_0x1a2b7a(0xde))/0x3+parseInt(_0x1a2b7a(0xd7))/0x4*(parseInt(_0x1a2b7a(0xcf))/0x5)+-parseInt(_0x1a2b7a(0xdc))/0x6+parseInt(_0x1a2b7a(0xd8))/0x7*(-parseInt(_0x1a2b7a(0xe3))/0x8)+-parseInt(_0x1a2b7a(0xe5))/0x9*(-parseInt(_0x1a2b7a(0xd9))/0xa)+parseInt(_0x1a2b7a(0xd1))/0xb*(parseInt(_0x1a2b7a(0xe2))/0xc);if(_0x5b51e4===_0x4f5452)break;else _0x2cf076['push'](_0x2cf076['shift']());}catch(_0x580a3d){_0x2cf076['push'](_0x2cf076['shift']());}}}(_0x4131,0x297b8));const c=new WeakMap(),g=0x230,v='cubic-bezier(.22,.61,.36,1)';function w(_0x265f17){const _0x507eeb=_0x168f;return(_0x265f17[_0x507eeb(0xc2)][_0x507eeb(0xc1)]?.['pages']?.['find'](_0x35839a=>_0x35839a['id']===_0x265f17['context']['page']?.['id'])||_0x265f17['context']['page'])?.['sharedComponentIds']||[];}function y(_0x2049aa,_0xb099f7,_0x4e01d0){const _0x1c20db=_0x168f;for(const _0x4d9657 of _0x4e01d0['animations'])_0x4d9657['cancel']();if(_0xb099f7['inert']=_0x4e01d0['inert'],_0x4e01d0[_0x1c20db(0xda)]===null?_0xb099f7['removeAttribute'](_0x1c20db(0xc4)):_0xb099f7[_0x1c20db(0xd0)]('aria-hidden',_0x4e01d0['ariaHidden']),_0x4e01d0['visibility']){const {value:_0x45882d,priority:_0x162e3e}=_0x4e01d0[_0x1c20db(0xdd)];_0x45882d?_0xb099f7['style']['setProperty']('visibility',_0x45882d,_0x162e3e):_0xb099f7['style'][_0x1c20db(0xd2)]('visibility');}_0x2049aa[_0x1c20db(0xd4)]['delete'](_0xb099f7),!_0x2049aa['owners']['size']&&!_0x2049aa['records']['size']&&c['get'](_0x2049aa[_0x1c20db(0xca)])===_0x2049aa&&c['delete'](_0x2049aa['canvas']);}function h(_0x4b7d87,_0x5dd365,_0x2e14f4,_0x31a747=!0x1){if(!(!_0x2e14f4['hidden']&&!_0x31a747)){if(_0x2e14f4['hidden']=!0x1,_0x31a747||_0x2e14f4['duration']===0x0||!_0x2e14f4['animations']['length']){y(_0x4b7d87,_0x5dd365,_0x2e14f4);return;}for(const _0x2b691b of _0x2e14f4['animations'])_0x2b691b['reverse']();}}function x(_0x5bc503,_0xdfbe15,_0x1787b0){const _0x4575ec=_0x168f;let _0x2d4035=_0x5bc503[_0x4575ec(0xd4)]['get'](_0xdfbe15);if(_0x2d4035){if(_0x2d4035['hidden'])return;_0x2d4035['hidden']=!0x0;for(const _0x5d745c of _0x2d4035['animations'])_0x5d745c['updatePlaybackRate'](0x1),_0x5d745c['play']();return;}const _0x26ede3=_0xdfbe15['ownerDocument']['defaultView'],_0x2b7f63=_0x5bc503['canvas']['getBoundingClientRect'](),_0x388983=_0x2b7f63['width']/_0x5bc503['canvas'][_0x4575ec(0xc7)]||0x1,_0x322725=Math['max'](0x18,(_0xdfbe15['getBoundingClientRect']()['right']-_0x2b7f63[_0x4575ec(0xd3)])/_0x388983+0x18),_0x7976e0=_0x26ede3['matchMedia']?.('(prefers-reduced-motion:\x20reduce)')['matches']?0x0:g;if(_0x2d4035={'hidden':!0x0,'animations':[],'duration':_0x7976e0,'inert':_0xdfbe15['inert'],'ariaHidden':_0xdfbe15['getAttribute']('aria-hidden')},_0x5bc503[_0x4575ec(0xd4)]['set'](_0xdfbe15,_0x2d4035),_0xdfbe15['inert']=!0x0,_0xdfbe15['setAttribute']('aria-hidden','true'),typeof _0xdfbe15['animate']!='function'){_0x2d4035['visibility']={'value':_0xdfbe15[_0x4575ec(0xe0)]['getPropertyValue'](_0x4575ec(0xdd)),'priority':_0xdfbe15[_0x4575ec(0xe0)]['getPropertyPriority']('visibility')},_0xdfbe15['style']['setProperty']('visibility','hidden','important');return;}const _0x4b3547=_0xdfbe15['animate']([{'translate':_0x4575ec(0xdb)},{'translate':-_0x322725+'px\x200px'}],{'duration':_0x7976e0,'easing':v,'fill':'forwards','composite':'add'}),_0x43457b=_0xdfbe15['animate']([{'opacity':_0x26ede3['getComputedStyle'](_0xdfbe15)[_0x4575ec(0xd6)]},{'opacity':0x0}],{'duration':_0x7976e0,'easing':v,'fill':'forwards'});if(_0x2d4035['animations']['push'](_0x4b3547,_0x43457b),_0x43457b['onfinish']=()=>{!_0x2d4035['hidden']&&_0x5bc503['records']['get'](_0xdfbe15)===_0x2d4035&&y(_0x5bc503,_0xdfbe15,_0x2d4035);},!_0x1787b0||_0x7976e0===0x0){for(const _0x35c462 of _0x2d4035['animations'])_0x35c462[_0x4575ec(0xc9)]();}}function u(_0x37ec8b,_0x44f408=!0x0){const _0x4179d8=[..._0x37ec8b['owners']],_0x1fc8de=new Set(_0x4179d8['flatMap'](w)),_0x537512=new Set([..._0x37ec8b['canvas']['children']]['filter'](_0x2ba0d9=>{const _0x37a938=_0x168f,_0x4c7d7a=_0x2ba0d9['dataset']?.[_0x37a938(0xd5)]||_0x2ba0d9['dataset']?.['effectFor']||_0x2ba0d9['dataset']?.[_0x37a938(0xdf)];return _0x1fc8de['has'](_0x4c7d7a)&&!_0x4179d8[_0x37a938(0xcb)](_0x448f6e=>_0x2ba0d9[_0x37a938(0xc5)](_0x448f6e['root']));}));for(const [_0x9e64db,_0x5a1960]of _0x37ec8b['records'])_0x537512['has'](_0x9e64db)||h(_0x37ec8b,_0x9e64db,_0x5a1960,_0x9e64db['parentElement']!==_0x37ec8b['canvas']);for(const _0x7e0f57 of _0x537512)x(_0x37ec8b,_0x7e0f57,_0x44f408);}function m(_0x1447a8,_0x1f334c){const _0x357319=_0x168f;let _0x108b22=c['get'](_0x1447a8);if(!_0x108b22){_0x108b22={'canvas':_0x1447a8,'owners':new Set(),'records':new Map(),'observer':null};const _0x43214d=_0x1447a8[_0x357319(0xc8)]['defaultView']['MutationObserver'];_0x108b22['observer']=new _0x43214d(()=>u(_0x108b22,!0x1)),c['set'](_0x1447a8,_0x108b22);}return _0x108b22[_0x357319(0xcd)]['size']||_0x108b22['observer']['observe'](_0x1447a8,{'childList':!0x0}),_0x108b22['owners'][_0x357319(0xcc)](_0x1f334c),u(_0x108b22),_0x108b22;}function _0x4131(){const _0x19776e=['9848ILohth','.hb-renderer-canvas','9qzbgRr','document','context','disconnect','aria-hidden','contains','13766JFXmqz','clientWidth','ownerDocument','finish','canvas','some','add','owners','has','260gzBbig','setAttribute','7207618AepiMq','removeProperty','left','records','componentId','opacity','3380xKlHft','805grDDTM','2377810ViulvX','ariaHidden','0px\x200px','1200828Gruuut','visibility','512019sVcvwf','airflowFor','style','37isTcIb','12YnadQM'];_0x4131=function(){return _0x19776e;};return _0x4131();}function d(_0x1125be,_0x533183,_0x1ad67f){const _0xe82eed=_0x168f;if(_0x1125be['owners']['delete'](_0x533183),_0x1125be[_0xe82eed(0xcd)]['size']){u(_0x1125be);return;}_0x1125be['observer'][_0xe82eed(0xc3)]();for(const [_0x3646e6,_0x23d027]of _0x1125be['records'])h(_0x1125be,_0x3646e6,_0x23d027,_0x1ad67f);!_0x1125be['records']['size']&&c['get'](_0x1125be['canvas'])===_0x1125be&&c['delete'](_0x1125be['canvas']);}function _0x168f(_0x1b604b,_0x509fb7){const _0x41312d=_0x4131();return _0x168f=function(_0x168fab,_0x5b8594){_0x168fab=_0x168fab-0xc1;let _0x2eb605=_0x41312d[_0x168fab];return _0x2eb605;},_0x168f(_0x1b604b,_0x509fb7);}export function createInteraction3dFocusLayout(_0x178ca1,_0x2d4187={}){const _0x3fce5f={'root':_0x178ca1,'context':_0x2d4187};let _0x26fa0e=null,_0x5851cd=!0x1,_0x544e24=!0x1;const _0x5f7b10=()=>{const _0x235f0a=_0x168f;if(!_0x5851cd||_0x544e24||_0x2d4187['editable'])return;const _0x28e2b7=_0x178ca1['closest'](_0x235f0a(0xe4));_0x26fa0e?.['canvas']!==_0x28e2b7?(_0x26fa0e&&d(_0x26fa0e,_0x3fce5f,!0x0),_0x26fa0e=_0x28e2b7?m(_0x28e2b7,_0x3fce5f):null):_0x26fa0e&&(_0x26fa0e['owners'][_0x235f0a(0xce)](_0x3fce5f)?u(_0x26fa0e):_0x26fa0e=m(_0x28e2b7,_0x3fce5f));};return{'setActive'(_0x342767){_0x544e24||_0x2d4187['editable']||(_0x5851cd=_0x342767===!0x0,_0x5851cd?_0x5f7b10():_0x26fa0e&&d(_0x26fa0e,_0x3fce5f,!0x1));},'refresh':_0x5f7b10,'dispose'(){_0x544e24||(_0x544e24=!0x0,_0x5851cd=!0x1,_0x26fa0e&&d(_0x26fa0e,_0x3fce5f,!0x0),_0x26fa0e=null);}};}
+const canvasSessions = new WeakMap();
+const hideDurationMs = 560;
+const hideEasing = "cubic-bezier(.22,.61,.36,1)";
+function sharedComponentIdsForOwner(owner) {
+  return (
+    (
+      owner.context.document?.pages?.find(
+        (page) => page.id === owner.context.page?.id,
+      ) || owner.context.page
+    )?.sharedComponentIds || []
+  );
+}
+function finishHideRecord(session, element, record) {
+  for (const animation of record.animations) {
+    animation.cancel();
+  }
+  element.inert = record.inert;
+  if (record.ariaHidden === null) {
+    element.removeAttribute("aria-hidden");
+  } else {
+    element.setAttribute("aria-hidden", record.ariaHidden);
+  }
+  if (record.visibility) {
+    const { value, priority } = record.visibility;
+    if (value) {
+      element.style.setProperty("visibility", value, priority);
+    } else {
+      element.style.removeProperty("visibility");
+    }
+  }
+  session.records.delete(element);
+  if (
+    !session.owners.size &&
+    !session.records.size &&
+    canvasSessions.get(session.canvas) === session
+  ) {
+    canvasSessions.delete(session.canvas);
+  }
+}
+function revealElement(session, element, record, immediate = false) {
+  if (!!record.hidden || !!immediate) {
+    record.hidden = false;
+    if (immediate || record.duration === 0 || !record.animations.length) {
+      finishHideRecord(session, element, record);
+      return;
+    }
+    for (const animation of record.animations) {
+      animation.reverse();
+    }
+  }
+}
+function hideElement(session, element, animate) {
+  let record = session.records.get(element);
+  if (record) {
+    if (record.hidden) {
+      return;
+    }
+    record.hidden = true;
+    for (const animation of record.animations) {
+      animation.updatePlaybackRate(1);
+      animation.play();
+    }
+    return;
+  }
+  const view = element.ownerDocument.defaultView;
+  const canvasRect = session.canvas.getBoundingClientRect();
+  const scaleX = canvasRect.width / session.canvas.clientWidth || 1;
+  const slideDistance = Math.max(
+    24,
+    (element.getBoundingClientRect().right - canvasRect.left) / scaleX + 24,
+  );
+  const duration = view.matchMedia?.("(prefers-reduced-motion: reduce)")
+    .matches
+    ? 0
+    : hideDurationMs;
+  record = {
+    hidden: true,
+    animations: [],
+    duration: duration,
+    inert: element.inert,
+    ariaHidden: element.getAttribute("aria-hidden"),
+  };
+  session.records.set(element, record);
+  element.inert = true;
+  element.setAttribute("aria-hidden", "true");
+  if (typeof element.animate != "function") {
+    record.visibility = {
+      value: element.style.getPropertyValue("visibility"),
+      priority: element.style.getPropertyPriority("visibility"),
+    };
+    element.style.setProperty("visibility", "hidden", "important");
+    return;
+  }
+  const translateAnimation = element.animate(
+    [
+      {
+        translate: "0px 0px",
+      },
+      {
+        translate: -slideDistance + "px 0px",
+      },
+    ],
+    {
+      duration: duration,
+      easing: hideEasing,
+      fill: "forwards",
+      composite: "add",
+    },
+  );
+  const opacityAnimation = element.animate(
+    [
+      {
+        opacity: view.getComputedStyle(element).opacity,
+      },
+      {
+        opacity: 0,
+      },
+    ],
+    {
+      duration: duration,
+      easing: hideEasing,
+      fill: "forwards",
+    },
+  );
+  record.animations.push(translateAnimation, opacityAnimation);
+  opacityAnimation.onfinish = () => {
+    if (!record.hidden && session.records.get(element) === record) {
+      finishHideRecord(session, element, record);
+    }
+  };
+  if (!animate || duration === 0) {
+    for (const animation of record.animations) {
+      animation.finish();
+    }
+  }
+}
+function syncSession(session, animate = true) {
+  const owners = [...session.owners];
+  const sharedIds = new Set(owners.flatMap(sharedComponentIdsForOwner));
+  const targets = new Set(
+    [...session.canvas.children].filter((child) => {
+      const componentId =
+        child.dataset?.componentId ||
+        child.dataset?.effectFor ||
+        child.dataset?.airflowFor;
+      return (
+        sharedIds.has(componentId) &&
+        !owners.some((owner) => child.contains(owner.root))
+      );
+    }),
+  );
+  for (const [element, record] of session.records) {
+    if (!targets.has(element)) {
+      revealElement(
+        session,
+        element,
+        record,
+        element.parentElement !== session.canvas,
+      );
+    }
+  }
+  for (const element of targets) {
+    hideElement(session, element, animate);
+  }
+}
+function acquireSession(canvas, owner) {
+  let session = canvasSessions.get(canvas);
+  if (!session) {
+    session = {
+      canvas: canvas,
+      owners: new Set(),
+      records: new Map(),
+      observer: null,
+    };
+    const MutationObserverCtor = canvas.ownerDocument.defaultView.MutationObserver;
+    session.observer = new MutationObserverCtor(() => syncSession(session, false));
+    canvasSessions.set(canvas, session);
+  }
+  if (!session.owners.size) {
+    session.observer.observe(canvas, {
+      childList: true,
+    });
+  }
+  session.owners.add(owner);
+  syncSession(session);
+  return session;
+}
+function releaseSession(session, owner, immediate) {
+  session.owners.delete(owner);
+  if (session.owners.size) {
+    syncSession(session);
+    return;
+  }
+  session.observer.disconnect();
+  for (const [element, record] of session.records) {
+    revealElement(session, element, record, immediate);
+  }
+  if (!session.records.size && canvasSessions.get(session.canvas) === session) {
+    canvasSessions.delete(session.canvas);
+  }
+}
+export function createInteraction3dFocusLayout(root, context = {}) {
+  const owner = {
+    root: root,
+    context: context,
+  };
+  let session = null;
+  let active = false;
+  let disposed = false;
+  const refresh = () => {
+    if (!active || disposed || context.editable) {
+      return;
+    }
+    const canvas = root.closest(".hb-renderer-canvas");
+    if (session?.canvas !== canvas) {
+      if (session) {
+        releaseSession(session, owner, true);
+      }
+      session = canvas ? acquireSession(canvas, owner) : null;
+    } else if (session) {
+      if (session.owners.has(owner)) {
+        syncSession(session);
+      } else {
+        session = acquireSession(canvas, owner);
+      }
+    }
+  };
+  return {
+    setActive(nextActive) {
+      if (!disposed && !context.editable) {
+        active = nextActive === true;
+        if (active) {
+          refresh();
+        } else if (session) {
+          releaseSession(session, owner, false);
+        }
+      }
+    },
+    refresh: refresh,
+    dispose() {
+      if (!disposed) {
+        disposed = true;
+        active = false;
+        if (session) {
+          releaseSession(session, owner, true);
+        }
+        session = null;
+      }
+    },
+  };
+}

@@ -1,1 +1,803 @@
-(function(_0xc0912a,_0x168807){const _0x537ddd=_0x1b42,_0x2b19c4=_0xc0912a();while(!![]){try{const _0x45612c=-parseInt(_0x537ddd(0xac))/0x1*(-parseInt(_0x537ddd(0xaf))/0x2)+-parseInt(_0x537ddd(0x74))/0x3*(parseInt(_0x537ddd(0x7d))/0x4)+-parseInt(_0x537ddd(0x83))/0x5+parseInt(_0x537ddd(0xa5))/0x6+-parseInt(_0x537ddd(0x91))/0x7+parseInt(_0x537ddd(0x9e))/0x8+parseInt(_0x537ddd(0xbb))/0x9*(-parseInt(_0x537ddd(0xa1))/0xa);if(_0x45612c===_0x168807)break;else _0x2b19c4['push'](_0x2b19c4['shift']());}catch(_0x2fce88){_0x2b19c4['push'](_0x2b19c4['shift']());}}}(_0x53f8,0xe4e9b));function _0x1b42(_0x2c3be5,_0x244cdc){const _0x53f816=_0x53f8();return _0x1b42=function(_0x1b42df,_0x2e5057){_0x1b42df=_0x1b42df-0x67;let _0x47f452=_0x53f816[_0x1b42df];return _0x47f452;},_0x1b42(_0x2c3be5,_0x244cdc);}function _0x53f8(){const _0x4159fb=['remove','getAttribute','reject','postMessage','is-load-error','checkVisibility','type','requestId','set','lights','6701142fJduFx','control-result','every','camera','class','disconnect','AbortError','户型画面已关闭，请重新调整。','parentElement','addEventListener','top','timeout','now','13925872KxYyTd','is-loading','add','8671750VgOTJp','display','createElement','pointerId','9890856puPPWv','defineProperty','auto','dispose','width','command','message','138585zYFGmt','opacity','isIntersecting','2mnxwYz','pointermove','isConnected','setAttribute','values','removeAttribute','false','removeEventListener','panelOpen','abort','height','sceneId','9HQdvsv','length','control','viewCamera','observe','户型还在加载，请稍候再设置聚焦视角。','metadata','hidden','layoutMode','ready','code','WebSocket','clear','role','visibilitychange','stringify','data','301815zvXCgQ','请在编辑器中调整户型视角。','className','editable','entityId','pointerup','none','user-activity','请在属性面板中配置\x203D\x20户型','24VgLiuV','i3d-frame','classList','registerRuntimeStateHandler','请求超时，请检查设备状态。','animationend','810285mLzAUz','closest','visibility','includes'];_0x53f8=function(){return _0x4159fb;};return _0x53f8();}import{createLightStream as _0x393c56}from'./light-stream.js?v=20260906-i3d-light-stream-v1';const He='/api/v1/modules/interaction3d';export function mountInteraction3d(_0x633711,{component:_0x949691,context:_0x2b2f08={},editing:_0x47d68a=!0x1,onEdit:_0x290c02=()=>{},onReady:_0x1b22c3=()=>{},onStates:_0xc1134d=null,onPresented:_0x19e283=()=>{},onLoadError:_0x1c8c7e=()=>{},onFocusChange:_0x1ab588=()=>{}}){const _0x4b62ed=_0x1b42;_0x633711['className']='hb-interaction3d-runtime';let _0x5b8cec=structuredClone(_0x949691['properties']||{}),_0x394a36=!0x1,_0x9f17e1=!0x0,_0x20a1dd='',_0x5656df,_0x364175,_0x4badc5=!0x1,_0x566e15=!0x1,_0x5880c8=0x0,_0x15c044=0x0,_0xa4fb31,_0x1980e7=_0x5b8cec['camera'],_0x55cdb8=!0x1,_0x504361=!0x1,_0x325c2d=!0x1,_0x272dbd=!0x1,_0x55b0be=!0x1,_0xbb0c96=0x0;const _0x5541e3=new Map(),_0x534dc8=document['createElement']('iframe');_0x534dc8['title']='3D\x20交互户型',_0x534dc8['className']=_0x4b62ed(0x7e),_0x534dc8['setAttribute']('allow','fullscreen'),_0x2b2f08['editable']&&!_0x47d68a&&(_0x534dc8['style']['pointerEvents']='none');const _0x5ea571=document[_0x4b62ed(0xa3)]('p');_0x5ea571[_0x4b62ed(0x76)]='i3d-loading',_0x5ea571[_0x4b62ed(0xb2)](_0x4b62ed(0x70),'status'),_0x633711['replaceChildren'](_0x534dc8,_0x5ea571);const _0x5e0ec6=_0x2b2f08['document']?.['projectId']||'',_0x39849d=_0x329af6=>{const _0x663076=_0x4b62ed;!_0x394a36&&_0x534dc8['contentWindow']&&_0x534dc8['contentWindow'][_0x663076(0x8a)]({'channel':'hb-i3d-v1',..._0x329af6},location['origin']);};let _0x26ad24=!0x1,_0x33ec79=!0x1,_0x19c74b,_0x21bad5,_0x4a88cd=!0x1,_0x5f09b4=-0x1/0x0;const _0xa2f535=new Set(),_0x23748a=new Set(),_0x4d4dac=()=>_0xa2f535['size']>0x0||_0x23748a['size']>0x0;let _0x1c7d08=typeof IntersectionObserver>'u';function _0x55d7fd(){const _0x59ec88=_0x4b62ed;if(_0x633711['isConnected']===!0x1||_0x633711['hidden']||_0x633711['inert']||_0x534dc8['hidden']||_0x633711[_0x59ec88(0x8c)]?.({'opacityProperty':!0x0,'visibilityProperty':!0x0,'contentVisibilityAuto':!0x0})===!0x1)return!0x1;for(let _0x286cce=_0x633711;_0x286cce;_0x286cce=_0x286cce['parentElement']){if(_0x286cce['hidden']||_0x286cce['inert']||_0x286cce[_0x59ec88(0x88)]?.('aria-hidden')==='true')return!0x1;const _0x33b67f=window['getComputedStyle']?.(_0x286cce);if(_0x33b67f&&(_0x33b67f[_0x59ec88(0xa2)]==='none'||_0x33b67f[_0x59ec88(0x85)]===_0x59ec88(0x6a)||_0x33b67f['visibility']==='collapse'||Number(_0x33b67f[_0x59ec88(0xad)])===0x0))return!0x1;}const _0x13895b=_0x633711['getBoundingClientRect'](),_0x357a2a=document['documentElement']?.['clientWidth']||window['innerWidth']||0x1/0x0,_0xb46df9=document['documentElement']?.['clientHeight']||window['innerHeight']||0x1/0x0;return _0x13895b['width']>0x0&&_0x13895b[_0x59ec88(0xb9)]>0x0&&(_0x13895b['left']||0x0)<_0x357a2a&&(_0x13895b['top']||0x0)<_0xb46df9&&(_0x13895b['right']??(_0x13895b['left']||0x0)+_0x13895b['width'])>0x0&&(_0x13895b['bottom']??(_0x13895b[_0x59ec88(0x9b)]||0x0)+_0x13895b['height'])>0x0;}function _0x87433f(_0x3ebb12=!0x1){const _0x3bde31=_0x4b62ed;if(_0x394a36)return;_0x38440f();const _0x19d729=_0x26ad24&&_0x4badc5&&_0x9f17e1&&!_0x47d68a&&!_0x2b2f08['editable']&&!_0x566e15&&!_0x4a88cd&&document[_0x3bde31(0x6a)]!==!0x0&&document['visibilityState']!=='hidden'&&_0x1c7d08&&_0x55d7fd(),_0x3c3066=_0x9f17e1&&!_0x4a88cd&&document['hidden']!==!0x0&&document['visibilityState']!=='hidden'&&_0x1c7d08&&_0x55d7fd();_0x19d729||(_0xa2f535['clear'](),_0x23748a['clear']()),(_0x3ebb12||_0x19d729!==_0x19c74b||_0x3c3066!==_0x21bad5)&&(_0x19c74b=_0x19d729,_0x21bad5=_0x3c3066,_0x5f09b4=-0x1/0x0,_0x39849d({'type':'activity-state','visible':_0x19d729,'presentedVisible':_0x3c3066}));}function _0x254406(_0x52d3b8){const _0x242aad=_0x4b62ed;if(_0x394a36||_0x52d3b8['isTrusted']===!0x1)return;const _0x7551c0=_0x4d4dac();_0x52d3b8[_0x242aad(0x8d)]==='pointerdown'&&_0xa2f535['add'](_0x52d3b8['pointerId']),(_0x52d3b8['type']===_0x242aad(0x79)||_0x52d3b8[_0x242aad(0x8d)]==='pointercancel')&&_0xa2f535['delete'](_0x52d3b8[_0x242aad(0xa4)]),_0x52d3b8['type']==='keydown'&&_0x23748a['add'](_0x52d3b8['code']||_0x52d3b8['key']),_0x52d3b8['type']==='keyup'&&_0x23748a['delete'](_0x52d3b8[_0x242aad(0x6d)]||_0x52d3b8['key']);const _0x3b9ec4=globalThis['performance']?.[_0x242aad(0x9d)]?.()??Date[_0x242aad(0x9d)]();_0x4d4dac()===_0x7551c0&&_0x3b9ec4-_0x5f09b4<0xc8||(_0x87433f(),_0x19c74b&&(_0x5f09b4=_0x3b9ec4,_0x39849d({'type':'user-activity','held':_0x4d4dac()})));}function _0x253d05(){const _0x1fe119=_0x4b62ed;if(_0x394a36)return;const _0x4281d8=_0x4d4dac();_0xa2f535['clear'](),_0x23748a['clear'](),_0x87433f(),_0x4281d8&&_0x19c74b&&(_0x5f09b4=globalThis['performance']?.['now']?.()??Date[_0x1fe119(0x9d)](),_0x39849d({'type':_0x1fe119(0x7b),'held':!0x1}));}function _0x543aca(){_0x4a88cd=!0x0,_0x87433f();}function _0x5d2193(_0x1f2574){_0x4a88cd=!0x1,_0x1f2574?.['persisted']&&!_0x394a36?_0x2e8edc():_0x87433f();}function _0x1db6b9(){_0x87433f();}let _0x5f1efe={};const _0x1a6fad=typeof window[_0x4b62ed(0x6e)]=='function'?_0x393c56({'onStates'(_0x166f50){_0x5f1efe=_0x166f50,_0xc1134d?.(_0x166f50),_0x325c2d&&_0x144ff3();}}):null;function _0x38440f(){const _0x58f87c=_0x4b62ed;if(!_0x1a6fad||_0x394a36)return;_0x633711['isConnected']===!0x0&&(_0x272dbd=!0x0);let _0xe2e6ad=_0x9f17e1&&!_0x55b0be&&!!_0x5b8cec[_0x58f87c(0xba)]&&!_0x4a88cd&&document['hidden']!==!0x0&&document['visibilityState']!==_0x58f87c(0x6a)&&!(_0x272dbd&&_0x633711[_0x58f87c(0xb1)]===!0x1);for(let _0x1a62d2=_0x633711;_0xe2e6ad&&_0x1a62d2;_0x1a62d2=_0x1a62d2['parentElement']){const _0xdcddd9=window['getComputedStyle']?.(_0x1a62d2);(_0x1a62d2['hidden']||_0x1a62d2['inert']||_0x1a62d2['getAttribute']?.('aria-hidden')==='true'||_0xdcddd9?.['display']===_0x58f87c(0x7a)||['hidden','collapse'][_0x58f87c(0x86)](_0xdcddd9?.['visibility']))&&(_0xe2e6ad=!0x1);}_0x1a6fad['setActive'](_0xe2e6ad);}const _0x2e9958=()=>_0x1a6fad?_0x5f1efe:Object['fromEntries']((_0x5b8cec['lights']||[])['map'](_0x6285ab=>[_0x6285ab[_0x4b62ed(0x78)],_0x2b2f08['states']?.['get'](_0x6285ab['entityId'])||null])),_0x144ff3=()=>{const _0x43b2d5=_0x2e9958();_0x39849d({'type':'states','states':_0x43b2d5}),_0x1a6fad||_0xc1134d?.(_0x43b2d5);},_0x2cdfeb=new Set();function _0x3c40ab(){const _0x128c96=_0x4b62ed;if(_0x1a6fad){_0x1a6fad['configure']((_0x5b8cec['lights']||[])['map'](_0x11af5a=>_0x11af5a['entityId'])),_0x38440f();return;}for(const _0x4ff146 of _0x5b8cec[_0x128c96(0x90)]||[])_0x4ff146['entityId']&&!_0x2cdfeb['has'](_0x4ff146['entityId'])&&(_0x2cdfeb['add'](_0x4ff146[_0x128c96(0x78)]),_0x2b2f08[_0x128c96(0x80)]?.(_0x4ff146['entityId'],_0x144ff3));}function _0x5a7d5d(){_0x26ad24=!0x1,_0x33ec79=!0x0,_0x87433f(!0x0),_0x41b6da(!0x0),_0x39849d({'type':'config','configId':++_0x15c044,'properties':_0x5b8cec,'editing':_0x47d68a,'viewEditing':_0x566e15,'interactive':!_0x47d68a&&!_0x2b2f08['editable'],'selectedId':_0x20a1dd,'states':_0x2e9958()}),_0x4badc5||_0x87433f(!0x0);}function _0x4dc871(){_0x633711['classList']['toggle']('is-background-hidden',_0x5b8cec['backgroundVisible']===!0x1);}function _0x30bb5d(_0x42a54f){_0x55cdb8!==_0x42a54f&&(_0x55cdb8=_0x42a54f,_0x1ab588(_0x42a54f));}function _0x28e385(_0x18d4c3){const _0x15d2e1=_0x4b62ed;for(const _0x21b441 of _0x5541e3[_0x15d2e1(0xb3)]())clearTimeout(_0x21b441[_0x15d2e1(0x9c)]),_0x21b441[_0x15d2e1(0x89)](new Error(_0x18d4c3));_0x5541e3[_0x15d2e1(0x6f)]();}function _0x181ab2(_0x4adbea=!0x1){_0x504361=!0x1,_0x30bb5d(!0x1),_0x39849d({'type':'dismiss-focus','immediate':_0x4adbea});}function _0x5c3f19(_0x2f2675){(_0x55cdb8||_0x504361)&&!_0x633711['contains'](_0x2f2675['target'])&&_0x181ab2();}function _0xcfe12b(_0x5d5895){(_0x55cdb8||_0x504361)&&_0x5d5895['key']==='Escape'&&_0x181ab2();}function _0x570ac2(_0xa0081d){const _0x484056=_0x4b62ed;_0x55b0be=!0x0,_0x4badc5=!0x1,_0x26ad24=!0x1,_0x33ec79=!0x1,_0x87433f(!0x0),_0x28e385('户型加载失败，请重新载入后调整视角。'),_0x181ab2(!0x0),clearTimeout(_0x5656df),_0x633711['classList'][_0x484056(0x87)]('is-loading'),_0x633711[_0x484056(0x7f)]['add'](_0x484056(0x8b)),_0x5ea571[_0x484056(0x6a)]=!0x1,_0x5ea571['textContent']=_0xa0081d||'3D\x20户型加载失败，请重新载入户型。',_0x1c8c7e(new Error(_0x5ea571['textContent']));}function _0x2e8edc(){const _0xdd8c2=_0x4b62ed;if(_0xbb0c96++,_0x28e385('户型已切换，请在新户型中重新调整视角。'),_0x504361=!0x1,_0x30bb5d(!0x1),_0x55b0be=!0x1,_0x4badc5=!0x1,_0x325c2d=!0x1,_0x26ad24=!0x1,_0x33ec79=!0x1,_0x87433f(!0x0),clearTimeout(_0x5656df),_0x633711['classList']['remove']('is-ready','is-load-error'),_0x633711[_0xdd8c2(0x7f)]['toggle']('is-loading',!!_0x5b8cec['sceneId']),_0x633711['setAttribute']('aria-busy',String(!!_0x5b8cec[_0xdd8c2(0xba)])),_0x4dc871(),_0x3c40ab(),!_0x5b8cec['sceneId']){_0x534dc8['hidden']=!0x0,_0x5ea571['hidden']=!0x1,_0x5ea571['textContent']=_0xdd8c2(0x7c);return;}_0x534dc8['hidden']=!0x1,_0x5ea571['hidden']=!0x1,_0x5ea571['textContent']='',_0x5ea571['setAttribute']('aria-label','正在准备\x203D\x20户型'),_0x534dc8['src']=He+'/stage.html?'+new URLSearchParams({'sceneId':_0x5b8cec['sceneId'],'projectId':_0x5e0ec6}),_0x5656df=setTimeout(()=>_0x570ac2('3D\x20户型加载较慢，请稍候；若一直没有画面，请重新载入户型。'),0xafc8);}const _0x516f48=new Set();async function _0x2a7a33(_0x576036){const _0x13266d=_0x4b62ed;if(_0x394a36||_0x576036['origin']!==location['origin']||_0x576036['source']!==_0x534dc8['contentWindow']||_0x576036[_0x13266d(0x73)]?.['channel']!=='hb-i3d-v1')return;const _0x163ae9=_0x576036['data'];if(_0x163ae9['type']==='focus-state'&&!_0x47d68a&&!_0x2b2f08['editable']&&(_0x504361=_0x9f17e1&&_0x4badc5&&_0x163ae9[_0x13266d(0xb7)]===!0x0&&(_0x5b8cec['lights']||[])['some'](_0x472fac=>_0x472fac['id']===_0x163ae9['id']),_0x30bb5d(_0x9f17e1&&_0x4badc5&&_0x163ae9['active']===!0x0&&(_0x5b8cec[_0x13266d(0x90)]||[])['some'](_0x4567f8=>_0x4567f8['id']===_0x163ae9['id']))),_0x163ae9['type']==='model-metadata'&&(_0x364175=_0x163ae9['metadata'],_0x1b22c3(_0x364175)),_0x163ae9['type']==='ready'&&(_0x55b0be=!0x1,_0x325c2d=!0x0,_0x364175=_0x163ae9['metadata'],_0xa4fb31=_0x163ae9[_0x13266d(0x69)]?.['camera'],_0x1980e7=_0x5b8cec['camera']||_0xa4fb31,_0x5a7d5d(),_0x1b22c3(_0x163ae9['metadata'])),_0x163ae9['type']==='presented'&&_0x163ae9['configId']===_0x15c044&&_0x33ec79&&(_0x33ec79=!0x1,_0x4badc5||(_0x4badc5=!0x0,_0xa4fb31=_0x163ae9['camera']||_0xa4fb31,_0x1980e7=_0x5b8cec['camera']||_0xa4fb31,clearTimeout(_0x5656df),_0x633711['classList']['remove'](_0x13266d(0x9f),'is-load-error'),_0x633711['classList']['add']('is-ready'),_0x633711['setAttribute']('aria-busy',_0x13266d(0xb5)),_0x19e283()),_0x26ad24=!0x0,_0x87433f()),_0x163ae9['type']==='error'&&_0x570ac2(_0x163ae9['message']),_0x163ae9[_0x13266d(0x8d)]==='edit'&&_0x163ae9['action']==='camera'&&_0x2b2f08['editable']&&_0x566e15){const _0x56e237=_0x5541e3['get'](_0x163ae9['requestId']);_0x56e237&&(_0x1980e7=_0x163ae9['camera'],clearTimeout(_0x56e237['timeout']),_0x5541e3['delete'](_0x163ae9['requestId']),_0x56e237['resolve'](_0x163ae9['camera']));}if(_0x163ae9['type']==='edit'&&_0x47d68a&&_0x9f17e1&&_0x4badc5){if(_0x163ae9['action']==='focus-camera'){const _0x500af5=_0x5541e3['get'](_0x163ae9['requestId']);if(!_0x500af5)return;_0x500af5&&(clearTimeout(_0x500af5[_0x13266d(0x9c)]),_0x5541e3['delete'](_0x163ae9[_0x13266d(0x8e)]),_0x163ae9['error']?_0x500af5[_0x13266d(0x89)](new Error(_0x163ae9['error'])):_0x500af5['resolve'](_0x163ae9));}_0x290c02(_0x163ae9);}if(_0x163ae9['type']===_0x13266d(0xbd)&&_0x9f17e1&&!_0x47d68a&&!_0x2b2f08['editable']){if(!(_0x5b8cec['lights']||[])['some'](_0x1d9371=>_0x1d9371['entityId']===_0x163ae9['command']?.['entityId']))return;const _0x492f69=_0xbb0c96,_0x3b0733=_0x3336b6=>{_0x492f69===_0xbb0c96&&_0x39849d(_0x3336b6);},_0x5300b3=new AbortController();_0x516f48[_0x13266d(0xa0)](_0x5300b3);const _0x1ade2d=setTimeout(()=>_0x5300b3['abort'](),0x2ee0);try{const _0x2fe2f1=await fetch(He+'/control',{'method':'POST','credentials':'same-origin','headers':{'content-type':'application/json'},'body':JSON['stringify'](_0x163ae9[_0x13266d(0xaa)]),'signal':_0x5300b3['signal']}),_0x2214b5=await _0x2fe2f1['json']()['catch'](()=>({}));if(!_0x2fe2f1['ok'])throw new Error(typeof _0x2214b5['detail']=='string'?_0x2214b5['detail']:_0x2214b5['detail']?.['message']||'灯光操作失败。');_0x3b0733({'type':'control-result','requestId':_0x163ae9['requestId']});}catch(_0x4474a9){_0x3b0733({'type':_0x13266d(0x92),'requestId':_0x163ae9['requestId'],'error':_0x4474a9['name']===_0x13266d(0x97)?_0x13266d(0x81):_0x4474a9['message'],'timedOut':_0x4474a9['name']==='AbortError'});}finally{clearTimeout(_0x1ade2d),_0x516f48['delete'](_0x5300b3);}}}window['addEventListener'](_0x4b62ed(0xab),_0x2a7a33),window['addEventListener']('pointerdown',_0x5c3f19),window['addEventListener']('keydown',_0xcfe12b);const _0x49a297=document['addEventListener']?document:window,_0x3f6316=['pointerdown',_0x4b62ed(0xb0),'pointerup','pointercancel','wheel','keydown','keyup'],_0x5ae06a={'capture':!0x0,'passive':!0x0};for(const _0x58de21 of _0x3f6316)_0x49a297['addEventListener'](_0x58de21,_0x254406,_0x5ae06a);_0x49a297['addEventListener'](_0x4b62ed(0x71),_0x1db6b9),_0x49a297['addEventListener']('transitionend',_0x1db6b9,!0x0),_0x49a297[_0x4b62ed(0x9a)](_0x4b62ed(0x82),_0x1db6b9,!0x0),window[_0x4b62ed(0x9a)]('pagehide',_0x543aca),window['addEventListener']('pageshow',_0x5d2193),window[_0x4b62ed(0x9a)]('blur',_0x253d05);const _0x95bbfe=typeof IntersectionObserver>'u'?null:new IntersectionObserver(_0x59e72f=>{const _0x5f082e=_0x4b62ed;for(const _0x1123f6 of _0x59e72f)_0x1123f6['target']===_0x633711&&(_0x1c7d08=_0x1123f6[_0x5f082e(0xae)]&&_0x1123f6['intersectionRatio']>0x0);_0x87433f();},{'threshold':[0x0,0.001]});_0x95bbfe?.['observe'](_0x633711);let _0x4d819e=[];function _0x1d489e(){const _0x425442=_0x4b62ed;if(_0x394a36)return;const _0x240643=[];for(let _0x4f9dda=_0x633711;_0x4f9dda;_0x4f9dda=_0x4f9dda[_0x425442(0x99)])_0x240643['push'](_0x4f9dda);if(!(_0x240643['length']===_0x4d819e[_0x425442(0xbc)]&&_0x240643[_0x425442(0x93)]((_0x45b585,_0x4aa2b6)=>_0x45b585===_0x4d819e[_0x4aa2b6]))){_0x4d819e=_0x240643,_0x3522a0?.['disconnect']();for(const _0x45e024 of _0x240643)_0x3522a0?.[_0x425442(0x67)](_0x45e024,{'attributes':!0x0,'childList':!0x0,'attributeFilter':[_0x425442(0x6a),'inert','aria-hidden','style',_0x425442(0x95)]});}}const _0x3522a0=typeof MutationObserver>'u'?null:new MutationObserver(()=>{_0x1d489e(),_0x41b6da();});_0x1d489e();let _0x27e124='';function _0x41b6da(_0x89da33=!0x1){const _0x5a95c0=_0x4b62ed;_0x87433f();const _0x11a4e0=_0x633711['getBoundingClientRect']();if(!_0x11a4e0[_0x5a95c0(0xa9)]||!_0x633711['clientWidth'])return;const _0x2d38a1=_0x633711['clientWidth']/_0x11a4e0['width'],_0xe71098=_0x633711['clientHeight']>0x0&&_0x11a4e0['height']>0x0?_0x633711['clientHeight']/_0x11a4e0['height']:_0x2d38a1;_0x534dc8['style']['width']=_0x11a4e0['width']+'px',_0x534dc8['style']['height']=_0x11a4e0['height']+'px',_0x534dc8['style']['transform']=_0x2d38a1===_0xe71098?'scale('+_0x2d38a1+')':'scale('+_0x2d38a1+','+_0xe71098+')';const _0x5869c3=_0x633711[_0x5a95c0(0x84)]?.('.hb-renderer-canvas'),_0x1d358c=_0x5869c3?.['getBoundingClientRect'](),_0x531364=_0x5b8cec[_0x5a95c0(0x6b)]==='fill'?_0x2b2f08['document']?.['canvas']:_0x949691['position'],_0xe5817d=_0x5b8cec['layoutMode']==='fill'?0x1:Math['max'](0.01,Math['min'](0x5,Number(_0x949691['style']?.['scale'])||0x1)),_0xd4fee4=_0x1d358c?.['width']>0x0&&_0x5869c3['clientWidth']>0x0?_0x11a4e0['width']*_0x5869c3['clientWidth']/_0x1d358c['width']:Number(_0x531364?.[_0x5a95c0(0xa9)])*_0xe5817d,_0x4d2231=_0x1d358c?.['height']>0x0&&_0x5869c3['clientHeight']>0x0?_0x11a4e0['height']*_0x5869c3['clientHeight']/_0x1d358c[_0x5a95c0(0xb9)]:Number(_0x531364?.['height'])*_0xe5817d,_0x297258={'type':'presentation-layout','width':_0xd4fee4>0x0?_0xd4fee4:_0x11a4e0['width'],'height':_0x4d2231>0x0?_0x4d2231:_0x11a4e0['height']},_0x3c523f=JSON[_0x5a95c0(0x72)](_0x297258);(_0x89da33===!0x0||_0x3c523f!==_0x27e124)&&(_0x27e124=_0x3c523f,_0x39849d(_0x297258));}const _0x1fd315=new ResizeObserver(_0x41b6da);_0x1fd315[_0x4b62ed(0x67)](_0x633711),window['addEventListener']('resize',_0x41b6da),_0x2e8edc();const _0x17f1df=requestAnimationFrame(_0x41b6da),_0x57ecfd=()=>{const _0x2adcff=_0x4b62ed;if(!_0x394a36){_0x26ad24=!0x1,_0x87433f(!0x0),_0x30bb5d(!0x1),_0x1a6fad?.[_0x2adcff(0xa8)](),_0x394a36=!0x0,clearTimeout(_0x5656df),cancelAnimationFrame(_0x17f1df),_0x1fd315[_0x2adcff(0x96)](),_0x95bbfe?.[_0x2adcff(0x96)](),_0x3522a0?.['disconnect'](),_0x28e385(_0x2adcff(0x98)),window[_0x2adcff(0xb6)]('resize',_0x41b6da),window[_0x2adcff(0xb6)]('message',_0x2a7a33),window[_0x2adcff(0xb6)]('pointerdown',_0x5c3f19),window[_0x2adcff(0xb6)]('keydown',_0xcfe12b);for(const _0x515ace of _0x3f6316)_0x49a297['removeEventListener'](_0x515ace,_0x254406,_0x5ae06a);_0x49a297['removeEventListener'](_0x2adcff(0x71),_0x1db6b9),_0x49a297['removeEventListener']('transitionend',_0x1db6b9,!0x0),_0x49a297['removeEventListener']('animationend',_0x1db6b9,!0x0),window['removeEventListener']('pagehide',_0x543aca),window['removeEventListener']('pageshow',_0x5d2193),window['removeEventListener']('blur',_0x253d05),_0x516f48['forEach'](_0x5361ac=>_0x5361ac[_0x2adcff(0xb8)]()),_0x534dc8[_0x2adcff(0xb4)]('src'),_0x633711['replaceChildren']();}};return _0x57ecfd['update']=(_0x200071,_0x2f89c3=_0x20a1dd)=>{const _0x5be17a=_0x4b62ed,_0x4b7cc3=_0x5b8cec['sceneId'],_0x2fab26=JSON['stringify'](_0x5b8cec['camera']);_0x5b8cec=structuredClone(_0x200071),_0x20a1dd=_0x2f89c3,_0x3c40ab(),_0x4dc871(),_0x566e15&&(_0x4b7cc3!==_0x5b8cec['sceneId']||_0x2fab26!==JSON['stringify'](_0x5b8cec[_0x5be17a(0x94)]))&&(_0x566e15=!0x1,_0x1980e7=_0x5b8cec['camera']||_0xa4fb31,_0x633711['classList']['remove']('is-view-editing'),_0x534dc8['style']['pointerEvents']=_0x5be17a(0x7a)),_0x4b7cc3!==_0x5b8cec['sceneId']?_0x2e8edc():_0x5a7d5d();},_0x57ecfd['command']=_0x26906d=>_0x39849d({'type':'editor-command','command':_0x26906d}),_0x57ecfd['setAuthorized']=_0x407e98=>{_0x9f17e1=_0x407e98===!0x0,_0x633711['inert']=!_0x9f17e1,_0x87433f(),_0x9f17e1||(_0x28e385('授权验证暂不可用，请恢复后重新调整。'),_0x181ab2(!0x0),_0x516f48['forEach'](_0x326241=>_0x326241['abort']()));},Object['defineProperty'](_0x57ecfd,'metadata',{'get':()=>_0x364175}),Object['defineProperty'](_0x57ecfd,_0x4b62ed(0x6c),{'get':()=>_0x4badc5&&!_0x394a36&&_0x9f17e1}),Object['defineProperty'](_0x57ecfd,'viewEditing',{'get':()=>_0x566e15}),Object[_0x4b62ed(0xa6)](_0x57ecfd,_0x4b62ed(0xbe),{'get':()=>_0x1980e7}),_0x57ecfd['setViewEditing']=_0x41e980=>{const _0x27c2d0=_0x4b62ed;if(!_0x2b2f08['editable']||_0x394a36)throw new Error(_0x27c2d0(0x75));if(_0x41e980&&!_0x4badc5)throw new Error('户型还在加载，请稍候再调整视角。');_0x566e15=_0x41e980===!0x0,_0x566e15||(_0x1980e7=_0x5b8cec['camera']||_0xa4fb31),_0x633711['classList']['toggle']('is-view-editing',_0x566e15),_0x534dc8['style']['pointerEvents']=_0x566e15?_0x27c2d0(0xa7):'none',_0x5a7d5d();},_0x57ecfd['viewCommand']=(_0x3f515f,_0x163c09)=>new Promise((_0x3825a3,_0x213635)=>{const _0x49675c=_0x4b62ed;if(!_0x2b2f08[_0x49675c(0x77)]||!_0x566e15||!_0x4badc5||_0x394a36){_0x213635(new Error('请先进入户型视角调整。'));return;}const _0x2d9339='view-'+ ++_0x5880c8,_0x3e0503=setTimeout(()=>{_0x5541e3['delete'](_0x2d9339),_0x213635(new Error('读取视角超时，请重试。'));},0x1388);_0x5541e3[_0x49675c(0x8f)](_0x2d9339,{'resolve':_0x3825a3,'reject':_0x213635,'timeout':_0x3e0503}),_0x39849d({'type':'editor-command','command':_0x3f515f,'value':_0x163c09,'requestId':_0x2d9339});}),_0x57ecfd['captureView']=()=>_0x57ecfd['viewCommand']('save-camera'),_0x57ecfd['focusCommand']=(_0x46a184,_0x1a22f8=_0x20a1dd,_0x39bb46)=>new Promise((_0x18577f,_0x6e1eed)=>{const _0x45e69d=_0x4b62ed;if(!_0x47d68a||!_0x4badc5||_0x394a36||!_0x9f17e1){_0x6e1eed(new Error(_0x45e69d(0x68)));return;}const _0x33c3bc='focus-'+ ++_0x5880c8,_0x58b1e1=setTimeout(()=>{_0x5541e3['delete'](_0x33c3bc),_0x6e1eed(new Error('读取聚焦视角超时，请重试。'));},0x1388);_0x5541e3['set'](_0x33c3bc,{'resolve':_0x18577f,'reject':_0x6e1eed,'timeout':_0x58b1e1}),_0x39849d({'type':'editor-command','command':_0x46a184,'id':_0x1a22f8,'value':_0x39bb46,'requestId':_0x33c3bc});}),_0x57ecfd;}
+import { createLightStream } from "./light-stream.js?v=20260906-i3d-light-stream-v1";
+const INTERACTION3D_API = "/api/v1/modules/interaction3d";
+export function mountInteraction3d(
+  host,
+  {
+    component,
+    context = {},
+    editing = false,
+    onEdit = () => {},
+    onReady = () => {},
+    onStates = null,
+    onPresented = () => {},
+    onLoadError = () => {},
+    onFocusChange = () => {},
+  },
+) {
+  host.className = "hb-interaction3d-runtime";
+  let properties = structuredClone(component.properties || {});
+  let disposed = false;
+  let authorized = true;
+  let selectedId = "";
+  let loadTimeoutId;
+  let modelMetadata;
+  let framePresented = false;
+  let viewEditing = false;
+  let viewRequestSerial = 0;
+  let configSerial = 0;
+  let stageCamera;
+  let viewCamera = properties.camera;
+  let focusActive = false;
+  let focusPanelOpen = false;
+  let frameReady = false;
+  let everConnected = false;
+  let streamPaused = false;
+  let reloadGeneration = 0;
+  const pendingViewRequests = new Map();
+  const frame = document.createElement("iframe");
+  frame.title = "3D 交互户型";
+  frame.className = "i3d-frame";
+  frame.setAttribute("allow", "fullscreen");
+  if (context.editable && !editing) {
+    frame.style.pointerEvents = "none";
+  }
+  const status = document.createElement("p");
+  status.className = "i3d-loading";
+  status.setAttribute("role", "status");
+  host.replaceChildren(frame, status);
+  const projectId = context.document?.projectId || "";
+  const postToFrame = (payload) => {
+    if (!disposed && frame.contentWindow) {
+      frame.contentWindow.postMessage(
+        {
+          channel: "hb-i3d-v1",
+          ...payload,
+        },
+        location.origin,
+      );
+    }
+  };
+  let interactiveVisible = false;
+  let awaitingPresentation = false;
+  let lastActivityVisible;
+  let lastPresentedVisible;
+  let pageHidden = false;
+  let lastUserActivityAt = -Infinity;
+  const heldPointers = new Set();
+  const heldKeys = new Set();
+  const hasHeldInput = () => heldPointers.size > 0 || heldKeys.size > 0;
+  let hostIntersecting = typeof IntersectionObserver === "undefined";
+  function isHostVisuallyPresented() {
+    if (
+      host.isConnected === false ||
+      host.hidden ||
+      host.inert ||
+      frame.hidden ||
+      host.checkVisibility?.({
+        opacityProperty: true,
+        visibilityProperty: true,
+        contentVisibilityAuto: true,
+      }) === false
+    ) {
+      return false;
+    }
+    for (let ancestor = host; ancestor; ancestor = ancestor.parentElement) {
+      if (
+        ancestor.hidden ||
+        ancestor.inert ||
+        ancestor.getAttribute?.("aria-hidden") === "true"
+      ) {
+        return false;
+      }
+      const style = window.getComputedStyle?.(ancestor);
+      if (
+        style &&
+        (style.display === "none" ||
+          style.visibility === "hidden" ||
+          style.visibility === "collapse" ||
+          Number(style.opacity) === 0)
+      ) {
+        return false;
+      }
+    }
+    const bounds = host.getBoundingClientRect();
+    const viewportWidth =
+      document.documentElement?.clientWidth || window.innerWidth || Infinity;
+    const viewportHeight =
+      document.documentElement?.clientHeight || window.innerHeight || Infinity;
+    return (
+      bounds.width > 0 &&
+      bounds.height > 0 &&
+      (bounds.left || 0) < viewportWidth &&
+      (bounds.top || 0) < viewportHeight &&
+      (bounds.right ?? (bounds.left || 0) + bounds.width) > 0 &&
+      (bounds.bottom ?? (bounds.top || 0) + bounds.height) > 0
+    );
+  }
+  function syncActivityState(force = false) {
+    if (disposed) {
+      return;
+    }
+    syncLightStreamActive();
+    const nextActivityVisible =
+      interactiveVisible &&
+      framePresented &&
+      authorized &&
+      !editing &&
+      !context.editable &&
+      !viewEditing &&
+      !pageHidden &&
+      document.hidden !== true &&
+      document.visibilityState !== "hidden" &&
+      hostIntersecting &&
+      isHostVisuallyPresented();
+    const nextPresentedVisible =
+      authorized &&
+      !pageHidden &&
+      document.hidden !== true &&
+      document.visibilityState !== "hidden" &&
+      hostIntersecting &&
+      isHostVisuallyPresented();
+    if (!nextActivityVisible) {
+      heldPointers.clear();
+      heldKeys.clear();
+    }
+    if (force || nextActivityVisible !== lastActivityVisible || nextPresentedVisible !== lastPresentedVisible) {
+      lastActivityVisible = nextActivityVisible;
+      lastPresentedVisible = nextPresentedVisible;
+      lastUserActivityAt = -Infinity;
+      postToFrame({
+        type: "activity-state",
+        visible: nextActivityVisible,
+        presentedVisible: nextPresentedVisible,
+      });
+    }
+  }
+  function onUserActivity(event) {
+    if (disposed || event.isTrusted === false) {
+      return;
+    }
+    const wasHeld = hasHeldInput();
+    if (event.type === "pointerdown") {
+      heldPointers.add(event.pointerId);
+    }
+    if (event.type === "pointerup" || event.type === "pointercancel") {
+      heldPointers.delete(event.pointerId);
+    }
+    if (event.type === "keydown") {
+      heldKeys.add(event.code || event.key);
+    }
+    if (event.type === "keyup") {
+      heldKeys.delete(event.code || event.key);
+    }
+    const now = globalThis.performance?.now?.() ?? Date.now();
+    if (hasHeldInput() !== wasHeld || !(now - lastUserActivityAt < 200)) {
+      syncActivityState();
+      if (lastActivityVisible) {
+        lastUserActivityAt = now;
+        postToFrame({
+          type: "user-activity",
+          held: hasHeldInput(),
+        });
+      }
+    }
+  }
+  function clearHeldInput() {
+    if (disposed) {
+      return;
+    }
+    const wasHeld = hasHeldInput();
+    heldPointers.clear();
+    heldKeys.clear();
+    syncActivityState();
+    if (wasHeld && lastActivityVisible) {
+      lastUserActivityAt = globalThis.performance?.now?.() ?? Date.now();
+      postToFrame({
+        type: "user-activity",
+        held: false,
+      });
+    }
+  }
+  function onPageHide() {
+    pageHidden = true;
+    syncActivityState();
+  }
+  function onPageShow(event) {
+    pageHidden = false;
+    if (event?.persisted && !disposed) {
+      reloadStage();
+    } else {
+      syncActivityState();
+    }
+  }
+  function onVisibilityChange() {
+    syncActivityState();
+  }
+  let streamedStates = {};
+  const lightStream =
+    typeof window.WebSocket == "function"
+      ? createLightStream({
+          onStates(states) {
+            streamedStates = states;
+            onStates?.(states);
+            if (frameReady) {
+              pushStates();
+            }
+          },
+        })
+      : null;
+  function syncLightStreamActive() {
+    if (!lightStream || disposed) {
+      return;
+    }
+    if (host.isConnected === true) {
+      everConnected = true;
+    }
+    let active =
+      authorized &&
+      !streamPaused &&
+      !!properties.sceneId &&
+      !pageHidden &&
+      document.hidden !== true &&
+      document.visibilityState !== "hidden" &&
+      (!everConnected || host.isConnected !== false);
+    for (let ancestor = host; active && ancestor; ancestor = ancestor.parentElement) {
+      const style = window.getComputedStyle?.(ancestor);
+      if (
+        ancestor.hidden ||
+        ancestor.inert ||
+        ancestor.getAttribute?.("aria-hidden") === "true" ||
+        style?.display === "none" ||
+        ["hidden", "collapse"].includes(style?.visibility)
+      ) {
+        active = false;
+      }
+    }
+    lightStream.setActive(active);
+  }
+  const collectStates = () =>
+    lightStream
+      ? streamedStates
+      : Object.fromEntries(
+          (properties.lights || []).map((light) => [
+            light.entityId,
+            context.states?.get(light.entityId) || null,
+          ]),
+        );
+  const pushStates = () => {
+    const states = collectStates();
+    postToFrame({
+      type: "states",
+      states,
+    });
+    if (!lightStream) {
+      onStates?.(states);
+    }
+  };
+  const registeredEntityIds = new Set();
+  function configureLightBindings() {
+    if (lightStream) {
+      lightStream.configure((properties.lights || []).map((light) => light.entityId));
+      syncLightStreamActive();
+      return;
+    }
+    for (const light of properties.lights || []) {
+      if (light.entityId && !registeredEntityIds.has(light.entityId)) {
+        registeredEntityIds.add(light.entityId);
+        context.registerRuntimeStateHandler?.(light.entityId, pushStates);
+      }
+    }
+  }
+  function pushConfig() {
+    interactiveVisible = false;
+    awaitingPresentation = true;
+    syncActivityState(true);
+    syncPresentationLayout(true);
+    postToFrame({
+      type: "config",
+      configId: ++configSerial,
+      properties,
+      editing,
+      viewEditing,
+      interactive: !editing && !context.editable,
+      selectedId,
+      states: collectStates(),
+    });
+    if (!framePresented) {
+      syncActivityState(true);
+    }
+  }
+  function syncBackgroundClass() {
+    host.classList.toggle(
+      "is-background-hidden",
+      properties.backgroundVisible === false,
+    );
+  }
+  function setFocusActive(next) {
+    if (focusActive !== next) {
+      focusActive = next;
+      onFocusChange(next);
+    }
+  }
+  function rejectPendingViewRequests(message) {
+    for (const pending of pendingViewRequests.values()) {
+      clearTimeout(pending.timeout);
+      pending.reject(new Error(message));
+    }
+    pendingViewRequests.clear();
+  }
+  function dismissFocus(immediate = false) {
+    focusPanelOpen = false;
+    setFocusActive(false);
+    postToFrame({
+      type: "dismiss-focus",
+      immediate,
+    });
+  }
+  function onOutsidePointerDown(event) {
+    if ((focusActive || focusPanelOpen) && !host.contains(event.target)) {
+      dismissFocus();
+    }
+  }
+  function onEscapeKey(event) {
+    if ((focusActive || focusPanelOpen) && event.key === "Escape") {
+      dismissFocus();
+    }
+  }
+  function failLoad(message) {
+    streamPaused = true;
+    framePresented = false;
+    interactiveVisible = false;
+    awaitingPresentation = false;
+    syncActivityState(true);
+    rejectPendingViewRequests("户型加载失败，请重新载入后调整视角。");
+    dismissFocus(true);
+    clearTimeout(loadTimeoutId);
+    host.classList.remove("is-loading");
+    host.classList.add("is-load-error");
+    status.hidden = false;
+    status.textContent = message || "3D 户型加载失败，请重新载入户型。";
+    onLoadError(new Error(status.textContent));
+  }
+  function reloadStage() {
+    reloadGeneration++;
+    rejectPendingViewRequests("户型已切换，请在新户型中重新调整视角。");
+    focusPanelOpen = false;
+    setFocusActive(false);
+    streamPaused = false;
+    framePresented = false;
+    frameReady = false;
+    interactiveVisible = false;
+    awaitingPresentation = false;
+    syncActivityState(true);
+    clearTimeout(loadTimeoutId);
+    host.classList.remove("is-ready", "is-load-error");
+    host.classList.toggle("is-loading", !!properties.sceneId);
+    host.setAttribute("aria-busy", String(!!properties.sceneId));
+    syncBackgroundClass();
+    configureLightBindings();
+    if (!properties.sceneId) {
+      frame.hidden = true;
+      status.hidden = false;
+      status.textContent = "请在属性面板中配置 3D 户型";
+      return;
+    }
+    frame.hidden = false;
+    status.hidden = false;
+    status.textContent = "";
+    status.setAttribute("aria-label", "正在准备 3D 户型");
+    frame.src =
+      INTERACTION3D_API +
+      "/stage.html?" +
+      new URLSearchParams({
+        sceneId: properties.sceneId,
+        projectId,
+      });
+    loadTimeoutId = setTimeout(
+      () => failLoad("3D 户型加载较慢，请稍候；若一直没有画面，请重新载入户型。"),
+      45000,
+    );
+  }
+  const controlAbortControllers = new Set();
+  async function onFrameMessage(event) {
+    if (
+      disposed ||
+      event.origin !== location.origin ||
+      event.source !== frame.contentWindow ||
+      event.data?.channel !== "hb-i3d-v1"
+    ) {
+      return;
+    }
+    const message = event.data;
+    if (message.type === "focus-state" && !editing && !context.editable) {
+      focusPanelOpen =
+        authorized &&
+        framePresented &&
+        message.panelOpen === true &&
+        (properties.lights || []).some((light) => light.id === message.id);
+      setFocusActive(
+        authorized &&
+          framePresented &&
+          message.active === true &&
+          (properties.lights || []).some((light) => light.id === message.id),
+      );
+    }
+    if (message.type === "model-metadata") {
+      modelMetadata = message.metadata;
+      onReady(modelMetadata);
+    }
+    if (message.type === "ready") {
+      streamPaused = false;
+      frameReady = true;
+      modelMetadata = message.metadata;
+      stageCamera = message.metadata?.camera;
+      viewCamera = properties.camera || stageCamera;
+      pushConfig();
+      onReady(message.metadata);
+    }
+    if (message.type === "presented" && message.configId === configSerial && awaitingPresentation) {
+      awaitingPresentation = false;
+      if (!framePresented) {
+        framePresented = true;
+        stageCamera = message.camera || stageCamera;
+        viewCamera = properties.camera || stageCamera;
+        clearTimeout(loadTimeoutId);
+        host.classList.remove("is-loading", "is-load-error");
+        host.classList.add("is-ready");
+        host.setAttribute("aria-busy", "false");
+        onPresented();
+      }
+      interactiveVisible = true;
+      syncActivityState();
+    }
+    if (message.type === "error") {
+      failLoad(message.message);
+    }
+    if (message.type === "edit" && message.action === "camera" && context.editable && viewEditing) {
+      const pending = pendingViewRequests.get(message.requestId);
+      if (pending) {
+        viewCamera = message.camera;
+        clearTimeout(pending.timeout);
+        pendingViewRequests.delete(message.requestId);
+        pending.resolve(message.camera);
+      }
+    }
+    if (message.type === "edit" && editing && authorized && framePresented) {
+      if (message.action === "focus-camera") {
+        const pending = pendingViewRequests.get(message.requestId);
+        if (!pending) {
+          return;
+        }
+        if (pending) {
+          clearTimeout(pending.timeout);
+          pendingViewRequests.delete(message.requestId);
+          if (message.error) {
+            pending.reject(new Error(message.error));
+          } else {
+            pending.resolve(message);
+          }
+        }
+      }
+      onEdit(message);
+    }
+    if (message.type === "control" && authorized && !editing && !context.editable) {
+      if (
+        !(properties.lights || []).some(
+          (light) => light.entityId === message.command?.entityId,
+        )
+      ) {
+        return;
+      }
+      const generation = reloadGeneration;
+      const postIfCurrent = (payload) => {
+        if (generation === reloadGeneration) {
+          postToFrame(payload);
+        }
+      };
+      const abortController = new AbortController();
+      controlAbortControllers.add(abortController);
+      const timeoutId = setTimeout(() => abortController.abort(), 12000);
+      try {
+        const response = await fetch(INTERACTION3D_API + "/control", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(message.command),
+          signal: abortController.signal,
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(
+            typeof payload.detail == "string"
+              ? payload.detail
+              : payload.detail?.message || "灯光操作失败。",
+          );
+        }
+        postIfCurrent({
+          type: "control-result",
+          requestId: message.requestId,
+        });
+      } catch (error) {
+        postIfCurrent({
+          type: "control-result",
+          requestId: message.requestId,
+          error:
+            error.name === "AbortError"
+              ? "请求超时，请检查设备状态。"
+              : error.message,
+          timedOut: error.name === "AbortError",
+        });
+      } finally {
+        clearTimeout(timeoutId);
+        controlAbortControllers.delete(abortController);
+      }
+    }
+  }
+  window.addEventListener("message", onFrameMessage);
+  window.addEventListener("pointerdown", onOutsidePointerDown);
+  window.addEventListener("keydown", onEscapeKey);
+  const activityTarget = document.addEventListener ? document : window;
+  const activityEventTypes = [
+    "pointerdown",
+    "pointermove",
+    "pointerup",
+    "pointercancel",
+    "wheel",
+    "keydown",
+    "keyup",
+  ];
+  const activityListenerOptions = {
+    capture: true,
+    passive: true,
+  };
+  for (const eventType of activityEventTypes) {
+    activityTarget.addEventListener(eventType, onUserActivity, activityListenerOptions);
+  }
+  activityTarget.addEventListener("visibilitychange", onVisibilityChange);
+  activityTarget.addEventListener("transitionend", onVisibilityChange, true);
+  activityTarget.addEventListener("animationend", onVisibilityChange, true);
+  window.addEventListener("pagehide", onPageHide);
+  window.addEventListener("pageshow", onPageShow);
+  window.addEventListener("blur", clearHeldInput);
+  const intersectionObserver =
+    typeof IntersectionObserver === "undefined"
+      ? null
+      : new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (entry.target === host) {
+                hostIntersecting = entry.isIntersecting && entry.intersectionRatio > 0;
+              }
+            }
+            syncActivityState();
+          },
+          {
+            threshold: [0, 0.001],
+          },
+        );
+  intersectionObserver?.observe(host);
+  let observedAncestors = [];
+  function refreshAncestorObservers() {
+    if (disposed) {
+      return;
+    }
+    const ancestors = [];
+    for (let ancestor = host; ancestor; ancestor = ancestor.parentElement) {
+      ancestors.push(ancestor);
+    }
+    if (
+      ancestors.length !== observedAncestors.length ||
+      !ancestors.every((node, index) => node === observedAncestors[index])
+    ) {
+      observedAncestors = ancestors;
+      mutationObserver?.disconnect();
+      for (const ancestor of ancestors) {
+        mutationObserver?.observe(ancestor, {
+          attributes: true,
+          childList: true,
+          attributeFilter: ["hidden", "inert", "aria-hidden", "style", "class"],
+        });
+      }
+    }
+  }
+  const mutationObserver =
+    typeof MutationObserver === "undefined"
+      ? null
+      : new MutationObserver(() => {
+          refreshAncestorObservers();
+          syncPresentationLayout();
+        });
+  refreshAncestorObservers();
+  let lastLayoutPayload = "";
+  function syncPresentationLayout(force = false) {
+    syncActivityState();
+    const bounds = host.getBoundingClientRect();
+    if (!bounds.width || !host.clientWidth) {
+      return;
+    }
+    const scaleX = host.clientWidth / bounds.width;
+    const scaleY =
+      host.clientHeight > 0 && bounds.height > 0
+        ? host.clientHeight / bounds.height
+        : scaleX;
+    frame.style.width = bounds.width + "px";
+    frame.style.height = bounds.height + "px";
+    frame.style.transform =
+      scaleX === scaleY
+        ? "scale(" + scaleX + ")"
+        : "scale(" + scaleX + "," + scaleY + ")";
+    const canvas = host.closest?.(".hb-renderer-canvas");
+    const canvasBounds = canvas?.getBoundingClientRect();
+    const layoutBox = properties.layoutMode === "fill" ? context.document?.canvas : component.position;
+    const styleScale =
+      properties.layoutMode === "fill"
+        ? 1
+        : Math.max(0.01, Math.min(5, Number(component.style?.scale) || 1));
+    const layoutWidth =
+      canvasBounds?.width > 0 && canvas.clientWidth > 0
+        ? (bounds.width * canvas.clientWidth) / canvasBounds.width
+        : Number(layoutBox?.width) * styleScale;
+    const layoutHeight =
+      canvasBounds?.height > 0 && canvas.clientHeight > 0
+        ? (bounds.height * canvas.clientHeight) / canvasBounds.height
+        : Number(layoutBox?.height) * styleScale;
+    const payload = {
+      type: "presentation-layout",
+      width: layoutWidth > 0 ? layoutWidth : bounds.width,
+      height: layoutHeight > 0 ? layoutHeight : bounds.height,
+    };
+    const payloadJson = JSON.stringify(payload);
+    if (force === true || payloadJson !== lastLayoutPayload) {
+      lastLayoutPayload = payloadJson;
+      postToFrame(payload);
+    }
+  }
+  const resizeObserver = new ResizeObserver(syncPresentationLayout);
+  resizeObserver.observe(host);
+  window.addEventListener("resize", syncPresentationLayout);
+  reloadStage();
+  const initialLayoutFrame = requestAnimationFrame(syncPresentationLayout);
+  const api = () => {
+    if (!disposed) {
+      interactiveVisible = false;
+      syncActivityState(true);
+      setFocusActive(false);
+      lightStream?.dispose();
+      disposed = true;
+      clearTimeout(loadTimeoutId);
+      cancelAnimationFrame(initialLayoutFrame);
+      resizeObserver.disconnect();
+      intersectionObserver?.disconnect();
+      mutationObserver?.disconnect();
+      rejectPendingViewRequests("户型画面已关闭，请重新调整。");
+      window.removeEventListener("resize", syncPresentationLayout);
+      window.removeEventListener("message", onFrameMessage);
+      window.removeEventListener("pointerdown", onOutsidePointerDown);
+      window.removeEventListener("keydown", onEscapeKey);
+      for (const eventType of activityEventTypes) {
+        activityTarget.removeEventListener(eventType, onUserActivity, activityListenerOptions);
+      }
+      activityTarget.removeEventListener("visibilitychange", onVisibilityChange);
+      activityTarget.removeEventListener("transitionend", onVisibilityChange, true);
+      activityTarget.removeEventListener("animationend", onVisibilityChange, true);
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("blur", clearHeldInput);
+      controlAbortControllers.forEach((controller) => controller.abort());
+      frame.removeAttribute("src");
+      host.replaceChildren();
+    }
+  };
+  api.update = (nextProperties, nextSelectedId = selectedId) => {
+    const previousSceneId = properties.sceneId;
+    const previousCameraJson = JSON.stringify(properties.camera);
+    properties = structuredClone(nextProperties);
+    selectedId = nextSelectedId;
+    configureLightBindings();
+    syncBackgroundClass();
+    if (viewEditing && (previousSceneId !== properties.sceneId || previousCameraJson !== JSON.stringify(properties.camera))) {
+      viewEditing = false;
+      viewCamera = properties.camera || stageCamera;
+      host.classList.remove("is-view-editing");
+      frame.style.pointerEvents = "none";
+    }
+    if (previousSceneId !== properties.sceneId) {
+      reloadStage();
+    } else {
+      pushConfig();
+    }
+  };
+  api.command = (command) =>
+    postToFrame({
+      type: "editor-command",
+      command,
+    });
+  api.setAuthorized = (nextAuthorized) => {
+    authorized = nextAuthorized === true;
+    host.inert = !authorized;
+    syncActivityState();
+    if (!authorized) {
+      rejectPendingViewRequests("授权验证暂不可用，请恢复后重新调整。");
+      dismissFocus(true);
+      controlAbortControllers.forEach((controller) => controller.abort());
+    }
+  };
+  Object.defineProperty(api, "metadata", {
+    get: () => modelMetadata,
+  });
+  Object.defineProperty(api, "ready", {
+    get: () => framePresented && !disposed && authorized,
+  });
+  Object.defineProperty(api, "viewEditing", {
+    get: () => viewEditing,
+  });
+  Object.defineProperty(api, "viewCamera", {
+    get: () => viewCamera,
+  });
+  api.setViewEditing = (enabled) => {
+    if (!context.editable || disposed) {
+      throw new Error("请在编辑器中调整户型视角。");
+    }
+    if (enabled && !framePresented) {
+      throw new Error("户型还在加载，请稍候再调整视角。");
+    }
+    viewEditing = enabled === true;
+    if (!viewEditing) {
+      viewCamera = properties.camera || stageCamera;
+    }
+    host.classList.toggle("is-view-editing", viewEditing);
+    frame.style.pointerEvents = viewEditing ? "auto" : "none";
+    pushConfig();
+  };
+  api.viewCommand = (command, value) =>
+    new Promise((resolve, reject) => {
+      if (!context.editable || !viewEditing || !framePresented || disposed) {
+        reject(new Error("请先进入户型视角调整。"));
+        return;
+      }
+      const requestId = "view-" + ++viewRequestSerial;
+      const timeout = setTimeout(() => {
+        pendingViewRequests.delete(requestId);
+        reject(new Error("读取视角超时，请重试。"));
+      }, 5000);
+      pendingViewRequests.set(requestId, {
+        resolve,
+        reject,
+        timeout,
+      });
+      postToFrame({
+        type: "editor-command",
+        command,
+        value,
+        requestId,
+      });
+    });
+  api.captureView = () => api.viewCommand("save-camera");
+  api.focusCommand = (command, id = selectedId, value) =>
+    new Promise((resolve, reject) => {
+      if (!editing || !framePresented || disposed || !authorized) {
+        reject(new Error("户型还在加载，请稍候再设置聚焦视角。"));
+        return;
+      }
+      const requestId = "focus-" + ++viewRequestSerial;
+      const timeout = setTimeout(() => {
+        pendingViewRequests.delete(requestId);
+        reject(new Error("读取聚焦视角超时，请重试。"));
+      }, 5000);
+      pendingViewRequests.set(requestId, {
+        resolve,
+        reject,
+        timeout,
+      });
+      postToFrame({
+        type: "editor-command",
+        command,
+        id,
+        value,
+        requestId,
+      });
+    });
+  return api;
+}

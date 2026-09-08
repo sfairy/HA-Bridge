@@ -1,1 +1,2128 @@
-const _0x762c0=_0x3f55;(function(_0xe8a459,_0x4eba12){const _0x51e22f=_0x3f55,_0x23691f=_0xe8a459();while(!![]){try{const _0x3a7ee3=parseInt(_0x51e22f(0x120))/0x1+parseInt(_0x51e22f(0x154))/0x2*(parseInt(_0x51e22f(0x10d))/0x3)+-parseInt(_0x51e22f(0x122))/0x4+-parseInt(_0x51e22f(0x14d))/0x5+parseInt(_0x51e22f(0x144))/0x6+parseInt(_0x51e22f(0x130))/0x7*(parseInt(_0x51e22f(0x121))/0x8)+-parseInt(_0x51e22f(0x128))/0x9;if(_0x3a7ee3===_0x4eba12)break;else _0x23691f['push'](_0x23691f['shift']());}catch(_0x5a80e4){_0x23691f['push'](_0x23691f['shift']());}}}(_0x4090,0x60841));const Z=1e-7;export function clamp(_0x473407,_0x1bc800,_0x1e20b1){return Math['min'](_0x1e20b1,Math['max'](_0x1bc800,_0x473407));}export function spotLightBrightnessResponse(_0x44977a='downlight',_0x3ddab0=0x0){const _0x4d6446=clamp(Number(_0x3ddab0)||0x0,0x0,0x1),_0x217f2e=_0x4d6446*_0x4d6446;if(_0x44977a!=='ceilinglight'||_0x4d6446<=0x0||_0x4d6446>=0.35)return _0x217f2e;const _0x5e8517=0.08*_0x4d6446*(0x1-_0x4d6446/0.35);return _0x217f2e+_0x5e8517;}export function stripLightProjection(_0x3f2478=2.7,_0x1aefba=3.5,_0x19b449=0x2){const _0x208adf=_0x3f55,_0x528607=clamp(Number['isFinite'](Number(_0x3f2478))?Number(_0x3f2478):2.7,0.05,0x6),_0xc2fba0=clamp(Number[_0x208adf(0x150)](Number(_0x1aefba))?Number(_0x1aefba):3.5,0.5,0xa),_0x3105b2=clamp(Number['isFinite'](Number(_0x19b449))?Number(_0x19b449):0x2,0.2,0x8),_0x442e07=clamp(_0x528607/2.7,0.2,2.2),_0x210488=clamp(_0x3105b2/0x2,0.1,0x4);return{'elevation':_0x528607,'range':_0xc2fba0*clamp(0.5+_0x442e07*0.5,0.6,1.6)*clamp(0.82+_0x210488*0.18,0.75,1.5),'coreScale':clamp(0.55+_0x442e07*0.45,0.65,1.55),'intensity':clamp(0x1/_0x442e07,0.5,2.2)};}export function adaptiveLightRenderCost(_0x4a4d20=[]){const _0x4d2667=_0x3f55;return _0x4a4d20[_0x4d2667(0x119)]((_0x4232bc,_0x18cb3c)=>_0x18cb3c?.['enabled']===!0x1||Math['max'](0x0,Number(_0x18cb3c?.['brightness'])||0x0)<=0x0?_0x4232bc:_0x18cb3c?.[_0x4d2667(0x149)]==='striplight'?_0x4232bc+0.3:_0x18cb3c?.['type']==='ceilinglight'?_0x4232bc+(Number(_0x18cb3c?.[_0x4d2667(0x145)])>=0x8c?1.65:1.1):_0x18cb3c?.['type']==='downlight'?_0x4232bc+0x1:_0x4232bc,0x0);}export function adaptiveDeviceLightBudget({hardwareConcurrency:_0x2868bd=0x4,deviceMemory:_0x4a9752=0x8,previewPixels:_0x4db447=0x7a120}={}){const _0x66e1df=_0x3f55,_0x6db4f4=clamp(Number(_0x2868bd)||0x4,0x2,0x18),_0x31c130=clamp(Number(_0x4a9752)||0x8,0x2,0x20),_0xad85ec=clamp(Number(_0x4db447)||0x7a120,0x1d4c0,0x3d0900),_0x39ebb1=4.5+Math['min'](_0x6db4f4,0x10)*0.55,_0x3c39ee=_0x31c130<=0x4?0.78:_0x31c130<0x8?0.88:_0x31c130>=0x10?1.1:0x1,_0x5a1a9d=clamp(Math[_0x66e1df(0x11c)](0x7a120/_0xad85ec),0.72,1.2);return clamp(_0x39ebb1*_0x3c39ee*_0x5a1a9d,0x4,0x10);}export function assessAdaptiveRenderFrames(_0x4a2a55=[]){const _0x19784f=_0x3f55,_0x4844e3=_0x4a2a55['map'](Number)['filter'](_0xead7db=>Number['isFinite'](_0xead7db)&&_0xead7db>=0x8&&_0xead7db<=0x78);if(_0x4844e3['length']<0xc)return{'sufficient':!0x1,'sampleCount':_0x4844e3['length']};const _0xb561d2=[..._0x4844e3]['sort']((_0x3837b2,_0x35ddb8)=>_0x3837b2-_0x35ddb8),_0x52503d=_0x2e130a=>_0xb561d2[Math['min'](Math['floor']((_0xb561d2['length']-0x1)*_0x2e130a),_0xb561d2['length']-0x1)],_0xad52f6=_0x4844e3['reduce']((_0x490b16,_0x415936)=>_0x490b16+_0x415936,0x0)/_0x4844e3['length'],_0x3c0040=_0x52503d(0.75),_0x547170=_0x52503d(0.9);return{'sufficient':!0x0,'sampleCount':_0x4844e3[_0x19784f(0x153)],'averageFrameMs':_0xad52f6,'p75FrameMs':_0x3c0040,'p90FrameMs':_0x547170,'fps':0x3e8/_0xad52f6,'severe':_0xad52f6>=0x2d||_0x3c0040>=0x32||_0x547170>=0x44,'slow':_0xad52f6>=0x22||_0x3c0040>=0x26||_0x547170>=0x37,'smooth':_0xad52f6<=0x18&&_0x547170<=0x20};}export function planLabelProjectionMetrics(_0xde0b9c,_0x3fb777,_0x1a6004=0.86){const _0x25b134=Math['max'](0x0,Number(_0xde0b9c)||0x0),_0x5eaf5d=Math['max'](0x0,Number(_0x3fb777)||0x0),_0x570eed=clamp(Number['isFinite'](Number(_0x1a6004))?Number(_0x1a6004):0.86,0.3,0x1);return{'titleStartX':-_0x25b134*(0.5-0x73/0x800),'titleY':_0x5eaf5d*(0x82/0x280-0.5),'titleFontSize':_0x5eaf5d*0xb8/0x280,'titleMaxWidth':_0x25b134*0x53c/0x800,'iconX':_0x25b134*(0x62c/0x800-0.5),'iconY':_0x5eaf5d*(0x82/0x280-0.5),'iconSize':_0x5eaf5d*0xaa/0x280,'subtitleStartX':-_0x25b134*(0.5-0x48/0x800),'subtitleY':_0x5eaf5d*(0x19a/0x280-0.5),'subtitleFontSize':_0x5eaf5d*0x136/0x280,'subtitleMaxWidth':_0x25b134*0x758/0x800,'baselineY':_0x5eaf5d*(0x24e/0x280-0.5),'baselineStartX':-_0x25b134*(0.5-0x4a/0x800),'baselineLength':_0x25b134*0x758/0x800*_0x570eed,'baselineLineWidth':_0x5eaf5d*0x10/0x280,'baselineCapHalfHeight':_0x5eaf5d*0x18/0x280};}export function selectShadowCastingLightIds(_0x3147fe=[],_0x53b487=0x8){const _0x56e774=_0x3f55,_0x428738=Math['max'](0x0,Math['floor'](Number(_0x53b487)||0x0));if(_0x428738===0x0)return[];const _0x22277e=_0x3147fe['map']((_0x1ed841,_0x285876)=>({'id':String(_0x1ed841?.['id']||''),'groupId':String(_0x1ed841?.[_0x56e774(0x12d)]||''),'type':String(_0x1ed841?.['type']||''),'brightness':Math['max'](0x0,Number(_0x1ed841?.[_0x56e774(0x127)])||0x0),'enabled':_0x1ed841?.[_0x56e774(0x14a)]!==!0x1,'index':_0x285876}))['filter'](_0x1fcf4e=>_0x1fcf4e['id']&&_0x1fcf4e['enabled']&&_0x1fcf4e['brightness']>0x0&&_0x1fcf4e['type']!=='striplight')['map'](_0x403cac=>({..._0x403cac,'score':_0x403cac[_0x56e774(0x127)]*(_0x403cac['type']==='ceilinglight'?1.08:0x1)}));if(_0x22277e['length']<=_0x428738)return _0x22277e['map'](_0x4ffe9f=>_0x4ffe9f['id']);const _0xe38ad6=(_0x2cc5c4,_0x15d489)=>_0x15d489['score']-_0x2cc5c4['score']||_0x2cc5c4['index']-_0x15d489['index'],_0x116c3e=new Map();for(const _0x33beec of _0x22277e){const _0x3b9ed5=_0x33beec['groupId']||_0x56e774(0x113)+_0x33beec['index'],_0x390589=_0x116c3e['get'](_0x3b9ed5);(!_0x390589||_0xe38ad6(_0x33beec,_0x390589)<0x0)&&_0x116c3e['set'](_0x3b9ed5,_0x33beec);}const _0xe88342=[..._0x116c3e['values']()]['sort'](_0xe38ad6)[_0x56e774(0x146)](0x0,_0x428738);if(_0xe88342['length']<_0x428738){const _0x3f49c3=new Set(_0xe88342['map'](_0x5dcd9a=>_0x5dcd9a['id'])),_0x41d73b=_0x22277e['filter'](_0x647ed4=>!_0x3f49c3['has'](_0x647ed4['id']))['sort'](_0xe38ad6);_0xe88342['push'](..._0x41d73b['slice'](0x0,_0x428738-_0xe88342['length']));}return _0xe88342[_0x56e774(0x143)](_0x17a1d1=>_0x17a1d1['id']);}export function spotShadowTextureUnitLimit({maxTextureUnits:_0x21d3d5=0x10,materialTextureUnits:_0x2c0605=0x0,nonSpotShadowTextureUnits:_0x54f6d8=0x1,rectAreaLightTextureUnits:_0x2ad897=0x0,reservedTextureUnits:_0x2c3ace=0x1,hardLimit:_0x1fb7f1=0x8}={}){const _0x4b679b=_0x3f55,_0x31a06f=Math['max'](0x0,Math['floor'](Number(_0x21d3d5)||0x0)),_0x42f95c=[_0x2c0605,_0x54f6d8,_0x2ad897,_0x2c3ace]['reduce']((_0x52f04b,_0x358a56)=>_0x52f04b+Math[_0x4b679b(0x139)](0x0,Math['floor'](Number(_0x358a56)||0x0)),0x0),_0x2d2cc0=Math['max'](0x0,Math['floor'](Number(_0x1fb7f1)||0x0)),_0x3b0f4f=_0x31a06f<=0x10?0x3:_0x31a06f<=0x18?0x6:_0x2d2cc0;return Math['min'](_0x2d2cc0,_0x3b0f4f,Math[_0x4b679b(0x139)](0x0,_0x31a06f-_0x42f95c));}export function localSpotShadowSettings(_0x4f4622=_0x762c0(0x129),_0x1926e4=3.5,_0x5d5c80=0x5a){const _0x4469f6=clamp(Number['isFinite'](Number(_0x1926e4))?Number(_0x1926e4):3.5,0.5,0xa),_0x1dac13=clamp(Number['isFinite'](Number(_0x5d5c80))?Number(_0x5d5c80):0x5a,0xf,0xb4),_0x11e56b=_0x4f4622==='ceilinglight'&&_0x1dac13>=0x8c;return{'mapSize':_0x11e56b?0x200:0x100,'radius':_0x11e56b?1.25:0x1,'blurSamples':_0x11e56b?0x8:0x4,'normalBias':0.018,'wideCeilingLight':_0x11e56b,'range':_0x4469f6,'angle':_0x1dac13};}export function distance(_0x23e3ae,_0x3780c6){return Math['hypot'](_0x3780c6['x']-_0x23e3ae['x'],_0x3780c6['y']-_0x23e3ae['y']);}export function slidingDoorPanelCenters(_0x47fdc1,_0x3561c6=-0x1,_0x1c2fc1=0x2/0x3){const _0x1ecff5=(_0x3561c6>=0x0?0x1:-0x1)*_0x47fdc1*0.23,_0x4d72e3=-_0x1ecff5;return{'fixed':_0x1ecff5,'moving':_0x4d72e3+(_0x1ecff5-_0x4d72e3)*clamp(_0x1c2fc1,0x0,0x1)};}export function projectPointToSegment(_0x50699f,_0x56acd5,_0xe59bd4){const _0x45a41f=_0xe59bd4['x']-_0x56acd5['x'],_0x3fc8d9=_0xe59bd4['y']-_0x56acd5['y'],_0x583524=_0x45a41f*_0x45a41f+_0x3fc8d9*_0x3fc8d9;if(_0x583524<=1e-7)return{'point':{..._0x56acd5},'t':0x0,'distance':distance(_0x50699f,_0x56acd5)};const _0xb2ab1a=clamp(((_0x50699f['x']-_0x56acd5['x'])*_0x45a41f+(_0x50699f['y']-_0x56acd5['y'])*_0x3fc8d9)/_0x583524,0x0,0x1),_0x54f911={'x':_0x56acd5['x']+_0x45a41f*_0xb2ab1a,'y':_0x56acd5['y']+_0x3fc8d9*_0xb2ab1a};return{'point':_0x54f911,'t':_0xb2ab1a,'distance':distance(_0x50699f,_0x54f911)};}export function segmentIntersection(_0x115b4e,_0x56eedc,_0x2ddd86,_0x28b2be){const _0x589d98=_0x56eedc['x']-_0x115b4e['x'],_0x35f978=_0x56eedc['y']-_0x115b4e['y'],_0x34b091=_0x28b2be['x']-_0x2ddd86['x'],_0x504a37=_0x28b2be['y']-_0x2ddd86['y'],_0x3195c4=_0x589d98*_0x504a37-_0x35f978*_0x34b091;if(Math['abs'](_0x3195c4)<=1e-7)return null;const _0x5e49c1=_0x2ddd86['x']-_0x115b4e['x'],_0x5bec80=_0x2ddd86['y']-_0x115b4e['y'],_0x381204=(_0x5e49c1*_0x504a37-_0x5bec80*_0x34b091)/_0x3195c4,_0x4bd97d=(_0x5e49c1*_0x35f978-_0x5bec80*_0x589d98)/_0x3195c4;return _0x381204<-1e-7||_0x381204>0x1+1e-7||_0x4bd97d<-1e-7||_0x4bd97d>0x1+1e-7?null:{'x':_0x115b4e['x']+_0x589d98*clamp(_0x381204,0x0,0x1),'y':_0x115b4e['y']+_0x35f978*clamp(_0x381204,0x0,0x1)};}export function wallIntersections(_0x570f8e){const _0x160feb=[];for(let _0x1353df=0x0;_0x1353df<_0x570f8e['length'];_0x1353df+=0x1)for(let _0xb6b4f9=_0x1353df+0x1;_0xb6b4f9<_0x570f8e['length'];_0xb6b4f9+=0x1){const _0x259f37=segmentIntersection(_0x570f8e[_0x1353df]['start'],_0x570f8e[_0x1353df]['end'],_0x570f8e[_0xb6b4f9]['start'],_0x570f8e[_0xb6b4f9]['end']);!_0x259f37||_0x160feb['some'](_0xe96314=>distance(_0xe96314,_0x259f37)<=1e-7)||_0x160feb['push'](_0x259f37);}return _0x160feb;}export function splitWallSegments(_0x1de25f,_0xc893df=0.000001){const _0x596306=_0x762c0,_0x5001f0=Math['max'](Number(_0xc893df)||0x0,1e-7),_0x350526=_0x1de25f['map'](()=>[0x0,0x1]);for(let _0x4857d9=0x0;_0x4857d9<_0x1de25f['length'];_0x4857d9+=0x1)for(let _0x957c17=_0x4857d9+0x1;_0x957c17<_0x1de25f['length'];_0x957c17+=0x1){const _0x4c0c0a=_0x1de25f[_0x4857d9],_0x4f3dbc=_0x1de25f[_0x957c17],_0xfb4b79=segmentIntersection(_0x4c0c0a['start'],_0x4c0c0a['end'],_0x4f3dbc['start'],_0x4f3dbc['end']);if(!_0xfb4b79)continue;const _0x2e14bd=projectPointToSegment(_0xfb4b79,_0x4c0c0a['start'],_0x4c0c0a[_0x596306(0x141)]),_0x2f2be4=projectPointToSegment(_0xfb4b79,_0x4f3dbc['start'],_0x4f3dbc['end']);_0x2e14bd['t']>_0x5001f0&&_0x2e14bd['t']<0x1-_0x5001f0&&_0x350526[_0x4857d9]['push'](_0x2e14bd['t']),_0x2f2be4['t']>_0x5001f0&&_0x2f2be4['t']<0x1-_0x5001f0&&_0x350526[_0x957c17]['push'](_0x2f2be4['t']);}const _0x13f051=[];return _0x1de25f['forEach']((_0xa7da68,_0xd53f3d)=>{const _0x579c52=_0x596306,_0x7ea921=_0xa7da68[_0x579c52(0x141)]['x']-_0xa7da68['start']['x'],_0x83132e=_0xa7da68['end']['y']-_0xa7da68[_0x579c52(0x140)]['y'],_0x57cc58=[..._0x350526[_0xd53f3d]]['sort']((_0x2c025d,_0x35a29e)=>_0x2c025d-_0x35a29e)['filter']((_0x20d739,_0x189cdd,_0x206ea5)=>_0x189cdd===0x0||_0x20d739-_0x206ea5[_0x189cdd-0x1]>_0x5001f0);for(let _0x27271e=0x0;_0x27271e<_0x57cc58['length']-0x1;_0x27271e+=0x1){const _0x131c9d=_0x57cc58[_0x27271e],_0x51fa32=_0x57cc58[_0x27271e+0x1];_0x51fa32-_0x131c9d<=_0x5001f0||_0x13f051['push']({'sourceWall':_0xa7da68,'sourceIndex':_0xd53f3d,'pieceIndex':_0x27271e,'pieceCount':_0x57cc58['length']-0x1,'startT':_0x131c9d,'endT':_0x51fa32,'start':{'x':_0xa7da68['start']['x']+_0x7ea921*_0x131c9d,'y':_0xa7da68['start']['y']+_0x83132e*_0x131c9d},'end':{'x':_0xa7da68['start']['x']+_0x7ea921*_0x51fa32,'y':_0xa7da68['start']['y']+_0x83132e*_0x51fa32}});}}),_0x13f051;}export function uncoveredCollinearWallSegments(_0xd26f79,_0x34c031,_0x31d086=0.001){const _0x44b679=_0x762c0;if(!_0xd26f79?.['start']||!_0xd26f79?.['end'])return[];const _0x11a77f=Math[_0x44b679(0x139)](Number(_0x31d086)||0x0,1e-7),_0x550f63=_0xd26f79['end']['x']-_0xd26f79[_0x44b679(0x140)]['x'],_0x7ac1e2=_0xd26f79['end']['y']-_0xd26f79['start']['y'],_0x5b695d=Math[_0x44b679(0x116)](_0x550f63,_0x7ac1e2);if(_0x5b695d<=_0x11a77f)return[];const _0x262dbe={'x':_0x550f63/_0x5b695d,'y':_0x7ac1e2/_0x5b695d},_0x5e1fcc=_0x11a77f/_0x5b695d,_0x99eaf4=[];for(const _0x2affa8 of _0x34c031||[]){if(!_0x2affa8?.['start']||!_0x2affa8?.['end']||_0x2affa8['id']===_0xd26f79['id'])continue;const _0x4e80df=_0x2affa8[_0x44b679(0x141)]['x']-_0x2affa8[_0x44b679(0x140)]['x'],_0x2569e1=_0x2affa8['end']['y']-_0x2affa8[_0x44b679(0x140)]['y'],_0x599a71=Math['hypot'](_0x4e80df,_0x2569e1);if(_0x599a71<=_0x11a77f||Math[_0x44b679(0x152)](_0x262dbe['x']*_0x2569e1/_0x599a71-_0x262dbe['y']*_0x4e80df/_0x599a71)>_0x5e1fcc)continue;const _0x72fa12={'x':_0x2affa8['start']['x']-_0xd26f79['start']['x'],'y':_0x2affa8['start']['y']-_0xd26f79['start']['y']},_0x4a2ec3={'x':_0x2affa8['end']['x']-_0xd26f79['start']['x'],'y':_0x2affa8['end']['y']-_0xd26f79['start']['y']},_0x131edd=Math[_0x44b679(0x152)](_0x72fa12['x']*_0x262dbe['y']-_0x72fa12['y']*_0x262dbe['x']),_0xc88389=Math['abs'](_0x4a2ec3['x']*_0x262dbe['y']-_0x4a2ec3['y']*_0x262dbe['x']);if(Math['max'](_0x131edd,_0xc88389)>_0x11a77f)continue;const _0x282043=(_0x72fa12['x']*_0x262dbe['x']+_0x72fa12['y']*_0x262dbe['y'])/_0x5b695d,_0x5734da=(_0x4a2ec3['x']*_0x262dbe['x']+_0x4a2ec3['y']*_0x262dbe['y'])/_0x5b695d,_0x2411d5=clamp(Math[_0x44b679(0x14b)](_0x282043,_0x5734da),0x0,0x1),_0x29d6bc=clamp(Math['max'](_0x282043,_0x5734da),0x0,0x1);_0x29d6bc-_0x2411d5>_0x5e1fcc&&_0x99eaf4['push']([_0x2411d5,_0x29d6bc]);}if(!_0x99eaf4['length'])return[{'start':{..._0xd26f79['start']},'end':{..._0xd26f79[_0x44b679(0x141)]}}];_0x99eaf4['sort']((_0x2f776c,_0x217dd2)=>_0x2f776c[0x0]-_0x217dd2[0x0]);const _0x24ba53=[];for(const _0x4ec18f of _0x99eaf4){const _0x451c65=_0x24ba53['at'](-0x1);_0x451c65&&_0x4ec18f[0x0]<=_0x451c65[0x1]+_0x5e1fcc?_0x451c65[0x1]=Math['max'](_0x451c65[0x1],_0x4ec18f[0x1]):_0x24ba53['push']([..._0x4ec18f]);}const _0x2a9225=[];let _0x34c065=0x0;for(const [_0x26f172,_0x5a0f26]of _0x24ba53)_0x26f172-_0x34c065>_0x5e1fcc&&_0x2a9225['push']([_0x34c065,_0x26f172]),_0x34c065=Math[_0x44b679(0x139)](_0x34c065,_0x5a0f26);return 0x1-_0x34c065>_0x5e1fcc&&_0x2a9225['push']([_0x34c065,0x1]),_0x2a9225[_0x44b679(0x143)](([_0xd3a45f,_0x481178])=>({'start':{'x':_0xd26f79['start']['x']+_0x550f63*_0xd3a45f,'y':_0xd26f79['start']['y']+_0x7ac1e2*_0xd3a45f},'end':{'x':_0xd26f79['start']['x']+_0x550f63*_0x481178,'y':_0xd26f79['start']['y']+_0x7ac1e2*_0x481178}}));}export function canonicalPolygonKey(_0x969dae,_0x3204f6=0x5){const _0xf7b0f5=_0x762c0;if(!Array['isArray'](_0x969dae)||!_0x969dae['length'])return'';const _0x1d937c=clamp(Math[_0xf7b0f5(0x13c)](Number(_0x3204f6)||0x0),0x0,0xc),_0x41b85e=_0x969dae['map'](_0x1041c3=>{const _0x4b975a=_0xf7b0f5,_0x1a10c0=Math['abs'](Number(_0x1041c3?.['x'])||0x0)<0xa**-_0x1d937c/0x2?0x0:Number(_0x1041c3?.['x'])||0x0,_0x48bd70=Math['abs'](Number(_0x1041c3?.['y'])||0x0)<0xa**-_0x1d937c/0x2?0x0:Number(_0x1041c3?.['y'])||0x0;return _0x1a10c0['toFixed'](_0x1d937c)+','+_0x48bd70[_0x4b975a(0x12c)](_0x1d937c);}),_0x21455a=[];for(const _0x192ce6 of[_0x41b85e,[..._0x41b85e]['reverse']()])for(let _0x840402=0x0;_0x840402<_0x192ce6[_0xf7b0f5(0x153)];_0x840402+=0x1)_0x21455a['push']([..._0x192ce6['slice'](_0x840402),..._0x192ce6[_0xf7b0f5(0x146)](0x0,_0x840402)][_0xf7b0f5(0x11e)](';'));return _0x21455a['sort']()[0x0];}function q(_0x4502db,_0xf9417c,_0x56bc93){const _0x20a17e=_0x762c0,_0x367594=[{'firstKey':'start','secondKey':'start'},{'firstKey':'start','secondKey':'end'},{'firstKey':'end','secondKey':_0x20a17e(0x140)},{'firstKey':_0x20a17e(0x141),'secondKey':'end'}]['filter'](({firstKey:_0x5ec790,secondKey:_0x4dbfce})=>distance(_0x4502db[_0x5ec790],_0xf9417c[_0x4dbfce])<=_0x56bc93);if(_0x367594['length']!==0x1)return null;const _0x409370=_0x367594[0x0];return{'point':{'x':(_0x4502db[_0x409370['firstKey']]['x']+_0xf9417c[_0x409370['secondKey']]['x'])/0x2,'y':(_0x4502db[_0x409370['firstKey']]['y']+_0xf9417c[_0x409370[_0x20a17e(0x11b)]]['y'])/0x2},'firstKey':_0x409370['firstKey'],'secondKey':_0x409370['secondKey'],'firstOuter':_0x4502db[_0x409370[_0x20a17e(0x133)]===_0x20a17e(0x140)?'end':'start'],'secondOuter':_0xf9417c[_0x409370['secondKey']==='start'?_0x20a17e(0x141):'start']};}function H(_0x28ac62,_0x2b423e,_0x58168a){const _0x31a2d2=_0x762c0,_0x4ef7bf=_0x28ac62['opacity']===null||_0x28ac62['opacity']===void 0x0?null:Number(_0x28ac62[_0x31a2d2(0x110)]),_0x3374f4=_0x2b423e[_0x31a2d2(0x110)]===null||_0x2b423e[_0x31a2d2(0x110)]===void 0x0?null:Number(_0x2b423e['opacity']),_0x59fd3e=_0x4ef7bf===null||_0x3374f4===null?_0x4ef7bf===_0x3374f4:Math['abs'](_0x4ef7bf-_0x3374f4)<=_0x58168a;return Math['abs']((Number(_0x28ac62['height'])||0x0)-(Number(_0x2b423e['height'])||0x0))<=_0x58168a&&Math[_0x31a2d2(0x152)]((Number(_0x28ac62[_0x31a2d2(0x142)])||0x0)-(Number(_0x2b423e['thickness'])||0x0))<=_0x58168a&&_0x59fd3e&&_0x28ac62['allowOpenEnd']===!0x0==(_0x2b423e['allowOpenEnd']===!0x0);}function V(_0x205130,_0x4fdcec,_0x382707){const _0x25b46b=_0x762c0;return _0x205130['reduce']((_0x5176f5,_0x58d01d)=>_0x5176f5+(distance(_0x58d01d['wall']['start'],_0x4fdcec)<=_0x382707?0x1:0x0)+(distance(_0x58d01d[_0x25b46b(0x132)]['end'],_0x4fdcec)<=_0x382707?0x1:0x0),0x0);}function _0x3f55(_0x393f29,_0x35074c){const _0x4090dd=_0x4090();return _0x3f55=function(_0x3f553d,_0x449b18){_0x3f553d=_0x3f553d-0x10c;let _0x570237=_0x4090dd[_0x3f553d];return _0x570237;},_0x3f55(_0x393f29,_0x35074c);}function U(_0x5d5073,_0x1e1f5a){const _0x6b2fed=_0x762c0,_0x25d59d=O(_0x5d5073['firstOuter'],_0x5d5073['point']),_0x3c8a8f=O(_0x5d5073['secondOuter'],_0x5d5073[_0x6b2fed(0x13d)]),_0x5aff49=Math['hypot'](_0x25d59d['x'],_0x25d59d['y']),_0x1f82a2=Math['hypot'](_0x3c8a8f['x'],_0x3c8a8f['y']);if(_0x5aff49<=_0x1e1f5a||_0x1f82a2<=_0x1e1f5a)return!0x1;const _0x3b2cd2=Math['abs'](T(_0x25d59d,_0x3c8a8f));return _0x25d59d['x']*_0x3c8a8f['x']+_0x25d59d['y']*_0x3c8a8f['y']<0x0&&_0x3b2cd2<=_0x1e1f5a*Math[_0x6b2fed(0x139)](_0x5aff49,_0x1f82a2,0x1);}export function mergeCollinearWallSegments(_0x4ca5da,_0x2451bc=0.000001){const _0x5cffea=_0x762c0,_0x4ce777=Math['max'](Number(_0x2451bc)||0x0,1e-7),_0x1df1f3=(_0x4ca5da||[])[_0x5cffea(0x126)](_0x491eaf=>_0x491eaf?.['start']&&_0x491eaf?.['end']&&distance(_0x491eaf['start'],_0x491eaf['end'])>_0x4ce777)['map'](_0x58e7ed=>({'wall':{..._0x58e7ed,'start':{..._0x58e7ed[_0x5cffea(0x140)]},'end':{..._0x58e7ed['end']}},'sourceIds':new Set([_0x58e7ed['id']])}));let _0x59bead=!0x0;for(;_0x59bead;){_0x59bead=!0x1;for(let _0x3aa66f=0x0;_0x3aa66f<_0x1df1f3[_0x5cffea(0x153)]&&!_0x59bead;_0x3aa66f+=0x1)for(let _0x584c1a=_0x3aa66f+0x1;_0x584c1a<_0x1df1f3[_0x5cffea(0x153)];_0x584c1a+=0x1){const _0x223dbb=_0x1df1f3[_0x3aa66f],_0x54cfe6=_0x1df1f3[_0x584c1a];if(!H(_0x223dbb['wall'],_0x54cfe6['wall'],_0x4ce777))continue;const _0x102d4a=q(_0x223dbb['wall'],_0x54cfe6['wall'],_0x4ce777);if(!_0x102d4a||V(_0x1df1f3,_0x102d4a['point'],_0x4ce777)!==0x2||!U(_0x102d4a,_0x4ce777))continue;const _0x734885={..._0x223dbb['wall'],'start':_0x102d4a['firstKey']==='end'?{..._0x102d4a[_0x5cffea(0x147)]}:{..._0x102d4a['secondOuter']},'end':_0x102d4a['firstKey']==='end'?{..._0x102d4a[_0x5cffea(0x131)]}:{..._0x102d4a[_0x5cffea(0x147)]}};_0x1df1f3[_0x3aa66f]={'wall':_0x734885,'sourceIds':new Set([..._0x223dbb['sourceIds'],..._0x54cfe6['sourceIds']])},_0x1df1f3['splice'](_0x584c1a,0x1),_0x59bead=!0x0;break;}}const _0x4d97ce=new Map();for(const _0x123779 of _0x1df1f3)for(const _0x469667 of _0x123779['sourceIds'])_0x4d97ce['set'](_0x469667,_0x123779['wall']['id']);return{'walls':_0x1df1f3[_0x5cffea(0x143)](_0x12dca0=>_0x12dca0['wall']),'wallIdMap':_0x4d97ce};}export function remapWallAttachment(_0x1968fa,_0x3ea6e4,_0x5c2a40){const _0x3f0614=_0x762c0;if(!_0x1968fa||!_0x3ea6e4||!_0x5c2a40)return _0x1968fa;const _0xc24567=clamp(Number(_0x1968fa['t'])||0x0,0x0,0x1),_0x30aedc=X(_0x3ea6e4['start'],_0x3ea6e4[_0x3f0614(0x141)],_0xc24567);return{..._0x1968fa,'wallId':_0x5c2a40['id'],'t':clamp(projectPointToSegment(_0x30aedc,_0x5c2a40['start'],_0x5c2a40['end'])['t'],0x0,0x1)};}function W(_0x3c6c22,_0x24100b,_0x371678){let _0x3c1342=null;for(const _0x52ba3c of _0x24100b){const _0x5ed64e=distance(_0x3c6c22,_0x52ba3c['point']);_0x5ed64e>_0x371678||_0x3c1342&&_0x5ed64e>=_0x3c1342['distance']||(_0x3c1342={..._0x52ba3c,'distance':_0x5ed64e});}return _0x3c1342;}export function axisLockedPoint(_0x4b503a,_0xd73b10){const _0x1037ad=_0x762c0,_0x4fc901=_0x4b503a['x']-_0xd73b10['x'],_0x33689c=_0x4b503a['y']-_0xd73b10['y'];return Math['abs'](_0x4fc901)>Math['abs'](_0x33689c)?{'point':{'x':_0x4b503a['x'],'y':_0xd73b10['y']},'axis':'horizontal','label':'水平轴'}:{'point':{'x':_0xd73b10['x'],'y':_0x4b503a['y']},'axis':_0x1037ad(0x11f),'label':'垂直轴'};}function $(_0x4da263,_0x3cb916,_0x5d25d2,_0x312a59,_0x1470dc){const _0x1ef1a3=_0x762c0;let _0x4c2909=null;for(const _0x28f288 of _0x5d25d2){const _0x3250c1=_0x1470dc==='vertical'?'x':'y',_0x311cc6=_0x1470dc==='vertical'?'y':'x',_0x9ea79d=_0x28f288['end'][_0x3250c1]-_0x28f288['start'][_0x3250c1];if(Math['abs'](_0x9ea79d)<=1e-7){if(Math['abs'](_0x28f288[_0x1ef1a3(0x140)][_0x3250c1]-_0x3cb916[_0x3250c1])>1e-7)continue;const _0x31da83=projectPointToSegment(_0x4da263,_0x28f288['start'],_0x28f288['end']);if(_0x31da83[_0x1ef1a3(0x134)]>_0x312a59||_0x4c2909&&_0x31da83['distance']>=_0x4c2909[_0x1ef1a3(0x134)])continue;_0x4c2909={'point':{..._0x31da83['point'],[_0x3250c1]:_0x3cb916[_0x3250c1]},'kind':'segment','targetId':_0x28f288['id'],'label':(_0x1470dc==='vertical'?'垂直':'水平')+'\x20·\x20墙线','distance':_0x31da83['distance']};continue;}const _0x4edb3a=(_0x3cb916[_0x3250c1]-_0x28f288['start'][_0x3250c1])/_0x9ea79d;if(_0x4edb3a<-1e-7||_0x4edb3a>0x1+1e-7)continue;const _0x95302b={..._0x3cb916};_0x95302b[_0x311cc6]=_0x28f288['start'][_0x311cc6]+(_0x28f288['end'][_0x311cc6]-_0x28f288['start'][_0x311cc6])*clamp(_0x4edb3a,0x0,0x1);const _0x6077af=distance(_0x4da263,_0x95302b);_0x6077af>_0x312a59||_0x4c2909&&_0x6077af>=_0x4c2909['distance']||(_0x4c2909={'point':_0x95302b,'kind':'segment','targetId':_0x28f288['id'],'label':(_0x1470dc==='vertical'?'垂直':'水平')+'\x20·\x20墙线','distance':_0x6077af});}return _0x4c2909;}function G(_0x735904,_0x4b4a06,_0x5241fc,_0x5cdc3c){const _0xfda99a=_0x762c0;if(!_0x4b4a06||Math['abs'](_0x735904['x']-_0x4b4a06['x'])>_0x5cdc3c)return null;const _0x1ceaaf=$(_0x735904,_0x4b4a06,_0x5241fc,_0x5cdc3c,_0xfda99a(0x11f));return _0x1ceaaf||{'point':{'x':_0x4b4a06['x'],'y':_0x735904['y']},'kind':'axis','label':'垂直轴','distance':Math['abs'](_0x735904['x']-_0x4b4a06['x'])};}function _(_0x14e924,_0x4e9457,_0x11c49b,_0x37942f,_0x54d9cc=wallIntersections(_0x11c49b),_0x50730f={}){const _0xaac842=_0x762c0,_0x3606be=axisLockedPoint(_0x14e924,_0x4e9457),_0x5d4fbe=_0x3606be['axis']===_0xaac842(0x11f)?'x':'y',_0x412468=Math['max'](1e-7,_0x37942f*0.000001),_0x29cacd=_0x3606be['axis']==='vertical'?'垂直':'水平',_0x3641c7=[..._0x50730f['snapEndpoints']===!0x1?[]:_0x11c49b['flatMap'](_0x356c6c=>[{'point':_0x356c6c['start'],'kind':'endpoint','targetId':_0x356c6c['id'],'label':_0x29cacd+_0xaac842(0x12e)},{'point':_0x356c6c['end'],'kind':_0xaac842(0x135),'targetId':_0x356c6c['id'],'label':_0x29cacd+'\x20·\x20端点'}]),..._0x50730f[_0xaac842(0x14f)]===!0x1?[]:_0x54d9cc['map'](_0x4d912f=>({'point':_0x4d912f,'kind':'intersection','label':_0x29cacd+'\x20·\x20交点'}))]['filter'](_0x1c2177=>Math[_0xaac842(0x152)](_0x1c2177['point'][_0x5d4fbe]-_0x4e9457[_0x5d4fbe])<=_0x412468),_0x301dc0=W(_0x14e924,_0x3641c7,_0x37942f);if(_0x301dc0)return _0x301dc0;if(_0x50730f['snapSegments']!==!0x1){const _0x1b6b94=$(_0x14e924,_0x4e9457,_0x11c49b,_0x37942f,_0x3606be['axis']);if(_0x1b6b94)return _0x1b6b94;}return{..._0x3606be,'kind':'axis','distance':distance(_0x14e924,_0x3606be[_0xaac842(0x13d)])};}export function snapPoint(_0x5928b5,_0x3bd11c,_0x2a20a5={}){const _0xaa2089=_0x762c0,_0x14d74b=Math['max'](Number(_0x2a20a5['zoom'])||0x1,1e-7),_0x5188b0=(Number(_0x2a20a5['screenTolerance'])||0xc)/_0x14d74b,_0x470115=Array['isArray'](_0x2a20a5['intersections'])?_0x2a20a5['intersections']:null;if(_0x2a20a5['forceOrthogonalAxis']===!0x0&&_0x2a20a5['anchor']){const _0x1ea08f=_0x2a20a5['snapIntersections']===!0x1?[]:_0x470115||wallIntersections(_0x3bd11c);return _(_0x5928b5,_0x2a20a5['anchor'],_0x3bd11c,_0x5188b0,_0x1ea08f,_0x2a20a5);}const _0x2243bb=[];if(_0x2a20a5['snapEndpoints']!==!0x1){for(const _0x30fd57 of _0x3bd11c)_0x2243bb['push']({'point':_0x30fd57['start'],'kind':_0xaa2089(0x135),'targetId':_0x30fd57['id'],'label':'端点'},{'point':_0x30fd57['end'],'kind':'endpoint','targetId':_0x30fd57['id'],'label':'端点'});}const _0x5f30ac=W(_0x5928b5,_0x2243bb,_0x5188b0);if(_0x5f30ac)return _0x5f30ac;if(_0x2a20a5[_0xaa2089(0x14f)]!==!0x1){const _0x228d79=W(_0x5928b5,(_0x470115||wallIntersections(_0x3bd11c))['map'](_0x1c484f=>({'point':_0x1c484f,'kind':'intersection','label':'交点'})),_0x5188b0);if(_0x228d79)return _0x228d79;}if(_0x2a20a5[_0xaa2089(0x11d)]===!0x0&&_0x2a20a5['snapOrthogonal']!==!0x1&&_0x2a20a5[_0xaa2089(0x10e)]){const _0x5a09ee=G(_0x5928b5,_0x2a20a5['anchor'],_0x3bd11c,_0x5188b0);if(_0x5a09ee)return _0x5a09ee;}if(_0x2a20a5[_0xaa2089(0x125)]!==!0x1){const _0xbd9cc0=_0x3bd11c['map'](_0x433f50=>{const _0x497252=_0xaa2089,_0x3caf8=projectPointToSegment(_0x5928b5,_0x433f50['start'],_0x433f50[_0x497252(0x141)]);return{'point':_0x3caf8[_0x497252(0x13d)],'kind':_0x497252(0x124),'targetId':_0x433f50['id'],'label':'墙线','distance':_0x3caf8['distance']};})[_0xaa2089(0x126)](_0x481387=>_0x481387['distance']<=_0x5188b0)['sort']((_0xc36cb4,_0x1c2185)=>_0xc36cb4['distance']-_0x1c2185['distance'])[0x0];if(_0xbd9cc0)return _0xbd9cc0;}if(_0x2a20a5['snapAngles']!==!0x1&&_0x2a20a5['anchor']){const _0x239ab9=_0x5928b5['x']-_0x2a20a5[_0xaa2089(0x10e)]['x'],_0x43ec80=_0x5928b5['y']-_0x2a20a5['anchor']['y'],_0x534a6e=Math['hypot'](_0x239ab9,_0x43ec80);if(_0x534a6e>1e-7){const _0x2339a5=(Number(_0x2a20a5[_0xaa2089(0x13e)])||0xf)*Math['PI']/0xb4,_0xc26d6c=Math['atan2'](_0x43ec80,_0x239ab9),_0x1e4a1b=Math['round'](_0xc26d6c/_0x2339a5)*_0x2339a5,_0x5dceb3={'x':_0x2a20a5['anchor']['x']+Math[_0xaa2089(0x13f)](_0x1e4a1b)*_0x534a6e,'y':_0x2a20a5['anchor']['y']+Math['sin'](_0x1e4a1b)*_0x534a6e},_0x163e68=distance(_0x5928b5,_0x5dceb3);if(_0x163e68<=_0x5188b0){const _0x13818b=(_0x1e4a1b*0xb4/Math['PI']+0x168)%0x168;return{'point':_0x5dceb3,'kind':_0xaa2089(0x145),'label':Math['round'](_0x13818b)+'°','distance':_0x163e68};}}}const _0x319ba5=Number(_0x2a20a5[_0xaa2089(0x112)])||0x0;if(_0x2a20a5[_0xaa2089(0x118)]!==!0x1&&_0x319ba5>1e-7){const _0x36d93a={'x':Math['round'](_0x5928b5['x']/_0x319ba5)*_0x319ba5,'y':Math['round'](_0x5928b5['y']/_0x319ba5)*_0x319ba5},_0x45e9c8=distance(_0x5928b5,_0x36d93a);if(_0x45e9c8<=_0x5188b0)return{'point':_0x36d93a,'kind':'grid','label':'网格','distance':_0x45e9c8};}return{'point':{..._0x5928b5},'kind':null,'label':'','distance':0x0};}export function nearestWall(_0x21e303,_0x38269b,_0x217363=0x1/0x0){const _0x113153=_0x762c0;let _0x391663=null;for(const _0xf1d0ef of _0x38269b){const _0x5a967e=projectPointToSegment(_0x21e303,_0xf1d0ef['start'],_0xf1d0ef['end']);_0x5a967e[_0x113153(0x134)]>_0x217363||_0x391663&&_0x5a967e['distance']>=_0x391663['distance']||(_0x391663={'wall':_0xf1d0ef,..._0x5a967e});}return _0x391663;}export function wallLengthMeters(_0x38a8c3,_0x4a678f){const _0x1f5371=_0x762c0;return distance(_0x38a8c3[_0x1f5371(0x140)],_0x38a8c3['end'])/Math['max'](Number(_0x4a678f)||0x1,1e-7);}export function clampWindowT(_0x317861,_0x282370,_0x5c5a24){const _0x527f7d=_0x762c0,_0x4c92e1=wallLengthMeters(_0x317861,_0x5c5a24);if(_0x4c92e1<=1e-7)return 0.5;const _0x3b058f=Math['min'](Math[_0x527f7d(0x139)](Number(_0x282370['width'])||0x0,0x0)/0x2,_0x4c92e1/0x2);return clamp(Number(_0x282370['t'])||0x0,_0x3b058f/_0x4c92e1,0x1-_0x3b058f/_0x4c92e1);}export function doorLeafRotation(_0x79e2ca,_0x3410b6=Math['PI']/0x2){const _0xa8f45a=_0x762c0;return-(_0x79e2ca?.[_0xa8f45a(0x155)]===-0x1?-0x1:0x1)*_0x3410b6;}export function wallJoinExtensions(_0x2ba553,_0x837e5b=0.001,_0x5b54ef=0x4){const _0x31ee4d=_0x762c0,_0x1a9dbf=Math['max'](Number(_0x837e5b)||0x0,1e-7),_0x445524=Math['max'](Number(_0x5b54ef)||0x0,0x1),_0x2e1817=Object['fromEntries']((_0x2ba553||[])['map'](_0x178a60=>[_0x178a60['id'],{'start':0x0,'end':0x0}])),_0x4cd5f1=[],_0x220566=_0x4d4349=>{let _0xcb2982=_0x4cd5f1['find'](_0x5c4a5b=>distance(_0x5c4a5b['point'],_0x4d4349)<=_0x1a9dbf);return _0xcb2982||(_0xcb2982={'point':{..._0x4d4349},'incidents':[]},_0x4cd5f1['push'](_0xcb2982)),_0xcb2982;};for(const _0x54cd75 of _0x2ba553||[]){const _0x304978=_0x54cd75[_0x31ee4d(0x141)]['x']-_0x54cd75['start']['x'],_0x5d094f=_0x54cd75[_0x31ee4d(0x141)]['y']-_0x54cd75['start']['y'],_0x5221e8=Math[_0x31ee4d(0x116)](_0x304978,_0x5d094f);if(_0x5221e8<=_0x1a9dbf)continue;const _0x306a02=Math['max'](Number(_0x54cd75[_0x31ee4d(0x142)])||0x0,0x0)/0x2;_0x220566(_0x54cd75['start'])['incidents'][_0x31ee4d(0x137)]({'wallId':_0x54cd75['id'],'endpoint':_0x31ee4d(0x140),'x':_0x304978/_0x5221e8,'y':_0x5d094f/_0x5221e8,'halfThickness':_0x306a02}),_0x220566(_0x54cd75[_0x31ee4d(0x141)])['incidents'][_0x31ee4d(0x137)]({'wallId':_0x54cd75['id'],'endpoint':'end','x':-_0x304978/_0x5221e8,'y':-_0x5d094f/_0x5221e8,'halfThickness':_0x306a02});}const _0x4cff2e=0.0001;for(const _0xd140be of _0x4cd5f1){if(_0xd140be['incidents']['length']<0x2)continue;const _0x1f51ac=_0xd140be['incidents']['map'](_0xe83009=>({..._0xe83009,'angle':Math['atan2'](_0xe83009['y'],_0xe83009['x'])}))['sort']((_0x24f17a,_0x134229)=>_0x24f17a['angle']-_0x134229['angle']);for(let _0x55a2bf=0x0;_0x55a2bf<_0x1f51ac['length'];_0x55a2bf+=0x1){const _0x495ec9=_0x1f51ac[_0x55a2bf],_0x2a6252=_0x1f51ac[(_0x55a2bf+0x1)%_0x1f51ac['length']],_0x2b7110=(_0x2a6252['angle']-_0x495ec9['angle']+Math['PI']*0x2)%(Math['PI']*0x2);if(_0x2b7110<=_0x4cff2e||_0x2b7110>=Math['PI']-_0x4cff2e)continue;const _0x647958=Math['sin'](_0x2b7110),_0x19844c=Math['cos'](_0x2b7110);if(_0x647958<=_0x4cff2e)continue;const _0x1523d3=Math['max'](_0x495ec9['halfThickness'],_0x2a6252[_0x31ee4d(0x14c)],0.000001)*_0x445524,_0x47a4a6=clamp((_0x2a6252['halfThickness']+_0x495ec9[_0x31ee4d(0x14c)]*_0x19844c)/_0x647958,0x0,_0x1523d3),_0x139e65=clamp((_0x495ec9[_0x31ee4d(0x14c)]+_0x2a6252['halfThickness']*_0x19844c)/_0x647958,0x0,_0x1523d3);_0x2e1817[_0x495ec9['wallId']][_0x495ec9['endpoint']]=Math['max'](_0x2e1817[_0x495ec9['wallId']][_0x495ec9['endpoint']],_0x47a4a6),_0x2e1817[_0x2a6252[_0x31ee4d(0x158)]][_0x2a6252['endpoint']]=Math[_0x31ee4d(0x139)](_0x2e1817[_0x2a6252[_0x31ee4d(0x158)]][_0x2a6252['endpoint']],_0x139e65);}}return _0x2e1817;}export function wallSolidPieces(_0x4610ac,_0x9d2f0a,_0xd05b21,_0x538159){const _0x4c0879=_0x762c0,_0x4a97be=wallLengthMeters(_0x4610ac,_0xd05b21),_0xa28bda=Math['max'](Number(_0x538159)||0x0,0x0);if(_0x4a97be<=1e-7||_0xa28bda<=1e-7)return[];const _0x10b347=_0x9d2f0a['filter'](_0x3873ae=>_0x3873ae['wallId']===_0x4610ac['id'])['map'](_0x5b2315=>{const _0x335a8b=clamp(Number(_0x5b2315['width'])||0x0,0x0,_0x4a97be),_0x508455=clampWindowT(_0x4610ac,_0x5b2315,_0xd05b21)*_0x4a97be,_0x1a6b48=clamp(Number(_0x5b2315['sill'])||0x0,0x0,_0xa28bda),_0x1d7292=clamp(_0x1a6b48+Math['max'](Number(_0x5b2315['height'])||0x0,0x0),_0x1a6b48,_0xa28bda);return{'start':clamp(_0x508455-_0x335a8b/0x2,0x0,_0x4a97be),'end':clamp(_0x508455+_0x335a8b/0x2,0x0,_0x4a97be),'bottom':_0x1a6b48,'top':_0x1d7292};})['filter'](_0x372c59=>_0x372c59['end']-_0x372c59['start']>1e-7&&_0x372c59['top']-_0x372c59['bottom']>1e-7),_0x498947=[...new Set([0x0,_0x4a97be,..._0x10b347['flatMap'](_0x4e1362=>[_0x4e1362['start'],_0x4e1362['end']])])]['sort']((_0x571cb1,_0x5d9af2)=>_0x571cb1-_0x5d9af2),_0x501ba5=[];for(let _0x5be40b=0x0;_0x5be40b<_0x498947['length']-0x1;_0x5be40b+=0x1){const _0x36d1c7=_0x498947[_0x5be40b],_0x44838c=_0x498947[_0x5be40b+0x1];if(_0x44838c-_0x36d1c7<=1e-7)continue;const _0x53ceda=(_0x36d1c7+_0x44838c)/0x2,_0x4af325=_0x10b347[_0x4c0879(0x126)](_0x467c22=>_0x53ceda>_0x467c22['start']-1e-7&&_0x53ceda<_0x467c22[_0x4c0879(0x141)]+1e-7)['map'](_0x2d30cc=>[_0x2d30cc['bottom'],_0x2d30cc['top']])['sort']((_0x4b30d7,_0x1d7e39)=>_0x4b30d7[0x0]-_0x1d7e39[0x0]);if(!_0x4af325['length']){_0x501ba5[_0x4c0879(0x137)]({'start':_0x36d1c7,'end':_0x44838c,'bottom':0x0,'top':_0xa28bda});continue;}const _0x1e27f5=[];for(const _0x456bbd of _0x4af325){const _0x2b02a3=_0x1e27f5['at'](-0x1);_0x2b02a3&&_0x456bbd[0x0]<=_0x2b02a3[0x1]+1e-7?_0x2b02a3[0x1]=Math['max'](_0x2b02a3[0x1],_0x456bbd[0x1]):_0x1e27f5['push']([..._0x456bbd]);}let _0x168dee=0x0;for(const [_0x28985e,_0x219c2a]of _0x1e27f5)_0x28985e-_0x168dee>1e-7&&_0x501ba5[_0x4c0879(0x137)]({'start':_0x36d1c7,'end':_0x44838c,'bottom':_0x168dee,'top':_0x28985e}),_0x168dee=Math[_0x4c0879(0x139)](_0x168dee,_0x219c2a);_0xa28bda-_0x168dee>1e-7&&_0x501ba5['push']({'start':_0x36d1c7,'end':_0x44838c,'bottom':_0x168dee,'top':_0xa28bda});}return _0x501ba5;}function _0x4090(){const _0x459468=['firstKey','distance','endpoint','some','push','width','max','cuts','sin','round','point','angleStepDegrees','cos','start','end','thickness','map','3145542obQmnC','angle','slice','firstOuter','get','type','enabled','min','halfThickness','1692465bTYdln','floor','snapIntersections','isFinite','background','abs','length','4LGAsck','swing','area','minY','wallId','turn','1117893GNyPIB','anchor','sort','opacity','key','gridSize','__ungrouped-','height','from','hypot','pop','snapGrid','reduce','forEach','secondKey','sqrt','preferVerticalAxis','join','vertical','710252WQXuWt','8tfMvjs','1190980pNBxRL','set','segment','snapSegments','filter','brightness','13026735nSAoBv','downlight','has','minX','toFixed','groupId','\x20·\x20端点','isArray','3494477EBfEFw','secondOuter','wall'];_0x4090=function(){return _0x459468;};return _0x4090();}export function pointInRotatedRectangle(_0x26ccfc,_0x4c3ccc,_0x426ef2){const _0x2131ed=_0x762c0,_0x13e7f3=-(Number(_0x4c3ccc['rotation'])||0x0)*Math['PI']/0xb4,_0x134c80=_0x26ccfc['x']-_0x4c3ccc['x'],_0x5ef6ce=_0x26ccfc['y']-_0x4c3ccc['y'],_0x2b94a1=_0x134c80*Math['cos'](_0x13e7f3)-_0x5ef6ce*Math[_0x2131ed(0x13b)](_0x13e7f3),_0x7f45fa=_0x134c80*Math['sin'](_0x13e7f3)+_0x5ef6ce*Math['cos'](_0x13e7f3),_0x356123=Math[_0x2131ed(0x139)](Number(_0x4c3ccc['width'])||0x0,0x0)*_0x426ef2/0x2,_0x1649b7=Math[_0x2131ed(0x139)](Number(_0x4c3ccc['depth'])||0x0,0x0)*_0x426ef2/0x2;return Math['abs'](_0x2b94a1)<=_0x356123&&Math[_0x2131ed(0x152)](_0x7f45fa)<=_0x1649b7;}export function resizeRotatedItemFromCorner(_0x1d1d25,_0x3f27a0,_0x2d5457,_0x9377a0,_0x2165ec,_0x387603=!0x1,_0x32e4aa={}){const _0x2645c0=_0x762c0,_0x8c370d=Math['max'](Number(_0x2165ec)||0x0,1e-7),_0x20ba01=_0x3f27a0?.['x']<0x0?-0x1:0x1,_0x164892=_0x3f27a0?.['y']<0x0?-0x1:0x1,_0x33d2a3=-(Number(_0x1d1d25['rotation'])||0x0)*Math['PI']/0xb4,_0xf54d7=_0x9377a0['x']-_0x2d5457['x'],_0x212de6=_0x9377a0['y']-_0x2d5457['y'],_0x5df8aa=_0xf54d7*Math['cos'](_0x33d2a3)-_0x212de6*Math['sin'](_0x33d2a3),_0x17e6cb=_0xf54d7*Math[_0x2645c0(0x13b)](_0x33d2a3)+_0x212de6*Math['cos'](_0x33d2a3),_0x209f47=_0x20ba01*_0x5df8aa/_0x8c370d,_0xe6701=_0x164892*_0x17e6cb/_0x8c370d,_0x1df0a2=Math['max'](Number(_0x1d1d25[_0x2645c0(0x138)])||0.1,0.1),_0x47b2ef=Math[_0x2645c0(0x139)](Number(_0x1d1d25['depth'])||0.1,0.1),_0x1fee3e=Number(_0x1d1d25['height']);let _0x34880d=clamp(_0x209f47,0.1,0x8),_0x25ca60=clamp(_0xe6701,0.1,0x8),_0x484ee2=0x1;if(_0x387603){const _0x55c053=Math['max'](Number(_0x32e4aa['minimum'])||0x0,1e-7),_0x6f0c4=Math['max'](Number(_0x32e4aa['maximum'])||Number['POSITIVE_INFINITY'],_0x55c053);_0x484ee2=clamp(Math['max'](_0x209f47/_0x1df0a2,_0xe6701/_0x47b2ef),_0x55c053,_0x6f0c4),_0x34880d=_0x1df0a2*_0x484ee2,_0x25ca60=_0x47b2ef*_0x484ee2;}const _0x2a6034=_0x20ba01*_0x34880d*_0x8c370d/0x2,_0x1dae92=_0x164892*_0x25ca60*_0x8c370d/0x2,_0x5c57a7=(Number(_0x1d1d25['rotation'])||0x0)*Math['PI']/0xb4,_0x4c5af1={'x':_0x2d5457['x']+_0x2a6034*Math['cos'](_0x5c57a7)-_0x1dae92*Math['sin'](_0x5c57a7),'y':_0x2d5457['y']+_0x2a6034*Math[_0x2645c0(0x13b)](_0x5c57a7)+_0x1dae92*Math['cos'](_0x5c57a7),'width':_0x34880d,'depth':_0x25ca60};return Number['isFinite'](_0x1fee3e)&&_0x1fee3e>0x0&&(_0x4c5af1['height']=_0x387603?_0x1fee3e*_0x484ee2:_0x1fee3e),_0x4c5af1;}export function itemRotationFromPointers(_0x1d26d8,_0x1118b1,_0x2df6c9,_0x15e235,_0x1544aa=0x0){const _0x2ec24a=Math['atan2'](_0x2df6c9['y']-_0x1118b1['y'],_0x2df6c9['x']-_0x1118b1['x']),_0x42873a=Math['atan2'](_0x15e235['y']-_0x1118b1['y'],_0x15e235['x']-_0x1118b1['x']);let _0x56d118=(Number(_0x1d26d8)||0x0)+(_0x42873a-_0x2ec24a)*0xb4/Math['PI'];const _0x365d2b=Math['max'](Number(_0x1544aa)||0x0,0x0);return _0x365d2b>0x0&&(_0x56d118=Math['round'](_0x56d118/_0x365d2b)*_0x365d2b),(_0x56d118%0x168+0x168)%0x168;}export function polygonArea(_0x30b332){const _0x3621fd=_0x762c0;let _0x35f96e=0x0;for(let _0xeb8a68=0x0;_0xeb8a68<_0x30b332[_0x3621fd(0x153)];_0xeb8a68+=0x1){const _0x58b48e=_0x30b332[_0xeb8a68],_0x52ae44=_0x30b332[(_0xeb8a68+0x1)%_0x30b332['length']];_0x35f96e+=_0x58b48e['x']*_0x52ae44['y']-_0x52ae44['x']*_0x58b48e['y'];}return _0x35f96e/0x2;}export function pointInPolygon(_0x38921e,_0x581ce2,_0x1f4d3c=1e-7){const _0x2ebf33=_0x762c0;if(!Array[_0x2ebf33(0x12f)](_0x581ce2)||_0x581ce2[_0x2ebf33(0x153)]<0x3)return!0x1;const _0x444843=Math['max'](Number(_0x1f4d3c)||0x0,1e-7);let _0x65c9f0=!0x1;for(let _0x35ee5e=0x0;_0x35ee5e<_0x581ce2['length'];_0x35ee5e+=0x1){const _0x49ebfa=_0x581ce2[_0x35ee5e],_0x23ed91=_0x581ce2[(_0x35ee5e+0x1)%_0x581ce2[_0x2ebf33(0x153)]];if(projectPointToSegment(_0x38921e,_0x49ebfa,_0x23ed91)['distance']<=_0x444843)return!0x0;if(!(_0x49ebfa['y']>_0x38921e['y']!=_0x23ed91['y']>_0x38921e['y']))continue;_0x49ebfa['x']+(_0x38921e['y']-_0x49ebfa['y'])*(_0x23ed91['x']-_0x49ebfa['x'])/(_0x23ed91['y']-_0x49ebfa['y'])>_0x38921e['x']&&(_0x65c9f0=!_0x65c9f0);}return _0x65c9f0;}function T(_0x3e1d76,_0x1ef9d7){return _0x3e1d76['x']*_0x1ef9d7['y']-_0x3e1d76['y']*_0x1ef9d7['x'];}function O(_0x200a4e,_0x334044){return{'x':_0x200a4e['x']-_0x334044['x'],'y':_0x200a4e['y']-_0x334044['y']};}function X(_0x4b572f,_0x193b58,_0x145894){return{'x':_0x4b572f['x']+(_0x193b58['x']-_0x4b572f['x'])*_0x145894,'y':_0x4b572f['y']+(_0x193b58['y']-_0x4b572f['y'])*_0x145894};}function A(_0x2431e4,_0x39642d,_0x564ff0,_0x33b45a){_0x564ff0<-_0x33b45a||_0x564ff0>0x1+_0x33b45a||_0x2431e4[_0x39642d]['push'](clamp(_0x564ff0,0x0,0x1));}function R(_0x4a61d9,_0x393c5c){const _0x5a20a0=_0x762c0,_0x33b07e=_0x4a61d9['filter']((_0x513004,_0x5931d8)=>_0x5931d8===0x0||distance(_0x513004,_0x4a61d9[_0x5931d8-0x1])>_0x393c5c);if(_0x33b07e['length']>0x1&&distance(_0x33b07e[0x0],_0x33b07e['at'](-0x1))<=_0x393c5c&&_0x33b07e[_0x5a20a0(0x117)](),_0x33b07e['length']<0x3)return[];let _0x2479ef=!0x0;for(;_0x2479ef&&_0x33b07e[_0x5a20a0(0x153)]>=0x3;){_0x2479ef=!0x1;for(let _0x12ccf5=0x0;_0x12ccf5<_0x33b07e['length'];_0x12ccf5+=0x1){const _0x2b6fca=_0x33b07e[(_0x12ccf5-0x1+_0x33b07e['length'])%_0x33b07e['length']],_0x26d18c=_0x33b07e[_0x12ccf5],_0x182f21=_0x33b07e[(_0x12ccf5+0x1)%_0x33b07e['length']],_0x4cd729=O(_0x26d18c,_0x2b6fca),_0x1a3abd=O(_0x182f21,_0x26d18c),_0x3665cf=Math['max'](Math['hypot'](_0x4cd729['x'],_0x4cd729['y'])*Math['hypot'](_0x1a3abd['x'],_0x1a3abd['y']),0x1);if(!(Math['abs'](T(_0x4cd729,_0x1a3abd))>_0x393c5c*_0x3665cf)){_0x33b07e['splice'](_0x12ccf5,0x1),_0x2479ef=!0x0;break;}}}return _0x33b07e;}export function unionPolygonLoops(_0x52aeb3,_0x457516=0.000001){const _0x3102a8=_0x762c0,_0x30ddbb=Math[_0x3102a8(0x139)](Number(_0x457516)||0x0,1e-7),_0x425c40=(_0x52aeb3||[])[_0x3102a8(0x126)](_0x13c4a=>Array['isArray'](_0x13c4a)&&_0x13c4a['length']>=0x3)[_0x3102a8(0x143)](_0x3426c3=>_0x3426c3[_0x3102a8(0x143)](_0x288a7c=>({'x':Number(_0x288a7c['x'])||0x0,'y':Number(_0x288a7c['y'])||0x0})))['filter'](_0x2f30ad=>Math[_0x3102a8(0x152)](polygonArea(_0x2f30ad))>_0x30ddbb*_0x30ddbb);if(!_0x425c40['length'])return[];const _0x54472d=[];for(const _0x22dcc8 of _0x425c40)for(let _0x27aec9=0x0;_0x27aec9<_0x22dcc8['length'];_0x27aec9+=0x1){const _0x26fa73=_0x22dcc8[_0x27aec9],_0x5c3577=_0x22dcc8[(_0x27aec9+0x1)%_0x22dcc8['length']];distance(_0x26fa73,_0x5c3577)>_0x30ddbb&&_0x54472d[_0x3102a8(0x137)]({'start':_0x26fa73,'end':_0x5c3577});}const _0x2425df=_0x54472d['map'](()=>[0x0,0x1]);for(let _0x384191=0x0;_0x384191<_0x54472d['length'];_0x384191+=0x1){const _0x1eee88=_0x54472d[_0x384191],_0x411c56=O(_0x1eee88['end'],_0x1eee88['start']),_0x79b653=_0x411c56['x']*_0x411c56['x']+_0x411c56['y']*_0x411c56['y'];for(let _0x5f553c=_0x384191+0x1;_0x5f553c<_0x54472d[_0x3102a8(0x153)];_0x5f553c+=0x1){const _0x4d6e02=_0x54472d[_0x5f553c],_0x54161f=O(_0x4d6e02['end'],_0x4d6e02['start']),_0x553d80=_0x54161f['x']*_0x54161f['x']+_0x54161f['y']*_0x54161f['y'],_0x1eabde=O(_0x4d6e02['start'],_0x1eee88['start']),_0x9fb237=T(_0x411c56,_0x54161f),_0x4e2c4c=_0x30ddbb*Math[_0x3102a8(0x139)](Math[_0x3102a8(0x11c)](_0x79b653*_0x553d80),0x1);if(Math[_0x3102a8(0x152)](_0x9fb237)>_0x4e2c4c){const _0x55332d=T(_0x1eabde,_0x54161f)/_0x9fb237,_0x5075a5=T(_0x1eabde,_0x411c56)/_0x9fb237;if(_0x55332d<-_0x30ddbb||_0x55332d>0x1+_0x30ddbb||_0x5075a5<-_0x30ddbb||_0x5075a5>0x1+_0x30ddbb)continue;A(_0x2425df,_0x384191,_0x55332d,_0x30ddbb),A(_0x2425df,_0x5f553c,_0x5075a5,_0x30ddbb);continue;}if(Math['abs'](T(_0x1eabde,_0x411c56))>_0x30ddbb*Math['max'](Math['sqrt'](_0x79b653),0x1))continue;const _0x3250d6=(_0x1eabde['x']*_0x411c56['x']+_0x1eabde['y']*_0x411c56['y'])/_0x79b653,_0xe4c916=O(_0x4d6e02['end'],_0x1eee88[_0x3102a8(0x140)]),_0x1ccbc6=(_0xe4c916['x']*_0x411c56['x']+_0xe4c916['y']*_0x411c56['y'])/_0x79b653;A(_0x2425df,_0x384191,_0x3250d6,_0x30ddbb),A(_0x2425df,_0x384191,_0x1ccbc6,_0x30ddbb);const _0x3fea4d=O(_0x1eee88['start'],_0x4d6e02['start']),_0x5be01e=(_0x3fea4d['x']*_0x54161f['x']+_0x3fea4d['y']*_0x54161f['y'])/_0x553d80,_0x49d712=O(_0x1eee88['end'],_0x4d6e02[_0x3102a8(0x140)]),_0xfad4c2=(_0x49d712['x']*_0x54161f['x']+_0x49d712['y']*_0x54161f['y'])/_0x553d80;A(_0x2425df,_0x5f553c,_0x5be01e,_0x30ddbb),A(_0x2425df,_0x5f553c,_0xfad4c2,_0x30ddbb);}}const _0x5a5146=_0x4b5788=>_0x425c40[_0x3102a8(0x136)](_0x32421f=>pointInPolygon(_0x4b5788,_0x32421f,_0x30ddbb)),_0xdaa379=_0x30ddbb*0x8,_0x1e39ca=new Map(),_0x7e6204=_0x14ed83=>{const _0x4ce31e=Math['round'](_0x14ed83['x']/_0xdaa379)*_0xdaa379,_0x4a1ebb=Math['round'](_0x14ed83['y']/_0xdaa379)*_0xdaa379,_0x10090e=Math['round'](_0x4ce31e/_0xdaa379)+','+Math['round'](_0x4a1ebb/_0xdaa379);return _0x1e39ca['has'](_0x10090e)||_0x1e39ca['set'](_0x10090e,{'key':_0x10090e,'point':{'x':_0x4ce31e,'y':_0x4a1ebb}}),_0x1e39ca['get'](_0x10090e);},_0x33df28=[],_0x1ea58d=new Set();_0x54472d['forEach']((_0x273d3d,_0x1ddf2d)=>{const _0x3d2894=_0x3102a8,_0x271295=[..._0x2425df[_0x1ddf2d]]['sort']((_0x5aa2cf,_0x3f927b)=>_0x5aa2cf-_0x3f927b)['filter']((_0x414486,_0x12f2a6,_0x49da90)=>_0x12f2a6===0x0||_0x414486-_0x49da90[_0x12f2a6-0x1]>_0x30ddbb);for(let _0x200a58=0x0;_0x200a58<_0x271295['length']-0x1;_0x200a58+=0x1){const _0x4edad7=X(_0x273d3d[_0x3d2894(0x140)],_0x273d3d['end'],_0x271295[_0x200a58]),_0x441388=X(_0x273d3d['start'],_0x273d3d[_0x3d2894(0x141)],_0x271295[_0x200a58+0x1]),_0x25a0cb=distance(_0x4edad7,_0x441388);if(_0x25a0cb<=_0x30ddbb)continue;const _0x2d8fc3={'x':(_0x441388['x']-_0x4edad7['x'])/_0x25a0cb,'y':(_0x441388['y']-_0x4edad7['y'])/_0x25a0cb},_0x41248b=X(_0x4edad7,_0x441388,0.5),_0x139881=Math['min'](_0x25a0cb*0.2,Math[_0x3d2894(0x139)](_0x30ddbb*0x20,0.00001)),_0x1bd6b8={'x':_0x41248b['x']-_0x2d8fc3['y']*_0x139881,'y':_0x41248b['y']+_0x2d8fc3['x']*_0x139881},_0x7d4ef5={'x':_0x41248b['x']+_0x2d8fc3['y']*_0x139881,'y':_0x41248b['y']-_0x2d8fc3['x']*_0x139881},_0x8d42e3=_0x5a5146(_0x1bd6b8),_0x53cfe0=_0x5a5146(_0x7d4ef5);if(_0x8d42e3===_0x53cfe0)continue;const _0x5e9d22=_0x7e6204(_0x8d42e3?_0x4edad7:_0x441388),_0x17e55a=_0x7e6204(_0x8d42e3?_0x441388:_0x4edad7);if(_0x5e9d22['key']===_0x17e55a[_0x3d2894(0x111)])continue;const _0x1992ca=[_0x5e9d22['key'],_0x17e55a['key']][_0x3d2894(0x10f)]()[_0x3d2894(0x11e)]('|');_0x1ea58d['has'](_0x1992ca)||(_0x1ea58d['add'](_0x1992ca),_0x33df28['push']({'start':_0x5e9d22,'end':_0x17e55a}));}});const _0x980cae=new Map();_0x33df28['forEach']((_0x38de38,_0x40e40a)=>{const _0x1da369=_0x3102a8;_0x980cae['has'](_0x38de38['start'][_0x1da369(0x111)])||_0x980cae['set'](_0x38de38['start']['key'],[]),_0x980cae['get'](_0x38de38['start']['key'])['push'](_0x40e40a);});const _0x500391=new Set(_0x33df28['map']((_0x2ca37c,_0x124f69)=>_0x124f69)),_0x5d4f43=[];for(;_0x500391['size'];){const _0x51e62a=_0x500391['values']()['next']()['value'],_0x37e30b=_0x33df28[_0x51e62a],_0x4c04b5=[_0x37e30b['start']['point']];let _0x100dbe=_0x51e62a,_0x2c79f0=!0x1;for(let _0x2a62d5=0x0;_0x2a62d5<=_0x33df28['length'];_0x2a62d5+=0x1){const _0x48e03e=_0x33df28[_0x100dbe];if(_0x500391['delete'](_0x100dbe),_0x48e03e['end'][_0x3102a8(0x111)]===_0x37e30b['start']['key']){_0x2c79f0=!0x0;break;}_0x4c04b5[_0x3102a8(0x137)](_0x48e03e['end'][_0x3102a8(0x13d)]);const _0x553f59=(_0x980cae[_0x3102a8(0x148)](_0x48e03e[_0x3102a8(0x141)]['key'])||[])['filter'](_0x5705de=>_0x500391['has'](_0x5705de));if(!_0x553f59[_0x3102a8(0x153)])break;if(_0x553f59['length']===0x1){_0x100dbe=_0x553f59[0x0];continue;}const _0x3e4308=O(_0x48e03e[_0x3102a8(0x141)][_0x3102a8(0x13d)],_0x48e03e['start']['point']);_0x100dbe=_0x553f59['map'](_0x34d0c4=>{const _0x485079=_0x33df28[_0x34d0c4],_0x29b0fa=O(_0x485079['end']['point'],_0x485079['start']['point']);return{'index':_0x34d0c4,'turn':Math['atan2'](T(_0x3e4308,_0x29b0fa),_0x3e4308['x']*_0x29b0fa['x']+_0x3e4308['y']*_0x29b0fa['y'])};})['sort']((_0x3c0914,_0xa99f4e)=>_0xa99f4e[_0x3102a8(0x10c)]-_0x3c0914['turn'])[0x0]['index'];}if(!_0x2c79f0)continue;const _0x229fa9=R(_0x4c04b5,_0x30ddbb*0x8);_0x229fa9['length']>=0x3&&Math['abs'](polygonArea(_0x229fa9))>_0x30ddbb*_0x30ddbb&&_0x5d4f43['push'](_0x229fa9);}return _0x5d4f43['sort']((_0x26634d,_0x458a32)=>Math['abs'](polygonArea(_0x458a32))-Math[_0x3102a8(0x152)](polygonArea(_0x26634d)));}export function validatedUnionPolygonLoops(_0x4af29f,_0x336d21=0.000001){const _0x4cba97=Math['max'](Number(_0x336d21)||0x0,1e-7),_0x1b2c80=(_0x4af29f||[])['filter'](_0x50cb94=>Array['isArray'](_0x50cb94)&&_0x50cb94['length']>=0x3)['filter'](_0x31a5d0=>Math['abs'](polygonArea(_0x31a5d0))>_0x4cba97*_0x4cba97);if(!_0x1b2c80['length'])return[];const _0x9b0bfc=unionPolygonLoops(_0x1b2c80,_0x4cba97);if(!_0x9b0bfc['length'])return[];const _0x51dbd8=_0x1b2c80['reduce']((_0xf63aa9,_0x3231f4)=>_0xf63aa9+Math['abs'](polygonArea(_0x3231f4)),0x0),_0xa409d5=_0x9b0bfc['reduce']((_0x4819ec,_0x5a30bb)=>_0x4819ec+polygonArea(_0x5a30bb),0x0),_0x4d6270=Math['max'](_0x51dbd8*0.001,_0x4cba97*_0x4cba97*0x400);return _0xa409d5<=_0x4d6270||_0xa409d5>_0x51dbd8+_0x4d6270?[]:_0x9b0bfc;}function j(_0x4938d7,_0x37aad3){const _0x18184d=_0x762c0,_0x1700b0=[],_0x2d1768=[],_0x8555c8=new Map(),_0x20fb59=_0xf14f1d=>{const _0x3bed11=_0x3f55,_0x13fc15=Math['floor'](_0xf14f1d['x']/_0x37aad3),_0x542fb1=Math[_0x3bed11(0x14e)](_0xf14f1d['y']/_0x37aad3);let _0x437814=-0x1;for(let _0x59a0b1=-0x1;_0x59a0b1<=0x1;_0x59a0b1+=0x1)for(let _0x4eb44d=-0x1;_0x4eb44d<=0x1;_0x4eb44d+=0x1)for(const _0x58c366 of _0x8555c8['get'](_0x13fc15+_0x59a0b1+','+(_0x542fb1+_0x4eb44d))||[])(_0x437814<0x0||_0x58c366<_0x437814)&&distance(_0x1700b0[_0x58c366],_0xf14f1d)<=_0x37aad3&&(_0x437814=_0x58c366);if(_0x437814>=0x0)return _0x437814;const _0x967878=_0x1700b0['length'];_0x1700b0[_0x3bed11(0x137)]({'x':_0xf14f1d['x'],'y':_0xf14f1d['y']}),_0x2d1768['push']([]);const _0x3029c2=_0x13fc15+','+_0x542fb1;return _0x8555c8[_0x3bed11(0x12a)](_0x3029c2)||_0x8555c8[_0x3bed11(0x123)](_0x3029c2,[]),_0x8555c8[_0x3bed11(0x148)](_0x3029c2)['push'](_0x967878),_0x967878;},_0x544aa9=(_0x2d1057,_0x1cc321)=>_0x2d1057<_0x1cc321?_0x2d1057+','+_0x1cc321:_0x1cc321+','+_0x2d1057,_0x2fa680=[],_0x17a742=new Set();for(const _0xe6b4e0 of _0x4938d7||[]){if(![_0xe6b4e0?.['start']?.['x'],_0xe6b4e0?.['start']?.['y'],_0xe6b4e0?.[_0x18184d(0x141)]?.['x'],_0xe6b4e0?.['end']?.['y']]['every'](Number['isFinite']))continue;const _0x340ebb=_0x20fb59(_0xe6b4e0['start']),_0x5f1468=_0x20fb59(_0xe6b4e0['end']);if(_0x340ebb===_0x5f1468)continue;_0x2d1768[_0x340ebb]['push'](_0xe6b4e0),_0x2d1768[_0x5f1468][_0x18184d(0x137)](_0xe6b4e0);const _0x538d6f=_0x544aa9(_0x340ebb,_0x5f1468);if(_0x17a742[_0x18184d(0x12a)](_0x538d6f))continue;_0x17a742['add'](_0x538d6f);const _0x46983d=_0x1700b0[_0x340ebb],_0x1216a6=_0x1700b0[_0x5f1468];_0x2fa680['push']({'start':_0x340ebb,'end':_0x5f1468,'minX':Math['min'](_0x46983d['x'],_0x1216a6['x']),'maxX':Math['max'](_0x46983d['x'],_0x1216a6['x']),'minY':Math['min'](_0x46983d['y'],_0x1216a6['y']),'maxY':Math['max'](_0x46983d['y'],_0x1216a6['y']),'cuts':[{'t':0x0,'node':_0x340ebb},{'t':0x1,'node':_0x5f1468}]});}const _0xb5fdfc=(_0x252094,_0x1c0e63)=>{const _0x515eb1=_0x18184d;if(_0x1c0e63===_0x252094[_0x515eb1(0x140)]||_0x1c0e63===_0x252094['end'])return;const _0x3c3627=projectPointToSegment(_0x1700b0[_0x1c0e63],_0x1700b0[_0x252094['start']],_0x1700b0[_0x252094[_0x515eb1(0x141)]]);_0x3c3627['t']>0x0&&_0x3c3627['t']<0x1&&_0x3c3627['distance']<=_0x37aad3&&_0x252094[_0x515eb1(0x13a)][_0x515eb1(0x137)]({'t':_0x3c3627['t'],'node':_0x1c0e63});};_0x2fa680['sort']((_0x2e4cca,_0x1a35fc)=>_0x2e4cca['minX']-_0x1a35fc['minX']);for(let _0x581590=0x0;_0x581590<_0x2fa680['length'];_0x581590+=0x1){const _0x56c704=_0x2fa680[_0x581590];for(let _0x525e21=_0x581590+0x1;_0x525e21<_0x2fa680['length'];_0x525e21+=0x1){const _0x2ac4c6=_0x2fa680[_0x525e21];if(_0x2ac4c6[_0x18184d(0x12b)]>_0x56c704['maxX']+_0x37aad3)break;if(_0x2ac4c6[_0x18184d(0x157)]>_0x56c704['maxY']+_0x37aad3||_0x2ac4c6['maxY']<_0x56c704['minY']-_0x37aad3)continue;_0xb5fdfc(_0x56c704,_0x2ac4c6[_0x18184d(0x140)]),_0xb5fdfc(_0x56c704,_0x2ac4c6['end']),_0xb5fdfc(_0x2ac4c6,_0x56c704[_0x18184d(0x140)]),_0xb5fdfc(_0x2ac4c6,_0x56c704['end']);const _0x5b9673=segmentIntersection(_0x1700b0[_0x56c704['start']],_0x1700b0[_0x56c704['end']],_0x1700b0[_0x2ac4c6['start']],_0x1700b0[_0x2ac4c6['end']]);if(_0x5b9673){const _0x7aaabb=_0x20fb59(_0x5b9673);_0xb5fdfc(_0x56c704,_0x7aaabb),_0xb5fdfc(_0x2ac4c6,_0x7aaabb);}}}const _0x513e40=[],_0x37ae93=new Set();for(const _0x4438e4 of _0x2fa680){_0x4438e4['cuts']['sort']((_0x4facfd,_0x12c1c5)=>_0x4facfd['t']-_0x12c1c5['t']);let _0x3d64ea=_0x4438e4['cuts'][0x0]['node'];for(const _0x4268ef of _0x4438e4['cuts']['slice'](0x1)){const _0x24e6a1=_0x4268ef['node'],_0x4971d5=_0x544aa9(_0x3d64ea,_0x24e6a1);_0x3d64ea!==_0x24e6a1&&!_0x37ae93['has'](_0x4971d5)&&(_0x37ae93['add'](_0x4971d5),_0x513e40['push']({'start':_0x3d64ea,'end':_0x24e6a1})),_0x3d64ea=_0x24e6a1;}}return{'nodes':_0x1700b0,'edges':_0x513e40,'endpointWalls':_0x2d1768};}function z(_0xac649e,_0x515bc8){const _0x2b74be=_0x762c0,{nodes:_0x5db2d8,edges:_0x1670ed}=j(_0xac649e,_0x515bc8),_0x27e1a0=Array[_0x2b74be(0x115)]({'length':_0x5db2d8['length']},()=>[]),_0x4d83e8=[];for(const _0x4d85dc of _0x1670ed){const _0x2bcbcc=_0x4d83e8[_0x2b74be(0x153)];_0x4d83e8[_0x2b74be(0x137)]({'start':_0x4d85dc['start'],'end':_0x4d85dc['end']},{'start':_0x4d85dc['end'],'end':_0x4d85dc['start']}),_0x27e1a0[_0x4d85dc['start']]['push'](_0x2bcbcc),_0x27e1a0[_0x4d85dc['end']]['push'](_0x2bcbcc+0x1);}const _0x6b1a8e=new Int32Array(_0x4d83e8['length']);_0x27e1a0[_0x2b74be(0x11a)]((_0x18d679,_0x31029c)=>{const _0x3d79bf=_0x2b74be,_0x1f2e3e=_0x59372d=>Math['atan2'](_0x5db2d8[_0x4d83e8[_0x59372d][_0x3d79bf(0x141)]]['y']-_0x5db2d8[_0x31029c]['y'],_0x5db2d8[_0x4d83e8[_0x59372d][_0x3d79bf(0x141)]]['x']-_0x5db2d8[_0x31029c]['x']);_0x18d679['sort']((_0x5aff1f,_0x2aa427)=>_0x1f2e3e(_0x5aff1f)-_0x1f2e3e(_0x2aa427)),_0x18d679['forEach']((_0x44e643,_0x5b57d4)=>{_0x6b1a8e[_0x44e643]=_0x5b57d4;});});const _0x504995=_0x4d83e8['map']((_0x45f990,_0x1197ca)=>{const _0x57a948=_0x2b74be,_0x4ed1e2=_0x27e1a0[_0x45f990[_0x57a948(0x141)]];return _0x4ed1e2[(_0x6b1a8e[_0x1197ca^0x1]+_0x4ed1e2[_0x57a948(0x153)]-0x1)%_0x4ed1e2['length']];}),_0x5bd27e=new Uint8Array(_0x4d83e8['length']),_0xf09e0b=new Map(),_0x4112ed=_0x49dc0d=>{const _0x5b3e4a=_0x2b74be;if(_0x49dc0d['length']<0x3)return;const _0x1abbdd=_0x49dc0d['map'](_0x4735d9=>_0x5db2d8[_0x4735d9]),_0x1f0ab0=_0x1abbdd[0x0],_0x5abbd0=polygonArea(_0x1abbdd['map'](_0x1ffd05=>O(_0x1ffd05,_0x1f0ab0)));if(Math['abs'](_0x5abbd0)<=_0x515bc8*_0x515bc8)return;const _0x2f3fbf=_0x5abbd0>0x0?_0x49dc0d:[..._0x49dc0d]['reverse']();let _0x815731=0x0;for(let _0x49d49b=0x1;_0x49d49b<_0x2f3fbf[_0x5b3e4a(0x153)];_0x49d49b+=0x1)_0x2f3fbf[_0x49d49b]<_0x2f3fbf[_0x815731]&&(_0x815731=_0x49d49b);const _0x21d0b1=[..._0x2f3fbf['slice'](_0x815731),..._0x2f3fbf['slice'](0x0,_0x815731)]['join'](','),_0x2bfaf0=_0xf09e0b['get'](_0x21d0b1);if(_0x2bfaf0){_0x2bfaf0['outer']||=_0x5abbd0<0x0;return;}const _0x1f5c79=R(_0x2f3fbf['map'](_0x1cf7e8=>({..._0x5db2d8[_0x1cf7e8]})),1e-7);_0x1f5c79['length']>=0x3&&_0xf09e0b[_0x5b3e4a(0x123)](_0x21d0b1,{'polygon':_0x1f5c79,'area':Math[_0x5b3e4a(0x152)](_0x5abbd0),'outer':_0x5abbd0<0x0});};for(let _0x5a183a=0x0;_0x5a183a<_0x4d83e8['length'];_0x5a183a+=0x1){if(_0x5bd27e[_0x5a183a])continue;const _0xd7b00d=[],_0x733be3=new Map();let _0x4cf1d7=_0x5a183a;const _0x485e83=_0x4964a0=>{const _0x444ba1=_0x2b74be,_0x10cb81=_0x733be3['get'](_0x4964a0);if(_0x10cb81!==void 0x0){for(_0x4112ed(_0xd7b00d[_0x444ba1(0x146)](_0x10cb81));_0xd7b00d['length']>_0x10cb81+0x1;)_0x733be3['delete'](_0xd7b00d['pop']());}else _0x733be3['set'](_0x4964a0,_0xd7b00d['length']),_0xd7b00d['push'](_0x4964a0);};for(;!_0x5bd27e[_0x4cf1d7];)_0x5bd27e[_0x4cf1d7]=0x1,_0x485e83(_0x4d83e8[_0x4cf1d7][_0x2b74be(0x140)]),_0x4cf1d7=_0x504995[_0x4cf1d7];_0x4cf1d7===_0x5a183a&&_0x485e83(_0x4d83e8[_0x5a183a]['start']);}return[..._0xf09e0b['values']()]['sort']((_0xd68ef1,_0x53ce6d)=>_0x53ce6d[_0x2b74be(0x156)]-_0xd68ef1[_0x2b74be(0x156)]);}export function closedWallPolygons(_0x642906,_0x4c3a1b=0x1){const _0x3fe45a=_0x762c0,_0x28f890=Math[_0x3fe45a(0x139)](Number(_0x4c3a1b)||0x0,1e-7);return z(_0x642906,_0x28f890)['map'](_0x323d4e=>_0x323d4e['polygon']);}function w(_0x40b739,_0x4ad272=0x1){const _0x358daa=_0x762c0,_0x5d4646=Math[_0x358daa(0x139)](Number(_0x4ad272)||0x0,1e-7),{nodes:_0x1ef87e,edges:_0x51cb19,endpointWalls:_0x3929bb}=j(_0x40b739,_0x5d4646),_0x127e5b=new Uint32Array(_0x1ef87e['length']);for(const _0x25dfb4 of _0x51cb19)_0x127e5b[_0x25dfb4['start']]+=0x1,_0x127e5b[_0x25dfb4['end']]+=0x1;return _0x1ef87e['flatMap']((_0x48ec75,_0x3b2df2)=>_0x127e5b[_0x3b2df2]===0x1?[{'point':_0x48ec75,'walls':_0x3929bb[_0x3b2df2]}]:[]);}export function openWallEndpoints(_0x79f309,_0x2986ae=0x1){return w(_0x79f309,_0x2986ae)['map'](_0x7124d5=>({..._0x7124d5['point']}));}function J(_0x4b8664,_0xba706c,_0x41b42c){return pointInPolygon(_0x4b8664,_0xba706c,_0x41b42c)?_0xba706c['every']((_0x1e8371,_0x36f8ce)=>projectPointToSegment(_0x4b8664,_0x1e8371,_0xba706c[(_0x36f8ce+0x1)%_0xba706c['length']])['distance']>_0x41b42c):!0x1;}export function unclosedWallEndpoints(_0x5e641b,_0x33207a=0x1,_0x164541=null){const _0x53ec12=_0x762c0,_0x1af58f=Math[_0x53ec12(0x139)](Number(_0x33207a)||0x0,1e-7),_0x48b66a=Array[_0x53ec12(0x12f)](_0x164541)?_0x164541:closedWallFloorPolygons(_0x5e641b,_0x1af58f);return w(_0x5e641b,_0x1af58f)['filter'](_0x5b8d3a=>!_0x5b8d3a['walls']['length']||_0x5b8d3a['walls']['some'](_0x1cba2d=>_0x1cba2d['allowOpenEnd']!==!0x0))['filter'](_0x533f68=>!_0x48b66a['some'](_0x576cbb=>J(_0x533f68['point'],_0x576cbb,_0x1af58f)))['map'](_0x4ebff0=>({..._0x4ebff0['point']}));}function Q(_0x17a718,_0x3f9743,_0x5e18e6){const _0x2ec0a9=_0x5e18e6*_0x5e18e6,_0x4e3d3e=_0x1becd7=>Math['abs'](polygonArea(_0x1becd7['map'](_0x4c6fcd=>O(_0x4c6fcd,_0x1becd7[0x0]))));return _0x4e3d3e(_0x3f9743)<=_0x4e3d3e(_0x17a718)+_0x2ec0a9?!0x1:_0x17a718['every']((_0x5cab8c,_0x4a05f9)=>{if(!pointInPolygon(_0x5cab8c,_0x3f9743,_0x5e18e6))return!0x1;const _0x5e3e2a=_0x17a718[(_0x4a05f9+0x1)%_0x17a718['length']],_0x1dead7={'x':(_0x5cab8c['x']+_0x5e3e2a['x'])/0x2,'y':(_0x5cab8c['y']+_0x5e3e2a['y'])/0x2};return pointInPolygon(_0x1dead7,_0x3f9743,_0x5e18e6);});}export function closedWallFloorPolygons(_0xc4df47,_0x255a0f=0x1){const _0x1b451=_0x762c0,_0x27d998=Math[_0x1b451(0x139)](Number(_0x255a0f)||0x0,1e-7),_0xc60275=[];for(const {polygon:_0x43e5bc,outer:_0x185084}of z(_0xc4df47,_0x27d998))!_0x185084||_0xc60275['some'](_0x41d882=>Q(_0x43e5bc,_0x41d882,_0x27d998))||_0xc60275['push'](_0x43e5bc);return _0xc60275;}export function modelBounds(_0x28010e){const _0x5dceb8=_0x762c0,_0x493962=[];_0x28010e['background']?.['width']&&_0x28010e[_0x5dceb8(0x151)]?.['height']&&_0x493962[_0x5dceb8(0x137)]({'x':0x0,'y':0x0},{'x':_0x28010e['background']['width'],'y':_0x28010e['background'][_0x5dceb8(0x114)]});for(const _0x1fa226 of _0x28010e['walls']||[])_0x493962['push'](_0x1fa226['start'],_0x1fa226['end']);for(const _0xd0692 of _0x28010e['items']||[])_0x493962['push']({'x':_0xd0692['x'],'y':_0xd0692['y']});if(!_0x493962['length'])return{'minX':0x0,'minY':0x0,'maxX':0x4b0,'maxY':0x320,'width':0x4b0,'height':0x320};const _0x3579f5=Math['min'](..._0x493962['map'](_0x17fbd6=>_0x17fbd6['x'])),_0x6524aa=Math['min'](..._0x493962[_0x5dceb8(0x143)](_0x1331c7=>_0x1331c7['y'])),_0x1fd805=Math['max'](..._0x493962['map'](_0x4c8989=>_0x4c8989['x'])),_0x14ae31=Math[_0x5dceb8(0x139)](..._0x493962['map'](_0x4dad37=>_0x4dad37['y']));return{'minX':_0x3579f5,'minY':_0x6524aa,'maxX':Math['max'](_0x1fd805,_0x3579f5+0x1),'maxY':Math['max'](_0x14ae31,_0x6524aa+0x1),'width':Math[_0x5dceb8(0x139)](_0x1fd805-_0x3579f5,0x1),'height':Math['max'](_0x14ae31-_0x6524aa,0x1)};}
+const EPSILON = 1e-7;
+export function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+export function spotLightBrightnessResponse(
+  lightType = "downlight",
+  brightness = 0,
+) {
+  const clampedBrightness = clamp(Number(brightness) || 0, 0, 1);
+  const squared = clampedBrightness * clampedBrightness;
+  if (
+    lightType !== "ceilinglight" ||
+    clampedBrightness <= 0 ||
+    clampedBrightness >= 0.35
+  ) {
+    return squared;
+  }
+  const boost = clampedBrightness * 0.08 * (1 - clampedBrightness / 0.35);
+  return squared + boost;
+}
+export function stripLightProjection(
+  elevationInput = 2.7,
+  rangeInput = 3.5,
+  coreScaleInput = 2,
+) {
+  const elevation = clamp(
+    Number.isFinite(Number(elevationInput)) ? Number(elevationInput) : 2.7,
+    0.05,
+    6,
+  );
+  const rangeBase = clamp(
+    Number.isFinite(Number(rangeInput)) ? Number(rangeInput) : 3.5,
+    0.5,
+    10,
+  );
+  const coreScaleBase = clamp(
+    Number.isFinite(Number(coreScaleInput)) ? Number(coreScaleInput) : 2,
+    0.2,
+    8,
+  );
+  const elevationFactor = clamp(elevation / 2.7, 0.2, 2.2);
+  const coreScaleFactor = clamp(coreScaleBase / 2, 0.1, 4);
+  return {
+    elevation,
+    range:
+      rangeBase *
+      clamp(0.5 + elevationFactor * 0.5, 0.6, 1.6) *
+      clamp(0.82 + coreScaleFactor * 0.18, 0.75, 1.5),
+    coreScale: clamp(0.55 + elevationFactor * 0.45, 0.65, 1.55),
+    intensity: clamp(1 / elevationFactor, 0.5, 2.2),
+  };
+}
+export function adaptiveLightRenderCost(lights = []) {
+  return lights.reduce(
+    (cost, light) =>
+      light?.enabled === false ||
+      Math.max(0, Number(light?.brightness) || 0) <= 0
+        ? cost
+        : light?.type === "striplight"
+          ? cost + 0.3
+          : light?.type === "ceilinglight"
+            ? cost + (Number(light?.angle) >= 140 ? 1.65 : 1.1)
+            : light?.type === "downlight"
+              ? cost + 1
+              : cost,
+    0,
+  );
+}
+export function adaptiveDeviceLightBudget({
+  hardwareConcurrency = 4,
+  deviceMemory = 8,
+  previewPixels = 500000,
+} = {}) {
+  const cores = clamp(Number(hardwareConcurrency) || 4, 2, 24);
+  const memoryGb = clamp(Number(deviceMemory) || 8, 2, 32);
+  const pixels = clamp(Number(previewPixels) || 500000, 120000, 4000000);
+  const baseBudget = 4.5 + Math.min(cores, 16) * 0.55;
+  const memoryFactor =
+    memoryGb <= 4 ? 0.78 : memoryGb < 8 ? 0.88 : memoryGb >= 16 ? 1.1 : 1;
+  const pixelFactor = clamp(Math.sqrt(500000 / pixels), 0.72, 1.2);
+  return clamp(baseBudget * memoryFactor * pixelFactor, 4, 16);
+}
+export function assessAdaptiveRenderFrames(frameSamplesMs = []) {
+  const samples = frameSamplesMs
+    .map(Number)
+    .filter(
+      (sampleMs) =>
+        Number.isFinite(sampleMs) && sampleMs >= 8 && sampleMs <= 120,
+    );
+  if (samples.length < 12) {
+    return {
+      sufficient: false,
+      sampleCount: samples.length,
+    };
+  }
+  const sorted = [...samples].sort((a, b) => a - b);
+  const percentile = (ratio) =>
+    sorted[
+      Math.min(Math.floor((sorted.length - 1) * ratio), sorted.length - 1)
+    ];
+  const averageFrameMs =
+    samples.reduce((sum, ms) => sum + ms, 0) / samples.length;
+  const p75FrameMs = percentile(0.75);
+  const p90FrameMs = percentile(0.9);
+  return {
+    sufficient: true,
+    sampleCount: samples.length,
+    averageFrameMs,
+    p75FrameMs,
+    p90FrameMs,
+    fps: 1000 / averageFrameMs,
+    severe: averageFrameMs >= 45 || p75FrameMs >= 50 || p90FrameMs >= 68,
+    slow: averageFrameMs >= 34 || p75FrameMs >= 38 || p90FrameMs >= 55,
+    smooth: averageFrameMs <= 24 && p90FrameMs <= 32,
+  };
+}
+export function planLabelProjectionMetrics(
+  width,
+  height,
+  baselineRatio = 0.86,
+) {
+  const safeWidth = Math.max(0, Number(width) || 0);
+  const safeHeight = Math.max(0, Number(height) || 0);
+  const safeBaselineRatio = clamp(
+    Number.isFinite(Number(baselineRatio)) ? Number(baselineRatio) : 0.86,
+    0.3,
+    1,
+  );
+  return {
+    titleStartX: -safeWidth * (0.5 - 115 / 2048),
+    titleY: safeHeight * (130 / 640 - 0.5),
+    titleFontSize: (safeHeight * 184) / 640,
+    titleMaxWidth: (safeWidth * 1340) / 2048,
+    iconX: safeWidth * (1580 / 2048 - 0.5),
+    iconY: safeHeight * (130 / 640 - 0.5),
+    iconSize: (safeHeight * 170) / 640,
+    subtitleStartX: -safeWidth * (0.5 - 72 / 2048),
+    subtitleY: safeHeight * (410 / 640 - 0.5),
+    subtitleFontSize: (safeHeight * 310) / 640,
+    subtitleMaxWidth: (safeWidth * 1880) / 2048,
+    baselineY: safeHeight * (590 / 640 - 0.5),
+    baselineStartX: -safeWidth * (0.5 - 74 / 2048),
+    baselineLength: ((safeWidth * 1880) / 2048) * safeBaselineRatio,
+    baselineLineWidth: (safeHeight * 16) / 640,
+    baselineCapHalfHeight: (safeHeight * 24) / 640,
+  };
+}
+export function selectShadowCastingLightIds(lights = [], budget = 8) {
+  const limit = Math.max(0, Math.floor(Number(budget) || 0));
+  if (limit === 0) {
+    return [];
+  }
+  const candidates = lights
+    .map((light, index) => ({
+      id: String(light?.id || ""),
+      groupId: String(light?.groupId || ""),
+      type: String(light?.type || ""),
+      brightness: Math.max(0, Number(light?.brightness) || 0),
+      enabled: light?.enabled !== false,
+      index,
+    }))
+    .filter(
+      (candidate) =>
+        candidate.id &&
+        candidate.enabled &&
+        candidate.brightness > 0 &&
+        candidate.type !== "striplight",
+    )
+    .map((entry) => ({
+      ...entry,
+      score: entry.brightness * (entry.type === "ceilinglight" ? 1.08 : 1),
+    }));
+  if (candidates.length <= limit) {
+    return candidates.map((selected) => selected.id);
+  }
+  const compareScore = (left, right) =>
+    right.score - left.score || left.index - right.index;
+  const bestByGroup = new Map();
+  for (const item of candidates) {
+    const groupKey = item.groupId || "__ungrouped-" + item.index;
+    const currentBest = bestByGroup.get(groupKey);
+    if (!currentBest || compareScore(item, currentBest) < 0) {
+      bestByGroup.set(groupKey, item);
+    }
+  }
+  const picked = [...bestByGroup.values()].sort(compareScore).slice(0, limit);
+  if (picked.length < limit) {
+    const pickedIds = new Set(picked.map((pickedItem) => pickedItem.id));
+    const remaining = candidates
+      .filter((rest) => !pickedIds.has(rest.id))
+      .sort(compareScore);
+    picked.push(...remaining.slice(0, limit - picked.length));
+  }
+  return picked.map((finalItem) => finalItem.id);
+}
+export function spotShadowTextureUnitLimit({
+  maxTextureUnits = 16,
+  materialTextureUnits = 0,
+  nonSpotShadowTextureUnits = 1,
+  rectAreaLightTextureUnits = 0,
+  reservedTextureUnits = 1,
+  hardLimit = 8,
+} = {}) {
+  const maxUnits = Math.max(0, Math.floor(Number(maxTextureUnits) || 0));
+  const usedUnits = [
+    materialTextureUnits,
+    nonSpotShadowTextureUnits,
+    rectAreaLightTextureUnits,
+    reservedTextureUnits,
+  ].reduce(
+    (sum, units) => sum + Math.max(0, Math.floor(Number(units) || 0)),
+    0,
+  );
+  const hardCap = Math.max(0, Math.floor(Number(hardLimit) || 0));
+  const softCap = maxUnits <= 16 ? 3 : maxUnits <= 24 ? 6 : hardCap;
+  return Math.min(hardCap, softCap, Math.max(0, maxUnits - usedUnits));
+}
+export function localSpotShadowSettings(
+  lightType = "downlight",
+  rangeInput = 3.5,
+  angleInput = 90,
+) {
+  const range = clamp(
+    Number.isFinite(Number(rangeInput)) ? Number(rangeInput) : 3.5,
+    0.5,
+    10,
+  );
+  const angle = clamp(
+    Number.isFinite(Number(angleInput)) ? Number(angleInput) : 90,
+    15,
+    180,
+  );
+  const wideCeilingLight = lightType === "ceilinglight" && angle >= 140;
+  return {
+    mapSize: wideCeilingLight ? 512 : 256,
+    radius: wideCeilingLight ? 1.25 : 1,
+    blurSamples: wideCeilingLight ? 8 : 4,
+    normalBias: 0.018,
+    wideCeilingLight,
+    range,
+    angle,
+  };
+}
+export function distance(a, b) {
+  return Math.hypot(b.x - a.x, b.y - a.y);
+}
+export function slidingDoorPanelCenters(
+  openingWidth,
+  swing = -1,
+  openRatio = 2 / 3,
+) {
+  const fixedCenter = (swing >= 0 ? 1 : -1) * openingWidth * 0.23;
+  const closedMovingCenter = -fixedCenter;
+  return {
+    fixed: fixedCenter,
+    moving:
+      closedMovingCenter +
+      (fixedCenter - closedMovingCenter) * clamp(openRatio, 0, 1),
+  };
+}
+export function projectPointToSegment(point, start, end) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq <= 1e-7) {
+    return {
+      point: {
+        ...start,
+      },
+      t: 0,
+      distance: distance(point, start),
+    };
+  }
+  const param = clamp(
+    ((point.x - start.x) * dx + (point.y - start.y) * dy) / lenSq,
+    0,
+    1,
+  );
+  const projected = {
+    x: start.x + dx * param,
+    y: start.y + dy * param,
+  };
+  return {
+    point: projected,
+    t: param,
+    distance: distance(point, projected),
+  };
+}
+export function segmentIntersection(aStart, aEnd, bStart, bEnd) {
+  const adx = aEnd.x - aStart.x;
+  const ady = aEnd.y - aStart.y;
+  const bdx = bEnd.x - bStart.x;
+  const bdy = bEnd.y - bStart.y;
+  const denom = adx * bdy - ady * bdx;
+  if (Math.abs(denom) <= 1e-7) {
+    return null;
+  }
+  const ox = bStart.x - aStart.x;
+  const oy = bStart.y - aStart.y;
+  const paramA = (ox * bdy - oy * bdx) / denom;
+  const paramB = (ox * ady - oy * adx) / denom;
+  if (
+    paramA < -1e-7 ||
+    paramA > 1.0000001 ||
+    paramB < -1e-7 ||
+    paramB > 1.0000001
+  ) {
+    return null;
+  } else {
+    return {
+      x: aStart.x + adx * clamp(paramA, 0, 1),
+      y: aStart.y + ady * clamp(paramA, 0, 1),
+    };
+  }
+}
+export function wallIntersections(walls) {
+  const points = [];
+  for (let i = 0; i < walls.length; i += 1) {
+    for (
+      let buildWallGraph = i + 1;
+      buildWallGraph < walls.length;
+      buildWallGraph += 1
+    ) {
+      const hit = segmentIntersection(
+        walls[i].start,
+        walls[i].end,
+        walls[buildWallGraph].start,
+        walls[buildWallGraph].end,
+      );
+      if (
+        !!hit &&
+        !points.some((existing) => distance(existing, hit) <= 1e-7)
+      ) {
+        points.push(hit);
+      }
+    }
+  }
+  return points;
+}
+export function splitWallSegments(walls, epsilonInput = 0.000001) {
+  const epsilon = Math.max(Number(epsilonInput) || 0, 1e-7);
+  const cutParams = walls.map(() => [0, 1]);
+  for (let i = 0; i < walls.length; i += 1) {
+    for (
+      let buildWallGraph = i + 1;
+      buildWallGraph < walls.length;
+      buildWallGraph += 1
+    ) {
+      const wallA = walls[i];
+      const wallB = walls[buildWallGraph];
+      const hit = segmentIntersection(
+        wallA.start,
+        wallA.end,
+        wallB.start,
+        wallB.end,
+      );
+      if (!hit) {
+        continue;
+      }
+      const projA = projectPointToSegment(hit, wallA.start, wallA.end);
+      const projB = projectPointToSegment(hit, wallB.start, wallB.end);
+      if (projA.t > epsilon && projA.t < 1 - epsilon) {
+        cutParams[i].push(projA.t);
+      }
+      if (projB.t > epsilon && projB.t < 1 - epsilon) {
+        cutParams[buildWallGraph].push(projB.t);
+      }
+    }
+  }
+  const pieces = [];
+  walls.forEach((wall, wallIndex) => {
+    const dx = wall.end.x - wall.start.x;
+    const dy = wall.end.y - wall.start.y;
+    const params = [...cutParams[wallIndex]]
+      .sort((pa, pb) => pa - pb)
+      .filter(
+        (param, paramIndex, allParams) =>
+          paramIndex === 0 || param - allParams[paramIndex - 1] > epsilon,
+      );
+    for (let pieceIndex = 0; pieceIndex < params.length - 1; pieceIndex += 1) {
+      const startT = params[pieceIndex];
+      const endT = params[pieceIndex + 1];
+      if (!(endT - startT <= epsilon)) {
+        pieces.push({
+          sourceWall: wall,
+          sourceIndex: wallIndex,
+          pieceIndex,
+          pieceCount: params.length - 1,
+          startT,
+          endT,
+          start: {
+            x: wall.start.x + dx * startT,
+            y: wall.start.y + dy * startT,
+          },
+          end: {
+            x: wall.start.x + dx * endT,
+            y: wall.start.y + dy * endT,
+          },
+        });
+      }
+    }
+  });
+  return pieces;
+}
+export function uncoveredCollinearWallSegments(
+  wall,
+  otherWalls,
+  toleranceInput = 0.001,
+) {
+  if (!wall?.start || !wall?.end) {
+    return [];
+  }
+  const tolerance = Math.max(Number(toleranceInput) || 0, 1e-7);
+  const dx = wall.end.x - wall.start.x;
+  const dy = wall.end.y - wall.start.y;
+  const length = Math.hypot(dx, dy);
+  if (length <= tolerance) {
+    return [];
+  }
+  const direction = {
+    x: dx / length,
+    y: dy / length,
+  };
+  const paramTolerance = tolerance / length;
+  const coverIntervals = [];
+  for (const other of otherWalls || []) {
+    if (!other?.start || !other?.end || other.id === wall.id) {
+      continue;
+    }
+    const odx = other.end.x - other.start.x;
+    const ody = other.end.y - other.start.y;
+    const otherLength = Math.hypot(odx, ody);
+    if (
+      otherLength <= tolerance ||
+      Math.abs(
+        (direction.x * ody) / otherLength - (direction.y * odx) / otherLength,
+      ) > paramTolerance
+    ) {
+      continue;
+    }
+    const startOffset = {
+      x: other.start.x - wall.start.x,
+      y: other.start.y - wall.start.y,
+    };
+    const endOffset = {
+      x: other.end.x - wall.start.x,
+      y: other.end.y - wall.start.y,
+    };
+    const startCross = Math.abs(
+      startOffset.x * direction.y - startOffset.y * direction.x,
+    );
+    const endCross = Math.abs(
+      endOffset.x * direction.y - endOffset.y * direction.x,
+    );
+    if (Math.max(startCross, endCross) > tolerance) {
+      continue;
+    }
+    const startParam =
+      (startOffset.x * direction.x + startOffset.y * direction.y) / length;
+    const endParam =
+      (endOffset.x * direction.x + endOffset.y * direction.y) / length;
+    const intervalStart = clamp(Math.min(startParam, endParam), 0, 1);
+    const intervalEnd = clamp(Math.max(startParam, endParam), 0, 1);
+    if (intervalEnd - intervalStart > paramTolerance) {
+      coverIntervals.push([intervalStart, intervalEnd]);
+    }
+  }
+  if (!coverIntervals.length) {
+    return [
+      {
+        start: {
+          ...wall.start,
+        },
+        end: {
+          ...wall.end,
+        },
+      },
+    ];
+  }
+  coverIntervals.sort((left, right) => left[0] - right[0]);
+  const merged = [];
+  for (const interval of coverIntervals) {
+    const last = merged.at(-1);
+    if (last && interval[0] <= last[1] + paramTolerance) {
+      last[1] = Math.max(last[1], interval[1]);
+    } else {
+      merged.push([...interval]);
+    }
+  }
+  const gaps = [];
+  let cursor = 0;
+  for (const [coverStart, coverEnd] of merged) {
+    if (coverStart - cursor > paramTolerance) {
+      gaps.push([cursor, coverStart]);
+    }
+    cursor = Math.max(cursor, coverEnd);
+  }
+  if (1 - cursor > paramTolerance) {
+    gaps.push([cursor, 1]);
+  }
+  return gaps.map(([gapStart, gapEnd]) => ({
+    start: {
+      x: wall.start.x + dx * gapStart,
+      y: wall.start.y + dy * gapStart,
+    },
+    end: {
+      x: wall.start.x + dx * gapEnd,
+      y: wall.start.y + dy * gapEnd,
+    },
+  }));
+}
+export function canonicalPolygonKey(polygon, precisionInput = 5) {
+  if (!Array.isArray(polygon) || !polygon.length) {
+    return "";
+  }
+  const precision = clamp(Math.round(Number(precisionInput) || 0), 0, 12);
+  const coords = polygon.map((vertex) => {
+    const x =
+      Math.abs(Number(vertex?.x) || 0) < 10 ** -precision / 2
+        ? 0
+        : Number(vertex?.x) || 0;
+    const y =
+      Math.abs(Number(vertex?.y) || 0) < 10 ** -precision / 2
+        ? 0
+        : Number(vertex?.y) || 0;
+    return x.toFixed(precision) + "," + y.toFixed(precision);
+  });
+  const rotations = [];
+  for (const sequence of [coords, [...coords].reverse()]) {
+    for (let offset = 0; offset < sequence.length; offset += 1) {
+      rotations.push(
+        [...sequence.slice(offset), ...sequence.slice(0, offset)].join(";"),
+      );
+    }
+  }
+  return rotations.sort()[0];
+}
+function findWallEndpointJunction(firstWall, secondWall, tolerance) {
+  const matches = [
+    {
+      firstKey: "start",
+      secondKey: "start",
+    },
+    {
+      firstKey: "start",
+      secondKey: "end",
+    },
+    {
+      firstKey: "end",
+      secondKey: "start",
+    },
+    {
+      firstKey: "end",
+      secondKey: "end",
+    },
+  ].filter(
+    ({ firstKey, secondKey }) =>
+      distance(firstWall[firstKey], secondWall[secondKey]) <= tolerance,
+  );
+  if (matches.length !== 1) {
+    return null;
+  }
+  const match = matches[0];
+  return {
+    point: {
+      x: (firstWall[match.firstKey].x + secondWall[match.secondKey].x) / 2,
+      y: (firstWall[match.firstKey].y + secondWall[match.secondKey].y) / 2,
+    },
+    firstKey: match.firstKey,
+    secondKey: match.secondKey,
+    firstOuter: firstWall[match.firstKey === "start" ? "end" : "start"],
+    secondOuter: secondWall[match.secondKey === "start" ? "end" : "start"],
+  };
+}
+function wallsHaveMatchingProps(firstWall, secondWall, tolerance) {
+  const firstOpacity =
+    firstWall.opacity === null || firstWall.opacity === undefined
+      ? null
+      : Number(firstWall.opacity);
+  const secondOpacity =
+    secondWall.opacity === null || secondWall.opacity === undefined
+      ? null
+      : Number(secondWall.opacity);
+  const opacityMatches =
+    firstOpacity === null || secondOpacity === null
+      ? firstOpacity === secondOpacity
+      : Math.abs(firstOpacity - secondOpacity) <= tolerance;
+  return (
+    Math.abs(
+      (Number(firstWall.height) || 0) - (Number(secondWall.height) || 0),
+    ) <= tolerance &&
+    Math.abs(
+      (Number(firstWall.thickness) || 0) - (Number(secondWall.thickness) || 0),
+    ) <= tolerance &&
+    opacityMatches &&
+    (firstWall.allowOpenEnd === true) == (secondWall.allowOpenEnd === true)
+  );
+}
+function countWallEndpointsNear(entries, point, tolerance) {
+  return entries.reduce(
+    (count, entry) =>
+      count +
+      (distance(entry.wall.start, point) <= tolerance ? 1 : 0) +
+      (distance(entry.wall.end, point) <= tolerance ? 1 : 0),
+    0,
+  );
+}
+function isCollinearOppositeJunction(junction, tolerance) {
+  const firstVec = subtractPoints(junction.firstOuter, junction.point);
+  const secondVec = subtractPoints(junction.secondOuter, junction.point);
+  const firstLen = Math.hypot(firstVec.x, firstVec.y);
+  const secondLen = Math.hypot(secondVec.x, secondVec.y);
+  if (firstLen <= tolerance || secondLen <= tolerance) {
+    return false;
+  }
+  const crossAbs = Math.abs(cross2d(firstVec, secondVec));
+  return (
+    firstVec.x * secondVec.x + firstVec.y * secondVec.y < 0 &&
+    crossAbs <= tolerance * Math.max(firstLen, secondLen, 1)
+  );
+}
+export function mergeCollinearWallSegments(walls, epsilonInput = 0.000001) {
+  const epsilon = Math.max(Number(epsilonInput) || 0, 1e-7);
+  const entries = (walls || [])
+    .filter(
+      (wall) =>
+        wall?.start && wall?.end && distance(wall.start, wall.end) > epsilon,
+    )
+    .map((source) => ({
+      wall: {
+        ...source,
+        start: {
+          ...source.start,
+        },
+        end: {
+          ...source.end,
+        },
+      },
+      sourceIds: new Set([source.id]),
+    }));
+  let merged = true;
+  while (merged) {
+    merged = false;
+    for (let i = 0; i < entries.length && !merged; i += 1) {
+      for (
+        let buildWallGraph = i + 1;
+        buildWallGraph < entries.length;
+        buildWallGraph += 1
+      ) {
+        const entryA = entries[i];
+        const entryB = entries[buildWallGraph];
+        if (!wallsHaveMatchingProps(entryA.wall, entryB.wall, epsilon)) {
+          continue;
+        }
+        const junction = findWallEndpointJunction(
+          entryA.wall,
+          entryB.wall,
+          epsilon,
+        );
+        if (
+          !junction ||
+          countWallEndpointsNear(entries, junction.point, epsilon) !== 2 ||
+          !isCollinearOppositeJunction(junction, epsilon)
+        ) {
+          continue;
+        }
+        const mergedWall = {
+          ...entryA.wall,
+          start:
+            junction.firstKey === "end"
+              ? {
+                  ...junction.firstOuter,
+                }
+              : {
+                  ...junction.secondOuter,
+                },
+          end:
+            junction.firstKey === "end"
+              ? {
+                  ...junction.secondOuter,
+                }
+              : {
+                  ...junction.firstOuter,
+                },
+        };
+        entries[i] = {
+          wall: mergedWall,
+          sourceIds: new Set([...entryA.sourceIds, ...entryB.sourceIds]),
+        };
+        entries.splice(buildWallGraph, 1);
+        merged = true;
+        break;
+      }
+    }
+  }
+  const wallIdMap = new Map();
+  for (const entry of entries) {
+    for (const sourceId of entry.sourceIds) {
+      wallIdMap.set(sourceId, entry.wall.id);
+    }
+  }
+  return {
+    walls: entries.map((finalEntry) => finalEntry.wall),
+    wallIdMap,
+  };
+}
+export function remapWallAttachment(attachment, fromWall, toWall) {
+  if (!attachment || !fromWall || !toWall) {
+    return attachment;
+  }
+  const param = clamp(Number(attachment.t) || 0, 0, 1);
+  const worldPoint = lerpPoint(fromWall.start, fromWall.end, param);
+  return {
+    ...attachment,
+    wallId: toWall.id,
+    t: clamp(
+      projectPointToSegment(worldPoint, toWall.start, toWall.end).t,
+      0,
+      1,
+    ),
+  };
+}
+function nearestSnapCandidate(point, candidates, tolerance) {
+  let best = null;
+  for (const candidate of candidates) {
+    const dist = distance(point, candidate.point);
+    if (!(dist > tolerance) && (!best || !(dist >= best.distance))) {
+      best = {
+        ...candidate,
+        distance: dist,
+      };
+    }
+  }
+  return best;
+}
+export function axisLockedPoint(point, anchor) {
+  const dx = point.x - anchor.x;
+  const dy = point.y - anchor.y;
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return {
+      point: {
+        x: point.x,
+        y: anchor.y,
+      },
+      axis: "horizontal",
+      label: "水平轴",
+    };
+  } else {
+    return {
+      point: {
+        x: anchor.x,
+        y: point.y,
+      },
+      axis: "vertical",
+      label: "垂直轴",
+    };
+  }
+}
+function snapAlongAxisToWall(point, axisPoint, walls, tolerance, axis) {
+  let best = null;
+  for (const wall of walls) {
+    const fixedAxis = axis === "vertical" ? "x" : "y";
+    const freeAxis = axis === "vertical" ? "y" : "x";
+    const axisDelta = wall.end[fixedAxis] - wall.start[fixedAxis];
+    if (Math.abs(axisDelta) <= 1e-7) {
+      if (Math.abs(wall.start[fixedAxis] - axisPoint[fixedAxis]) > 1e-7) {
+        continue;
+      }
+      const projection = projectPointToSegment(point, wall.start, wall.end);
+      if (
+        projection.distance > tolerance ||
+        (best && projection.distance >= best.distance)
+      ) {
+        continue;
+      }
+      best = {
+        point: {
+          ...projection.point,
+          [fixedAxis]: axisPoint[fixedAxis],
+        },
+        kind: "segment",
+        targetId: wall.id,
+        label: (axis === "vertical" ? "垂直" : "水平") + " · 墙线",
+        distance: projection.distance,
+      };
+      continue;
+    }
+    const param = (axisPoint[fixedAxis] - wall.start[fixedAxis]) / axisDelta;
+    if (param < -1e-7 || param > 1.0000001) {
+      continue;
+    }
+    const snapAt = {
+      ...axisPoint,
+    };
+    snapAt[freeAxis] =
+      wall.start[freeAxis] +
+      (wall.end[freeAxis] - wall.start[freeAxis]) * clamp(param, 0, 1);
+    const dist = distance(point, snapAt);
+    if (!(dist > tolerance) && (!best || !(dist >= best.distance))) {
+      best = {
+        point: snapAt,
+        kind: "segment",
+        targetId: wall.id,
+        label: (axis === "vertical" ? "垂直" : "水平") + " · 墙线",
+        distance: dist,
+      };
+    }
+  }
+  return best;
+}
+function preferVerticalAxisSnap(point, anchor, walls, tolerance) {
+  if (!anchor || Math.abs(point.x - anchor.x) > tolerance) {
+    return null;
+  }
+  const segmentSnap = snapAlongAxisToWall(
+    point,
+    anchor,
+    walls,
+    tolerance,
+    "vertical",
+  );
+  return (
+    segmentSnap || {
+      point: {
+        x: anchor.x,
+        y: point.y,
+      },
+      kind: "axis",
+      label: "垂直轴",
+      distance: Math.abs(point.x - anchor.x),
+    }
+  );
+}
+function snapOrthogonalFromAnchor(
+  point,
+  anchor,
+  walls,
+  tolerance,
+  intersections = wallIntersections(walls),
+  options = {},
+) {
+  const locked = axisLockedPoint(point, anchor);
+  const fixedAxis = locked.axis === "vertical" ? "x" : "y";
+  const axisTolerance = Math.max(1e-7, tolerance * 0.000001);
+  const axisLabel = locked.axis === "vertical" ? "垂直" : "水平";
+  const candidates = [
+    ...(options.snapEndpoints === false
+      ? []
+      : walls.flatMap((wall) => [
+          {
+            point: wall.start,
+            kind: "endpoint",
+            targetId: wall.id,
+            label: axisLabel + " · 端点",
+          },
+          {
+            point: wall.end,
+            kind: "endpoint",
+            targetId: wall.id,
+            label: axisLabel + " · 端点",
+          },
+        ])),
+    ...(options.snapIntersections === false
+      ? []
+      : intersections.map((intersection) => ({
+          point: intersection,
+          kind: "intersection",
+          label: axisLabel + " · 交点",
+        }))),
+  ].filter(
+    (candidate) =>
+      Math.abs(candidate.point[fixedAxis] - anchor[fixedAxis]) <= axisTolerance,
+  );
+  const nearest = nearestSnapCandidate(point, candidates, tolerance);
+  if (nearest) {
+    return nearest;
+  }
+  if (options.snapSegments !== false) {
+    const segmentSnap = snapAlongAxisToWall(
+      point,
+      anchor,
+      walls,
+      tolerance,
+      locked.axis,
+    );
+    if (segmentSnap) {
+      return segmentSnap;
+    }
+  }
+  return {
+    ...locked,
+    kind: "axis",
+    distance: distance(point, locked.point),
+  };
+}
+export function snapPoint(point, walls, options = {}) {
+  const zoom = Math.max(Number(options.zoom) || 1, 1e-7);
+  const tolerance = (Number(options.screenTolerance) || 12) / zoom;
+  const cachedIntersections = Array.isArray(options.intersections)
+    ? options.intersections
+    : null;
+  if (options.forceOrthogonalAxis === true && options.anchor) {
+    const orthogonalIntersections =
+      options.snapIntersections === false
+        ? []
+        : cachedIntersections || wallIntersections(walls);
+    return snapOrthogonalFromAnchor(
+      point,
+      options.anchor,
+      walls,
+      tolerance,
+      orthogonalIntersections,
+      options,
+    );
+  }
+  const endpointCandidates = [];
+  if (options.snapEndpoints !== false) {
+    for (const wall of walls) {
+      endpointCandidates.push(
+        {
+          point: wall.start,
+          kind: "endpoint",
+          targetId: wall.id,
+          label: "端点",
+        },
+        {
+          point: wall.end,
+          kind: "endpoint",
+          targetId: wall.id,
+          label: "端点",
+        },
+      );
+    }
+  }
+  const endpointSnap = nearestSnapCandidate(
+    point,
+    endpointCandidates,
+    tolerance,
+  );
+  if (endpointSnap) {
+    return endpointSnap;
+  }
+  if (options.snapIntersections !== false) {
+    const intersectionSnap = nearestSnapCandidate(
+      point,
+      (cachedIntersections || wallIntersections(walls)).map((intersection) => ({
+        point: intersection,
+        kind: "intersection",
+        label: "交点",
+      })),
+      tolerance,
+    );
+    if (intersectionSnap) {
+      return intersectionSnap;
+    }
+  }
+  if (
+    options.preferVerticalAxis === true &&
+    options.snapOrthogonal !== false &&
+    options.anchor
+  ) {
+    const verticalSnap = preferVerticalAxisSnap(
+      point,
+      options.anchor,
+      walls,
+      tolerance,
+    );
+    if (verticalSnap) {
+      return verticalSnap;
+    }
+  }
+  if (options.snapSegments !== false) {
+    const segmentSnap = walls
+      .map((segWall) => {
+        const projection = projectPointToSegment(
+          point,
+          segWall.start,
+          segWall.end,
+        );
+        return {
+          point: projection.point,
+          kind: "segment",
+          targetId: segWall.id,
+          label: "墙线",
+          distance: projection.distance,
+        };
+      })
+      .filter((candidate) => candidate.distance <= tolerance)
+      .sort((a, b) => a.distance - b.distance)[0];
+    if (segmentSnap) {
+      return segmentSnap;
+    }
+  }
+  if (options.snapAngles !== false && options.anchor) {
+    const dx = point.x - options.anchor.x;
+    const dy = point.y - options.anchor.y;
+    const radius = Math.hypot(dx, dy);
+    if (radius > 1e-7) {
+      const stepRadians =
+        ((Number(options.angleStepDegrees) || 15) * Math.PI) / 180;
+      const rawAngle = Math.atan2(dy, dx);
+      const snappedAngle = Math.round(rawAngle / stepRadians) * stepRadians;
+      const angledPoint = {
+        x: options.anchor.x + Math.cos(snappedAngle) * radius,
+        y: options.anchor.y + Math.sin(snappedAngle) * radius,
+      };
+      const angleDistance = distance(point, angledPoint);
+      if (angleDistance <= tolerance) {
+        const degrees = ((snappedAngle * 180) / Math.PI + 360) % 360;
+        return {
+          point: angledPoint,
+          kind: "angle",
+          label: Math.round(degrees) + "°",
+          distance: angleDistance,
+        };
+      }
+    }
+  }
+  const gridSize = Number(options.gridSize) || 0;
+  if (options.snapGrid !== false && gridSize > 1e-7) {
+    const gridPoint = {
+      x: Math.round(point.x / gridSize) * gridSize,
+      y: Math.round(point.y / gridSize) * gridSize,
+    };
+    const gridDistance = distance(point, gridPoint);
+    if (gridDistance <= tolerance) {
+      return {
+        point: gridPoint,
+        kind: "grid",
+        label: "网格",
+        distance: gridDistance,
+      };
+    }
+  }
+  return {
+    point: {
+      ...point,
+    },
+    kind: null,
+    label: "",
+    distance: 0,
+  };
+}
+export function nearestWall(point, walls, maxDistance = Infinity) {
+  let best = null;
+  for (const wall of walls) {
+    const projection = projectPointToSegment(point, wall.start, wall.end);
+    if (
+      !(projection.distance > maxDistance) &&
+      (!best || !(projection.distance >= best.distance))
+    ) {
+      best = {
+        wall,
+        ...projection,
+      };
+    }
+  }
+  return best;
+}
+export function wallLengthMeters(wall, pixelsPerMeter) {
+  return (
+    distance(wall.start, wall.end) / Math.max(Number(pixelsPerMeter) || 1, 1e-7)
+  );
+}
+export function clampWindowT(wall, windowItem, pixelsPerMeter) {
+  const wallLength = wallLengthMeters(wall, pixelsPerMeter);
+  if (wallLength <= 1e-7) {
+    return 0.5;
+  }
+  const halfWidthMeters = Math.min(
+    Math.max(Number(windowItem.width) || 0, 0) / 2,
+    wallLength / 2,
+  );
+  return clamp(
+    Number(windowItem.t) || 0,
+    halfWidthMeters / wallLength,
+    1 - halfWidthMeters / wallLength,
+  );
+}
+export function doorLeafRotation(door, openAngle = Math.PI / 2) {
+  return -(door?.swing === -1 ? -1 : 1) * openAngle;
+}
+export function wallJoinExtensions(
+  walls,
+  toleranceInput = 0.001,
+  extensionFactor = 4,
+) {
+  const tolerance = Math.max(Number(toleranceInput) || 0, 1e-7);
+  const factor = Math.max(Number(extensionFactor) || 0, 1);
+  const extensions = Object.fromEntries(
+    (walls || []).map((wall) => [
+      wall.id,
+      {
+        start: 0,
+        end: 0,
+      },
+    ]),
+  );
+  const nodes = [];
+  const getOrCreateNode = (point) => {
+    let node = nodes.find(
+      (existing) => distance(existing.point, point) <= tolerance,
+    );
+    if (!node) {
+      node = {
+        point: {
+          ...point,
+        },
+        incidents: [],
+      };
+      nodes.push(node);
+    }
+    return node;
+  };
+  for (const joinWall of walls || []) {
+    const dx = joinWall.end.x - joinWall.start.x;
+    const dy = joinWall.end.y - joinWall.start.y;
+    const length = Math.hypot(dx, dy);
+    if (length <= tolerance) {
+      continue;
+    }
+    const halfThickness = Math.max(Number(joinWall.thickness) || 0, 0) / 2;
+    getOrCreateNode(joinWall.start).incidents.push({
+      wallId: joinWall.id,
+      endpoint: "start",
+      x: dx / length,
+      y: dy / length,
+      halfThickness,
+    });
+    getOrCreateNode(joinWall.end).incidents.push({
+      wallId: joinWall.id,
+      endpoint: "end",
+      x: -dx / length,
+      y: -dy / length,
+      halfThickness,
+    });
+  }
+  const angleEpsilon = 0.0001;
+  for (const joinNode of nodes) {
+    if (joinNode.incidents.length < 2) {
+      continue;
+    }
+    const incidents = joinNode.incidents
+      .map((incident) => ({
+        ...incident,
+        angle: Math.atan2(incident.y, incident.x),
+      }))
+      .sort((a, b) => a.angle - b.angle);
+    for (let i = 0; i < incidents.length; i += 1) {
+      const left = incidents[i];
+      const right = incidents[(i + 1) % incidents.length];
+      const angleDelta =
+        (right.angle - left.angle + Math.PI * 2) % (Math.PI * 2);
+      if (angleDelta <= angleEpsilon || angleDelta >= Math.PI - angleEpsilon) {
+        continue;
+      }
+      const sinDelta = Math.sin(angleDelta);
+      const cosDelta = Math.cos(angleDelta);
+      if (sinDelta <= angleEpsilon) {
+        continue;
+      }
+      const maxExtension =
+        Math.max(left.halfThickness, right.halfThickness, 0.000001) * factor;
+      const leftExtension = clamp(
+        (right.halfThickness + left.halfThickness * cosDelta) / sinDelta,
+        0,
+        maxExtension,
+      );
+      const rightExtension = clamp(
+        (left.halfThickness + right.halfThickness * cosDelta) / sinDelta,
+        0,
+        maxExtension,
+      );
+      extensions[left.wallId][left.endpoint] = Math.max(
+        extensions[left.wallId][left.endpoint],
+        leftExtension,
+      );
+      extensions[right.wallId][right.endpoint] = Math.max(
+        extensions[right.wallId][right.endpoint],
+        rightExtension,
+      );
+    }
+  }
+  return extensions;
+}
+export function wallSolidPieces(wall, openings, pixelsPerMeter, wallHeight) {
+  const wallLength = wallLengthMeters(wall, pixelsPerMeter);
+  const height = Math.max(Number(wallHeight) || 0, 0);
+  if (wallLength <= 1e-7 || height <= 1e-7) {
+    return [];
+  }
+  const openingBoxes = openings
+    .filter((opening) => opening.wallId === wall.id)
+    .map((item) => {
+      const width = clamp(Number(item.width) || 0, 0, wallLength);
+      const centerAlong = clampWindowT(wall, item, pixelsPerMeter) * wallLength;
+      const bottom = clamp(Number(item.sill) || 0, 0, height);
+      const top = clamp(
+        bottom + Math.max(Number(item.height) || 0, 0),
+        bottom,
+        height,
+      );
+      return {
+        start: clamp(centerAlong - width / 2, 0, wallLength),
+        end: clamp(centerAlong + width / 2, 0, wallLength),
+        bottom,
+        top,
+      };
+    })
+    .filter((box) => box.end - box.start > 1e-7 && box.top - box.bottom > 1e-7);
+  const splits = [
+    ...new Set([
+      0,
+      wallLength,
+      ...openingBoxes.flatMap((splitBox) => [splitBox.start, splitBox.end]),
+    ]),
+  ].sort((a, b) => a - b);
+  const pieces = [];
+  for (let i = 0; i < splits.length - 1; i += 1) {
+    const segStart = splits[i];
+    const segEnd = splits[i + 1];
+    if (segEnd - segStart <= 1e-7) {
+      continue;
+    }
+    const mid = (segStart + segEnd) / 2;
+    const verticalGaps = openingBoxes
+      .filter(
+        (covering) => mid > covering.start - 1e-7 && mid < covering.end + 1e-7,
+      )
+      .map((coveringBox) => [coveringBox.bottom, coveringBox.top])
+      .sort((ga, gb) => ga[0] - gb[0]);
+    if (!verticalGaps.length) {
+      pieces.push({
+        start: segStart,
+        end: segEnd,
+        bottom: 0,
+        top: height,
+      });
+      continue;
+    }
+    const mergedGaps = [];
+    for (const gap of verticalGaps) {
+      const last = mergedGaps.at(-1);
+      if (last && gap[0] <= last[1] + 1e-7) {
+        last[1] = Math.max(last[1], gap[1]);
+      } else {
+        mergedGaps.push([...gap]);
+      }
+    }
+    let cursor = 0;
+    for (const [gapBottom, gapTop] of mergedGaps) {
+      if (gapBottom - cursor > 1e-7) {
+        pieces.push({
+          start: segStart,
+          end: segEnd,
+          bottom: cursor,
+          top: gapBottom,
+        });
+      }
+      cursor = Math.max(cursor, gapTop);
+    }
+    if (height - cursor > 1e-7) {
+      pieces.push({
+        start: segStart,
+        end: segEnd,
+        bottom: cursor,
+        top: height,
+      });
+    }
+  }
+  return pieces;
+}
+export function pointInRotatedRectangle(point, item, pixelsPerMeter) {
+  const negRotation = (-(Number(item.rotation) || 0) * Math.PI) / 180;
+  const dx = point.x - item.x;
+  const dy = point.y - item.y;
+  const localX = dx * Math.cos(negRotation) - dy * Math.sin(negRotation);
+  const localY = dx * Math.sin(negRotation) + dy * Math.cos(negRotation);
+  const halfWidth = (Math.max(Number(item.width) || 0, 0) * pixelsPerMeter) / 2;
+  const halfDepth = (Math.max(Number(item.depth) || 0, 0) * pixelsPerMeter) / 2;
+  return Math.abs(localX) <= halfWidth && Math.abs(localY) <= halfDepth;
+}
+export function resizeRotatedItemFromCorner(
+  item,
+  cornerSign,
+  fixedCorner,
+  pointer,
+  pixelsPerMeter,
+  uniformScale = false,
+  scaleLimits = {},
+) {
+  const ppm = Math.max(Number(pixelsPerMeter) || 0, 1e-7);
+  const signX = cornerSign?.x < 0 ? -1 : 1;
+  const signY = cornerSign?.y < 0 ? -1 : 1;
+  const negRotation = (-(Number(item.rotation) || 0) * Math.PI) / 180;
+  const dx = pointer.x - fixedCorner.x;
+  const dy = pointer.y - fixedCorner.y;
+  const localX = dx * Math.cos(negRotation) - dy * Math.sin(negRotation);
+  const localY = dx * Math.sin(negRotation) + dy * Math.cos(negRotation);
+  const rawWidth = (signX * localX) / ppm;
+  const rawDepth = (signY * localY) / ppm;
+  const baseWidth = Math.max(Number(item.width) || 0.1, 0.1);
+  const baseDepth = Math.max(Number(item.depth) || 0.1, 0.1);
+  const baseHeight = Number(item.height);
+  let width = clamp(rawWidth, 0.1, 8);
+  let depth = clamp(rawDepth, 0.1, 8);
+  let scale = 1;
+  if (uniformScale) {
+    const minScale = Math.max(Number(scaleLimits.minimum) || 0, 1e-7);
+    const maxScale = Math.max(
+      Number(scaleLimits.maximum) || Number.POSITIVE_INFINITY,
+      minScale,
+    );
+    scale = clamp(
+      Math.max(rawWidth / baseWidth, rawDepth / baseDepth),
+      minScale,
+      maxScale,
+    );
+    width = baseWidth * scale;
+    depth = baseDepth * scale;
+  }
+  const offsetX = (signX * width * ppm) / 2;
+  const offsetY = (signY * depth * ppm) / 2;
+  const rotation = ((Number(item.rotation) || 0) * Math.PI) / 180;
+  const result = {
+    x:
+      fixedCorner.x +
+      offsetX * Math.cos(rotation) -
+      offsetY * Math.sin(rotation),
+    y:
+      fixedCorner.y +
+      offsetX * Math.sin(rotation) +
+      offsetY * Math.cos(rotation),
+    width,
+    depth,
+  };
+  if (Number.isFinite(baseHeight) && baseHeight > 0) {
+    result.height = uniformScale ? baseHeight * scale : baseHeight;
+  }
+  return result;
+}
+export function itemRotationFromPointers(
+  baseRotation,
+  center,
+  startPointer,
+  endPointer,
+  snapDegrees = 0,
+) {
+  const startAngle = Math.atan2(
+    startPointer.y - center.y,
+    startPointer.x - center.x,
+  );
+  const endAngle = Math.atan2(endPointer.y - center.y, endPointer.x - center.x);
+  let rotation =
+    (Number(baseRotation) || 0) + ((endAngle - startAngle) * 180) / Math.PI;
+  const step = Math.max(Number(snapDegrees) || 0, 0);
+  if (step > 0) {
+    rotation = Math.round(rotation / step) * step;
+  }
+  return ((rotation % 360) + 360) % 360;
+}
+export function polygonArea(polygon) {
+  let area = 0;
+  for (let i = 0; i < polygon.length; i += 1) {
+    const current = polygon[i];
+    const next = polygon[(i + 1) % polygon.length];
+    area += current.x * next.y - next.x * current.y;
+  }
+  return area / 2;
+}
+export function pointInPolygon(point, polygon, toleranceInput = 1e-7) {
+  if (!Array.isArray(polygon) || polygon.length < 3) {
+    return false;
+  }
+  const tolerance = Math.max(Number(toleranceInput) || 0, 1e-7);
+  let inside = false;
+  for (let i = 0; i < polygon.length; i += 1) {
+    const a = polygon[i];
+    const b = polygon[(i + 1) % polygon.length];
+    if (projectPointToSegment(point, a, b).distance <= tolerance) {
+      return true;
+    }
+    if (a.y > point.y == b.y > point.y) {
+      continue;
+    }
+    if (a.x + ((point.y - a.y) * (b.x - a.x)) / (b.y - a.y) > point.x) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+function cross2d(a, b) {
+  return a.x * b.y - a.y * b.x;
+}
+function subtractPoints(a, b) {
+  return {
+    x: a.x - b.x,
+    y: a.y - b.y,
+  };
+}
+function lerpPoint(start, end, t) {
+  return {
+    x: start.x + (end.x - start.x) * t,
+    y: start.y + (end.y - start.y) * t,
+  };
+}
+function pushParamIfInRange(cutParams, index, param, tolerance) {
+  if (!(param < -tolerance) && !(param > 1 + tolerance)) {
+    cutParams[index].push(clamp(param, 0, 1));
+  }
+}
+function simplifyCollinearRing(ring, tolerance) {
+  const points = ring.filter(
+    (point, index) =>
+      index === 0 || distance(point, ring[index - 1]) > tolerance,
+  );
+  if (points.length > 1 && distance(points[0], points.at(-1)) <= tolerance) {
+    points.pop();
+  }
+  if (points.length < 3) {
+    return [];
+  }
+  let removed = true;
+  while (removed && points.length >= 3) {
+    removed = false;
+    for (let i = 0; i < points.length; i += 1) {
+      const prev = points[(i - 1 + points.length) % points.length];
+      const curr = points[i];
+      const next = points[(i + 1) % points.length];
+      const incoming = subtractPoints(curr, prev);
+      const outgoing = subtractPoints(next, curr);
+      const scale = Math.max(
+        Math.hypot(incoming.x, incoming.y) * Math.hypot(outgoing.x, outgoing.y),
+        1,
+      );
+      if (!(Math.abs(cross2d(incoming, outgoing)) > tolerance * scale)) {
+        points.splice(i, 1);
+        removed = true;
+        break;
+      }
+    }
+  }
+  return points;
+}
+export function unionPolygonLoops(loops, epsilonInput = 0.000001) {
+  const epsilon = Math.max(Number(epsilonInput) || 0, 1e-7);
+  const polygons = (loops || [])
+    .filter((rawLoop) => Array.isArray(rawLoop) && rawLoop.length >= 3)
+    .map((loop) =>
+      loop.map((vertex) => ({
+        x: Number(vertex.x) || 0,
+        y: Number(vertex.y) || 0,
+      })),
+    )
+    .filter(
+      (areaPolygon) => Math.abs(polygonArea(areaPolygon)) > epsilon * epsilon,
+    );
+  if (!polygons.length) {
+    return [];
+  }
+  const edges = [];
+  for (const edgePolygon of polygons) {
+    for (let vi = 0; vi < edgePolygon.length; vi += 1) {
+      const start = edgePolygon[vi];
+      const end = edgePolygon[(vi + 1) % edgePolygon.length];
+      if (distance(start, end) > epsilon) {
+        edges.push({
+          start,
+          end,
+        });
+      }
+    }
+  }
+  const cutParams = edges.map(() => [0, 1]);
+  for (let i = 0; i < edges.length; i += 1) {
+    const edgeA = edges[i];
+    const dirA = subtractPoints(edgeA.end, edgeA.start);
+    const lenSqA = dirA.x * dirA.x + dirA.y * dirA.y;
+    for (
+      let buildWallGraph = i + 1;
+      buildWallGraph < edges.length;
+      buildWallGraph += 1
+    ) {
+      const edgeB = edges[buildWallGraph];
+      const dirB = subtractPoints(edgeB.end, edgeB.start);
+      const lenSqB = dirB.x * dirB.x + dirB.y * dirB.y;
+      const originOffset = subtractPoints(edgeB.start, edgeA.start);
+      const cross = cross2d(dirA, dirB);
+      const crossTol = epsilon * Math.max(Math.sqrt(lenSqA * lenSqB), 1);
+      if (Math.abs(cross) > crossTol) {
+        const paramA = cross2d(originOffset, dirB) / cross;
+        const paramB = cross2d(originOffset, dirA) / cross;
+        if (
+          paramA < -epsilon ||
+          paramA > 1 + epsilon ||
+          paramB < -epsilon ||
+          paramB > 1 + epsilon
+        ) {
+          continue;
+        }
+        pushParamIfInRange(cutParams, i, paramA, epsilon);
+        pushParamIfInRange(cutParams, buildWallGraph, paramB, epsilon);
+        continue;
+      }
+      if (
+        Math.abs(cross2d(originOffset, dirA)) >
+        epsilon * Math.max(Math.sqrt(lenSqA), 1)
+      ) {
+        continue;
+      }
+      const startParamOnA =
+        (originOffset.x * dirA.x + originOffset.y * dirA.y) / lenSqA;
+      const endOffset = subtractPoints(edgeB.end, edgeA.start);
+      const endParamOnA =
+        (endOffset.x * dirA.x + endOffset.y * dirA.y) / lenSqA;
+      pushParamIfInRange(cutParams, i, startParamOnA, epsilon);
+      pushParamIfInRange(cutParams, i, endParamOnA, epsilon);
+      const startOffsetOnB = subtractPoints(edgeA.start, edgeB.start);
+      const startParamOnB =
+        (startOffsetOnB.x * dirB.x + startOffsetOnB.y * dirB.y) / lenSqB;
+      const endOffsetOnB = subtractPoints(edgeA.end, edgeB.start);
+      const endParamOnB =
+        (endOffsetOnB.x * dirB.x + endOffsetOnB.y * dirB.y) / lenSqB;
+      pushParamIfInRange(cutParams, buildWallGraph, startParamOnB, epsilon);
+      pushParamIfInRange(cutParams, buildWallGraph, endParamOnB, epsilon);
+    }
+  }
+  const isInsideAny = (testPoint) =>
+    polygons.some((testPolygon) =>
+      pointInPolygon(testPoint, testPolygon, epsilon),
+    );
+  const quantizeStep = epsilon * 8;
+  const nodeMap = new Map();
+  const quantizeNode = (point) => {
+    const qx = Math.round(point.x / quantizeStep) * quantizeStep;
+    const qy = Math.round(point.y / quantizeStep) * quantizeStep;
+    const key =
+      Math.round(qx / quantizeStep) + "," + Math.round(qy / quantizeStep);
+    if (!nodeMap.has(key)) {
+      nodeMap.set(key, {
+        key,
+        point: {
+          x: qx,
+          y: qy,
+        },
+      });
+    }
+    return nodeMap.get(key);
+  };
+  const boundaryEdges = [];
+  const seenEdges = new Set();
+  edges.forEach((edge, edgeIndex) => {
+    const params = [...cutParams[edgeIndex]]
+      .sort((pa, pb) => pa - pb)
+      .filter(
+        (param, paramIndex, allParams) =>
+          paramIndex === 0 || param - allParams[paramIndex - 1] > epsilon,
+      );
+    for (let pieceIndex = 0; pieceIndex < params.length - 1; pieceIndex += 1) {
+      const pieceStart = lerpPoint(edge.start, edge.end, params[pieceIndex]);
+      const pieceEnd = lerpPoint(edge.start, edge.end, params[pieceIndex + 1]);
+      const pieceLength = distance(pieceStart, pieceEnd);
+      if (pieceLength <= epsilon) {
+        continue;
+      }
+      const direction = {
+        x: (pieceEnd.x - pieceStart.x) / pieceLength,
+        y: (pieceEnd.y - pieceStart.y) / pieceLength,
+      };
+      const midpoint = lerpPoint(pieceStart, pieceEnd, 0.5);
+      const offsetDist = Math.min(
+        pieceLength * 0.2,
+        Math.max(epsilon * 32, 0.00001),
+      );
+      const leftSample = {
+        x: midpoint.x - direction.y * offsetDist,
+        y: midpoint.y + direction.x * offsetDist,
+      };
+      const rightSample = {
+        x: midpoint.x + direction.y * offsetDist,
+        y: midpoint.y - direction.x * offsetDist,
+      };
+      const leftInside = isInsideAny(leftSample);
+      const rightInside = isInsideAny(rightSample);
+      if (leftInside === rightInside) {
+        continue;
+      }
+      const fromNode = quantizeNode(leftInside ? pieceStart : pieceEnd);
+      const toNode = quantizeNode(leftInside ? pieceEnd : pieceStart);
+      if (fromNode.key === toNode.key) {
+        continue;
+      }
+      const edgeKey = [fromNode.key, toNode.key].sort().join("|");
+      if (!seenEdges.has(edgeKey)) {
+        seenEdges.add(edgeKey);
+        boundaryEdges.push({
+          start: fromNode,
+          end: toNode,
+        });
+      }
+    }
+  });
+  const adjacency = new Map();
+  boundaryEdges.forEach((boundaryEdge, adjEdgeIndex) => {
+    if (!adjacency.has(boundaryEdge.start.key)) {
+      adjacency.set(boundaryEdge.start.key, []);
+    }
+    adjacency.get(boundaryEdge.start.key).push(adjEdgeIndex);
+  });
+  const unused = new Set(
+    boundaryEdges.map((unusedEdge, unusedIndex) => unusedIndex),
+  );
+  const resultLoops = [];
+  while (unused.size) {
+    const startEdgeIndex = unused.values().next().value;
+    const startEdge = boundaryEdges[startEdgeIndex];
+    const path = [startEdge.start.point];
+    let currentEdgeIndex = startEdgeIndex;
+    let closed = false;
+    for (let step = 0; step <= boundaryEdges.length; step += 1) {
+      const currentEdge = boundaryEdges[currentEdgeIndex];
+      unused.delete(currentEdgeIndex);
+      if (currentEdge.end.key === startEdge.start.key) {
+        closed = true;
+        break;
+      }
+      path.push(currentEdge.end.point);
+      const nextCandidates = (adjacency.get(currentEdge.end.key) || []).filter(
+        (candidateIndex) => unused.has(candidateIndex),
+      );
+      if (!nextCandidates.length) {
+        break;
+      }
+      if (nextCandidates.length === 1) {
+        currentEdgeIndex = nextCandidates[0];
+        continue;
+      }
+      const incoming = subtractPoints(
+        currentEdge.end.point,
+        currentEdge.start.point,
+      );
+      currentEdgeIndex = nextCandidates
+        .map((branchIndex) => {
+          const candidateEdge = boundaryEdges[branchIndex];
+          const outgoing = subtractPoints(
+            candidateEdge.end.point,
+            candidateEdge.start.point,
+          );
+          return {
+            index: branchIndex,
+            turn: Math.atan2(
+              cross2d(incoming, outgoing),
+              incoming.x * outgoing.x + incoming.y * outgoing.y,
+            ),
+          };
+        })
+        .sort((turnA, turnB) => turnB.turn - turnA.turn)[0].index;
+    }
+    if (!closed) {
+      continue;
+    }
+    const simplified = simplifyCollinearRing(path, epsilon * 8);
+    if (
+      simplified.length >= 3 &&
+      Math.abs(polygonArea(simplified)) > epsilon * epsilon
+    ) {
+      resultLoops.push(simplified);
+    }
+  }
+  return resultLoops.sort(
+    (loopA, loopB) =>
+      Math.abs(polygonArea(loopB)) - Math.abs(polygonArea(loopA)),
+  );
+}
+export function validatedUnionPolygonLoops(loops, epsilonInput = 0.000001) {
+  const epsilon = Math.max(Number(epsilonInput) || 0, 1e-7);
+  const polygons = (loops || [])
+    .filter((rawLoop) => Array.isArray(rawLoop) && rawLoop.length >= 3)
+    .filter((areaLoop) => Math.abs(polygonArea(areaLoop)) > epsilon * epsilon);
+  if (!polygons.length) {
+    return [];
+  }
+  const unioned = unionPolygonLoops(polygons, epsilon);
+  if (!unioned.length) {
+    return [];
+  }
+  const inputArea = polygons.reduce(
+    (inputSum, inputPolygon) => inputSum + Math.abs(polygonArea(inputPolygon)),
+    0,
+  );
+  const unionArea = unioned.reduce(
+    (unionSum, unionPolygon) => unionSum + polygonArea(unionPolygon),
+    0,
+  );
+  const areaTolerance = Math.max(inputArea * 0.001, epsilon * epsilon * 1024);
+  if (unionArea <= areaTolerance || unionArea > inputArea + areaTolerance) {
+    return [];
+  } else {
+    return unioned;
+  }
+}
+function buildWallGraph(walls, tolerance) {
+  const nodes = [];
+  const endpointWalls = [];
+  const spatialIndex = new Map();
+  const addNode = (point) => {
+    const cellX = Math.floor(point.x / tolerance);
+    const cellY = Math.floor(point.y / tolerance);
+    let bestIndex = -1;
+    for (let dx = -1; dx <= 1; dx += 1) {
+      for (let dy = -1; dy <= 1; dy += 1) {
+        for (const nodeIndex of spatialIndex.get(
+          cellX + dx + "," + (cellY + dy),
+        ) || []) {
+          if (
+            (bestIndex < 0 || nodeIndex < bestIndex) &&
+            distance(nodes[nodeIndex], point) <= tolerance
+          ) {
+            bestIndex = nodeIndex;
+          }
+        }
+      }
+    }
+    if (bestIndex >= 0) {
+      return bestIndex;
+    }
+    const newIndex = nodes.length;
+    nodes.push({
+      x: point.x,
+      y: point.y,
+    });
+    endpointWalls.push([]);
+    const cellKey = cellX + "," + cellY;
+    if (!spatialIndex.has(cellKey)) {
+      spatialIndex.set(cellKey, []);
+    }
+    spatialIndex.get(cellKey).push(newIndex);
+    return newIndex;
+  };
+  const edgeKey = (a, b) => (a < b ? a + "," + b : b + "," + a);
+  const rawEdges = [];
+  const seenEdgeKeys = new Set();
+  for (const wall of walls || []) {
+    if (
+      ![wall?.start?.x, wall?.start?.y, wall?.end?.x, wall?.end?.y].every(
+        Number.isFinite,
+      )
+    ) {
+      continue;
+    }
+    const startNode = addNode(wall.start);
+    const endNode = addNode(wall.end);
+    if (startNode === endNode) {
+      continue;
+    }
+    endpointWalls[startNode].push(wall);
+    endpointWalls[endNode].push(wall);
+    const key = edgeKey(startNode, endNode);
+    if (seenEdgeKeys.has(key)) {
+      continue;
+    }
+    seenEdgeKeys.add(key);
+    const startPoint = nodes[startNode];
+    const endPoint = nodes[endNode];
+    rawEdges.push({
+      start: startNode,
+      end: endNode,
+      minX: Math.min(startPoint.x, endPoint.x),
+      maxX: Math.max(startPoint.x, endPoint.x),
+      minY: Math.min(startPoint.y, endPoint.y),
+      maxY: Math.max(startPoint.y, endPoint.y),
+      cuts: [
+        {
+          t: 0,
+          node: startNode,
+        },
+        {
+          t: 1,
+          node: endNode,
+        },
+      ],
+    });
+  }
+  const addCutFromNode = (edge, cutNodeIndex) => {
+    if (cutNodeIndex === edge.start || cutNodeIndex === edge.end) {
+      return;
+    }
+    const projection = projectPointToSegment(
+      nodes[cutNodeIndex],
+      nodes[edge.start],
+      nodes[edge.end],
+    );
+    if (
+      projection.t > 0 &&
+      projection.t < 1 &&
+      projection.distance <= tolerance
+    ) {
+      edge.cuts.push({
+        t: projection.t,
+        node: cutNodeIndex,
+      });
+    }
+  };
+  rawEdges.sort((sortA, sortB) => sortA.minX - sortB.minX);
+  for (let i = 0; i < rawEdges.length; i += 1) {
+    const edgeA = rawEdges[i];
+    for (
+      let buildWallGraph = i + 1;
+      buildWallGraph < rawEdges.length;
+      buildWallGraph += 1
+    ) {
+      const edgeB = rawEdges[buildWallGraph];
+      if (edgeB.minX > edgeA.maxX + tolerance) {
+        break;
+      }
+      if (
+        edgeB.minY > edgeA.maxY + tolerance ||
+        edgeB.maxY < edgeA.minY - tolerance
+      ) {
+        continue;
+      }
+      addCutFromNode(edgeA, edgeB.start);
+      addCutFromNode(edgeA, edgeB.end);
+      addCutFromNode(edgeB, edgeA.start);
+      addCutFromNode(edgeB, edgeA.end);
+      const hit = segmentIntersection(
+        nodes[edgeA.start],
+        nodes[edgeA.end],
+        nodes[edgeB.start],
+        nodes[edgeB.end],
+      );
+      if (hit) {
+        const hitNode = addNode(hit);
+        addCutFromNode(edgeA, hitNode);
+        addCutFromNode(edgeB, hitNode);
+      }
+    }
+  }
+  const splitEdges = [];
+  const seenSplitKeys = new Set();
+  for (const splitEdge of rawEdges) {
+    splitEdge.cuts.sort((cutA, cutB) => cutA.t - cutB.t);
+    let prevNode = splitEdge.cuts[0].node;
+    for (const cut of splitEdge.cuts.slice(1)) {
+      const nextNode = cut.node;
+      const splitKey = edgeKey(prevNode, nextNode);
+      if (prevNode !== nextNode && !seenSplitKeys.has(splitKey)) {
+        seenSplitKeys.add(splitKey);
+        splitEdges.push({
+          start: prevNode,
+          end: nextNode,
+        });
+      }
+      prevNode = nextNode;
+    }
+  }
+  return {
+    nodes,
+    edges: splitEdges,
+    endpointWalls,
+  };
+}
+function findClosedWallFaces(walls, tolerance) {
+  const { nodes, edges } = buildWallGraph(walls, tolerance);
+  const outgoing = Array.from(
+    {
+      length: nodes.length,
+    },
+    () => [],
+  );
+  const halfEdges = [];
+  for (const edge of edges) {
+    const halfIndex = halfEdges.length;
+    halfEdges.push(
+      {
+        start: edge.start,
+        end: edge.end,
+      },
+      {
+        start: edge.end,
+        end: edge.start,
+      },
+    );
+    outgoing[edge.start].push(halfIndex);
+    outgoing[edge.end].push(halfIndex + 1);
+  }
+  const slotIndex = new Int32Array(halfEdges.length);
+  outgoing.forEach((halfIndices, nodeIndex) => {
+    const angleOf = (angleHalf) =>
+      Math.atan2(
+        nodes[halfEdges[angleHalf].end].y - nodes[nodeIndex].y,
+        nodes[halfEdges[angleHalf].end].x - nodes[nodeIndex].x,
+      );
+    halfIndices.sort((ha, hb) => angleOf(ha) - angleOf(hb));
+    halfIndices.forEach((slotHalf, slot) => {
+      slotIndex[slotHalf] = slot;
+    });
+  });
+  const nextHalf = halfEdges.map((halfEdge, nextHalfIndex) => {
+    const atEnd = outgoing[halfEdge.end];
+    return atEnd[
+      (slotIndex[nextHalfIndex ^ 1] + atEnd.length - 1) % atEnd.length
+    ];
+  });
+  const visited = new Uint8Array(halfEdges.length);
+  const faceMap = new Map();
+  const registerFace = (nodePath) => {
+    if (nodePath.length < 3) {
+      return;
+    }
+    const points = nodePath.map((pathNode) => nodes[pathNode]);
+    const origin = points[0];
+    const signedArea = polygonArea(
+      points.map((areaPoint) => subtractPoints(areaPoint, origin)),
+    );
+    if (Math.abs(signedArea) <= tolerance * tolerance) {
+      return;
+    }
+    const ordered = signedArea > 0 ? nodePath : [...nodePath].reverse();
+    let minIndex = 0;
+    for (let i = 1; i < ordered.length; i += 1) {
+      if (ordered[i] < ordered[minIndex]) {
+        minIndex = i;
+      }
+    }
+    const canonicalKey = [
+      ...ordered.slice(minIndex),
+      ...ordered.slice(0, minIndex),
+    ].join(",");
+    const existing = faceMap.get(canonicalKey);
+    if (existing) {
+      existing.outer ||= signedArea < 0;
+      return;
+    }
+    const simplified = simplifyCollinearRing(
+      ordered.map((orderedNode) => ({
+        ...nodes[orderedNode],
+      })),
+      1e-7,
+    );
+    if (simplified.length >= 3) {
+      faceMap.set(canonicalKey, {
+        polygon: simplified,
+        area: Math.abs(signedArea),
+        outer: signedArea < 0,
+      });
+    }
+  };
+  for (let startHalf = 0; startHalf < halfEdges.length; startHalf += 1) {
+    if (visited[startHalf]) {
+      continue;
+    }
+    const path = [];
+    const pathIndex = new Map();
+    let walkHalf = startHalf;
+    const pushNode = (pushNodeIndex) => {
+      const existingIndex = pathIndex.get(pushNodeIndex);
+      if (existingIndex !== undefined) {
+        for (
+          registerFace(path.slice(existingIndex));
+          path.length > existingIndex + 1;
+
+        ) {
+          pathIndex.delete(path.pop());
+        }
+      } else {
+        pathIndex.set(pushNodeIndex, path.length);
+        path.push(pushNodeIndex);
+      }
+    };
+    while (!visited[walkHalf]) {
+      visited[walkHalf] = 1;
+      pushNode(halfEdges[walkHalf].start);
+      walkHalf = nextHalf[walkHalf];
+    }
+    if (walkHalf === startHalf) {
+      pushNode(halfEdges[startHalf].start);
+    }
+  }
+  return [...faceMap.values()].sort((faceA, faceB) => faceB.area - faceA.area);
+}
+export function closedWallPolygons(walls, toleranceInput = 1) {
+  const tolerance = Math.max(Number(toleranceInput) || 0, 1e-7);
+  return findClosedWallFaces(walls, tolerance).map((face) => face.polygon);
+}
+function findDegreeOneEndpoints(walls, toleranceInput = 1) {
+  const tolerance = Math.max(Number(toleranceInput) || 0, 1e-7);
+  const { nodes, edges, endpointWalls } = buildWallGraph(walls, tolerance);
+  const degree = new Uint32Array(nodes.length);
+  for (const edge of edges) {
+    degree[edge.start] += 1;
+    degree[edge.end] += 1;
+  }
+  return nodes.flatMap((point, nodeIndex) =>
+    degree[nodeIndex] === 1
+      ? [
+          {
+            point,
+            walls: endpointWalls[nodeIndex],
+          },
+        ]
+      : [],
+  );
+}
+export function openWallEndpoints(walls, toleranceInput = 1) {
+  return findDegreeOneEndpoints(walls, toleranceInput).map((endpoint) => ({
+    ...endpoint.point,
+  }));
+}
+function isStrictlyInsidePolygon(point, polygon, tolerance) {
+  if (pointInPolygon(point, polygon, tolerance)) {
+    return polygon.every(
+      (vertex, i) =>
+        projectPointToSegment(point, vertex, polygon[(i + 1) % polygon.length])
+          .distance > tolerance,
+    );
+  } else {
+    return false;
+  }
+}
+export function unclosedWallEndpoints(
+  walls,
+  toleranceInput = 1,
+  floorPolygons = null,
+) {
+  const tolerance = Math.max(Number(toleranceInput) || 0, 1e-7);
+  const polygons = Array.isArray(floorPolygons)
+    ? floorPolygons
+    : closedWallFloorPolygons(walls, tolerance);
+  return findDegreeOneEndpoints(walls, tolerance)
+    .filter(
+      (endpoint) =>
+        !endpoint.walls.length ||
+        endpoint.walls.some((wall) => wall.allowOpenEnd !== true),
+    )
+    .filter(
+      (openEndpoint) =>
+        !polygons.some((polygon) =>
+          isStrictlyInsidePolygon(openEndpoint.point, polygon, tolerance),
+        ),
+    )
+    .map((mappedEndpoint) => ({
+      ...mappedEndpoint.point,
+    }));
+}
+function isPolygonStrictlyInside(inner, outer, tolerance) {
+  const areaTolSq = tolerance * tolerance;
+  const areaFromOrigin = (polygon) =>
+    Math.abs(
+      polygonArea(polygon.map((point) => subtractPoints(point, polygon[0]))),
+    );
+  if (areaFromOrigin(outer) <= areaFromOrigin(inner) + areaTolSq) {
+    return false;
+  } else {
+    return inner.every((vertex, i) => {
+      if (!pointInPolygon(vertex, outer, tolerance)) {
+        return false;
+      }
+      const next = inner[(i + 1) % inner.length];
+      const midpoint = {
+        x: (vertex.x + next.x) / 2,
+        y: (vertex.y + next.y) / 2,
+      };
+      return pointInPolygon(midpoint, outer, tolerance);
+    });
+  }
+}
+export function closedWallFloorPolygons(walls, toleranceInput = 1) {
+  const tolerance = Math.max(Number(toleranceInput) || 0, 1e-7);
+  const floors = [];
+  for (const { polygon, outer } of findClosedWallFaces(walls, tolerance)) {
+    if (
+      !!outer &&
+      !floors.some((existing) =>
+        isPolygonStrictlyInside(polygon, existing, tolerance),
+      )
+    ) {
+      floors.push(polygon);
+    }
+  }
+  return floors;
+}
+export function modelBounds(model) {
+  const points = [];
+  if (model.background?.width && model.background?.height) {
+    points.push(
+      {
+        x: 0,
+        y: 0,
+      },
+      {
+        x: model.background.width,
+        y: model.background.height,
+      },
+    );
+  }
+  for (const wall of model.walls || []) {
+    points.push(wall.start, wall.end);
+  }
+  for (const item of model.items || []) {
+    points.push({
+      x: item.x,
+      y: item.y,
+    });
+  }
+  if (!points.length) {
+    return {
+      minX: 0,
+      minY: 0,
+      maxX: 1200,
+      maxY: 800,
+      width: 1200,
+      height: 800,
+    };
+  }
+  const minX = Math.min(...points.map((p) => p.x));
+  const minY = Math.min(...points.map((p) => p.y));
+  const maxX = Math.max(...points.map((p) => p.x));
+  const maxY = Math.max(...points.map((p) => p.y));
+  return {
+    minX,
+    minY,
+    maxX: Math.max(maxX, minX + 1),
+    maxY: Math.max(maxY, minY + 1),
+    width: Math.max(maxX - minX, 1),
+    height: Math.max(maxY - minY, 1),
+  };
+}

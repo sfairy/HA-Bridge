@@ -1,1 +1,841 @@
-(function(_0x442906,_0x3b7983){const _0x578d15=_0x2048,_0x39d87e=_0x442906();while(!![]){try{const _0x9c265=-parseInt(_0x578d15(0x18f))/0x1+-parseInt(_0x578d15(0x17f))/0x2+-parseInt(_0x578d15(0x161))/0x3*(-parseInt(_0x578d15(0x152))/0x4)+-parseInt(_0x578d15(0x143))/0x5+-parseInt(_0x578d15(0x171))/0x6+-parseInt(_0x578d15(0x187))/0x7+parseInt(_0x578d15(0x166))/0x8;if(_0x9c265===_0x3b7983)break;else _0x39d87e['push'](_0x39d87e['shift']());}catch(_0x46f776){_0x39d87e['push'](_0x39d87e['shift']());}}}(_0x294c,0x22c60));import{requestInteraction3dAccess as _0x1d2f81,getInteraction3dEditorView as _0x3a2ed2,waitInteraction3dEditorView as _0x9e9e4a,cancelOtherInteraction3dViews as _0x58e246}from'./bridge.js?v=20260906-i3d-complete-v6';function _0x2048(_0x246b37,_0x42d884){const _0x294ce1=_0x294c();return _0x2048=function(_0x2048f5,_0x2c7db9){_0x2048f5=_0x2048f5-0x141;let _0x32c1fb=_0x294ce1[_0x2048f5];return _0x32c1fb;},_0x2048(_0x246b37,_0x42d884);}import{createInteraction3dCover as _0xda4428}from'./cover.js?v=20260905-interaction3d-cover-v1';import{withRequestTimeout as _0x3b1e4c}from'../../utils/request-timeout.js?v=20260907-browser-compat-v1';export function interaction3dEntries(_0x2edbc6,_0x161b4c=[],_0x22b9c0=new Map()){const _0x4e904b=_0x2048;if(Array['isArray'](_0x2edbc6))_0x2edbc6['forEach']((_0x57cff7,_0x4f6b92)=>interaction3dEntries(_0x57cff7,[..._0x161b4c,String(_0x57cff7?.['id']??_0x57cff7?.['path']??_0x4f6b92)],_0x22b9c0));else{if(_0x2edbc6&&typeof _0x2edbc6=='object'){_0x2edbc6['type']==='interaction3d'&&_0x22b9c0['set'](JSON[_0x4e904b(0x17c)](_0x161b4c),_0x2edbc6);for(const [_0x11ed7e,_0x5bf0b8]of Object['entries'](_0x2edbc6))interaction3dEntries(_0x5bf0b8,[..._0x161b4c,_0x11ed7e],_0x22b9c0);}}return _0x22b9c0;}function _0x294c(){const _0x516baf=['pages','navigation-segmented-options','span','navigation-segmented-options\x20three-columns','min','3D\x20旋转方式','button','message','243SGVYpS','max','aria-label','detail','createElement','6612456LfQSxR','addEventListener','vertical','counterclockwise','orthographic','dataset','round','仅左右','aria-pressed','onChange','rotationMode','1013706NSZEfK','i3d-vignette-setting','input','assign','focusVignetteStrength','checkbox','POST','hidden','valueAsNumber','120','mode','stringify','section','户型载入失败，请重试。','214928imvjuZ','name','textContent','label','isFinite','append','弹窗透明度','div','1445983kzVlSG','enabled','sceneId','group','set','querySelectorAll','direction','click','235633aolUfP','i3d-auto-rotate-row','has','viewEditing','自动旋转方向','checked','speed','number','711250uinLlu','renderScale','type','width','i3d-popup-transparency','等待时间（秒）','projection','disabled','idleSeconds','classList','toggle','change','get','setAttribute','setViewEditing','8728CRayhB','onError','旋转方式','.interaction3d-cover-title','className','map','camera'];_0x294c=function(){return _0x516baf;};return _0x294c();}function X(_0x5aae79){const _0x50110a=_0x2048;return Array['isArray'](_0x5aae79)?JSON['stringify'](_0x5aae79[_0x50110a(0x157)](X)):JSON['stringify'](_0x5aae79&&typeof _0x5aae79=='object'?Object['keys'](_0x5aae79)['sort']()['map'](_0x14f19d=>[_0x14f19d,X(_0x5aae79[_0x14f19d])]):_0x5aae79);}function Me(_0x1ed805){if(!_0x1ed805)return null;const {zIndex:_0x430ec6,..._0x58708f}=_0x1ed805['position']||{};return{..._0x1ed805,'position':_0x58708f};}export function changesInteraction3d(_0x2bd2da,_0x4c9883){const _0x5971c2=interaction3dEntries(_0x2bd2da),_0x38b565=interaction3dEntries(_0x4c9883);for(const [_0x2631ea,_0x1f2a7f]of _0x38b565)if(X(Me(_0x1f2a7f))!==X(Me(_0x5971c2['get'](_0x2631ea))))return!0x0;const _0x2d4efb=new Set((_0x4c9883?.['sharedComponents']||[])['filter'](_0x1c7347=>interaction3dEntries(_0x1c7347)['size'])['map'](_0x3cef65=>_0x3cef65['id']));return(_0x4c9883?.['pages']||[])['some'](_0x3baf7c=>{const _0x4433ff=_0x2048,_0x430b97=new Set((_0x2bd2da?.[_0x4433ff(0x159)]||[])['find'](_0x5cfa62=>_0x5cfa62['id']===_0x3baf7c['id'])?.['sharedComponentIds']||[]);return(_0x3baf7c['sharedComponentIds']||[])['some'](_0x545047=>_0x2d4efb[_0x4433ff(0x191)](_0x545047)&&!_0x430b97['has'](_0x545047));});}export async function guardInteraction3dChanges(_0x54f83b,_0x3bb66a){changesInteraction3d(_0x54f83b,_0x3bb66a)&&await _0x1d2f81();}export function renderInteraction3dThumbnail(_0x5a3c15){_0x5a3c15['classList']['add']('interaction3d-thumbnail'),_0x5a3c15['append'](_0xda4428());}export async function updateInteraction3dCard(_0x1ffce0){const _0x24f0ea=_0x2048;_0x1ffce0[_0x24f0ea(0x14a)]=!0x0,_0x1ffce0['title']='3D\x20交互';const _0x587df5=_0x1ffce0['querySelector'](_0x24f0ea(0x155));_0x587df5['hidden']=!0x0;try{await _0x1d2f81(),_0x1ffce0['disabled']=!0x1,_0x1ffce0['title']='添加\x203D\x20交互控件',_0x587df5[_0x24f0ea(0x178)]=!0x0;}catch(_0x3dff06){_0x587df5[_0x24f0ea(0x178)]=_0x3dff06?.['status']!==0x193,_0x1ffce0['title']=_0x3dff06?.['status']===0x193?'3D\x20交互':'3D\x20交互暂时无法连接，请稍后重试';}}const oe=new Map();export async function requestInteraction3dScene(){return _0x3b1e4c(0x4e20,async _0x3e2352=>{const _0x55d470=_0x2048,_0xf65440=await fetch('/api/v1/modules/interaction3d/scenes',{'method':_0x55d470(0x177),'credentials':'same-origin','signal':_0x3e2352}),_0x1dac4d=await _0xf65440['json']()['catch'](()=>({}));if(!_0xf65440['ok'])throw new Error(typeof _0x1dac4d[_0x55d470(0x164)]=='string'?_0x1dac4d['detail']:_0x55d470(0x17e));if(!/^[0-9a-f]{32}$/['test'](_0x1dac4d['sceneId']||''))throw new Error(_0x55d470(0x17e));return{'sceneId':_0x1dac4d[_0x55d470(0x189)]};});}export function renderInteraction3dInspector(_0x2e0aa6,_0x2826a0,_0x3b52ba){const _0x35d0be=_0x2048;_0x58e246(_0x2826a0?.['type']==='interaction3d'?_0x2826a0['id']:null);let _0x3255b3=_0x2e0aa6['querySelector']('#interaction3d-inspector');if(_0x3255b3||(_0x3255b3=document['createElement'](_0x35d0be(0x17d)),_0x3255b3['id']='interaction3d-inspector',_0x3255b3[_0x35d0be(0x156)]='inspector-form',_0x2e0aa6['append'](_0x3255b3)),_0x3255b3['hidden']=_0x2826a0?.['type']!=='interaction3d',_0x3255b3['hidden'])return;_0x3255b3['dataset']['componentId']=_0x2826a0['id'],_0x3255b3['replaceChildren']();const _0x5c85ad=(_0x40e2d0,_0x1b2287='',_0x221eaa='')=>{const _0xf5c00b=_0x35d0be,_0x201b28=document[_0xf5c00b(0x165)](_0x40e2d0);return _0x201b28['className']=_0x1b2287,_0x201b28[_0xf5c00b(0x181)]=_0x221eaa,_0x201b28;},_0x320606=_0x3f196f=>{const _0x31436f=_0x5c85ad('section','inspector-section');return _0x31436f['append'](_0x5c85ad('h3','',_0x3f196f)),_0x3255b3['append'](_0x31436f),_0x31436f;},_0x34ec9e=(_0x2870c0,_0x3151d3,_0x4cee38)=>{const _0x34e002=_0x5c85ad('label');return _0x34e002['append'](_0x5c85ad('span','',_0x3151d3),_0x4cee38),_0x2870c0['append'](_0x34e002),_0x4cee38;},_0x1feef6=_0x38d90c=>Promise['resolve'](_0x3b52ba['onChange'](_0x38d90c))['catch'](_0xa4bcd2=>_0x3b52ba[_0x35d0be(0x153)]?.(_0xa4bcd2)),_0x224c11=_0x2826a0['properties']||{},_0x7c2f7f=_0x2826a0['position']||{},_0x119da5={'rotationMode':_0x224c11['interaction']?.['rotationMode']||_0x224c11[_0x35d0be(0x158)]?.['rotationMode']||'free','panEnabled':!0x1,'zoomEnabled':!0x1},_0x521601=_0x3a2ed2(_0x2826a0['id']),_0x215ddf=!!_0x521601?.['viewEditing'],_0x3019d5=_0x3b52ba['document']?.['canvas']||{},_0x3ba16a=Number(_0x3019d5['width']||0xada),_0x5685c0=Number(_0x3019d5['height']||0x794),_0x2f1256=Number(_0x7c2f7f[_0x35d0be(0x146)]||0x64),_0x7d60b=Number(_0x7c2f7f['height']||0x64),_0x544797=_0x320606('布局与位置'),_0x1bebc5=_0x5c85ad('div','image-layout-options');_0x1bebc5['setAttribute']('role','group'),_0x1bebc5['setAttribute']('aria-label','3D\x20交互布局');const _0x4cb7a2=_0x224c11['layoutMode']==='fill';for(const [_0x5325d6,_0x2ec71a]of[['free','自由'],['fill','铺满']]){const _0x1122ba=_0x5c85ad('button','',_0x2ec71a);_0x1122ba['type']='button',_0x1122ba[_0x35d0be(0x16b)]['interaction3dLayout']=_0x5325d6;const _0xa9baea=(_0x4cb7a2?'fill':'free')===_0x5325d6;_0x1122ba['classList']['toggle']('active',_0xa9baea),_0x1122ba['setAttribute'](_0x35d0be(0x16e),String(_0xa9baea)),_0x1122ba['addEventListener']('click',()=>{_0xa9baea||_0x1feef6({'properties':{'layoutMode':_0x5325d6}});}),_0x1bebc5['append'](_0x1122ba);}const _0x50186e=_0x5c85ad('div','inspector-grid\x20two-columns');_0x544797['append'](_0x1bebc5,_0x50186e),_0x50186e['hidden']=_0x4cb7a2;const _0x46ec67=(_0x205b79,_0x219b38,_0x52db26,_0xbef8d7,_0x46a59d)=>{const _0x4635c4=_0x35d0be,_0x5d2115=_0x5c85ad('input');Object['assign'](_0x5d2115,{'name':'i3d-position-'+_0x205b79,'type':_0x4635c4(0x142),'min':String(_0x52db26),'max':String(_0xbef8d7),'step':'.1','value':String(Math['round'](_0x219b38*0xa)/0xa),'disabled':_0x4cb7a2}),_0x5d2115['addEventListener'](_0x4635c4(0x14e),()=>{const _0x4f950d=_0x4635c4;Number['isFinite'](_0x5d2115['valueAsNumber'])&&_0x1feef6(_0x46a59d(Math['max'](_0x52db26,Math[_0x4f950d(0x15d)](_0xbef8d7,_0x5d2115['valueAsNumber']))));}),_0x34ec9e(_0x50186e,_0x205b79,_0x5d2115);};_0x46ec67('左侧（%）',(Number(_0x7c2f7f['x']||0x0)+_0x2f1256/0x2)/_0x3ba16a*0x64,0x0,0x64,_0x12812f=>({'position':{'x':_0x12812f*_0x3ba16a/0x64-_0x2f1256/0x2}})),_0x46ec67('顶部（%）',(Number(_0x7c2f7f['y']||0x0)+_0x7d60b/0x2)/_0x5685c0*0x64,0x0,0x64,_0x500834=>({'position':{'y':_0x500834*_0x5685c0/0x64-_0x7d60b/0x2}})),_0x46ec67('宽度（%）',_0x2f1256/_0x3ba16a*0x64,0.1,0x64,_0x5a70f4=>({'position':{'width':_0x5a70f4*_0x3ba16a/0x64}})),_0x46ec67('高度（%）',_0x7d60b/_0x5685c0*0x64,0.1,0x64,_0x3c90d1=>({'position':{'height':_0x3c90d1*_0x5685c0/0x64}})),_0x46ec67('缩放（%）',Number(_0x2826a0['style']?.['scale']||0x1)*0x64,0x1,0x1f4,_0xfe4224=>({'style':{'scale':_0xfe4224/0x64}})),_0x46ec67('旋转（°）',Number(_0x7c2f7f['rotation']||0x0),-0x168,0x168,_0x1ae85c=>({'position':{'rotation':_0x1ae85c}}));const _0x4a99ce=_0x320606('3D\x20户型'),_0x69959a=_0x5c85ad('p','inspector-section-note');_0x69959a['setAttribute']('role','status');const _0x301cea=(_0x3b52ba['document']?.['projectId']||'')+'/'+_0x2826a0['id'];oe[_0x35d0be(0x191)](_0x301cea)||oe[_0x35d0be(0x18b)](_0x301cea,{'state':'idle','error':''});const _0x3040ba=oe[_0x35d0be(0x14f)](_0x301cea),_0x972ddb=_0x5c85ad('button','','重新载入户型');_0x972ddb['type']='button';const _0x3a80e9=_0x5c85ad('button','','配置灯光');_0x3a80e9[_0x35d0be(0x145)]=_0x35d0be(0x15f);const _0x2795f0=_0x5c85ad('button','','进阶设置');_0x2795f0['type']='button';const _0x5db58e=async()=>{const _0x5d562f=_0x35d0be;_0x3b52ba['prepareCanvas']?.(),_0x50a9fe[_0x5d562f(0x178)]=!0x1,_0x50a9fe['textContent']='正在准备户型…';const _0xbd71d9=await _0x9e9e4a(_0x2826a0['id']);return _0x3255b3['hidden']||_0x3255b3['dataset']['componentId']!==_0x2826a0['id']?null:(_0x50a9fe['hidden']=!0x0,_0xbd71d9);};_0x2795f0[_0x35d0be(0x167)]('click',async()=>{const _0x1d7c11=_0x35d0be;_0x2795f0['disabled']=!0x0;try{if(!await _0x5db58e())return;await _0x1d2f81();const {openInteraction3dAppearanceEditor:_0x2e51f6}=await import('/api/v1/modules/interaction3d/config-editor.js?v=20260907-light-capability-v1');await _0x2e51f6({'component':_0x2826a0,'onSave':_0x369950=>_0x3b52ba[_0x1d7c11(0x16f)]({'properties':{'baseLighting':_0x369950}})});}catch(_0x453379){_0x50a9fe[_0x1d7c11(0x178)]=!0x1,_0x50a9fe['textContent']=_0x453379['message'];}finally{_0x2795f0[_0x1d7c11(0x14a)]=!0x1;}});const _0x547925=_0x5c85ad('div','i3d-house-actions');_0x4a99ce['append'](_0x69959a,_0x972ddb,_0x547925);const _0x222de9=_0x320606('灯光');_0x222de9['append'](_0x3a80e9),_0x3040ba['refresh']=()=>{const _0x4d2532=_0x35d0be;_0x69959a['isConnected']&&(_0x69959a['textContent']=_0x224c11[_0x4d2532(0x189)]?'已关联户型，可继续配置视角和灯光。':_0x3040ba['state']==='loading'?'正在载入已保存的户型…':_0x3040ba['error']||'尚未载入户型。',_0x69959a['hidden']=!!_0x224c11['sceneId'],_0x972ddb['hidden']=!!_0x224c11['sceneId']||_0x3040ba['state']==='loading',_0x3a80e9[_0x4d2532(0x14a)]=!_0x224c11['sceneId']||_0x215ddf,_0x2795f0['disabled']=!_0x224c11['sceneId']||_0x215ddf);};const _0x290168=async()=>{const _0x30a3eb=_0x35d0be;if(_0x3040ba['state']!=='loading'){_0x3040ba['state']='loading',_0x3040ba['error']='',_0x3040ba['refresh']();try{const _0x2730d7=await requestInteraction3dScene();await _0x3b52ba['onChange']({'properties':_0x2730d7}),_0x3040ba['state']='ready';}catch(_0x1c6b69){_0x3040ba['state']='error',_0x3040ba['error']=_0x1c6b69[_0x30a3eb(0x180)]==='TimeoutError'?'户型载入超时，请重试。':_0x1c6b69[_0x30a3eb(0x160)];}_0x3040ba['refresh']();}};_0x972ddb['addEventListener']('click',()=>void _0x290168()),_0x3a80e9['addEventListener']('click',async()=>{const _0x1276de=_0x35d0be;_0x3a80e9['disabled']=!0x0;try{await _0x1d2f81();const {openInteraction3dEditor:_0x181ff8}=await import('/api/v1/modules/interaction3d/config-editor.js?v=20260907-light-capability-v1');await _0x181ff8({'component':_0x2826a0,'document':_0x3b52ba['document'],'entities':_0x3b52ba['entities'],'states':_0x3b52ba['states'],'pickers':_0x3b52ba['pickers'],'onSave':_0x42b002=>_0x3b52ba[_0x1276de(0x16f)]({'properties':_0x42b002},{'replaceProperties':!0x0})});}catch(_0x39ce3a){_0x3b52ba[_0x1276de(0x153)]?.(_0x39ce3a);}finally{_0x3a80e9['disabled']=!0x1;}});const _0x1768ec=_0x4a99ce,_0x2b77d2=_0x5c85ad('button',_0x215ddf?'primary':'',_0x215ddf?'完成并固定':'调整户型视角');_0x2b77d2['type']='button',_0x2b77d2['disabled']=!_0x224c11['sceneId'],_0x2b77d2['setAttribute'](_0x35d0be(0x16e),String(_0x215ddf));const _0x6100d5=_0x5c85ad('button','','取消本次调整');_0x6100d5['type']='button',_0x6100d5['hidden']=!_0x215ddf;const _0x50a9fe=_0x5c85ad('p','inspector-section-note');_0x50a9fe[_0x35d0be(0x178)]=!0x0,_0x2b77d2['addEventListener'](_0x35d0be(0x18e),async()=>{const _0x23abe0=_0x35d0be;_0x2b77d2['disabled']=!0x0;try{const _0xb7cb1b=await _0x5db58e();if(!_0xb7cb1b)return;if(_0xb7cb1b['viewEditing']){const _0x73bd50=await _0xb7cb1b['captureView']();await _0x3b52ba['onChange']({'properties':{'camera':_0x73bd50,'interaction':_0x119da5}}),_0xb7cb1b[_0x23abe0(0x151)](!0x1),renderInteraction3dInspector(_0x2e0aa6,{..._0x2826a0,'properties':{..._0x224c11,'camera':_0x73bd50,'interaction':_0x119da5}},_0x3b52ba);}else _0xb7cb1b['setViewEditing'](!0x0),renderInteraction3dInspector(_0x2e0aa6,_0x2826a0,_0x3b52ba);}catch(_0x42fb1f){_0x50a9fe['hidden']=!0x1,_0x50a9fe[_0x23abe0(0x181)]=_0x42fb1f['message'];}finally{_0x2b77d2[_0x23abe0(0x14a)]=!0x1;}}),_0x6100d5['addEventListener']('click',()=>{_0x3a2ed2(_0x2826a0['id'])?.['setViewEditing'](!0x1),renderInteraction3dInspector(_0x2e0aa6,_0x2826a0,_0x3b52ba);}),_0x547925['append'](_0x2795f0,_0x2b77d2),_0x1768ec['append'](_0x6100d5,_0x50a9fe);const _0x4e5922=_0x5c85ad('div','i3d-view-options');_0x4e5922['hidden']=!_0x215ddf,_0x1768ec['append'](_0x4e5922);const _0x154eb5=_0x521601?.['viewCamera']||_0x224c11['camera']||{},_0x5c48db=async(_0x5dd675,_0x9fc7c4)=>{const _0x566644=_0x35d0be;try{const _0x30a8d2=_0x3a2ed2(_0x2826a0['id']);if(!_0x30a8d2?.[_0x566644(0x192)])return;await _0x30a8d2['viewCommand'](_0x5dd675,_0x9fc7c4),renderInteraction3dInspector(_0x2e0aa6,_0x2826a0,_0x3b52ba);}catch(_0x5ea379){_0x50a9fe['hidden']=!0x1,_0x50a9fe[_0x566644(0x181)]=_0x5ea379['message'];}};((_0x5d6171,_0x27e7c4,_0x4b9acb,_0x248b01)=>{const _0x276833=_0x35d0be,_0x3f1713=_0x5c85ad(_0x276833(0x186),'navigation-property-control'),_0x120e5b=_0x5c85ad('div','navigation-segmented-options');_0x120e5b['setAttribute']('role',_0x276833(0x18a)),_0x120e5b['setAttribute']('aria-label','3D\x20'+_0x5d6171);for(const [_0x530b69,_0x3417f1]of _0x4b9acb){const _0x5a3fdb=_0x5c85ad('button','',_0x3417f1);_0x5a3fdb['type']='button',_0x5a3fdb[_0x276833(0x14a)]=!_0x215ddf,_0x5a3fdb['classList']['toggle']('active',_0x530b69===_0x248b01),_0x5a3fdb['setAttribute'](_0x276833(0x16e),String(_0x530b69===_0x248b01)),_0x5a3fdb[_0x276833(0x167)](_0x276833(0x18e),()=>void _0x5c48db(_0x27e7c4,_0x530b69)),_0x120e5b[_0x276833(0x184)](_0x5a3fdb);}_0x3f1713['append'](_0x5c85ad('span','',_0x5d6171),_0x120e5b),_0x4e5922[_0x276833(0x184)](_0x3f1713);})('投影',_0x35d0be(0x149),[['orthographic','正交'],['perspective','透视']],_0x154eb5['mode']||_0x35d0be(0x16a));const _0x1a16fa=_0x5c85ad('input');Object[_0x35d0be(0x174)](_0x1a16fa,{'name':'i3d-focal-length','type':'number','min':'18','max':_0x35d0be(0x17a),'step':'1','value':String(Math[_0x35d0be(0x16c)](_0x154eb5['focalLength']||0x32)),'disabled':!_0x215ddf||_0x154eb5[_0x35d0be(0x17b)]!=='perspective'}),_0x1a16fa['addEventListener']('change',()=>{const _0x1207b4=_0x35d0be;Number['isFinite'](_0x1a16fa['valueAsNumber'])&&_0x5c48db('focal-length',Math['max'](0x12,Math[_0x1207b4(0x15d)](0x78,_0x1a16fa['valueAsNumber'])));}),_0x34ec9e(_0x4e5922,'焦段（mm）',_0x1a16fa);const _0xca2e5e=_0x320606('交互设置'),_0x2ddcc9=_0x5c85ad('div','navigation-property-control'),_0x2202ed=_0x5c85ad('div',_0x35d0be(0x15c));_0x2202ed['setAttribute']('role','group'),_0x2202ed['setAttribute']('aria-label',_0x35d0be(0x15e));for(const [_0x4764a2,_0x4b689f]of[['free','自由'],['horizontal',_0x35d0be(0x16d)],[_0x35d0be(0x168),'仅上下']]){const _0x520631=_0x5c85ad('button','',_0x4b689f);_0x520631['type']='button';const _0x2da32a=_0x119da5[_0x35d0be(0x170)]===_0x4764a2;_0x520631[_0x35d0be(0x14c)][_0x35d0be(0x14d)]('active',_0x2da32a),_0x520631['setAttribute'](_0x35d0be(0x16e),String(_0x2da32a)),_0x520631['addEventListener'](_0x35d0be(0x18e),()=>{_0x2da32a||_0x1feef6({'properties':{'interaction':{..._0x119da5,'rotationMode':_0x4764a2}}});}),_0x2202ed['append'](_0x520631);}_0x2ddcc9['append'](_0x5c85ad('span','',_0x35d0be(0x154)),_0x2202ed),_0xca2e5e[_0x35d0be(0x184)](_0x2ddcc9);const _0x34fb53=_0x320606('自动旋转'),_0xd25fba={'enabled':_0x224c11['autoRotate']?.['enabled']===!0x0,'returnToDefault':_0x224c11['autoRotate']?.['returnToDefault']===!0x0,'direction':_0x224c11['autoRotate']?.['direction']===_0x35d0be(0x169)?'counterclockwise':'clockwise','idleSeconds':Number['isInteger'](_0x224c11['autoRotate']?.[_0x35d0be(0x14b)])?Math['max'](0x1,Math['min'](0xe10,_0x224c11['autoRotate']['idleSeconds'])):0x1e,'speed':Number['isFinite'](_0x224c11['autoRotate']?.['speed'])?Math['max'](0.5,Math['min'](0x1e,_0x224c11['autoRotate']['speed'])):0x6},_0x505473=_0x5c85ad(_0x35d0be(0x182),'i3d-view-toggle'),_0xd9367a=_0x5c85ad('input');Object['assign'](_0xd9367a,{'name':'i3d-auto-rotate-enabled','type':_0x35d0be(0x176),'checked':_0xd25fba['enabled'],'disabled':_0x215ddf}),_0x505473['append'](_0x5c85ad(_0x35d0be(0x15b),'','开启自动旋转'),_0xd9367a);const _0x3c92a1=_0x5c85ad('div','inspector-grid\x20two-columns');_0x3c92a1['hidden']=!_0xd25fba[_0x35d0be(0x188)];const _0x61d2d2=_0x5c85ad('div',_0x35d0be(0x190)),_0x1b9519=_0x5c85ad('div',_0x35d0be(0x15a));_0x1b9519['setAttribute']('role','group'),_0x1b9519['setAttribute']('aria-label',_0x35d0be(0x193));for(const [_0x48727e,_0x4078d1]of[['clockwise','顺时针'],['counterclockwise','逆时针']]){const _0x2dc929=_0x5c85ad('button','',_0x4078d1);_0x2dc929['type']=_0x35d0be(0x15f),_0x2dc929['disabled']=_0x215ddf,_0x2dc929['classList']['toggle']('active',_0xd25fba['direction']===_0x48727e),_0x2dc929[_0x35d0be(0x150)](_0x35d0be(0x16e),String(_0xd25fba['direction']===_0x48727e)),_0x2dc929['addEventListener']('click',()=>{const _0x362d0b=_0x35d0be;if(!(_0x215ddf||_0xd25fba['direction']===_0x48727e)){_0xd25fba[_0x362d0b(0x18d)]=_0x48727e;for(const _0x156c92 of _0x1b9519['children']){const _0x2ed5d5=_0x156c92===_0x2dc929;_0x156c92['classList']['toggle']('active',_0x2ed5d5),_0x156c92['setAttribute']('aria-pressed',String(_0x2ed5d5));}_0x1feef6({'properties':{'autoRotate':{..._0xd25fba}}});}}),_0x1b9519['append'](_0x2dc929);}_0x61d2d2['append'](_0x505473,_0x1b9519),_0x34fb53['append'](_0x61d2d2,_0x3c92a1);const _0x3e7a2c=(_0x3688ee,_0x38f0d3,_0x5d8400,_0x2927e2,_0x58b4d7)=>{const _0x44892d=_0x35d0be,_0x494e93=_0x5c85ad(_0x44892d(0x173));Object[_0x44892d(0x174)](_0x494e93,{'type':'number','min':String(_0x5d8400),'max':String(_0x2927e2),'step':String(_0x58b4d7),'name':'i3d-auto-rotate-'+_0x38f0d3,'value':String(_0xd25fba[_0x38f0d3]),'disabled':_0x215ddf||!_0xd25fba['enabled']}),_0x494e93['addEventListener']('change',()=>{const _0x4d5e68=_0x44892d,_0x5ed1f1=_0x494e93[_0x4d5e68(0x179)];Number[_0x4d5e68(0x183)](_0x5ed1f1)&&(_0xd25fba[_0x38f0d3]=Math[_0x4d5e68(0x162)](_0x5d8400,Math['min'](_0x2927e2,_0x38f0d3==='idleSeconds'?Math['round'](_0x5ed1f1):_0x5ed1f1)),_0x1feef6({'properties':{'autoRotate':{..._0xd25fba}}})),_0x494e93['value']=String(_0xd25fba[_0x38f0d3]);}),_0x34ec9e(_0x3c92a1,_0x3688ee,_0x494e93);};_0x3e7a2c(_0x35d0be(0x148),'idleSeconds',0x1,0xe10,0x1),_0x3e7a2c('旋转速度（°/秒）',_0x35d0be(0x141),0.5,0x1e,0.5);const _0x20ccc7=_0x5c85ad('label','i3d-view-toggle\x20i3d-return-default'),_0x58715a=_0x5c85ad('input');Object['assign'](_0x58715a,{'name':'i3d-auto-rotate-return-default','type':'checkbox','checked':_0xd25fba['returnToDefault'],'disabled':_0x215ddf||!_0xd25fba['enabled']}),_0x20ccc7['append'](_0x5c85ad('span','','旋转前回到默认视角'),_0x58715a),_0x3c92a1['append'](_0x20ccc7),_0x58715a['addEventListener']('change',()=>{const _0x43664d=_0x35d0be;_0x58715a['disabled']||(_0xd25fba['returnToDefault']=_0x58715a[_0x43664d(0x194)],_0x1feef6({'properties':{'autoRotate':{..._0xd25fba}}}));}),_0xd9367a['addEventListener'](_0x35d0be(0x14e),()=>{_0xd25fba['enabled']=_0xd9367a['checked'],_0x3c92a1['hidden']=!_0xd25fba['enabled'];for(const _0x1025d4 of _0x3c92a1['querySelectorAll']('input'))_0x1025d4['disabled']=_0x215ddf||!_0xd25fba['enabled'];_0x1feef6({'properties':{'autoRotate':{..._0xd25fba}}});});const _0x14616a=_0x320606('图标显示'),_0x3b6f80={'enabled':_0x224c11['idleHideIcons']?.['enabled']===!0x0,'idleSeconds':Number['isInteger'](_0x224c11['idleHideIcons']?.['idleSeconds'])?Math['max'](0x1,Math['min'](0xe10,_0x224c11['idleHideIcons']['idleSeconds'])):0x1e},_0x1575b2=_0x5c85ad('label','i3d-view-toggle'),_0x56216c=_0x5c85ad('input');Object['assign'](_0x56216c,{'name':'i3d-idle-icons-enabled','type':_0x35d0be(0x176),'checked':_0x3b6f80['enabled'],'disabled':_0x215ddf}),_0x1575b2[_0x35d0be(0x184)](_0x5c85ad('span','','闲置后隐藏图标'),_0x56216c);const _0x236634=_0x5c85ad('div','inspector-grid');_0x236634['hidden']=!_0x3b6f80['enabled'];const _0x23c205=_0x5c85ad('input');Object['assign'](_0x23c205,{'name':'i3d-idle-icons-seconds','type':'number','min':'1','max':'3600','step':'1','value':String(_0x3b6f80['idleSeconds']),'disabled':_0x215ddf||!_0x3b6f80['enabled']}),_0x23c205['addEventListener']('change',()=>{Number['isFinite'](_0x23c205['valueAsNumber'])&&(_0x3b6f80['idleSeconds']=Math['max'](0x1,Math['min'](0xe10,Math['round'](_0x23c205['valueAsNumber']))),_0x1feef6({'properties':{'idleHideIcons':{..._0x3b6f80}}})),_0x23c205['value']=String(_0x3b6f80['idleSeconds']);}),_0x34ec9e(_0x236634,'等待时间（秒）',_0x23c205),_0x56216c['addEventListener']('change',()=>{const _0x182fe5=_0x35d0be;_0x3b6f80['enabled']=_0x56216c['checked'],_0x236634['hidden']=!_0x3b6f80['enabled'],_0x23c205[_0x182fe5(0x14a)]=_0x215ddf||!_0x3b6f80[_0x182fe5(0x188)],_0x1feef6({'properties':{'idleHideIcons':{..._0x3b6f80}}});}),_0x14616a['append'](_0x1575b2,_0x236634);const _0x5f4e81=_0x320606('画面'),_0x26102d=_0x5c85ad('div','navigation-property-control'),_0x433094=_0x5c85ad('div','navigation-segmented-options');_0x433094['setAttribute']('role','group'),_0x433094['setAttribute']('aria-label','户型底图');for(const [_0x4e505b,_0x2719a8]of[[!0x0,'显示'],[!0x1,'隐藏']]){const _0x54cfcd=_0x5c85ad('button','',_0x2719a8);_0x54cfcd['type']='button';const _0x36b3b0=_0x224c11['backgroundVisible']!==!0x1===_0x4e505b;_0x54cfcd['classList']['toggle']('active',_0x36b3b0),_0x54cfcd['setAttribute'](_0x35d0be(0x16e),String(_0x36b3b0)),_0x54cfcd['addEventListener']('click',()=>{_0x36b3b0||_0x1feef6({'properties':{'backgroundVisible':_0x4e505b}});}),_0x433094['append'](_0x54cfcd);}_0x26102d[_0x35d0be(0x184)](_0x5c85ad('span','','户型底图'),_0x433094),_0x5f4e81['append'](_0x26102d);const _0x55eea5=_0x5c85ad('select');_0x55eea5['name']='i3d-render-scale';for(const [_0xd4d47b,_0x2e173a]of[[1.5,'高清\x20150%'],[0x1,'标准\x20100%'],[0.75,'均衡\x2075%'],[0.5,'流畅\x2050%'],[0.25,'低负载\x2025%']]){const _0x10e7b8=_0x5c85ad('option','',_0x2e173a);_0x10e7b8['value']=String(_0xd4d47b),_0x55eea5[_0x35d0be(0x184)](_0x10e7b8);}_0x55eea5['value']=String(_0x224c11[_0x35d0be(0x144)]??0x1),_0x55eea5['addEventListener']('change',()=>void _0x1feef6({'properties':{'renderScale':Number(_0x55eea5['value'])}})),_0x34ec9e(_0x5f4e81,'渲染分辨率',_0x55eea5),_0x5f4e81['append'](_0x5c85ad('p','inspector-section-note','画面卡顿时，可降低渲染分辨率。'));const _0x17461f=_0x5c85ad('div',_0x35d0be(0x172)),_0x3d27b1=_0x5c85ad('input'),_0x6fa580=_0x5c85ad('output'),_0x47f25b=0x64-(Number['isFinite'](_0x224c11['popupOpacity'])?Math[_0x35d0be(0x162)](0x0,Math[_0x35d0be(0x15d)](0x64,_0x224c11['popupOpacity'])):0x4a);Object['assign'](_0x3d27b1,{'name':_0x35d0be(0x147),'type':'range','min':'0','max':'100','step':'1','value':String(_0x47f25b)}),_0x3d27b1['setAttribute'](_0x35d0be(0x163),_0x35d0be(0x185)),_0x6fa580[_0x35d0be(0x181)]=_0x47f25b+'%',_0x3d27b1['addEventListener']('input',()=>{const _0x783757=_0x35d0be;_0x6fa580[_0x783757(0x181)]=_0x3d27b1['value']+'%';}),_0x3d27b1['addEventListener'](_0x35d0be(0x14e),()=>{const _0x5922b0=_0x35d0be,_0x1f1d9e=Math['max'](0x0,Math['min'](0x64,Number(_0x3d27b1['value'])));Number[_0x5922b0(0x183)](_0x1f1d9e)&&_0x1feef6({'properties':{'popupOpacity':0x64-_0x1f1d9e}});}),_0x17461f['append'](_0x3d27b1,_0x6fa580),_0x34ec9e(_0x5f4e81,_0x35d0be(0x185),_0x17461f);const _0xf0c08f=_0x5c85ad(_0x35d0be(0x186),'i3d-vignette-setting'),_0x182eb5=_0x5c85ad('input'),_0x4a1a23=_0x5c85ad('output'),_0x5b8c05=Number['isFinite'](_0x224c11['focusVignetteStrength'])?Math['max'](0x0,Math['min'](0x3c,_0x224c11[_0x35d0be(0x175)])):0xe;if(Object['assign'](_0x182eb5,{'name':'i3d-focus-vignette','type':'range','min':'0','max':'60','step':'1','value':String(_0x5b8c05)}),_0x182eb5['setAttribute'](_0x35d0be(0x163),'聚焦暗角强度'),_0x4a1a23['textContent']=_0x5b8c05+'%',_0x182eb5[_0x35d0be(0x167)]('input',()=>{const _0x42050d=_0x35d0be;_0x4a1a23[_0x42050d(0x181)]=_0x182eb5['value']+'%';}),_0x182eb5['addEventListener']('change',()=>void _0x1feef6({'properties':{'focusVignetteStrength':Number(_0x182eb5['value'])}})),_0xf0c08f['append'](_0x182eb5,_0x4a1a23),_0x34ec9e(_0x5f4e81,'聚焦暗角',_0xf0c08f),_0x215ddf){for(const _0x1e0ab9 of[_0x544797,_0x222de9,_0x5f4e81])for(const _0x2e3876 of _0x1e0ab9[_0x35d0be(0x18c)]('input,\x20select,\x20button'))_0x2e3876['disabled']=!0x0;}_0x3040ba['refresh'](),!_0x224c11['sceneId']&&_0x3040ba['state']==='idle'&&_0x290168();}
+import {
+  requestInteraction3dAccess,
+  getInteraction3dEditorView,
+  waitInteraction3dEditorView,
+  cancelOtherInteraction3dViews,
+} from "./bridge.js?v=20260906-i3d-complete-v6";
+import { createInteraction3dCover } from "./cover.js?v=20260905-interaction3d-cover-v1";
+import { withRequestTimeout } from "../../utils/request-timeout.js?v=20260907-browser-compat-v1";
+export function interaction3dEntries(node, path = [], entries = new Map()) {
+  if (Array.isArray(node)) {
+    node.forEach((item, index) =>
+      interaction3dEntries(item, [...path, String(item?.id ?? item?.path ?? index)], entries),
+    );
+  } else if (node && typeof node == "object") {
+    if (node.type === "interaction3d") {
+      entries.set(JSON.stringify(path), node);
+    }
+    for (const [key, child] of Object.entries(node)) {
+      interaction3dEntries(child, [...path, key], entries);
+    }
+  }
+  return entries;
+}
+function stableStringify(value) {
+  if (Array.isArray(value)) {
+    return JSON.stringify(value.map(stableStringify));
+  } else {
+    return JSON.stringify(
+      value && typeof value == "object"
+        ? Object.keys(value)
+            .sort()
+            .map((sortedKey) => [sortedKey, stableStringify(value[sortedKey])])
+        : value,
+    );
+  }
+}
+function withoutZIndex(component) {
+  if (!component) {
+    return null;
+  }
+  const { zIndex: _zIndex, ...positionRest } = component.position || {};
+  return {
+    ...component,
+    position: positionRest,
+  };
+}
+export function changesInteraction3d(beforeDoc, afterDoc) {
+  const beforeEntries = interaction3dEntries(beforeDoc);
+  const afterEntries = interaction3dEntries(afterDoc);
+  for (const [entryPath, afterComp] of afterEntries) {
+    if (stableStringify(withoutZIndex(afterComp)) !== stableStringify(withoutZIndex(beforeEntries.get(entryPath)))) {
+      return true;
+    }
+  }
+  const sharedWithI3d = new Set(
+    (afterDoc?.sharedComponents || [])
+      .filter((sharedComp) => interaction3dEntries(sharedComp).size)
+      .map((sharedItem) => sharedItem.id),
+  );
+  return (afterDoc?.pages || []).some((page) => {
+    const beforeSharedIds = new Set(
+      (beforeDoc?.pages || []).find((beforePage) => beforePage.id === page.id)?.sharedComponentIds ||
+        [],
+    );
+    return (page.sharedComponentIds || []).some(
+      (sharedId) => sharedWithI3d.has(sharedId) && !beforeSharedIds.has(sharedId),
+    );
+  });
+}
+export async function guardInteraction3dChanges(beforeDocument, afterDocument) {
+  if (changesInteraction3d(beforeDocument, afterDocument)) {
+    await requestInteraction3dAccess();
+  }
+}
+export function renderInteraction3dThumbnail(thumbnailEl) {
+  thumbnailEl.classList.add("interaction3d-thumbnail");
+  thumbnailEl.append(createInteraction3dCover());
+}
+export async function updateInteraction3dCard(cardEl) {
+  cardEl.disabled = true;
+  cardEl.title = "3D 交互";
+  const coverTitle = cardEl.querySelector(".interaction3d-cover-title");
+  coverTitle.hidden = true;
+  try {
+    await requestInteraction3dAccess();
+    cardEl.disabled = false;
+    cardEl.title = "添加 3D 交互控件";
+    coverTitle.hidden = true;
+  } catch (accessError) {
+    coverTitle.hidden = accessError?.status !== 403;
+    cardEl.title =
+      accessError?.status === 403 ? "3D 交互" : "3D 交互暂时无法连接，请稍后重试";
+  }
+}
+const sceneLoadStates = new Map();
+export async function requestInteraction3dScene() {
+  return withRequestTimeout(20000, async (signal) => {
+    const response = await fetch("/api/v1/modules/interaction3d/scenes", {
+      method: "POST",
+      credentials: "same-origin",
+      signal: signal,
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(
+        typeof payload.detail == "string" ? payload.detail : "户型载入失败，请重试。",
+      );
+    }
+    if (!/^[0-9a-f]{32}$/.test(payload.sceneId || "")) {
+      throw new Error("户型载入失败，请重试。");
+    }
+    return {
+      sceneId: payload.sceneId,
+    };
+  });
+}
+export function renderInteraction3dInspector(panel, component, callbacks) {
+  cancelOtherInteraction3dViews(component?.type === "interaction3d" ? component.id : null);
+  let inspector = panel.querySelector("#interaction3d-inspector");
+  if (!inspector) {
+    inspector = document.createElement("section");
+    inspector.id = "interaction3d-inspector";
+    inspector.className = "inspector-form";
+    panel.append(inspector);
+  }
+  inspector.hidden = component?.type !== "interaction3d";
+  if (inspector.hidden) {
+    return;
+  }
+  inspector.dataset.componentId = component.id;
+  inspector.replaceChildren();
+  const createEl = (tagName, className = "", text = "") => {
+    const el = document.createElement(tagName);
+    el.className = className;
+    el.textContent = text;
+    return el;
+  };
+  const addSection = (title) => {
+    const section = createEl("section", "inspector-section");
+    section.append(createEl("h3", "", title));
+    inspector.append(section);
+    return section;
+  };
+  const appendLabeled = (parent, labelText, control) => {
+    const label = createEl("label");
+    label.append(createEl("span", "", labelText), control);
+    parent.append(label);
+    return control;
+  };
+  const applyChange = (patch) =>
+    Promise.resolve(callbacks.onChange(patch)).catch((changeError) => callbacks.onError?.(changeError));
+  const properties = component.properties || {};
+  const position = component.position || {};
+  const interactionDefaults = {
+    rotationMode:
+      properties.interaction?.rotationMode || properties.camera?.rotationMode || "free",
+    panEnabled: false,
+    zoomEnabled: false,
+  };
+  const editorView = getInteraction3dEditorView(component.id);
+  const viewEditing = !!editorView?.viewEditing;
+  const canvas = callbacks.document?.canvas || {};
+  const canvasWidth = Number(canvas.width || 2778);
+  const canvasHeight = Number(canvas.height || 1940);
+  const compWidth = Number(position.width || 100);
+  const compHeight = Number(position.height || 100);
+  const layoutSection = addSection("布局与位置");
+  const layoutOptions = createEl("div", "image-layout-options");
+  layoutOptions.setAttribute("role", "group");
+  layoutOptions.setAttribute("aria-label", "3D 交互布局");
+  const isFillLayout = properties.layoutMode === "fill";
+  for (const [layoutMode, layoutLabel] of [
+    ["free", "自由"],
+    ["fill", "铺满"],
+  ]) {
+    const layoutBtn = createEl("button", "", layoutLabel);
+    layoutBtn.type = "button";
+    layoutBtn.dataset.interaction3dLayout = layoutMode;
+    const isActiveLayout = (isFillLayout ? "fill" : "free") === layoutMode;
+    layoutBtn.classList.toggle("active", isActiveLayout);
+    layoutBtn.setAttribute("aria-pressed", String(isActiveLayout));
+    layoutBtn.addEventListener("click", () => {
+      if (!isActiveLayout) {
+        applyChange({
+          properties: {
+            layoutMode: layoutMode,
+          },
+        });
+      }
+    });
+    layoutOptions.append(layoutBtn);
+  }
+  const positionGrid = createEl("div", "inspector-grid two-columns");
+  layoutSection.append(layoutOptions, positionGrid);
+  positionGrid.hidden = isFillLayout;
+  const addPositionField = (fieldLabel, fieldValue, fieldMin, fieldMax, toPatch) => {
+    const fieldInput = createEl("input");
+    Object.assign(fieldInput, {
+      name: "i3d-position-" + fieldLabel,
+      type: "number",
+      min: String(fieldMin),
+      max: String(fieldMax),
+      step: ".1",
+      value: String(Math.round(fieldValue * 10) / 10),
+      disabled: isFillLayout,
+    });
+    fieldInput.addEventListener("change", () => {
+      if (Number.isFinite(fieldInput.valueAsNumber)) {
+        applyChange(toPatch(Math.max(fieldMin, Math.min(fieldMax, fieldInput.valueAsNumber))));
+      }
+    });
+    appendLabeled(positionGrid, fieldLabel, fieldInput);
+  };
+  addPositionField(
+    "左侧（%）",
+    ((Number(position.x || 0) + compWidth / 2) / canvasWidth) * 100,
+    0,
+    100,
+    (leftPercent) => ({
+      position: {
+        x: (leftPercent * canvasWidth) / 100 - compWidth / 2,
+      },
+    }),
+  );
+  addPositionField(
+    "顶部（%）",
+    ((Number(position.y || 0) + compHeight / 2) / canvasHeight) * 100,
+    0,
+    100,
+    (topPercent) => ({
+      position: {
+        y: (topPercent * canvasHeight) / 100 - compHeight / 2,
+      },
+    }),
+  );
+  addPositionField("宽度（%）", (compWidth / canvasWidth) * 100, 0.1, 100, (widthPercent) => ({
+    position: {
+      width: (widthPercent * canvasWidth) / 100,
+    },
+  }));
+  addPositionField("高度（%）", (compHeight / canvasHeight) * 100, 0.1, 100, (heightPercent) => ({
+    position: {
+      height: (heightPercent * canvasHeight) / 100,
+    },
+  }));
+  addPositionField("缩放（%）", Number(component.style?.scale || 1) * 100, 1, 500, (scalePercent) => ({
+    style: {
+      scale: scalePercent / 100,
+    },
+  }));
+  addPositionField("旋转（°）", Number(position.rotation || 0), -360, 360, (rotationDeg) => ({
+    position: {
+      rotation: rotationDeg,
+    },
+  }));
+  const houseSection = addSection("3D 户型");
+  const houseNote = createEl("p", "inspector-section-note");
+  houseNote.setAttribute("role", "status");
+  const sceneCacheKey = (callbacks.document?.projectId || "") + "/" + component.id;
+  if (!sceneLoadStates.has(sceneCacheKey)) {
+    sceneLoadStates.set(sceneCacheKey, {
+      state: "idle",
+      error: "",
+    });
+  }
+  const sceneLoad = sceneLoadStates.get(sceneCacheKey);
+  const reloadBtn = createEl("button", "", "重新载入户型");
+  reloadBtn.type = "button";
+  const configLightsBtn = createEl("button", "", "配置灯光");
+  configLightsBtn.type = "button";
+  const advancedBtn = createEl("button", "", "进阶设置");
+  advancedBtn.type = "button";
+  const prepareEditorView = async () => {
+    callbacks.prepareCanvas?.();
+    viewStatusNote.hidden = false;
+    viewStatusNote.textContent = "正在准备户型…";
+    const readyView = await waitInteraction3dEditorView(component.id);
+    if (inspector.hidden || inspector.dataset.componentId !== component.id) {
+      return null;
+    } else {
+      viewStatusNote.hidden = true;
+      return readyView;
+    }
+  };
+  advancedBtn.addEventListener("click", async () => {
+    advancedBtn.disabled = true;
+    try {
+      if (!(await prepareEditorView())) {
+        return;
+      }
+      await requestInteraction3dAccess();
+      const { openInteraction3dAppearanceEditor: openAppearanceEditor } = await import(
+        "/api/v1/modules/interaction3d/config-editor.js?v=20260907-light-capability-v1"
+      );
+      await openAppearanceEditor({
+        component: component,
+        onSave: (baseLighting) =>
+          callbacks.onChange({
+            properties: {
+              baseLighting: baseLighting,
+            },
+          }),
+      });
+    } catch (advancedError) {
+      viewStatusNote.hidden = false;
+      viewStatusNote.textContent = advancedError.message;
+    } finally {
+      advancedBtn.disabled = false;
+    }
+  });
+  const houseActions = createEl("div", "i3d-house-actions");
+  houseSection.append(houseNote, reloadBtn, houseActions);
+  const lightsSection = addSection("灯光");
+  lightsSection.append(configLightsBtn);
+  sceneLoad.refresh = () => {
+    if (houseNote.isConnected) {
+      houseNote.textContent = properties.sceneId
+        ? "已关联户型，可继续配置视角和灯光。"
+        : sceneLoad.state === "loading"
+          ? "正在载入已保存的户型…"
+          : sceneLoad.error || "尚未载入户型。";
+      houseNote.hidden = !!properties.sceneId;
+      reloadBtn.hidden = !!properties.sceneId || sceneLoad.state === "loading";
+      configLightsBtn.disabled = !properties.sceneId || viewEditing;
+      advancedBtn.disabled = !properties.sceneId || viewEditing;
+    }
+  };
+  const loadScene = async () => {
+    if (sceneLoad.state !== "loading") {
+      sceneLoad.state = "loading";
+      sceneLoad.error = "";
+      sceneLoad.refresh();
+      try {
+        const sceneResult = await requestInteraction3dScene();
+        await callbacks.onChange({
+          properties: sceneResult,
+        });
+        sceneLoad.state = "ready";
+      } catch (loadError) {
+        sceneLoad.state = "error";
+        sceneLoad.error =
+          loadError.name === "TimeoutError"
+            ? "户型载入超时，请重试。"
+            : loadError.message;
+      }
+      sceneLoad.refresh();
+    }
+  };
+  reloadBtn.addEventListener("click", () => void loadScene());
+  configLightsBtn.addEventListener("click", async () => {
+    configLightsBtn.disabled = true;
+    try {
+      await requestInteraction3dAccess();
+      const { openInteraction3dEditor: openLightEditor } = await import(
+        "/api/v1/modules/interaction3d/config-editor.js?v=20260907-light-capability-v1"
+      );
+      await openLightEditor({
+        component: component,
+        document: callbacks.document,
+        entities: callbacks.entities,
+        states: callbacks.states,
+        pickers: callbacks.pickers,
+        onSave: (lightProps) =>
+          callbacks.onChange(
+            {
+              properties: lightProps,
+            },
+            {
+              replaceProperties: true,
+            },
+          ),
+      });
+    } catch (lightEditError) {
+      callbacks.onError?.(lightEditError);
+    } finally {
+      configLightsBtn.disabled = false;
+    }
+  });
+  const houseSectionRef = houseSection;
+  const viewEditBtn = createEl(
+    "button",
+    viewEditing ? "primary" : "",
+    viewEditing ? "完成并固定" : "调整户型视角",
+  );
+  viewEditBtn.type = "button";
+  viewEditBtn.disabled = !properties.sceneId;
+  viewEditBtn.setAttribute("aria-pressed", String(viewEditing));
+  const cancelViewBtn = createEl("button", "", "取消本次调整");
+  cancelViewBtn.type = "button";
+  cancelViewBtn.hidden = !viewEditing;
+  const viewStatusNote = createEl("p", "inspector-section-note");
+  viewStatusNote.hidden = true;
+  viewEditBtn.addEventListener("click", async () => {
+    viewEditBtn.disabled = true;
+    try {
+      const viewApi = await prepareEditorView();
+      if (!viewApi) {
+        return;
+      }
+      if (viewApi.viewEditing) {
+        const capturedCamera = await viewApi.captureView();
+        await callbacks.onChange({
+          properties: {
+            camera: capturedCamera,
+            interaction: interactionDefaults,
+          },
+        });
+        viewApi.setViewEditing(false);
+        renderInteraction3dInspector(
+          panel,
+          {
+            ...component,
+            properties: {
+              ...properties,
+              camera: capturedCamera,
+              interaction: interactionDefaults,
+            },
+          },
+          callbacks,
+        );
+      } else {
+        viewApi.setViewEditing(true);
+        renderInteraction3dInspector(panel, component, callbacks);
+      }
+    } catch (viewEditError) {
+      viewStatusNote.hidden = false;
+      viewStatusNote.textContent = viewEditError.message;
+    } finally {
+      viewEditBtn.disabled = false;
+    }
+  });
+  cancelViewBtn.addEventListener("click", () => {
+    getInteraction3dEditorView(component.id)?.setViewEditing(false);
+    renderInteraction3dInspector(panel, component, callbacks);
+  });
+  houseActions.append(advancedBtn, viewEditBtn);
+  houseSectionRef.append(cancelViewBtn, viewStatusNote);
+  const viewOptions = createEl("div", "i3d-view-options");
+  viewOptions.hidden = !viewEditing;
+  houseSectionRef.append(viewOptions);
+  const viewCamera = editorView?.viewCamera || properties.camera || {};
+  const runViewCommand = async (command, commandArg) => {
+    try {
+      const activeView = getInteraction3dEditorView(component.id);
+      if (!activeView?.viewEditing) {
+        return;
+      }
+      await activeView.viewCommand(command, commandArg);
+      renderInteraction3dInspector(panel, component, callbacks);
+    } catch (viewCmdError) {
+      viewStatusNote.hidden = false;
+      viewStatusNote.textContent = viewCmdError.message;
+    }
+  };
+  ((optionLabel, optionCommand, optionPairs, currentValue) => {
+    const navControl = createEl("div", "navigation-property-control");
+    const segmented = createEl("div", "navigation-segmented-options");
+    segmented.setAttribute("role", "group");
+    segmented.setAttribute("aria-label", "3D " + optionLabel);
+    for (const [optValue, optLabel] of optionPairs) {
+      const optBtn = createEl("button", "", optLabel);
+      optBtn.type = "button";
+      optBtn.disabled = !viewEditing;
+      optBtn.classList.toggle("active", optValue === currentValue);
+      optBtn.setAttribute("aria-pressed", String(optValue === currentValue));
+      optBtn.addEventListener("click", () => void runViewCommand(optionCommand, optValue));
+      segmented.append(optBtn);
+    }
+    navControl.append(createEl("span", "", optionLabel), segmented);
+    viewOptions.append(navControl);
+  })(
+    "投影",
+    "projection",
+    [
+      ["orthographic", "正交"],
+      ["perspective", "透视"],
+    ],
+    viewCamera.mode || "orthographic",
+  );
+  const focalInput = createEl("input");
+  Object.assign(focalInput, {
+    name: "i3d-focal-length",
+    type: "number",
+    min: "18",
+    max: "120",
+    step: "1",
+    value: String(Math.round(viewCamera.focalLength || 50)),
+    disabled: !viewEditing || viewCamera.mode !== "perspective",
+  });
+  focalInput.addEventListener("change", () => {
+    if (Number.isFinite(focalInput.valueAsNumber)) {
+      runViewCommand("focal-length", Math.max(18, Math.min(120, focalInput.valueAsNumber)));
+    }
+  });
+  appendLabeled(viewOptions, "焦段（mm）", focalInput);
+  const interactionSection = addSection("交互设置");
+  const rotationControl = createEl("div", "navigation-property-control");
+  const rotationOptions = createEl("div", "navigation-segmented-options three-columns");
+  rotationOptions.setAttribute("role", "group");
+  rotationOptions.setAttribute("aria-label", "3D 旋转方式");
+  for (const [rotMode, rotLabel] of [
+    ["free", "自由"],
+    ["horizontal", "仅左右"],
+    ["vertical", "仅上下"],
+  ]) {
+    const rotBtn = createEl("button", "", rotLabel);
+    rotBtn.type = "button";
+    const isActiveRot = interactionDefaults.rotationMode === rotMode;
+    rotBtn.classList.toggle("active", isActiveRot);
+    rotBtn.setAttribute("aria-pressed", String(isActiveRot));
+    rotBtn.addEventListener("click", () => {
+      if (!isActiveRot) {
+        applyChange({
+          properties: {
+            interaction: {
+              ...interactionDefaults,
+              rotationMode: rotMode,
+            },
+          },
+        });
+      }
+    });
+    rotationOptions.append(rotBtn);
+  }
+  rotationControl.append(createEl("span", "", "旋转方式"), rotationOptions);
+  interactionSection.append(rotationControl);
+  const autoRotateSection = addSection("自动旋转");
+  const autoRotate = {
+    enabled: properties.autoRotate?.enabled === true,
+    returnToDefault: properties.autoRotate?.returnToDefault === true,
+    direction:
+      properties.autoRotate?.direction === "counterclockwise"
+        ? "counterclockwise"
+        : "clockwise",
+    idleSeconds: Number.isInteger(properties.autoRotate?.idleSeconds)
+      ? Math.max(1, Math.min(3600, properties.autoRotate.idleSeconds))
+      : 30,
+    speed: Number.isFinite(properties.autoRotate?.speed)
+      ? Math.max(0.5, Math.min(30, properties.autoRotate.speed))
+      : 6,
+  };
+  const autoRotateToggle = createEl("label", "i3d-view-toggle");
+  const autoRotateEnabled = createEl("input");
+  Object.assign(autoRotateEnabled, {
+    name: "i3d-auto-rotate-enabled",
+    type: "checkbox",
+    checked: autoRotate.enabled,
+    disabled: viewEditing,
+  });
+  autoRotateToggle.append(createEl("span", "", "开启自动旋转"), autoRotateEnabled);
+  const autoRotateGrid = createEl("div", "inspector-grid two-columns");
+  autoRotateGrid.hidden = !autoRotate.enabled;
+  const autoRotateRow = createEl("div", "i3d-auto-rotate-row");
+  const directionOptions = createEl("div", "navigation-segmented-options");
+  directionOptions.setAttribute("role", "group");
+  directionOptions.setAttribute("aria-label", "自动旋转方向");
+  for (const [dirValue, dirLabel] of [
+    ["clockwise", "顺时针"],
+    ["counterclockwise", "逆时针"],
+  ]) {
+    const dirBtn = createEl("button", "", dirLabel);
+    dirBtn.type = "button";
+    dirBtn.disabled = viewEditing;
+    dirBtn.classList.toggle("active", autoRotate.direction === dirValue);
+    dirBtn.setAttribute("aria-pressed", String(autoRotate.direction === dirValue));
+    dirBtn.addEventListener("click", () => {
+      if (!viewEditing && autoRotate.direction !== dirValue) {
+        autoRotate.direction = dirValue;
+        for (const dirChild of directionOptions.children) {
+          const isActiveDir = dirChild === dirBtn;
+          dirChild.classList.toggle("active", isActiveDir);
+          dirChild.setAttribute("aria-pressed", String(isActiveDir));
+        }
+        applyChange({
+          properties: {
+            autoRotate: {
+              ...autoRotate,
+            },
+          },
+        });
+      }
+    });
+    directionOptions.append(dirBtn);
+  }
+  autoRotateRow.append(autoRotateToggle, directionOptions);
+  autoRotateSection.append(autoRotateRow, autoRotateGrid);
+  const addAutoRotateField = (arFieldLabel, arFieldKey, arMin, arMax, arStep) => {
+    const arInput = createEl("input");
+    Object.assign(arInput, {
+      type: "number",
+      min: String(arMin),
+      max: String(arMax),
+      step: String(arStep),
+      name: "i3d-auto-rotate-" + arFieldKey,
+      value: String(autoRotate[arFieldKey]),
+      disabled: viewEditing || !autoRotate.enabled,
+    });
+    arInput.addEventListener("change", () => {
+      const arNumber = arInput.valueAsNumber;
+      if (Number.isFinite(arNumber)) {
+        autoRotate[arFieldKey] = Math.max(
+          arMin,
+          Math.min(arMax, arFieldKey === "idleSeconds" ? Math.round(arNumber) : arNumber),
+        );
+        applyChange({
+          properties: {
+            autoRotate: {
+              ...autoRotate,
+            },
+          },
+        });
+      }
+      arInput.value = String(autoRotate[arFieldKey]);
+    });
+    appendLabeled(autoRotateGrid, arFieldLabel, arInput);
+  };
+  addAutoRotateField("等待时间（秒）", "idleSeconds", 1, 3600, 1);
+  addAutoRotateField("旋转速度（°/秒）", "speed", 0.5, 30, 0.5);
+  const returnDefaultToggle = createEl("label", "i3d-view-toggle i3d-return-default");
+  const returnDefaultInput = createEl("input");
+  Object.assign(returnDefaultInput, {
+    name: "i3d-auto-rotate-return-default",
+    type: "checkbox",
+    checked: autoRotate.returnToDefault,
+    disabled: viewEditing || !autoRotate.enabled,
+  });
+  returnDefaultToggle.append(createEl("span", "", "旋转前回到默认视角"), returnDefaultInput);
+  autoRotateGrid.append(returnDefaultToggle);
+  returnDefaultInput.addEventListener("change", () => {
+    if (!returnDefaultInput.disabled) {
+      autoRotate.returnToDefault = returnDefaultInput.checked;
+      applyChange({
+        properties: {
+          autoRotate: {
+            ...autoRotate,
+          },
+        },
+      });
+    }
+  });
+  autoRotateEnabled.addEventListener("change", () => {
+    autoRotate.enabled = autoRotateEnabled.checked;
+    autoRotateGrid.hidden = !autoRotate.enabled;
+    for (const gridInput of autoRotateGrid.querySelectorAll("input")) {
+      gridInput.disabled = viewEditing || !autoRotate.enabled;
+    }
+    applyChange({
+      properties: {
+        autoRotate: {
+          ...autoRotate,
+        },
+      },
+    });
+  });
+  const iconsSection = addSection("图标显示");
+  const idleHideIcons = {
+    enabled: properties.idleHideIcons?.enabled === true,
+    idleSeconds: Number.isInteger(properties.idleHideIcons?.idleSeconds)
+      ? Math.max(1, Math.min(3600, properties.idleHideIcons.idleSeconds))
+      : 30,
+  };
+  const idleIconsToggle = createEl("label", "i3d-view-toggle");
+  const idleIconsEnabled = createEl("input");
+  Object.assign(idleIconsEnabled, {
+    name: "i3d-idle-icons-enabled",
+    type: "checkbox",
+    checked: idleHideIcons.enabled,
+    disabled: viewEditing,
+  });
+  idleIconsToggle.append(createEl("span", "", "闲置后隐藏图标"), idleIconsEnabled);
+  const idleIconsGrid = createEl("div", "inspector-grid");
+  idleIconsGrid.hidden = !idleHideIcons.enabled;
+  const idleSecondsInput = createEl("input");
+  Object.assign(idleSecondsInput, {
+    name: "i3d-idle-icons-seconds",
+    type: "number",
+    min: "1",
+    max: "3600",
+    step: "1",
+    value: String(idleHideIcons.idleSeconds),
+    disabled: viewEditing || !idleHideIcons.enabled,
+  });
+  idleSecondsInput.addEventListener("change", () => {
+    if (Number.isFinite(idleSecondsInput.valueAsNumber)) {
+      idleHideIcons.idleSeconds = Math.max(
+        1,
+        Math.min(3600, Math.round(idleSecondsInput.valueAsNumber)),
+      );
+      applyChange({
+        properties: {
+          idleHideIcons: {
+            ...idleHideIcons,
+          },
+        },
+      });
+    }
+    idleSecondsInput.value = String(idleHideIcons.idleSeconds);
+  });
+  appendLabeled(idleIconsGrid, "等待时间（秒）", idleSecondsInput);
+  idleIconsEnabled.addEventListener("change", () => {
+    idleHideIcons.enabled = idleIconsEnabled.checked;
+    idleIconsGrid.hidden = !idleHideIcons.enabled;
+    idleSecondsInput.disabled = viewEditing || !idleHideIcons.enabled;
+    applyChange({
+      properties: {
+        idleHideIcons: {
+          ...idleHideIcons,
+        },
+      },
+    });
+  });
+  iconsSection.append(idleIconsToggle, idleIconsGrid);
+  const displaySection = addSection("画面");
+  const bgControl = createEl("div", "navigation-property-control");
+  const bgOptions = createEl("div", "navigation-segmented-options");
+  bgOptions.setAttribute("role", "group");
+  bgOptions.setAttribute("aria-label", "户型底图");
+  for (const [bgVisible, bgLabel] of [
+    [true, "显示"],
+    [false, "隐藏"],
+  ]) {
+    const bgBtn = createEl("button", "", bgLabel);
+    bgBtn.type = "button";
+    const isActiveBg = (properties.backgroundVisible !== false) === bgVisible;
+    bgBtn.classList.toggle("active", isActiveBg);
+    bgBtn.setAttribute("aria-pressed", String(isActiveBg));
+    bgBtn.addEventListener("click", () => {
+      if (!isActiveBg) {
+        applyChange({
+          properties: {
+            backgroundVisible: bgVisible,
+          },
+        });
+      }
+    });
+    bgOptions.append(bgBtn);
+  }
+  bgControl.append(createEl("span", "", "户型底图"), bgOptions);
+  displaySection.append(bgControl);
+  const renderScaleSelect = createEl("select");
+  renderScaleSelect.name = "i3d-render-scale";
+  for (const [scaleValue, scaleLabel] of [
+    [1.5, "高清 150%"],
+    [1, "标准 100%"],
+    [0.75, "均衡 75%"],
+    [0.5, "流畅 50%"],
+    [0.25, "低负载 25%"],
+  ]) {
+    const scaleOption = createEl("option", "", scaleLabel);
+    scaleOption.value = String(scaleValue);
+    renderScaleSelect.append(scaleOption);
+  }
+  renderScaleSelect.value = String(properties.renderScale ?? 1);
+  renderScaleSelect.addEventListener(
+    "change",
+    () =>
+      void applyChange({
+        properties: {
+          renderScale: Number(renderScaleSelect.value),
+        },
+      }),
+  );
+  appendLabeled(displaySection, "渲染分辨率", renderScaleSelect);
+  displaySection.append(
+    createEl("p", "inspector-section-note", "画面卡顿时，可降低渲染分辨率。"),
+  );
+  const popupTransparencyWrap = createEl("div", "i3d-vignette-setting");
+  const popupTransparencyInput = createEl("input");
+  const popupTransparencyOutput = createEl("output");
+  const popupTransparency =
+    100 -
+    (Number.isFinite(properties.popupOpacity)
+      ? Math.max(0, Math.min(100, properties.popupOpacity))
+      : 74);
+  Object.assign(popupTransparencyInput, {
+    name: "i3d-popup-transparency",
+    type: "range",
+    min: "0",
+    max: "100",
+    step: "1",
+    value: String(popupTransparency),
+  });
+  popupTransparencyInput.setAttribute("aria-label", "弹窗透明度");
+  popupTransparencyOutput.textContent = popupTransparency + "%";
+  popupTransparencyInput.addEventListener("input", () => {
+    popupTransparencyOutput.textContent = popupTransparencyInput.value + "%";
+  });
+  popupTransparencyInput.addEventListener("change", () => {
+    const transparencyValue = Math.max(0, Math.min(100, Number(popupTransparencyInput.value)));
+    if (Number.isFinite(transparencyValue)) {
+      applyChange({
+        properties: {
+          popupOpacity: 100 - transparencyValue,
+        },
+      });
+    }
+  });
+  popupTransparencyWrap.append(popupTransparencyInput, popupTransparencyOutput);
+  appendLabeled(displaySection, "弹窗透明度", popupTransparencyWrap);
+  const vignetteWrap = createEl("div", "i3d-vignette-setting");
+  const vignetteInput = createEl("input");
+  const vignetteOutput = createEl("output");
+  const vignetteStrength = Number.isFinite(properties.focusVignetteStrength)
+    ? Math.max(0, Math.min(60, properties.focusVignetteStrength))
+    : 14;
+  Object.assign(vignetteInput, {
+    name: "i3d-focus-vignette",
+    type: "range",
+    min: "0",
+    max: "60",
+    step: "1",
+    value: String(vignetteStrength),
+  });
+  vignetteInput.setAttribute("aria-label", "聚焦暗角强度");
+  vignetteOutput.textContent = vignetteStrength + "%";
+  vignetteInput.addEventListener("input", () => {
+    vignetteOutput.textContent = vignetteInput.value + "%";
+  });
+  vignetteInput.addEventListener(
+    "change",
+    () =>
+      void applyChange({
+        properties: {
+          focusVignetteStrength: Number(vignetteInput.value),
+        },
+      }),
+  );
+  vignetteWrap.append(vignetteInput, vignetteOutput);
+  appendLabeled(displaySection, "聚焦暗角", vignetteWrap);
+  if (viewEditing) {
+    for (const lockSection of [layoutSection, lightsSection, displaySection]) {
+      for (const lockControl of lockSection.querySelectorAll("input, select, button")) {
+        lockControl.disabled = true;
+      }
+    }
+  }
+  sceneLoad.refresh();
+  if (!properties.sceneId && sceneLoad.state === "idle") {
+    loadScene();
+  }
+}

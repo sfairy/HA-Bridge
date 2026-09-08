@@ -1,1 +1,544 @@
-const _0x169352=_0x1221;(function(_0x362486,_0x415187){const _0x3f3591=_0x1221,_0x4e2b69=_0x362486();while(!![]){try{const _0x434c8f=parseInt(_0x3f3591(0xd0))/0x1*(parseInt(_0x3f3591(0xb3))/0x2)+parseInt(_0x3f3591(0xa9))/0x3+parseInt(_0x3f3591(0xc6))/0x4+-parseInt(_0x3f3591(0xab))/0x5*(parseInt(_0x3f3591(0xbb))/0x6)+-parseInt(_0x3f3591(0xc0))/0x7*(-parseInt(_0x3f3591(0xc7))/0x8)+parseInt(_0x3f3591(0xd4))/0x9+parseInt(_0x3f3591(0xb9))/0xa*(-parseInt(_0x3f3591(0xc9))/0xb);if(_0x434c8f===_0x415187)break;else _0x4e2b69['push'](_0x4e2b69['shift']());}catch(_0x36c911){_0x4e2b69['push'](_0x4e2b69['shift']());}}}(_0x3109,0x3b65b));const v=_0x188b0e=>_0x188b0e!=null&&_0x188b0e!==''&&Number['isFinite'](Number(_0x188b0e)),w=new Set(['hs','xy','rgb',_0x169352(0xac),'rgbww','white','brightness','onoff']);function _0x1221(_0x30fbc9,_0x544245){const _0x31099e=_0x3109();return _0x1221=function(_0x12218d,_0x30a60c){_0x12218d=_0x12218d-0xa4;let _0x1af4d0=_0x31099e[_0x12218d];return _0x1af4d0;},_0x1221(_0x30fbc9,_0x544245);}export function lightState(_0x59ecb9,_0x77725f,_0x4c17ed){const _0x314435=_0x169352,_0x5f1ce7=_0x77725f?.['newState']||_0x77725f||{},_0x406f53=_0x5f1ce7['attributes']||{},_0x3d360f=Array['isArray'](_0x406f53['supported_color_modes'])?_0x406f53['supported_color_modes']:[],_0x4c34f1=_0x59ecb9['startsWith']('light.'),_0x16e347=_0x4c34f1&&(_0x406f53['color_mode']==='color_temp'||w[_0x314435(0xd2)](_0x406f53['color_mode']))?_0x406f53['color_mode']:_0x4c17ed?.['colorMode']??null,_0x2e276d=_0x4c34f1&&(_0x3d360f['length']?_0x3d360f['some'](_0x593c47=>!['onoff','unknown'][_0x314435(0xb7)](_0x593c47)):v(_0x406f53['brightness'])||(Number(_0x406f53['supported_features'])&0x1)!==0x0||_0x4c17ed?.['brightnessSupported']===!0x0),_0x4da0d9=_0x4c34f1&&(_0x3d360f['length']?_0x3d360f['includes']('color_temp'):v(_0x406f53['color_temp_kelvin'])||v(_0x406f53[_0x314435(0xcb)])||v(_0x406f53[_0x314435(0xbd)])||v(_0x406f53[_0x314435(0xb8)])||(Number(_0x406f53['supported_features'])&0x2)!==0x0||_0x4c17ed?.['temperatureSupported']===!0x0),_0x1c37f9=v(_0x406f53['min_color_temp_kelvin'])?Number(_0x406f53['min_color_temp_kelvin']):Number(_0x406f53['max_mireds'])>0x0?0xf4240/Number(_0x406f53[_0x314435(0xd1)]):_0x4c17ed?.[_0x314435(0xca)]??0x7d0,_0x33ec43=v(_0x406f53['max_color_temp_kelvin'])?Number(_0x406f53[_0x314435(0xb8)]):Number(_0x406f53['min_mireds'])>0x0?0xf4240/Number(_0x406f53['min_mireds']):_0x4c17ed?.['maximum']??0x1964,_0x520637=v(_0x406f53['color_temp_kelvin'])&&Number(_0x406f53['color_temp_kelvin'])>0x0?Number(_0x406f53[_0x314435(0xc1)]):v(_0x406f53['color_temp'])&&Number(_0x406f53['color_temp'])>0x0?0xf4240/Number(_0x406f53['color_temp']):_0x4c17ed?.['kelvin']??null,_0x4b5044=v(_0x406f53['brightness'])?Math['max'](0x0,Math['min'](0xff,Number(_0x406f53['brightness']))):null,_0x17f5d2=_0x4b5044!==null&&!(_0x5f1ce7['state']==='off'&&_0x4b5044===0x0)?_0x4b5044>0x0?Math[_0x314435(0xad)](0x1,Math['round'](_0x4b5044/0xff*0x64)):0x0:_0x4c17ed?.[_0x314435(0xbf)]>0x0?_0x4c17ed['brightness']:null;return{'on':_0x5f1ce7['state']==='on','available':['on','off'][_0x314435(0xb7)](_0x5f1ce7['state']),'name':_0x406f53[_0x314435(0xc3)]||_0x4c17ed?.['name']||_0x59ecb9,'brightnessSupported':_0x2e276d,'temperatureSupported':_0x4da0d9,'colorMode':_0x16e347,'brightness':_0x2e276d?_0x17f5d2:null,'kelvin':_0x4da0d9&&v(_0x520637)?Math['round'](_0x520637):null,'minimum':Math['round'](Math[_0x314435(0xad)](0x3e8,Math[_0x314435(0xae)](_0x1c37f9,_0x33ec43))),'maximum':Math['round'](Math[_0x314435(0xae)](0x4e20,Math['max'](_0x1c37f9,_0x33ec43)))};}export function lightRenderState(_0x13dca9){const _0x270ac6=_0x169352,_0x140f7c=_0x13dca9['brightnessSupported']&&!Number[_0x270ac6(0xd3)](_0x13dca9['brightness']),_0x1869fa=_0x13dca9['temperatureSupported']&&!w['has'](_0x13dca9['colorMode'])&&!Number['isFinite'](_0x13dca9['kelvin']);return{..._0x13dca9,'on':_0x13dca9['on']&&!_0x140f7c&&!_0x1869fa};}const O=0x2760*0x3c*0x3e8,j=0x100,z=_0xf40005=>/^(light|switch)\.[a-z0-9_]+$/['test'](_0xf40005),M=_0x206d40=>typeof _0x206d40!='boolean'&&v(_0x206d40),E={'brightness':_0xf2455a=>Number[_0x169352(0xd3)](_0xf2455a)&&_0xf2455a>0x0&&_0xf2455a<=0x64,'kelvin':_0x1a6d9a=>Number['isFinite'](_0x1a6d9a)&&_0x1a6d9a>0x0,'minimum':_0x7e758e=>Number['isFinite'](_0x7e758e)&&_0x7e758e>=0x3e8&&_0x7e758e<=0x4e20,'maximum':_0x291e83=>Number['isFinite'](_0x291e83)&&_0x291e83>=0x3e8&&_0x291e83<=0x4e20,'colorMode':_0x174f53=>_0x174f53==='color_temp'||w['has'](_0x174f53),'brightnessSupported':_0x4f7ce7=>typeof _0x4f7ce7==_0x169352(0xd7),'temperatureSupported':_0x473f95=>typeof _0x473f95=='boolean'};function L(_0x3443f4,_0x52377b){const _0x343081=_0x169352,_0x3d2dcc=_0x52377b?.['newState']||_0x52377b||{},_0x5a7060=_0x3d2dcc['attributes']||{},_0x1b7f0e=lightState(_0x3443f4,_0x52377b),_0xa9ada1={},_0x21f6f7=Array['isArray'](_0x5a7060['supported_color_modes'])?_0x5a7060['supported_color_modes']:[],_0x499e9a=M(_0x5a7060['brightness'])&&Number(_0x5a7060[_0x343081(0xbf)])>0x0,_0x9316ba=M(_0x5a7060['color_temp_kelvin'])&&Number(_0x5a7060['color_temp_kelvin'])>0x0||M(_0x5a7060[_0x343081(0xcb)])&&Number(_0x5a7060['color_temp'])>0x0,_0x1dadce=M(_0x5a7060['min_color_temp_kelvin'])&&Number(_0x5a7060['min_color_temp_kelvin'])>0x0||M(_0x5a7060['max_mireds'])&&Number(_0x5a7060['max_mireds'])>0x0,_0x1aa68a=M(_0x5a7060[_0x343081(0xb8)])&&Number(_0x5a7060[_0x343081(0xb8)])>0x0||M(_0x5a7060[_0x343081(0xc5)])&&Number(_0x5a7060['min_mireds'])>0x0,_0x3d3d62=M(_0x5a7060['supported_features'])?Number(_0x5a7060[_0x343081(0xaa)]):0x0;return(_0x21f6f7['length']||_0x499e9a||_0x3d3d62&0x1)&&(_0xa9ada1['brightnessSupported']=_0x1b7f0e['brightnessSupported']),(_0x21f6f7[_0x343081(0xa6)]||_0x9316ba||_0x1dadce||_0x1aa68a||_0x3d3d62&0x2)&&(_0xa9ada1['temperatureSupported']=_0x1b7f0e['temperatureSupported']),_0x499e9a&&_0x1b7f0e['brightnessSupported']&&(_0xa9ada1['brightness']=_0x1b7f0e['brightness']),_0x9316ba&&_0x1b7f0e['temperatureSupported']&&(_0xa9ada1['kelvin']=_0x1b7f0e['kelvin']),_0x1dadce&&(_0xa9ada1['minimum']=_0x1b7f0e['minimum']),_0x1aa68a&&(_0xa9ada1['maximum']=_0x1b7f0e[_0x343081(0xbc)]),(_0x5a7060['color_mode']==='color_temp'||w['has'](_0x5a7060['color_mode']))&&(_0xa9ada1['colorMode']=_0x1b7f0e['colorMode']),Object[_0x343081(0xaf)](Object['entries'](_0xa9ada1)['filter'](([_0x2c8bd3,_0xd36cf4])=>E[_0x2c8bd3](_0xd36cf4)));}function B(_0x3ade1c,_0x3d228a,_0x239220,_0x5ca36e,_0x229bb7){const _0xbe109d=_0x169352;if(!_0x3ade1c||typeof _0x3d228a!=_0xbe109d(0xce)||!_0x3d228a['trim']())return null;const _0x1da1e6='hb-i3d:light-history:v1:'+_0x3d228a,_0x1fe181=new Map(),_0x47f6d7=new Map();let _0x1994eb=!0x0,_0x5347d2=null,_0x27fc3a=!0x1,_0x2afc40=0x0;const _0x473965=_0x212a2a=>Math['max'](0x0,...Object[_0xbe109d(0xa4)](_0x212a2a)['map'](_0x28f6f1=>_0x28f6f1['at']));function _0x1a4775(_0x36cbed){const _0x1bf8e2=_0xbe109d;if(_0x36cbed<_0x2afc40&&_0x1fe181['size']<=j)return!0x1;let _0x4ce573=!0x1;_0x2afc40=0x1/0x0;for(const [_0x57cdbe,_0x16a9e5]of _0x1fe181){for(const [_0xfeb43b,_0x1ce6bb]of Object['entries'](_0x16a9e5))_0x36cbed-_0x1ce6bb['at']>=O?(delete _0x16a9e5[_0xfeb43b],_0x4ce573=!0x0):_0x2afc40=Math['min'](_0x2afc40,_0x1ce6bb['at']+O);Object['keys'](_0x16a9e5)['length']||_0x1fe181['delete'](_0x57cdbe);}if(_0x1fe181['size']>j){const _0x423249=[..._0x1fe181]['sort']((_0x493b2e,_0x3c28fe)=>_0x473965(_0x493b2e[0x1])-_0x473965(_0x3c28fe[0x1]));for(const [_0x15dc32]of _0x423249['slice'](0x0,_0x1fe181['size']-j))_0x1fe181[_0x1bf8e2(0xa8)](_0x15dc32);_0x4ce573=!0x0;}return _0x4ce573;}function _0x1e57d4(){const _0x4c72c1=_0xbe109d,_0x1595aa=new Map(),_0x100374=_0x3ade1c['getItem'](_0x1da1e6);if(_0x100374){const _0x3a3078=JSON[_0x4c72c1(0xc2)](_0x100374),_0x1229f6=_0x239220();if(_0x3a3078?.['version']!==0x1||!_0x3a3078[_0x4c72c1(0xb0)]||typeof _0x3a3078['entities']!=_0x4c72c1(0xa7)||Array['isArray'](_0x3a3078['entities']))throw new Error('Invalid\x20light\x20history');for(const [_0x9a1db2,_0x541cdf]of Object[_0x4c72c1(0xc4)](_0x3a3078['entities'])){if(!z(_0x9a1db2)||!_0x541cdf||typeof _0x541cdf!='object'||Array['isArray'](_0x541cdf))continue;const _0x3a80b2={};for(const [_0xe7d7f5,_0x155650]of Object['entries'](_0x541cdf))Object['hasOwn'](E,_0xe7d7f5)&&E[_0xe7d7f5](_0x155650?.[_0x4c72c1(0xa5)])&&Number['isFinite'](_0x155650['at'])&&_0x155650['at']>=0x0&&_0x155650['at']<=_0x1229f6&&_0x1229f6-_0x155650['at']<O&&(_0x3a80b2[_0xe7d7f5]={'value':_0x155650['value'],'at':_0x155650['at']});Object['keys'](_0x3a80b2)['length']&&_0x1595aa['set'](_0x9a1db2,_0x3a80b2);}}return _0x1595aa;}try{for(const [_0x43a774,_0x438b67]of _0x1e57d4())_0x1fe181['set'](_0x43a774,_0x438b67);_0x1a4775(_0x239220());}catch{return null;}const _0x218f17=()=>JSON['stringify']({'version':0x1,'entities':Object['fromEntries'](_0x1fe181)});function _0x2f657a(){const _0x5b16a7=_0xbe109d;if(_0x5347d2!==null&&(_0x229bb7(_0x5347d2),_0x5347d2=null),!(!_0x1994eb||!_0x27fc3a)){_0x27fc3a=!0x1;try{for(const [_0x18bca8,_0x49ad7c]of _0x1e57d4()){const _0x5ee01e=_0x1fe181['get'](_0x18bca8)||{};for(const [_0x1b30d9,_0x1870d2]of Object[_0x5b16a7(0xc4)](_0x49ad7c))(!_0x5ee01e[_0x1b30d9]||_0x5ee01e[_0x1b30d9]['at']<_0x1870d2['at'])&&(_0x5ee01e[_0x1b30d9]=_0x1870d2);_0x5ee01e['brightnessSupported']?.['value']===!0x1&&delete _0x5ee01e['brightness'],_0x5ee01e['temperatureSupported']?.['value']===!0x1&&delete _0x5ee01e['kelvin'],_0x1fe181['set'](_0x18bca8,_0x5ee01e);}_0x2afc40=0x0,_0x1a4775(_0x239220()),_0x3ade1c['setItem'](_0x1da1e6,_0x218f17());}catch{_0x1994eb=!0x1;}}}function _0x36fd9c(){!_0x1994eb||_0x5347d2!==null||!_0x27fc3a||(_0x5347d2=_0x5ca36e(()=>{_0x5347d2=null,_0x2f657a();}));}return{'resolve'(_0x454ac0,_0x2d4c81){const _0x5142c8=_0xbe109d,_0x38c244=_0x239220();if(_0x27fc3a=_0x1a4775(_0x38c244)||_0x27fc3a,z(_0x454ac0)){const _0x416602=L(_0x454ac0,_0x2d4c81),_0x313343=JSON['stringify'](_0x416602);if(_0x47f6d7['get'](_0x454ac0)!==_0x313343){_0x47f6d7['delete'](_0x454ac0),_0x47f6d7[_0x5142c8(0xb4)](_0x454ac0,_0x313343);const _0xee0df6=_0x1fe181['get'](_0x454ac0)||{};for(const [_0x8cee8e,_0x135b19]of Object['entries'](_0x416602))_0xee0df6[_0x8cee8e]?.[_0x5142c8(0xa5)]!==_0x135b19&&(_0xee0df6[_0x8cee8e]={'value':_0x135b19,'at':_0x38c244},_0x2afc40=Math['min'](_0x2afc40,_0x38c244+O),_0x27fc3a=!0x0);for(_0x416602[_0x5142c8(0xb6)]===!0x1&&_0xee0df6['brightness']&&(delete _0xee0df6['brightness'],_0x27fc3a=!0x0),_0x416602['temperatureSupported']===!0x1&&_0xee0df6['kelvin']&&(delete _0xee0df6['kelvin'],_0x27fc3a=!0x0),Object['keys'](_0xee0df6)['length']&&_0x1fe181['set'](_0x454ac0,_0xee0df6);_0x47f6d7['size']>j;)_0x47f6d7['delete'](_0x47f6d7[_0x5142c8(0xcd)]()['next']()['value']);}}_0x27fc3a=_0x1a4775(_0x38c244)||_0x27fc3a,_0x36fd9c();const _0x3747aa=Object['fromEntries'](Object['entries'](_0x1fe181['get'](_0x454ac0)||{})['map'](([_0x195928,_0x333a25])=>[_0x195928,_0x333a25['value']]));return _0x3747aa['brightnessSupported']??=Number['isFinite'](_0x3747aa['brightness'])||!!(_0x3747aa['colorMode']&&_0x3747aa[_0x5142c8(0xba)]!=='onoff'),_0x3747aa['temperatureSupported']??=Number['isFinite'](_0x3747aa['kelvin'])||Number['isFinite'](_0x3747aa['minimum'])||Number['isFinite'](_0x3747aa[_0x5142c8(0xbc)])||_0x3747aa[_0x5142c8(0xba)]==='color_temp',_0x3747aa;},'flush':_0x2f657a,'clear'(){const _0x4558a6=_0xbe109d;if(_0x5347d2!==null&&(_0x229bb7(_0x5347d2),_0x5347d2=null),_0x1fe181['clear'](),_0x47f6d7['clear'](),_0x27fc3a=!0x1,_0x2afc40=0x1/0x0,_0x1994eb)try{_0x3ade1c[_0x4558a6(0xcf)](_0x1da1e6);}catch{_0x1994eb=!0x1;}}};}export function createLightStateCache({storage:_0x474729,scope:_0x1b8151,now:_0x4dd9b8=()=>Date['now'](),schedule:_0x1d633e=_0x3a4379=>setTimeout(_0x3a4379,0x32),cancel:_0x22113c=_0x27102e=>clearTimeout(_0x27102e)}={}){const _0x253713=new Map(),_0x9a3de5=B(_0x474729,_0x1b8151,_0x4dd9b8,_0x1d633e,_0x22113c);return{'resolve'(_0x46f3b4,_0xe5a321){const _0x49033c=_0x1221,_0x5d3607=_0x9a3de5?{'name':_0x253713['get'](_0x46f3b4)?.['name'],..._0x9a3de5['resolve'](_0x46f3b4,_0xe5a321)}:_0x253713['get'](_0x46f3b4),_0x176f64=lightState(_0x46f3b4,_0xe5a321,_0x5d3607);return _0x253713['set'](_0x46f3b4,_0x176f64['brightness']===0x0?{..._0x176f64,'brightness':_0x5d3607?.[_0x49033c(0xbf)]>0x0?_0x5d3607['brightness']:null}:_0x176f64),_0x176f64;},'flush'(){_0x9a3de5?.['flush']();},'clear'(){_0x253713['clear'](),_0x9a3de5?.['clear']();}};}export function lightCommand(_0x453818,_0x36f7ba,_0x3bfb2c,_0x380e07){const _0x4746a7=_0x169352;if(!/^(light|switch)\.[a-z0-9_]+$/['test'](_0x453818)||!_0x380e07[_0x4746a7(0xd6)])throw new Error(_0x4746a7(0xb2));const _0x34441e=_0x453818['split']('.')[0x0];if(_0x36f7ba==='power')return{'domain':_0x34441e,'service':_0x3bfb2c?'turn_on':'turn_off','entityId':_0x453818,'data':{}};if(!Number[_0x4746a7(0xd3)](Number(_0x3bfb2c)))throw new Error(_0x4746a7(0xb1));if(_0x36f7ba==='brightness'&&_0x380e07['brightnessSupported'])return{'domain':_0x34441e,'service':'turn_on','entityId':_0x453818,'data':{'brightness':Math['round'](Math['max'](0x1,Math['min'](0x64,Number(_0x3bfb2c)))*0xff/0x64)}};if(_0x36f7ba==='temperature'&&_0x380e07['temperatureSupported'])return{'domain':_0x34441e,'service':'turn_on','entityId':_0x453818,'data':{'color_temp_kelvin':Math['round'](Math['max'](_0x380e07['minimum'],Math['min'](_0x380e07['maximum'],Number(_0x3bfb2c))))}};throw new Error('此设备不支持该灯光调节。');}export function createLightPreview({now:_0x153ba7=()=>performance['now']()}={}){const _0x1b9827=new Map();let _0x10c537=0x0;return{'set'(_0x3bb6c2,_0x294a6c,_0x176357,_0x69ca22=!0x1){const _0x1908dc=_0x1221,_0x4f381c={..._0x1b9827['get'](_0x3bb6c2)?.['values'],'on':_0x294a6c==='power'?_0x176357===!0x0:!0x0};_0x294a6c==='brightness'&&(_0x4f381c['brightness']=_0x176357),_0x294a6c===_0x1908dc(0xcc)&&(_0x4f381c['kelvin']=_0x176357),_0x294a6c==='preset'&&(Number[_0x1908dc(0xd3)](_0x176357?.['brightness'])&&(_0x4f381c['brightness']=_0x176357['brightness']),Number[_0x1908dc(0xd3)](_0x176357?.['kelvin'])&&(_0x4f381c['kelvin']=_0x176357['kelvin'])),_0x294a6c==='power'&&!_0x176357&&(delete _0x4f381c['brightness'],delete _0x4f381c[_0x1908dc(0xc8)]);const _0x7cc479={'values':_0x4f381c,'revision':++_0x10c537,'committed':_0x69ca22,'expires':_0x153ba7()+0x3a98};return _0x1b9827['set'](_0x3bb6c2,_0x7cc479),_0x7cc479['revision'];},'state'(_0x23ad1a,_0x19d94c){return{..._0x19d94c,..._0x1b9827['get'](_0x23ad1a)?.['values']};},'reconcile'(_0x4ec623,_0x11ede5){const _0xe634f4=_0x1221,_0x409cba=_0x1b9827['get'](_0x4ec623);if(!_0x409cba)return;const _0x1c83f3=Object['entries'](_0x409cba['values'])['every'](([_0x4b5ee8,_0x4f4a65])=>_0x4b5ee8==='on'?_0x11ede5['on']===_0x4f4a65:Number[_0xe634f4(0xd3)](_0x11ede5[_0x4b5ee8])&&Math['abs'](_0x11ede5[_0x4b5ee8]-_0x4f4a65)<=(_0x4b5ee8==='kelvin'?0xf:0x1));(!_0x11ede5[_0xe634f4(0xd6)]||_0x409cba['committed']&&_0x1c83f3)&&_0x1b9827['delete'](_0x4ec623);},'hold'(_0x589246,_0x120696){const _0x58c494=_0x1b9827['get'](_0x589246);_0x58c494?.['revision']===_0x120696&&(_0x58c494['committed']=!0x1);},'retain'(_0x5390f1,_0x48c751){const _0x412f74=_0x1b9827['get'](_0x5390f1);_0x412f74?.['revision']===_0x48c751&&(_0x412f74['committed']=!0x0,_0x412f74['expires']=_0x153ba7()+0x3a98);},'acknowledge'(_0x3ff806,_0x229ac4){const _0x2f1908=_0x1b9827['get'](_0x3ff806);_0x2f1908?.['revision']===_0x229ac4&&(_0x2f1908['expires']=_0x153ba7()+0x1f40);},'reject'(_0xde03c2,_0x47890f){const _0x4c2103=_0x1221;_0x1b9827[_0x4c2103(0xbe)](_0xde03c2)?.[_0x4c2103(0xb5)]===_0x47890f&&_0x1b9827['delete'](_0xde03c2);},'expire'(){const _0x11e125=_0x1221;let _0x402b26=!0x1;for(const [_0xeeaf1b,_0x4e63ac]of _0x1b9827)_0x4e63ac[_0x11e125(0xd5)]<=_0x153ba7()&&(_0x1b9827['delete'](_0xeeaf1b),_0x402b26=!0x0);return _0x402b26;},'clear'(){_0x1b9827['clear']();},'nextDelay'(_0x194a23=_0x153ba7()){const _0x604156=_0x1221;let _0xba1706=0x1/0x0;for(const _0x2ef8f9 of _0x1b9827[_0x604156(0xa4)]())_0xba1706=Math['min'](_0xba1706,_0x2ef8f9['expires']);return Math['max'](0x0,_0xba1706-_0x194a23);}};}function _0x3109(){const _0x5108ec=['rgbw','max','min','fromEntries','entities','灯光参数无效。','设备不可用。','2SHaIXJ','set','revision','brightnessSupported','includes','max_color_temp_kelvin','9316870PBKKTD','colorMode','1500eNjsMC','maximum','min_color_temp_kelvin','get','brightness','26551uTcegk','color_temp_kelvin','parse','friendly_name','entries','min_mireds','1394420VZUBuQ','144mlxQte','kelvin','11lqbKsU','minimum','color_temp','temperature','keys','string','removeItem','432661uIoFyV','max_mireds','has','isFinite','3935349thqhPi','expires','available','boolean','values','value','length','object','delete','620781HnuJmX','supported_features','6375AUvmhv'];_0x3109=function(){return _0x5108ec;};return _0x3109();}
+const isFiniteNumber = (value) => value != null && value !== "" && Number.isFinite(Number(value));
+const colorModes = new Set([
+  "hs",
+  "xy",
+  "rgb",
+  "rgbw",
+  "rgbww",
+  "white",
+  "brightness",
+  "onoff",
+]);
+export function lightState(entityId, eventOrState, previous = undefined) {
+  const statePayload = eventOrState?.newState || eventOrState || {};
+  const attributes = statePayload.attributes || {};
+  const supportedColorModes = Array.isArray(attributes.supported_color_modes)
+    ? attributes.supported_color_modes
+    : [];
+  const isLightEntity = entityId.startsWith("light.");
+  const colorMode =
+    isLightEntity && (attributes.color_mode === "color_temp" || colorModes.has(attributes.color_mode))
+      ? attributes.color_mode
+      : (previous?.colorMode ?? null);
+  const brightnessSupported =
+    isLightEntity &&
+    (supportedColorModes.length
+      ? supportedColorModes.some((mode) => !["onoff", "unknown"].includes(mode))
+      : isFiniteNumber(attributes.brightness) ||
+        (Number(attributes.supported_features) & 1) !== 0 ||
+        previous?.brightnessSupported === true);
+  const temperatureSupported =
+    isLightEntity &&
+    (supportedColorModes.length
+      ? supportedColorModes.includes("color_temp")
+      : isFiniteNumber(attributes.color_temp_kelvin) ||
+        isFiniteNumber(attributes.color_temp) ||
+        isFiniteNumber(attributes.min_color_temp_kelvin) ||
+        isFiniteNumber(attributes.max_color_temp_kelvin) ||
+        (Number(attributes.supported_features) & 2) !== 0 ||
+        previous?.temperatureSupported === true);
+  const minimumKelvin = isFiniteNumber(attributes.min_color_temp_kelvin)
+    ? Number(attributes.min_color_temp_kelvin)
+    : Number(attributes.max_mireds) > 0
+      ? 1000000 / Number(attributes.max_mireds)
+      : (previous?.minimum ?? 2000);
+  const maximumKelvin = isFiniteNumber(attributes.max_color_temp_kelvin)
+    ? Number(attributes.max_color_temp_kelvin)
+    : Number(attributes.min_mireds) > 0
+      ? 1000000 / Number(attributes.min_mireds)
+      : (previous?.maximum ?? 6500);
+  const kelvinRaw =
+    isFiniteNumber(attributes.color_temp_kelvin) && Number(attributes.color_temp_kelvin) > 0
+      ? Number(attributes.color_temp_kelvin)
+      : isFiniteNumber(attributes.color_temp) && Number(attributes.color_temp) > 0
+        ? 1000000 / Number(attributes.color_temp)
+        : (previous?.kelvin ?? null);
+  const brightnessByte = isFiniteNumber(attributes.brightness)
+    ? Math.max(0, Math.min(255, Number(attributes.brightness)))
+    : null;
+  const brightnessPercent =
+    brightnessByte !== null && (statePayload.state !== "off" || brightnessByte !== 0)
+      ? brightnessByte > 0
+        ? Math.max(1, Math.round((brightnessByte / 255) * 100))
+        : 0
+      : previous?.brightness > 0
+        ? previous.brightness
+        : null;
+  return {
+    on: statePayload.state === "on",
+    available: ["on", "off"].includes(statePayload.state),
+    name: attributes.friendly_name || previous?.name || entityId,
+    brightnessSupported,
+    temperatureSupported,
+    colorMode,
+    brightness: brightnessSupported ? brightnessPercent : null,
+    kelvin: temperatureSupported && isFiniteNumber(kelvinRaw) ? Math.round(kelvinRaw) : null,
+    minimum: Math.round(Math.max(1000, Math.min(minimumKelvin, maximumKelvin))),
+    maximum: Math.round(Math.min(20000, Math.max(minimumKelvin, maximumKelvin))),
+  };
+}
+export function lightRenderState(state) {
+  const missingBrightness = state.brightnessSupported && !Number.isFinite(state.brightness);
+  const missingKelvin =
+    state.temperatureSupported &&
+    !colorModes.has(state.colorMode) &&
+    !Number.isFinite(state.kelvin);
+  return {
+    ...state,
+    on: state.on && !missingBrightness && !missingKelvin,
+  };
+}
+const HISTORY_TTL_MS = 604800000;
+const HISTORY_MAX_ENTITIES = 256;
+const isLightOrSwitchEntity = (entityId) => /^(light|switch)\.[a-z0-9_]+$/.test(entityId);
+const isPresentNumber = (value) => typeof value != "boolean" && isFiniteNumber(value);
+const fieldValidators = {
+  brightness: (value) => Number.isFinite(value) && value > 0 && value <= 100,
+  kelvin: (value) => Number.isFinite(value) && value > 0,
+  minimum: (value) => Number.isFinite(value) && value >= 1000 && value <= 20000,
+  maximum: (value) => Number.isFinite(value) && value >= 1000 && value <= 20000,
+  colorMode: (value) => value === "color_temp" || colorModes.has(value),
+  brightnessSupported: (value) => typeof value == "boolean",
+  temperatureSupported: (value) => typeof value == "boolean",
+};
+function extractHistoryPatch(entityId, eventOrState) {
+  const statePayload = eventOrState?.newState || eventOrState || {};
+  const attributes = statePayload.attributes || {};
+  const resolved = lightState(entityId, eventOrState);
+  const patch = {};
+  const supportedColorModes = Array.isArray(attributes.supported_color_modes)
+    ? attributes.supported_color_modes
+    : [];
+  const hasBrightness = isPresentNumber(attributes.brightness) && Number(attributes.brightness) > 0;
+  const hasKelvin =
+    (isPresentNumber(attributes.color_temp_kelvin) && Number(attributes.color_temp_kelvin) > 0) ||
+    (isPresentNumber(attributes.color_temp) && Number(attributes.color_temp) > 0);
+  const hasMinimum =
+    (isPresentNumber(attributes.min_color_temp_kelvin) && Number(attributes.min_color_temp_kelvin) > 0) ||
+    (isPresentNumber(attributes.max_mireds) && Number(attributes.max_mireds) > 0);
+  const hasMaximum =
+    (isPresentNumber(attributes.max_color_temp_kelvin) && Number(attributes.max_color_temp_kelvin) > 0) ||
+    (isPresentNumber(attributes.min_mireds) && Number(attributes.min_mireds) > 0);
+  const supportedFeatures = isPresentNumber(attributes.supported_features)
+    ? Number(attributes.supported_features)
+    : 0;
+  if (supportedColorModes.length || hasBrightness || supportedFeatures & 1) {
+    patch.brightnessSupported = resolved.brightnessSupported;
+  }
+  if (supportedColorModes.length || hasKelvin || hasMinimum || hasMaximum || supportedFeatures & 2) {
+    patch.temperatureSupported = resolved.temperatureSupported;
+  }
+  if (hasBrightness && resolved.brightnessSupported) {
+    patch.brightness = resolved.brightness;
+  }
+  if (hasKelvin && resolved.temperatureSupported) {
+    patch.kelvin = resolved.kelvin;
+  }
+  if (hasMinimum) {
+    patch.minimum = resolved.minimum;
+  }
+  if (hasMaximum) {
+    patch.maximum = resolved.maximum;
+  }
+  if (attributes.color_mode === "color_temp" || colorModes.has(attributes.color_mode)) {
+    patch.colorMode = resolved.colorMode;
+  }
+  return Object.fromEntries(
+    Object.entries(patch).filter(([field, value]) => fieldValidators[field](value)),
+  );
+}
+function createLightHistoryStore(storage, scope, now, schedule, cancel) {
+  if (!storage || typeof scope != "string" || !scope.trim()) {
+    return null;
+  }
+  const storageKey = "hb-i3d:light-history:v1:" + scope;
+  const entities = new Map();
+  const lastPatchJson = new Map();
+  let writable = true;
+  let flushTimer = null;
+  let dirty = false;
+  let nextExpiryAt = 0;
+  const latestStamp = (fields) => Math.max(0, ...Object.values(fields).map((entry) => entry.at));
+  function prune(nowMs) {
+    if (nowMs < nextExpiryAt && entities.size <= HISTORY_MAX_ENTITIES) {
+      return false;
+    }
+    let changed = false;
+    nextExpiryAt = Infinity;
+    for (const [entityId, fields] of entities) {
+      for (const [field, entry] of Object.entries(fields)) {
+        if (nowMs - entry.at >= HISTORY_TTL_MS) {
+          delete fields[field];
+          changed = true;
+        } else {
+          nextExpiryAt = Math.min(nextExpiryAt, entry.at + HISTORY_TTL_MS);
+        }
+      }
+      if (!Object.keys(fields).length) {
+        entities.delete(entityId);
+      }
+    }
+    if (entities.size > HISTORY_MAX_ENTITIES) {
+      const ranked = [...entities].sort(
+        (left, right) => latestStamp(left[1]) - latestStamp(right[1]),
+      );
+      for (const [entityId] of ranked.slice(0, entities.size - HISTORY_MAX_ENTITIES)) {
+        entities.delete(entityId);
+      }
+      changed = true;
+    }
+    return changed;
+  }
+  function loadFromStorage() {
+    const loaded = new Map();
+    const raw = storage.getItem(storageKey);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const nowMs = now();
+      if (
+        parsed?.version !== 1 ||
+        !parsed.entities ||
+        typeof parsed.entities != "object" ||
+        Array.isArray(parsed.entities)
+      ) {
+        throw new Error("Invalid light history");
+      }
+      for (const [entityId, fields] of Object.entries(parsed.entities)) {
+        if (!isLightOrSwitchEntity(entityId) || !fields || typeof fields != "object" || Array.isArray(fields)) {
+          continue;
+        }
+        const kept = {};
+        for (const [field, entry] of Object.entries(fields)) {
+          if (
+            Object.hasOwn(fieldValidators, field) &&
+            fieldValidators[field](entry?.value) &&
+            Number.isFinite(entry.at) &&
+            entry.at >= 0 &&
+            entry.at <= nowMs &&
+            nowMs - entry.at < HISTORY_TTL_MS
+          ) {
+            kept[field] = {
+              value: entry.value,
+              at: entry.at,
+            };
+          }
+        }
+        if (Object.keys(kept).length) {
+          loaded.set(entityId, kept);
+        }
+      }
+    }
+    return loaded;
+  }
+  try {
+    for (const [entityId, fields] of loadFromStorage()) {
+      entities.set(entityId, fields);
+    }
+    prune(now());
+  } catch {
+    return null;
+  }
+  const serialize = () =>
+    JSON.stringify({
+      version: 1,
+      entities: Object.fromEntries(entities),
+    });
+  function flush() {
+    if (flushTimer !== null) {
+      cancel(flushTimer);
+      flushTimer = null;
+    }
+    if (!!writable && !!dirty) {
+      dirty = false;
+      try {
+        for (const [entityId, storedFields] of loadFromStorage()) {
+          const merged = entities.get(entityId) || {};
+          for (const [field, entry] of Object.entries(storedFields)) {
+            if (!merged[field] || merged[field].at < entry.at) {
+              merged[field] = entry;
+            }
+          }
+          if (merged.brightnessSupported?.value === false) {
+            delete merged.brightness;
+          }
+          if (merged.temperatureSupported?.value === false) {
+            delete merged.kelvin;
+          }
+          entities.set(entityId, merged);
+        }
+        nextExpiryAt = 0;
+        prune(now());
+        storage.setItem(storageKey, serialize());
+      } catch {
+        writable = false;
+      }
+    }
+  }
+  function scheduleFlush() {
+    if (!!writable && flushTimer === null && !!dirty) {
+      flushTimer = schedule(() => {
+        flushTimer = null;
+        flush();
+      });
+    }
+  }
+  return {
+    resolve(entityId, eventOrState) {
+      const nowMs = now();
+      dirty = prune(nowMs) || dirty;
+      if (isLightOrSwitchEntity(entityId)) {
+        const patch = extractHistoryPatch(entityId, eventOrState);
+        const patchJson = JSON.stringify(patch);
+        if (lastPatchJson.get(entityId) !== patchJson) {
+          lastPatchJson.delete(entityId);
+          lastPatchJson.set(entityId, patchJson);
+          const fields = entities.get(entityId) || {};
+          for (const [field, value] of Object.entries(patch)) {
+            if (fields[field]?.value !== value) {
+              fields[field] = {
+                value,
+                at: nowMs,
+              };
+              nextExpiryAt = Math.min(nextExpiryAt, nowMs + HISTORY_TTL_MS);
+              dirty = true;
+            }
+          }
+          if (patch.brightnessSupported === false && fields.brightness) {
+            delete fields.brightness;
+            dirty = true;
+          }
+          if (patch.temperatureSupported === false && fields.kelvin) {
+            delete fields.kelvin;
+            dirty = true;
+          }
+          if (Object.keys(fields).length) {
+            entities.set(entityId, fields);
+          }
+          while (lastPatchJson.size > HISTORY_MAX_ENTITIES) {
+            lastPatchJson.delete(lastPatchJson.keys().next().value);
+          }
+        }
+      }
+      dirty = prune(nowMs) || dirty;
+      scheduleFlush();
+      const remembered = Object.fromEntries(
+        Object.entries(entities.get(entityId) || {}).map(([field, entry]) => [
+          field,
+          entry.value,
+        ]),
+      );
+      remembered.brightnessSupported ??=
+        Number.isFinite(remembered.brightness) ||
+        (!!remembered.colorMode && remembered.colorMode !== "onoff");
+      remembered.temperatureSupported ??=
+        Number.isFinite(remembered.kelvin) ||
+        Number.isFinite(remembered.minimum) ||
+        Number.isFinite(remembered.maximum) ||
+        remembered.colorMode === "color_temp";
+      return remembered;
+    },
+    flush,
+    clear() {
+      if (flushTimer !== null) {
+        cancel(flushTimer);
+        flushTimer = null;
+      }
+      entities.clear();
+      lastPatchJson.clear();
+      dirty = false;
+      nextExpiryAt = Infinity;
+      if (writable) {
+        try {
+          storage.removeItem(storageKey);
+        } catch {
+          writable = false;
+        }
+      }
+    },
+  };
+}
+export function createLightStateCache({
+  storage,
+  scope,
+  now = () => Date.now(),
+  schedule = (callback) => setTimeout(callback, 50),
+  cancel = (timer) => clearTimeout(timer),
+} = {}) {
+  const liveStates = new Map();
+  const history = createLightHistoryStore(storage, scope, now, schedule, cancel);
+  return {
+    resolve(entityId, eventOrState) {
+      const previous = history
+        ? {
+            name: liveStates.get(entityId)?.name,
+            ...history.resolve(entityId, eventOrState),
+          }
+        : liveStates.get(entityId);
+      const resolved = lightState(entityId, eventOrState, previous);
+      liveStates.set(
+        entityId,
+        resolved.brightness === 0
+          ? {
+              ...resolved,
+              brightness: previous?.brightness > 0 ? previous.brightness : null,
+            }
+          : resolved,
+      );
+      return resolved;
+    },
+    flush() {
+      history?.flush();
+    },
+    clear() {
+      liveStates.clear();
+      history?.clear();
+    },
+  };
+}
+export function lightCommand(entityId, kind, value, state) {
+  if (!/^(light|switch)\.[a-z0-9_]+$/.test(entityId) || !state.available) {
+    throw new Error("设备不可用。");
+  }
+  const domain = entityId.split(".")[0];
+  if (kind === "power") {
+    return {
+      domain,
+      service: value ? "turn_on" : "turn_off",
+      entityId,
+      data: {},
+    };
+  }
+  if (!Number.isFinite(Number(value))) {
+    throw new Error("灯光参数无效。");
+  }
+  if (kind === "brightness" && state.brightnessSupported) {
+    return {
+      domain,
+      service: "turn_on",
+      entityId,
+      data: {
+        brightness: Math.round(
+          (Math.max(1, Math.min(100, Number(value))) * 255) / 100,
+        ),
+      },
+    };
+  }
+  if (kind === "temperature" && state.temperatureSupported) {
+    return {
+      domain,
+      service: "turn_on",
+      entityId,
+      data: {
+        color_temp_kelvin: Math.round(
+          Math.max(state.minimum, Math.min(state.maximum, Number(value))),
+        ),
+      },
+    };
+  }
+  throw new Error("此设备不支持该灯光调节。");
+}
+export function createLightPreview({
+  now = () => performance.now(),
+} = {}) {
+  const previews = new Map();
+  let revisionCounter = 0;
+  return {
+    set(entityId, kind, value, committed = false) {
+      const values = {
+        ...previews.get(entityId)?.values,
+        on: kind === "power" ? value === true : true,
+      };
+      if (kind === "brightness") {
+        values.brightness = value;
+      }
+      if (kind === "temperature") {
+        values.kelvin = value;
+      }
+      if (kind === "preset") {
+        if (Number.isFinite(value?.brightness)) {
+          values.brightness = value.brightness;
+        }
+        if (Number.isFinite(value?.kelvin)) {
+          values.kelvin = value.kelvin;
+        }
+      }
+      if (kind === "power" && !value) {
+        delete values.brightness;
+        delete values.kelvin;
+      }
+      const entry = {
+        values,
+        revision: ++revisionCounter,
+        committed,
+        expires: now() + 15000,
+      };
+      previews.set(entityId, entry);
+      return entry.revision;
+    },
+    state(entityId, baseState) {
+      return {
+        ...baseState,
+        ...previews.get(entityId)?.values,
+      };
+    },
+    reconcile(entityId, liveState) {
+      const entry = previews.get(entityId);
+      if (!entry) {
+        return;
+      }
+      const matched = Object.entries(entry.values).every(([field, expected]) =>
+        field === "on"
+          ? liveState.on === expected
+          : Number.isFinite(liveState[field]) &&
+            Math.abs(liveState[field] - expected) <= (field === "kelvin" ? 15 : 1),
+      );
+      if (!liveState.available || (entry.committed && matched)) {
+        previews.delete(entityId);
+      }
+    },
+    hold(entityId, revision) {
+      const entry = previews.get(entityId);
+      if (entry?.revision === revision) {
+        entry.committed = false;
+      }
+    },
+    retain(entityId, revision) {
+      const entry = previews.get(entityId);
+      if (entry?.revision === revision) {
+        entry.committed = true;
+        entry.expires = now() + 15000;
+      }
+    },
+    acknowledge(entityId, revision) {
+      const entry = previews.get(entityId);
+      if (entry?.revision === revision) {
+        entry.expires = now() + 8000;
+      }
+    },
+    reject(entityId, revision) {
+      if (previews.get(entityId)?.revision === revision) {
+        previews.delete(entityId);
+      }
+    },
+    expire() {
+      let removed = false;
+      for (const [entityId, entry] of previews) {
+        if (entry.expires <= now()) {
+          previews.delete(entityId);
+          removed = true;
+        }
+      }
+      return removed;
+    },
+    clear() {
+      previews.clear();
+    },
+    nextDelay(at = now()) {
+      let soonest = Infinity;
+      for (const entry of previews.values()) {
+        soonest = Math.min(soonest, entry.expires);
+      }
+      return Math.max(0, soonest - at);
+    },
+  };
+}

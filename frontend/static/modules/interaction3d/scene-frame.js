@@ -1,1 +1,116 @@
-(function(_0x400c78,_0x2ea834){const _0x557b8a=_0x26d6,_0x4e0a82=_0x400c78();while(!![]){try{const _0x4790ad=parseInt(_0x557b8a(0x1e5))/0x1*(parseInt(_0x557b8a(0x1f2))/0x2)+parseInt(_0x557b8a(0x1ef))/0x3*(-parseInt(_0x557b8a(0x1f6))/0x4)+parseInt(_0x557b8a(0x1e6))/0x5*(-parseInt(_0x557b8a(0x1ed))/0x6)+-parseInt(_0x557b8a(0x1ea))/0x7*(parseInt(_0x557b8a(0x1f4))/0x8)+parseInt(_0x557b8a(0x1e4))/0x9+parseInt(_0x557b8a(0x1ec))/0xa*(parseInt(_0x557b8a(0x1f3))/0xb)+parseInt(_0x557b8a(0x1f5))/0xc;if(_0x4790ad===_0x2ea834)break;else _0x4e0a82['push'](_0x4e0a82['shift']());}catch(_0x2ce370){_0x4e0a82['push'](_0x4e0a82['shift']());}}}(_0x291a,0x594d2));function _0x26d6(_0x19a043,_0x5ab261){const _0x291af4=_0x291a();return _0x26d6=function(_0x26d62b,_0xd1ebfb){_0x26d62b=_0x26d62b-0x1e4;let _0x5bff9a=_0x291af4[_0x26d62b];return _0x5bff9a;},_0x26d6(_0x19a043,_0x5ab261);}function p(_0x2f9656,_0x327a67,_0x19f65f){const _0x20b191=_0x26d6,_0x4ca75a=_0x2f9656['floors']||[],_0x505e4e=_0x4ca75a['find'](_0x134633=>_0x134633['id']===(_0x327a67==='all'?_0x19f65f:_0x327a67));if(!_0x505e4e)return null;const _0x2ac823=_0x505e4e['scene'],_0x4f2240=_0x2ac823['calibration']?.['pixelsPerMeter']||0x1;if(_0x327a67==='all'&&_0x4ca75a['length']>0x1){const _0x46ab8b=-(_0x505e4e['rotation']||0x0)*Math['PI']/0xb4,_0x55d2ae=Math['cos'](_0x46ab8b),_0x8f000b=Math['sin'](_0x46ab8b);return{'ppm':_0x4f2240,'c':_0x55d2ae,'s':_0x8f000b,'x':(_0x505e4e['offsetX']||0x0)-(_0x55d2ae*(_0x505e4e['originX']||0x0)+_0x8f000b*(_0x505e4e[_0x20b191(0x1f1)]||0x0))/_0x4f2240,'z':(_0x505e4e['offsetZ']||0x0)-(-_0x8f000b*(_0x505e4e['originX']||0x0)+_0x55d2ae*(_0x505e4e['originY']||0x0))/_0x4f2240,'y':[..._0x4ca75a]['sort']((_0x318a74,_0x1093d6)=>_0x318a74['elevation']-_0x1093d6['elevation'])['indexOf'](_0x505e4e)*_0x2f9656['previewFloorGap']};}let _0x4389ad=_0x2ac823[_0x20b191(0x1e8)]?.['length']?_0x2ac823['walls']['flatMap'](_0x286ae1=>[_0x286ae1['start'],_0x286ae1['end']]):_0x2ac823[_0x20b191(0x1f8)]?.[_0x20b191(0x1f7)]?_0x2ac823['items']:_0x2ac823['background']?.['width']&&_0x2ac823['background']?.[_0x20b191(0x1ee)]?[{'x':0x0,'y':0x0},{'x':_0x2ac823['background'][_0x20b191(0x1eb)],'y':_0x2ac823['background']['height']}]:[{'x':0x0,'y':0x0},{'x':0x4b0,'y':0x320}];if(_0x4389ad=_0x4389ad['filter'](_0x5c8668=>Number['isFinite'](_0x5c8668?.['x'])&&Number['isFinite'](_0x5c8668?.['y'])),!_0x4389ad['length'])return null;const _0x401c75=Math['min'](..._0x4389ad['map'](_0x167a22=>_0x167a22['x'])),_0xf72899=Math[_0x20b191(0x1f0)](..._0x4389ad['map'](_0x33ced9=>_0x33ced9['y'])),_0x4bd873=Math['max'](_0x401c75+0x1,..._0x4389ad['map'](_0x44d9f9=>_0x44d9f9['x'])),_0x2e8a81=Math['max'](_0xf72899+0x1,..._0x4389ad['map'](_0x5bdc95=>_0x5bdc95['y']));return{'ppm':_0x4f2240,'c':0x1,'s':0x0,'x':-(_0x401c75+_0x4bd873)/0x2/_0x4f2240,'z':-(_0xf72899+_0x2e8a81)/0x2/_0x4f2240,'y':0x0};}export function transformSceneCamera(_0x545618,_0x2b84b3,_0x4eadf7,_0x51d1ff,_0x49e848=!0x1){const _0x1f4d56=_0x26d6;if(!_0x545618)return _0x545618;const _0x3be4fd=_0x2b84b3['floors']?.[_0x1f4d56(0x1e7)](_0x3b59fb=>_0x4eadf7[_0x1f4d56(0x1e9)]?.['some'](_0x487459=>_0x487459['id']===_0x3b59fb['id']))?.['id'];let _0x14ca38=p(_0x2b84b3,_0x51d1ff,_0x3be4fd),_0x12bff3=p(_0x4eadf7,_0x51d1ff,_0x3be4fd);if(!_0x14ca38||!_0x12bff3)return structuredClone(_0x545618);_0x49e848&&([_0x14ca38,_0x12bff3]=[_0x12bff3,_0x14ca38]);const _0x135e35=_0x14ca38['ppm']/_0x12bff3['ppm'],_0x1d5025=_0x12bff3['c']*_0x14ca38['c']+_0x12bff3['s']*_0x14ca38['s'],_0x350dfb=_0x12bff3['s']*_0x14ca38['c']-_0x12bff3['c']*_0x14ca38['s'],_0x4ef05b=([_0x338cbf,_0x2e3ff9,_0x3e5662])=>[_0x1d5025*_0x338cbf+_0x350dfb*_0x3e5662,_0x2e3ff9,-_0x350dfb*_0x338cbf+_0x1d5025*_0x3e5662],_0x1d16d5=([_0x1fdef8,_0xfef3fa,_0x3e31f3])=>{const _0x74ab05=_0x4ef05b([_0x1fdef8-_0x14ca38['x'],_0xfef3fa-_0x14ca38['y'],_0x3e31f3-_0x14ca38['z']]);return[_0x74ab05[0x0]*_0x135e35+_0x12bff3['x'],_0x74ab05[0x1]*_0x135e35+_0x12bff3['y'],_0x74ab05[0x2]*_0x135e35+_0x12bff3['z']];};return{...structuredClone(_0x545618),'position':_0x1d16d5(_0x545618['position']),'target':_0x1d16d5(_0x545618['target']),..._0x545618['up']?{'up':_0x4ef05b(_0x545618['up'])}:{},..._0x545618['frameSize']?{'frameSize':_0x545618['frameSize']*_0x135e35}:{}};}function _0x291a(){const _0x56cb7a=['10wYTmuX','6rkiBKh','height','169086rnAlvW','min','originY','1073374WQyOoX','7764229gdQbsx','16UxowpA','1081800rvjhKD','32mBYvxO','length','items','3719637uWKoEg','1GvYfhc','1133635xfPOzh','find','walls','floors','2458988LlKReI','width'];_0x291a=function(){return _0x56cb7a;};return _0x291a();}
+function getFloorFrame(config, floorId, allFloorId) {
+  const floors = config.floors || [];
+  const floor = floors.find((entry) => entry.id === (floorId === "all" ? allFloorId : floorId));
+  if (!floor) {
+    return null;
+  }
+  const scene = floor.scene;
+  const ppm = scene.calibration?.pixelsPerMeter || 1;
+  if (floorId === "all" && floors.length > 1) {
+    const radians = (-(floor.rotation || 0) * Math.PI) / 180;
+    const cos = Math.cos(radians);
+    const sin = Math.sin(radians);
+    return {
+      ppm,
+      c: cos,
+      s: sin,
+      x:
+        (floor.offsetX || 0) -
+        (cos * (floor.originX || 0) + sin * (floor.originY || 0)) / ppm,
+      z:
+        (floor.offsetZ || 0) -
+        (-sin * (floor.originX || 0) + cos * (floor.originY || 0)) / ppm,
+      y:
+        [...floors].sort((a, b) => a.elevation - b.elevation).indexOf(floor) *
+        config.previewFloorGap,
+    };
+  }
+  let points = scene.walls?.length
+    ? scene.walls.flatMap((wall) => [wall.start, wall.end])
+    : scene.items?.length
+      ? scene.items
+      : scene.background?.width && scene.background?.height
+        ? [
+            {
+              x: 0,
+              y: 0,
+            },
+            {
+              x: scene.background.width,
+              y: scene.background.height,
+            },
+          ]
+        : [
+            {
+              x: 0,
+              y: 0,
+            },
+            {
+              x: 1200,
+              y: 800,
+            },
+          ];
+  points = points.filter((point) => Number.isFinite(point?.x) && Number.isFinite(point?.y));
+  if (!points.length) {
+    return null;
+  }
+  const minX = Math.min(...points.map((point) => point.x));
+  const minY = Math.min(...points.map((point) => point.y));
+  const maxX = Math.max(minX + 1, ...points.map((point) => point.x));
+  const maxY = Math.max(minY + 1, ...points.map((point) => point.y));
+  return {
+    ppm,
+    c: 1,
+    s: 0,
+    x: -(minX + maxX) / 2 / ppm,
+    z: -(minY + maxY) / 2 / ppm,
+    y: 0,
+  };
+}
+export function transformSceneCamera(camera, fromConfig, toConfig, floorId, reverse = false) {
+  if (!camera) {
+    return camera;
+  }
+  const sharedFloorId = fromConfig.floors?.find((fromFloor) =>
+    toConfig.floors?.some((toFloor) => toFloor.id === fromFloor.id),
+  )?.id;
+  let fromFrame = getFloorFrame(fromConfig, floorId, sharedFloorId);
+  let toFrame = getFloorFrame(toConfig, floorId, sharedFloorId);
+  if (!fromFrame || !toFrame) {
+    return structuredClone(camera);
+  }
+  if (reverse) {
+    [fromFrame, toFrame] = [toFrame, fromFrame];
+  }
+  const scale = fromFrame.ppm / toFrame.ppm;
+  const cos = toFrame.c * fromFrame.c + toFrame.s * fromFrame.s;
+  const sin = toFrame.s * fromFrame.c - toFrame.c * fromFrame.s;
+  const rotateVector = ([x, y, z]) => [
+    cos * x + sin * z,
+    y,
+    -sin * x + cos * z,
+  ];
+  const transformPoint = ([x, y, z]) => {
+    const rotated = rotateVector([x - fromFrame.x, y - fromFrame.y, z - fromFrame.z]);
+    return [
+      rotated[0] * scale + toFrame.x,
+      rotated[1] * scale + toFrame.y,
+      rotated[2] * scale + toFrame.z,
+    ];
+  };
+  return {
+    ...structuredClone(camera),
+    position: transformPoint(camera.position),
+    target: transformPoint(camera.target),
+    ...(camera.up
+      ? {
+          up: rotateVector(camera.up),
+        }
+      : {}),
+    ...(camera.frameSize
+      ? {
+          frameSize: camera.frameSize * scale,
+        }
+      : {}),
+  };
+}

@@ -1,1 +1,134 @@
-const _0x490f84=_0x1afc;(function(_0x420dd9,_0x297fdb){const _0x5793a1=_0x1afc,_0x29e994=_0x420dd9();while(!![]){try{const _0x342c6a=parseInt(_0x5793a1(0x194))/0x1*(-parseInt(_0x5793a1(0x17c))/0x2)+-parseInt(_0x5793a1(0x192))/0x3*(parseInt(_0x5793a1(0x193))/0x4)+parseInt(_0x5793a1(0x181))/0x5+parseInt(_0x5793a1(0x191))/0x6*(-parseInt(_0x5793a1(0x185))/0x7)+-parseInt(_0x5793a1(0x190))/0x8*(parseInt(_0x5793a1(0x189))/0x9)+-parseInt(_0x5793a1(0x187))/0xa*(parseInt(_0x5793a1(0x186))/0xb)+parseInt(_0x5793a1(0x18d))/0xc*(parseInt(_0x5793a1(0x188))/0xd);if(_0x342c6a===_0x297fdb)break;else _0x29e994['push'](_0x29e994['shift']());}catch(_0x193528){_0x29e994['push'](_0x29e994['shift']());}}}(_0xfe51,0xe4d11));export const DEFAULT_EXPORT_PRESET_COUNT=0x4,MAX_EXPORT_PRESET_COUNT=0x8;const a=new Set([_0x490f84(0x17a),'backgroundWithPlan',_0x490f84(0x18c),_0x490f84(0x184),'floorPlan',_0x490f84(0x18e),'dataScene']);function _0xfe51(){const _0x2d6c87=['round','trim','televisionOn','12OHuYUA','dataLights','all','63464IXUkrl','853962zFeOfF','1710075gONiIS','4ngJiZD','67307OnQWIe','mode','perspective','visibleHeight','length','max','background','from','42UtrrYt','isArray','slice','top','isFinite','8271820hOTIbj','height','free','vehicleCharging','63yCjaLF','1449107sUEXsh','130MKaiVK','73116433smkcCm','1548lMNoVi'];_0xfe51=function(){return _0x2d6c87;};return _0xfe51();}function _0x1afc(_0x9622ff,_0x2620ee){const _0xfe512c=_0xfe51();return _0x1afc=function(_0x1afc28,_0x281dc3){_0x1afc28=_0x1afc28-0x179;let _0x8a2d20=_0xfe512c[_0x1afc28];return _0x8a2d20;},_0x1afc(_0x9622ff,_0x2620ee);}function e(_0x6df7ce,_0x2b30c5=0x0){const _0xa120ed=_0x490f84,_0x24dd8f=Number(_0x6df7ce);return Number[_0xa120ed(0x180)](_0x24dd8f)?_0x24dd8f:_0x2b30c5;}function n(_0x4e0585,_0x157dbd,_0x508a70){return Math['max'](_0x157dbd,Math['min'](_0x508a70,_0x4e0585));}function s(_0xc1e933,_0x22b938={}){return{'x':e(_0xc1e933?.['x'],_0x22b938['x']),'y':e(_0xc1e933?.['y'],_0x22b938['y']),'z':e(_0xc1e933?.['z'],_0x22b938['z'])};}function p(_0x3517c1){const _0x1b154a=_0x490f84;return Array['isArray'](_0x3517c1)?[...new Set(_0x3517c1['map'](_0x147d48=>String(_0x147d48||''))['filter'](_0x39180a=>a['has'](_0x39180a)||/^(?:group|screen|vehicle):[A-Za-z0-9_.:-]{1,180}$/['test'](_0x39180a)))][_0x1b154a(0x17e)](0x0,0x80):[];}function m(_0x5248ef){const _0x744563=_0x490f84,_0x56bfa6=_0x5248ef?.['mode']==='perspective'?_0x744563(0x196):'orthographic',_0x14f3cf=_0x5248ef?.['view']==='top'?_0x744563(0x17f):_0x744563(0x183);return{'mode':_0x56bfa6,'view':_0x14f3cf,'topRotation':(Math['round'](e(_0x5248ef?.['topRotation'],0x0)/0x5a)*0x5a%0x168+0x168)%0x168,'position':s(_0x5248ef?.['position'],{'x':0x7,'y':0x7,'z':0x7}),'target':s(_0x5248ef?.['target'],{'x':0x0,'y':0.6,'z':0x0}),'visibleHeight':n(e(_0x5248ef?.[_0x744563(0x197)],0xa),0.1,0x3e8),'fov':n(e(_0x5248ef?.['fov'],0x24),0x5,0x78),'focalLength':_0x56bfa6==='perspective'?n(e(_0x5248ef?.['focalLength'],0x32),0x12,0x78):null};}export function normalizeExportPreset(_0x325070){const _0xc6cdc9=_0x490f84;if(!_0x325070||typeof _0x325070!='object')return null;const _0x4683a4=Math[_0xc6cdc9(0x18a)](n(e(_0x325070['width'],0x73c),0x140,0x1000)),_0x48497e=Math['round'](n(e(_0x325070['height'],0x50d),0x140,0x1000));return{'version':0x1,'name':String(_0x325070['name']||'')[_0xc6cdc9(0x18b)]()['slice'](0x0,0x18),'width':_0x4683a4,'height':_0x48497e,'lockRatio':_0x325070['lockRatio']!==!0x1,'floorMode':_0x325070['floorMode']===_0xc6cdc9(0x18f)?'all':'floor','floorId':String(_0x325070['floorId']||'')['slice'](0x0,0xb4),'floorGap':n(e(_0x325070['floorGap'],0x3),0x0,0x14),'camera':m(_0x325070['camera']),'folderName':String(_0x325070['folderName']||'')['slice'](0x0,0x3c),'selectedFiles':p(_0x325070['selectedFiles'])};}export function normalizeExportPresetSlots(_0x4cef22){const _0x4aeb1c=_0x490f84,_0x1e82d7=Array[_0x4aeb1c(0x17d)](_0x4cef22)?_0x4cef22:[],_0x2845c9=Array['isArray'](_0x4cef22)?Math[_0x4aeb1c(0x179)](0x1,Math['min'](0x8,_0x1e82d7[_0x4aeb1c(0x198)]||0x1)):0x4;return Array[_0x4aeb1c(0x17b)]({'length':_0x2845c9},(_0x315e78,_0x588368)=>normalizeExportPreset(_0x1e82d7[_0x588368]));}export function normalizeActiveExportPresetSlot(_0x356dbe,_0x3bf23b=0x4){const _0x5ca524=Number(_0x356dbe),_0x238cda=Math['max'](0x1,Math['min'](0x8,Number(_0x3bf23b)||0x4));return Number['isInteger'](_0x5ca524)&&_0x5ca524>=0x0&&_0x5ca524<_0x238cda?_0x5ca524:0x0;}export function exportPresetIsEmpty(_0x3e3372,_0x1aa27b=!0x1){return!normalizeExportPreset(_0x3e3372)&&!_0x1aa27b;}export function exportPresetSummary(_0x5351f9,_0xae5573=new Map()){const _0x8df582=_0x490f84,_0x47142a=normalizeExportPreset(_0x5351f9);if(!_0x47142a)return'未设置';const _0x48acdd=_0x47142a['floorMode']==='all'?'全楼合并':_0xae5573['get'](_0x47142a['floorId'])||'楼层已变更',_0x4939d3=_0x47142a['camera'][_0x8df582(0x195)]==='perspective'?'透视':'正交';return _0x47142a['width']+'×'+_0x47142a[_0x8df582(0x182)]+'\x20·\x20'+_0x48acdd+'\x20·\x20'+_0x4939d3;}
+export const DEFAULT_EXPORT_PRESET_COUNT = 4;
+export const MAX_EXPORT_PRESET_COUNT = 8;
+
+const ALLOWED_EXPORT_FILES = new Set([
+  "background",
+  "backgroundWithPlan",
+  "televisionOn",
+  "vehicleCharging",
+  "floorPlan",
+  "dataLights",
+  "dataScene",
+]);
+
+function finite(value, fallback = 0) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function normalizePoint3(point, fallback = {}) {
+  return {
+    x: finite(point?.x, fallback.x),
+    y: finite(point?.y, fallback.y),
+    z: finite(point?.z, fallback.z),
+  };
+}
+
+function normalizeSelectedFiles(files) {
+  if (!Array.isArray(files)) {
+    return [];
+  }
+  return [
+    ...new Set(
+      files
+        .map((file) => String(file || ""))
+        .filter(
+          (file) =>
+            ALLOWED_EXPORT_FILES.has(file) ||
+            /^(?:group|screen|vehicle):[A-Za-z0-9_.:-]{1,180}$/.test(file),
+        ),
+    ),
+  ].slice(0, 128);
+}
+
+function normalizeCamera(camera) {
+  const mode = camera?.mode === "perspective" ? "perspective" : "orthographic";
+  const view = camera?.view === "top" ? "top" : "free";
+  return {
+    mode,
+    view,
+    topRotation:
+      (((Math.round(finite(camera?.topRotation, 0) / 90) * 90) % 360) + 360) %
+      360,
+    position: normalizePoint3(camera?.position, { x: 7, y: 7, z: 7 }),
+    target: normalizePoint3(camera?.target, { x: 0, y: 0.6, z: 0 }),
+    visibleHeight: clamp(finite(camera?.visibleHeight, 10), 0.1, 1000),
+    fov: clamp(finite(camera?.fov, 36), 5, 120),
+    focalLength:
+      mode === "perspective"
+        ? clamp(finite(camera?.focalLength, 50), 18, 120)
+        : null,
+  };
+}
+
+export function normalizeExportPreset(preset) {
+  if (!preset || typeof preset != "object") {
+    return null;
+  }
+  const width = Math.round(clamp(finite(preset.width, 1852), 320, 4096));
+  const height = Math.round(clamp(finite(preset.height, 1293), 320, 4096));
+  return {
+    version: 1,
+    name: String(preset.name || "")
+      .trim()
+      .slice(0, 24),
+    width,
+    height,
+    lockRatio: preset.lockRatio !== false,
+    floorMode: preset.floorMode === "all" ? "all" : "floor",
+    floorId: String(preset.floorId || "").slice(0, 180),
+    floorGap: clamp(finite(preset.floorGap, 3), 0, 20),
+    camera: normalizeCamera(preset.camera),
+    folderName: String(preset.folderName || "").slice(0, 60),
+    selectedFiles: normalizeSelectedFiles(preset.selectedFiles),
+  };
+}
+
+export function normalizeExportPresetSlots(slots) {
+  const list = Array.isArray(slots) ? slots : [];
+  const count = Array.isArray(slots)
+    ? Math.max(1, Math.min(8, list.length || 1))
+    : 4;
+  return Array.from({ length: count }, (_slot, index) =>
+    normalizeExportPreset(list[index]),
+  );
+}
+
+export function normalizeActiveExportPresetSlot(slot, slotCount = 4) {
+  const index = Number(slot);
+  const count = Math.max(1, Math.min(8, Number(slotCount) || 4));
+  if (Number.isInteger(index) && index >= 0 && index < count) {
+    return index;
+  }
+  return 0;
+}
+
+export function exportPresetIsEmpty(preset, keepEmpty = false) {
+  return !normalizeExportPreset(preset) && !keepEmpty;
+}
+
+export function exportPresetSummary(preset, floorNames = new Map()) {
+  const normalized = normalizeExportPreset(preset);
+  if (!normalized) {
+    return "未设置";
+  }
+  const floorLabel =
+    normalized.floorMode === "all"
+      ? "全楼合并"
+      : floorNames.get(normalized.floorId) || "楼层已变更";
+  const cameraLabel =
+    normalized.camera.mode === "perspective" ? "透视" : "正交";
+  return (
+    normalized.width +
+    "×" +
+    normalized.height +
+    " · " +
+    floorLabel +
+    " · " +
+    cameraLabel
+  );
+}

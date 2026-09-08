@@ -1,1 +1,39 @@
-(function(_0x5f9e3e,_0x303e10){const _0x151f4b=_0x346e,_0x1ae1de=_0x5f9e3e();while(!![]){try{const _0x13d670=-parseInt(_0x151f4b(0xd5))/0x1*(parseInt(_0x151f4b(0xdc))/0x2)+parseInt(_0x151f4b(0xd4))/0x3*(parseInt(_0x151f4b(0xda))/0x4)+parseInt(_0x151f4b(0xe0))/0x5*(parseInt(_0x151f4b(0xdb))/0x6)+-parseInt(_0x151f4b(0xe1))/0x7+parseInt(_0x151f4b(0xde))/0x8*(parseInt(_0x151f4b(0xd7))/0x9)+-parseInt(_0x151f4b(0xd6))/0xa+parseInt(_0x151f4b(0xdd))/0xb;if(_0x13d670===_0x303e10)break;else _0x1ae1de['push'](_0x1ae1de['shift']());}catch(_0x6e7f4e){_0x1ae1de['push'](_0x1ae1de['shift']());}}}(_0xb995,0xb7ba9));function _0x346e(_0x5d7b49,_0x328e54){const _0xb995da=_0xb995();return _0x346e=function(_0x346e73,_0x523911){_0x346e73=_0x346e73-0xd4;let _0xd195d7=_0xb995da[_0x346e73];return _0xd195d7;},_0x346e(_0x5d7b49,_0x328e54);}function _0xb995(){const _0x904173=['4897648FwYWzH','1176483cIoRiB','1VTuVOG','11005560izkbPP','754911lHsNeR','TimeoutError','Request\x20aborted','4NWrZwe','6vSciKW','2591328Zpbkoy','23275065cCcicn','96wgarjI','aborted','1669065ShddIo'];_0xb995=function(){return _0x904173;};return _0xb995();}export async function withRequestTimeout(_0x163913,_0x3d0cd4,_0xfa8ea7){const _0x2fd9a6=_0x346e,_0x56fa92=new AbortController();let _0x5eec4d;const _0x411b5d=_0x331995=>{_0x56fa92['signal']['aborted']||(_0x5eec4d=_0x331995,_0x56fa92['abort'](_0x331995));},_0x490b44=()=>_0x411b5d(_0xfa8ea7['reason']||Object['assign'](new Error(_0x2fd9a6(0xd9)),{'name':'AbortError'}));if(_0xfa8ea7?.['aborted'])throw _0x490b44(),_0x5eec4d;_0xfa8ea7?.['addEventListener']('abort',_0x490b44,{'once':!0x0});const _0xbc35b2=setTimeout(()=>_0x411b5d(Object['assign'](new Error('Request\x20timed\x20out'),{'name':_0x2fd9a6(0xd8)})),_0x163913);try{const _0x233396=await _0x3d0cd4(_0x56fa92['signal']);if(_0x56fa92['signal']['aborted'])throw _0x5eec4d;return _0x233396;}catch(_0xc6e10d){throw _0x56fa92['signal'][_0x2fd9a6(0xdf)]?_0x5eec4d:_0xc6e10d;}finally{clearTimeout(_0xbc35b2),_0xfa8ea7?.['removeEventListener']('abort',_0x490b44);}}
+export async function withRequestTimeout(timeoutMs, run, externalSignal) {
+  const controller = new AbortController();
+  let abortReason;
+  const abortWith = (reason) => {
+    if (!controller.signal.aborted) {
+      abortReason = reason;
+      controller.abort(reason);
+    }
+  };
+  const onExternalAbort = () =>
+    abortWith(
+      externalSignal.reason ||
+        Object.assign(new Error("Request aborted"), { name: "AbortError" }),
+    );
+  if (externalSignal?.aborted) {
+    onExternalAbort();
+    throw abortReason;
+  }
+  externalSignal?.addEventListener("abort", onExternalAbort, { once: true });
+  const timer = setTimeout(
+    () =>
+      abortWith(
+        Object.assign(new Error("Request timed out"), { name: "TimeoutError" }),
+      ),
+    timeoutMs,
+  );
+  try {
+    const result = await run(controller.signal);
+    if (controller.signal.aborted) {
+      throw abortReason;
+    }
+    return result;
+  } catch (error) {
+    throw controller.signal.aborted ? abortReason : error;
+  } finally {
+    clearTimeout(timer);
+    externalSignal?.removeEventListener("abort", onExternalAbort);
+  }
+}

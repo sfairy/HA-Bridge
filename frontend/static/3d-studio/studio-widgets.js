@@ -1,1 +1,254 @@
-(function(_0x57911d,_0x58e688){const _0x1335c9=_0x1917,_0x39fe28=_0x57911d();while(!![]){try{const _0x48b832=-parseInt(_0x1335c9(0xac))/0x1+-parseInt(_0x1335c9(0xc3))/0x2*(parseInt(_0x1335c9(0xc1))/0x3)+-parseInt(_0x1335c9(0xbe))/0x4*(-parseInt(_0x1335c9(0xa7))/0x5)+-parseInt(_0x1335c9(0xa4))/0x6*(-parseInt(_0x1335c9(0xb8))/0x7)+parseInt(_0x1335c9(0xc2))/0x8*(parseInt(_0x1335c9(0xb7))/0x9)+parseInt(_0x1335c9(0xa2))/0xa*(parseInt(_0x1335c9(0xc0))/0xb)+-parseInt(_0x1335c9(0xab))/0xc;if(_0x48b832===_0x58e688)break;else _0x39fe28['push'](_0x39fe28['shift']());}catch(_0x8884e3){_0x39fe28['push'](_0x39fe28['shift']());}}}(_0xbda5,0x6ebe3));function _0x1917(_0xecad67,_0x56daa5){const _0xbda554=_0xbda5();return _0x1917=function(_0x191766,_0x350173){_0x191766=_0x191766-0x9d;let _0x45d457=_0xbda554[_0x191766];return _0x45d457;},_0x1917(_0xecad67,_0x56daa5);}const c=new Map();let o=null;function l(_0x2bd474=o){const _0x19a1fc=_0x1917;_0x2bd474&&(_0x2bd474['wrapper']['classList'][_0x19a1fc(0xbc)]('open'),_0x2bd474['trigger']['setAttribute']('aria-expanded',_0x19a1fc(0xb0)),_0x2bd474['menu']['hidden']=!0x0,o===_0x2bd474&&(o=null));}export function syncStudioSelect(_0x13199e){const _0x4ccd51=_0x1917,_0x38f040=c['get'](_0x13199e);if(!_0x38f040)return;const _0xbe710=_0x13199e['selectedOptions']?.[0x0]||_0x13199e['options'][_0x13199e['selectedIndex']]||_0x13199e['options'][0x0];_0x38f040[_0x4ccd51(0xa0)]['textContent']=_0xbe710?.[_0x4ccd51(0x9d)]||'请选择',_0x38f040['trigger']['disabled']=_0x13199e['disabled'],_0x38f040['trigger']['setAttribute'](_0x4ccd51(0xbb),String(_0x13199e['disabled'])),_0x38f040['menu']['replaceChildren'](...[..._0x13199e['options']]['map'](_0x1c18a3=>{const _0x4ccc84=_0x4ccd51,_0x381681=document['createElement']('button');return _0x381681[_0x4ccc84(0xa9)]='button',_0x381681[_0x4ccc84(0x9e)]='studio-select-option',_0x381681['textContent']=_0x1c18a3['textContent'],_0x381681['dataset']['value']=_0x1c18a3['value'],_0x381681['disabled']=_0x1c18a3['disabled'],_0x381681['setAttribute']('role','option'),_0x381681[_0x4ccc84(0xad)]('aria-selected',String(_0x1c18a3[_0x4ccc84(0xb2)]===_0x13199e['value'])),_0x381681[_0x4ccc84(0xb5)]['toggle']('selected',_0x1c18a3['value']===_0x13199e[_0x4ccc84(0xb2)]),_0x381681['addEventListener']('click',_0x14b6fc=>{const _0x202004=_0x4ccc84;_0x14b6fc[_0x202004(0xa8)](),_0x14b6fc['stopPropagation'](),!_0x1c18a3['disabled']&&(_0x13199e['value']=_0x1c18a3['value'],syncStudioSelect(_0x13199e),l(_0x38f040),_0x13199e['dispatchEvent'](new Event('change',{'bubbles':!0x0})),_0x38f040['trigger']['focus']());}),_0x381681;})),_0x13199e['disabled']&&l(_0x38f040);}export function enhanceStudioSelect(_0x199bd3){const _0x237d27=_0x1917;if(!_0x199bd3||c['has'](_0x199bd3))return;const _0x5a7277=document['createElement'](_0x237d27(0xb1));_0x5a7277['className']=_0x237d27(0xb3),_0x199bd3[_0x237d27(0x9f)](_0x5a7277),_0x5a7277[_0x237d27(0xb9)](_0x199bd3),_0x199bd3['classList']['add']('studio-native-select'),_0x199bd3['tabIndex']=-0x1,_0x199bd3['setAttribute'](_0x237d27(0xb4),'true');const _0x324472=document[_0x237d27(0xa1)]('button');_0x324472['type']='button',_0x324472['className']=_0x237d27(0xc4),_0x324472['setAttribute']('aria-haspopup','listbox'),_0x324472['setAttribute']('aria-expanded',_0x237d27(0xb0));const _0xe9f121=document['createElement']('div');_0xe9f121['className']='studio-select-menu',_0xe9f121['id']=(_0x199bd3['id']||'studio-select-'+(c['size']+0x1))+'-menu',_0xe9f121['setAttribute']('role','listbox'),_0xe9f121['hidden']=!0x0,_0x324472['setAttribute']('aria-controls',_0xe9f121['id']),_0x5a7277['append'](_0x324472,_0xe9f121);const _0x16ff1d={'select':_0x199bd3,'wrapper':_0x5a7277,'trigger':_0x324472,'menu':_0xe9f121};c[_0x237d27(0xa5)](_0x199bd3,_0x16ff1d),_0x324472['addEventListener']('click',_0x2a139c=>{const _0x1ada09=_0x237d27;if(_0x2a139c['preventDefault'](),_0x2a139c['stopPropagation'](),!_0x199bd3['disabled']){if(o===_0x16ff1d){l(_0x16ff1d);return;}l(),syncStudioSelect(_0x199bd3),_0x5a7277['classList']['add'](_0x1ada09(0xaa)),_0x324472[_0x1ada09(0xad)]('aria-expanded','true'),_0xe9f121['hidden']=!0x1,o=_0x16ff1d;}}),_0x199bd3['addEventListener']('change',()=>syncStudioSelect(_0x199bd3)),new MutationObserver(()=>syncStudioSelect(_0x199bd3))['observe'](_0x199bd3,{'childList':!0x0,'subtree':!0x0,'attributes':!0x0}),syncStudioSelect(_0x199bd3);}function _0xbda5(){const _0x399b87=['24540zpqbbB','1768RdurAo','20JEjoyL','studio-select-trigger','addEventListener','textContent','className','before','trigger','createElement','21630qOoTWo','减小数值','125838jNdBwY','set','增加数值','5rhmFsS','preventDefault','type','open','21275064MuUjHO','306038VmdZSJ','setAttribute','focus','contains','false','div','value','studio-select','aria-hidden','classList','toggle','25767lEuJRW','147rjhkEB','append','aria-label','aria-disabled','remove','title','3179888GRmqwu','setPointerCapture','3795fFUgJk'];_0xbda5=function(){return _0x399b87;};return _0xbda5();}export function initializeStudioSelects(_0xd66f39=document){for(const _0x3c6915 of _0xd66f39['querySelectorAll']('select'))enhanceStudioSelect(_0x3c6915);_0xd66f39['addEventListener']('pointerdown',_0xe35152=>{const _0x593222=_0x1917;o&&!o['wrapper'][_0x593222(0xaf)](_0xe35152['target'])&&l();}),_0xd66f39['addEventListener']('keydown',_0x27a316=>{const _0x3d0f51=_0x1917;if(_0x27a316['key']!=='Escape'||!o)return;_0x27a316['preventDefault'](),_0x27a316['stopPropagation']();const _0x459816=o[_0x3d0f51(0xa0)];l(),_0x459816[_0x3d0f51(0xae)]();});}function v(_0x3d1c42,_0x412e80){const _0x422e55=_0x1917,_0xdfa22e=_0x3d1c42['disabled']||_0x3d1c42['readOnly'];for(const _0x10ff87 of _0x412e80)_0x10ff87['disabled']=_0xdfa22e;_0x3d1c42['closest']('.number-stepper')?.[_0x422e55(0xb5)][_0x422e55(0xb6)]('is-disabled',_0xdfa22e);}export function enhanceNumberInput(_0x13d7f8){const _0x46388b=_0x1917;if(!_0x13d7f8||_0x13d7f8['closest']('.number-stepper'))return;const _0x1fd469=document[_0x46388b(0xa1)]('span');_0x1fd469['className']='number-stepper',_0x13d7f8['before'](_0x1fd469),_0x1fd469['append'](_0x13d7f8);const _0x2db898=document['createElement']('span');_0x2db898[_0x46388b(0x9e)]='number-stepper-buttons';const _0xf918c9=[{'direction':'up','label':_0x46388b(0xa6)},{'direction':'down','label':_0x46388b(0xa3)}]['map'](({direction:_0x4cdfc3,label:_0xd52ee3})=>{const _0x322ff7=_0x46388b,_0x54adb3=document['createElement']('button');_0x54adb3['type']='button',_0x54adb3['className']='number-stepper-button\x20number-stepper-'+_0x4cdfc3,_0x54adb3['setAttribute'](_0x322ff7(0xba),_0xd52ee3),_0x54adb3[_0x322ff7(0xbd)]=_0xd52ee3;const _0x2a835a=()=>{const _0x386050=_0x322ff7;if(_0x13d7f8['disabled']||_0x13d7f8['readOnly'])return!0x1;const _0x5e2789=_0x13d7f8['value'];try{_0x4cdfc3==='up'?_0x13d7f8['stepUp']():_0x13d7f8['stepDown']();}catch{return!0x1;}return _0x13d7f8[_0x386050(0xb2)]===_0x5e2789?!0x1:(_0x13d7f8['dispatchEvent'](new Event('input',{'bubbles':!0x0})),!0x0);};return _0x54adb3[_0x322ff7(0xc5)]('click',_0x164e79=>{_0x164e79['preventDefault'](),_0x164e79['stopPropagation']();}),_0x54adb3[_0x322ff7(0xc5)]('pointerdown',_0x151ce5=>{const _0x3e8bbf=_0x322ff7;if(_0x151ce5['button']!==0x0||_0x13d7f8['disabled']||_0x13d7f8['readOnly'])return;_0x151ce5['preventDefault'](),_0x151ce5['stopPropagation'](),_0x13d7f8['focus']({'preventScroll':!0x0});let _0x539579=_0x2a835a(),_0x46a425=!0x1,_0x1ad19a=window['setTimeout'](()=>{_0x1ad19a=window['setInterval'](()=>{_0x539579=_0x2a835a()||_0x539579;},0x37);},0x140);const _0x298353=()=>{_0x46a425||(_0x46a425=!0x0,window['clearTimeout'](_0x1ad19a),window['clearInterval'](_0x1ad19a),_0x54adb3['removeEventListener']('pointerup',_0x298353),_0x54adb3['removeEventListener']('pointercancel',_0x298353),_0x54adb3['removeEventListener']('lostpointercapture',_0x298353),_0x539579&&_0x13d7f8['dispatchEvent'](new Event('change',{'bubbles':!0x0})));};_0x54adb3['addEventListener']('pointerup',_0x298353),_0x54adb3[_0x3e8bbf(0xc5)]('pointercancel',_0x298353),_0x54adb3[_0x3e8bbf(0xc5)]('lostpointercapture',_0x298353);try{_0x54adb3[_0x3e8bbf(0xbf)](_0x151ce5['pointerId']);}catch{}}),_0x2db898['append'](_0x54adb3),_0x54adb3;});_0x1fd469['append'](_0x2db898),new MutationObserver(()=>v(_0x13d7f8,_0xf918c9))['observe'](_0x13d7f8,{'attributes':!0x0,'attributeFilter':['disabled','readonly']}),v(_0x13d7f8,_0xf918c9);}export function initializeNumberInputs(_0x871593=document){for(const _0x2f684d of _0x871593['querySelectorAll']('input[type=\x22number\x22]'))enhanceNumberInput(_0x2f684d);}
+const selectRegistry = new Map();
+let openSelectState = null;
+function closeStudioSelect(state = openSelectState) {
+  if (state) {
+    state.wrapper.classList.remove("open");
+    state.trigger.setAttribute("aria-expanded", "false");
+    state.menu.hidden = true;
+    if (openSelectState === state) {
+      openSelectState = null;
+    }
+  }
+}
+export function syncStudioSelect(select) {
+  const state = selectRegistry.get(select);
+  if (!state) {
+    return;
+  }
+  const selectedOption =
+    select.selectedOptions?.[0] ||
+    select.options[select.selectedIndex] ||
+    select.options[0];
+  state.trigger.textContent = selectedOption?.textContent || "请选择";
+  state.trigger.disabled = select.disabled;
+  state.trigger.setAttribute("aria-disabled", String(select.disabled));
+  state.menu.replaceChildren(
+    ...[...select.options].map((option) => {
+      const optionButton = document.createElement("button");
+      optionButton.type = "button";
+      optionButton.className = "studio-select-option";
+      optionButton.textContent = option.textContent;
+      optionButton.dataset.value = option.value;
+      optionButton.disabled = option.disabled;
+      optionButton.setAttribute("role", "option");
+      optionButton.setAttribute(
+        "aria-selected",
+        String(option.value === select.value),
+      );
+      optionButton.classList.toggle("selected", option.value === select.value);
+      optionButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!option.disabled) {
+          select.value = option.value;
+          syncStudioSelect(select);
+          closeStudioSelect(state);
+          select.dispatchEvent(
+            new Event("change", {
+              bubbles: true,
+            }),
+          );
+          state.trigger.focus();
+        }
+      });
+      return optionButton;
+    }),
+  );
+  if (select.disabled) {
+    closeStudioSelect(state);
+  }
+}
+export function enhanceStudioSelect(select) {
+  if (!select || selectRegistry.has(select)) {
+    return;
+  }
+  const wrapper = document.createElement("div");
+  wrapper.className = "studio-select";
+  select.before(wrapper);
+  wrapper.append(select);
+  select.classList.add("studio-native-select");
+  select.tabIndex = -1;
+  select.setAttribute("aria-hidden", "true");
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "studio-select-trigger";
+  trigger.setAttribute("aria-haspopup", "listbox");
+  trigger.setAttribute("aria-expanded", "false");
+  const menu = document.createElement("div");
+  menu.className = "studio-select-menu";
+  menu.id =
+    (select.id || "studio-select-" + (selectRegistry.size + 1)) + "-menu";
+  menu.setAttribute("role", "listbox");
+  menu.hidden = true;
+  trigger.setAttribute("aria-controls", menu.id);
+  wrapper.append(trigger, menu);
+  const state = {
+    select: select,
+    wrapper: wrapper,
+    trigger: trigger,
+    menu: menu,
+  };
+  selectRegistry.set(select, state);
+  trigger.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!select.disabled) {
+      if (openSelectState === state) {
+        closeStudioSelect(state);
+        return;
+      }
+      closeStudioSelect();
+      syncStudioSelect(select);
+      wrapper.classList.add("open");
+      trigger.setAttribute("aria-expanded", "true");
+      menu.hidden = false;
+      openSelectState = state;
+    }
+  });
+  select.addEventListener("change", () => syncStudioSelect(select));
+  new MutationObserver(() => syncStudioSelect(select)).observe(select, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+  });
+  syncStudioSelect(select);
+}
+export function initializeStudioSelects(root = document) {
+  for (const select of root.querySelectorAll("select")) {
+    enhanceStudioSelect(select);
+  }
+  root.addEventListener("pointerdown", (event) => {
+    if (openSelectState && !openSelectState.wrapper.contains(event.target)) {
+      closeStudioSelect();
+    }
+  });
+  root.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || !openSelectState) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const trigger = openSelectState.trigger;
+    closeStudioSelect();
+    trigger.focus();
+  });
+}
+function syncStepperDisabled(input, buttons) {
+  const isDisabled = input.disabled || input.readOnly;
+  for (const button of buttons) {
+    button.disabled = isDisabled;
+  }
+  input.closest(".number-stepper")?.classList.toggle("is-disabled", isDisabled);
+}
+export function enhanceNumberInput(input) {
+  if (!input || input.closest(".number-stepper")) {
+    return;
+  }
+  const stepper = document.createElement("span");
+  stepper.className = "number-stepper";
+  input.before(stepper);
+  stepper.append(input);
+  const buttonGroup = document.createElement("span");
+  buttonGroup.className = "number-stepper-buttons";
+  const buttons = [
+    {
+      direction: "up",
+      label: "增加数值",
+    },
+    {
+      direction: "down",
+      label: "减小数值",
+    },
+  ].map(({ direction, label }) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "number-stepper-button number-stepper-" + direction;
+    button.setAttribute("aria-label", label);
+    button.title = label;
+    const stepOnce = () => {
+      if (input.disabled || input.readOnly) {
+        return false;
+      }
+      const previousValue = input.value;
+      try {
+        if (direction === "up") {
+          input.stepUp();
+        } else {
+          input.stepDown();
+        }
+      } catch {
+        return false;
+      }
+      if (input.value === previousValue) {
+        return false;
+      } else {
+        input.dispatchEvent(
+          new Event("input", {
+            bubbles: true,
+          }),
+        );
+        return true;
+      }
+    };
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    button.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || input.disabled || input.readOnly) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      input.focus({
+        preventScroll: true,
+      });
+      let didStep = stepOnce();
+      let released = false;
+      let repeatTimer = window.setTimeout(() => {
+        repeatTimer = window.setInterval(() => {
+          didStep = stepOnce() || didStep;
+        }, 55);
+      }, 320);
+      const release = () => {
+        if (!released) {
+          released = true;
+          window.clearTimeout(repeatTimer);
+          window.clearInterval(repeatTimer);
+          button.removeEventListener("pointerup", release);
+          button.removeEventListener("pointercancel", release);
+          button.removeEventListener("lostpointercapture", release);
+          if (didStep) {
+            input.dispatchEvent(
+              new Event("change", {
+                bubbles: true,
+              }),
+            );
+          }
+        }
+      };
+      button.addEventListener("pointerup", release);
+      button.addEventListener("pointercancel", release);
+      button.addEventListener("lostpointercapture", release);
+      try {
+        button.setPointerCapture(event.pointerId);
+      } catch {}
+    });
+    buttonGroup.append(button);
+    return button;
+  });
+  stepper.append(buttonGroup);
+  new MutationObserver(() => syncStepperDisabled(input, buttons)).observe(
+    input,
+    {
+      attributes: true,
+      attributeFilter: ["disabled", "readonly"],
+    },
+  );
+  syncStepperDisabled(input, buttons);
+}
+export function initializeNumberInputs(root = document) {
+  for (const input of root.querySelectorAll('input[type="number"]')) {
+    enhanceNumberInput(input);
+  }
+}

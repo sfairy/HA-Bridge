@@ -24,7 +24,7 @@ export function createEditorAssetToolbar({
     tabs.setAttribute("aria-label", "图片来源");
     for (const [source, label] of [
       ["user", "我的图片"],
-      ["builtin", "栖光素材"],
+      ["builtin", "默认素材"],
     ]) {
       const tab = documentObject.createElement("button");
       tab.type = "button";
