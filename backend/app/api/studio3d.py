@@ -17,6 +17,7 @@ from sqlalchemy import select
 from dependencies import DatabaseSession, LicensedUser
 from global_popups import global_popups
 from models import Project, ProjectDraft
+from panel.document_walk import any_leaf
 from schemas import Studio3DDraftUpdate
 
 router = APIRouter(prefix='/studio3d', tags=['studio3d'])
@@ -112,11 +113,7 @@ def _folder_name(request: Request) -> str:
 
 
 def _document_uses_asset_prefix(value, prefix: str) -> bool:
-    if isinstance(value, dict):
-        return any(_document_uses_asset_prefix(item, prefix) for item in value.values())
-    if isinstance(value, list):
-        return any(_document_uses_asset_prefix(item, prefix) for item in value)
-    return isinstance(value, str) and value.startswith(prefix)
+    return any_leaf(value, lambda leaf: isinstance(leaf, str) and leaf.startswith(prefix))
 
 
 def _validate_archive(archive_path: Path) -> list[zipfile.ZipInfo]:

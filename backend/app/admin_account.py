@@ -93,27 +93,27 @@ class AdminAccountStore:
                 f'管理员账号文件 {self.path} 无法读取；请修复该文件，或删除它后重启以重新设置账号。'
             ) from error
         try:
-            os.chmod(self.path, 0o600)
+            os.chmod(self.path, 384)
         except OSError as error:
             raise RuntimeError(f'无法保护管理员账号文件 {self.path} 的访问权限。') from error
         return AdminAccountCredentials(user_id=user_id, username=username, password_hash=password_hash)
 
     def _write(self, credentials: AdminAccountCredentials) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        os.chmod(self.path.parent, 0o700)
+        self.path.parent.mkdir(parents=True, exist_ok=True, mode=448)
+        os.chmod(self.path.parent, 448)
         if self.path.exists():
             raise RuntimeError(f'管理员账号文件 {self.path} 已存在，拒绝覆盖。')
         temporary_path = self.path.with_name(f'.{self.path.name}.{secrets.token_hex(8)}.tmp')
         final_path_created = False
         try:
-            descriptor = os.open(temporary_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            descriptor = os.open(temporary_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 384)
             with os.fdopen(descriptor, 'wb') as output:
                 output.write(self._encoded(credentials))
                 output.flush()
                 os.fsync(output.fileno())
             os.replace(temporary_path, self.path)
             final_path_created = True
-            os.chmod(self.path, 0o600)
+            os.chmod(self.path, 384)
             directory_descriptor = os.open(self.path.parent, os.O_RDONLY)
             try:
                 os.fsync(directory_descriptor)

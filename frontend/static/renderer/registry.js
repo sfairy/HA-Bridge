@@ -1,4 +1,4 @@
-import { randomUuid } from "../js/utils/random-id.js?v=20260724-revert-hold-popup-shield-v324";
+import { randomUuid } from "../utils/random-id.js?v=20260724-revert-hold-popup-shield-v324";
 import {
   climateDefaultIcon,
   climateEffectMode,

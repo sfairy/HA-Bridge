@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from cryptography.fernet import Fernet, InvalidToken
+
+from secure_key_file import load_or_create_fernet_key
 
 
 class CredentialCipherError(RuntimeError):
@@ -15,21 +16,10 @@ class CredentialCipher:
         self.key_path = key_path
 
     def _load_or_create_key(self) -> bytes:
-        self.key_path.parent.mkdir(parents=True, exist_ok=True, mode=448)
         try:
-            os.chmod(self.key_path.parent, 448)
-        except OSError:
-            pass
-        if self.key_path.exists():
-            key = self.key_path.read_bytes().strip()
-            if not key:
-                raise CredentialCipherError('凭证密钥文件为空。')
-            return key
-        key = Fernet.generate_key()
-        descriptor = os.open(self.key_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 384)
-        with os.fdopen(descriptor, 'wb') as key_file:
-            key_file.write(key + b'\n')
-        return key
+            return load_or_create_fernet_key(self.key_path, empty_message='凭证密钥文件为空。')
+        except ValueError as error:
+            raise CredentialCipherError(str(error)) from error
 
     def encrypt(self, plaintext: str) -> str:
         if not plaintext:

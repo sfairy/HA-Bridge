@@ -12,6 +12,7 @@ from dependencies import DatabaseSession, LicensedUser, LicensedViewer, require_
 from global_popups import clear_popup_references, global_popup_state, global_popups, hydrate_document_popups, merge_document_popups, strip_document_popups
 from models import GlobalCustomPopupState, Project, ProjectDraft
 from panel.documents import create_blank_project
+from panel.document_walk import walk
 from panel.schema import validate_panel_document
 from modules.interaction3d.access import require_document_changes as require_interaction3d_changes
 from ui_packs import DEFAULT_UI_PACK_ID, get_ui_pack_for_asset_path, load_dashboard_template, require_ui_pack_access
@@ -45,15 +46,15 @@ def document_template_ui_pack_ids(value) -> set[str]:
 
 def document_asset_ids(value) -> set[str]:
     result = set()
-    if isinstance(value, dict):
-        for key, item in value.items():
+
+    def visit(node) -> None:
+        if not isinstance(node, dict):
+            return
+        for key, item in node.items():
             if isinstance(item, str) and key.lower().endswith('assetid') and item.startswith(('builtin:', 'user:')):
                 result.add(item)
-                continue
-            result.update(document_asset_ids(item))
-    elif isinstance(value, list):
-        for item in value:
-            result.update(document_asset_ids(item))
+
+    walk(value, visit)
     return result
 
 

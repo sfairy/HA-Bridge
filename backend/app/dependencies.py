@@ -26,12 +26,14 @@ def _aware(value: datetime) -> datetime:
     return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
 
 
-def _admin_session(request: Request, response: Response, database: DatabaseSession) -> User | None:
-    account_user_id = request.app.state.admin_account.user_id
-    if account_user_id is None:
-        return None
-    token = request.cookies.get(request.app.state.settings.cookie_name, '')
-    if not token:
+def lookup_session_user(
+    database: Session,
+    *,
+    token: str,
+    account_user_id: str | None,
+) -> User | None:
+    '''Resolve an active admin user from a session cookie token (no cookie refresh).'''
+    if not token or account_user_id is None:
         return None
     record = database.scalar(
         select(LoginSession).where(LoginSession.id_hash == session_token_hash(token))
@@ -47,9 +49,45 @@ def _admin_session(request: Request, response: Response, database: DatabaseSessi
     user = database.get(User, record.user_id)
     if user is None or not user.is_active:
         return None
+    return user
+
+
+def resolve_viewer_principal(
+    database: Session,
+    *,
+    session_token: str,
+    display_token: str,
+    account_user_id: str | None,
+) -> ViewerPrincipal | None:
+    '''Build a viewer from session/display tokens without mutating cookies.'''
+    user = lookup_session_user(
+        database,
+        token=session_token,
+        account_user_id=account_user_id,
+    )
+    if user is not None:
+        return ViewerPrincipal(user=user)
+    if not display_token:
+        return None
+    device = active_display_device(database, display_token)
+    if device is None:
+        return None
+    return ViewerPrincipal(display=device)
+
+
+def _admin_session(request: Request, response: Response, database: DatabaseSession) -> User | None:
+    account_user_id = request.app.state.admin_account.user_id
+    token = request.cookies.get(request.app.state.settings.cookie_name, '')
+    user = lookup_session_user(database, token=token, account_user_id=account_user_id)
+    if user is None:
+        return None
+    record = database.scalar(
+        select(LoginSession).where(LoginSession.id_hash == session_token_hash(token))
+    )
+    now = datetime.now(timezone.utc)
     max_age = request.app.state.settings.session_max_age_seconds
     refresh_interval = min(300, max(1, max_age // 2))
-    if now - _aware(record.last_seen_at) >= timedelta(seconds=refresh_interval):
+    if record is not None and now - _aware(record.last_seen_at) >= timedelta(seconds=refresh_interval):
         record.last_seen_at = now
         record.expires_at = now + timedelta(seconds=max_age)
         database.commit()

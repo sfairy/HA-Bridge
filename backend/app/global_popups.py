@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models import GlobalCustomPopupState, Project, ProjectDraft
+from panel.document_walk import walk
 
 
 def _canonical(value) -> str:
@@ -34,14 +35,12 @@ def global_popups(database: Session) -> list[dict]:
 
 def popup_reference_ids(value) -> set[str]:
     result = set()
-    if isinstance(value, dict):
-        if value.get('popupSource') == 'custom' and isinstance(value.get('popupId'), str):
-            result.add(value['popupId'])
-        for item in value.values():
-            result.update(popup_reference_ids(item))
-    elif isinstance(value, list):
-        for item in value:
-            result.update(popup_reference_ids(item))
+
+    def visit(node) -> None:
+        if isinstance(node, dict) and node.get('popupSource') == 'custom' and isinstance(node.get('popupId'), str):
+            result.add(node['popupId'])
+
+    walk(value, visit)
     return result
 
 

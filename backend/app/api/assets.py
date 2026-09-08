@@ -27,6 +27,7 @@ from dependencies import (
 )
 from global_popups import global_popups
 from models import Project, ProjectDraft
+from panel.document_walk import any_leaf
 from ui_packs import UI_PACKS, get_ui_pack_for_asset_path, require_ui_pack_access
 
 router = APIRouter(prefix='/assets', tags=['assets'])
@@ -723,11 +724,7 @@ class AssetCatalog:
 
 
 def document_uses_asset(value, asset_id: str) -> bool:
-    if isinstance(value, dict):
-        return any(document_uses_asset(item, asset_id) for item in value.values())
-    if isinstance(value, list):
-        return any(document_uses_asset(item, asset_id) for item in value)
-    return value == asset_id
+    return any_leaf(value, lambda leaf: leaf == asset_id)
 
 
 @router.get('/builtin')

@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from fastapi import HTTPException, Request
 
-from license.crypto import LicenseCryptoError, parse_timestamp
 from modules.interaction3d.config import validate_config
 
 FEATURE = 'module.3d_interaction'
@@ -32,29 +29,12 @@ def access_grant(request: Request) -> dict:
     '''A short UI lifetime, never a credential accepted by any backend route.'''
     require_access(request)
     service = request.app.state.license_service
-    lifetime = float(MAX_GRANT_SECONDS)
-    if service.settings.license_required:
-        try:
-            with service.database.session_factory() as database:
-                state = service._state(database)
-                if state.signed_lease:
-                    payload = service.verifier.verify(state.signed_lease, state.instance_id)
-                    deadlines = [parse_timestamp(payload['expiresAt'])]
-                    for item in payload.get('entitlements', []):
-                        if not isinstance(item, dict):
-                            continue
-                        if item.get('code') not in {'editor', FEATURE}:
-                            continue
-                        if not item.get('expiresAt'):
-                            continue
-                        deadlines.append(parse_timestamp(item['expiresAt']))
-                    lifetime = min(lifetime, (min(deadlines) - datetime.now(timezone.utc)).total_seconds())
-                    if lifetime <= 0:
-                        raise HTTPException(403, detail='3D 交互授权已到期。')
-        except HTTPException:
-            raise
-        except (LicenseCryptoError, KeyError, TypeError, ValueError):
-            pass
+    lifetime = service.remaining_grant_seconds(
+        {'editor', FEATURE},
+        cap_seconds=MAX_GRANT_SECONDS,
+    )
+    if lifetime <= 0:
+        raise HTTPException(403, detail='3D 交互授权已到期。')
     return {
         'allowed': True,
         'feature': FEATURE,

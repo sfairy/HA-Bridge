@@ -600,3 +600,34 @@ class LicenseService:
     def allows(self, feature: str | None = None) -> bool:
         with self.database.session_factory() as database:
             return self._verified_access(self._state(database), feature)
+
+    def remaining_grant_seconds(
+        self,
+        feature_codes: set[str] | frozenset[str],
+        *,
+        cap_seconds: float,
+    ) -> float:
+        '''Return a short UI grant lifetime capped by lease/entitlement expiry.'''
+        lifetime = float(cap_seconds)
+        if not self.settings.license_required:
+            return lifetime
+        try:
+            with self.database.session_factory() as database:
+                state = self._state(database)
+                if not state.signed_lease:
+                    return lifetime
+                payload = self.verifier.verify(state.signed_lease, state.instance_id)
+                deadlines = [parse_timestamp(payload['expiresAt'])]
+                for item in payload.get('entitlements', []):
+                    if not isinstance(item, dict):
+                        continue
+                    if item.get('code') not in feature_codes:
+                        continue
+                    if not item.get('expiresAt'):
+                        continue
+                    deadlines.append(parse_timestamp(item['expiresAt']))
+                remaining = (min(deadlines) - datetime.now(timezone.utc)).total_seconds()
+                return min(lifetime, remaining)
+        except (LicenseCryptoError, KeyError, TypeError, ValueError) as error:
+            self._record_failure('授权有效期', error, sensitive_values=())
+            return lifetime

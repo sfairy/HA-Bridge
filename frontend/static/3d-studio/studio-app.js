@@ -1477,17 +1477,17 @@ function clampLightPropertyValue(prop, value, itemType) {
   }
 }
 function formatLightPropertyValue(prop, value) {
-  const isUnit = lightPropertyMeta[prop];
-  if (!isUnit) {
+  const propMeta = lightPropertyMeta[prop];
+  if (!propMeta) {
     return String(value);
   }
   const value2 = ["lightRange", "elevation"].includes(prop)
     ? Number(value).toFixed(prop === "elevation" ? 2 : 1)
     : Math.round(value);
-  if (["%", "°"].includes(isUnit.unit)) {
-    return "" + value2 + isUnit.unit;
+  if (["%", "°"].includes(propMeta.unit)) {
+    return "" + value2 + propMeta.unit;
   } else {
-    return value2 + " " + isUnit.unit;
+    return value2 + " " + propMeta.unit;
   }
 }
 const toolHelpText = {
@@ -1861,7 +1861,7 @@ function normalizeProjectDocument(projectDoc2) {
 function activeFloor() {
   const value = stageSession?.selectedFloorId || activeFloorId;
   return (
-    projectDoc?.floors.find((id) => id.id === value) ||
+    projectDoc?.floors.find((item) => item.id === value) ||
     projectDoc?.floors[0] ||
     null
   );
@@ -2109,8 +2109,8 @@ function applyFloorReorder(sourceId, targetId, placeAfter) {
   if (reorderFloors2 === projectDoc.floors) {
     return;
   }
-  const isName = projectDoc.floors.find(
-    (id) => id.id === sourceId,
+  const floor = projectDoc.floors.find(
+    (item) => item.id === sourceId,
   );
   projectDoc.floors = reorderFloors2;
   renderFloorList();
@@ -2120,14 +2120,14 @@ function applyFloorReorder(sourceId, targetId, placeAfter) {
     force: true,
   });
   scheduleSave();
-  if (isName) {
-    showToast("已调整“" + isName.name + "”的楼层顺序。", "success");
+  if (floor) {
+    showToast("已调整“" + floor.name + "”的楼层顺序。", "success");
   }
 }
 function updateAlignFloorButton() {
   const floor = activeFloor();
   const value = floor
-    ? projectDoc.floors.findIndex((id) => id.id === floor.id)
+    ? projectDoc.floors.findIndex((item) => item.id === floor.id)
     : -1;
   const flag = projectDoc.floors.length > 1 && value > 0;
   alignFloor.hidden = !flag;
@@ -2150,7 +2150,7 @@ async function switchActiveFloor(
   { persist: flag = false } = {},
 ) {
   const id = projectDoc?.floors.find(
-    (id2) => id2.id === floorId,
+    (item) => item.id === floorId,
   );
   if (!id) {
     return;
@@ -2547,7 +2547,7 @@ function normalizeFloorScene(scene) {
             distance(wall.start, wall.end) > 0.1,
         )
     : [];
-  const value2 = new Set(list.map((id) => id.id));
+  const value2 = new Set(list.map((item) => item.id));
   const entries = Array.isArray(scene.windows)
     ? scene.windows
         .map((attachment) => ({
@@ -2990,7 +2990,7 @@ function cloneFloorScene(arg0 = floorScene) {
 function resolveLightGroup(lightGroup) {
   return (
     floorScene.lightGroups?.find(
-      (id) => id.id === lightGroup?.lightGroupId,
+      (item) => item.id === lightGroup?.lightGroupId,
     ) ||
     floorScene.lightGroups?.[0] ||
     null
@@ -2999,7 +2999,7 @@ function resolveLightGroup(lightGroup) {
 function findLightGroup(lightGroup, lightGroups = floorScene) {
   return (
     lightGroups?.lightGroups?.find(
-      (id) => id.id === lightGroup?.lightGroupId,
+      (item) => item.id === lightGroup?.lightGroupId,
     ) ||
     lightGroups?.lightGroups?.[0] ||
     null
@@ -3034,7 +3034,7 @@ function floorStackOffsetY(id) {
     return 0;
   }
   const value = projectDoc.floors.findIndex(
-    (id2) => id2.id === id?.id,
+    (item) => item.id === id?.id,
   );
   return Math.max(value, 0) * finite(projectDoc.exportFloorGap, 3);
 }
@@ -3170,11 +3170,11 @@ function ensureDefaultLightGroup() {
       enabled: true,
     });
   }
-  if (!list.some((id) => id.id === activeLightGroupId)) {
+  if (!list.some((item) => item.id === activeLightGroupId)) {
     activeLightGroupId = list[0].id;
   }
   return (
-    list.find((id) => id.id === activeLightGroupId) ||
+    list.find((item) => item.id === activeLightGroupId) ||
     list[0]
   );
 }
@@ -3262,25 +3262,25 @@ function uniqueLightGroupName(arg0) {
   }
   return arg0 + " " + value2;
 }
-function duplicateLightGroup(isName) {
-  if (!isName) {
+function duplicateLightGroup(lightGroup) {
+  if (!lightGroup) {
     return;
   }
   pushHistory();
   const id = {
-    ...structuredClone(isName),
+    ...structuredClone(lightGroup),
     id: makeId("light-group"),
-    name: uniqueLightGroupName(isName.name + " 副本"),
+    name: uniqueLightGroupName(lightGroup.name + " 副本"),
   };
   const value = floorScene.lightGroups.findIndex(
-    (id2) => id2.id === isName.id,
+    (item) => item.id === lightGroup.id,
   );
   floorScene.lightGroups.splice(value + 1, 0, id);
   const list = floorScene.items
     .filter(
       (item) =>
         lightItemTypes.has(item.type) &&
-        item.lightGroupId === isName.id,
+        item.lightGroupId === lightGroup.id,
     )
     .map((arg0) => ({
       ...structuredClone(arg0),
@@ -3308,7 +3308,7 @@ function duplicateLightGroup(isName) {
   scheduleSave();
   showToast(
     "已复制“" +
-      isName.name +
+      lightGroup.name +
       "”及组内 " +
       list.length +
       " 盏灯。",
@@ -3325,10 +3325,10 @@ function clearLightGroupDropIndicators() {
 }
 function reorderLightGroups(arg0, arg1, flag) {
   const value = floorScene.lightGroups.findIndex(
-    (id) => id.id === arg0,
+    (item) => item.id === arg0,
   );
   const value2 = floorScene.lightGroups.findIndex(
-    (id) => id.id === arg1,
+    (item) => item.id === arg1,
   );
   if (value < 0 || value2 < 0 || value === value2) {
     return;
@@ -3336,7 +3336,7 @@ function reorderLightGroups(arg0, arg1, flag) {
   const list = [...floorScene.lightGroups];
   const [value3] = list.splice(value, 1);
   const value4 = list.findIndex(
-    (id) => id.id === arg1,
+    (item) => item.id === arg1,
   );
   list.splice(value4 + (flag ? 1 : 0), 0, value3);
   if (
@@ -3587,7 +3587,7 @@ function setAllLightGroupsEnabled(arg0) {
       chargingEnabled.chargingEnabled = arg0;
     }
     requestLightGroupCacheRefresh(
-      floorScene.lightGroups.map((id) => id.id),
+      floorScene.lightGroups.map((item) => item.id),
     );
     if (list.length || list2.length) {
       rebuildPreviewMeshes({
@@ -3635,7 +3635,7 @@ function selectionAssetCategory(list) {
   ) {
     return "all";
   }
-  const value = new Set(list.map((id) => id.id));
+  const value = new Set(list.map((item) => item.id));
   const list2 = floorScene.items.filter((id) =>
     value.has(id.id),
   );
@@ -3665,7 +3665,7 @@ function selectionLightGroupFilter(list) {
   if (list.some((kind) => kind.kind !== "item")) {
     return "all";
   }
-  const value = new Set(list.map((id) => id.id));
+  const value = new Set(list.map((item) => item.id));
   const list2 = floorScene.items.filter((id) =>
     value.has(id.id),
   );
@@ -3931,7 +3931,7 @@ async function loadProjectDocument(floor) {
   activeFloorId = projectDoc.activeFloorId;
   if (isAutoDiagramEmbed && floorSelectionQuery !== null) {
     const id = projectDoc.floors.find(
-      (id2) => id2.id === floorSelectionQuery,
+      (item) => item.id === floorSelectionQuery,
     );
     if (floorSelectionQuery === "all" && projectDoc.floors.length > 1) {
       projectDoc.previewFloorMode = "all";
@@ -4285,7 +4285,7 @@ function getUnclosedWallEndpoints(arg0) {
 }
 function wallAttachmentWorldPoint(size) {
   const wall = floorScene.walls.find(
-    (id) => id.id === size.wallId,
+    (item) => item.id === size.wallId,
   );
   if (!wall) {
     return null;
@@ -6300,7 +6300,7 @@ function selectedEntity() {
       railing: floorScene.railings,
       item: floorScene.items,
     }[selection.kind] || []
-  ).find((id) => id.id === selection.id);
+  ).find((item) => item.id === selection.id);
   if (!flag) {
     selection = null;
   }
@@ -6955,27 +6955,27 @@ function deleteCurrentSelection() {
     const value = new Set(
       multiSelection
         .filter((kind) => kind.kind === "wall")
-        .map((id) => id.id),
+        .map((item) => item.id),
     );
     const value2 = new Set(
       multiSelection
         .filter((kind) => kind.kind === "window")
-        .map((id) => id.id),
+        .map((item) => item.id),
     );
     const value3 = new Set(
       multiSelection
         .filter((kind) => kind.kind === "door")
-        .map((id) => id.id),
+        .map((item) => item.id),
     );
     const value4 = new Set(
       multiSelection
         .filter((kind) => kind.kind === "railing")
-        .map((id) => id.id),
+        .map((item) => item.id),
     );
     const value5 = new Set(
       multiSelection
         .filter((kind) => kind.kind === "item")
-        .map((id) => id.id),
+        .map((item) => item.id),
     );
     floorScene.walls = floorScene.walls.filter(
       (id) => !value.has(id.id),
@@ -7011,7 +7011,7 @@ function deleteCurrentSelection() {
   pushHistory();
   if (selection.kind === "wall") {
     floorScene.walls = floorScene.walls.filter(
-      (id) => id.id !== floor.id,
+      (item) => item.id !== floor.id,
     );
     floorScene.windows = floorScene.windows.filter(
       (wall) => wall.wallId !== floor.id,
@@ -7025,19 +7025,19 @@ function deleteCurrentSelection() {
     wallIdMap();
   } else if (selection.kind === "window") {
     floorScene.windows = floorScene.windows.filter(
-      (id) => id.id !== floor.id,
+      (item) => item.id !== floor.id,
     );
   } else if (selection.kind === "door") {
     floorScene.doors = floorScene.doors.filter(
-      (id) => id.id !== floor.id,
+      (item) => item.id !== floor.id,
     );
   } else if (selection.kind === "railing") {
     floorScene.railings = floorScene.railings.filter(
-      (id) => id.id !== floor.id,
+      (item) => item.id !== floor.id,
     );
   } else {
     floorScene.items = floorScene.items.filter(
-      (id) => id.id !== floor.id,
+      (item) => item.id !== floor.id,
     );
   }
   clearSelection();
@@ -7137,7 +7137,7 @@ function selectedItemIds() {
     ...(selection?.kind === "item" ? [selection.id] : []),
     ...multiSelection
       .filter((kind) => kind.kind === "item")
-      .map((id) => id.id),
+      .map((item) => item.id),
   ]);
   const flag = assetCategory === "light";
   const list = floorScene.items.filter(
@@ -7177,7 +7177,7 @@ function cloneSelectedItems() {
     ...(selection?.kind === "item" ? [selection.id] : []),
     ...multiSelection
       .filter((kind) => kind.kind === "item")
-      .map((id) => id.id),
+      .map((item) => item.id),
   ]);
   const value2 = assetCategory === "light";
   return floorScene.items.filter(
@@ -7219,7 +7219,7 @@ function pasteClipboardItems() {
     y: planPoint.y + value,
     ...(lightItemTypes.has(planPoint.type) &&
     !floorScene.lightGroups.some(
-      (id) => id.id === planPoint.lightGroupId,
+      (item) => item.id === planPoint.lightGroupId,
     )
       ? {
           lightGroupId: ensureDefaultLightGroup().id,
@@ -8482,7 +8482,7 @@ function invalidateLightCacheTiles(arg0, arg1 = LIGHT_CACHE_TILE_MS) {
 }
 function findLightGroupById(arg0) {
   return (
-    floorScene.lightGroups?.find((id) => id.id === arg0) ||
+    floorScene.lightGroups?.find((item) => item.id === arg0) ||
     null
   );
 }
@@ -10152,13 +10152,13 @@ function normalizeProjectExportPresets() {
   projectDoc.exportPresets = normalizeExportPresetSlots2;
   projectDoc.activeExportPresetSlot = normalizeActiveExportPresetSlot2;
   const map = new Map(
-    (projectDoc?.floors || []).map((id) => [
-      id.id,
-      id.name,
+    (projectDoc?.floors || []).map((floor) => [
+      floor.id,
+      floor.name,
     ]),
   );
   exportPresetSlots.replaceChildren(
-    ...normalizeExportPresetSlots2.map((isName, arg1) => {
+    ...normalizeExportPresetSlots2.map((preset, arg1) => {
       const element = document.createElement("button");
       element.type = "button";
       element.dataset.exportPresetSlot = String(arg1);
@@ -10166,15 +10166,15 @@ function normalizeProjectExportPresets() {
       const el = document.createElement("strong");
       const el2 = document.createElement("small");
       el.textContent =
-        isName?.name ||
-        map.get(isName?.floorId) ||
+        preset?.name ||
+        map.get(preset?.floorId) ||
         "未命名存档";
-      el2.textContent = isName ? "已设置" : "未设置";
+      el2.textContent = preset ? "已设置" : "未设置";
       const value = arg1 === normalizeActiveExportPresetSlot2;
       element.classList.toggle("active", value);
-      element.classList.toggle("has-value", !!isName);
+      element.classList.toggle("has-value", !!preset);
       element.setAttribute("aria-selected", String(value));
-      element.title = isName
+      element.title = preset
         ? el.textContent + "：已设置"
         : el.textContent + "：未设置";
       element.append(el, el2);
@@ -10307,7 +10307,7 @@ function activateExportPresetSlot(arg0, silent = {}) {
     isWidth.width / isWidth.height;
   projectDoc.exportFloorGap = isWidth.floorGap;
   const id = projectDoc.floors.find(
-    (id2) => id2.id === isWidth.floorId,
+    (item) => item.id === isWidth.floorId,
   );
   const arg02 =
     isWidth.floorMode === "all" &&
@@ -10404,7 +10404,7 @@ function defaultExportPresetLabel(floor, arg1) {
     return "存档 " + String(arg1 + 1).padStart(2, "0");
   }
   const flag = (projectDoc?.floors || []).find(
-    (id) => id.id === floor.floorId,
+    (item) => item.id === floor.floorId,
   )?.name;
   return (
     floor.name ||
@@ -10756,7 +10756,7 @@ function scheduleOrbitResumeAfterModels() {
     });
   if (isAutoDiagramEmbed && floorSelectionQuery !== null) {
     const id = projectDoc.floors.find(
-      (id2) => id2.id === floorSelectionQuery,
+      (item) => item.id === floorSelectionQuery,
     );
     const value =
       floorSelectionQuery === "all" && projectDoc.floors.length > 1
@@ -10901,7 +10901,7 @@ function setExportFloorScope(arg0) {
   const flag = arg0 === "all" && projectDoc.floors.length > 1;
   if (!flag) {
     const id = projectDoc.floors.find(
-      (id2) => id2.id === arg0,
+      (item) => item.id === arg0,
     );
     if (!id) {
       return;
@@ -10965,7 +10965,7 @@ function openExportDialog() {
   stageSession = null;
   projectDoc.previewFloorMode = cameraSettings.floorMode;
   floorScene =
-    projectDoc.floors.find((id) => id.id === activeFloorId)
+    projectDoc.floors.find((item) => item.id === activeFloorId)
       ?.scene || projectDoc.floors[0].scene;
   cameraSettings.canvasParent?.append(renderer.domElement);
   const value = activeCameraSettings();
@@ -11329,7 +11329,7 @@ function projectItemToScreenNorm(
     const value8 = Math.max(
       0,
       findIndex.findIndex(
-        (id) => id.id === floor.id,
+        (item) => item.id === floor.id,
       ),
     );
     value3 += value8 * finite(projectDoc.exportFloorGap, 3);
@@ -13246,20 +13246,20 @@ function shadowCastingLightIdSet() {
     ),
   );
 }
-function cloneMaterialForExport(isIsMeshBasicMaterial) {
+function countMaterialTextures(material) {
   if (
-    !isIsMeshBasicMaterial ||
-    isIsMeshBasicMaterial.isMeshBasicMaterial ||
-    isIsMeshBasicMaterial.isShadowMaterial
+    !material ||
+    material.isMeshBasicMaterial ||
+    material.isShadowMaterial
   ) {
     return 0;
   }
-  let length = Object.values(isIsMeshBasicMaterial).filter(
+  let length = Object.values(material).filter(
     (isTexture) => isTexture?.isTexture === true,
   ).length;
   if (
-    isIsMeshBasicMaterial.isMeshPhysicalMaterial &&
-    finite(isIsMeshBasicMaterial.transmission, 0) > 0
+    material.isMeshPhysicalMaterial &&
+    finite(material.transmission, 0) > 0
   ) {
     length += 1;
   }
@@ -13276,8 +13276,8 @@ function countSceneMeshes(object3d = worldGroup) {
       : object3d2.material
         ? [object3d2.material]
         : [];
-    for (const isIsMeshBasicMaterial of value2) {
-      value = Math.max(value, cloneMaterialForExport(isIsMeshBasicMaterial));
+    for (const material of value2) {
+      value = Math.max(value, countMaterialTextures(material));
     }
   });
   if (previewScene?.environment?.isTexture) {
@@ -22691,7 +22691,7 @@ function onPlanPointerDown(event) {
       const value2 = new Set(
         multiSelection
           .filter((kind) => kind.kind === "item")
-          .map((id) => id.id),
+          .map((item) => item.id),
       );
       list = floorScene.items.filter((id) =>
         value2.has(id.id),
@@ -22699,7 +22699,7 @@ function onPlanPointerDown(event) {
     } else {
       setSelection("item", isKind.id);
       const flag2 = floorScene.items.find(
-        (id) => id.id === isKind.id,
+        (item) => item.id === isKind.id,
       );
       if (flag2) {
         list = [flag2];
@@ -22917,7 +22917,7 @@ function onPlanPointerDrag(event) {
       }
       const attachment = selectedEntity();
       const isStart = floorScene.walls.find(
-        (id) => id.id === attachment?.wallId,
+        (item) => item.id === attachment?.wallId,
       );
       if (!attachment || !isStart) {
         return;
@@ -22935,7 +22935,7 @@ function onPlanPointerDrag(event) {
         pixelsPerMeter(),
       );
       const isT = dragState.before?.[selection?.kind + "s"]?.find?.(
-        (id) => id.id === attachment.id,
+        (item) => item.id === attachment.id,
       );
       dragState.moved =
         !isT || Math.abs(attachment.t - isT.t) > 0.000001;
@@ -23131,7 +23131,7 @@ function applyInspectorFields(arg0) {
     );
     item.hasDivider = selectEl("#window-divider").value !== "without";
     const flag = floorScene.walls.find(
-      (id) => id.id === item.wallId,
+      (item) => item.id === item.wallId,
     );
     if (flag) {
       item.t = clampWindowT(flag, item, pixelsPerMeter());
@@ -23154,7 +23154,7 @@ function applyInspectorFields(arg0) {
       20,
     );
     const flag = floorScene.walls.find(
-      (id) => id.id === item.wallId,
+      (item) => item.id === item.wallId,
     );
     if (flag) {
       item.t = clampWindowT(flag, item, pixelsPerMeter());
@@ -23171,7 +23171,7 @@ function applyInspectorFields(arg0) {
       3,
     );
     const flag = floorScene.walls.find(
-      (id) => id.id === item.wallId,
+      (item) => item.id === item.wallId,
     );
     if (flag) {
       item.t = clampWindowT(flag, item, pixelsPerMeter());
@@ -23303,7 +23303,7 @@ function applyInspectorFields(arg0) {
         item.lightSourceVisible = itemLightSourceVisible.checked;
       }
       item.lightGroupId = floorScene.lightGroups.some(
-        (id) => id.id === selectEl("#light-group").value,
+        (item) => item.id === selectEl("#light-group").value,
       )
         ? selectEl("#light-group").value
         : ensureDefaultLightGroup().id;
@@ -23637,21 +23637,21 @@ for (const e of lightGroupContextMenu.querySelectorAll(
   "[data-light-group-action]",
 )) {
   e.addEventListener("click", () => {
-    const isName = floorScene.lightGroups.find(
-      (id) => id.id === lightGroupContextMenuId,
+    const lightGroup = floorScene.lightGroups.find(
+      (item) => item.id === lightGroupContextMenuId,
     );
     const lightGroupAction = e.dataset.lightGroupAction;
     hideLightGroupContextMenu();
-    if (isName) {
+    if (lightGroup) {
       if (lightGroupAction === "rename") {
-        renamingLightGroupId = isName.id;
-        lightGroupRenameInput.value = isName.name;
+        renamingLightGroupId = lightGroup.id;
+        lightGroupRenameInput.value = lightGroup.name;
         lightGroupRenameDialog.showModal();
         requestAnimationFrame(() => lightGroupRenameInput.select());
       } else if (lightGroupAction === "duplicate") {
-        duplicateLightGroup(isName);
+        duplicateLightGroup(lightGroup);
       } else if (lightGroupAction === "delete") {
-        deleteLightGroup(isName);
+        deleteLightGroup(lightGroup);
       }
     }
   });
@@ -23659,7 +23659,7 @@ for (const e of lightGroupContextMenu.querySelectorAll(
 for (const e of floorContextMenu.querySelectorAll("[data-floor-action]")) {
   e.addEventListener("click", () => {
     const id = projectDoc.floors.find(
-      (id2) => id2.id === contextFloorId,
+      (item) => item.id === contextFloorId,
     );
     const floorAction = e.dataset.floorAction;
     hideFloorContextMenu();
@@ -23703,19 +23703,19 @@ floorRenameDialog.addEventListener("cancel", () => {
 });
 floorRenameForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  const isName = projectDoc.floors.find(
-    (id) => id.id === contextFloorId,
+  const floor = projectDoc.floors.find(
+    (item) => item.id === contextFloorId,
   );
-  if (!isName) {
+  if (!floor) {
     closeFloorRenameDialog();
     return;
   }
   const value = uniqueFloorName(
-    normalizeLabelText(floorRenameInput.value, isName.name, 24),
-    isName.id,
+    normalizeLabelText(floorRenameInput.value, floor.name, 24),
+    floor.id,
   );
-  if (value !== isName.name) {
-    isName.name = value;
+  if (value !== floor.name) {
+    floor.name = value;
     renderFloorList();
     renderExportFileChecklist();
     scheduleSave();
@@ -23750,21 +23750,21 @@ lightGroupRenameDialog.addEventListener("cancel", () => {
 });
 lightGroupRenameForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  const isName = floorScene.lightGroups.find(
-    (id) => id.id === renamingLightGroupId,
+  const lightGroup = floorScene.lightGroups.find(
+    (item) => item.id === renamingLightGroupId,
   );
-  if (!isName) {
+  if (!lightGroup) {
     closeLightGroupRenameDialog();
     return;
   }
   const normalizeLabelText2 = normalizeLabelText(
     lightGroupRenameInput.value,
-    isName.name,
+    lightGroup.name,
     24,
   );
-  if (normalizeLabelText2 !== isName.name) {
+  if (normalizeLabelText2 !== lightGroup.name) {
     pushHistory();
-    isName.name = normalizeLabelText2;
+    lightGroup.name = normalizeLabelText2;
     refreshViews("none");
     scheduleSave();
   }
@@ -24289,7 +24289,7 @@ window.addEventListener("message", (origin) => {
     if (item.type === "ha-bridge-floorplan-auto-diagram-floor") {
       if (item.command === "set-floor") {
         const id = projectDoc.floors.find(
-          (id2) => id2.id === item.value,
+          (item) => item.id === item.value,
         );
         const arg0 =
           item.value === "all" && projectDoc.floors.length > 1
@@ -24760,7 +24760,7 @@ scaleForm.addEventListener("submit", (event) => {
   scheduleSave();
   const value = activeFloor();
   if (
-    projectDoc.floors.findIndex((id) => id.id === value?.id) >
+    projectDoc.floors.findIndex((item) => item.id === value?.id) >
       0 &&
     value?.alignmentPending
   ) {
@@ -24990,7 +24990,7 @@ window.addEventListener("keydown", (event) => {
         ? [selection.id]
         : multiSelection
             .filter((kind) => kind.kind === "item")
-            .map((id) => id.id);
+            .map((item) => item.id);
     if (list.length) {
       event.preventDefault();
       if (!event.repeat) {
@@ -26210,11 +26210,11 @@ function buildStageReferenceScene() {
         const projectDoc3 = normalizeProjectDocument(floor.scene);
         projectDoc.baseLighting = projectDoc3.baseLighting;
         for (const floor2 of projectDoc3.floors) {
-          const isName = projectDoc.floors.find(
+          const floorMatch = projectDoc.floors.find(
             (floor3) => floor3.id === floor2.id,
           );
-          if (isName) {
-            isName.name = floor2.name;
+          if (floorMatch) {
+            floorMatch.name = floor2.name;
           }
         }
         if (projectDoc2.lighting && !hasBaseLighting) {
@@ -26330,13 +26330,13 @@ function buildStageReferenceScene() {
       bindOrbitControls();
     },
     orbitCameraPose(view, arg) {
-      const structuredClone = structuredClone(view);
+      const nextView = structuredClone(view);
       const angle = finite(arg, 0) % (Math.PI * 2);
       if (
         Math.abs(angle) < 1e-12 ||
         Math.abs(Math.abs(angle) - Math.PI * 2) < 1e-12
       ) {
-        return structuredClone;
+        return nextView;
       }
       if (!focusTarget) {
         const bbox = computeWorldBoundingBox({
@@ -26351,7 +26351,7 @@ function buildStageReferenceScene() {
         angle,
       );
       for (const value3 of ["position", "target"]) {
-        structuredClone[value3] = new THREE.Vector3()
+        nextView[value3] = new THREE.Vector3()
           .fromArray(view[value3])
           .sub(focusTarget)
           .applyQuaternion(value)
@@ -26380,10 +26380,10 @@ function buildStageReferenceScene() {
           vec3.set(1, 0, 0);
         }
       }
-      structuredClone.up = vec3
+      nextView.up = vec3
         .applyQuaternion(value)
         .toArray();
-      return structuredClone;
+      return nextView;
     },
     setFocusViewport(arg) {
       const n = clamp(finite(arg, 0), 0, 0.7);

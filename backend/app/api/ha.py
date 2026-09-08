@@ -19,16 +19,16 @@ from dependencies import (
     LicensedViewer,
     ViewerPrincipal,
     require_viewer_entity,
+    resolve_viewer_principal,
     viewer_entity_ids,
 )
 from display_access import active_display_device
 from global_log import event_context
 from ha.client import HAClient, HAClientError
 from ha.crypto import CredentialCipherError
-from models import DisplayDevice, HAArea, HAConnection, HADevice, HAEntity, HASyncState, LoginSession, User
+from models import DisplayDevice, HAArea, HAConnection, HADevice, HAEntity, HASyncState, User
 from panel.action_rules import TOGGLE_ENTITY_DOMAINS
 from schemas import HABrowseMediaRequest, HAConnectionInput, HAServiceCallRequest, HATestRequest
-from security import session_token_hash
 
 router = APIRouter(prefix='/ha', tags=['home-assistant'])
 runtime_router = APIRouter(tags=['runtime'])
@@ -627,26 +627,20 @@ async def browse_media(
 
 def websocket_viewer(websocket: WebSocket) -> ViewerPrincipal | None:
     settings = websocket.app.state.settings
-    token = websocket.cookies.get(settings.cookie_name, '')
     with websocket.app.state.database.session_factory() as database:
-        if token:
-            record = database.scalar(
-                select(LoginSession).where(LoginSession.id_hash == session_token_hash(token))
-            )
-            now = datetime.now(timezone.utc)
-            if record is not None and record.expires_at.replace(tzinfo=timezone.utc) > now:
-                user = database.get(User, record.user_id)
-                if user is not None and user.is_active:
-                    database.expunge(user)
-                    return ViewerPrincipal(user=user)
-        display_token = websocket.cookies.get(settings.display_cookie_name, '')
-        if not display_token:
+        viewer = resolve_viewer_principal(
+            database,
+            session_token=websocket.cookies.get(settings.cookie_name, ''),
+            display_token=websocket.cookies.get(settings.display_cookie_name, ''),
+            account_user_id=websocket.app.state.admin_account.user_id,
+        )
+        if viewer is None:
             return None
-        device = active_display_device(database, display_token)
-        if device is None:
-            return None
-        database.expunge(device)
-        return ViewerPrincipal(display=device)
+        if viewer.user is not None:
+            database.expunge(viewer.user)
+        if viewer.display is not None:
+            database.expunge(viewer.display)
+        return viewer
 
 
 def websocket_origin_allowed(websocket: WebSocket) -> bool:

@@ -4,7 +4,6 @@ import base64
 import hashlib
 import hmac
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from collections.abc import Mapping
@@ -14,6 +13,8 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+from secure_key_file import load_or_create_fernet_key
 
 
 class LicenseCryptoError(RuntimeError):
@@ -116,17 +117,10 @@ class SecretCipher:
         self.key_path = key_path
 
     def _key(self) -> bytes:
-        self.key_path.parent.mkdir(parents=True, exist_ok=True, mode=448)
-        if self.key_path.exists():
-            value = self.key_path.read_bytes().strip()
-            if not value:
-                raise LicenseCryptoError('授权凭证密钥为空。')
-            return value
-        key = Fernet.generate_key()
-        descriptor = os.open(self.key_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 384)
-        with os.fdopen(descriptor, 'wb') as output:
-            output.write(key + b'\n')
-        return key
+        try:
+            return load_or_create_fernet_key(self.key_path, empty_message='授权凭证密钥为空。')
+        except ValueError as error:
+            raise LicenseCryptoError(str(error)) from error
 
     def encrypt(self, value: str) -> str:
         return Fernet(self._key()).encrypt(value.encode('utf-8')).decode('ascii')
