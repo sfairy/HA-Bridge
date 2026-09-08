@@ -8,7 +8,7 @@
 
 ## 功能
 
-- 仪表盘编辑：页面、控件、实体绑定、弹窗、主题，以及栖光（`ui.base`）成品模板
+- 仪表盘编辑：页面、控件、实体绑定、弹窗、主题（栖光 `ui.base`）
 - 正式展示：`/display/{项目ID}` 或 `/habridge/{项目名称}` 打开全屏中控页
 - 中控配对：6 位固定配对码，适合墙面平板或独立浏览器
 - 3D 户型：建模、导入、按楼层或全楼自动导图并回写到仪表盘
@@ -44,7 +44,6 @@ HA-Bridge/
 │       └── vendor/         # three.js、hls.js、MDI
 ├── register/               # 本机授权店（默认 18082）
 ├── migrations/             # Alembic 迁移 0001–0013
-├── dashboard_templates/    # 栖光成品仪表盘（dwell-light-v1.json.gz）
 ├── image/                  # 内置素材
 ├── data/                   # 运行时数据（不入库）
 ├── requirements.txt
@@ -54,7 +53,7 @@ HA-Bridge/
 └── container_entrypoint.py
 ```
 
-不要删除 `frontend/`、`image/`、`dashboard_templates/`。缺素材会导致内置资源失败。
+不要删除 `frontend/`、`image/`。缺素材会导致内置资源失败。
 
 `data/`、`register/data/`、`.venv/`、`*.db`、`原项目/` 已写入 `.gitignore`。
 
@@ -86,7 +85,7 @@ APP_DATA_DIR=./data PYTHONPATH=backend/app alembic upgrade head
 
 1. 打开 `/setup`，创建管理员（用户名 3–64 个字符，密码至少 8 位）。
 2. 登录后进入 `/license`。另开 <http://127.0.0.1:18082/>，用邮箱领取激活码，再回到授权页激活。
-3. 在编辑器里配置 Home Assistant 的地址和长期访问令牌，创建空白仪表盘或导入「栖光」模板。
+3. 在编辑器里配置 Home Assistant 的地址和长期访问令牌，然后创建空白仪表盘。
 4. 使用 3D 交互：先在 `/3d-studio` 保存户型，再在编辑器添加「3D 交互」控件并载入户型快照，绑定 `light.*` / `switch.*` 后即可在舞台里开关。
 5. 墙面中控：在编辑器生成 6 位配对码，设备打开 `/pair` 完成配对。
 

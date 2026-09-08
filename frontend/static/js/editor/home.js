@@ -1101,7 +1101,7 @@ let h = null;
 let vc = "shared";
 let At = "create";
 let Cu = null;
-let be = "dwell-light";
+let be = "";
 let fr = 2778;
 let gr = 1940;
 let sn = false;
@@ -10030,7 +10030,7 @@ function Ep(value = "create") {
     ot.value = "2778";
     it.value = "1940";
     Ur();
-    Yc("dwell-light");
+    Yc("");
   } else if (value2) {
     ro.hidden = false;
     ro.classList.add("name-only");
