@@ -1,214 +1,302 @@
-function l(e, t) {
-  for (const n of e || []) {
-    if (n.id === t) return n;
-    const o = l(n.children, t);
-    if (o) return o;
+function findComponentInTree(components, componentId) {
+  for (const component of components || []) {
+    if (component.id === componentId) return component;
+    const nested = findComponentInTree(component.children, componentId);
+    if (nested) return nested;
   }
   return null;
 }
-function S(e, t) {
-  const n = l(e?.sharedComponents, t);
-  if (n) return n;
-  for (const o of e?.pages || []) {
-    const r = l(o.components, t);
-    if (r) return r;
+
+function findComponentInDocument(document, componentId) {
+  const shared = findComponentInTree(document?.sharedComponents, componentId);
+  if (shared) return shared;
+  for (const page of document?.pages || []) {
+    const found = findComponentInTree(page.components, componentId);
+    if (found) return found;
   }
   return null;
 }
-function m(e, t) {
-  const n = l(e?.sharedComponents, t);
-  if (n) return { component: n, scope: "shared", page: null };
-  for (const o of e?.pages || []) {
-    const r = l(o.components, t);
-    if (r) return { component: r, scope: "page", page: o };
+
+function locateComponent(document, componentId) {
+  const shared = findComponentInTree(document?.sharedComponents, componentId);
+  if (shared) return { component: shared, scope: "shared", page: null };
+  for (const page of document?.pages || []) {
+    const found = findComponentInTree(page.components, componentId);
+    if (found) return { component: found, scope: "page", page };
   }
   return null;
 }
-function T(e, t) {
-  const n = new Set(t || []),
-    o = [],
-    r = (i) => {
-      for (const s of i || []) (n.has(s.id) && o.push(s), r(s.children));
-    };
-  r(e?.sharedComponents);
-  for (const i of e?.pages || []) r(i.components);
-  return o;
+
+function collectComponentsByIds(document, componentIds) {
+  const idSet = new Set(componentIds || []);
+  const matched = [];
+  const walk = (components) => {
+    for (const component of components || []) {
+      if (idSet.has(component.id)) matched.push(component);
+      walk(component.children);
+    }
+  };
+  walk(document?.sharedComponents);
+  for (const page of document?.pages || []) walk(page.components);
+  return matched;
 }
-export function copyComponentTargetPages(e, t) {
-  const n = m(e, t);
-  return n
-    ? (e?.pages || []).filter((o) => n.scope === "shared" || o !== n.page)
+
+export function copyComponentTargetPages(document, componentId) {
+  const location = locateComponent(document, componentId);
+  return location
+    ? (document?.pages || []).filter(
+        (page) => location.scope === "shared" || page !== location.page,
+      )
     : [];
 }
-export function copyComponentTargets(e, t) {
-  const n = m(e, t);
-  if (!n) return [];
-  const o = copyComponentTargetPages(e, t).map((r) => ({
-    key: `page:${r.path}`,
-    name: r.name,
-    scope: "page",
-    page: r,
-  }));
-  return n.scope === "page"
-    ? [{ key: "shared", name: "侧边栏", scope: "shared" }, ...o]
-    : o;
+
+export function copyComponentTargets(document, componentId) {
+  const location = locateComponent(document, componentId);
+  if (!location) return [];
+  const pageTargets = copyComponentTargetPages(document, componentId).map(
+    (page) => ({
+      key: `page:${page.path}`,
+      name: page.name,
+      scope: "page",
+      page,
+    }),
+  );
+  return location.scope === "page"
+    ? [{ key: "shared", name: "侧边栏", scope: "shared" }, ...pageTargets]
+    : pageTargets;
 }
-function b(e, t) {
-  e.id = t();
-  for (const n of e.children || []) b(n, t);
-  return e;
+
+function reassignComponentIds(component, createId) {
+  component.id = createId();
+  for (const child of component.children || []) reassignComponentIds(child, createId);
+  return component;
 }
-function x(e, t, n) {
-  const r =
-      String(n(e) || "控件")
-        .trim()
-        .replace(/_副本\d*$/, "") || "控件",
-    i = new Set((t || []).map((a) => String(n(a)).trim()));
-  let s = `${r}_副本`,
-    p = 2;
-  for (; i.has(s);) ((s = `${r}_副本${p}`), (p += 1));
-  return s;
+
+function uniqueCopyLabel(source, siblings, componentLabel) {
+  const base =
+    String(componentLabel(source) || "控件")
+      .trim()
+      .replace(/_副本\d*$/, "") || "控件";
+  const used = new Set(
+    (siblings || []).map((sibling) => String(componentLabel(sibling)).trim()),
+  );
+  let label = `${base}_副本`;
+  let suffix = 2;
+  while (used.has(label)) {
+    label = `${base}_副本${suffix}`;
+    suffix += 1;
+  }
+  return label;
 }
-function w(e) {
-  for (let t = 0; t < (e || []).length; t += 1) {
-    const n = e[t];
-    n.position = { ...(n.position || {}), zIndex: e.length - t };
+
+function reindexZOrder(components) {
+  for (let index = 0; index < (components || []).length; index += 1) {
+    const component = components[index];
+    component.position = {
+      ...(component.position || {}),
+      zIndex: components.length - index,
+    };
   }
 }
-function C(e) {
-  return Math.round(Number(e) * 1e6) / 1e6;
+
+function roundLayout(value) {
+  return Math.round(Number(value) * 1e6) / 1e6;
 }
-function g(e, t) {
-  const n = Number(e);
-  return Number.isFinite(n) && n > 0 ? n : t;
+
+function positiveSize(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : fallback;
 }
-function P(e, t, n, o, r = !0) {
-  if (!e || typeof e != "object") return;
-  const i = e.position || {},
-    s = g(i.width, 100),
-    p = g(i.height, 100),
-    a = Number.isFinite(Number(i.x)) ? Number(i.x) : 0,
-    c = Number.isFinite(Number(i.y)) ? Number(i.y) : 0,
-    f = s * o,
-    u = p * o;
-  e.position = {
-    ...i,
-    x: C(r ? (a + s / 2) * t - f / 2 : a * o),
-    y: C(r ? (c + p / 2) * n - u / 2 : c * o),
-    width: C(f),
-    height: C(u),
+
+function scaleComponentLayout(
+  component,
+  scaleX,
+  scaleY,
+  sizeScale,
+  centerOrigin = true,
+) {
+  if (!component || typeof component != "object") return;
+  const position = component.position || {};
+  const width = positiveSize(position.width, 100);
+  const height = positiveSize(position.height, 100);
+  const x = Number.isFinite(Number(position.x)) ? Number(position.x) : 0;
+  const y = Number.isFinite(Number(position.y)) ? Number(position.y) : 0;
+  const nextWidth = width * sizeScale;
+  const nextHeight = height * sizeScale;
+  component.position = {
+    ...position,
+    x: roundLayout(
+      centerOrigin ? (x + width / 2) * scaleX - nextWidth / 2 : x * sizeScale,
+    ),
+    y: roundLayout(
+      centerOrigin ? (y + height / 2) * scaleY - nextHeight / 2 : y * sizeScale,
+    ),
+    width: roundLayout(nextWidth),
+    height: roundLayout(nextHeight),
   };
-  for (const h of e.children || []) P(h, o, o, o, !1);
-}
-function _(e, t, n) {
-  const o = g(t?.width, 2778),
-    r = g(t?.height, 1940),
-    i = g(n?.width, o),
-    s = g(n?.height, r),
-    p = i / o,
-    a = s / r;
-  return (P(e, p, a, Math.min(p, a)), e);
-}
-function N(e, t, n) {
-  if (!e || typeof e != "object") return;
-  const o = new Set((t?.pages || []).map((i) => i.path)),
-    r = new Set((t?.customPopups || []).map((i) => i.id));
-  e.properties?.targetPage &&
-    !o.has(e.properties.targetPage) &&
-    (delete e.properties.targetPage, n?.("navigate"));
-  for (const [i, s] of Object.entries(e.actions || {})) {
-    const p = s?.type === "navigate" && !o.has(s.target),
-      a =
-        s?.type === "more-info" &&
-        s.data?.popupSource === "custom" &&
-        !r.has(s.data?.popupId);
-    (p || a) && (delete e.actions[i], n?.(p ? "navigate" : "popup"));
+  for (const child of component.children || []) {
+    scaleComponentLayout(child, sizeScale, sizeScale, sizeScale, false);
   }
-  for (const i of e.children || []) N(i, t, n);
 }
-function L(e, t) {
-  if (t === "shared") return e.sharedComponents || (e.sharedComponents = []);
-  const n = String(t || "").replace(/^page:/, ""),
-    o = (e.pages || []).find((r) => r.path === n);
-  return o ? o.components || (o.components = []) : null;
+
+function scaleComponentToCanvas(component, sourceCanvas, targetCanvas) {
+  const sourceWidth = positiveSize(sourceCanvas?.width, 2778);
+  const sourceHeight = positiveSize(sourceCanvas?.height, 1940);
+  const targetWidth = positiveSize(targetCanvas?.width, sourceWidth);
+  const targetHeight = positiveSize(targetCanvas?.height, sourceHeight);
+  const scaleX = targetWidth / sourceWidth;
+  const scaleY = targetHeight / sourceHeight;
+  scaleComponentLayout(component, scaleX, scaleY, Math.min(scaleX, scaleY));
+  return component;
 }
-function $(e, t) {
-  if (t.length)
-    for (const n of e.pages || [])
-      n.sharedComponentIds = [
-        ...new Set([...t, ...(n.sharedComponentIds || [])]),
-      ];
+
+function sanitizeCopiedActions(component, targetDocument, onInvalidAction) {
+  if (!component || typeof component != "object") return;
+  const pagePaths = new Set((targetDocument?.pages || []).map((page) => page.path));
+  const popupIds = new Set(
+    (targetDocument?.customPopups || []).map((popup) => popup.id),
+  );
+  if (
+    component.properties?.targetPage &&
+    !pagePaths.has(component.properties.targetPage)
+  ) {
+    delete component.properties.targetPage;
+    onInvalidAction?.("navigate");
+  }
+  for (const [actionKey, action] of Object.entries(component.actions || {})) {
+    const badNavigate = action?.type === "navigate" && !pagePaths.has(action.target);
+    const badPopup =
+      action?.type === "more-info" &&
+      action.data?.popupSource === "custom" &&
+      !popupIds.has(action.data?.popupId);
+    if (badNavigate || badPopup) {
+      delete component.actions[actionKey];
+      onInvalidAction?.(badNavigate ? "navigate" : "popup");
+    }
+  }
+  for (const child of component.children || []) {
+    sanitizeCopiedActions(child, targetDocument, onInvalidAction);
+  }
 }
+
+function resolveTargetComponentList(document, targetKey) {
+  if (targetKey === "shared") {
+    return document.sharedComponents || (document.sharedComponents = []);
+  }
+  const pagePath = String(targetKey || "").replace(/^page:/, "");
+  const page = (document.pages || []).find((entry) => entry.path === pagePath);
+  return page ? page.components || (page.components = []) : null;
+}
+
+function appendSharedComponentIds(document, componentIds) {
+  if (!componentIds.length) return;
+  for (const page of document.pages || []) {
+    page.sharedComponentIds = [
+      ...new Set([...componentIds, ...(page.sharedComponentIds || [])]),
+    ];
+  }
+}
+
 export function copyComponentsAcrossDocuments(
-  e,
-  t,
-  n,
-  o,
+  sourceDocument,
+  targetDocument,
+  componentIds,
+  targetKey,
   {
-    cloneValue: r = (c) => structuredClone(c),
-    createId: i,
-    componentLabel: s = (c) =>
-      c?.properties?.label || c?.type || "控件",
-    scaleMode: p = "none",
-    onInvalidAction: a,
+    cloneValue = (value) => structuredClone(value),
+    createId,
+    componentLabel = (component) =>
+      component?.properties?.label || component?.type || "控件",
+    scaleMode = "none",
+    onInvalidAction,
   } = {},
 ) {
-  const c = [...new Set(n || [])].filter(Boolean);
-  if (!e || !t || !c.length || typeof i != "function") return [];
-  const f = T(e, c),
-    u = L(t, o);
-  if (f.length !== c.length || !u) return [];
-  const h = [];
-  for (const y of f) {
-    const d = b(r(y), i);
-    ((d.properties = { ...(d.properties || {}), label: x(y, [...u, ...h], s) }),
-      delete d.properties.previewState,
-      N(d, t, a),
-      p === "proportional" && _(d, e.canvas, t.canvas),
-      h.push(d));
+  const ids = [...new Set(componentIds || [])].filter(Boolean);
+  if (!sourceDocument || !targetDocument || !ids.length || typeof createId != "function") {
+    return [];
   }
+  const sources = collectComponentsByIds(sourceDocument, ids);
+  const targetList = resolveTargetComponentList(targetDocument, targetKey);
+  if (sources.length !== ids.length || !targetList) return [];
+  const copies = [];
+  for (const source of sources) {
+    const copy = reassignComponentIds(cloneValue(source), createId);
+    copy.properties = {
+      ...(copy.properties || {}),
+      label: uniqueCopyLabel(source, [...targetList, ...copies], componentLabel),
+    };
+    delete copy.properties.previewState;
+    sanitizeCopiedActions(copy, targetDocument, onInvalidAction);
+    if (scaleMode === "proportional") {
+      scaleComponentToCanvas(copy, sourceDocument.canvas, targetDocument.canvas);
+    }
+    copies.push(copy);
+  }
+  targetList.unshift(...copies);
+  reindexZOrder(targetList);
+  if (targetKey === "shared") {
+    appendSharedComponentIds(
+      targetDocument,
+      copies.map((copy) => copy.id),
+    );
+  }
+  return copies;
+}
+
+export function copyComponentAcrossDocuments(
+  sourceDocument,
+  targetDocument,
+  componentId,
+  targetKey,
+  options = {},
+) {
   return (
-    u.unshift(...h),
-    w(u),
-    o === "shared" &&
-      $(
-        t,
-        h.map((y) => y.id),
-      ),
-    h
+    copyComponentsAcrossDocuments(
+      sourceDocument,
+      targetDocument,
+      [componentId],
+      targetKey,
+      options,
+    )[0] || null
   );
 }
-export function copyComponentAcrossDocuments(e, t, n, o, r = {}) {
-  return copyComponentsAcrossDocuments(e, t, [n], o, r)[0] || null;
-}
+
 export function copyComponentToPage(
-  e,
-  t,
-  n,
+  document,
+  componentId,
+  pagePath,
   {
-    cloneValue: o = (s) => structuredClone(s),
-    createId: r,
-    componentLabel: i = (s) =>
-      s?.properties?.label || s?.type || "控件",
+    cloneValue = (value) => structuredClone(value),
+    createId,
+    componentLabel = (component) =>
+      component?.properties?.label || component?.type || "控件",
   } = {},
 ) {
-  if (!e || !t || !n || typeof r != "function") return null;
-  const s = S(e, t),
-    p = (e.pages || []).find((f) => f.path === n);
-  if (!s || !p) return null;
-  const a = p.components || (p.components = []),
-    c = b(o(s), r);
-  return (
-    (c.properties = { ...(c.properties || {}), label: x(s, a, i) }),
-    delete c.properties.previewState,
-    a.unshift(c),
-    w(a),
-    c
-  );
+  if (!document || !componentId || !pagePath || typeof createId != "function") {
+    return null;
+  }
+  const source = findComponentInDocument(document, componentId);
+  const page = (document.pages || []).find((entry) => entry.path === pagePath);
+  if (!source || !page) return null;
+  const targetList = page.components || (page.components = []);
+  const copy = reassignComponentIds(cloneValue(source), createId);
+  copy.properties = {
+    ...(copy.properties || {}),
+    label: uniqueCopyLabel(source, targetList, componentLabel),
+  };
+  delete copy.properties.previewState;
+  targetList.unshift(copy);
+  reindexZOrder(targetList);
+  return copy;
 }
-export function copyComponentToTarget(e, t, n, o = {}) {
-  return copyComponentsToTarget(e, [t], n, o)[0] || null;
+
+export function copyComponentToTarget(document, componentId, targetKey, options = {}) {
+  return copyComponentsToTarget(document, [componentId], targetKey, options)[0] || null;
 }
-export function copyComponentsToTarget(e, t, n, o = {}) {
-  return copyComponentsAcrossDocuments(e, e, t, n, { ...o, scaleMode: "none" });
+
+export function copyComponentsToTarget(document, componentIds, targetKey, options = {}) {
+  return copyComponentsAcrossDocuments(document, document, componentIds, targetKey, {
+    ...options,
+    scaleMode: "none",
+  });
 }

@@ -1,48 +1,54 @@
-(function (r) {
+(function (global) {
   "use strict";
-  if (r.HABridgeLog || typeof r.fetch != "function") return;
-  const S = r.fetch.bind(r),
-    _ = "ha-bridge-client-log-v1",
-    q = 50,
-    N = 12e4,
-    I = 900 * 1e3,
-    p = new WeakSet(),
-    x = new WeakSet(),
-    M = new Set([
-      "page",
-      "projectId",
-      "componentId",
-      "entityId",
-      "service",
-      "requestId",
-      "method",
-      "path",
-      "status",
-      "durationMs",
-      "code",
-      "line",
-      "column",
-      "userAgent",
-      "phase",
-    ]),
-    L = /^\/(?:login|setup|pair)(?:\/|$)/.test(r.location.pathname);
-  let g = L,
-    o = [],
-    D = null,
-    $ = !1,
-    l = 1e3,
-    u = 0,
-    T = {};
-  function m(t) {
+  if (global.HABridgeLog || typeof global.fetch != "function") return;
+
+  const nativeFetch = global.fetch.bind(global);
+  const QUEUE_STORAGE_KEY = "ha-bridge-client-log-v1";
+  const MAX_QUEUE_EVENTS = 50;
+  const MAX_QUEUE_BYTES = 12e4;
+  const QUEUE_TTL_MS = 900 * 1e3;
+  const reportedErrors = new WeakSet();
+  const failedResponses = new WeakSet();
+  const ALLOWED_CONTEXT_KEYS = new Set([
+    "page",
+    "projectId",
+    "componentId",
+    "entityId",
+    "service",
+    "requestId",
+    "method",
+    "path",
+    "status",
+    "durationMs",
+    "code",
+    "line",
+    "column",
+    "userAgent",
+    "phase",
+  ]);
+  const isPublicAuthPage = /^\/(?:login|setup|pair)(?:\/|$)/.test(
+    global.location.pathname,
+  );
+
+  let usePublicLogEndpoint = isPublicAuthPage;
+  let eventQueue = [];
+  let flushTimer = null;
+  let flushInFlight = false;
+  let retryDelayMs = 1e3;
+  let retryAfterMs = 0;
+  let sharedContext = {};
+
+  function sanitizePath(value) {
     try {
-      const e = new URL(String(t || ""), r.location.href);
-      if (!["http:", "https:", "ws:", "wss:"].includes(e.protocol))
-        return `[${e.protocol.replace(":", "")}]`;
-      let n = e.pathname;
+      const url = new URL(String(value || ""), global.location.href);
+      if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol)) {
+        return `[${url.protocol.replace(":", "")}]`;
+      }
+      let pathname = url.pathname;
       try {
-        n = decodeURIComponent(n);
+        pathname = decodeURIComponent(pathname);
       } catch {}
-      return n
+      return pathname
         .split(/[?#]/, 1)[0]
         .replace(/(\/api\/hls\/)[^/]+(?:\/.*)?/gi, "$1[stream]")
         .replace(
@@ -58,8 +64,9 @@
       return "[invalid path]";
     }
   }
-  function c(t, e = 1e3) {
-    return String(t ?? "")
+
+  function redactText(value, maxLength = 1e3) {
+    return String(value ?? "")
       .replace(
         /(\b(?:set-cookie|cookie)["']?\s*[:=]\s*)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\r\n]+)/gi,
         "$1[redacted]",
@@ -72,7 +79,9 @@
         /[A-Z0-9.!#$%&'*+\/=?^_`{|}~-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)+/gi,
         "[email redacted]",
       )
-      .replace(/(?:https?|wss?|rtsps?):\/\/[^\s<>"']+/gi, (n) => m(n))
+      .replace(/(?:https?|wss?|rtsps?):\/\/[^\s<>"']+/gi, (url) =>
+        sanitizePath(url),
+      )
       .replace(/\bBearer\s+[^\s,;"']+/gi, "Bearer [redacted]")
       .replace(
         /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,
@@ -87,257 +96,319 @@
         "/api/hls/[stream]",
       )
       .replace(/(\/[^\s?"'<>]*)\?[^\s"'<>]*/g, "$1")
-      .slice(0, e);
+      .slice(0, maxLength);
   }
-  function y(t) {
-    const e = {};
-    for (const [n, a] of Object.entries(t || {}))
-      !M.has(n) ||
-        a == null ||
-        !["string", "number", "boolean"].includes(typeof a) ||
-        (e[n] = ["path", "page"].includes(n)
-          ? m(a)
-          : typeof a == "number" && Number.isFinite(a)
-            ? a
-            : c(a, 512));
-    return e;
+
+  function sanitizeContext(context) {
+    const sanitized = {};
+    for (const [key, value] of Object.entries(context || {})) {
+      if (
+        !ALLOWED_CONTEXT_KEYS.has(key) ||
+        value == null ||
+        !["string", "number", "boolean"].includes(typeof value)
+      ) {
+        continue;
+      }
+      sanitized[key] = ["path", "page"].includes(key)
+        ? sanitizePath(value)
+        : typeof value == "number" && Number.isFinite(value)
+          ? value
+          : redactText(value, 512);
+    }
+    return sanitized;
   }
-  function Z() {
-    return r.location.pathname.startsWith("/3d-studio")
+
+  function resolveLogSource() {
+    return global.location.pathname.startsWith("/3d-studio")
       ? "3D 户型编辑器"
-      : /^\/(?:display|habridge)\//.test(r.location.pathname)
+      : /^\/(?:display|habridge)\//.test(global.location.pathname)
         ? "展示设备"
-        : L
+        : isPublicAuthPage
           ? "登录与配对页面"
           : "仪表盘编辑器";
   }
-  function O() {
-    const t = Date.now() - I;
-    for (
-      o = o.filter((e) => e.queuedAt >= t).slice(-q);
-      o.length && JSON.stringify(o).length > N;
-    )
-      o.shift();
+
+  function trimQueue() {
+    const oldestAllowed = Date.now() - QUEUE_TTL_MS;
+    eventQueue = eventQueue
+      .filter((entry) => entry.queuedAt >= oldestAllowed)
+      .slice(-MAX_QUEUE_EVENTS);
+    while (eventQueue.length && JSON.stringify(eventQueue).length > MAX_QUEUE_BYTES) {
+      eventQueue.shift();
+    }
   }
-  function d() {
-    O();
+
+  function persistQueue() {
+    trimQueue();
     try {
-      o.length
-        ? r.sessionStorage.setItem(_, JSON.stringify(o))
-        : r.sessionStorage.removeItem(_);
+      if (eventQueue.length) {
+        global.sessionStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(eventQueue));
+      } else {
+        global.sessionStorage.removeItem(QUEUE_STORAGE_KEY);
+      }
     } catch {}
   }
-  function A(t = 100) {
-    D ||
-      !o.length ||
-      (D = r.setTimeout(() => {
-        ((D = null), b());
-      }, t));
+
+  function scheduleFlush(delayMs = 100) {
+    if (flushTimer || !eventQueue.length) return;
+    flushTimer = global.setTimeout(() => {
+      flushTimer = null;
+      flushQueue();
+    }, delayMs);
   }
-  function h(t, e, n, a = {}, f = "") {
-    const i = {
-      level: ["info", "success", "warning", "error"].includes(t) ? t : "error",
-      source: Z(),
-      category: c(e || "界面", 64),
-      message: c(n || "未知异常", 1e3),
-      details: c(f, 8e3),
-      context: y({
-        page: r.location.pathname,
-        userAgent: r.navigator?.userAgent || "",
-        ...T,
-        ...a,
+
+  function report(level, category, message, context = {}, details = "") {
+    const event = {
+      level: ["info", "success", "warning", "error"].includes(level)
+        ? level
+        : "error",
+      source: resolveLogSource(),
+      category: redactText(category || "界面", 64),
+      message: redactText(message || "未知异常", 1e3),
+      details: redactText(details, 8e3),
+      context: sanitizeContext({
+        page: global.location.pathname,
+        userAgent: global.navigator?.userAgent || "",
+        ...sharedContext,
+        ...context,
       }),
       clientTimestamp: new Date().toISOString(),
     };
-    (g && !["warning", "error"].includes(i.level)) ||
-      (o.push({ event: i, queuedAt: Date.now() }), d(), A());
-  }
-  function E(t, e = {}, n = "") {
-    if (t && typeof t == "object") {
-      if (p.has(t)) return;
-      p.add(t);
+    if (usePublicLogEndpoint && !["warning", "error"].includes(event.level)) {
+      return;
     }
-    h(
+    eventQueue.push({ event, queuedAt: Date.now() });
+    persistQueue();
+    scheduleFlush();
+  }
+
+  function reportError(error, context = {}, fallbackMessage = "") {
+    if (error && typeof error == "object") {
+      if (reportedErrors.has(error)) return;
+      reportedErrors.add(error);
+    }
+    report(
       "error",
       "界面",
-      n || t?.message || String(t || "未知异常"),
-      e,
-      t?.stack || "",
+      fallbackMessage || error?.message || String(error || "未知异常"),
+      context,
+      error?.stack || "",
     );
   }
-  function R(t, e) {
-    return (t && typeof t == "object" && x.has(e) && p.add(t), t);
+
+  function linkError(value, response) {
+    if (value && typeof value == "object" && failedResponses.has(response)) {
+      reportedErrors.add(value);
+    }
+    return value;
   }
-  async function b() {
-    if ($ || r.navigator?.onLine === !1) return;
-    if (Date.now() < u) {
-      A(u - Date.now());
+
+  async function flushQueue() {
+    if (flushInFlight || global.navigator?.onLine === false) return;
+    if (Date.now() < retryAfterMs) {
+      scheduleFlush(retryAfterMs - Date.now());
       return;
     }
-    if ((O(), !o.length)) {
-      d();
+    trimQueue();
+    if (!eventQueue.length) {
+      persistQueue();
       return;
     }
-    const t = (e) => {
-      const n = o.indexOf(e);
-      n >= 0 && o.splice(n, 1);
+
+    const removeEntry = (entry) => {
+      const index = eventQueue.indexOf(entry);
+      if (index >= 0) eventQueue.splice(index, 1);
     };
-    $ = !0;
+
+    flushInFlight = true;
     try {
-      for (let e = 0; o.length && e < 5; e += 1) {
-        const n = o[0];
-        if (g && !["warning", "error"].includes(n.event.level)) {
-          t(n);
+      for (let attempt = 0; eventQueue.length && attempt < 5; attempt += 1) {
+        const entry = eventQueue[0];
+        if (
+          usePublicLogEndpoint &&
+          !["warning", "error"].includes(entry.event.level)
+        ) {
+          removeEntry(entry);
           continue;
         }
-        const a =
-            typeof AbortController == "function" ? new AbortController() : null,
-          f = r.setTimeout(() => a?.abort(), 8e3);
-        let i;
+        const controller =
+          typeof AbortController == "function" ? new AbortController() : null;
+        const timeoutId = global.setTimeout(() => controller?.abort(), 8e3);
+        let response;
         try {
-          i = await S(`/api/v1/logs/${g ? "public-events" : "events"}`, {
-            method: "POST",
-            cache: "no-store",
-            keepalive: !0,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(n.event),
-            ...(a ? { signal: a.signal } : {}),
-          });
-        } finally {
-          r.clearTimeout(f);
-        }
-        if (i.ok) {
-          (t(n), (l = 1e3));
-          continue;
-        }
-        if (i.status === 401 && !g) {
-          ((g = !0), (u = Date.now() + 1e3));
-          break;
-        }
-        if (i.status === 429 || i.status >= 500) {
-          const v = Number(i.headers?.get("Retry-After")) * 1e3;
-          ((u = Date.now() + Math.min(6e4, Math.max(l, v || 0))),
-            (l = Math.min(6e4, l * 2)));
-          break;
-        }
-        t(n);
-      }
-    } catch {
-      ((u = Date.now() + l), (l = Math.min(6e4, l * 2)));
-    } finally {
-      (($ = !1), d(), A(Math.max(100, u - Date.now())));
-    }
-  }
-  ((r.fetch = async function (e, n = {}) {
-    const { hbLogContext: a, ...f } = n || {},
-      i = m(typeof e == "string" || e instanceof URL ? e : e?.url);
-    if (/^\/api\/v1\/logs(?:\/|$)/.test(i)) return S(e, f);
-    const v = Date.now(),
-      k = { method: f.method || e?.method || "GET", path: i, ...y(a) };
-    try {
-      const s = await S(e, f),
-        C = Date.now() - v;
-      return (
-        (!s.ok || C >= 5e3) &&
-          (h(
-            s.ok ? "warning" : "error",
-            "网络请求",
-            `${s.ok ? "请求耗时较长" : "请求失败"}：${k.method} ${i}${s.ok ? "" : `（HTTP ${s.status}）`}`,
+          response = await nativeFetch(
+            `/api/v1/logs/${usePublicLogEndpoint ? "public-events" : "events"}`,
             {
-              ...k,
-              status: s.status,
-              durationMs: C,
-              requestId: s.headers?.get("X-Request-ID") || "",
-            },
-          ),
-          s.ok || x.add(s)),
-        s
-      );
-    } catch (s) {
-      throw (
-        s?.name !== "AbortError" &&
-          (h(
-            "error",
-            "网络请求",
-            `网络连接失败：${k.method} ${i}`,
-            { ...k, durationMs: Date.now() - v },
-            s?.stack || s?.message || "",
-          ),
-          s && typeof s == "object" && p.add(s)),
-        s
-      );
-    }
-  }),
-    (r.HABridgeLog = {
-      report: h,
-      error: E,
-      linkError: R,
-      flush: b,
-      setContext: (t) => {
-        T = y(t);
-      },
-    }),
-    r.addEventListener(
-      "error",
-      (t) => {
-        const e = t.target;
-        if (e && e !== r && (e.src || e.href)) {
-          h(
-            "error",
-            "资源加载",
-            `资源加载失败：${m(e.src || e.href)}`,
-            {
-              path: e.src || e.href,
-              phase: String(e.tagName || "resource").toLowerCase(),
+              method: "POST",
+              cache: "no-store",
+              keepalive: true,
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(entry.event),
+              ...(controller ? { signal: controller.signal } : {}),
             },
           );
-          return;
+        } finally {
+          global.clearTimeout(timeoutId);
         }
-        E(
-          t.error ||
-            new Error(t.message || "页面脚本异常"),
+        if (response.ok) {
+          removeEntry(entry);
+          retryDelayMs = 1e3;
+          continue;
+        }
+        if (response.status === 401 && !usePublicLogEndpoint) {
+          usePublicLogEndpoint = true;
+          retryAfterMs = Date.now() + 1e3;
+          break;
+        }
+        if (response.status === 429 || response.status >= 500) {
+          const retryAfterHeader =
+            Number(response.headers?.get("Retry-After")) * 1e3;
+          retryAfterMs =
+            Date.now() + Math.min(6e4, Math.max(retryDelayMs, retryAfterHeader || 0));
+          retryDelayMs = Math.min(6e4, retryDelayMs * 2);
+          break;
+        }
+        removeEntry(entry);
+      }
+    } catch {
+      retryAfterMs = Date.now() + retryDelayMs;
+      retryDelayMs = Math.min(6e4, retryDelayMs * 2);
+    } finally {
+      flushInFlight = false;
+      persistQueue();
+      scheduleFlush(Math.max(100, retryAfterMs - Date.now()));
+    }
+  }
+
+  global.fetch = async function (input, init = {}) {
+    const { hbLogContext, ...fetchInit } = init || {};
+    const path = sanitizePath(
+      typeof input == "string" || input instanceof URL ? input : input?.url,
+    );
+    if (/^\/api\/v1\/logs(?:\/|$)/.test(path)) return nativeFetch(input, fetchInit);
+
+    const startedAt = Date.now();
+    const requestContext = {
+      method: fetchInit.method || input?.method || "GET",
+      path,
+      ...sanitizeContext(hbLogContext),
+    };
+    try {
+      const response = await nativeFetch(input, fetchInit);
+      const durationMs = Date.now() - startedAt;
+      if (!response.ok || durationMs >= 5e3) {
+        report(
+          response.ok ? "warning" : "error",
+          "网络请求",
+          `${response.ok ? "请求耗时较长" : "请求失败"}：${requestContext.method} ${path}${
+            response.ok ? "" : `（HTTP ${response.status}）`
+          }`,
           {
-            path: t.filename || r.location.pathname,
-            line: t.lineno,
-            column: t.colno,
+            ...requestContext,
+            status: response.status,
+            durationMs,
+            requestId: response.headers?.get("X-Request-ID") || "",
           },
         );
-      },
-      !0,
-    ),
-    r.addEventListener("unhandledrejection", (t) => E(t.reason)),
-    r.addEventListener("online", () => {
-      ((u = 0), b());
-    }),
-    r.addEventListener("pagehide", () => {
-      (d(), b());
-    }));
+        if (!response.ok) failedResponses.add(response);
+      }
+      return response;
+    } catch (error) {
+      if (error?.name !== "AbortError") {
+        report(
+          "error",
+          "网络请求",
+          `网络连接失败：${requestContext.method} ${path}`,
+          { ...requestContext, durationMs: Date.now() - startedAt },
+          error?.stack || error?.message || "",
+        );
+        if (error && typeof error == "object") reportedErrors.add(error);
+      }
+      throw error;
+    }
+  };
+
+  global.HABridgeLog = {
+    report,
+    error: reportError,
+    linkError,
+    flush: flushQueue,
+    setContext: (context) => {
+      sharedContext = sanitizeContext(context);
+    },
+  };
+
+  global.addEventListener(
+    "error",
+    (event) => {
+      const target = event.target;
+      if (target && target !== global && (target.src || target.href)) {
+        report(
+          "error",
+          "资源加载",
+          `资源加载失败：${sanitizePath(target.src || target.href)}`,
+          {
+            path: target.src || target.href,
+            phase: String(target.tagName || "resource").toLowerCase(),
+          },
+        );
+        return;
+      }
+      reportError(
+        event.error || new Error(event.message || "页面脚本异常"),
+        {
+          path: event.filename || global.location.pathname,
+          line: event.lineno,
+          column: event.colno,
+        },
+      );
+    },
+    true,
+  );
+  global.addEventListener("unhandledrejection", (event) =>
+    reportError(event.reason),
+  );
+  global.addEventListener("online", () => {
+    retryAfterMs = 0;
+    flushQueue();
+  });
+  global.addEventListener("pagehide", () => {
+    persistQueue();
+    flushQueue();
+  });
+
   try {
-    const t = JSON.parse(r.sessionStorage.getItem(_) || "[]");
-    if (Array.isArray(t))
-      for (const e of t.slice(-q)) {
+    const stored = JSON.parse(
+      global.sessionStorage.getItem(QUEUE_STORAGE_KEY) || "[]",
+    );
+    if (Array.isArray(stored)) {
+      for (const entry of stored.slice(-MAX_QUEUE_EVENTS)) {
         if (
-          !e?.event ||
-          !Number.isFinite(e.queuedAt) ||
-          Date.now() - e.queuedAt > I
-        )
+          !entry?.event ||
+          !Number.isFinite(entry.queuedAt) ||
+          Date.now() - entry.queuedAt > QUEUE_TTL_MS
+        ) {
           continue;
-        const n = e.event;
-        o.push({
-          queuedAt: e.queuedAt,
+        }
+        const event = entry.event;
+        eventQueue.push({
+          queuedAt: entry.queuedAt,
           event: {
-            level: ["warning", "error", "info", "success"].includes(n.level)
-              ? n.level
+            level: ["warning", "error", "info", "success"].includes(event.level)
+              ? event.level
               : "error",
-            source: c(n.source || Z(), 64),
-            category: c(n.category || "界面", 64),
-            message: c(n.message || "未知异常", 1e3),
-            details: c(n.details, 8e3),
-            context: y(n.context),
-            clientTimestamp: new Date(e.queuedAt).toISOString(),
+            source: redactText(event.source || resolveLogSource(), 64),
+            category: redactText(event.category || "界面", 64),
+            message: redactText(event.message || "未知异常", 1e3),
+            details: redactText(event.details, 8e3),
+            context: sanitizeContext(event.context),
+            clientTimestamp: new Date(entry.queuedAt).toISOString(),
           },
         });
       }
+    }
   } catch {}
-  (d(), A());
+
+  persistQueue();
+  scheduleFlush();
 })(window);

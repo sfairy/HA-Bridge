@@ -1876,12 +1876,12 @@ function cloneProjectForStage() {
   }
   projectDoc2.previewFloorMode = stageSession.floorMode;
   for (const floor of projectDoc2.floors || []) {
-    const isMode = stageSession.floorCameraSettings.get(floor.id);
-    if (isMode) {
-      floor.scene.settings.cameraMode = isMode.mode;
-      floor.scene.settings.cameraView = isMode.view;
-      floor.scene.settings.cameraTopRotation = isMode.topRotation;
-      floor.scene.settings.cameraFocalLength = isMode.focalLength;
+    const floorCameraSetting = stageSession.floorCameraSettings.get(floor.id);
+    if (floorCameraSetting) {
+      floor.scene.settings.cameraMode = floorCameraSetting.mode;
+      floor.scene.settings.cameraView = floorCameraSetting.view;
+      floor.scene.settings.cameraTopRotation = floorCameraSetting.topRotation;
+      floor.scene.settings.cameraFocalLength = floorCameraSetting.focalLength;
     }
   }
   projectDoc2.combinedCameraSettings = {
@@ -3876,9 +3876,9 @@ function pushUndoSnapshot(arg0) {
 }
 async function restoreFloorScene(scene) {
   floorScene = normalizeFloorScene(scene);
-  const isScene = activeFloor();
-  if (isScene) {
-    isScene.scene = floorScene;
+  const floor = activeFloor();
+  if (floor) {
+    floor.scene = floorScene;
   }
   planView.rotation = floorScene.settings.planViewRotation;
   clearSelection();
@@ -6181,21 +6181,21 @@ function drawPlan() {
       }
     }
   }
-  const isStart = floorScene.calibration?.reference;
-  if (isStart && activeTool === "scale") {
-    drawPlanLine(isStart.start, isStart.end, {
+  const reference = floorScene.calibration?.reference;
+  if (reference && activeTool === "scale") {
+    drawPlanLine(reference.start, reference.end, {
       color: "rgba(255, 157, 46, .72)",
       width: 2,
       dash: [7, 5],
     });
-    drawPlanPoint(isStart.start, "#ff9d2e", 3.5);
-    drawPlanPoint(isStart.end, "#ff9d2e", 3.5);
+    drawPlanPoint(reference.start, "#ff9d2e", 3.5);
+    drawPlanPoint(reference.end, "#ff9d2e", 3.5);
     drawFloatingLabel(
       {
-        x: (isStart.start.x + isStart.end.x) / 2,
-        y: (isStart.start.y + isStart.end.y) / 2,
+        x: (reference.start.x + reference.end.x) / 2,
+        y: (reference.start.y + reference.end.y) / 2,
       },
-      isStart.meters.toFixed(2) + " m 参考",
+      reference.meters.toFixed(2) + " m 参考",
       "#ffad45",
     );
   }
@@ -7321,11 +7321,11 @@ async function importPlanBackgroundFile(body) {
         width: size.width,
         height: size.height,
       };
-      const isOriginInitialized = activeFloor();
-      if (isOriginInitialized && !isOriginInitialized.originInitialized) {
-        isOriginInitialized.originX = size.width / 2;
-        isOriginInitialized.originY = size.height / 2;
-        isOriginInitialized.originInitialized = true;
+      const floor = activeFloor();
+      if (floor && !floor.originInitialized) {
+        floor.originX = size.width / 2;
+        floor.originY = size.height / 2;
+        floor.originInitialized = true;
       }
       floorScene.settings.backgroundVisible = true;
       await reloadPlanBackground();
@@ -7345,17 +7345,17 @@ async function importPlanBackgroundFile(body) {
 function resolvedThemeColors() {
   return themeColors;
 }
-function positionDirectionalLight(isPosition, arg1, arg2, arg3) {
-  if (!isPosition) {
+function positionDirectionalLight(light, azimuthDeg, elevationDeg, distanceMeters) {
+  if (!light) {
     return;
   }
-  const value = THREE.MathUtils.degToRad(arg1);
-  const value2 = THREE.MathUtils.degToRad(arg2);
-  const value3 = Math.cos(value2) * arg3;
-  isPosition.position.set(
-    Math.cos(value) * value3,
-    Math.sin(value2) * arg3,
-    Math.sin(value) * value3,
+  const azimuthRad = THREE.MathUtils.degToRad(azimuthDeg);
+  const elevationRad = THREE.MathUtils.degToRad(elevationDeg);
+  const horizontal = Math.cos(elevationRad) * distanceMeters;
+  light.position.set(
+    Math.cos(azimuthRad) * horizontal,
+    Math.sin(elevationRad) * distanceMeters,
+    Math.sin(azimuthRad) * horizontal,
   );
 }
 function applyPreviewEnvironment() {
@@ -10949,14 +10949,14 @@ function openExportDialog() {
   flushExportUiDebounce();
   const cameraSettings = stageSession;
   for (const floor of projectDoc.floors) {
-    const isMode = cameraSettings.floorCameraSettings.get(
+    const floorCameraSetting = cameraSettings.floorCameraSettings.get(
       floor.id,
     );
-    if (isMode) {
-      floor.scene.settings.cameraMode = isMode.mode;
-      floor.scene.settings.cameraView = isMode.view;
-      floor.scene.settings.cameraTopRotation = isMode.topRotation;
-      floor.scene.settings.cameraFocalLength = isMode.focalLength;
+    if (floorCameraSetting) {
+      floor.scene.settings.cameraMode = floorCameraSetting.mode;
+      floor.scene.settings.cameraView = floorCameraSetting.view;
+      floor.scene.settings.cameraTopRotation = floorCameraSetting.topRotation;
+      floor.scene.settings.cameraFocalLength = floorCameraSetting.focalLength;
     }
   }
   projectDoc.combinedCameraSettings = {
@@ -22892,11 +22892,11 @@ function onPlanPointerDrag(event) {
       ) {
         return;
       }
-      const isRotation = selectedEntity();
-      if (!isRotation) {
+      const item = selectedEntity();
+      if (!item) {
         return;
       }
-      isRotation.rotation = itemRotationFromPointers(
+      item.rotation = itemRotationFromPointers(
         dragState.originalItem.rotation,
         dragState.center,
         dragState.startPointer,
@@ -22904,7 +22904,7 @@ function onPlanPointerDrag(event) {
         event.shiftKey ? 15 : 0,
       );
       dragState.moved =
-        Math.abs(isRotation.rotation - dragState.originalItem.rotation) > 0.000001;
+        Math.abs(item.rotation - dragState.originalItem.rotation) > 0.000001;
       drawPlan();
       return;
     }
@@ -22916,29 +22916,29 @@ function onPlanPointerDrag(event) {
         return;
       }
       const attachment = selectedEntity();
-      const isStart = floorScene.walls.find(
+      const wall = floorScene.walls.find(
         (item) => item.id === attachment?.wallId,
       );
-      if (!attachment || !isStart) {
+      if (!attachment || !wall) {
         return;
       }
       attachment.t = clampWindowT(
-        isStart,
+        wall,
         {
           ...attachment,
           t: projectPointToSegment(
             planPoint2,
-            isStart.start,
-            isStart.end,
+            wall.start,
+            wall.end,
           ).t,
         },
         pixelsPerMeter(),
       );
-      const isT = dragState.before?.[selection?.kind + "s"]?.find?.(
+      const previousAttachment = dragState.before?.[selection?.kind + "s"]?.find?.(
         (item) => item.id === attachment.id,
       );
       dragState.moved =
-        !isT || Math.abs(attachment.t - isT.t) > 0.000001;
+        !previousAttachment || Math.abs(attachment.t - previousAttachment.t) > 0.000001;
       drawPlan();
       return;
     }
@@ -23591,9 +23591,11 @@ function setAssetCategory(arg0) {
   syncAssetCategoryHeadings();
   assetGrid.hidden = value === "light";
   lightAssetRow.hidden = value !== "light";
-  const isType = selectedEntity();
+  const selectedItem = selectedEntity();
   const flag =
-    selection?.kind === "item" && isType && lightItemTypes.has(isType.type);
+    selection?.kind === "item" &&
+    selectedItem &&
+    lightItemTypes.has(selectedItem.type);
   if (selection && (value === "light") != !!flag) {
     clearSelection();
   }
@@ -23882,28 +23884,28 @@ function renderLightPropertyTargetList(prop) {
 }
 for (const e of applyLightPropertyEls) {
   e.addEventListener("click", () => {
-    const isType = selectedEntity();
+    const item = selectedEntity();
     const property = e.dataset.applyLightProperty;
-    const isInput = lightPropertyMeta[property];
+    const propMeta = lightPropertyMeta[property];
     if (
-      !isType ||
+      !item ||
       selection?.kind !== "item" ||
-      !lightItemTypes.has(isType.type) ||
-      !isInput
+      !lightItemTypes.has(item.type) ||
+      !propMeta
     ) {
       return;
     }
     const value = clampLightPropertyValue(
       property,
-      selectEl(isInput.input).value,
-      isType.type,
+      selectEl(propMeta.input).value,
+      item.type,
     );
     pendingLightPropertyEdit = {
       property: property,
-      label: isInput.label,
+      label: propMeta.label,
       value: value,
     };
-    lightPropertyApplyTitle.textContent = "应用" + isInput.label;
+    lightPropertyApplyTitle.textContent = "应用" + propMeta.label;
     lightPropertyApplyValue.textContent = formatLightPropertyValue(
       property,
       value,
@@ -24844,15 +24846,15 @@ selectEl("#tv-mount-style").addEventListener("change", () =>
   applyInspectorFields("item"),
 );
 shoeCabinetMirror.addEventListener("click", () => {
-  const isType = selectedEntity();
+  const item = selectedEntity();
   if (
-    !!isType &&
+    !!item &&
     selection?.kind === "item" &&
-    isType.type === "shoecabinet"
+    item.type === "shoecabinet"
   ) {
     pushHistory();
-    isType.shoeCabinetMirrored = isType.shoeCabinetMirrored !== true;
-    refreshViews(itemPreviewScope(isType));
+    item.shoeCabinetMirrored = item.shoeCabinetMirrored !== true;
+    refreshViews(itemPreviewScope(item));
     scheduleSave();
   }
 });
@@ -24860,29 +24862,29 @@ selectionInspector.addEventListener("submit", (event) =>
   event.preventDefault(),
 );
 selectEl("#door-hinge").addEventListener("click", () => {
-  const isDoorType = selectedEntity();
+  const door = selectedEntity();
   if (
-    !!isDoorType &&
+    !!door &&
     selection?.kind === "door" &&
     !["double", "entry", "sliding-glass", "roller-shutter"].includes(
-      isDoorType.doorType,
+      door.doorType,
     )
   ) {
     pushHistory();
-    isDoorType.hinge = isDoorType.hinge === "right" ? "left" : "right";
+    door.hinge = door.hinge === "right" ? "left" : "right";
     refreshViews();
     scheduleSave();
   }
 });
 selectEl("#door-swing").addEventListener("click", () => {
-  const isDoorType = selectedEntity();
+  const door = selectedEntity();
   if (
-    !!isDoorType &&
+    !!door &&
     selection?.kind === "door" &&
-    !["entry", "sliding-glass", "frame-only"].includes(isDoorType.doorType)
+    !["entry", "sliding-glass", "frame-only"].includes(door.doorType)
   ) {
     pushHistory();
-    isDoorType.swing = isDoorType.swing === -1 ? 1 : -1;
+    door.swing = door.swing === -1 ? 1 : -1;
     refreshViews();
     scheduleSave();
   }
@@ -25469,20 +25471,20 @@ function buildStageReferenceScene() {
       }
       if (flag || lightsNeedSync) {
         for (const [worldItemKey, worldItemKey2] of worldItemKeys) {
-          const isGroup = visibleLightsByKey.get(worldItemKey);
-          if (!isGroup) {
+          const lightBinding = visibleLightsByKey.get(worldItemKey);
+          if (!lightBinding) {
             continue;
           }
           const flag2 =
-            isGroup.group?.enabled !== false &&
-            isGroup.item.lightBrightness > 0;
+            lightBinding.group?.enabled !== false &&
+            lightBinding.item.lightBrightness > 0;
           for (const object3d of worldItemKey2) {
             object3d.intensity = flag2
               ? finite(object3d.userData.lightOnIntensity, 0)
               : 0;
             object3d.visible = flag2;
             object3d.color.setHex(
-              lightEffectColorHex(isGroup.item.lightTemperature),
+              lightEffectColorHex(lightBinding.item.lightTemperature),
             );
           }
         }
@@ -25635,11 +25637,11 @@ function buildStageReferenceScene() {
     lightsNeedSync = true;
     const now = performance.now();
     for (const groupKey of entry) {
-      const isTo = byKey6.get(groupKey.groupKey);
-      if (!isTo) {
+      const blendTarget = byKey6.get(groupKey.groupKey);
+      if (!blendTarget) {
         continue;
       }
-      const blendAnim = animateViewBlend(isTo, now);
+      const blendAnim = animateViewBlend(blendTarget, now);
       for (const object3d of worldItemKeys.get(groupKey.itemKey) ||
         []) {
         const finite2 = finite(
@@ -25655,11 +25657,11 @@ function buildStageReferenceScene() {
               color: color,
             },
             {
-              intensity: finite2 * isTo.to,
+              intensity: finite2 * blendTarget.to,
               color: color,
             },
             now,
-            Math.max(0, isTo.started + isTo.duration - now),
+            Math.max(0, blendTarget.started + blendTarget.duration - now),
           ),
         );
       }
@@ -25763,18 +25765,18 @@ function buildStageReferenceScene() {
       const floor2 = projectDoc.floors.find(
         (floor3) => floor3.id === floor.floorId,
       );
-      const isEnabled = floor2?.scene.lightGroups.find(
-        (lightGroup) => lightGroup.id === floor.groupId,
+      const lightGroup = floor2?.scene.lightGroups.find(
+        (group) => group.id === floor.groupId,
       );
-      if (!isEnabled) {
+      if (!lightGroup) {
         continue;
       }
-      const wasOn = isEnabled.enabled !== false;
+      const wasOn = lightGroup.enabled !== false;
       const isOn = floor.on === true;
-      isEnabled.enabled = isOn;
+      lightGroup.enabled = isOn;
       for (const item of floor2.scene.items) {
         if (
-          item.lightGroupId !== isEnabled.id ||
+          item.lightGroupId !== lightGroup.id ||
           !lightItemTypes.has(item.type)
         ) {
           continue;
@@ -26245,33 +26247,33 @@ function buildStageReferenceScene() {
         projectDoc2.previewFloorMode = projectDoc.previewFloorMode;
         for (const floor2 of projectDoc2.floors) {
           floor2.scene.settings.livePreviewEnabled = true;
-          const isScene = projectDoc.floors.find(
+          const sourceFloor = projectDoc.floors.find(
             (floor3) => floor3.id === floor2.id,
           );
           if (
-            isScene &&
+            sourceFloor &&
             !projectDoc3.floors.includes(floor2.id)
           ) {
             for (const lightGroup of floor2.scene.lightGroups) {
-              const isEnabled = isScene.scene.lightGroups.find(
+              const sourceGroup = sourceFloor.scene.lightGroups.find(
                 (lightGroup2) => lightGroup2.id === lightGroup.id,
               );
-              if (isEnabled) {
-                lightGroup.enabled = isEnabled.enabled;
+              if (sourceGroup) {
+                lightGroup.enabled = sourceGroup.enabled;
               }
             }
             for (const item of floor2.scene.items) {
               if (!lightItemTypes.has(item.type)) {
                 continue;
               }
-              const isLightBrightness = isScene.scene.items.find(
+              const sourceItem = sourceFloor.scene.items.find(
                 (item2) => item2.id === item.id,
               );
-              if (isLightBrightness) {
+              if (sourceItem) {
                 item.lightBrightness =
-                  isLightBrightness.lightBrightness;
+                  sourceItem.lightBrightness;
                 item.lightTemperature =
-                  isLightBrightness.lightTemperature;
+                  sourceItem.lightTemperature;
               }
             }
           }

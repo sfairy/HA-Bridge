@@ -1,155 +1,171 @@
 export function createEditorPickerElements({
-  entityKindLabel: p,
-  entityPickerPrimaryName: d,
-  entityPickerText: i,
-  enableEntityTextHoverScroll: u,
-  assetDisplayName: m,
-  assetPreviewUrl: E,
-  bindEditorIconNameTooltip: k,
-  mdiIconUrl: g,
+  entityKindLabel,
+  entityPickerPrimaryName,
+  entityPickerText,
+  enableEntityTextHoverScroll,
+  assetDisplayName,
+  assetPreviewUrl,
+  bindEditorIconNameTooltip,
+  mdiIconUrl,
 }) {
-  function C(t, o, e) {
-    const n = document.createElement("button");
-    return (
-      (n.type = "button"),
-      (n.className = `navigation-icon-option navigation-icon-clear${t ? "" : " selected"}`),
-      (n.dataset[e] = ""),
-      (n.textContent = o),
-      n
+  function createIconPickerClearOption(selectedName, label, datasetKey) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `navigation-icon-option navigation-icon-clear${
+      selectedName ? "" : " selected"
+    }`;
+    button.dataset[datasetKey] = "";
+    button.textContent = label;
+    return button;
+  }
+
+  function createIconPickerOption(icon, selectedName, datasetKey) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `navigation-icon-option${
+      icon.name === selectedName ? " selected" : ""
+    }`;
+    button.dataset[datasetKey] = icon.name;
+    button.setAttribute("aria-label", icon.name);
+    button.dataset.iconName = icon.name;
+    const glyph = document.createElement("i");
+    glyph.setAttribute("aria-hidden", "true");
+    glyph.style.maskImage = `url("${icon.previewUrl}")`;
+    glyph.style.webkitMaskImage = `url("${icon.previewUrl}")`;
+    button.append(glyph);
+    bindEditorIconNameTooltip(button, icon.name);
+    return button;
+  }
+
+  function createEditorPickerCurrentIcon(iconName, emptyLabel = "未使用图标") {
+    const name = String(iconName || "").trim();
+    const current = document.createElement("span");
+    current.className = "editor-paged-picker-current-icon";
+    current.title = name || emptyLabel;
+    const glyph = document.createElement("i");
+    glyph.setAttribute("aria-hidden", "true");
+    const url = mdiIconUrl(name);
+    if (url) {
+      glyph.style.setProperty("mask-image", `url("${url}")`);
+      glyph.style.setProperty("-webkit-mask-image", `url("${url}")`);
+    }
+    current.append(glyph);
+    const label = document.createElement("strong");
+    label.className = "editor-paged-picker-current-icon-name";
+    label.textContent = name || emptyLabel;
+    current.append(label);
+    return current;
+  }
+
+  function createEditorEntityPickerOption(entity, selectedEntityId) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `inspector-entity-option${
+      entity.entityId === selectedEntityId ? " selected" : ""
+    }`;
+    button.dataset.editorPickerValue = entity.entityId;
+    button.setAttribute("role", "option");
+    button.setAttribute(
+      "aria-selected",
+      String(entity.entityId === selectedEntityId),
     );
+    const content = document.createElement("span");
+    content.className = "inspector-entity-option-content";
+    content.title = entityPickerText(entity);
+    const nameLine = document.createElement("span");
+    nameLine.className =
+      "inspector-entity-option-line inspector-entity-name-line";
+    const kind = document.createElement("span");
+    kind.className = "inspector-entity-kind";
+    kind.textContent = `[${entityKindLabel(entity)}] `;
+    const name = document.createElement("span");
+    name.className = "inspector-entity-name";
+    name.textContent = entityPickerPrimaryName(entity);
+    nameLine.append(kind, name);
+    const idLine = document.createElement("span");
+    idLine.className = "inspector-entity-option-line inspector-entity-id";
+    idLine.textContent = entity.entityId;
+    content.append(nameLine, idLine);
+    enableEntityTextHoverScroll(button, nameLine);
+    button.append(content);
+    return button;
   }
-  function b(t, o, e) {
-    const n = document.createElement("button");
-    ((n.type = "button"),
-      (n.className = `navigation-icon-option${t.name === o ? " selected" : ""}`),
-      (n.dataset[e] = t.name),
-      n.setAttribute("aria-label", t.name),
-      (n.dataset.iconName = t.name));
-    const c = document.createElement("i");
-    return (
-      c.setAttribute("aria-hidden", "true"),
-      (c.style.maskImage = `url("${t.previewUrl}")`),
-      (c.style.webkitMaskImage = `url("${t.previewUrl}")`),
-      n.append(c),
-      k(n, t.name),
-      n
-    );
+
+  function editorPickerClearOption(label, selected = false) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `editor-paged-picker-clear${selected ? " selected" : ""}`;
+    button.dataset.editorPickerValue = "";
+    button.textContent = label;
+    return button;
   }
-  function f(t, o = "未使用图标") {
-    const e = String(t || "").trim(),
-      n = document.createElement("span");
-    ((n.className = "editor-paged-picker-current-icon"), (n.title = e || o));
-    const c = document.createElement("i");
-    c.setAttribute("aria-hidden", "true");
-    const a = g(e);
-    (a &&
-      (c.style.setProperty("mask-image", `url("${a}")`),
-      c.style.setProperty("-webkit-mask-image", `url("${a}")`)),
-      n.append(c));
-    const r = document.createElement("strong");
-    return (
-      (r.className = "editor-paged-picker-current-icon-name"),
-      (r.textContent = e || o),
-      n.append(r),
-      n
-    );
+
+  function editorPickerClearAction(label = "不使用实体", selected = false) {
+    const button = editorPickerClearOption(label, selected);
+    button.className = "editor-paged-picker-selected-action";
+    return button;
   }
-  function N(t, o) {
-    const e = document.createElement("button");
-    ((e.type = "button"),
-      (e.className = `inspector-entity-option${t.entityId === o ? " selected" : ""}`),
-      (e.dataset.editorPickerValue = t.entityId),
-      e.setAttribute("role", "option"),
-      e.setAttribute("aria-selected", String(t.entityId === o)));
-    const n = document.createElement("span");
-    ((n.className = "inspector-entity-option-content"), (n.title = i(t)));
-    const c = document.createElement("span");
-    c.className = "inspector-entity-option-line inspector-entity-name-line";
-    const a = document.createElement("span");
-    ((a.className = "inspector-entity-kind"), (a.textContent = `[${p(t)}] `));
-    const r = document.createElement("span");
-    ((r.className = "inspector-entity-name"),
-      (r.textContent = d(t)),
-      c.append(a, r));
-    const s = document.createElement("span");
-    return (
-      (s.className = "inspector-entity-option-line inspector-entity-id"),
-      (s.textContent = t.entityId),
-      n.append(c, s),
-      u(e, c),
-      e.append(n),
-      e
-    );
+
+  function editorPickerEntityAction(entity, selected = false) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `editor-paged-picker-selected-action${
+      selected ? " selected" : ""
+    }`;
+    button.dataset.editorPickerValue = entity.entityId;
+    button.title = entityPickerText(entity);
+    button.textContent = entityPickerText(entity);
+    return button;
   }
-  function l(t, o = !1) {
-    const e = document.createElement("button");
-    return (
-      (e.type = "button"),
-      (e.className = `editor-paged-picker-clear${o ? " selected" : ""}`),
-      (e.dataset.editorPickerValue = ""),
-      (e.textContent = t),
-      e
-    );
+
+  function createEditorPickerCurrentEntity(entity, emptyLabel = "未选择实体") {
+    const current = document.createElement("span");
+    current.className = "editor-paged-picker-current-entity";
+    const name = document.createElement("span");
+    name.className = "editor-paged-picker-current-entity-name";
+    const entityId = document.createElement("span");
+    entityId.className = "editor-paged-picker-current-entity-id";
+    if (entity) {
+      name.textContent = entityPickerPrimaryName(entity);
+      entityId.textContent = entity.entityId || "";
+      current.title = entityPickerText(entity);
+    } else {
+      name.textContent = emptyLabel;
+      entityId.textContent = "";
+    }
+    current.append(name);
+    if (entityId.textContent) current.append(entityId);
+    return current;
   }
-  function x(t = "不使用实体", o = !1) {
-    const e = l(t, o);
-    return ((e.className = "editor-paged-picker-selected-action"), e);
+
+  function createEditorPickerCurrentAsset(asset, emptyLabel = "未使用图片") {
+    const current = document.createElement("span");
+    current.className = "editor-paged-picker-current-asset";
+    const image = document.createElement("img");
+    image.alt = "";
+    const name = document.createElement("span");
+    name.className = "editor-paged-picker-current-asset-name";
+    if (asset) {
+      image.src = assetPreviewUrl(asset);
+      name.textContent = assetDisplayName(asset) || emptyLabel;
+      current.title = asset.name || asset.relativePath || asset.assetId || emptyLabel;
+    } else {
+      image.hidden = true;
+      name.textContent = emptyLabel;
+    }
+    current.append(image, name);
+    return current;
   }
-  function y(t, o = !1) {
-    const e = document.createElement("button");
-    return (
-      (e.type = "button"),
-      (e.className = `editor-paged-picker-selected-action${o ? " selected" : ""}`),
-      (e.dataset.editorPickerValue = t.entityId),
-      (e.title = i(t)),
-      (e.textContent = i(t)),
-      e
-    );
-  }
-  function I(t, o = "未选择实体") {
-    const e = document.createElement("span");
-    e.className = "editor-paged-picker-current-entity";
-    const n = document.createElement("span");
-    n.className = "editor-paged-picker-current-entity-name";
-    const c = document.createElement("span");
-    return (
-      (c.className = "editor-paged-picker-current-entity-id"),
-      t
-        ? ((n.textContent = d(t)),
-          (c.textContent = t.entityId || ""),
-          (e.title = i(t)))
-        : ((n.textContent = o), (c.textContent = "")),
-      e.append(n),
-      c.textContent && e.append(c),
-      e
-    );
-  }
-  function P(t, o = "未使用图片") {
-    const e = document.createElement("span");
-    e.className = "editor-paged-picker-current-asset";
-    const n = document.createElement("img");
-    n.alt = "";
-    const c = document.createElement("span");
-    return (
-      (c.className = "editor-paged-picker-current-asset-name"),
-      t
-        ? ((n.src = E(t)),
-          (c.textContent = m(t) || o),
-          (e.title = t.name || t.relativePath || t.assetId || o))
-        : ((n.hidden = !0), (c.textContent = o)),
-      e.append(n, c),
-      e
-    );
-  }
+
   return Object.freeze({
-    createIconPickerClearOption: C,
-    createIconPickerOption: b,
-    createEditorPickerCurrentIcon: f,
-    createEditorEntityPickerOption: N,
-    editorPickerClearOption: l,
-    editorPickerClearAction: x,
-    editorPickerEntityAction: y,
-    createEditorPickerCurrentEntity: I,
-    createEditorPickerCurrentAsset: P,
+    createIconPickerClearOption,
+    createIconPickerOption,
+    createEditorPickerCurrentIcon,
+    createEditorEntityPickerOption,
+    editorPickerClearOption,
+    editorPickerClearAction,
+    editorPickerEntityAction,
+    createEditorPickerCurrentEntity,
+    createEditorPickerCurrentAsset,
   });
 }
