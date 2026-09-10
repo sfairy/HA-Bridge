@@ -236,12 +236,16 @@ export {
   historyRequestStillRelevant,
 };
 export { lineChartRuntimeStateNeedsHydration, syncedLineChartProperties };
-const rn = 1000;
-const cn = 0.76;
-const ss = 0.7;
-const as = 1.6;
-const os = 2;
-const rs = 2.12;
+const MAX_REALTIME_SUBSCRIBED_ENTITIES = 1000;
+const DEFAULT_TARGET_OCCUPANCY = 0.76;
+const COMPACT_TARGET_OCCUPANCY = 0.7;
+const MAX_PREFERRED_SCALE = 1.6;
+const FILL_AVAILABLE_SCALE = 2;
+const FILL_TIGHT_FILL_SCALE = 2.12;
+// Cover position convention in this codebase: 0 = fully closed, 100 = fully open.
+// A cover whose reported position exceeds this epsilon is treated as "not closed",
+// so a toggle click drives it toward the opposite extreme.
+const COVER_CLOSED_POSITION_EPSILON = 1;
 export function runtimeDialogLayout({
   layerWidth: value,
   layerHeight: value2,
@@ -249,7 +253,7 @@ export function runtimeDialogLayout({
   layoutHeight: value4,
   fillAvailable: value5 = false,
   tightFill: value6 = false,
-  targetOccupancy: value7 = cn,
+  targetOccupancy: value7 = DEFAULT_TARGET_OCCUPANCY,
 }) {
   const count = Math.max(1, Number(value) || 1);
   const count2 = Math.max(1, Number(value2) || 1);
@@ -263,14 +267,14 @@ export function runtimeDialogLayout({
   const availableWidth = Math.max(1, count - safeInset * 2);
   const availableHeight = Math.max(1, count2 - safeInset * 2);
   const fitScale = Math.min(availableWidth / count3, availableHeight / count4);
-  const count5 = Math.max(0.2, Math.min(1, Number(value7) || cn));
+  const count5 = Math.max(0.2, Math.min(1, Number(value7) || DEFAULT_TARGET_OCCUPANCY));
   const value8 = Math.min(
     (count * count5) / count3,
     (count2 * count5) / count4,
   );
-  const preferredScale = Math.min(as, value8);
+  const preferredScale = Math.min(MAX_PREFERRED_SCALE, value8);
   const value9 = Math.min(
-    value5 ? (value6 ? rs : os) : preferredScale,
+    value5 ? (value6 ? FILL_TIGHT_FILL_SCALE : FILL_AVAILABLE_SCALE) : preferredScale,
     fitScale,
   );
   return {
@@ -315,19 +319,19 @@ export function runtimeDialogViewport({
     centerY: count6 - value10 + height / 2,
   };
 }
-function hi(value) {
+function assignComponentIds(value) {
   value.id = "component-" + randomUuid();
   for (const value2 of value.children || []) {
-    hi(value2);
+    assignComponentIds(value2);
   }
   return value;
 }
-function gi(value) {
+function eventHasCommandModifier(value) {
   const value2 = navigator.userAgentData?.platform || navigator.platform || "";
   const value3 = /mac|iphone|ipad|ipod/i.test(value2);
   return value.altKey || value.ctrlKey || (value3 && value.metaKey);
 }
-function De(value, value2) {
+function isComponentActionSupported(value, value2) {
   return componentActionIsSupported(value, value2);
 }
 export function componentDialogTitle(component, value) {
@@ -342,7 +346,7 @@ export function popupModuleDialogTitle(value, value2, value3 = "") {
     String(value?.entityId || "").trim()
   );
 }
-function fi(value) {
+function appendAirerVisual(value) {
   const ownerDocument = value.ownerDocument;
   const value2 = ownerDocument.createElement("span");
   value2.className = "hb-airer-visual";
@@ -367,7 +371,7 @@ function fi(value) {
   value2.append(value3, value4, value6, value7);
   value.append(value2);
 }
-function ln(value) {
+function coverLiftStateLabel(value) {
   return (
     {
       open: "已升起",
@@ -377,7 +381,7 @@ function ln(value) {
     }[value] || ""
   );
 }
-function dn({
+function buildSwitchVisual({
   label: value = "开关",
   interactive: value2 = true,
   onToggle: value3 = null,
@@ -472,7 +476,7 @@ function dn({
     sync: sync,
   };
 }
-function un(value, value2, value3 = 0) {
+function lerpHexColor(value, value2, value3 = 0) {
   const fn = (value6) => {
     const value7 = String(value6 || "").trim();
     const value8 = /^#[0-9a-f]{3}$/i.test(value7)
@@ -3446,7 +3450,7 @@ export class PanelRenderer {
       }
       if (
         Object.values(value14.actions || {}).some((value15) =>
-          De(value14, value15),
+          isComponentActionSupported(value14, value15),
         )
       ) {
         element2.classList.add("interactive");
@@ -3527,7 +3531,7 @@ export class PanelRenderer {
     ) {
       return;
     }
-    let value4 = gi(event);
+    let value4 = eventHasCommandModifier(event);
     let value5 =
       !value4 &&
       value3.length === 1 &&
@@ -3591,7 +3595,7 @@ export class PanelRenderer {
           value2.setPointerCapture(pointerId);
         } catch {}
       }
-      if (!value4 && gi(value16)) {
+      if (!value4 && eventHasCommandModifier(value16)) {
         value4 = true;
         value5 = false;
       }
@@ -3602,7 +3606,7 @@ export class PanelRenderer {
           return;
         }
         value9 = value3.map((value23) => {
-          const copiedComponent = hi(structuredClone(value23.component));
+          const copiedComponent = assignComponentIds(structuredClone(value23.component));
           copiedComponent.position = {
             ...(copiedComponent.position || {}),
             zIndex: Number(copiedComponent.position?.zIndex || 1) + 1,
@@ -5083,13 +5087,13 @@ export class PanelRenderer {
     let value8 = 0;
     let value9 = null;
     let value10;
-    const value11 = De(component, component.actions?.tap)
+    const value11 = isComponentActionSupported(component, component.actions?.tap)
       ? component.actions.tap
       : null;
-    const value12 = De(component, component.actions?.doubleTap)
+    const value12 = isComponentActionSupported(component, component.actions?.doubleTap)
       ? component.actions.doubleTap
       : null;
-    const value13 = De(component, component.actions?.hold)
+    const value13 = isComponentActionSupported(component, component.actions?.hold)
       ? component.actions.hold
       : null;
     const value14 = !!value11?.type && value11.type !== "none";
@@ -5788,7 +5792,7 @@ export class PanelRenderer {
         dialog.classList.contains("media-player-details"),
       tightFill: dialog.classList.contains("media-player-details"),
       targetOccupancy:
-        dialog.dataset.runtimeDialogLayout === "compact" ? ss : cn,
+        dialog.dataset.runtimeDialogLayout === "compact" ? COMPACT_TARGET_OCCUPANCY : DEFAULT_TARGET_OCCUPANCY,
       measureFrame: 0,
       layoutObserver: null,
       entranceAnimations: [],
@@ -6259,7 +6263,7 @@ export class PanelRenderer {
       );
     const value9 = [];
     const value10 = ["fan", "switch", "input_boolean"].includes(value5);
-    const value11 = dn({
+    const value11 = buildSwitchVisual({
       label: "电源",
       interactive: interactive,
       compact: value2 === "air-purifier",
@@ -8480,7 +8484,7 @@ export class PanelRenderer {
         let value25 = "idle";
         let value26 = null;
         const momentary = entityId.split(".")[0] === "button";
-        const value27 = dn({
+        const value27 = buildSwitchVisual({
           label: element5.textContent,
           interactive: !preview,
           momentary: momentary,
@@ -9131,7 +9135,7 @@ export class PanelRenderer {
         element7.classList.add("direction-" + value40);
         element7.append(value47, value42, value43, value44, value45);
         if (airer) {
-          fi(element7);
+          appendAirerVisual(element7);
         }
         const fn3 = (value51 = value31) => {
           if (!airer) {
@@ -9224,7 +9228,7 @@ export class PanelRenderer {
           );
           if (airer) {
             element6.textContent =
-              ln(value52) || Math.round(current_position) + "%";
+              coverLiftStateLabel(value52) || Math.round(current_position) + "%";
           } else if (dream) {
             element6.textContent = dreamCurtainStatusText(
               state || value23?.state,
@@ -11339,15 +11343,15 @@ export class PanelRenderer {
         visualMode === "off"
           ? "#65717a"
           : visualMode === "cool"
-            ? un(value34, "#ffffff", count * 0.32)
+            ? lerpHexColor(value34, "#ffffff", count * 0.32)
             : visualMode === "heat"
-              ? un(value34, "#ffffff", (1 - count) * 0.3)
+              ? lerpHexColor(value34, "#ffffff", (1 - count) * 0.3)
               : value34;
       element.dataset.climateVisualMode = visualMode;
       if (visualMode !== "off") {
         element.dataset.lastClimateMode = String(value20?.state || "auto");
       }
-      const accentSoft = un(accentColor, "#11171c", 0.72);
+      const accentSoft = lerpHexColor(accentColor, "#11171c", 0.72);
       element.style.setProperty("--hb-climate-accent", accentColor);
       element.style.setProperty("--hb-climate-accent-soft", accentSoft);
       const running = climateIsRunning(value20, value6);
@@ -14880,7 +14884,7 @@ export class PanelRenderer {
         closing: "正在关闭",
       };
       element17.textContent = airer
-        ? ln(value57) || value57 || "状态未知"
+        ? coverLiftStateLabel(value57) || value57 || "状态未知"
         : dream
           ? dreamCurtainStatusText(value6?.state, numeric2, motorReversed)
           : value58[value57] || value57 || "状态未知";
@@ -15133,7 +15137,7 @@ export class PanelRenderer {
       element10.classList.add("direction-" + value25);
       element10.append(value62, value57, value58, value59, value60);
       if (airer) {
-        fi(element10);
+        appendAirerVisual(element10);
       }
       fn4 = (value63 = value16) => {
         if (!airer) {
@@ -15379,7 +15383,7 @@ export class PanelRenderer {
       };
     }
     if (value26) {
-      const value57 = dn({
+      const value57 = buildSwitchVisual({
         label: label,
         interactive: !preview,
         momentary: momentary,
@@ -15761,7 +15765,7 @@ export class PanelRenderer {
                 };
                 const onVisualChange4 = physicalCoverState(text, motorReversed);
                 element3.textContent = airer
-                  ? ln(onVisualChange2) || Math.round(onVisualChange) + "%"
+                  ? coverLiftStateLabel(onVisualChange2) || Math.round(onVisualChange) + "%"
                   : dream
                     ? dreamCurtainStatusText(
                         text,
@@ -16451,7 +16455,7 @@ export class PanelRenderer {
     if (!entityIds.length || this.destroyed) {
       return;
     }
-    if (entityIds.length > rn) {
+    if (entityIds.length > MAX_REALTIME_SUBSCRIBED_ENTITIES) {
       const text = String(entityIds.length);
       if (this.runtimeEntityLimitSignature !== text) {
         this.runtimeEntityLimitSignature = text;
@@ -16460,7 +16464,7 @@ export class PanelRenderer {
             "当前项目需要实时订阅 " +
               entityIds.length +
               " 个实体，已超过 " +
-              rn +
+              MAX_REALTIME_SUBSCRIBED_ENTITIES +
               " 个上限。请减少统计或控件中绑定的实体。",
           ),
         );
@@ -16697,7 +16701,7 @@ export class PanelRenderer {
         const value10 =
           value8.reason === "too many entities"
             ? "当前项目的实时订阅实体超过 " +
-              rn +
+              MAX_REALTIME_SUBSCRIBED_ENTITIES +
               " 个，已停止重连。请减少统计或控件中绑定的实体。"
             : "实时状态订阅请求无效，已停止自动重连。";
         this.options.onError?.(new Error(value10));

@@ -7,7 +7,7 @@ const bag = new Set([
   "siren",
 ]);
 const bag2 = new Set(["climate", "water_heater"]);
-function fn(metadata) {
+function entityDomain(metadata) {
   const value2 =
     typeof metadata == "string"
       ? metadata
@@ -23,7 +23,7 @@ export function lightStatisticsEntitySupport(value) {
     typeof value == "string"
       ? value
       : String(value?.entityId || value?.entity_id || "");
-  const value3 = fn(value);
+  const value3 = entityDomain(value);
   if (value3 === "virtual" || value?.virtual) {
     return {
       supported: true,
@@ -55,7 +55,7 @@ export function lightStatisticsEntityStateStatus(value, value2) {
   if (!lightStatisticsEntitySupport(value).supported) {
     return "abnormal";
   }
-  const value3 = fn(value);
+  const value3 = entityDomain(value);
   const value4 = String(value2?.state ?? value2 ?? "")
     .trim()
     .toLowerCase();
@@ -69,7 +69,7 @@ export function lightStatisticsEntityStateStatus(value, value2) {
     return "abnormal";
   }
 }
-function S(value, value2) {
+function metadataGet(value, value2) {
   if (typeof value?.get == "function") {
     return value.get(value2) || null;
   } else {
@@ -104,7 +104,7 @@ export function lightStatisticsSummary(
     }
   }
   const items = value2.map((entityId) => {
-    const value3 = S(value, entityId) || {};
+    const value3 = metadataGet(value, entityId) || {};
     const value4 = fn2(floorNames, entityId);
     const state = String(value4?.state || "")
       .trim()

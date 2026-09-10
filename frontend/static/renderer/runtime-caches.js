@@ -1,4 +1,4 @@
-const l = 512;
+const MAX_HISTORY_CACHE_ENTRIES = 512;
 export const HISTORY_FETCH_TIMEOUT_MS = 12000;
 export function historySeriesCacheKey(value, value2) {
   return String(value || "") + ":" + (Number(value2) || 0);

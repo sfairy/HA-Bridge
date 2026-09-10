@@ -215,7 +215,7 @@ export function resolveClimateDeviceType(component, value, value2 = "") {
     return "air-conditioner";
   }
 }
-const M = {
+const AC_PRESET_LABELS = {
   off: "关闭",
   cool: "制冷",
   heat: "制热",
@@ -239,7 +239,7 @@ const M = {
   eco_and_mold_prev: "节能＋防霉",
   eco_mold_prev: "节能＋防霉",
 };
-const v = {
+const BATH_HEATER_MODE_LABELS = {
   off: "关闭",
   heat: "取暖",
   heating: "取暖",
@@ -285,7 +285,7 @@ const v = {
   干燥: "干燥",
   待机: "待机",
 };
-const x = {
+const WATER_HEATER_MODE_LABELS = {
   off: "关闭",
   normal: "普通",
   standard: "普通",
@@ -303,7 +303,7 @@ const x = {
   加热: "加热",
   保温: "保温",
 };
-const L = {
+const SWING_MODE_LABELS = {
   off: "关闭",
   auto: "自动",
   default: "默认",
@@ -322,7 +322,7 @@ const L = {
   swing_lower_middle: "中下摆动",
   swing_lower: "下方摆动",
 };
-const y = {
+const HORIZONTAL_SWING_MODE_LABELS = {
   off: "关闭",
   auto: "自动",
   default: "默认",
@@ -333,7 +333,7 @@ const y = {
   right_center: "固定中右",
   right: "固定右侧",
 };
-const w = {
+const HORIZONTAL_POSITION_LABELS = {
   horizontal_leftmost: "固定最左",
   horizontal_middle_left: "固定左中",
   horizontal_middle_right: "固定右中",
@@ -350,7 +350,7 @@ export function normalizeClimateModeKey(climateModeKey) {
     .replace(/_+/g, "_")
     .replace(/^_|_$/g, "");
 }
-function C(value, value2) {
+function estimateTextWidth(value, value2) {
   return Array.from(String(value || "")).reduce(
     (value3, value4) =>
       /\s/u.test(value4)
@@ -386,7 +386,7 @@ export function climateOptionPresentation(
       .map((value12) => String(value2?.[value12] || value12).trim())
       .reduce(
         (value12, value13) => {
-          const value14 = C(value13, value10);
+          const value14 = estimateTextWidth(value13, value10);
           const value15 = value8
             ? value7 + value9 + value14
             : Math.max(value7, value14);
@@ -459,7 +459,7 @@ export function climateModeLabel(
   }
   const climateModeKey = normalizeClimateModeKey(value4);
   const value5 =
-    value2 === "bath-heater" ? v : value2 === "water-heater" ? x : M;
+    value2 === "bath-heater" ? BATH_HEATER_MODE_LABELS : value2 === "water-heater" ? WATER_HEATER_MODE_LABELS : AC_PRESET_LABELS;
   const value6 = climateModeTranslation(value4, value3);
   if (value6 && /[^\x00-\x7f]/u.test(value6)) {
     return value6;
@@ -473,7 +473,7 @@ export function climateSwingModeLabel(value, value2 = "vertical", value3 = {}) {
     return "等待实体状态";
   }
   const climateModeKey = normalizeClimateModeKey(value4);
-  const value5 = value2 === "horizontal" ? y : L;
+  const value5 = value2 === "horizontal" ? HORIZONTAL_SWING_MODE_LABELS : SWING_MODE_LABELS;
   if (value5[climateModeKey]) {
     return value5[climateModeKey];
   }
@@ -482,13 +482,13 @@ export function climateSwingModeLabel(value, value2 = "vertical", value3 = {}) {
       /^(horizontal_(?:leftmost|middle_left|middle_right|rightmost))(?:_and_)?vertical_swing$/,
     );
     if (value6) {
-      const value7 = w[value6[1]];
+      const value7 = HORIZONTAL_POSITION_LABELS[value6[1]];
       if (value7) {
         return value7 + "＋上下摆动";
       }
     }
-    if (w[climateModeKey]) {
-      return w[climateModeKey];
+    if (HORIZONTAL_POSITION_LABELS[climateModeKey]) {
+      return HORIZONTAL_POSITION_LABELS[climateModeKey];
     }
   }
   return (

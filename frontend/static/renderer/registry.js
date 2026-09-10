@@ -11,7 +11,7 @@ import {
 import { entityPowerIsOn } from "./entity-power.js?v=20260813-generic-device-power-v2";
 import { lightRealtimeCapabilities } from "./light-runtime.js?v=20260901-renderer-light-runtime-v1";
 import { renderInteraction3d } from "../modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6";
-const ue = new Map();
+const COMPONENT_RENDERERS = new Map();
 const index = new Map();
 const index2 = new Map();
 const index3 = new Map();
@@ -93,11 +93,11 @@ export function setBuiltinAssetVersions(value = []) {
   return true;
 }
 export function registerComponent(value, value2) {
-  ue.set(value, value2);
+  COMPONENT_RENDERERS.set(value, value2);
 }
 registerComponent("interaction3d", { render: renderInteraction3d });
 export function renderRegisteredComponent(value, value2) {
-  const value3 = ue.get(value.type);
+  const value3 = COMPONENT_RENDERERS.get(value.type);
   if (value3) {
     return value3.render(value, value2);
   }
@@ -110,7 +110,7 @@ export function renderRegisteredComponent(value, value2) {
   value4.append(element, element2);
   return value4;
 }
-function ne(value) {
+function resolveAssetUrl(value) {
   const text = String(value || "");
   if (index2.has(text)) {
     return index2.get(text);
@@ -160,16 +160,16 @@ function ne(value) {
   );
 }
 export function staticAssetImageSource(staticAssetImage) {
-  return ne(staticAssetImage);
+  return resolveAssetUrl(staticAssetImage);
 }
-function fn(value, value2, value3, value4) {
+function clampWithDefault(value, value2, value3, value4) {
   const numeric = Number(value);
   return Math.max(
     value2,
     Math.min(value3, Number.isFinite(numeric) ? numeric : value4),
   );
 }
-function S(value, value2) {
+function safeCssColor(value, value2) {
   const value3 = String(value || "").trim();
   if (
     /^(#[\da-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%]+\))$/i.test(value3)
@@ -179,19 +179,19 @@ function S(value, value2) {
     return value2;
   }
 }
-function B(value, value2, value3) {
+function applyTextStroke(value, value2, value3) {
   const numeric = Number(value2);
   const value4 =
     Number.isFinite(numeric) && numeric > 1
-      ? fn((numeric - 1) / 899, 0, 1, 0.4)
-      : fn(numeric, 0, 1, 0.4);
+      ? clampWithDefault((numeric - 1) / 899, 0, 1, 0.4)
+      : clampWithDefault(numeric, 0, 1, 0.4);
   const count = Math.max(1, Number(value3 || 16));
   const value5 = value4 * count * 0.05;
   value.style.fontWeight = "100";
   value.style.webkitTextStroke = value5.toFixed(3) + "px currentColor";
   value.style.paintOrder = "stroke fill";
 }
-function K(value) {
+function resolveMdiIconUrl(value) {
   const value2 = String(value || "")
     .trim()
     .replace(/^mdi:/, "");
@@ -201,14 +201,14 @@ function K(value) {
     return "";
   }
 }
-function fe(value) {
+function entityStateIsActive(value) {
   const value2 = String(value?.state ?? value?.newState?.state ?? "")
     .trim()
     .toLowerCase();
   return ["on", "open", "true", "home"].includes(value2);
 }
-const De = 1;
-function he(component) {
+const COVER_CLOSED_POSITION_EPSILON = 1;
+function coverMotorIsReversed(component) {
   return component?.properties?.coverMotorDirection === "reversed";
 }
 export function coverComponentIsDream(
@@ -224,7 +224,7 @@ export function coverComponentIsDream(
   if (["standard", "airer"].includes(coverKind)) {
     return false;
   }
-  const value4 = D(value2) || {};
+  const value4 = readState(value2) || {};
   const numeric = Number(value4.attributes?.supported_features || 0);
   const value5 = value3?.get?.(value) || {};
   const value6 =
@@ -241,12 +241,12 @@ export function coverComponentIsDream(
     /梦幻|竖帘|垂直帘|百叶|(^|[._-])novo([._-]|$)/i.test(value6)
   );
 }
-function Be(value, value2, value3, value4) {
-  const value5 = D(value3) || {};
+function computeCoverComponentIsActive(value, value2, value3, value4) {
+  const value5 = readState(value3) || {};
   const value6 = String(value5.state || "")
     .trim()
     .toLowerCase();
-  const value7 = he(value);
+  const value7 = coverMotorIsReversed(value);
   const value8 =
     (value7 &&
       {
@@ -267,17 +267,17 @@ function Be(value, value2, value3, value4) {
   }
   const numeric = Number(value5.attributes?.current_position);
   if (Number.isFinite(numeric)) {
-    return (value7 ? 100 - numeric : numeric) > De;
+    return (value7 ? 100 - numeric : numeric) > COVER_CLOSED_POSITION_EPSILON;
   } else if (value7) {
-    return !fe(value5);
+    return !entityStateIsActive(value5);
   } else {
-    return fe(value5);
+    return entityStateIsActive(value5);
   }
 }
 export function coverComponentIsActive(value, value2, value3, value4 = {}) {
-  return Be(value, value2, value3, value4);
+  return computeCoverComponentIsActive(value, value2, value3, value4);
 }
-function ae(component, value, value2, value3 = {}) {
+function componentIsActive(component, value, value2, value3 = {}) {
   if (String(value || "").startsWith("cover.")) {
     return coverComponentIsActive(component, value, value2, value3);
   }
@@ -285,7 +285,7 @@ function ae(component, value, value2, value3 = {}) {
   const value4 = text === value ? value2 : value3.states?.get(text);
   return entityPowerIsOn(text, value4, component);
 }
-function D(value) {
+function readState(value) {
   return value?.newState || value || null;
 }
 export function iconButtonEffectLightVisualAwaiting(component, value = {}) {
@@ -299,7 +299,7 @@ export function iconButtonEffectLightVisualAwaiting(component, value = {}) {
   ) {
     return false;
   }
-  const value3 = D(value.states?.get?.(text));
+  const value3 = readState(value.states?.get?.(text));
   const value4 = String(value3?.state || "").toLowerCase();
   if (!value3 || value4 === "unknown" || value4 === "unavailable") {
     return true;
@@ -339,7 +339,7 @@ export function iconButtonEffectLightVisualAwaiting(component, value = {}) {
   );
 }
 export function vacuumMapImageSource(vacuumMapImage, value = null) {
-  const value2 = D(value) || {};
+  const value2 = readState(value) || {};
   const text = String(
     value2.updatedAt || value2.lastChanged || value2.state || "initial",
   );
@@ -418,8 +418,8 @@ export {
   presenceSensorPresentation,
   presenceStateTimestamp,
 };
-function et(value, value2) {
-  const value3 = String(D(value2)?.attributes?.icon || "").trim();
+function resolveEntityIcon(value, value2) {
+  const value3 = String(readState(value2)?.attributes?.icon || "").trim();
   if (value3) {
     return value3;
   }
@@ -444,7 +444,7 @@ function et(value, value2) {
   );
 }
 export function formatEntityState(component, value2 = "", value3 = {}) {
-  const value4 = D(component);
+  const value4 = readState(component);
   if (!value4) {
     return "等待实体状态";
   }
@@ -503,7 +503,7 @@ export function formatEntityState(component, value2 = "", value3 = {}) {
     value5 ||
     "未知";
   const value15 =
-    String(value2 || "").startsWith("cover.") && he(value3.component)
+    String(value2 || "").startsWith("cover.") && coverMotorIsReversed(value3.component)
       ? {
           open: "关闭",
           closed: "打开",
@@ -524,7 +524,7 @@ export function formatEntityState(component, value2 = "", value3 = {}) {
     return value17;
   }
 }
-function Pe(component, value) {
+function iconButtonEffectIsActive(component, value) {
   if (value.editable && value.previewState === "on") {
     return true;
   }
@@ -532,10 +532,10 @@ function Pe(component, value) {
     return false;
   }
   const value2 = component.bindings?.entity?.entityId || "";
-  return !!value2 && !!ae(component, value2, value.states?.get(value2), value);
+  return !!value2 && !!componentIsActive(component, value2, value.states?.get(value2), value);
 }
 export const ICON_BUTTON_EFFECT_BASE_TEMPERATURE_KELVIN = 3500;
-function tt(value) {
+function brightnessToOpacity(value) {
   if (value == null || value === "" || !Number.isFinite(Number(value))) {
     return 1;
   }
@@ -546,7 +546,7 @@ function tt(value) {
     return 0.2 + count * 0.8;
   }
 }
-function nt(value = {}) {
+function readColorTemperatureKelvin(value = {}) {
   const numeric = Number(value.color_temp_kelvin);
   if (Number.isFinite(numeric) && numeric > 0) {
     return numeric;
@@ -560,7 +560,7 @@ function nt(value = {}) {
 }
 export function iconButtonEffectLightVisualState(component, value = {}) {
   const text = String(component?.bindings?.entity?.entityId || "");
-  const value2 = D(value.states?.get?.(text))?.attributes || {};
+  const value2 = readState(value.states?.get?.(text))?.attributes || {};
   if (!text.startsWith("light.")) {
     return {
       brightnessPercent: null,
@@ -575,11 +575,11 @@ export function iconButtonEffectLightVisualState(component, value = {}) {
   const brightnessPercent = Number.isFinite(value3)
     ? Math.max(0, Math.min(100, (value3 / 255) * 100))
     : null;
-  const colorTemperatureKelvin = nt(value2);
+  const colorTemperatureKelvin = readColorTemperatureKelvin(value2);
   const value4 = component?.properties || {};
   const value5 = value4.effectBrightnessRealtime !== false;
   const value6 = value4.effectColorTemperatureRealtime !== false;
-  const opacity = value5 ? tt(brightnessPercent) : 1;
+  const opacity = value5 ? brightnessToOpacity(brightnessPercent) : 1;
   if (!value6 || !Number.isFinite(colorTemperatureKelvin)) {
     return {
       brightnessPercent: brightnessPercent,
@@ -612,7 +612,7 @@ export function iconButtonEffectLightVisualState(component, value = {}) {
     filter: "saturate(" + value7.toFixed(3) + ")",
   };
 }
-function it(component, value) {
+function iconButtonIsActive(component, value) {
   if (value.editable && value.previewState === "on") {
     return true;
   }
@@ -620,11 +620,11 @@ function it(component, value) {
     return false;
   }
   const value2 = component.bindings?.entity?.entityId || "";
-  return !!value2 && !!ae(component, value2, value.states?.get(value2), value);
+  return !!value2 && !!componentIsActive(component, value2, value.states?.get(value2), value);
 }
-function ot(component, value) {
+function climatePresentationModeForComponent(component, value) {
   const value2 = component.bindings?.entity?.entityId || "";
-  const value3 = D(value.states?.get(value2));
+  const value3 = readState(value.states?.get(value2));
   const value4 = resolveClimateDeviceType(component, value3, value2);
   if (value.editable && value.previewState === "on") {
     if (value4 === "bath-heater") {
@@ -638,7 +638,7 @@ function ot(component, value) {
     return climatePresentationMode(value3, value4).toLowerCase();
   }
 }
-function de(component, value) {
+function climateIsPoweredOnForComponent(component, value) {
   if (value.editable && value.previewState === "on") {
     return true;
   }
@@ -646,15 +646,15 @@ function de(component, value) {
     return false;
   }
   const value2 = component.bindings?.entity?.entityId || "";
-  const value3 = D(value.states?.get(value2));
+  const value3 = readState(value.states?.get(value2));
   return climateIsPoweredOn(
     value3,
     resolveClimateDeviceType(component, value3, value2),
   );
 }
-function st(component, value) {
+function climateEffectModeForComponent(component, value) {
   const value2 = component.bindings?.entity?.entityId || "";
-  const value3 = D(value.states?.get(value2));
+  const value3 = readState(value.states?.get(value2));
   const value4 = resolveClimateDeviceType(component, value3, value2);
   if (value.editable && value.previewState === "on") {
     return "cool";
@@ -664,13 +664,13 @@ function st(component, value) {
     return climateEffectMode(value3, value4);
   }
 }
-function at(component, value) {
+function climateStatusLabel(component, value) {
   const value2 = component.bindings?.entity?.entityId || "";
-  const value3 = D(value.states?.get(value2));
-  const value4 = ot(component, value);
+  const value3 = readState(value.states?.get(value2));
+  const value4 = climatePresentationModeForComponent(component, value);
   const value5 = resolveClimateDeviceType(component, value3, value2);
   const value6 = climateModeLabel(value4, value5);
-  if (!de(component, value)) {
+  if (!climateIsPoweredOnForComponent(component, value)) {
     return value6;
   }
   const climateCapabilities = normalizeClimateCapabilities(value3);
@@ -682,25 +682,25 @@ function at(component, value) {
     return value6;
   }
 }
-function rt(value = {}, value2 = "other") {
+function buildAirflowEffect(value = {}, value2 = "other") {
   const value3 = value.airflowMotion === "static" ? "static" : "dynamic";
   const value4 =
     value2 === "cool"
-      ? S(value.airflowCoolColor, "#73c8ff")
+      ? safeCssColor(value.airflowCoolColor, "#73c8ff")
       : value2 === "heat"
-        ? S(value.airflowHeatColor, "#ff8a65")
-        : S(value.airflowOtherColor, "#ffffff");
-  const value5 = fn(value.airflowAngle, -360, 360, 7);
-  const value6 = fn(value.airflowLength, 10, 300, 200) / 100;
-  const value7 = fn(value.airflowFadePosition, 15, 100, 50) / 100;
-  const value8 = fn(value.airflowSpread, 10, 300, 100);
-  const value9 = Math.tanh(fn(value.airflowCurve, -200, 200, 20) / 140);
-  const value10 = fn(value.airflowDensity, 20, 200, 60) / 100;
-  const value11 = fn(value.airflowIrregularity, 0, 200, 50) / 100;
-  const value12 = fn(value.airflowThickness, 5, 300, 40) / 100;
-  const value13 = fn(value.airflowStrength, 0, 500, 200) / 100;
-  const value14 = fn(value.airflowBlur, 0, 30, 6);
-  const value15 = fn(value.airflowSpeed, 0.3, 12, 1);
+        ? safeCssColor(value.airflowHeatColor, "#ff8a65")
+        : safeCssColor(value.airflowOtherColor, "#ffffff");
+  const value5 = clampWithDefault(value.airflowAngle, -360, 360, 7);
+  const value6 = clampWithDefault(value.airflowLength, 10, 300, 200) / 100;
+  const value7 = clampWithDefault(value.airflowFadePosition, 15, 100, 50) / 100;
+  const value8 = clampWithDefault(value.airflowSpread, 10, 300, 100);
+  const value9 = Math.tanh(clampWithDefault(value.airflowCurve, -200, 200, 20) / 140);
+  const value10 = clampWithDefault(value.airflowDensity, 20, 200, 60) / 100;
+  const value11 = clampWithDefault(value.airflowIrregularity, 0, 200, 50) / 100;
+  const value12 = clampWithDefault(value.airflowThickness, 5, 300, 40) / 100;
+  const value13 = clampWithDefault(value.airflowStrength, 0, 500, 200) / 100;
+  const value14 = clampWithDefault(value.airflowBlur, 0, 30, 6);
+  const value15 = clampWithDefault(value.airflowSpeed, 0.3, 12, 1);
   const value16 = 6;
   const value17 = value16 + (228 - value16) * value7;
   const value18 = value16 + (value17 - value16) * 0.63;
@@ -894,13 +894,13 @@ function rt(value = {}, value2 = "other") {
 }
 export function renderAirConditionerAirflowLayer(component, value) {
   const value2 = component.properties || {};
-  if (value2.airflowVisible === false || !de(component, value)) {
+  if (value2.airflowVisible === false || !climateIsPoweredOnForComponent(component, value)) {
     return null;
   }
   const value3 = document.createElement("div");
   value3.className = "hb-air-conditioner-airflow-layer";
   const value4 = document.createElement("img");
-  value4.src = rt(value2, st(component, value));
+  value4.src = buildAirflowEffect(value2, climateEffectModeForComponent(component, value));
   value4.alt = "";
   value4.draggable = false;
   value3.append(value4);
@@ -914,7 +914,7 @@ function fn2(value, value2, value3 = {}) {
   value.append(value4);
   return value4;
 }
-function Te(value, value2, value3, value4 = 24) {
+function buildLineChartSeries(value, value2, value3, value4 = 24) {
   const value5 = (
     Array.isArray(value.history?.get(value2)?.points)
       ? value.history.get(value2).points
@@ -945,7 +945,7 @@ function Te(value, value2, value3, value4 = 24) {
   if (!value6.length) {
     return [];
   }
-  const rounded = Math.round(fn(value4, 1, 168, 24));
+  const rounded = Math.round(clampWithDefault(value4, 1, 168, 24));
   const value7 = 3600000;
   const value8 = timestamp - rounded * value7;
   const value9 = [];
@@ -968,7 +968,7 @@ function Te(value, value2, value3, value4 = 24) {
   }
   return value9;
 }
-function ke(value, value2 = true) {
+function formatChartTime(value, value2 = true) {
   const value3 = value2
     ? {
         month: "2-digit",
@@ -986,7 +986,7 @@ function ke(value, value2 = true) {
     .format(new Date(value))
     .replace(/\//g, "-");
 }
-function Le(
+function setupLineChartHoverTooltip(
   element,
   element2,
   value,
@@ -1026,7 +1026,7 @@ function Le(
       return;
     }
     const value12 = (value10.clientX - value11.left) / value11.width;
-    const value13 = fn(
+    const value13 = clampWithDefault(
       (value12 - value4.start) / Math.max(0.001, value4.end - value4.start),
       0,
       1,
@@ -1060,7 +1060,7 @@ function Le(
     const value26 = value24 ? value19 - value25.left : value19;
     const value27 = value24 ? value20 - value25.top : value20;
     element3.textContent =
-      ke(element5.timestamp) +
+      formatChartTime(element5.timestamp) +
       "  " +
       formatLineChartValue(element5.value, value3) +
       value2;
@@ -1099,24 +1099,24 @@ function Le(
     element3.remove();
   };
 }
-function ct(value, value2, value3, value4, value5, value6) {
+function buildLightFrameVisual(value, value2, value3, value4, value5, value6) {
   const count = Math.max(1, Number(value.position?.width || 236));
   const count2 = Math.max(1, Number(value.position?.height || 100));
   const count3 = Math.max(8, (count2 * 236) / count);
-  const value7 = fn(value2.frameWidth, 0, 20, 2);
+  const value7 = clampWithDefault(value2.frameWidth, 0, 20, 2);
   const count4 = Math.max(0.5, value7 / 2 + 0.5);
   const count5 = Math.max(1, 236 - count4 * 2);
   const count6 = Math.max(1, count3 - count4 * 2);
-  const value8 = Math.min(count5, count6) * fn(value2.radius, 0, 0.5, 0.5);
+  const value8 = Math.min(count5, count6) * clampWithDefault(value2.radius, 0, 0.5, 0.5);
   const value9 = Math.min(1, value5 * 0.38);
   const count7 = Math.max(0, Math.min(count5, count6) * 0.42 * value6);
   const count8 = Math.max(0, Math.min(count5, count6) * 0.095 * value6);
   const value10 = 118;
   const value11 = count3 / 2;
-  const value12 = S(value2.frameColor, "#d9e0e6");
-  const value13 = S(value2.glowColor, "#f2f6fa");
-  const value14 = fn(value2.frameAngle, 0, 360, 45);
-  const value15 = fn(value2.glowAngle, 0, 360, 45);
+  const value12 = safeCssColor(value2.frameColor, "#d9e0e6");
+  const value13 = safeCssColor(value2.glowColor, "#f2f6fa");
+  const value14 = clampWithDefault(value2.frameAngle, 0, 360, 45);
+  const value15 = clampWithDefault(value2.glowAngle, 0, 360, 45);
   const value16 = value3 ? 0.98 : 0.48;
   const fn3 = (value18) =>
     Math.max(0, Math.min(1, (value18 * value4) / value16));
@@ -1273,7 +1273,7 @@ registerComponent("image", {
     return value3;
   },
 });
-function lt(value, value2) {
+function entityStateIsOn(value, value2) {
   if (!value) {
     return false;
   }
@@ -1345,7 +1345,7 @@ registerComponent("floorplan-auto-diagram", {
     value4.className = "hb-floorplan-auto-diagram-base";
     value4.alt = "户型图";
     value4.draggable = false;
-    const value5 = ne(value2.baseAssetId || value2.floorPlanAssetId || "");
+    const value5 = resolveAssetUrl(value2.baseAssetId || value2.floorPlanAssetId || "");
     if (value5) {
       value4.src = value5;
     } else {
@@ -1357,7 +1357,7 @@ registerComponent("floorplan-auto-diagram", {
     const value7 = [];
     const fn3 = () => {
       for (const value8 of value6) {
-        const value9 = lt(value8.entityId, value);
+        const value9 = entityStateIsOn(value8.entityId, value);
         value8.image.classList.toggle("is-active", value9 || value.editable);
         value8.button.classList.toggle("is-active", value9);
         value8.button.setAttribute("aria-pressed", String(value9));
@@ -1369,7 +1369,7 @@ registerComponent("floorplan-auto-diagram", {
       image.className = "hb-floorplan-auto-diagram-layer";
       image.alt = "";
       image.draggable = false;
-      const value9 = ne(value8.assetId || "");
+      const value9 = resolveAssetUrl(value8.assetId || "");
       if (value9) {
         image.src = value9;
       }
@@ -1428,11 +1428,11 @@ export function renderIconButtonEffectLayer(component, value) {
   const value3 = value.editable
     ? null
     : index3.get(String(value2.effectAssetId || ""));
-  const value4 = value3?.url || ne(value2.effectAssetId);
+  const value4 = value3?.url || resolveAssetUrl(value2.effectAssetId);
   if (!value4 || value2.effectVisible === false) {
     return null;
   }
-  const value5 = Pe(component, value);
+  const value5 = iconButtonEffectIsActive(component, value);
   const value6 = iconButtonEffectLightVisualState(component, value);
   const value7 = iconButtonEffectLightVisualAwaiting(component, value);
   const value8 = document.createElement("div");
@@ -1442,9 +1442,9 @@ export function renderIconButtonEffectLayer(component, value) {
     (value7 ? " awaiting-light-visual" : "");
   value8.style.setProperty(
     "--hb-effect-image-opacity",
-    String(fn(value2.effectOpacity, 0, 1, 1) * value6.opacity),
+    String(clampWithDefault(value2.effectOpacity, 0, 1, 1) * value6.opacity),
   );
-  const value9 = fn(value2.effectFadeDuration, 0, 3, 0.52);
+  const value9 = clampWithDefault(value2.effectFadeDuration, 0, 3, 0.52);
   value8.style.setProperty("--hb-effect-fade-duration", value9 + "s");
   value8.style.setProperty(
     "--hb-effect-visual-transition-duration",
@@ -1476,7 +1476,7 @@ export function renderIconButtonEffectLayer(component, value) {
 registerComponent("icon-button-effect", {
   render(component, value) {
     const value2 = component.properties || {};
-    const value3 = Pe(component, value);
+    const value3 = iconButtonEffectIsActive(component, value);
     const value4 = value?.isIconVisible?.(component.id) !== false;
     const value5 = document.createElement("div");
     value5.className = "hb-icon-button-effect" + (value3 ? " active" : "");
@@ -1485,36 +1485,36 @@ registerComponent("icon-button-effect", {
     value5.style.transition = "opacity .24s ease";
     value5.style.setProperty(
       "--effect-button-color",
-      S(
+      safeCssColor(
         value3 ? value2.buttonOnColor : value2.buttonOffColor,
         value3 ? "#1f91b8" : "#17242d",
       ),
     );
     value5.style.setProperty(
       "--effect-button-opacity",
-      fn(value2.buttonOpacity, 0, 1, 0.92) * 100 + "%",
+      clampWithDefault(value2.buttonOpacity, 0, 1, 0.92) * 100 + "%",
     );
     value5.style.setProperty(
       "--effect-frame-color",
-      S(value2.frameColor, "#dcebf2"),
+      safeCssColor(value2.frameColor, "#dcebf2"),
     );
     value5.style.setProperty(
       "--effect-frame-width",
-      fn(value2.frameWidth, 0, 20, 1.5) + "px",
+      clampWithDefault(value2.frameWidth, 0, 20, 1.5) + "px",
     );
     value5.style.setProperty(
       "--effect-frame-opacity",
-      fn(value2.frameOpacity, 0, 1, 0.72) * 100 + "%",
+      clampWithDefault(value2.frameOpacity, 0, 1, 0.72) * 100 + "%",
     );
     value5.style.setProperty(
       "--effect-radius",
-      fn(value2.radius, 0, 50, 50) + "%",
+      clampWithDefault(value2.radius, 0, 50, 50) + "%",
     );
     value5.style.setProperty(
       "--effect-glow-color",
-      S(value2.glowColor, "#43c8f0"),
+      safeCssColor(value2.glowColor, "#43c8f0"),
     );
-    const value6 = fn(
+    const value6 = clampWithDefault(
       value3 ? value2.glowOnStrength : value2.glowOffStrength,
       0,
       3,
@@ -1530,18 +1530,18 @@ registerComponent("icon-button-effect", {
       "--effect-glow-inset-opacity",
       Math.min(100, value6 * 30) + "%",
     );
-    const value7 = K(value2.icon || "mdi:lightbulb-outline");
+    const value7 = resolveMdiIconUrl(value2.icon || "mdi:lightbulb-outline");
     if (value7) {
       const value8 = document.createElement("i");
       value8.className = "hb-icon-button-effect-icon";
       value8.style.transition = "opacity .24s ease";
       value8.style.opacity = value4 ? "1" : "0";
-      value8.style.backgroundColor = S(
+      value8.style.backgroundColor = safeCssColor(
         value3 ? value2.iconOnColor : value2.iconOffColor,
         value3 ? "#ffffff" : "#9aa5ad",
       );
-      value8.style.width = fn(value2.iconSize, 1, 100, 44) + "%";
-      value8.style.height = fn(value2.iconSize, 1, 100, 44) + "%";
+      value8.style.width = clampWithDefault(value2.iconSize, 1, 100, 44) + "%";
+      value8.style.height = clampWithDefault(value2.iconSize, 1, 100, 44) + "%";
       value8.style.maskImage = 'url("' + value7 + '")';
       value8.style.webkitMaskImage = 'url("' + value7 + '")';
       value5.append(value8);
@@ -1560,88 +1560,88 @@ registerComponent("title-button", {
     value5.className = "hb-title-button";
     value5.style.setProperty(
       "--title-frame-color",
-      S(value2.frameColor, "#60636a"),
+      safeCssColor(value2.frameColor, "#60636a"),
     );
     value5.style.setProperty(
       "--title-frame-width",
-      fn(value2.frameWidth, 0, 12, 1.5) + "px",
+      clampWithDefault(value2.frameWidth, 0, 12, 1.5) + "px",
     );
     value5.style.setProperty(
       "--title-frame-offset-x",
-      fn(value2.frameOffsetX, -100, 100, 0) + "%",
+      clampWithDefault(value2.frameOffsetX, -100, 100, 0) + "%",
     );
     value5.style.setProperty(
       "--title-frame-offset-y",
-      fn(value2.frameOffsetY, -100, 100, 0) + "%",
+      clampWithDefault(value2.frameOffsetY, -100, 100, 0) + "%",
     );
     value5.style.setProperty(
       "--title-main-size",
-      fn(value2.mainSize, 8, 200, 34) * value4 + "px",
+      clampWithDefault(value2.mainSize, 8, 200, 34) * value4 + "px",
     );
     value5.style.setProperty(
       "--title-secondary-size",
-      fn(value2.secondarySize, 6, 100, 12) * value4 + "px",
+      clampWithDefault(value2.secondarySize, 6, 100, 12) * value4 + "px",
     );
     value5.style.setProperty(
       "--title-main-spacing",
-      fn(value2.mainSpacing, -20, 100, 1) * value4 + "px",
+      clampWithDefault(value2.mainSpacing, -20, 100, 1) * value4 + "px",
     );
     value5.style.setProperty(
       "--title-secondary-spacing",
-      fn(value2.secondarySpacing, -20, 100, 2) * value4 + "px",
+      clampWithDefault(value2.secondarySpacing, -20, 100, 2) * value4 + "px",
     );
     value5.style.setProperty(
       "--title-secondary-line-gap",
-      fn(value2.secondaryLineGap, 0, 100, 2) * value4 + "px",
+      clampWithDefault(value2.secondaryLineGap, 0, 100, 2) * value4 + "px",
     );
     value5.style.setProperty(
       "--title-main-left",
-      fn(value2.mainTextLeft, -100, 200, 5.5) + "%",
+      clampWithDefault(value2.mainTextLeft, -100, 200, 5.5) + "%",
     );
     value5.style.setProperty(
       "--title-main-top",
-      fn(value2.mainTextTop, -100, 200, 45) + "%",
+      clampWithDefault(value2.mainTextTop, -100, 200, 45) + "%",
     );
     value5.style.setProperty(
       "--title-secondary-left",
-      fn(value2.secondaryTextLeft, -100, 200, 54) + "%",
+      clampWithDefault(value2.secondaryTextLeft, -100, 200, 54) + "%",
     );
     value5.style.setProperty(
       "--title-secondary-top",
-      fn(value2.secondaryTextTop, -100, 200, 43) + "%",
+      clampWithDefault(value2.secondaryTextTop, -100, 200, 43) + "%",
     );
     value5.style.setProperty(
       "--title-icon-size",
-      fn(value2.iconSize, 1, 100, 30) * value4 + "px",
+      clampWithDefault(value2.iconSize, 1, 100, 30) * value4 + "px",
     );
     value5.style.setProperty(
       "--title-icon-left",
-      fn(value2.iconLeft, -100, 200, 50) + "%",
+      clampWithDefault(value2.iconLeft, -100, 200, 50) + "%",
     );
     value5.style.setProperty(
       "--title-icon-top",
-      fn(value2.iconTop, -100, 200, 45) + "%",
+      clampWithDefault(value2.iconTop, -100, 200, 45) + "%",
     );
     value5.style.setProperty(
       "--title-marker-left",
-      fn(value2.markerLeft, -100, 200, 1.8) + "%",
+      clampWithDefault(value2.markerLeft, -100, 200, 1.8) + "%",
     );
     value5.style.setProperty(
       "--title-marker-top",
-      fn(value2.markerTop, -100, 200, 84) + "%",
+      clampWithDefault(value2.markerTop, -100, 200, 84) + "%",
     );
     if (value2.frameVisible !== false || value3) {
-      const value6 = fn(value2.frameSize, 10, 300, 100) / 100;
+      const value6 = clampWithDefault(value2.frameSize, 10, 300, 100) / 100;
       const value7 = count2 * 0.45 * value6;
-      const value8 = (count * fn(value2.frameOffsetX, -100, 100, 0)) / 100;
-      const value9 = (count2 * fn(value2.frameOffsetY, -100, 100, 0)) / 100;
-      const value10 = (count * fn(value2.frameSpacing, 0, 300, 100)) / 200;
+      const value8 = (count * clampWithDefault(value2.frameOffsetX, -100, 100, 0)) / 100;
+      const value9 = (count2 * clampWithDefault(value2.frameOffsetY, -100, 100, 0)) / 100;
+      const value10 = (count * clampWithDefault(value2.frameSpacing, 0, 300, 100)) / 200;
       const value11 = count / 2 + value8;
       const value12 = count2 / 2 + value9;
       const value13 = value12 - value7 / 2;
       const value14 = value12 + value7 / 2;
       const value15 = count2 * 0.12;
-      const value16 = fn(value2.frameWidth, 0, 12, 1.5) / 2;
+      const value16 = clampWithDefault(value2.frameWidth, 0, 12, 1.5) / 2;
       const value17 = value11 - value10 + value16;
       const value18 = value11 + value10 - value16;
       const value19 = fn2(value5, "svg", {
@@ -1655,8 +1655,8 @@ registerComponent("title-button", {
       }
       const value20 = {
         fill: "none",
-        stroke: S(value2.frameColor, "#60636a"),
-        "stroke-width": fn(value2.frameWidth, 0, 12, 1.5),
+        stroke: safeCssColor(value2.frameColor, "#60636a"),
+        "stroke-width": clampWithDefault(value2.frameWidth, 0, 12, 1.5),
         "stroke-opacity": 1,
         "stroke-linecap": "butt",
         "stroke-linejoin": "miter",
@@ -1695,11 +1695,11 @@ registerComponent("title-button", {
       const element = document.createElement("strong");
       element.className = "hb-title-button-main";
       element.textContent = String(value2.mainText || "客厅");
-      element.style.color = S(value2.mainColor, "#b9bbc0");
+      element.style.color = safeCssColor(value2.mainColor, "#b9bbc0");
       if (value2.mainTextVisible === false) {
         element.style.visibility = "hidden";
       }
-      B(element, value2.mainWeight, fn(value2.mainSize, 8, 200, 34));
+      applyTextStroke(element, value2.mainWeight, clampWithDefault(value2.mainSize, 8, 200, 34));
       value5.append(element);
     }
     if (value2.secondaryTextVisible !== false || value3) {
@@ -1713,22 +1713,22 @@ registerComponent("title-button", {
           element.textContent = value7;
           value6.append(element);
         });
-      value6.style.color = S(value2.secondaryColor, "#70737b");
+      value6.style.color = safeCssColor(value2.secondaryColor, "#70737b");
       if (value2.secondaryTextVisible === false) {
         value6.style.visibility = "hidden";
       }
-      B(value6, value2.secondaryWeight, fn(value2.secondarySize, 6, 100, 12));
+      applyTextStroke(value6, value2.secondaryWeight, clampWithDefault(value2.secondarySize, 6, 100, 12));
       value5.append(value6);
     }
     if (value2.iconVisible !== false || value3) {
-      const value6 = K(value2.icon || "");
+      const value6 = resolveMdiIconUrl(value2.icon || "");
       if (value6) {
         const value7 = document.createElement("i");
         value7.className = "hb-title-button-icon";
         if (value2.iconVisible === false) {
           value7.style.visibility = "hidden";
         }
-        value7.style.backgroundColor = S(value2.iconColor, "#b9bbc0");
+        value7.style.backgroundColor = safeCssColor(value2.iconColor, "#b9bbc0");
         value7.style.maskImage = 'url("' + value6 + '")';
         value7.style.webkitMaskImage = 'url("' + value6 + '")';
         value5.append(value7);
@@ -1740,11 +1740,11 @@ registerComponent("title-button", {
       if (value2.markerVisible === false) {
         value6.style.visibility = "hidden";
       }
-      value6.style.color = S(value2.markerColor, "#f2a20d");
-      value6.style.borderTopColor = S(value2.markerColor, "#f2a20d");
+      value6.style.color = safeCssColor(value2.markerColor, "#f2a20d");
+      value6.style.borderTopColor = safeCssColor(value2.markerColor, "#f2a20d");
       value6.style.setProperty(
         "--title-marker-size",
-        fn(value2.markerSize, 2, 60, 10) * value4 + "px",
+        clampWithDefault(value2.markerSize, 2, 60, 10) * value4 + "px",
       );
       value5.append(value6);
     }
@@ -1772,56 +1772,56 @@ registerComponent("light-statistics", {
     element.dataset.abnormal = String(value3.abnormal);
     element.style.setProperty(
       "--light-statistics-icon-size",
-      fn(value2.iconSize, 1, 100, 42) * value5 + "px",
+      clampWithDefault(value2.iconSize, 1, 100, 42) * value5 + "px",
     );
     element.style.setProperty(
       "--light-statistics-title-size",
-      fn(value2.titleSize, 8, 200, 32) * value5 + "px",
+      clampWithDefault(value2.titleSize, 8, 200, 32) * value5 + "px",
     );
     element.style.setProperty(
       "--light-statistics-title-spacing",
-      fn(value2.titleSpacing, -20, 100, 1.2) * value5 + "px",
+      clampWithDefault(value2.titleSpacing, -20, 100, 1.2) * value5 + "px",
     );
     element.style.setProperty(
       "--light-statistics-count-size",
-      fn(value2.countSize, 8, 200, 34) * value5 + "px",
+      clampWithDefault(value2.countSize, 8, 200, 34) * value5 + "px",
     );
     element.style.setProperty(
       "--light-statistics-count-spacing",
-      fn(value2.countSpacing, -20, 100, 0) * value5 + "px",
+      clampWithDefault(value2.countSpacing, -20, 100, 0) * value5 + "px",
     );
     element.style.setProperty(
       "--light-statistics-icon-gap",
-      fn(value2.iconGap, 0, 40, 4.5) * value4 + "px",
+      clampWithDefault(value2.iconGap, 0, 40, 4.5) * value4 + "px",
     );
     element.style.setProperty(
       "--light-statistics-count-gap",
-      fn(value2.countGap, 0, 40, 4.5) * value4 + "px",
+      clampWithDefault(value2.countGap, 0, 40, 4.5) * value4 + "px",
     );
     element.style.setProperty(
       "--light-statistics-icon-color",
-      S(value2.iconColor, "#8b9298"),
+      safeCssColor(value2.iconColor, "#8b9298"),
     );
     element.style.setProperty(
       "--light-statistics-icon-active-color",
-      S(value2.iconActiveColor, "#f2a20d"),
+      safeCssColor(value2.iconActiveColor, "#f2a20d"),
     );
     element.style.setProperty(
       "--light-statistics-title-color",
-      S(value2.titleColor, "#b9bbc0"),
+      safeCssColor(value2.titleColor, "#b9bbc0"),
     );
     element.style.setProperty(
       "--light-statistics-count-color",
-      S(value2.countColor, "#b9bbc0"),
+      safeCssColor(value2.countColor, "#b9bbc0"),
     );
     element.style.setProperty(
       "--light-statistics-count-active-color",
-      S(value2.countActiveColor, "#f2a20d"),
+      safeCssColor(value2.countActiveColor, "#f2a20d"),
     );
     const value6 = Object.prototype.hasOwnProperty.call(value2, "icon")
       ? String(value2.icon || "")
       : "mdi:lightbulb-group-outline";
-    const value7 = K(value6);
+    const value7 = resolveMdiIconUrl(value6);
     const value8 = value2.iconVisible !== false && !!value7;
     const value9 = value2.titleVisible !== false;
     const value10 = value2.countVisible !== false;
@@ -1839,7 +1839,7 @@ registerComponent("light-statistics", {
       const element2 = document.createElement("strong");
       element2.className = "hb-light-statistics-title";
       element2.textContent = String(value2.title || "数量");
-      B(element2, value2.titleWeight, fn(value2.titleSize, 8, 200, 32));
+      applyTextStroke(element2, value2.titleWeight, clampWithDefault(value2.titleSize, 8, 200, 32));
       element.append(element2);
     }
     if (value10) {
@@ -1847,7 +1847,7 @@ registerComponent("light-statistics", {
       value11.className = "hb-light-statistics-count";
       const element2 = document.createElement("b");
       element2.textContent = value3.total ? String(value3.on) : "--";
-      B(element2, value2.countWeight, fn(value2.countSize, 8, 200, 34));
+      applyTextStroke(element2, value2.countWeight, clampWithDefault(value2.countSize, 8, 200, 34));
       value11.append(element2);
       if (value3.total) {
         const element3 = document.createElement("em");
@@ -1859,35 +1859,35 @@ registerComponent("light-statistics", {
     return element;
   },
 });
-const Ae = {
+const iconButtonRenderer = {
   render(component, value) {
     const value2 = component.properties || {};
     const value3 = component.type === "device-button";
     const value4 = component.bindings?.entity?.entityId || "";
     const value5 = value.states?.get(value4);
-    const value6 = D(value5);
-    const value7 = it(component, value);
+    const value6 = readState(value5);
+    const value7 = iconButtonIsActive(component, value);
     const x2 = Math.max(20, Number(component.position?.width || 144));
     const count = Math.max(20, Number(component.position?.height || 150));
     const { height: value8 } = componentContentUnitsPx(component, value);
     const value9 =
-      (Math.min(x2, count) * fn(value2.cutCorner, 0, 50, 20)) / 100;
-    const value10 = fn(value2.frameWidth, 0, 12, 1);
-    const value11 = fn(value2.frameAngle, 0, 360, 45);
-    const value12 = fn(
+      (Math.min(x2, count) * clampWithDefault(value2.cutCorner, 0, 50, 20)) / 100;
+    const value10 = clampWithDefault(value2.frameWidth, 0, 12, 1);
+    const value11 = clampWithDefault(value2.frameAngle, 0, 360, 45);
+    const value12 = clampWithDefault(
       value7 ? value2.frameOnOpacity : value2.frameOffOpacity,
       0,
       1,
       value7 ? 1 : 0.8,
     );
-    const value13 = S(value2.softLightColor, "#ffffff");
-    const value14 = fn(value2.softLightStrength, 0, 5, 1);
-    const value15 = fn(value2.softLightSize, 0, 3, 1);
-    const value16 = fn(value2.softLightAngle, 0, 360, 45);
-    const value17 = S(value2.glowColor, "#ffffff");
-    const value18 = fn(value2.glowStrength, 0, 5, 1);
-    const value19 = fn(value2.glowSize, 0, 3, 1);
-    const value20 = fn(value2.glowAngle, 0, 360, 220);
+    const value13 = safeCssColor(value2.softLightColor, "#ffffff");
+    const value14 = clampWithDefault(value2.softLightStrength, 0, 5, 1);
+    const value15 = clampWithDefault(value2.softLightSize, 0, 3, 1);
+    const value16 = clampWithDefault(value2.softLightAngle, 0, 360, 45);
+    const value17 = safeCssColor(value2.glowColor, "#ffffff");
+    const value18 = clampWithDefault(value2.glowStrength, 0, 5, 1);
+    const value19 = clampWithDefault(value2.glowSize, 0, 3, 1);
+    const value20 = clampWithDefault(value2.glowAngle, 0, 360, 220);
     const value21 = x2 / 2;
     const y1 = count / 2;
     const value22 = (value20 * Math.PI) / 180;
@@ -1901,27 +1901,27 @@ const Ae = {
     value24.className = "hb-icon-button" + (value7 ? " active" : "");
     value24.style.setProperty(
       "--icon-button-main-left",
-      fn(value2.mainTextLeft, -100, 200, 9) + "%",
+      clampWithDefault(value2.mainTextLeft, -100, 200, 9) + "%",
     );
     value24.style.setProperty(
       "--icon-button-main-top",
-      fn(value2.mainTextTop, -100, 200, 78) + "%",
+      clampWithDefault(value2.mainTextTop, -100, 200, 78) + "%",
     );
     value24.style.setProperty(
       "--icon-button-secondary-left",
-      fn(value2.secondaryTextLeft, -100, 200, 9) + "%",
+      clampWithDefault(value2.secondaryTextLeft, -100, 200, 9) + "%",
     );
     value24.style.setProperty(
       "--icon-button-secondary-top",
-      fn(value2.secondaryTextTop, -100, 200, 91) + "%",
+      clampWithDefault(value2.secondaryTextTop, -100, 200, 91) + "%",
     );
     value24.style.setProperty(
       "--icon-button-icon-left",
-      fn(value2.iconLeft, -100, 200, 50) + "%",
+      clampWithDefault(value2.iconLeft, -100, 200, 50) + "%",
     );
     value24.style.setProperty(
       "--icon-button-icon-top",
-      fn(value2.iconTop, -100, 200, 34) + "%",
+      clampWithDefault(value2.iconTop, -100, 200, 34) + "%",
     );
     value24.style.setProperty(
       "--icon-button-icon-glow-size",
@@ -1937,7 +1937,7 @@ const Ae = {
     );
     value24.style.setProperty(
       "--hb-on-fill-fade-duration",
-      fn(value2.onFillFadeDuration, 0, 3, 0.3) + "s",
+      clampWithDefault(value2.onFillFadeDuration, 0, 3, 0.3) + "s",
     );
     if (!value3) {
       const value30 = fn2(value24, "svg", {
@@ -2053,8 +2053,8 @@ const Ae = {
         fn2(value38, "polygon", {
           class: "hb-icon-button-on-fill",
           points: points,
-          fill: S(value2.onFillColor, "#dfb64f"),
-          "fill-opacity": fn(value2.onFillStrength, 0, 1, 1),
+          fill: safeCssColor(value2.onFillColor, "#dfb64f"),
+          "fill-opacity": clampWithDefault(value2.onFillStrength, 0, 1, 1),
         });
       }
       if (value2.softLightVisible !== false && value15 > 0) {
@@ -2085,8 +2085,8 @@ const Ae = {
     }
     const value25 =
       String(value2.icon || "").trim() ||
-      (value3 ? et(value4, value5) : "mdi:ceiling-light");
-    const value26 = K(value25);
+      (value3 ? resolveEntityIcon(value4, value5) : "mdi:ceiling-light");
+    const value26 = resolveMdiIconUrl(value25);
     if (
       value26 &&
       (!value3 ||
@@ -2098,33 +2098,33 @@ const Ae = {
         ? "hb-device-button-icon"
         : "hb-icon-button-icon";
       if (!value3) {
-        value30.style.width = fn(value2.iconSize, 1, 100, 42) + "%";
-        value30.style.height = fn(value2.iconSize, 1, 100, 42) + "%";
+        value30.style.width = clampWithDefault(value2.iconSize, 1, 100, 42) + "%";
+        value30.style.height = clampWithDefault(value2.iconSize, 1, 100, 42) + "%";
       }
       value30.style.backgroundColor =
         value3 && value7
-          ? S(value2.iconOnColor, "#379bff")
-          : S(
+          ? safeCssColor(value2.iconOnColor, "#379bff")
+          : safeCssColor(
               value2.iconColor || value2.iconOffColor || value2.iconOnColor,
               "#d7d8da",
             );
       value30.style.opacity = value3
         ? "1"
         : String(
-            fn(value7 ? value2.iconOnOpacity : value2.iconOffOpacity, 0, 1, 1),
+            clampWithDefault(value7 ? value2.iconOnOpacity : value2.iconOffOpacity, 0, 1, 1),
           );
       value30.style.maskImage = 'url("' + value26 + '")';
       value30.style.webkitMaskImage = 'url("' + value26 + '")';
       if (value3) {
-        const value31 = fn(value2.iconSize, 1, 100, 28);
-        const value32 = fn(value2.badgeSize ?? value31, 1, 100, value31);
-        const value33 = fn(
+        const value31 = clampWithDefault(value2.iconSize, 1, 100, 28);
+        const value32 = clampWithDefault(value2.badgeSize ?? value31, 1, 100, value31);
+        const value33 = clampWithDefault(
           value2.symbolSize ?? value31 * 0.5,
           1,
           100,
           value31 * 0.5,
         );
-        const value34 = fn((value33 / value32) * 100, 1, 100, 50);
+        const value34 = clampWithDefault((value33 / value32) * 100, 1, 100, 50);
         value30.style.width = value34 + "%";
         value30.style.height = value34 + "%";
         const value35 = document.createElement("span");
@@ -2137,11 +2137,11 @@ const Ae = {
         value35.style.height = value32 * value8 + "px";
         value35.style.setProperty(
           "--device-badge-color",
-          S(value2.badgeColor, "#5b5e66"),
+          safeCssColor(value2.badgeColor, "#5b5e66"),
         );
         value35.style.setProperty(
           "--device-badge-opacity",
-          fn(value2.badgeOpacity, 0, 1, 0.58) * 100 + "%",
+          clampWithDefault(value2.badgeOpacity, 0, 1, 0.58) * 100 + "%",
         );
         value35.append(value30);
         value24.append(value35);
@@ -2151,25 +2151,25 @@ const Ae = {
     }
     const value27 = document.createElement("span");
     value27.className = "hb-icon-button-text";
-    const value28 = fn(value2.mainSize, 6, 120, 25);
+    const value28 = clampWithDefault(value2.mainSize, 6, 120, 25);
     const element = document.createElement("strong");
     element.textContent = value3
       ? String(value2.mainText || "").trim() ||
         String(value6?.attributes?.friendly_name || value4 || "未选择实体")
       : String(value2.mainText || "主灯");
-    element.style.color = S(
+    element.style.color = safeCssColor(
       value2.mainColor || value2.mainOffColor || value2.mainOnColor,
       "#c7c8cb",
     );
     element.style.opacity = value3
       ? "1"
       : String(
-          fn(value7 ? value2.mainOnOpacity : value2.mainOffOpacity, 0, 1, 1),
+          clampWithDefault(value7 ? value2.mainOnOpacity : value2.mainOffOpacity, 0, 1, 1),
         );
     element.style.fontSize = value28 * value8 + "px";
     element.style.letterSpacing =
-      fn(value2.mainSpacing, -20, 100, 1) * value8 + "px";
-    B(element, value2.mainWeight, value28);
+      clampWithDefault(value2.mainSpacing, -20, 100, 1) * value8 + "px";
+    applyTextStroke(element, value2.mainWeight, value28);
     element.hidden =
       value3 &&
       value2.mainTextVisible === false &&
@@ -2181,7 +2181,7 @@ const Ae = {
     ) {
       element.style.visibility = "hidden";
     }
-    const value29 = fn(value2.secondarySize, 5, 80, 10);
+    const value29 = clampWithDefault(value2.secondarySize, 5, 80, 10);
     const element2 = document.createElement("small");
     element2.textContent = value3
       ? String(value2.secondaryText || "").trim() ||
@@ -2192,7 +2192,7 @@ const Ae = {
             })
           : "未选择实体")
       : String(value2.secondaryText || "MAIN LIGHT");
-    element2.style.color = S(
+    element2.style.color = safeCssColor(
       value2.secondaryColor ||
         value2.secondaryOffColor ||
         value2.secondaryOnColor,
@@ -2201,7 +2201,7 @@ const Ae = {
     element2.style.opacity = value3
       ? "1"
       : String(
-          fn(
+          clampWithDefault(
             value7 ? value2.secondaryOnOpacity : value2.secondaryOffOpacity,
             0,
             1,
@@ -2210,8 +2210,8 @@ const Ae = {
         );
     element2.style.fontSize = value29 * value8 + "px";
     element2.style.letterSpacing =
-      fn(value2.secondarySpacing, -20, 100, 0.7) * value8 + "px";
-    B(element2, value2.secondaryWeight, value29);
+      clampWithDefault(value2.secondarySpacing, -20, 100, 0.7) * value8 + "px";
+    applyTextStroke(element2, value2.secondaryWeight, value29);
     element2.hidden =
       value3 &&
       value2.secondaryTextVisible === false &&
@@ -2228,10 +2228,10 @@ const Ae = {
     return value24;
   },
 };
-registerComponent("icon-button", Ae);
-registerComponent("device-button", Ae);
-function dt(value, value2, value3, value4) {
-  const value5 = S(value2.iconOnColor || value2.occupiedColor, "#ffffff");
+registerComponent("icon-button", iconButtonRenderer);
+registerComponent("device-button", iconButtonRenderer);
+function renderDoorWindowSensor(value, value2, value3, value4) {
+  const value5 = safeCssColor(value2.iconOnColor || value2.occupiedColor, "#ffffff");
   const value6 = value3.key === "occupied";
   const value7 = value6
     ? "打开"
@@ -2278,8 +2278,8 @@ function dt(value, value2, value3, value4) {
   value8.append(value9);
   return value8;
 }
-function pt(value, value2) {
-  const value3 = S(value.waterLeakColor, "#42c8ff");
+function renderWaterLeakSensor(value, value2) {
+  const value3 = safeCssColor(value.waterLeakColor, "#42c8ff");
   const value4 = value2.key === "occupied";
   const value5 = value4
     ? "检测到水浸"
@@ -2322,8 +2322,8 @@ function pt(value, value2) {
   value6.append(value7);
   return value6;
 }
-function mt(value, value2) {
-  const value3 = S(value.smokeColor, "#ffffff");
+function renderSmokeSensor(value, value2) {
+  const value3 = safeCssColor(value.smokeColor, "#ffffff");
   const value4 = value2.key === "occupied";
   const value5 = value4
     ? "检测到烟雾"
@@ -2360,8 +2360,8 @@ function mt(value, value2) {
   value6.append(value7);
   return value6;
 }
-function ut(value, value2) {
-  const value3 = S(value.naturalGasColor, "#ffb347");
+function renderNaturalGasSensor(value, value2) {
+  const value3 = safeCssColor(value.naturalGasColor, "#ffb347");
   const value4 = value2.key === "occupied";
   const value5 = value4
     ? "检测到天然气"
@@ -2417,19 +2417,19 @@ registerComponent("presence-sensor", {
       value5,
     );
     if (value2.sensorKind === "door-window") {
-      return dt(component, value2, value6, value);
+      return renderDoorWindowSensor(component, value2, value6, value);
     }
     if (value2.sensorKind === "water-leak") {
-      return pt(value2, value6);
+      return renderWaterLeakSensor(value2, value6);
     }
     if (value2.sensorKind === "smoke") {
-      return mt(value2, value6);
+      return renderSmokeSensor(value2, value6);
     }
     if (value2.sensorKind === "natural-gas") {
-      return ut(value2, value6);
+      return renderNaturalGasSensor(value2, value6);
     }
-    const value7 = S(value2.iconOnColor || value2.occupiedColor, "#ffffff");
-    const value8 = S(value2.iconColor || value2.clearColor, "#758189");
+    const value7 = safeCssColor(value2.iconOnColor || value2.occupiedColor, "#ffffff");
+    const value8 = safeCssColor(value2.iconColor || value2.clearColor, "#758189");
     const value9 = componentContentUnitsPx(component, value);
     const element = document.createElement("div");
     element.className = "hb-presence-sensor is-" + value6.key;
@@ -2441,16 +2441,16 @@ registerComponent("presence-sensor", {
     element.dataset.presenceState = value6.key;
     element.style.setProperty("--hb-presence-occupied", value7);
     element.style.setProperty("--hb-presence-clear", value8);
-    const value10 = fn(value2.animationStrength, 0, 1, 0.72);
-    const value11 = fn(value2.haloScale, 0.2, 3, 1);
-    const value12 = fn(value2.haloScaleX, 0.2, 3, value11);
-    const value13 = fn(value2.haloScaleY, 0.2, 3, value11);
-    const value14 = fn(value2.haloRotation, -360, 360, 0);
-    const value15 = fn(value2.haloOpacity, 0, 1, 1);
-    const value16 = fn(value2.personScale, 0.2, 3, 1);
-    const value17 = fn(value2.personRotation, -360, 360, 0);
-    const value18 = fn(value2.personOpacity, 0, 1, 1);
-    const orbit = fn(value2.orbitDuration, 2, 60, 8);
+    const value10 = clampWithDefault(value2.animationStrength, 0, 1, 0.72);
+    const value11 = clampWithDefault(value2.haloScale, 0.2, 3, 1);
+    const value12 = clampWithDefault(value2.haloScaleX, 0.2, 3, value11);
+    const value13 = clampWithDefault(value2.haloScaleY, 0.2, 3, value11);
+    const value14 = clampWithDefault(value2.haloRotation, -360, 360, 0);
+    const value15 = clampWithDefault(value2.haloOpacity, 0, 1, 1);
+    const value16 = clampWithDefault(value2.personScale, 0.2, 3, 1);
+    const value17 = clampWithDefault(value2.personRotation, -360, 360, 0);
+    const value18 = clampWithDefault(value2.personOpacity, 0, 1, 1);
+    const orbit = clampWithDefault(value2.orbitDuration, 2, 60, 8);
     element.style.setProperty("--hb-presence-motion", String(value10));
     const wave = Number((3.2 - value10 * 0.8).toFixed(2));
     element.style.setProperty("--hb-presence-wave-duration", wave + "s");
@@ -2619,52 +2619,52 @@ registerComponent("air-conditioner", {
   render(component, value) {
     const value2 = component.properties || {};
     const value3 = component.bindings?.entity?.entityId || "";
-    const value4 = D(value.states?.get(value3));
+    const value4 = readState(value.states?.get(value3));
     const value5 = resolveClimateDeviceType(component, value4, value3);
-    const value6 = de(component, value);
+    const value6 = climateIsPoweredOnForComponent(component, value);
     const { height: value7 } = componentContentUnitsPx(component, value);
     const value8 = document.createElement("div");
     value8.className = "hb-air-conditioner" + (value6 ? " active" : "");
     value8.style.setProperty(
       "--climate-icon-left",
-      fn(value2.iconLeft, -100, 200, 20) + "%",
+      clampWithDefault(value2.iconLeft, -100, 200, 20) + "%",
     );
     value8.style.setProperty(
       "--climate-icon-top",
-      fn(value2.iconTop, -100, 200, 50) + "%",
+      clampWithDefault(value2.iconTop, -100, 200, 50) + "%",
     );
     value8.style.setProperty(
       "--climate-main-left",
-      fn(value2.mainTextLeft, -100, 200, 39) + "%",
+      clampWithDefault(value2.mainTextLeft, -100, 200, 39) + "%",
     );
     value8.style.setProperty(
       "--climate-main-top",
-      fn(value2.mainTextTop, -100, 200, 40) + "%",
+      clampWithDefault(value2.mainTextTop, -100, 200, 40) + "%",
     );
     value8.style.setProperty(
       "--climate-secondary-left",
-      fn(value2.secondaryTextLeft, -100, 200, 39) + "%",
+      clampWithDefault(value2.secondaryTextLeft, -100, 200, 39) + "%",
     );
     value8.style.setProperty(
       "--climate-secondary-top",
-      fn(value2.secondaryTextTop, -100, 200, 67) + "%",
+      clampWithDefault(value2.secondaryTextTop, -100, 200, 67) + "%",
     );
     value8.style.setProperty(
       "--climate-badge-color",
-      S(value2.badgeColor, "#5b5e66"),
+      safeCssColor(value2.badgeColor, "#5b5e66"),
     );
     value8.style.setProperty(
       "--climate-badge-opacity",
-      fn(value2.badgeOpacity, 0, 1, 0.58) * 100 + "%",
+      clampWithDefault(value2.badgeOpacity, 0, 1, 0.58) * 100 + "%",
     );
-    const value9 = S(
+    const value9 = safeCssColor(
       value6 ? value2.iconOnColor : value2.iconOffColor,
       value6 ? "#73c8ff" : "#9aa5ad",
     );
     value8.style.setProperty("--climate-icon-color", value9);
     value8.style.setProperty("--climate-icon-glow-size", value7 * 7 + "px");
-    const value10 = fn(value2.badgeSize, 1, 100, 28);
-    const value11 = fn(value2.symbolSize, 1, 100, 14);
+    const value10 = clampWithDefault(value2.badgeSize, 1, 100, 28);
+    const value11 = clampWithDefault(value2.symbolSize, 1, 100, 14);
     if (value2.iconVisible !== false) {
       const value15 = document.createElement("span");
       value15.className = "hb-air-conditioner-icon-badge";
@@ -2675,11 +2675,11 @@ registerComponent("air-conditioner", {
         value5 === "bath-heater" && (!text || text === "mdi:air-conditioner")
           ? climateDefaultIcon(value5)
           : text || climateDefaultIcon(value5);
-      const value17 = K(value16);
+      const value17 = resolveMdiIconUrl(value16);
       if (value17) {
         const value18 = document.createElement("i");
         value18.className = "hb-air-conditioner-icon";
-        const value19 = fn((value11 / value10) * 100, 1, 100, 50);
+        const value19 = clampWithDefault((value11 / value10) * 100, 1, 100, 50);
         value18.style.width = value19 + "%";
         value18.style.height = value19 + "%";
         value18.style.backgroundColor = value9;
@@ -2691,7 +2691,7 @@ registerComponent("air-conditioner", {
     }
     const value12 = document.createElement("span");
     value12.className = "hb-air-conditioner-text";
-    const value13 = fn(value2.mainSize, 6, 120, 21);
+    const value13 = clampWithDefault(value2.mainSize, 6, 120, 21);
     const element = document.createElement("strong");
     element.textContent =
       String(value2.mainText || "").trim() ||
@@ -2700,19 +2700,19 @@ registerComponent("air-conditioner", {
           value3 ||
           (value5 === "bath-heater" ? "未选择浴霸实体" : "未选择空调实体"),
       );
-    element.style.color = S(value2.mainColor, "#c7c8cb");
+    element.style.color = safeCssColor(value2.mainColor, "#c7c8cb");
     element.style.fontSize = value13 * value7 + "px";
     element.style.letterSpacing =
-      fn(value2.mainSpacing, -20, 100, 0.5) * value7 + "px";
-    B(element, value2.mainWeight, value13);
-    const value14 = fn(value2.secondarySize, 5, 80, 12);
+      clampWithDefault(value2.mainSpacing, -20, 100, 0.5) * value7 + "px";
+    applyTextStroke(element, value2.mainWeight, value13);
+    const value14 = clampWithDefault(value2.secondarySize, 5, 80, 12);
     const element2 = document.createElement("small");
-    element2.textContent = value3 ? at(component, value) : "未选择实体";
-    element2.style.color = S(value2.secondaryColor, "#75777d");
+    element2.textContent = value3 ? climateStatusLabel(component, value) : "未选择实体";
+    element2.style.color = safeCssColor(value2.secondaryColor, "#75777d");
     element2.style.fontSize = value14 * value7 + "px";
     element2.style.letterSpacing =
-      fn(value2.secondarySpacing, -20, 100, 0.3) * value7 + "px";
-    B(element2, value2.secondaryWeight, value14);
+      clampWithDefault(value2.secondarySpacing, -20, 100, 0.3) * value7 + "px";
+    applyTextStroke(element2, value2.secondaryWeight, value14);
     if (value2.mainTextVisible !== false) {
       value12.append(element);
     }
@@ -2728,7 +2728,7 @@ registerComponent("air-conditioner", {
 export function cameraRadiusRatio(value, fallback = 0.04) {
   const numeric = Number(value);
   if (Number.isFinite(numeric)) {
-    return fn(numeric > 0.5 ? numeric / 100 : numeric, 0, 0.5, fallback);
+    return clampWithDefault(numeric > 0.5 ? numeric / 100 : numeric, 0, 0.5, fallback);
   } else {
     return fallback;
   }
@@ -2750,7 +2750,7 @@ export function appendCameraFrame(
     20,
     Number(value2?.position?.height || value.clientHeight || 180),
   );
-  const value5 = fn(value3.frameWidth, 0, 20, 1);
+  const value5 = clampWithDefault(value3.frameWidth, 0, 20, 1);
   if (value5 <= 0) {
     return null;
   }
@@ -2759,8 +2759,8 @@ export function appendCameraFrame(
   const height = Math.max(1, count - count2 * 2);
   const value6 = cameraRadiusRatio(value3.radius);
   const rx = Math.min(width, height) * value6;
-  const value7 = fn(value3.frameOpacity, 0, 1, 0.9);
-  const value8 = S(value3.frameColor, "#d4d4d4");
+  const value7 = clampWithDefault(value3.frameOpacity, 0, 1, 0.9);
+  const value8 = safeCssColor(value3.frameColor, "#d4d4d4");
   const value9 =
     value4 +
     "-camera-frame-" +
@@ -2781,7 +2781,7 @@ export function appendCameraFrame(
     y2: count / 2,
     gradientTransform:
       "rotate(" +
-      fn(value3.frameAngle, 0, 360, 45) +
+      clampWithDefault(value3.frameAngle, 0, 360, 45) +
       " " +
       x2 / 2 +
       " " +
@@ -2814,21 +2814,21 @@ export function appendCameraFrame(
   });
   return value10;
 }
-const ft = 30000;
-const ht = 4;
-const pe = new Map();
-const ie = new Map();
-async function Ie(value) {
+const CAMERA_HLS_CACHE_TTL_MS = 30000;
+const CAMERA_PREWARM_LIMIT = 4;
+const CAMERA_HLS_SOURCE_CACHE = new Map();
+const CAMERA_HLS_INFLIGHT_REQUESTS = new Map();
+async function fetchCameraHlsSource(value) {
   const value2 = String(value || "").trim();
   if (!value2) {
     throw new Error("Camera entity is required");
   }
   const value3 = Date.now();
-  const value4 = pe.get(value2);
-  if (value4 && value3 - value4.createdAt < ft) {
+  const value4 = CAMERA_HLS_SOURCE_CACHE.get(value2);
+  if (value4 && value3 - value4.createdAt < CAMERA_HLS_CACHE_TTL_MS) {
     return value4.source;
   }
-  const value5 = ie.get(value2);
+  const value5 = CAMERA_HLS_INFLIGHT_REQUESTS.get(value2);
   if (value5) {
     return value5;
   }
@@ -2844,18 +2844,18 @@ async function Ie(value) {
     if (!source.startsWith("/")) {
       throw new Error("Camera HLS response has no proxy URL");
     }
-    pe.set(value2, {
+    CAMERA_HLS_SOURCE_CACHE.set(value2, {
       source: source,
       createdAt: Date.now(),
     });
     return source;
   })();
-  ie.set(value2, value6);
+  CAMERA_HLS_INFLIGHT_REQUESTS.set(value2, value6);
   try {
     return await value6;
   } finally {
-    if (ie.get(value2) === value6) {
-      ie.delete(value2);
+    if (CAMERA_HLS_INFLIGHT_REQUESTS.get(value2) === value6) {
+      CAMERA_HLS_INFLIGHT_REQUESTS.delete(value2);
     }
   }
 }
@@ -2869,8 +2869,8 @@ export async function prewarmCameraMedia(value = []) {
         .map((value3) => String(value3 || "").trim())
         .filter(Boolean),
     ),
-  ].slice(0, ht);
-  await Promise.allSettled(value2.map((value3) => Ie(value3)));
+  ].slice(0, CAMERA_PREWARM_LIMIT);
+  await Promise.allSettled(value2.map((value3) => fetchCameraHlsSource(value3)));
 }
 export function mountCameraSnapshot({
   container: value,
@@ -3118,7 +3118,7 @@ export function mountCameraMedia({
   value.prepend(video);
   const fn12 = async (value16) => {
     try {
-      const value17 = await Ie(entityId);
+      const value17 = await fetchCameraHlsSource(entityId);
       if (value4 || value13 || value16 !== value12) {
         return;
       }
@@ -3140,7 +3140,7 @@ export function mountCameraMedia({
         value10.on(window.Hls.Events.ERROR, (_, value18) => {
           if (!value4 && !value13 && value16 === value12) {
             if (value18?.fatal) {
-              pe.delete(String(entityId || "").trim());
+              CAMERA_HLS_SOURCE_CACHE.delete(String(entityId || "").trim());
               value.dataset.cameraState = "hls-failed";
               value.dataset.cameraError = [
                 value18.type,
@@ -3288,7 +3288,7 @@ registerComponent("camera", {
           container: container,
           entityId: entityId,
           label:
-            D(value.states?.get(entityId))?.attributes?.friendly_name ||
+            readState(value.states?.get(entityId))?.attributes?.friendly_name ||
             entityId,
           objectFit: value2.fit === "contain" ? "contain" : "fill",
           placeholder: placeholder,
@@ -3314,7 +3314,7 @@ registerComponent("vacuum-map", {
     const value3 = component.bindings?.entity?.entityId || "";
     const value4 = document.createElement("div");
     value4.className = "hb-vacuum-map-component";
-    value4.style.opacity = String(fn(value2.opacity, 0, 1, 0.5));
+    value4.style.opacity = String(clampWithDefault(value2.opacity, 0, 1, 0.5));
     value4.setAttribute("aria-label", value2.label || "扫地机器人实时地图");
     if (!value3) {
       if (value.editable) {
@@ -3329,7 +3329,7 @@ registerComponent("vacuum-map", {
     value5.className = "hb-vacuum-map-image";
     value5.alt =
       value2.label ||
-      D(value.states?.get(value3))?.attributes?.friendly_name ||
+      readState(value.states?.get(value3))?.attributes?.friendly_name ||
       value3;
     value5.draggable = false;
     const value6 = encodeURIComponent(value3);
@@ -3458,19 +3458,19 @@ registerComponent("vacuum-map", {
 registerComponent("time", {
   render(component, value) {
     const value2 = component.properties || {};
-    const value3 = fn(value2.fontSize, 12, 500, 96);
+    const value3 = clampWithDefault(value2.fontSize, 12, 500, 96);
     const value4 = document.createElement("time");
     value4.className = "hb-time-component";
-    value4.style.color = S(value2.color, "#248eb2");
+    value4.style.color = safeCssColor(value2.color, "#248eb2");
     value4.style.fontSize = value3 + "px";
-    value4.style.letterSpacing = fn(value2.letterSpacing, -20, 100, 2.2) + "px";
-    value4.style.opacity = String(fn(value2.opacity, 0, 1, 1));
+    value4.style.letterSpacing = clampWithDefault(value2.letterSpacing, -20, 100, 2.2) + "px";
+    value4.style.opacity = String(clampWithDefault(value2.opacity, 0, 1, 1));
     const element = document.createElement("span");
     element.className = "hb-time-value";
-    B(element, value2.fontWeight, value3);
+    applyTextStroke(element, value2.fontWeight, value3);
     const element2 = document.createElement("small");
     element2.className = "hb-time-period";
-    B(element2, value2.fontWeight, value3 * 0.5);
+    applyTextStroke(element2, value2.fontWeight, value3 * 0.5);
     value4.append(element, element2);
     const fn3 = () => {
       const value6 = new Date();
@@ -3494,26 +3494,26 @@ registerComponent("date", {
     const value2 = component.properties || {};
     const value3 = document.createElement("div");
     value3.className = "hb-date-component";
-    value3.style.opacity = String(fn(value2.opacity, 0, 1, 1));
-    value3.style.gap = fn(value2.lineGap, 0, 200, 8) + "px";
+    value3.style.opacity = String(clampWithDefault(value2.opacity, 0, 1, 1));
+    value3.style.gap = clampWithDefault(value2.lineGap, 0, 200, 8) + "px";
     const element = document.createElement("strong");
     element.className = "hb-date-primary";
-    element.style.color = S(value2.primaryColor, "#8d9296");
-    const value4 = fn(value2.primarySize, 12, 500, 36);
+    element.style.color = safeCssColor(value2.primaryColor, "#8d9296");
+    const value4 = clampWithDefault(value2.primarySize, 12, 500, 36);
     element.style.fontSize = value4 + "px";
-    B(element, value2.primaryWeight, value4);
-    element.style.letterSpacing = fn(value2.primarySpacing, -20, 100, 1) + "px";
+    applyTextStroke(element, value2.primaryWeight, value4);
+    element.style.letterSpacing = clampWithDefault(value2.primarySpacing, -20, 100, 1) + "px";
     value3.append(element);
     let element2 = null;
     if (value2.showLunar === true) {
       element2 = document.createElement("small");
       element2.className = "hb-date-lunar";
-      element2.style.color = S(value2.lunarColor, "#7f878c");
-      const value6 = fn(value2.lunarSize, 10, 500, 24);
+      element2.style.color = safeCssColor(value2.lunarColor, "#7f878c");
+      const value6 = clampWithDefault(value2.lunarSize, 10, 500, 24);
       element2.style.fontSize = value6 + "px";
-      B(element2, value2.lunarWeight, value6);
+      applyTextStroke(element2, value2.lunarWeight, value6);
       element2.style.letterSpacing =
-        fn(value2.lunarSpacing, -20, 100, 1) + "px";
+        clampWithDefault(value2.lunarSpacing, -20, 100, 1) + "px";
       value3.append(element2);
     }
     const fn3 = () => {
@@ -3540,21 +3540,21 @@ registerComponent("weather", {
     const [value8, value9] = weatherVisual(value5?.state, value6);
     const value10 = document.createElement("div");
     value10.className = "hb-weather-component";
-    value10.style.gap = fn(value2.iconGap, 0, 300, 22) + "px";
-    value10.style.opacity = String(fn(value2.opacity, 0, 1, 1));
+    value10.style.gap = clampWithDefault(value2.iconGap, 0, 300, 22) + "px";
+    value10.style.opacity = String(clampWithDefault(value2.opacity, 0, 1, 1));
     if (value2.iconVisible !== false) {
       const value12 = document.createElement("img");
       value12.className = "hb-weather-icon";
       value12.src = meteoconUrl(value8);
       value12.alt = value9;
       value12.draggable = false;
-      value12.style.width = fn(value2.iconSize, 12, 500, 64) + "px";
-      value12.style.height = fn(value2.iconSize, 12, 500, 64) + "px";
+      value12.style.width = clampWithDefault(value2.iconSize, 12, 500, 64) + "px";
+      value12.style.height = clampWithDefault(value2.iconSize, 12, 500, 64) + "px";
       value10.append(value12);
     }
     const value11 = document.createElement("span");
     value11.className = "hb-weather-content";
-    value11.style.gap = fn(value2.lineGap, 0, 200, 7) + "px";
+    value11.style.gap = clampWithDefault(value2.lineGap, 0, 200, 7) + "px";
     if (value2.temperatureVisible !== false) {
       const element = document.createElement("strong");
       const numeric = Number(value7.temperature);
@@ -3564,12 +3564,12 @@ registerComponent("weather", {
       element.textContent = Number.isFinite(numeric)
         ? "" + numeric + text
         : "--" + text;
-      element.style.color = S(value2.temperatureColor, "#aeb3b7");
-      const value12 = fn(value2.temperatureSize, 12, 500, 32);
+      element.style.color = safeCssColor(value2.temperatureColor, "#aeb3b7");
+      const value12 = clampWithDefault(value2.temperatureSize, 12, 500, 32);
       element.style.fontSize = value12 + "px";
-      B(element, value2.temperatureWeight, value12);
+      applyTextStroke(element, value2.temperatureWeight, value12);
       element.style.letterSpacing =
-        fn(value2.temperatureSpacing, -20, 100, 1) + "px";
+        clampWithDefault(value2.temperatureSpacing, -20, 100, 1) + "px";
       value11.append(element);
     }
     if (value2.conditionVisible !== false || value2.humidityVisible !== false) {
@@ -3585,12 +3585,12 @@ registerComponent("weather", {
         );
       }
       element.textContent = value12.join(" · ");
-      element.style.color = S(value2.secondaryColor, "#8d9296");
-      const value13 = fn(value2.secondarySize, 10, 500, 18);
+      element.style.color = safeCssColor(value2.secondaryColor, "#8d9296");
+      const value13 = clampWithDefault(value2.secondarySize, 10, 500, 18);
       element.style.fontSize = value13 + "px";
-      B(element, value2.secondaryWeight, value13);
+      applyTextStroke(element, value2.secondaryWeight, value13);
       element.style.letterSpacing =
-        fn(value2.secondarySpacing, -20, 100, 1) + "px";
+        clampWithDefault(value2.secondarySpacing, -20, 100, 1) + "px";
       value11.append(element);
     }
     if (value11.childElementCount) {
@@ -3606,7 +3606,7 @@ registerComponent("line-chart", {
     const value4 = value.states.get(value3);
     const text = String(value4?.attributes?.unit_of_measurement || "");
     const value5 = Number.parseFloat(value4?.state);
-    const value6 = Te(value, value3, value5, value2.hours);
+    const value6 = buildLineChartSeries(value, value3, value5, value2.hours);
     const value7 = resolvedThresholds(
       value2.thresholds,
       value6,
@@ -3614,21 +3614,21 @@ registerComponent("line-chart", {
     );
     const element = document.createElement("div");
     element.className = "hb-line-chart-component";
-    element.style.borderRadius = fn(value2.cornerRadius, 0, 50, 10) + "%";
+    element.style.borderRadius = clampWithDefault(value2.cornerRadius, 0, 50, 10) + "%";
     const value8 = document.createElement("span");
     value8.className = "hb-line-chart-value";
     value8.hidden = value2.valueVisible === false;
-    value8.style.color = S(value2.valueColor, "#dce1e5");
+    value8.style.color = safeCssColor(value2.valueColor, "#dce1e5");
     value8.style.fontSize =
       Math.max(
         10,
         (Number(component.position?.height || 300) *
           0.12 *
-          fn(value2.valueScale, 10, 500, 100)) /
+          clampWithDefault(value2.valueScale, 10, 500, 100)) /
           100,
       ) + "px";
-    value8.style.left = 95 + fn(value2.valueOffsetX, -100, 100, 0) + "%";
-    value8.style.top = 8 + fn(value2.valueOffsetY, -100, 100, 0) + "%";
+    value8.style.left = 95 + clampWithDefault(value2.valueOffsetX, -100, 100, 0) + "%";
+    value8.style.top = 8 + clampWithDefault(value2.valueOffsetY, -100, 100, 0) + "%";
     const element2 = document.createElement("strong");
     element2.textContent = formatLineChartValue(value5, value2.statePrecision);
     const element3 = document.createElement("small");
@@ -3690,7 +3690,7 @@ registerComponent("line-chart", {
       )) {
         fn2(value17, "stop", {
           offset:
-            fn(((value11 - element5.value) / value12) * 100, 0, 100, 0) + "%",
+            clampWithDefault(((value11 - element5.value) / value12) * 100, 0, 100, 0) + "%",
           "stop-color": element5.color,
         });
       }
@@ -3710,7 +3710,7 @@ registerComponent("line-chart", {
         const value19 = document.createElement("span");
         value19.className = "hb-line-chart-hover-layer";
         element.append(value19);
-        const value20 = Le(
+        const value20 = setupLineChartHoverTooltip(
           value19,
           element,
           value9,
@@ -3738,7 +3738,7 @@ export function renderLineChartDetails(component, value) {
   const value3 = value.states.get(value2);
   const text = String(value3?.attributes?.unit_of_measurement || "");
   const value4 = Number.parseFloat(value3?.state);
-  const value5 = Te(value, value2, value4, component.properties?.hours);
+  const value5 = buildLineChartSeries(value, value2, value4, component.properties?.hours);
   const value6 = document.createElement("section");
   value6.className = "hb-line-chart-details";
   const value7 = resolvedThresholds(
@@ -3814,7 +3814,7 @@ export function renderLineChartDetails(component, value) {
   )) {
     fn2(value18, "stop", {
       offset:
-        fn(
+        clampWithDefault(
           ((value14.maximum - element2.value) / value14.span) * 100,
           0,
           100,
@@ -3864,7 +3864,7 @@ export function renderLineChartDetails(component, value) {
       "text-anchor": "middle",
       class: "hb-line-chart-details-axis-label",
     });
-    element2.textContent = ke(value24, value20);
+    element2.textContent = formatChartTime(value24, value20);
   }
   fn2(value15, "line", {
     x1: value13.left,
@@ -3928,7 +3928,7 @@ export function renderLineChartDetails(component, value) {
   }
   value6.cleanupLineChartHover = () => {};
   if (value.interactive !== false) {
-    value6.cleanupLineChartHover = Le(
+    value6.cleanupLineChartHover = setupLineChartHoverTooltip(
       value15,
       value6,
       value14,
@@ -3952,18 +3952,18 @@ registerComponent("panel-frame", {
     const value2 = component.properties || {};
     const x2 = Math.max(20, Number(component.position?.width || 528));
     const count = Math.max(20, Number(component.position?.height || 300));
-    const value3 = fn(value2.edgeWidth, 0, 20, 0.9);
+    const value3 = clampWithDefault(value2.edgeWidth, 0, 20, 0.9);
     const count2 = Math.max(0.5, value3 / 2 + 0.5);
     const width = Math.max(1, x2 - count2 * 2);
     const height = Math.max(1, count - count2 * 2);
-    const rx = Math.min(width, height) * fn(value2.radius, 0, 0.5, 0.195);
-    const value4 = fn(value2.edgeOpacity, 0, 1, 1);
-    const value5 = fn(value2.glowStrength, 0, 5, 0.5);
-    const value6 = fn(value2.glowSize, 0, 3, 1.5);
+    const rx = Math.min(width, height) * clampWithDefault(value2.radius, 0, 0.5, 0.195);
+    const value4 = clampWithDefault(value2.edgeOpacity, 0, 1, 1);
+    const value5 = clampWithDefault(value2.glowStrength, 0, 5, 0.5);
+    const value6 = clampWithDefault(value2.glowSize, 0, 3, 1.5);
     const value7 = Math.min(width, height) * 0.22 * value6;
     const stdDeviation = Math.min(width, height) * 0.06 * value6;
-    const value8 = S(value2.edgeColor, "#d4d4d4");
-    const value9 = S(value2.glowColor, "#ffffff");
+    const value8 = safeCssColor(value2.edgeColor, "#d4d4d4");
+    const value9 = safeCssColor(value2.glowColor, "#ffffff");
     const value10 =
       (value.renderNamespace || "renderer") +
       "-frame-" +
@@ -4007,7 +4007,7 @@ registerComponent("panel-frame", {
       y2: count / 2,
       gradientTransform:
         "rotate(" +
-        fn(value2.edgeAngle, 0, 360, 45) +
+        clampWithDefault(value2.edgeAngle, 0, 360, 45) +
         " " +
         x2 / 2 +
         " " +
@@ -4036,7 +4036,7 @@ registerComponent("panel-frame", {
       y2: count / 2,
       gradientTransform:
         "rotate(" +
-        fn(value2.glowAngle, 0, 360, 242) +
+        clampWithDefault(value2.glowAngle, 0, 360, 242) +
         " " +
         x2 / 2 +
         " " +
@@ -4113,40 +4113,40 @@ registerComponent("panel-frame", {
         "stroke-width": value3,
       });
     }
-    const value19 = fn(value2.textLeft, -100, 200, 5.2);
-    const value20 = fn(value2.textTop, -100, 200, 28);
-    const value21 = (x2 * fn(value2.mainTextLeft, -100, 200, value19)) / 100;
+    const value19 = clampWithDefault(value2.textLeft, -100, 200, 5.2);
+    const value20 = clampWithDefault(value2.textTop, -100, 200, 28);
+    const value21 = (x2 * clampWithDefault(value2.mainTextLeft, -100, 200, value19)) / 100;
     const value22 =
       (count *
-        fn(
+        clampWithDefault(
           value2.mainTextTop,
           -100,
           200,
-          value20 - (fn(value2.lineGap, 0, 500, 24) / count) * 100,
+          value20 - (clampWithDefault(value2.lineGap, 0, 500, 24) / count) * 100,
         )) /
       100;
     const value23 =
-      (x2 * fn(value2.secondaryTextLeft, -100, 200, value19)) / 100;
+      (x2 * clampWithDefault(value2.secondaryTextLeft, -100, 200, value19)) / 100;
     const value24 =
-      (count * fn(value2.secondaryTextTop, -100, 200, value20)) / 100;
-    const value25 = fn(value2.mainOpacity, 0, 1, 0.72);
-    const value26 = fn(value2.secondaryOpacity, 0, 1, 0.36);
+      (count * clampWithDefault(value2.secondaryTextTop, -100, 200, value20)) / 100;
+    const value25 = clampWithDefault(value2.mainOpacity, 0, 1, 0.72);
+    const value26 = clampWithDefault(value2.secondaryOpacity, 0, 1, 0.36);
     if (value2.mainTextVisible !== false) {
       const element = fn2(value12, "text", {
         x: value21,
         y: value22,
         "text-anchor": "start",
-        fill: S(value2.mainColor, "#ffffff"),
+        fill: safeCssColor(value2.mainColor, "#ffffff"),
         "fill-opacity": value25,
         "font-family": "PingFang SC,Noto Sans SC,Microsoft YaHei,sans-serif",
-        "font-size": fn(value2.mainSize, 8, 500, 30),
+        "font-size": clampWithDefault(value2.mainSize, 8, 500, 30),
         "font-weight": 300,
-        "letter-spacing": fn(value2.mainSpacing, -20, 100, 2),
+        "letter-spacing": clampWithDefault(value2.mainSpacing, -20, 100, 2),
       });
-      const value27 = fn(value2.mainWeight, 0, 3, 0);
+      const value27 = clampWithDefault(value2.mainWeight, 0, 3, 0);
       if (value27 > 0) {
         Object.entries({
-          stroke: S(value2.mainColor, "#ffffff"),
+          stroke: safeCssColor(value2.mainColor, "#ffffff"),
           "stroke-opacity": value25,
           "stroke-width": value27,
           "paint-order": "stroke fill",
@@ -4161,17 +4161,17 @@ registerComponent("panel-frame", {
         x: value23,
         y: value24,
         "text-anchor": "start",
-        fill: S(value2.secondaryColor, "#ffffff"),
+        fill: safeCssColor(value2.secondaryColor, "#ffffff"),
         "fill-opacity": value26,
         "font-family": "Helvetica Neue,Arial,sans-serif",
-        "font-size": fn(value2.secondarySize, 6, 500, 15),
+        "font-size": clampWithDefault(value2.secondarySize, 6, 500, 15),
         "font-weight": 300,
-        "letter-spacing": fn(value2.secondarySpacing, -20, 100, 2.1),
+        "letter-spacing": clampWithDefault(value2.secondarySpacing, -20, 100, 2.1),
       });
-      const value27 = fn(value2.secondaryWeight, 0, 3, 0);
+      const value27 = clampWithDefault(value2.secondaryWeight, 0, 3, 0);
       if (value27 > 0) {
         Object.entries({
-          stroke: S(value2.secondaryColor, "#ffffff"),
+          stroke: safeCssColor(value2.secondaryColor, "#ffffff"),
           "stroke-opacity": value26,
           "stroke-width": value27,
           "paint-order": "stroke fill",
@@ -4214,7 +4214,7 @@ registerComponent("navigation-button", {
         : "auto";
     const entityActive =
       !!entityId &&
-      !!ae(component, entityId, value.states?.get(entityId), value);
+      !!componentIsActive(component, entityId, value.states?.get(entityId), value);
     const value3 = navigationButtonIsActive({
       targetPage: targetPage,
       currentPagePath: value.page?.path || "",
@@ -4222,7 +4222,7 @@ registerComponent("navigation-button", {
       entityActive: entityActive,
       previewState: previewState,
     });
-    const value4 = fn(
+    const value4 = clampWithDefault(
       value3
         ? (value2.textActiveOpacity ?? value2.activeOpacity)
         : (value2.textIdleOpacity ?? value2.idleOpacity),
@@ -4230,7 +4230,7 @@ registerComponent("navigation-button", {
       1,
       value3 ? 0.96 : 0.3,
     );
-    const value5 = fn(
+    const value5 = clampWithDefault(
       value3
         ? (value2.iconActiveOpacity ?? value2.activeOpacity)
         : (value2.iconIdleOpacity ?? value2.idleOpacity),
@@ -4238,34 +4238,34 @@ registerComponent("navigation-button", {
       1,
       value3 ? 0.96 : 0.3,
     );
-    const value6 = fn(
+    const value6 = clampWithDefault(
       value3 ? value2.frameActiveOpacity : value2.frameIdleOpacity,
       0,
       1,
       value3 ? 0.98 : 0.48,
     );
-    const value7 = fn(
+    const value7 = clampWithDefault(
       value3 ? value2.glowActiveStrength : value2.glowIdleStrength,
       0,
       5,
       value3 ? 2.2 : 0.5,
     );
-    const value8 = fn(
+    const value8 = clampWithDefault(
       value3 ? value2.glowActiveSize : value2.glowIdleSize,
       0,
       3,
       value3 ? 3 : 1.5,
     );
-    const value9 = S(value2.mainColor, "#e9edf0");
-    const value10 = S(value2.secondaryColor, "#e9edf0");
+    const value9 = safeCssColor(value2.mainColor, "#e9edf0");
+    const value10 = safeCssColor(value2.secondaryColor, "#e9edf0");
     const value11 = 100 / 64.36;
     const value12 = navigationContentUnitPx(component, value);
-    const value13 = fn(value2.textLeft, -100, 200, 27.5);
-    const value14 = fn(value2.textTop, -100, 200, 81.5);
-    const value15 = fn(value2.mainTextLeft, -100, 200, value13);
-    const value16 = fn(value2.mainTextTop, -100, 200, value14 - value11 * 18);
-    const value17 = fn(value2.secondaryTextLeft, -100, 200, value13);
-    const value18 = fn(value2.secondaryTextTop, -100, 200, value14);
+    const value13 = clampWithDefault(value2.textLeft, -100, 200, 27.5);
+    const value14 = clampWithDefault(value2.textTop, -100, 200, 81.5);
+    const value15 = clampWithDefault(value2.mainTextLeft, -100, 200, value13);
+    const value16 = clampWithDefault(value2.mainTextTop, -100, 200, value14 - value11 * 18);
+    const value17 = clampWithDefault(value2.secondaryTextLeft, -100, 200, value13);
+    const value18 = clampWithDefault(value2.secondaryTextTop, -100, 200, value14);
     const value19 = document.createElement("div");
     value19.className = "hb-navigation-button" + (value3 ? " active" : "");
     value19.dataset.targetPage = targetPage;
@@ -4273,46 +4273,46 @@ registerComponent("navigation-button", {
     value19.style.setProperty("--navigation-icon-opacity", String(value5));
     value19.style.setProperty(
       "--navigation-icon-size",
-      fn(value2.iconSize, 1, 500, 50) * value12 + "px",
+      clampWithDefault(value2.iconSize, 1, 500, 50) * value12 + "px",
     );
     value19.style.setProperty(
       "--navigation-icon-left",
-      fn(value2.iconLeft, -100, 200, 14) + "%",
+      clampWithDefault(value2.iconLeft, -100, 200, 14) + "%",
     );
     value19.style.setProperty(
       "--navigation-icon-top",
-      fn(value2.iconTop, -100, 200, 50) + "%",
+      clampWithDefault(value2.iconTop, -100, 200, 50) + "%",
     );
     value19.style.setProperty(
       "--navigation-main-size",
-      fn(value2.mainSize, 1, 500, 30) * value12 + "px",
+      clampWithDefault(value2.mainSize, 1, 500, 30) * value12 + "px",
     );
     value19.style.setProperty(
       "--navigation-secondary-size",
-      fn(value2.secondarySize, 1, 500, 11) * value12 + "px",
+      clampWithDefault(value2.secondarySize, 1, 500, 11) * value12 + "px",
     );
     value19.style.setProperty(
       "--navigation-main-spacing",
-      fn(value2.mainSpacing, -20, 100, 8) * value12 + "px",
+      clampWithDefault(value2.mainSpacing, -20, 100, 8) * value12 + "px",
     );
     value19.style.setProperty(
       "--navigation-secondary-spacing",
-      fn(value2.secondarySpacing, -20, 100, 3) * value12 + "px",
+      clampWithDefault(value2.secondarySpacing, -20, 100, 3) * value12 + "px",
     );
     value19.style.setProperty("--navigation-main-left", value15 + "%");
     value19.style.setProperty("--navigation-secondary-left", value17 + "%");
     value19.style.setProperty("--navigation-main-top", value16 + "%");
     value19.style.setProperty("--navigation-secondary-top", value18 + "%");
     if (value2.glowVisible !== false || value2.frameVisible !== false) {
-      value19.append(ct(component, value2, value3, value6, value7, value8));
+      value19.append(buildLightFrameVisual(component, value2, value3, value6, value7, value8));
     }
     if (value2.iconVisible !== false) {
-      const value21 = K(value2.icon || "mdi:home-lightbulb-outline");
+      const value21 = resolveMdiIconUrl(value2.icon || "mdi:home-lightbulb-outline");
       if (value21) {
         const value22 = document.createElement("i");
         value22.className = "hb-navigation-icon";
         value22.setAttribute("aria-hidden", "true");
-        value22.style.backgroundColor = S(value2.iconColor, "#e9edf0");
+        value22.style.backgroundColor = safeCssColor(value2.iconColor, "#e9edf0");
         value22.style.maskImage = 'url("' + value21 + '")';
         value22.style.webkitMaskImage = 'url("' + value21 + '")';
         value19.append(value22);
@@ -4326,7 +4326,7 @@ registerComponent("navigation-button", {
       element.style.color = value9;
       element.style.webkitTextStrokeColor = value9;
       element.style.webkitTextStrokeWidth =
-        fn(value2.mainWeight, 0, 3, 0) * value12 + "px";
+        clampWithDefault(value2.mainWeight, 0, 3, 0) * value12 + "px";
       value20.append(element);
     }
     if (value2.secondaryTextVisible !== false) {
@@ -4335,7 +4335,7 @@ registerComponent("navigation-button", {
       element.style.color = value10;
       element.style.webkitTextStrokeColor = value10;
       element.style.webkitTextStrokeWidth =
-        fn(value2.secondaryWeight, 0, 3, 0) * value12 + "px";
+        clampWithDefault(value2.secondaryWeight, 0, 3, 0) * value12 + "px";
       value20.append(element);
     }
     if (value20.childElementCount) {

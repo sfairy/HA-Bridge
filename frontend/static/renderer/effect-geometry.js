@@ -1,5 +1,5 @@
-const O = 500000000;
-const S = 1000000000;
+const Z_INDEX_PRESENCE_SENSOR_BASE = 500000000;
+const Z_INDEX_ICON_BUTTON_EFFECT_BASE = 1000000000;
 export function normalizeIconButtonEffectComponent(component) {
   if (component?.type !== "icon-button-effect") {
     return component;

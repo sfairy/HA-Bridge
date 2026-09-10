@@ -1,4 +1,4 @@
-const d = {
+const WEATHER_ICON_MAP = {
   sunny: ["clear-day", "晴"],
   "clear-night": ["clear-night", "晴"],
   partlycloudy: ["partly-cloudy-day", "多云"],
@@ -27,7 +27,7 @@ export function weatherVisual(value, value2 = "") {
     return ["partly-cloudy-night", "多云"];
   } else {
     return (
-      d[value3] || [
+      WEATHER_ICON_MAP[value3] || [
         "code-red",
         value3 && !["unknown", "unavailable"].includes(value3)
           ? value3
@@ -44,7 +44,7 @@ export function meteoconUrl(value) {
     return "/bridge-static/vendor/meteocons/fill/code-red.svg";
   }
 }
-function fn(value, value2) {
+function safeCssColor(value, value2) {
   const value3 = String(value || "").trim();
   if (
     /^(#[\da-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%]+\))$/i.test(value3)
@@ -54,7 +54,7 @@ function fn(value, value2) {
     return value2;
   }
 }
-const l = ["#ddffc2", "#68cc3e", "#ff8e52", "#ff1a1a"];
+const ALERT_LEVEL_COLORS = ["#ddffc2", "#68cc3e", "#ff8e52", "#ff1a1a"];
 function fn2(value, value2) {
   if (!value.length) {
     return NaN;
@@ -73,7 +73,7 @@ export function normalizedThresholds(dThresholds) {
     .filter((element) => Number.isFinite(Number(element?.value)))
     .map((element) => ({
       value: Number(element.value),
-      color: fn(element.color, "#68cc3e"),
+      color: safeCssColor(element.color, "#68cc3e"),
     }))
     .sort((element, element2) => element.value - element2.value);
 }
@@ -100,24 +100,24 @@ export function automaticThresholds(value) {
     return [
       {
         value: value3 - count,
-        color: l[0],
+        color: ALERT_LEVEL_COLORS[0],
       },
       {
         value: value3,
-        color: l[1],
+        color: ALERT_LEVEL_COLORS[1],
       },
       {
         value: value3 + count,
-        color: l[2],
+        color: ALERT_LEVEL_COLORS[2],
       },
       {
         value: value3 + count * 2,
-        color: l[3],
+        color: ALERT_LEVEL_COLORS[3],
       },
     ];
   }
-  const value7 = value5 / (l.length - 1);
-  return l.map((color, value8) => ({
+  const value7 = value5 / (ALERT_LEVEL_COLORS.length - 1);
+  return ALERT_LEVEL_COLORS.map((color, value8) => ({
     value: value3 + value7 * value8,
     color: color,
   }));

@@ -55,9 +55,9 @@ export function popupModuleTypeLabel(value) {
     }[value] || "通用设备"
   );
 }
-const p = ["auto", "air-conditioner", "bath-heater"];
+const ALLOWED_CLIMATE_DEVICE_TYPES = ["auto", "air-conditioner", "bath-heater"];
 export function normalizedPopupClimateDeviceType(dPopupClimateDeviceType) {
-  if (p.includes(dPopupClimateDeviceType)) {
+  if (ALLOWED_CLIMATE_DEVICE_TYPES.includes(dPopupClimateDeviceType)) {
     return dPopupClimateDeviceType;
   } else {
     return "auto";

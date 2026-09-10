@@ -1,7 +1,7 @@
-function fn(value) {
+function readState(value) {
   return value?.newState || value || null;
 }
-function M(value = {}) {
+function entitySearchText(value = {}) {
   return (
     (value.entityId || "") +
     " " +
@@ -13,7 +13,7 @@ function M(value = {}) {
   ).trim();
 }
 function fn2(value, value2 = "s") {
-  const value3 = fn(value) || {};
+  const value3 = readState(value) || {};
   const numeric = Number(value3.state);
   if (!Number.isFinite(numeric) || numeric < 0) {
     return null;
@@ -47,12 +47,12 @@ function fn3(value, value2) {
   const timeout =
     value4.find((value5) =>
       /custom[_ -]?no[_ -]?motion[_ -]?time|no[_ -]?motion[_ -]?timeout|自定义超时无人移动时间/i.test(
-        M(value5),
+        entitySearchText(value5),
       ),
     ) || null;
   const noMotion =
     value4.find((value5) =>
-      /no[_ -]?motion[_ -]?duration|无移动状态持续时间/i.test(M(value5)),
+      /no[_ -]?motion[_ -]?duration|无移动状态持续时间/i.test(entitySearchText(value5)),
     ) || null;
   return {
     timeout: timeout,
@@ -67,9 +67,9 @@ export function presenceMotionEventConfig(
   value4 = {},
 ) {
   const value5 = value2?.get?.(entityId) || {};
-  const value6 = fn(value) || {};
+  const value6 = readState(value) || {};
   const value7 =
-    M({
+    entitySearchText({
       ...value5,
       entityId: entityId,
     }) +
@@ -143,7 +143,7 @@ export function presenceSensorPresentation(
       available: true,
     };
   }
-  const value4 = fn(value);
+  const value4 = readState(value);
   if (!value4) {
     return {
       key: "unknown",
@@ -291,7 +291,7 @@ export function presenceSensorPresentation(
   }
 }
 export function presenceStateTimestamp(value) {
-  const value2 = fn(value) || {};
+  const value2 = readState(value) || {};
   const value3 =
     value2.lastChanged ||
     value2.last_changed ||
@@ -387,7 +387,7 @@ export function presenceHistoryBuckets(
   if (value2 && Number.isFinite(timestamp)) {
     value9.push({
       timestamp: timestamp,
-      state: fn(value2),
+      state: readState(value2),
     });
   }
   value9.sort((value13, value14) => value13.timestamp - value14.timestamp);

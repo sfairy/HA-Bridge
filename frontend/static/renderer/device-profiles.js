@@ -1,5 +1,5 @@
 const bag = new Set(["xiaomi_miot", "xiaomi_home"]);
-function fn(...value) {
+function normalizeMatchText(...value) {
   return value
     .flat()
     .map((value2) => String(value2 || "").trim())
@@ -15,12 +15,12 @@ function fn2(metadata) {
     metadata.status !== "disabled"
   );
 }
-function A(metadata, value2) {
+function entityMatchScore(metadata, value2) {
   const value3 = String(metadata?.domain || metadata?.entityId || "").split(
     ".",
     1,
   )[0];
-  const value4 = fn(
+  const value4 = normalizeMatchText(
     metadata?.entityId,
     metadata?.name,
     metadata?.originalName,
@@ -175,12 +175,12 @@ function A(metadata, value2) {
     return -1;
   }
 }
-function D(value, value2) {
+function selectBestMatchedEntity(value, value2) {
   return (
     value
       .map((entity) => ({
         entity: entity,
-        score: A(entity, value2),
+        score: entityMatchScore(entity, value2),
       }))
       .filter((value3) => value3.score >= 0)
       .sort(
@@ -201,7 +201,7 @@ function fn3(value, value2) {
         const value4 = String(
           metadata?.domain || metadata?.entityId || "",
         ).split(".", 1)[0];
-        const value5 = fn(
+        const value5 = normalizeMatchText(
           metadata?.entityId,
           metadata?.name,
           metadata?.originalName,
@@ -275,7 +275,7 @@ export function resolveXiaomiDeviceProfile(
   }
   const value8 = value4?.get?.(value);
   const value9 = value8?.newState || value8 || {};
-  const value10 = fn(
+  const value10 = normalizeMatchText(
     integration,
     value6?.name,
     value6?.manufacturer,
@@ -306,7 +306,7 @@ export function resolveXiaomiDeviceProfile(
       "filterLeftTime",
       "airQuality",
     ]
-      .map((value25) => [value25, D(value7, value25)?.entityId || ""])
+      .map((value25) => [value25, selectBestMatchedEntity(value7, value25)?.entityId || ""])
       .filter(([, value25]) => value25),
   );
   const value12 = {
@@ -330,7 +330,7 @@ export function resolveXiaomiDeviceProfile(
     );
   if (value13.length) {
     const fn4 = (value27) => {
-      const value28 = fn(
+      const value28 = normalizeMatchText(
         value27.entityId,
         value27.name,
         value27.originalName,
@@ -347,7 +347,7 @@ export function resolveXiaomiDeviceProfile(
     const value25 = value13.filter(
       (value27) =>
         !/memory|记忆|姿势/.test(
-          fn(
+          normalizeMatchText(
             value27.entityId,
             value27.name,
             value27.originalName,
@@ -370,7 +370,7 @@ export function resolveXiaomiDeviceProfile(
       const value26 = String(
         metadata2?.domain || metadata2?.entityId || "",
       ).split(".", 1)[0];
-      const value27 = fn(
+      const value27 = normalizeMatchText(
         metadata2?.entityId,
         metadata2?.name,
         metadata2?.originalName,

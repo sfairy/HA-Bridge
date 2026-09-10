@@ -2,7 +2,7 @@ import { interaction3dTemplate } from "../../modules/interaction3d/definition.js
 
 const index = new Map();
 const index2 = new Map();
-const u = {
+const COMPONENT_TYPE_GROUPS = {
   shared: [
     "time",
     "date",
@@ -561,7 +561,7 @@ const componentDefaults = {
     },
   },
 };
-const y =
+const KNOWN_PROPERTY_NAME_PATTERN =
   /(?:text|label|name|title|icon|assetid|targetpage|layoutmode|freelayout|naturalwidth|naturalheight|fit|refreshinterval|exportfolder|previewready|previewing|interactionmode|generated|lightlayers|exportresolution|exportcamera|floorselection)$/i;
 export function registerUiPackDefinition(value) {
   if (!value?.id || !value?.version) {
@@ -602,7 +602,7 @@ export function registerComponentTemplate(value) {
   );
 }
 export function listComponentTemplates(value, value2 = "ui.base") {
-  const value3 = u[value] || [];
+  const value3 = COMPONENT_TYPE_GROUPS[value] || [];
   return [...index.values()]
     .filter(
       (value4) => value4.uiPackId === value2 && value4.scopes?.includes(value),
@@ -662,9 +662,9 @@ export function createComponentFromTemplate(templateId, value) {
     },
   };
 }
-function fn(value = {}) {
+function pickKnownProperties(value = {}) {
   return Object.fromEntries(
-    Object.entries(value).filter(([value2]) => y.test(value2)),
+    Object.entries(value).filter(([value2]) => KNOWN_PROPERTY_NAME_PATTERN.test(value2)),
   );
 }
 function fn2(component, value, canvas) {
@@ -688,7 +688,7 @@ function fn2(component, value, canvas) {
         ...component,
         properties: {
           ...(component2.properties || {}),
-          ...fn(component.properties),
+          ...pickKnownProperties(component.properties),
         },
         style: {
           ...(component2.style || {}),

@@ -6,8 +6,8 @@ export function runtimeEntityStateIsActive(value) {
     .toLowerCase();
   return ["on", "open", "true", "home"].includes(value2);
 }
-const m = 1;
-function N(value) {
+const COVER_CLOSED_POSITION_EPSILON = 1;
+function readCurrentPosition(value) {
   const value2 = value?.newState || value || {};
   const numeric = Number(value2.attributes?.current_position);
   if (Number.isFinite(numeric)) {
@@ -43,9 +43,9 @@ export function runtimeCoverStateIsActive(value) {
   if (value3 === "closing") {
     return false;
   }
-  const value4 = N(value2);
+  const value4 = readCurrentPosition(value2);
   if (value4 !== null) {
-    return value4 > m;
+    return value4 > COVER_CLOSED_POSITION_EPSILON;
   } else {
     return runtimeEntityStateIsActive(value2);
   }
@@ -122,13 +122,13 @@ export function relatedDeviceDomainEntity(value, value2, value3) {
   });
   return value5[0] || null;
 }
-const p = /airer|clothes.?rack|laundry.?rack|晾衣机|晾衣架/i;
-const v = /light|lamp|灯光|照明|灯(?:$|[\s_-])/i;
-const I =
+const AIRER_PATTERN = /airer|clothes.?rack|laundry.?rack|晾衣机|晾衣架/i;
+const LIGHT_PATTERN = /light|lamp|灯光|照明|灯(?:$|[\s_-])/i;
+const SET_POSITION_PATTERN =
   /set[_\s-]?position|target[_\s-]?position|设定位置|设置位置|目标位置/i;
-const h = /current[_\s-]?position|当前位置|当前高度/i;
-const _ = /motor[_\s-]?speed|电机速度/i;
-const y = {
+const CURRENT_POSITION_PATTERN = /current[_\s-]?position|当前位置|当前高度/i;
+const MOTOR_SPEED_PATTERN = /motor[_\s-]?speed|电机速度/i;
+const MOTOR_CONTROL_PATTERNS = {
   up: /motor[_\s-]?control[_\s-]?up|晾杆控制[^\n]*(?:上升|升起)/i,
   down: /motor[_\s-]?control[_\s-]?down|晾杆控制[^\n]*下降/i,
   pause:
@@ -151,7 +151,7 @@ export function coverComponentIsAirer(
   const value5 = value2?.newState || value2 || {};
   const value6 = value3.get(value) || {};
   const value7 = value6.deviceId ? value4.get(value6.deviceId) || {} : {};
-  return p.test(
+  return AIRER_PATTERN.test(
     [
       value,
       value5.attributes?.friendly_name,
@@ -166,7 +166,7 @@ export function coverComponentIsAirer(
       .join(" "),
   );
 }
-function S(value) {
+function extractPointIndices(value) {
   return new Set(
     [...String(value || "").matchAll(/_(?:s|p)_(\d+)(?:_|$)/gi)].map(
       (value2) => value2[1],
@@ -178,7 +178,7 @@ export function relatedAirerLightEntity(value, value2) {
   if (!metadata?.deviceId) {
     return null;
   }
-  const value4 = S(metadata.entityId);
+  const value4 = extractPointIndices(metadata.entityId);
   return (
     [...value.values()]
       .filter(
@@ -197,19 +197,19 @@ export function relatedAirerLightEntity(value, value2) {
           (metadata2.originalName || "") +
           " " +
           (metadata2.translationKey || "");
-        if (metadata2.domain === "switch" && !v.test(value5)) {
+        if (metadata2.domain === "switch" && !LIGHT_PATTERN.test(value5)) {
           return null;
         }
-        const value6 = S(metadata2.entityId);
+        const value6 = extractPointIndices(metadata2.entityId);
         const value7 = [...value4].some((value8) => value6.has(value8));
         let score = metadata2.domain === "light" ? 180 : 80;
         if (value7) {
           score += 360;
         }
-        if (p.test(value5)) {
+        if (AIRER_PATTERN.test(value5)) {
           score += 180;
         }
-        if (v.test(value5)) {
+        if (LIGHT_PATTERN.test(value5)) {
           score += 90;
         }
         if (/night.?light|夜灯/i.test(value5)) {
@@ -232,24 +232,24 @@ export function relatedAirerLightEntity(value, value2) {
       )[0]?.item || null
   );
 }
-function fn(value, value2, value3, value4) {
+function findRelatedAirerEntity(value, value2, value3, value4) {
   const value5 = value.get(value2);
   if (!value5?.deviceId) {
     const value6 = String(value2 || "").match(
       /^cover\.(hyd_cn_[a-z0-9]+_pro2)_s_\d+_airer$/i,
     );
     if (value6) {
-      if (value3 === "number" && value4 === I) {
+      if (value3 === "number" && value4 === SET_POSITION_PATTERN) {
         return {
           entityId: "number." + value6[1] + "_set_position_p_4_9",
           domain: "number",
         };
-      } else if (value3 === "sensor" && value4 === h) {
+      } else if (value3 === "sensor" && value4 === CURRENT_POSITION_PATTERN) {
         return {
           entityId: "sensor." + value6[1] + "_current_position_p_4_11",
           domain: "sensor",
         };
-      } else if (value3 === "sensor" && value4 === _) {
+      } else if (value3 === "sensor" && value4 === MOTOR_SPEED_PATTERN) {
         return {
           entityId: "sensor." + value6[1] + "_motor_speed_p_4_12",
           domain: "sensor",
@@ -289,7 +289,7 @@ function fn(value, value2, value3, value4) {
         if (value4.test(String(item.entityId || ""))) {
           score += 180;
         }
-        if (p.test(value6)) {
+        if (AIRER_PATTERN.test(value6)) {
           score += 90;
         }
         return {
@@ -310,13 +310,13 @@ function fn(value, value2, value3, value4) {
   );
 }
 export function relatedAirerPositionNumberEntity(value, value2) {
-  return fn(value, value2, "number", I);
+  return findRelatedAirerEntity(value, value2, "number", SET_POSITION_PATTERN);
 }
 export function relatedAirerCurrentPositionSensor(value, value2) {
-  return fn(value, value2, "sensor", h);
+  return findRelatedAirerEntity(value, value2, "sensor", CURRENT_POSITION_PATTERN);
 }
 export function relatedAirerMotorSpeedSensor(value, value2) {
-  return fn(value, value2, "sensor", _);
+  return findRelatedAirerEntity(value, value2, "sensor", MOTOR_SPEED_PATTERN);
 }
 export function relatedAirerMotorActionEntities(value, value2) {
   const value3 = value.get(value2);
@@ -335,7 +335,7 @@ export function relatedAirerMotorActionEntities(value, value2) {
       entityMetadataIsAvailable(metadata),
   );
   return Object.fromEntries(
-    Object.entries(y).map(([value5, value6]) => {
+    Object.entries(MOTOR_CONTROL_PATTERNS).map(([value5, value6]) => {
       const value7 = value4.find((value8) =>
         value6.test(
           (value8.entityId || "") +
@@ -604,7 +604,7 @@ function fn2(value) {
     .toLowerCase();
   return ["on", "true", "1", "enabled", "开启", "打开"].includes(value2);
 }
-function E(value, value2, value3) {
+function isCoverMotorReversed(value, value2, value3) {
   const value4 = relatedCoverMotorReverseEntity(value, value3);
   return !!value4?.entityId && !!fn2(value2.get(value4.entityId));
 }
@@ -635,24 +635,24 @@ export function coverPresentationState(value, value2 = false) {
   if (value4 === "opening" || value4 === "closing") {
     return value4;
   }
-  const value5 = N(value3);
+  const value5 = readCurrentPosition(value3);
   if (value5 === null) {
     return value4;
-  } else if ((value2 ? 100 - value5 : value5) <= m) {
+  } else if ((value2 ? 100 - value5 : value5) <= COVER_CLOSED_POSITION_EPSILON) {
     return "closed";
   } else {
     return "open";
   }
 }
-function M(value, value2 = false) {
+function coverPhysicalPresentationState(value, value2 = false) {
   const value3 = value?.newState || value || {};
   return physicalCoverState(value3.state, value2);
 }
 export function dreamCurtainBladeLabel(value) {
   const count = Math.max(0, Math.min(100, Number(value) || 0));
-  if (count <= m) {
+  if (count <= COVER_CLOSED_POSITION_EPSILON) {
     return "一侧闭合";
-  } else if (count >= 100 - m) {
+  } else if (count >= 100 - COVER_CLOSED_POSITION_EPSILON) {
     return "反向闭合";
   } else if (Math.abs(count - 50) <= 2) {
     return "90°打开";
@@ -702,7 +702,7 @@ export function coverToggleServiceForComponent(value, value2, value3, value4) {
     value4,
   );
   const value7 = coverComponentIsDream(value, value4, value5, value2)
-    ? M(value5, value6)
+    ? coverPhysicalPresentationState(value5, value6)
     : coverPresentationState(value5, value6);
   if (value7 === "open" || value7 === "opening") {
     if (value6) {

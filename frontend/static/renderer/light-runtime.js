@@ -25,7 +25,7 @@ export function lightVisualValueForCapability(value, value2, value3) {
   }
 }
 const bag = new Set(["hs", "rgb", "rgbw", "rgbww", "xy"]);
-function fn(value = {}) {
+function parseSupportedColorModes(value = {}) {
   const list = Array.isArray(value?.supported_color_modes)
     ? value.supported_color_modes
         .map((value2) =>
@@ -47,7 +47,7 @@ function fn(value = {}) {
   }
 }
 export function lightSupportsColor(value = {}) {
-  return fn(value).some((value2) => bag.has(value2));
+  return parseSupportedColorModes(value).some((value2) => bag.has(value2));
 }
 export function lightRealtimeCapabilities(value = "", value2 = {}) {
   const metadata = value2?.newState || value2 || {};
@@ -155,7 +155,7 @@ export function lightColorPickerPointFromHs(value) {
   };
 }
 export function lightColorServiceData(value, value2) {
-  const value3 = fn(value);
+  const value3 = parseSupportedColorModes(value);
   const hs_color = [
     Math.round((((Number(value2?.[0]) || 0) % 360) + 360) % 360),
     Math.round(Math.max(0, Math.min(100, Number(value2?.[1]) || 0))),

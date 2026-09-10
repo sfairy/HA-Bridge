@@ -1,10 +1,10 @@
-const U = {
+const LOG_LEVEL_LABELS = {
   info: "信息",
   success: "成功",
   warning: "警告",
   error: "错误",
 };
-function $(value) {
+function formatLogTime(value) {
   const value2 = new Date(value);
   if (Number.isNaN(value2.getTime())) {
     return "时间未知";
@@ -75,10 +75,10 @@ export function setupGlobalLog({ api: fn }) {
       const element15 = document.createElement("span");
       const value14 = value10.clientTimestamp
         ? "客户端发生 " +
-          $(value10.clientTimestamp) +
+          formatLogTime(value10.clientTimestamp) +
           " · 接收 " +
-          $(value10.timestamp)
-        : $(value10.timestamp);
+          formatLogTime(value10.timestamp)
+        : formatLogTime(value10.timestamp);
       element15.textContent =
         value14 +
         " · " +
@@ -110,7 +110,7 @@ export function setupGlobalLog({ api: fn }) {
           " 次 · 最近" +
           (value10.lastClientTimestamp ? "发生" : "接收") +
           " " +
-          $(
+          formatLogTime(
             value10.lastClientTimestamp ||
               value10.lastTimestamp ||
               value10.timestamp,
@@ -118,7 +118,7 @@ export function setupGlobalLog({ api: fn }) {
         value13.append(element17);
       }
       const element16 = document.createElement("b");
-      element16.textContent = U[value10.level] || "信息";
+      element16.textContent = LOG_LEVEL_LABELS[value10.level] || "信息";
       value11.append(value12, value13, element16);
       value9.append(value11);
     }
