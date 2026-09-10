@@ -15,61 +15,64 @@ const WEATHER_ICON_MAP = {
   hail: ["hail", "冰雹"],
   exceptional: ["code-red", "异常天气"],
 };
-export function weatherVisual(value, value2 = "") {
-  let value3 = String(value || "")
+export function weatherVisual(condition, sunState = "") {
+  let conditionKey = String(condition || "")
     .trim()
     .toLowerCase();
-  const value4 = value2 === "below_horizon";
-  if (value4 && value3 === "sunny") {
-    value3 = "clear-night";
+  const belowHorizon = sunState === "below_horizon";
+  if (belowHorizon && conditionKey === "sunny") {
+    conditionKey = "clear-night";
   }
-  if (value4 && value3 === "partlycloudy") {
+  if (belowHorizon && conditionKey === "partlycloudy") {
     return ["partly-cloudy-night", "多云"];
   } else {
     return (
-      WEATHER_ICON_MAP[value3] || [
+      WEATHER_ICON_MAP[conditionKey] || [
         "code-red",
-        value3 && !["unknown", "unavailable"].includes(value3)
-          ? value3
+        conditionKey && !["unknown", "unavailable"].includes(conditionKey)
+          ? conditionKey
           : "天气不可用",
       ]
     );
   }
 }
-export function meteoconUrl(value) {
-  const value2 = String(value || "").trim();
-  if (/^[a-z0-9-]+$/.test(value2)) {
-    return "/bridge-static/vendor/meteocons/fill/" + value2 + ".svg";
+export function meteoconUrl(iconName) {
+  const name = String(iconName || "").trim();
+  if (/^[a-z0-9-]+$/.test(name)) {
+    return "/bridge-static/vendor/meteocons/fill/" + name + ".svg";
   } else {
     return "/bridge-static/vendor/meteocons/fill/code-red.svg";
   }
 }
-function safeCssColor(value, value2) {
-  const value3 = String(value || "").trim();
+function safeCssColor(color, fallback) {
+  const trimmed = String(color || "").trim();
   if (
-    /^(#[\da-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%]+\))$/i.test(value3)
+    /^(#[\da-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%]+\))$/i.test(trimmed)
   ) {
-    return value3;
+    return trimmed;
   } else {
-    return value2;
+    return fallback;
   }
 }
 const ALERT_LEVEL_COLORS = ["#ddffc2", "#68cc3e", "#ff8e52", "#ff1a1a"];
-function fn2(value, value2) {
-  if (!value.length) {
+function percentile(sortedValues, quantile) {
+  if (!sortedValues.length) {
     return NaN;
   }
-  const value3 = (value.length - 1) * value2;
-  const value4 = Math.floor(value3);
-  const value5 = Math.ceil(value3);
-  if (value4 === value5) {
-    return value[value4];
+  const rank = (sortedValues.length - 1) * quantile;
+  const lowerIndex = Math.floor(rank);
+  const upperIndex = Math.ceil(rank);
+  if (lowerIndex === upperIndex) {
+    return sortedValues[lowerIndex];
   } else {
-    return value[value4] + (value[value5] - value[value4]) * (value3 - value4);
+    return (
+      sortedValues[lowerIndex] +
+      (sortedValues[upperIndex] - sortedValues[lowerIndex]) * (rank - lowerIndex)
+    );
   }
 }
-export function normalizedThresholds(dThresholds) {
-  return (Array.isArray(dThresholds) ? dThresholds : [])
+export function normalizedThresholds(thresholds) {
+  return (Array.isArray(thresholds) ? thresholds : [])
     .filter((element) => Number.isFinite(Number(element?.value)))
     .map((element) => ({
       value: Number(element.value),
@@ -77,98 +80,98 @@ export function normalizedThresholds(dThresholds) {
     }))
     .sort((element, element2) => element.value - element2.value);
 }
-export function automaticThresholds(value) {
-  const value2 = (Array.isArray(value) ? value : [])
+export function automaticThresholds(samples) {
+  const sorted = (Array.isArray(samples) ? samples : [])
     .map((element) => Number(element?.value ?? element))
-    .filter((value8) => Number.isFinite(value8))
-    .sort((value8, value9) => value8 - value9);
-  if (!value2.length) {
+    .filter((sample) => Number.isFinite(sample))
+    .sort((a, b) => a - b);
+  if (!sorted.length) {
     return [];
   }
-  let value3 = fn2(value2, value2.length >= 5 ? 0.05 : 0);
-  let value4 = fn2(value2, value2.length >= 5 ? 0.95 : 1);
-  if (!Number.isFinite(value3) || !Number.isFinite(value4)) {
+  let low = percentile(sorted, sorted.length >= 5 ? 0.05 : 0);
+  let high = percentile(sorted, sorted.length >= 5 ? 0.95 : 1);
+  if (!Number.isFinite(low) || !Number.isFinite(high)) {
     return [];
   }
-  if (value4 < value3) {
-    [value3, value4] = [value4, value3];
+  if (high < low) {
+    [low, high] = [high, low];
   }
-  const value5 = value4 - value3;
-  const value6 = Math.max(Math.abs(value3), Math.abs(value4), 1) * 1e-9;
-  if (value5 <= value6) {
-    const count = Math.max(Math.abs(value3) * 0.01, 0.01);
+  const span = high - low;
+  const epsilon = Math.max(Math.abs(low), Math.abs(high), 1) * 1e-9;
+  if (span <= epsilon) {
+    const step = Math.max(Math.abs(low) * 0.01, 0.01);
     return [
       {
-        value: value3 - count,
+        value: low - step,
         color: ALERT_LEVEL_COLORS[0],
       },
       {
-        value: value3,
+        value: low,
         color: ALERT_LEVEL_COLORS[1],
       },
       {
-        value: value3 + count,
+        value: low + step,
         color: ALERT_LEVEL_COLORS[2],
       },
       {
-        value: value3 + count * 2,
+        value: low + step * 2,
         color: ALERT_LEVEL_COLORS[3],
       },
     ];
   }
-  const value7 = value5 / (ALERT_LEVEL_COLORS.length - 1);
-  return ALERT_LEVEL_COLORS.map((color, value8) => ({
-    value: value3 + value7 * value8,
+  const step = span / (ALERT_LEVEL_COLORS.length - 1);
+  return ALERT_LEVEL_COLORS.map((color, index) => ({
+    value: low + step * index,
     color: color,
   }));
 }
-export function resolvedThresholds(value, value2, value3 = "") {
-  const value4 = normalizedThresholds(value);
-  if (value3 === "auto") {
-    return automaticThresholds(value2);
-  } else if (value3 === "manual" || value4.length) {
-    return value4;
+export function resolvedThresholds(configured, samples, mode = "") {
+  const manual = normalizedThresholds(configured);
+  if (mode === "auto") {
+    return automaticThresholds(samples);
+  } else if (mode === "manual" || manual.length) {
+    return manual;
   } else {
-    return automaticThresholds(value2);
+    return automaticThresholds(samples);
   }
 }
-export function thresholdColor(value, value2) {
+export function thresholdColor(thresholds, sampleValue) {
   return (
-    value.filter((element) => value2 >= element.value).at(-1)?.color ||
-    value[0]?.color ||
+    thresholds.filter((element) => sampleValue >= element.value).at(-1)?.color ||
+    thresholds[0]?.color ||
     "#68cc3e"
   );
 }
-export function smoothChartPath(value) {
-  if (!value.length) {
+export function smoothChartPath(points) {
+  if (!points.length) {
     return "";
   }
-  if (value.length === 1) {
-    return "M0 " + value[0].y + " L100 " + value[0].y;
+  if (points.length === 1) {
+    return "M0 " + points[0].y + " L100 " + points[0].y;
   }
-  let value2 = "M" + value[0].x.toFixed(3) + " " + value[0].y.toFixed(3);
-  for (let value3 = 0; value3 < value.length - 1; value3 += 1) {
-    const value4 = value[value3];
-    const value5 = value[value3 + 1];
-    const value6 = value[value3 - 1] || value4;
-    const value7 = value[value3 + 2] || value5;
-    const value8 = value4.x + (value5.x - value6.x) / 6;
-    const value9 = value4.y + (value5.y - value6.y) / 6;
-    const value10 = value5.x - (value7.x - value4.x) / 6;
-    const value11 = value5.y - (value7.y - value4.y) / 6;
-    value2 +=
+  let path = "M" + points[0].x.toFixed(3) + " " + points[0].y.toFixed(3);
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const current = points[index];
+    const next = points[index + 1];
+    const previous = points[index - 1] || current;
+    const afterNext = points[index + 2] || next;
+    const control1X = current.x + (next.x - previous.x) / 6;
+    const control1Y = current.y + (next.y - previous.y) / 6;
+    const control2X = next.x - (afterNext.x - current.x) / 6;
+    const control2Y = next.y - (afterNext.y - current.y) / 6;
+    path +=
       " C" +
-      value8.toFixed(3) +
+      control1X.toFixed(3) +
       " " +
-      value9.toFixed(3) +
+      control1Y.toFixed(3) +
       " " +
-      value10.toFixed(3) +
+      control2X.toFixed(3) +
       " " +
-      value11.toFixed(3) +
+      control2Y.toFixed(3) +
       " " +
-      value5.x.toFixed(3) +
+      next.x.toFixed(3) +
       " " +
-      value5.y.toFixed(3);
+      next.y.toFixed(3);
   }
-  return value2;
+  return path;
 }

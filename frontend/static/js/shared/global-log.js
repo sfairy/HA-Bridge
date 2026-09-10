@@ -4,9 +4,9 @@ const LOG_LEVEL_LABELS = {
   warning: "警告",
   error: "错误",
 };
-function formatLogTime(value) {
-  const value2 = new Date(value);
-  if (Number.isNaN(value2.getTime())) {
+function formatLogTime(timestamp) {
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) {
     return "时间未知";
   } else {
     return new Intl.DateTimeFormat("zh-CN", {
@@ -17,11 +17,11 @@ function formatLogTime(value) {
       second: "2-digit",
       hour12: false,
     })
-      .format(value2)
+      .format(date)
       .replace(/\//g, "-");
   }
 }
-export function setupGlobalLog({ api: fn }) {
+export function setupGlobalLog({ api }) {
   const globalLogOpen = document.querySelector("#global-log-open");
   const globalLogDialog = document.querySelector("#global-log-dialog");
   if (
@@ -47,222 +47,223 @@ export function setupGlobalLog({ api: fn }) {
   const globalLogSearch = globalLogDialog.querySelector("#global-log-search");
   const globalLogList = globalLogDialog.querySelector("#global-log-list");
   const globalLogStatus = globalLogDialog.querySelector("#global-log-status");
-  let value = [];
-  let value2 = false;
-  let value3 = null;
-  let value4 = null;
-  let value5 = null;
-  let value6 = false;
-  const value7 = 200;
-  function fn2(value8) {
+  let logEntries = [];
+  let refreshing = false;
+  let autoRefreshTimer = null;
+  let searchDebounceTimer = null;
+  let nextOffset = null;
+  let refreshQueued = false;
+  const pageLimit = 200;
+  function renderLogList(entries) {
     globalLogList.replaceChildren();
-    if (!value8.length) {
-      const element14 = document.createElement("div");
-      element14.className = "global-log-empty";
-      element14.textContent = "当前筛选条件下没有日志。";
-      globalLogList.append(element14);
+    if (!entries.length) {
+      const empty = document.createElement("div");
+      empty.className = "global-log-empty";
+      empty.textContent = "当前筛选条件下没有日志。";
+      globalLogList.append(empty);
       return;
     }
-    const value9 = document.createDocumentFragment();
-    for (const value10 of value8) {
-      const value11 = document.createElement("article");
-      value11.className = "global-log-item " + (value10.level || "info");
-      const value12 = document.createElement("i");
-      value12.setAttribute("aria-hidden", "true");
-      const value13 = document.createElement("div");
-      const element14 = document.createElement("strong");
-      element14.textContent = value10.message || "未提供说明";
-      const element15 = document.createElement("span");
-      const value14 = value10.clientTimestamp
+    const fragment = document.createDocumentFragment();
+    for (const entry of entries) {
+      const item = document.createElement("article");
+      item.className = "global-log-item " + (entry.level || "info");
+      const icon = document.createElement("i");
+      icon.setAttribute("aria-hidden", "true");
+      const body = document.createElement("div");
+      const title = document.createElement("strong");
+      title.textContent = entry.message || "未提供说明";
+      const meta = document.createElement("span");
+      const timeLabel = entry.clientTimestamp
         ? "客户端发生 " +
-          formatLogTime(value10.clientTimestamp) +
+          formatLogTime(entry.clientTimestamp) +
           " · 接收 " +
-          formatLogTime(value10.timestamp)
-        : formatLogTime(value10.timestamp);
-      element15.textContent =
-        value14 +
+          formatLogTime(entry.timestamp)
+        : formatLogTime(entry.timestamp);
+      meta.textContent =
+        timeLabel +
         " · " +
-        (value10.source || "系统后台") +
+        (entry.source || "系统后台") +
         " · " +
-        (value10.category || "系统");
-      value13.append(element14, element15);
-      if (value10.details || Object.keys(value10.context || {}).length) {
-        const value15 = document.createElement("details");
-        const element17 = document.createElement("summary");
-        element17.textContent = "查看详情";
-        const element18 = document.createElement("pre");
-        element18.textContent = [
-          ...Object.entries(value10.context || {}).map(
-            ([value16, value17]) => value16 + ": " + value17,
+        (entry.category || "系统");
+      body.append(title, meta);
+      if (entry.details || Object.keys(entry.context || {}).length) {
+        const details = document.createElement("details");
+        const summary = document.createElement("summary");
+        summary.textContent = "查看详情";
+        const pre = document.createElement("pre");
+        pre.textContent = [
+          ...Object.entries(entry.context || {}).map(
+            ([key, contextValue]) => key + ": " + contextValue,
           ),
-          value10.details || "",
+          entry.details || "",
         ]
           .filter(Boolean)
           .join("\n");
-        value15.append(element17, element18);
-        value13.append(value15);
+        details.append(summary, pre);
+        body.append(details);
       }
-      if (Number(value10.repeatCount || 1) > 1) {
-        const element17 = document.createElement("span");
-        element17.textContent =
+      if (Number(entry.repeatCount || 1) > 1) {
+        const repeat = document.createElement("span");
+        repeat.textContent =
           "重复 " +
-          value10.repeatCount +
+          entry.repeatCount +
           " 次 · 最近" +
-          (value10.lastClientTimestamp ? "发生" : "接收") +
+          (entry.lastClientTimestamp ? "发生" : "接收") +
           " " +
           formatLogTime(
-            value10.lastClientTimestamp ||
-              value10.lastTimestamp ||
-              value10.timestamp,
+            entry.lastClientTimestamp ||
+              entry.lastTimestamp ||
+              entry.timestamp,
           );
-        value13.append(element17);
+        body.append(repeat);
       }
-      const element16 = document.createElement("b");
-      element16.textContent = LOG_LEVEL_LABELS[value10.level] || "信息";
-      value11.append(value12, value13, element16);
-      value9.append(value11);
+      const levelBadge = document.createElement("b");
+      levelBadge.textContent = LOG_LEVEL_LABELS[entry.level] || "信息";
+      item.append(icon, body, levelBadge);
+      fragment.append(item);
     }
-    globalLogList.append(value9);
+    globalLogList.append(fragment);
   }
-  function fn3(value8) {
-    const value9 = globalLogCategory.value;
+  function syncCategoryOptions(categories) {
+    const previous = globalLogCategory.value;
     globalLogCategory.replaceChildren(new Option("全部分类", ""));
-    for (const value10 of value8 || []) {
-      globalLogCategory.add(new Option(value10, value10));
+    for (const category of categories || []) {
+      globalLogCategory.add(new Option(category, category));
     }
     globalLogCategory.value = [...globalLogCategory.options].some(
-      (element14) => element14.value === value9,
+      (option) => option.value === previous,
     )
-      ? value9
+      ? previous
       : "";
   }
-  function fn4() {
-    const value8 = new URLSearchParams();
+  function buildQueryParams() {
+    const params = new URLSearchParams();
     if (globalLogLevel.value) {
-      value8.set("level", globalLogLevel.value);
+      params.set("level", globalLogLevel.value);
     }
     if (globalLogCategory.value) {
-      value8.set("category", globalLogCategory.value);
+      params.set("category", globalLogCategory.value);
     }
     if (globalLogSearch.value.trim()) {
-      value8.set("search", globalLogSearch.value.trim());
+      params.set("search", globalLogSearch.value.trim());
     }
-    return value8;
+    return params;
   }
-  async function refresh({ append: value8 = false } = {}) {
-    if (value2) {
-      if (!value8) {
-        value6 = true;
+  async function refresh({ append = false } = {}) {
+    if (refreshing) {
+      if (!append) {
+        refreshQueued = true;
       }
       return;
     }
-    value2 = true;
+    refreshing = true;
     globalLogRefresh.disabled = true;
     globalLogMore.disabled = true;
-    if (!value8) {
-      value = [];
-      value5 = null;
+    if (!append) {
+      logEntries = [];
+      nextOffset = null;
       globalLogMore.hidden = true;
     }
     globalLogStatus.textContent = "正在读取全局日志…";
     try {
-      const value9 = fn4();
-      value9.set("limit", String(value7));
-      value9.set("offset", String((value8 && value5) || 0));
-      const value10 = await fn("/logs?" + value9);
-      const value11 = value10?.items || [];
-      value = value8
+      const params = buildQueryParams();
+      params.set("limit", String(pageLimit));
+      params.set("offset", String((append && nextOffset) || 0));
+      const payload = await api("/logs?" + params);
+      const items = payload?.items || [];
+      logEntries = append
         ? [
             ...new Map(
-              [...value, ...value11].map((value17) => [value17.id, value17]),
+              [...logEntries, ...items].map((entry) => [entry.id, entry]),
             ).values(),
           ]
-        : value11;
-      value5 = value10?.hasMore ? value10.nextOffset : null;
-      fn3(value10?.categories || []);
-      fn2(value);
-      const value12 = value10?.storage || {};
-      const value13 = value12.maxBytes
-        ? " / " + (value12.maxBytes / 1024 / 1024).toFixed(0) + " MB 上限"
+        : items;
+      nextOffset = payload?.hasMore ? payload.nextOffset : null;
+      syncCategoryOptions(payload?.categories || []);
+      renderLogList(logEntries);
+      const storage = payload?.storage || {};
+      const maxBytesLabel = storage.maxBytes
+        ? " / " + (storage.maxBytes / 1024 / 1024).toFixed(0) + " MB 上限"
         : "";
-      const value14 = value.length > value7 ? " · 查看历史时暂停自动刷新" : "";
-      const value15 =
-        value12.healthy === false
+      const historyPauseLabel =
+        logEntries.length > pageLimit ? " · 查看历史时暂停自动刷新" : "";
+      const storageErrorLabel =
+        storage.healthy === false
           ? " · 日志存储异常：" +
-            (value12.lastError || "写入失败") +
+            (storage.lastError || "写入失败") +
             "（待写 " +
-            (value12.pendingEvents || 0) +
+            (storage.pendingEvents || 0) +
             "，丢弃 " +
-            (value12.droppedEvents || 0) +
+            (storage.droppedEvents || 0) +
             "）"
           : "";
-      const value16 =
-        value12.healthy !== false &&
-        (value12.writeFailures > 0 || value12.droppedEvents > 0)
+      const writeFailureLabel =
+        storage.healthy !== false &&
+        (storage.writeFailures > 0 || storage.droppedEvents > 0)
           ? " · 历史写入失败 " +
-            (value12.writeFailures || 0) +
+            (storage.writeFailures || 0) +
             " 次，丢弃 " +
-            (value12.droppedEvents || 0) +
+            (storage.droppedEvents || 0) +
             " 条"
           : "";
       globalLogStatus.textContent =
         "已显示 " +
-        value.length +
+        logEntries.length +
         " / " +
-        (value10?.total ?? value.length) +
+        (payload?.total ?? logEntries.length) +
         " 条 · 自动保留最近 " +
-        (value12.retentionDays || value10?.retentionDays || 7) +
+        (storage.retentionDays || payload?.retentionDays || 7) +
         " 天" +
-        value13 +
-        value14 +
-        value15 +
-        value16;
-      globalLogMore.hidden = value5 == null;
+        maxBytesLabel +
+        historyPauseLabel +
+        storageErrorLabel +
+        writeFailureLabel;
+      globalLogMore.hidden = nextOffset == null;
     } catch (error) {
       globalLogStatus.textContent = error.message || "日志读取失败。";
-      if (!value8) {
-        fn2([]);
+      if (!append) {
+        renderLogList([]);
       }
     } finally {
-      value2 = false;
+      refreshing = false;
       globalLogRefresh.disabled = false;
       globalLogMore.disabled = false;
-      if (value6) {
-        value6 = false;
+      if (refreshQueued) {
+        refreshQueued = false;
         refresh();
       }
     }
   }
-  function fn5() {
-    if (value3) {
-      window.clearInterval(value3);
+  function stopAutoRefresh() {
+    if (autoRefreshTimer) {
+      window.clearInterval(autoRefreshTimer);
     }
-    value3 = null;
+    autoRefreshTimer = null;
   }
   async function open() {
     if (!globalLogDialog.open) {
       globalLogDialog.showModal();
     }
     await refresh();
-    fn5();
-    value3 = window.setInterval(() => {
+    stopAutoRefresh();
+    autoRefreshTimer = window.setInterval(() => {
       if (
-        value.length <= value7 &&
+        logEntries.length <= pageLimit &&
         !globalLogList.querySelector("details[open]")
       ) {
         refresh();
       }
     }, 10000);
   }
-  function fn6() {
-    fn5();
+  function closeDialog() {
+    stopAutoRefresh();
     if (globalLogDialog.open) {
       globalLogDialog.close();
     }
   }
   globalLogOpen.addEventListener("click", open);
-  globalLogClose.addEventListener("click", fn6);
-  globalLogCloseFooter.addEventListener("click", fn6);
+  globalLogClose.addEventListener("click", closeDialog);
+  globalLogCloseFooter.addEventListener("click", closeDialog);
   globalLogRefresh.addEventListener("click", refresh);
   globalLogMore.addEventListener("click", () =>
     refresh({
@@ -272,25 +273,25 @@ export function setupGlobalLog({ api: fn }) {
   globalLogLevel.addEventListener("change", refresh);
   globalLogCategory.addEventListener("change", refresh);
   globalLogSearch.addEventListener("input", () => {
-    window.clearTimeout(value4);
-    value4 = window.setTimeout(refresh, 250);
+    window.clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = window.setTimeout(refresh, 250);
   });
-  globalLogDialog.addEventListener("close", fn5);
+  globalLogDialog.addEventListener("close", stopAutoRefresh);
   globalLogExport.addEventListener("click", () => {
-    const value8 = document.createElement("a");
-    const value9 = fn4();
-    value8.href = "/api/v1/logs/export" + (value9.size ? "?" + value9 : "");
-    value8.download =
+    const link = document.createElement("a");
+    const params = buildQueryParams();
+    link.href = "/api/v1/logs/export" + (params.size ? "?" + params : "");
+    link.download =
       "ha-bridge-global-log-" + new Date().toISOString().slice(0, 10) + ".txt";
-    document.body.append(value8);
-    value8.click();
-    value8.remove();
+    document.body.append(link);
+    link.click();
+    link.remove();
   });
   globalLogClear.addEventListener("click", async () => {
     if (window.confirm("确定清空当前全局日志吗？清空后无法恢复。")) {
       globalLogClear.disabled = true;
       try {
-        await fn("/logs", {
+        await api("/logs", {
           method: "DELETE",
         });
         await refresh();

@@ -3,41 +3,41 @@ import {
   newId,
   slugify,
 } from "./editor-utils.js?v=20260831-editor-utils-v1";
-export function uniquePagePath(value, value2, value3 = "") {
-  const value4 = slugify(value2);
-  const allowed = new Set(
-    (value || [])
-      .map((value7) => value7.path)
-      .filter((value7) => value7 !== value3),
+export function uniquePagePath(pages, name, excludePath = "") {
+  const basePath = slugify(name);
+  const usedPaths = new Set(
+    (pages || [])
+      .map((page) => page.path)
+      .filter((path) => path !== excludePath),
   );
-  let value5 = value4;
-  let value6 = 2;
-  while (allowed.has(value5)) {
-    value5 = value4 + "-" + value6++;
+  let candidate = basePath;
+  let suffix = 2;
+  while (usedPaths.has(candidate)) {
+    candidate = basePath + "-" + suffix++;
   }
-  return value5;
+  return candidate;
 }
-export function clonePageWithFreshIds(value, value2, value3 = []) {
-  const page = clone(value);
+export function clonePageWithFreshIds(pageSource, name, existingPages = []) {
+  const page = clone(pageSource);
   page.id = newId("page");
-  page.name = value2;
-  page.path = uniquePagePath(value3, value2);
-  const fn = (value5) => {
-    for (const value6 of value5 || []) {
-      value6.id = newId("component");
-      fn(value6.children);
+  page.name = name;
+  page.path = uniquePagePath(existingPages, name);
+  const assignFreshComponentIds = (components) => {
+    for (const component of components || []) {
+      component.id = newId("component");
+      assignFreshComponentIds(component.children);
     }
   };
-  fn(page.components);
+  assignFreshComponentIds(page.components);
   return page;
 }
-export function findCustomPopup(document, value2) {
+export function findCustomPopup(document, popupId) {
   return (
-    (document?.customPopups || []).find((value3) => value3.id === value2) ||
+    (document?.customPopups || []).find((popup) => popup.id === popupId) ||
     null
   );
 }
-export function popupModuleTypeLabel(value) {
+export function popupModuleTypeLabel(moduleType) {
   return (
     {
       light: "灯光",
@@ -52,84 +52,84 @@ export function popupModuleTypeLabel(value) {
       "line-chart": "折线图",
       generic: "通用设备",
       "capability-device": "通用设备",
-    }[value] || "通用设备"
+    }[moduleType] || "通用设备"
   );
 }
 const ALLOWED_CLIMATE_DEVICE_TYPES = ["auto", "air-conditioner", "bath-heater"];
-export function normalizedPopupClimateDeviceType(dPopupClimateDeviceType) {
-  if (ALLOWED_CLIMATE_DEVICE_TYPES.includes(dPopupClimateDeviceType)) {
-    return dPopupClimateDeviceType;
+export function normalizedPopupClimateDeviceType(deviceType) {
+  if (ALLOWED_CLIMATE_DEVICE_TYPES.includes(deviceType)) {
+    return deviceType;
   } else {
     return "auto";
   }
 }
-export function popupModuleEntityRecommended(metadata, value2) {
-  const value3 =
+export function popupModuleEntityRecommended(metadata, moduleType) {
+  const domain =
     metadata?.domain || String(metadata?.entityId || "").split(".")[0];
-  if (value2 === "light") {
-    return value3 === "light";
-  } else if (value2 === "climate") {
-    return ["climate", "fan"].includes(value3);
-  } else if (value2 === "air-purifier") {
-    return value3 === "fan";
-  } else if (value2 === "water-heater") {
-    return value3 === "water_heater";
-  } else if (value2 === "media-player") {
-    return value3 === "media_player";
-  } else if (value2 === "electric-bed") {
-    return ["number", "select", "button", "switch"].includes(value3);
-  } else if (value2 === "switch") {
-    return ["switch", "input_boolean", "button"].includes(value3);
-  } else if (value2 === "cover") {
-    return value3 === "cover";
-  } else if (value2 === "camera") {
-    return value3 === "camera";
-  } else if (value2 === "line-chart") {
-    return value3 === "sensor";
+  if (moduleType === "light") {
+    return domain === "light";
+  } else if (moduleType === "climate") {
+    return ["climate", "fan"].includes(domain);
+  } else if (moduleType === "air-purifier") {
+    return domain === "fan";
+  } else if (moduleType === "water-heater") {
+    return domain === "water_heater";
+  } else if (moduleType === "media-player") {
+    return domain === "media_player";
+  } else if (moduleType === "electric-bed") {
+    return ["number", "select", "button", "switch"].includes(domain);
+  } else if (moduleType === "switch") {
+    return ["switch", "input_boolean", "button"].includes(domain);
+  } else if (moduleType === "cover") {
+    return domain === "cover";
+  } else if (moduleType === "camera") {
+    return domain === "camera";
+  } else if (moduleType === "line-chart") {
+    return domain === "sensor";
   } else {
     return true;
   }
 }
 export function reorderedPopupModules(
-  value,
-  value2,
-  value3 = null,
-  value4 = false,
+  modules,
+  draggedId,
+  targetId = null,
+  placeAfter = false,
 ) {
-  const value5 = [...(value || [])];
-  const value6 = value5.findIndex((value9) => value9.id === value2);
-  if (value6 < 0 || value2 === value3) {
-    return value5;
+  const next = [...(modules || [])];
+  const fromIndex = next.findIndex((module) => module.id === draggedId);
+  if (fromIndex < 0 || draggedId === targetId) {
+    return next;
   }
-  const [value7] = value5.splice(value6, 1);
-  if (!value3) {
-    value5.push(value7);
-    return value5;
+  const [moved] = next.splice(fromIndex, 1);
+  if (!targetId) {
+    next.push(moved);
+    return next;
   }
-  const value8 = value5.findIndex((value9) => value9.id === value3);
-  if (value8 < 0) {
-    value5.splice(value6, 0, value7);
-    return value5;
+  const toIndex = next.findIndex((module) => module.id === targetId);
+  if (toIndex < 0) {
+    next.splice(fromIndex, 0, moved);
+    return next;
   } else {
-    value5.splice(value8 + (value4 ? 1 : 0), 0, value7);
-    return value5;
+    next.splice(toIndex + (placeAfter ? 1 : 0), 0, moved);
+    return next;
   }
 }
-export function popupModuleDropPosition(element, value) {
-  const value2 = element.getBoundingClientRect();
-  const value3 = value.clientY - value2.top;
-  const value4 = Math.min(48, value2.height * 0.22);
-  if (value3 <= value4) {
+export function popupModuleDropPosition(element, pointerEvent) {
+  const rect = element.getBoundingClientRect();
+  const offsetY = pointerEvent.clientY - rect.top;
+  const edgeThreshold = Math.min(48, rect.height * 0.22);
+  if (offsetY <= edgeThreshold) {
     return {
       placeAfter: false,
       edge: "top",
     };
-  } else if (value3 >= value2.height - value4) {
+  } else if (offsetY >= rect.height - edgeThreshold) {
     return {
       placeAfter: true,
       edge: "bottom",
     };
-  } else if (value.clientX < value2.left + value2.width / 2) {
+  } else if (pointerEvent.clientX < rect.left + rect.width / 2) {
     return {
       placeAfter: false,
       edge: "left",
@@ -141,11 +141,11 @@ export function popupModuleDropPosition(element, value) {
     };
   }
 }
-export function greatestCommonDivisor(value, value2) {
-  let value3 = Math.abs(Math.trunc(value));
-  let value4 = Math.abs(Math.trunc(value2));
-  while (value4) {
-    [value3, value4] = [value4, value3 % value4];
+export function greatestCommonDivisor(a, b) {
+  let x = Math.abs(Math.trunc(a));
+  let y = Math.abs(Math.trunc(b));
+  while (y) {
+    [x, y] = [y, x % y];
   }
-  return value3 || 1;
+  return x || 1;
 }

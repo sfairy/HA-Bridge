@@ -38,9 +38,9 @@
   let retryAfterMs = 0;
   let sharedContext = {};
 
-  function sanitizePath(value) {
+  function sanitizePath(rawPath) {
     try {
-      const url = new URL(String(value || ""), global.location.href);
+      const url = new URL(String(rawPath || ""), global.location.href);
       if (!["http:", "https:", "ws:", "wss:"].includes(url.protocol)) {
         return `[${url.protocol.replace(":", "")}]`;
       }
@@ -65,8 +65,8 @@
     }
   }
 
-  function redactText(value, maxLength = 1e3) {
-    return String(value ?? "")
+  function redactText(text, maxLength = 1e3) {
+    return String(text ?? "")
       .replace(
         /(\b(?:set-cookie|cookie)["']?\s*[:=]\s*)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\r\n]+)/gi,
         "$1[redacted]",
@@ -101,19 +101,19 @@
 
   function sanitizeContext(context) {
     const sanitized = {};
-    for (const [key, value] of Object.entries(context || {})) {
+    for (const [key, contextValue] of Object.entries(context || {})) {
       if (
         !ALLOWED_CONTEXT_KEYS.has(key) ||
-        value == null ||
-        !["string", "number", "boolean"].includes(typeof value)
+        contextValue == null ||
+        !["string", "number", "boolean"].includes(typeof contextValue)
       ) {
         continue;
       }
       sanitized[key] = ["path", "page"].includes(key)
-        ? sanitizePath(value)
-        : typeof value == "number" && Number.isFinite(value)
-          ? value
-          : redactText(value, 512);
+        ? sanitizePath(contextValue)
+        : typeof contextValue == "number" && Number.isFinite(contextValue)
+          ? contextValue
+          : redactText(contextValue, 512);
     }
     return sanitized;
   }
@@ -196,11 +196,11 @@
     );
   }
 
-  function linkError(value, response) {
-    if (value && typeof value == "object" && failedResponses.has(response)) {
-      reportedErrors.add(value);
+  function linkError(error, response) {
+    if (error && typeof error == "object" && failedResponses.has(response)) {
+      reportedErrors.add(error);
     }
-    return value;
+    return error;
   }
 
   async function flushQueue() {

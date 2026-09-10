@@ -1,13 +1,13 @@
-const bag = new Set(["xiaomi_miot", "xiaomi_home"]);
-function normalizeMatchText(...value) {
-  return value
+const XIAOMI_PLATFORMS = new Set(["xiaomi_miot", "xiaomi_home"]);
+function normalizeMatchText(...parts) {
+  return parts
     .flat()
-    .map((value2) => String(value2 || "").trim())
+    .map((part) => String(part || "").trim())
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
 }
-function fn2(metadata) {
+function entityIsAvailable(metadata) {
   return (
     !!metadata?.entityId &&
     !metadata.disabledBy &&
@@ -15,67 +15,67 @@ function fn2(metadata) {
     metadata.status !== "disabled"
   );
 }
-function entityMatchScore(metadata, value2) {
-  const value3 = String(metadata?.domain || metadata?.entityId || "").split(
+function entityMatchScore(metadata, role) {
+  const domain = String(metadata?.domain || metadata?.entityId || "").split(
     ".",
     1,
   )[0];
-  const value4 = normalizeMatchText(
+  const matchText = normalizeMatchText(
     metadata?.entityId,
     metadata?.name,
     metadata?.originalName,
     metadata?.translationKey,
     metadata?.uniqueId,
   );
-  const value5 = String(metadata?.originalName || "")
+  const originalNameLower = String(metadata?.originalName || "")
     .trim()
     .toLowerCase();
-  if (value2 === "climate") {
-    if (value3 === "climate") {
-      return 100 + (/ptc.?bath|bath.?heater|浴霸|风暖/.test(value4) ? 40 : 0);
+  if (role === "climate") {
+    if (domain === "climate") {
+      return 100 + (/ptc.?bath|bath.?heater|浴霸|风暖/.test(matchText) ? 40 : 0);
     } else {
       return -1;
     }
   }
-  if (value2 === "cover") {
-    if (value3 === "cover") {
+  if (role === "cover") {
+    if (domain === "cover") {
       return 100;
     } else {
       return -1;
     }
   }
-  if (value2 === "fan") {
-    if (value3 === "fan") {
-      return 100 + (/air.?purifier|airp|空气净化/.test(value4) ? 20 : 0);
+  if (role === "fan") {
+    if (domain === "fan") {
+      return 100 + (/air.?purifier|airp|空气净化/.test(matchText) ? 20 : 0);
     } else {
       return -1;
     }
   }
-  if (value2 === "light") {
-    if (value3 !== "light") {
+  if (role === "light") {
+    if (domain !== "light") {
       return -1;
     }
-    let value6 = 100;
+    let score = 100;
     if (String(metadata.translationKey || "").toLowerCase() === "light") {
-      value6 += 80;
+      score += 80;
     }
-    if (["灯", "灯光", "照明"].includes(value5)) {
-      value6 += 70;
+    if (["灯", "灯光", "照明"].includes(originalNameLower)) {
+      score += 70;
     }
-    if (/(?:^|[_\s-])s_?2(?:[_\s-]|$)/.test(value4)) {
-      value6 += 25;
+    if (/(?:^|[_\s-])s_?2(?:[_\s-]|$)/.test(matchText)) {
+      score += 25;
     }
-    if (/indicator|ambient|night.?light|指示灯|氛围灯|夜灯/.test(value4)) {
-      value6 -= 140;
+    if (/indicator|ambient|night.?light|指示灯|氛围灯|夜灯/.test(matchText)) {
+      score -= 140;
     }
-    return value6;
+    return score;
   }
-  if (value2 === "power") {
-    if (["switch", "input_boolean"].includes(value3)) {
+  if (role === "power") {
+    if (["switch", "input_boolean"].includes(domain)) {
       return (
         100 +
         (/(?:^|[_\s-])(on|power|heating)(?:[_\s-]|$)|开关|取暖|加热/.test(
-          value4,
+          matchText,
         )
           ? 35
           : 0)
@@ -83,15 +83,15 @@ function entityMatchScore(metadata, value2) {
     } else {
       return -1;
     }
-  } else if (value2 === "mode") {
-    if (value3 !== "select") {
+  } else if (role === "mode") {
+    if (domain !== "select") {
       return -1;
     } else {
-      return 100 + (/mode|preset|模式|档位/.test(value4) ? 35 : 0);
+      return 100 + (/mode|preset|模式|档位/.test(matchText) ? 35 : 0);
     }
-  } else if (value2 === "temperature") {
-    if (["sensor", "number"].includes(value3)) {
-      if (/temperature|target.?temp|温度/.test(value4)) {
+  } else if (role === "temperature") {
+    if (["sensor", "number"].includes(domain)) {
+      if (/temperature|target.?temp|温度/.test(matchText)) {
         return 130;
       } else {
         return 20;
@@ -99,197 +99,197 @@ function entityMatchScore(metadata, value2) {
     } else {
       return -1;
     }
-  } else if (value2 === "humidity") {
-    if (value3 === "sensor" && /humidity|湿度/.test(value4)) {
+  } else if (role === "humidity") {
+    if (domain === "sensor" && /humidity|湿度/.test(matchText)) {
       return 130;
     } else {
       return -1;
     }
-  } else if (value2 === "pm25") {
+  } else if (role === "pm25") {
     if (
-      value3 === "sensor" &&
-      /pm.?2[._ ]?5|pm25|particulate|颗粒物/.test(value4)
+      domain === "sensor" &&
+      /pm.?2[._ ]?5|pm25|particulate|颗粒物/.test(matchText)
     ) {
       return 140;
     } else {
       return -1;
     }
-  } else if (value2 === "hcho") {
+  } else if (role === "hcho") {
     if (
-      value3 !== "sensor" ||
-      !/hcho|formaldehyde|甲醛/.test(value4) ||
+      domain !== "sensor" ||
+      !/hcho|formaldehyde|甲醛/.test(matchText) ||
       /original|raw|tag|serial|(?:^|[_\s-])sn(?:[_\s-]|$)|原始|标签|流水号|编号/.test(
-        value4,
+        matchText,
       )
     ) {
       return -1;
-    } else if (/density|concentration|密度|浓度/.test(value4)) {
+    } else if (/density|concentration|密度|浓度/.test(matchText)) {
       return 190;
     } else {
       return 160;
     }
-  } else if (value2 === "pm10") {
-    if (value3 === "sensor" && /pm.?10|粉尘/.test(value4)) {
+  } else if (role === "pm10") {
+    if (domain === "sensor" && /pm.?10|粉尘/.test(matchText)) {
       return 150;
     } else {
       return -1;
     }
-  } else if (value2 === "filterLeftTime") {
-    if (value3 !== "sensor" || /used|elapsed|已使用/.test(value4)) {
+  } else if (role === "filterLeftTime") {
+    if (domain !== "sensor" || /used|elapsed|已使用/.test(matchText)) {
       return -1;
     } else if (
       /filter.*(?:left|remaining).*(?:time|hour)|(?:left|remaining).*(?:time|hour).*filter|滤芯.*(?:剩余时间|剩余时长)/.test(
-        value4,
+        matchText,
       )
     ) {
       return 180;
     } else {
       return -1;
     }
-  } else if (value2 === "filterLife") {
+  } else if (role === "filterLife") {
     if (
-      value3 !== "sensor" ||
+      domain !== "sensor" ||
       /serial|factory|product|tag|date|(?:^|[_\s-])sn(?:[_\s-]|$)|used|time|hour|流水号|工厂|生产|标签|类型码|已使用|剩余时间|剩余时长/.test(
-        value4,
+        matchText,
       )
     ) {
       return -1;
     } else if (
       /filter.*(?:life|level)|(?:life|level).*filter|滤芯.*寿命|剩余寿命/.test(
-        value4,
+        matchText,
       )
     ) {
       return 180;
-    } else if (/滤芯/.test(value4)) {
+    } else if (/滤芯/.test(matchText)) {
       return 135;
     } else {
       return -1;
     }
   } else if (
-    value2 === "airQuality" &&
-    value3 === "sensor" &&
-    /air.?quality|aqi|空气质量/.test(value4)
+    role === "airQuality" &&
+    domain === "sensor" &&
+    /air.?quality|aqi|空气质量/.test(matchText)
   ) {
     return 130;
   } else {
     return -1;
   }
 }
-function selectBestMatchedEntity(value, value2) {
+function selectBestMatchedEntity(entities, role) {
   return (
-    value
+    entities
       .map((entity) => ({
         entity: entity,
-        score: entityMatchScore(entity, value2),
+        score: entityMatchScore(entity, role),
       }))
-      .filter((value3) => value3.score >= 0)
+      .filter((candidate) => candidate.score >= 0)
       .sort(
-        (value3, value4) =>
-          value4.score - value3.score ||
-          String(value3.entity.entityId || "").length -
-            String(value4.entity.entityId || "").length ||
-          String(value3.entity.entityId || "").localeCompare(
-            String(value4.entity.entityId || ""),
+        (left, right) =>
+          right.score - left.score ||
+          String(left.entity.entityId || "").length -
+            String(right.entity.entityId || "").length ||
+          String(left.entity.entityId || "").localeCompare(
+            String(right.entity.entityId || ""),
           ),
       )[0]?.entity || null
   );
 }
-function fn3(value, value2) {
+function selectElectricBedEntity(entities, role) {
   return (
-    value
+    entities
       .filter((metadata) => {
-        const value4 = String(
+        const domain = String(
           metadata?.domain || metadata?.entityId || "",
         ).split(".", 1)[0];
-        const value5 = normalizeMatchText(
+        const matchText = normalizeMatchText(
           metadata?.entityId,
           metadata?.name,
           metadata?.originalName,
           metadata?.translationKey,
           metadata?.uniqueId,
         );
-        if (value2 === "backrest") {
-          return value4 === "number" && /backrest|靠背/.test(value5);
-        } else if (value2 === "leg") {
-          return value4 === "number" && /leg|腿部|腿/.test(value5);
-        } else if (value2 === "waist") {
-          return value4 === "number" && /waist|腰部|腰/.test(value5);
-        } else if (value2 === "mode") {
+        if (role === "backrest") {
+          return domain === "number" && /backrest|靠背/.test(matchText);
+        } else if (role === "leg") {
+          return domain === "number" && /leg|腿部|腿/.test(matchText);
+        } else if (role === "waist") {
+          return domain === "number" && /waist|腰部|腰/.test(matchText);
+        } else if (role === "mode") {
           return (
-            value4 === "select" &&
-            /mode|模式/.test(value5) &&
-            !/memory|记忆|姿势/.test(value5)
+            domain === "select" &&
+            /mode|模式/.test(matchText) &&
+            !/memory|记忆|姿势/.test(matchText)
           );
-        } else if (value2 === "memory") {
+        } else if (role === "memory") {
           return (
-            ["button", "select"].includes(value4) &&
-            /memory|记忆|姿势/.test(value5)
+            ["button", "select"].includes(domain) &&
+            /memory|记忆|姿势/.test(matchText)
           );
         } else {
           return false;
         }
       })
-      .sort((value3, value4) =>
-        String(value3.entityId || "").localeCompare(
-          String(value4.entityId || ""),
+      .sort((left, right) =>
+        String(left.entityId || "").localeCompare(
+          String(right.entityId || ""),
         ),
       )[0] || null
   );
 }
-export function xiaomiIntegration(value) {
-  const value2 = String(value?.platform || "")
+export function xiaomiIntegration(metadata) {
+  const platform = String(metadata?.platform || "")
     .trim()
     .toLowerCase();
-  if (bag.has(value2)) {
-    return value2;
+  if (XIAOMI_PLATFORMS.has(platform)) {
+    return platform;
   } else {
     return "";
   }
 }
 export function resolveXiaomiDeviceProfile(
-  value,
-  value2 = new Map(),
-  value3 = new Map(),
-  value4 = new Map(),
+  entityId,
+  entityMetadataById = new Map(),
+  deviceRegistryById = new Map(),
+  entityStateById = new Map(),
 ) {
-  const metadata = value2?.get?.(value) || null;
+  const metadata = entityMetadataById?.get?.(entityId) || null;
   const integration = xiaomiIntegration(metadata);
   if (!metadata || !integration) {
     return null;
   }
   const deviceId = String(metadata.deviceId || "");
-  const value6 = (deviceId && value3?.get?.(deviceId)) || null;
-  const value7 = [...(value2?.values?.() || [])].filter(
-    (metadata2) =>
-      fn2(metadata2) &&
+  const deviceRegistryEntry = (deviceId && deviceRegistryById?.get?.(deviceId)) || null;
+  const relatedEntities = [...(entityMetadataById?.values?.() || [])].filter(
+    (relatedMetadata) =>
+      entityIsAvailable(relatedMetadata) &&
       (deviceId
-        ? metadata2.deviceId === deviceId
-        : metadata2.entityId === value) &&
-      xiaomiIntegration(metadata2) === integration,
+        ? relatedMetadata.deviceId === deviceId
+        : relatedMetadata.entityId === entityId) &&
+      xiaomiIntegration(relatedMetadata) === integration,
   );
   if (
-    !value7.some((value25) => value25.entityId === metadata.entityId) &&
-    fn2(metadata)
+    !relatedEntities.some((related) => related.entityId === metadata.entityId) &&
+    entityIsAvailable(metadata)
   ) {
-    value7.push(metadata);
+    relatedEntities.push(metadata);
   }
-  const value8 = value4?.get?.(value);
-  const value9 = value8?.newState || value8 || {};
-  const value10 = normalizeMatchText(
+  const entityStateEntry = entityStateById?.get?.(entityId);
+  const entityState = entityStateEntry?.newState || entityStateEntry || {};
+  const deviceMatchText = normalizeMatchText(
     integration,
-    value6?.name,
-    value6?.manufacturer,
-    value6?.model,
-    value9?.attributes?.friendly_name,
-    value7.flatMap((value25) => [
-      value25.entityId,
-      value25.name,
-      value25.originalName,
-      value25.translationKey,
-      value25.uniqueId,
+    deviceRegistryEntry?.name,
+    deviceRegistryEntry?.manufacturer,
+    deviceRegistryEntry?.model,
+    entityState?.attributes?.friendly_name,
+    relatedEntities.flatMap((related) => [
+      related.entityId,
+      related.name,
+      related.originalName,
+      related.translationKey,
+      related.uniqueId,
     ]),
   );
-  const value11 = Object.fromEntries(
+  const roleEntityIds = Object.fromEntries(
     [
       "climate",
       "cover",
@@ -306,162 +306,162 @@ export function resolveXiaomiDeviceProfile(
       "filterLeftTime",
       "airQuality",
     ]
-      .map((value25) => [value25, selectBestMatchedEntity(value7, value25)?.entityId || ""])
-      .filter(([, value25]) => value25),
+      .map((role) => [role, selectBestMatchedEntity(relatedEntities, role)?.entityId || ""])
+      .filter(([, matchedEntityId]) => matchedEntityId),
   );
-  const value12 = {
-    backrest: fn3(value7, "backrest")?.entityId || "",
-    leg: fn3(value7, "leg")?.entityId || "",
-    waist: fn3(value7, "waist")?.entityId || "",
-    mode: fn3(value7, "mode")?.entityId || "",
+  const electricBedRoles = {
+    backrest: selectElectricBedEntity(relatedEntities, "backrest")?.entityId || "",
+    leg: selectElectricBedEntity(relatedEntities, "leg")?.entityId || "",
+    waist: selectElectricBedEntity(relatedEntities, "waist")?.entityId || "",
+    mode: selectElectricBedEntity(relatedEntities, "mode")?.entityId || "",
   };
-  const value13 = value7
+  const selectEntities = relatedEntities
     .filter(
-      (metadata2) =>
-        String(metadata2?.domain || metadata2?.entityId || "").split(
+      (relatedMetadata) =>
+        String(relatedMetadata?.domain || relatedMetadata?.entityId || "").split(
           ".",
           1,
         )[0] === "select",
     )
-    .sort((value25, value26) =>
-      String(value25.entityId || "").localeCompare(
-        String(value26.entityId || ""),
+    .sort((left, right) =>
+      String(left.entityId || "").localeCompare(
+        String(right.entityId || ""),
       ),
     );
-  if (value13.length) {
-    const fn4 = (value27) => {
-      const value28 = normalizeMatchText(
-        value27.entityId,
-        value27.name,
-        value27.originalName,
-        value27.translationKey,
-        value27.uniqueId,
+  if (selectEntities.length) {
+    const modeSelectScore = (selectEntity) => {
+      const matchText = normalizeMatchText(
+        selectEntity.entityId,
+        selectEntity.name,
+        selectEntity.originalName,
+        selectEntity.translationKey,
+        selectEntity.uniqueId,
       );
-      const options = value4?.get?.(value27.entityId)?.attributes?.options;
-      const value29 = /mode|模式|工作模式|operation|function/.test(value28)
+      const options = entityStateById?.get?.(selectEntity.entityId)?.attributes?.options;
+      const modeBonus = /mode|模式|工作模式|operation|function/.test(matchText)
         ? 320
         : 0;
-      const value30 = /memory|记忆|姿势/.test(value28) ? -520 : 0;
-      return value29 + value30 + Math.min(80, Number(options?.length || 0) * 8);
+      const memoryPenalty = /memory|记忆|姿势/.test(matchText) ? -520 : 0;
+      return modeBonus + memoryPenalty + Math.min(80, Number(options?.length || 0) * 8);
     };
-    const value25 = value13.filter(
-      (value27) =>
+    const nonMemorySelects = selectEntities.filter(
+      (selectEntity) =>
         !/memory|记忆|姿势/.test(
           normalizeMatchText(
-            value27.entityId,
-            value27.name,
-            value27.originalName,
-            value27.translationKey,
-            value27.uniqueId,
+            selectEntity.entityId,
+            selectEntity.name,
+            selectEntity.originalName,
+            selectEntity.translationKey,
+            selectEntity.uniqueId,
           ),
         ),
     );
-    const value26 = (value25.length ? value25 : value13).sort(
-      (value27, value28) =>
-        fn4(value28) - fn4(value27) ||
-        String(value27.entityId || "").localeCompare(
-          String(value28.entityId || ""),
+    const rankedSelects = (nonMemorySelects.length ? nonMemorySelects : selectEntities).sort(
+      (left, right) =>
+        modeSelectScore(right) - modeSelectScore(left) ||
+        String(left.entityId || "").localeCompare(
+          String(right.entityId || ""),
         ),
     );
-    value12.mode = value26[0]?.entityId || value12.mode;
+    electricBedRoles.mode = rankedSelects[0]?.entityId || electricBedRoles.mode;
   }
-  const value14 = value7
-    .filter((metadata2) => {
-      const value26 = String(
-        metadata2?.domain || metadata2?.entityId || "",
+  const memoryEntities = relatedEntities
+    .filter((relatedMetadata) => {
+      const domain = String(
+        relatedMetadata?.domain || relatedMetadata?.entityId || "",
       ).split(".", 1)[0];
-      const value27 = normalizeMatchText(
-        metadata2?.entityId,
-        metadata2?.name,
-        metadata2?.originalName,
-        metadata2?.translationKey,
-        metadata2?.uniqueId,
+      const matchText = normalizeMatchText(
+        relatedMetadata?.entityId,
+        relatedMetadata?.name,
+        relatedMetadata?.originalName,
+        relatedMetadata?.translationKey,
+        relatedMetadata?.uniqueId,
       );
       return (
-        ["button", "select"].includes(value26) &&
-        /memory|记忆|姿势/.test(value27)
+        ["button", "select"].includes(domain) &&
+        /memory|记忆|姿势/.test(matchText)
       );
     })
-    .sort((value25, value26) =>
-      String(value25.entityId || "").localeCompare(
-        String(value26.entityId || ""),
+    .sort((left, right) =>
+      String(left.entityId || "").localeCompare(
+        String(right.entityId || ""),
       ),
     );
-  const value15 = value7
+  const buttonEntities = relatedEntities
     .filter(
-      (metadata2) =>
-        String(metadata2?.domain || metadata2?.entityId || "").split(
+      (relatedMetadata) =>
+        String(relatedMetadata?.domain || relatedMetadata?.entityId || "").split(
           ".",
           1,
         )[0] === "button",
     )
-    .sort((value25, value26) =>
-      String(value25.entityId || "").localeCompare(
-        String(value26.entityId || ""),
+    .sort((left, right) =>
+      String(left.entityId || "").localeCompare(
+        String(right.entityId || ""),
       ),
     );
-  const value16 = value7
+  const otherSelectEntities = relatedEntities
     .filter(
-      (metadata2) =>
-        String(metadata2?.domain || metadata2?.entityId || "").split(
+      (relatedMetadata) =>
+        String(relatedMetadata?.domain || relatedMetadata?.entityId || "").split(
           ".",
           1,
-        )[0] === "select" && metadata2.entityId !== value12.mode,
+        )[0] === "select" && relatedMetadata.entityId !== electricBedRoles.mode,
     )
-    .sort((value25, value26) =>
-      String(value25.entityId || "").localeCompare(
-        String(value26.entityId || ""),
+    .sort((left, right) =>
+      String(left.entityId || "").localeCompare(
+        String(right.entityId || ""),
       ),
     );
-  const value17 = value15.length ? value15 : value16;
-  const value18 = value14.length ? value14 : value17;
-  value12.memory1 = value18[0]?.entityId || "";
-  value12.memory2 = value18[1]?.entityId || "";
-  const value19 = /electric.?bed|smart.?bed|bed\.\d+|milan|电动床|智能床/.test(
-    value10,
+  const buttonOrSelectFallback = buttonEntities.length ? buttonEntities : otherSelectEntities;
+  const memoryCandidates = memoryEntities.length ? memoryEntities : buttonOrSelectFallback;
+  electricBedRoles.memory1 = memoryCandidates[0]?.entityId || "";
+  electricBedRoles.memory2 = memoryCandidates[1]?.entityId || "";
+  const looksLikeElectricBed = /electric.?bed|smart.?bed|bed\.\d+|milan|电动床|智能床/.test(
+    deviceMatchText,
   );
-  const value20 =
-    !!value12.backrest && !!value12.leg && !!value12.waist && !!value12.mode;
-  const value21 = String(metadata.domain || metadata.entityId || "").split(
+  const hasFullElectricBedRoles =
+    !!electricBedRoles.backrest && !!electricBedRoles.leg && !!electricBedRoles.waist && !!electricBedRoles.mode;
+  const primaryDomain = String(metadata.domain || metadata.entityId || "").split(
     ".",
     1,
   )[0];
-  const value22 =
+  const looksLikeBathHeater =
     /bath.?heater|ptc.?bath|(?:^|[._-])bhf(?:[._-]|$)|浴霸|风暖|暖风机/.test(
-      value10,
+      deviceMatchText,
     );
-  const value23 = /air.?condition|aircondition|aircon|空调/.test(value10);
-  const value24 = /air.?purifier|(?:^|[._-])airp(?:[._-]|$)|空气净化/.test(
-    value10,
+  const looksLikeAirConditioner = /air.?condition|aircondition|aircon|空调/.test(deviceMatchText);
+  const looksLikeAirPurifier = /air.?purifier|(?:^|[._-])airp(?:[._-]|$)|空气净化/.test(
+    deviceMatchText,
   );
   let deviceType = "generic";
-  if (value19 || value20) {
+  if (looksLikeElectricBed || hasFullElectricBedRoles) {
     deviceType = "electric-bed";
-  } else if (value22 && (value11.climate || value11.fan)) {
+  } else if (looksLikeBathHeater && (roleEntityIds.climate || roleEntityIds.fan)) {
     deviceType = "bath-heater";
-  } else if (value23 && value11.climate) {
+  } else if (looksLikeAirConditioner && roleEntityIds.climate) {
     deviceType = "air-conditioner";
-  } else if (value11.cover) {
+  } else if (roleEntityIds.cover) {
     deviceType = "cover";
-  } else if (value24 && value11.fan) {
+  } else if (looksLikeAirPurifier && roleEntityIds.fan) {
     deviceType = "air-purifier";
-  } else if (value11.climate) {
-    deviceType = value21 === "climate" ? "air-conditioner" : "generic";
-  } else if (value11.fan) {
+  } else if (roleEntityIds.climate) {
+    deviceType = primaryDomain === "climate" ? "air-conditioner" : "generic";
+  } else if (roleEntityIds.fan) {
     deviceType = "fan";
-  } else if (value11.light && value21 === "light") {
+  } else if (roleEntityIds.light && primaryDomain === "light") {
     deviceType = "light";
-  } else if (value11.power && ["switch", "input_boolean"].includes(value21)) {
+  } else if (roleEntityIds.power && ["switch", "input_boolean"].includes(primaryDomain)) {
     deviceType = "switch";
   }
   const coverKind =
-    value11.cover &&
-    /airer|clothes.?rack|laundry.?rack|晾衣机|晾衣架/.test(value10)
+    roleEntityIds.cover &&
+    /airer|clothes.?rack|laundry.?rack|晾衣机|晾衣架/.test(deviceMatchText)
       ? "airer"
-      : value11.cover &&
-          /dream|vertical|novo\.curtain|梦幻|竖帘|垂直帘/.test(value10)
+      : roleEntityIds.cover &&
+          /dream|vertical|novo\.curtain|梦幻|竖帘|垂直帘/.test(deviceMatchText)
         ? "dream"
-        : value11.cover
+        : roleEntityIds.cover
           ? "standard"
           : "";
   return {
@@ -470,33 +470,33 @@ export function resolveXiaomiDeviceProfile(
       integration === "xiaomi_home" ? "Xiaomi Home" : "Xiaomi Miot",
     deviceId: deviceId,
     deviceName: String(
-      value6?.name ||
-        value9?.attributes?.friendly_name ||
+      deviceRegistryEntry?.name ||
+        entityState?.attributes?.friendly_name ||
         metadata.name ||
-        value,
+        entityId,
     ),
-    manufacturer: String(value6?.manufacturer || ""),
-    model: String(value6?.model || ""),
+    manufacturer: String(deviceRegistryEntry?.manufacturer || ""),
+    model: String(deviceRegistryEntry?.model || ""),
     deviceType: deviceType,
     coverKind: coverKind,
     roles: {
       primary:
-        value11.climate ||
-        value11.cover ||
-        value11.fan ||
-        value11.light ||
-        value11.power ||
-        value,
-      ...value11,
-      ...(deviceType === "electric-bed" ? value12 : {}),
+        roleEntityIds.climate ||
+        roleEntityIds.cover ||
+        roleEntityIds.fan ||
+        roleEntityIds.light ||
+        roleEntityIds.power ||
+        entityId,
+      ...roleEntityIds,
+      ...(deviceType === "electric-bed" ? electricBedRoles : {}),
     },
-    entityIds: value7.map((entityIds) => entityIds.entityId),
+    entityIds: relatedEntities.map((related) => related.entityId),
     confidence:
       deviceType === "generic" ? "standard-fallback" : "xiaomi-profile",
   };
 }
-export function applyXiaomiDeviceProfile(component, value) {
-  if (!component || !value) {
+export function applyXiaomiDeviceProfile(component, profile) {
+  if (!component || !profile) {
     return component;
   }
   const properties = {
@@ -504,15 +504,15 @@ export function applyXiaomiDeviceProfile(component, value) {
   };
   if (
     (!properties.deviceType || properties.deviceType === "auto") &&
-    ["air-conditioner", "bath-heater"].includes(value.deviceType)
+    ["air-conditioner", "bath-heater"].includes(profile.deviceType)
   ) {
-    properties.deviceType = value.deviceType;
+    properties.deviceType = profile.deviceType;
   }
   if (
     (!properties.coverKind || properties.coverKind === "auto") &&
-    value.coverKind
+    profile.coverKind
   ) {
-    properties.coverKind = value.coverKind;
+    properties.coverKind = profile.coverKind;
   }
   return {
     ...component,

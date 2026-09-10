@@ -1,4 +1,4 @@
-const bag = new Set([
+const onOffDomains = new Set([
   "light",
   "switch",
   "input_boolean",
@@ -6,40 +6,40 @@ const bag = new Set([
   "humidifier",
   "siren",
 ]);
-const bag2 = new Set(["climate", "water_heater"]);
+const climateLikeDomains = new Set(["climate", "water_heater"]);
 function entityDomain(metadata) {
-  const value2 =
+  const entityId =
     typeof metadata == "string"
       ? metadata
       : String(metadata?.entityId || metadata?.entity_id || "");
   return (
     String(typeof metadata == "string" ? "" : metadata?.domain || "")
       .trim()
-      .toLowerCase() || value2.split(".", 1)[0].toLowerCase()
+      .toLowerCase() || entityId.split(".", 1)[0].toLowerCase()
   );
 }
-export function lightStatisticsEntitySupport(value) {
-  const value2 =
-    typeof value == "string"
-      ? value
-      : String(value?.entityId || value?.entity_id || "");
-  const value3 = entityDomain(value);
-  if (value3 === "virtual" || value?.virtual) {
+export function lightStatisticsEntitySupport(entity) {
+  const entityId =
+    typeof entity == "string"
+      ? entity
+      : String(entity?.entityId || entity?.entity_id || "");
+  const domain = entityDomain(entity);
+  if (domain === "virtual" || entity?.virtual) {
     return {
       supported: true,
       message: "虚拟实体按当前显示状态统计。",
     };
-  } else if (value3 === "group") {
+  } else if (domain === "group") {
     return {
       supported: true,
       message: "群组将作为 1 个实体统计。",
     };
-  } else if (bag.has(value3)) {
+  } else if (onOffDomains.has(domain)) {
     return {
       supported: true,
       message: "按开启/关闭状态统计。",
     };
-  } else if (bag2.has(value3)) {
+  } else if (climateLikeDomains.has(domain)) {
     return {
       supported: true,
       message: "按关闭/运行状态统计。",
@@ -51,89 +51,89 @@ export function lightStatisticsEntitySupport(value) {
     };
   }
 }
-export function lightStatisticsEntityStateStatus(value, value2) {
-  if (!lightStatisticsEntitySupport(value).supported) {
+export function lightStatisticsEntityStateStatus(entity, stateOrRecord) {
+  if (!lightStatisticsEntitySupport(entity).supported) {
     return "abnormal";
   }
-  const value3 = entityDomain(value);
-  const value4 = String(value2?.state ?? value2 ?? "")
+  const domain = entityDomain(entity);
+  const state = String(stateOrRecord?.state ?? stateOrRecord ?? "")
     .trim()
     .toLowerCase();
-  if (!value4 || ["unknown", "unavailable"].includes(value4)) {
+  if (!state || ["unknown", "unavailable"].includes(state)) {
     return "abnormal";
-  } else if (value4 === "off") {
+  } else if (state === "off") {
     return "off";
-  } else if (value4 === "on" || bag2.has(value3)) {
+  } else if (state === "on" || climateLikeDomains.has(domain)) {
     return "on";
   } else {
     return "abnormal";
   }
 }
-function metadataGet(value, value2) {
-  if (typeof value?.get == "function") {
-    return value.get(value2) || null;
+function metadataGet(metadata, entityId) {
+  if (typeof metadata?.get == "function") {
+    return metadata.get(entityId) || null;
   } else {
-    return (value && typeof value == "object" && value[value2]) || null;
+    return (metadata && typeof metadata == "object" && metadata[entityId]) || null;
   }
 }
-function fn2(value, value2) {
-  const value3 =
-    typeof value?.get == "function" ? value.get(value2) : value?.[value2];
+function readEntityState(states, entityId) {
+  const record =
+    typeof states?.get == "function" ? states.get(entityId) : states?.[entityId];
   if (
-    value3 &&
-    typeof value3 == "object" &&
-    Object.prototype.hasOwnProperty.call(value3, "newState")
+    record &&
+    typeof record == "object" &&
+    Object.prototype.hasOwnProperty.call(record, "newState")
   ) {
-    return value3.newState || null;
+    return record.newState || null;
   } else {
-    return value3 || null;
+    return record || null;
   }
 }
 export function lightStatisticsSummary(
   lightStatistics,
-  floorNames = new Map(),
-  value = new Map(),
+  states = new Map(),
+  entityMetadata = new Map(),
 ) {
-  const value2 = [];
-  const allowed = new Set();
-  for (const value3 of Array.isArray(lightStatistics) ? lightStatistics : []) {
-    const value4 = String(value3 || "").trim();
-    if (!!value4 && !allowed.has(value4)) {
-      allowed.add(value4);
-      value2.push(value4);
+  const entityIds = [];
+  const seen = new Set();
+  for (const rawId of Array.isArray(lightStatistics) ? lightStatistics : []) {
+    const entityId = String(rawId || "").trim();
+    if (!!entityId && !seen.has(entityId)) {
+      seen.add(entityId);
+      entityIds.push(entityId);
     }
   }
-  const items = value2.map((entityId) => {
-    const value3 = metadataGet(value, entityId) || {};
-    const value4 = fn2(floorNames, entityId);
-    const state = String(value4?.state || "")
+  const items = entityIds.map((entityId) => {
+    const metadata = metadataGet(entityMetadata, entityId) || {};
+    const entityState = readEntityState(states, entityId);
+    const state = String(entityState?.state || "")
       .trim()
       .toLowerCase();
-    const value5 = lightStatisticsEntitySupport({
-      ...value3,
+    const support = lightStatisticsEntitySupport({
+      ...metadata,
       entityId: entityId,
     });
     const status = lightStatisticsEntityStateStatus(
       {
-        ...value3,
+        ...metadata,
         entityId: entityId,
       },
-      value4,
+      entityState,
     );
     return {
       entityId: entityId,
       label: String(
-        value4?.attributes?.friendly_name ||
-          value3.name ||
-          value3.originalName ||
+        entityState?.attributes?.friendly_name ||
+          metadata.name ||
+          metadata.originalName ||
           entityId,
       ),
       state: state,
       status: status,
       message:
-        status === "abnormal" && value5.supported
+        status === "abnormal" && support.supported
           ? "当前状态无法判断"
-          : value5.message,
+          : support.message,
     };
   });
   return {

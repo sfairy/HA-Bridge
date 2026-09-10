@@ -1,7 +1,7 @@
 import { interaction3dTemplate } from "../../modules/interaction3d/definition.js?v=20260905-interaction3d-v1";
 
-const index = new Map();
-const index2 = new Map();
+const templateRegistry = new Map();
+const uiPackRegistry = new Map();
 const COMPONENT_TYPE_GROUPS = {
   shared: [
     "time",
@@ -563,19 +563,19 @@ const componentDefaults = {
 };
 const KNOWN_PROPERTY_NAME_PATTERN =
   /(?:text|label|name|title|icon|assetid|targetpage|layoutmode|freelayout|naturalwidth|naturalheight|fit|refreshinterval|exportfolder|previewready|previewing|interactionmode|generated|lightlayers|exportresolution|exportcamera|floorselection)$/i;
-export function registerUiPackDefinition(value) {
-  if (!value?.id || !value?.version) {
+export function registerUiPackDefinition(definition) {
+  if (!definition?.id || !definition?.version) {
     throw new Error("UI 方案必须包含 id 和 version。");
   }
-  index2.set(
-    value.id,
+  uiPackRegistry.set(
+    definition.id,
     Object.freeze({
-      ...value,
+      ...definition,
     }),
   );
 }
-export function hasUiPackDefinition(value) {
-  return index2.has(value);
+export function hasUiPackDefinition(uiPackId) {
+  return uiPackRegistry.has(uiPackId);
 }
 registerUiPackDefinition({
   id: "ui.base",
@@ -588,110 +588,114 @@ registerUiPackDefinition({
   componentDefaults: componentDefaults,
 });
 registerComponentTemplate(interaction3dTemplate);
-export function registerComponentTemplate(value) {
-  if (!value?.id || typeof value.create != "function") {
+export function registerComponentTemplate(template) {
+  if (!template?.id || typeof template.create != "function") {
     throw new Error("控件模板必须包含 id 和 create。");
   }
-  const uiPackId = value.uiPackId || "ui.base";
-  index.set(
-    uiPackId + ":" + value.id,
+  const uiPackId = template.uiPackId || "ui.base";
+  templateRegistry.set(
+    uiPackId + ":" + template.id,
     Object.freeze({
-      ...value,
+      ...template,
       uiPackId: uiPackId,
     }),
   );
 }
-export function listComponentTemplates(value, value2 = "ui.base") {
-  const value3 = COMPONENT_TYPE_GROUPS[value] || [];
-  return [...index.values()]
+export function listComponentTemplates(scope, uiPackId = "ui.base") {
+  const typeOrder = COMPONENT_TYPE_GROUPS[scope] || [];
+  return [...templateRegistry.values()]
     .filter(
-      (value4) => value4.uiPackId === value2 && value4.scopes?.includes(value),
+      (template) =>
+        template.uiPackId === uiPackId && template.scopes?.includes(scope),
     )
-    .sort((value4, value5) => {
-      const value6 = value3.indexOf(value4.id);
-      const value7 = value3.indexOf(value5.id);
+    .sort((a, b) => {
+      const orderA = typeOrder.indexOf(a.id);
+      const orderB = typeOrder.indexOf(b.id);
       return (
-        (value6 < 0 ? Number.MAX_SAFE_INTEGER : value6) -
-        (value7 < 0 ? Number.MAX_SAFE_INTEGER : value7)
+        (orderA < 0 ? Number.MAX_SAFE_INTEGER : orderA) -
+        (orderB < 0 ? Number.MAX_SAFE_INTEGER : orderB)
       );
     });
 }
-export function createComponentFromTemplate(templateId, value) {
-  const uiPackId = value?.uiPackId || "ui.base";
-  const value2 = index.get(uiPackId + ":" + templateId);
-  if (!value2) {
+export function createComponentFromTemplate(templateId, options) {
+  const uiPackId = options?.uiPackId || "ui.base";
+  const template = templateRegistry.get(uiPackId + ":" + templateId);
+  if (!template) {
     throw new Error("控件模板不存在。");
   }
   const component = {
-    ...value2.create(value),
+    ...template.create(options),
     templateRef: {
       uiPackId: uiPackId,
       templateId: templateId,
       version: 1,
     },
   };
-  const component2 = index2.get(uiPackId)?.componentDefaults?.[component.type];
-  if (!component2) {
+  const typeDefaults =
+    uiPackRegistry.get(uiPackId)?.componentDefaults?.[component.type];
+  if (!typeDefaults) {
     return component;
   }
-  const value3 = structuredClone(component2.properties || {});
-  const value4 = structuredClone(component2.style || {});
-  const dimensions = component2.dimensions;
+  const defaultProperties = structuredClone(typeDefaults.properties || {});
+  const defaultStyle = structuredClone(typeDefaults.style || {});
+  const dimensions = typeDefaults.dimensions;
   const position = {
     ...component.position,
   };
   if (dimensions) {
-    const numeric = Number(value?.canvas?.width || 2778);
-    const numeric2 = Number(value?.canvas?.height || 1940);
+    const canvasWidth = Number(options?.canvas?.width || 2778);
+    const canvasHeight = Number(options?.canvas?.height || 1940);
     position.width = dimensions.width;
     position.height = dimensions.height;
-    position.x = (numeric - dimensions.width) / 2;
-    position.y = (numeric2 - dimensions.height) / 2;
+    position.x = (canvasWidth - dimensions.width) / 2;
+    position.y = (canvasHeight - dimensions.height) / 2;
   }
   return {
     ...component,
     position: position,
     properties: {
       ...component.properties,
-      ...value3,
+      ...defaultProperties,
       instanceName: component.properties.instanceName,
     },
     style: {
       ...component.style,
-      ...value4,
+      ...defaultStyle,
     },
   };
 }
-function pickKnownProperties(value = {}) {
+function pickKnownProperties(properties = {}) {
   return Object.fromEntries(
-    Object.entries(value).filter(([value2]) => KNOWN_PROPERTY_NAME_PATTERN.test(value2)),
+    Object.entries(properties).filter(([key]) =>
+      KNOWN_PROPERTY_NAME_PATTERN.test(key),
+    ),
   );
 }
-function fn2(component, value, canvas) {
+function applyUiPackToComponent(component, uiPack, canvas) {
   const templateId = component.templateRef?.templateId || component.type;
-  let component2 = null;
+  let created = null;
   try {
-    component2 = createComponentFromTemplate(templateId, {
+    created = createComponentFromTemplate(templateId, {
       id: component.id,
       instanceName: component.properties?.instanceName,
       canvas: canvas,
       targetPage: component.properties?.targetPage,
-      uiPackId: value.id,
+      uiPackId: uiPack.id,
     });
   } catch (error) {
-    if (index.has("ui.base:" + templateId)) {
+    if (templateRegistry.has("ui.base:" + templateId)) {
       throw error;
     }
   }
-  const value2 = component2
+  const next = created
     ? {
         ...component,
         properties: {
-          ...(component2.properties || {}),
+          ...(created.properties || {}),
           ...pickKnownProperties(component.properties),
         },
         style: {
-          ...(component2.style || {}),
+          ...(created.style || {}),
           ...(Object.prototype.hasOwnProperty.call(
             component.style || {},
             "scale",
@@ -716,119 +720,154 @@ function fn2(component, value, canvas) {
     : {
         ...component,
       };
-  value2.templateRef = {
-    uiPackId: value.id,
+  next.templateRef = {
+    uiPackId: uiPack.id,
     templateId: templateId,
-    version: Number(value.templateVersion || 1),
+    version: Number(uiPack.templateVersion || 1),
   };
-  value2.children = (component.children || []).map((value3) =>
-    fn2(value3, value, canvas),
+  next.children = (component.children || []).map((child) =>
+    applyUiPackToComponent(child, uiPack, canvas),
   );
-  return value2;
+  return next;
 }
-export function applyUiPackToDocument(document, value2) {
-  const value3 = index2.get(value2.id);
-  if (!value3) {
+export function applyUiPackToDocument(document, uiPack) {
+  const definition = uiPackRegistry.get(uiPack.id);
+  if (!definition) {
     throw new Error(
-      "UI 方案“" + (value2.name || value2.id) + "”运行时未正确加载。",
+      "UI 方案“" + (uiPack.name || uiPack.id) + "”运行时未正确加载。",
     );
   }
-  const value4 = document.canvas || {};
-  document.sharedComponents = (document.sharedComponents || []).map((value5) =>
-    fn2(value5, value2, value4),
+  const canvas = document.canvas || {};
+  document.sharedComponents = (document.sharedComponents || []).map(
+    (component) => applyUiPackToComponent(component, uiPack, canvas),
   );
-  document.pages = (document.pages || []).map((value5) => ({
-    ...value5,
-    components: (value5.components || []).map((components) =>
-      fn2(components, value2, value4),
+  document.pages = (document.pages || []).map((page) => ({
+    ...page,
+    components: (page.components || []).map((component) =>
+      applyUiPackToComponent(component, uiPack, canvas),
     ),
   }));
-  document.customPopups = (document.customPopups || []).map((value5) => ({
-    ...value5,
+  document.customPopups = (document.customPopups || []).map((popup) => ({
+    ...popup,
     templateRef: {
-      uiPackId: value2.id,
+      uiPackId: uiPack.id,
       templateId:
-        value2.popupTemplate || value3.popupTemplate || "custom-popup",
-      version: Number(value2.templateVersion || 1),
+        uiPack.popupTemplate || definition.popupTemplate || "custom-popup",
+      version: Number(uiPack.templateVersion || 1),
     },
   }));
   document.theme = structuredClone(
-    value2.theme || value3.theme || document.theme || {},
+    uiPack.theme || definition.theme || document.theme || {},
   );
   document.uiPack = {
-    id: value2.id,
-    version: value2.version,
+    id: uiPack.id,
+    version: uiPack.version,
   };
   return document;
 }
-export function timeComponentDimensions(value = {}) {
-  const count = Math.max(12, Math.min(500, Number(value.fontSize || 96)));
-  const count2 = Math.max(-20, Math.min(100, Number(value.letterSpacing || 0)));
-  const value2 = value.showSeconds === true;
-  const value3 = value.hour12 === true ? (value2 ? 11 : 8) : value2 ? 8 : 5;
-  const numeric = Number(value.fontWeight ?? 0.4);
-  const value4 =
-    (numeric > 1 ? (numeric - 1) / 899 : numeric) >= 0.67 ? 1.035 : 1;
+export function timeComponentDimensions(properties = {}) {
+  const fontSize = Math.max(
+    12,
+    Math.min(500, Number(properties.fontSize || 96)),
+  );
+  const letterSpacing = Math.max(
+    -20,
+    Math.min(100, Number(properties.letterSpacing || 0)),
+  );
+  const showSeconds = properties.showSeconds === true;
+  const digitSlots =
+    properties.hour12 === true ? (showSeconds ? 11 : 8) : showSeconds ? 8 : 5;
+  const fontWeight = Number(properties.fontWeight ?? 0.4);
+  const weightFactor =
+    (fontWeight > 1 ? (fontWeight - 1) / 899 : fontWeight) >= 0.67 ? 1.035 : 1;
   return {
     width: Math.max(
-      count,
-      count * 0.61 * value3 * value4 +
-        count2 * Math.max(0, value3 - 1) +
-        count * 0.16,
+      fontSize,
+      fontSize * 0.61 * digitSlots * weightFactor +
+        letterSpacing * Math.max(0, digitSlots - 1) +
+        fontSize * 0.16,
     ),
-    height: Math.max(20, count * 1.18),
+    height: Math.max(20, fontSize * 1.18),
   };
 }
-export function dateComponentDimensions(value = {}) {
-  const count = Math.max(12, Math.min(500, Number(value.primarySize || 36)));
-  const count2 = Math.max(10, Math.min(500, Number(value.lunarSize || 24)));
-  const count3 = Math.max(
-    -20,
-    Math.min(100, Number(value.primarySpacing || 1)),
-  );
-  const count4 = Math.max(-20, Math.min(100, Number(value.lunarSpacing || 1)));
-  const count5 = Math.max(0, Math.min(200, Number(value.lineGap ?? 8)));
-  const value2 = value.showWeekday === false ? 6.35 : 9.35;
-  const value3 = 6;
-  const value4 = count * value2 + count3 * 13;
-  const value5 = count2 * value3 + count4 * 5;
-  const value6 = value.showLunar === true;
-  return {
-    width: Math.max(count, value4, value6 ? value5 : 0) + count * 0.12,
-    height: count * 1.16 + (value6 ? count2 * 1.18 + count5 : 0),
-  };
-}
-export function weatherComponentDimensions(value = {}) {
-  const count = Math.max(12, Math.min(500, Number(value.iconSize || 64)));
-  const count2 = Math.max(
+export function dateComponentDimensions(properties = {}) {
+  const primarySize = Math.max(
     12,
-    Math.min(500, Number(value.temperatureSize || 32)),
+    Math.min(500, Number(properties.primarySize || 36)),
   );
-  const count3 = Math.max(10, Math.min(500, Number(value.secondarySize || 18)));
-  const count4 = Math.max(0, Math.min(300, Number(value.iconGap ?? 22)));
-  const count5 = Math.max(0, Math.min(200, Number(value.lineGap ?? 7)));
-  const value2 =
-    value.temperatureVisible !== false ||
-    value.conditionVisible !== false ||
-    value.humidityVisible !== false;
-  const value3 = value.temperatureVisible === false ? 0 : count2 * 4.4;
-  const value4 =
-    value.conditionVisible === false && value.humidityVisible === false
+  const lunarSize = Math.max(
+    10,
+    Math.min(500, Number(properties.lunarSize || 24)),
+  );
+  const primarySpacing = Math.max(
+    -20,
+    Math.min(100, Number(properties.primarySpacing || 1)),
+  );
+  const lunarSpacing = Math.max(
+    -20,
+    Math.min(100, Number(properties.lunarSpacing || 1)),
+  );
+  const lineGap = Math.max(0, Math.min(200, Number(properties.lineGap ?? 8)));
+  const weekdayCharFactor = properties.showWeekday === false ? 6.35 : 9.35;
+  const lunarCharCount = 6;
+  const primaryWidth = primarySize * weekdayCharFactor + primarySpacing * 13;
+  const lunarWidth = lunarSize * lunarCharCount + lunarSpacing * 5;
+  const showLunar = properties.showLunar === true;
+  return {
+    width:
+      Math.max(primarySize, primaryWidth, showLunar ? lunarWidth : 0) +
+      primarySize * 0.12,
+    height:
+      primarySize * 1.16 + (showLunar ? lunarSize * 1.18 + lineGap : 0),
+  };
+}
+export function weatherComponentDimensions(properties = {}) {
+  const iconSize = Math.max(
+    12,
+    Math.min(500, Number(properties.iconSize || 64)),
+  );
+  const temperatureSize = Math.max(
+    12,
+    Math.min(500, Number(properties.temperatureSize || 32)),
+  );
+  const secondarySize = Math.max(
+    10,
+    Math.min(500, Number(properties.secondarySize || 18)),
+  );
+  const iconGap = Math.max(0, Math.min(300, Number(properties.iconGap ?? 22)));
+  const lineGap = Math.max(0, Math.min(200, Number(properties.lineGap ?? 7)));
+  const hasText =
+    properties.temperatureVisible !== false ||
+    properties.conditionVisible !== false ||
+    properties.humidityVisible !== false;
+  const temperatureWidth =
+    properties.temperatureVisible === false ? 0 : temperatureSize * 4.4;
+  const secondaryWidth =
+    properties.conditionVisible === false &&
+    properties.humidityVisible === false
       ? 0
-      : count3 * 8.6;
-  const value5 = value2 ? Math.max(value3, value4, count3 * 3) : 0;
-  const value6 =
-    (value.temperatureVisible === false ? 0 : count2 * 1.12) +
-    (value.conditionVisible === false && value.humidityVisible === false
+      : secondarySize * 8.6;
+  const textWidth = hasText
+    ? Math.max(temperatureWidth, secondaryWidth, secondarySize * 3)
+    : 0;
+  const textHeight =
+    (properties.temperatureVisible === false ? 0 : temperatureSize * 1.12) +
+    (properties.conditionVisible === false &&
+    properties.humidityVisible === false
       ? 0
-      : count3 * 1.14 + count5);
+      : secondarySize * 1.14 + lineGap);
   return {
     width: Math.max(
       20,
-      (value.iconVisible === false ? 0 : count + (value2 ? count4 : 0)) +
-        value5,
+      (properties.iconVisible === false
+        ? 0
+        : iconSize + (hasText ? iconGap : 0)) + textWidth,
     ),
-    height: Math.max(20, value.iconVisible === false ? 0 : count, value6),
+    height: Math.max(
+      20,
+      properties.iconVisible === false ? 0 : iconSize,
+      textHeight,
+    ),
   };
 }
 registerComponentTemplate({
@@ -837,9 +876,9 @@ registerComponentTemplate({
   type: "image",
   description: "显示图片素材，可关联实体并设置点按动作。",
   scopes: ["page"],
-  create({ id: id, instanceName = "图片", canvas: value }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
+  create({ id: id, instanceName = "图片", canvas }) {
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
     const width = 320;
     const height = 240;
     return {
@@ -847,8 +886,8 @@ registerComponentTemplate({
       type: "image",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
@@ -876,18 +915,18 @@ registerComponentTemplate({
   type: "floorplan-auto-diagram",
   description: "把 3D 户型底图和灯组效果层合并为一个可交互的导图控件。",
   scopes: ["page"],
-  create({ id: id, instanceName: label = "户型图自动导图", canvas: value }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
-    const width = numeric * 0.56;
-    const height = numeric2 * 0.56;
+  create({ id: id, instanceName: label = "户型图自动导图", canvas }) {
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
+    const width = canvasWidth * 0.56;
+    const height = canvasHeight * 0.56;
     return {
       id: id,
       type: "floorplan-auto-diagram",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
@@ -930,29 +969,29 @@ registerComponentTemplate({
   create({
     id: id,
     instanceName = "扫地机器人实时地图",
-    canvas: value,
-    vacuumMapEntityId: entityId = "",
+    canvas,
+    vacuumMapEntityId = "",
   }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
-    const width = numeric * 0.56;
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
+    const width = canvasWidth * 0.56;
     const height = (width * 1156) / 1120;
     return {
       id: id,
       type: "vacuum-map",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
         zIndex: 1,
       },
-      bindings: entityId
+      bindings: vacuumMapEntityId
         ? {
             entity: {
-              entityId: entityId,
+              entityId: vacuumMapEntityId,
             },
           }
         : {},
@@ -978,29 +1017,29 @@ registerComponentTemplate({
   create({
     id: id,
     instanceName = "图标按钮（效果）",
-    canvas: value,
-    lightEntityId: entityId = "",
+    canvas,
+    lightEntityId = "",
   }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
-    const width = numeric * 0.075;
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
+    const width = canvasWidth * 0.075;
     const height = width;
     return {
       id: id,
       type: "icon-button-effect",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
         zIndex: 1,
       },
-      bindings: entityId
+      bindings: lightEntityId
         ? {
             entity: {
-              entityId: entityId,
+              entityId: lightEntityId,
             },
           }
         : {},
@@ -1037,7 +1076,7 @@ registerComponentTemplate({
         scale: 1,
         visible: true,
       },
-      actions: entityId
+      actions: lightEntityId
         ? {
             tap: {
               type: "toggle",
@@ -1054,18 +1093,18 @@ registerComponentTemplate({
   type: "title-button",
   description: "中英文双标题、左右括号和下方三角指示的房间标题按钮。",
   scopes: ["page"],
-  create({ id: id, instanceName = "标题按钮", canvas: value }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
-    const width = numeric * 0.18;
-    const height = numeric2 * 0.065;
+  create({ id: id, instanceName = "标题按钮", canvas }) {
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
+    const width = canvasWidth * 0.18;
+    const height = canvasHeight * 0.065;
     return {
       id: id,
       type: "title-button",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
@@ -1126,18 +1165,18 @@ registerComponentTemplate({
   description: "统计灯光、开关、空调等设备当前开启或运行的数量。",
   thumbnailId: "light-statistics",
   scopes: ["page"],
-  create({ id: id, instanceName = "数量统计", canvas: value }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
-    const width = numeric * 0.18;
-    const height = numeric2 * 0.065;
+  create({ id: id, instanceName = "数量统计", canvas }) {
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
+    const width = canvasWidth * 0.18;
+    const height = canvasHeight * 0.065;
     return {
       id: id,
       type: "light-statistics",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
@@ -1186,29 +1225,29 @@ registerComponentTemplate({
   create({
     id: id,
     instanceName = "图标按钮",
-    canvas: value,
-    lightEntityId: entityId = "",
+    canvas,
+    lightEntityId = "",
   }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
-    const width = numeric * 0.1;
-    const height = numeric2 * 0.15;
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
+    const width = canvasWidth * 0.1;
+    const height = canvasHeight * 0.15;
     return {
       id: id,
       type: "icon-button",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
         zIndex: 1,
       },
-      bindings: entityId
+      bindings: lightEntityId
         ? {
             entity: {
-              entityId: entityId,
+              entityId: lightEntityId,
             },
           }
         : {},
@@ -1264,7 +1303,7 @@ registerComponentTemplate({
         scale: 1,
         visible: true,
       },
-      actions: entityId
+      actions: lightEntityId
         ? {
             tap: {
               type: "toggle",
@@ -1281,18 +1320,18 @@ registerComponentTemplate({
   type: "device-button",
   description: "显示图标、标题和实时状态，点击可切换实体。",
   scopes: ["page"],
-  create({ id: id, instanceName = "设备按钮", canvas: value }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
-    const width = numeric * 0.1;
-    const height = numeric2 * 0.11;
+  create({ id: id, instanceName = "设备按钮", canvas }) {
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
+    const width = canvasWidth * 0.1;
+    const height = canvasHeight * 0.11;
     return {
       id: id,
       type: "device-button",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
@@ -1344,9 +1383,9 @@ registerComponentTemplate({
   description:
     "添加后在属性中选择传感器类型，当前支持人在、门窗和水浸状态的动态显示。",
   scopes: ["page"],
-  create({ id: id, instanceName = "传感器", canvas: value, entityId = "" }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
+  create({ id: id, instanceName = "传感器", canvas, entityId = "" }) {
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
     const width = 360;
     const height = 240;
     return {
@@ -1354,8 +1393,8 @@ registerComponentTemplate({
       type: "presence-sensor",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
@@ -1408,18 +1447,18 @@ registerComponentTemplate({
   type: "camera",
   description: "实时预览摄像头，点击可放大查看。",
   scopes: ["page"],
-  create({ id: id, instanceName = "摄像头实时预览", canvas: value }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
-    const width = numeric * 0.22;
+  create({ id: id, instanceName = "摄像头实时预览", canvas }) {
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
+    const width = canvasWidth * 0.22;
     const height = (width * 9) / 16;
     return {
       id: id,
       type: "camera",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
@@ -1462,18 +1501,18 @@ registerComponentTemplate({
   description:
     "显示空调或浴霸状态并按实体能力提供控制，内置可调整的动态出风效果。",
   scopes: ["page"],
-  create({ id: id, instanceName = "空调", canvas: value }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
-    const width = numeric * 0.11;
-    const height = numeric2 * 0.08;
+  create({ id: id, instanceName = "空调", canvas }) {
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
+    const width = canvasWidth * 0.11;
+    const height = canvasHeight * 0.08;
     return {
       id: id,
       type: "air-conditioner",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
@@ -1551,9 +1590,9 @@ registerComponentTemplate({
   type: "time",
   description: "显示设备本地时间，不依赖 Home Assistant 实体。",
   scopes: ["shared"],
-  create({ id: id, instanceName = "时间", canvas: value }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
+  create({ id: id, instanceName = "时间", canvas }) {
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
     const properties = {
       instanceName: instanceName,
       hour12: false,
@@ -1571,8 +1610,8 @@ registerComponentTemplate({
       type: "time",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
@@ -1595,9 +1634,9 @@ registerComponentTemplate({
   type: "date",
   description: "显示设备本地年月日、星期与农历。",
   scopes: ["shared"],
-  create({ id: id, instanceName = "日期", canvas: value }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
+  create({ id: id, instanceName = "日期", canvas }) {
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
     const properties = {
       instanceName: instanceName,
       showWeekday: true,
@@ -1620,8 +1659,8 @@ registerComponentTemplate({
       type: "date",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
@@ -1647,12 +1686,12 @@ registerComponentTemplate({
   create({
     id: id,
     instanceName = "天气",
-    canvas: value,
-    weatherEntityId: entityId = "",
-    sunEntityId: entityId2 = "",
+    canvas,
+    weatherEntityId = "",
+    sunEntityId = "",
   }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
     const properties = {
       instanceName: instanceName,
       iconVisible: true,
@@ -1675,14 +1714,14 @@ registerComponentTemplate({
     const { width: width, height: height } =
       weatherComponentDimensions(properties);
     const bindings = {};
-    if (entityId) {
+    if (weatherEntityId) {
       bindings.entity = {
-        entityId: entityId,
+        entityId: weatherEntityId,
       };
     }
-    if (entityId2) {
+    if (sunEntityId) {
       bindings.sun = {
-        entityId: entityId2,
+        entityId: sunEntityId,
       };
     }
     return {
@@ -1690,8 +1729,8 @@ registerComponentTemplate({
       type: "weather",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
@@ -1717,29 +1756,29 @@ registerComponentTemplate({
   create({
     id: id,
     instanceName = "折线图",
-    canvas: value,
-    sensorEntityId: entityId = "",
+    canvas,
+    sensorEntityId = "",
   }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
-    const width = numeric * 0.19;
-    const height = numeric2 * 0.16;
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
+    const width = canvasWidth * 0.19;
+    const height = canvasHeight * 0.16;
     return {
       id: id,
       type: "line-chart",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
         zIndex: 1,
       },
-      bindings: entityId
+      bindings: sensorEntityId
         ? {
             entity: {
-              entityId: entityId,
+              entityId: sensorEntityId,
             },
           }
         : {},
@@ -1774,18 +1813,18 @@ registerComponentTemplate({
   type: "panel-frame",
   description: "双行标题、渐变外框和内向柔光容器。",
   scopes: ["shared", "page"],
-  create({ id: id, instanceName = "底图框", canvas: value }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
-    const width = numeric * 0.19;
-    const height = numeric2 * 0.16;
+  create({ id: id, instanceName = "底图框", canvas }) {
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
+    const width = canvasWidth * 0.19;
+    const height = canvasHeight * 0.16;
     return {
       id: id,
       type: "panel-frame",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,
@@ -1842,21 +1881,21 @@ registerComponentTemplate({
   create({
     id: id,
     instanceName = "导航按钮",
-    canvas: value,
-    targetPage: value2 = "",
+    canvas,
+    targetPage = "",
   }) {
-    const numeric = Number(value?.width || 2778);
-    const numeric2 = Number(value?.height || 1940);
-    const width = numeric * 0.2;
-    const height = numeric2 * 0.085;
-    const target = String(value2 || "");
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
+    const width = canvasWidth * 0.2;
+    const height = canvasHeight * 0.085;
+    const target = String(targetPage || "");
     return {
       id: id,
       type: "navigation-button",
       componentVersion: 1,
       position: {
-        x: (numeric - width) / 2,
-        y: (numeric2 - height) / 2,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
         width: width,
         height: height,
         rotation: 0,

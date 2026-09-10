@@ -1481,13 +1481,13 @@ function formatLightPropertyValue(prop, value) {
   if (!propMeta) {
     return String(value);
   }
-  const value2 = ["lightRange", "elevation"].includes(prop)
+  const displayValue = ["lightRange", "elevation"].includes(prop)
     ? Number(value).toFixed(prop === "elevation" ? 2 : 1)
     : Math.round(value);
   if (["%", "°"].includes(propMeta.unit)) {
-    return "" + value2 + propMeta.unit;
+    return "" + displayValue + propMeta.unit;
   } else {
-    return value2 + " " + propMeta.unit;
+    return displayValue + " " + propMeta.unit;
   }
 }
 const toolHelpText = {
@@ -2547,7 +2547,7 @@ function normalizeFloorScene(scene) {
             distance(wall.start, wall.end) > 0.1,
         )
     : [];
-  const value2 = new Set(list.map((item) => item.id));
+  const wallIdSet = new Set(list.map((item) => item.id));
   const entries = Array.isArray(scene.windows)
     ? scene.windows
         .map((attachment) => ({
@@ -2559,7 +2559,7 @@ function normalizeFloorScene(scene) {
           sill: clamp(finite(attachment?.sill, 0.85), 0, 20),
           hasDivider: attachment?.hasDivider !== false,
         }))
-        .filter((wall) => value2.has(wall.wallId))
+        .filter((wall) => wallIdSet.has(wall.wallId))
     : [];
   const entries2 = Array.isArray(scene.doors)
     ? scene.doors
@@ -2576,7 +2576,7 @@ function normalizeFloorScene(scene) {
           hinge: attachment?.hinge === "right" ? "right" : "left",
           swing: attachment?.swing === -1 ? -1 : 1,
         }))
-        .filter((wall) => value2.has(wall.wallId))
+        .filter((wall) => wallIdSet.has(wall.wallId))
     : [];
   const entries3 = Array.isArray(scene.railings)
     ? scene.railings
@@ -2588,7 +2588,7 @@ function normalizeFloorScene(scene) {
           height: clamp(finite(attachment?.height, 1.1), 0.5, 3),
           sill: 0,
         }))
-        .filter((wall) => value2.has(wall.wallId))
+        .filter((wall) => wallIdSet.has(wall.wallId))
     : [];
   const lightGroups = [];
   const lightGroupIds = new Set();
@@ -2638,8 +2638,8 @@ function normalizeFloorScene(scene) {
     });
     lightGroupIds.add("light-group-default");
   }
-  let value3 = 0;
-  let value4 = 0;
+  let tvCount = 0;
+  let smallCarCount = 0;
   const items = Array.isArray(scene.items)
     ? scene.items
         .filter(
@@ -2703,8 +2703,9 @@ function normalizeFloorScene(scene) {
               ? String(item.lightGroupId)
               : ensureLightGroup(item?.lightGroup || "默认灯组").id
             : "";
-          const value6 = item?.type === "tv" ? ++value3 : 0;
-          const value7 = item?.type === "smallcar" ? ++value4 : 0;
+          const tvLayerIndex = item?.type === "tv" ? ++tvCount : 0;
+          const smallCarLayerIndex =
+            item?.type === "smallcar" ? ++smallCarCount : 0;
           return {
             id: String(item?.id || makeId("item")),
             type:
@@ -2791,7 +2792,7 @@ function normalizeFloorScene(scene) {
                   screenEnabled: item?.screenEnabled !== false,
                   screenLayerName: normalizeLabelText(
                     item?.screenLayerName,
-                    "电视画面 " + value6,
+                    "电视画面 " + tvLayerIndex,
                     24,
                   ),
                   tvMountStyle: tvMountStyles.has(item?.tvMountStyle)
@@ -2804,7 +2805,7 @@ function normalizeFloorScene(scene) {
                   chargingEnabled: item?.chargingEnabled === true,
                   chargingLayerName: normalizeLabelText(
                     item?.chargingLayerName,
-                    "汽车充电 " + value7,
+                    "汽车充电 " + smallCarLayerIndex,
                     24,
                   ),
                 }
@@ -2896,7 +2897,7 @@ function normalizeFloorScene(scene) {
           height: clamp(finite(scene.background.height, 1), 1, 8192),
         }
       : null;
-  const value5 = buildWallOpeningsIndex(
+  const wallOpenings = buildWallOpeningsIndex(
     list,
     entries,
     entries2,
@@ -2970,10 +2971,10 @@ function normalizeFloorScene(scene) {
         0.86,
       ),
     },
-    walls: value5.walls,
-    windows: value5.windows,
-    doors: value5.doors,
-    railings: value5.railings,
+    walls: wallOpenings.walls,
+    windows: wallOpenings.windows,
+    doors: wallOpenings.doors,
+    railings: wallOpenings.railings,
     lightGroups: lightGroups,
     items: items,
   };
@@ -3256,11 +3257,11 @@ function uniqueLightGroupName(arg0) {
   if (!value.has(arg0)) {
     return arg0;
   }
-  let value2 = 2;
-  while (value.has(arg0 + " " + value2)) {
-    value2 += 1;
+  let nameSuffix = 2;
+  while (value.has(arg0 + " " + nameSuffix)) {
+    nameSuffix += 1;
   }
-  return arg0 + " " + value2;
+  return arg0 + " " + nameSuffix;
 }
 function duplicateLightGroup(lightGroup) {
   if (!lightGroup) {
@@ -3327,18 +3328,18 @@ function reorderLightGroups(arg0, arg1, flag) {
   const value = floorScene.lightGroups.findIndex(
     (item) => item.id === arg0,
   );
-  const value2 = floorScene.lightGroups.findIndex(
+  const fromIndex = floorScene.lightGroups.findIndex(
     (item) => item.id === arg1,
   );
-  if (value < 0 || value2 < 0 || value === value2) {
+  if (value < 0 || fromIndex < 0 || value === fromIndex) {
     return;
   }
   const list = [...floorScene.lightGroups];
-  const [value3] = list.splice(value, 1);
-  const value4 = list.findIndex(
+  const [movedGroup] = list.splice(value, 1);
+  const targetIndex = list.findIndex(
     (item) => item.id === arg1,
   );
-  list.splice(value4 + (flag ? 1 : 0), 0, value3);
+  list.splice(targetIndex + (flag ? 1 : 0), 0, movedGroup);
   if (
     !list.every(
       (id, arg12) =>
@@ -3370,7 +3371,7 @@ function renderLightLayerPanel() {
       );
       let flag = false;
       let flag2 = null;
-      const fn = () => {
+      const onPointerUp = () => {
         if (flag2) {
           clearTimeout(flag2);
         }
@@ -3380,7 +3381,7 @@ function renderLightLayerPanel() {
       };
       el.addEventListener("pointerdown", (event) => {
         if (event.button === 0 && !event.target.closest("button")) {
-          fn();
+          onPointerUp();
           flag2 = setTimeout(() => {
             flag2 = null;
             flag = true;
@@ -3388,12 +3389,12 @@ function renderLightLayerPanel() {
           }, 280);
         }
       });
-      el.addEventListener("pointerup", fn);
-      el.addEventListener("pointercancel", fn);
+      el.addEventListener("pointerup", onPointerUp);
+      el.addEventListener("pointercancel", onPointerUp);
       el.addEventListener("dragstart", (event) => {
         if (!flag) {
           event.preventDefault();
-          fn();
+          onPointerUp();
           return;
         }
         draggingLightGroupId = id.id;
@@ -3408,7 +3409,7 @@ function renderLightLayerPanel() {
       el.addEventListener("dragend", () => {
         draggingLightGroupId = "";
         el.classList.remove("dragging");
-        fn();
+        onPointerUp();
         clearLightGroupDropIndicators();
       });
       el.addEventListener("click", () => {
@@ -3698,16 +3699,16 @@ function activeSelectionLightGroupFilter() {
 }
 function rebuildPreviewForAssetFilters(arg0) {
   const value = activeSelectionLightGroupFilter();
-  const value2 = new Set([arg0, value].filter(Boolean));
-  if (value2.size) {
-    if (value2.has("all")) {
+  const scopeSet = new Set([arg0, value].filter(Boolean));
+  if (scopeSet.size) {
+    if (scopeSet.has("all")) {
       rebuildPreviewMeshes({
         scope: "all",
         preserveLightCache: true,
       });
       return;
     }
-    for (const scope of value2) {
+    for (const scope of scopeSet) {
       rebuildPreviewMeshes({
         scope: scope,
         preserveLightCache: true,
@@ -3745,7 +3746,7 @@ function wallIdMap() {
       id,
     ]),
   );
-  const fn = (wall) => {
+  const remapOpeningWall = (wall) => {
     const flag = mergeCollinearWallSegments2.wallIdMap.get(
       wall.wallId,
     );
@@ -3769,9 +3770,9 @@ function wallIdMap() {
   const value =
     floorScene.walls.length - mergeCollinearWallSegments2.walls.length;
   floorScene.walls = mergeCollinearWallSegments2.walls;
-  floorScene.windows = floorScene.windows.map(fn);
-  floorScene.doors = floorScene.doors.map(fn);
-  floorScene.railings = floorScene.railings.map(fn);
+  floorScene.windows = floorScene.windows.map(remapOpeningWall);
+  floorScene.doors = floorScene.doors.map(remapOpeningWall);
+  floorScene.railings = floorScene.railings.map(remapOpeningWall);
   return value;
 }
 function pixelsPerMeter() {
@@ -3952,9 +3953,9 @@ async function loadProjectDocument(floor) {
   if (flag) {
     deferExternalModels = true;
   }
-  let value2 = [];
+  let modelPromises = [];
   if (flag) {
-    value2 = list.map((arg0) => loadExternalItemModel(arg0));
+    modelPromises = list.map((arg0) => loadExternalItemModel(arg0));
   }
   externalModelQueueActive = !flag;
   window.externalModelLoadsDeferred = externalModelQueueActive;
@@ -3973,12 +3974,12 @@ async function loadProjectDocument(floor) {
   }
   if (flag) {
     try {
-      const value3 = Promise.allSettled(value2);
+      const settledResults = Promise.allSettled(modelPromises);
       await Promise.race([
-        value3,
+        settledResults,
         new Promise((arg0) => window.setTimeout(arg0, 3500)),
       ]);
-      Promise.allSettled(value2).then(() => {
+      Promise.allSettled(modelPromises).then(() => {
         if (value === projectLoadGeneration) {
           refreshStudioChrome();
         }
@@ -3995,7 +3996,7 @@ async function loadProjectDocument(floor) {
     rebuildPreviewMeshes({
       force: true,
     });
-    Promise.allSettled(value2).then(() => {
+    Promise.allSettled(modelPromises).then(() => {
       if (value === projectLoadGeneration) {
         refreshStudioChrome();
       }
@@ -4043,7 +4044,7 @@ async function flushSave() {
   isFlushingSave = true;
   const targetVersion = saveGeneration;
   setSaveStateLabel("正在保存…", "saving");
-  const fn = async (revision) =>
+  const putStudioDocument = async (revision) =>
     studioFetch("/studio3d", {
       method: "PUT",
       hbLogContext: {
@@ -4056,7 +4057,7 @@ async function flushSave() {
     });
   try {
     try {
-      hasProjectLoaded = await fn(hasProjectLoaded);
+      hasProjectLoaded = await putStudioDocument(hasProjectLoaded);
     } catch (error) {
       if (error.status !== 409) {
         throw error;
@@ -4124,15 +4125,15 @@ function planToScreen(planPoint) {
 }
 function screenToPlan(planPoint) {
   const value = planWidth / 2;
-  const value2 = planHeight / 2;
-  const value3 = (-planView.rotation * Math.PI) / 180;
-  const value4 = Math.cos(value3);
-  const value5 = Math.sin(value3);
-  const value6 = planPoint.x - value;
-  const value7 = planPoint.y - value2;
+  const halfPlanHeight = planHeight / 2;
+  const rotationRad = (-planView.rotation * Math.PI) / 180;
+  const cos = Math.cos(rotationRad);
+  const sin = Math.sin(rotationRad);
+  const localX = planPoint.x - value;
+  const localY = planPoint.y - halfPlanHeight;
   return {
-    x: value + value6 * value4 - value7 * value5,
-    y: value2 + value6 * value5 + value7 * value4,
+    x: value + localX * cos - localY * sin,
+    y: halfPlanHeight + localX * sin + localY * cos,
   };
 }
 function screenToPlanWithView(planPoint2) {
@@ -4169,13 +4170,13 @@ function planContentBounds() {
 function fitPlanViewToContent() {
   const value = planContentBounds();
   const clamp2 = clamp(Math.min(planWidth, planHeight) * 0.045, 18, 34);
-  const value2 = Math.max(planWidth - clamp2 * 2, 80);
-  const value3 = Math.max(planHeight - clamp2 * 2, 80);
+  const fitWidth = Math.max(planWidth - clamp2 * 2, 80);
+  const fitHeight = Math.max(planHeight - clamp2 * 2, 80);
   const flag = Math.abs(planView.rotation / 90) % 2 === 1;
-  const value4 = flag ? value.height : value.width;
-  const value5 = flag ? value.width : value.height;
+  const fitContentHeight = flag ? value.height : value.width;
+  const fitContentWidth = flag ? value.width : value.height;
   planView.zoom = clamp(
-    Math.min(value2 / value4, value3 / value5),
+    Math.min(fitWidth / fitContentHeight, fitHeight / fitContentWidth),
     0.03,
     8,
   );
@@ -4291,8 +4292,8 @@ function wallAttachmentWorldPoint(size) {
     return null;
   }
   const value = wall.end.x - wall.start.x;
-  const value2 = wall.end.y - wall.start.y;
-  const flag = Math.hypot(value, value2);
+  const dy = wall.end.y - wall.start.y;
+  const flag = Math.hypot(value, dy);
   if (!flag) {
     return null;
   }
@@ -4303,26 +4304,26 @@ function wallAttachmentWorldPoint(size) {
   );
   const center = {
     x: wall.start.x + value * clampWindowT2,
-    y: wall.start.y + value2 * clampWindowT2,
+    y: wall.start.y + dy * clampWindowT2,
   };
-  const value3 = Math.min(
+  const minValue = Math.min(
     (size.width * (pixelsPerMeter() || 1)) / 2,
     flag / 2,
   );
   const unit = {
     x: value / flag,
-    y: value2 / flag,
+    y: dy / flag,
   };
   return {
     wall: wall,
     center: center,
     start: {
-      x: center.x - unit.x * value3,
-      y: center.y - unit.y * value3,
+      x: center.x - unit.x * minValue,
+      y: center.y - unit.y * minValue,
     },
     end: {
-      x: center.x + unit.x * value3,
-      y: center.y + unit.y * value3,
+      x: center.x + unit.x * minValue,
+      y: center.y + unit.y * minValue,
     },
     unit: unit,
   };
@@ -4397,19 +4398,19 @@ function drawDoorPreview(size, preview = {}) {
       x: -isWall.unit.y,
       y: isWall.unit.x,
     };
-    const value6 = Math.max(
+    const maxValue = Math.max(
       5 / planView.zoom,
       isWall.wall.thickness * (pixelsPerMeter() || 100) * 0.55,
     );
     for (const planPoint7 of [isWall.start, isWall.end]) {
       drawPlanLine(
         {
-          x: planPoint7.x - planPoint6.x * value6,
-          y: planPoint7.y - planPoint6.y * value6,
+          x: planPoint7.x - planPoint6.x * maxValue,
+          y: planPoint7.y - planPoint6.y * maxValue,
         },
         {
-          x: planPoint7.x + planPoint6.x * value6,
-          y: planPoint7.y + planPoint6.y * value6,
+          x: planPoint7.x + planPoint6.x * maxValue,
+          y: planPoint7.y + planPoint6.y * maxValue,
         },
         {
           color: color,
@@ -4432,43 +4433,43 @@ function drawDoorPreview(size, preview = {}) {
       x: -isWall.unit.y,
       y: isWall.unit.x,
     };
-    const value6 = Math.max(
+    const maxValue = Math.max(
       2.5 / planView.zoom,
       isWall.wall.thickness * (pixelsPerMeter() || 100) * 0.16,
     );
     const distance2 = distance(isWall.start, isWall.end);
-    const value7 = size.hinge === "right" ? 1 : -1;
+    const ddpV7 = size.hinge === "right" ? 1 : -1;
     const slidingDoorPanelCenters2 = slidingDoorPanelCenters(
       distance2,
-      value7,
+      ddpV7,
     );
-    const value8 = distance2 * 0.27;
-    for (const [value9, value10] of [
+    const ddpV8 = distance2 * 0.27;
+    for (const [panelOffset, hingeSign] of [
       [slidingDoorPanelCenters2.fixed, -1],
       [slidingDoorPanelCenters2.moving, 1],
     ]) {
       const planPoint7 = {
-        x: isWall.center.x + isWall.unit.x * value9,
-        y: isWall.center.y + isWall.unit.y * value9,
+        x: isWall.center.x + isWall.unit.x * panelOffset,
+        y: isWall.center.y + isWall.unit.y * panelOffset,
       };
       const planPoint8 = {
-        x: planPoint6.x * value6 * value10,
-        y: planPoint6.y * value6 * value10,
+        x: planPoint6.x * maxValue * hingeSign,
+        y: planPoint6.y * maxValue * hingeSign,
       };
-      const value11 = {
-        x: planPoint7.x - isWall.unit.x * value8 + planPoint8.x,
-        y: planPoint7.y - isWall.unit.y * value8 + planPoint8.y,
+      const ddpV11 = {
+        x: planPoint7.x - isWall.unit.x * ddpV8 + planPoint8.x,
+        y: planPoint7.y - isWall.unit.y * ddpV8 + planPoint8.y,
       };
-      const value12 = {
-        x: planPoint7.x + isWall.unit.x * value8 + planPoint8.x,
-        y: planPoint7.y + isWall.unit.y * value8 + planPoint8.y,
+      const ddpV12 = {
+        x: planPoint7.x + isWall.unit.x * ddpV8 + planPoint8.x,
+        y: planPoint7.y + isWall.unit.y * ddpV8 + planPoint8.y,
       };
-      drawPlanLine(value11, value12, {
+      drawPlanLine(ddpV11, ddpV12, {
         color: color,
         width: flag ? 4 : 3,
         cap: "butt",
       });
-      drawPlanPoint(value10 < 0 ? value12 : value11, color, 2);
+      drawPlanPoint(hingeSign < 0 ? ddpV12 : ddpV11, color, 2);
     }
     if (flag) {
       drawFloatingLabel(
@@ -4484,19 +4485,19 @@ function drawDoorPreview(size, preview = {}) {
       x: -isWall.unit.y,
       y: isWall.unit.x,
     };
-    const value6 =
+    const maxValue =
       Math.max(
         2 / planView.zoom,
         isWall.wall.thickness * (pixelsPerMeter() || 100) * 0.08,
       ) * (size.swing === -1 ? -1 : 1);
     drawPlanLine(
       {
-        x: isWall.start.x + planPoint6.x * value6,
-        y: isWall.start.y + planPoint6.y * value6,
+        x: isWall.start.x + planPoint6.x * maxValue,
+        y: isWall.start.y + planPoint6.y * maxValue,
       },
       {
-        x: isWall.end.x + planPoint6.x * value6,
-        y: isWall.end.y + planPoint6.y * value6,
+        x: isWall.end.x + planPoint6.x * maxValue,
+        y: isWall.end.y + planPoint6.y * maxValue,
       },
       {
         color: color,
@@ -4505,17 +4506,17 @@ function drawDoorPreview(size, preview = {}) {
       },
     );
     const distance2 = distance(isWall.start, isWall.end);
-    const value7 = Math.max(
+    const maxValue2 = Math.max(
       3,
       Math.min(18, Math.round(size.width / 0.35)),
     );
-    for (let value8 = 1; value8 < value7; value8 += 1) {
-      const value9 = distance2 * (value8 / value7 - 0.5);
+    for (let step = 1; step < maxValue2; step += 1) {
+      const ddpV9 = distance2 * (step / maxValue2 - 0.5);
       const planPoint7 = {
         x:
-          isWall.center.x + isWall.unit.x * value9 + planPoint6.x * value6,
+          isWall.center.x + isWall.unit.x * ddpV9 + planPoint6.x * maxValue,
         y:
-          isWall.center.y + isWall.unit.y * value9 + planPoint6.y * value6,
+          isWall.center.y + isWall.unit.y * ddpV9 + planPoint6.y * maxValue,
       };
       drawPlanLine(
         {
@@ -4547,18 +4548,18 @@ function drawDoorPreview(size, preview = {}) {
       x: -isWall.unit.y,
       y: isWall.unit.x,
     };
-    const value6 = Math.max(
+    const maxValue = Math.max(
       2 / planView.zoom,
       isWall.wall.thickness * (pixelsPerMeter() || 100) * 0.08,
     );
     drawPlanLine(
       {
-        x: isWall.start.x + planPoint6.x * value6,
-        y: isWall.start.y + planPoint6.y * value6,
+        x: isWall.start.x + planPoint6.x * maxValue,
+        y: isWall.start.y + planPoint6.y * maxValue,
       },
       {
-        x: isWall.end.x + planPoint6.x * value6,
-        y: isWall.end.y + planPoint6.y * value6,
+        x: isWall.end.x + planPoint6.x * maxValue,
+        y: isWall.end.y + planPoint6.y * maxValue,
       },
       {
         color: color,
@@ -4568,12 +4569,12 @@ function drawDoorPreview(size, preview = {}) {
     );
     drawPlanLine(
       {
-        x: isWall.start.x - planPoint6.x * value6,
-        y: isWall.start.y - planPoint6.y * value6,
+        x: isWall.start.x - planPoint6.x * maxValue,
+        y: isWall.start.y - planPoint6.y * maxValue,
       },
       {
-        x: isWall.end.x - planPoint6.x * value6,
-        y: isWall.end.y - planPoint6.y * value6,
+        x: isWall.end.x - planPoint6.x * maxValue,
+        y: isWall.end.y - planPoint6.y * maxValue,
       },
       {
         color: "rgba(167, 178, 188, .72)",
@@ -4581,11 +4582,11 @@ function drawDoorPreview(size, preview = {}) {
         cap: "butt",
       },
     );
-    const value7 = size.hinge === "right" ? -1 : 1;
+    const local7 = size.hinge === "right" ? -1 : 1;
     drawPlanPoint(
       {
-        x: isWall.center.x + isWall.unit.x * size.width * value7 * 0.34,
-        y: isWall.center.y + isWall.unit.y * size.width * value7 * 0.34,
+        x: isWall.center.x + isWall.unit.x * size.width * local7 * 0.34,
+        y: isWall.center.y + isWall.unit.y * size.width * local7 * 0.34,
       },
       color,
       flag ? 3 : 2,
@@ -4604,22 +4605,22 @@ function drawDoorPreview(size, preview = {}) {
       x: -isWall.unit.y,
       y: isWall.unit.x,
     };
-    const value6 = size.swing === -1 ? -1 : 1;
-    const value7 = (distance(isWall.start, isWall.end) / 2) * value6;
-    const value8 = {
-      x: isWall.start.x + planPoint6.x * value7,
-      y: isWall.start.y + planPoint6.y * value7,
+    const local6 = size.swing === -1 ? -1 : 1;
+    const local7 = (distance(isWall.start, isWall.end) / 2) * local6;
+    const local8 = {
+      x: isWall.start.x + planPoint6.x * local7,
+      y: isWall.start.y + planPoint6.y * local7,
     };
-    const value9 = {
-      x: isWall.end.x + planPoint6.x * value7,
-      y: isWall.end.y + planPoint6.y * value7,
+    const local9 = {
+      x: isWall.end.x + planPoint6.x * local7,
+      y: isWall.end.y + planPoint6.y * local7,
     };
-    drawPlanLine(isWall.start, value8, {
+    drawPlanLine(isWall.start, local8, {
       color: color,
       width: preview.preview ? 2 : flag ? 4 : 3,
       cap: "butt",
     });
-    drawPlanLine(isWall.end, value9, {
+    drawPlanLine(isWall.end, local9, {
       color: color,
       width: preview.preview ? 2 : flag ? 4 : 3,
       cap: "butt",
@@ -4642,10 +4643,10 @@ function drawDoorPreview(size, preview = {}) {
     x: planPoint2.x - planPoint.x,
     y: planPoint2.y - planPoint.y,
   };
-  const value2 = size.swing === -1 ? -1 : 1;
+  const local2 = size.swing === -1 ? -1 : 1;
   const planPoint4 = {
-    x: planPoint.x - planPoint3.y * value2,
-    y: planPoint.y + planPoint3.x * value2,
+    x: planPoint.x - planPoint3.y * local2,
+    y: planPoint.y + planPoint3.x * local2,
   };
   drawPlanLine(planPoint, planPoint4, {
     color: color,
@@ -4675,9 +4676,9 @@ function drawDoorPreview(size, preview = {}) {
     );
   }
   const planPoint5 = planToScreen(planPoint);
-  const value3 = distance(planPoint, planPoint2) * planView.zoom;
-  const value4 = Math.atan2(planPoint3.y, planPoint3.x);
-  const value5 = value4 + (value2 * Math.PI) / 2;
+  const dist = distance(planPoint, planPoint2) * planView.zoom;
+  const angle = Math.atan2(planPoint3.y, planPoint3.x);
+  const local5 = angle + (local2 * Math.PI) / 2;
   planCtx.save();
   planCtx.strokeStyle = color;
   planCtx.lineWidth = preview.preview ? 1 : flag ? 2 : 1.25;
@@ -4688,10 +4689,10 @@ function drawDoorPreview(size, preview = {}) {
   planCtx.arc(
     planPoint5.x,
     planPoint5.y,
-    value3,
-    value4,
-    value5,
-    value2 < 0,
+    dist,
+    angle,
+    local5,
+    local2 < 0,
   );
   planCtx.stroke();
   planCtx.restore();
@@ -5709,8 +5710,8 @@ function rotatedItemCorner(planPoint, arg1, arg2) {
 }
 function itemPlanBounds(size) {
   const value = pixelsPerMeter() || 100;
-  const value2 = (size.width * value) / 2;
-  const value3 = (size.depth * value) / 2;
+  const ipbV2 = (size.width * value) / 2;
+  const ipbV3 = (size.depth * value) / 2;
   return {
     corners: [
       {
@@ -5733,20 +5734,20 @@ function itemPlanBounds(size) {
       ...planPoint,
       point: rotatedItemCorner(
         size,
-        planPoint.x * value2,
-        planPoint.y * value3,
+        planPoint.x * ipbV2,
+        planPoint.y * ipbV3,
       ),
       opposite: rotatedItemCorner(
         size,
-        -planPoint.x * value2,
-        -planPoint.y * value3,
+        -planPoint.x * ipbV2,
+        -planPoint.y * ipbV3,
       ),
     })),
-    rotationStem: rotatedItemCorner(size, 0, -value3),
+    rotationStem: rotatedItemCorner(size, 0, -ipbV3),
     rotationHandle: rotatedItemCorner(
       size,
       0,
-      -value3 - 17 / Math.max(planView.zoom, 0.01),
+      -ipbV3 - 17 / Math.max(planView.zoom, 0.01),
     ),
   };
 }
@@ -5904,19 +5905,19 @@ function marqueeSelectHits(planPoint, point2) {
     if (lightItemTypes.has(item.type) !== flag) {
       continue;
     }
-    const value2 = (item.rotation * Math.PI) / 180;
-    const value3 = Math.cos(value2);
-    const value4 = Math.sin(value2);
-    const value5 = (item.width * value) / 2;
-    const value6 = (item.depth * value) / 2;
+    const rotationRad = (item.rotation * Math.PI) / 180;
+    const cos = Math.cos(rotationRad);
+    const sin = Math.sin(rotationRad);
+    const mshV5 = (item.width * value) / 2;
+    const mshV6 = (item.depth * value) / 2;
     const some2 = [
-      [-value5, -value6],
-      [value5, -value6],
-      [value5, value6],
-      [-value5, value6],
+      [-mshV5, -mshV6],
+      [mshV5, -mshV6],
+      [mshV5, mshV6],
+      [-mshV5, mshV6],
     ].map(([arg0, arg02]) => ({
-      x: item.x + arg0 * value3 - arg02 * value4,
-      y: item.y + arg0 * value4 + arg02 * value3,
+      x: item.x + arg0 * cos - arg02 * sin,
+      y: item.y + arg0 * sin + arg02 * cos,
     }));
     if (
       pointInBounds(item, minX) ||
@@ -5962,7 +5963,7 @@ function blitMeasureOverlay({
     return false;
   }
   const value = planCanvas.width / Math.max(planWidth, 1);
-  const value2 = planCanvas.height / Math.max(planHeight, 1);
+  const fitHeight = planCanvas.height / Math.max(planHeight, 1);
   planCtx.save();
   planCtx.setTransform(1, 0, 0, 1, 0, 0);
   planCtx.fillStyle = "#0d1319";
@@ -5970,7 +5971,7 @@ function blitMeasureOverlay({
   planCtx.drawImage(
     measureCanvas,
     Math.round(arg0 * value),
-    Math.round(arg02 * value2),
+    Math.round(arg02 * fitHeight),
   );
   planCtx.restore();
   return true;
@@ -5982,9 +5983,9 @@ function drawMarqueeSelection() {
   const planPoint = planToScreen(dragState.start);
   const planPoint2 = planToScreen(dragState.current);
   const value = Math.min(planPoint.x, planPoint2.x);
-  const value2 = Math.min(planPoint.y, planPoint2.y);
-  const value3 = Math.abs(planPoint2.x - planPoint.x);
-  const value4 = Math.abs(planPoint2.y - planPoint.y);
+  const minValue = Math.min(planPoint.y, planPoint2.y);
+  const absResult = Math.abs(planPoint2.x - planPoint.x);
+  const absResult2 = Math.abs(planPoint2.y - planPoint.y);
   planCtx.save();
   planCtx.translate(planWidth / 2, planHeight / 2);
   planCtx.rotate((planView.rotation * Math.PI) / 180);
@@ -5993,12 +5994,12 @@ function drawMarqueeSelection() {
   planCtx.strokeStyle = "rgba(255, 176, 74, .92)";
   planCtx.lineWidth = 1;
   planCtx.setLineDash([6, 4]);
-  planCtx.fillRect(value, value2, value3, value4);
+  planCtx.fillRect(value, minValue, absResult, absResult2);
   planCtx.strokeRect(
     value + 0.5,
-    value2 + 0.5,
-    Math.max(value3 - 1, 0),
-    Math.max(value4 - 1, 0),
+    minValue + 0.5,
+    Math.max(absResult - 1, 0),
+    Math.max(absResult2 - 1, 0),
   );
   planCtx.restore();
 }
@@ -6046,13 +6047,13 @@ function drawPlan() {
     }
     planCtx.restore();
     if (alignSession.referencePoint) {
-      const value2 = floorLocalToWorldPoint(
+      const worldPoint = floorLocalToWorldPoint(
         alignSession.referencePoint,
         alignSession.referenceFloor,
         activeFloor(),
       );
-      drawPlanPoint(value2, "#ffb14f", 4.5);
-      drawFloatingLabel(value2, "参照点", "#ffb14f");
+      drawPlanPoint(worldPoint, "#ffb14f", 4.5);
+      drawFloatingLabel(worldPoint, "参照点", "#ffb14f");
     }
   }
   planCtx.save();
@@ -6125,18 +6126,18 @@ function drawPlan() {
         x: -isStart2.unit.y,
         y: isStart2.unit.x,
       };
-      const value2 = Math.max(
+      const maxValue = Math.max(
         isStart2.wall.thickness * value * planView.zoom * 0.72,
         5 / planView.zoom,
       );
       drawPlanLine(
         {
-          x: isStart2.center.x - planPoint.x * value2,
-          y: isStart2.center.y - planPoint.y * value2,
+          x: isStart2.center.x - planPoint.x * maxValue,
+          y: isStart2.center.y - planPoint.y * maxValue,
         },
         {
-          x: isStart2.center.x + planPoint.x * value2,
-          y: isStart2.center.y + planPoint.y * value2,
+          x: isStart2.center.x + planPoint.x * maxValue,
+          y: isStart2.center.y + planPoint.y * maxValue,
         },
         {
           color: flag2 ? "#ffaf46" : "rgba(224, 250, 255, .9)",
@@ -6166,10 +6167,10 @@ function drawPlan() {
   }
   if (!alignSession) {
     const list = getUnclosedWallEndpoints(value);
-    for (const value2 of list) {
-      drawOpenEndpointWarning(value2);
+    for (const entry of list) {
+      drawOpenEndpointWarning(entry);
       if (list.length <= 3) {
-        drawFloatingLabel(value2, "未闭合", "#ff766e");
+        drawFloatingLabel(entry, "未闭合", "#ff766e");
       }
     }
   }
@@ -6363,7 +6364,7 @@ function placeCatalogItemAt(arg0) {
     }
   }
   for (const wall of [...floorScene.walls].reverse()) {
-    const value2 = Math.max(
+    const maxValue = Math.max(
       (wall.thickness * value) / 2,
       8 / planView.zoom,
     );
@@ -6372,7 +6373,7 @@ function placeCatalogItemAt(arg0) {
         arg0,
         wall.start,
         wall.end,
-      ).distance <= value2
+      ).distance <= maxValue
     ) {
       return {
         kind: "wall",
@@ -6395,7 +6396,7 @@ function updateProgressChecklist() {
     ),
     export: isExporting,
   };
-  const value2 =
+  const layerKeys =
     ["background", "scale", "walls", "items", "lights", "export"].find(
       (arg0) => !value[arg0],
     ) || "export";
@@ -6406,7 +6407,7 @@ function updateProgressChecklist() {
     );
     element.classList.toggle(
       "active",
-      element.dataset.step === value2,
+      element.dataset.step === layerKeys,
     );
   }
 }
@@ -6414,22 +6415,22 @@ function studioLayoutMetrics() {
   const size = detailsPanelEl.getBoundingClientRect();
   const size2 = studioShellEl.getBoundingClientRect();
   const value = size.height || Math.max(window.innerHeight - 90, 340);
-  const value2 = size2.width || Math.max(window.innerWidth - 20, 860);
-  const value3 =
+  const maxValue = size2.width || Math.max(window.innerWidth - 20, 860);
+  const slmV3 =
     detailsResizer.parentElement?.getBoundingClientRect().height || 14;
-  const value4 =
+  const querySelectorResult =
     studioShellEl.querySelector(".library-panel")?.getBoundingClientRect()
       .width || 168;
   return {
     minimumHeightRatio: clamp(320 / value, 0.08, 0.5),
     maximumHeightRatio: clamp(
-      (value - value3 - 170) / value,
+      (value - slmV3 - 170) / value,
       0.5,
       0.94,
     ),
-    minimumWidthRatio: clamp(360 / value2, 0.08, 0.45),
+    minimumWidthRatio: clamp(360 / maxValue, 0.08, 0.45),
     maximumWidthRatio: clamp(
-      (value2 - value4 - 20 - 320) / value2,
+      (maxValue - querySelectorResult - 20 - 320) / maxValue,
       0.45,
       0.86,
     ),
@@ -6508,21 +6509,21 @@ function onDetailsResizePointerMove(event) {
     return;
   }
   const value = studioLayoutMetrics();
-  const value2 = event.clientX - detailsResizeDrag.startX;
-  const value3 = event.clientY - detailsResizeDrag.startY;
-  if (Math.hypot(value2, value3) < 2) {
+  const odrpV2 = event.clientX - detailsResizeDrag.startX;
+  const odrpV3 = event.clientY - detailsResizeDrag.startY;
+  if (Math.hypot(odrpV2, odrpV3) < 2) {
     return;
   }
   detailsResizer.dataset.resizeAxis = "both";
-  const value4 = value3 / size.height;
-  const value5 = value2 / size2.width;
+  const odrpV4 = odrpV3 / size.height;
+  const odrpV5 = odrpV2 / size2.width;
   floorScene.settings.previewPanelRatio = clamp(
-    detailsResizeDrag.startPreviewRatio + value4,
+    detailsResizeDrag.startPreviewRatio + odrpV4,
     value.minimumHeightRatio,
     value.maximumHeightRatio,
   );
   floorScene.settings.detailsPanelWidthRatio = clamp(
-    detailsResizeDrag.startWidthRatio - value5,
+    detailsResizeDrag.startWidthRatio - odrpV5,
     value.minimumWidthRatio,
     value.maximumWidthRatio,
   );
@@ -6957,22 +6958,22 @@ function deleteCurrentSelection() {
         .filter((kind) => kind.kind === "wall")
         .map((item) => item.id),
     );
-    const value2 = new Set(
+    const idSet = new Set(
       multiSelection
         .filter((kind) => kind.kind === "window")
         .map((item) => item.id),
     );
-    const value3 = new Set(
+    const wallIdSet = new Set(
       multiSelection
         .filter((kind) => kind.kind === "door")
         .map((item) => item.id),
     );
-    const value4 = new Set(
+    const wallIdSet2 = new Set(
       multiSelection
         .filter((kind) => kind.kind === "railing")
         .map((item) => item.id),
     );
-    const value5 = new Set(
+    const wallIdSet3 = new Set(
       multiSelection
         .filter((kind) => kind.kind === "item")
         .map((item) => item.id),
@@ -6982,18 +6983,18 @@ function deleteCurrentSelection() {
     );
     floorScene.windows = floorScene.windows.filter(
       (id) =>
-        !value2.has(id.id) && !value.has(id.wallId),
+        !idSet.has(id.id) && !value.has(id.wallId),
     );
     floorScene.doors = floorScene.doors.filter(
       (id) =>
-        !value3.has(id.id) && !value.has(id.wallId),
+        !wallIdSet.has(id.id) && !value.has(id.wallId),
     );
     floorScene.railings = floorScene.railings.filter(
       (id) =>
-        !value4.has(id.id) && !value.has(id.wallId),
+        !wallIdSet2.has(id.id) && !value.has(id.wallId),
     );
     floorScene.items = floorScene.items.filter(
-      (id) => !value5.has(id.id),
+      (id) => !wallIdSet3.has(id.id),
     );
     if (value.size) {
       wallIdMap();
@@ -7150,12 +7151,12 @@ function selectedItemIds() {
     return;
   }
   pushHistory();
-  const value2 = (pixelsPerMeter() || 100) * 0.12;
+  const siiV2 = (pixelsPerMeter() || 100) * 0.12;
   const list2 = list.map((planPoint) => ({
     ...structuredClone(planPoint),
     id: makeId("item"),
-    x: planPoint.x + value2,
-    y: planPoint.y + value2,
+    x: planPoint.x + siiV2,
+    y: planPoint.y + siiV2,
   }));
   ensureItemLayerNames(list2);
   floorScene.items.push(...list2);
@@ -7179,11 +7180,11 @@ function cloneSelectedItems() {
       .filter((kind) => kind.kind === "item")
       .map((item) => item.id),
   ]);
-  const value2 = assetCategory === "light";
+  const csiV2 = assetCategory === "light";
   return floorScene.items.filter(
     (id) =>
       value.has(id.id) &&
-      lightItemTypes.has(id.type) === value2,
+      lightItemTypes.has(id.type) === csiV2,
   );
 }
 function copySelectedItems() {
@@ -7247,33 +7248,33 @@ async function reloadPlanBackground() {
   if (!floorScene.background?.url) {
     return;
   }
-  const value2 = floorScene.background.url;
+  const bgUrl = floorScene.background.url;
   await new Promise((arg0) => {
     let flag = false;
-    const fn = () => {
+    const onComplete = () => {
       if (!flag) {
         flag = true;
         arg0();
       }
     };
     const el = new Image();
-    const value3 = window.setTimeout(fn, 2000);
+    const setTimeoutResult = window.setTimeout(onComplete, 2000);
     el.addEventListener(
       "load",
       () => {
         if (
           value !== planBackgroundRevision ||
-          floorScene.background?.url !== value2
+          floorScene.background?.url !== bgUrl
         ) {
-          fn();
+          onComplete();
           return;
         }
         planBackgroundImage = el;
-        window.clearTimeout(value3);
+        window.clearTimeout(setTimeoutResult);
         if (flag) {
           drawPlan();
         } else {
-          fn();
+          onComplete();
         }
       },
       {
@@ -7283,17 +7284,17 @@ async function reloadPlanBackground() {
     el.addEventListener(
       "error",
       () => {
-        window.clearTimeout(value3);
+        window.clearTimeout(setTimeoutResult);
         if (value === planBackgroundRevision) {
           showToast("底图加载失败，请重新导入。", "error");
         }
-        fn();
+        onComplete();
       },
       {
         once: true,
       },
     );
-    el.src = value2;
+    el.src = bgUrl;
   });
 }
 async function importPlanBackgroundFile(body) {
@@ -7691,17 +7692,17 @@ function checkAdaptiveQuality() {
     return;
   }
   const value = estimateLightRenderCost();
-  const value2 = value.cost / Math.max(value.budget, 1);
-  const value3 = value2 >= 1.8 ? 3 : value2 >= 1 ? 4 : 5;
+  const maxValue = value.cost / Math.max(value.budget, 1);
+  const caqV3 = maxValue >= 1.8 ? 3 : maxValue >= 1 ? 4 : 5;
   adaptiveFpsEstimate = sufficient.fps;
   if (sufficient.severe) {
-    slowFrameStreak = value3;
+    slowFrameStreak = caqV3;
   } else if (sufficient.slow) {
     slowFrameStreak += 1;
   } else if (sufficient.smooth) {
     slowFrameStreak = 0;
   }
-  if (slowFrameStreak >= value3) {
+  if (slowFrameStreak >= caqV3) {
     markPreviewQualityReady(sufficient);
   }
 }
@@ -8015,13 +8016,13 @@ function collectGpuTimingResults() {
       list.push(value);
       continue;
     }
-    const value2 = isGetParameter.getQueryParameter(
+    const queryParameter = isGetParameter.getQueryParameter(
       value,
       isGetParameter.QUERY_RESULT,
     );
     pushPerfSample(
       gpuQueriesPending.gpuRenderTimes,
-      value2 / 1000000,
+      queryParameter / 1000000,
     );
     isGetParameter.deleteQuery(value);
     gpuQueriesPending.gpuStatus = "可用";
@@ -8056,10 +8057,10 @@ function collectSceneMeshStats() {
   previewScene?.traverse((light) => {
     if (light.isMesh) {
       meshes += 1;
-      const value2 = Array.isArray(light.material)
+      const isArrayResult = Array.isArray(light.material)
         ? light.material
         : [light.material];
-      for (const flag of value2) {
+      for (const flag of isArrayResult) {
         if (flag) {
           value.add(flag);
         }
@@ -8175,7 +8176,7 @@ function publishPerfHud(arg0 = performance.now()) {
       cacheReady: lightCacheReady,
     },
   };
-  const value2 = frame.frame.samples
+  const pphV2 = frame.frame.samples
     ? frame.frame.averageFps +
       " / " +
       frame.frame.medianFps +
@@ -8183,7 +8184,7 @@ function publishPerfHud(arg0 = performance.now()) {
       frame.frame.p95Ms +
       " ms"
     : "移动镜头后采样";
-  const value3 = frame.gpuRenderMs.samples
+  const pphV3 = frame.gpuRenderMs.samples
     ? frame.gpuRenderMs.average +
       " ms · P95 " +
       frame.gpuRenderMs.p95 +
@@ -8193,13 +8194,13 @@ function publishPerfHud(arg0 = performance.now()) {
     "<strong>3D 性能诊断</strong><span>" +
       (frameIntervals.motionActive ? "交互 / 阻尼中" : "空闲") +
       "</span>",
-    "<span>帧率</span><b>" + value2 + "</b>",
+    "<span>帧率</span><b>" + pphV2 + "</b>",
     "<span>CPU 提交</span><b>" +
       (frame.cpuRenderMs.average ?? "—") +
       " ms · P95 " +
       (frame.cpuRenderMs.p95 ?? "—") +
       " ms</b>",
-    "<span>GPU 渲染</span><b>" + value3 + "</b>",
+    "<span>GPU 渲染</span><b>" + pphV3 + "</b>",
     "<span>绘制</span><b>" +
       frame.render.calls +
       " calls · " +
@@ -8307,7 +8308,7 @@ async function finishStageSessionWarmup() {
     return;
   }
   const value = lightCacheEpoch;
-  const fn = () =>
+  const onComplete = () =>
     studioReady &&
     !renderCache?.closed &&
     !hasPendingModelLoads() &&
@@ -8340,14 +8341,14 @@ async function finishStageSessionWarmup() {
       sha2562,
       width,
       height,
-      fn,
+      onComplete,
     );
-    if (!fn()) {
+    if (!onComplete()) {
       return;
     }
     if (!el) {
-      const value2 = ensureWorldItemsCached(entry);
-      syncLightGroupVisibility(value2);
+      const worldItemsCached = ensureWorldItemsCached(entry);
+      syncLightGroupVisibility(worldItemsCached);
       syncOrbitControls();
       renderer.render(previewScene, camera);
       el = document.createElement("canvas");
@@ -8359,7 +8360,7 @@ async function finishStageSessionWarmup() {
       }
       isDrawImage.drawImage(domElement, 0, 0);
       const size = el;
-      Promise.resolve(renderCache?.write(sha2562, size, fn))
+      Promise.resolve(renderCache?.write(sha2562, size, onComplete))
         .catch((arg0) => {
           window.HABridgeLog?.error(arg0, {
             phase: "interaction3d-cache-write",
@@ -8369,7 +8370,7 @@ async function finishStageSessionWarmup() {
           size.width = size.height = 0;
         });
     }
-    if (!fn()) {
+    if (!onComplete()) {
       return;
     }
     const isClearRect = previewLightCache.getContext("2d");
@@ -8419,7 +8420,7 @@ function blitLightCacheToOverlay() {
       previewLightCache.width,
       previewLightCache.height,
     );
-    for (const [value, value2] of lightCacheTileMap) {
+    for (const [value, tileCanvas] of lightCacheTileMap) {
       const clamp2 = clamp(
         finite(pendingModelLoads.get(value), 0),
         0,
@@ -8428,7 +8429,7 @@ function blitLightCacheToOverlay() {
       if (!(clamp2 <= 0.001)) {
         isClearRect.save();
         isClearRect.globalAlpha = clamp2;
-        isClearRect.drawImage(value2, 0, 0);
+        isClearRect.drawImage(tileCanvas, 0, 0);
         isClearRect.restore();
       }
     }
@@ -8439,17 +8440,17 @@ function invalidateLightCacheTiles(arg0, arg1 = LIGHT_CACHE_TILE_MS) {
   if (!list.length) {
     return;
   }
-  const value = list.map((value3) => ({
-    groupId: previewScopedItemKey(activeFloorId, value3),
+  const value = list.map((param) => ({
+    groupId: previewScopedItemKey(activeFloorId, param),
     from: clamp(
       finite(
-        pendingModelLoads.get(previewScopedItemKey(activeFloorId, value3)),
-        findLightGroupById(value3)?.enabled === false ? 0 : 1,
+        pendingModelLoads.get(previewScopedItemKey(activeFloorId, param)),
+        findLightGroupById(param)?.enabled === false ? 0 : 1,
       ),
       0,
       1,
     ),
-    to: findLightGroupById(value3)?.enabled === false ? 0 : 1,
+    to: findLightGroupById(param)?.enabled === false ? 0 : 1,
   }));
   cancelAnimationFrame(lightBakeRaf);
   if (!lightCacheReady) {
@@ -8461,24 +8462,24 @@ function invalidateLightCacheTiles(arg0, arg1 = LIGHT_CACHE_TILE_MS) {
     }
     return;
   }
-  const value2 = performance.now();
-  const fn = (arg02) => {
-    const clamp2 = clamp((arg02 - value2) / arg1, 0, 1);
-    const value3 = clamp2 * clamp2 * (3 - clamp2 * 2);
-    for (const value4 of value) {
+  const nowResult = performance.now();
+  const handler = (arg02) => {
+    const clamp2 = clamp((arg02 - nowResult) / arg1, 0, 1);
+    const ilctV3 = clamp2 * clamp2 * (3 - clamp2 * 2);
+    for (const entry of value) {
       pendingModelLoads.set(
-        value4.groupId,
-        value4.from + (value4.to - value4.from) * value3,
+        entry.groupId,
+        entry.from + (entry.to - entry.from) * ilctV3,
       );
     }
     blitLightCacheToOverlay();
     if (clamp2 < 1) {
-      lightBakeRaf = requestAnimationFrame(fn);
+      lightBakeRaf = requestAnimationFrame(handler);
     } else {
       lightBakeRaf = 0;
     }
   };
-  lightBakeRaf = requestAnimationFrame(fn);
+  lightBakeRaf = requestAnimationFrame(handler);
 }
 function findLightGroupById(arg0) {
   return (
@@ -8517,23 +8518,23 @@ function markLightGroupsDirty(arg0, arg1 = LIGHT_CACHE_TILE_MS) {
   if (!list.length) {
     return false;
   }
-  if (list.some(({ to: value3 }) => value3 > 0)) {
+  if (list.some(({ to: toCount }) => toCount > 0)) {
     countShadowLights(worldGroup, {
       rebuildAtlas: false,
     });
   }
   cancelAnimationFrame(shadowAtlasRaf);
-  const value2 = performance.now();
-  const fn = (arg02) => {
-    const clamp2 = clamp((arg02 - value2) / arg1, 0, 1);
-    const value3 = clamp2 * clamp2 * (3 - clamp2 * 2);
-    for (const value4 of list) {
-      value4.object.intensity =
-        value4.from + (value4.to - value4.from) * value3;
+  const nowResult = performance.now();
+  const handler = (arg02) => {
+    const clamp2 = clamp((arg02 - nowResult) / arg1, 0, 1);
+    const mlgdV3 = clamp2 * clamp2 * (3 - clamp2 * 2);
+    for (const entry of list) {
+      entry.object.intensity =
+        entry.from + (entry.to - entry.from) * mlgdV3;
     }
     updateLightPreview();
     if (clamp2 < 1) {
-      shadowAtlasRaf = requestAnimationFrame(fn);
+      shadowAtlasRaf = requestAnimationFrame(handler);
     } else {
       shadowAtlasRaf = 0;
       let flag2 = false;
@@ -8550,7 +8551,7 @@ function markLightGroupsDirty(arg0, arg1 = LIGHT_CACHE_TILE_MS) {
       }
     }
   };
-  shadowAtlasRaf = requestAnimationFrame(fn);
+  shadowAtlasRaf = requestAnimationFrame(handler);
   return true;
 }
 function requestLightGroupCacheRefresh(arg0) {
@@ -8672,8 +8673,8 @@ function ensureWorldItemsCached(entry) {
 }
 function withResidentCacheMode(arg0, has) {
   const value = floorScene;
-  const value2 = activeFloorId;
-  const value3 = residentCacheMode;
+  const wrcmV2 = activeFloorId;
+  const wrcmV3 = residentCacheMode;
   const flag = getPreviewFloorMode() === "all";
   try {
     residentCacheMode = true;
@@ -8684,7 +8685,7 @@ function withResidentCacheMode(arg0, has) {
     } of arg0) {
       if (
         has.has(itemKey) ||
-        (!flag && floor.id !== value2)
+        (!flag && floor.id !== wrcmV2)
       ) {
         continue;
       }
@@ -8703,13 +8704,13 @@ function withResidentCacheMode(arg0, has) {
       if (!flag2) {
         continue;
       }
-      const value4 = activeFloorContentBounds();
-      const value5 = flag
+      const activeFloorContentBoundsResult = activeFloorContentBounds();
+      const wrcmV5 = flag
         ? finite(floor.originX, 0)
-        : (value4.minX + value4.maxX) / 2;
-      const value6 = flag
+        : (activeFloorContentBoundsResult.minX + activeFloorContentBoundsResult.maxX) / 2;
+      const wrcmV6 = flag
         ? finite(floor.originY, 0)
-        : (value4.minY + value4.maxY) / 2;
+        : (activeFloorContentBoundsResult.minY + activeFloorContentBoundsResult.maxY) / 2;
       const object3d = new THREE.Group();
       buildLightFixtureMeshes(
         object3d,
@@ -8717,9 +8718,9 @@ function withResidentCacheMode(arg0, has) {
         shadowCastingLightIdSet(),
       );
       object3d.position.set(
-        (size.x - value5) / flag2,
+        (size.x - wrcmV5) / flag2,
         size.elevation || 0,
-        (size.y - value6) / flag2,
+        (size.y - wrcmV6) / flag2,
       );
       applyItemYawRotation(object3d, size);
       object3d.userData.modelLayer = "lights";
@@ -8737,8 +8738,8 @@ function withResidentCacheMode(arg0, has) {
     }
   } finally {
     floorScene = value;
-    activeFloorId = value2;
-    residentCacheMode = value3;
+    activeFloorId = wrcmV2;
+    residentCacheMode = wrcmV3;
   }
   countShadowLights(worldGroup, {
     rebuildAtlas: false,
@@ -8746,9 +8747,9 @@ function withResidentCacheMode(arg0, has) {
   return has;
 }
 function setGroupVisibilityByKey(arg0, arg1 = "") {
-  for (const [value, value2] of arg0) {
+  for (const [value, lights] of arg0) {
     const flag = value === arg1;
-    for (const light of value2) {
+    for (const light of lights) {
       light.visible = flag;
       light.intensity = flag
         ? finite(light.userData?.lightOnIntensity, 0)
@@ -8776,9 +8777,9 @@ function enabledVisibleLightKeys() {
 }
 function syncLightGroupVisibility(arg0) {
   const value = enabledVisibleLightKeys();
-  for (const [value2, value3] of arg0) {
-    const flag = value.has(value2);
-    for (const light of value3) {
+  for (const [groupKey, lights] of arg0) {
+    const flag = value.has(groupKey);
+    for (const light of lights) {
       light.visible = flag;
       light.intensity = flag
         ? finite(light.userData?.lightOnIntensity, 0)
@@ -9008,7 +9009,7 @@ async function endStageSession() {
       throw new Error("当前浏览器无法合成多灯缓存。");
     }
     const map2 = new Map();
-    const value2 = ensureWorldItemsCached(entry);
+    const worldItemsCached = ensureWorldItemsCached(entry);
     await waitTwoAnimationFrames();
     if (
       value !== lightCacheEpoch ||
@@ -9019,7 +9020,7 @@ async function endStageSession() {
     ) {
       return;
     }
-    setGroupVisibilityByKey(value2);
+    setGroupVisibilityByKey(worldItemsCached);
     isClearRect2.clearRect(0, 0, width, height);
     worldGroup.traverse((object3d) => {
       if (object3d.userData?.exportRole === "grid") {
@@ -9028,7 +9029,7 @@ async function endStageSession() {
       }
     });
     let isData;
-    for (const value3 of entry) {
+    for (const entry2 of entry) {
       await yieldToIdle();
       if (
         value !== lightCacheEpoch ||
@@ -9044,20 +9045,20 @@ async function endStageSession() {
         group: group,
         itemKey: itemKey,
         groupKey: groupKey,
-      } = value3;
+      } = entry2;
       isClearRect3.clearRect(0, 0, width, height);
       {
         if (!isData) {
-          setGroupVisibilityByKey(value2);
+          setGroupVisibilityByKey(worldItemsCached);
           warmPreviewRenderer();
           isData = createOffscreenCanvas(width, height);
         }
-        setGroupVisibilityByKey(value2, itemKey);
+        setGroupVisibilityByKey(worldItemsCached, itemKey);
         warmPreviewRenderer();
-        const value4 = createOffscreenCanvas(width, height);
+        const offscreenCanvas = createOffscreenCanvas(width, height);
         const buildLightDeltaPixels2 = buildLightDeltaPixels(
           isData.data,
-          value4.data,
+          offscreenCanvas.data,
         );
         isClearRect3.putImageData(
           new ImageData(buildLightDeltaPixels2, width, height),
@@ -9094,9 +9095,9 @@ async function endStageSession() {
       isPreviewQualityReady()
     ) {
       lightCacheTileMap = map2;
-      for (const [value3, object3d] of map2) {
+      for (const [tileKey, object3d] of map2) {
         pendingModelLoads.set(
-          value3,
+          tileKey,
           object3d.userData?.enabled === false ? 0 : 1,
         );
       }
@@ -9113,16 +9114,16 @@ async function endStageSession() {
     console.error(error);
     lightCacheReady = !previewLightCache.hidden;
   } finally {
-    for (const [object3d, value3] of map) {
-      object3d.visible = value3;
+    for (const [object3d, wasVisible] of map) {
+      object3d.visible = wasVisible;
     }
-    const value2 = collectWorldItemKeys();
+    const worldItemKeys = collectWorldItemKeys();
     if (isCapturingFrame) {
       isCapturingFrame.restore();
     } else if (previewOrbitLocked) {
-      syncLightGroupVisibility(value2);
+      syncLightGroupVisibility(worldItemKeys);
     } else {
-      setGroupVisibilityByKey(value2);
+      setGroupVisibilityByKey(worldItemKeys);
     }
     warmPreviewRenderer();
     if (flag) {
@@ -9335,25 +9336,25 @@ function getCameraPose(
     return false;
   }
   const value = Math.max(view.position.distanceTo(flag), 1);
-  const value2 = view.isPerspectiveCamera
+  const gcpV2 = view.isPerspectiveCamera
     ? clamp(
         value * ORBIT_DOLLY_SPEED_SCALE,
         ORBIT_DOLLY_SPEED_MIN,
         ORBIT_DOLLY_SPEED_MAX,
       )
     : 0.02;
-  const value3 = Math.max(
+  const maxValue = Math.max(
     value * (view.isPerspectiveCamera ? 8 : 5),
     100,
   );
   if (
-    Math.abs(view.near - value2) < 0.000001 &&
-    Math.abs(view.far - value3) < 0.0001
+    Math.abs(view.near - gcpV2) < 0.000001 &&
+    Math.abs(view.far - maxValue) < 0.0001
   ) {
     return false;
   } else {
-    view.near = value2;
-    view.far = value3;
+    view.near = gcpV2;
+    view.far = maxValue;
     view.updateProjectionMatrix();
     return true;
   }
@@ -9370,8 +9371,8 @@ function resetOrbitTarget(camera2, arg1) {
       camera2.position.distanceTo(arg1),
       0.0001,
     );
-    const value2 = THREE.MathUtils.degToRad(camera2.getEffectiveFOV());
-    return value * 2 * Math.tan(value2 / 2);
+    const degToRadResult = THREE.MathUtils.degToRad(camera2.getEffectiveFOV());
+    return value * 2 * Math.tan(degToRadResult / 2);
   }
   return 10;
 }
@@ -9445,7 +9446,7 @@ function restoreFixedCameraView(recordChange = {}) {
   setCameraProjectionMode(isMode.mode, {
     preserveView: false,
   });
-  const value2 = new THREE.Vector3(
+  const vector3 = new THREE.Vector3(
     isMode.target.x,
     isMode.target.y,
     isMode.target.z,
@@ -9485,10 +9486,10 @@ function restoreFixedCameraView(recordChange = {}) {
       camera,
     );
   }
-  getCameraPose(camera, value2);
-  camera.lookAt(value2);
+  getCameraPose(camera, vector3);
+  camera.lookAt(vector3);
   camera.updateProjectionMatrix();
-  orbitControls.target.copy(value2);
+  orbitControls.target.copy(vector3);
   syncOrbitControls();
   orbitControls.update();
   syncCameraModeButtons(isMode.mode);
@@ -9497,9 +9498,9 @@ function restoreFixedCameraView(recordChange = {}) {
     scheduleSave();
   }
   if (!recordChange.silent) {
-    const value3 =
+    const previewFloorMode =
       getPreviewFloorMode() === "all" ? "总览视角" : "当前层视角";
-    showToast("已恢复上次保存的" + value3 + "。");
+    showToast("已恢复上次保存的" + previewFloorMode + "。");
   }
 }
 function nudgeCamera(arg0, force = {}) {
@@ -9524,19 +9525,19 @@ function nudgeCamera(arg0, force = {}) {
     return;
   }
   const point3 = orbitControls.target.clone();
-  const value2 = resetOrbitTarget(camera, point3);
-  const value3 = Math.max(camera.position.distanceTo(point3), 8);
+  const resetOrbitTargetResult = resetOrbitTarget(camera, point3);
+  const maxValue = Math.max(camera.position.distanceTo(point3), 8);
   camera.up.copy(topViewForwardVector(value));
   if (camera.isPerspectiveCamera) {
     applyCameraFocalLength();
-    const value4 = THREE.MathUtils.degToRad(camera.getEffectiveFOV());
-    const value5 = Math.max(value2 / (Math.tan(value4 / 2) * 2), 8);
-    camera.position.set(point3.x, point3.y + value5, point3.z);
+    const degToRadResult = THREE.MathUtils.degToRad(camera.getEffectiveFOV());
+    const maxValue2 = Math.max(resetOrbitTargetResult / (Math.tan(degToRadResult / 2) * 2), 8);
+    camera.position.set(point3.x, point3.y + maxValue2, point3.z);
   } else {
-    focusCameraOnPoint(value2, camera.userData.viewportAspect || 1, camera);
-    camera.position.set(point3.x, point3.y + value3, point3.z);
+    focusCameraOnPoint(resetOrbitTargetResult, camera.userData.viewportAspect || 1, camera);
+    camera.position.set(point3.x, point3.y + maxValue, point3.z);
   }
-  camera.userData.frameSize = value2;
+  camera.userData.frameSize = resetOrbitTargetResult;
   camera.userData.cameraView = "top";
   camera.userData.topRotation = value;
   getCameraPose(camera, point3);
@@ -9560,54 +9561,54 @@ function setCameraProjectionMode(arg0, preserveView = {}) {
   }
   const flag = preserveView.preserveView !== false;
   const object3d = camera;
-  const value2 =
+  const vector3 =
     orbitControls?.target.clone() || new THREE.Vector3(0, 0.6, 0);
   const list = object3d
-    ? object3d.position.clone().sub(value2)
+    ? object3d.position.clone().sub(vector3)
     : new THREE.Vector3(1.12, 1.42, 1.2);
-  const value3 = Math.max(list.length(), 2);
-  const value4 =
+  const maxValue = Math.max(list.length(), 2);
+  const vector32 =
     list.lengthSq() > 1e-8
       ? list.normalize()
       : new THREE.Vector3(1.12, 1.42, 1.2).normalize();
-  const value5 =
+  const maxValue2 =
     object3d?.userData.viewportAspect ||
     Math.max(
       selectEl("#preview-3d").clientWidth /
         Math.max(selectEl("#preview-3d").clientHeight, 1),
       0.1,
     );
-  const value6 =
+  const scpmV6 =
     flag && object3d
-      ? resetOrbitTarget(object3d, value2)
+      ? resetOrbitTarget(object3d, vector3)
       : object3d?.userData.frameSize || 10;
   orbitControls?.dispose();
   if (value === "perspective") {
-    camera = new THREE.PerspectiveCamera(36, value5, 0.02, 200);
+    camera = new THREE.PerspectiveCamera(36, maxValue2, 0.02, 200);
     applyCameraFocalLength(camera);
-    const value7 =
-      value6 /
+    const scpmV7 =
+      scpmV6 /
       (Math.tan(THREE.MathUtils.degToRad(camera.getEffectiveFOV()) / 2) * 2);
-    const value8 = flag ? value7 : value3;
+    const scpmV8 = flag ? scpmV7 : maxValue;
     camera.position
-      .copy(value2)
-      .addScaledVector(value4, Math.max(value8, 2));
+      .copy(vector3)
+      .addScaledVector(vector32, Math.max(scpmV8, 2));
   } else {
     camera = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.02, 200);
-    camera.position.copy(value2).addScaledVector(value4, value3);
-    focusCameraOnPoint(value6, value5, camera);
+    camera.position.copy(vector3).addScaledVector(vector32, maxValue);
+    focusCameraOnPoint(scpmV6, maxValue2, camera);
   }
   camera.layers.enable(HELPER_LAYER);
-  camera.userData.viewportAspect = value5;
-  camera.userData.frameSize = value6;
+  camera.userData.viewportAspect = maxValue2;
+  camera.userData.frameSize = scpmV6;
   camera.userData.cameraView = object3d?.userData.cameraView || "free";
   camera.userData.topRotation = object3d?.userData.topRotation || 0;
   camera.up.copy(object3d?.up || new THREE.Vector3(0, 1, 0));
-  getCameraPose(camera, value2);
-  camera.lookAt(value2);
+  getCameraPose(camera, vector3);
+  camera.lookAt(vector3);
   camera.updateProjectionMatrix();
   orbitControls = createOrbitControls(camera);
-  orbitControls.target.copy(value2);
+  orbitControls.target.copy(vector3);
   syncOrbitControls();
   if (!isStageEmbed || preserveView.deferControlUpdate !== true) {
     orbitControls.update();
@@ -9685,45 +9686,45 @@ function initPreviewRenderer() {
     detailsPanelResizeObserver = new ResizeObserver(onPreviewContainerResize);
     detailsPanelResizeObserver.observe(value);
     applyCameraView();
-    let value2 = performance.now();
-    let value3 = -Infinity;
-    const fn = (value4 = performance.now()) => {
+    let nowResult = performance.now();
+    let iprV3 = -Infinity;
+    const handler = (param = performance.now()) => {
       if (!renderer) {
         return;
       }
       if (!isStageEmbed) {
-        requestAnimationFrame(fn);
+        requestAnimationFrame(handler);
       }
-      const value5 = Math.min(
-        Math.max((value4 - value2) / 1000, 0),
+      const maxValue = Math.min(
+        Math.max((param - nowResult) / 1000, 0),
         0.05,
       );
-      value2 = value4;
+      nowResult = param;
       if (document.hidden) {
         return Infinity;
       }
-      const flag = orbitControls.update(value5);
+      const flag = orbitControls.update(maxValue);
       if (flag) {
-        value3 = value4;
+        iprV3 = param;
       }
-      const value6 = value4 - value3 < 600 ? 0 : Infinity;
+      const iprV6 = param - iprV3 < 600 ? 0 : Infinity;
       if (flag) {
         needsRenderFrame = true;
       }
-      const value7 = previewOrbitLocked || flag || isStageWarmup;
-      setPerfMotionActive(value4, value7);
+      const iprV7 = previewOrbitLocked || flag || isStageWarmup;
+      setPerfMotionActive(param, iprV7);
       if (!needsRenderFrame && renderIdle) {
-        return value6;
+        return iprV6;
       }
       needsRenderFrame = false;
-      const value8 = beginGpuTimingQuery(value7);
-      const value9 = isPerfDiagnosticsEnabled ? performance.now() : 0;
+      const beginGpuTimingQueryResult = beginGpuTimingQuery(iprV7);
+      const iprV9 = isPerfDiagnosticsEnabled ? performance.now() : 0;
       renderer.render(previewScene, camera);
-      const value10 = isPerfDiagnosticsEnabled
-        ? performance.now() - value9
+      const iprV10 = isPerfDiagnosticsEnabled
+        ? performance.now() - iprV9
         : 0;
-      endGpuTimingQuery(value8);
-      recordCpuFrameTiming(value4, value10, value7);
+      endGpuTimingQuery(beginGpuTimingQueryResult);
+      recordCpuFrameTiming(param, iprV10, iprV7);
       const render = renderer.info.render;
       renderer.domElement.dataset.renderCalls = String(render.calls);
       renderer.domElement.dataset.renderTriangles = String(
@@ -9736,24 +9737,24 @@ function initPreviewRenderer() {
       if (isStageEmbed) {
         renderer.domElement.dispatchEvent(new Event("hb-i3d-camera-frame"));
       }
-      return value6;
+      return iprV6;
     };
     if (isStageEmbed) {
       demandFrameLoop = createDemandFrameLoop({
         onWake() {
-          value2 = performance.now();
+          nowResult = performance.now();
         },
-        step(value4) {
-          const value5 = fn(value4);
+        step(param) {
+          const fnResult = handler(param);
           renderer.domElement.dataset.renderFrameChecks = String(
             demandFrameLoop.stats.frames,
           );
-          return value5;
+          return fnResult;
         },
       });
-      const fn2 = () => demandFrameLoop.wake();
-      const fn3 = () => {
-        value2 = performance.now();
+      const onComplete = () => demandFrameLoop.wake();
+      const onVisibilitychange = () => {
+        nowResult = performance.now();
         const flag = !document.hidden && studioReady;
         demandFrameLoop.setAvailable(flag);
         if (flag) {
@@ -9766,15 +9767,15 @@ function initPreviewRenderer() {
           stageSessionEndTimer = null;
         }
       };
-      const fn4 = (detail) => {
+      const onPointerRelease = (detail) => {
         studioReady = detail.detail === true;
-        fn3();
+        onVisibilitychange();
       };
       renderer.domElement.addEventListener(
         "hb-i3d-parent-visibility",
-        fn4,
+        onPointerRelease,
       );
-      for (const value4 of [
+      for (const entry of [
         "pointerdown",
         "pointermove",
         "pointerup",
@@ -9783,22 +9784,22 @@ function initPreviewRenderer() {
         "keydown",
         "keyup",
       ]) {
-        renderer.domElement.addEventListener(value4, fn2, {
+        renderer.domElement.addEventListener(entry, onComplete, {
           passive: true,
         });
       }
-      document.addEventListener("visibilitychange", fn3);
+      document.addEventListener("visibilitychange", onVisibilitychange);
       window.addEventListener(
         "pagehide",
         () => {
           demandFrameLoop.dispose();
-          document.removeEventListener("visibilitychange", fn3);
+          document.removeEventListener("visibilitychange", onVisibilitychange);
           shadowAtlas?.releaseRenderIndex();
           renderer.domElement.removeEventListener(
             "hb-i3d-parent-visibility",
-            fn4,
+            onPointerRelease,
           );
-          for (const value4 of [
+          for (const entry of [
             "pointerdown",
             "pointermove",
             "pointerup",
@@ -9807,17 +9808,17 @@ function initPreviewRenderer() {
             "keydown",
             "keyup",
           ]) {
-            renderer.domElement.removeEventListener(value4, fn2);
+            renderer.domElement.removeEventListener(entry, onComplete);
           }
         },
         {
           once: true,
         },
       );
-      fn3();
-      fn2();
+      onVisibilitychange();
+      onComplete();
     } else {
-      fn();
+      handler();
     }
   } catch (error) {
     selectEl("#webgl-message").hidden = false;
@@ -9854,20 +9855,20 @@ function onPreviewContainerResize() {
     return;
   }
   const value = selectEl("#preview-3d");
-  const value2 = Math.max(value.clientWidth, 1);
-  const value3 = Math.max(value.clientHeight, 1);
+  const maxValue = Math.max(value.clientWidth, 1);
+  const maxValue2 = Math.max(value.clientHeight, 1);
   const planPoint = isStageEmbed
     ? renderer.getSize(new THREE.Vector2())
     : null;
   const flag =
-    planPoint?.x === value2 && planPoint?.y === value3;
-  const value4 = isStageEmbed
+    planPoint?.x === maxValue && planPoint?.y === maxValue2;
+  const opcrV4 = isStageEmbed
     ? camera.projectionMatrix.elements.join(",")
     : "";
   if (!flag) {
-    renderer.setSize(value2, value3, false);
+    renderer.setSize(maxValue, maxValue2, false);
   }
-  camera.userData.viewportAspect = value2 / value3;
+  camera.userData.viewportAspect = maxValue / maxValue2;
   if (camera.isOrthographicCamera) {
     focusCameraOnPoint(
       camera.userData.frameSize || 10,
@@ -9879,7 +9880,7 @@ function onPreviewContainerResize() {
   }
   if (
     !flag ||
-    value4 !== camera.projectionMatrix.elements.join(",")
+    opcrV4 !== camera.projectionMatrix.elements.join(",")
   ) {
     requestRender();
   }
@@ -9956,11 +9957,11 @@ function syncExportResolutionLabel() {
     }
     return arg0;
   })(width, height);
-  const value2 = width / value;
-  const value3 = height / value;
+  const serlV2 = width / value;
+  const serlV3 = height / value;
   exportAspectLabel.textContent =
-    value2 <= 32 && value3 <= 32
-      ? value2 + " : " + value3
+    serlV2 <= 32 && serlV3 <= 32
+      ? serlV2 + " : " + serlV3
       : (width / height).toFixed(2) + " : 1";
   exportPreviewFrame.style.setProperty(
     "--export-aspect",
@@ -9973,15 +9974,15 @@ function stageEmbedPixelRatio(flag = false) {
     return value;
   }
   const { width: width, height: height } = readExportResolution();
-  const value2 = Math.max(exportPreviewStage.clientWidth, 1);
-  const value3 = Math.max(exportPreviewStage.clientHeight, 1);
-  const value4 = Math.max(
+  const maxValue = Math.max(exportPreviewStage.clientWidth, 1);
+  const maxValue2 = Math.max(exportPreviewStage.clientHeight, 1);
+  const maxValue3 = Math.max(
     value,
-    width / value2,
-    height / value3,
+    width / maxValue,
+    height / maxValue2,
     1.5,
   );
-  return Math.min(value4, flag ? 2 : 4);
+  return Math.min(maxValue3, flag ? 2 : 4);
 }
 function resizeStageEmbedViewport() {
   if (!stageSession || orbitSuspended || !renderer || !camera) {
@@ -9990,12 +9991,12 @@ function resizeStageEmbedViewport() {
   const { width: width, height: height } = readExportResolution();
   const arg1 = width / height;
   const value = Math.max(exportPreviewStage.clientWidth, 1);
-  const value2 = Math.max(exportPreviewStage.clientHeight, 1);
-  const value3 = isAutoDiagramEmbed
+  const maxValue = Math.max(exportPreviewStage.clientHeight, 1);
+  const minValue = isAutoDiagramEmbed
     ? stageEmbedPixelRatio(false)
     : Math.min(window.devicePixelRatio || 1, 2);
-  renderer.setPixelRatio(value3);
-  renderer.setSize(value, value2, false);
+  renderer.setPixelRatio(minValue);
+  renderer.setSize(value, maxValue, false);
   camera.userData.viewportAspect = arg1;
   if (camera.isOrthographicCamera) {
     focusCameraOnPoint(camera.userData.frameSize || 10, arg1, camera);
@@ -10017,61 +10018,61 @@ function onExportDimensionInput(arg0, flag = false) {
   if (!Number.isFinite(value) || value <= 0) {
     return;
   }
-  let value2 =
+  let oediV2 =
     arg0 === "width" ? value : Number(exportWidth.value);
-  let value3 =
+  let oediV3 =
     arg0 === "height" ? value : Number(exportHeight.value);
-  value2 =
-    Number.isFinite(value2) && value2 > 0
-      ? value2
+  oediV2 =
+    Number.isFinite(oediV2) && oediV2 > 0
+      ? oediV2
       : defaultExportWidth;
-  value3 =
-    Number.isFinite(value3) && value3 > 0
-      ? value3
+  oediV3 =
+    Number.isFinite(oediV3) && oediV3 > 0
+      ? oediV3
       : defaultExportHeight;
   if (exportLockRatio.checked) {
     if (arg0 === "width") {
       if (flag) {
-        value2 = clamp(value2, 320, 4096);
-        value3 = Math.round(value2 / exportAspectRatio);
-        if (value3 < 320) {
-          value3 = 320;
-          value2 = Math.round(value3 * exportAspectRatio);
+        oediV2 = clamp(oediV2, 320, 4096);
+        oediV3 = Math.round(oediV2 / exportAspectRatio);
+        if (oediV3 < 320) {
+          oediV3 = 320;
+          oediV2 = Math.round(oediV3 * exportAspectRatio);
         }
-        if (value3 > 4096) {
-          value3 = 4096;
-          value2 = Math.round(value3 * exportAspectRatio);
+        if (oediV3 > 4096) {
+          oediV3 = 4096;
+          oediV2 = Math.round(oediV3 * exportAspectRatio);
         }
       } else {
-        value3 = Math.round(
-          clamp(value2 / exportAspectRatio, 320, 4096),
+        oediV3 = Math.round(
+          clamp(oediV2 / exportAspectRatio, 320, 4096),
         );
       }
     } else if (flag) {
-      value3 = clamp(value3, 320, 4096);
-      value2 = Math.round(value3 * exportAspectRatio);
-      if (value2 < 320) {
-        value2 = 320;
-        value3 = Math.round(value2 / exportAspectRatio);
+      oediV3 = clamp(oediV3, 320, 4096);
+      oediV2 = Math.round(oediV3 * exportAspectRatio);
+      if (oediV2 < 320) {
+        oediV2 = 320;
+        oediV3 = Math.round(oediV2 / exportAspectRatio);
       }
-      if (value2 > 4096) {
-        value2 = 4096;
-        value3 = Math.round(value2 / exportAspectRatio);
+      if (oediV2 > 4096) {
+        oediV2 = 4096;
+        oediV3 = Math.round(oediV2 / exportAspectRatio);
       }
     } else {
-      value2 = Math.round(clamp(value3 * exportAspectRatio, 320, 4096));
+      oediV2 = Math.round(clamp(oediV3 * exportAspectRatio, 320, 4096));
     }
   }
   if (flag) {
-    value2 = Math.round(clamp(value2, 320, 4096));
-    value3 = Math.round(clamp(value3, 320, 4096));
-    exportWidth.value = String(value2);
-    exportHeight.value = String(value3);
+    oediV2 = Math.round(clamp(oediV2, 320, 4096));
+    oediV3 = Math.round(clamp(oediV3, 320, 4096));
+    exportWidth.value = String(oediV2);
+    exportHeight.value = String(oediV3);
   } else if (exportLockRatio.checked) {
     if (arg0 === "width") {
-      exportHeight.value = String(value3);
+      exportHeight.value = String(oediV3);
     } else {
-      exportWidth.value = String(value2);
+      exportWidth.value = String(oediV2);
     }
   }
   scheduleStageEmbedResize();
@@ -10135,10 +10136,10 @@ function applyStageFixedCameraView(silent = {}) {
   syncCameraModeButtons(isMode.mode);
   syncCameraViewButtons(isMode.view);
   if (!silent.silent) {
-    const value2 =
+    const previewFloorMode =
       getPreviewFloorMode() === "all" ? "总览视角" : "当前层视角";
-    exportStatus.textContent = "已恢复上次保存的" + value2;
-    showToast("已恢复上次保存的" + value2 + "。");
+    exportStatus.textContent = "已恢复上次保存的" + previewFloorMode;
+    showToast("已恢复上次保存的" + previewFloorMode + "。");
   }
 }
 function normalizeProjectExportPresets() {
@@ -10208,8 +10209,8 @@ function syncExportCameraFocalUi({ name: name = "" } = {}) {
       120,
     );
     activeCameraSettings().cameraFocalLength = clamp2;
-    for (const value2 of cameraFocalLengthEls) {
-      value2.value = String(Math.round(clamp2));
+    for (const entry of cameraFocalLengthEls) {
+      entry.value = String(Math.round(clamp2));
     }
     applyCameraFocalLength(camera, clamp2);
   }
@@ -10420,21 +10421,21 @@ function renameExportPresetSlot(arg0, arg1 = -1) {
   );
   const value = new Set(
     (projectDoc?.exportPresets || [])
-      .map((floor, value3) =>
-        value3 === arg1
+      .map((floor, param) =>
+        param === arg1
           ? ""
-          : defaultExportPresetLabel(floor, value3),
+          : defaultExportPresetLabel(floor, param),
       )
       .filter(Boolean),
   );
   if (!value.has(normalizeLabelText2)) {
     return normalizeLabelText2;
   }
-  let value2 = 2;
-  while (value.has(normalizeLabelText2 + " " + value2)) {
-    value2 += 1;
+  let nameSuffix = 2;
+  while (value.has(normalizeLabelText2 + " " + nameSuffix)) {
+    nameSuffix += 1;
   }
-  return (normalizeLabelText2 + " " + value2).slice(0, 24);
+  return (normalizeLabelText2 + " " + nameSuffix).slice(0, 24);
 }
 function syncExportPresetEditor() {
   if (!stageSession || orbitSuspended) {
@@ -10458,15 +10459,15 @@ function syncExportPresetEditor() {
     .slice(0, length)
     .reverse()
     .find(Boolean);
-  const value2 = syncExportCameraFocalUi({
+  const syncExportCameraFocalUiResult = syncExportCameraFocalUi({
     name: name,
   });
   if (size) {
-    value2.width = size.width;
-    value2.height = size.height;
-    value2.lockRatio = size.lockRatio;
+    syncExportCameraFocalUiResult.width = size.width;
+    syncExportCameraFocalUiResult.height = size.height;
+    syncExportCameraFocalUiResult.lockRatio = size.lockRatio;
   }
-  projectDoc.exportPresets.push(value2);
+  projectDoc.exportPresets.push(syncExportCameraFocalUiResult);
   projectDoc.activeExportPresetSlot = length;
   exportPresetEditorOpen = false;
   normalizeProjectExportPresets();
@@ -10789,7 +10790,7 @@ function renderExportFileChecklist() {
   }
   const list = previewFloorEntries();
   const list2 = [];
-  const fn = (arg0, arg1, arg2) => {
+  const handler = (arg0, arg1, arg2) => {
     const append = document.createElement("li");
     const append2 = document.createElement("label");
     const button = document.createElement("input");
@@ -10815,7 +10816,7 @@ function renderExportFileChecklist() {
         "" +
         (list.length > 1 ? floor.name + "-" : "") +
         (item.screenLayerName || "电视画面 " + (index + 1));
-      fn(
+      handler(
         "screen:" + key,
         sanitizeExportFileName(flag, "电视画面-" + (index + 1)) +
           "." +
@@ -10835,7 +10836,7 @@ function renderExportFileChecklist() {
         "" +
         (list.length > 1 ? floor.name + "-" : "") +
         (item.chargingLayerName || "汽车充电 " + (index + 1));
-      fn(
+      handler(
         "vehicle:" + key,
         sanitizeExportFileName(flag, "汽车充电-" + (index + 1)) +
           "." +
@@ -10855,7 +10856,7 @@ function renderExportFileChecklist() {
         "" +
         (list.length > 1 ? floor.name + "-" : "") +
         (group.name || "灯组-" + (index + 1));
-      fn(
+      handler(
         "group:" + key,
         sanitizeExportFileName(flag, "灯组-" + (index + 1)) +
           "." +
@@ -11137,11 +11138,11 @@ async function drawExportAnnotations(
   );
   try {
     for (
-      let value2 = 0;
-      value2 < list.length;
-      value2 += 1
+      let count = 0;
+      count < list.length;
+      count += 1
     ) {
-      const id = list[value2];
+      const id = list[count];
       exportStatus.textContent =
         "正在渲染灯组 " +
         (arg4 + 1) +
@@ -11150,7 +11151,7 @@ async function drawExportAnnotations(
         "：" +
         lights.name +
         "（" +
-        (value2 + 1) +
+        (count + 1) +
         "/" +
         list.length +
         "）";
@@ -11238,12 +11239,12 @@ function uniqueExportFileName(
     flag,
     "灯组-" + (arg1 + 1),
   );
-  const value2 = String(arg3).replace(/^\./, "");
-  let value3 = 1;
-  let toLocaleLowerCase = value + "." + value2;
+  const string = String(arg3).replace(/^\./, "");
+  let uefnV3 = 1;
+  let toLocaleLowerCase = value + "." + string;
   while (idSet.has(toLocaleLowerCase.toLocaleLowerCase())) {
-    value3 += 1;
-    toLocaleLowerCase = value + "-" + value3 + "." + value2;
+    uefnV3 += 1;
+    toLocaleLowerCase = value + "-" + uefnV3 + "." + string;
   }
   idSet.add(toLocaleLowerCase.toLocaleLowerCase());
   return toLocaleLowerCase;
@@ -11301,38 +11302,38 @@ function projectItemToScreenNorm(
     return null;
   }
   const value = floor.scene?.calibration?.pixelsPerMeter || 1;
-  let value2 = 0;
-  let value3 =
+  let count = 0;
+  let maxValue =
     Math.max(0, finite(planPoint.elevation, 0)) +
     Math.max(0.02, finite(planPoint.height, 0.1)) / 2;
-  let value4 = 0;
+  let count2 = 0;
   if (getPreviewFloorMode() === "all") {
-    const value5 =
+    const pitsV5 =
       (finite(planPoint.x, 0) - finite(floor.originX, 0)) / value;
-    const value6 =
+    const pitsV6 =
       (finite(planPoint.y, 0) - finite(floor.originY, 0)) / value;
-    const value7 = -THREE.MathUtils.degToRad(
+    const pitsV7 = -THREE.MathUtils.degToRad(
       finite(floor.rotation, 0),
     );
-    value2 =
-      value5 * Math.cos(value7) +
-      value6 * Math.sin(value7) +
+    count =
+      pitsV5 * Math.cos(pitsV7) +
+      pitsV6 * Math.sin(pitsV7) +
       finite(floor.offsetX, 0);
-    value4 =
-      -value5 * Math.sin(value7) +
-      value6 * Math.cos(value7) +
+    count2 =
+      -pitsV5 * Math.sin(pitsV7) +
+      pitsV6 * Math.cos(pitsV7) +
       finite(floor.offsetZ, 0);
     const findIndex = [...arg2].sort(
       (elevation, elevation2) =>
         elevation.elevation - elevation2.elevation,
     );
-    const value8 = Math.max(
+    const targetIndex = Math.max(
       0,
       findIndex.findIndex(
         (item) => item.id === floor.id,
       ),
     );
-    value3 += value8 * finite(projectDoc.exportFloorGap, 3);
+    maxValue += targetIndex * finite(projectDoc.exportFloorGap, 3);
   } else {
     const scene = floor.scene;
     const minX = scene.walls?.length
@@ -11348,18 +11349,18 @@ function projectItemToScreenNorm(
             items: scene.items,
           })
         : modelBounds(scene);
-    value2 =
+    count =
       (finite(planPoint.x, 0) - (minX.minX + minX.maxX) / 2) /
       value;
-    value4 =
+    count2 =
       (finite(planPoint.y, 0) - (minX.minY + minX.maxY) / 2) /
       value;
   }
   camera.updateMatrixWorld(true);
   const point3 = new THREE.Vector3(
-    value2,
-    value3,
-    value4,
+    count,
+    maxValue,
+    count2,
   ).project(camera);
   if (
     ![point3.x, point3.y, point3.z].every(Number.isFinite) ||
@@ -11588,26 +11589,26 @@ async function runExportPipeline() {
     }),
   );
   for (
-    let value2 = 0;
-    value2 < list3.length;
-    value2 += 1
+    let count = 0;
+    count < list3.length;
+    count += 1
   ) {
-    const file = list3[value2];
+    const file = list3[count];
     file.file = uniqueExportFileName(
       file.name,
-      value2,
+      count,
       has,
     );
   }
   for (
-    let value2 = 0;
-    value2 < list4.length;
-    value2 += 1
+    let count = 0;
+    count < list4.length;
+    count += 1
   ) {
-    const file = list4[value2];
+    const file = list4[count];
     file.file = uniqueExportFileName(
       file.name,
-      value2,
+      count,
       has,
     );
   }
@@ -11637,8 +11638,8 @@ async function runExportPipeline() {
       )?.exists
     ) {
       exportStatus.textContent = "同名导图“" + exportName + "”已经存在";
-      const value2 = await promptExportOverwrite(exportName);
-      if (value2 === "rename") {
+      const local2 = await promptExportOverwrite(exportName);
+      if (local2 === "rename") {
         exportStatus.textContent = "请修改文件夹名后重新保存";
         window.setTimeout(() => {
           exportFolderName.focus();
@@ -11650,7 +11651,7 @@ async function runExportPipeline() {
         );
         return;
       }
-      if (value2 !== "overwrite") {
+      if (local2 !== "overwrite") {
         exportStatus.textContent = "已取消覆盖，原导图保持不变";
         notifyAutoDiagramExport("cancel", "已取消覆盖，原导图保持不变。");
         return;
@@ -11718,17 +11719,17 @@ async function runExportPipeline() {
       });
     }
     for (
-      let value2 = 0;
-      value2 < list2.length;
-      value2 += 1
+      let count = 0;
+      count < list2.length;
+      count += 1
     ) {
-      const lights = list2[value2];
+      const lights = list2[count];
       const arrayBuffer = await drawExportAnnotations(
         imageData.imageData,
         lights,
         width,
         height,
-        value2,
+        count,
         list2.length,
       );
       list7.push({
@@ -11737,14 +11738,14 @@ async function runExportPipeline() {
       });
     }
     for (
-      let value2 = 0;
-      value2 < list5.length;
-      value2 += 1
+      let count = 0;
+      count < list5.length;
+      count += 1
     ) {
-      const named = list5[value2];
+      const named = list5[count];
       exportStatus.textContent =
         "正在生成电视图层 " +
-        (value2 + 1) +
+        (count + 1) +
         "/" +
         list5.length +
         "：" +
@@ -11767,14 +11768,14 @@ async function runExportPipeline() {
       });
     }
     for (
-      let value2 = 0;
-      value2 < list6.length;
-      value2 += 1
+      let count = 0;
+      count < list6.length;
+      count += 1
     ) {
-      const named = list6[value2];
+      const named = list6[count];
       exportStatus.textContent =
         "正在生成汽车图层 " +
-        (value2 + 1) +
+        (count + 1) +
         "/" +
         list6.length +
         "：" +
@@ -11895,12 +11896,12 @@ async function runExportPipeline() {
       });
     }
     if (value.has("dataScene")) {
-      const value2 =
+      const previewFloorMode =
         getPreviewFloorMode() === "all" ? cloneProjectDoc() : cloneFloorScene();
       list7.push({
         name: "scene.json",
         data: new TextEncoder().encode(
-          JSON.stringify(value2, null, 2) + "\n",
+          JSON.stringify(previewFloorMode, null, 2) + "\n",
         ),
       });
     }
@@ -11910,7 +11911,7 @@ async function runExportPipeline() {
     const body = new Blob([buildStoredZip2], {
       type: "application/zip",
     });
-    const fn = (flag3 = false) =>
+    const putStudioDocument = (flag3 = false) =>
       studioFetch("/studio3d/exports", {
         method: "POST",
         body: body,
@@ -11926,7 +11927,7 @@ async function runExportPipeline() {
       });
     let overwritten;
     try {
-      overwritten = await fn(flag2);
+      overwritten = await putStudioDocument(flag2);
     } catch (error) {
       if (
         error?.status !== 409 ||
@@ -11935,8 +11936,8 @@ async function runExportPipeline() {
         throw error;
       }
       exportStatus.textContent = "同名导图“" + exportName + "”已经存在";
-      const value2 = await promptExportOverwrite(exportName);
-      if (value2 === "rename") {
+      const local2 = await promptExportOverwrite(exportName);
+      if (local2 === "rename") {
         exportStatus.textContent = "请修改文件夹名后重新保存";
         window.setTimeout(() => {
           exportFolderName.focus();
@@ -11948,13 +11949,13 @@ async function runExportPipeline() {
         );
         return;
       }
-      if (value2 !== "overwrite") {
+      if (local2 !== "overwrite") {
         exportStatus.textContent = "已取消覆盖，原导图保持不变";
         notifyAutoDiagramExport("cancel", "已取消覆盖，原导图保持不变。");
         return;
       }
       exportStatus.textContent = "正在安全覆盖原导图…";
-      overwritten = await fn(true);
+      overwritten = await putStudioDocument(true);
     }
     exportStatus.textContent =
       "已保存到 data/" + overwritten.relativePath;
@@ -12190,14 +12191,14 @@ function buildMergedBoxGeometry(list) {
         point3.height,
         point3.depth,
       );
-      const value2 = new THREE.Matrix4().compose(
+      const vector3 = new THREE.Matrix4().compose(
         new THREE.Vector3(point3.x, point3.y, point3.z),
         new THREE.Quaternion().setFromEuler(
           new THREE.Euler(0, point3.rotationY, 0),
         ),
         new THREE.Vector3(1, 1, 1),
       );
-      return applyMatrix4.applyMatrix4(value2);
+      return applyMatrix4.applyMatrix4(vector3);
     });
     const flag = mergeGeometries(item);
     item.forEach((dispose) => dispose.dispose());
@@ -12275,16 +12276,16 @@ function createBoxPartMesh(
     Math.min(arg0, arg1, arg2),
     0.001,
   );
-  const value2 = Math.min(value * 0.14, value * 0.45, 0.08);
-  const value3 = new RoundedBoxGeometry(
+  const minValue = Math.min(value * 0.14, value * 0.45, 0.08);
+  const boxGeometry = new RoundedBoxGeometry(
     arg0,
     arg1,
     arg2,
     2,
-    value2,
+    minValue,
   );
-  value3.translate(arg3, arg4, arg5);
-  return value3;
+  boxGeometry.translate(arg3, arg4, arg5);
+  return boxGeometry;
 }
 function mergeBoxPartGeometries(list) {
   const item = list.map((arg0) =>
@@ -12417,13 +12418,13 @@ function getCachedRugGeometry(arg0, arg1, arg2) {
   const rugThickness = clamp(arg1, 0.004, 0.018);
   const value = arg0 + ":" + rugThickness + ":" + arg2;
   if (!rugGeometryCache.has(value)) {
-    const value2 = Math.max(
+    const maxValue = Math.max(
       Math.min(arg0, rugThickness, arg2),
       0.001,
     );
-    const value3 = Math.min(
+    const minValue = Math.min(
       Math.min(arg0, arg2) * 0.018,
-      value2 * 0.45,
+      maxValue * 0.45,
       0.08,
     );
     const base = new RoundedBoxGeometry(
@@ -12431,7 +12432,7 @@ function getCachedRugGeometry(arg0, arg1, arg2) {
       rugThickness,
       arg2,
       2,
-      value3,
+      minValue,
     );
     const inset = new THREE.PlaneGeometry(
       arg0 * 0.88,
@@ -12486,10 +12487,10 @@ function addRugMeshes(group, size, color, color2) {
   light.userData.rugSharedGeometry = true;
   light.userData.rugSharedMaterial = !flag;
   group.add(light);
-  const value2 = flag
+  const armV2 = flag
     ? getCachedRugMaterial(color2, true).clone()
     : getCachedRugMaterial(color2, true);
-  const object3d = new THREE.Mesh(base.inset, value2);
+  const object3d = new THREE.Mesh(base.inset, armV2);
   object3d.rotation.x = -Math.PI / 2;
   object3d.position.y = base.rugThickness + 0.001;
   object3d.castShadow = false;
@@ -12642,11 +12643,11 @@ function mergeSimilarItemMeshes(object3d, type) {
     if (!flag) {
       continue;
     }
-    const value2 = flag + ":" + geometryAttributeSignature(light);
-    if (!map.has(value2)) {
-      map.set(value2, []);
+    const msimV2 = flag + ":" + geometryAttributeSignature(light);
+    if (!map.has(msimV2)) {
+      map.set(msimV2, []);
     }
-    map.get(value2).push(light);
+    map.get(msimV2).push(light);
   }
   object3d.updateMatrixWorld(true);
   const value = object3d.matrixWorld.clone().invert();
@@ -12655,11 +12656,11 @@ function mergeSimilarItemMeshes(object3d, type) {
       continue;
     }
     const item = list2.map((object3d2) => {
-      const value2 = new THREE.Matrix4().multiplyMatrices(
+      const matrix4 = new THREE.Matrix4().multiplyMatrices(
         value,
         object3d2.matrixWorld,
       );
-      return object3d2.geometry.clone().applyMatrix4(value2);
+      return object3d2.geometry.clone().applyMatrix4(matrix4);
     });
     const flag = mergeGeometries(item);
     item.forEach((dispose) => dispose.dispose());
@@ -12851,26 +12852,26 @@ function stairStepProfiles(arg0, arg1, arg2) {
       frontZ: arg1 * 0.47,
     },
   ];
-  const fn = (point) => {
+  const handler = (point) => {
     const list5 = [
       new THREE.Vector3(-point.halfWidth, point.y, point.backZ),
       new THREE.Vector3(point.halfWidth, point.y, point.backZ),
       new THREE.Vector3(point.halfWidth, point.y, point.sideZ),
     ];
-    for (let value4 = 1; value4 <= 18; value4 += 1) {
-      const value5 = (value4 / 18) * Math.PI;
+    for (let step = 1; step <= 18; step += 1) {
+      const sspV5 = (step / 18) * Math.PI;
       list5.push(
         new THREE.Vector3(
-          Math.cos(value5) * point.halfWidth,
+          Math.cos(sspV5) * point.halfWidth,
           point.y,
           point.sideZ +
-            Math.sin(value5) * (point.frontZ - point.sideZ),
+            Math.sin(sspV5) * (point.frontZ - point.sideZ),
         ),
       );
     }
     return list5;
   };
-  const list2 = list.map(fn);
+  const list2 = list.map(handler);
   const length = list2[0].length;
   const list3 = list2.flatMap((list5) =>
     list5.flatMap((point3) => [
@@ -12881,40 +12882,40 @@ function stairStepProfiles(arg0, arg1, arg2) {
   );
   const list4 = [];
   for (
-    let value4 = 0;
-    value4 < list2.length - 1;
-    value4 += 1
+    let count = 0;
+    count < list2.length - 1;
+    count += 1
   ) {
-    const value5 = value4 * length;
-    const value6 = (value4 + 1) * length;
-    for (let value7 = 0; value7 < length; value7 += 1) {
-      const value8 = (value7 + 1) % length;
-      const value9 = value5 + value7;
-      const value10 = value5 + value8;
-      const value11 = value6 + value7;
-      const value12 = value6 + value8;
+    const sspV5 = count * length;
+    const sspV6 = (count + 1) * length;
+    for (let count2 = 0; count2 < length; count2 += 1) {
+      const sspV8 = (count2 + 1) % length;
+      const sspV9 = sspV5 + count2;
+      const sspV10 = sspV5 + sspV8;
+      const sspV11 = sspV6 + count2;
+      const sspV12 = sspV6 + sspV8;
       list4.push(
-        value9,
-        value12,
-        value10,
-        value9,
-        value11,
-        value12,
+        sspV9,
+        sspV12,
+        sspV10,
+        sspV9,
+        sspV11,
+        sspV12,
       );
     }
   }
   const value = list3.length / 3;
   list3.push(0, list[0].y, arg1 * 0.08);
-  const value2 = list3.length / 3;
+  const sspV2 = list3.length / 3;
   list3.push(0, list.at(-1).y, arg1 * 0.08);
-  const value3 = (list2.length - 1) * length;
-  for (let value4 = 0; value4 < length; value4 += 1) {
-    const value5 = (value4 + 1) % length;
-    list4.push(value, value4, value5);
+  const sspV3 = (list2.length - 1) * length;
+  for (let count = 0; count < length; count += 1) {
+    const sspV5 = (count + 1) % length;
+    list4.push(value, count, sspV5);
     list4.push(
-      value2,
-      value3 + value5,
-      value3 + value4,
+      sspV2,
+      sspV3 + sspV5,
+      sspV3 + count,
     );
   }
   const el = new THREE.BufferGeometry();
@@ -13006,7 +13007,7 @@ function stairRiserMaterialOptions(
   group,
   arg1,
   value,
-  value2,
+  param,
 ) {
   const light = {
     rounded: false,
@@ -13018,16 +13019,16 @@ function stairRiserMaterialOptions(
   const list = [];
   const entries = [];
   for (const size of arg1) {
-    const value3 = Math.min(
+    const minValue = Math.min(
       0.045,
       size.width * 0.08,
       size.height * 0.04,
     );
-    const value4 = Math.max(size.width - value3 * 2, 0.04);
-    const value5 = Math.max(size.height - value3 * 2, 0.08);
+    const maxValue = Math.max(size.width - minValue * 2, 0.04);
+    const maxValue2 = Math.max(size.height - minValue * 2, 0.08);
     list.push([
-      value4,
-      value5,
+      maxValue,
+      maxValue2,
       0.018,
       size.centerX,
       size.height / 2,
@@ -13036,40 +13037,40 @@ function stairRiserMaterialOptions(
     entries.push(
       [
         size.width,
-        value3,
+        minValue,
         0.045,
         size.centerX,
-        value3 / 2,
+        minValue / 2,
         size.centerZ,
       ],
       [
         size.width,
-        value3,
+        minValue,
         0.045,
         size.centerX,
-        size.height - value3 / 2,
+        size.height - minValue / 2,
         size.centerZ,
       ],
       [
-        value3,
+        minValue,
         size.height,
         0.045,
-        size.centerX - size.width / 2 + value3 / 2,
+        size.centerX - size.width / 2 + minValue / 2,
         size.height / 2,
         size.centerZ,
       ],
       [
-        value3,
+        minValue,
         size.height,
         0.045,
-        size.centerX + size.width / 2 - value3 / 2,
+        size.centerX + size.width / 2 - minValue / 2,
         size.height / 2,
         size.centerZ,
       ],
     );
   }
-  for (const value3 of list) {
-    addSharedArchMesh(group, [value3], value2, {
+  for (const tupleItem of list) {
+    addSharedArchMesh(group, [tupleItem], param, {
       rounded: false,
       transparent: true,
       opacity: 0.24,
@@ -13090,12 +13091,12 @@ function applySelectionHighlight(object3d, flag) {
   }
   const value = resolvedThemeColors();
   object3d.traverse((material) => {
-    const value2 = Array.isArray(material.material)
+    const isArrayResult = Array.isArray(material.material)
       ? material.material
       : material.material
         ? [material.material]
         : [];
-    for (const isMeshStandardMaterial of value2) {
+    for (const isMeshStandardMaterial of isArrayResult) {
       if (isMeshStandardMaterial?.isMeshStandardMaterial) {
         isMeshStandardMaterial.emissive = new THREE.Color(
           value.accent,
@@ -13125,82 +13126,82 @@ function createPlanLabelSprite(size) {
     36,
   );
   const value = 115;
-  const value2 = 184;
-  canvasCtx.font = "700 " + value2 + "px sans-serif";
+  const cplsV2 = 184;
+  canvasCtx.font = "700 " + cplsV2 + "px sans-serif";
   drawTrackedText(
     canvasCtx,
     normalizeLabelText2,
     value,
     130,
-    value2 * clamp(finite(size.titleSpacing, 1.05), 0, 1.8),
+    cplsV2 * clamp(finite(size.titleSpacing, 1.05), 0, 1.8),
     1340,
   );
-  const value3 = 1580;
-  const value4 = 130;
-  const value5 = 170;
+  const cplsV3 = 1580;
+  const cplsV4 = 130;
+  const cplsV5 = 170;
   canvasCtx.fillStyle = "#929baa";
   canvasCtx.beginPath();
-  canvasCtx.moveTo(value3, value4 - value5 * 0.58);
+  canvasCtx.moveTo(cplsV3, cplsV4 - cplsV5 * 0.58);
   canvasCtx.lineTo(
-    value3 + value5 * 0.56,
-    value4 - value5 * 0.02,
+    cplsV3 + cplsV5 * 0.56,
+    cplsV4 - cplsV5 * 0.02,
   );
   canvasCtx.lineTo(
-    value3 + value5 * 0.38,
-    value4 - value5 * 0.02,
+    cplsV3 + cplsV5 * 0.38,
+    cplsV4 - cplsV5 * 0.02,
   );
   canvasCtx.lineTo(
-    value3 + value5 * 0.38,
-    value4 + value5 * 0.5,
+    cplsV3 + cplsV5 * 0.38,
+    cplsV4 + cplsV5 * 0.5,
   );
   canvasCtx.lineTo(
-    value3 - value5 * 0.38,
-    value4 + value5 * 0.5,
+    cplsV3 - cplsV5 * 0.38,
+    cplsV4 + cplsV5 * 0.5,
   );
   canvasCtx.lineTo(
-    value3 - value5 * 0.38,
-    value4 - value5 * 0.02,
+    cplsV3 - cplsV5 * 0.38,
+    cplsV4 - cplsV5 * 0.02,
   );
   canvasCtx.lineTo(
-    value3 - value5 * 0.56,
-    value4 - value5 * 0.02,
+    cplsV3 - cplsV5 * 0.56,
+    cplsV4 - cplsV5 * 0.02,
   );
   canvasCtx.closePath();
   canvasCtx.fill();
   canvasCtx.save();
   canvasCtx.globalCompositeOperation = "destination-out";
   canvasCtx.fillRect(
-    value3 - value5 * 0.09,
-    value4 + value5 * 0.2,
-    value5 * 0.18,
-    value5 * 0.3,
+    cplsV3 - cplsV5 * 0.09,
+    cplsV4 + cplsV5 * 0.2,
+    cplsV5 * 0.18,
+    cplsV5 * 0.3,
   );
   canvasCtx.restore();
   canvasCtx.fillStyle = "#929baa";
   canvasCtx.textAlign = "left";
-  const value6 = 310;
+  const cplsV6 = 310;
   canvasCtx.font =
-    "400 " + value6 + 'px "Arial Narrow", Arial, sans-serif';
+    "400 " + cplsV6 + 'px "Arial Narrow", Arial, sans-serif';
   drawTrackedText(
     canvasCtx,
     normalizeLabelText3,
     72,
     410,
-    value6 * clamp(finite(size.subtitleSpacing, 0.08), 0, 0.6),
+    cplsV6 * clamp(finite(size.subtitleSpacing, 0.08), 0, 0.6),
     1880,
   );
-  const value7 = 74;
-  const value8 =
-    value7 + clamp(finite(size.lineLength, 0.86), 0.3, 1) * 1880;
+  const cplsV7 = 74;
+  const cplsV8 =
+    cplsV7 + clamp(finite(size.lineLength, 0.86), 0.3, 1) * 1880;
   canvasCtx.strokeStyle = "rgba(146, 155, 170, 0.72)";
   canvasCtx.lineWidth = 16;
   canvasCtx.beginPath();
-  canvasCtx.moveTo(value7, 590);
-  canvasCtx.lineTo(value8, 590);
-  canvasCtx.moveTo(value7, 566);
-  canvasCtx.lineTo(value7, 614);
-  canvasCtx.moveTo(value8, 566);
-  canvasCtx.lineTo(value8, 614);
+  canvasCtx.moveTo(cplsV7, 590);
+  canvasCtx.lineTo(cplsV8, 590);
+  canvasCtx.moveTo(cplsV7, 566);
+  canvasCtx.lineTo(cplsV7, 614);
+  canvasCtx.moveTo(cplsV8, 566);
+  canvasCtx.lineTo(cplsV8, 614);
   canvasCtx.stroke();
   const map = new THREE.CanvasTexture(el);
   map.colorSpace = THREE.SRGBColorSpace;
@@ -13271,12 +13272,12 @@ function countSceneMeshes(object3d = worldGroup) {
     if (!object3d2.isMesh) {
       return;
     }
-    const value2 = Array.isArray(object3d2.material)
+    const isArrayResult = Array.isArray(object3d2.material)
       ? object3d2.material
       : object3d2.material
         ? [object3d2.material]
         : [];
-    for (const material of value2) {
+    for (const material of isArrayResult) {
       value = Math.max(value, countMaterialTextures(material));
     }
   });
@@ -13349,27 +13350,27 @@ function countShadowLights(
   const value =
     maxTextureUnits2 - materialTextureUnits - nonSpotShadowTextureUnits - rectAreaLightTextureUnits - RESERVED_TEXTURE_UNITS;
   if (!stageSession && shadowAtlas && value >= 1) {
-    const value5 = flag
+    const cslV5 = flag
       ? shadowAtlas.schedule(object3d)
       : collectShadowLights(object3d).length;
-    const value6 = shadowAtlas.sync(object3d);
+    const syncResult = shadowAtlas.sync(object3d);
     const domElement2 = renderer.domElement;
     domElement2.dataset.fragmentTextureUnits = String(maxTextureUnits2);
     domElement2.dataset.materialTextureUnits = String(materialTextureUnits);
-    domElement2.dataset.spotShadowLimit = String(value5);
-    domElement2.dataset.activeSpotShadows = String(value6);
-    let value7 = 0;
+    domElement2.dataset.spotShadowLimit = String(cslV5);
+    domElement2.dataset.activeSpotShadows = String(syncResult);
+    let count = 0;
     object3d.traverse((object3d2) => {
       if (
         object3d2.isLight &&
         object3d2.userData?.lightItemId &&
         object3d2.visible !== false
       ) {
-        value7 += 1;
+        count += 1;
       }
     });
-    domElement2.dataset.activeUserLights = String(value7);
-    return value6;
+    domElement2.dataset.activeUserLights = String(count);
+    return syncResult;
   }
   const spotShadowTextureUnitLimit2 = spotShadowTextureUnitLimit({
     maxTextureUnits: maxTextureUnits2,
@@ -13383,25 +13384,25 @@ function countShadowLights(
     shadowAtlas.setEnabled(false);
     shadowAtlas.sync(object3d);
   }
-  const value2 = new Set(
+  const uniqueSet = new Set(
     selectShadowCastingLightIds(
       collectShadowLights(object3d),
       spotShadowTextureUnitLimit2,
     ),
   );
-  let value3 = 0;
+  let count = 0;
   object3d.traverse((light) => {
     if (!light.isSpotLight || !light.userData?.lightItemId) {
       return;
     }
-    const value5 =
+    const string =
       String(light.userData?.lightFloorId || "") +
       ":" +
       String(light.userData.lightItemId);
-    const flag3 = value2.has(value5);
+    const flag3 = uniqueSet.has(string);
     light.castShadow = flag3;
     if (flag3) {
-      value3 += 1;
+      count += 1;
       if (light.shadow && !light.shadow.map) {
         light.shadow.needsUpdate = true;
       }
@@ -13414,19 +13415,19 @@ function countShadowLights(
   domElement.dataset.spotShadowLimit = String(
     spotShadowTextureUnitLimit2,
   );
-  domElement.dataset.activeSpotShadows = String(value3);
-  let value4 = 0;
+  domElement.dataset.activeSpotShadows = String(count);
+  let count2 = 0;
   object3d.traverse((object3d2) => {
     if (
       object3d2.isLight &&
       object3d2.userData?.lightItemId &&
       object3d2.visible !== false
     ) {
-      value4 += 1;
+      count2 += 1;
     }
   });
-  domElement.dataset.activeUserLights = String(value4);
-  return value3;
+  domElement.dataset.activeUserLights = String(count2);
+  return count;
 }
 function buildLightFixtureMeshes(group, id, has) {
   const value = isStageEmbed
@@ -13444,12 +13445,12 @@ function buildLightFixtureMeshes(group, id, has) {
   }
   const range =
     defaultLightPresets[id.type] || defaultLightPresets.downlight;
-  const value2 =
+  const clampResult =
     clamp(finite(id.lightBrightness, range.brightness), 0, 100) /
     100;
-  const value3 = lightHeightScaleByType[id.type] || 1.1;
+  const blfmV3 = lightHeightScaleByType[id.type] || 1.1;
   const flag4 = id.type === "striplight";
-  const value4 = resolveLightGroup(id);
+  const lightGroup = resolveLightGroup(id);
   if (flag4) {
     const clamp4 = clamp(finite(id.width, 2), 0.1, 8);
     const clamp5 = clamp(finite(id.depth, 0.28), 0.1, 8);
@@ -13459,8 +13460,8 @@ function buildLightFixtureMeshes(group, id, has) {
       10,
     );
     const clamp7 = clamp(clamp6 / range.range, 0.45, 1.65);
-    const value7 = Math.max(finite(id.elevation, 2.7), 0.4);
-    const clamp8 = clamp(Math.max(1, Math.pow(value7 / 2.7, 2)), 1, 4);
+    const maxValue = Math.max(finite(id.elevation, 2.7), 0.4);
+    const clamp8 = clamp(Math.max(1, Math.pow(maxValue / 2.7, 2)), 1, 4);
     const rotation = new THREE.Group();
     rotation.rotation.z = THREE.MathUtils.degToRad(
       normalizeFullRotation(id.verticalRotation),
@@ -13469,11 +13470,11 @@ function buildLightFixtureMeshes(group, id, has) {
     rotation2.rotation.x = THREE.MathUtils.degToRad(
       normalizeFullRotation(id.stripRollRotation),
     );
-    const value8 =
-      Math.pow(value2, 0.82) * 48 * clamp7 * clamp8 * value3;
+    const powResult =
+      Math.pow(clampResult, 0.82) * 48 * clamp7 * clamp8 * blfmV3;
     const object3d = new THREE.RectAreaLight(
       value,
-      flag ? value8 : 0,
+      flag ? powResult : 0,
       clamp4 * 0.94,
       clamp5 * 0.94,
     );
@@ -13481,10 +13482,10 @@ function buildLightFixtureMeshes(group, id, has) {
     object3d.position.y = -0.04;
     object3d.rotation.x = -Math.PI / 2;
     object3d.userData.lightItemId = id.id;
-    object3d.userData.lightGroupId = value4?.id || "";
+    object3d.userData.lightGroupId = lightGroup?.id || "";
     object3d.userData.lightFloorId = activeFloorId;
     object3d.userData.lightSourceType = "continuous-area-strip";
-    object3d.userData.lightOnIntensity = value8;
+    object3d.userData.lightOnIntensity = powResult;
     rotation2.add(object3d);
     rotation.add(rotation2);
     group.add(rotation);
@@ -13502,27 +13503,27 @@ function buildLightFixtureMeshes(group, id, has) {
     15,
     defaultItemDepth(id.type),
   );
-  const value5 = 1;
-  const value6 =
+  const blfmV5 = 1;
+  const blfmV6 =
     (id.type === "ceilinglight" ? 680 : 520) *
-    spotLightBrightnessResponse(id.type, value2) *
-    value3;
-  for (let value7 = 0; value7 < value5; value7 += 1) {
-    const value8 =
-      value5 === 1
+    spotLightBrightnessResponse(id.type, clampResult) *
+    blfmV3;
+  for (let count = 0; count < blfmV5; count += 1) {
+    const blfmV8 =
+      blfmV5 === 1
         ? 0
         : -id.width * 0.47 +
-          (id.width * 0.94 * value7) / (value5 - 1);
+          (id.width * 0.94 * count) / (blfmV5 - 1);
     const light = new THREE.SpotLight(
       value,
-      flag ? value6 / value5 : 0,
+      flag ? blfmV6 / blfmV5 : 0,
       clamp2,
       THREE.MathUtils.degToRad(clamp3 / 2),
       0.86,
       2,
     );
     light.visible = flag;
-    light.position.set(value8, -0.025, 0);
+    light.position.set(blfmV8, -0.025, 0);
     light.castShadow = false;
     light.layers.enable(HELPER_LAYER);
     if (flag6) {
@@ -13531,8 +13532,8 @@ function buildLightFixtureMeshes(group, id, has) {
         clamp2,
         clamp3,
       );
-      const value9 = scaledShadowMapSize(localSpotShadowSettings2.mapSize);
-      light.shadow.mapSize.set(value9, value9);
+      const scaledShadowMapSizeResult = scaledShadowMapSize(localSpotShadowSettings2.mapSize);
+      light.shadow.mapSize.set(scaledShadowMapSizeResult, scaledShadowMapSizeResult);
       light.shadow.camera.near = clamp(clamp2 * 0.05, 0.12, 0.24);
       light.shadow.camera.far = clamp2;
       light.shadow.camera.layers.set(HELPER_LAYER);
@@ -13546,7 +13547,7 @@ function buildLightFixtureMeshes(group, id, has) {
       light.shadow.needsUpdate = flag5;
     }
     light.userData.lightItemId = id.id;
-    light.userData.lightGroupId = value4?.id || "";
+    light.userData.lightGroupId = lightGroup?.id || "";
     light.userData.lightFloorId = activeFloorId;
     light.userData.lightType = id.type;
     light.userData.lightBrightness = finite(
@@ -13555,10 +13556,10 @@ function buildLightFixtureMeshes(group, id, has) {
     );
     light.userData.shadowCandidate = true;
     light.userData.prewarmShadow = isStageEmbed;
-    light.userData.lightOnIntensity = value6 / value5;
+    light.userData.lightOnIntensity = blfmV6 / blfmV5;
     const camera2 = new THREE.Object3D();
     camera2.position.set(
-      value8,
+      blfmV8,
       -Math.max(finite(id.elevation, 2.68), 0.8),
       0,
     );
@@ -13608,16 +13609,16 @@ function createTvScreenTexture() {
       color: "#5c9dff",
     },
   ].forEach((color, arg1) => {
-    const value2 = 54 + arg1 * 142;
+    const ctstV2 = 54 + arg1 * 142;
     canvasCtx.fillStyle = "#172d40";
     canvasCtx.beginPath();
-    canvasCtx.roundRect(value2, 398, 126, 54, 8);
+    canvasCtx.roundRect(ctstV2, 398, 126, 54, 8);
     canvasCtx.fill();
     canvasCtx.fillStyle = color.color;
-    canvasCtx.fillRect(value2 + 14, 414, 8, 22);
+    canvasCtx.fillRect(ctstV2 + 14, 414, 8, 22);
     canvasCtx.fillStyle = "#dbe5ed";
     canvasCtx.font = "700 13px Arial, sans-serif";
-    canvasCtx.fillText(color.label, value2 + 32, 432);
+    canvasCtx.fillText(color.label, ctstV2 + 32, 432);
   });
   canvasCtx.fillStyle = "#0a1624";
   canvasCtx.fillRect(510, 0, 450, 540);
@@ -13761,11 +13762,11 @@ function addTvMountMeshes(
   light.receiveShadow = false;
   group.add(light);
   const map = createTvScreenTexture();
-  const value2 = new THREE.MeshBasicMaterial({
+  const meshBasicMaterial = new THREE.MeshBasicMaterial({
     color: 527122,
     toneMapped: false,
   });
-  const value3 = new THREE.MeshBasicMaterial({
+  const meshBasicMaterial2 = new THREE.MeshBasicMaterial({
     color: map ? 16777215 : 1519946,
     map: map,
     toneMapped: false,
@@ -13775,7 +13776,7 @@ function addTvMountMeshes(
   });
   const light2 = new THREE.Mesh(
     new THREE.BoxGeometry(width, height, depth),
-    [value2, value2, value2, value2, value3, value2],
+    [meshBasicMaterial, meshBasicMaterial, meshBasicMaterial, meshBasicMaterial, meshBasicMaterial2, meshBasicMaterial],
   );
   light2.position.set(0, centerY, z);
   light2.renderOrder = 7;
@@ -13798,14 +13799,14 @@ function addSmallCarMeshes(
   el.width = 256;
   el.height = 256;
   const canvasCtx = el.getContext("2d");
-  const value2 = el.width / 2;
+  const ascmV2 = el.width / 2;
   const addColorStop = canvasCtx.createRadialGradient(
-    value2,
-    value2,
+    ascmV2,
+    ascmV2,
     0,
-    value2,
-    value2,
-    value2,
+    ascmV2,
+    ascmV2,
+    ascmV2,
   );
   addColorStop.addColorStop(0, "rgba(79, 239, 183, .48)");
   addColorStop.addColorStop(0.46, "rgba(79, 239, 183, .23)");
@@ -13813,23 +13814,23 @@ function addSmallCarMeshes(
   canvasCtx.fillStyle = addColorStop;
   canvasCtx.fillRect(0, 0, el.width, el.height);
   for (
-    let value4 = 18;
-    value4 < el.height - 18;
-    value4 += 10
+    let index = 18;
+    index < el.height - 18;
+    index += 10
   ) {
     for (
-      let value5 = 18;
-      value5 < el.width - 18;
-      value5 += 10
+      let index2 = 18;
+      index2 < el.width - 18;
+      index2 += 10
     ) {
-      const value6 =
-        Math.hypot(value5 - value2, value4 - value2) /
-        value2;
-      const value7 = Math.max(0, 1 - value6) * 0.32;
-      if (!(value7 <= 0.01)) {
-        canvasCtx.fillStyle = "rgba(116, 255, 202, " + value7 + ")";
+      const hypot =
+        Math.hypot(index2 - ascmV2, index - ascmV2) /
+        ascmV2;
+      const maxValue = Math.max(0, 1 - hypot) * 0.32;
+      if (!(maxValue <= 0.01)) {
+        canvasCtx.fillStyle = "rgba(116, 255, 202, " + maxValue + ")";
         canvasCtx.beginPath();
-        canvasCtx.arc(value5, value4, 1.45, 0, Math.PI * 2);
+        canvasCtx.arc(index2, index, 1.45, 0, Math.PI * 2);
         canvasCtx.fill();
       }
     }
@@ -13877,8 +13878,8 @@ function addSmallCarMeshes(
       side: THREE.DoubleSide,
     }),
   );
-  const value3 = Math.max(Math.min(arg2, arg3) * 0.22, 0.18);
-  light2.scale.setScalar(value3);
+  const maxValue = Math.max(Math.min(arg2, arg3) * 0.22, 0.18);
+  light2.scale.setScalar(maxValue);
   light2.rotation.x = -Math.PI / 2;
   light2.position.set(0, arg4 + 0.04, 0);
   light2.renderOrder = 9;
@@ -14012,13 +14013,13 @@ function buildItemPreviewGroup(item, lights = null) {
         roughness: 0.22,
       },
     );
-    for (const value2 of [-width * 0.52, width * 0.52]) {
+    for (const entry of [-width * 0.52, width * 0.52]) {
       addSoftBoxMesh(
         group,
         d * 1.45,
         d * 1.45,
         d * 0.9,
-        value2,
+        entry,
         h2,
         0,
         color,
@@ -14031,14 +14032,14 @@ function buildItemPreviewGroup(item, lights = null) {
       );
     }
     const drawPanel = (arg, arg2) => {
-      const value2 = arg2 / 7;
+      const bipgV2 = arg2 / 7;
       for (let n = 0; n < 7; n += 1) {
-        const x = arg + value2 * (n + 0.5);
+        const x = arg + bipgV2 * (n + 0.5);
         const z =
           n % 2 === 0 ? depth * 0.1 : -depth * 0.1;
         addBoxMesh(
           group,
-          value2 * 1.24,
+          bipgV2 * 1.24,
           height2,
           depth * 0.62,
           x,
@@ -14046,7 +14047,7 @@ function buildItemPreviewGroup(item, lights = null) {
           z,
           color,
           {
-            radius: Math.min(value2 * 0.34, 0.035),
+            radius: Math.min(bipgV2 * 0.34, 0.035),
             roughness: 0.94,
             metalness: 0,
           },
@@ -15371,8 +15372,8 @@ function buildItemPreviewGroup(item, lights = null) {
       emissive,
       mesh,
     );
-    for (const value2 of value) {
-      const x = -width4 * 0.5 + width4 * value2;
+    for (const entry of value) {
+      const x = -width4 * 0.5 + width4 * entry;
       addBoxMesh(
         group,
         width2 * 0.72,
@@ -15531,13 +15532,13 @@ function buildItemPreviewGroup(item, lights = null) {
         -width4 * 0.5 + width4 * slice[arg];
       const w4 =
         h + h2 * arg4 + width2 * 0.42;
-      const value2 = Math.max(w2 * 0.022, 0.004);
-      const value3 =
-        (w2 * 0.72 - value2 * (arg2 - 1)) / arg2;
-      let value4 = w3 + w2 * 0.13;
+      const maxValue = Math.max(w2 * 0.022, 0.004);
+      const local3 =
+        (w2 * 0.72 - maxValue * (arg2 - 1)) / arg2;
+      let local4 = w3 + w2 * 0.13;
       for (let n4 = 0; n4 < arg2; n4 += 1) {
         const width5 =
-          value3 *
+          local3 *
           [0.8, 1.05, 0.9, 0.72, 0.96][(n4 + arg3) % 5];
         const height4 =
           h2 *
@@ -15547,7 +15548,7 @@ function buildItemPreviewGroup(item, lights = null) {
           width5,
           height4,
           depth * 0.42,
-          value4 + width5 * 0.5,
+          local4 + width5 * 0.5,
           w4 + height4 * 0.5,
           depth * 0.12,
           list2[(n4 + arg3) % list2.length],
@@ -15557,7 +15558,7 @@ function buildItemPreviewGroup(item, lights = null) {
             metalness: 0,
           },
         );
-        value4 += width5 + value2;
+        local4 += width5 + maxValue;
       }
     };
     const drawPanel2 = (
@@ -15595,7 +15596,7 @@ function buildItemPreviewGroup(item, lights = null) {
     drawPanel(2, 2, 4, 2);
     drawPanel2(0, 0, 3, 2);
     drawPanel2(1, 2, 3, 4);
-    for (const [fx, fy, value2, color3] of [
+    for (const [fx, fy, inset, color3] of [
       [1, 1, 0.16, 12169895],
       [0, 2, 0.075, 9406334],
       [2, 3, 0.14, 13749184],
@@ -15609,8 +15610,8 @@ function buildItemPreviewGroup(item, lights = null) {
         h + h2 * fy + width2 * 0.42;
       addSoftBoxMesh(
         group,
-        w2 * value2 * 0.72,
-        w2 * value2,
+        w2 * inset * 0.72,
+        w2 * inset,
         h2 * 0.46,
         w3,
         w4 + h2 * 0.23,
@@ -15718,22 +15719,22 @@ function buildItemPreviewGroup(item, lights = null) {
       mesh,
     );
     const value = height * list2[1] + width2 * 0.5;
-    const value2 = height - width2;
+    const local2 = height - width2;
     addBoxMesh(
       group,
       width2,
-      value2 - value,
+      local2 - value,
       depth,
       x,
-      (value2 + value) * 0.5,
+      (local2 + value) * 0.5,
       0,
       furniture,
       mesh,
     );
     const n2 = 3;
     const w5 = width2 * 0.72;
-    const value3 = height * n - width2 * 0.5;
-    const h = Math.max(value3 - w5, height * 0.16);
+    const local3 = height * n - width2 * 0.5;
+    const h = Math.max(local3 - w5, height * 0.16);
     const w = Math.max(width * 0.008, 0.008);
     const w6 = -width3 * 0.18;
     const width4 = w6 + width3 * 0.5 - w * 0.5;
@@ -15804,24 +15805,24 @@ function buildItemPreviewGroup(item, lights = null) {
       count: count = 6,
       seed: seed = 0,
     }) => {
-      const value5 = Math.max(maxWidth * 0.018, 0.006);
-      const value6 = Math.max(
-        (maxWidth - value5 * (count + 1)) / count,
+      const maxValue = Math.max(maxWidth * 0.018, 0.006);
+      const maxValue2 = Math.max(
+        (maxWidth - maxValue * (count + 1)) / count,
         0.026,
       );
-      let value7 = startX + value5;
+      let local7 = startX + maxValue;
       for (let n3 = 0; n3 < count; n3 += 1) {
-        const value8 = [0.72, 0.9, 0.78, 1.04, 0.82, 0.68][
+        const local8 = [0.72, 0.9, 0.78, 1.04, 0.82, 0.68][
           (n3 + seed) % 6
         ];
-        const width6 = value6 * value8;
-        const value9 = [0.72, 0.88, 0.78, 0.94, 0.82, 0.68][
+        const width6 = maxValue2 * local8;
+        const local9 = [0.72, 0.88, 0.78, 0.94, 0.82, 0.68][
           (n3 * 2 + seed) % 6
         ];
-        const height4 = availableHeight * value9;
+        const height4 = availableHeight * local9;
         if (
-          value7 + width6 >
-          startX + maxWidth - value5
+          local7 + width6 >
+          startX + maxWidth - maxValue
         ) {
           break;
         }
@@ -15830,7 +15831,7 @@ function buildItemPreviewGroup(item, lights = null) {
           width6,
           height4,
           depth * (0.47 + ((n3 + seed) % 3) * 0.045),
-          value7 + width6 * 0.5,
+          local7 + width6 * 0.5,
           shelfY4 + height4 * 0.5,
           depth * 0.15,
           list[(n3 + seed) % list.length],
@@ -15843,7 +15844,7 @@ function buildItemPreviewGroup(item, lights = null) {
         if (n3 === count - 1 && seed % 2 === 1) {
           mesh2.rotation.z = -0.07;
         }
-        value7 += width6 + value5;
+        local7 += width6 + maxValue;
       }
     };
     const drawPanel = (
@@ -15935,10 +15936,10 @@ function buildItemPreviewGroup(item, lights = null) {
       },
     );
     drawPanel(w4, shelfY3, w2 * 0.48, 3, 3);
-    const value4 = height * list2[3] + width2 * 0.5;
+    const local4 = height * list2[3] + width2 * 0.5;
     drawPanel(
       x2 - w3 * 0.22,
-      value4,
+      local4,
       w3 * 0.24,
       2,
       1,
@@ -15949,7 +15950,7 @@ function buildItemPreviewGroup(item, lights = null) {
       w3 * 0.075,
       height * 0.12,
       x2 - w3 * 0.08,
-      value4 + height * 0.06,
+      local4 + height * 0.06,
       depth * 0.12,
       5196615,
       {
@@ -15963,7 +15964,7 @@ function buildItemPreviewGroup(item, lights = null) {
       w3 * 0.064,
       height * 0.15,
       x2 + w3 * 0.08,
-      value4 + height * 0.075,
+      local4 + height * 0.075,
       depth * 0.12,
       6643802,
       {
@@ -15971,7 +15972,7 @@ function buildItemPreviewGroup(item, lights = null) {
         roughness: 0.66,
       },
     );
-    drawPanel(w4, value4, w2 * 0.5, 2, 4);
+    drawPanel(w4, local4, w2 * 0.5, 2, 4);
   } else if (item.type === "shelf") {
     const width2 = Math.min(
       Math.max(Math.min(width, depth) * 0.07, 0.028),
@@ -16328,7 +16329,7 @@ function buildItemPreviewGroup(item, lights = null) {
         },
       );
       for (const value of [-width * 0.13, width * 0.13]) {
-        for (const value2 of [-depth * 0.14, depth * 0.14]) {
+        for (const entry of [-depth * 0.14, depth * 0.14]) {
           addSoftBoxMesh(
             group,
             width * 0.06,
@@ -16336,7 +16337,7 @@ function buildItemPreviewGroup(item, lights = null) {
             0.018,
             value,
             height + 0.028,
-            value2,
+            entry,
             emissive,
             {
               segments: 28,
@@ -16351,7 +16352,7 @@ function buildItemPreviewGroup(item, lights = null) {
             0.025,
             value,
             height + 0.045,
-            value2,
+            entry,
             color2,
             {
               segments: 24,
@@ -16437,13 +16438,13 @@ function buildItemPreviewGroup(item, lights = null) {
         roughness: 0.42,
       },
     );
-    for (const value2 of [-width * 0.43, width * 0.43]) {
+    for (const entry of [-width * 0.43, width * 0.43]) {
       addSoftBoxMesh(
         group,
         value * 1.03,
         value * 1.03,
         0.025,
-        value2,
+        entry,
         h,
         0,
         emissive,
@@ -16486,16 +16487,16 @@ function buildItemPreviewGroup(item, lights = null) {
         roughness: 0.2,
       },
     );
-    for (const value2 of [-width * 0.28, width * 0.28]) {
+    for (const entry of [-width * 0.28, width * 0.28]) {
       addSoftBoxMesh(
         group,
         0.022,
         0.022,
         height * 0.16,
-        value2,
+        entry,
         height * 0.08,
         depth * 0.12,
-        value2 < 0 ? 4885698 : 12868184,
+        entry < 0 ? 4885698 : 12868184,
         {
           segments: 18,
           metalness: 0.55,
@@ -16507,7 +16508,7 @@ function buildItemPreviewGroup(item, lights = null) {
         0.04,
         0.04,
         0.028,
-        value2,
+        entry,
         0.015,
         depth * 0.12,
         color2,
@@ -17950,7 +17951,7 @@ function buildItemPreviewGroup(item, lights = null) {
         0.025,
       );
       for (const value of [-width2 * 0.42, width2 * 0.42]) {
-        for (const value2 of [-depth2 * 0.34, depth2 * 0.34]) {
+        for (const entry of [-depth2 * 0.34, depth2 * 0.34]) {
           addSoftBoxMesh(
             group,
             radius,
@@ -17958,7 +17959,7 @@ function buildItemPreviewGroup(item, lights = null) {
             Math.max(radius * 0.56, 0.018),
             value,
             radius,
-            value2,
+            entry,
             1448479,
             {
               segments: 20,
@@ -18695,7 +18696,7 @@ function buildItemPreviewGroup(item, lights = null) {
       },
     );
     for (const value of [-width * 0.38, width * 0.38]) {
-      for (const value2 of [-depth * 0.3, depth * 0.3]) {
+      for (const entry of [-depth * 0.3, depth * 0.3]) {
         addSoftBoxMesh(
           group,
           0.026,
@@ -18703,7 +18704,7 @@ function buildItemPreviewGroup(item, lights = null) {
           height * 0.16,
           value,
           height * 0.08,
-          value2,
+          entry,
           theme.furnitureDark,
           {
             segments: 12,
@@ -19657,14 +19658,14 @@ function instanceMergeIdenticalItems(object3d, arg1) {
     if (!descriptors) {
       continue;
     }
-    const value2 = JSON.stringify([
+    const stringifyResult = JSON.stringify([
       item.type,
       descriptors.map((signature) => signature.signature),
     ]);
-    if (!map.has(value2)) {
-      map.set(value2, []);
+    if (!map.has(stringifyResult)) {
+      map.set(stringifyResult, []);
     }
-    map.get(value2).push({
+    map.get(stringifyResult).push({
       item: item,
       group: group,
       descriptors: descriptors,
@@ -19678,21 +19679,21 @@ function instanceMergeIdenticalItems(object3d, arg1) {
       continue;
     }
     const after = list2[0].descriptors.length;
-    for (let value2 = 0; value2 < after; value2 += 1) {
-      const mesh = list2[0].descriptors[value2].mesh;
-      const value3 = mesh.userData.externalModelSharedMaterial
+    for (let count = 0; count < after; count += 1) {
+      const mesh = list2[0].descriptors[count].mesh;
+      const imiiV3 = mesh.userData.externalModelSharedMaterial
         ? mesh.material
         : mesh.material.clone();
       const light = new THREE.InstancedMesh(
         mesh.geometry,
-        value3,
+        imiiV3,
         list2.length,
       );
       light.name =
         "ha-bridge-instance-" +
         list2[0].item.type +
         "-" +
-        (value2 + 1);
+        (count + 1);
       light.castShadow = mesh.castShadow;
       light.receiveShadow = mesh.receiveShadow;
       light.renderOrder = mesh.renderOrder;
@@ -19709,11 +19710,11 @@ function instanceMergeIdenticalItems(object3d, arg1) {
       );
       list2.forEach(
         ({ descriptors: descriptors }, arg12) => {
-          const value4 = new THREE.Matrix4().multiplyMatrices(
+          const matrix4 = new THREE.Matrix4().multiplyMatrices(
             value,
-            descriptors[value2].mesh.matrixWorld,
+            descriptors[count].mesh.matrixWorld,
           );
-          light.setMatrixAt(arg12, value4);
+          light.setMatrixAt(arg12, matrix4);
         },
       );
       light.instanceMatrix.needsUpdate = true;
@@ -19771,12 +19772,12 @@ function prepareInstanceMergeBatches(object3d, arg1) {
         if (!flag || light.matrixWorld.determinant() < 0) {
           return;
         }
-        const value2 =
+        const pimbV2 =
           flag + ":" + geometryAttributeSignature(light);
-        if (!map.has(value2)) {
-          map.set(value2, []);
+        if (!map.has(pimbV2)) {
+          map.set(pimbV2, []);
         }
-        map.get(value2).push(light);
+        map.get(pimbV2).push(light);
       });
     }
   }
@@ -19787,11 +19788,11 @@ function prepareInstanceMergeBatches(object3d, arg1) {
       continue;
     }
     const item = list2.map((object3d2) => {
-      const value2 = new THREE.Matrix4().multiplyMatrices(
+      const matrix4 = new THREE.Matrix4().multiplyMatrices(
         value,
         object3d2.matrixWorld,
       );
-      return object3d2.geometry.clone().applyMatrix4(value2);
+      return object3d2.geometry.clone().applyMatrix4(matrix4);
     });
     const flag = mergeGeometries(item);
     item.forEach((dispose) => dispose.dispose());
@@ -19861,12 +19862,12 @@ function collectExternalSharedMeshes() {
     ) {
       return;
     }
-    const value2 = Array.isArray(object3d.material)
+    const isArrayResult = Array.isArray(object3d.material)
       ? object3d.material
       : object3d.material
         ? [object3d.material]
         : [];
-    for (const flag of value2) {
+    for (const flag of isArrayResult) {
       if (flag && !precompiledExternalMeshes.has(flag)) {
         value.add(flag);
       }
@@ -19894,21 +19895,21 @@ function syncExternalModelDomStats() {
 }
 function countLightPrecompileWork(arg0) {
   let value = 0;
-  let value2 = 0;
-  let value3 = 0;
-  let value4 = 0;
+  let count = 0;
+  let count2 = 0;
+  let count3 = 0;
   for (const light of arg0) {
     if (light.isSpotLight) {
       value += 1;
     } else if (light.isRectAreaLight) {
-      value2 += 1;
+      count += 1;
     } else if (light.isPointLight) {
-      value3 += 1;
+      count2 += 1;
     } else {
-      value4 += 1;
+      count3 += 1;
     }
   }
-  return value + ":" + value2 + ":" + value3 + ":" + value4;
+  return value + ":" + count + ":" + count2 + ":" + count3;
 }
 function collectWorldExternalMeshes() {
   if (!worldGroup) {
@@ -20031,28 +20032,28 @@ function scheduleLightPrecompile(arg0 = 360) {
               lightPrecompileRequested = true;
               break;
             }
-            const value2 = lights.lights.map((light) => ({
+            const mapResult = lights.lights.map((light) => ({
               light: light,
               visible: light.visible,
               intensity: light.intensity,
             }));
-            let value3 = null;
+            let slpV3 = null;
             try {
-              for (const light of value2) {
+              for (const light of mapResult) {
                 light.light.intensity = 0;
                 light.light.visible = true;
               }
               countShadowLights(worldGroup, {
                 rebuildAtlas: false,
               });
-              value3 =
+              slpV3 =
                 !isStageEmbed && typeof renderer.compileAsync == "function"
                   ? renderer.compileAsync(worldGroup, camera, previewScene)
                   : Promise.resolve(
                       renderer.compile(worldGroup, camera, previewScene),
                     );
             } finally {
-              for (const object3d of value2) {
+              for (const object3d of mapResult) {
                 object3d.light.visible = object3d.visible;
                 object3d.light.intensity = object3d.intensity;
               }
@@ -20060,7 +20061,7 @@ function scheduleLightPrecompile(arg0 = 360) {
                 rebuildAtlas: false,
               });
             }
-            if (!(await withTimeoutTrue(value3))) {
+            if (!(await withTimeoutTrue(slpV3))) {
               renderer.domElement.dataset.lightPrecompileDeferred = "true";
               break;
             }
@@ -20178,25 +20179,25 @@ function rebuildPreviewMeshes(scope = {}) {
         syncLivePreviewButtons();
         return;
       }
-      const value2 = new Set(pendingRebuildReasons);
+      const uniqueSet = new Set(pendingRebuildReasons);
       pendingRebuildReasons.clear();
       const preserveLightCache = !invalidateLightCacheNextRebuild;
       invalidateLightCacheNextRebuild = false;
       if (
         getPreviewFloorMode() === "all" ||
-        value2.has("all") ||
+        uniqueSet.has("all") ||
         !floorScene.walls.length
       ) {
         rebuildWorldPreview({
           preserveLightCache: preserveLightCache,
         });
       } else {
-        if (value2.has("items")) {
+        if (uniqueSet.has("items")) {
           rebuildPreviewItemMeshes({
             preserveLightCache: preserveLightCache,
           });
         }
-        if (value2.has("lights")) {
+        if (uniqueSet.has("lights")) {
           rebuildPreviewLightMeshes({
             preserveLightCache: preserveLightCache,
           });
@@ -20240,52 +20241,52 @@ function extrudeWallSegmentShape(
   const worldPoint = arg3(wall.start);
   const worldPoint2 = arg3(wall.end);
   const value = worldPoint2.x - worldPoint.x;
-  const value2 = worldPoint2.z - worldPoint.z;
-  const value3 = Math.hypot(value, value2);
-  if (value3 <= 1e-7) {
+  const ewssV2 = worldPoint2.z - worldPoint.z;
+  const hypot = Math.hypot(value, ewssV2);
+  if (hypot <= 1e-7) {
     return null;
   }
   const planPoint = {
-    x: value / value3,
-    y: value2 / value3,
+    x: value / hypot,
+    y: ewssV2 / hypot,
   };
   const planPoint2 = {
     x: -planPoint.y,
     y: planPoint.x,
   };
-  const value4 = wall.thickness / 2;
-  const value5 =
+  const ewssV4 = wall.thickness / 2;
+  const maxValue =
     wall2.start <= 0.000001
       ? wall2.start - Math.max(Number(wall3.start) || 0, 0)
       : wall2.start;
-  const value6 =
-    wall2.end >= value3 - 0.000001
+  const maxValue2 =
+    wall2.end >= hypot - 0.000001
       ? wall2.end + Math.max(Number(wall3.end) || 0, 0)
       : wall2.end;
   const planPoint3 = {
-    x: worldPoint.x + planPoint.x * value5,
-    y: worldPoint.z + planPoint.y * value5,
+    x: worldPoint.x + planPoint.x * maxValue,
+    y: worldPoint.z + planPoint.y * maxValue,
   };
   const planPoint4 = {
-    x: worldPoint.x + planPoint.x * value6,
-    y: worldPoint.z + planPoint.y * value6,
+    x: worldPoint.x + planPoint.x * maxValue2,
+    y: worldPoint.z + planPoint.y * maxValue2,
   };
   return [
     {
-      x: planPoint3.x + planPoint2.x * value4,
-      y: planPoint3.y + planPoint2.y * value4,
+      x: planPoint3.x + planPoint2.x * ewssV4,
+      y: planPoint3.y + planPoint2.y * ewssV4,
     },
     {
-      x: planPoint3.x - planPoint2.x * value4,
-      y: planPoint3.y - planPoint2.y * value4,
+      x: planPoint3.x - planPoint2.x * ewssV4,
+      y: planPoint3.y - planPoint2.y * ewssV4,
     },
     {
-      x: planPoint4.x - planPoint2.x * value4,
-      y: planPoint4.y - planPoint2.y * value4,
+      x: planPoint4.x - planPoint2.x * ewssV4,
+      y: planPoint4.y - planPoint2.y * ewssV4,
     },
     {
-      x: planPoint4.x + planPoint2.x * value4,
-      y: planPoint4.y + planPoint2.y * value4,
+      x: planPoint4.x + planPoint2.x * ewssV4,
+      y: planPoint4.y + planPoint2.y * ewssV4,
     },
   ];
 }
@@ -20428,24 +20429,24 @@ function addWallMeshBatch(
           depthFunc: THREE.LessDepth,
         }
       : light;
-  for (const value2 of value) {
-    const value3 = new THREE.ExtrudeGeometry(value2, {
+  for (const entry of value) {
+    const extrudeGeometry = new THREE.ExtrudeGeometry(entry, {
       depth: arg2 - arg1,
       bevelEnabled: false,
       steps: 1,
       curveSegments: 1,
     });
-    const value4 = createInvisibleMaterial();
-    const value5 = createGlassMaterial(color, opacity, depthWrite);
-    const light2 = new THREE.Mesh(value3, [value4, value5]);
+    const invisibleMaterial = createInvisibleMaterial();
+    const glassMaterial = createGlassMaterial(color, opacity, depthWrite);
+    const light2 = new THREE.Mesh(extrudeGeometry, [invisibleMaterial, glassMaterial]);
     light2.rotation.x = Math.PI / 2;
     light2.position.y = arg2;
-    const value6 = opacity >= 0.999;
+    const awmbV6 = opacity >= 0.999;
     light2.castShadow = light.castShadow === true;
     if (light.lightOccluder) {
       light2.layers.set(HELPER_LAYER);
     }
-    light2.receiveShadow = value6;
+    light2.receiveShadow = awmbV6;
     light2.renderOrder = light.renderOrder ?? 4;
     worldGroup.add(light2);
   }
@@ -20465,7 +20466,7 @@ function addFloorPolygonMeshes(
     0.000001,
   );
   const flag = validatedUnionPolygonLoops2.length > 0;
-  const value2 = splitFloorPolygonsByHoles(
+  const splitFloorPolygonsByHolesResult = splitFloorPolygonsByHoles(
     flag ? validatedUnionPolygonLoops2 : list,
   );
   const topColor =
@@ -20478,10 +20479,10 @@ function addFloorPolygonMeshes(
           depthFunc: THREE.LessDepth,
         }
       : depthWrite;
-  for (const value3 of value2) {
-    const value4 = new THREE.ShapeGeometry(value3, 1);
+  for (const entry of splitFloorPolygonsByHolesResult) {
+    const shapeGeometry = new THREE.ShapeGeometry(entry, 1);
     const $0_2480 = createWallTopMaterial(flag2, value, topColor);
-    const light = new THREE.Mesh(value4, $0_2480);
+    const light = new THREE.Mesh(shapeGeometry, $0_2480);
     light.rotation.x = Math.PI / 2;
     light.position.y = arg1 + 0.0005;
     light.castShadow = false;
@@ -20500,37 +20501,37 @@ function buildWallCornerCaps(list, color, arg2) {
   ) {
     const worldPoint = list[value];
     const worldPoint2 = list[(value + 1) % list.length];
-    const value2 = worldPoint2.x - worldPoint.x;
-    const value3 = worldPoint2.z - worldPoint.z;
-    const value4 = Math.hypot(value2, value3);
-    if (value4 <= 0.001) {
+    const bwccV2 = worldPoint2.x - worldPoint.x;
+    const bwccV3 = worldPoint2.z - worldPoint.z;
+    const hypot = Math.hypot(bwccV2, bwccV3);
+    if (hypot <= 0.001) {
       continue;
     }
-    const value5 = (worldPoint.x + worldPoint2.x) / 2;
-    const value6 = (worldPoint.z + worldPoint2.z) / 2;
-    const value7 = -Math.atan2(value3, value2);
-    const value8 = new THREE.Matrix4().compose(
-      new THREE.Vector3(value5, arg2 + 0.021, value6),
+    const bwccV5 = (worldPoint.x + worldPoint2.x) / 2;
+    const bwccV6 = (worldPoint.z + worldPoint2.z) / 2;
+    const angle = -Math.atan2(bwccV3, bwccV2);
+    const vector3 = new THREE.Matrix4().compose(
+      new THREE.Vector3(bwccV5, arg2 + 0.021, bwccV6),
       new THREE.Quaternion().setFromAxisAngle(
         new THREE.Vector3(0, 1, 0),
-        value7,
+        angle,
       ),
       new THREE.Vector3(1, 1, 1),
     );
-    const value9 = new THREE.Matrix4().compose(
-      new THREE.Vector3(value5, arg2 + 0.026, value6),
+    const vector32 = new THREE.Matrix4().compose(
+      new THREE.Vector3(bwccV5, arg2 + 0.026, bwccV6),
       new THREE.Quaternion().setFromAxisAngle(
         new THREE.Vector3(0, 1, 0),
-        value7,
+        angle,
       ),
       new THREE.Vector3(1, 1, 1),
     );
     list2.push(
-      new THREE.BoxGeometry(value4, 0.042, 0.038).applyMatrix4(value8),
+      new THREE.BoxGeometry(hypot, 0.042, 0.038).applyMatrix4(vector3),
     );
     list3.push(
-      new THREE.BoxGeometry(value4 + 0.025, 0.066, 0.078).applyMatrix4(
-        value9,
+      new THREE.BoxGeometry(hypot + 0.025, 0.066, 0.078).applyMatrix4(
+        vector32,
       ),
     );
   }
@@ -20586,50 +20587,50 @@ function addFloorFillMeshes(list, arg1, arg2) {
     ),
   );
   const list3 = [0];
-  for (const value2 of value) {
-    list3.push(list3.at(-1) + value2);
+  for (const entry of value) {
+    list3.push(list3.at(-1) + entry);
   }
-  const fn = ({
+  const handler = ({
     distance: distance2,
     innerAlpha: innerAlpha,
     outerAlpha: outerAlpha,
-    columnStrength: value2,
-    y: value3,
+    columnStrength: param,
+    y: param2,
     renderOrder: renderOrder,
   }) => {
-    const value4 = polygonCentroid(list2, distance2);
+    const polygonCentroidResult = polygonCentroid(list2, distance2);
     const list4 = [];
     const list5 = [];
     const list6 = [];
     const list7 = [];
     for (
-      let value5 = 0;
-      value5 < list2.length;
-      value5 += 1
+      let count = 0;
+      count < list2.length;
+      count += 1
     ) {
-      const value6 = (value5 + 1) % list2.length;
-      const planPoint = list2[value5];
-      const planPoint2 = list2[value6];
-      const planPoint3 = value4[value5];
-      const planPoint4 = value4[value6];
+      const affmV6 = (count + 1) % list2.length;
+      const planPoint = list2[count];
+      const planPoint2 = list2[affmV6];
+      const planPoint3 = polygonCentroidResult[count];
+      const planPoint4 = polygonCentroidResult[affmV6];
       list4.push(
         planPoint.x,
-        value3,
+        param2,
         planPoint.y,
         planPoint3.x,
-        value3,
+        param2,
         planPoint3.y,
         planPoint4.x,
-        value3,
+        param2,
         planPoint4.y,
         planPoint.x,
-        value3,
+        param2,
         planPoint.y,
         planPoint4.x,
-        value3,
+        param2,
         planPoint4.y,
         planPoint2.x,
-        value3,
+        param2,
         planPoint2.y,
       );
       list5.push(
@@ -20641,15 +20642,15 @@ function addFloorFillMeshes(list, arg1, arg2) {
         innerAlpha,
       );
       list6.push(0, 1, 1, 0, 1, 0);
-      const value7 = list3[value5];
-      const value8 = list3[value5 + 1];
+      const affmV7 = list3[count];
+      const affmV8 = list3[count + 1];
       list7.push(
-        value7,
-        value7,
-        value8,
-        value7,
-        value8,
-        value8,
+        affmV7,
+        affmV7,
+        affmV8,
+        affmV7,
+        affmV8,
+        affmV8,
       );
     }
     const el = new THREE.BufferGeometry();
@@ -20678,7 +20679,7 @@ function addFloorFillMeshes(list, arg1, arg2) {
             value: new THREE.Color(arg1),
           },
           glowColumnStrength: {
-            value: value2,
+            value: param,
           },
         },
         vertexShader:
@@ -20695,7 +20696,7 @@ function addFloorFillMeshes(list, arg1, arg2) {
     renderOrder2.renderOrder = renderOrder;
     worldGroup.add(renderOrder2);
   };
-  fn({
+  handler({
     distance: 0.24,
     innerAlpha: 0.4,
     outerAlpha: 0.055,
@@ -20703,7 +20704,7 @@ function addFloorFillMeshes(list, arg1, arg2) {
     y: arg2 + 0.008,
     renderOrder: 3,
   });
-  fn({
+  handler({
     distance: 1.25,
     innerAlpha: 0.3,
     outerAlpha: 0.008,
@@ -20725,11 +20726,11 @@ function polygonCentroid(list, arg1) {
   );
   return list.map((planPoint2) => {
     const value = planPoint2.x - planPoint.x;
-    const value2 = planPoint2.y - planPoint.y;
-    const value3 = Math.max(Math.hypot(value, value2), 0.000001);
+    const pcV2 = planPoint2.y - planPoint.y;
+    const hypot = Math.max(Math.hypot(value, pcV2), 0.000001);
     return {
-      x: planPoint2.x + (value / value3) * arg1,
-      y: planPoint2.y + (value2 / value3) * arg1,
+      x: planPoint2.x + (value / hypot) * arg1,
+      y: planPoint2.y + (pcV2 / hypot) * arg1,
     };
   });
 }
@@ -20825,25 +20826,25 @@ function addGroundGridHelper(arg0, grid, arg2) {
       return;
     }
     object3d.getWorldPosition(flag);
-    const value2 = Math.max(
+    const maxValue = Math.max(
       camera2.position.distanceTo(orbitControls?.target || flag),
       1,
     );
-    const value3 = camera2.isOrthographicCamera
+    const maxValue2 = camera2.isOrthographicCamera
       ? Math.abs(camera2.top - camera2.bottom) /
         Math.max(camera2.zoom, 0.001)
-      : value2 *
+      : maxValue *
         2 *
         Math.tan(THREE.MathUtils.degToRad(camera2.fov * 0.5));
-    const value4 = Math.max(
-      Math.hypot(value3 * Math.max(camera2.aspect, 0.1), value3),
+    const hypot = Math.max(
+      Math.hypot(maxValue2 * Math.max(camera2.aspect, 0.1), maxValue2),
       2,
     );
-    const value5 = value2 + value4 * 0.2;
-    isUniforms.uniforms.gridDepthFadeNear.value = value5;
+    const agghV5 = maxValue + hypot * 0.2;
+    isUniforms.uniforms.gridDepthFadeNear.value = agghV5;
     isUniforms.uniforms.gridDepthFadeFar.value = Math.max(
-      value5 + 1,
-      value2 + value4 * 0.85,
+      agghV5 + 1,
+      maxValue + hypot * 0.85,
     );
   };
   object3d.position.y = arg2 + 0.012;
@@ -21001,8 +21002,8 @@ function rebuildActiveFloorPreview({
       }),
       true,
     );
-    for (const value2 of list.slice(1)) {
-      addFloorPolygon(value2);
+    for (const entry of list.slice(1)) {
+      addFloorPolygon(entry);
     }
   } else {
     const list = [
@@ -21116,26 +21117,26 @@ function rebuildActiveFloorPreview({
     n += 1
   ) {
     const value = wallHeights[n];
-    const value2 = wallHeights[n + 1];
-    if (value2 - value <= 0.000001) {
+    const local2 = wallHeights[n + 1];
+    if (local2 - value <= 0.000001) {
       continue;
     }
-    const value3 = (value + value2) / 2;
+    const local3 = (value + local2) / 2;
     const list = wallSegments.filter(
       (bottom) =>
-        value3 > bottom.bottom - 0.000001 &&
-        value3 < bottom.top + 0.000001,
+        local3 > bottom.bottom - 0.000001 &&
+        local3 < bottom.top + 0.000001,
     );
     const byKey = new Map();
     for (const opacity of list) {
-      const value4 = opacity.opacity.toFixed(4);
-      if (!byKey.has(value4)) {
-        byKey.set(value4, {
+      const toFixedResult = opacity.opacity.toFixed(4);
+      if (!byKey.has(toFixedResult)) {
+        byKey.set(toFixedResult, {
           opacity: opacity.opacity,
           volumes: [],
         });
       }
-      byKey.get(value4).volumes.push(opacity);
+      byKey.get(toFixedResult).volumes.push(opacity);
     }
     for (const volumes of byKey.values()) {
       addWallMeshBatch(
@@ -21143,7 +21144,7 @@ function rebuildActiveFloorPreview({
           (footprint) => footprint.footprint,
         ),
         value,
-        value2,
+        local2,
         grid.wall,
         volumes.opacity,
         {
@@ -21153,10 +21154,10 @@ function rebuildActiveFloorPreview({
       );
       const list3 = volumes.volumes
         .filter(
-          (top) => Math.abs(top.top - value2) <= 0.000001,
+          (top) => Math.abs(top.top - local2) <= 0.000001,
         )
         .map((footprint) => footprint.footprint);
-      addFloorPolygonMeshes(list3, value2, grid.wall, volumes.opacity, {
+      addFloorPolygonMeshes(list3, local2, grid.wall, volumes.opacity, {
         topColor: grid.wall,
       });
     }
@@ -21164,7 +21165,7 @@ function rebuildActiveFloorPreview({
       .filter((wall) => isSelected("wall", wall.wallId))
       .map((footprint) => footprint.footprint);
     if (list2.length) {
-      addWallMeshBatch(list2, value, value2, grid.accent, 0.28, {
+      addWallMeshBatch(list2, value, local2, grid.accent, 0.28, {
         depthWrite: false,
         depthFunc: THREE.LessEqualDepth,
         polygonOffset: true,
@@ -21176,10 +21177,10 @@ function rebuildActiveFloorPreview({
         .filter(
           (wall) =>
             isSelected("wall", wall.wallId) &&
-            Math.abs(wall.top - value2) <= 0.000001,
+            Math.abs(wall.top - local2) <= 0.000001,
         )
         .map((footprint) => footprint.footprint);
-      addFloorPolygonMeshes(list3, value2, grid.accent, 0.28, {
+      addFloorPolygonMeshes(list3, local2, grid.accent, 0.28, {
         depthWrite: false,
         depthFunc: THREE.LessEqualDepth,
         polygonOffset: true,
@@ -21316,21 +21317,21 @@ function rebuildActiveFloorPreview({
       const accent = isSelected("railing", item.id)
         ? grid.accent
         : grid.frame;
-      const value2 = Math.min(Math.max(w * 0.012, 0.028), 0.05);
+      const maxValue = Math.min(Math.max(w * 0.012, 0.028), 0.05);
       const n = 0.08;
-      const value3 = Math.max(
-        h - n - value2 * 1.4,
+      const maxValue2 = Math.max(
+        h - n - maxValue * 1.4,
         0.2,
       );
       addSharedArchMesh(
         group,
         [
           [
-            Math.max(w - value2 * 2.4, 0.2),
-            value3,
+            Math.max(w - maxValue * 2.4, 0.2),
+            maxValue2,
             0.018,
             0,
-            n + value3 * 0.5,
+            n + maxValue2 * 0.5,
             0,
           ],
         ],
@@ -21355,29 +21356,29 @@ function rebuildActiveFloorPreview({
         castShadow: false,
         receiveShadow: false,
       };
-      const value4 = Math.max(
+      const maxValue3 = Math.max(
         2,
         Math.min(16, Math.ceil(w / 1.5) + 1),
       );
-      const entries = [[w, value2, 0.055, 0, h, 0]];
+      const entries = [[w, maxValue, 0.055, 0, h, 0]];
       const entries2 = [];
-      for (let n2 = 0; n2 < value4; n2 += 1) {
-        const value5 =
-          -w / 2 + (w * n2) / (value4 - 1);
+      for (let n2 = 0; n2 < maxValue3; n2 += 1) {
+        const local5 =
+          -w / 2 + (w * n2) / (maxValue3 - 1);
         entries.push([
-          value2,
+          maxValue,
           h,
           0.055,
-          value5,
+          local5,
           h * 0.5,
           0,
         ]);
         entries2.push([
-          value2 * 2,
-          value2 * 0.8,
+          maxValue * 2,
+          maxValue * 0.8,
           0.08,
-          value5,
-          value2 * 0.4,
+          local5,
+          maxValue * 0.4,
           0,
         ]);
       }
@@ -21390,7 +21391,7 @@ function rebuildActiveFloorPreview({
       );
       group.userData.optimizationStats = {
         type: "glass-railing",
-        before: 2 + value4 * 2,
+        before: 2 + maxValue3 * 2,
         after: 3,
       };
       worldGroup.add(group);
@@ -21428,14 +21429,14 @@ function rebuildActiveFloorPreview({
         [w + n, n, 0.09, 0, h, 0],
       ];
       if (doorType === "roller-shutter") {
-        const value2 = item.swing === -1 ? -1 : 1;
+        const local2 = item.swing === -1 ? -1 : 1;
         entries.push([
           w + n * 0.6,
           n * 1.8,
           0.13,
           0,
           h - n * 0.35,
-          value2 * 0.04,
+          local2 * 0.04,
         ]);
       }
       addSharedArchMesh(group, entries, accent, opts2);
@@ -21451,10 +21452,10 @@ function rebuildActiveFloorPreview({
       if (doorType === "sliding-glass") {
         const height2 = Math.max(h - n * 0.85, 0.4);
         const width2 = Math.max(w * 0.54, 0.28);
-        const value2 = item.hinge === "right" ? 1 : -1;
+        const local2 = item.hinge === "right" ? 1 : -1;
         const slidingDoorPanelCenters2 = slidingDoorPanelCenters(
           w,
-          value2,
+          local2,
         );
         stairRiserMaterialOptions(
           group,
@@ -21476,7 +21477,7 @@ function rebuildActiveFloorPreview({
           grid.glass,
         );
         const w3 =
-          slidingDoorPanelCenters2.moving - value2 * width2 * 0.36;
+          slidingDoorPanelCenters2.moving - local2 * width2 * 0.36;
         addSharedArchMesh(
           group,
           [
@@ -21500,19 +21501,19 @@ function rebuildActiveFloorPreview({
         continue;
       }
       if (doorType === "roller-shutter") {
-        const value2 = Math.max(w - n * 1.3, 0.4);
-        const value3 = Math.max(h - n * 0.85, 0.8);
-        const value4 = item.swing === -1 ? -1 : 1;
+        const maxValue = Math.max(w - n * 1.3, 0.4);
+        const maxValue2 = Math.max(h - n * 0.85, 0.8);
+        const local4 = item.swing === -1 ? -1 : 1;
         addSharedArchMesh(
           group,
           [
             [
-              value2,
-              value3,
+              maxValue,
+              maxValue2,
               0.045,
               0,
-              value3 * 0.5,
-              value4 * 0.04,
+              maxValue2 * 0.5,
+              local4 * 0.04,
             ],
           ],
           selected ? grid.accent : grid.furnitureSoft,
@@ -21524,20 +21525,20 @@ function rebuildActiveFloorPreview({
             receiveShadow: false,
           },
         );
-        const value5 = Math.max(
+        const maxValue3 = Math.max(
           5,
-          Math.min(36, Math.round(value3 / 0.12)),
+          Math.min(36, Math.round(maxValue2 / 0.12)),
         );
         const entries2 = [];
-        for (let n2 = 1; n2 < value5; n2 += 1) {
-          const value6 = (value3 * n2) / value5;
+        for (let n2 = 1; n2 < maxValue3; n2 += 1) {
+          const local6 = (maxValue2 * n2) / maxValue3;
           entries2.push([
-            value2 * 0.98,
+            maxValue * 0.98,
             0.012,
             0.052,
             0,
-            value6,
-            value4 * 0.052,
+            local6,
+            local4 * 0.052,
           ]);
         }
         addSharedArchMesh(group, entries2, grid.furnitureDark, {
@@ -21549,19 +21550,19 @@ function rebuildActiveFloorPreview({
         });
         group.userData.optimizationStats = {
           type: "door-roller-shutter",
-          before: 5 + value5,
+          before: 5 + maxValue3,
           after: 3,
         };
         worldGroup.add(group);
         continue;
       }
       if (doorType === "entry") {
-        const value2 = Math.max(w - n * 1.5, 0.4);
-        const value3 = Math.max(h - n * 0.85, 0.8);
+        const maxValue = Math.max(w - n * 1.5, 0.4);
+        const maxValue2 = Math.max(h - n * 0.85, 0.8);
         const accent2 = selected ? grid.accent : grid.furnitureDark;
         addSharedArchMesh(
           group,
-          [[value2, value3, 0.065, 0, value3 * 0.5, 0]],
+          [[maxValue, maxValue2, 0.065, 0, maxValue2 * 0.5, 0]],
           accent2,
           {
             rounded: false,
@@ -21574,8 +21575,8 @@ function rebuildActiveFloorPreview({
         addSharedArchMesh(
           group,
           [
-            [value2 * 0.76, 0.022, 0.078, 0, h * 0.68, 0.012],
-            [value2 * 0.76, 0.022, 0.078, 0, h * 0.34, 0.012],
+            [maxValue * 0.76, 0.022, 0.078, 0, h * 0.68, 0.012],
+            [maxValue * 0.76, 0.022, 0.078, 0, h * 0.34, 0.012],
           ],
           grid.furnitureSoft,
           {
@@ -21585,11 +21586,11 @@ function rebuildActiveFloorPreview({
             receiveShadow: false,
           },
         );
-        const value4 =
-          item.hinge === "right" ? -value2 * 0.34 : value2 * 0.34;
+        const local4 =
+          item.hinge === "right" ? -maxValue * 0.34 : maxValue * 0.34;
         addSharedArchMesh(
           group,
-          [[0.035, 0.18, 0.085, value4, h * 0.5, 0.055]],
+          [[0.035, 0.18, 0.085, local4, h * 0.5, 0.055]],
           grid.furnitureLight,
           {
             rounded: false,
@@ -21614,11 +21615,11 @@ function rebuildActiveFloorPreview({
         const entries2 = [];
         const entries3 = [];
         for (const factor of [-1, 1]) {
-          const value2 = factor * (w / 2 - n * 0.5);
+          const local2 = factor * (w / 2 - n * 0.5);
           const rotationY = factor < 0 ? angle : -angle;
           const w3 = factor < 0 ? width2 / 2 : -width2 / 2;
           const worldPoint2 = {
-            x: value2 + w3 * Math.cos(rotationY),
+            x: local2 + w3 * Math.cos(rotationY),
             z: -w3 * Math.sin(rotationY),
           };
           entries2.push({
@@ -21637,7 +21638,7 @@ function rebuildActiveFloorPreview({
             height: 0.055,
             depth: 0.065,
             x:
-              value2 +
+              local2 +
               w4 * Math.cos(rotationY) +
               Math.sin(rotationY) * 0.04,
             y: h * 0.5,
@@ -21776,9 +21777,9 @@ function syncPreviewFloorButtons() {
   const value = getPreviewFloorMode();
   const flag = (projectDoc?.floors.length || 0) > 1;
   for (const element of previewFloorEls) {
-    const value2 = element.dataset.previewFloor === value;
-    element.classList.toggle("active", value2);
-    element.setAttribute("aria-pressed", String(value2));
+    const spfbV2 = element.dataset.previewFloor === value;
+    element.classList.toggle("active", spfbV2);
+    element.setAttribute("aria-pressed", String(spfbV2));
     element.disabled =
       element.dataset.previewFloor === "all" && !flag;
   }
@@ -21813,8 +21814,8 @@ function rebuildWorldPreview({ preserveLightCache: preserveLightCache = false } 
   }
   const group = worldGroup;
   const value = floorScene;
-  const value2 = activeFloorId;
-  const value3 = architecturePlanOrigin;
+  const rwpV2 = activeFloorId;
+  const rwpV3 = architecturePlanOrigin;
   applyPreviewEnvironment();
   clearWorldGroup();
   requestRender({
@@ -21826,7 +21827,7 @@ function rebuildWorldPreview({ preserveLightCache: preserveLightCache = false } 
     (elevation, elevation2) =>
       elevation.elevation - elevation2.elevation,
   );
-  const value4 = stageSession
+  const rwpV4 = stageSession
     ? finite(projectDoc.exportFloorGap, 3)
     : finite(projectDoc.previewFloorGap, 3);
   item.forEach((floor, arg1) => {
@@ -21855,7 +21856,7 @@ function rebuildWorldPreview({ preserveLightCache: preserveLightCache = false } 
     }
     object3d2.position.set(
       finite(floor.offsetX, 0),
-      arg1 * value4,
+      arg1 * rwpV4,
       finite(floor.offsetZ, 0),
     );
     object3d2.rotation.y = -THREE.MathUtils.degToRad(
@@ -21865,8 +21866,8 @@ function rebuildWorldPreview({ preserveLightCache: preserveLightCache = false } 
   });
   worldGroup = group;
   floorScene = value;
-  activeFloorId = value2;
-  architecturePlanOrigin = value3;
+  activeFloorId = rwpV2;
+  architecturePlanOrigin = rwpV3;
   countShadowLights(worldGroup, {
     rebuildAtlas: !preserveLightCache,
   });
@@ -21889,8 +21890,8 @@ function showOnlyFloorsById(has) {
   }
   const object3d = worldGroup;
   const value = floorScene;
-  const value2 = activeFloorId;
-  const value3 = architecturePlanOrigin;
+  const sofbV2 = activeFloorId;
+  const sofbV3 = architecturePlanOrigin;
   const some = [...projectDoc.floors].sort(
     (elevation, elevation2) =>
       elevation.elevation - elevation2.elevation,
@@ -21908,7 +21909,7 @@ function showOnlyFloorsById(has) {
     return;
   }
   try {
-    for (const [value4, floor] of some.entries()) {
+    for (const [pairKey, floor] of some.entries()) {
       if (
         has.has(floor.id) &&
         ((worldGroup = object3d.children.find(
@@ -21922,7 +21923,7 @@ function showOnlyFloorsById(has) {
           y: finite(floor.originY, 0),
         }),
         rebuildActiveFloorPreview(),
-        value4 > 0)
+        pairKey > 0)
       ) {
         for (const object3d2 of [...worldGroup.children]) {
           if (
@@ -21939,8 +21940,8 @@ function showOnlyFloorsById(has) {
   } finally {
     worldGroup = object3d;
     floorScene = value;
-    activeFloorId = value2;
-    architecturePlanOrigin = value3;
+    activeFloorId = sofbV2;
+    architecturePlanOrigin = sofbV3;
   }
   countShadowLights(object3d);
   fitSpotLightToScene();
@@ -21951,15 +21952,15 @@ function createPlanToWorldMapper() {
     return null;
   }
   const value = activeFloorContentBounds();
-  const value2 = (value.minX + value.maxX) / 2;
-  const value3 = (value.minY + value.maxY) / 2;
+  const cptwV2 = (value.minX + value.maxX) / 2;
+  const cptwV3 = (value.minY + value.maxY) / 2;
   return {
     ppm: ppm,
     floorSurfaceY: -0.008,
     floorPolygons: getFloorPolygons(ppm),
     toWorld: (planPoint) => ({
-      x: (planPoint.x - value2) / ppm,
-      z: (planPoint.y - value3) / ppm,
+      x: (planPoint.x - cptwV2) / ppm,
+      z: (planPoint.y - cptwV3) / ppm,
     }),
   };
 }
@@ -22089,48 +22090,48 @@ function fitSpotLightToScene() {
   previewSpotLight.updateWorldMatrix(true, false);
   previewSpotLight.target.updateWorldMatrix(true, false);
   const view = previewSpotLight.shadow.camera;
-  const value2 = new THREE.Vector3().setFromMatrixPosition(
+  const vector3 = new THREE.Vector3().setFromMatrixPosition(
     previewSpotLight.matrixWorld,
   );
-  const value3 = new THREE.Vector3().setFromMatrixPosition(
+  const vector32 = new THREE.Vector3().setFromMatrixPosition(
     previewSpotLight.target.matrixWorld,
   );
-  view.position.copy(value2);
-  view.lookAt(value3);
+  view.position.copy(vector3);
+  view.lookAt(vector32);
   view.updateMatrixWorld(true);
   const point3 = new THREE.Vector3(Infinity, Infinity, Infinity);
   const point32 = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
-  for (const value9 of [value.min.x, value.max.x]) {
-    for (const value10 of [value.min.y, value.max.y]) {
-      for (const value11 of [value.min.z, value.max.z]) {
-        const value12 = new THREE.Vector3(
-          value9,
-          value10,
-          value11,
+  for (const entry of [value.min.x, value.max.x]) {
+    for (const entry2 of [value.min.y, value.max.y]) {
+      for (const entry3 of [value.min.z, value.max.z]) {
+        const vector33 = new THREE.Vector3(
+          entry,
+          entry2,
+          entry3,
         ).applyMatrix4(view.matrixWorldInverse);
-        point3.min(value12);
-        point32.max(value12);
+        point3.min(vector33);
+        point32.max(vector33);
       }
     }
   }
-  const value4 = Math.max(
+  const maxValue = Math.max(
     point32.x - point3.x,
     point32.y - point3.y,
     1,
   );
-  const value5 = Math.max(MIN_PLAN_SNAP_METERS, value4 * 0.05);
-  const value6 = -point32.z;
-  const value7 = -point3.z;
-  const value8 = Math.max(
+  const maxValue2 = Math.max(MIN_PLAN_SNAP_METERS, maxValue * 0.05);
+  const fsltV6 = -point32.z;
+  const fsltV7 = -point3.z;
+  const maxValue3 = Math.max(
     MIN_PLAN_SNAP_METERS,
-    (value7 - value6) * 0.08,
+    (fsltV7 - fsltV6) * 0.08,
   );
-  view.left = point3.x - value5;
-  view.right = point32.x + value5;
-  view.bottom = point3.y - value5;
-  view.top = point32.y + value5;
-  view.near = Math.max(0.1, value6 - value8);
-  view.far = Math.max(view.near + 1, value7 + value8);
+  view.left = point3.x - maxValue2;
+  view.right = point32.x + maxValue2;
+  view.bottom = point3.y - maxValue2;
+  view.top = point32.y + maxValue2;
+  view.near = Math.max(0.1, fsltV6 - maxValue3);
+  view.far = Math.max(view.near + 1, fsltV7 + maxValue3);
   view.updateProjectionMatrix();
   previewSpotLight.shadow.needsUpdate = true;
   return true;
@@ -22145,60 +22146,60 @@ function applyCameraView(view = {}) {
       : view.view === "free"
         ? "free"
         : cameraViewMode();
-  const value2 = topViewRotation();
+  const topViewRotationResult = topViewRotation();
   const flag = getPreviewFloorMode() === "all";
-  const value3 = pixelsPerMeter() || 100;
-  const value4 = activeFloorContentBounds();
-  const value5 = computeWorldBoundingBox({
+  const pixelsPerMeterResult = pixelsPerMeter() || 100;
+  const activeFloorContentBoundsResult = activeFloorContentBounds();
+  const uniqueSet = computeWorldBoundingBox({
     excludeModelLayers: new Set(["items", "lights"]),
   });
   const point3 =
-    flag && !value5.isEmpty()
-      ? value5.getSize(new THREE.Vector3())
+    flag && !uniqueSet.isEmpty()
+      ? uniqueSet.getSize(new THREE.Vector3())
       : null;
-  const point32 = value5.isEmpty()
+  const point32 = uniqueSet.isEmpty()
     ? null
-    : value5.getCenter(new THREE.Vector3());
-  const value6 =
+    : uniqueSet.getCenter(new THREE.Vector3());
+  const maxValue =
     flag && point3
       ? clamp(Math.max(point3.x, point3.z), 5, 100)
-      : clamp(Math.max(value4.width, value4.height) / value3, 5, 35);
-  const value7 =
+      : clamp(Math.max(activeFloorContentBoundsResult.width, activeFloorContentBoundsResult.height) / pixelsPerMeterResult, 5, 35);
+  const maxValue2 =
     flag && point3
       ? point3.y
       : Math.max(
           0,
           ...floorScene.walls.map((size) => size.height || 0),
         );
-  const value8 = Math.max(
-    value6 * 1.18,
-    value6 + value7 * 0.32,
+  const maxValue3 = Math.max(
+    maxValue * 1.18,
+    maxValue + maxValue2 * 0.32,
   );
-  camera.userData.frameSize = value8;
+  camera.userData.frameSize = maxValue3;
   camera.userData.cameraView = value;
-  camera.userData.topRotation = value2;
+  camera.userData.topRotation = topViewRotationResult;
   const point33 = point32
     ? new THREE.Vector3(point32.x, point32.y, point32.z)
-    : new THREE.Vector3(0, Math.min(0.78, value6 * 0.055), 0);
-  let value9;
+    : new THREE.Vector3(0, Math.min(0.78, maxValue * 0.055), 0);
+  let acvV9;
   if (camera.isPerspectiveCamera) {
     camera.aspect = camera.userData.viewportAspect || 1;
     applyCameraFocalLength();
-    const value10 =
-      value8 /
+    const acvV10 =
+      maxValue3 /
       (Math.tan(THREE.MathUtils.degToRad(camera.getEffectiveFOV()) / 2) * 2);
-    value9 = Math.max(value10 * 1.04, value6 * 1.65, 8);
+    acvV9 = Math.max(acvV10 * 1.04, maxValue * 1.65, 8);
   } else {
-    focusCameraOnPoint(value8, camera.userData.viewportAspect || 1);
-    value9 = Math.max(value6 * 3.2, 18);
+    focusCameraOnPoint(maxValue3, camera.userData.viewportAspect || 1);
+    acvV9 = Math.max(maxValue * 3.2, 18);
   }
   if (value === "top") {
-    camera.up.copy(topViewForwardVector(value2));
-    camera.position.set(point33.x, point33.y + value9, point33.z);
+    camera.up.copy(topViewForwardVector(topViewRotationResult));
+    camera.position.set(point33.x, point33.y + acvV9, point33.z);
   } else {
     camera.up.set(0, 1, 0);
-    const value10 = new THREE.Vector3(1.08, 1.7, 1.12).normalize();
-    camera.position.copy(point33).addScaledVector(value10, value9);
+    const vector3 = new THREE.Vector3(1.08, 1.7, 1.12).normalize();
+    camera.position.copy(point33).addScaledVector(vector3, acvV9);
   }
   getCameraPose(camera, point33);
   camera.zoom = 1;
@@ -22275,7 +22276,7 @@ function updatePlanPointer(forceOrthogonalAxis = shiftKeyHeld) {
     ...rawPlanPointer,
   };
   const value = pixelsPerMeter() || 100;
-  const value2 = snapTemporarilyDisabled ? "吸附：临时关闭" : "吸附：关闭";
+  const uppV2 = snapTemporarilyDisabled ? "吸附：临时关闭" : "吸附：关闭";
   if (activeTool === "scale" && scaleToolStart && forceOrthogonalAxis) {
     const axisLockedPoint2 = axisLockedPoint(
       rawPlanPointer,
@@ -22304,7 +22305,7 @@ function updatePlanPointer(forceOrthogonalAxis = shiftKeyHeld) {
           snapHint.label
         : isSnapActive()
           ? "吸附：自由"
-          : value2;
+          : uppV2;
   } else if (["window", "door", "railing"].includes(activeTool)) {
     const isT = nearestWall(
       planPointerPoint,
@@ -22314,7 +22315,7 @@ function updatePlanPointer(forceOrthogonalAxis = shiftKeyHeld) {
     if (isT) {
       const size =
         doorSizePresets[DEFAULT_DOOR_TYPE] || doorSizePresets.solid;
-      const value3 = {
+      const uppV3 = {
         width:
           activeTool === "door"
             ? size.width
@@ -22323,13 +22324,13 @@ function updatePlanPointer(forceOrthogonalAxis = shiftKeyHeld) {
               : 1.4,
         t: isT.t,
       };
-      const value4 = {
+      const uppV4 = {
         wall: isT.wall,
-        t: clampWindowT(isT.wall, value3, value),
+        t: clampWindowT(isT.wall, uppV3, value),
       };
-      windowPlacementPreview = activeTool === "window" ? value4 : null;
-      doorPlacementPreview = activeTool === "door" ? value4 : null;
-      railingPlacementPreview = activeTool === "railing" ? value4 : null;
+      windowPlacementPreview = activeTool === "window" ? uppV4 : null;
+      doorPlacementPreview = activeTool === "door" ? uppV4 : null;
+      railingPlacementPreview = activeTool === "railing" ? uppV4 : null;
       snapIndicator.textContent =
         activeTool === "door"
           ? "吸附：墙体门洞"
@@ -22347,12 +22348,12 @@ function updatePlanPointer(forceOrthogonalAxis = shiftKeyHeld) {
     windowPlacementPreview = null;
     doorPlacementPreview = null;
     railingPlacementPreview = null;
-    snapIndicator.textContent = isSnapActive() ? "吸附：开启" : value2;
-    const value3 = beginItemDrag(planPointerPoint);
+    snapIndicator.textContent = isSnapActive() ? "吸附：开启" : uppV2;
+    const beginItemDragResult = beginItemDrag(planPointerPoint);
     planCanvas.style.cursor =
-      value3?.type === "rotate-item"
+      beginItemDragResult?.type === "rotate-item"
         ? "grab"
-        : value3?.type === "resize-item"
+        : beginItemDragResult?.type === "resize-item"
           ? "nwse-resize"
           : "";
   }
@@ -22423,20 +22424,20 @@ function onPlanPointerDown(event) {
     if (!requireCalibration()) {
       return;
     }
-    const value2 = resolvePlanSnap(start, wallDrawAnchor, event.shiftKey);
+    const planSnap = resolvePlanSnap(start, wallDrawAnchor, event.shiftKey);
     if (!wallDrawAnchor) {
       wallDrawAnchor = {
-        ...value2.point,
+        ...planSnap.point,
       };
       measureOrWallLastPoint = {
-        ...value2.point,
+        ...planSnap.point,
       };
       wallDrawPointCount = 0;
       finishWall.hidden = false;
       drawPlan();
       return;
     }
-    if (distance(wallDrawAnchor, value2.point) < pixelsPerMeter() * 0.08) {
+    if (distance(wallDrawAnchor, planSnap.point) < pixelsPerMeter() * 0.08) {
       showToast("墙段太短，请选择更远的终点。", "error");
       return;
     }
@@ -22446,20 +22447,20 @@ function onPlanPointerDown(event) {
         ...wallDrawAnchor,
       },
       end: {
-        ...value2.point,
+        ...planSnap.point,
       },
       height: floorScene.settings.wallHeight,
       thickness: floorScene.settings.wallThickness,
     };
-    const value3 = Math.max(0.75, pixelsPerMeter() * 0.01);
+    const maxValue = Math.max(0.75, pixelsPerMeter() * 0.01);
     const uncoveredCollinearWallSegments2 = uncoveredCollinearWallSegments(
       wall,
       floorScene.walls,
-      value3,
+      maxValue,
     );
     if (!uncoveredCollinearWallSegments2.length) {
       wallDrawAnchor = {
-        ...value2.point,
+        ...planSnap.point,
       };
       showToast("该位置已有墙体，已跳过重复墙段。");
       drawPlan();
@@ -22470,13 +22471,13 @@ function onPlanPointerDown(event) {
       distance(
         uncoveredCollinearWallSegments2[0].start,
         wall.start,
-      ) > value3 ||
+      ) > maxValue ||
       distance(uncoveredCollinearWallSegments2[0].end, wall.end) >
-        value3;
+        maxValue;
     pushHistory();
-    const value4 = Math.max(1, pixelsPerMeter() * 0.01);
-    const length = closedWallPolygons(floorScene.walls, value4).length;
-    const value5 = uncoveredCollinearWallSegments2.map(
+    const maxValue2 = Math.max(1, pixelsPerMeter() * 0.01);
+    const length = closedWallPolygons(floorScene.walls, maxValue2).length;
+    const mapResult = uncoveredCollinearWallSegments2.map(
       (wall2, arg1) => ({
         ...wall,
         id: arg1 === 0 ? wall.id : makeId("wall"),
@@ -22484,19 +22485,19 @@ function onPlanPointerDown(event) {
         end: wall2.end,
       }),
     );
-    floorScene.walls.push(...value5);
+    floorScene.walls.push(...mapResult);
     cachedWallOpenings();
     wallDrawPointCount += 1;
     const flag3 =
-      closedWallPolygons(floorScene.walls, value4).length > length;
+      closedWallPolygons(floorScene.walls, maxValue2).length > length;
     if (flag3) {
       resetWallDrawing();
     } else {
       wallDrawAnchor = {
-        ...value2.point,
+        ...planSnap.point,
       };
     }
-    setSelection("wall", value5[0].id);
+    setSelection("wall", mapResult[0].id);
     finishWall.hidden = flag3;
     refreshViews();
     scheduleSave();
@@ -22688,13 +22689,13 @@ function onPlanPointerDown(event) {
   let copied = false;
   if (isKind.kind === "item") {
     if (flag) {
-      const value2 = new Set(
+      const idSet = new Set(
         multiSelection
           .filter((kind) => kind.kind === "item")
           .map((item) => item.id),
       );
       list = floorScene.items.filter((id) =>
-        value2.has(id.id),
+        idSet.has(id.id),
       );
     } else {
       setSelection("item", isKind.id);
@@ -22803,13 +22804,13 @@ function onPlanPointerDrag(event) {
       const value = pixelsPerMeter() * 0.05;
       const flag =
         isSnapActive() && floorScene.settings.snapGrid !== false;
-      let value2 = planPoint2.x - dragState.start.x;
-      let value3 = planPoint2.y - dragState.start.y;
+      let oppdV2 = planPoint2.x - dragState.start.x;
+      let oppdV3 = planPoint2.y - dragState.start.y;
       if (event.shiftKey) {
-        if (Math.abs(value2) >= Math.abs(value3)) {
-          value3 = 0;
+        if (Math.abs(oppdV2) >= Math.abs(oppdV3)) {
+          oppdV3 = 0;
         } else {
-          value2 = 0;
+          oppdV2 = 0;
         }
       }
       const map = new Map(
@@ -22819,11 +22820,11 @@ function onPlanPointerDrag(event) {
         const planPoint4 = map.get(planPoint3.id);
         if (planPoint4) {
           planPoint4.x = flag
-            ? Math.round((planPoint3.x + value2) / value) * value
-            : planPoint3.x + value2;
+            ? Math.round((planPoint3.x + oppdV2) / value) * value
+            : planPoint3.x + oppdV2;
           planPoint4.y = flag
-            ? Math.round((planPoint3.y + value3) / value) * value
-            : planPoint3.y + value3;
+            ? Math.round((planPoint3.y + oppdV3) / value) * value
+            : planPoint3.y + oppdV3;
         }
       }
       dragState.moved = dragState.originals.some((planPoint3) => {
@@ -22852,7 +22853,7 @@ function onPlanPointerDrag(event) {
         finite(dragState.originalItem.height, 0.05),
         0.001,
       );
-      const value2 = event.shiftKey
+      const maxValue = event.shiftKey
         ? {
             minimum: Math.max(
               0.1 / Math.max(dragState.originalItem.width, 0.1),
@@ -22873,7 +22874,7 @@ function onPlanPointerDrag(event) {
         planPoint2,
         pixelsPerMeter() || 1,
         event.shiftKey,
-        value2,
+        maxValue,
       );
       Object.assign(planPoint3, resizeRotatedItemFromCorner2);
       dragState.moved =
@@ -23007,15 +23008,15 @@ function onPlanPointerUp(pointer) {
   }
   if (dragState.type === "marquee") {
     const arg0 = activeSelectionLightGroupFilter();
-    const value = dragState.additive
+    const additiveSelection = dragState.additive
       ? [...(selection ? [selection] : []), ...multiSelection]
       : [];
-    const value2 = dragState.moved
+    const marqueeHits = dragState.moved
       ? marqueeSelectHits(dragState.start, dragState.current)
       : [];
     const list = [
       ...new Map(
-        [...value, ...value2].map((kind) => [
+        [...additiveSelection, ...marqueeHits].map((kind) => [
           kind.kind + ":" + kind.id,
           kind,
         ]),
@@ -23257,26 +23258,26 @@ function applyInspectorFields(arg0) {
         : "right";
     }
     if (item.type === "tv") {
-      const value2 = tvMountStyles.has(item.tvMountStyle)
+      const hasResult = tvMountStyles.has(item.tvMountStyle)
         ? item.tvMountStyle
         : "standard";
-      const value3 = tvMountStyles.has(selectEl("#tv-mount-style").value)
+      const hasResult2 = tvMountStyles.has(selectEl("#tv-mount-style").value)
         ? selectEl("#tv-mount-style").value
         : "standard";
-      if (value2 !== value3 && value3 === "mobile") {
+      if (hasResult !== hasResult2 && hasResult2 === "mobile") {
         item.height = Math.max(item.height, fridgeSize.height);
         item.depth = Math.max(item.depth, fridgeSize.depth);
         item.elevation = 0;
       } else if (
-        value2 === "mobile" &&
-        value3 !== "mobile" &&
+        hasResult === "mobile" &&
+        hasResult2 !== "mobile" &&
         Math.abs(item.height - fridgeSize.height) < 0.001 &&
         Math.abs(item.depth - fridgeSize.depth) < 0.001
       ) {
         item.height = furnitureCatalog.tv.height;
         item.depth = furnitureCatalog.tv.depth;
       }
-      item.tvMountStyle = value3;
+      item.tvMountStyle = hasResult2;
     }
     if (lightItemTypes.has(item.type)) {
       const temperature =
@@ -23580,13 +23581,13 @@ function setAssetCategory(arg0) {
   const value = ["home", "appliance", "light"].includes(arg0)
     ? arg0
     : "home";
-  const value2 = activeSelectionLightGroupFilter();
+  const activeSelectionLightGroupFilterResult = activeSelectionLightGroupFilter();
   hideLightGroupContextMenu();
   assetCategory = value;
   for (const element of assetCategoryEls) {
-    const value3 = element.dataset.assetCategory === value;
-    element.classList.toggle("active", value3);
-    element.setAttribute("aria-pressed", String(value3));
+    const sacV3 = element.dataset.assetCategory === value;
+    element.classList.toggle("active", sacV3);
+    element.setAttribute("aria-pressed", String(sacV3));
   }
   syncAssetCategoryHeadings();
   assetGrid.hidden = value === "light";
@@ -23606,8 +23607,8 @@ function setAssetCategory(arg0) {
   renderLightLayerPanel();
   updateSelectionInspector();
   drawPlan();
-  if (value2 !== activeSelectionLightGroupFilter()) {
-    rebuildPreviewForAssetFilters(value2);
+  if (activeSelectionLightGroupFilterResult !== activeSelectionLightGroupFilter()) {
+    rebuildPreviewForAssetFilters(activeSelectionLightGroupFilterResult);
   }
 }
 for (const e of assetCategoryEls) {
@@ -23619,13 +23620,13 @@ addLightGroup.addEventListener("click", () => {
   const value = new Set(
     floorScene.lightGroups.map((named) => named.name),
   );
-  let value2 = floorScene.lightGroups.length + 1;
-  while (value.has("灯组 " + value2)) {
-    value2 += 1;
+  let sacV2 = floorScene.lightGroups.length + 1;
+  while (value.has("灯组 " + sacV2)) {
+    sacV2 += 1;
   }
   const id = {
     id: makeId("light-group"),
-    name: "灯组 " + value2,
+    name: "灯组 " + sacV2,
     enabled: true,
   };
   floorScene.lightGroups.push(id);
@@ -23858,7 +23859,7 @@ function renderLightPropertyTargetList(prop) {
           ? named.name + " " + value
           : named.name;
       const el7 = document.createElement("small");
-      const value2 = clampLightPropertyValue(
+      const lightPropertyValue = clampLightPropertyValue(
         prop,
         item[prop],
         item.type,
@@ -23866,7 +23867,7 @@ function renderLightPropertyTargetList(prop) {
       el7.textContent =
         (item.id === selection?.id ? "当前灯 · " : "") +
         "当前 " +
-        formatLightPropertyValue(prop, value2);
+        formatLightPropertyValue(prop, lightPropertyValue);
       append2.append(el6, el7);
       el5.append(button2, append2);
       el4.append(el5);
@@ -23934,11 +23935,11 @@ lightPropertyTargetList.addEventListener("click", (camera2) => {
   }
   const querySelectorAll = isClosest.closest("[data-light-target-group-id]");
   const value = lightPropertyTargetItemInputs(querySelectorAll);
-  const value2 = !value.every(
+  const local2 = !value.every(
     (checked) => checked.checked,
   );
   for (const checked of value) {
-    checked.checked = value2;
+    checked.checked = local2;
   }
   syncLightPropertySelectAll();
 });
@@ -23959,14 +23960,14 @@ lightPropertyApplyForm.addEventListener("submit", (event) => {
     label: label,
     value: value,
   } = pendingLightPropertyEdit;
-  const value2 = new Set(
+  const uniqueSet = new Set(
     lightPropertyTargetItemInputs()
       .filter((checked) => checked.checked)
       .map((el) => el.dataset.lightTargetItemId),
   );
   const list = floorScene.items.filter(
     (item) =>
-      lightItemTypes.has(item.type) && value2.has(item.id),
+      lightItemTypes.has(item.type) && uniqueSet.has(item.id),
   );
   if (!list.length) {
     showToast("请至少选择一盏灯。", "error");
@@ -24163,17 +24164,17 @@ exportPresetRenameForm.addEventListener("submit", (event) => {
     floor,
     normalizeActiveExportPresetSlot2,
   );
-  const value2 = renameExportPresetSlot(
+  const renameExportPresetSlotResult = renameExportPresetSlot(
     exportPresetRenameInput.value,
     normalizeActiveExportPresetSlot2,
   );
-  floor.name = value2;
+  floor.name = renameExportPresetSlotResult;
   projectDoc.exportPresets = normalizeExportPresetSlots2;
   closeExportPresetRenameDialog();
   normalizeProjectExportPresets();
   scheduleSave();
-  if (value2 !== value) {
-    showToast("已重命名为“" + value2 + "”。", "success");
+  if (renameExportPresetSlotResult !== value) {
+    showToast("已重命名为“" + renameExportPresetSlotResult + "”。", "success");
   }
 });
 selectEl("#export-preset-delete-close").addEventListener(
@@ -24648,20 +24649,20 @@ baseLightControlsHeader?.addEventListener("pointermove", (event) => {
     return;
   }
   const value = event.clientX - baseLightDrag.startX;
-  const value2 = event.clientY - baseLightDrag.startY;
-  if (!baseLightDrag.moved && Math.hypot(value, value2) < 4) {
+  const local2 = event.clientY - baseLightDrag.startY;
+  if (!baseLightDrag.moved && Math.hypot(value, local2) < 4) {
     return;
   }
   baseLightDrag.moved = true;
   event.preventDefault();
   const size = baseLightControls.getBoundingClientRect();
-  const value3 = Math.max(8, window.innerWidth - size.width - 8);
-  const value4 = Math.max(8, window.innerHeight - size.height - 8);
+  const maxValue = Math.max(8, window.innerWidth - size.width - 8);
+  const maxValue2 = Math.max(8, window.innerHeight - size.height - 8);
   baseLightControls.style.right = "auto";
   baseLightControls.style.left =
-    clamp(baseLightDrag.startLeft + value, 8, value3) + "px";
+    clamp(baseLightDrag.startLeft + value, 8, maxValue) + "px";
   baseLightControls.style.top =
-    clamp(baseLightDrag.startTop + value2, 8, value4) + "px";
+    clamp(baseLightDrag.startTop + local2, 8, maxValue2) + "px";
 });
 const endBaseLightPanelDrag = (pointer) => {
   if (!!baseLightDrag && pointer.pointerId === baseLightDrag.pointerId) {
@@ -25001,9 +25002,9 @@ window.addEventListener("keydown", (event) => {
       const value =
         (event.altKey ? 0.01 : event.shiftKey ? 0.25 : 0.05) *
         (pixelsPerMeter() || 1);
-      const value2 = new Set(list);
+      const uniqueSet = new Set(list);
       for (const planPoint2 of floorScene.items) {
-        if (value2.has(planPoint2.id)) {
+        if (uniqueSet.has(planPoint2.id)) {
           planPoint2.x += planPoint.x * value;
           planPoint2.y += planPoint.y * value;
         }
@@ -25441,11 +25442,11 @@ function buildStageReferenceScene() {
       0.5,
       10,
     );
-    const value2 = Math.max(finite(item.elevation, 2.7), 0.4);
+    const maxValue = Math.max(finite(item.elevation, 2.7), 0.4);
     return (
       clamp(n / range.range, 0.45, 1.65) *
       48 *
-      clamp(Math.max(1, Math.pow(value2 / 2.7, 2)), 1, 4) *
+      clamp(Math.max(1, Math.pow(maxValue / 2.7, 2)), 1, 4) *
       value
     );
   }
@@ -25846,14 +25847,14 @@ function buildStageReferenceScene() {
     }
     let flag = false;
     const now = performance.now();
-    for (const [value2, item] of values) {
+    for (const [pairKey, item] of values) {
       if (
         getPreviewFloorMode() !== "all" &&
         item.floorId !== activeFloorId
       ) {
         continue;
       }
-      const list = itemKeys.get(value2);
+      const list = itemKeys.get(pairKey);
       if (list?.length) {
         for (const object3d of list) {
           const flag2 = lightTransitions.get(object3d);
@@ -25861,17 +25862,17 @@ function buildStageReferenceScene() {
             item.item,
             item.previousBrightness,
           );
-          const value3 =
-            value.get(value2)?.includes(object3d) &&
+          const getResult =
+            value.get(pairKey)?.includes(object3d) &&
             curve > 1e-7 &&
             object3d.userData.lightOnIntensity > 0
               ? object3d.userData.lightOnIntensity / curve
               : lightIntensityForItem(item.item);
-          const value4 =
-            value3 *
+          const slsV4 =
+            getResult *
             lightBrightnessCurve(item.item, item.item.lightBrightness);
           const color = {
-            intensity: item.isOn ? value4 : 0,
+            intensity: item.isOn ? slsV4 : 0,
             color: new THREE.Color(
               lightEffectColorHex(item.item.lightTemperature),
             ).toArray(),
@@ -25879,7 +25880,7 @@ function buildStageReferenceScene() {
           const isIntensity = flag2
             ? sampleLightTransition(flag2, now)
             : null;
-          const value5 =
+          const local5 =
             !item.wasOn &&
             item.isOn &&
             (!isIntensity || isIntensity.intensity <= 0.000001)
@@ -25890,7 +25891,7 @@ function buildStageReferenceScene() {
               : isIntensity || {
                   intensity: qualityReady
                     ? item.wasOn
-                      ? value3 * curve
+                      ? getResult * curve
                       : 0
                     : object3d.intensity,
                   color: qualityReady
@@ -25899,7 +25900,7 @@ function buildStageReferenceScene() {
                       ).toArray()
                     : object3d.color.toArray(),
                 };
-          object3d.userData.lightOnIntensity = value4;
+          object3d.userData.lightOnIntensity = slsV4;
           object3d.userData.lightBrightness =
             item.item.lightBrightness;
           const durationMs = lightTransitionDurationMs(
@@ -25912,7 +25913,7 @@ function buildStageReferenceScene() {
             },
           );
           const lightTransition = createLightTransition(
-            value5,
+            local5,
             color,
             now,
             durationMs,
@@ -25952,22 +25953,22 @@ function buildStageReferenceScene() {
   function syncViewportSize() {
     const el = selectEl("#preview-3d");
     const value = Math.max(el.clientWidth || 1, 1);
-    const value2 = Math.max(el.clientHeight || 1, 1);
-    const value3 =
-      value + "/" + value2 + "/" + viewOffsetRatio + "/" + camera.uuid;
-    if (value3 === viewportKey) {
+    const maxValue = Math.max(el.clientHeight || 1, 1);
+    const svsV3 =
+      value + "/" + maxValue + "/" + viewOffsetRatio + "/" + camera.uuid;
+    if (svsV3 === viewportKey) {
       syncProjectionBlend();
       return;
     }
-    viewportKey = value3;
+    viewportKey = svsV3;
     if (viewOffsetRatio) {
       camera.setViewOffset(
         value,
-        value2,
+        maxValue,
         (value * viewOffsetRatio) / 2,
         0,
         value,
-        value2,
+        maxValue,
       );
     } else {
       camera.clearViewOffset();
@@ -26063,15 +26064,15 @@ function buildStageReferenceScene() {
         interactionEnabled &&
         angleTo.angleTo(view.quaternion) > 1e-7
       ) {
-        const value2 = view.quaternion
+        const bocV2 = view.quaternion
           .clone()
           .multiply(angleTo.invert());
         const clone = focusTarget.clone().sub(el.target);
-        const value3 = clone
+        const bocV3 = clone
           .clone()
-          .sub(clone.applyQuaternion(value2));
-        view.position.add(value3);
-        el.target.add(value3);
+          .sub(clone.applyQuaternion(bocV2));
+        view.position.add(bocV3);
+        el.target.add(bocV3);
         view.updateMatrixWorld();
         el.dispatchEvent({
           type: "change",
@@ -26114,7 +26115,7 @@ function buildStageReferenceScene() {
       distanceTo.distanceTo(arg),
       0.001,
     );
-    const value2 = distanceTo
+    const rocV2 = distanceTo
       .clone()
       .sub(arg)
       .normalize()
@@ -26125,7 +26126,7 @@ function buildStageReferenceScene() {
     orbitControls.maxZoom = Math.max(6, camera.zoom);
     orbitControls.maxPolarAngle = Math.max(
       Math.PI * 0.49,
-      value2 + 0.00001,
+      rocV2 + 0.00001,
     );
     orbitControls.enableRotate = true;
     orbitControls.enabled = interactionEnabled;
@@ -26352,9 +26353,9 @@ function buildStageReferenceScene() {
         new THREE.Vector3(0, 1, 0),
         angle,
       );
-      for (const value3 of ["position", "target"]) {
-        nextView[value3] = new THREE.Vector3()
-          .fromArray(view[value3])
+      for (const tupleItem of ["position", "target"]) {
+        nextView[tupleItem] = new THREE.Vector3()
+          .fromArray(view[tupleItem])
           .sub(focusTarget)
           .applyQuaternion(value)
           .add(focusTarget)
@@ -26363,22 +26364,22 @@ function buildStageReferenceScene() {
       let vec3 = new THREE.Vector3().fromArray(
         view.up || [0, 1, 0],
       );
-      const value2 = new THREE.Vector3()
+      const vector3 = new THREE.Vector3()
         .fromArray(view.position)
         .sub(new THREE.Vector3().fromArray(view.target));
       if (
         vec3.lengthSq() < 1e-12 ||
-        vec3.clone().cross(value2).lengthSq() < 1e-12
+        vec3.clone().cross(vector3).lengthSq() < 1e-12
       ) {
-        const value3 = THREE.MathUtils.degToRad(
+        const degToRadResult = THREE.MathUtils.degToRad(
           finite(view.topRotation, 0),
         );
         vec3 = new THREE.Vector3(
-          Math.sin(value3),
+          Math.sin(degToRadResult),
           0,
-          -Math.cos(value3),
+          -Math.cos(degToRadResult),
         );
-        if (vec3.clone().cross(value2).lengthSq() < 1e-12) {
+        if (vec3.clone().cross(vector3).lengthSq() < 1e-12) {
           vec3.set(1, 0, 0);
         }
       }
@@ -26583,14 +26584,14 @@ function buildStageReferenceScene() {
           worldPoint.z,
         );
       }
-      const value2 = floorScene;
+      const local2 = floorScene;
       floorScene = floor.scene;
-      const value3 = activeFloorContentBounds();
-      floorScene = value2;
+      const activeFloorContentBoundsResult = activeFloorContentBounds();
+      floorScene = local2;
       return new THREE.Vector3(
-        (x - (value3.minX + value3.maxX) / 2) / value,
+        (x - (activeFloorContentBoundsResult.minX + activeFloorContentBoundsResult.maxX) / 2) / value,
         arg2,
-        (y - (value3.minY + value3.maxY) / 2) / value,
+        (y - (activeFloorContentBoundsResult.minY + activeFloorContentBoundsResult.maxY) / 2) / value,
       );
     },
     setLightStates: setLightStates,
@@ -26637,17 +26638,17 @@ function buildStageReferenceScene() {
         ? rotationMode.rotationMode
         : "free";
       const value = rotationMode.enabled === true;
-      const value2 = rotationMode.panEnabled !== false;
-      const value3 = rotationMode.zoomEnabled !== false;
+      const local2 = rotationMode.panEnabled !== false;
+      const local3 = rotationMode.zoomEnabled !== false;
       const flag =
         interactionEnabled !== value ||
         rotationMode !== rotationMode2 ||
-        panEnabled !== value2 ||
-        zoomEnabled !== value3;
+        panEnabled !== local2 ||
+        zoomEnabled !== local3;
       interactionEnabled = value;
       rotationMode = rotationMode2;
-      panEnabled = value2;
-      zoomEnabled = value3;
+      panEnabled = local2;
+      zoomEnabled = local3;
       if (flag) {
         recreateOrbitControls();
       } else {
@@ -26674,12 +26675,12 @@ function buildStageReferenceScene() {
         await new Promise(requestAnimationFrame);
         syncBackgroundVisibility();
         scheduleAdaptiveQuality(0);
-        const value2 = performance.now() + 1800;
+        const nowResult = performance.now() + 1800;
         while (
           (!lightCacheReady ||
             previewQualityJustBecameReady ||
             previewLightCache.hidden) &&
-          performance.now() < value2
+          performance.now() < nowResult
         ) {
           await new Promise(requestAnimationFrame);
         }

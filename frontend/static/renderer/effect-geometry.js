@@ -18,18 +18,18 @@ export function normalizeIconButtonEffectComponent(component) {
     properties: properties,
   };
 }
-export function componentHostZIndex(component, value, value2 = true) {
-  const numeric = Number(value || 0);
-  if (!value2 && component?.type !== "group") {
+export function componentHostZIndex(component, zIndex, applySpecialBases = true) {
+  const numeric = Number(zIndex || 0);
+  if (!applySpecialBases && component?.type !== "group") {
     return numeric;
   } else if (
     component?.type === "icon-button-effect" &&
     (component.properties?.buttonVisible !== false ||
       component.properties?.hiddenContentClickable === true)
   ) {
-    return 1000000000 + numeric;
+    return Z_INDEX_ICON_BUTTON_EFFECT_BASE + numeric;
   } else if (component?.type === "presence-sensor") {
-    return 500000000 + numeric;
+    return Z_INDEX_PRESENCE_SENSOR_BASE + numeric;
   } else {
     return numeric;
   }
@@ -42,55 +42,65 @@ export function effectFadeDuration(component) {
     return 0.52;
   }
 }
-export function effectLayerDimensions(value, value2, width, height) {
-  if (value?.effectLayoutMode === "fill") {
+export function effectLayerDimensions(properties, imageElement, width, height) {
+  if (properties?.effectLayoutMode === "fill") {
     return {
       width: width,
       height: height,
       pendingNaturalSize: false,
     };
   }
-  const numeric = Number(value?.effectNaturalWidth || 0);
-  const numeric2 = Number(value?.effectNaturalHeight || 0);
-  const numeric3 = Number(
-    value2?.dataset?.effectOriginalWidth || value2?.naturalWidth || 0,
+  const storedWidth = Number(properties?.effectNaturalWidth || 0);
+  const storedHeight = Number(properties?.effectNaturalHeight || 0);
+  const elementWidth = Number(
+    imageElement?.dataset?.effectOriginalWidth || imageElement?.naturalWidth || 0,
   );
-  const numeric4 = Number(
-    value2?.dataset?.effectOriginalHeight || value2?.naturalHeight || 0,
+  const elementHeight = Number(
+    imageElement?.dataset?.effectOriginalHeight ||
+      imageElement?.naturalHeight ||
+      0,
   );
-  const width2 = numeric > 0 ? numeric : numeric3;
-  const height2 = numeric2 > 0 ? numeric2 : numeric4;
-  if (width2 > 0 && height2 > 0) {
+  const resolvedWidth = storedWidth > 0 ? storedWidth : elementWidth;
+  const resolvedHeight = storedHeight > 0 ? storedHeight : elementHeight;
+  if (resolvedWidth > 0 && resolvedHeight > 0) {
     return {
-      width: width2,
-      height: height2,
+      width: resolvedWidth,
+      height: resolvedHeight,
       pendingNaturalSize: false,
     };
   } else {
     return {
-      width: (width * Math.max(0.001, Number(value?.effectWidth ?? 100))) / 100,
+      width:
+        (width * Math.max(0.001, Number(properties?.effectWidth ?? 100))) / 100,
       height:
-        (height * Math.max(0.001, Number(value?.effectHeight ?? 100))) / 100,
+        (height * Math.max(0.001, Number(properties?.effectHeight ?? 100))) /
+        100,
       pendingNaturalSize: true,
     };
   }
 }
-export function effectSourceDimensions(value, value2, width, height) {
-  const numeric = Number(value?.effectNaturalWidth || 0);
-  const numeric2 = Number(value?.effectNaturalHeight || 0);
-  const numeric3 = Number(value2?.dataset?.effectOriginalWidth || 0);
-  const numeric4 = Number(value2?.dataset?.effectOriginalHeight || 0);
-  const numeric5 = Number(value2?.naturalWidth || 0);
-  const numeric6 = Number(value2?.naturalHeight || 0);
-  const width2 = numeric > 0 ? numeric : numeric3 > 0 ? numeric3 : numeric5;
-  const height2 = numeric2 > 0 ? numeric2 : numeric4 > 0 ? numeric4 : numeric6;
-  if (width2 > 0 && height2 > 0) {
+export function effectSourceDimensions(properties, imageElement, width, height) {
+  const storedWidth = Number(properties?.effectNaturalWidth || 0);
+  const storedHeight = Number(properties?.effectNaturalHeight || 0);
+  const datasetWidth = Number(imageElement?.dataset?.effectOriginalWidth || 0);
+  const datasetHeight = Number(imageElement?.dataset?.effectOriginalHeight || 0);
+  const naturalWidth = Number(imageElement?.naturalWidth || 0);
+  const naturalHeight = Number(imageElement?.naturalHeight || 0);
+  const resolvedWidth =
+    storedWidth > 0 ? storedWidth : datasetWidth > 0 ? datasetWidth : naturalWidth;
+  const resolvedHeight =
+    storedHeight > 0
+      ? storedHeight
+      : datasetHeight > 0
+        ? datasetHeight
+        : naturalHeight;
+  if (resolvedWidth > 0 && resolvedHeight > 0) {
     return {
-      width: width2,
-      height: height2,
+      width: resolvedWidth,
+      height: resolvedHeight,
       pendingNaturalSize: false,
     };
-  } else if (value?.effectLayoutMode === "fill") {
+  } else if (properties?.effectLayoutMode === "fill") {
     return {
       width: width,
       height: height,
@@ -98,39 +108,41 @@ export function effectSourceDimensions(value, value2, width, height) {
     };
   } else {
     return {
-      width: (width * Math.max(0.001, Number(value?.effectWidth ?? 100))) / 100,
+      width:
+        (width * Math.max(0.001, Number(properties?.effectWidth ?? 100))) / 100,
       height:
-        (height * Math.max(0.001, Number(value?.effectHeight ?? 100))) / 100,
+        (height * Math.max(0.001, Number(properties?.effectHeight ?? 100))) /
+        100,
       pendingNaturalSize: true,
     };
   }
 }
-export function effectCropRectangle(value, fallback) {
-  const numeric = Number(value?.dataset?.effectOriginalWidth || 0);
-  const numeric2 = Number(value?.dataset?.effectOriginalHeight || 0);
-  const numeric3 = Number(value?.dataset?.effectCropX);
-  const numeric4 = Number(value?.dataset?.effectCropY);
-  const numeric5 = Number(value?.dataset?.effectCropWidth || 0);
-  const numeric6 = Number(value?.dataset?.effectCropHeight || 0);
+export function effectCropRectangle(imageElement, fallback) {
+  const originalWidth = Number(imageElement?.dataset?.effectOriginalWidth || 0);
+  const originalHeight = Number(imageElement?.dataset?.effectOriginalHeight || 0);
+  const cropX = Number(imageElement?.dataset?.effectCropX);
+  const cropY = Number(imageElement?.dataset?.effectCropY);
+  const cropWidth = Number(imageElement?.dataset?.effectCropWidth || 0);
+  const cropHeight = Number(imageElement?.dataset?.effectCropHeight || 0);
   if (
-    numeric > 0 &&
-    numeric2 > 0 &&
-    Number.isFinite(numeric3) &&
-    Number.isFinite(numeric4) &&
-    numeric3 >= 0 &&
-    numeric4 >= 0 &&
-    numeric5 > 0 &&
-    numeric6 > 0 &&
-    numeric3 + numeric5 <= numeric &&
-    numeric4 + numeric6 <= numeric2
+    originalWidth > 0 &&
+    originalHeight > 0 &&
+    Number.isFinite(cropX) &&
+    Number.isFinite(cropY) &&
+    cropX >= 0 &&
+    cropY >= 0 &&
+    cropWidth > 0 &&
+    cropHeight > 0 &&
+    cropX + cropWidth <= originalWidth &&
+    cropY + cropHeight <= originalHeight
   ) {
-    const value2 = fallback.width / numeric;
-    const value3 = fallback.height / numeric2;
+    const scaleX = fallback.width / originalWidth;
+    const scaleY = fallback.height / originalHeight;
     return {
-      x: numeric3 * value2,
-      y: numeric4 * value3,
-      width: numeric5 * value2,
-      height: numeric6 * value3,
+      x: cropX * scaleX,
+      y: cropY * scaleY,
+      width: cropWidth * scaleX,
+      height: cropHeight * scaleY,
     };
   }
   return {
@@ -141,90 +153,102 @@ export function effectCropRectangle(value, fallback) {
   };
 }
 export function effectCroppedLayerGeometry({
-  centerX: value,
-  centerY: value2,
-  originalWidth: value3,
-  originalHeight: value4,
-  cropX: value5,
-  cropY: value6,
-  cropWidth: value7,
-  cropHeight: value8,
-  scale: value9 = 1,
-  rotation: value10 = 0,
+  centerX,
+  centerY,
+  originalWidth,
+  originalHeight,
+  cropX,
+  cropY,
+  cropWidth,
+  cropHeight,
+  scale: inputScale = 1,
+  rotation = 0,
 }) {
-  const value11 = (Number(value10 || 0) * Math.PI) / 180;
-  const scale = Math.max(0.0001, Number(value9 || 1));
-  const value12 =
-    (Number(value5 || 0) + Number(value7 || 0) / 2 - Number(value3 || 0) / 2) *
+  const rotationRad = (Number(rotation || 0) * Math.PI) / 180;
+  const scale = Math.max(0.0001, Number(inputScale || 1));
+  const offsetX =
+    (Number(cropX || 0) + Number(cropWidth || 0) / 2 - Number(originalWidth || 0) / 2) *
     scale;
-  const value13 =
-    (Number(value6 || 0) + Number(value8 || 0) / 2 - Number(value4 || 0) / 2) *
+  const offsetY =
+    (Number(cropY || 0) +
+      Number(cropHeight || 0) / 2 -
+      Number(originalHeight || 0) / 2) *
     scale;
-  const value14 = value12 * Math.cos(value11) - value13 * Math.sin(value11);
-  const value15 = value12 * Math.sin(value11) + value13 * Math.cos(value11);
-  const value16 = Number(value || 0) + value14;
-  const value17 = Number(value2 || 0) + value15;
+  const rotatedX = offsetX * Math.cos(rotationRad) - offsetY * Math.sin(rotationRad);
+  const rotatedY = offsetX * Math.sin(rotationRad) + offsetY * Math.cos(rotationRad);
+  const layerCenterX = Number(centerX || 0) + rotatedX;
+  const layerCenterY = Number(centerY || 0) + rotatedY;
   return {
-    left: value16 - Number(value7 || 0) / 2,
-    top: value17 - Number(value8 || 0) / 2,
-    width: Number(value7 || 0),
-    height: Number(value8 || 0),
+    left: layerCenterX - Number(cropWidth || 0) / 2,
+    top: layerCenterY - Number(cropHeight || 0) / 2,
+    width: Number(cropWidth || 0),
+    height: Number(cropHeight || 0),
     scale: scale,
-    rotation: Number(value10 || 0),
+    rotation: Number(rotation || 0),
   };
 }
 export function effectReferenceImageTransform(
-  value,
+  page,
   component,
-  value2,
-  value3,
-  value4,
-  value5,
+  naturalWidth,
+  naturalHeight,
+  hostWidth,
+  hostHeight,
 ) {
-  if (!(value2 > 0) || !(value3 > 0)) {
+  if (!(naturalWidth > 0) || !(naturalHeight > 0)) {
     return null;
   }
-  const numeric = Number(component?.position?.zIndex || 1);
-  const text = String(component?.properties?.effectReferenceImageId || "");
-  const value6 = [];
-  const value7 = [];
-  const fn = (value8) => {
-    for (const component2 of value8 || []) {
-      if (component2.type === "image") {
-        const value9 = component2.properties || {};
-        const numeric2 = Number(value9.naturalWidth || 0);
-        const numeric3 = Number(value9.naturalHeight || 0);
-        const zIndex = Number(component2.position?.zIndex || 1);
-        const value10 = text && component2.id === text;
-        const value11 =
-          !text &&
-          component2.style?.visible !== false &&
-          numeric2 === value2 &&
-          numeric3 === value3 &&
-          zIndex < numeric;
-        if (value10 || value11) {
-          const value12 = value9.layoutMode === "fill";
-          const value13 = component2.position || {};
-          const value14 = value12 ? value4 : Number(value13.width || value2);
-          const value15 = value12 ? value5 : Number(value13.height || value3);
-          const value16 = {
+  const componentZIndex = Number(component?.position?.zIndex || 1);
+  const referenceImageId = String(
+    component?.properties?.effectReferenceImageId || "",
+  );
+  const exactMatches = [];
+  const sizeMatches = [];
+  const visit = (components) => {
+    for (const child of components || []) {
+      if (child.type === "image") {
+        const properties = child.properties || {};
+        const imageNaturalWidth = Number(properties.naturalWidth || 0);
+        const imageNaturalHeight = Number(properties.naturalHeight || 0);
+        const zIndex = Number(child.position?.zIndex || 1);
+        const isExactReference =
+          referenceImageId && child.id === referenceImageId;
+        const isSizeMatch =
+          !referenceImageId &&
+          child.style?.visible !== false &&
+          imageNaturalWidth === naturalWidth &&
+          imageNaturalHeight === naturalHeight &&
+          zIndex < componentZIndex;
+        if (isExactReference || isSizeMatch) {
+          const fillLayout = properties.layoutMode === "fill";
+          const position = child.position || {};
+          const displayWidth = fillLayout
+            ? hostWidth
+            : Number(position.width || naturalWidth);
+          const displayHeight = fillLayout
+            ? hostHeight
+            : Number(position.height || naturalHeight);
+          const match = {
             zIndex: zIndex,
-            scale: Math.min(value14 / value2, value15 / value3),
+            scale: Math.min(
+              displayWidth / naturalWidth,
+              displayHeight / naturalHeight,
+            ),
           };
-          if (value10) {
-            value6.push(value16);
+          if (isExactReference) {
+            exactMatches.push(match);
           } else {
-            value7.push(value16);
+            sizeMatches.push(match);
           }
         }
       }
-      fn(component2.children);
+      visit(child.children);
     }
   };
-  fn(value?.components);
+  visit(page?.components);
   return (
-    value6[0] ||
-    value7.sort((value8, value9) => value9.zIndex - value8.zIndex)[0] ||
+    exactMatches[0] ||
+    sizeMatches.sort((a, b) => b.zIndex - a.zIndex)[0] ||
     null
   );
 }

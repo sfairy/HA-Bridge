@@ -14,9 +14,12 @@ export const RELATED_POPUP_SELECTION_LIMITS = Object.freeze({
   "air-conditioner": 12,
   vacuum: 12,
 });
-export function relatedPopupSelectionLimit(value) {
-  const value2 = typeof value == "string" ? value : value?.deviceType;
-  return Number(RELATED_POPUP_SELECTION_LIMITS[value2] || 0);
+export function relatedPopupSelectionLimit(deviceTypeOrContext) {
+  const deviceType =
+    typeof deviceTypeOrContext == "string"
+      ? deviceTypeOrContext
+      : deviceTypeOrContext?.deviceType;
+  return Number(RELATED_POPUP_SELECTION_LIMITS[deviceType] || 0);
 }
 const DEVICE_RELATED_DOMAINS = Object.freeze({
   "water-heater": new Set([
@@ -83,7 +86,7 @@ const DEVICE_RELATED_DOMAINS = Object.freeze({
     "binary_sensor",
   ]),
 });
-const index = new Map([
+const DOMAIN_SORT_ORDER = new Map([
   ["light", 0],
   ["switch", 1],
   ["input_boolean", 1],
@@ -120,35 +123,36 @@ export function relatedEntityIsAvailable(metadata) {
     metadata.status !== "disabled"
   );
 }
-function entitiesForDevice(value, value2) {
-  if (value2) {
-    return [...(value?.values?.() || [])].filter(
-      (value3) => value3.deviceId === value2,
+function entitiesForDevice(entityMetadata, deviceId) {
+  if (deviceId) {
+    return [...(entityMetadata?.values?.() || [])].filter(
+      (entity) => entity.deviceId === deviceId,
     );
   } else {
     return [];
   }
 }
-function findAvailableEntityByDomain(value, value2) {
+function findAvailableEntityByDomain(entities, domain) {
   return (
-    value.find(
-      (value3) => entityDomain(value3) === value2 && relatedEntityIsAvailable(value3),
+    entities.find(
+      (entity) =>
+        entityDomain(entity) === domain && relatedEntityIsAvailable(entity),
     ) || null
   );
 }
-function findVacuumEntity(value) {
-  return findAvailableEntityByDomain(value, "vacuum");
+function findVacuumEntity(entities) {
+  return findAvailableEntityByDomain(entities, "vacuum");
 }
-function findWaterHeaterEntity(value) {
-  return findAvailableEntityByDomain(value, "water_heater");
+function findWaterHeaterEntity(entities) {
+  return findAvailableEntityByDomain(entities, "water_heater");
 }
 export function relatedPopupContext(
   component,
-  value = new Map(),
-  value2 = new Map(),
-  value3 = new Map(),
+  entityMetadata = new Map(),
+  deviceMetadata = new Map(),
+  states = new Map(),
 ) {
-  const value4 = [
+  const isPopupCapableComponent = [
     "icon-button-effect",
     "icon-button",
     "device-button",
@@ -157,62 +161,68 @@ export function relatedPopupContext(
     "air-purifier",
     "vacuum-control",
   ].includes(component?.type);
-  const value5 = Object.values(component?.actions || {}).some(
-    (value11) =>
-      value11?.type === "more-info" &&
+  const hasDevicePopupAction = Object.values(component?.actions || {}).some(
+    (action) =>
+      action?.type === "more-info" &&
       !["entity", "custom"].includes(
-        String(value11?.data?.popupSource || "current"),
+        String(action?.data?.popupSource || "current"),
       ),
   );
-  if (!value4 && !value5) {
+  if (!isPopupCapableComponent && !hasDevicePopupAction) {
     return null;
   }
   const configuredEntityId = String(
     component?.bindings?.entity?.entityId || "",
   );
-  const source = value.get(configuredEntityId) || null;
+  const source = entityMetadata.get(configuredEntityId) || null;
   if (!configuredEntityId || !source) {
     return null;
   }
-  const siblings = entitiesForDevice(value, source.deviceId);
+  const siblings = entitiesForDevice(entityMetadata, source.deviceId);
   const profile = resolveXiaomiDeviceProfile(
     configuredEntityId,
-    value,
-    value2,
-    value3,
+    entityMetadata,
+    deviceMetadata,
+    states,
   );
-  const text = String(component?.properties?.deviceType || "");
-  const value6 = entityDomain(source);
-  const value7 = profile?.roles?.climate || profile?.roles?.fan || "";
-  const value8 = !!value7 && configuredEntityId === value7;
-  const value9 = value6 === "water_heater" ? source : findWaterHeaterEntity(siblings);
-  const value10 = value6 === "vacuum" ? source : findVacuumEntity(siblings);
+  const propertyDeviceType = String(component?.properties?.deviceType || "");
+  const sourceDomain = entityDomain(source);
+  const climateOrFanRole =
+    profile?.roles?.climate || profile?.roles?.fan || "";
+  const isPrimaryClimateOrFan =
+    !!climateOrFanRole && configuredEntityId === climateOrFanRole;
+  const waterHeaterEntity =
+    sourceDomain === "water_heater"
+      ? source
+      : findWaterHeaterEntity(siblings);
+  const vacuumEntity =
+    sourceDomain === "vacuum" ? source : findVacuumEntity(siblings);
   let deviceType = "";
   let primaryEntityId = configuredEntityId;
-  if (component?.type === "water-heater" || value9) {
+  if (component?.type === "water-heater" || waterHeaterEntity) {
     deviceType = "water-heater";
-    primaryEntityId = value9?.entityId || configuredEntityId;
+    primaryEntityId = waterHeaterEntity?.entityId || configuredEntityId;
   } else if (
     component?.type === "air-purifier" ||
-    text === "air-purifier" ||
+    propertyDeviceType === "air-purifier" ||
     profile?.deviceType === "air-purifier"
   ) {
     deviceType = "air-purifier";
     primaryEntityId = profile?.roles?.fan || configuredEntityId;
-  } else if (component?.type === "vacuum-control" || value10) {
+  } else if (component?.type === "vacuum-control" || vacuumEntity) {
     deviceType = "vacuum";
-    primaryEntityId = value10?.entityId || configuredEntityId;
+    primaryEntityId = vacuumEntity?.entityId || configuredEntityId;
   } else if (
-    text === "bath-heater" ||
-    (profile?.deviceType === "bath-heater" && value8)
+    propertyDeviceType === "bath-heater" ||
+    (profile?.deviceType === "bath-heater" && isPrimaryClimateOrFan)
   ) {
     deviceType = "bath-heater";
     primaryEntityId =
       profile?.roles?.climate || profile?.roles?.fan || configuredEntityId;
   } else if (
-    text === "air-conditioner" ||
+    propertyDeviceType === "air-conditioner" ||
     profile?.deviceType === "air-conditioner" ||
-    value6 === "climate"
+    sourceDomain === "climate"
   ) {
     deviceType = "air-conditioner";
     primaryEntityId = profile?.roles?.climate || configuredEntityId;
@@ -227,7 +237,7 @@ export function relatedPopupContext(
       primaryEntityId: primaryEntityId,
       deviceId: source.deviceId,
       source: source,
-      primary: value.get(primaryEntityId) || source,
+      primary: entityMetadata.get(primaryEntityId) || source,
       profile: profile,
       siblings: siblings,
     };
@@ -244,65 +254,80 @@ export function selectedRelatedEntityIds(component) {
     return [
       ...new Set(
         relatedEntities.entityIds
-          .map((value) => String(value || "").trim())
+          .map((entityId) => String(entityId || "").trim())
           .filter(Boolean),
       ),
     ];
   }
 }
 export function relatedPopupCandidates(
-  value,
-  value2 = new Map(),
-  value3 = new Map(),
-  value4 = new Map(),
+  component,
+  entityMetadata = new Map(),
+  deviceMetadata = new Map(),
+  states = new Map(),
 ) {
-  const value5 = relatedPopupContext(value, value2, value3, value4);
-  if (!value5) {
+  const context = relatedPopupContext(
+    component,
+    entityMetadata,
+    deviceMetadata,
+    states,
+  );
+  if (!context) {
     return [];
   }
-  const value6 = DEVICE_RELATED_DOMAINS[value5.deviceType] || new Set();
-  const allowed = new Set(selectedRelatedEntityIds(value) || []);
-  return value5.siblings
+  const allowedDomains = DEVICE_RELATED_DOMAINS[context.deviceType] || new Set();
+  const allowed = new Set(selectedRelatedEntityIds(component) || []);
+  return context.siblings
     .filter(
-      (value7) =>
-        value7.entityId !== value5.primaryEntityId &&
-        value6.has(entityDomain(value7)) &&
-        (relatedEntityIsAvailable(value7) || allowed.has(value7.entityId)),
+      (entity) =>
+        entity.entityId !== context.primaryEntityId &&
+        allowedDomains.has(entityDomain(entity)) &&
+        (relatedEntityIsAvailable(entity) || allowed.has(entity.entityId)),
     )
-    .sort((value7, value8) => {
-      const value9 = relatedEntityIsAvailable(value7) ? 0 : 1;
-      const value10 = relatedEntityIsAvailable(value8) ? 0 : 1;
+    .sort((left, right) => {
+      const leftUnavailable = relatedEntityIsAvailable(left) ? 0 : 1;
+      const rightUnavailable = relatedEntityIsAvailable(right) ? 0 : 1;
       return (
-        value9 - value10 ||
-        (index.get(entityDomain(value7)) ?? 99) - (index.get(entityDomain(value8)) ?? 99) ||
-        String(value7.entityId || "").localeCompare(
-          String(value8.entityId || ""),
-        )
+        leftUnavailable - rightUnavailable ||
+        (DOMAIN_SORT_ORDER.get(entityDomain(left)) ?? 99) -
+          (DOMAIN_SORT_ORDER.get(entityDomain(right)) ?? 99) ||
+        String(left.entityId || "").localeCompare(String(right.entityId || ""))
       );
     });
 }
 export function legacyRelatedEntityIds(
-  value,
-  value2 = new Map(),
-  value3 = new Map(),
-  value4 = new Map(),
+  component,
+  entityMetadata = new Map(),
+  deviceMetadata = new Map(),
+  states = new Map(),
 ) {
-  const value5 = relatedPopupContext(value, value2, value3, value4);
-  if (!value5) {
+  const context = relatedPopupContext(
+    component,
+    entityMetadata,
+    deviceMetadata,
+    states,
+  );
+  if (!context) {
     return [];
   }
-  const value6 = relatedPopupCandidates(value, value2, value3, value4);
-  if (value5.deviceType === "water-heater") {
-    return value6
+  const candidates = relatedPopupCandidates(
+    component,
+    entityMetadata,
+    deviceMetadata,
+    states,
+  );
+  if (context.deviceType === "water-heater") {
+    return candidates
       .filter(
-        (value7) =>
-          ["switch", "select", "number", "button"].includes(entityDomain(value7)) &&
-          relatedEntityIsAvailable(value7),
+        (entity) =>
+          ["switch", "select", "number", "button"].includes(
+            entityDomain(entity),
+          ) && relatedEntityIsAvailable(entity),
       )
-      .map((value7) => value7.entityId);
+      .map((entity) => entity.entityId);
   }
-  if (value5.deviceType === "air-purifier") {
-    const value7 = value5.profile?.roles || {};
+  if (context.deviceType === "air-purifier") {
+    const roles = context.profile?.roles || {};
     return [
       ...new Set(
         [
@@ -315,108 +340,115 @@ export function legacyRelatedEntityIds(
           "humidity",
           "airQuality",
         ]
-          .map((value8) => value7[value8])
+          .map((roleKey) => roles[roleKey])
           .filter(Boolean),
       ),
     ];
   }
-  if (value5.deviceType === "bath-heater") {
-    const value7 =
-      value5.profile?.roles?.light ||
-      value6.find(
-        (value8) => entityDomain(value8) === "light" && relatedEntityIsAvailable(value8),
+  if (context.deviceType === "bath-heater") {
+    const lightEntityId =
+      context.profile?.roles?.light ||
+      candidates.find(
+        (entity) =>
+          entityDomain(entity) === "light" && relatedEntityIsAvailable(entity),
       )?.entityId;
-    if (value7) {
-      return [value7];
+    if (lightEntityId) {
+      return [lightEntityId];
     } else {
       return [];
     }
   }
-  if (value5.deviceType === "vacuum") {
-    const value7 = value6.find(
-      (value8) =>
-        entityDomain(value8) === "select" &&
-        (/cleaning_mode/i.test(String(value8.entityId || "")) ||
-          value8.translationKey === "cleaning_mode"),
+  if (context.deviceType === "vacuum") {
+    const cleaningModeEntity = candidates.find(
+      (entity) =>
+        entityDomain(entity) === "select" &&
+        (/cleaning_mode/i.test(String(entity.entityId || "")) ||
+          entity.translationKey === "cleaning_mode"),
     );
-    if (value7?.entityId) {
-      return [value7.entityId];
+    if (cleaningModeEntity?.entityId) {
+      return [cleaningModeEntity.entityId];
     } else {
       return [];
     }
   }
   return [];
 }
-export function relatedEntityLabel(value, value2) {
-  let value3 = String(value2?.name || value2?.originalName || "")
+export function relatedEntityLabel(context, entity) {
+  let label = String(entity?.name || entity?.originalName || "")
     .replace(/\s+/g, " ")
     .trim();
-  const value4 = [
+  const deviceNamePrefixes = [
     ...new Set(
       [
-        value?.source?.originalName,
-        value?.source?.name,
-        value?.primary?.originalName,
-        value?.primary?.name,
+        context?.source?.originalName,
+        context?.source?.name,
+        context?.primary?.originalName,
+        context?.primary?.name,
       ]
-        .map((value5) =>
-          String(value5 || "")
+        .map((name) =>
+          String(name || "")
             .replace(/\s+/g, " ")
             .trim(),
         )
         .filter(Boolean),
     ),
-  ].sort((value5, value6) => value6.length - value5.length);
-  for (const value5 of value4) {
-    while (value3 !== value5 && value3.startsWith(value5 + " ")) {
-      value3 = value3.slice(value5.length).trim();
+  ].sort((left, right) => right.length - left.length);
+  for (const prefix of deviceNamePrefixes) {
+    while (label !== prefix && label.startsWith(prefix + " ")) {
+      label = label.slice(prefix.length).trim();
     }
   }
   return (
-    value3 ||
-    (String(value2?.entityId || "").split(".", 2)[1] || "关联功能").replace(
+    label ||
+    (String(entity?.entityId || "").split(".", 2)[1] || "关联功能").replace(
       /_/g,
       " ",
     )
   );
 }
-export function relatedEntityNeedsConfirmation(value) {
-  if (entityDomain(value) !== "button") {
+export function relatedEntityNeedsConfirmation(entity) {
+  if (entityDomain(entity) !== "button") {
     return false;
   }
-  const value2 = [
-    value?.entityId,
-    value?.name,
-    value?.originalName,
-    value?.translationKey,
+  const searchableText = [
+    entity?.entityId,
+    entity?.name,
+    entity?.originalName,
+    entity?.translationKey,
   ]
-    .map((value3) => String(value3 || ""))
+    .map((part) => String(part || ""))
     .join(" ");
   return /清空|清除|删除|重置|恢复出厂|格式化|解绑|empty|clear|delete|remove|reset|factory|wipe|format|unbind|purge/i.test(
-    value2,
+    searchableText,
   );
 }
-export function relatedEntityOptions(value, value2) {
-  const value3 = value2?.attributes || {};
-  const value4 =
+export function relatedEntityOptions(entity, state) {
+  const attributes = state?.attributes || {};
+  const rawOptions =
     [
-      value3.options,
-      value3.option_list,
-      value?.options,
-      value?.attributes?.options,
-      value?.capabilities?.options,
-    ].find((value7) => Array.isArray(value7)) || [];
-  const value5 = String(value2?.state || "").trim();
-  const value6 = value4
-    .map((value7) => String(value7 ?? "").trim())
+      attributes.options,
+      attributes.option_list,
+      entity?.options,
+      entity?.attributes?.options,
+      entity?.capabilities?.options,
+    ].find((options) => Array.isArray(options)) || [];
+  const currentState = String(state?.state || "").trim();
+  const options = rawOptions
+    .map((option) => String(option ?? "").trim())
     .filter(Boolean);
-  if (value5 && !["unknown", "unavailable"].includes(value5.toLowerCase())) {
-    value6.push(value5);
+  if (
+    currentState &&
+    !["unknown", "unavailable"].includes(currentState.toLowerCase())
+  ) {
+    options.push(currentState);
   }
-  return [...new Set(value6)];
+  return [...new Set(options)];
 }
-export function relatedEntitySelectService(value) {
-  const domain = typeof value == "string" ? value : entityDomain(value);
+export function relatedEntitySelectService(entityOrDomain) {
+  const domain =
+    typeof entityOrDomain == "string"
+      ? entityOrDomain
+      : entityDomain(entityOrDomain);
   if (["select", "input_select"].includes(domain)) {
     return {
       domain: domain,
@@ -427,36 +459,45 @@ export function relatedEntitySelectService(value) {
   }
 }
 export function selectedRelatedEntities(
-  value,
-  value2 = new Map(),
-  value3 = new Map(),
-  value4 = new Map(),
+  component,
+  entityMetadata = new Map(),
+  deviceMetadata = new Map(),
+  states = new Map(),
 ) {
-  const value5 = selectedRelatedEntityIds(value);
-  if (value5 === null) {
+  const selectedIds = selectedRelatedEntityIds(component);
+  if (selectedIds === null) {
     return null;
   }
-  const value6 = relatedPopupContext(value, value2, value3, value4);
-  const value7 = relatedPopupSelectionLimit(value6);
-  const index2 = new Map(
-    relatedPopupCandidates(value, value2, value3, value4).map((value10) => [
-      value10.entityId,
-      value10,
-    ]),
+  const context = relatedPopupContext(
+    component,
+    entityMetadata,
+    deviceMetadata,
+    states,
   );
-  const value9 = value5.map((value10) => index2.get(value10)).filter(Boolean);
-  if (value7 > 0) {
-    return value9.slice(0, value7);
+  const selectionLimit = relatedPopupSelectionLimit(context);
+  const candidatesById = new Map(
+    relatedPopupCandidates(
+      component,
+      entityMetadata,
+      deviceMetadata,
+      states,
+    ).map((entity) => [entity.entityId, entity]),
+  );
+  const selected = selectedIds
+    .map((entityId) => candidatesById.get(entityId))
+    .filter(Boolean);
+  if (selectionLimit > 0) {
+    return selected.slice(0, selectionLimit);
   } else {
-    return value9;
+    return selected;
   }
 }
-export function manualRelatedEntityConfig(value = []) {
+export function manualRelatedEntityConfig(entityIds = []) {
   return {
     mode: RELATED_ENTITY_MODE_SELECTED,
     entityIds: [
       ...new Set(
-        value.map((value2) => String(value2 || "").trim()).filter(Boolean),
+        entityIds.map((entityId) => String(entityId || "").trim()).filter(Boolean),
       ),
     ],
   };

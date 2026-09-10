@@ -1,58 +1,58 @@
-function readState(value) {
-  return value?.newState || value || null;
+function readState(record) {
+  return record?.newState || record || null;
 }
-function entitySearchText(value = {}) {
+function entitySearchText(metadata = {}) {
   return (
-    (value.entityId || "") +
+    (metadata.entityId || "") +
     " " +
-    (value.name || "") +
+    (metadata.name || "") +
     " " +
-    (value.originalName || "") +
+    (metadata.originalName || "") +
     " " +
-    (value.translationKey || "")
+    (metadata.translationKey || "")
   ).trim();
 }
-function fn2(value, value2 = "s") {
-  const value3 = readState(value) || {};
-  const numeric = Number(value3.state);
+function durationSecondsFromState(record, defaultUnit = "s") {
+  const state = readState(record) || {};
+  const numeric = Number(state.state);
   if (!Number.isFinite(numeric) || numeric < 0) {
     return null;
   }
-  const value4 = String(value3.attributes?.unit_of_measurement || value2)
+  const unit = String(state.attributes?.unit_of_measurement || defaultUnit)
     .trim()
     .toLowerCase();
-  if (["min", "minute", "minutes", "分钟"].includes(value4)) {
+  if (["min", "minute", "minutes", "分钟"].includes(unit)) {
     return numeric * 60;
-  } else if (["h", "hr", "hour", "hours", "小时"].includes(value4)) {
+  } else if (["h", "hr", "hour", "hours", "小时"].includes(unit)) {
     return numeric * 3600;
   } else {
     return numeric;
   }
 }
-function fn3(value, value2) {
-  const value3 = value?.get?.(value2);
-  if (!value3?.deviceId) {
+function findCompanionSensors(entityMetadata, entityId) {
+  const metadata = entityMetadata?.get?.(entityId);
+  if (!metadata?.deviceId) {
     return {
       timeout: null,
       noMotion: null,
     };
   }
-  const value4 = [...value.values()].filter(
-    (value5) =>
-      value5.deviceId === value3.deviceId &&
-      value5.domain === "sensor" &&
-      value5.status !== "missing" &&
-      !value5.disabledBy,
+  const siblings = [...entityMetadata.values()].filter(
+    (entry) =>
+      entry.deviceId === metadata.deviceId &&
+      entry.domain === "sensor" &&
+      entry.status !== "missing" &&
+      !entry.disabledBy,
   );
   const timeout =
-    value4.find((value5) =>
+    siblings.find((entry) =>
       /custom[_ -]?no[_ -]?motion[_ -]?time|no[_ -]?motion[_ -]?timeout|自定义超时无人移动时间/i.test(
-        entitySearchText(value5),
+        entitySearchText(entry),
       ),
     ) || null;
   const noMotion =
-    value4.find((value5) =>
-      /no[_ -]?motion[_ -]?duration|无移动状态持续时间/i.test(entitySearchText(value5)),
+    siblings.find((entry) =>
+      /no[_ -]?motion[_ -]?duration|无移动状态持续时间/i.test(entitySearchText(entry)),
     ) || null;
   return {
     timeout: timeout,
@@ -61,25 +61,25 @@ function fn3(value, value2) {
 }
 export function presenceMotionEventConfig(
   entityId,
-  value = null,
-  value2 = new Map(),
-  value3 = new Map(),
-  value4 = {},
+  stateRecord = null,
+  entityMetadata = new Map(),
+  states = new Map(),
+  options = {},
 ) {
-  const value5 = value2?.get?.(entityId) || {};
-  const value6 = readState(value) || {};
-  const value7 =
+  const metadata = entityMetadata?.get?.(entityId) || {};
+  const state = readState(stateRecord) || {};
+  const searchText =
     entitySearchText({
-      ...value5,
+      ...metadata,
       entityId: entityId,
     }) +
     " " +
-    (value6.attributes?.device_class || "") +
+    (state.attributes?.device_class || "") +
     " " +
-    (value6.attributes?.event_type || "");
+    (state.attributes?.event_type || "");
   if (
     !String(entityId || "").startsWith("event.") ||
-    !/motion|occupancy|presence|pir|moving|移动|运动|人体|有人/i.test(value7)
+    !/motion|occupancy|presence|pir|moving|移动|运动|人体|有人/i.test(searchText)
   ) {
     return {
       entityId: entityId,
@@ -90,44 +90,44 @@ export function presenceMotionEventConfig(
       companionEntityIds: [],
     };
   }
-  const value8 = fn3(value2, entityId);
-  const numeric = Number(value4.motionTimeoutSeconds);
-  const value9 = value8.timeout?.entityId
-    ? value3?.get?.(value8.timeout.entityId)
+  const companions = findCompanionSensors(entityMetadata, entityId);
+  const configuredTimeout = Number(options.motionTimeoutSeconds);
+  const timeoutState = companions.timeout?.entityId
+    ? states?.get?.(companions.timeout.entityId)
     : null;
-  const value10 = fn2(value9, "min");
+  const timeoutSeconds = durationSecondsFromState(timeoutState, "min");
   const motionTimeoutSeconds = Math.max(
     1,
     Math.min(
       3600,
-      Number.isFinite(value10) && value10 > 0
-        ? value10
-        : Number.isFinite(numeric) && numeric > 0
-          ? numeric
+      Number.isFinite(timeoutSeconds) && timeoutSeconds > 0
+        ? timeoutSeconds
+        : Number.isFinite(configuredTimeout) && configuredTimeout > 0
+          ? configuredTimeout
           : 60,
     ),
   );
-  const value11 = value8.noMotion?.entityId
-    ? value3?.get?.(value8.noMotion.entityId)
+  const noMotionState = companions.noMotion?.entityId
+    ? states?.get?.(companions.noMotion.entityId)
     : null;
   return {
     entityId: entityId,
     motionEvent: true,
     motionTimeoutSeconds: motionTimeoutSeconds,
-    noMotionSeconds: fn2(value11),
-    noMotionStateTimestamp: presenceStateTimestamp(value11),
+    noMotionSeconds: durationSecondsFromState(noMotionState),
+    noMotionStateTimestamp: presenceStateTimestamp(noMotionState),
     companionEntityIds: [
-      value8.timeout?.entityId,
-      value8.noMotion?.entityId,
+      companions.timeout?.entityId,
+      companions.noMotion?.entityId,
     ].filter(Boolean),
   };
 }
 export function presenceSensorPresentation(
-  value,
-  value2 = "auto",
-  value3 = {},
+  stateRecord,
+  override = "auto",
+  options = {},
 ) {
-  if (value2 === "on") {
+  if (override === "on") {
     return {
       key: "occupied",
       label: "有人",
@@ -135,7 +135,7 @@ export function presenceSensorPresentation(
       available: true,
     };
   }
-  if (value2 === "off") {
+  if (override === "off") {
     return {
       key: "clear",
       label: "无人",
@@ -143,8 +143,8 @@ export function presenceSensorPresentation(
       available: true,
     };
   }
-  const value4 = readState(value);
-  if (!value4) {
+  const state = readState(stateRecord);
+  if (!state) {
     return {
       key: "unknown",
       label: "未知",
@@ -152,10 +152,10 @@ export function presenceSensorPresentation(
       available: false,
     };
   }
-  const value5 = String(value4.state ?? "")
+  const stateValue = String(state.state ?? "")
     .trim()
     .toLowerCase();
-  if (value5 === "unavailable") {
+  if (stateValue === "unavailable") {
     return {
       key: "unavailable",
       label: "离线",
@@ -164,10 +164,10 @@ export function presenceSensorPresentation(
     };
   }
   if (
-    !value5 ||
-    value5 === "unknown" ||
-    value5 === "none" ||
-    value5 === "null"
+    !stateValue ||
+    stateValue === "unknown" ||
+    stateValue === "none" ||
+    stateValue === "null"
   ) {
     return {
       key: "unknown",
@@ -177,15 +177,15 @@ export function presenceSensorPresentation(
     };
   }
   if (
-    value3.motionEvent ||
-    String(value3.entityId || "").startsWith("event.")
+    options.motionEvent ||
+    String(options.entityId || "").startsWith("event.")
   ) {
-    const value6 = String(value4.attributes?.event_type || "")
+    const eventType = String(state.attributes?.event_type || "")
       .trim()
       .toLowerCase();
     if (
       /no[_ -]?motion|motion[_ -]?(?:clear|ended)|clear|inactive|vacant|absent|not[_ -]?detected|无人|无移动|未检测到(?:移动|人体)/i.test(
-        value6,
+        eventType,
       )
     ) {
       return {
@@ -195,22 +195,24 @@ export function presenceSensorPresentation(
         available: true,
       };
     }
-    const value7 = presenceStateTimestamp(value4);
-    const value8 = Number.isFinite(Number(value3.now))
-      ? Number(value3.now)
+    const changedAt = presenceStateTimestamp(state);
+    const now = Number.isFinite(Number(options.now))
+      ? Number(options.now)
       : Date.now();
-    const count = Math.max(1, Number(value3.motionTimeoutSeconds) || 60);
-    const value9 = Number.isFinite(value7) ? value8 - value7 : null;
-    const numeric2 = Number(value3.noMotionSeconds);
-    const numeric3 = Number(value3.noMotionStateTimestamp);
-    const value10 =
-      Number.isFinite(numeric2) &&
-      (!Number.isFinite(value7) ||
-        !Number.isFinite(numeric3) ||
-        numeric3 >= value7);
+    const timeoutMs = Math.max(1, Number(options.motionTimeoutSeconds) || 60);
+    const ageMs = Number.isFinite(changedAt) ? now - changedAt : null;
+    const noMotionSeconds = Number(options.noMotionSeconds);
+    const noMotionStateTimestamp = Number(options.noMotionStateTimestamp);
+    const noMotionIsCurrent =
+      Number.isFinite(noMotionSeconds) &&
+      (!Number.isFinite(changedAt) ||
+        !Number.isFinite(noMotionStateTimestamp) ||
+        noMotionStateTimestamp >= changedAt);
     if (
-      (value6 ? !value10 || numeric2 < count : Number.isFinite(value7)) &&
-      (value9 === null || (value9 >= 0 && value9 <= count * 1000))
+      (eventType
+        ? !noMotionIsCurrent || noMotionSeconds < timeoutMs
+        : Number.isFinite(changedAt)) &&
+      (ageMs === null || (ageMs >= 0 && ageMs <= timeoutMs * 1000))
     ) {
       return {
         key: "occupied",
@@ -236,7 +238,7 @@ export function presenceSensorPresentation(
       "presence",
       "occupied",
       "detected",
-    ].includes(value5)
+    ].includes(stateValue)
   ) {
     return {
       key: "occupied",
@@ -255,7 +257,7 @@ export function presenceSensorPresentation(
       "clear",
       "empty",
       "vacant",
-    ].includes(value5)
+    ].includes(stateValue)
   ) {
     return {
       key: "clear",
@@ -264,7 +266,7 @@ export function presenceSensorPresentation(
       available: true,
     };
   }
-  const numeric = Number(value5);
+  const numeric = Number(stateValue);
   if (Number.isFinite(numeric)) {
     if (numeric > 0) {
       return {
@@ -290,90 +292,90 @@ export function presenceSensorPresentation(
     };
   }
 }
-export function presenceStateTimestamp(value) {
-  const value2 = readState(value) || {};
-  const value3 =
-    value2.lastChanged ||
-    value2.last_changed ||
-    value2.updatedAt ||
-    value2.lastUpdated ||
-    value2.last_updated ||
-    value2.state ||
+export function presenceStateTimestamp(record) {
+  const state = readState(record) || {};
+  const raw =
+    state.lastChanged ||
+    state.last_changed ||
+    state.updatedAt ||
+    state.lastUpdated ||
+    state.last_updated ||
+    state.state ||
     "";
-  const value4 = Date.parse(value3);
-  if (Number.isFinite(value4)) {
-    return value4;
+  const parsed = Date.parse(raw);
+  if (Number.isFinite(parsed)) {
+    return parsed;
   } else {
     return null;
   }
 }
 export function presenceAnimationPhase(
-  value,
-  value2 = {},
-  value3 = Date.now(),
+  stateRecord,
+  durations = {},
+  now = Date.now(),
 ) {
-  const value4 = presenceStateTimestamp(value);
-  const value5 = Number.isFinite(value4)
-    ? Math.max(0, Number(value3) - value4)
+  const changedAt = presenceStateTimestamp(stateRecord);
+  const elapsedMs = Number.isFinite(changedAt)
+    ? Math.max(0, Number(now) - changedAt)
     : 0;
-  const fn4 = (value6, value7) => {
-    const value8 = Math.max(0.001, Number(value6) || value7) * 1000;
-    const rounded = Math.round(value5 % value8);
-    if (rounded > 0) {
-      return "-" + rounded + "ms";
+  const animationDelay = (seconds, fallbackSeconds) => {
+    const periodMs = Math.max(0.001, Number(seconds) || fallbackSeconds) * 1000;
+    const offsetMs = Math.round(elapsedMs % periodMs);
+    if (offsetMs > 0) {
+      return "-" + offsetMs + "ms";
     } else {
       return "0ms";
     }
   };
   return {
-    orbitDelay: fn4(value2.orbit, 8),
-    waveDelay: fn4(value2.wave, 2.62),
-    floorDelay: fn4(value2.floor, 2.8),
-    stepDelay: fn4(value2.step, 0.72),
+    orbitDelay: animationDelay(durations.orbit, 8),
+    waveDelay: animationDelay(durations.wave, 2.62),
+    floorDelay: animationDelay(durations.floor, 2.8),
+    stepDelay: animationDelay(durations.step, 0.72),
   };
 }
-export function formatPresenceDuration(component, fallback = Date.now()) {
-  const numeric = Number(component);
+export function formatPresenceDuration(sinceTimestamp, now = Date.now()) {
+  const numeric = Number(sinceTimestamp);
   if (!Number.isFinite(numeric)) {
     return "--";
   }
-  const count = Math.max(0, Math.floor((Number(fallback) - numeric) / 1000));
-  if (count < 60) {
+  const totalSeconds = Math.max(0, Math.floor((Number(now) - numeric) / 1000));
+  if (totalSeconds < 60) {
     return "刚刚";
   }
-  const value2 = Math.floor(count / 60);
-  if (value2 < 60) {
-    return value2 + " 分钟";
+  const totalMinutes = Math.floor(totalSeconds / 60);
+  if (totalMinutes < 60) {
+    return totalMinutes + " 分钟";
   }
-  const value3 = Math.floor(value2 / 60);
-  if (value3 < 24) {
-    const value6 = value2 % 60;
-    if (value6) {
-      return value3 + " 小时 " + value6 + " 分钟";
+  const totalHours = Math.floor(totalMinutes / 60);
+  if (totalHours < 24) {
+    const remainingMinutes = totalMinutes % 60;
+    if (remainingMinutes) {
+      return totalHours + " 小时 " + remainingMinutes + " 分钟";
     } else {
-      return value3 + " 小时";
+      return totalHours + " 小时";
     }
   }
-  const value4 = Math.floor(value3 / 24);
-  const value5 = value3 % 24;
-  if (value5) {
-    return value4 + " 天 " + value5 + " 小时";
+  const totalDays = Math.floor(totalHours / 24);
+  const remainingHours = totalHours % 24;
+  if (remainingHours) {
+    return totalDays + " 天 " + remainingHours + " 小时";
   } else {
-    return value4 + " 天";
+    return totalDays + " 天";
   }
 }
 export function presenceHistoryBuckets(
-  value = [],
-  value2 = null,
-  value3 = Date.now(),
-  value4 = 24,
-  value5 = 48,
-  value6 = {},
+  history = [],
+  currentState = null,
+  nowMs = Date.now(),
+  hours = 24,
+  bucketCount = 48,
+  options = {},
 ) {
-  const now = Number(value3);
-  const value7 = Math.max(1, Number(value4) || 24) * 60 * 60 * 1000;
-  const value8 = now - value7;
-  const value9 = (Array.isArray(value) ? value : [])
+  const now = Number(nowMs);
+  const windowMs = Math.max(1, Number(hours) || 24) * 60 * 60 * 1000;
+  const windowStart = now - windowMs;
+  const samples = (Array.isArray(history) ? history : [])
     .map((element) => ({
       timestamp: Date.parse(element?.timestamp),
       state: {
@@ -381,41 +383,41 @@ export function presenceHistoryBuckets(
         lastChanged: element?.timestamp,
       },
     }))
-    .filter((value13) => Number.isFinite(value13.timestamp))
-    .sort((value13, value14) => value13.timestamp - value14.timestamp);
-  const timestamp = presenceStateTimestamp(value2);
-  if (value2 && Number.isFinite(timestamp)) {
-    value9.push({
+    .filter((sample) => Number.isFinite(sample.timestamp))
+    .sort((a, b) => a.timestamp - b.timestamp);
+  const timestamp = presenceStateTimestamp(currentState);
+  if (currentState && Number.isFinite(timestamp)) {
+    samples.push({
       timestamp: timestamp,
-      state: readState(value2),
+      state: readState(currentState),
     });
   }
-  value9.sort((value13, value14) => value13.timestamp - value14.timestamp);
-  const value10 = [];
-  const count = Math.max(1, Math.min(288, Math.round(Number(value5) || 48)));
-  let value11 = 0;
-  let value12 = null;
-  for (let value13 = 0; value13 < count; value13 += 1) {
-    const now2 = value8 + (value7 * (value13 + 1)) / count;
-    while (value11 < value9.length && value9[value11].timestamp <= now2) {
-      value12 = value9[value11];
-      value11 += 1;
+  samples.sort((a, b) => a.timestamp - b.timestamp);
+  const buckets = [];
+  const count = Math.max(1, Math.min(288, Math.round(Number(bucketCount) || 48)));
+  let sampleIndex = 0;
+  let latestSample = null;
+  for (let bucketIndex = 0; bucketIndex < count; bucketIndex += 1) {
+    const bucketEnd = windowStart + (windowMs * (bucketIndex + 1)) / count;
+    while (sampleIndex < samples.length && samples[sampleIndex].timestamp <= bucketEnd) {
+      latestSample = samples[sampleIndex];
+      sampleIndex += 1;
     }
-    const value14 = value12 || value9[value11] || null;
-    value10.push(
-      presenceSensorPresentation(value14?.state, "auto", {
-        ...value6,
-        now: now2,
+    const sample = latestSample || samples[sampleIndex] || null;
+    buckets.push(
+      presenceSensorPresentation(sample?.state, "auto", {
+        ...options,
+        now: bucketEnd,
         noMotionSeconds: null,
         noMotionStateTimestamp: null,
       }).key,
     );
   }
-  if (value2 && value10.length) {
-    value10[value10.length - 1] = presenceSensorPresentation(value2, "auto", {
-      ...value6,
+  if (currentState && buckets.length) {
+    buckets[buckets.length - 1] = presenceSensorPresentation(currentState, "auto", {
+      ...options,
       now: now,
     }).key;
   }
-  return value10;
+  return buckets;
 }

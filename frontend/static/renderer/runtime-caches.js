@@ -1,19 +1,19 @@
 const MAX_HISTORY_CACHE_ENTRIES = 512;
 export const HISTORY_FETCH_TIMEOUT_MS = 12000;
-export function historySeriesCacheKey(value, value2) {
-  return String(value || "") + ":" + (Number(value2) || 0);
+export function historySeriesCacheKey(entityKey, hours) {
+  return String(entityKey || "") + ":" + (Number(hours) || 0);
 }
-export function cacheHistorySeries(value, value2, value3) {
-  if (!!Array.isArray(value3?.points) && value3.points.length !== 0) {
+export function cacheHistorySeries(cache, entityKey, series) {
+  if (!!Array.isArray(series?.points) && series.points.length !== 0) {
     for (
-      value.set(historySeriesCacheKey(value2, value3.hours), value3);
-      value.size > 512;
+      cache.set(historySeriesCacheKey(entityKey, series.hours), series);
+      cache.size > 512;
     ) {
-      const value4 = value.keys().next().value;
-      if (!value4) {
+      const oldestKey = cache.keys().next().value;
+      if (!oldestKey) {
         break;
       }
-      value.delete(value4);
+      cache.delete(oldestKey);
     }
   }
 }
@@ -24,20 +24,20 @@ export class HistoryRefreshCoordinator {
     this.pendingKey = null;
     this.pendingRun = null;
   }
-  request(value, value2) {
+  request(key, run) {
     if (this.running) {
-      if (value === this.currentKey) {
+      if (key === this.currentKey) {
         this.pendingKey = null;
         this.pendingRun = null;
-      } else if (value !== this.pendingKey) {
-        this.pendingKey = value;
-        this.pendingRun = value2;
+      } else if (key !== this.pendingKey) {
+        this.pendingKey = key;
+        this.pendingRun = run;
       }
       return this.running;
     }
-    this.pendingKey = value;
-    this.pendingRun = value2;
-    const fn = async () => {
+    this.pendingKey = key;
+    this.pendingRun = run;
+    const runQueue = async () => {
       while (this.pendingRun) {
         const pendingRun = this.pendingRun;
         this.currentKey = this.pendingKey;
@@ -46,7 +46,7 @@ export class HistoryRefreshCoordinator {
         await pendingRun();
       }
     };
-    this.running = fn().finally(() => {
+    this.running = runQueue().finally(() => {
       this.running = null;
       this.currentKey = null;
     });
@@ -55,22 +55,22 @@ export class HistoryRefreshCoordinator {
 }
 export class RuntimeStaticImageCache {
   constructor({
-    maxConcurrent: value = 2,
-    maxDecoded: value2 = 32,
-    idleDelay: value3 = 120,
-    loadTimeout: value4 = 15000,
-    createImage: value5 = () => new Image(),
-    setTimer: value6 = (setTimer, setTimer2) =>
-      globalThis.setTimeout(setTimer, setTimer2),
-    clearTimer: value7 = (clearTimer) => globalThis.clearTimeout(clearTimer),
+    maxConcurrent: maxConcurrent = 2,
+    maxDecoded: maxDecoded = 32,
+    idleDelay: idleDelay = 120,
+    loadTimeout: loadTimeout = 15000,
+    createImage: createImage = () => new Image(),
+    setTimer: setTimer = (callback, delayMs) =>
+      globalThis.setTimeout(callback, delayMs),
+    clearTimer: clearTimer = (timerId) => globalThis.clearTimeout(timerId),
   } = {}) {
-    this.maxConcurrent = Math.max(1, Number(value) || 1);
-    this.maxDecoded = Math.max(1, Number(value2) || 1);
-    this.idleDelay = Math.max(0, Number(value3) || 0);
-    this.loadTimeout = Math.max(1000, Number(value4) || 15000);
-    this.createImage = value5;
-    this.setTimer = value6;
-    this.clearTimer = value7;
+    this.maxConcurrent = Math.max(1, Number(maxConcurrent) || 1);
+    this.maxDecoded = Math.max(1, Number(maxDecoded) || 1);
+    this.idleDelay = Math.max(0, Number(idleDelay) || 0);
+    this.loadTimeout = Math.max(1000, Number(loadTimeout) || 15000);
+    this.createImage = createImage;
+    this.setTimer = setTimer;
+    this.clearTimer = clearTimer;
     this.desiredSources = new Set();
     this.prioritySources = new Set();
     this.loadedSources = new Set();
@@ -82,92 +82,92 @@ export class RuntimeStaticImageCache {
     this.sequence = 0;
     this.stopped = false;
   }
-  setSources(value = [], value2 = []) {
+  setSources(sources = [], priority = []) {
     if (!this.stopped) {
       this.desiredSources = new Set(
-        (value || []).map((value3) => String(value3 || "")).filter(Boolean),
+        (sources || []).map((source) => String(source || "")).filter(Boolean),
       );
       this.prioritySources = new Set(
-        (value2 || [])
-          .map((value3) => String(value3 || ""))
-          .filter((value3) => this.desiredSources.has(value3)),
+        (priority || [])
+          .map((source) => String(source || ""))
+          .filter((source) => this.desiredSources.has(source)),
       );
-      this.queue = this.queue.filter(({ source: value3 }) =>
-        this.desiredSources.has(value3),
+      this.queue = this.queue.filter(({ source }) =>
+        this.desiredSources.has(source),
       );
-      for (const [value3, { image: value4, cancel: fn }] of [
+      for (const [source, { image, cancel: cancelLoad }] of [
         ...this.activeLoads,
       ]) {
-        if (!this.desiredSources.has(value3)) {
-          value4.removeAttribute?.("src");
-          fn();
+        if (!this.desiredSources.has(source)) {
+          image.removeAttribute?.("src");
+          cancelLoad();
         }
       }
-      for (const value3 of [...this.loadedSources]) {
-        if (!this.desiredSources.has(value3)) {
-          this.loadedSources.delete(value3);
+      for (const source of [...this.loadedSources]) {
+        if (!this.desiredSources.has(source)) {
+          this.loadedSources.delete(source);
         }
       }
-      for (const value3 of [...this.decodedImages.keys()]) {
-        if (!this.desiredSources.has(value3)) {
-          this.decodedImages.delete(value3);
+      for (const source of [...this.decodedImages.keys()]) {
+        if (!this.desiredSources.has(source)) {
+          this.decodedImages.delete(source);
         }
       }
-      for (const value3 of this.prioritySources) {
-        if (this.decodedImages.has(value3)) {
-          const value4 = this.decodedImages.get(value3);
-          this.decodedImages.delete(value3);
-          this.decodedImages.set(value3, value4);
+      for (const source of this.prioritySources) {
+        if (this.decodedImages.has(source)) {
+          const image = this.decodedImages.get(source);
+          this.decodedImages.delete(source);
+          this.decodedImages.set(source, image);
         } else {
-          this.enqueue(value3, {
+          this.enqueue(source, {
             active: true,
           });
         }
       }
-      for (const value3 of this.desiredSources) {
-        this.enqueue(value3);
+      for (const source of this.desiredSources) {
+        this.enqueue(source);
       }
       this.trimDecodedImages();
     }
   }
-  enqueue(value, { active: value2 = false } = {}) {
-    const source = String(value || "");
+  enqueue(rawSource, { active = false } = {}) {
+    const source = String(rawSource || "");
     if (
       this.stopped ||
       !source ||
       !this.desiredSources.has(source) ||
       this.decodedImages.has(source) ||
       this.activeLoads.has(source) ||
-      (this.loadedSources.has(source) && !value2)
+      (this.loadedSources.has(source) && !active)
     ) {
       return false;
     }
-    const value3 = this.queue.find((value4) => value4.source === source);
-    if (value3) {
-      value3.active = value3.active || !!value2;
-      this.schedule(value3.active ? 0 : this.idleDelay);
+    const existing = this.queue.find((item) => item.source === source);
+    if (existing) {
+      existing.active = existing.active || !!active;
+      this.schedule(existing.active ? 0 : this.idleDelay);
       return false;
     } else {
       this.queue.push({
         source: source,
-        active: !!value2,
+        active: !!active,
         sequence: this.sequence++,
       });
-      this.schedule(value2 ? 0 : this.idleDelay);
+      this.schedule(active ? 0 : this.idleDelay);
       return true;
     }
   }
-  schedule(value = 0) {
+  schedule(delay = 0) {
     if (this.stopped) {
       return;
     }
-    const count = Math.max(0, Number(value) || 0);
-    const value2 = Date.now() + count;
-    if (this.timer === null || !(value2 >= this.timerDueAt)) {
+    const count = Math.max(0, Number(delay) || 0);
+    const dueAt = Date.now() + count;
+    if (this.timer === null || !(dueAt >= this.timerDueAt)) {
       if (this.timer !== null) {
         this.clearTimer(this.timer);
       }
-      this.timerDueAt = value2;
+      this.timerDueAt = dueAt;
       this.timer = this.setTimer(() => {
         this.timer = null;
         this.timerDueAt = 0;
@@ -179,99 +179,99 @@ export class RuntimeStaticImageCache {
     if (!this.stopped) {
       for (
         this.queue.sort(
-          (value, value2) =>
-            Number(value2.active) - Number(value.active) ||
-            value.sequence - value2.sequence,
+          (left, right) =>
+            Number(right.active) - Number(left.active) ||
+            left.sequence - right.sequence,
         );
         this.activeLoads.size < this.maxConcurrent && this.queue.length;
       ) {
-        const value = this.queue.shift();
+        const item = this.queue.shift();
         if (
-          !!this.desiredSources.has(value.source) &&
-          !this.decodedImages.has(value.source)
+          !!this.desiredSources.has(item.source) &&
+          !this.decodedImages.has(item.source)
         ) {
-          this.start(value);
+          this.start(item);
         }
       }
     }
   }
-  start({ source: value, active: value2 }) {
-    if (this.stopped || !value) {
+  start({ source, active }) {
+    if (this.stopped || !source) {
       return;
     }
     const image = this.createImage();
-    let value3 = false;
-    let value4 = false;
-    let value5 = null;
-    const fn = (value8) => {
-      if (!value3) {
-        value3 = true;
-        if (value5 !== null) {
-          this.clearTimer(value5);
+    let settled = false;
+    let loadHandled = false;
+    let timeoutId = null;
+    const finish = (success) => {
+      if (!settled) {
+        settled = true;
+        if (timeoutId !== null) {
+          this.clearTimer(timeoutId);
         }
-        image.removeEventListener?.("load", value6);
-        image.removeEventListener?.("error", value7);
-        this.activeLoads.delete(value);
-        if (value8 && this.desiredSources.has(value)) {
-          this.loadedSources.add(value);
-          this.decodedImages.delete(value);
-          this.decodedImages.set(value, image);
+        image.removeEventListener?.("load", onLoad);
+        image.removeEventListener?.("error", onError);
+        this.activeLoads.delete(source);
+        if (success && this.desiredSources.has(source)) {
+          this.loadedSources.add(source);
+          this.decodedImages.delete(source);
+          this.decodedImages.set(source, image);
           this.trimDecodedImages();
         }
         this.drain();
       }
     };
-    const value6 = () => {
-      if (value4) {
+    const onLoad = () => {
+      if (loadHandled) {
         return;
       }
-      value4 = true;
-      let value8 = null;
+      loadHandled = true;
+      let decodePromise = null;
       try {
-        value8 = typeof image.decode == "function" ? image.decode() : null;
+        decodePromise = typeof image.decode == "function" ? image.decode() : null;
       } catch {
-        value8 = null;
+        decodePromise = null;
       }
-      if (value8?.then) {
-        Promise.resolve(value8)
+      if (decodePromise?.then) {
+        Promise.resolve(decodePromise)
           .catch(() => {})
-          .finally(() => fn(true));
+          .finally(() => finish(true));
       } else {
-        fn(true);
+        finish(true);
       }
     };
-    const value7 = () => fn(false);
+    const onError = () => finish(false);
     image.decoding = "async";
-    image.fetchPriority = value2 ? "high" : "low";
-    image.addEventListener?.("load", value6, {
+    image.fetchPriority = active ? "high" : "low";
+    image.addEventListener?.("load", onLoad, {
       once: true,
     });
-    image.addEventListener?.("error", value7, {
+    image.addEventListener?.("error", onError, {
       once: true,
     });
-    this.activeLoads.set(value, {
+    this.activeLoads.set(source, {
       image: image,
-      cancel: () => fn(false),
+      cancel: () => finish(false),
     });
-    image.src = value;
-    value5 = this.setTimer(() => {
+    image.src = source;
+    timeoutId = this.setTimer(() => {
       image.removeAttribute?.("src");
-      fn(false);
+      finish(false);
     }, this.loadTimeout);
     if (image.complete && Number(image.naturalWidth || 0) > 0) {
-      Promise.resolve().then(value6);
+      Promise.resolve().then(onLoad);
     }
   }
   trimDecodedImages() {
     while (this.decodedImages.size > this.maxDecoded) {
-      const value =
+      const evictionKey =
         [...this.decodedImages.keys()].find(
-          (value2) => !this.prioritySources.has(value2),
+          (key) => !this.prioritySources.has(key),
         ) || this.decodedImages.keys().next().value;
-      if (!value) {
+      if (!evictionKey) {
         break;
       }
-      this.decodedImages.delete(value);
+      this.decodedImages.delete(evictionKey);
     }
   }
   reset() {
@@ -285,9 +285,9 @@ export class RuntimeStaticImageCache {
     this.timer = null;
     this.timerDueAt = 0;
     this.queue.length = 0;
-    for (const { image: value, cancel: fn } of [...this.activeLoads.values()]) {
-      value.removeAttribute?.("src");
-      fn();
+    for (const { image, cancel: cancelLoad } of [...this.activeLoads.values()]) {
+      image.removeAttribute?.("src");
+      cancelLoad();
     }
     this.activeLoads.clear();
     this.desiredSources.clear();
@@ -298,18 +298,18 @@ export class RuntimeStaticImageCache {
 }
 export class RuntimeEffectImageLoader {
   constructor({
-    maxConcurrent: value = 4,
-    idleDelay: value2 = 160,
-    loadTimeout: value3 = 15000,
-    setTimer: value4 = (setTimer, setTimer2) =>
-      globalThis.setTimeout(setTimer, setTimer2),
-    clearTimer: value5 = (clearTimer) => globalThis.clearTimeout(clearTimer),
+    maxConcurrent: maxConcurrent = 4,
+    idleDelay: idleDelay = 160,
+    loadTimeout: loadTimeout = 15000,
+    setTimer: setTimer = (callback, delayMs) =>
+      globalThis.setTimeout(callback, delayMs),
+    clearTimer: clearTimer = (timerId) => globalThis.clearTimeout(timerId),
   } = {}) {
-    this.maxConcurrent = Math.max(1, Number(value) || 1);
-    this.idleDelay = Math.max(0, Number(value2) || 0);
-    this.loadTimeout = Math.max(1000, Number(value3) || 15000);
-    this.setTimer = value4;
-    this.clearTimer = value5;
+    this.maxConcurrent = Math.max(1, Number(maxConcurrent) || 1);
+    this.idleDelay = Math.max(0, Number(idleDelay) || 0);
+    this.loadTimeout = Math.max(1000, Number(loadTimeout) || 15000);
+    this.setTimer = setTimer;
+    this.clearTimer = clearTimer;
     this.queue = [];
     this.inFlight = 0;
     this.sequence = 0;
@@ -319,8 +319,8 @@ export class RuntimeEffectImageLoader {
     this.loadedSources = new Set();
     this.stopped = false;
   }
-  enqueue(image, value, { active: value2 = false } = {}) {
-    const source = String(value || "");
+  enqueue(image, rawSource, { active = false } = {}) {
+    const source = String(rawSource || "");
     if (this.stopped || !image || !source) {
       return;
     }
@@ -336,36 +336,36 @@ export class RuntimeEffectImageLoader {
       image.src = source;
       return;
     }
-    const value3 = this.queue.find(
-      (value4) => value4.image === image && value4.source === source,
+    const existing = this.queue.find(
+      (item) => item.image === image && item.source === source,
     );
-    if (value3) {
-      value3.active = value3.active || !!value2;
+    if (existing) {
+      existing.active = existing.active || !!active;
     } else {
       this.queue.push({
         image: image,
         source: source,
-        active: !!value2,
+        active: !!active,
         sequence: this.sequence++,
       });
     }
-    if (value2) {
+    if (active) {
       this.drain(true);
     } else {
       this.schedule(this.idleDelay);
     }
   }
-  schedule(value = 0) {
+  schedule(delay = 0) {
     if (this.stopped) {
       return;
     }
-    const count = Math.max(0, Number(value) || 0);
-    const value2 = Date.now() + count;
-    if (this.timer === null || !(value2 >= this.timerDueAt)) {
+    const count = Math.max(0, Number(delay) || 0);
+    const dueAt = Date.now() + count;
+    if (this.timer === null || !(dueAt >= this.timerDueAt)) {
       if (this.timer !== null) {
         this.clearTimer(this.timer);
       }
-      this.timerDueAt = value2;
+      this.timerDueAt = dueAt;
       this.timer = this.setTimer(() => {
         this.timer = null;
         this.timerDueAt = 0;
@@ -373,102 +373,102 @@ export class RuntimeEffectImageLoader {
       }, count);
     }
   }
-  drain(value = false) {
+  drain(activeOnly = false) {
     if (!this.stopped) {
       for (
         this.queue.sort(
-          (value2, value3) =>
-            Number(value3.active) - Number(value2.active) ||
-            value2.sequence - value3.sequence,
+          (left, right) =>
+            Number(right.active) - Number(left.active) ||
+            left.sequence - right.sequence,
         );
         this.inFlight < this.maxConcurrent;
       ) {
-        const value2 = this.queue.findIndex(
-          ({ image: value4, source: value5, active: value6 }) =>
-            value4 &&
-            value4.dataset?.effectPendingSource === value5 &&
-            !value4.dataset?.effectLoadingSource &&
-            (!value || value6) &&
-            (value4.isConnected === undefined || value4.isConnected),
+        const index = this.queue.findIndex(
+          ({ image, source, active }) =>
+            image &&
+            image.dataset?.effectPendingSource === source &&
+            !image.dataset?.effectLoadingSource &&
+            (!activeOnly || active) &&
+            (image.isConnected === undefined || image.isConnected),
         );
-        if (value2 < 0) {
+        if (index < 0) {
           break;
         }
-        const [value3] = this.queue.splice(value2, 1);
-        this.start(value3);
+        const [item] = this.queue.splice(index, 1);
+        this.start(item);
       }
     }
   }
-  start({ image: value, source: value2 }) {
+  start({ image, source }) {
     if (
       this.stopped ||
-      !value ||
-      value.dataset?.effectPendingSource !== value2
+      !image ||
+      image.dataset?.effectPendingSource !== source
     ) {
       return;
     }
     this.inFlight += 1;
-    value.dataset.effectLoadingSource = value2;
-    let value3 = false;
-    let value4 = null;
-    const fn = (value7) => {
-      if (!value3) {
-        value3 = true;
-        if (value4 !== null) {
-          this.clearTimer(value4);
+    image.dataset.effectLoadingSource = source;
+    let settled = false;
+    let timeoutId = null;
+    const finish = (success) => {
+      if (!settled) {
+        settled = true;
+        if (timeoutId !== null) {
+          this.clearTimer(timeoutId);
         }
-        value.removeEventListener?.("load", value5);
-        value.removeEventListener?.("error", value6);
-        this.activeLoads.delete(value);
-        if (value.dataset?.effectLoadingSource === value2) {
-          delete value.dataset.effectLoadingSource;
+        image.removeEventListener?.("load", onLoad);
+        image.removeEventListener?.("error", onError);
+        this.activeLoads.delete(image);
+        if (image.dataset?.effectLoadingSource === source) {
+          delete image.dataset.effectLoadingSource;
         }
-        if (value7 && value.dataset?.effectPendingSource === value2) {
-          value.dataset.effectLoadedSource = value2;
-          delete value.dataset.effectPendingSource;
-          this.loadedSources.add(value2);
+        if (success && image.dataset?.effectPendingSource === source) {
+          image.dataset.effectLoadedSource = source;
+          delete image.dataset.effectPendingSource;
+          this.loadedSources.add(source);
         }
         this.inFlight = Math.max(0, this.inFlight - 1);
         this.drain();
       }
     };
-    const value5 = () => fn(true);
-    const value6 = () => fn(false);
-    value.addEventListener?.("load", value5, {
+    const onLoad = () => finish(true);
+    const onError = () => finish(false);
+    image.addEventListener?.("load", onLoad, {
       once: true,
     });
-    value.addEventListener?.("error", value6, {
+    image.addEventListener?.("error", onError, {
       once: true,
     });
-    this.activeLoads.set(value, () => fn(false));
-    value.src = value2;
-    value4 = this.setTimer(() => {
-      value.removeAttribute?.("src");
-      fn(false);
+    this.activeLoads.set(image, () => finish(false));
+    image.src = source;
+    timeoutId = this.setTimer(() => {
+      image.removeAttribute?.("src");
+      finish(false);
     }, this.loadTimeout);
-    if (value.complete && Number(value.naturalWidth || 0) > 0) {
-      Promise.resolve().then(value5);
+    if (image.complete && Number(image.naturalWidth || 0) > 0) {
+      Promise.resolve().then(onLoad);
     }
   }
-  promote(value) {
-    const value2 =
-      value?.dataset?.effectPendingSource || value?.dataset?.effectSource || "";
-    if (value2) {
-      this.enqueue(value, value2, {
+  promote(image) {
+    const source =
+      image?.dataset?.effectPendingSource || image?.dataset?.effectSource || "";
+    if (source) {
+      this.enqueue(image, source, {
         active: true,
       });
     }
   }
   pruneDisconnected() {
     this.queue = this.queue.filter(
-      ({ image: value, source: value2 }) =>
-        value &&
-        value.dataset?.effectPendingSource === value2 &&
-        (value.isConnected === undefined || value.isConnected),
+      ({ image, source }) =>
+        image &&
+        image.dataset?.effectPendingSource === source &&
+        (image.isConnected === undefined || image.isConnected),
     );
-    for (const [value, fn] of [...this.activeLoads]) {
-      if (value.isConnected === false) {
-        fn();
+    for (const [image, cancelLoad] of [...this.activeLoads]) {
+      if (image.isConnected === false) {
+        cancelLoad();
       }
     }
   }
@@ -491,8 +491,8 @@ export class RuntimeEffectImageLoader {
     this.timer = null;
     this.timerDueAt = 0;
     this.queue.length = 0;
-    for (const fn of [...this.activeLoads.values()]) {
-      fn();
+    for (const cancelLoad of [...this.activeLoads.values()]) {
+      cancelLoad();
     }
     this.activeLoads.clear();
     this.inFlight = 0;
@@ -501,15 +501,15 @@ export class RuntimeEffectImageLoader {
 }
 export class RuntimeVacuumMapImagePreloader {
   constructor({
-    maxConcurrent: value = 1,
-    retryDelay: value2 = 15000,
-    createImage: value3 = () => new Image(),
-    now: value4 = () => Date.now(),
+    maxConcurrent: maxConcurrent = 1,
+    retryDelay: retryDelay = 15000,
+    createImage: createImage = () => new Image(),
+    now: now = () => Date.now(),
   } = {}) {
-    this.maxConcurrent = Math.max(1, Number(value) || 1);
-    this.retryDelay = Math.max(1000, Number(value2) || 15000);
-    this.createImage = value3;
-    this.now = value4;
+    this.maxConcurrent = Math.max(1, Number(maxConcurrent) || 1);
+    this.retryDelay = Math.max(1000, Number(retryDelay) || 15000);
+    this.createImage = createImage;
+    this.now = now;
     this.queue = [];
     this.queuedSources = new Set();
     this.loadedSources = new Set();
@@ -518,8 +518,8 @@ export class RuntimeVacuumMapImagePreloader {
     this.activeLoads = new Map();
     this.stopped = false;
   }
-  enqueue(value) {
-    const source = String(value || "");
+  enqueue(rawSource) {
+    const source = String(rawSource || "");
     const key = source.split("?", 1)[0];
     if (
       this.stopped ||
@@ -534,15 +534,15 @@ export class RuntimeVacuumMapImagePreloader {
     if (numeric && this.now() - numeric < this.retryDelay) {
       return false;
     }
-    for (const value3 of this.failedAt.keys()) {
-      if (value3 !== source && value3.split("?", 1)[0] === key) {
-        this.failedAt.delete(value3);
+    for (const failedSource of this.failedAt.keys()) {
+      if (failedSource !== source && failedSource.split("?", 1)[0] === key) {
+        this.failedAt.delete(failedSource);
       }
     }
-    const value2 = this.queue.findIndex((value3) => value3.key === key);
-    if (value2 >= 0) {
-      this.queuedSources.delete(this.queue[value2].source);
-      this.queue[value2] = {
+    const existingIndex = this.queue.findIndex((item) => item.key === key);
+    if (existingIndex >= 0) {
+      this.queuedSources.delete(this.queue[existingIndex].source);
+      this.queue[existingIndex] = {
         key: key,
         source: source,
       };
@@ -559,55 +559,55 @@ export class RuntimeVacuumMapImagePreloader {
   drain() {
     if (!this.stopped) {
       while (this.activeLoads.size < this.maxConcurrent && this.queue.length) {
-        const { key: value, source: value2 } = this.queue.shift();
-        this.queuedSources.delete(value2);
-        this.start(value, value2);
+        const { key, source } = this.queue.shift();
+        this.queuedSources.delete(source);
+        this.start(key, source);
       }
     }
   }
-  start(value, value2) {
-    if (this.stopped || !value2) {
+  start(key, source) {
+    if (this.stopped || !source) {
       return;
     }
     const image = this.createImage();
-    let value3 = false;
-    const fn = (value6) => {
-      if (!value3) {
-        value3 = true;
-        image.removeEventListener?.("load", value4);
-        image.removeEventListener?.("error", value5);
-        this.activeLoads.delete(value2);
-        if (value6) {
-          const value7 = this.loadedSourceByKey.get(value);
-          if (value7 && value7 !== value2) {
-            this.loadedSources.delete(value7);
+    let settled = false;
+    const finish = (success) => {
+      if (!settled) {
+        settled = true;
+        image.removeEventListener?.("load", onLoad);
+        image.removeEventListener?.("error", onError);
+        this.activeLoads.delete(source);
+        if (success) {
+          const previousSource = this.loadedSourceByKey.get(key);
+          if (previousSource && previousSource !== source) {
+            this.loadedSources.delete(previousSource);
           }
-          this.loadedSourceByKey.set(value, value2);
-          this.loadedSources.add(value2);
-          this.failedAt.delete(value2);
+          this.loadedSourceByKey.set(key, source);
+          this.loadedSources.add(source);
+          this.failedAt.delete(source);
         } else {
-          this.failedAt.set(value2, this.now());
+          this.failedAt.set(source, this.now());
         }
         this.drain();
       }
     };
-    const value4 = () => fn(true);
-    const value5 = () => fn(false);
+    const onLoad = () => finish(true);
+    const onError = () => finish(false);
     image.decoding = "async";
     image.fetchPriority = "low";
-    image.addEventListener?.("load", value4, {
+    image.addEventListener?.("load", onLoad, {
       once: true,
     });
-    image.addEventListener?.("error", value5, {
+    image.addEventListener?.("error", onError, {
       once: true,
     });
-    this.activeLoads.set(value2, {
+    this.activeLoads.set(source, {
       image: image,
-      cancel: () => fn(false),
+      cancel: () => finish(false),
     });
-    image.src = value2;
+    image.src = source;
     if (image.complete && Number(image.naturalWidth || 0) > 0) {
-      Promise.resolve().then(value4);
+      Promise.resolve().then(onLoad);
     }
   }
   reset() {
@@ -620,9 +620,9 @@ export class RuntimeVacuumMapImagePreloader {
     this.stopped = true;
     this.queue.length = 0;
     this.queuedSources.clear();
-    for (const { image: value, cancel: fn } of [...this.activeLoads.values()]) {
-      value.removeAttribute?.("src");
-      fn();
+    for (const { image, cancel: cancelLoad } of [...this.activeLoads.values()]) {
+      image.removeAttribute?.("src");
+      cancelLoad();
     }
     this.activeLoads.clear();
     this.loadedSources.clear();
@@ -630,19 +630,19 @@ export class RuntimeVacuumMapImagePreloader {
     this.failedAt.clear();
   }
 }
-export function historyRequestStillRelevant(value, value2) {
-  if (value.documentGeneration !== value2.documentGeneration) {
+export function historyRequestStillRelevant(request, current) {
+  if (request.documentGeneration !== current.documentGeneration) {
     return false;
   } else if (
-    value.shared ||
-    (value.pagePath !== null && value.pagePath === value2.pagePath)
+    request.shared ||
+    (request.pagePath !== null && request.pagePath === current.pagePath)
   ) {
     return true;
   } else {
     return (
-      value.popupId !== null &&
-      value.popupId === value2.popupId &&
-      value.popupGeneration === value2.popupGeneration
+      request.popupId !== null &&
+      request.popupId === current.popupId &&
+      request.popupGeneration === current.popupGeneration
     );
   }
 }

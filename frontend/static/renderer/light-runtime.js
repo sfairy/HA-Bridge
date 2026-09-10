@@ -1,35 +1,39 @@
-export function relativeLightColorTemperature(value, value2, value3) {
-  const numeric = Number(value);
-  const numeric2 = Number(value2);
-  const value4 = Math.max(0, Math.min(100, Number(value3) || 0)) / 100;
+export function relativeLightColorTemperature(minKelvin, maxKelvin, percent) {
+  const minimum = Number(minKelvin);
+  const maximum = Number(maxKelvin);
+  const ratio = Math.max(0, Math.min(100, Number(percent) || 0)) / 100;
   if (
-    !Number.isFinite(numeric) ||
-    !Number.isFinite(numeric2) ||
-    numeric2 <= numeric
+    !Number.isFinite(minimum) ||
+    !Number.isFinite(maximum) ||
+    maximum <= minimum
   ) {
-    if (Number.isFinite(numeric)) {
-      return numeric;
+    if (Number.isFinite(minimum)) {
+      return minimum;
     } else {
       return 2700;
     }
   } else {
-    return numeric + (numeric2 - numeric) * value4;
+    return minimum + (maximum - minimum) * ratio;
   }
 }
-export function lightVisualValueForCapability(value, value2, value3) {
-  const numeric = Number(value2);
-  if (value && Number.isFinite(numeric)) {
+export function lightVisualValueForCapability(
+  supported,
+  realtimeValue,
+  fallbackValue,
+) {
+  const numeric = Number(realtimeValue);
+  if (supported && Number.isFinite(numeric)) {
     return numeric;
   } else {
-    return Number(value3);
+    return Number(fallbackValue);
   }
 }
-const bag = new Set(["hs", "rgb", "rgbw", "rgbww", "xy"]);
-function parseSupportedColorModes(value = {}) {
-  const list = Array.isArray(value?.supported_color_modes)
-    ? value.supported_color_modes
-        .map((value2) =>
-          String(value2 || "")
+const COLOR_MODES = new Set(["hs", "rgb", "rgbw", "rgbww", "xy"]);
+function parseSupportedColorModes(attributes = {}) {
+  const list = Array.isArray(attributes?.supported_color_modes)
+    ? attributes.supported_color_modes
+        .map((mode) =>
+          String(mode || "")
             .trim()
             .toLowerCase(),
         )
@@ -38,132 +42,134 @@ function parseSupportedColorModes(value = {}) {
   if (list.length) {
     return list;
   } else if (
-    Array.isArray(value?.hs_color) ||
-    Array.isArray(value?.rgb_color)
+    Array.isArray(attributes?.hs_color) ||
+    Array.isArray(attributes?.rgb_color)
   ) {
     return ["hs"];
   } else {
     return list;
   }
 }
-export function lightSupportsColor(value = {}) {
-  return parseSupportedColorModes(value).some((value2) => bag.has(value2));
+export function lightSupportsColor(attributes = {}) {
+  return parseSupportedColorModes(attributes).some((mode) =>
+    COLOR_MODES.has(mode),
+  );
 }
-export function lightRealtimeCapabilities(value = "", value2 = {}) {
-  const metadata = value2?.newState || value2 || {};
-  const value4 = metadata?.attributes || {};
-  const value5 =
-    String(value || metadata.entityId || metadata.domain || "").split(
+export function lightRealtimeCapabilities(entityId = "", entityOrEvent = {}) {
+  const stateEntry = entityOrEvent?.newState || entityOrEvent || {};
+  const attributes = stateEntry?.attributes || {};
+  const isLight =
+    String(entityId || stateEntry.entityId || stateEntry.domain || "").split(
       ".",
       1,
     )[0] === "light";
-  const list = Array.isArray(value4.supported_color_modes)
-    ? value4.supported_color_modes
+  const supportedModes = Array.isArray(attributes.supported_color_modes)
+    ? attributes.supported_color_modes
     : [];
-  const numeric = Number(value4.supported_features || 0);
-  const fn2 = (value6) =>
-    value4[value6] !== null &&
-    value4[value6] !== undefined &&
-    Number.isFinite(Number(value4[value6]));
+  const supportedFeatures = Number(attributes.supported_features || 0);
+  const hasFiniteAttribute = (key) =>
+    attributes[key] !== null &&
+    attributes[key] !== undefined &&
+    Number.isFinite(Number(attributes[key]));
   return {
     brightness:
-      value5 &&
-      (fn2("brightness") ||
-        list.some((value6) => value6 !== "onoff") ||
-        (numeric & 1) === 1),
+      isLight &&
+      (hasFiniteAttribute("brightness") ||
+        supportedModes.some((mode) => mode !== "onoff") ||
+        (supportedFeatures & 1) === 1),
     colorTemperature:
-      value5 &&
-      (list.includes("color_temp") ||
-        fn2("color_temp_kelvin") ||
-        fn2("min_color_temp_kelvin") ||
-        fn2("max_color_temp_kelvin") ||
-        fn2("color_temp") ||
-        (numeric & 2) === 2),
+      isLight &&
+      (supportedModes.includes("color_temp") ||
+        hasFiniteAttribute("color_temp_kelvin") ||
+        hasFiniteAttribute("min_color_temp_kelvin") ||
+        hasFiniteAttribute("max_color_temp_kelvin") ||
+        hasFiniteAttribute("color_temp") ||
+        (supportedFeatures & 2) === 2),
   };
 }
-export function rgbToHsColor(value) {
-  if (!Array.isArray(value) || value.length < 3) {
+export function rgbToHsColor(rgb) {
+  if (!Array.isArray(rgb) || rgb.length < 3) {
     return null;
   }
-  const value2 = value
+  const channels = rgb
     .slice(0, 3)
-    .map((value7) => Math.max(0, Math.min(255, Number(value7) || 0)) / 255);
-  const count = Math.max(...value2);
-  const value3 = Math.min(...value2);
-  const value4 = count - value3;
-  let value5 = 0;
-  if (value4 > 0) {
-    if (count === value2[0]) {
-      value5 = (((value2[1] - value2[2]) / value4) % 6) * 60;
-    } else if (count === value2[1]) {
-      value5 = ((value2[2] - value2[0]) / value4 + 2) * 60;
+    .map((channel) => Math.max(0, Math.min(255, Number(channel) || 0)) / 255);
+  const max = Math.max(...channels);
+  const min = Math.min(...channels);
+  const delta = max - min;
+  let hue = 0;
+  if (delta > 0) {
+    if (max === channels[0]) {
+      hue = (((channels[1] - channels[2]) / delta) % 6) * 60;
+    } else if (max === channels[1]) {
+      hue = ((channels[2] - channels[0]) / delta + 2) * 60;
     } else {
-      value5 = ((value2[0] - value2[1]) / value4 + 4) * 60;
+      hue = ((channels[0] - channels[1]) / delta + 4) * 60;
     }
   }
-  if (value5 < 0) {
-    value5 += 360;
+  if (hue < 0) {
+    hue += 360;
   }
-  const value6 = count <= 0 ? 0 : value4 / count;
-  return [value5, value6 * 100];
+  const saturation = max <= 0 ? 0 : delta / max;
+  return [hue, saturation * 100];
 }
-export function hsToRgbColor(value) {
-  if (!Array.isArray(value) || value.length < 2) {
+export function hsToRgbColor(hs) {
+  if (!Array.isArray(hs) || hs.length < 2) {
     return null;
   }
-  const value2 = (((Number(value[0]) || 0) % 360) + 360) % 360;
-  const value3 = Math.max(0, Math.min(100, Number(value[1]) || 0)) / 100;
-  const value4 = 1;
-  const value5 = value4 * value3;
-  const value6 = value2 / 60;
-  const value7 = value5 * (1 - Math.abs((value6 % 2) - 1));
-  const value8 = value4 - value5;
-  const [value9, value10, value11] =
-    value6 < 1
-      ? [value5, value7, 0]
-      : value6 < 2
-        ? [value7, value5, 0]
-        : value6 < 3
-          ? [0, value5, value7]
-          : value6 < 4
-            ? [0, value7, value5]
-            : value6 < 5
-              ? [value7, 0, value5]
-              : [value5, 0, value7];
-  return [value9, value10, value11].map((value12) =>
-    Math.round((value12 + value8) * 255),
+  const hue = (((Number(hs[0]) || 0) % 360) + 360) % 360;
+  const saturation = Math.max(0, Math.min(100, Number(hs[1]) || 0)) / 100;
+  const value = 1;
+  const chroma = value * saturation;
+  const sector = hue / 60;
+  const secondary = chroma * (1 - Math.abs((sector % 2) - 1));
+  const match = value - chroma;
+  const [red, green, blue] =
+    sector < 1
+      ? [chroma, secondary, 0]
+      : sector < 2
+        ? [secondary, chroma, 0]
+        : sector < 3
+          ? [0, chroma, secondary]
+          : sector < 4
+            ? [0, secondary, chroma]
+            : sector < 5
+              ? [secondary, 0, chroma]
+              : [chroma, 0, secondary];
+  return [red, green, blue].map((channel) =>
+    Math.round((channel + match) * 255),
   );
 }
-export function lightColorPickerHsFromPoint(value, value2) {
-  const count = Math.max(0, Math.min(1, Number(value) || 0));
-  const count2 = Math.max(0, Math.min(1, Number(value2) || 0));
-  const value3 = count - 0.5;
-  const value4 = count2 - 0.5;
-  const value5 = Math.min(1, Math.hypot(value3 / 0.36, value4 / 0.36));
+export function lightColorPickerHsFromPoint(x, y) {
+  const normalizedX = Math.max(0, Math.min(1, Number(x) || 0));
+  const normalizedY = Math.max(0, Math.min(1, Number(y) || 0));
+  const offsetX = normalizedX - 0.5;
+  const offsetY = normalizedY - 0.5;
+  const saturation = Math.min(1, Math.hypot(offsetX / 0.36, offsetY / 0.36));
   return [
-    ((((Math.atan2(value4, value3) * 180) / Math.PI + 360) % 360) + 90) % 360,
-    value5 * 100,
+    ((((Math.atan2(offsetY, offsetX) * 180) / Math.PI + 360) % 360) + 90) % 360,
+    saturation * 100,
   ];
 }
-export function lightColorPickerPointFromHs(value) {
-  const value2 = (((Number(value?.[0]) || 0) % 360) + 360) % 360;
-  const value3 = Math.max(0, Math.min(100, Number(value?.[1]) || 0)) / 100;
-  const value4 = ((value2 - 90) * Math.PI) / 180;
+export function lightColorPickerPointFromHs(hs) {
+  const hue = (((Number(hs?.[0]) || 0) % 360) + 360) % 360;
+  const saturation = Math.max(0, Math.min(100, Number(hs?.[1]) || 0)) / 100;
+  const radians = ((hue - 90) * Math.PI) / 180;
   return {
-    x: Math.max(0, Math.min(1, 0.5 + Math.cos(value4) * value3 * 0.36)),
-    y: Math.max(0, Math.min(1, 0.5 + Math.sin(value4) * value3 * 0.36)),
+    x: Math.max(0, Math.min(1, 0.5 + Math.cos(radians) * saturation * 0.36)),
+    y: Math.max(0, Math.min(1, 0.5 + Math.sin(radians) * saturation * 0.36)),
   };
 }
-export function lightColorServiceData(value, value2) {
-  const value3 = parseSupportedColorModes(value);
+export function lightColorServiceData(attributes, hs) {
+  const supportedModes = parseSupportedColorModes(attributes);
   const hs_color = [
-    Math.round((((Number(value2?.[0]) || 0) % 360) + 360) % 360),
-    Math.round(Math.max(0, Math.min(100, Number(value2?.[1]) || 0))),
+    Math.round((((Number(hs?.[0]) || 0) % 360) + 360) % 360),
+    Math.round(Math.max(0, Math.min(100, Number(hs?.[1]) || 0))),
   ];
   if (
-    value3.includes("hs") ||
-    value3.includes("xy") ||
-    !value3.includes("rgb")
+    supportedModes.includes("hs") ||
+    supportedModes.includes("xy") ||
+    !supportedModes.includes("rgb")
   ) {
     return {
       hs_color: hs_color,
@@ -176,10 +182,10 @@ export function lightColorServiceData(value, value2) {
 }
 export const UNSUPPORTED_LIGHT_VISUAL_TEMPERATURE_KELVIN = 4600;
 export const UNSUPPORTED_LIGHT_VISUAL_BRIGHTNESS_PERCENT = 100;
-export function lightPresetBrightnessServiceData(value) {
+export function lightPresetBrightnessServiceData(percent) {
   const brightness_pct = Math.max(
     1,
-    Math.min(100, Math.round(Number(value) || 1)),
+    Math.min(100, Math.round(Number(percent) || 1)),
   );
   if (brightness_pct === 100) {
     return {
@@ -214,22 +220,25 @@ export const LIGHT_DETAIL_PRESET_DEFINITIONS = Object.freeze([
 export const LIGHT_PRESET_MINIMUM_HOLD_MS = 8000;
 export const LIGHT_PRESET_STABLE_CONFIRMATION_MS = 1200;
 export const LIGHT_PRESET_MAXIMUM_HOLD_MS = 12000;
-export function lightPresetPendingDecision(value, value2 = Date.now()) {
-  if (!value) {
+export function lightPresetPendingDecision(pending, now = Date.now()) {
+  if (!pending) {
     return "idle";
   }
-  const value3 = Number(value2) || 0;
-  if (value3 >= Number(value.expiresAt || 0)) {
+  const timestamp = Number(now) || 0;
+  if (timestamp >= Number(pending.expiresAt || 0)) {
     return "timeout";
   }
-  if (!value.latestMatches || !Number.isFinite(Number(value.matchStartedAt))) {
+  if (
+    !pending.latestMatches ||
+    !Number.isFinite(Number(pending.matchStartedAt))
+  ) {
     return "hold";
   }
-  const value4 = value3 >= Number(value.minimumHoldUntil || 0);
-  const value5 =
-    value3 - Number(value.matchStartedAt) >=
+  const heldLongEnough = timestamp >= Number(pending.minimumHoldUntil || 0);
+  const stableLongEnough =
+    timestamp - Number(pending.matchStartedAt) >=
     LIGHT_PRESET_STABLE_CONFIRMATION_MS;
-  if (value4 && value5) {
+  if (heldLongEnough && stableLongEnough) {
     return "confirmed";
   } else {
     return "hold";

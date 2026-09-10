@@ -1,6 +1,6 @@
 import { newId } from "./editor-utils.js?v=20260831-editor-utils-v1";
 export function componentLabel(component) {
-  const value =
+  const typeLabel =
     component.type === "image"
       ? "图片"
       : component.type === "time"
@@ -41,112 +41,112 @@ export function componentLabel(component) {
                                           ? "3D 交互"
                                           : component.type;
   const instanceName = component.properties?.instanceName;
-  const value2 =
+  const legacyStatisticsMatch =
     component.type === "light-statistics"
       ? /^(?:灯光统计|开灯统计)(_副本\d*)?$/.exec(String(instanceName || ""))
       : null;
-  const value3 =
+  const resolvedName =
     (component.type === "light-statistics" ||
       component.type === "interaction3d") &&
     instanceName === "图片"
-      ? value
-      : value2
-        ? "" + value + (value2[1] || "")
+      ? typeLabel
+      : legacyStatisticsMatch
+        ? "" + typeLabel + (legacyStatisticsMatch[1] || "")
         : (component.type === "vacuum-map" && instanceName === "扫地机地图") ||
             (component.type === "camera" && instanceName === "摄像头画面")
-          ? value
+          ? typeLabel
           : instanceName;
   return (
     component.properties?.label ||
-    value3 ||
+    resolvedName ||
     component.properties?.title ||
-    value
+    typeLabel
   );
 }
-export function nextTemplateInstanceName(value, value2) {
-  const allowed = new Set(
-    (value || []).map((value5) => componentLabel(value5)),
+export function nextTemplateInstanceName(components, baseName) {
+  const usedNames = new Set(
+    (components || []).map((component) => componentLabel(component)),
   );
-  if (!allowed.has(value2)) {
-    return value2;
+  if (!usedNames.has(baseName)) {
+    return baseName;
   }
-  let value3 = value2 + "_副本";
-  let value4 = 2;
-  while (allowed.has(value3)) {
-    value3 = value2 + "_副本" + value4;
-    value4 += 1;
+  let candidate = baseName + "_副本";
+  let suffix = 2;
+  while (usedNames.has(candidate)) {
+    candidate = baseName + "_副本" + suffix;
+    suffix += 1;
   }
-  return value3;
+  return candidate;
 }
-export function groupNameForCollection(value, value2 = "组合") {
-  const allowed = new Set(
-    (value || []).map((value4) => componentLabel(value4)),
+export function groupNameForCollection(components, baseName = "组合") {
+  const usedNames = new Set(
+    (components || []).map((component) => componentLabel(component)),
   );
-  if (!allowed.has(value2)) {
-    return value2;
+  if (!usedNames.has(baseName)) {
+    return baseName;
   }
-  let value3 = 2;
-  while (allowed.has(value2 + " " + value3)) {
-    value3 += 1;
+  let suffix = 2;
+  while (usedNames.has(baseName + " " + suffix)) {
+    suffix += 1;
   }
-  return value2 + " " + value3;
+  return baseName + " " + suffix;
 }
-export function refreshComponentIds(value, value2 = null) {
-  value.id = value2 || newId("component");
-  for (const value3 of value.children || []) {
-    refreshComponentIds(value3);
+export function refreshComponentIds(component, forcedId = null) {
+  component.id = forcedId || newId("component");
+  for (const child of component.children || []) {
+    refreshComponentIds(child);
   }
-  return value;
+  return component;
 }
-export function copiedComponentLabel(value, value2) {
-  const value3 =
-    String(componentLabel(value) || "控件")
+export function copiedComponentLabel(component, siblings) {
+  const baseLabel =
+    String(componentLabel(component) || "控件")
       .trim()
       .replace(/_副本\d*$/, "") || "控件";
-  const allowed = new Set(
-    (value2 || []).map((value6) => String(componentLabel(value6)).trim()),
+  const usedNames = new Set(
+    (siblings || []).map((sibling) => String(componentLabel(sibling)).trim()),
   );
-  let value4 = value3 + "_副本";
-  let value5 = 2;
-  while (allowed.has(value4)) {
-    value4 = value3 + "_副本" + value5;
-    value5 += 1;
+  let candidate = baseLabel + "_副本";
+  let suffix = 2;
+  while (usedNames.has(candidate)) {
+    candidate = baseLabel + "_副本" + suffix;
+    suffix += 1;
   }
-  return value4;
+  return candidate;
 }
-export function applyCollectionLayerOrder(value) {
-  for (let value2 = 0; value2 < (value || []).length; value2 += 1) {
-    const value3 = value[value2];
-    value3.position = {
-      ...(value3.position || {}),
-      zIndex: value.length - value2,
+export function applyCollectionLayerOrder(components) {
+  for (let index = 0; index < (components || []).length; index += 1) {
+    const component = components[index];
+    component.position = {
+      ...(component.position || {}),
+      zIndex: components.length - index,
     };
   }
 }
 export function syncSharedComponentReferenceOrder(document) {
-  const value2 = (document.sharedComponents || []).map((value3) => value3.id);
-  for (const value3 of document.pages || []) {
-    const allowed = new Set(value3.sharedComponentIds || []);
-    value3.sharedComponentIds = value2.filter((value4) => allowed.has(value4));
+  const sharedIds = (document.sharedComponents || []).map(
+    (component) => component.id,
+  );
+  for (const page of document.pages || []) {
+    const referenced = new Set(page.sharedComponentIds || []);
+    page.sharedComponentIds = sharedIds.filter((id) => referenced.has(id));
   }
 }
-export function ensureSharedComponentReference(document, value2, value3) {
-  const value4 = (document?.pages || []).find(
-    (value7) => value7.path === value3,
+export function ensureSharedComponentReference(document, componentId, pagePath) {
+  const page = (document?.pages || []).find((entry) => entry.path === pagePath);
+  const sharedExists = (document?.sharedComponents || []).some(
+    (component) => component.id === componentId,
   );
-  const value5 = (document?.sharedComponents || []).some(
-    (value7) => value7.id === value2,
-  );
-  if (!value4 || !value5) {
+  if (!page || !sharedExists) {
     return false;
   }
-  const value6 = value4.sharedComponentIds || [];
-  if (value6.includes(value2)) {
+  const existingIds = page.sharedComponentIds || [];
+  if (existingIds.includes(componentId)) {
     return false;
   } else {
-    value4.sharedComponentIds = [
-      value2,
-      ...value6.filter((value7) => value7 !== value2),
+    page.sharedComponentIds = [
+      componentId,
+      ...existingIds.filter((id) => id !== componentId),
     ];
     return true;
   }
