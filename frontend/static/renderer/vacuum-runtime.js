@@ -7,7 +7,7 @@ const VACUUM_FEATURE_BITS = Object.freeze({
   return_to_base: 16,
   locate: 512,
   clean_spot: 1024,
-  start: 8192,
+  start: 8192
 });
 export function vacuumSupportedActions(state) {
   const supportedFeatures = state?.attributes?.supported_features;
@@ -42,17 +42,9 @@ export function vacuumSupportedActions(state) {
 export function vacuumActionService(state, action) {
   const bits = Number(state?.attributes?.supported_features);
   if (Number.isFinite(bits)) {
-    if (
-      action === "start" &&
-      !(bits & VACUUM_FEATURE_BITS.start) &&
-      bits & VACUUM_FEATURE_BITS.turn_on
-    ) {
+    if (action === "start" && !(bits & VACUUM_FEATURE_BITS.start) && bits & VACUUM_FEATURE_BITS.turn_on) {
       return "turn_on";
-    } else if (
-      action === "stop" &&
-      !(bits & VACUUM_FEATURE_BITS.stop) &&
-      bits & VACUUM_FEATURE_BITS.turn_off
-    ) {
+    } else if (action === "stop" && !(bits & VACUUM_FEATURE_BITS.stop) && bits & VACUUM_FEATURE_BITS.turn_off) {
       return "turn_off";
     } else {
       return action;
@@ -77,11 +69,7 @@ function batteryPercent(value) {
 }
 export function vacuumBatteryPercent(state, batteryState = null) {
   const attributes = entityState(state)?.attributes || {};
-  for (const field of [
-    attributes.battery_level,
-    attributes.battery_percentage,
-    attributes.battery,
-  ]) {
+  for (const field of [attributes.battery_level, attributes.battery_percentage, attributes.battery]) {
     const percent = batteryPercent(field);
     if (percent !== null) {
       return percent;
@@ -91,78 +79,39 @@ export function vacuumBatteryPercent(state, batteryState = null) {
 }
 export function relatedVacuumBatteryEntity(catalog, states, entityId) {
   const vacuum = catalog.get(entityId);
-  return (
-    (vacuum?.deviceId &&
-      [...catalog.values()]
-        .filter(
-          (item) =>
-            item.deviceId === vacuum.deviceId &&
-            item.domain === "sensor" &&
-            entityMetadataIsAvailable(item),
-        )
-        .map((item) => {
-          const state = entityState(states.get(item.entityId));
-          const attributes = state?.attributes || {};
-          const haystack = (
-            (item.entityId || "") +
-            " " +
-            (item.name || "") +
-            " " +
-            (item.originalName || "") +
-            " " +
-            (item.translationKey || "") +
-            " " +
-            (item.icon || "")
-          ).toLowerCase();
-          const deviceClass = String(
-            attributes.device_class || "",
-          ).toLowerCase();
-          const unit = String(attributes.unit_of_measurement || "").trim();
-          let score = 0;
-          if (deviceClass === "battery") {
-            score += 240;
-          }
-          if (String(item.translationKey || "").toLowerCase() === "battery") {
-            score += 210;
-          }
-          if (
-            /(?:^|[._\s-])battery(?:_level|_percentage)?(?:$|[._\s-])|电池电量|剩余电量|电量/.test(
-              haystack,
-            )
-          ) {
-            score += 150;
-          }
-          if (/mdi:battery/.test(haystack)) {
-            score += 60;
-          }
-          if (unit === "%") {
-            score += 25;
-          }
-          if (
-            /filter|brush|mop|consumable|life|尘袋|滤芯|主刷|边刷|拖布|耗材/.test(
-              haystack,
-            )
-          ) {
-            score -= 260;
-          }
-          if (batteryPercent(state?.state) === null) {
-            score -= 40;
-          }
-          return {
-            item,
-            score,
-          };
-        })
-        .filter(({ score }) => score > 0)
-        .sort(
-          (left, right) =>
-            right.score - left.score ||
-            String(left.item.entityId || "").length -
-              String(right.item.entityId || "").length ||
-            String(left.item.entityId || "").localeCompare(
-              String(right.item.entityId || ""),
-            ),
-        )[0]?.item) ||
-    null
-  );
+  return vacuum?.deviceId && [...catalog.values()].filter(item => item.deviceId === vacuum.deviceId && item.domain === "sensor" && entityMetadataIsAvailable(item)).map(item => {
+    const state = entityState(states.get(item.entityId));
+    const attributes = state?.attributes || {};
+    const haystack = ((item.entityId || "") + " " + (item.name || "") + " " + (item.originalName || "") + " " + (item.translationKey || "") + " " + (item.icon || "")).toLowerCase();
+    const deviceClass = String(attributes.device_class || "").toLowerCase();
+    const unit = String(attributes.unit_of_measurement || "").trim();
+    let score = 0;
+    if (deviceClass === "battery") {
+      score += 240;
+    }
+    if (String(item.translationKey || "").toLowerCase() === "battery") {
+      score += 210;
+    }
+    if (/(?:^|[._\s-])battery(?:_level|_percentage)?(?:$|[._\s-])|电池电量|剩余电量|电量/.test(haystack)) {
+      score += 150;
+    }
+    if (/mdi:battery/.test(haystack)) {
+      score += 60;
+    }
+    if (unit === "%") {
+      score += 25;
+    }
+    if (/filter|brush|mop|consumable|life|尘袋|滤芯|主刷|边刷|拖布|耗材/.test(haystack)) {
+      score -= 260;
+    }
+    if (batteryPercent(state?.state) === null) {
+      score -= 40;
+    }
+    return {
+      item,
+      score
+    };
+  }).filter(({
+    score
+  }) => score > 0).sort((left, right) => right.score - left.score || String(left.item.entityId || "").length - String(right.item.entityId || "").length || String(left.item.entityId || "").localeCompare(String(right.item.entityId || "")))[0]?.item || null;
 }

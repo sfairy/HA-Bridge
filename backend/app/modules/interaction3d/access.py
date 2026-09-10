@@ -11,7 +11,8 @@ MAX_GRANT_SECONDS = 15
 
 def allowed(request: Request) -> bool:
     service = request.app.state.license_service
-    return service.allows('editor')
+    # Local leases that grant editor also unlock this BASE_FEATURES module.
+    return service.allows(FEATURE)
 
 
 def require_access(request: Request) -> None:

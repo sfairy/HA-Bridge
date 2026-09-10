@@ -1,12 +1,8 @@
 const patched = new WeakSet();
-
 export function cacheObjectTransforms(root, Object3D) {
   let count = 0;
-  root?.traverse((object) => {
-    if (
-      patched.has(object) ||
-      object.updateMatrix !== Object3D.prototype.updateMatrix
-    ) {
+  root?.traverse(object => {
+    if (patched.has(object) || object.updateMatrix !== Object3D.prototype.updateMatrix) {
       return;
     }
     const originalUpdateMatrix = object.updateMatrix;
@@ -21,19 +17,12 @@ export function cacheObjectTransforms(root, Object3D) {
     let sy;
     let sz;
     object.updateMatrix = function () {
-      const { position, quaternion, scale } = this;
-      if (
-        position.x === px &&
-        position.y === py &&
-        position.z === pz &&
-        quaternion.x === qx &&
-        quaternion.y === qy &&
-        quaternion.z === qz &&
-        quaternion.w === qw &&
-        scale.x === sx &&
-        scale.y === sy &&
-        scale.z === sz
-      ) {
+      const {
+        position,
+        quaternion,
+        scale
+      } = this;
+      if (position.x === px && position.y === py && position.z === pz && quaternion.x === qx && quaternion.y === qy && quaternion.z === qz && quaternion.w === qw && scale.x === sx && scale.y === sy && scale.z === sz) {
         this.matrixWorldNeedsUpdate = true;
         return;
       }

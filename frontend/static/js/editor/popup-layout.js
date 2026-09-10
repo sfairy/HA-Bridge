@@ -16,22 +16,8 @@ export function popupLayoutColumns(popup) {
 }
 export function popupModuleColumnSpan(component) {
   const type = typeof component == "string" ? component : component?.type;
-  const deviceType =
-    typeof component == "object"
-      ? component?.deviceType || component?.properties?.deviceType
-      : "";
-  if (
-    type === "electric-bed" ||
-    deviceType === "electric-bed" ||
-    [
-      "climate",
-      "air-purifier",
-      "water-heater",
-      "media-player",
-      "camera",
-      "line-chart",
-    ].includes(type)
-  ) {
+  const deviceType = typeof component == "object" ? component?.deviceType || component?.properties?.deviceType : "";
+  if (type === "electric-bed" || deviceType === "electric-bed" || ["climate", "air-purifier", "water-heater", "media-player", "camera", "line-chart"].includes(type)) {
     return 2;
   } else {
     return 1;
@@ -53,13 +39,11 @@ function packModulePlacements(modules, columns) {
     const maxRows = Math.max(4, (modules?.length || 0) * 2 + 1);
     for (let row = 0; row < maxRows && !placement; row += 1) {
       for (let column = 0; column <= columns - width; column += 1) {
-        const fits = Array.from({ length: height }, (_, rowOffset) =>
-          Array.from(
-            { length: width },
-            (_, columnOffset) =>
-              !occupied[row + rowOffset]?.[column + columnOffset],
-          ).every(Boolean),
-        ).every(Boolean);
+        const fits = Array.from({
+          length: height
+        }, (_, rowOffset) => Array.from({
+          length: width
+        }, (_, columnOffset) => !occupied[row + rowOffset]?.[column + columnOffset]).every(Boolean)).every(Boolean);
         if (!fits) {
           continue;
         }
@@ -67,7 +51,7 @@ function packModulePlacements(modules, columns) {
           x: column,
           y: row,
           width,
-          height,
+          height
         };
         for (let rowOffset = 0; rowOffset < height; rowOffset += 1) {
           occupied[row + rowOffset] ||= [];
@@ -88,35 +72,23 @@ function packModulePlacements(modules, columns) {
 export function packPopupModules(modules, popup) {
   const columns = popupLayoutColumns(popup);
   const placements = packModulePlacements(modules, columns) || [];
-  const usedRows = Math.max(
-    1,
-    placements.reduce(
-      (maxRow, placement) => Math.max(maxRow, placement.y + placement.height),
-      0,
-    ),
-  );
+  const usedRows = Math.max(1, placements.reduce((maxRow, placement) => Math.max(maxRow, placement.y + placement.height), 0));
   return {
     rows: Math.min(usedRows, 3),
     columns,
     placements,
-    fits: usedRows <= 3,
+    fits: usedRows <= 3
   };
 }
 export function popupLayoutMetrics(modules, popup) {
   const packed = packPopupModules(modules, popup);
-  const gridWidth =
-    GRID_PADDING * 2 +
-    packed.columns * MODULE_WIDTH +
-    (packed.columns - 1) * MODULE_GAP;
-  const gridHeight =
-    GRID_PADDING * 2 +
-    packed.rows * MODULE_HEIGHT +
-    (packed.rows - 1) * MODULE_GAP;
+  const gridWidth = GRID_PADDING * 2 + packed.columns * MODULE_WIDTH + (packed.columns - 1) * MODULE_GAP;
+  const gridHeight = GRID_PADDING * 2 + packed.rows * MODULE_HEIGHT + (packed.rows - 1) * MODULE_GAP;
   return {
     ...packed,
     gridWidth,
     gridHeight,
     popupWidth: gridWidth,
-    popupHeight: POPUP_CHROME + gridHeight,
+    popupHeight: POPUP_CHROME + gridHeight
   };
 }

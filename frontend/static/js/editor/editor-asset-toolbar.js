@@ -1,7 +1,5 @@
 export function editorAssetFolders(assets) {
-  return [...new Set((assets || []).map((asset) => asset.folder).filter(Boolean))].sort(
-    (left, right) => left.localeCompare(right, "zh-CN"),
-  );
+  return [...new Set((assets || []).map(asset => asset.folder).filter(Boolean))].sort((left, right) => left.localeCompare(right, "zh-CN"));
 }
 export function editorAssetSelectedFolder(current, folders) {
   return folders.includes(current) ? current : folders[0] || "";
@@ -15,17 +13,17 @@ export function createEditorAssetToolbar({
   getAssets,
   getUploadInput,
   canDeleteFolder,
-  onDeleteFolder,
+  onDeleteFolder
 }) {
-  return function (kind, { toolbar, controller }) {
+  return function (kind, {
+    toolbar,
+    controller
+  }) {
     const tabs = documentObject.createElement("div");
     tabs.className = "asset-source-tabs";
     tabs.setAttribute("role", "tablist");
     tabs.setAttribute("aria-label", "图片来源");
-    for (const [source, label] of [
-      ["user", "我的图片"],
-      ["builtin", "默认素材"],
-    ]) {
+    for (const [source, label] of [["user", "我的图片"], ["builtin", "默认素材"]]) {
       const tab = documentObject.createElement("button");
       tab.type = "button";
       tab.textContent = label;
@@ -35,7 +33,9 @@ export function createEditorAssetToolbar({
         const folders = editorAssetFolders(getAssets(source));
         setFolder(kind, editorAssetSelectedFolder(getFolder(kind), folders));
         controller.syncAssetToolbar?.();
-        controller.refresh({ resetPage: true });
+        controller.refresh({
+          resetPage: true
+        });
       });
       tabs.append(tab);
     }
@@ -45,7 +45,9 @@ export function createEditorAssetToolbar({
     folderSelect.addEventListener("change", () => {
       setFolder(kind, folderSelect.value);
       controller.syncAssetToolbar?.();
-      controller.refresh({ resetPage: true });
+      controller.refresh({
+        resetPage: true
+      });
     });
     const deleteButton = documentObject.createElement("button");
     deleteButton.type = "button";
@@ -53,9 +55,7 @@ export function createEditorAssetToolbar({
     deleteButton.textContent = "删除";
     deleteButton.setAttribute("aria-label", "删除当前自动导图文件夹");
     deleteButton.title = "删除当前自动导图文件夹";
-    deleteButton.addEventListener("click", () =>
-      onDeleteFolder?.(kind, folderSelect.value),
-    );
+    deleteButton.addEventListener("click", () => onDeleteFolder?.(kind, folderSelect.value));
     const folderRow = documentObject.createElement("div");
     folderRow.className = "editor-paged-picker-folder-row";
     folderRow.append(folderSelect, deleteButton);
@@ -72,11 +72,7 @@ export function createEditorAssetToolbar({
       }
       const folders = editorAssetFolders(getAssets(source));
       const folder = getFolder(kind);
-      folderSelect.replaceChildren(
-        ...folders.map(
-          (name) => new Option(name === "." ? "根目录" : name, name),
-        ),
-      );
+      folderSelect.replaceChildren(...folders.map(name => new Option(name === "." ? "根目录" : name, name)));
       folderSelect.value = folder;
       folderRow.hidden = !folders.length;
       deleteButton.hidden = !canDeleteFolder?.(source, folder);

@@ -1,69 +1,18 @@
-const isFiniteNumber = (value) => value != null && value !== "" && Number.isFinite(Number(value));
-const colorModes = new Set([
-  "hs",
-  "xy",
-  "rgb",
-  "rgbw",
-  "rgbww",
-  "white",
-  "brightness",
-  "onoff",
-]);
-export function lightState(entityId, eventOrState, previous = undefined) {
+const isFiniteNumber = value => value != null && value !== "" && Number.isFinite(Number(value));
+const colorModes = new Set(["hs", "xy", "rgb", "rgbw", "rgbww", "white", "brightness", "onoff"]);
+export function lightState(entityId, eventOrState, previous) {
   const statePayload = eventOrState?.newState || eventOrState || {};
   const attributes = statePayload.attributes || {};
-  const supportedColorModes = Array.isArray(attributes.supported_color_modes)
-    ? attributes.supported_color_modes
-    : [];
+  const supportedColorModes = Array.isArray(attributes.supported_color_modes) ? attributes.supported_color_modes : [];
   const isLightEntity = entityId.startsWith("light.");
-  const colorMode =
-    isLightEntity && (attributes.color_mode === "color_temp" || colorModes.has(attributes.color_mode))
-      ? attributes.color_mode
-      : (previous?.colorMode ?? null);
-  const brightnessSupported =
-    isLightEntity &&
-    (supportedColorModes.length
-      ? supportedColorModes.some((mode) => !["onoff", "unknown"].includes(mode))
-      : isFiniteNumber(attributes.brightness) ||
-        (Number(attributes.supported_features) & 1) !== 0 ||
-        previous?.brightnessSupported === true);
-  const temperatureSupported =
-    isLightEntity &&
-    (supportedColorModes.length
-      ? supportedColorModes.includes("color_temp")
-      : isFiniteNumber(attributes.color_temp_kelvin) ||
-        isFiniteNumber(attributes.color_temp) ||
-        isFiniteNumber(attributes.min_color_temp_kelvin) ||
-        isFiniteNumber(attributes.max_color_temp_kelvin) ||
-        (Number(attributes.supported_features) & 2) !== 0 ||
-        previous?.temperatureSupported === true);
-  const minimumKelvin = isFiniteNumber(attributes.min_color_temp_kelvin)
-    ? Number(attributes.min_color_temp_kelvin)
-    : Number(attributes.max_mireds) > 0
-      ? 1000000 / Number(attributes.max_mireds)
-      : (previous?.minimum ?? 2000);
-  const maximumKelvin = isFiniteNumber(attributes.max_color_temp_kelvin)
-    ? Number(attributes.max_color_temp_kelvin)
-    : Number(attributes.min_mireds) > 0
-      ? 1000000 / Number(attributes.min_mireds)
-      : (previous?.maximum ?? 6500);
-  const kelvinRaw =
-    isFiniteNumber(attributes.color_temp_kelvin) && Number(attributes.color_temp_kelvin) > 0
-      ? Number(attributes.color_temp_kelvin)
-      : isFiniteNumber(attributes.color_temp) && Number(attributes.color_temp) > 0
-        ? 1000000 / Number(attributes.color_temp)
-        : (previous?.kelvin ?? null);
-  const brightnessByte = isFiniteNumber(attributes.brightness)
-    ? Math.max(0, Math.min(255, Number(attributes.brightness)))
-    : null;
-  const brightnessPercent =
-    brightnessByte !== null && (statePayload.state !== "off" || brightnessByte !== 0)
-      ? brightnessByte > 0
-        ? Math.max(1, Math.round((brightnessByte / 255) * 100))
-        : 0
-      : previous?.brightness > 0
-        ? previous.brightness
-        : null;
+  const colorMode = isLightEntity && (attributes.color_mode === "color_temp" || colorModes.has(attributes.color_mode)) ? attributes.color_mode : previous?.colorMode ?? null;
+  const brightnessSupported = isLightEntity && (supportedColorModes.length ? supportedColorModes.some(mode => !["onoff", "unknown"].includes(mode)) : isFiniteNumber(attributes.brightness) || (Number(attributes.supported_features) & 1) !== 0 || previous?.brightnessSupported === true);
+  const temperatureSupported = isLightEntity && (supportedColorModes.length ? supportedColorModes.includes("color_temp") : isFiniteNumber(attributes.color_temp_kelvin) || isFiniteNumber(attributes.color_temp) || isFiniteNumber(attributes.min_color_temp_kelvin) || isFiniteNumber(attributes.max_color_temp_kelvin) || (Number(attributes.supported_features) & 2) !== 0 || previous?.temperatureSupported === true);
+  const minimumKelvin = isFiniteNumber(attributes.min_color_temp_kelvin) ? Number(attributes.min_color_temp_kelvin) : Number(attributes.max_mireds) > 0 ? 1000000 / Number(attributes.max_mireds) : previous?.minimum ?? 2000;
+  const maximumKelvin = isFiniteNumber(attributes.max_color_temp_kelvin) ? Number(attributes.max_color_temp_kelvin) : Number(attributes.min_mireds) > 0 ? 1000000 / Number(attributes.min_mireds) : previous?.maximum ?? 6500;
+  const kelvinRaw = isFiniteNumber(attributes.color_temp_kelvin) && Number(attributes.color_temp_kelvin) > 0 ? Number(attributes.color_temp_kelvin) : isFiniteNumber(attributes.color_temp) && Number(attributes.color_temp) > 0 ? 1000000 / Number(attributes.color_temp) : previous?.kelvin ?? null;
+  const brightnessByte = isFiniteNumber(attributes.brightness) ? Math.max(0, Math.min(255, Number(attributes.brightness))) : null;
+  const brightnessPercent = brightnessByte !== null && (statePayload.state !== "off" || brightnessByte !== 0) ? brightnessByte > 0 ? Math.max(1, Math.round(brightnessByte / 255 * 100)) : 0 : previous?.brightness > 0 ? previous.brightness : null;
   return {
     on: statePayload.state === "on",
     available: ["on", "off"].includes(statePayload.state),
@@ -74,54 +23,41 @@ export function lightState(entityId, eventOrState, previous = undefined) {
     brightness: brightnessSupported ? brightnessPercent : null,
     kelvin: temperatureSupported && isFiniteNumber(kelvinRaw) ? Math.round(kelvinRaw) : null,
     minimum: Math.round(Math.max(1000, Math.min(minimumKelvin, maximumKelvin))),
-    maximum: Math.round(Math.min(20000, Math.max(minimumKelvin, maximumKelvin))),
+    maximum: Math.round(Math.min(20000, Math.max(minimumKelvin, maximumKelvin)))
   };
 }
 export function lightRenderState(state) {
   const missingBrightness = state.brightnessSupported && !Number.isFinite(state.brightness);
-  const missingKelvin =
-    state.temperatureSupported &&
-    !colorModes.has(state.colorMode) &&
-    !Number.isFinite(state.kelvin);
+  const missingKelvin = state.temperatureSupported && !colorModes.has(state.colorMode) && !Number.isFinite(state.kelvin);
   return {
     ...state,
-    on: state.on && !missingBrightness && !missingKelvin,
+    on: state.on && !missingBrightness && !missingKelvin
   };
 }
 const HISTORY_TTL_MS = 604800000;
 const HISTORY_MAX_ENTITIES = 256;
-const isLightOrSwitchEntity = (entityId) => /^(light|switch)\.[a-z0-9_]+$/.test(entityId);
-const isPresentNumber = (value) => typeof value != "boolean" && isFiniteNumber(value);
+const isLightOrSwitchEntity = entityId => /^(light|switch)\.[a-z0-9_]+$/.test(entityId);
+const isPresentNumber = value => typeof value != "boolean" && isFiniteNumber(value);
 const fieldValidators = {
-  brightness: (value) => Number.isFinite(value) && value > 0 && value <= 100,
-  kelvin: (value) => Number.isFinite(value) && value > 0,
-  minimum: (value) => Number.isFinite(value) && value >= 1000 && value <= 20000,
-  maximum: (value) => Number.isFinite(value) && value >= 1000 && value <= 20000,
-  colorMode: (value) => value === "color_temp" || colorModes.has(value),
-  brightnessSupported: (value) => typeof value == "boolean",
-  temperatureSupported: (value) => typeof value == "boolean",
+  brightness: value => Number.isFinite(value) && value > 0 && value <= 100,
+  kelvin: value => Number.isFinite(value) && value > 0,
+  minimum: value => Number.isFinite(value) && value >= 1000 && value <= 20000,
+  maximum: value => Number.isFinite(value) && value >= 1000 && value <= 20000,
+  colorMode: value => value === "color_temp" || colorModes.has(value),
+  brightnessSupported: value => typeof value == "boolean",
+  temperatureSupported: value => typeof value == "boolean"
 };
 function extractHistoryPatch(entityId, eventOrState) {
   const statePayload = eventOrState?.newState || eventOrState || {};
   const attributes = statePayload.attributes || {};
   const resolved = lightState(entityId, eventOrState);
   const patch = {};
-  const supportedColorModes = Array.isArray(attributes.supported_color_modes)
-    ? attributes.supported_color_modes
-    : [];
+  const supportedColorModes = Array.isArray(attributes.supported_color_modes) ? attributes.supported_color_modes : [];
   const hasBrightness = isPresentNumber(attributes.brightness) && Number(attributes.brightness) > 0;
-  const hasKelvin =
-    (isPresentNumber(attributes.color_temp_kelvin) && Number(attributes.color_temp_kelvin) > 0) ||
-    (isPresentNumber(attributes.color_temp) && Number(attributes.color_temp) > 0);
-  const hasMinimum =
-    (isPresentNumber(attributes.min_color_temp_kelvin) && Number(attributes.min_color_temp_kelvin) > 0) ||
-    (isPresentNumber(attributes.max_mireds) && Number(attributes.max_mireds) > 0);
-  const hasMaximum =
-    (isPresentNumber(attributes.max_color_temp_kelvin) && Number(attributes.max_color_temp_kelvin) > 0) ||
-    (isPresentNumber(attributes.min_mireds) && Number(attributes.min_mireds) > 0);
-  const supportedFeatures = isPresentNumber(attributes.supported_features)
-    ? Number(attributes.supported_features)
-    : 0;
+  const hasKelvin = isPresentNumber(attributes.color_temp_kelvin) && Number(attributes.color_temp_kelvin) > 0 || isPresentNumber(attributes.color_temp) && Number(attributes.color_temp) > 0;
+  const hasMinimum = isPresentNumber(attributes.min_color_temp_kelvin) && Number(attributes.min_color_temp_kelvin) > 0 || isPresentNumber(attributes.max_mireds) && Number(attributes.max_mireds) > 0;
+  const hasMaximum = isPresentNumber(attributes.max_color_temp_kelvin) && Number(attributes.max_color_temp_kelvin) > 0 || isPresentNumber(attributes.min_mireds) && Number(attributes.min_mireds) > 0;
+  const supportedFeatures = isPresentNumber(attributes.supported_features) ? Number(attributes.supported_features) : 0;
   if (supportedColorModes.length || hasBrightness || supportedFeatures & 1) {
     patch.brightnessSupported = resolved.brightnessSupported;
   }
@@ -143,9 +79,7 @@ function extractHistoryPatch(entityId, eventOrState) {
   if (attributes.color_mode === "color_temp" || colorModes.has(attributes.color_mode)) {
     patch.colorMode = resolved.colorMode;
   }
-  return Object.fromEntries(
-    Object.entries(patch).filter(([field, value]) => fieldValidators[field](value)),
-  );
+  return Object.fromEntries(Object.entries(patch).filter(([field, value]) => fieldValidators[field](value)));
 }
 function createLightHistoryStore(storage, scope, now, schedule, cancel) {
   if (!storage || typeof scope != "string" || !scope.trim()) {
@@ -158,7 +92,7 @@ function createLightHistoryStore(storage, scope, now, schedule, cancel) {
   let flushTimer = null;
   let dirty = false;
   let nextExpiryAt = 0;
-  const latestStamp = (fields) => Math.max(0, ...Object.values(fields).map((entry) => entry.at));
+  const latestStamp = fields => Math.max(0, ...Object.values(fields).map(entry => entry.at));
   function prune(nowMs) {
     if (nowMs < nextExpiryAt && entities.size <= HISTORY_MAX_ENTITIES) {
       return false;
@@ -179,9 +113,7 @@ function createLightHistoryStore(storage, scope, now, schedule, cancel) {
       }
     }
     if (entities.size > HISTORY_MAX_ENTITIES) {
-      const ranked = [...entities].sort(
-        (left, right) => latestStamp(left[1]) - latestStamp(right[1]),
-      );
+      const ranked = [...entities].sort((left, right) => latestStamp(left[1]) - latestStamp(right[1]));
       for (const [entityId] of ranked.slice(0, entities.size - HISTORY_MAX_ENTITIES)) {
         entities.delete(entityId);
       }
@@ -195,12 +127,7 @@ function createLightHistoryStore(storage, scope, now, schedule, cancel) {
     if (raw) {
       const parsed = JSON.parse(raw);
       const nowMs = now();
-      if (
-        parsed?.version !== 1 ||
-        !parsed.entities ||
-        typeof parsed.entities != "object" ||
-        Array.isArray(parsed.entities)
-      ) {
+      if (parsed?.version !== 1 || !parsed.entities || typeof parsed.entities != "object" || Array.isArray(parsed.entities)) {
         throw new Error("Invalid light history");
       }
       for (const [entityId, fields] of Object.entries(parsed.entities)) {
@@ -209,17 +136,10 @@ function createLightHistoryStore(storage, scope, now, schedule, cancel) {
         }
         const kept = {};
         for (const [field, entry] of Object.entries(fields)) {
-          if (
-            Object.hasOwn(fieldValidators, field) &&
-            fieldValidators[field](entry?.value) &&
-            Number.isFinite(entry.at) &&
-            entry.at >= 0 &&
-            entry.at <= nowMs &&
-            nowMs - entry.at < HISTORY_TTL_MS
-          ) {
+          if (Object.hasOwn(fieldValidators, field) && fieldValidators[field](entry?.value) && Number.isFinite(entry.at) && entry.at >= 0 && entry.at <= nowMs && nowMs - entry.at < HISTORY_TTL_MS) {
             kept[field] = {
               value: entry.value,
-              at: entry.at,
+              at: entry.at
             };
           }
         }
@@ -238,11 +158,10 @@ function createLightHistoryStore(storage, scope, now, schedule, cancel) {
   } catch {
     return null;
   }
-  const serialize = () =>
-    JSON.stringify({
-      version: 1,
-      entities: Object.fromEntries(entities),
-    });
+  const serialize = () => JSON.stringify({
+    version: 1,
+    entities: Object.fromEntries(entities)
+  });
   function flush() {
     if (flushTimer !== null) {
       cancel(flushTimer);
@@ -297,7 +216,7 @@ function createLightHistoryStore(storage, scope, now, schedule, cancel) {
             if (fields[field]?.value !== value) {
               fields[field] = {
                 value,
-                at: nowMs,
+                at: nowMs
               };
               nextExpiryAt = Math.min(nextExpiryAt, nowMs + HISTORY_TTL_MS);
               dirty = true;
@@ -321,20 +240,9 @@ function createLightHistoryStore(storage, scope, now, schedule, cancel) {
       }
       dirty = prune(nowMs) || dirty;
       scheduleFlush();
-      const remembered = Object.fromEntries(
-        Object.entries(entities.get(entityId) || {}).map(([field, entry]) => [
-          field,
-          entry.value,
-        ]),
-      );
-      remembered.brightnessSupported ??=
-        Number.isFinite(remembered.brightness) ||
-        (!!remembered.colorMode && remembered.colorMode !== "onoff");
-      remembered.temperatureSupported ??=
-        Number.isFinite(remembered.kelvin) ||
-        Number.isFinite(remembered.minimum) ||
-        Number.isFinite(remembered.maximum) ||
-        remembered.colorMode === "color_temp";
+      const remembered = Object.fromEntries(Object.entries(entities.get(entityId) || {}).map(([field, entry]) => [field, entry.value]));
+      remembered.brightnessSupported ??= Number.isFinite(remembered.brightness) || !!remembered.colorMode && remembered.colorMode !== "onoff";
+      remembered.temperatureSupported ??= Number.isFinite(remembered.kelvin) || Number.isFinite(remembered.minimum) || Number.isFinite(remembered.maximum) || remembered.colorMode === "color_temp";
       return remembered;
     },
     flush,
@@ -354,36 +262,29 @@ function createLightHistoryStore(storage, scope, now, schedule, cancel) {
           writable = false;
         }
       }
-    },
+    }
   };
 }
 export function createLightStateCache({
   storage,
   scope,
   now = () => Date.now(),
-  schedule = (callback) => setTimeout(callback, 50),
-  cancel = (timer) => clearTimeout(timer),
+  schedule = callback => setTimeout(callback, 50),
+  cancel = timer => clearTimeout(timer)
 } = {}) {
   const liveStates = new Map();
   const history = createLightHistoryStore(storage, scope, now, schedule, cancel);
   return {
     resolve(entityId, eventOrState) {
-      const previous = history
-        ? {
-            name: liveStates.get(entityId)?.name,
-            ...history.resolve(entityId, eventOrState),
-          }
-        : liveStates.get(entityId);
+      const previous = history ? {
+        name: liveStates.get(entityId)?.name,
+        ...history.resolve(entityId, eventOrState)
+      } : liveStates.get(entityId);
       const resolved = lightState(entityId, eventOrState, previous);
-      liveStates.set(
-        entityId,
-        resolved.brightness === 0
-          ? {
-              ...resolved,
-              brightness: previous?.brightness > 0 ? previous.brightness : null,
-            }
-          : resolved,
-      );
+      liveStates.set(entityId, resolved.brightness === 0 ? {
+        ...resolved,
+        brightness: previous?.brightness > 0 ? previous.brightness : null
+      } : resolved);
       return resolved;
     },
     flush() {
@@ -392,7 +293,7 @@ export function createLightStateCache({
     clear() {
       liveStates.clear();
       history?.clear();
-    },
+    }
   };
 }
 export function lightCommand(entityId, kind, value, state) {
@@ -405,7 +306,7 @@ export function lightCommand(entityId, kind, value, state) {
       domain,
       service: value ? "turn_on" : "turn_off",
       entityId,
-      data: {},
+      data: {}
     };
   }
   if (!Number.isFinite(Number(value))) {
@@ -417,10 +318,8 @@ export function lightCommand(entityId, kind, value, state) {
       service: "turn_on",
       entityId,
       data: {
-        brightness: Math.round(
-          (Math.max(1, Math.min(100, Number(value))) * 255) / 100,
-        ),
-      },
+        brightness: Math.round(Math.max(1, Math.min(100, Number(value))) * 255 / 100)
+      }
     };
   }
   if (kind === "temperature" && state.temperatureSupported) {
@@ -429,16 +328,14 @@ export function lightCommand(entityId, kind, value, state) {
       service: "turn_on",
       entityId,
       data: {
-        color_temp_kelvin: Math.round(
-          Math.max(state.minimum, Math.min(state.maximum, Number(value))),
-        ),
-      },
+        color_temp_kelvin: Math.round(Math.max(state.minimum, Math.min(state.maximum, Number(value))))
+      }
     };
   }
   throw new Error("此设备不支持该灯光调节。");
 }
 export function createLightPreview({
-  now = () => performance.now(),
+  now = () => performance.now()
 } = {}) {
   const previews = new Map();
   let revisionCounter = 0;
@@ -446,7 +343,7 @@ export function createLightPreview({
     set(entityId, kind, value, committed = false) {
       const values = {
         ...previews.get(entityId)?.values,
-        on: kind === "power" ? value === true : true,
+        on: kind === "power" ? value === true : true
       };
       if (kind === "brightness") {
         values.brightness = value;
@@ -470,7 +367,7 @@ export function createLightPreview({
         values,
         revision: ++revisionCounter,
         committed,
-        expires: now() + 15000,
+        expires: now() + 15000
       };
       previews.set(entityId, entry);
       return entry.revision;
@@ -478,7 +375,7 @@ export function createLightPreview({
     state(entityId, baseState) {
       return {
         ...baseState,
-        ...previews.get(entityId)?.values,
+        ...previews.get(entityId)?.values
       };
     },
     reconcile(entityId, liveState) {
@@ -486,13 +383,8 @@ export function createLightPreview({
       if (!entry) {
         return;
       }
-      const matched = Object.entries(entry.values).every(([field, expected]) =>
-        field === "on"
-          ? liveState.on === expected
-          : Number.isFinite(liveState[field]) &&
-            Math.abs(liveState[field] - expected) <= (field === "kelvin" ? 15 : 1),
-      );
-      if (!liveState.available || (entry.committed && matched)) {
+      const matched = Object.entries(entry.values).every(([field, expected]) => field === "on" ? liveState.on === expected : Number.isFinite(liveState[field]) && Math.abs(liveState[field] - expected) <= (field === "kelvin" ? 15 : 1));
+      if (!liveState.available || entry.committed && matched) {
         previews.delete(entityId);
       }
     },
@@ -539,6 +431,6 @@ export function createLightPreview({
         soonest = Math.min(soonest, entry.expires);
       }
       return Math.max(0, soonest - at);
-    },
+    }
   };
 }

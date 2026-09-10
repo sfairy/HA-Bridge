@@ -3,16 +3,11 @@ export const EXPORT_RENDER_SCALE = 1;
 export const EXPORT_IMAGE_MIME_TYPE = "image/webp";
 export const EXPORT_IMAGE_EXTENSION = "webp";
 export const EXPORT_IMAGE_QUALITY = 0.95;
-export function scaledExportResolution(
-  width,
-  height,
-  scale = EXPORT_RENDER_SCALE,
-) {
-  const safeScale =
-    Number.isFinite(scale) && scale > 0 ? scale : EXPORT_RENDER_SCALE;
+export function scaledExportResolution(width, height, scale = EXPORT_RENDER_SCALE) {
+  const safeScale = Number.isFinite(scale) && scale > 0 ? scale : EXPORT_RENDER_SCALE;
   return {
     width: Math.max(1, Math.round(Number(width) * safeScale)),
-    height: Math.max(1, Math.round(Number(height) * safeScale)),
+    height: Math.max(1, Math.round(Number(height) * safeScale))
   };
 }
 function crc32(bytes) {
@@ -20,7 +15,7 @@ function crc32(bytes) {
   for (const byte of bytes) {
     crc ^= byte;
     for (let bit = 0; bit < 8; bit += 1) {
-      crc = (crc >>> 1) ^ (-(crc & 1) & -306674912);
+      crc = crc >>> 1 ^ -(crc & 1) & -306674912;
     }
   }
   return (crc ^ -1) >>> 0;
@@ -47,10 +42,7 @@ export function buildStoredZip(entries) {
   let offset = 0;
   for (const entry of entries) {
     const nameBytes = textEncoder.encode(String(entry.name));
-    const data =
-      entry.data instanceof Uint8Array
-        ? entry.data
-        : new Uint8Array(entry.data);
+    const data = entry.data instanceof Uint8Array ? entry.data : new Uint8Array(entry.data);
     const checksum = crc32(data);
     const localHeader = new Uint8Array(30 + nameBytes.length);
     const localView = new DataView(localHeader.buffer);
@@ -122,27 +114,12 @@ export function buildLightDeltaPixels(basePixels, litPixels) {
       continue;
     }
     let blend = 0;
-    const baseLuma =
-      basePixels[index] * 0.2126 +
-      basePixels[index + 1] * 0.7152 +
-      basePixels[index + 2] * 0.0722;
-    if (
-      !(
-        litPixels[index] * 0.2126 +
-          litPixels[index + 1] * 0.7152 +
-          litPixels[index + 2] * 0.0722 -
-          baseLuma <=
-        1.5
-      ) ||
-      !(Math.abs(litAlpha - baseAlpha) <= 1 / 255)
-    ) {
+    const baseLuma = basePixels[index] * 0.2126 + basePixels[index + 1] * 0.7152 + basePixels[index + 2] * 0.0722;
+    if (!(litPixels[index] * 0.2126 + litPixels[index + 1] * 0.7152 + litPixels[index + 2] * 0.0722 - baseLuma <= 1.5) || !(Math.abs(litAlpha - baseAlpha) <= 1 / 255)) {
       for (let channel = 0; channel < 3; channel += 1) {
         const baseValue = basePixels[index + channel];
         const channelDelta = litPixels[index + channel] - baseValue;
-        const channelBlend =
-          channelDelta >= 0
-            ? channelDelta / Math.max(255 - baseValue, 1)
-            : -channelDelta / Math.max(baseValue, 1);
+        const channelBlend = channelDelta >= 0 ? channelDelta / Math.max(255 - baseValue, 1) : -channelDelta / Math.max(baseValue, 1);
         blend = Math.max(blend, channelBlend);
       }
       blend = Math.min(Math.max(blend, Math.abs(litAlpha - baseAlpha)), 1);
@@ -150,12 +127,7 @@ export function buildLightDeltaPixels(basePixels, litPixels) {
         for (let channel = 0; channel < 3; channel += 1) {
           const baseValue = basePixels[index + channel];
           const litValue = litPixels[index + channel];
-          delta[index + channel] = Math.round(
-            Math.min(
-              Math.max((litValue - baseValue * (1 - blend)) / blend, 0),
-              255,
-            ),
-          );
+          delta[index + channel] = Math.round(Math.min(Math.max((litValue - baseValue * (1 - blend)) / blend, 0), 255));
         }
         delta[index + 3] = Math.round(blend * 255);
       }

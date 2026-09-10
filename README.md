@@ -1,6 +1,6 @@
 # HA Bridge
 
-面向 [Home Assistant](https://www.home-assistant.io/) 的本机仪表盘与中控平台，当前版本 **0.4.8**。
+面向 [Home Assistant](https://www.home-assistant.io/) 的本机仪表盘与中控平台，当前版本 **0.5.0**。
 
 提供可视化编辑器、3D 户型工作室、全屏展示页和中控配对。后端是 FastAPI，前端是原生 HTML / CSS / JavaScript，数据默认落在本机 SQLite。
 
@@ -202,6 +202,24 @@ docker exec ha-bridge rm /tmp/app.tar.gz
 - 3D 交互舞台脚本由 `/api/v1/modules/interaction3d/{filename}` 下发，需要已登录或已配对，且当前授权允许编辑器。
 
 ## 更新日志
+
+### v0.5.0
+
+新增
+
+- 3D 交互扩展：空调、窗帘、电视、NAS、在场感应、扫地机地图等运行时面板与环境效果。
+- 户型工作室：地面反射、楼层洞口/过渡、Plan2 区域光与接触阴影、反射细节与家具运行时模块。
+- 栖光 UI Pack 预览轮播与仪表盘模板资源。
+- meshoptimizer 轻量化支持（反射细节管线）。
+
+优化
+
+- 3D `/control` 按模型绑定与 HA 能力校验窗帘、空调、电视控制。
+- 控件配置契约扩展环境、设备、反射、楼层与页面行为字段。
+
+说明
+
+- 授权仍使用本机 `register` 商店（`APP_LICENSE_STORE_URL`），不接入官方授权云。
 
 ### v0.4.8
 

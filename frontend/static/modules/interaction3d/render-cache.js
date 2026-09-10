@@ -1,14 +1,6 @@
 export const RENDER_CACHE_VERSION = "i3d-light-delta-20260907-v5";
 export function stableCacheJSON(value) {
-  return JSON.stringify(value, (key, nested) =>
-    nested && typeof nested == "object" && !Array.isArray(nested)
-      ? Object.fromEntries(
-          Object.keys(nested)
-            .sort()
-            .map((sortedKey) => [sortedKey, nested[sortedKey]]),
-        )
-      : nested,
-  );
+  return JSON.stringify(value, (key, nested) => nested && typeof nested == "object" && !Array.isArray(nested) ? Object.fromEntries(Object.keys(nested).sort().map(sortedKey => [sortedKey, nested[sortedKey]])) : nested);
 }
 export function sha256(input) {
   const encoded = new TextEncoder().encode(input);
@@ -23,15 +15,15 @@ export function sha256(input) {
   const roundConstants = [];
   const hashState = [];
   for (let candidate = 2; primes.length < 64; candidate++) {
-    if (!primes.some((prime) => candidate % prime === 0)) {
+    if (!primes.some(prime => candidate % prime === 0)) {
       primes.push(candidate);
-      roundConstants.push(((Math.cbrt(candidate) % 1) * 4294967296) >>> 0);
+      roundConstants.push(Math.cbrt(candidate) % 1 * 4294967296 >>> 0);
       if (hashState.length < 8) {
-        hashState.push(((Math.sqrt(candidate) % 1) * 4294967296) >>> 0);
+        hashState.push(Math.sqrt(candidate) % 1 * 4294967296 >>> 0);
       }
     }
   }
-  const rotateRight = (value, bits) => (value >>> bits) | (value << (32 - bits));
+  const rotateRight = (value, bits) => value >>> bits | value << 32 - bits;
   const schedule = new Uint32Array(64);
   const workingHash = hashState;
   for (let offset = 0; offset < padded.length; offset += 64) {
@@ -41,94 +33,60 @@ export function sha256(input) {
     for (let wordIndex = 16; wordIndex < 64; wordIndex++) {
       const s0Word = schedule[wordIndex - 15];
       const s1Word = schedule[wordIndex - 2];
-      schedule[wordIndex] =
-        schedule[wordIndex - 16] +
-        (rotateRight(s0Word, 7) ^ rotateRight(s0Word, 18) ^ (s0Word >>> 3)) +
-        schedule[wordIndex - 7] +
-        (rotateRight(s1Word, 17) ^ rotateRight(s1Word, 19) ^ (s1Word >>> 10));
+      schedule[wordIndex] = schedule[wordIndex - 16] + (rotateRight(s0Word, 7) ^ rotateRight(s0Word, 18) ^ s0Word >>> 3) + schedule[wordIndex - 7] + (rotateRight(s1Word, 17) ^ rotateRight(s1Word, 19) ^ s1Word >>> 10);
     }
     let [a, b, c, d, e, f, g, h] = workingHash;
     for (let round = 0; round < 64; round++) {
-      const temp1 =
-        (h +
-          (rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25)) +
-          ((e & f) ^ (~e & g)) +
-          roundConstants[round] +
-          schedule[round]) >>>
-        0;
-      const temp2 =
-        ((rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22)) +
-          ((a & b) ^ (a & c) ^ (b & c))) >>>
-        0;
+      const temp1 = h + (rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25)) + (e & f ^ ~e & g) + roundConstants[round] + schedule[round] >>> 0;
+      const temp2 = (rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22)) + (a & b ^ a & c ^ b & c) >>> 0;
       h = g;
       g = f;
       f = e;
-      e = (d + temp1) >>> 0;
+      e = d + temp1 >>> 0;
       d = c;
       c = b;
       b = a;
-      a = (temp1 + temp2) >>> 0;
+      a = temp1 + temp2 >>> 0;
     }
     [a, b, c, d, e, f, g, h].forEach((lane, laneIndex) => {
-      workingHash[laneIndex] = (workingHash[laneIndex] + lane) >>> 0;
+      workingHash[laneIndex] = workingHash[laneIndex] + lane >>> 0;
     });
   }
-  return workingHash.map((lane) => lane.toString(16).padStart(8, "0")).join("");
+  return workingHash.map(lane => lane.toString(16).padStart(8, "0")).join("");
 }
 export function lightLayerKey(baseDescriptor, lampEntry) {
-  return sha256(
-    stableCacheJSON({
-      version: RENDER_CACHE_VERSION,
-      base: baseDescriptor,
-      lamp: lampEntry.item,
-      floor: lampEntry.floor.id,
-    }),
-  );
+  return sha256(stableCacheJSON({
+    version: RENDER_CACHE_VERSION,
+    base: baseDescriptor,
+    lamp: lampEntry.item,
+    floor: lampEntry.floor.id
+  }));
 }
 export function cacheSceneDescriptor(floors) {
-  const omitKeys = (object, keys) =>
-    Object.fromEntries(
-      Object.entries(object || {}).filter(([key]) => !keys.includes(key)),
-    );
-  return floors.map((floor) => ({
+  const omitKeys = (object, keys) => Object.fromEntries(Object.entries(object || {}).filter(([key]) => !keys.includes(key)));
+  return floors.map(floor => ({
     ...floor,
     name: undefined,
     scene: {
       ...floor.scene,
-      settings: omitKeys(floor.scene.settings, [
-        "cameraView",
-        "cameraMode",
-        "cameraFocalLength",
-        "cameraTopRotation",
-        "fixedCameraView",
-        "planViewRotation",
-        "livePreviewEnabled",
-        "previewPanelRatio",
-        "detailsPanelWidthRatio",
-      ]),
-      lightGroups: floor.scene.lightGroups?.map((group) =>
-        omitKeys(group, ["enabled", "name"]),
-      ),
-      items: floor.scene.items.map((item) =>
-        ["downlight", "ceilinglight", "striplight"].includes(item.type)
-          ? omitKeys(item, ["lightBrightness", "lightTemperature"])
-          : item,
-      ),
-    },
+      settings: omitKeys(floor.scene.settings, ["cameraView", "cameraMode", "cameraFocalLength", "cameraTopRotation", "fixedCameraView", "planViewRotation", "livePreviewEnabled", "previewPanelRatio", "detailsPanelWidthRatio"]),
+      lightGroups: floor.scene.lightGroups?.map(group => omitKeys(group, ["enabled", "name"])),
+      items: floor.scene.items.map(item => ["downlight", "ceilinglight", "striplight"].includes(item.type) ? omitKeys(item, ["lightBrightness", "lightTemperature"]) : item)
+    }
   }));
 }
 export function createRenderCache({
   sceneId,
   projectId,
   fetcher = globalThis.fetch,
-  decode = (blob) => createImageBitmap(blob),
+  decode = blob => createImageBitmap(blob),
   maxBytes = 33554432,
   timeoutMs = 1800,
   now = Date.now,
   report = () => {},
   makeCanvas = () => document.createElement("canvas"),
   maxDecodedBytes = 33554432,
-  maxDecodedFrames = 3,
+  maxDecodedFrames = 3
 } = {}) {
   const memoryBlobs = new Map();
   const pendingControllers = new Set();
@@ -148,16 +106,15 @@ export function createRenderCache({
     generated: 0,
     uploads: 0,
     errors: 0,
-    decodedHits: 0,
+    decodedHits: 0
   };
-  const emitStats = () =>
-    report({
-      ...stats,
-      memoryBytes,
-      pendingBytes,
-      decodedBytes,
-      decodedFrames: decodedFrames.size,
-    });
+  const emitStats = () => report({
+    ...stats,
+    memoryBytes,
+    pendingBytes,
+    decodedBytes,
+    decodedFrames: decodedFrames.size
+  });
   function releaseDecodedEntry(entry) {
     entry.refs--;
     if (!entry.retained && entry.refs === 0) {
@@ -183,7 +140,7 @@ export function createRenderCache({
       height,
       bytes: width * height * 4,
       refs: 1,
-      retained: true,
+      retained: true
     };
     decodedFrames.set(key, entry);
     decodedBytes += entry.bytes;
@@ -204,16 +161,10 @@ export function createRenderCache({
           released = true;
           releaseDecodedEntry(entry);
         }
-      },
+      }
     };
   }
-  const cacheUrl = (cacheKey) =>
-    "/api/v1/modules/interaction3d/scenes/" +
-    encodeURIComponent(sceneId) +
-    "/render-cache/" +
-    cacheKey +
-    "?projectId=" +
-    encodeURIComponent(projectId || "");
+  const cacheUrl = cacheKey => "/api/v1/modules/interaction3d/scenes/" + encodeURIComponent(sceneId) + "/render-cache/" + cacheKey + "?projectId=" + encodeURIComponent(projectId || "");
   function putMemoryBlob(cacheKey, blob) {
     if (memoryBlobs.has(cacheKey)) {
       memoryBytes -= memoryBlobs.get(cacheKey).size;
@@ -236,23 +187,18 @@ export function createRenderCache({
     const controller = new AbortController();
     pendingControllers.add(controller);
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    const staleCheckId = init.method
-      ? null
-      : setInterval(() => {
-          if (!isFresh()) {
-            controller.abort("stale");
-          }
-        }, 50);
+    const staleCheckId = init.method ? null : setInterval(() => {
+      if (!isFresh()) {
+        controller.abort("stale");
+      }
+    }, 50);
     try {
       const response = await fetcher(cacheUrl(cacheKey), {
         ...init,
         credentials: "same-origin",
-        signal: controller.signal,
+        signal: controller.signal
       });
-      const softMiss =
-        !init.method &&
-        response.status === 404 &&
-        !response.headers?.get("content-type")?.includes("application/json");
+      const softMiss = !init.method && response.status === 404 && !response.headers?.get("content-type")?.includes("application/json");
       if (!response.ok && !softMiss) {
         throw new Error("cache unavailable");
       }
@@ -285,17 +231,13 @@ export function createRenderCache({
           const [cacheKey, blob] = uploadQueue.entries().next().value;
           uploadQueue.delete(cacheKey);
           pendingBytes -= blob.size;
-          if (
-            (
-              await fetchCache(cacheKey, {
-                method: "PUT",
-                headers: {
-                  "Content-Type": "image/png",
-                },
-                body: blob,
-              })
-            )?.ok
-          ) {
+          if ((await fetchCache(cacheKey, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "image/png"
+            },
+            body: blob
+          }))?.ok) {
             stats.uploads++;
           }
           emitStats();
@@ -314,9 +256,7 @@ export function createRenderCache({
           y,
           width: Math.min(1024, width - x),
           height: Math.min(1024, height - y),
-          key: sha256(
-            cacheKey + ":tile-v1:" + width + ":" + height + ":" + x + ":" + y,
-          ),
+          key: sha256(cacheKey + ":tile-v1:" + width + ":" + height + ":" + x + ":" + y)
         });
       }
     }
@@ -344,21 +284,13 @@ export function createRenderCache({
       if (!waiterGroup) {
         waiterGroup = {
           waiters: new Set(),
-          entry: null,
+          entry: null
         };
         decodeWaiters.set(frameKey, waiterGroup);
       }
       const stillFresh = () => !closed && isFresh();
       waiterGroup.waiters.add(stillFresh);
-      waiterGroup.promise ||= cacheApi
-        .read(cacheKey, width, height, () => [...waiterGroup.waiters].some((waiter) => waiter()))
-        .then((image) =>
-          image
-            ? closed || ![...waiterGroup.waiters].some((waiter) => waiter())
-              ? (image.close(), null)
-              : ((waiterGroup.entry = retainDecodedFrame(frameKey, image, width, height)), emitStats(), waiterGroup.entry)
-            : null,
-        );
+      waiterGroup.promise ||= cacheApi.read(cacheKey, width, height, () => [...waiterGroup.waiters].some(waiter => waiter())).then(image => image ? closed || ![...waiterGroup.waiters].some(waiter => waiter()) ? (image.close(), null) : (waiterGroup.entry = retainDecodedFrame(frameKey, image, width, height), emitStats(), waiterGroup.entry) : null);
       try {
         const entry = await waiterGroup.promise;
         if (entry && stillFresh()) {
@@ -391,12 +323,7 @@ export function createRenderCache({
             return null;
           }
           for (const tile of buildTiles(cacheKey, width, height)) {
-            const tileImage = await cacheApi.read(
-              tile.key,
-              tile.width,
-              tile.height,
-              isFresh,
-            );
+            const tileImage = await cacheApi.read(tile.key, tile.width, tile.height, isFresh);
             if (!tileImage) {
               return null;
             }
@@ -469,17 +396,7 @@ export function createRenderCache({
             if (!context) {
               return;
             }
-            context.drawImage(
-              source,
-              tile.x,
-              tile.y,
-              tile.width,
-              tile.height,
-              0,
-              0,
-              tile.width,
-              tile.height,
-            );
+            context.drawImage(source, tile.x, tile.y, tile.width, tile.height, 0, 0, tile.width, tile.height);
             await cacheApi.write(tile.key, tileCanvas, isFresh);
           }
         } finally {
@@ -489,7 +406,7 @@ export function createRenderCache({
       }
       let blob;
       try {
-        blob = await new Promise((resolve) => source.toBlob(resolve, "image/png"));
+        blob = await new Promise(resolve => source.toBlob(resolve, "image/png"));
       } catch {
         stats.errors++;
         emitStats();
@@ -498,12 +415,7 @@ export function createRenderCache({
       if (!closed && !!isFresh() && !!blob && !(blob.size > 10485760)) {
         putMemoryBlob(cacheKey, blob);
         stats.generated++;
-        if (
-          pendingBytes + blob.size <= 16777216 &&
-          uploadQueue.size < 32 &&
-          now() >= backoffUntil &&
-          !uploadQueue.has(cacheKey)
-        ) {
+        if (pendingBytes + blob.size <= 16777216 && uploadQueue.size < 32 && now() >= backoffUntil && !uploadQueue.has(cacheKey)) {
           uploadQueue.set(cacheKey, blob);
           pendingBytes += blob.size;
           drainUploadQueue();
@@ -523,7 +435,7 @@ export function createRenderCache({
       uploadQueue.clear();
       memoryBytes = pendingBytes = 0;
       emitStats();
-    },
+    }
   };
   return cacheApi;
 }

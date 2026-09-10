@@ -1,19 +1,10 @@
-export function drawTrackedText(
-  context,
-  text,
-  x,
-  y,
-  letterSpacing,
-  maxWidth,
-) {
+export function drawTrackedText(context, text, x, y, letterSpacing, maxWidth) {
   const characters = [...String(text || "")];
   if (!characters.length) {
     return 0;
   }
-  const widths = characters.map((character) => context.measureText(character).width);
-  const naturalWidth =
-    widths.reduce((sum, width) => sum + width, 0) +
-    Math.max(characters.length - 1, 0) * letterSpacing;
+  const widths = characters.map(character => context.measureText(character).width);
+  const naturalWidth = widths.reduce((sum, width) => sum + width, 0) + Math.max(characters.length - 1, 0) * letterSpacing;
   const scale = naturalWidth > 0 ? Math.min(1, maxWidth / naturalWidth) : 1;
   context.save();
   context.translate(x, y);
@@ -34,14 +25,17 @@ export function createPlanDrawingTools({
   screenToPlan,
   pixelsPerMeter,
   getCanvasSize,
-  getViewZoom,
+  getViewZoom
 }) {
   function drawMetricGrid() {
     const ppm = pixelsPerMeter();
     if (!ppm) {
       return;
     }
-    const { width, height } = getCanvasSize();
+    const {
+      width,
+      height
+    } = getCanvasSize();
     const zoom = getViewZoom();
     let step = ppm * 0.5;
     while (step * zoom < 18) {
@@ -50,44 +44,36 @@ export function createPlanDrawingTools({
     while (step * zoom > 100) {
       step /= 2;
     }
-    const corners = [
-      {
-        x: 0,
-        y: 0,
-      },
-      {
-        x: width,
-        y: 0,
-      },
-      {
-        x: width,
-        y: height,
-      },
-      {
-        x: 0,
-        y: height,
-      },
-    ].map(screenToPlan);
-    const minX = Math.min(...corners.map((point) => point.x));
-    const maxX = Math.max(...corners.map((point) => point.x));
-    const minY = Math.min(...corners.map((point) => point.y));
-    const maxY = Math.max(...corners.map((point) => point.y));
+    const corners = [{
+      x: 0,
+      y: 0
+    }, {
+      x: width,
+      y: 0
+    }, {
+      x: width,
+      y: height
+    }, {
+      x: 0,
+      y: height
+    }].map(screenToPlan);
+    const minX = Math.min(...corners.map(point => point.x));
+    const maxX = Math.max(...corners.map(point => point.x));
+    const minY = Math.min(...corners.map(point => point.y));
+    const maxY = Math.max(...corners.map(point => point.y));
     context.save();
     context.lineWidth = 1;
     for (let gridX = Math.floor(minX / step) * step; gridX <= maxX; gridX += step) {
       const start = planToScreen({
         x: gridX,
-        y: minY,
+        y: minY
       });
       const end = planToScreen({
         x: gridX,
-        y: maxY,
+        y: maxY
       });
-      const halfMeterIndex = Math.round((gridX / ppm) * 2);
-      context.strokeStyle =
-        halfMeterIndex % 2 === 0
-          ? "rgba(91, 119, 139, .13)"
-          : "rgba(91, 119, 139, .065)";
+      const halfMeterIndex = Math.round(gridX / ppm * 2);
+      context.strokeStyle = halfMeterIndex % 2 === 0 ? "rgba(91, 119, 139, .13)" : "rgba(91, 119, 139, .065)";
       context.beginPath();
       context.moveTo(start.x, start.y);
       context.lineTo(end.x, end.y);
@@ -96,17 +82,14 @@ export function createPlanDrawingTools({
     for (let gridY = Math.floor(minY / step) * step; gridY <= maxY; gridY += step) {
       const start = planToScreen({
         x: minX,
-        y: gridY,
+        y: gridY
       });
       const end = planToScreen({
         x: maxX,
-        y: gridY,
+        y: gridY
       });
-      const halfMeterIndex = Math.round((gridY / ppm) * 2);
-      context.strokeStyle =
-        halfMeterIndex % 2 === 0
-          ? "rgba(91, 119, 139, .13)"
-          : "rgba(91, 119, 139, .065)";
+      const halfMeterIndex = Math.round(gridY / ppm * 2);
+      context.strokeStyle = halfMeterIndex % 2 === 0 ? "rgba(91, 119, 139, .13)" : "rgba(91, 119, 139, .065)";
       context.beginPath();
       context.moveTo(start.x, start.y);
       context.lineTo(end.x, end.y);
@@ -184,10 +167,10 @@ export function createPlanDrawingTools({
     context.restore();
   }
   return {
-    drawMetricGrid: drawMetricGrid,
-    drawLine: drawLine,
-    drawPoint: drawPoint,
-    drawOpenEndpointWarning: drawOpenEndpointWarning,
-    drawFloatingLabel: drawFloatingLabel,
+    drawMetricGrid,
+    drawLine,
+    drawPoint,
+    drawOpenEndpointWarning,
+    drawFloatingLabel
   };
 }

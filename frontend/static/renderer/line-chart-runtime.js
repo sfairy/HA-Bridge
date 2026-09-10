@@ -1,12 +1,6 @@
-export function lineChartGeometry(
-  series,
-  originX = 0,
-  originY = 5,
-  width = 100,
-  height = 59,
-) {
-  const dataMin = Math.min(...series.map((point) => point.value));
-  const dataMax = Math.max(...series.map((point) => point.value));
+export function lineChartGeometry(series, originX = 0, originY = 5, width = 100, height = 59) {
+  const dataMin = Math.min(...series.map(point => point.value));
+  const dataMax = Math.max(...series.map(point => point.value));
   const range = dataMax - dataMin;
   const magnitude = Math.max(Math.abs(dataMin), Math.abs(dataMax), 0.001);
   const padding = Math.max(0.0001, range * 0.12, magnitude * 0.02);
@@ -15,12 +9,10 @@ export function lineChartGeometry(
   const span = Math.max(0.000001, maximum - minimum);
   const firstTime = series[0].timestamp;
   const lastTime = Math.max(firstTime + 1, series.at(-1).timestamp);
-  const points = series.map((point) => ({
+  const points = series.map(point => ({
     ...point,
-    x:
-      originX +
-      ((point.timestamp - firstTime) / (lastTime - firstTime)) * width,
-    y: originY + ((maximum - point.value) / span) * height,
+    x: originX + (point.timestamp - firstTime) / (lastTime - firstTime) * width,
+    y: originY + (maximum - point.value) / span * height
   }));
   return {
     dataMin,
@@ -30,15 +22,11 @@ export function lineChartGeometry(
     span,
     firstTime,
     lastTime,
-    points,
+    points
   };
 }
 export function normalizedStatePrecision(statePrecision) {
-  if (
-    statePrecision == null ||
-    statePrecision === "" ||
-    statePrecision === "auto"
-  ) {
+  if (statePrecision == null || statePrecision === "" || statePrecision === "auto") {
     return "auto";
   }
   const numeric = Number(statePrecision);
@@ -68,8 +56,7 @@ export function formatNumericValue(value, precision = "auto") {
     return "--";
   }
   const resolved = normalizedStatePrecision(precision);
-  const digits =
-    resolved === "auto" ? automaticNumericPrecision(numeric) : resolved;
+  const digits = resolved === "auto" ? automaticNumericPrecision(numeric) : resolved;
   const formatted = numeric.toFixed(digits);
   if (resolved === "auto") {
     return String(Number(formatted));

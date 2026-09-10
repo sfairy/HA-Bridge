@@ -6,25 +6,20 @@ export function createEditorPickerElements({
   assetDisplayName,
   assetPreviewUrl,
   bindEditorIconNameTooltip,
-  mdiIconUrl,
+  mdiIconUrl
 }) {
   function createIconPickerClearOption(selectedName, label, datasetKey) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `navigation-icon-option navigation-icon-clear${
-      selectedName ? "" : " selected"
-    }`;
+    button.className = `navigation-icon-option navigation-icon-clear${selectedName ? "" : " selected"}`;
     button.dataset[datasetKey] = "";
     button.textContent = label;
     return button;
   }
-
   function createIconPickerOption(icon, selectedName, datasetKey) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `navigation-icon-option${
-      icon.name === selectedName ? " selected" : ""
-    }`;
+    button.className = `navigation-icon-option${icon.name === selectedName ? " selected" : ""}`;
     button.dataset[datasetKey] = icon.name;
     button.setAttribute("aria-label", icon.name);
     button.dataset.iconName = icon.name;
@@ -36,7 +31,6 @@ export function createEditorPickerElements({
     bindEditorIconNameTooltip(button, icon.name);
     return button;
   }
-
   function createEditorPickerCurrentIcon(iconName, emptyLabel = "未使用图标") {
     const name = String(iconName || "").trim();
     const current = document.createElement("span");
@@ -56,25 +50,18 @@ export function createEditorPickerElements({
     current.append(label);
     return current;
   }
-
   function createEditorEntityPickerOption(entity, selectedEntityId) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `inspector-entity-option${
-      entity.entityId === selectedEntityId ? " selected" : ""
-    }`;
+    button.className = `inspector-entity-option${entity.entityId === selectedEntityId ? " selected" : ""}`;
     button.dataset.editorPickerValue = entity.entityId;
     button.setAttribute("role", "option");
-    button.setAttribute(
-      "aria-selected",
-      String(entity.entityId === selectedEntityId),
-    );
+    button.setAttribute("aria-selected", String(entity.entityId === selectedEntityId));
     const content = document.createElement("span");
     content.className = "inspector-entity-option-content";
     content.title = entityPickerText(entity);
     const nameLine = document.createElement("span");
-    nameLine.className =
-      "inspector-entity-option-line inspector-entity-name-line";
+    nameLine.className = "inspector-entity-option-line inspector-entity-name-line";
     const kind = document.createElement("span");
     kind.className = "inspector-entity-kind";
     kind.textContent = `[${entityKindLabel(entity)}] `;
@@ -90,7 +77,6 @@ export function createEditorPickerElements({
     button.append(content);
     return button;
   }
-
   function editorPickerClearOption(label, selected = false) {
     const button = document.createElement("button");
     button.type = "button";
@@ -99,25 +85,20 @@ export function createEditorPickerElements({
     button.textContent = label;
     return button;
   }
-
   function editorPickerClearAction(label = "不使用实体", selected = false) {
     const button = editorPickerClearOption(label, selected);
     button.className = "editor-paged-picker-selected-action";
     return button;
   }
-
   function editorPickerEntityAction(entity, selected = false) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `editor-paged-picker-selected-action${
-      selected ? " selected" : ""
-    }`;
+    button.className = `editor-paged-picker-selected-action${selected ? " selected" : ""}`;
     button.dataset.editorPickerValue = entity.entityId;
     button.title = entityPickerText(entity);
     button.textContent = entityPickerText(entity);
     return button;
   }
-
   function createEditorPickerCurrentEntity(entity, emptyLabel = "未选择实体") {
     const current = document.createElement("span");
     current.className = "editor-paged-picker-current-entity";
@@ -137,7 +118,6 @@ export function createEditorPickerElements({
     if (entityId.textContent) current.append(entityId);
     return current;
   }
-
   function createEditorPickerCurrentAsset(asset, emptyLabel = "未使用图片") {
     const current = document.createElement("span");
     current.className = "editor-paged-picker-current-asset";
@@ -156,7 +136,6 @@ export function createEditorPickerElements({
     current.append(image, name);
     return current;
   }
-
   return Object.freeze({
     createIconPickerClearOption,
     createIconPickerOption,
@@ -166,6 +145,6 @@ export function createEditorPickerElements({
     editorPickerClearAction,
     editorPickerEntityAction,
     createEditorPickerCurrentEntity,
-    createEditorPickerCurrentAsset,
+    createEditorPickerCurrentAsset
   });
 }

@@ -12,7 +12,7 @@ export function createRenderLightIndex() {
     builds: 0,
     sorts: 0,
     reads: 0,
-    checkedLights: 0,
+    checkedLights: 0
   };
   const invalidate = () => {
     dirty = true;
@@ -30,7 +30,7 @@ export function createRenderLightIndex() {
     visibleLights = [];
     lightScores = [];
     sortedLights = [];
-    root.traverse((object) => {
+    root.traverse(object => {
       listenedNodes.push(object);
       object.addEventListener("childadded", invalidate);
       object.addEventListener("childremoved", invalidate);
@@ -38,14 +38,10 @@ export function createRenderLightIndex() {
         return;
       }
       const path = [];
-      for (
-        let node = object;
-        node && (path.push(node), node !== root);
-        node = node.parent
-      );
+      for (let node = object; node && (path.push(node), node !== root); node = node.parent);
       lightEntries.push({
         object,
-        path,
+        path
       });
     });
     dirty = false;
@@ -68,7 +64,10 @@ export function createRenderLightIndex() {
       visibilityCache.clear();
       let visibleCount = 0;
       let orderChanged = false;
-      for (const { object: light, path } of lightEntries) {
+      for (const {
+        object: light,
+        path
+      } of lightEntries) {
         stats.checkedLights++;
         let isVisible = true;
         for (const node of path) {
@@ -102,12 +101,7 @@ export function createRenderLightIndex() {
         for (const light of visibleLights) {
           sortedLights.push(light);
         }
-        sortedLights.sort(
-          (a, b) =>
-            (b.castShadow ? 2 : 0) +
-            (b.map ? 1 : 0) -
-            ((a.castShadow ? 2 : 0) + (a.map ? 1 : 0)),
-        );
+        sortedLights.sort((a, b) => (b.castShadow ? 2 : 0) + (b.map ? 1 : 0) - ((a.castShadow ? 2 : 0) + (a.map ? 1 : 0)));
         stats.sorts++;
       }
       return sortedLights;
@@ -119,6 +113,6 @@ export function createRenderLightIndex() {
       visibilityCache.clear();
       root = null;
       sortedLights = visibleLights = lightScores = [];
-    },
+    }
   };
 }

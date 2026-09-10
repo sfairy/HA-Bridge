@@ -5,9 +5,7 @@ export function lineChartRuntimeStateNeedsHydration(state) {
   if (!current) {
     return true;
   }
-  const status = String(current.state ?? "")
-    .trim()
-    .toLowerCase();
+  const status = String(current.state ?? "").trim().toLowerCase();
   return status === "" || status === "unknown" || status === "unavailable";
 }
 export function collectEntityIds(components, entityIds = new Set()) {
@@ -17,12 +15,26 @@ export function collectEntityIds(components, entityIds = new Set()) {
         entityIds.add(binding.entityId);
       }
     }
+    if (component.type === "interaction3d") {
+      for (const entityId of component.properties?.devices?.vacuums || []) {
+        for (const value of [entityId.entityId, entityId.map?.entityId, ...(entityId.relatedEntityIds || []), ...(entityId.shortcuts || []).map(entityId2 => entityId2.entityId)]) {
+          if (value && !isVirtualEntityId(value)) {
+            entityIds.add(value);
+          }
+        }
+      }
+    }
+    if (component.type === "interaction3d") {
+      for (const entityId of component.properties?.security?.presenceSensors || []) {
+        if (entityId.entityId && !isVirtualEntityId(entityId.entityId)) {
+          entityIds.add(entityId.entityId);
+        }
+      }
+    }
     if (component.type === "light-statistics") {
-      for (const entityId of Array.isArray(component.properties?.entityIds)
-        ? component.properties.entityIds
-        : []) {
-        if (entityId && !isVirtualEntityId(entityId)) {
-          entityIds.add(String(entityId));
+      for (const value2 of Array.isArray(component.properties?.entityIds) ? component.properties.entityIds : []) {
+        if (value2 && !isVirtualEntityId(value2)) {
+          entityIds.add(String(value2));
         }
       }
     }
@@ -30,12 +42,7 @@ export function collectEntityIds(components, entityIds = new Set()) {
       entityIds.add(component.bindings?.sun?.entityId || "sun.sun");
     }
     for (const action of Object.values(component.actions || {})) {
-      if (
-        action?.type === "more-info" &&
-        action.data?.popupSource === "entity" &&
-        action.data?.entityId &&
-        !isVirtualEntityId(action.data.entityId)
-      ) {
+      if (action?.type === "more-info" && action.data?.popupSource === "entity" && action.data?.entityId && !isVirtualEntityId(action.data.entityId)) {
         entityIds.add(action.data.entityId);
       }
     }
@@ -56,22 +63,13 @@ export function collectComponents(components, match, matches = []) {
   return matches;
 }
 export function matchingLineChartComponent(document, page, entityId) {
-  const isMatch = (component) =>
-    component.type === "line-chart" &&
-    component.bindings?.entity?.entityId === entityId;
+  const isMatch = component => component.type === "line-chart" && component.bindings?.entity?.entityId === entityId;
   const onPage = collectComponents(page?.components || [], isMatch)[0];
   if (onPage) {
     return onPage;
   }
-  const sharedById = new Map(
-    (document?.sharedComponents || []).map((component) => [
-      component.id,
-      component,
-    ]),
-  );
-  const pageShared = (page?.sharedComponentIds || [])
-    .map((componentId) => sharedById.get(componentId))
-    .filter(Boolean);
+  const sharedById = new Map((document?.sharedComponents || []).map(component => [component.id, component]));
+  const pageShared = (page?.sharedComponentIds || []).map(componentId => sharedById.get(componentId)).filter(Boolean);
   const onPageShared = collectComponents(pageShared, isMatch)[0];
   if (onPageShared) {
     return onPageShared;
@@ -85,18 +83,11 @@ export function matchingLineChartComponent(document, page, entityId) {
       return found;
     }
   }
-  return (
-    collectComponents(document?.sharedComponents || [], isMatch)[0] || null
-  );
+  return collectComponents(document?.sharedComponents || [], isMatch)[0] || null;
 }
-export function syncedLineChartProperties(
-  document,
-  page,
-  entityId,
-  overrides = {},
-) {
+export function syncedLineChartProperties(document, page, entityId, overrides = {}) {
   return {
     ...(matchingLineChartComponent(document, page, entityId)?.properties || {}),
-    ...(overrides || {}),
+    ...(overrides || {})
   };
 }

@@ -9,31 +9,88 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from pydantic import Field
+from sqlalchemy import select
 from starlette.concurrency import run_in_threadpool
 
 from api.assets import UPLOAD_CONTENT_TYPES, user_asset_file
 from api.ha import active_connection, call_service
 from dependencies import DatabaseSession, LicensedUser, LicensedViewer, require_viewer_project
-from models import ProjectDraft
+from models import HAEntity, ProjectDraft
 from modules.interaction3d.access import access_grant, module_components, require_access
+from modules.interaction3d.climate import require_air_conditioner_model, validate_climate_command
+from modules.interaction3d.cover import require_curtain_model, validate_cover_command
 from modules.interaction3d.render_cache import MAX_ENTRY_BYTES, cache_path, read_cache, write_cache
 from schemas import HAServiceCallRequest
 
 router = APIRouter(prefix='/modules/interaction3d', tags=['3D interaction'])
 SCENE_ID = re.compile('[0-9a-f]{32}')
 RESOURCE_TYPES = {
-    **{name: 'text/javascript' for name in (
-        'runtime.js',
-        'stage.js',
-        'config-editor.js',
-        'light-state.js',
-        'light-stream.js',
-        'camera-motion.js',
-        'idle-rotation.js',
-        'scene-sync.js',
-    )},
-    **{name: 'text/css' for name in ('runtime.css', 'stage.css')},
+    **{
+        name: 'text/javascript'
+        for name in (
+            'presence-focus-editor.js',
+            'presence-character.js',
+            'presence-motion.js',
+            'presence-scene.js',
+            'presence-editor.js',
+            'floor-navigation.js',
+            'vacuum-motion.js',
+            'vacuum-map.js',
+            'vacuum-map-editor.js',
+            'runtime.js',
+            'stage.js',
+            'television-state.js',
+            'television-panel.js',
+            'television-screen.js',
+            'nas-status.js',
+            'nas-panel.js',
+            'config-editor.js',
+            'range-dialog.js',
+            'light-range-editor.js',
+            'light-state.js',
+            'light-stream.js',
+            'camera-motion.js',
+            'idle-rotation.js',
+            'scene-sync.js',
+            'climate-state.js',
+            'climate-panel.js',
+            'environment-scene.js',
+            'environment-halos.js',
+            'environment-airflow.js',
+            'cover-state.js',
+            'cover-panel.js',
+            'cover-feedback.js',
+            'curtain-motion.js',
+        )
+    },
+    **{
+        name: 'text/css'
+        for name in (
+            'presence-editor.css',
+            'runtime.css',
+            'stage.css',
+            'climate-panel.css',
+            'nas-panel.css',
+            'cover-panel.css',
+        )
+    },
 }
+
+TELEVISION_SERVICES = {
+    'turn_on': 128,
+    'turn_off': 256,
+    'media_previous_track': 16,
+    'media_next_track': 32,
+    'media_play': 16384,
+    'media_pause': 1,
+}
+
+
+class Interaction3dControlRequest(HAServiceCallRequest):
+    project_id: str = Field(default='', alias='projectId', max_length=128)
+    component_id: str = Field(default='', alias='componentId', max_length=128)
+    device_kind: str = Field(default='', alias='deviceKind', max_length=32)
 
 
 def light_history_scope(connection, viewer, project_id: str) -> str:
@@ -222,16 +279,175 @@ def get_background(
     raise HTTPException(404, detail='户型底图不存在。')
 
 
+def _load_component(database, project_id: str, component_id: str):
+    draft = database.get(ProjectDraft, project_id)
+    if draft is None:
+        return None
+    return next(
+        (item for _, item in module_components(json.loads(draft.document_json)) if item.get('id') == component_id),
+        None,
+    )
+
+
+def _scene_payload(request: Request, scene_id: str) -> dict:
+    source = request.app.state.settings.studio3d_draft_path
+    reference = json.loads(scene_path(request, scene_id).read_text(encoding='utf-8'))
+    try:
+        if source.is_file():
+            payload = json.loads(source.read_text(encoding='utf-8'))
+            if isinstance(payload.get('scene'), dict):
+                return payload
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        pass
+    return reference
+
+
+def _component_devices(component: dict, kind: str) -> list:
+    properties = component.get('properties') or {}
+    if kind == 'television':
+        devices = ((properties.get('devices') or {}).get('televisions')) or []
+        return devices if isinstance(devices, list) else []
+    environment = properties.get('environment') or {}
+    key = 'curtains' if kind == 'cover' else 'airConditioners'
+    items = environment.get(key) or []
+    return items if isinstance(items, list) else []
+
+
+async def _live_state(request: Request, entity_id: str) -> dict | None:
+    states = await request.app.state.ha_connector.state_hub.snapshot({entity_id})
+    return next((item for item in states if item.get('entityId') == entity_id), None)
+
+
 @router.post('/control')
-async def control_light(
-    payload: HAServiceCallRequest,
+async def control_device(
+    payload: Interaction3dControlRequest,
     request: Request,
     database: DatabaseSession,
     viewer: LicensedViewer,
 ):
     require_access(request)
-    if payload.domain not in frozenset({'light', 'switch'}) or payload.service not in frozenset({'turn_on', 'turn_off'}):
-        raise HTTPException(422, detail='3D 灯光控制只支持灯或开关。')
+    device_kind = (payload.device_kind or '').strip()
+    domain = payload.domain
+    service = payload.service
+    entity_id = payload.entity_id
+    data = payload.data if isinstance(payload.data, dict) else {}
+
+    if device_kind == 'television' or domain == 'media_player':
+        if not payload.project_id or not payload.component_id:
+            raise HTTPException(422, detail='电视控制缺少仪表盘或控件信息。')
+        require_viewer_project(viewer, payload.project_id)
+        component = _load_component(database, payload.project_id, payload.component_id)
+        if component is None:
+            raise HTTPException(422, detail='电视控制缺少仪表盘或控件信息。')
+        televisions = _component_devices(component, 'television')
+        match = next(
+            (
+                item
+                for item in televisions
+                if isinstance(item, dict)
+                and (
+                    str(item.get('powerEntityId') or '') == entity_id
+                    or str(item.get('entityId') or '') == entity_id
+                )
+            ),
+            None,
+        )
+        if match is None:
+            raise HTTPException(403, detail='此电源实体未配置到当前电视。')
+        scene_id = str((component.get('properties') or {}).get('sceneId') or '')
+        try:
+            scene = _scene_payload(request, scene_id).get('scene') or {}
+            floors = scene_floors(scene)
+            model_id = str(match.get('modelId') or '')
+            floor_id = str(match.get('floorId') or '')
+            models = []
+            for floor in floors:
+                if not isinstance(floor, dict):
+                    continue
+                if floor_id and str(floor.get('id') or '') != floor_id:
+                    continue
+                for item in floor.get('models') or (floor.get('scene') or {}).get('models') or []:
+                    if isinstance(item, dict) and str(item.get('id') or '') == model_id:
+                        models.append(item)
+            if len(models) != 1 or models[0].get('type') != 'tv':
+                raise HTTPException(409, detail='电视模型已失联，请重新配置。')
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+            raise HTTPException(409, detail='户型暂时无法读取，请稍后重试。') from error
+        if domain not in frozenset({'switch', 'media_player'}) or service not in TELEVISION_SERVICES:
+            raise HTTPException(422, detail='电视不支持此控制操作或参数。')
+        if set(data):
+            raise HTTPException(422, detail='电视不支持此控制操作或参数。')
+        state = await _live_state(request, entity_id)
+        if (
+            not isinstance(state, dict)
+            or state.get('available') is False
+            or state.get('state') in frozenset({None, '', 'unknown', 'unavailable'})
+        ):
+            raise HTTPException(409, detail='电视电源状态不可用，请稍后重试。')
+        if domain == 'media_player':
+            attributes = state.get('attributes') if isinstance(state.get('attributes'), dict) else {}
+            try:
+                features = int(attributes.get('supported_features') or 0)
+            except (TypeError, ValueError):
+                features = 0
+            required = TELEVISION_SERVICES[service]
+            if not features & required:
+                raise HTTPException(422, detail='此媒体实体不支持该操作。')
+            if service not in frozenset({'turn_on', 'turn_off'}) and state.get('state') in frozenset(
+                {'off', 'standby'}
+            ):
+                raise HTTPException(409, detail='请先开启电视。')
+        return await call_service(payload, request, database, viewer)
+
+    if device_kind in frozenset({'cover', 'climate'}) or domain in frozenset({'cover', 'climate'}):
+        is_cover = device_kind == 'cover' or domain == 'cover'
+        label = '窗帘' if is_cover else '空调'
+        if not payload.project_id or not payload.component_id:
+            raise HTTPException(422, detail=f'{label}控制缺少仪表盘或控件信息。')
+        require_viewer_project(viewer, payload.project_id)
+        component = _load_component(database, payload.project_id, payload.component_id)
+        if component is None:
+            raise HTTPException(422, detail=f'{label}控制缺少仪表盘或控件信息。')
+        bindings = _component_devices(component, 'cover' if is_cover else 'climate')
+        if not any(isinstance(item, dict) and str(item.get('entityId') or '') == entity_id for item in bindings):
+            raise HTTPException(403, detail=f'此{label}未配置到当前 3D 交互控件。')
+        scene_id = str((component.get('properties') or {}).get('sceneId') or '')
+        try:
+            scene = _scene_payload(request, scene_id).get('scene') or {}
+            if is_cover:
+                require_curtain_model(bindings, entity_id, scene)
+            else:
+                require_air_conditioner_model(bindings, entity_id, scene)
+        except HTTPException:
+            raise
+        except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+            raise HTTPException(409, detail='户型暂时无法读取，请稍后重试。') from error
+        connection = active_connection(database)
+        if connection is None:
+            raise HTTPException(409, detail='请先配置 Home Assistant 连接。')
+        entity = database.scalar(
+            select(HAEntity).where(
+                HAEntity.connection_id == connection.id,
+                HAEntity.entity_id == entity_id,
+                HAEntity.sync_status == 'active',
+                HAEntity.disabled_by.is_(None),
+            )
+        )
+        if entity is None:
+            raise HTTPException(404, detail='实体不存在、已禁用或已失联。')
+        state = await _live_state(request, entity_id)
+        if is_cover:
+            if domain != 'cover':
+                raise HTTPException(422, detail='3D 交互控制只支持已配置的灯光、开关、空调或窗帘。')
+            validate_cover_command(service, data, state)
+        else:
+            if domain != 'climate':
+                raise HTTPException(422, detail='3D 交互控制只支持已配置的灯光、开关、空调或窗帘。')
+            validate_climate_command(service, data, state)
+        return await call_service(payload, request, database, viewer)
+
+    if domain not in frozenset({'light', 'switch'}) or service not in frozenset({'turn_on', 'turn_off'}):
+        raise HTTPException(422, detail='3D 交互控制只支持已配置的灯光、开关、空调或窗帘。')
     return await call_service(payload, request, database, viewer)
 
 
@@ -248,7 +464,7 @@ def get_stage(
     html = (request.app.state.settings.frontend_dir / '3d-studio.html').read_text(encoding='utf-8')
     html = html.replace(
         '</head>',
-        '<link rel="stylesheet" href="/api/v1/modules/interaction3d/stage.css?v=20260907-hidden-clickable-v1"></head>',
+        '<link rel="stylesheet" href="/api/v1/modules/interaction3d/stage.css?v=20260908-curtains-v1"></head>',
     )
     scope = light_history_scope(active_connection(database), viewer, projectId)
     html = html.replace('<body>', f'<body class="interaction3d-stage" data-i3d-light-history-scope="{scope}">')

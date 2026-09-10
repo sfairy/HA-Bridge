@@ -2,10 +2,10 @@ export function createDemandFrameLoop({
   step,
   onWake = () => {},
   now = () => performance.now(),
-  requestFrame = (cb) => requestAnimationFrame(cb),
-  cancelFrame = (id) => cancelAnimationFrame(id),
+  requestFrame = cb => requestAnimationFrame(cb),
+  cancelFrame = id => cancelAnimationFrame(id),
   schedule = (cb, ms) => setTimeout(cb, ms),
-  cancel = (id) => clearTimeout(id),
+  cancel = id => clearTimeout(id)
 }) {
   let frameId = null;
   let timerId = null;
@@ -15,9 +15,8 @@ export function createDemandFrameLoop({
   let wakeDuringStep = false;
   const stats = {
     frames: 0,
-    deadlines: 0,
+    deadlines: 0
   };
-
   function clearPending() {
     if (frameId !== null) {
       cancelFrame(frameId);
@@ -27,7 +26,6 @@ export function createDemandFrameLoop({
     }
     frameId = timerId = null;
   }
-
   function wake() {
     if (disposed || !available) {
       return;
@@ -45,7 +43,6 @@ export function createDemandFrameLoop({
       frameId = requestFrame(onFrame);
     }
   }
-
   function onFrame(timestamp = now()) {
     frameId = null;
     if (disposed || !available) {
@@ -72,7 +69,6 @@ export function createDemandFrameLoop({
       }
     }
   }
-
   return {
     wake,
     stats,
@@ -92,6 +88,6 @@ export function createDemandFrameLoop({
     },
     get pending() {
       return frameId !== null || timerId !== null;
-    },
+    }
   };
 }

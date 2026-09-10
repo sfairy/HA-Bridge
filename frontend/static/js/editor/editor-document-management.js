@@ -1,15 +1,7 @@
-import {
-  clone,
-  newId,
-  slugify,
-} from "./editor-utils.js?v=20260831-editor-utils-v1";
+import { clone, newId, slugify } from "./editor-utils.js?v=20260831-editor-utils-v1";
 export function uniquePagePath(pages, name, excludePath = "") {
   const basePath = slugify(name);
-  const usedPaths = new Set(
-    (pages || [])
-      .map((page) => page.path)
-      .filter((path) => path !== excludePath),
-  );
+  const usedPaths = new Set((pages || []).map(page => page.path).filter(path => path !== excludePath));
   let candidate = basePath;
   let suffix = 2;
   while (usedPaths.has(candidate)) {
@@ -22,7 +14,7 @@ export function clonePageWithFreshIds(pageSource, name, existingPages = []) {
   page.id = newId("page");
   page.name = name;
   page.path = uniquePagePath(existingPages, name);
-  const assignFreshComponentIds = (components) => {
+  const assignFreshComponentIds = components => {
     for (const component of components || []) {
       component.id = newId("component");
       assignFreshComponentIds(component.children);
@@ -32,28 +24,23 @@ export function clonePageWithFreshIds(pageSource, name, existingPages = []) {
   return page;
 }
 export function findCustomPopup(document, popupId) {
-  return (
-    (document?.customPopups || []).find((popup) => popup.id === popupId) ||
-    null
-  );
+  return (document?.customPopups || []).find(popup => popup.id === popupId) || null;
 }
 export function popupModuleTypeLabel(moduleType) {
-  return (
-    {
-      light: "灯光",
-      climate: "空调 / 浴霸",
-      "air-purifier": "空气净化器",
-      "water-heater": "热水器",
-      "media-player": "媒体",
-      "electric-bed": "电动床",
-      switch: "开关 / 按钮",
-      cover: "窗帘",
-      camera: "摄像头",
-      "line-chart": "折线图",
-      generic: "通用设备",
-      "capability-device": "通用设备",
-    }[moduleType] || "通用设备"
-  );
+  return {
+    light: "灯光",
+    climate: "空调 / 浴霸",
+    "air-purifier": "空气净化器",
+    "water-heater": "热水器",
+    "media-player": "媒体",
+    "electric-bed": "电动床",
+    switch: "开关 / 按钮",
+    cover: "窗帘",
+    camera: "摄像头",
+    "line-chart": "折线图",
+    generic: "通用设备",
+    "capability-device": "通用设备"
+  }[moduleType] || "通用设备";
 }
 const ALLOWED_CLIMATE_DEVICE_TYPES = ["auto", "air-conditioner", "bath-heater"];
 export function normalizedPopupClimateDeviceType(deviceType) {
@@ -64,8 +51,7 @@ export function normalizedPopupClimateDeviceType(deviceType) {
   }
 }
 export function popupModuleEntityRecommended(metadata, moduleType) {
-  const domain =
-    metadata?.domain || String(metadata?.entityId || "").split(".")[0];
+  const domain = metadata?.domain || String(metadata?.entityId || "").split(".")[0];
   if (moduleType === "light") {
     return domain === "light";
   } else if (moduleType === "climate") {
@@ -90,14 +76,9 @@ export function popupModuleEntityRecommended(metadata, moduleType) {
     return true;
   }
 }
-export function reorderedPopupModules(
-  modules,
-  draggedId,
-  targetId = null,
-  placeAfter = false,
-) {
+export function reorderedPopupModules(modules, draggedId, targetId = null, placeAfter = false) {
   const next = [...(modules || [])];
-  const fromIndex = next.findIndex((module) => module.id === draggedId);
+  const fromIndex = next.findIndex(module => module.id === draggedId);
   if (fromIndex < 0 || draggedId === targetId) {
     return next;
   }
@@ -106,7 +87,7 @@ export function reorderedPopupModules(
     next.push(moved);
     return next;
   }
-  const toIndex = next.findIndex((module) => module.id === targetId);
+  const toIndex = next.findIndex(module => module.id === targetId);
   if (toIndex < 0) {
     next.splice(fromIndex, 0, moved);
     return next;
@@ -122,30 +103,30 @@ export function popupModuleDropPosition(element, pointerEvent) {
   if (offsetY <= edgeThreshold) {
     return {
       placeAfter: false,
-      edge: "top",
+      edge: "top"
     };
   } else if (offsetY >= rect.height - edgeThreshold) {
     return {
       placeAfter: true,
-      edge: "bottom",
+      edge: "bottom"
     };
   } else if (pointerEvent.clientX < rect.left + rect.width / 2) {
     return {
       placeAfter: false,
-      edge: "left",
+      edge: "left"
     };
   } else {
     return {
       placeAfter: true,
-      edge: "right",
+      edge: "right"
     };
   }
 }
-export function greatestCommonDivisor(a, b) {
-  let x = Math.abs(Math.trunc(a));
-  let y = Math.abs(Math.trunc(b));
-  while (y) {
-    [x, y] = [y, x % y];
+export function greatestCommonDivisor(arg, arg2) {
+  let value = Math.abs(Math.trunc(arg));
+  let value2 = Math.abs(Math.trunc(arg2));
+  while (value2) {
+    [value, value2] = [value2, value % value2];
   }
-  return x || 1;
+  return value || 1;
 }

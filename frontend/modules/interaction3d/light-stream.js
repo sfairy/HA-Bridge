@@ -1,13 +1,14 @@
 export function createLightStream({
   onStates = () => {},
-  createSocket = (url) => new window.WebSocket(url),
-  socketURL = () => {
-    const url = new URL("/api/v1/ws/runtime", location.origin);
-    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-    return url.href;
+  onPatch: createSocket = null,
+  createSocket: arg7 = arg3 => new window.WebSocket(arg3),
+  socketURL: arg8 = () => {
+    const protocol = new URL("/api/v1/ws/runtime", location.origin);
+    protocol.protocol = protocol.protocol === "https:" ? "wss:" : "ws:";
+    return protocol.href;
   },
-  setTimer = (callback, delay) => setTimeout(callback, delay),
-  clearTimer = (timerId) => clearTimeout(timerId),
+  setTimer: arg9 = (timerId, arg4) => setTimeout(timerId, arg4),
+  clearTimer = arg5 => clearTimeout(arg5)
 } = {}) {
   let entityIds = [];
   let entityIdSet = new Set();
@@ -21,25 +22,16 @@ export function createLightStream({
   let reconnectAttempt = 0;
   let reconnectTimer = null;
   let idleTimer = null;
-  const unavailableState = (entityId) => ({
-    entityId: entityId,
+  const unavailableState = entityId => ({
+    entityId,
     state: "unavailable",
     available: false,
-    attributes: {},
+    attributes: {}
   });
-  const emitStates = () =>
-    onStates(
-      hasSnapshot
-        ? Object.fromEntries(
-            entityIds.map((entityId) => [
-              entityId,
-              structuredClone(
-                stateByEntityId.get(entityId) || unavailableState(entityId),
-              ),
-            ]),
-          )
-        : {},
-    );
+  const emitStates = () => onStates(hasSnapshot ? Object.fromEntries(entityIds.map(entityId => [entityId, structuredClone(stateByEntityId.get(entityId) || unavailableState(entityId))])) : {});
+  const emitStates2 = arg6 => typeof createSocket == "function" ? createSocket({
+    [arg6]: structuredClone(stateByEntityId.get(arg6) || unavailableState(arg6))
+  }) : emitStates();
   function clearStates() {
     stateByEntityId = new Map();
     hasSnapshot = false;
@@ -70,7 +62,7 @@ export function createLightStream({
       return;
     }
     const delay = Math.min(15000, 2 ** Math.min(reconnectAttempt++, 5) * 500);
-    reconnectTimer = setTimer(() => {
+    reconnectTimer = arg9(() => {
       reconnectTimer = null;
       connect();
     }, delay);
@@ -82,17 +74,14 @@ export function createLightStream({
     const generation = ++connectionGeneration;
     let nextSocket;
     try {
-      nextSocket = createSocket(
-        typeof socketURL == "function" ? socketURL() : socketURL,
-      );
+      nextSocket = arg7(typeof arg8 == "function" ? arg8() : arg8);
     } catch {
       clearStates();
       scheduleReconnect();
       return;
     }
     socket = nextSocket;
-    const isCurrent = () =>
-      !disposed && active && generation === connectionGeneration && socket === nextSocket;
+    const isCurrent = () => !disposed && active && generation === connectionGeneration && socket === nextSocket;
     const fail = (closeCode = 0) => {
       if (isCurrent()) {
         closeSocket();
@@ -106,18 +95,16 @@ export function createLightStream({
       if (idleTimer !== null) {
         clearTimer(idleTimer);
       }
-      idleTimer = setTimer(() => fail(), delay);
+      idleTimer = arg9(() => fail(), delay);
     }
     const handlers = {
       open() {
         if (isCurrent()) {
           try {
-            nextSocket.send(
-              JSON.stringify({
-                type: "subscribe",
-                entityIds: entityIds,
-              }),
-            );
+            nextSocket.send(JSON.stringify({
+              type: "subscribe",
+              entityIds
+            }));
           } catch {
             fail();
           }
@@ -143,10 +130,7 @@ export function createLightStream({
           if (message.type === "snapshot" && Array.isArray(message.states)) {
             const nextStates = new Map();
             for (const state of message.states) {
-              if (
-                entityIdSet.has(state?.entityId) &&
-                typeof state.state == "string"
-              ) {
+              if (entityIdSet.has(state?.entityId) && typeof state.state == "string") {
                 nextStates.set(state.entityId, structuredClone(state));
               }
             }
@@ -155,23 +139,14 @@ export function createLightStream({
             reconnectAttempt = 0;
             armIdleTimeout(65000);
             emitStates();
-          } else if (
-            hasSnapshot &&
-            message.type === "state_changed" &&
-            entityIdSet.has(message.entityId) &&
-            typeof message.state == "string"
-          ) {
+          } else if (hasSnapshot && message.type === "state_changed" && entityIdSet.has(message.entityId) && typeof message.state == "string") {
             stateByEntityId.set(message.entityId, structuredClone(message));
             armIdleTimeout(65000);
-            emitStates();
-          } else if (
-            hasSnapshot &&
-            message.type === "state_removed" &&
-            entityIdSet.has(message.entityId)
-          ) {
+            emitStates2(message.entityId);
+          } else if (hasSnapshot && message.type === "state_removed" && entityIdSet.has(message.entityId)) {
             stateByEntityId.delete(message.entityId);
             armIdleTimeout(65000);
-            emitStates();
+            emitStates2(message.entityId);
           } else if (hasSnapshot && message.type === "ping") {
             armIdleTimeout(65000);
           }
@@ -182,7 +157,7 @@ export function createLightStream({
       },
       error() {
         fail();
-      },
+      }
     };
     for (const [eventName, handler] of Object.entries(handlers)) {
       nextSocket.addEventListener(eventName, handler);
@@ -195,25 +170,17 @@ export function createLightStream({
     armIdleTimeout(12000);
   }
   return {
-    configure(nextEntityIds = []) {
+    configure(nextEntityIds = [], {
+      additionalEntityIds: filter = []
+    } = {}) {
       if (disposed) {
         return;
       }
-      const normalized = [
-        ...new Set(
-          nextEntityIds.filter(
-            (entityId) =>
-              typeof entityId == "string" &&
-              /^(light|switch)\.[a-z0-9_]+$/.test(entityId),
-          ),
-        ),
-      ].sort();
-      if (
-        normalized.length !== entityIds.length ||
-        !normalized.every((entityId, index) => entityId === entityIds[index])
-      ) {
+      const normalized = new Set(filter.filter(arg2 => typeof arg2 == "string" && /^[a-z_]+\.[a-z0-9_]+$/.test(arg2)));
+      const normalized2 = [...new Set(nextEntityIds.filter(arg => typeof arg == "string" && (normalized.has(arg) || /^(light|switch|climate|cover|binary_sensor|event|input_boolean|sensor|media_player|vacuum|camera|image|script|button)\.[a-z0-9_]+$/.test(arg))))].sort();
+      if (normalized2.length !== entityIds.length || !normalized2.every((entityId, index) => entityId === entityIds[index])) {
         closeSocket();
-        entityIds = normalized;
+        entityIds = normalized2;
         entityIdSet = new Set(entityIds);
         reconnectAttempt = 0;
         clearStates();
@@ -241,6 +208,6 @@ export function createLightStream({
         entityIdSet.clear();
         stateByEntityId.clear();
       }
-    },
+    }
   };
 }

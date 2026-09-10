@@ -2,13 +2,7 @@ const canvasSessions = new WeakMap();
 const hideDurationMs = 560;
 const hideEasing = "cubic-bezier(.22,.61,.36,1)";
 function sharedComponentIdsForOwner(owner) {
-  return (
-    (
-      owner.context.document?.pages?.find(
-        (page) => page.id === owner.context.page?.id,
-      ) || owner.context.page
-    )?.sharedComponentIds || []
-  );
+  return (owner.context.document?.pages?.find(page => page.id === owner.context.page?.id) || owner.context.page)?.sharedComponentIds || [];
 }
 function finishHideRecord(session, element, record) {
   for (const animation of record.animations) {
@@ -21,7 +15,10 @@ function finishHideRecord(session, element, record) {
     element.setAttribute("aria-hidden", record.ariaHidden);
   }
   if (record.visibility) {
-    const { value, priority } = record.visibility;
+    const {
+      value,
+      priority
+    } = record.visibility;
     if (value) {
       element.style.setProperty("visibility", value, priority);
     } else {
@@ -29,11 +26,7 @@ function finishHideRecord(session, element, record) {
     }
   }
   session.records.delete(element);
-  if (
-    !session.owners.size &&
-    !session.records.size &&
-    canvasSessions.get(session.canvas) === session
-  ) {
+  if (!session.owners.size && !session.records.size && canvasSessions.get(session.canvas) === session) {
     canvasSessions.delete(session.canvas);
   }
 }
@@ -65,20 +58,14 @@ function hideElement(session, element, animate) {
   const view = element.ownerDocument.defaultView;
   const canvasRect = session.canvas.getBoundingClientRect();
   const scaleX = canvasRect.width / session.canvas.clientWidth || 1;
-  const slideDistance = Math.max(
-    24,
-    (element.getBoundingClientRect().right - canvasRect.left) / scaleX + 24,
-  );
-  const duration = view.matchMedia?.("(prefers-reduced-motion: reduce)")
-    .matches
-    ? 0
-    : hideDurationMs;
+  const slideDistance = Math.max(24, (element.getBoundingClientRect().right - canvasRect.left) / scaleX + 24);
+  const duration = view.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : hideDurationMs;
   record = {
     hidden: true,
     animations: [],
-    duration: duration,
+    duration,
     inert: element.inert,
-    ariaHidden: element.getAttribute("aria-hidden"),
+    ariaHidden: element.getAttribute("aria-hidden")
   };
   session.records.set(element, record);
   element.inert = true;
@@ -86,42 +73,30 @@ function hideElement(session, element, animate) {
   if (typeof element.animate != "function") {
     record.visibility = {
       value: element.style.getPropertyValue("visibility"),
-      priority: element.style.getPropertyPriority("visibility"),
+      priority: element.style.getPropertyPriority("visibility")
     };
     element.style.setProperty("visibility", "hidden", "important");
     return;
   }
-  const translateAnimation = element.animate(
-    [
-      {
-        translate: "0px 0px",
-      },
-      {
-        translate: -slideDistance + "px 0px",
-      },
-    ],
-    {
-      duration: duration,
-      easing: hideEasing,
-      fill: "forwards",
-      composite: "add",
-    },
-  );
-  const opacityAnimation = element.animate(
-    [
-      {
-        opacity: view.getComputedStyle(element).opacity,
-      },
-      {
-        opacity: 0,
-      },
-    ],
-    {
-      duration: duration,
-      easing: hideEasing,
-      fill: "forwards",
-    },
-  );
+  const translateAnimation = element.animate([{
+    translate: "0px 0px"
+  }, {
+    translate: -slideDistance + "px 0px"
+  }], {
+    duration,
+    easing: hideEasing,
+    fill: "forwards",
+    composite: "add"
+  });
+  const opacityAnimation = element.animate([{
+    opacity: view.getComputedStyle(element).opacity
+  }, {
+    opacity: 0
+  }], {
+    duration,
+    easing: hideEasing,
+    fill: "forwards"
+  });
   record.animations.push(translateAnimation, opacityAnimation);
   opacityAnimation.onfinish = () => {
     if (!record.hidden && session.records.get(element) === record) {
@@ -137,26 +112,13 @@ function hideElement(session, element, animate) {
 function syncSession(session, animate = true) {
   const owners = [...session.owners];
   const sharedIds = new Set(owners.flatMap(sharedComponentIdsForOwner));
-  const targets = new Set(
-    [...session.canvas.children].filter((child) => {
-      const componentId =
-        child.dataset?.componentId ||
-        child.dataset?.effectFor ||
-        child.dataset?.airflowFor;
-      return (
-        sharedIds.has(componentId) &&
-        !owners.some((owner) => child.contains(owner.root))
-      );
-    }),
-  );
+  const targets = new Set([...session.canvas.children].filter(child => {
+    const componentId = child.dataset?.componentId || child.dataset?.effectFor || child.dataset?.airflowFor;
+    return sharedIds.has(componentId) && !owners.some(owner => child.contains(owner.root));
+  }));
   for (const [element, record] of session.records) {
     if (!targets.has(element)) {
-      revealElement(
-        session,
-        element,
-        record,
-        element.parentElement !== session.canvas,
-      );
+      revealElement(session, element, record, element.parentElement !== session.canvas);
     }
   }
   for (const element of targets) {
@@ -167,10 +129,10 @@ function acquireSession(canvas, owner) {
   let session = canvasSessions.get(canvas);
   if (!session) {
     session = {
-      canvas: canvas,
+      canvas,
       owners: new Set(),
       records: new Map(),
-      observer: null,
+      observer: null
     };
     const MutationObserverCtor = canvas.ownerDocument.defaultView.MutationObserver;
     session.observer = new MutationObserverCtor(() => syncSession(session, false));
@@ -178,7 +140,7 @@ function acquireSession(canvas, owner) {
   }
   if (!session.owners.size) {
     session.observer.observe(canvas, {
-      childList: true,
+      childList: true
     });
   }
   session.owners.add(owner);
@@ -201,8 +163,8 @@ function releaseSession(session, owner, immediate) {
 }
 export function createInteraction3dFocusLayout(root, context = {}) {
   const owner = {
-    root: root,
-    context: context,
+    root,
+    context
   };
   let session = null;
   let active = false;
@@ -236,7 +198,7 @@ export function createInteraction3dFocusLayout(root, context = {}) {
         }
       }
     },
-    refresh: refresh,
+    refresh,
     dispose() {
       if (!disposed) {
         disposed = true;
@@ -246,6 +208,6 @@ export function createInteraction3dFocusLayout(root, context = {}) {
         }
         session = null;
       }
-    },
+    }
   };
 }

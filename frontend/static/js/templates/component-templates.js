@@ -1,44 +1,22 @@
-import { interaction3dTemplate } from "../../modules/interaction3d/definition.js?v=20260905-interaction3d-v1";
-
+import { interaction3dTemplate } from "../../modules/interaction3d/definition.js?v=20260909-curtain-action-v15";
 const templateRegistry = new Map();
+registerComponentTemplate(interaction3dTemplate);
 const uiPackRegistry = new Map();
 const COMPONENT_TYPE_GROUPS = {
-  shared: [
-    "time",
-    "date",
-    "weather",
-    "line-chart",
-    "panel-frame",
-    "navigation-button",
-  ],
-  page: [
-    "image",
-    "floorplan-auto-diagram",
-    "title-button",
-    "light-statistics",
-    "icon-button",
-    "icon-button-effect",
-    "device-button",
-    "presence-sensor",
-    "air-conditioner",
-    "vacuum-map",
-    "camera",
-    "line-chart",
-    "panel-frame",
-    "interaction3d",
-  ],
+  shared: ["time", "date", "weather", "line-chart", "panel-frame", "navigation-button"],
+  page: ["image", "floorplan-auto-diagram", "title-button", "light-statistics", "icon-button", "icon-button-effect", "device-button", "presence-sensor", "air-conditioner", "vacuum-map", "camera", "line-chart", "panel-frame"]
 };
 const componentDefaults = {
   image: {
     properties: {
       opacity: 1,
       layoutMode: "free",
-      fit: "contain",
+      fit: "contain"
     },
     style: {
       scale: 1,
-      visible: true,
-    },
+      visible: true
+    }
   },
   "floorplan-auto-diagram": {
     properties: {
@@ -56,25 +34,25 @@ const componentDefaults = {
       cameraTopRotation: 0,
       cameraFocalLength: 50,
       generated: false,
-      lightLayers: [],
+      lightLayers: []
     },
     style: {
       scale: 1,
-      visible: true,
-    },
+      visible: true
+    }
   },
   "vacuum-map": {
     properties: {
-      opacity: 0.5,
+      opacity: 0.5
     },
     style: {
       scale: 1.049,
-      visible: true,
+      visible: true
     },
     dimensions: {
       width: 1555.68,
-      height: 1605.684,
-    },
+      height: 1605.684
+    }
   },
   "icon-button-effect": {
     properties: {
@@ -100,16 +78,16 @@ const componentDefaults = {
       effectLeft: 50,
       effectTop: 50,
       effectScale: 1,
-      effectRotation: 0,
+      effectRotation: 0
     },
     style: {
       scale: 0.19458752228421689,
-      visible: true,
+      visible: true
     },
     dimensions: {
       width: 208.35,
-      height: 208.35,
-    },
+      height: 208.35
+    }
   },
   "title-button": {
     properties: {
@@ -141,16 +119,16 @@ const componentDefaults = {
       markerColor: "#f2a20d",
       markerSize: 16,
       markerTop: 110,
-      opacity: 1,
+      opacity: 1
     },
     style: {
       scale: 0.9213987523473026,
-      visible: true,
+      visible: true
     },
     dimensions: {
       width: 500.04,
-      height: 121.94,
-    },
+      height: 121.94
+    }
   },
   "icon-button": {
     properties: {
@@ -205,16 +183,16 @@ const componentDefaults = {
       glowStrength: 1,
       glowSize: 1,
       glowAngle: 249,
-      opacity: 1,
+      opacity: 1
     },
     style: {
       scale: 0.779857559628849,
-      visible: true,
+      visible: true
     },
     dimensions: {
       width: 277.8,
-      height: 300.16,
-    },
+      height: 300.16
+    }
   },
   "device-button": {
     properties: {
@@ -265,16 +243,16 @@ const componentDefaults = {
       glowColor: "#248eb2",
       glowStrength: 0.5,
       glowSize: 1,
-      glowAngle: 220,
+      glowAngle: 220
     },
     style: {
       scale: 0.7774703949015426,
-      visible: true,
+      visible: true
     },
     dimensions: {
       width: 277.8,
-      height: 206.36,
-    },
+      height: 206.36
+    }
   },
   "presence-sensor": {
     properties: {
@@ -299,16 +277,16 @@ const componentDefaults = {
       personOpacity: 1,
       orbitDuration: 8,
       showDuration: true,
-      historyHours: 24,
+      historyHours: 24
     },
     style: {
       scale: 1,
-      visible: true,
+      visible: true
     },
     dimensions: {
       width: 360,
-      height: 240,
-    },
+      height: 240
+    }
   },
   camera: {
     properties: {
@@ -318,16 +296,16 @@ const componentDefaults = {
       frameVisible: true,
       opacity: 1,
       radius: 11,
-      refreshInterval: 10,
+      refreshInterval: 10
     },
     style: {
       scale: 0.8252317102372743,
-      visible: true,
+      visible: true
     },
     dimensions: {
       width: 611.16,
-      height: 343.7775,
-    },
+      height: 343.7775
+    }
   },
   "air-conditioner": {
     properties: {
@@ -372,16 +350,16 @@ const componentDefaults = {
       airflowBlur: 6,
       airflowSpeed: 1,
       airflowHeight: 300,
-      airflowScale: 0.4817745640382381,
+      airflowScale: 0.4817745640382381
     },
     style: {
       scale: 1.0190713138587422,
-      visible: true,
+      visible: true
     },
     dimensions: {
       width: 305.58,
-      height: 150.08,
-    },
+      height: 150.08
+    }
   },
   time: {
     properties: {
@@ -391,16 +369,16 @@ const componentDefaults = {
       fontSize: 89,
       fontWeight: 1,
       letterSpacing: 4.7,
-      opacity: 1,
+      opacity: 1
     },
     style: {
       scale: 0.576,
-      visible: true,
+      visible: true
     },
     dimensions: {
       width: 496.6612,
-      height: 105.02,
-    },
+      height: 105.02
+    }
   },
   date: {
     properties: {
@@ -415,16 +393,16 @@ const componentDefaults = {
       lunarWeight: 0.5,
       lunarSpacing: 0.2,
       lineGap: 11,
-      opacity: 1,
+      opacity: 1
     },
     style: {
       scale: 0.642,
-      visible: true,
+      visible: true
     },
     dimensions: {
       width: 353.92,
-      height: 81.08,
-    },
+      height: 81.08
+    }
   },
   weather: {
     properties: {
@@ -443,16 +421,16 @@ const componentDefaults = {
       secondaryWeight: 0.5,
       secondarySpacing: 1,
       lineGap: 7,
-      opacity: 1,
+      opacity: 1
     },
     style: {
       scale: 0.8056171554518585,
-      visible: true,
+      visible: true
     },
     dimensions: {
       width: 263.8,
-      height: 109,
-    },
+      height: 109
+    }
   },
   "line-chart": {
     properties: {
@@ -463,16 +441,16 @@ const componentDefaults = {
       valueOffsetY: 1,
       updateInterval: 600,
       hours: 12,
-      cornerRadius: 14,
+      cornerRadius: 14
     },
     style: {
       scale: 1,
-      visible: true,
+      visible: true
     },
     dimensions: {
       width: 525.042,
-      height: 300.16,
-    },
+      height: 300.16
+    }
   },
   "panel-frame": {
     properties: {
@@ -492,16 +470,16 @@ const componentDefaults = {
       edgeAngle: 45,
       glowVisible: true,
       glowColor: "#ffffff",
-      glowAngle: 242,
+      glowAngle: 242
     },
     style: {
       scale: 1,
-      visible: true,
+      visible: true
     },
     dimensions: {
       width: 527.82,
-      height: 300.16,
-    },
+      height: 300.16
+    }
   },
   "navigation-button": {
     properties: {
@@ -549,30 +527,26 @@ const componentDefaults = {
       textGlowIdleSize: 3,
       radius: 0.5,
       idleOpacity: 0.3,
-      activeOpacity: 0.96,
+      activeOpacity: 0.96
     },
     style: {
       scale: 0.8533204506895217,
-      visible: true,
+      visible: true
     },
     dimensions: {
       width: 555.6,
-      height: 153.832,
-    },
-  },
+      height: 153.832
+    }
+  }
 };
-const KNOWN_PROPERTY_NAME_PATTERN =
-  /(?:text|label|name|title|icon|assetid|targetpage|layoutmode|freelayout|naturalwidth|naturalheight|fit|refreshinterval|exportfolder|previewready|previewing|interactionmode|generated|lightlayers|exportresolution|exportcamera|floorselection)$/i;
+const KNOWN_PROPERTY_NAME_PATTERN = /(?:text|label|name|title|icon|assetid|targetpage|layoutmode|freelayout|naturalwidth|naturalheight|fit|refreshinterval|exportfolder|previewready|previewing|interactionmode|generated|lightlayers|exportresolution|exportcamera|floorselection)$/i;
 export function registerUiPackDefinition(definition) {
   if (!definition?.id || !definition?.version) {
     throw new Error("UI 方案必须包含 id 和 version。");
   }
-  uiPackRegistry.set(
-    definition.id,
-    Object.freeze({
-      ...definition,
-    }),
-  );
+  uiPackRegistry.set(definition.id, Object.freeze({
+    ...definition
+  }));
 }
 export function hasUiPackDefinition(uiPackId) {
   return uiPackRegistry.has(uiPackId);
@@ -583,39 +557,27 @@ registerUiPackDefinition({
   popupTemplate: "dwell-light",
   theme: {
     name: "dashboard-v1-dark",
-    variables: {},
+    variables: {}
   },
-  componentDefaults: componentDefaults,
+  componentDefaults
 });
-registerComponentTemplate(interaction3dTemplate);
 export function registerComponentTemplate(template) {
   if (!template?.id || typeof template.create != "function") {
     throw new Error("控件模板必须包含 id 和 create。");
   }
   const uiPackId = template.uiPackId || "ui.base";
-  templateRegistry.set(
-    uiPackId + ":" + template.id,
-    Object.freeze({
-      ...template,
-      uiPackId: uiPackId,
-    }),
-  );
+  templateRegistry.set(uiPackId + ":" + template.id, Object.freeze({
+    ...template,
+    uiPackId
+  }));
 }
 export function listComponentTemplates(scope, uiPackId = "ui.base") {
   const typeOrder = COMPONENT_TYPE_GROUPS[scope] || [];
-  return [...templateRegistry.values()]
-    .filter(
-      (template) =>
-        template.uiPackId === uiPackId && template.scopes?.includes(scope),
-    )
-    .sort((a, b) => {
-      const orderA = typeOrder.indexOf(a.id);
-      const orderB = typeOrder.indexOf(b.id);
-      return (
-        (orderA < 0 ? Number.MAX_SAFE_INTEGER : orderA) -
-        (orderB < 0 ? Number.MAX_SAFE_INTEGER : orderB)
-      );
-    });
+  return [...templateRegistry.values()].filter(template => template.uiPackId === uiPackId && template.scopes?.includes(scope)).sort((id, id2) => {
+    const orderA = typeOrder.indexOf(id.id);
+    const orderB = typeOrder.indexOf(id2.id);
+    return (orderA < 0 ? Number.MAX_SAFE_INTEGER : orderA) - (orderB < 0 ? Number.MAX_SAFE_INTEGER : orderB);
+  });
 }
 export function createComponentFromTemplate(templateId, options) {
   const uiPackId = options?.uiPackId || "ui.base";
@@ -626,13 +588,12 @@ export function createComponentFromTemplate(templateId, options) {
   const component = {
     ...template.create(options),
     templateRef: {
-      uiPackId: uiPackId,
-      templateId: templateId,
-      version: 1,
-    },
+      uiPackId,
+      templateId,
+      version: 1
+    }
   };
-  const typeDefaults =
-    uiPackRegistry.get(uiPackId)?.componentDefaults?.[component.type];
+  const typeDefaults = uiPackRegistry.get(uiPackId)?.componentDefaults?.[component.type];
   if (!typeDefaults) {
     return component;
   }
@@ -640,7 +601,7 @@ export function createComponentFromTemplate(templateId, options) {
   const defaultStyle = structuredClone(typeDefaults.style || {});
   const dimensions = typeDefaults.dimensions;
   const position = {
-    ...component.position,
+    ...component.position
   };
   if (dimensions) {
     const canvasWidth = Number(options?.canvas?.width || 2778);
@@ -652,24 +613,20 @@ export function createComponentFromTemplate(templateId, options) {
   }
   return {
     ...component,
-    position: position,
+    position,
     properties: {
       ...component.properties,
       ...defaultProperties,
-      instanceName: component.properties.instanceName,
+      instanceName: component.properties.instanceName
     },
     style: {
       ...component.style,
-      ...defaultStyle,
-    },
+      ...defaultStyle
+    }
   };
 }
 function pickKnownProperties(properties = {}) {
-  return Object.fromEntries(
-    Object.entries(properties).filter(([key]) =>
-      KNOWN_PROPERTY_NAME_PATTERN.test(key),
-    ),
-  );
+  return Object.fromEntries(Object.entries(properties).filter(([key]) => KNOWN_PROPERTY_NAME_PATTERN.test(key)));
 }
 function applyUiPackToComponent(component, uiPack, canvas) {
   const templateId = component.templateRef?.templateId || component.type;
@@ -678,135 +635,87 @@ function applyUiPackToComponent(component, uiPack, canvas) {
     created = createComponentFromTemplate(templateId, {
       id: component.id,
       instanceName: component.properties?.instanceName,
-      canvas: canvas,
+      canvas,
       targetPage: component.properties?.targetPage,
-      uiPackId: uiPack.id,
+      uiPackId: uiPack.id
     });
   } catch (error) {
     if (templateRegistry.has("ui.base:" + templateId)) {
       throw error;
     }
   }
-  const next = created
-    ? {
-        ...component,
-        properties: {
-          ...(created.properties || {}),
-          ...pickKnownProperties(component.properties),
-        },
-        style: {
-          ...(created.style || {}),
-          ...(Object.prototype.hasOwnProperty.call(
-            component.style || {},
-            "scale",
-          )
-            ? {
-                scale: component.style.scale,
-              }
-            : {}),
-          ...(Object.prototype.hasOwnProperty.call(
-            component.style || {},
-            "visible",
-          )
-            ? {
-                visible: component.style.visible,
-              }
-            : {}),
-        },
-        position: component.position,
-        bindings: component.bindings || {},
-        actions: component.actions || {},
-      }
-    : {
-        ...component,
-      };
+  const next = created ? {
+    ...component,
+    properties: {
+      ...(created.properties || {}),
+      ...pickKnownProperties(component.properties)
+    },
+    style: {
+      ...(created.style || {}),
+      ...(Object.prototype.hasOwnProperty.call(component.style || {}, "scale") ? {
+        scale: component.style.scale
+      } : {}),
+      ...(Object.prototype.hasOwnProperty.call(component.style || {}, "visible") ? {
+        visible: component.style.visible
+      } : {})
+    },
+    position: component.position,
+    bindings: component.bindings || {},
+    actions: component.actions || {}
+  } : {
+    ...component
+  };
   next.templateRef = {
     uiPackId: uiPack.id,
-    templateId: templateId,
-    version: Number(uiPack.templateVersion || 1),
+    templateId,
+    version: Number(uiPack.templateVersion || 1)
   };
-  next.children = (component.children || []).map((child) =>
-    applyUiPackToComponent(child, uiPack, canvas),
-  );
+  next.children = (component.children || []).map(child => applyUiPackToComponent(child, uiPack, canvas));
   return next;
 }
 export function applyUiPackToDocument(document, uiPack) {
   const definition = uiPackRegistry.get(uiPack.id);
   if (!definition) {
-    throw new Error(
-      "UI 方案“" + (uiPack.name || uiPack.id) + "”运行时未正确加载。",
-    );
+    throw new Error("UI 方案“" + (uiPack.name || uiPack.id) + "”运行时未正确加载。");
   }
   const canvas = document.canvas || {};
-  document.sharedComponents = (document.sharedComponents || []).map(
-    (component) => applyUiPackToComponent(component, uiPack, canvas),
-  );
-  document.pages = (document.pages || []).map((page) => ({
+  document.sharedComponents = (document.sharedComponents || []).map(component => applyUiPackToComponent(component, uiPack, canvas));
+  document.pages = (document.pages || []).map(page => ({
     ...page,
-    components: (page.components || []).map((component) =>
-      applyUiPackToComponent(component, uiPack, canvas),
-    ),
+    components: (page.components || []).map(component => applyUiPackToComponent(component, uiPack, canvas))
   }));
-  document.customPopups = (document.customPopups || []).map((popup) => ({
+  document.customPopups = (document.customPopups || []).map(popup => ({
     ...popup,
     templateRef: {
       uiPackId: uiPack.id,
-      templateId:
-        uiPack.popupTemplate || definition.popupTemplate || "custom-popup",
-      version: Number(uiPack.templateVersion || 1),
-    },
+      templateId: uiPack.popupTemplate || definition.popupTemplate || "custom-popup",
+      version: Number(uiPack.templateVersion || 1)
+    }
   }));
-  document.theme = structuredClone(
-    uiPack.theme || definition.theme || document.theme || {},
-  );
+  document.theme = structuredClone(uiPack.theme || definition.theme || document.theme || {});
   document.uiPack = {
     id: uiPack.id,
-    version: uiPack.version,
+    version: uiPack.version
   };
   return document;
 }
 export function timeComponentDimensions(properties = {}) {
-  const fontSize = Math.max(
-    12,
-    Math.min(500, Number(properties.fontSize || 96)),
-  );
-  const letterSpacing = Math.max(
-    -20,
-    Math.min(100, Number(properties.letterSpacing || 0)),
-  );
+  const fontSize = Math.max(12, Math.min(500, Number(properties.fontSize || 96)));
+  const letterSpacing = Math.max(-20, Math.min(100, Number(properties.letterSpacing || 0)));
   const showSeconds = properties.showSeconds === true;
-  const digitSlots =
-    properties.hour12 === true ? (showSeconds ? 11 : 8) : showSeconds ? 8 : 5;
+  const digitSlots = properties.hour12 === true ? showSeconds ? 11 : 8 : showSeconds ? 8 : 5;
   const fontWeight = Number(properties.fontWeight ?? 0.4);
-  const weightFactor =
-    (fontWeight > 1 ? (fontWeight - 1) / 899 : fontWeight) >= 0.67 ? 1.035 : 1;
+  const weightFactor = (fontWeight > 1 ? (fontWeight - 1) / 899 : fontWeight) >= 0.67 ? 1.035 : 1;
   return {
-    width: Math.max(
-      fontSize,
-      fontSize * 0.61 * digitSlots * weightFactor +
-        letterSpacing * Math.max(0, digitSlots - 1) +
-        fontSize * 0.16,
-    ),
-    height: Math.max(20, fontSize * 1.18),
+    width: Math.max(fontSize, fontSize * 0.61 * digitSlots * weightFactor + letterSpacing * Math.max(0, digitSlots - 1) + fontSize * 0.16),
+    height: Math.max(20, fontSize * 1.18)
   };
 }
 export function dateComponentDimensions(properties = {}) {
-  const primarySize = Math.max(
-    12,
-    Math.min(500, Number(properties.primarySize || 36)),
-  );
-  const lunarSize = Math.max(
-    10,
-    Math.min(500, Number(properties.lunarSize || 24)),
-  );
-  const primarySpacing = Math.max(
-    -20,
-    Math.min(100, Number(properties.primarySpacing || 1)),
-  );
-  const lunarSpacing = Math.max(
-    -20,
-    Math.min(100, Number(properties.lunarSpacing || 1)),
-  );
+  const primarySize = Math.max(12, Math.min(500, Number(properties.primarySize || 36)));
+  const lunarSize = Math.max(10, Math.min(500, Number(properties.lunarSize || 24)));
+  const primarySpacing = Math.max(-20, Math.min(100, Number(properties.primarySpacing || 1)));
+  const lunarSpacing = Math.max(-20, Math.min(100, Number(properties.lunarSpacing || 1)));
   const lineGap = Math.max(0, Math.min(200, Number(properties.lineGap ?? 8)));
   const weekdayCharFactor = properties.showWeekday === false ? 6.35 : 9.35;
   const lunarCharCount = 6;
@@ -814,60 +723,24 @@ export function dateComponentDimensions(properties = {}) {
   const lunarWidth = lunarSize * lunarCharCount + lunarSpacing * 5;
   const showLunar = properties.showLunar === true;
   return {
-    width:
-      Math.max(primarySize, primaryWidth, showLunar ? lunarWidth : 0) +
-      primarySize * 0.12,
-    height:
-      primarySize * 1.16 + (showLunar ? lunarSize * 1.18 + lineGap : 0),
+    width: Math.max(primarySize, primaryWidth, showLunar ? lunarWidth : 0) + primarySize * 0.12,
+    height: primarySize * 1.16 + (showLunar ? lunarSize * 1.18 + lineGap : 0)
   };
 }
 export function weatherComponentDimensions(properties = {}) {
-  const iconSize = Math.max(
-    12,
-    Math.min(500, Number(properties.iconSize || 64)),
-  );
-  const temperatureSize = Math.max(
-    12,
-    Math.min(500, Number(properties.temperatureSize || 32)),
-  );
-  const secondarySize = Math.max(
-    10,
-    Math.min(500, Number(properties.secondarySize || 18)),
-  );
+  const iconSize = Math.max(12, Math.min(500, Number(properties.iconSize || 64)));
+  const temperatureSize = Math.max(12, Math.min(500, Number(properties.temperatureSize || 32)));
+  const secondarySize = Math.max(10, Math.min(500, Number(properties.secondarySize || 18)));
   const iconGap = Math.max(0, Math.min(300, Number(properties.iconGap ?? 22)));
   const lineGap = Math.max(0, Math.min(200, Number(properties.lineGap ?? 7)));
-  const hasText =
-    properties.temperatureVisible !== false ||
-    properties.conditionVisible !== false ||
-    properties.humidityVisible !== false;
-  const temperatureWidth =
-    properties.temperatureVisible === false ? 0 : temperatureSize * 4.4;
-  const secondaryWidth =
-    properties.conditionVisible === false &&
-    properties.humidityVisible === false
-      ? 0
-      : secondarySize * 8.6;
-  const textWidth = hasText
-    ? Math.max(temperatureWidth, secondaryWidth, secondarySize * 3)
-    : 0;
-  const textHeight =
-    (properties.temperatureVisible === false ? 0 : temperatureSize * 1.12) +
-    (properties.conditionVisible === false &&
-    properties.humidityVisible === false
-      ? 0
-      : secondarySize * 1.14 + lineGap);
+  const hasText = properties.temperatureVisible !== false || properties.conditionVisible !== false || properties.humidityVisible !== false;
+  const temperatureWidth = properties.temperatureVisible === false ? 0 : temperatureSize * 4.4;
+  const secondaryWidth = properties.conditionVisible === false && properties.humidityVisible === false ? 0 : secondarySize * 8.6;
+  const textWidth = hasText ? Math.max(temperatureWidth, secondaryWidth, secondarySize * 3) : 0;
+  const textHeight = (properties.temperatureVisible === false ? 0 : temperatureSize * 1.12) + (properties.conditionVisible === false && properties.humidityVisible === false ? 0 : secondarySize * 1.14 + lineGap);
   return {
-    width: Math.max(
-      20,
-      (properties.iconVisible === false
-        ? 0
-        : iconSize + (hasText ? iconGap : 0)) + textWidth,
-    ),
-    height: Math.max(
-      20,
-      properties.iconVisible === false ? 0 : iconSize,
-      textHeight,
-    ),
+    width: Math.max(20, (properties.iconVisible === false ? 0 : iconSize + (hasText ? iconGap : 0)) + textWidth),
+    height: Math.max(20, properties.iconVisible === false ? 0 : iconSize, textHeight)
   };
 }
 registerComponentTemplate({
@@ -876,38 +749,42 @@ registerComponentTemplate({
   type: "image",
   description: "显示图片素材，可关联实体并设置点按动作。",
   scopes: ["page"],
-  create({ id: id, instanceName = "图片", canvas }) {
+  create({
+    id,
+    instanceName = "图片",
+    canvas
+  }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const width = 320;
     const height = 240;
     return {
-      id: id,
+      id,
       type: "image",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
       bindings: {},
       properties: {
-        instanceName: instanceName,
+        instanceName,
         opacity: 1,
         layoutMode: "free",
-        fit: "contain",
+        fit: "contain"
       },
       style: {
         scale: 1,
-        visible: true,
+        visible: true
       },
       actions: {},
-      children: [],
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "floorplan-auto-diagram",
@@ -915,27 +792,31 @@ registerComponentTemplate({
   type: "floorplan-auto-diagram",
   description: "把 3D 户型底图和灯组效果层合并为一个可交互的导图控件。",
   scopes: ["page"],
-  create({ id: id, instanceName: label = "户型图自动导图", canvas }) {
+  create({
+    id,
+    instanceName: label = "户型图自动导图",
+    canvas
+  }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const width = canvasWidth * 0.56;
     const height = canvasHeight * 0.56;
     return {
-      id: id,
+      id,
       type: "floorplan-auto-diagram",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
       bindings: {},
       properties: {
         instanceName: label,
-        label: label,
+        label,
         exportFolder: "",
         layoutMode: "free",
         baseAssetId: "",
@@ -949,16 +830,16 @@ registerComponentTemplate({
         cameraTopRotation: 0,
         cameraFocalLength: 50,
         generated: false,
-        lightLayers: [],
+        lightLayers: []
       },
       style: {
         scale: 1,
-        visible: true,
+        visible: true
       },
       actions: {},
-      children: [],
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "vacuum-map",
@@ -967,46 +848,44 @@ registerComponentTemplate({
   description: "将扫地机器人实时地图作为透明图层叠加到底图上。",
   scopes: ["page"],
   create({
-    id: id,
+    id,
     instanceName = "扫地机器人实时地图",
     canvas,
-    vacuumMapEntityId = "",
+    vacuumMapEntityId = ""
   }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const width = canvasWidth * 0.56;
-    const height = (width * 1156) / 1120;
+    const height = width * 1156 / 1120;
     return {
-      id: id,
+      id,
       type: "vacuum-map",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
-      bindings: vacuumMapEntityId
-        ? {
-            entity: {
-              entityId: vacuumMapEntityId,
-            },
-          }
-        : {},
+      bindings: vacuumMapEntityId ? {
+        entity: {
+          entityId: vacuumMapEntityId
+        }
+      } : {},
       properties: {
-        instanceName: instanceName,
-        opacity: 0.5,
+        instanceName,
+        opacity: 0.5
       },
       style: {
         scale: 1,
-        visible: true,
+        visible: true
       },
       actions: {},
-      children: [],
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "icon-button-effect",
@@ -1015,36 +894,34 @@ registerComponentTemplate({
   description: "同时包含可交互的图标按钮和跟随实体状态显隐的效果图片。",
   scopes: ["page"],
   create({
-    id: id,
+    id,
     instanceName = "图标按钮（效果）",
     canvas,
-    lightEntityId = "",
+    lightEntityId = ""
   }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const width = canvasWidth * 0.075;
     const height = width;
     return {
-      id: id,
+      id,
       type: "icon-button-effect",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
-      bindings: lightEntityId
-        ? {
-            entity: {
-              entityId: lightEntityId,
-            },
-          }
-        : {},
+      bindings: lightEntityId ? {
+        entity: {
+          entityId: lightEntityId
+        }
+      } : {},
       properties: {
-        instanceName: instanceName,
+        instanceName,
         buttonVisible: true,
         effectVisible: true,
         icon: "mdi:lightbulb-outline",
@@ -1070,22 +947,20 @@ registerComponentTemplate({
         effectLeft: 50,
         effectTop: 50,
         effectScale: 1,
-        effectRotation: 0,
+        effectRotation: 0
       },
       style: {
         scale: 1,
-        visible: true,
+        visible: true
       },
-      actions: lightEntityId
-        ? {
-            tap: {
-              type: "toggle",
-            },
-          }
-        : {},
-      children: [],
+      actions: lightEntityId ? {
+        tap: {
+          type: "toggle"
+        }
+      } : {},
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "title-button",
@@ -1093,26 +968,30 @@ registerComponentTemplate({
   type: "title-button",
   description: "中英文双标题、左右括号和下方三角指示的房间标题按钮。",
   scopes: ["page"],
-  create({ id: id, instanceName = "标题按钮", canvas }) {
+  create({
+    id,
+    instanceName = "标题按钮",
+    canvas
+  }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const width = canvasWidth * 0.18;
     const height = canvasHeight * 0.065;
     return {
-      id: id,
+      id,
       type: "title-button",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
       bindings: {},
       properties: {
-        instanceName: instanceName,
+        instanceName,
         mainTextVisible: true,
         secondaryTextVisible: true,
         mainText: "客厅",
@@ -1147,16 +1026,16 @@ registerComponentTemplate({
         markerColor: "#f2a20d",
         markerSize: 16,
         markerLeft: 1.8,
-        markerTop: 110,
+        markerTop: 110
       },
       style: {
         scale: 1.2932807744280563,
-        visible: true,
+        visible: true
       },
       actions: {},
-      children: [],
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "light-statistics",
@@ -1165,26 +1044,30 @@ registerComponentTemplate({
   description: "统计灯光、开关、空调等设备当前开启或运行的数量。",
   thumbnailId: "light-statistics",
   scopes: ["page"],
-  create({ id: id, instanceName = "数量统计", canvas }) {
+  create({
+    id,
+    instanceName = "数量统计",
+    canvas
+  }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const width = canvasWidth * 0.18;
     const height = canvasHeight * 0.065;
     return {
-      id: id,
+      id,
       type: "light-statistics",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
       bindings: {},
       properties: {
-        instanceName: instanceName,
+        instanceName,
         entityIds: [],
         entityLabels: {},
         title: "数量",
@@ -1205,16 +1088,16 @@ registerComponentTemplate({
         countWeight: 0.35,
         countSpacing: 0,
         countGap: 4.5,
-        iconSize: 42,
+        iconSize: 42
       },
       style: {
         scale: 1.2932807744280563,
-        visible: true,
+        visible: true
       },
       actions: {},
-      children: [],
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "icon-button",
@@ -1223,36 +1106,34 @@ registerComponentTemplate({
   description: "跟随灯光实体状态变化的切角图标按钮。",
   scopes: ["page"],
   create({
-    id: id,
+    id,
     instanceName = "图标按钮",
     canvas,
-    lightEntityId = "",
+    lightEntityId = ""
   }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const width = canvasWidth * 0.1;
     const height = canvasHeight * 0.15;
     return {
-      id: id,
+      id,
       type: "icon-button",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
-      bindings: lightEntityId
-        ? {
-            entity: {
-              entityId: lightEntityId,
-            },
-          }
-        : {},
+      bindings: lightEntityId ? {
+        entity: {
+          entityId: lightEntityId
+        }
+      } : {},
       properties: {
-        instanceName: instanceName,
+        instanceName,
         mainText: "主灯",
         secondaryText: "MAIN LIGHT",
         icon: "mdi:ceiling-light",
@@ -1297,22 +1178,20 @@ registerComponentTemplate({
         mainTextLeft: 9,
         mainTextTop: 78,
         secondaryTextLeft: 9,
-        secondaryTextTop: 91,
+        secondaryTextTop: 91
       },
       style: {
         scale: 1,
-        visible: true,
+        visible: true
       },
-      actions: lightEntityId
-        ? {
-            tap: {
-              type: "toggle",
-            },
-          }
-        : {},
-      children: [],
+      actions: lightEntityId ? {
+        tap: {
+          type: "toggle"
+        }
+      } : {},
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "device-button",
@@ -1320,26 +1199,30 @@ registerComponentTemplate({
   type: "device-button",
   description: "显示图标、标题和实时状态，点击可切换实体。",
   scopes: ["page"],
-  create({ id: id, instanceName = "设备按钮", canvas }) {
+  create({
+    id,
+    instanceName = "设备按钮",
+    canvas
+  }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const width = canvasWidth * 0.1;
     const height = canvasHeight * 0.11;
     return {
-      id: id,
+      id,
       type: "device-button",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
       bindings: {},
       properties: {
-        instanceName: instanceName,
+        instanceName,
         mainText: "",
         secondaryText: "",
         icon: "",
@@ -1365,50 +1248,52 @@ registerComponentTemplate({
         mainTextLeft: 39,
         mainTextTop: 40,
         secondaryTextLeft: 39,
-        secondaryTextTop: 67,
+        secondaryTextTop: 67
       },
       style: {
         scale: 1,
-        visible: true,
+        visible: true
       },
       actions: {},
-      children: [],
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "presence-sensor",
   name: "传感器",
   type: "presence-sensor",
-  description:
-    "添加后在属性中选择传感器类型，当前支持人在、门窗和水浸状态的动态显示。",
+  description: "添加后在属性中选择传感器类型，当前支持人在、门窗和水浸状态的动态显示。",
   scopes: ["page"],
-  create({ id: id, instanceName = "传感器", canvas, entityId = "" }) {
+  create({
+    id,
+    instanceName = "传感器",
+    canvas,
+    entityId = ""
+  }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const width = 360;
     const height = 240;
     return {
-      id: id,
+      id,
       type: "presence-sensor",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
-      bindings: entityId
-        ? {
-            entity: {
-              entityId: entityId,
-            },
-          }
-        : {},
+      bindings: entityId ? {
+        entity: {
+          entityId
+        }
+      } : {},
       properties: {
-        instanceName: instanceName,
+        instanceName,
         sensorKind: "presence",
         mainText: "人在",
         secondaryText: "",
@@ -1430,16 +1315,16 @@ registerComponentTemplate({
         personOpacity: 1,
         orbitDuration: 8,
         showDuration: true,
-        historyHours: 24,
+        historyHours: 24
       },
       style: {
         scale: 1,
-        visible: true,
+        visible: true
       },
       actions: {},
-      children: [],
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "camera",
@@ -1447,26 +1332,30 @@ registerComponentTemplate({
   type: "camera",
   description: "实时预览摄像头，点击可放大查看。",
   scopes: ["page"],
-  create({ id: id, instanceName = "摄像头实时预览", canvas }) {
+  create({
+    id,
+    instanceName = "摄像头实时预览",
+    canvas
+  }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const width = canvasWidth * 0.22;
-    const height = (width * 9) / 16;
+    const height = width * 9 / 16;
     return {
-      id: id,
+      id,
       type: "camera",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
       bindings: {},
       properties: {
-        instanceName: instanceName,
+        instanceName,
         fit: "fill",
         displayMode: "live",
         refreshInterval: 10,
@@ -1476,52 +1365,55 @@ registerComponentTemplate({
         frameWidth: 1,
         frameAngle: 45,
         frameOpacity: 0.9,
-        radius: 0.04,
+        radius: 0.04
       },
       style: {
         scale: 1,
-        visible: true,
+        visible: true
       },
       actions: {
         tap: {
           type: "more-info",
           data: {
-            popupSource: "current",
-          },
-        },
+            popupSource: "current"
+          }
+        }
       },
-      children: [],
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "air-conditioner",
   name: "空调 / 浴霸",
   type: "air-conditioner",
-  description:
-    "显示空调或浴霸状态并按实体能力提供控制，内置可调整的动态出风效果。",
+  description: "显示空调或浴霸状态并按实体能力提供控制，内置可调整的动态出风效果。",
   scopes: ["page"],
-  create({ id: id, instanceName = "空调", canvas }) {
+  create({
+    id,
+    instanceName = "空调",
+    canvas
+  }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const width = canvasWidth * 0.11;
     const height = canvasHeight * 0.08;
     return {
-      id: id,
+      id,
       type: "air-conditioner",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
       bindings: {},
       properties: {
         deviceType: "auto",
-        instanceName: instanceName,
+        instanceName,
         mainText: "",
         secondaryText: "",
         icon: "mdi:air-conditioner",
@@ -1566,23 +1458,23 @@ registerComponentTemplate({
         airflowWidth: 64,
         airflowHeight: 125,
         airflowScale: 1,
-        airflowRotation: -3,
+        airflowRotation: -3
       },
       style: {
         scale: 1,
-        visible: true,
+        visible: true
       },
       actions: {
         tap: {
-          type: "more-info",
+          type: "more-info"
         },
         doubleTap: {
-          type: "toggle",
-        },
+          type: "toggle"
+        }
       },
-      children: [],
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "time",
@@ -1590,43 +1482,49 @@ registerComponentTemplate({
   type: "time",
   description: "显示设备本地时间，不依赖 Home Assistant 实体。",
   scopes: ["shared"],
-  create({ id: id, instanceName = "时间", canvas }) {
+  create({
+    id,
+    instanceName = "时间",
+    canvas
+  }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const properties = {
-      instanceName: instanceName,
+      instanceName,
       hour12: false,
       showSeconds: false,
       color: "#248eb2",
       fontSize: 96,
       fontWeight: 0.4,
       letterSpacing: 2.2,
-      opacity: 1,
+      opacity: 1
     };
-    const { width: width, height: height } =
-      timeComponentDimensions(properties);
+    const {
+      width,
+      height
+    } = timeComponentDimensions(properties);
     return {
-      id: id,
+      id,
       type: "time",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
       bindings: {},
-      properties: properties,
+      properties,
       style: {
         scale: 1.8,
-        visible: true,
+        visible: true
       },
       actions: {},
-      children: [],
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "date",
@@ -1634,11 +1532,15 @@ registerComponentTemplate({
   type: "date",
   description: "显示设备本地年月日、星期与农历。",
   scopes: ["shared"],
-  create({ id: id, instanceName = "日期", canvas }) {
+  create({
+    id,
+    instanceName = "日期",
+    canvas
+  }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const properties = {
-      instanceName: instanceName,
+      instanceName,
       showWeekday: true,
       showLunar: false,
       primaryColor: "#8d9296",
@@ -1650,32 +1552,34 @@ registerComponentTemplate({
       lunarWeight: 0.4,
       lunarSpacing: 1,
       lineGap: 8,
-      opacity: 1,
+      opacity: 1
     };
-    const { width: width, height: height } =
-      dateComponentDimensions(properties);
+    const {
+      width,
+      height
+    } = dateComponentDimensions(properties);
     return {
-      id: id,
+      id,
       type: "date",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
       bindings: {},
-      properties: properties,
+      properties,
       style: {
         scale: 2,
-        visible: true,
+        visible: true
       },
       actions: {},
-      children: [],
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "weather",
@@ -1684,16 +1588,16 @@ registerComponentTemplate({
   description: "显示彩云天气当前状态、温度和湿度。",
   scopes: ["shared"],
   create({
-    id: id,
+    id,
     instanceName = "天气",
     canvas,
     weatherEntityId = "",
-    sunEntityId = "",
+    sunEntityId = ""
   }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const properties = {
-      instanceName: instanceName,
+      instanceName,
       iconVisible: true,
       temperatureVisible: true,
       conditionVisible: true,
@@ -1709,43 +1613,45 @@ registerComponentTemplate({
       secondaryWeight: 0.4,
       secondarySpacing: 1,
       lineGap: 7,
-      opacity: 1,
+      opacity: 1
     };
-    const { width: width, height: height } =
-      weatherComponentDimensions(properties);
+    const {
+      width,
+      height
+    } = weatherComponentDimensions(properties);
     const bindings = {};
     if (weatherEntityId) {
       bindings.entity = {
-        entityId: weatherEntityId,
+        entityId: weatherEntityId
       };
     }
     if (sunEntityId) {
       bindings.sun = {
-        entityId: sunEntityId,
+        entityId: sunEntityId
       };
     }
     return {
-      id: id,
+      id,
       type: "weather",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
-      bindings: bindings,
-      properties: properties,
+      bindings,
+      properties,
       style: {
         scale: 1.8,
-        visible: true,
+        visible: true
       },
       actions: {},
-      children: [],
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "line-chart",
@@ -1754,36 +1660,34 @@ registerComponentTemplate({
   description: "显示温度或湿度实体的 24 小时趋势、当前值与极值。",
   scopes: ["shared", "page"],
   create({
-    id: id,
+    id,
     instanceName = "折线图",
     canvas,
-    sensorEntityId = "",
+    sensorEntityId = ""
   }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const width = canvasWidth * 0.19;
     const height = canvasHeight * 0.16;
     return {
-      id: id,
+      id,
       type: "line-chart",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
-      bindings: sensorEntityId
-        ? {
-            entity: {
-              entityId: sensorEntityId,
-            },
-          }
-        : {},
+      bindings: sensorEntityId ? {
+        entity: {
+          entityId: sensorEntityId
+        }
+      } : {},
       properties: {
-        instanceName: instanceName,
+        instanceName,
         valueVisible: true,
         valueScale: 100,
         valueColor: "#dce1e5",
@@ -1792,20 +1696,20 @@ registerComponentTemplate({
         updateInterval: 600,
         hours: 24,
         cornerRadius: 10,
-        thresholdMode: "auto",
+        thresholdMode: "auto"
       },
       style: {
         scale: 1,
-        visible: true,
+        visible: true
       },
       actions: {
         tap: {
-          type: "more-info",
-        },
+          type: "more-info"
+        }
       },
-      children: [],
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "panel-frame",
@@ -1813,26 +1717,30 @@ registerComponentTemplate({
   type: "panel-frame",
   description: "双行标题、渐变外框和内向柔光容器。",
   scopes: ["shared", "page"],
-  create({ id: id, instanceName = "底图框", canvas }) {
+  create({
+    id,
+    instanceName = "底图框",
+    canvas
+  }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
     const width = canvasWidth * 0.19;
     const height = canvasHeight * 0.16;
     return {
-      id: id,
+      id,
       type: "panel-frame",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
       bindings: {},
       properties: {
-        instanceName: instanceName,
+        instanceName,
         mainTextVisible: true,
         mainText: "温度",
         mainColor: "#ffffff",
@@ -1861,16 +1769,16 @@ registerComponentTemplate({
         glowColor: "#ffffff",
         glowStrength: 0.5,
         glowSize: 1.5,
-        glowAngle: 242,
+        glowAngle: 242
       },
       style: {
         scale: 1,
-        visible: true,
+        visible: true
       },
       actions: {},
-      children: [],
+      children: []
     };
-  },
+  }
 });
 registerComponentTemplate({
   id: "navigation-button",
@@ -1879,10 +1787,10 @@ registerComponentTemplate({
   description: "默认用于页面跳转，也可绑定实体执行切换或打开弹窗。",
   scopes: ["shared"],
   create({
-    id: id,
+    id,
     instanceName = "导航按钮",
     canvas,
-    targetPage = "",
+    targetPage = ""
   }) {
     const canvasWidth = Number(canvas?.width || 2778);
     const canvasHeight = Number(canvas?.height || 1940);
@@ -1890,20 +1798,20 @@ registerComponentTemplate({
     const height = canvasHeight * 0.085;
     const target = String(targetPage || "");
     return {
-      id: id,
+      id,
       type: "navigation-button",
       componentVersion: 1,
       position: {
         x: (canvasWidth - width) / 2,
         y: (canvasHeight - height) / 2,
-        width: width,
-        height: height,
+        width,
+        height,
         rotation: 0,
-        zIndex: 1,
+        zIndex: 1
       },
       bindings: {},
       properties: {
-        instanceName: instanceName,
+        instanceName,
         targetPage: target,
         mainText: "页面导航",
         secondaryText: "NAVIGATION",
@@ -1944,21 +1852,19 @@ registerComponentTemplate({
         glowActiveStrength: 2.4,
         glowIdleSize: 1.5,
         glowActiveSize: 2.2,
-        radius: 0.5,
+        radius: 0.5
       },
       style: {
         scale: 0.9232946236554526,
-        visible: true,
+        visible: true
       },
-      actions: target
-        ? {
-            tap: {
-              type: "navigate",
-              target: target,
-            },
-          }
-        : {},
-      children: [],
+      actions: target ? {
+        tap: {
+          type: "navigate",
+          target
+        }
+      } : {},
+      children: []
     };
-  },
+  }
 });

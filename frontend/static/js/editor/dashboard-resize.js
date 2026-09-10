@@ -5,13 +5,7 @@ function positiveNumber(value, fallback) {
   const numeric = Number(value);
   return Number.isFinite(numeric) && numeric > 0 ? numeric : fallback;
 }
-function scaleComponent(
-  component,
-  widthRatio,
-  heightRatio,
-  contentScale,
-  fromCenter = true,
-) {
+function scaleComponent(component, widthRatio, heightRatio, contentScale, fromCenter = true) {
   if (!component || typeof component != "object") {
     return;
   }
@@ -24,34 +18,19 @@ function scaleComponent(
   const nextHeight = height * contentScale;
   component.position = {
     ...position,
-    x: round6(
-      fromCenter
-        ? (x + width / 2) * widthRatio - nextWidth / 2
-        : x * contentScale,
-    ),
-    y: round6(
-      fromCenter
-        ? (y + height / 2) * heightRatio - nextHeight / 2
-        : y * contentScale,
-    ),
+    x: round6(fromCenter ? (x + width / 2) * widthRatio - nextWidth / 2 : x * contentScale),
+    y: round6(fromCenter ? (y + height / 2) * heightRatio - nextHeight / 2 : y * contentScale),
     width: round6(nextWidth),
-    height: round6(nextHeight),
+    height: round6(nextHeight)
   };
-  if (
-    component.type === "icon-button-effect" &&
-    component.properties?.effectLayoutMode !== "fill"
-  ) {
+  if (component.type === "icon-button-effect" && component.properties?.effectLayoutMode !== "fill") {
     const effectWidth = Number(component.properties?.effectWidth);
     const effectHeight = Number(component.properties?.effectHeight);
     if (Number.isFinite(effectWidth)) {
-      component.properties.effectWidth = round6(
-        (effectWidth * contentScale) / widthRatio,
-      );
+      component.properties.effectWidth = round6(effectWidth * contentScale / widthRatio);
     }
     if (Number.isFinite(effectHeight)) {
-      component.properties.effectHeight = round6(
-        (effectHeight * contentScale) / heightRatio,
-      );
+      component.properties.effectHeight = round6(effectHeight * contentScale / heightRatio);
     }
   }
   for (const child of component.children || []) {
@@ -59,10 +38,7 @@ function scaleComponent(
   }
 }
 function documentComponents(document) {
-  return [
-    ...(document.sharedComponents || []),
-    ...(document.pages || []).flatMap((page) => page.components || []),
-  ];
+  return [...(document.sharedComponents || []), ...(document.pages || []).flatMap(page => page.components || [])];
 }
 function isOutsideCanvas(component, canvasWidth, canvasHeight) {
   const position = component?.position || {};
@@ -81,23 +57,15 @@ export function countComponentsOutsideCanvas(document, width, height) {
   if (!Number.isFinite(canvasWidth) || !Number.isFinite(canvasHeight)) {
     return 0;
   }
-  return documentComponents(document).filter((component) =>
-    isOutsideCanvas(component, canvasWidth, canvasHeight),
-  ).length;
+  return documentComponents(document).filter(component => isOutsideCanvas(component, canvasWidth, canvasHeight)).length;
 }
 export function resizeDashboardDocument(document, width, height, options = {}) {
   const next = JSON.parse(JSON.stringify(document));
   const currentWidth = positiveNumber(next?.canvas?.width, 2778);
   const currentHeight = positiveNumber(next?.canvas?.height, 1940);
   const baseWidth = positiveNumber(next?.canvas?.resizeBaseWidth, currentWidth);
-  const baseHeight = positiveNumber(
-    next?.canvas?.resizeBaseHeight,
-    currentHeight,
-  );
-  const currentContentScale = positiveNumber(
-    next?.canvas?.resizeContentScale,
-    Math.min(currentWidth / baseWidth, currentHeight / baseHeight),
-  );
+  const baseHeight = positiveNumber(next?.canvas?.resizeBaseHeight, currentHeight);
+  const currentContentScale = positiveNumber(next?.canvas?.resizeContentScale, Math.min(currentWidth / baseWidth, currentHeight / baseHeight));
   const nextWidth = Number(width);
   const nextHeight = Number(height);
   if (!Number.isInteger(nextWidth) || nextWidth < 320 || nextWidth > 7680) {
@@ -116,7 +84,7 @@ export function resizeDashboardDocument(document, width, height, options = {}) {
       height: nextHeight,
       resizeBaseWidth: round6(baseWidth),
       resizeBaseHeight: round6(baseHeight),
-      resizeContentScale: round6(currentContentScale),
+      resizeContentScale: round6(currentContentScale)
     };
     return next;
   }
@@ -131,13 +99,11 @@ export function resizeDashboardDocument(document, width, height, options = {}) {
     ...(next.canvas || {}),
     width: nextWidth,
     height: nextHeight,
-    componentScale: round6(
-      positiveNumber(next.canvas?.componentScale, 1) * contentScale,
-    ),
+    componentScale: round6(positiveNumber(next.canvas?.componentScale, 1) * contentScale),
     popupScale: round6(positiveNumber(next.canvas?.popupScale, 1) * contentScale),
     resizeBaseWidth: round6(baseWidth),
     resizeBaseHeight: round6(baseHeight),
-    resizeContentScale: round6(nextContentScale),
+    resizeContentScale: round6(nextContentScale)
   };
   return next;
 }

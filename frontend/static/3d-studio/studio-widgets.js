@@ -15,45 +15,35 @@ export function syncStudioSelect(select) {
   if (!state) {
     return;
   }
-  const selectedOption =
-    select.selectedOptions?.[0] ||
-    select.options[select.selectedIndex] ||
-    select.options[0];
+  const selectedOption = select.selectedOptions?.[0] || select.options[select.selectedIndex] || select.options[0];
   state.trigger.textContent = selectedOption?.textContent || "请选择";
   state.trigger.disabled = select.disabled;
   state.trigger.setAttribute("aria-disabled", String(select.disabled));
-  state.menu.replaceChildren(
-    ...[...select.options].map((option) => {
-      const optionButton = document.createElement("button");
-      optionButton.type = "button";
-      optionButton.className = "studio-select-option";
-      optionButton.textContent = option.textContent;
-      optionButton.dataset.value = option.value;
-      optionButton.disabled = option.disabled;
-      optionButton.setAttribute("role", "option");
-      optionButton.setAttribute(
-        "aria-selected",
-        String(option.value === select.value),
-      );
-      optionButton.classList.toggle("selected", option.value === select.value);
-      optionButton.addEventListener("click", (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        if (!option.disabled) {
-          select.value = option.value;
-          syncStudioSelect(select);
-          closeStudioSelect(state);
-          select.dispatchEvent(
-            new Event("change", {
-              bubbles: true,
-            }),
-          );
-          state.trigger.focus();
-        }
-      });
-      return optionButton;
-    }),
-  );
+  state.menu.replaceChildren(...[...select.options].map(option => {
+    const optionButton = document.createElement("button");
+    optionButton.type = "button";
+    optionButton.className = "studio-select-option";
+    optionButton.textContent = option.textContent;
+    optionButton.dataset.value = option.value;
+    optionButton.disabled = option.disabled;
+    optionButton.setAttribute("role", "option");
+    optionButton.setAttribute("aria-selected", String(option.value === select.value));
+    optionButton.classList.toggle("selected", option.value === select.value);
+    optionButton.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!option.disabled) {
+        select.value = option.value;
+        syncStudioSelect(select);
+        closeStudioSelect(state);
+        select.dispatchEvent(new Event("change", {
+          bubbles: true
+        }));
+        state.trigger.focus();
+      }
+    });
+    return optionButton;
+  }));
   if (select.disabled) {
     closeStudioSelect(state);
   }
@@ -76,20 +66,19 @@ export function enhanceStudioSelect(select) {
   trigger.setAttribute("aria-expanded", "false");
   const menu = document.createElement("div");
   menu.className = "studio-select-menu";
-  menu.id =
-    (select.id || "studio-select-" + (selectRegistry.size + 1)) + "-menu";
+  menu.id = (select.id || "studio-select-" + (selectRegistry.size + 1)) + "-menu";
   menu.setAttribute("role", "listbox");
   menu.hidden = true;
   trigger.setAttribute("aria-controls", menu.id);
   wrapper.append(trigger, menu);
   const state = {
-    select: select,
-    wrapper: wrapper,
-    trigger: trigger,
-    menu: menu,
+    select,
+    wrapper,
+    trigger,
+    menu
   };
   selectRegistry.set(select, state);
-  trigger.addEventListener("click", (event) => {
+  trigger.addEventListener("click", event => {
     event.preventDefault();
     event.stopPropagation();
     if (!select.disabled) {
@@ -109,7 +98,7 @@ export function enhanceStudioSelect(select) {
   new MutationObserver(() => syncStudioSelect(select)).observe(select, {
     childList: true,
     subtree: true,
-    attributes: true,
+    attributes: true
   });
   syncStudioSelect(select);
 }
@@ -117,12 +106,12 @@ export function initializeStudioSelects(root = document) {
   for (const select of root.querySelectorAll("select")) {
     enhanceStudioSelect(select);
   }
-  root.addEventListener("pointerdown", (event) => {
+  root.addEventListener("pointerdown", event => {
     if (openSelectState && !openSelectState.wrapper.contains(event.target)) {
       closeStudioSelect();
     }
   });
-  root.addEventListener("keydown", (event) => {
+  root.addEventListener("keydown", event => {
     if (event.key !== "Escape" || !openSelectState) {
       return;
     }
@@ -150,16 +139,16 @@ export function enhanceNumberInput(input) {
   stepper.append(input);
   const buttonGroup = document.createElement("span");
   buttonGroup.className = "number-stepper-buttons";
-  const buttons = [
-    {
-      direction: "up",
-      label: "增加数值",
-    },
-    {
-      direction: "down",
-      label: "减小数值",
-    },
-  ].map(({ direction, label }) => {
+  const buttons = [{
+    direction: "up",
+    label: "增加数值"
+  }, {
+    direction: "down",
+    label: "减小数值"
+  }].map(({
+    direction,
+    label
+  }) => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "number-stepper-button number-stepper-" + direction;
@@ -182,26 +171,24 @@ export function enhanceNumberInput(input) {
       if (input.value === previousValue) {
         return false;
       } else {
-        input.dispatchEvent(
-          new Event("input", {
-            bubbles: true,
-          }),
-        );
+        input.dispatchEvent(new Event("input", {
+          bubbles: true
+        }));
         return true;
       }
     };
-    button.addEventListener("click", (event) => {
+    button.addEventListener("click", event => {
       event.preventDefault();
       event.stopPropagation();
     });
-    button.addEventListener("pointerdown", (event) => {
+    button.addEventListener("pointerdown", event => {
       if (event.button !== 0 || input.disabled || input.readOnly) {
         return;
       }
       event.preventDefault();
       event.stopPropagation();
       input.focus({
-        preventScroll: true,
+        preventScroll: true
       });
       let didStep = stepOnce();
       let released = false;
@@ -219,11 +206,9 @@ export function enhanceNumberInput(input) {
           button.removeEventListener("pointercancel", release);
           button.removeEventListener("lostpointercapture", release);
           if (didStep) {
-            input.dispatchEvent(
-              new Event("change", {
-                bubbles: true,
-              }),
-            );
+            input.dispatchEvent(new Event("change", {
+              bubbles: true
+            }));
           }
         }
       };
@@ -238,13 +223,10 @@ export function enhanceNumberInput(input) {
     return button;
   });
   stepper.append(buttonGroup);
-  new MutationObserver(() => syncStepperDisabled(input, buttons)).observe(
-    input,
-    {
-      attributes: true,
-      attributeFilter: ["disabled", "readonly"],
-    },
-  );
+  new MutationObserver(() => syncStepperDisabled(input, buttons)).observe(input, {
+    attributes: true,
+    attributeFilter: ["disabled", "readonly"]
+  });
   syncStepperDisabled(input, buttons);
 }
 export function initializeNumberInputs(root = document) {

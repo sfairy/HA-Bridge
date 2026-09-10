@@ -1,23 +1,12 @@
-import {
-  climateIsPoweredOn,
-  climatePowerCommand,
-  resolveClimateDeviceType,
-} from "./climate.js?v=20260812-presence-phase-v79";
+import { climateIsPoweredOn, climatePowerCommand, resolveClimateDeviceType } from "./climate.js?v=20260812-presence-phase-v79";
 function entityState(state) {
-  return (
-    state?.newState ||
-    state || {
-      state: "",
-      attributes: {},
-    }
-  );
+  return state?.newState || state || {
+    state: "",
+    attributes: {}
+  };
 }
 export function entityPowerTarget(entityId, component = {}, related = null) {
-  if (
-    component?.type !== "air-conditioner" &&
-    related?.deviceType === "bath-heater" &&
-    related.roles?.light
-  ) {
+  if (component?.type !== "air-conditioner" && related?.deviceType === "bath-heater" && related.roles?.light) {
     return String(related.roles.light);
   } else {
     return String(entityId || "");
@@ -26,14 +15,9 @@ export function entityPowerTarget(entityId, component = {}, related = null) {
 export function entityPowerIsOn(entityId, state, component = {}) {
   const current = entityState(state);
   const domain = String(entityId || "").split(".", 1)[0];
-  const status = String(current.state || "")
-    .trim()
-    .toLowerCase();
+  const status = String(current.state || "").trim().toLowerCase();
   if (domain === "climate") {
-    return climateIsPoweredOn(
-      current,
-      resolveClimateDeviceType(component, current, entityId),
-    );
+    return climateIsPoweredOn(current, resolveClimateDeviceType(component, current, entityId));
   } else if (domain === "fan") {
     return !["", "off", "unknown", "unavailable"].includes(status);
   } else if (domain === "water_heater") {
@@ -51,39 +35,31 @@ export function entityToggleCommand(entityId, state, component = {}) {
     return {
       domain: "button",
       service: "press",
-      data: {},
+      data: {}
     };
   }
   if (domain === "script") {
     return {
       domain: "script",
       service: "turn_on",
-      data: {},
+      data: {}
     };
   }
   if (domain === "media_player") {
     return {
       domain: "media_player",
       service: "media_play_pause",
-      data: {},
+      data: {}
     };
   }
   if (["climate", "fan", "water_heater"].includes(domain)) {
-    const deviceType =
-      domain === "water_heater"
-        ? "water-heater"
-        : resolveClimateDeviceType(component, current, entityId);
-    return climatePowerCommand(
-      entityId,
-      current,
-      !entityPowerIsOn(entityId, current, component),
-      deviceType,
-    );
+    const deviceType = domain === "water_heater" ? "water-heater" : resolveClimateDeviceType(component, current, entityId);
+    return climatePowerCommand(entityId, current, !entityPowerIsOn(entityId, current, component), deviceType);
   }
   return {
     domain: "homeassistant",
     service: "toggle",
-    data: {},
+    data: {}
   };
 }
 export function optimisticToggleState(entityId, state, component = {}) {
@@ -93,14 +69,12 @@ export function optimisticToggleState(entityId, state, component = {}) {
   if (domain === "media_player") {
     return {
       ...current,
-      state: entityPowerIsOn(entityId, current, component)
-        ? "paused"
-        : "playing",
+      state: entityPowerIsOn(entityId, current, component) ? "paused" : "playing"
     };
   }
   if (domain === "climate") {
     const attributes = {
-      ...(current.attributes || {}),
+      ...(current.attributes || {})
     };
     if (!isOn) {
       delete attributes.preset_mode;
@@ -109,11 +83,11 @@ export function optimisticToggleState(entityId, state, component = {}) {
     return {
       ...current,
       state: isOn ? "off" : "auto",
-      attributes,
+      attributes
     };
   }
   return {
     ...current,
-    state: isOn ? "off" : "on",
+    state: isOn ? "off" : "on"
   };
 }

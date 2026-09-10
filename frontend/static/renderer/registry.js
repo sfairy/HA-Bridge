@@ -1,17 +1,12 @@
 import { randomUuid } from "../utils/random-id.js?v=20260724-revert-hold-popup-shield-v324";
-import {
-  climateDefaultIcon,
-  climateEffectMode,
-  climateIsPoweredOn,
-  climateModeLabel,
-  climatePresentationMode,
-  normalizeClimateCapabilities,
-  resolveClimateDeviceType,
-} from "./climate.js?v=20260812-presence-phase-v79-20260904-climate-capability-options-v3";
+import { climateDefaultIcon, climateEffectMode, climateIsPoweredOn, climateModeLabel, climatePresentationMode, normalizeClimateCapabilities, resolveClimateDeviceType } from "./climate.js?v=20260812-presence-phase-v79-20260904-climate-capability-options-v3";
 import { entityPowerIsOn } from "./entity-power.js?v=20260813-generic-device-power-v2";
 import { lightRealtimeCapabilities } from "./light-runtime.js?v=20260901-renderer-light-runtime-v1";
-import { renderInteraction3d } from "../modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6";
+import { renderInteraction3d } from "../modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1";
 const COMPONENT_RENDERERS = new Map();
+registerComponent("interaction3d", {
+  render: renderInteraction3d
+});
 const builtinAssetVersions = new Map();
 const builtinAssetUrls = new Map();
 const builtinEffectVariants = new Map();
@@ -25,9 +20,7 @@ export function setBuiltinAssetVersions(assetVersions = []) {
       continue;
     }
     const version = String(entry.version || "");
-    const list = Array.isArray(entry.legacyAssetIds)
-      ? entry.legacyAssetIds
-      : [];
+    const list = Array.isArray(entry.legacyAssetIds) ? entry.legacyAssetIds : [];
     for (const assetKey of [assetId, ...list]) {
       nextAssetVersions.set(String(assetKey), version);
       if (entry.url) {
@@ -40,42 +33,20 @@ export function setBuiltinAssetVersions(assetVersions = []) {
       const cropY = Number(effectVariant.cropY);
       const width = Number(effectVariant.width || 0);
       const height = Number(effectVariant.height || 0);
-      if (
-        String(effectVariant.url || "").startsWith("/api/v1/assets/effect-variant?") &&
-        originalWidth > 0 &&
-        originalHeight > 0 &&
-        Number.isFinite(cropX) &&
-        Number.isFinite(cropY) &&
-        cropX >= 0 &&
-        cropY >= 0 &&
-        width > 0 &&
-        height > 0 &&
-        cropX + width <= originalWidth &&
-        cropY + height <= originalHeight
-      ) {
+      if (String(effectVariant.url || "").startsWith("/api/v1/assets/effect-variant?") && originalWidth > 0 && originalHeight > 0 && Number.isFinite(cropX) && Number.isFinite(cropY) && cropX >= 0 && cropY >= 0 && width > 0 && height > 0 && cropX + width <= originalWidth && cropY + height <= originalHeight) {
         nextEffectVariants.set(String(assetKey), {
           url: String(effectVariant.url),
-          originalWidth: originalWidth,
-          originalHeight: originalHeight,
-          cropX: cropX,
-          cropY: cropY,
-          width: width,
-          height: height,
+          originalWidth,
+          originalHeight,
+          cropX,
+          cropY,
+          width,
+          height
         });
       }
     }
   }
-  if (
-    nextAssetVersions.size === builtinAssetVersions.size &&
-    ![...nextAssetVersions].some(([assetKey, mappedValue]) => builtinAssetVersions.get(assetKey) !== mappedValue) &&
-    nextAssetUrls.size === builtinAssetUrls.size &&
-    ![...nextAssetUrls].some(([assetKey, mappedValue]) => builtinAssetUrls.get(assetKey) !== mappedValue) &&
-    nextEffectVariants.size === builtinEffectVariants.size &&
-    ![...nextEffectVariants].some(
-      ([assetKey, mappedValue]) =>
-        JSON.stringify(builtinEffectVariants.get(assetKey)) !== JSON.stringify(mappedValue),
-    )
-  ) {
+  if (nextAssetVersions.size === builtinAssetVersions.size && ![...nextAssetVersions].some(([assetKey, mappedValue]) => builtinAssetVersions.get(assetKey) !== mappedValue) && nextAssetUrls.size === builtinAssetUrls.size && ![...nextAssetUrls].some(([assetKey, mappedValue]) => builtinAssetUrls.get(assetKey) !== mappedValue) && nextEffectVariants.size === builtinEffectVariants.size && ![...nextEffectVariants].some(([assetKey, mappedValue]) => JSON.stringify(builtinEffectVariants.get(assetKey)) !== JSON.stringify(mappedValue))) {
     return false;
   }
   builtinAssetVersions.clear();
@@ -95,7 +66,6 @@ export function setBuiltinAssetVersions(assetVersions = []) {
 export function registerComponent(type, renderer) {
   COMPONENT_RENDERERS.set(type, renderer);
 }
-registerComponent("interaction3d", { render: renderInteraction3d });
 export function renderRegisteredComponent(component, context) {
   const renderer = COMPONENT_RENDERERS.get(component.type);
   if (renderer) {
@@ -120,12 +90,7 @@ function resolveAssetUrl(assetId) {
     if (studioParts.length !== 2 || !studioParts[0] || !studioParts[1]) {
       return "";
     } else {
-      return (
-        "/api/v1/assets/studio3d-export/" +
-        encodeURIComponent(studioParts[0]) +
-        "/" +
-        encodeURIComponent(studioParts[1])
-      );
+      return "/api/v1/assets/studio3d-export/" + encodeURIComponent(studioParts[0]) + "/" + encodeURIComponent(studioParts[1]);
     }
   }
   if (rawAssetId.startsWith("user:")) {
@@ -140,40 +105,23 @@ function resolveAssetUrl(assetId) {
     return "";
   }
   const builtinPath = rawAssetId.slice(8);
-  const encodedPath = (
-    builtinPath.startsWith("v1/2D/") || builtinPath.startsWith("v1/3D/")
-      ? builtinPath.replace(/^v1\//, "v1/户型图示例/")
-      : builtinPath
-  )
-    .split("/")
-    .filter(Boolean)
-    .map((item) => encodeURIComponent(item))
-    .join("/");
+  const encodedPath = (builtinPath.startsWith("v1/2D/") || builtinPath.startsWith("v1/3D/") ? builtinPath.replace(/^v1\//, "v1/户型图示例/") : builtinPath).split("/").filter(Boolean).map(item => encodeURIComponent(item)).join("/");
   if (!encodedPath) {
     return "";
   }
   const version = builtinAssetVersions.get(rawAssetId) || "";
-  return (
-    "/assets/builtin/" +
-    encodedPath +
-    (version ? "?v=" + encodeURIComponent(version) : "")
-  );
+  return "/assets/builtin/" + encodedPath + (version ? "?v=" + encodeURIComponent(version) : "");
 }
 export function staticAssetImageSource(staticAssetImage) {
   return resolveAssetUrl(staticAssetImage);
 }
 function clampWithDefault(raw, min, max, fallback) {
   const numeric = Number(raw);
-  return Math.max(
-    min,
-    Math.min(max, Number.isFinite(numeric) ? numeric : fallback),
-  );
+  return Math.max(min, Math.min(max, Number.isFinite(numeric) ? numeric : fallback));
 }
 function safeCssColor(color, fallback) {
   const trimmed = String(color || "").trim();
-  if (
-    /^(#[\da-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%]+\))$/i.test(trimmed)
-  ) {
+  if (/^(#[\da-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%]+\))$/i.test(trimmed)) {
     return trimmed;
   } else {
     return fallback;
@@ -181,10 +129,7 @@ function safeCssColor(color, fallback) {
 }
 function applyTextStroke(element, weight, fontSize) {
   const numeric = Number(weight);
-  const normalizedWeight =
-    Number.isFinite(numeric) && numeric > 1
-      ? clampWithDefault((numeric - 1) / 899, 0, 1, 0.4)
-      : clampWithDefault(numeric, 0, 1, 0.4);
+  const normalizedWeight = Number.isFinite(numeric) && numeric > 1 ? clampWithDefault((numeric - 1) / 899, 0, 1, 0.4) : clampWithDefault(numeric, 0, 1, 0.4);
   const fontSizePx = Math.max(1, Number(fontSize || 16));
   const strokeWidth = normalizedWeight * fontSizePx * 0.05;
   element.style.fontWeight = "100";
@@ -192,9 +137,7 @@ function applyTextStroke(element, weight, fontSize) {
   element.style.paintOrder = "stroke fill";
 }
 function resolveMdiIconUrl(icon) {
-  const name = String(icon || "")
-    .trim()
-    .replace(/^mdi:/, "");
+  const name = String(icon || "").trim().replace(/^mdi:/, "");
   if (/^[a-z0-9-]+$/.test(name)) {
     return "/bridge-static/vendor/mdi/7.4.47/svg/" + name + ".svg";
   } else {
@@ -202,70 +145,14 @@ function resolveMdiIconUrl(icon) {
   }
 }
 function entityStateIsActive(stateEntry) {
-  const state = String(stateEntry?.state ?? stateEntry?.newState?.state ?? "")
-    .trim()
-    .toLowerCase();
+  const state = String(stateEntry?.state ?? stateEntry?.newState?.state ?? "").trim().toLowerCase();
   return ["on", "open", "true", "home"].includes(state);
 }
 const COVER_CLOSED_POSITION_EPSILON = 1;
-function coverMotorReverseEntity(entityMetadata, entityId) {
-  const metadata = entityMetadata?.get?.(entityId);
-  if (!metadata?.deviceId || !entityMetadata?.values) {
-    return null;
-  }
-  return (
-    [...entityMetadata.values()].find((candidate) => {
-      if (candidate.deviceId !== metadata.deviceId) {
-        return false;
-      }
-      if (!["switch", "select"].includes(String(candidate.domain || ""))) {
-        return false;
-      }
-      if (
-        !/motor_reverse|电机反向/i.test(
-          (candidate.entityId || "") + " " + (candidate.name || ""),
-        )
-      ) {
-        return false;
-      }
-      return (
-        !!candidate.entityId &&
-        !candidate.disabledBy &&
-        candidate.status !== "missing" &&
-        candidate.status !== "disabled"
-      );
-    }) || null
-  );
+function he(stateEntry) {
+  return stateEntry?.properties?.coverMotorDirection === "reversed";
 }
-function coverMotorIsReversed(
-  component,
-  entityMetadata = null,
-  states = null,
-  entityId = "",
-) {
-  const coverMotorDirection = component?.properties?.coverMotorDirection;
-  if (coverMotorDirection === "normal") {
-    return false;
-  }
-  if (coverMotorDirection === "reversed") {
-    return true;
-  }
-  const reverseEntity = coverMotorReverseEntity(entityMetadata, entityId);
-  if (!reverseEntity?.entityId || !states?.get) {
-    return false;
-  }
-  const stateEntry = states.get(reverseEntity.entityId);
-  const state = String(stateEntry?.newState?.state ?? stateEntry?.state ?? "")
-    .trim()
-    .toLowerCase();
-  return ["on", "true", "1", "enabled", "开启", "打开"].includes(state);
-}
-export function coverComponentIsDream(
-  component,
-  entityId = "",
-  stateEntry = null,
-  entityMetadata = new Map(),
-) {
+export function coverComponentIsDream(component, entityId = "", stateEntry = null, entityMetadata = new Map()) {
   const coverKind = component?.properties?.coverKind;
   if (coverKind === "dream") {
     return true;
@@ -276,81 +163,55 @@ export function coverComponentIsDream(
   const state = readState(stateEntry) || {};
   const numeric = Number(state.attributes?.supported_features || 0);
   const metadata = entityMetadata?.get?.(entityId) || {};
-  const searchText =
-    entityId +
-    " " +
-    (state.attributes?.friendly_name || "") +
-    " " +
-    (metadata.name || "") +
-    " " +
-    (metadata.originalName || "");
-  return (
-    Number.isFinite(Number(state.attributes?.current_tilt_position)) ||
-    !!(numeric & 240) ||
-    /梦幻|竖帘|垂直帘|百叶|(^|[._-])novo([._-]|$)/i.test(searchText)
-  );
+  const searchText = entityId + " " + (state.attributes?.friendly_name || "") + " " + (metadata.name || "") + " " + (metadata.originalName || "");
+  return Number.isFinite(Number(state.attributes?.current_tilt_position)) || !!(numeric & 240) || /梦幻|竖帘|垂直帘|百叶|(^|[._-])novo([._-]|$)/i.test(searchText);
 }
-function computeCoverComponentIsActive(component, entityId, stateEntry, context) {
-  const state = readState(stateEntry) || {};
-  const rawState = String(state.state || "")
-    .trim()
-    .toLowerCase();
-  const motorReversed = coverMotorIsReversed(
-    component,
-    context.entityMetadata,
-    context.states,
-    entityId,
-  );
-  const effectiveState =
-    (motorReversed &&
-      {
-        open: "closed",
-        closed: "open",
-        opening: "closing",
-        closing: "opening",
-      }[rawState]) ||
-    rawState;
-  if (effectiveState === "opening") {
+function Ge(component, arg11, arg12, entityMetadata) {
+  const coverMotorDirection = readState(arg12) || {};
+  const reverseEntity = String(coverMotorDirection.state || "").trim().toLowerCase();
+  const stateEntry = he(component);
+  const value17 = stateEntry && {
+    open: "closed",
+    closed: "open",
+    opening: "closing",
+    closing: "opening"
+  }[reverseEntity] || reverseEntity;
+  if (value17 === "opening") {
     return true;
   }
-  if (effectiveState === "closing") {
+  if (value17 === "closing") {
     return false;
   }
-  if (coverComponentIsDream(component, entityId, state, context.entityMetadata)) {
-    return effectiveState === "open";
+  if (coverComponentIsDream(component, arg11, coverMotorDirection, entityMetadata.entityMetadata)) {
+    return value17 === "open";
   }
-  const numeric = Number(state.attributes?.current_position);
-  if (Number.isFinite(numeric)) {
-    return (motorReversed ? 100 - numeric : numeric) > COVER_CLOSED_POSITION_EPSILON;
-  } else if (motorReversed) {
-    return !entityStateIsActive(state);
+  const value18 = Number(coverMotorDirection.attributes?.current_position);
+  if (Number.isFinite(value18)) {
+    return (stateEntry ? 100 - value18 : value18) > COVER_CLOSED_POSITION_EPSILON;
+  } else if (stateEntry) {
+    return !entityStateIsActive(coverMotorDirection);
   } else {
-    return entityStateIsActive(state);
+    return entityStateIsActive(coverMotorDirection);
   }
 }
 export function coverComponentIsActive(component, entityId, stateEntry, context = {}) {
-  return computeCoverComponentIsActive(component, entityId, stateEntry, context);
+  return Ge(component, entityId, stateEntry, context);
 }
-function componentIsActive(component, entityId, stateEntry, context = {}) {
+function componentIsActive(component, entityId, stateEntry, states = {}) {
   if (String(entityId || "").startsWith("cover.")) {
-    return coverComponentIsActive(component, entityId, stateEntry, context);
+    return coverComponentIsActive(component, entityId, stateEntry, states);
   }
-  const text = String(component?.properties?.runtimePowerEntityId || entityId);
-  const powerStateEntry = text === entityId ? stateEntry : context.states?.get(text);
-  return entityPowerIsOn(text, powerStateEntry, component);
+  const state = String(component?.properties?.runtimePowerEntityId || entityId);
+  const rawState = state === entityId ? stateEntry : states.states?.get(state);
+  return entityPowerIsOn(state, rawState, component);
 }
-function readState(stateEntry) {
-  return stateEntry?.newState || stateEntry || null;
+function readState(brightness) {
+  return brightness?.newState || brightness || null;
 }
 export function iconButtonEffectLightVisualAwaiting(component, context = {}) {
   const properties = component?.properties || {};
   const text = String(component?.bindings?.entity?.entityId || "");
-  if (
-    !!context.editable ||
-    !text.startsWith("light.") ||
-    (properties.effectBrightnessRealtime === false &&
-      properties.effectColorTemperatureRealtime === false)
-  ) {
+  if (!!context.editable || !text.startsWith("light.") || properties.effectBrightnessRealtime === false && properties.effectColorTemperatureRealtime === false) {
     return false;
   }
   const state = readState(context.states?.get?.(text));
@@ -363,139 +224,50 @@ export function iconButtonEffectLightVisualAwaiting(component, context = {}) {
   }
   const attributes = state.attributes || {};
   const capabilities = lightRealtimeCapabilities(text, state);
-  const hasNumericAttribute = (item) =>
-    attributes[item] !== null &&
-    attributes[item] !== undefined &&
-    attributes[item] !== "" &&
-    Number.isFinite(Number(attributes[item]));
-  if (
-    properties.effectBrightnessRealtime !== false &&
-    capabilities.brightness &&
-    !hasNumericAttribute("brightness")
-  ) {
+  const hasNumericAttribute = item => attributes[item] !== null && attributes[item] !== undefined && attributes[item] !== "" && Number.isFinite(Number(attributes[item]));
+  if (properties.effectBrightnessRealtime !== false && capabilities.brightness && !hasNumericAttribute("brightness")) {
     return true;
   }
-  const list = Array.isArray(attributes.supported_color_modes)
-    ? attributes.supported_color_modes.map((key) =>
-        String(key || "").toLowerCase(),
-      )
-    : [];
+  const list = Array.isArray(attributes.supported_color_modes) ? attributes.supported_color_modes.map(key => String(key || "").toLowerCase()) : [];
   const colorMode = String(attributes.color_mode || "").toLowerCase();
-  const isColorTempMode =
-    colorMode === "color_temp" ||
-    (!colorMode && list.length === 1 && list[0] === "color_temp");
-  return (
-    properties.effectColorTemperatureRealtime !== false &&
-    !!capabilities.colorTemperature &&
-    !!isColorTempMode &&
-    !hasNumericAttribute("color_temp_kelvin") &&
-    !hasNumericAttribute("color_temp")
-  );
+  const isColorTempMode = colorMode === "color_temp" || !colorMode && list.length === 1 && list[0] === "color_temp";
+  return properties.effectColorTemperatureRealtime !== false && !!capabilities.colorTemperature && !!isColorTempMode && !hasNumericAttribute("color_temp_kelvin") && !hasNumericAttribute("color_temp");
 }
 export function vacuumMapImageSource(vacuumMapImage, stateEntry = null) {
   const state = readState(stateEntry) || {};
-  const text = String(
-    state.updatedAt || state.lastChanged || state.state || "initial",
-  );
-  return (
-    "/api/image_proxy/" +
-    encodeURIComponent(String(vacuumMapImage || "")) +
-    "?hb=" +
-    encodeURIComponent(text)
-  );
+  const text = String(state.updatedAt || state.lastChanged || state.state || "initial");
+  return "/api/image_proxy/" + encodeURIComponent(String(vacuumMapImage || "")) + "?hb=" + encodeURIComponent(text);
 }
-import {
-  lightStatisticsEntityStateStatus,
-  lightStatisticsEntitySupport,
-  lightStatisticsSummary,
-} from "./light-statistics-runtime.js?v=20260901-renderer-light-statistics-runtime-v1";
-import {
-  automaticNumericPrecision,
-  formatLineChartValue,
-  formatNumericValue,
-  lineChartGeometry,
-  normalizedStatePrecision,
-} from "./line-chart-runtime.js?v=20260901-renderer-line-chart-runtime-v1";
-import {
-  doorWindowPerspectiveCorners,
-  doorWindowPerspectiveMatrix,
-} from "./door-window-runtime.js?v=20260901-renderer-door-window-runtime-v1";
-import {
-  automaticThresholds,
-  meteoconUrl,
-  normalizedThresholds,
-  resolvedThresholds,
-  smoothChartPath,
-  thresholdColor,
-  weatherVisual,
-} from "./weather-chart-runtime.js?v=20260901-renderer-weather-chart-runtime-v2";
-import {
-  formatLocalDate,
-  formatLocalTime,
-  formatLunarDate,
-} from "./date-time-runtime.js?v=20260901-renderer-date-time-runtime-v1";
-export {
-  lightStatisticsEntityStateStatus,
-  lightStatisticsEntitySupport,
-  lightStatisticsSummary,
-  automaticNumericPrecision,
-  formatLineChartValue,
-  formatNumericValue,
-  lineChartGeometry,
-  normalizedStatePrecision,
-  doorWindowPerspectiveCorners,
-  doorWindowPerspectiveMatrix,
-  meteoconUrl,
-  automaticThresholds,
-  normalizedThresholds,
-  resolvedThresholds,
-  smoothChartPath,
-  thresholdColor,
-  weatherVisual,
-  formatLocalDate,
-  formatLocalTime,
-  formatLunarDate,
-};
-import {
-  formatPresenceDuration,
-  presenceAnimationPhase,
-  presenceHistoryBuckets,
-  presenceMotionEventConfig,
-  presenceSensorPresentation,
-  presenceStateTimestamp,
-} from "./presence-runtime.js?v=20260901-renderer-presence-runtime-v1";
-export {
-  formatPresenceDuration,
-  presenceAnimationPhase,
-  presenceHistoryBuckets,
-  presenceMotionEventConfig,
-  presenceSensorPresentation,
-  presenceStateTimestamp,
-};
-function resolveEntityIcon(entityId, stateEntry) {
-  const icon = String(readState(stateEntry)?.attributes?.icon || "").trim();
-  if (icon) {
-    return icon;
+import { lightStatisticsEntityStateStatus, lightStatisticsEntitySupport, lightStatisticsSummary } from "./light-statistics-runtime.js?v=20260901-renderer-light-statistics-runtime-v1";
+import { automaticNumericPrecision, formatLineChartValue, formatNumericValue, lineChartGeometry, normalizedStatePrecision } from "./line-chart-runtime.js?v=20260901-renderer-line-chart-runtime-v1";
+import { doorWindowPerspectiveCorners, doorWindowPerspectiveMatrix } from "./door-window-runtime.js?v=20260901-renderer-door-window-runtime-v1";
+import { automaticThresholds, meteoconUrl, normalizedThresholds, resolvedThresholds, smoothChartPath, thresholdColor, weatherVisual } from "./weather-chart-runtime.js?v=20260901-renderer-weather-chart-runtime-v2";
+import { formatLocalDate, formatLocalTime, formatLunarDate } from "./date-time-runtime.js?v=20260901-renderer-date-time-runtime-v1";
+export { lightStatisticsEntityStateStatus, lightStatisticsEntitySupport, lightStatisticsSummary, automaticNumericPrecision, formatLineChartValue, formatNumericValue, lineChartGeometry, normalizedStatePrecision, doorWindowPerspectiveCorners, doorWindowPerspectiveMatrix, meteoconUrl, automaticThresholds, normalizedThresholds, resolvedThresholds, smoothChartPath, thresholdColor, weatherVisual, formatLocalDate, formatLocalTime, formatLunarDate };
+import { formatPresenceDuration, presenceAnimationPhase, presenceHistoryBuckets, presenceMotionEventConfig, presenceSensorPresentation, presenceStateTimestamp } from "./presence-runtime.js?v=20260901-renderer-presence-runtime-v1";
+export { formatPresenceDuration, presenceAnimationPhase, presenceHistoryBuckets, presenceMotionEventConfig, presenceSensorPresentation, presenceStateTimestamp };
+function tt(entityMetadata, entityId) {
+  const metadata = String(readState(entityId)?.attributes?.icon || "").trim();
+  if (metadata) {
+    return metadata;
   }
-  const domain = String(entityId || "").split(".")[0];
-  return (
-    {
-      binary_sensor: "mdi:radiobox-marked",
-      button: "mdi:gesture-tap-button",
-      climate: "mdi:thermostat",
-      cover: "mdi:window-shutter",
-      fan: "mdi:fan",
-      input_boolean: "mdi:toggle-switch",
-      light: "mdi:lightbulb-outline",
-      lock: "mdi:lock-outline",
-      media_player: "mdi:play-circle-outline",
-      number: "mdi:numeric",
-      remote: "mdi:remote",
-      sensor: "mdi:gauge",
-      switch: "mdi:toggle-switch-outline",
-      water_heater: "mdi:water-boiler",
-    }[domain] || "mdi:devices"
-  );
+  const value19 = String(entityMetadata || "").split(".")[0];
+  return {
+    binary_sensor: "mdi:radiobox-marked",
+    button: "mdi:gesture-tap-button",
+    climate: "mdi:thermostat",
+    cover: "mdi:window-shutter",
+    fan: "mdi:fan",
+    input_boolean: "mdi:toggle-switch",
+    light: "mdi:lightbulb-outline",
+    lock: "mdi:lock-outline",
+    media_player: "mdi:play-circle-outline",
+    number: "mdi:numeric",
+    remote: "mdi:remote",
+    sensor: "mdi:gauge",
+    switch: "mdi:toggle-switch-outline",
+    water_heater: "mdi:water-boiler"
+  }[value19] || "mdi:devices";
 }
 export function formatEntityState(component, entityId = "", context = {}) {
   const state = readState(component);
@@ -507,76 +279,38 @@ export function formatEntityState(component, entityId = "", context = {}) {
   const platform = String(metadata.platform || "").trim();
   const domain = String(metadata.domain || entityId.split(".")[0] || "").trim();
   const translationKey = String(metadata.translationKey || "").trim();
-  const translationPath =
-    platform && domain && translationKey && rawState
-      ? "component." +
-        platform +
-        ".entity." +
-        domain +
-        "." +
-        translationKey +
-        ".state." +
-        rawState
-      : "";
+  const translationPath = platform && domain && translationKey && rawState ? "component." + platform + ".entity." + domain + "." + translationKey + ".state." + rawState : "";
   const deviceClass = String(state.attributes?.device_class || "").trim();
-  const deviceClassPath =
-    domain && deviceClass && rawState
-      ? "component." +
-        domain +
-        ".entity_component." +
-        deviceClass +
-        ".state." +
-        rawState
-      : "";
-  const translated = String(
-    (translationPath ? context.entityTranslations?.[translationPath] : "") ||
-      (deviceClassPath ? context.entityTranslations?.[deviceClassPath] : "") ||
-      "",
-  ).trim();
-  const fallbackLabel =
-    {
-      on: "开启",
-      off: "关闭",
-      open: "打开",
-      closed: "关闭",
-      locked: "已上锁",
-      unlocked: "已解锁",
-      home: "在家",
-      not_home: "离家",
-      unavailable: "不可用",
-      unknown: "未知",
-      idle: "待机",
-      sweeping: "扫地中",
-      charging: "充电中",
-      docked: "已停靠",
-      partlycloudy: "晴间多云",
-      "power off": "已关闭",
-      playing: "播放中",
-      paused: "已暂停",
-    }[rawState.toLowerCase()] ||
-    rawState ||
-    "未知";
-  const coverReversedLabel =
-    String(entityId || "").startsWith("cover.") &&
-    coverMotorIsReversed(
-      context.component,
-      context.entityMetadata,
-      context.states,
-      entityId,
-    )
-      ? {
-          open: "关闭",
-          closed: "打开",
-          opening: "正在关闭",
-          closing: "正在打开",
-        }[rawState.toLowerCase()]
-      : "";
-  const numericState = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(rawState)
-    ? Number(rawState)
-    : Number.NaN;
-  const displayValue = Number.isFinite(numericState)
-    ? formatNumericValue(numericState, context.component?.properties?.statePrecision)
-    : coverReversedLabel || translated || fallbackLabel;
+  const deviceClassPath = domain && deviceClass && rawState ? "component." + domain + ".entity_component." + deviceClass + ".state." + rawState : "";
+  const translated = String((translationPath ? context.entityTranslations?.[translationPath] : "") || (deviceClassPath ? context.entityTranslations?.[deviceClassPath] : "") || "").trim();
+  const fallbackLabel = {
+    on: "开启",
+    off: "关闭",
+    open: "打开",
+    closed: "关闭",
+    locked: "已上锁",
+    unlocked: "已解锁",
+    home: "在家",
+    not_home: "离家",
+    unavailable: "不可用",
+    unknown: "未知",
+    idle: "待机",
+    sweeping: "扫地中",
+    charging: "充电中",
+    docked: "已停靠",
+    partlycloudy: "晴间多云",
+    "power off": "已关闭",
+    playing: "播放中",
+    paused: "已暂停"
+  }[rawState.toLowerCase()] || rawState || "未知";
+  const coverReversedLabel = String(entityId || "").startsWith("cover.") && he(context.component) ? {
+    open: "关闭",
+    closed: "打开",
+    opening: "正在关闭",
+    closing: "正在打开"
+  }[rawState.toLowerCase()] : "";
+  const numericState = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(rawState) ? Number(rawState) : Number.NaN;
+  const displayValue = Number.isFinite(numericState) ? formatNumericValue(numericState, context.component?.properties?.statePrecision) : coverReversedLabel || translated || fallbackLabel;
   const unit = String(state.attributes?.unit_of_measurement || "").trim();
   if (unit && !["不可用", "未知"].includes(displayValue)) {
     return displayValue + " " + unit;
@@ -584,36 +318,36 @@ export function formatEntityState(component, entityId = "", context = {}) {
     return displayValue;
   }
 }
-function iconButtonEffectIsActive(component, context) {
-  if (context.editable && context.previewState === "on") {
+function iconButtonEffectIsActive(entityId, stateEntry) {
+  if (stateEntry.editable && stateEntry.previewState === "on") {
     return true;
   }
-  if (context.editable && context.previewState === "off") {
+  if (stateEntry.editable && stateEntry.previewState === "off") {
     return false;
   }
-  const entityId = component.bindings?.entity?.entityId || "";
-  return !!entityId && !!componentIsActive(component, entityId, context.states?.get(entityId), context);
+  const icon = entityId.bindings?.entity?.entityId || "";
+  return !!icon && !!componentIsActive(entityId, icon, stateEntry.states?.get(icon), stateEntry);
 }
 export const ICON_BUTTON_EFFECT_BASE_TEMPERATURE_KELVIN = 3500;
-function brightnessToOpacity(brightness) {
-  if (brightness == null || brightness === "" || !Number.isFinite(Number(brightness))) {
+function nt(arg13) {
+  if (arg13 == null || arg13 === "" || !Number.isFinite(Number(arg13))) {
     return 1;
   }
-  const ratio = Math.max(0, Math.min(1, Number(brightness) / 100));
-  if (ratio <= 0) {
+  const numeric = Math.max(0, Math.min(1, Number(arg13) / 100));
+  if (numeric <= 0) {
     return 0;
   } else {
-    return 0.2 + ratio * 0.8;
+    return 0.2 + numeric * 0.8;
   }
 }
-function readColorTemperatureKelvin(attributes = {}) {
-  const numeric = Number(attributes.color_temp_kelvin);
-  if (Number.isFinite(numeric) && numeric > 0) {
-    return numeric;
+function it(color_temp_kelvin = {}) {
+  const key = Number(color_temp_kelvin.color_temp_kelvin);
+  if (Number.isFinite(key) && key > 0) {
+    return key;
   }
-  const numeric2 = Number(attributes.color_temp);
-  if (Number.isFinite(numeric2) && numeric2 > 0) {
-    return 1000000 / numeric2;
+  const now = Number(color_temp_kelvin.color_temp);
+  if (Number.isFinite(now) && now > 0) {
+    return 1000000 / now;
   } else {
     return null;
   }
@@ -626,53 +360,36 @@ export function iconButtonEffectLightVisualState(component, context = {}) {
       brightnessPercent: null,
       colorTemperatureKelvin: null,
       opacity: 1,
-      filter: "none",
+      filter: "none"
     };
   }
   const brightness = attributes.brightness;
-  const brightnessValue =
-    brightness == null || brightness === "" ? Number.NaN : Number(brightness);
-  const brightnessPercent = Number.isFinite(brightnessValue)
-    ? Math.max(0, Math.min(100, (brightnessValue / 255) * 100))
-    : null;
-  const colorTemperatureKelvin = readColorTemperatureKelvin(attributes);
+  const brightnessValue = brightness == null || brightness === "" ? Number.NaN : Number(brightness);
+  const brightnessPercent = Number.isFinite(brightnessValue) ? Math.max(0, Math.min(100, brightnessValue / 255 * 100)) : null;
+  const colorTemperatureKelvin = it(attributes);
   const properties = component?.properties || {};
   const useRealtimeBrightness = properties.effectBrightnessRealtime !== false;
   const useRealtimeColorTemp = properties.effectColorTemperatureRealtime !== false;
-  const opacity = useRealtimeBrightness ? brightnessToOpacity(brightnessPercent) : 1;
+  const opacity = useRealtimeBrightness ? nt(brightnessPercent) : 1;
   if (!useRealtimeColorTemp || !Number.isFinite(colorTemperatureKelvin)) {
     return {
-      brightnessPercent: brightnessPercent,
+      brightnessPercent,
       colorTemperatureKelvin: null,
-      opacity: opacity,
-      filter: "none",
+      opacity,
+      filter: "none"
     };
   }
-  const coolBias = Math.max(
-    0,
-    Math.min(
-      1,
-      (ICON_BUTTON_EFFECT_BASE_TEMPERATURE_KELVIN - colorTemperatureKelvin) /
-        1500,
-    ),
-  );
-  const warmBias = Math.max(
-    0,
-    Math.min(
-      1,
-      (colorTemperatureKelvin - ICON_BUTTON_EFFECT_BASE_TEMPERATURE_KELVIN) /
-        3000,
-    ),
-  );
+  const coolBias = Math.max(0, Math.min(1, (ICON_BUTTON_EFFECT_BASE_TEMPERATURE_KELVIN - colorTemperatureKelvin) / 1500));
+  const warmBias = Math.max(0, Math.min(1, (colorTemperatureKelvin - ICON_BUTTON_EFFECT_BASE_TEMPERATURE_KELVIN) / 3000));
   const saturation = 1 + coolBias * 0.95 - warmBias * 0.55;
   return {
-    brightnessPercent: brightnessPercent,
-    colorTemperatureKelvin: colorTemperatureKelvin,
-    opacity: opacity,
-    filter: "saturate(" + saturation.toFixed(3) + ")",
+    brightnessPercent,
+    colorTemperatureKelvin,
+    opacity,
+    filter: "saturate(" + saturation.toFixed(3) + ")"
   };
 }
-function iconButtonIsActive(component, context) {
+function ot(component, context) {
   if (context.editable && context.previewState === "on") {
     return true;
   }
@@ -682,12 +399,12 @@ function iconButtonIsActive(component, context) {
   const entityId = component.bindings?.entity?.entityId || "";
   return !!entityId && !!componentIsActive(component, entityId, context.states?.get(entityId), context);
 }
-function climatePresentationModeForComponent(component, context) {
+function st(component, context) {
   const entityId = component.bindings?.entity?.entityId || "";
-  const state = readState(context.states?.get(entityId));
-  const deviceType = resolveClimateDeviceType(component, state, entityId);
+  const value20 = readState(context.states?.get(entityId));
+  const value21 = resolveClimateDeviceType(component, value20, entityId);
   if (context.editable && context.previewState === "on") {
-    if (deviceType === "bath-heater") {
+    if (value21 === "bath-heater") {
       return "heat";
     } else {
       return "cool";
@@ -695,7 +412,7 @@ function climatePresentationModeForComponent(component, context) {
   } else if (context.editable && context.previewState === "off") {
     return "off";
   } else {
-    return climatePresentationMode(state, deviceType).toLowerCase();
+    return climatePresentationMode(value20, value21).toLowerCase();
   }
 }
 function climateIsPoweredOnForComponent(component, context) {
@@ -707,250 +424,97 @@ function climateIsPoweredOnForComponent(component, context) {
   }
   const entityId = component.bindings?.entity?.entityId || "";
   const state = readState(context.states?.get(entityId));
-  return climateIsPoweredOn(
-    state,
-    resolveClimateDeviceType(component, state, entityId),
-  );
+  return climateIsPoweredOn(state, resolveClimateDeviceType(component, state, entityId));
 }
-function climateEffectModeForComponent(component, context) {
+function at(component, context) {
   const entityId = component.bindings?.entity?.entityId || "";
   const state = readState(context.states?.get(entityId));
-  const deviceType = resolveClimateDeviceType(component, state, entityId);
+  const value22 = resolveClimateDeviceType(component, state, entityId);
   if (context.editable && context.previewState === "on") {
     return "cool";
   } else if (context.editable && context.previewState === "off") {
     return "off";
   } else {
-    return climateEffectMode(state, deviceType);
+    return climateEffectMode(state, value22);
   }
 }
-function climateStatusLabel(component, context) {
+function rt(component, states2) {
   const entityId = component.bindings?.entity?.entityId || "";
-  const state = readState(context.states?.get(entityId));
-  const presentationMode = climatePresentationModeForComponent(component, context);
-  const deviceType = resolveClimateDeviceType(component, state, entityId);
-  const modeLabel = climateModeLabel(presentationMode, deviceType);
-  if (!climateIsPoweredOnForComponent(component, context)) {
-    return modeLabel;
+  const state = readState(states2.states?.get(entityId));
+  const deviceType = st(component, states2);
+  const value23 = resolveClimateDeviceType(component, state, entityId);
+  const value24 = climateModeLabel(deviceType, value23);
+  if (!climateIsPoweredOnForComponent(component, states2)) {
+    return value24;
   }
-  const climateCapabilities = normalizeClimateCapabilities(state);
-  if (climateCapabilities.targetTemperature !== null) {
-    return modeLabel + " · " + climateCapabilities.targetTemperature + "°C";
-  } else if (climateCapabilities.currentTemperature !== null) {
-    return modeLabel + " · " + climateCapabilities.currentTemperature + "°C";
+  const targetTemperature = normalizeClimateCapabilities(state);
+  if (targetTemperature.targetTemperature !== null) {
+    return value24 + " · " + targetTemperature.targetTemperature + "°C";
+  } else if (targetTemperature.currentTemperature !== null) {
+    return value24 + " · " + targetTemperature.currentTemperature + "°C";
   } else {
-    return modeLabel;
+    return value24;
   }
 }
-function buildAirflowEffect(properties = {}, mode = "other") {
-  const motion = properties.airflowMotion === "static" ? "static" : "dynamic";
-  const color =
-    mode === "cool"
-      ? safeCssColor(properties.airflowCoolColor, "#73c8ff")
-      : mode === "heat"
-        ? safeCssColor(properties.airflowHeatColor, "#ff8a65")
-        : safeCssColor(properties.airflowOtherColor, "#ffffff");
-  const angle = clampWithDefault(properties.airflowAngle, -360, 360, 7);
-  const lengthScale = clampWithDefault(properties.airflowLength, 10, 300, 200) / 100;
-  const fadePosition = clampWithDefault(properties.airflowFadePosition, 15, 100, 50) / 100;
-  const spread = clampWithDefault(properties.airflowSpread, 10, 300, 100);
-  const curve = Math.tanh(clampWithDefault(properties.airflowCurve, -200, 200, 20) / 140);
-  const density = clampWithDefault(properties.airflowDensity, 20, 200, 60) / 100;
-  const irregularity = clampWithDefault(properties.airflowIrregularity, 0, 200, 50) / 100;
-  const thickness = clampWithDefault(properties.airflowThickness, 5, 300, 40) / 100;
-  const strength = clampWithDefault(properties.airflowStrength, 0, 500, 200) / 100;
-  const blur = clampWithDefault(properties.airflowBlur, 0, 30, 6);
-  const speed = clampWithDefault(properties.airflowSpeed, 0.3, 12, 1);
-  const pathStartY = 6;
-  const pathEndY = pathStartY + (228 - pathStartY) * fadePosition;
-  const pathMidY = pathStartY + (pathEndY - pathStartY) * 0.63;
-  const pathCurveY = pathMidY + (pathEndY - pathMidY) * 0.56;
-  const spreadAngle = Math.min(70, Math.sqrt(spread / 100) * 44);
-  const hashNoise = (seed) => {
-    const raw = Math.sin(seed * 12.9898) * 43758.5453;
-    return raw - Math.floor(raw);
+function ct(airflowMotion = {}, arg14 = "other") {
+  const entityId = airflowMotion.airflowMotion === "static" ? "static" : "dynamic";
+  const state = arg14 === "cool" ? safeCssColor(airflowMotion.airflowCoolColor, "#73c8ff") : arg14 === "heat" ? safeCssColor(airflowMotion.airflowHeatColor, "#ff8a65") : safeCssColor(airflowMotion.airflowOtherColor, "#ffffff");
+  const presentationMode = clampWithDefault(airflowMotion.airflowAngle, -360, 360, 7);
+  const deviceType = clampWithDefault(airflowMotion.airflowLength, 10, 300, 200) / 100;
+  const modeLabel = clampWithDefault(airflowMotion.airflowFadePosition, 15, 100, 50) / 100;
+  const climateCapabilities = clampWithDefault(airflowMotion.airflowSpread, 10, 300, 100);
+  const value25 = Math.tanh(clampWithDefault(airflowMotion.airflowCurve, -200, 200, 20) / 140);
+  const value26 = clampWithDefault(airflowMotion.airflowDensity, 20, 200, 60) / 100;
+  const value27 = clampWithDefault(airflowMotion.airflowIrregularity, 0, 200, 50) / 100;
+  const value28 = clampWithDefault(airflowMotion.airflowThickness, 5, 300, 40) / 100;
+  const value29 = clampWithDefault(airflowMotion.airflowStrength, 0, 500, 200) / 100;
+  const value30 = clampWithDefault(airflowMotion.airflowBlur, 0, 30, 6);
+  const value31 = clampWithDefault(airflowMotion.airflowSpeed, 0.3, 12, 1);
+  const value32 = 6;
+  const toFixed8 = value32 + (228 - value32) * modeLabel;
+  const toFixed9 = value32 + (toFixed8 - value32) * 0.63;
+  const toFixed10 = toFixed9 + (toFixed8 - toFixed9) * 0.56;
+  const value33 = Math.min(70, Math.sqrt(climateCapabilities / 100) * 44);
+  const value34 = arg10 => {
+    const value8 = Math.sin(arg10 * 12.9898) * 43758.5453;
+    return value8 - Math.floor(value8);
   };
-  const length = Math.max(3, Math.min(12, Math.round(density * 8)));
-  const length2 = Math.max(2, Math.min(4, Math.round(1.5 + density * 1.2)));
-  const laneAngles = Array.from(
-    {
-      length: length,
-    },
-    (_, laneIndex) => {
-      const laneT = length === 1 ? 0.5 : laneIndex / (length - 1);
-      const laneJitter = (hashNoise(laneIndex + 3) - 0.5) * 10 * irregularity;
-      return Math.max(
-        10,
-        Math.min(170, 90 + (laneT - 0.5) * spreadAngle * 2 + laneJitter),
-      );
-    },
-  );
-  const minLaneAngle = Math.min(...laneAngles);
-  const maxLaneAngle = Math.max(...laneAngles);
-  const curveBias = curve >= 0 ? 168 - maxLaneAngle : minLaneAngle - 12;
-  const curveOffset = curve * Math.max(0, curveBias);
-  const lanePaths = laneAngles.map((laneX) => {
-    const endX = laneX + curveOffset;
-    const controlX = laneX + curveOffset * 0.42;
-    return (
-      "M" +
-      laneX.toFixed(2) +
-      " " +
-      pathStartY +
-      "L" +
-      laneX.toFixed(2) +
-      " " +
-      pathMidY.toFixed(2) +
-      "C" +
-      laneX.toFixed(2) +
-      " " +
-      pathCurveY.toFixed(2) +
-      " " +
-      controlX.toFixed(2) +
-      " " +
-      pathEndY.toFixed(2) +
-      " " +
-      endX.toFixed(2) +
-      " " +
-      pathEndY.toFixed(2)
-    );
+  const length = Math.max(3, Math.min(12, Math.round(value26 * 8)));
+  const length2 = Math.max(2, Math.min(4, Math.round(1.5 + value26 * 1.2)));
+  const map = Array.from({
+    length
+  }, (arg5, arg6) => {
+    const value4 = length === 1 ? 0.5 : arg6 / (length - 1);
+    const value5 = (value34(arg6 + 3) - 0.5) * 10 * value27;
+    return Math.max(10, Math.min(170, 90 + (value4 - 0.5) * value33 * 2 + value5));
   });
-  const wispMarkup = lanePaths.flatMap((pathD, laneIndex) =>
-    Array.from(
-      {
-        length: length2,
-      },
-      (_, wispIndex) => {
-        const seed = laneIndex * 41 + wispIndex * 67 + 11;
-        const wispLength = Math.max(
-          8,
-          Math.min(
-            112,
-            (34 + hashNoise(seed) * 42 * (0.7 + irregularity * 0.3)) * lengthScale,
-          ),
-        );
-        const wispThickness = Math.max(
-          0.2,
-          Math.min(14, (1.5 + hashNoise(seed + 7) * 2.9) * thickness),
-        );
-        const wispDuration =
-          speed * (0.8 + hashNoise(seed + 13) * 0.42 * (0.55 + irregularity * 0.45));
-        const wispPhase =
-          (wispIndex / length2 +
-            laneIndex * 0.067 +
-            (hashNoise(seed + 19) - 0.5) * 0.08 * irregularity +
-            1) %
-          1;
-        const wispOpacity = Math.min(1, strength * (0.62 + hashNoise(seed + 29) * 0.5));
-        const wispRects =
-          '<rect x="' +
-          (-wispLength / 2).toFixed(2) +
-          '" y="' +
-          (-wispThickness * 1.3).toFixed(2) +
-          '" width="' +
-          wispLength.toFixed(2) +
-          '" height="' +
-          (wispThickness * 2.6).toFixed(2) +
-          '" rx="' +
-          (wispThickness * 1.3).toFixed(2) +
-          '" fill="url(#wisp)" filter="url(#glow)"/><rect x="' +
-          (-wispLength * 0.42).toFixed(2) +
-          '" y="' +
-          (-wispThickness * 0.22).toFixed(2) +
-          '" width="' +
-          (wispLength * 0.82).toFixed(2) +
-          '" height="' +
-          (wispThickness * 0.44).toFixed(2) +
-          '" rx="' +
-          (wispThickness * 0.22).toFixed(2) +
-          '" fill="url(#core)"/>';
-        if (motion === "static") {
-          return (
-            '<g opacity="' +
-            wispOpacity.toFixed(3) +
-            '">' +
-            wispRects +
-            '<animateMotion path="' +
-            pathD +
-            '" dur="0.001s" keyPoints="' +
-            wispPhase.toFixed(4) +
-            ";" +
-            wispPhase.toFixed(4) +
-            '" keyTimes="0;1" fill="freeze" rotate="auto"/></g>'
-          );
-        } else {
-          return (
-            '<g opacity="0">' +
-            wispRects +
-            '<animate attributeName="opacity" values="0;' +
-            wispOpacity.toFixed(3) +
-            ";" +
-            wispOpacity.toFixed(3) +
-            ';0" keyTimes="0;.06;.78;1" dur="' +
-            wispDuration.toFixed(3) +
-            's" begin="' +
-            (-wispDuration * wispPhase).toFixed(3) +
-            's" repeatCount="indefinite"/><animateMotion path="' +
-            pathD +
-            '" dur="' +
-            wispDuration.toFixed(3) +
-            's" begin="' +
-            (-wispDuration * wispPhase).toFixed(3) +
-            's" rotate="auto" repeatCount="indefinite"/></g>'
-          );
-        }
-      },
-    ),
-  );
-  const svgMarkup =
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 240" preserveAspectRatio="none"><defs><linearGradient id="bed" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' +
-    color +
-    '" stop-opacity="0"/><stop offset=".22" stop-color="' +
-    color +
-    '" stop-opacity=".25"/><stop offset=".58" stop-color="' +
-    color +
-    '" stop-opacity=".8"/><stop offset="1" stop-color="' +
-    color +
-    '" stop-opacity="0"/></linearGradient><linearGradient id="wisp"><stop offset="0" stop-color="' +
-    color +
-    '" stop-opacity="0"/><stop offset=".2" stop-color="' +
-    color +
-    '" stop-opacity=".18"/><stop offset=".52" stop-color="' +
-    color +
-    '"/><stop offset=".78" stop-color="' +
-    color +
-    '" stop-opacity=".52"/><stop offset="1" stop-color="' +
-    color +
-    '" stop-opacity="0"/></linearGradient><linearGradient id="core"><stop offset="0" stop-color="' +
-    color +
-    '" stop-opacity="0"/><stop offset=".34" stop-color="' +
-    color +
-    '" stop-opacity=".12"/><stop offset=".58" stop-color="' +
-    color +
-    '"/><stop offset=".82" stop-color="' +
-    color +
-    '" stop-opacity=".28"/><stop offset="1" stop-color="' +
-    color +
-    '" stop-opacity="0"/></linearGradient><filter id="glow" x="-120%" y="-240%" width="340%" height="580%"><feGaussianBlur stdDeviation="' +
-    Math.max(0.2, blur * 1.35) +
-    '"/><feComponentTransfer><feFuncA type="linear" slope="' +
-    (strength <= 1 ? 1 : 1 + (strength - 1) * 0.9).toFixed(3) +
-    '"/></feComponentTransfer></filter></defs><g transform="rotate(' +
-    angle +
-    ' 90 120)">' +
-    lanePaths
-      .map(
-        (laneX) =>
-          '<path d="' +
-          laneX +
-          '" fill="none" stroke="url(#bed)" stroke-width="1.2" stroke-linecap="round" opacity="' +
-          Math.min(1, strength * 0.075).toFixed(3) +
-          '"/>',
-      )
-      .join("") +
-    wispMarkup.join("") +
-    "</g></svg>";
-  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgMarkup);
+  const value35 = Math.min(...map);
+  const value36 = Math.max(...map);
+  const value37 = value25 >= 0 ? 168 - value36 : value35 - 12;
+  const value38 = value25 * Math.max(0, value37);
+  const flatMap = map.map(toFixed5 => {
+    const toFixed6 = toFixed5 + value38;
+    const toFixed7 = toFixed5 + value38 * 0.42;
+    return "M" + toFixed5.toFixed(2) + " " + value32 + "L" + toFixed5.toFixed(2) + " " + toFixed9.toFixed(2) + "C" + toFixed5.toFixed(2) + " " + toFixed10.toFixed(2) + " " + toFixed7.toFixed(2) + " " + toFixed8.toFixed(2) + " " + toFixed6.toFixed(2) + " " + toFixed8.toFixed(2);
+  });
+  const join = flatMap.flatMap((arg7, arg8) => Array.from({
+    length: length2
+  }, (arg3, arg4) => {
+    const value = arg8 * 41 + arg4 * 67 + 11;
+    const toFixed = Math.max(8, Math.min(112, (34 + value34(value) * 42 * (0.7 + value27 * 0.3)) * deviceType));
+    const value2 = Math.max(0.2, Math.min(14, (1.5 + value34(value + 7) * 2.9) * value28));
+    const toFixed2 = value31 * (0.8 + value34(value + 13) * 0.42 * (0.55 + value27 * 0.45));
+    const toFixed3 = (arg4 / length2 + arg8 * 0.067 + (value34(value + 19) - 0.5) * 0.08 * value27 + 1) % 1;
+    const toFixed4 = Math.min(1, value29 * (0.62 + value34(value + 29) * 0.5));
+    const value3 = "<rect x=\"" + (-toFixed / 2).toFixed(2) + "\" y=\"" + (-value2 * 1.3).toFixed(2) + "\" width=\"" + toFixed.toFixed(2) + "\" height=\"" + (value2 * 2.6).toFixed(2) + "\" rx=\"" + (value2 * 1.3).toFixed(2) + "\" fill=\"url(#wisp)\" filter=\"url(#glow)\"/><rect x=\"" + (-toFixed * 0.42).toFixed(2) + "\" y=\"" + (-value2 * 0.22).toFixed(2) + "\" width=\"" + (toFixed * 0.82).toFixed(2) + "\" height=\"" + (value2 * 0.44).toFixed(2) + "\" rx=\"" + (value2 * 0.22).toFixed(2) + "\" fill=\"url(#core)\"/>";
+    if (entityId === "static") {
+      return "<g opacity=\"" + toFixed4.toFixed(3) + "\">" + value3 + "<animateMotion path=\"" + arg7 + "\" dur=\"0.001s\" keyPoints=\"" + toFixed3.toFixed(4) + ";" + toFixed3.toFixed(4) + "\" keyTimes=\"0;1\" fill=\"freeze\" rotate=\"auto\"/></g>";
+    } else {
+      return "<g opacity=\"0\">" + value3 + "<animate attributeName=\"opacity\" values=\"0;" + toFixed4.toFixed(3) + ";" + toFixed4.toFixed(3) + ";0\" keyTimes=\"0;.06;.78;1\" dur=\"" + toFixed2.toFixed(3) + "s\" begin=\"" + (-toFixed2 * toFixed3).toFixed(3) + "s\" repeatCount=\"indefinite\"/><animateMotion path=\"" + arg7 + "\" dur=\"" + toFixed2.toFixed(3) + "s\" begin=\"" + (-toFixed2 * toFixed3).toFixed(3) + "s\" rotate=\"auto\" repeatCount=\"indefinite\"/></g>";
+    }
+  }));
+  const value39 = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 180 240\" preserveAspectRatio=\"none\"><defs><linearGradient id=\"bed\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"" + state + "\" stop-opacity=\"0\"/><stop offset=\".22\" stop-color=\"" + state + "\" stop-opacity=\".25\"/><stop offset=\".58\" stop-color=\"" + state + "\" stop-opacity=\".8\"/><stop offset=\"1\" stop-color=\"" + state + "\" stop-opacity=\"0\"/></linearGradient><linearGradient id=\"wisp\"><stop offset=\"0\" stop-color=\"" + state + "\" stop-opacity=\"0\"/><stop offset=\".2\" stop-color=\"" + state + "\" stop-opacity=\".18\"/><stop offset=\".52\" stop-color=\"" + state + "\"/><stop offset=\".78\" stop-color=\"" + state + "\" stop-opacity=\".52\"/><stop offset=\"1\" stop-color=\"" + state + "\" stop-opacity=\"0\"/></linearGradient><linearGradient id=\"core\"><stop offset=\"0\" stop-color=\"" + state + "\" stop-opacity=\"0\"/><stop offset=\".34\" stop-color=\"" + state + "\" stop-opacity=\".12\"/><stop offset=\".58\" stop-color=\"" + state + "\"/><stop offset=\".82\" stop-color=\"" + state + "\" stop-opacity=\".28\"/><stop offset=\"1\" stop-color=\"" + state + "\" stop-opacity=\"0\"/></linearGradient><filter id=\"glow\" x=\"-120%\" y=\"-240%\" width=\"340%\" height=\"580%\"><feGaussianBlur stdDeviation=\"" + Math.max(0.2, value30 * 1.35) + "\"/><feComponentTransfer><feFuncA type=\"linear\" slope=\"" + (value29 <= 1 ? 1 : 1 + (value29 - 1) * 0.9).toFixed(3) + "\"/></feComponentTransfer></filter></defs><g transform=\"rotate(" + presentationMode + " 90 120)\">" + flatMap.map(arg2 => "<path d=\"" + arg2 + "\" fill=\"none\" stroke=\"url(#bed)\" stroke-width=\"1.2\" stroke-linecap=\"round\" opacity=\"" + Math.min(1, value29 * 0.075).toFixed(3) + "\"/>").join("") + join.join("") + "</g></svg>";
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(value39);
 }
 export function renderAirConditionerAirflowLayer(component, context) {
   const properties = component.properties || {};
@@ -960,7 +524,7 @@ export function renderAirConditionerAirflowLayer(component, context) {
   const layer = document.createElement("div");
   layer.className = "hb-air-conditioner-airflow-layer";
   const image = document.createElement("img");
-  image.src = buildAirflowEffect(properties, climateEffectModeForComponent(component, context));
+  image.src = ct(properties, at(component, context));
   image.alt = "";
   image.draggable = false;
   layer.append(image);
@@ -974,91 +538,63 @@ function appendSvgChild(parent, tagName, attributes = {}) {
   parent.append(node);
   return node;
 }
-function buildLineChartSeries(context, entityId, currentValue, hours = 24) {
-  const rawPoints = (
-    Array.isArray(context.history?.get(entityId)?.points)
-      ? context.history.get(entityId).points
-      : []
-  )
-    .map((element) => ({
-      timestamp: Date.parse(element.timestamp),
-      value: Number(element.value),
-    }))
-    .filter(
-      (element) =>
-        Number.isFinite(element.timestamp) && Number.isFinite(element.value),
-    );
-  const timestamp = Date.now();
-  if (Number.isFinite(currentValue)) {
-    rawPoints.push({
-      timestamp: timestamp,
-      value: currentValue,
+function buildLineChartSeries(component, entityId, stateEntry, context = 24) {
+  const text = (Array.isArray(component.history?.get(entityId)?.points) ? component.history.get(entityId).points : []).map(timestamp => ({
+    timestamp: Date.parse(timestamp.timestamp),
+    value: Number(timestamp.value)
+  })).filter(timestamp2 => Number.isFinite(timestamp2.timestamp) && Number.isFinite(timestamp2.value));
+  const powerStateEntry = Date.now();
+  if (Number.isFinite(stateEntry)) {
+    text.push({
+      timestamp: powerStateEntry,
+      value: stateEntry
     });
   }
-  rawPoints.sort((step, other) => step.timestamp - other.timestamp);
-  const dedupedPoints = rawPoints.filter(
-    (element, step) =>
-      step === 0 ||
-      element.timestamp !== rawPoints[step - 1].timestamp ||
-      element.value !== rawPoints[step - 1].value,
-  );
-  if (!dedupedPoints.length) {
+  text.sort((timestamp4, timestamp5) => timestamp4.timestamp - timestamp5.timestamp);
+  const length3 = text.filter((timestamp3, arg9) => arg9 === 0 || timestamp3.timestamp !== text[arg9 - 1].timestamp || timestamp3.value !== text[arg9 - 1].value);
+  if (!length3.length) {
     return [];
   }
-  const hourCount = Math.round(clampWithDefault(hours, 1, 168, 24));
-  const msPerHour = 3600000;
-  const windowStart = timestamp - hourCount * msPerHour;
-  const series = [];
-  let cursor = 0;
-  let lastPoint = null;
-  for (let step = 0; step <= hourCount; step += 1) {
-    const timestamp2 =
-      step === hourCount ? timestamp : windowStart + step * msPerHour;
-    while (cursor < dedupedPoints.length && dedupedPoints[cursor].timestamp <= timestamp2) {
-      lastPoint = dedupedPoints[cursor];
-      cursor += 1;
+  const value40 = Math.round(clampWithDefault(context, 1, 168, 24));
+  const value41 = 3600000;
+  const value42 = powerStateEntry - value40 * value41;
+  const push = [];
+  let value43 = 0;
+  let value44 = null;
+  for (let value14 = 0; value14 <= value40; value14 += 1) {
+    const timestamp6 = value14 === value40 ? powerStateEntry : value42 + value14 * value41;
+    while (value43 < length3.length && length3[value43].timestamp <= timestamp6) {
+      value44 = length3[value43];
+      value43 += 1;
     }
-    const element = lastPoint || dedupedPoints[cursor] || dedupedPoints[0];
-    if (element) {
-      series.push({
-        timestamp: timestamp2,
-        value: element.value,
+    const value11 = value44 || length3[value43] || length3[0];
+    if (value11) {
+      push.push({
+        timestamp: timestamp6,
+        value: value11.value
       });
     }
   }
-  return series;
+  return push;
 }
-function formatChartTime(timestamp, includeDate = true) {
-  const options = includeDate
-    ? {
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      }
-    : {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      };
-  return new Intl.DateTimeFormat("zh-CN", options)
-    .format(new Date(timestamp))
-    .replace(/\//g, "-");
+function formatChartTime(arg15, mode = true) {
+  const motion = mode ? {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  } : {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  };
+  return new Intl.DateTimeFormat("zh-CN", motion).format(new Date(arg15)).replace(/\//g, "-");
 }
-function setupLineChartHoverTooltip(
-  chartElement,
-  overlayRoot,
-  geometry,
-  unit,
-  pointToPercent,
-  statePrecision = "auto",
-  xRange = {
-    start: 0,
-    end: 1,
-  },
-  tooltipHost = document.body,
-) {
+function setupLineChartHoverTooltip(chartElement, overlayRoot, geometry, unit, pointToPercent, statePrecision = "auto", xRange = {
+  start: 0,
+  end: 1
+}, tooltipHost = document.body) {
   const tooltip = document.createElement("span");
   tooltip.className = "hb-line-chart-tooltip";
   if (tooltipHost === overlayRoot) {
@@ -1073,11 +609,8 @@ function setupLineChartHoverTooltip(
   hoverDot.hidden = true;
   overlayRoot.append(hoverGuide, hoverDot);
   tooltipHost.append(tooltip);
-  const onPointerMove = (pointerEvent) => {
-    const dialogLayer =
-      tooltipHost === overlayRoot
-        ? overlayRoot.closest(".hb-renderer-runtime-dialog-layer")
-        : null;
+  const onPointerMove = pointerEvent => {
+    const dialogLayer = tooltipHost === overlayRoot ? overlayRoot.closest(".hb-renderer-runtime-dialog-layer") : null;
     if (dialogLayer && tooltip.parentElement !== dialogLayer) {
       dialogLayer.append(tooltip);
     }
@@ -1086,59 +619,29 @@ function setupLineChartHoverTooltip(
       return;
     }
     const rawRatio = (pointerEvent.clientX - chartRect.left) / chartRect.width;
-    const clamped = clampWithDefault(
-      (rawRatio - xRange.start) / Math.max(0.001, xRange.end - xRange.start),
-      0,
-      1,
-      0,
-    );
-    const hoverTime =
-      geometry.firstTime + clamped * (geometry.lastTime - geometry.firstTime);
-    const nearestPoint = geometry.points.reduce((bestPoint, candidatePoint) =>
-      Math.abs(candidatePoint.timestamp - hoverTime) <
-      Math.abs(bestPoint.timestamp - hoverTime)
-        ? candidatePoint
-        : bestPoint,
-    );
+    const clamped = clampWithDefault((rawRatio - xRange.start) / Math.max(0.001, xRange.end - xRange.start), 0, 1, 0);
+    const hoverTime = geometry.firstTime + clamped * (geometry.lastTime - geometry.firstTime);
+    const nearestPoint = geometry.points.reduce((bestPoint, candidatePoint) => Math.abs(candidatePoint.timestamp - hoverTime) < Math.abs(bestPoint.timestamp - hoverTime) ? candidatePoint : bestPoint);
     const pointPercent = pointToPercent(nearestPoint);
     const overlayRect = overlayRoot.getBoundingClientRect();
-    const localX =
-      chartElement.getBoundingClientRect().left -
-      overlayRect.left +
-      (pointPercent.x / 100) * chartRect.width;
-    const localY =
-      chartElement.getBoundingClientRect().top -
-      overlayRect.top +
-      (pointPercent.y / 100) * chartRect.height;
+    const localX = chartElement.getBoundingClientRect().left - overlayRect.left + pointPercent.x / 100 * chartRect.width;
+    const localY = chartElement.getBoundingClientRect().top - overlayRect.top + pointPercent.y / 100 * chartRect.height;
     const pageX = overlayRect.left + localX;
     const pageY = overlayRect.top + localY;
-    const guideXPercent = (localX / Math.max(1, overlayRect.width)) * 100;
-    const guideYPercent = (localY / Math.max(1, overlayRect.height)) * 100;
+    const guideXPercent = localX / Math.max(1, overlayRect.width) * 100;
+    const guideYPercent = localY / Math.max(1, overlayRect.height) * 100;
     const tooltipInOverlay = tooltip.parentElement === overlayRoot;
     const tooltipInDialog = dialogLayer && tooltip.parentElement === dialogLayer;
     const dialogRect = tooltipInDialog ? dialogLayer.getBoundingClientRect() : null;
     const dialogLocalX = tooltipInDialog ? pageX - dialogRect.left : pageX;
     const dialogLocalY = tooltipInDialog ? pageY - dialogRect.top : pageY;
-    tooltip.textContent =
-      formatChartTime(nearestPoint.timestamp) +
-      "  " +
-      formatLineChartValue(nearestPoint.value, statePrecision) +
-      unit;
+    tooltip.textContent = formatChartTime(nearestPoint.timestamp) + "  " + formatLineChartValue(nearestPoint.value, statePrecision) + unit;
     tooltip.style.position = tooltipInOverlay || tooltipInDialog ? "absolute" : "fixed";
     tooltip.style.left = (tooltipInOverlay ? localX : dialogLocalX) + "px";
     tooltip.style.top = (tooltipInOverlay ? localY : dialogLocalY) + "px";
     const tooltipAnchorX = tooltipInOverlay ? localX : dialogLocalX;
-    const viewportWidth = tooltipInOverlay
-      ? overlayRect.width
-      : tooltipInDialog
-        ? dialogRect.width
-        : window.innerWidth;
-    tooltip.style.transform =
-      tooltipAnchorX < 110
-        ? "translate(0, calc(-100% - 9px))"
-        : tooltipAnchorX > viewportWidth - 110
-          ? "translate(-100%, calc(-100% - 9px))"
-          : "translate(-50%, calc(-100% - 9px))";
+    const viewportWidth = tooltipInOverlay ? overlayRect.width : tooltipInDialog ? dialogRect.width : window.innerWidth;
+    tooltip.style.transform = tooltipAnchorX < 110 ? "translate(0, calc(-100% - 9px))" : tooltipAnchorX > viewportWidth - 110 ? "translate(-100%, calc(-100% - 9px))" : "translate(-50%, calc(-100% - 9px))";
     hoverGuide.style.left = guideXPercent + "%";
     hoverDot.style.left = guideXPercent + "%";
     hoverDot.style.top = guideYPercent + "%";
@@ -1162,7 +665,7 @@ function setupLineChartHoverTooltip(
 function buildLightFrameVisual(component, properties, isActive, frameOpacity, glowStrength, glowSize) {
   const frameWidthPx = Math.max(1, Number(component.position?.width || 236));
   const frameHeightPx = Math.max(1, Number(component.position?.height || 100));
-  const normalizedHeight = Math.max(8, (frameHeightPx * 236) / frameWidthPx);
+  const normalizedHeight = Math.max(8, frameHeightPx * 236 / frameWidthPx);
   const frameWidth = clampWithDefault(properties.frameWidth, 0, 20, 2);
   const halfStroke = Math.max(0.5, frameWidth / 2 + 0.5);
   const innerWidth = Math.max(1, 236 - halfStroke * 2);
@@ -1178,128 +681,22 @@ function buildLightFrameVisual(component, properties, isActive, frameOpacity, gl
   const frameAngle = clampWithDefault(properties.frameAngle, 0, 360, 45);
   const glowAngle = clampWithDefault(properties.glowAngle, 0, 360, 45);
   const activeOpacityScale = isActive ? 0.98 : 0.48;
-  const scaledOpacity = (amount) =>
-    Math.max(0, Math.min(1, (amount * frameOpacity) / activeOpacityScale));
+  const scaledOpacity = amount => Math.max(0, Math.min(1, amount * frameOpacity / activeOpacityScale));
   const gradientId = "navigation-" + randomUuid();
   const element = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   element.classList.add("hb-navigation-effects");
   element.setAttribute("viewBox", "0 0 236 " + normalizedHeight);
   element.setAttribute("preserveAspectRatio", "none");
   element.setAttribute("aria-hidden", "true");
-  element.innerHTML =
-    '\n    <defs>\n      <linearGradient id="navigation-edge-' +
-    gradientId +
-    '" gradientUnits="userSpaceOnUse" x1="0" y1="' +
-    centerY +
-    '" x2="236" y2="' +
-    centerY +
-    '" gradientTransform="rotate(' +
-    frameAngle +
-    " " +
-    centerX +
-    " " +
-    centerY +
-    ')">\n        <stop offset="0" stop-color="' +
-    frameColor +
-    '" stop-opacity="' +
-    scaledOpacity(isActive ? 0.98 : 0.48) +
-    '"/>\n        <stop offset=".48" stop-color="' +
-    frameColor +
-    '" stop-opacity="' +
-    scaledOpacity(isActive ? 0.58 : 0.22) +
-    '"/>\n        <stop offset="1" stop-color="' +
-    frameColor +
-    '" stop-opacity="' +
-    scaledOpacity(isActive ? 0.82 : 0.36) +
-    '"/>\n      </linearGradient>\n      <linearGradient id="navigation-light-' +
-    gradientId +
-    '" gradientUnits="userSpaceOnUse" x1="0" y1="' +
-    centerY +
-    '" x2="236" y2="' +
-    centerY +
-    '" gradientTransform="rotate(' +
-    glowAngle +
-    " " +
-    centerX +
-    " " +
-    centerY +
-    ')">\n        <stop offset="0" stop-color="' +
-    glowColor +
-    '" stop-opacity="' +
-    glowOpacity +
-    '"/>\n        <stop offset=".45" stop-color="' +
-    glowColor +
-    '" stop-opacity="' +
-    glowOpacity * 0.35 +
-    '"/>\n        <stop offset="1" stop-color="' +
-    glowColor +
-    '" stop-opacity="' +
-    glowOpacity * 0.72 +
-    '"/>\n      </linearGradient>\n      <clipPath id="navigation-shape-' +
-    gradientId +
-    '"><rect x="' +
-    halfStroke +
-    '" y="' +
-    halfStroke +
-    '" width="' +
-    innerWidth +
-    '" height="' +
-    innerHeight +
-    '" rx="' +
-    radius +
-    '"/></clipPath>\n      <filter id="navigation-soft-light-' +
-    gradientId +
-    '" x="-35%" y="-75%" width="170%" height="250%"><feGaussianBlur stdDeviation="' +
-    glowCoreRadius +
-    '"/></filter>\n    </defs>\n    ' +
-    (properties.glowVisible !== false && glowRadius > 0 && glowOpacity > 0
-      ? '<g clip-path="url(#navigation-shape-' +
-        gradientId +
-        ')"><rect x="' +
-        halfStroke +
-        '" y="' +
-        halfStroke +
-        '" width="' +
-        innerWidth +
-        '" height="' +
-        innerHeight +
-        '" rx="' +
-        radius +
-        '" fill="none" stroke="url(#navigation-light-' +
-        gradientId +
-        ')" stroke-width="' +
-        glowRadius +
-        '" filter="url(#navigation-soft-light-' +
-        gradientId +
-        ')"/></g>'
-      : "") +
-    "\n    " +
-    (properties.frameVisible !== false
-      ? '<rect x="' +
-        halfStroke +
-        '" y="' +
-        halfStroke +
-        '" width="' +
-        innerWidth +
-        '" height="' +
-        innerHeight +
-        '" rx="' +
-        radius +
-        '" fill="none" stroke="url(#navigation-edge-' +
-        gradientId +
-        ')" stroke-width="' +
-        frameWidth +
-        '"/>'
-      : "") +
-    "\n  ";
+  element.innerHTML = "\n    <defs>\n      <linearGradient id=\"navigation-edge-" + gradientId + "\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"" + centerY + "\" x2=\"236\" y2=\"" + centerY + "\" gradientTransform=\"rotate(" + frameAngle + " " + centerX + " " + centerY + ")\">\n        <stop offset=\"0\" stop-color=\"" + frameColor + "\" stop-opacity=\"" + scaledOpacity(isActive ? 0.98 : 0.48) + "\"/>\n        <stop offset=\".48\" stop-color=\"" + frameColor + "\" stop-opacity=\"" + scaledOpacity(isActive ? 0.58 : 0.22) + "\"/>\n        <stop offset=\"1\" stop-color=\"" + frameColor + "\" stop-opacity=\"" + scaledOpacity(isActive ? 0.82 : 0.36) + "\"/>\n      </linearGradient>\n      <linearGradient id=\"navigation-light-" + gradientId + "\" gradientUnits=\"userSpaceOnUse\" x1=\"0\" y1=\"" + centerY + "\" x2=\"236\" y2=\"" + centerY + "\" gradientTransform=\"rotate(" + glowAngle + " " + centerX + " " + centerY + ")\">\n        <stop offset=\"0\" stop-color=\"" + glowColor + "\" stop-opacity=\"" + glowOpacity + "\"/>\n        <stop offset=\".45\" stop-color=\"" + glowColor + "\" stop-opacity=\"" + glowOpacity * 0.35 + "\"/>\n        <stop offset=\"1\" stop-color=\"" + glowColor + "\" stop-opacity=\"" + glowOpacity * 0.72 + "\"/>\n      </linearGradient>\n      <clipPath id=\"navigation-shape-" + gradientId + "\"><rect x=\"" + halfStroke + "\" y=\"" + halfStroke + "\" width=\"" + innerWidth + "\" height=\"" + innerHeight + "\" rx=\"" + radius + "\"/></clipPath>\n      <filter id=\"navigation-soft-light-" + gradientId + "\" x=\"-35%\" y=\"-75%\" width=\"170%\" height=\"250%\"><feGaussianBlur stdDeviation=\"" + glowCoreRadius + "\"/></filter>\n    </defs>\n    " + (properties.glowVisible !== false && glowRadius > 0 && glowOpacity > 0 ? "<g clip-path=\"url(#navigation-shape-" + gradientId + ")\"><rect x=\"" + halfStroke + "\" y=\"" + halfStroke + "\" width=\"" + innerWidth + "\" height=\"" + innerHeight + "\" rx=\"" + radius + "\" fill=\"none\" stroke=\"url(#navigation-light-" + gradientId + ")\" stroke-width=\"" + glowRadius + "\" filter=\"url(#navigation-soft-light-" + gradientId + ")\"/></g>" : "") + "\n    " + (properties.frameVisible !== false ? "<rect x=\"" + halfStroke + "\" y=\"" + halfStroke + "\" width=\"" + innerWidth + "\" height=\"" + innerHeight + "\" rx=\"" + radius + "\" fill=\"none\" stroke=\"url(#navigation-edge-" + gradientId + ")\" stroke-width=\"" + frameWidth + "\"/>" : "") + "\n  ";
   return element;
 }
 export function navigationButtonIsActive({
-  targetPage: targetPage = "",
-  currentPagePath: currentPagePath = "",
-  entityId: entityId = "",
-  entityActive: entityActive = false,
-  previewState: previewState = "auto",
+  targetPage = "",
+  currentPagePath = "",
+  entityId = "",
+  entityActive = false,
+  previewState = "auto"
 } = {}) {
   if (previewState === "on") {
     return true;
@@ -1327,43 +724,27 @@ registerComponent("image", {
     image.alt = properties.alt || properties.label || "图片";
     image.draggable = false;
     image.style.objectFit = "contain";
-    image.style.opacity = String(
-      Math.max(0, Math.min(1, Number(properties.opacity ?? 1))),
-    );
+    image.style.opacity = String(Math.max(0, Math.min(1, Number(properties.opacity ?? 1))));
     return image;
-  },
+  }
 });
-function entityStateIsOn(entityId, context) {
-  if (!entityId) {
+function dt(timestamp, states3) {
+  if (!timestamp) {
     return false;
   }
-  const stateEntry = context?.states?.get?.(String(entityId));
-  const state = String(
-    stateEntry?.newState?.state ?? stateEntry?.state ?? "",
-  ).toLowerCase();
-  return ["on", "true", "1", "open", "opening", "active", "playing"].includes(
-    state,
-  );
+  const options = states3?.states?.get?.(String(timestamp));
+  const value45 = String(options?.newState?.state ?? options?.state ?? "").toLowerCase();
+  return ["on", "true", "1", "open", "opening", "active", "playing"].includes(value45);
 }
 registerComponent("floorplan-auto-diagram", {
   render(component, context = {}) {
     const properties = component.properties || {};
     const root = document.createElement("div");
     root.className = "hb-floorplan-auto-diagram";
-    root.setAttribute(
-      "aria-label",
-      properties.label || properties.instanceName || "户型图自动导图",
-    );
-    if (
-      context.editable &&
-      properties.previewReady === true &&
-      (properties.generated !== true || properties.previewing === true)
-    ) {
+    root.setAttribute("aria-label", properties.label || properties.instanceName || "户型图自动导图");
+    if (context.editable && properties.previewReady === true && (properties.generated !== true || properties.previewing === true)) {
       const iframe = document.createElement("iframe");
-      iframe.className =
-        "hb-floorplan-auto-diagram-preview is-" +
-        (properties.interactionMode === "view" ? "view" : "position") +
-        "-mode";
+      iframe.className = "hb-floorplan-auto-diagram-preview is-" + (properties.interactionMode === "view" ? "view" : "position") + "-mode";
       iframe.title = "3D户型图构图预览";
       const canvas = context.document?.canvas || {};
       const position = component.position || {};
@@ -1373,13 +754,9 @@ registerComponent("floorplan-auto-diagram", {
         "auto-diagram-embed": "1",
         "dashboard-width": String(Number(canvas.width || 2778)),
         "dashboard-height": String(Number(canvas.height || 1940)),
-        "component-width": String(
-          Math.max(1, Math.round(Number(position.width || 100))),
-        ),
-        "component-height": String(
-          Math.max(1, Math.round(Number(position.height || 100))),
-        ),
-        "export-folder": exportFolder,
+        "component-width": String(Math.max(1, Math.round(Number(position.width || 100)))),
+        "component-height": String(Math.max(1, Math.round(Number(position.height || 100)))),
+        "export-folder": exportFolder
       });
       if (properties.floorSelection) {
         query.set("floor-selection", String(properties.floorSelection));
@@ -1389,15 +766,11 @@ registerComponent("floorplan-auto-diagram", {
       root.append(iframe);
       const element = document.createElement("div");
       element.className = "hb-floorplan-auto-diagram-loading";
-      element.innerHTML =
-        '<i aria-hidden="true"></i><strong>正在加载3D户型…</strong>';
+      element.innerHTML = "<i aria-hidden=\"true\"></i><strong>正在加载3D户型…</strong>";
       root.append(element);
       const element2 = document.createElement("div");
       element2.className = "hb-floorplan-auto-diagram-preview-hint";
-      element2.textContent =
-        properties.interactionMode === "view"
-          ? "拖动旋转 · 右键平移 · 滚轮缩放"
-          : "拖动控件调整位置，右下角调整大小";
+      element2.textContent = properties.interactionMode === "view" ? "拖动旋转 · 右键平移 · 滚轮缩放" : "拖动控件调整位置，右下角调整大小";
       root.append(element2);
       return root;
     }
@@ -1417,7 +790,7 @@ registerComponent("floorplan-auto-diagram", {
     const buttons = [];
     const syncLayerStates = () => {
       for (const layer of layers) {
-        const isOn = entityStateIsOn(layer.entityId, context);
+        const isOn = dt(layer.entityId, context);
         layer.image.classList.toggle("is-active", isOn || context.editable);
         layer.button.classList.toggle("is-active", isOn);
         layer.button.setAttribute("aria-pressed", String(isOn));
@@ -1442,14 +815,10 @@ registerComponent("floorplan-auto-diagram", {
       if (layer.note) {
         button.title = layer.note;
       }
-      button.addEventListener("click", async (event) => {
+      button.addEventListener("click", async event => {
         event.preventDefault();
         event.stopPropagation();
-        if (
-          !!entityId &&
-          !context.editable &&
-          typeof context.callEntityService == "function"
-        ) {
+        if (!!entityId && !context.editable && typeof context.callEntityService == "function") {
           button.disabled = true;
           try {
             await context.callEntityService("homeassistant", "toggle", entityId);
@@ -1462,9 +831,9 @@ registerComponent("floorplan-auto-diagram", {
       });
       root.append(image, button);
       const options = {
-        image: image,
-        button: button,
-        entityId: entityId,
+        image,
+        button,
+        entityId
       };
       layers.push(options);
       buttons.push(button);
@@ -1481,13 +850,11 @@ registerComponent("floorplan-auto-diagram", {
     root.syncFloorplanAutoDiagramState = syncLayerStates;
     syncLayerStates();
     return root;
-  },
+  }
 });
 export function renderIconButtonEffectLayer(component, context) {
   const properties = component.properties || {};
-  const effectVariant = context.editable
-    ? null
-    : builtinEffectVariants.get(String(properties.effectAssetId || ""));
+  const effectVariant = context.editable ? null : builtinEffectVariants.get(String(properties.effectAssetId || ""));
   const effectUrl = effectVariant?.url || resolveAssetUrl(properties.effectAssetId);
   if (!effectUrl || properties.effectVisible === false) {
     return null;
@@ -1496,20 +863,11 @@ export function renderIconButtonEffectLayer(component, context) {
   const lightVisual = iconButtonEffectLightVisualState(component, context);
   const awaitingVisual = iconButtonEffectLightVisualAwaiting(component, context);
   const layer = document.createElement("div");
-  layer.className =
-    "hb-icon-button-effect-layer" +
-    (isActive ? " active" : "") +
-    (awaitingVisual ? " awaiting-light-visual" : "");
-  layer.style.setProperty(
-    "--hb-effect-image-opacity",
-    String(clampWithDefault(properties.effectOpacity, 0, 1, 1) * lightVisual.opacity),
-  );
+  layer.className = "hb-icon-button-effect-layer" + (isActive ? " active" : "") + (awaitingVisual ? " awaiting-light-visual" : "");
+  layer.style.setProperty("--hb-effect-image-opacity", String(clampWithDefault(properties.effectOpacity, 0, 1, 1) * lightVisual.opacity));
   const fadeDuration = clampWithDefault(properties.effectFadeDuration, 0, 3, 0.52);
   layer.style.setProperty("--hb-effect-fade-duration", fadeDuration + "s");
-  layer.style.setProperty(
-    "--hb-effect-visual-transition-duration",
-    Math.max(0.45, fadeDuration) + "s",
-  );
+  layer.style.setProperty("--hb-effect-visual-transition-duration", Math.max(0.45, fadeDuration) + "s");
   const image = document.createElement("img");
   if (effectVariant) {
     image.dataset.effectSource = effectUrl;
@@ -1543,71 +901,33 @@ registerComponent("icon-button-effect", {
     root.hidden = properties.buttonVisible === false;
     root.style.opacity = iconVisible ? "1" : "0";
     root.style.transition = "opacity .24s ease";
-    root.style.setProperty(
-      "--effect-button-color",
-      safeCssColor(
-        isActive ? properties.buttonOnColor : properties.buttonOffColor,
-        isActive ? "#1f91b8" : "#17242d",
-      ),
-    );
-    root.style.setProperty(
-      "--effect-button-opacity",
-      clampWithDefault(properties.buttonOpacity, 0, 1, 0.92) * 100 + "%",
-    );
-    root.style.setProperty(
-      "--effect-frame-color",
-      safeCssColor(properties.frameColor, "#dcebf2"),
-    );
-    root.style.setProperty(
-      "--effect-frame-width",
-      clampWithDefault(properties.frameWidth, 0, 20, 1.5) + "px",
-    );
-    root.style.setProperty(
-      "--effect-frame-opacity",
-      clampWithDefault(properties.frameOpacity, 0, 1, 0.72) * 100 + "%",
-    );
-    root.style.setProperty(
-      "--effect-radius",
-      clampWithDefault(properties.radius, 0, 50, 50) + "%",
-    );
-    root.style.setProperty(
-      "--effect-glow-color",
-      safeCssColor(properties.glowColor, "#43c8f0"),
-    );
-    const glowStrength = clampWithDefault(
-      isActive ? properties.glowOnStrength : properties.glowOffStrength,
-      0,
-      3,
-      isActive ? 1 : 0,
-    );
+    root.style.setProperty("--effect-button-color", safeCssColor(isActive ? properties.buttonOnColor : properties.buttonOffColor, isActive ? "#1f91b8" : "#17242d"));
+    root.style.setProperty("--effect-button-opacity", clampWithDefault(properties.buttonOpacity, 0, 1, 0.92) * 100 + "%");
+    root.style.setProperty("--effect-frame-color", safeCssColor(properties.frameColor, "#dcebf2"));
+    root.style.setProperty("--effect-frame-width", clampWithDefault(properties.frameWidth, 0, 20, 1.5) + "px");
+    root.style.setProperty("--effect-frame-opacity", clampWithDefault(properties.frameOpacity, 0, 1, 0.72) * 100 + "%");
+    root.style.setProperty("--effect-radius", clampWithDefault(properties.radius, 0, 50, 50) + "%");
+    root.style.setProperty("--effect-glow-color", safeCssColor(properties.glowColor, "#43c8f0"));
+    const glowStrength = clampWithDefault(isActive ? properties.glowOnStrength : properties.glowOffStrength, 0, 3, isActive ? 1 : 0);
     root.style.setProperty("--effect-glow-size", glowStrength * 18 + "px");
     root.style.setProperty("--effect-glow-inset-size", glowStrength * 13 + "px");
-    root.style.setProperty(
-      "--effect-glow-opacity",
-      Math.min(100, glowStrength * 38) + "%",
-    );
-    root.style.setProperty(
-      "--effect-glow-inset-opacity",
-      Math.min(100, glowStrength * 30) + "%",
-    );
+    root.style.setProperty("--effect-glow-opacity", Math.min(100, glowStrength * 38) + "%");
+    root.style.setProperty("--effect-glow-inset-opacity", Math.min(100, glowStrength * 30) + "%");
     const iconUrl = resolveMdiIconUrl(properties.icon || "mdi:lightbulb-outline");
     if (iconUrl) {
       const icon = document.createElement("i");
       icon.className = "hb-icon-button-effect-icon";
       icon.style.transition = "opacity .24s ease";
       icon.style.opacity = iconVisible ? "1" : "0";
-      icon.style.backgroundColor = safeCssColor(
-        isActive ? properties.iconOnColor : properties.iconOffColor,
-        isActive ? "#ffffff" : "#9aa5ad",
-      );
+      icon.style.backgroundColor = safeCssColor(isActive ? properties.iconOnColor : properties.iconOffColor, isActive ? "#ffffff" : "#9aa5ad");
       icon.style.width = clampWithDefault(properties.iconSize, 1, 100, 44) + "%";
       icon.style.height = clampWithDefault(properties.iconSize, 1, 100, 44) + "%";
-      icon.style.maskImage = 'url("' + iconUrl + '")';
-      icon.style.webkitMaskImage = 'url("' + iconUrl + '")';
+      icon.style.maskImage = "url(\"" + iconUrl + "\")";
+      icon.style.webkitMaskImage = "url(\"" + iconUrl + "\")";
       root.append(icon);
     }
     return root;
-  },
+  }
 });
 registerComponent("title-button", {
   render(component, context) {
@@ -1615,87 +935,35 @@ registerComponent("title-button", {
     const hiddenContentClickable = properties.hiddenContentClickable === true;
     const boxWidth = Math.max(20, Number(component.position?.width || 500));
     const boxHeight = Math.max(20, Number(component.position?.height || 122));
-    const { height: unit } = componentContentUnitsPx(component, context);
+    const {
+      height: unit
+    } = componentContentUnitsPx(component, context);
     const root = document.createElement("div");
     root.className = "hb-title-button";
-    root.style.setProperty(
-      "--title-frame-color",
-      safeCssColor(properties.frameColor, "#60636a"),
-    );
-    root.style.setProperty(
-      "--title-frame-width",
-      clampWithDefault(properties.frameWidth, 0, 12, 1.5) + "px",
-    );
-    root.style.setProperty(
-      "--title-frame-offset-x",
-      clampWithDefault(properties.frameOffsetX, -100, 100, 0) + "%",
-    );
-    root.style.setProperty(
-      "--title-frame-offset-y",
-      clampWithDefault(properties.frameOffsetY, -100, 100, 0) + "%",
-    );
-    root.style.setProperty(
-      "--title-main-size",
-      clampWithDefault(properties.mainSize, 8, 200, 34) * unit + "px",
-    );
-    root.style.setProperty(
-      "--title-secondary-size",
-      clampWithDefault(properties.secondarySize, 6, 100, 12) * unit + "px",
-    );
-    root.style.setProperty(
-      "--title-main-spacing",
-      clampWithDefault(properties.mainSpacing, -20, 100, 1) * unit + "px",
-    );
-    root.style.setProperty(
-      "--title-secondary-spacing",
-      clampWithDefault(properties.secondarySpacing, -20, 100, 2) * unit + "px",
-    );
-    root.style.setProperty(
-      "--title-secondary-line-gap",
-      clampWithDefault(properties.secondaryLineGap, 0, 100, 2) * unit + "px",
-    );
-    root.style.setProperty(
-      "--title-main-left",
-      clampWithDefault(properties.mainTextLeft, -100, 200, 5.5) + "%",
-    );
-    root.style.setProperty(
-      "--title-main-top",
-      clampWithDefault(properties.mainTextTop, -100, 200, 45) + "%",
-    );
-    root.style.setProperty(
-      "--title-secondary-left",
-      clampWithDefault(properties.secondaryTextLeft, -100, 200, 54) + "%",
-    );
-    root.style.setProperty(
-      "--title-secondary-top",
-      clampWithDefault(properties.secondaryTextTop, -100, 200, 43) + "%",
-    );
-    root.style.setProperty(
-      "--title-icon-size",
-      clampWithDefault(properties.iconSize, 1, 100, 30) * unit + "px",
-    );
-    root.style.setProperty(
-      "--title-icon-left",
-      clampWithDefault(properties.iconLeft, -100, 200, 50) + "%",
-    );
-    root.style.setProperty(
-      "--title-icon-top",
-      clampWithDefault(properties.iconTop, -100, 200, 45) + "%",
-    );
-    root.style.setProperty(
-      "--title-marker-left",
-      clampWithDefault(properties.markerLeft, -100, 200, 1.8) + "%",
-    );
-    root.style.setProperty(
-      "--title-marker-top",
-      clampWithDefault(properties.markerTop, -100, 200, 84) + "%",
-    );
+    root.style.setProperty("--title-frame-color", safeCssColor(properties.frameColor, "#60636a"));
+    root.style.setProperty("--title-frame-width", clampWithDefault(properties.frameWidth, 0, 12, 1.5) + "px");
+    root.style.setProperty("--title-frame-offset-x", clampWithDefault(properties.frameOffsetX, -100, 100, 0) + "%");
+    root.style.setProperty("--title-frame-offset-y", clampWithDefault(properties.frameOffsetY, -100, 100, 0) + "%");
+    root.style.setProperty("--title-main-size", clampWithDefault(properties.mainSize, 8, 200, 34) * unit + "px");
+    root.style.setProperty("--title-secondary-size", clampWithDefault(properties.secondarySize, 6, 100, 12) * unit + "px");
+    root.style.setProperty("--title-main-spacing", clampWithDefault(properties.mainSpacing, -20, 100, 1) * unit + "px");
+    root.style.setProperty("--title-secondary-spacing", clampWithDefault(properties.secondarySpacing, -20, 100, 2) * unit + "px");
+    root.style.setProperty("--title-secondary-line-gap", clampWithDefault(properties.secondaryLineGap, 0, 100, 2) * unit + "px");
+    root.style.setProperty("--title-main-left", clampWithDefault(properties.mainTextLeft, -100, 200, 5.5) + "%");
+    root.style.setProperty("--title-main-top", clampWithDefault(properties.mainTextTop, -100, 200, 45) + "%");
+    root.style.setProperty("--title-secondary-left", clampWithDefault(properties.secondaryTextLeft, -100, 200, 54) + "%");
+    root.style.setProperty("--title-secondary-top", clampWithDefault(properties.secondaryTextTop, -100, 200, 43) + "%");
+    root.style.setProperty("--title-icon-size", clampWithDefault(properties.iconSize, 1, 100, 30) * unit + "px");
+    root.style.setProperty("--title-icon-left", clampWithDefault(properties.iconLeft, -100, 200, 50) + "%");
+    root.style.setProperty("--title-icon-top", clampWithDefault(properties.iconTop, -100, 200, 45) + "%");
+    root.style.setProperty("--title-marker-left", clampWithDefault(properties.markerLeft, -100, 200, 1.8) + "%");
+    root.style.setProperty("--title-marker-top", clampWithDefault(properties.markerTop, -100, 200, 84) + "%");
     if (properties.frameVisible !== false || hiddenContentClickable) {
       const frameScale = clampWithDefault(properties.frameSize, 10, 300, 100) / 100;
       const bracketHeight = boxHeight * 0.45 * frameScale;
-      const offsetX = (boxWidth * clampWithDefault(properties.frameOffsetX, -100, 100, 0)) / 100;
-      const offsetY = (boxHeight * clampWithDefault(properties.frameOffsetY, -100, 100, 0)) / 100;
-      const halfSpacing = (boxWidth * clampWithDefault(properties.frameSpacing, 0, 300, 100)) / 200;
+      const offsetX = boxWidth * clampWithDefault(properties.frameOffsetX, -100, 100, 0) / 100;
+      const offsetY = boxHeight * clampWithDefault(properties.frameOffsetY, -100, 100, 0) / 100;
+      const halfSpacing = boxWidth * clampWithDefault(properties.frameSpacing, 0, 300, 100) / 200;
       const centerX = boxWidth / 2 + offsetX;
       const centerY = boxHeight / 2 + offsetY;
       const topY = centerY - bracketHeight / 2;
@@ -1707,7 +975,7 @@ registerComponent("title-button", {
       const svg = appendSvgChild(root, "svg", {
         viewBox: "0 0 " + boxWidth + " " + boxHeight,
         preserveAspectRatio: "none",
-        "aria-hidden": "true",
+        "aria-hidden": "true"
       });
       svg.setAttribute("class", "hb-title-button-brackets");
       if (properties.frameVisible === false) {
@@ -1720,35 +988,15 @@ registerComponent("title-button", {
         "stroke-opacity": 1,
         "stroke-linecap": "butt",
         "stroke-linejoin": "miter",
-        "vector-effect": "non-scaling-stroke",
+        "vector-effect": "non-scaling-stroke"
       };
       appendSvgChild(svg, "path", {
         ...strokeAttrs,
-        d:
-          "M " +
-          (leftX + hookLength) +
-          " " +
-          topY +
-          " H " +
-          leftX +
-          " V " +
-          bottomY +
-          " H " +
-          (leftX + hookLength),
+        d: "M " + (leftX + hookLength) + " " + topY + " H " + leftX + " V " + bottomY + " H " + (leftX + hookLength)
       });
       appendSvgChild(svg, "path", {
         ...strokeAttrs,
-        d:
-          "M " +
-          (rightX - hookLength) +
-          " " +
-          topY +
-          " H " +
-          rightX +
-          " V " +
-          bottomY +
-          " H " +
-          (rightX - hookLength),
+        d: "M " + (rightX - hookLength) + " " + topY + " H " + rightX + " V " + bottomY + " H " + (rightX - hookLength)
       });
     }
     if (properties.mainTextVisible !== false || hiddenContentClickable) {
@@ -1765,14 +1013,11 @@ registerComponent("title-button", {
     if (properties.secondaryTextVisible !== false || hiddenContentClickable) {
       const smallEl = document.createElement("small");
       smallEl.className = "hb-title-button-secondary";
-      String(properties.secondaryText || "LIVING ROOM\nLIGHTING")
-        .split(/\r?\n/)
-        .slice(0, 2)
-        .forEach((item) => {
-          const element = document.createElement("span");
-          element.textContent = item;
-          smallEl.append(element);
-        });
+      String(properties.secondaryText || "LIVING ROOM\nLIGHTING").split(/\r?\n/).slice(0, 2).forEach(item => {
+        const element = document.createElement("span");
+        element.textContent = item;
+        smallEl.append(element);
+      });
       smallEl.style.color = safeCssColor(properties.secondaryColor, "#70737b");
       if (properties.secondaryTextVisible === false) {
         smallEl.style.visibility = "hidden";
@@ -1789,8 +1034,8 @@ registerComponent("title-button", {
           iconEl.style.visibility = "hidden";
         }
         iconEl.style.backgroundColor = safeCssColor(properties.iconColor, "#b9bbc0");
-        iconEl.style.maskImage = 'url("' + iconUrl + '")';
-        iconEl.style.webkitMaskImage = 'url("' + iconUrl + '")';
+        iconEl.style.maskImage = "url(\"" + iconUrl + "\")";
+        iconEl.style.webkitMaskImage = "url(\"" + iconUrl + "\")";
         root.append(iconEl);
       }
     }
@@ -1802,27 +1047,20 @@ registerComponent("title-button", {
       }
       iconEl.style.color = safeCssColor(properties.markerColor, "#f2a20d");
       iconEl.style.borderTopColor = safeCssColor(properties.markerColor, "#f2a20d");
-      iconEl.style.setProperty(
-        "--title-marker-size",
-        clampWithDefault(properties.markerSize, 2, 60, 10) * unit + "px",
-      );
+      iconEl.style.setProperty("--title-marker-size", clampWithDefault(properties.markerSize, 2, 60, 10) * unit + "px");
       root.append(iconEl);
     }
     return root;
-  },
+  }
 });
 registerComponent("light-statistics", {
   render(component, context) {
     const properties = component.properties || {};
-    const summary = lightStatisticsSummary(
-      properties.entityIds,
-      context.states,
-      context.entityMetadata,
-    );
-    const { width: unitWidth, height: unitHeight } = componentContentUnitsPx(
-      component,
-      context,
-    );
+    const summary = lightStatisticsSummary(properties.entityIds, context.states, context.entityMetadata);
+    const {
+      width: unitWidth,
+      height: unitHeight
+    } = componentContentUnitsPx(component, context);
     const element = document.createElement("div");
     element.className = "hb-light-statistics";
     element.classList.toggle("active", summary.on > 0);
@@ -1830,57 +1068,19 @@ registerComponent("light-statistics", {
     element.dataset.on = String(summary.on);
     element.dataset.off = String(summary.off);
     element.dataset.abnormal = String(summary.abnormal);
-    element.style.setProperty(
-      "--light-statistics-icon-size",
-      clampWithDefault(properties.iconSize, 1, 100, 42) * unitHeight + "px",
-    );
-    element.style.setProperty(
-      "--light-statistics-title-size",
-      clampWithDefault(properties.titleSize, 8, 200, 32) * unitHeight + "px",
-    );
-    element.style.setProperty(
-      "--light-statistics-title-spacing",
-      clampWithDefault(properties.titleSpacing, -20, 100, 1.2) * unitHeight + "px",
-    );
-    element.style.setProperty(
-      "--light-statistics-count-size",
-      clampWithDefault(properties.countSize, 8, 200, 34) * unitHeight + "px",
-    );
-    element.style.setProperty(
-      "--light-statistics-count-spacing",
-      clampWithDefault(properties.countSpacing, -20, 100, 0) * unitHeight + "px",
-    );
-    element.style.setProperty(
-      "--light-statistics-icon-gap",
-      clampWithDefault(properties.iconGap, 0, 40, 4.5) * unitWidth + "px",
-    );
-    element.style.setProperty(
-      "--light-statistics-count-gap",
-      clampWithDefault(properties.countGap, 0, 40, 4.5) * unitWidth + "px",
-    );
-    element.style.setProperty(
-      "--light-statistics-icon-color",
-      safeCssColor(properties.iconColor, "#8b9298"),
-    );
-    element.style.setProperty(
-      "--light-statistics-icon-active-color",
-      safeCssColor(properties.iconActiveColor, "#f2a20d"),
-    );
-    element.style.setProperty(
-      "--light-statistics-title-color",
-      safeCssColor(properties.titleColor, "#b9bbc0"),
-    );
-    element.style.setProperty(
-      "--light-statistics-count-color",
-      safeCssColor(properties.countColor, "#b9bbc0"),
-    );
-    element.style.setProperty(
-      "--light-statistics-count-active-color",
-      safeCssColor(properties.countActiveColor, "#f2a20d"),
-    );
-    const iconName = Object.prototype.hasOwnProperty.call(properties, "icon")
-      ? String(properties.icon || "")
-      : "mdi:lightbulb-group-outline";
+    element.style.setProperty("--light-statistics-icon-size", clampWithDefault(properties.iconSize, 1, 100, 42) * unitHeight + "px");
+    element.style.setProperty("--light-statistics-title-size", clampWithDefault(properties.titleSize, 8, 200, 32) * unitHeight + "px");
+    element.style.setProperty("--light-statistics-title-spacing", clampWithDefault(properties.titleSpacing, -20, 100, 1.2) * unitHeight + "px");
+    element.style.setProperty("--light-statistics-count-size", clampWithDefault(properties.countSize, 8, 200, 34) * unitHeight + "px");
+    element.style.setProperty("--light-statistics-count-spacing", clampWithDefault(properties.countSpacing, -20, 100, 0) * unitHeight + "px");
+    element.style.setProperty("--light-statistics-icon-gap", clampWithDefault(properties.iconGap, 0, 40, 4.5) * unitWidth + "px");
+    element.style.setProperty("--light-statistics-count-gap", clampWithDefault(properties.countGap, 0, 40, 4.5) * unitWidth + "px");
+    element.style.setProperty("--light-statistics-icon-color", safeCssColor(properties.iconColor, "#8b9298"));
+    element.style.setProperty("--light-statistics-icon-active-color", safeCssColor(properties.iconActiveColor, "#f2a20d"));
+    element.style.setProperty("--light-statistics-title-color", safeCssColor(properties.titleColor, "#b9bbc0"));
+    element.style.setProperty("--light-statistics-count-color", safeCssColor(properties.countColor, "#b9bbc0"));
+    element.style.setProperty("--light-statistics-count-active-color", safeCssColor(properties.countActiveColor, "#f2a20d"));
+    const iconName = Object.prototype.hasOwnProperty.call(properties, "icon") ? String(properties.icon || "") : "mdi:lightbulb-group-outline";
     const iconUrl = resolveMdiIconUrl(iconName);
     const showIcon = properties.iconVisible !== false && !!iconUrl;
     const showTitle = properties.titleVisible !== false;
@@ -1891,8 +1091,8 @@ registerComponent("light-statistics", {
     if (showIcon) {
       const iconOrCount = document.createElement("i");
       iconOrCount.className = "hb-light-statistics-icon";
-      iconOrCount.style.maskImage = 'url("' + iconUrl + '")';
-      iconOrCount.style.webkitMaskImage = 'url("' + iconUrl + '")';
+      iconOrCount.style.maskImage = "url(\"" + iconUrl + "\")";
+      iconOrCount.style.webkitMaskImage = "url(\"" + iconUrl + "\")";
       element.append(iconOrCount);
     }
     if (showTitle) {
@@ -1917,7 +1117,7 @@ registerComponent("light-statistics", {
       element.append(spanEl);
     }
     return element;
-  },
+  }
 });
 const iconButtonRenderer = {
   render(component, context) {
@@ -1926,20 +1126,16 @@ const iconButtonRenderer = {
     const entityId = component.bindings?.entity?.entityId || "";
     const stateEntry = context.states?.get(entityId);
     const state = readState(stateEntry);
-    const isActive = iconButtonIsActive(component, context);
+    const isActive = ot(component, context);
     const boxWidth = Math.max(20, Number(component.position?.width || 144));
     const boxHeight = Math.max(20, Number(component.position?.height || 150));
-    const { height: unit } = componentContentUnitsPx(component, context);
-    const cutCorner =
-      (Math.min(boxWidth, boxHeight) * clampWithDefault(properties.cutCorner, 0, 50, 20)) / 100;
+    const {
+      height: unit
+    } = componentContentUnitsPx(component, context);
+    const cutCorner = Math.min(boxWidth, boxHeight) * clampWithDefault(properties.cutCorner, 0, 50, 20) / 100;
     const frameWidth = clampWithDefault(properties.frameWidth, 0, 12, 1);
     const frameAngle = clampWithDefault(properties.frameAngle, 0, 360, 45);
-    const frameOpacity = clampWithDefault(
-      isActive ? properties.frameOnOpacity : properties.frameOffOpacity,
-      0,
-      1,
-      isActive ? 1 : 0.8,
-    );
+    const frameOpacity = clampWithDefault(isActive ? properties.frameOnOpacity : properties.frameOffOpacity, 0, 1, isActive ? 1 : 0.8);
     const softLightColor = safeCssColor(properties.softLightColor, "#ffffff");
     const softLightStrength = clampWithDefault(properties.softLightStrength, 0, 5, 1);
     const softLightSize = clampWithDefault(properties.softLightSize, 0, 3, 1);
@@ -1950,259 +1146,183 @@ const iconButtonRenderer = {
     const glowAngle = clampWithDefault(properties.glowAngle, 0, 360, 220);
     const centerX = boxWidth / 2;
     const centerY = boxHeight / 2;
-    const glowRadians = (glowAngle * Math.PI) / 180;
+    const glowRadians = glowAngle * Math.PI / 180;
     const cx = centerX + Math.cos(glowRadians) * boxWidth * 0.16;
     const cy = centerY + Math.sin(glowRadians) * boxHeight * 0.18;
-    const gradientNs =
-      (context.renderNamespace || "renderer") +
-      "-icon-button-" +
-      String(component.id || "").replace(/[^a-z0-9_-]/gi, "");
+    const gradientNs = (context.renderNamespace || "renderer") + "-icon-button-" + String(component.id || "").replace(/[^a-z0-9_-]/gi, "");
     const root = document.createElement("div");
     root.className = "hb-icon-button" + (isActive ? " active" : "");
-    root.style.setProperty(
-      "--icon-button-main-left",
-      clampWithDefault(properties.mainTextLeft, -100, 200, 9) + "%",
-    );
-    root.style.setProperty(
-      "--icon-button-main-top",
-      clampWithDefault(properties.mainTextTop, -100, 200, 78) + "%",
-    );
-    root.style.setProperty(
-      "--icon-button-secondary-left",
-      clampWithDefault(properties.secondaryTextLeft, -100, 200, 9) + "%",
-    );
-    root.style.setProperty(
-      "--icon-button-secondary-top",
-      clampWithDefault(properties.secondaryTextTop, -100, 200, 91) + "%",
-    );
-    root.style.setProperty(
-      "--icon-button-icon-left",
-      clampWithDefault(properties.iconLeft, -100, 200, 50) + "%",
-    );
-    root.style.setProperty(
-      "--icon-button-icon-top",
-      clampWithDefault(properties.iconTop, -100, 200, 34) + "%",
-    );
-    root.style.setProperty(
-      "--icon-button-icon-glow-size",
-      unit * 9 + "px",
-    );
-    root.style.setProperty(
-      "--device-button-icon-glow-size",
-      unit * 5 + "px",
-    );
-    root.style.setProperty(
-      "--device-button-icon-active-glow-size",
-      unit * 7 + "px",
-    );
-    root.style.setProperty(
-      "--hb-on-fill-fade-duration",
-      clampWithDefault(properties.onFillFadeDuration, 0, 3, 0.3) + "s",
-    );
+    root.style.setProperty("--icon-button-main-left", clampWithDefault(properties.mainTextLeft, -100, 200, 9) + "%");
+    root.style.setProperty("--icon-button-main-top", clampWithDefault(properties.mainTextTop, -100, 200, 78) + "%");
+    root.style.setProperty("--icon-button-secondary-left", clampWithDefault(properties.secondaryTextLeft, -100, 200, 9) + "%");
+    root.style.setProperty("--icon-button-secondary-top", clampWithDefault(properties.secondaryTextTop, -100, 200, 91) + "%");
+    root.style.setProperty("--icon-button-icon-left", clampWithDefault(properties.iconLeft, -100, 200, 50) + "%");
+    root.style.setProperty("--icon-button-icon-top", clampWithDefault(properties.iconTop, -100, 200, 34) + "%");
+    root.style.setProperty("--icon-button-icon-glow-size", unit * 9 + "px");
+    root.style.setProperty("--device-button-icon-glow-size", unit * 5 + "px");
+    root.style.setProperty("--device-button-icon-active-glow-size", unit * 7 + "px");
+    root.style.setProperty("--hb-on-fill-fade-duration", clampWithDefault(properties.onFillFadeDuration, 0, 3, 0.3) + "s");
     if (!isDeviceButton) {
       const svg = appendSvgChild(root, "svg", {
         viewBox: "0 0 " + boxWidth + " " + boxHeight,
         preserveAspectRatio: "none",
-        "aria-hidden": "true",
+        "aria-hidden": "true"
       });
       const defs = appendSvgChild(svg, "defs");
-      const points =
-        "0,0 " +
-        (boxWidth - cutCorner) +
-        ",0 " +
-        boxWidth +
-        "," +
-        cutCorner +
-        " " +
-        boxWidth +
-        "," +
-        boxHeight +
-        " 0," +
-        boxHeight;
+      const points = "0,0 " + (boxWidth - cutCorner) + ",0 " + boxWidth + "," + cutCorner + " " + boxWidth + "," + boxHeight + " 0," + boxHeight;
       const clipPath = appendSvgChild(defs, "clipPath", {
-        id: gradientNs + "-clip",
+        id: gradientNs + "-clip"
       });
       appendSvgChild(clipPath, "polygon", {
-        points: points,
+        points
       });
       const softExtent = boxWidth * 0.5 * softLightSize;
       const softGradient = appendSvgChild(defs, "linearGradient", {
         id: gradientNs + "-soft-light",
         gradientUnits: "userSpaceOnUse",
         x1: centerX - softExtent,
-        centerY: centerY,
-        boxWidth: centerX + softExtent,
+        y1: centerY,
+        x2: centerX + softExtent,
         y2: centerY,
-        gradientTransform: "rotate(" + softLightAngle + " " + centerX + " " + centerY + ")",
+        gradientTransform: "rotate(" + softLightAngle + " " + centerX + " " + centerY + ")"
       });
       appendSvgChild(softGradient, "stop", {
         offset: 0,
         "stop-color": softLightColor,
-        "stop-opacity": Math.min(1, softLightStrength * 0.055),
+        "stop-opacity": Math.min(1, softLightStrength * 0.055)
       });
       appendSvgChild(softGradient, "stop", {
         offset: 0.55,
         "stop-color": softLightColor,
-        "stop-opacity": Math.min(1, softLightStrength * 0.018),
+        "stop-opacity": Math.min(1, softLightStrength * 0.018)
       });
       appendSvgChild(softGradient, "stop", {
         offset: 1,
         "stop-color": softLightColor,
-        "stop-opacity": Math.min(1, softLightStrength * 0.085),
+        "stop-opacity": Math.min(1, softLightStrength * 0.085)
       });
       const edgeGradient = appendSvgChild(defs, "linearGradient", {
         id: gradientNs + "-edge",
         gradientUnits: "userSpaceOnUse",
         x1: 0,
-        centerY: centerY,
-        boxWidth: boxWidth,
+        y1: centerY,
+        x2: boxWidth,
         y2: centerY,
-        gradientTransform: "rotate(" + frameAngle + " " + centerX + " " + centerY + ")",
+        gradientTransform: "rotate(" + frameAngle + " " + centerX + " " + centerY + ")"
       });
       appendSvgChild(edgeGradient, "stop", {
         offset: 0,
         "stop-color": "#ffffff",
-        "stop-opacity": frameOpacity,
+        "stop-opacity": frameOpacity
       });
       appendSvgChild(edgeGradient, "stop", {
         offset: 0.48,
         "stop-color": "#ffffff",
-        "stop-opacity": frameOpacity * 0.49,
+        "stop-opacity": frameOpacity * 0.49
       });
       appendSvgChild(edgeGradient, "stop", {
         offset: 1,
         "stop-color": "#ffffff",
-        "stop-opacity": frameOpacity * 0.66,
+        "stop-opacity": frameOpacity * 0.66
       });
       const glowGradient = appendSvgChild(defs, "radialGradient", {
         id: gradientNs + "-glow",
         gradientUnits: "userSpaceOnUse",
-        cx: cx,
-        cy: cy,
-        r: Math.min(boxWidth, boxHeight) * 0.42 * glowSize,
+        cx,
+        cy,
+        r: Math.min(boxWidth, boxHeight) * 0.42 * glowSize
       });
       appendSvgChild(glowGradient, "stop", {
         offset: 0,
         "stop-color": glowColor,
-        "stop-opacity": Math.min(1, glowStrength * 0.12),
+        "stop-opacity": Math.min(1, glowStrength * 0.12)
       });
       appendSvgChild(glowGradient, "stop", {
         offset: 0.52,
         "stop-color": glowColor,
-        "stop-opacity": Math.min(1, glowStrength * 0.025),
+        "stop-opacity": Math.min(1, glowStrength * 0.025)
       });
       appendSvgChild(glowGradient, "stop", {
         offset: 1,
         "stop-color": glowColor,
-        "stop-opacity": 0,
+        "stop-opacity": 0
       });
       const glowFilter = appendSvgChild(defs, "filter", {
         id: gradientNs + "-glow-blur",
         x: "-40%",
         y: "-40%",
         width: "180%",
-        height: "180%",
+        height: "180%"
       });
       appendSvgChild(glowFilter, "feGaussianBlur", {
-        stdDeviation: Math.min(boxWidth, boxHeight) * 0.03,
+        stdDeviation: Math.min(boxWidth, boxHeight) * 0.03
       });
       const clippedGroup = appendSvgChild(svg, "g", {
-        "clip-path": "url(#" + gradientNs + "-clip)",
+        "clip-path": "url(#" + gradientNs + "-clip)"
       });
       if (properties.onFillVisible !== false) {
         appendSvgChild(clippedGroup, "polygon", {
           class: "hb-icon-button-on-fill",
-          points: points,
+          points,
           fill: safeCssColor(properties.onFillColor, "#dfb64f"),
-          "fill-opacity": clampWithDefault(properties.onFillStrength, 0, 1, 1),
+          "fill-opacity": clampWithDefault(properties.onFillStrength, 0, 1, 1)
         });
       }
       if (properties.softLightVisible !== false && softLightSize > 0) {
         appendSvgChild(clippedGroup, "polygon", {
-          points: points,
-          fill: "url(#" + gradientNs + "-soft-light)",
+          points,
+          fill: "url(#" + gradientNs + "-soft-light)"
         });
       }
       if (properties.glowVisible !== false && glowSize > 0) {
         appendSvgChild(clippedGroup, "ellipse", {
-          cx: cx,
-          cy: cy,
+          cx,
+          cy,
           rx: boxWidth * 0.42 * glowSize,
           ry: boxHeight * 0.42 * glowSize,
           fill: "url(#" + gradientNs + "-glow)",
-          filter: "url(#" + gradientNs + "-glow-blur)",
+          filter: "url(#" + gradientNs + "-glow-blur)"
         });
       }
       if (properties.frameVisible !== false && frameWidth > 0) {
         appendSvgChild(clippedGroup, "polygon", {
-          points: points,
+          points,
           fill: "none",
           stroke: "url(#" + gradientNs + "-edge)",
           "stroke-width": frameWidth,
-          "vector-effect": "non-scaling-stroke",
+          "vector-effect": "non-scaling-stroke"
         });
       }
     }
-    const iconName =
-      String(properties.icon || "").trim() ||
-      (isDeviceButton ? resolveEntityIcon(entityId, stateEntry) : "mdi:ceiling-light");
+    const iconName = String(properties.icon || "").trim() || (isDeviceButton ? tt(entityId, stateEntry) : "mdi:ceiling-light");
     const iconUrl = resolveMdiIconUrl(iconName);
-    if (
-      iconUrl &&
-      (!isDeviceButton ||
-        properties.iconVisible !== false ||
-        properties.hiddenContentClickable === true)
-    ) {
+    if (iconUrl && (!isDeviceButton || properties.iconVisible !== false || properties.hiddenContentClickable === true)) {
       const iconEl = document.createElement("i");
-      iconEl.className = isDeviceButton
-        ? "hb-device-button-icon"
-        : "hb-icon-button-icon";
+      iconEl.className = isDeviceButton ? "hb-device-button-icon" : "hb-icon-button-icon";
       if (!isDeviceButton) {
         iconEl.style.width = clampWithDefault(properties.iconSize, 1, 100, 42) + "%";
         iconEl.style.height = clampWithDefault(properties.iconSize, 1, 100, 42) + "%";
       }
-      iconEl.style.backgroundColor =
-        isDeviceButton && isActive
-          ? safeCssColor(properties.iconOnColor, "#379bff")
-          : safeCssColor(
-              properties.iconColor || properties.iconOffColor || properties.iconOnColor,
-              "#d7d8da",
-            );
-      iconEl.style.opacity = isDeviceButton
-        ? "1"
-        : String(
-            clampWithDefault(isActive ? properties.iconOnOpacity : properties.iconOffOpacity, 0, 1, 1),
-          );
-      iconEl.style.maskImage = 'url("' + iconUrl + '")';
-      iconEl.style.webkitMaskImage = 'url("' + iconUrl + '")';
+      iconEl.style.backgroundColor = isDeviceButton && isActive ? safeCssColor(properties.iconOnColor, "#379bff") : safeCssColor(properties.iconColor || properties.iconOffColor || properties.iconOnColor, "#d7d8da");
+      iconEl.style.opacity = isDeviceButton ? "1" : String(clampWithDefault(isActive ? properties.iconOnOpacity : properties.iconOffOpacity, 0, 1, 1));
+      iconEl.style.maskImage = "url(\"" + iconUrl + "\")";
+      iconEl.style.webkitMaskImage = "url(\"" + iconUrl + "\")";
       if (isDeviceButton) {
         const clamped = clampWithDefault(properties.iconSize, 1, 100, 28);
         const clamped2 = clampWithDefault(properties.badgeSize ?? clamped, 1, 100, clamped);
-        const clamped3 = clampWithDefault(
-          properties.symbolSize ?? clamped * 0.5,
-          1,
-          100,
-          clamped * 0.5,
-        );
-        const clamped4 = clampWithDefault((clamped3 / clamped2) * 100, 1, 100, 50);
+        const clamped3 = clampWithDefault(properties.symbolSize ?? clamped * 0.5, 1, 100, clamped * 0.5);
+        const clamped4 = clampWithDefault(clamped3 / clamped2 * 100, 1, 100, 50);
         iconEl.style.width = clamped4 + "%";
         iconEl.style.height = clamped4 + "%";
         const spanEl = document.createElement("span");
-        spanEl.className =
-          "hb-device-button-icon-badge" + (isActive ? " active" : "");
+        spanEl.className = "hb-device-button-icon-badge" + (isActive ? " active" : "");
         if (properties.iconVisible === false) {
           spanEl.style.visibility = "hidden";
         }
         spanEl.style.width = clamped2 * unit + "px";
         spanEl.style.height = clamped2 * unit + "px";
-        spanEl.style.setProperty(
-          "--device-badge-color",
-          safeCssColor(properties.badgeColor, "#5b5e66"),
-        );
-        spanEl.style.setProperty(
-          "--device-badge-opacity",
-          clampWithDefault(properties.badgeOpacity, 0, 1, 0.58) * 100 + "%",
-        );
+        spanEl.style.setProperty("--device-badge-color", safeCssColor(properties.badgeColor, "#5b5e66"));
+        spanEl.style.setProperty("--device-badge-opacity", clampWithDefault(properties.badgeOpacity, 0, 1, 0.58) * 100 + "%");
         spanEl.append(iconEl);
         root.append(spanEl);
       } else {
@@ -2213,205 +1333,155 @@ const iconButtonRenderer = {
     textWrap.className = "hb-icon-button-text";
     const mainSize = clampWithDefault(properties.mainSize, 6, 120, 25);
     const element = document.createElement("strong");
-    element.textContent = isDeviceButton
-      ? String(properties.mainText || "").trim() ||
-        String(state?.attributes?.friendly_name || entityId || "未选择实体")
-      : String(properties.mainText || "主灯");
-    element.style.color = safeCssColor(
-      properties.mainColor || properties.mainOffColor || properties.mainOnColor,
-      "#c7c8cb",
-    );
-    element.style.opacity = isDeviceButton
-      ? "1"
-      : String(
-          clampWithDefault(isActive ? properties.mainOnOpacity : properties.mainOffOpacity, 0, 1, 1),
-        );
+    element.textContent = isDeviceButton ? String(properties.mainText || "").trim() || String(state?.attributes?.friendly_name || entityId || "未选择实体") : String(properties.mainText || "主灯");
+    element.style.color = safeCssColor(properties.mainColor || properties.mainOffColor || properties.mainOnColor, "#c7c8cb");
+    element.style.opacity = isDeviceButton ? "1" : String(clampWithDefault(isActive ? properties.mainOnOpacity : properties.mainOffOpacity, 0, 1, 1));
     element.style.fontSize = mainSize * unit + "px";
-    element.style.letterSpacing =
-      clampWithDefault(properties.mainSpacing, -20, 100, 1) * unit + "px";
+    element.style.letterSpacing = clampWithDefault(properties.mainSpacing, -20, 100, 1) * unit + "px";
     applyTextStroke(element, properties.mainWeight, mainSize);
-    element.hidden =
-      isDeviceButton &&
-      properties.mainTextVisible === false &&
-      properties.hiddenContentClickable !== true;
-    if (
-      isDeviceButton &&
-      properties.mainTextVisible === false &&
-      properties.hiddenContentClickable === true
-    ) {
+    element.hidden = isDeviceButton && properties.mainTextVisible === false && properties.hiddenContentClickable !== true;
+    if (isDeviceButton && properties.mainTextVisible === false && properties.hiddenContentClickable === true) {
       element.style.visibility = "hidden";
     }
     const secondarySize = clampWithDefault(properties.secondarySize, 5, 80, 10);
     const element2 = document.createElement("small");
-    element2.textContent = isDeviceButton
-      ? String(properties.secondaryText || "").trim() ||
-        (entityId
-          ? formatEntityState(stateEntry, entityId, {
-              ...context,
-              component: component,
-            })
-          : "未选择实体")
-      : String(properties.secondaryText || "MAIN LIGHT");
-    element2.style.color = safeCssColor(
-      properties.secondaryColor ||
-        properties.secondaryOffColor ||
-        properties.secondaryOnColor,
-      "#75777d",
-    );
-    element2.style.opacity = isDeviceButton
-      ? "1"
-      : String(
-          clampWithDefault(
-            isActive ? properties.secondaryOnOpacity : properties.secondaryOffOpacity,
-            0,
-            1,
-            1,
-          ),
-        );
+    element2.textContent = isDeviceButton ? String(properties.secondaryText || "").trim() || (entityId ? formatEntityState(stateEntry, entityId, {
+      ...context,
+      component
+    }) : "未选择实体") : String(properties.secondaryText || "MAIN LIGHT");
+    element2.style.color = safeCssColor(properties.secondaryColor || properties.secondaryOffColor || properties.secondaryOnColor, "#75777d");
+    element2.style.opacity = isDeviceButton ? "1" : String(clampWithDefault(isActive ? properties.secondaryOnOpacity : properties.secondaryOffOpacity, 0, 1, 1));
     element2.style.fontSize = secondarySize * unit + "px";
-    element2.style.letterSpacing =
-      clampWithDefault(properties.secondarySpacing, -20, 100, 0.7) * unit + "px";
+    element2.style.letterSpacing = clampWithDefault(properties.secondarySpacing, -20, 100, 0.7) * unit + "px";
     applyTextStroke(element2, properties.secondaryWeight, secondarySize);
-    element2.hidden =
-      isDeviceButton &&
-      properties.secondaryTextVisible === false &&
-      properties.hiddenContentClickable !== true;
-    if (
-      isDeviceButton &&
-      properties.secondaryTextVisible === false &&
-      properties.hiddenContentClickable === true
-    ) {
+    element2.hidden = isDeviceButton && properties.secondaryTextVisible === false && properties.hiddenContentClickable !== true;
+    if (isDeviceButton && properties.secondaryTextVisible === false && properties.hiddenContentClickable === true) {
       element2.style.visibility = "hidden";
     }
     textWrap.append(element, element2);
     root.append(textWrap);
     return root;
-  },
+  }
 };
 registerComponent("icon-button", iconButtonRenderer);
 registerComponent("device-button", iconButtonRenderer);
 function renderDoorWindowSensor(component, properties, presentation, context) {
-  const accent = safeCssColor(properties.iconOnColor || properties.occupiedColor, "#ffffff");
-  const isOpen = presentation.key === "occupied";
-  const label = isOpen
-    ? "打开"
-    : presentation.key === "clear"
-      ? "关闭"
-      : presentation.key === "unavailable"
-        ? "离线"
-        : "未知";
-  const root = document.createElement("div");
-  root.className =
-    "hb-door-window-sensor is-" + (isOpen ? "open" : presentation.key);
-  root.dataset.sensorState = isOpen ? "open" : presentation.key;
-  root.style.setProperty("--hb-door-window-accent", accent);
-  root.setAttribute("role", "img");
-  root.setAttribute("aria-label", "门窗传感器：" + label);
-  const visual = document.createElement("div");
-  visual.className = "hb-door-window-visual";
-  const unit = Math.max(
-    0.01,
-    Number(context.document?.canvas?.componentScale || 1),
-  );
-  const widthUnits = Math.max(1, Number(component.position?.width || 100) / unit);
-  const heightUnits = Math.max(1, Number(component.position?.height || 100) / unit);
-  visual.style.transform = doorWindowPerspectiveMatrix(
-    widthUnits,
-    heightUnits,
-    properties.perspectiveCorners,
-  );
-  const frame = document.createElement("span");
-  frame.className = "hb-door-window-frame";
-  const leftPanel = document.createElement("span");
-  leftPanel.className = "hb-door-window-panel left";
-  const rightPanel = document.createElement("span");
-  rightPanel.className = "hb-door-window-panel right";
-  leftPanel.append(document.createElement("i"));
-  rightPanel.append(document.createElement("i"));
-  frame.append(leftPanel, rightPanel);
-  const airflow = document.createElement("span");
-  airflow.className = "hb-door-window-airflow";
-  for (let i = 0; i < 3; i += 1) {
-    airflow.append(document.createElement("i"));
+  const rawPoints = safeCssColor(properties.iconOnColor || properties.occupiedColor, "#ffffff");
+  const timestamp = presentation.key === "occupied";
+  const dedupedPoints = timestamp ? "打开" : presentation.key === "clear" ? "关闭" : presentation.key === "unavailable" ? "离线" : "未知";
+  const setAttribute2 = document.createElement("div");
+  setAttribute2.className = "hb-door-window-sensor is-" + (timestamp ? "open" : presentation.key);
+  setAttribute2.dataset.sensorState = timestamp ? "open" : presentation.key;
+  setAttribute2.style.setProperty("--hb-door-window-accent", rawPoints);
+  setAttribute2.setAttribute("role", "img");
+  setAttribute2.setAttribute("aria-label", "门窗传感器：" + dedupedPoints);
+  const msPerHour = document.createElement("div");
+  msPerHour.className = "hb-door-window-visual";
+  const windowStart = Math.max(0.01, Number(context.document?.canvas?.componentScale || 1));
+  const series = Math.max(1, Number(component.position?.width || 100) / windowStart);
+  const cursor = Math.max(1, Number(component.position?.height || 100) / windowStart);
+  msPerHour.style.transform = doorWindowPerspectiveMatrix(series, cursor, properties.perspectiveCorners);
+  const lastPoint = document.createElement("span");
+  lastPoint.className = "hb-door-window-frame";
+  const className = document.createElement("span");
+  className.className = "hb-door-window-panel left";
+  const className2 = document.createElement("span");
+  className2.className = "hb-door-window-panel right";
+  className.append(document.createElement("i"));
+  className2.append(document.createElement("i"));
+  lastPoint.append(className, className2);
+  const className3 = document.createElement("span");
+  className3.className = "hb-door-window-airflow";
+  for (let step = 0; step < 3; step += 1) {
+    className3.append(document.createElement("i"));
   }
-  visual.append(frame, airflow);
-  root.append(visual);
-  return root;
+  msPerHour.append(lastPoint, className3);
+  setAttribute2.append(msPerHour);
+  return setAttribute2;
 }
-function renderWaterLeakSensor(properties, presentation) {
-  const accent = safeCssColor(properties.waterLeakColor, "#42c8ff");
-  const isWet = presentation.key === "occupied";
-  const label = isWet
-    ? "检测到水浸"
-    : presentation.key === "clear"
-      ? "正常"
-      : presentation.key === "unavailable"
-        ? "离线"
-        : "未知";
-  const root = document.createElement("div");
-  root.className = "hb-water-leak-sensor is-" + (isWet ? "wet" : presentation.key);
-  root.dataset.sensorState = isWet ? "wet" : presentation.key;
-  root.style.setProperty("--hb-water-leak-accent", accent);
-  root.setAttribute("role", "img");
-  root.setAttribute("aria-label", "水浸传感器：" + label);
-  const visual = document.createElement("div");
-  visual.className = "hb-water-leak-visual";
-  const puddle = document.createElement("span");
-  puddle.className = "hb-water-leak-puddle";
-  const ripples = document.createElement("span");
-  ripples.className = "hb-water-leak-ripples";
-  for (let i = 0; i < 3; i += 1) {
-    ripples.append(document.createElement("i"));
+function mt(entityId, context) {
+  const stateEntry = safeCssColor(entityId.waterLeakColor, "#42c8ff");
+  const state = context.key === "occupied";
+  const value46 = state ? "检测到水浸" : context.key === "clear" ? "正常" : context.key === "unavailable" ? "离线" : "未知";
+  const setAttribute3 = document.createElement("div");
+  setAttribute3.className = "hb-water-leak-sensor is-" + (state ? "wet" : context.key);
+  setAttribute3.dataset.sensorState = state ? "wet" : context.key;
+  setAttribute3.style.setProperty("--hb-water-leak-accent", stateEntry);
+  setAttribute3.setAttribute("role", "img");
+  setAttribute3.setAttribute("aria-label", "水浸传感器：" + value46);
+  const className4 = document.createElement("div");
+  className4.className = "hb-water-leak-visual";
+  const className5 = document.createElement("span");
+  className5.className = "hb-water-leak-puddle";
+  const className6 = document.createElement("span");
+  className6.className = "hb-water-leak-ripples";
+  for (let value15 = 0; value15 < 3; value15 += 1) {
+    className6.append(document.createElement("i"));
   }
-  const svgNs = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(svgNs, "svg");
-  svg.setAttribute("class", "hb-water-leak-droplet");
-  svg.setAttribute("viewBox", "0 0 48 64");
-  svg.setAttribute("aria-hidden", "true");
-  const bodyPath = document.createElementNS(svgNs, "path");
-  bodyPath.setAttribute("class", "body");
-  bodyPath.setAttribute(
-    "d",
-    "M24 3C20 10 6 27 6 40c0 11 8 20 18 20s18-9 18-20C42 27 28 10 24 3Z",
-  );
-  const highlightPath = document.createElementNS(svgNs, "path");
-  highlightPath.setAttribute("class", "highlight");
-  highlightPath.setAttribute("d", "M15 40c0-6 3-12 8-18");
-  svg.append(bodyPath, highlightPath);
-  visual.append(puddle, ripples, svg);
-  root.append(visual);
-  return root;
+  const value47 = "http://www.w3.org/2000/svg";
+  const setAttribute4 = document.createElementNS(value47, "svg");
+  setAttribute4.setAttribute("class", "hb-water-leak-droplet");
+  setAttribute4.setAttribute("viewBox", "0 0 48 64");
+  setAttribute4.setAttribute("aria-hidden", "true");
+  const setAttribute5 = document.createElementNS(value47, "path");
+  setAttribute5.setAttribute("class", "body");
+  setAttribute5.setAttribute("d", "M24 3C20 10 6 27 6 40c0 11 8 20 18 20s18-9 18-20C42 27 28 10 24 3Z");
+  const setAttribute6 = document.createElementNS(value47, "path");
+  setAttribute6.setAttribute("class", "highlight");
+  setAttribute6.setAttribute("d", "M15 40c0-6 3-12 8-18");
+  setAttribute4.append(setAttribute5, setAttribute6);
+  className4.append(className5, className6, setAttribute4);
+  setAttribute3.append(className4);
+  return setAttribute3;
 }
-function renderSmokeSensor(properties, presentation) {
+function ut(properties, presentation) {
   const accent = safeCssColor(properties.smokeColor, "#ffffff");
+  const isWet = presentation.key === "occupied";
+  const label = isWet ? "检测到烟雾" : presentation.key === "clear" ? "正常" : presentation.key === "unavailable" ? "离线" : "未知";
+  const setAttribute7 = document.createElement("div");
+  setAttribute7.className = "hb-smoke-sensor is-" + (isWet ? "alert" : presentation.key);
+  setAttribute7.dataset.sensorState = isWet ? "alert" : presentation.key;
+  setAttribute7.style.setProperty("--hb-smoke-accent", accent);
+  setAttribute7.setAttribute("role", "img");
+  setAttribute7.setAttribute("aria-label", "烟雾传感器：" + label);
+  const className7 = document.createElement("span");
+  className7.className = "hb-smoke-visual";
+  const puddle = document.createElement("span");
+  puddle.className = "hb-smoke-ground";
+  const ripples = "http://www.w3.org/2000/svg";
+  const setAttribute8 = document.createElementNS(ripples, "svg");
+  setAttribute8.setAttribute("class", "hb-smoke-wisps");
+  setAttribute8.setAttribute("viewBox", "0 0 100 100");
+  setAttribute8.setAttribute("aria-hidden", "true");
+  for (const value16 of ["M27 94C12 76 41 67 27 49C13 32 38 22 30 7", "M50 97C34 79 65 69 49 50C35 33 61 21 52 3", "M73 93C60 77 86 66 72 48C59 32 83 22 75 8"]) {
+    const setAttribute = document.createElementNS(ripples, "path");
+    setAttribute.setAttribute("d", value16);
+    setAttribute8.append(setAttribute);
+  }
+  className7.append(puddle, setAttribute8);
+  setAttribute7.append(className7);
+  return setAttribute7;
+}
+function ft(properties, presentation) {
+  const accent = safeCssColor(properties.naturalGasColor, "#ffb347");
   const isAlert = presentation.key === "occupied";
-  const label = isAlert
-    ? "检测到烟雾"
-    : presentation.key === "clear"
-      ? "正常"
-      : presentation.key === "unavailable"
-        ? "离线"
-        : "未知";
+  const label = isAlert ? "检测到天然气" : presentation.key === "clear" ? "正常" : presentation.key === "unavailable" ? "离线" : "未知";
   const root = document.createElement("div");
-  root.className = "hb-smoke-sensor is-" + (isAlert ? "alert" : presentation.key);
+  root.className = "hb-natural-gas-sensor is-" + (isAlert ? "alert" : presentation.key);
   root.dataset.sensorState = isAlert ? "alert" : presentation.key;
-  root.style.setProperty("--hb-smoke-accent", accent);
+  root.style.setProperty("--hb-natural-gas-accent", accent);
   root.setAttribute("role", "img");
-  root.setAttribute("aria-label", "烟雾传感器：" + label);
+  root.setAttribute("aria-label", "天然气传感器：" + label);
   const visual = document.createElement("span");
-  visual.className = "hb-smoke-visual";
+  visual.className = "hb-natural-gas-visual";
   const ground = document.createElement("span");
-  ground.className = "hb-smoke-ground";
+  ground.className = "hb-natural-gas-haze";
   const svgNs = "http://www.w3.org/2000/svg";
   const svg = document.createElementNS(svgNs, "svg");
-  svg.setAttribute("class", "hb-smoke-wisps");
-  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("class", "hb-natural-gas-currents");
+  svg.setAttribute("viewBox", "0 0 120 80");
   svg.setAttribute("aria-hidden", "true");
-  for (const pathData of [
-    "M27 94C12 76 41 67 27 49C13 32 38 22 30 7",
-    "M50 97C34 79 65 69 49 50C35 33 61 21 52 3",
-    "M73 93C60 77 86 66 72 48C59 32 83 22 75 8",
-  ]) {
+  for (const pathData of ["M3 19C23 5 38 32 58 18C78 4 94 29 117 13", "M0 40C20 26 35 53 55 39C76 24 94 54 120 35", "M5 62C26 47 42 74 64 58C85 43 101 67 117 54"]) {
     const path = document.createElementNS(svgNs, "path");
     path.setAttribute("d", pathData);
     svg.append(path);
@@ -2420,73 +1490,24 @@ function renderSmokeSensor(properties, presentation) {
   root.append(visual);
   return root;
 }
-function renderNaturalGasSensor(properties, presentation) {
-  const accent = safeCssColor(properties.naturalGasColor, "#ffb347");
-  const isAlert = presentation.key === "occupied";
-  const label = isAlert
-    ? "检测到天然气"
-    : presentation.key === "clear"
-      ? "正常"
-      : presentation.key === "unavailable"
-        ? "离线"
-        : "未知";
-  const root = document.createElement("div");
-  root.className =
-    "hb-natural-gas-sensor is-" + (isAlert ? "alert" : presentation.key);
-  root.dataset.sensorState = isAlert ? "alert" : presentation.key;
-  root.style.setProperty("--hb-natural-gas-accent", accent);
-  root.setAttribute("role", "img");
-  root.setAttribute("aria-label", "天然气传感器：" + label);
-  const visual = document.createElement("span");
-  visual.className = "hb-natural-gas-visual";
-  const haze = document.createElement("span");
-  haze.className = "hb-natural-gas-haze";
-  const svgNs = "http://www.w3.org/2000/svg";
-  const svg = document.createElementNS(svgNs, "svg");
-  svg.setAttribute("class", "hb-natural-gas-currents");
-  svg.setAttribute("viewBox", "0 0 120 80");
-  svg.setAttribute("aria-hidden", "true");
-  for (const pathData of [
-    "M3 19C23 5 38 32 58 18C78 4 94 29 117 13",
-    "M0 40C20 26 35 53 55 39C76 24 94 54 120 35",
-    "M5 62C26 47 42 74 64 58C85 43 101 67 117 54",
-  ]) {
-    const path = document.createElementNS(svgNs, "path");
-    path.setAttribute("d", pathData);
-    svg.append(path);
-  }
-  visual.append(haze, svg);
-  root.append(visual);
-  return root;
-}
 registerComponent("presence-sensor", {
   render(component, context) {
     const properties = component.properties || {};
     const entityId = component.bindings?.entity?.entityId || "";
     const stateEntry = context.states?.get(entityId);
-    const motionConfig = presenceMotionEventConfig(
-      entityId,
-      stateEntry,
-      context.entityMetadata,
-      context.states,
-      properties,
-    );
-    const presentation = presenceSensorPresentation(
-      stateEntry,
-      context.editable ? context.previewState : "auto",
-      motionConfig,
-    );
+    const motionConfig = presenceMotionEventConfig(entityId, stateEntry, context.entityMetadata, context.states, properties);
+    const presentation = presenceSensorPresentation(stateEntry, context.editable ? context.previewState : "auto", motionConfig);
     if (properties.sensorKind === "door-window") {
       return renderDoorWindowSensor(component, properties, presentation, context);
     }
     if (properties.sensorKind === "water-leak") {
-      return renderWaterLeakSensor(properties, presentation);
+      return mt(properties, presentation);
     }
     if (properties.sensorKind === "smoke") {
-      return renderSmokeSensor(properties, presentation);
+      return ut(properties, presentation);
     }
     if (properties.sensorKind === "natural-gas") {
-      return renderNaturalGasSensor(properties, presentation);
+      return ft(properties, presentation);
     }
     const occupiedColor = safeCssColor(properties.iconOnColor || properties.occupiedColor, "#ffffff");
     const clearColor = safeCssColor(properties.iconColor || properties.clearColor, "#758189");
@@ -2494,10 +1515,7 @@ registerComponent("presence-sensor", {
     const element = document.createElement("div");
     element.className = "hb-presence-sensor is-" + presentation.key;
     element.classList.toggle("is-halo-hidden", properties.haloVisible === false);
-    element.classList.toggle(
-      "is-person-hidden",
-      properties.personVisible === false,
-    );
+    element.classList.toggle("is-person-hidden", properties.personVisible === false);
     element.dataset.presenceState = presentation.key;
     element.style.setProperty("--hb-presence-occupied", occupiedColor);
     element.style.setProperty("--hb-presence-clear", clearColor);
@@ -2524,106 +1542,37 @@ registerComponent("presence-sensor", {
     element.style.setProperty("--hb-presence-orbit-duration", orbit + "s");
     if (presentation.key === "occupied") {
       const phaseOrIndex = presenceAnimationPhase(stateEntry, {
-        orbit: orbit,
-        wave: wave,
+        orbit,
+        wave
       });
-      element.style.setProperty(
-        "--hb-presence-orbit-delay",
-        phaseOrIndex.orbitDelay,
-      );
+      element.style.setProperty("--hb-presence-orbit-delay", phaseOrIndex.orbitDelay);
       element.style.setProperty("--hb-presence-wave-delay", phaseOrIndex.waveDelay);
-      element.style.setProperty(
-        "--hb-presence-floor-delay",
-        phaseOrIndex.floorDelay,
-      );
+      element.style.setProperty("--hb-presence-floor-delay", phaseOrIndex.floorDelay);
       element.style.setProperty("--hb-presence-step-delay", phaseOrIndex.stepDelay);
     }
     const orbitX = haloScaleX * 32 * units.width;
     const orbitY = haloScaleY * 13 * units.height;
-    element.style.setProperty(
-      "--hb-presence-orbit-x",
-      orbitX.toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-x-negative",
-      (-orbitX).toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-y",
-      orbitY.toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-y-negative",
-      (-orbitY).toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-x-diagonal",
-      (orbitX * 0.707).toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-x-diagonal-negative",
-      (-orbitX * 0.707).toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-y-diagonal",
-      (orbitY * 0.707).toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-y-diagonal-negative",
-      (-orbitY * 0.707).toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-x-shallow",
-      (orbitX * 0.382683).toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-x-shallow-negative",
-      (-orbitX * 0.382683).toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-x-steep",
-      (orbitX * 0.92388).toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-x-steep-negative",
-      (-orbitX * 0.92388).toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-y-shallow",
-      (orbitY * 0.382683).toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-y-shallow-negative",
-      (-orbitY * 0.382683).toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-y-steep",
-      (orbitY * 0.92388).toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-orbit-y-steep-negative",
-      (-orbitY * 0.92388).toFixed(4) + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-person-width",
-      units.width * 22 + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-person-height",
-      units.height * 62 + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-copy-gap",
-      units.height * 7 + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-copy-main-size",
-      units.height * 20 + "px",
-    );
-    element.style.setProperty(
-      "--hb-presence-copy-secondary-size",
-      units.height * 10 + "px",
-    );
+    element.style.setProperty("--hb-presence-orbit-x", orbitX.toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-x-negative", (-orbitX).toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-y", orbitY.toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-y-negative", (-orbitY).toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-x-diagonal", (orbitX * 0.707).toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-x-diagonal-negative", (-orbitX * 0.707).toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-y-diagonal", (orbitY * 0.707).toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-y-diagonal-negative", (-orbitY * 0.707).toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-x-shallow", (orbitX * 0.382683).toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-x-shallow-negative", (-orbitX * 0.382683).toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-x-steep", (orbitX * 0.92388).toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-x-steep-negative", (-orbitX * 0.92388).toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-y-shallow", (orbitY * 0.382683).toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-y-shallow-negative", (-orbitY * 0.382683).toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-y-steep", (orbitY * 0.92388).toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-orbit-y-steep-negative", (-orbitY * 0.92388).toFixed(4) + "px");
+    element.style.setProperty("--hb-presence-person-width", units.width * 22 + "px");
+    element.style.setProperty("--hb-presence-person-height", units.height * 62 + "px");
+    element.style.setProperty("--hb-presence-copy-gap", units.height * 7 + "px");
+    element.style.setProperty("--hb-presence-copy-main-size", units.height * 20 + "px");
+    element.style.setProperty("--hb-presence-copy-secondary-size", units.height * 10 + "px");
     element.setAttribute("role", "img");
     element.setAttribute("aria-label", "人在传感器：" + presentation.label);
     const visual = document.createElement("div");
@@ -2632,7 +1581,7 @@ registerComponent("presence-sensor", {
     halo.className = "hb-presence-sensor-halo";
     const space = document.createElement("span");
     space.className = "hb-presence-sensor-space";
-    for (let i = 0; i < 3; i += 1) {
+    for (let value6 = 0; value6 < 3; value6 += 1) {
       space.append(document.createElement("i"));
     }
     const person = document.createElement("span");
@@ -2661,19 +1610,14 @@ registerComponent("presence-sensor", {
     element.append(visual);
     if (!context.editable && motionConfig.motionEvent && presentation.key === "occupied") {
       const stateTimestamp = presenceStateTimestamp(stateEntry);
-      const remainingMs = Number.isFinite(stateTimestamp)
-        ? motionConfig.motionTimeoutSeconds * 1000 - (Date.now() - stateTimestamp)
-        : 0;
+      const remainingMs = Number.isFinite(stateTimestamp) ? motionConfig.motionTimeoutSeconds * 1000 - (Date.now() - stateTimestamp) : 0;
       if (remainingMs > 0) {
-        const timeoutId = window.setTimeout(
-          () => context.invalidate?.(),
-          remainingMs + 80,
-        );
+        const timeoutId = window.setTimeout(() => context.invalidate?.(), remainingMs + 80);
         context.cleanup(() => window.clearTimeout(timeoutId));
       }
     }
     return element;
-  },
+  }
 });
 registerComponent("air-conditioner", {
   render(component, context) {
@@ -2682,45 +1626,20 @@ registerComponent("air-conditioner", {
     const state = readState(context.states?.get(entityId));
     const deviceType = resolveClimateDeviceType(component, state, entityId);
     const isPoweredOn = climateIsPoweredOnForComponent(component, context);
-    const { height: unit } = componentContentUnitsPx(component, context);
+    const {
+      height: unit
+    } = componentContentUnitsPx(component, context);
     const root = document.createElement("div");
     root.className = "hb-air-conditioner" + (isPoweredOn ? " active" : "");
-    root.style.setProperty(
-      "--climate-icon-left",
-      clampWithDefault(properties.iconLeft, -100, 200, 20) + "%",
-    );
-    root.style.setProperty(
-      "--climate-icon-top",
-      clampWithDefault(properties.iconTop, -100, 200, 50) + "%",
-    );
-    root.style.setProperty(
-      "--climate-main-left",
-      clampWithDefault(properties.mainTextLeft, -100, 200, 39) + "%",
-    );
-    root.style.setProperty(
-      "--climate-main-top",
-      clampWithDefault(properties.mainTextTop, -100, 200, 40) + "%",
-    );
-    root.style.setProperty(
-      "--climate-secondary-left",
-      clampWithDefault(properties.secondaryTextLeft, -100, 200, 39) + "%",
-    );
-    root.style.setProperty(
-      "--climate-secondary-top",
-      clampWithDefault(properties.secondaryTextTop, -100, 200, 67) + "%",
-    );
-    root.style.setProperty(
-      "--climate-badge-color",
-      safeCssColor(properties.badgeColor, "#5b5e66"),
-    );
-    root.style.setProperty(
-      "--climate-badge-opacity",
-      clampWithDefault(properties.badgeOpacity, 0, 1, 0.58) * 100 + "%",
-    );
-    const iconColor = safeCssColor(
-      isPoweredOn ? properties.iconOnColor : properties.iconOffColor,
-      isPoweredOn ? "#73c8ff" : "#9aa5ad",
-    );
+    root.style.setProperty("--climate-icon-left", clampWithDefault(properties.iconLeft, -100, 200, 20) + "%");
+    root.style.setProperty("--climate-icon-top", clampWithDefault(properties.iconTop, -100, 200, 50) + "%");
+    root.style.setProperty("--climate-main-left", clampWithDefault(properties.mainTextLeft, -100, 200, 39) + "%");
+    root.style.setProperty("--climate-main-top", clampWithDefault(properties.mainTextTop, -100, 200, 40) + "%");
+    root.style.setProperty("--climate-secondary-left", clampWithDefault(properties.secondaryTextLeft, -100, 200, 39) + "%");
+    root.style.setProperty("--climate-secondary-top", clampWithDefault(properties.secondaryTextTop, -100, 200, 67) + "%");
+    root.style.setProperty("--climate-badge-color", safeCssColor(properties.badgeColor, "#5b5e66"));
+    root.style.setProperty("--climate-badge-opacity", clampWithDefault(properties.badgeOpacity, 0, 1, 0.58) * 100 + "%");
+    const iconColor = safeCssColor(isPoweredOn ? properties.iconOnColor : properties.iconOffColor, isPoweredOn ? "#73c8ff" : "#9aa5ad");
     root.style.setProperty("--climate-icon-color", iconColor);
     root.style.setProperty("--climate-icon-glow-size", unit * 7 + "px");
     const badgeSize = clampWithDefault(properties.badgeSize, 1, 100, 28);
@@ -2731,20 +1650,17 @@ registerComponent("air-conditioner", {
       badge.style.width = badgeSize * unit + "px";
       badge.style.height = badgeSize * unit + "px";
       const text = String(properties.icon || "");
-      const iconName =
-        deviceType === "bath-heater" && (!text || text === "mdi:air-conditioner")
-          ? climateDefaultIcon(deviceType)
-          : text || climateDefaultIcon(deviceType);
+      const iconName = deviceType === "bath-heater" && (!text || text === "mdi:air-conditioner") ? climateDefaultIcon(deviceType) : text || climateDefaultIcon(deviceType);
       const iconUrl = resolveMdiIconUrl(iconName);
       if (iconUrl) {
         const icon = document.createElement("i");
         icon.className = "hb-air-conditioner-icon";
-        const iconPct = clampWithDefault((symbolSize / badgeSize) * 100, 1, 100, 50);
+        const iconPct = clampWithDefault(symbolSize / badgeSize * 100, 1, 100, 50);
         icon.style.width = iconPct + "%";
         icon.style.height = iconPct + "%";
         icon.style.backgroundColor = iconColor;
-        icon.style.maskImage = 'url("' + iconUrl + '")';
-        icon.style.webkitMaskImage = 'url("' + iconUrl + '")';
+        icon.style.maskImage = "url(\"" + iconUrl + "\")";
+        icon.style.webkitMaskImage = "url(\"" + iconUrl + "\")";
         badge.append(icon);
       }
       root.append(badge);
@@ -2753,25 +1669,17 @@ registerComponent("air-conditioner", {
     textWrap.className = "hb-air-conditioner-text";
     const mainSize = clampWithDefault(properties.mainSize, 6, 120, 21);
     const element = document.createElement("strong");
-    element.textContent =
-      String(properties.mainText || "").trim() ||
-      String(
-        state?.attributes?.friendly_name ||
-          entityId ||
-          (deviceType === "bath-heater" ? "未选择浴霸实体" : "未选择空调实体"),
-      );
+    element.textContent = String(properties.mainText || "").trim() || String(state?.attributes?.friendly_name || entityId || (deviceType === "bath-heater" ? "未选择浴霸实体" : "未选择空调实体"));
     element.style.color = safeCssColor(properties.mainColor, "#c7c8cb");
     element.style.fontSize = mainSize * unit + "px";
-    element.style.letterSpacing =
-      clampWithDefault(properties.mainSpacing, -20, 100, 0.5) * unit + "px";
+    element.style.letterSpacing = clampWithDefault(properties.mainSpacing, -20, 100, 0.5) * unit + "px";
     applyTextStroke(element, properties.mainWeight, mainSize);
     const secondarySize = clampWithDefault(properties.secondarySize, 5, 80, 12);
     const element2 = document.createElement("small");
-    element2.textContent = entityId ? climateStatusLabel(component, context) : "未选择实体";
+    element2.textContent = entityId ? rt(component, context) : "未选择实体";
     element2.style.color = safeCssColor(properties.secondaryColor, "#75777d");
     element2.style.fontSize = secondarySize * unit + "px";
-    element2.style.letterSpacing =
-      clampWithDefault(properties.secondarySpacing, -20, 100, 0.3) * unit + "px";
+    element2.style.letterSpacing = clampWithDefault(properties.secondarySpacing, -20, 100, 0.3) * unit + "px";
     applyTextStroke(element2, properties.secondaryWeight, secondarySize);
     if (properties.mainTextVisible !== false) {
       textWrap.append(element);
@@ -2783,7 +1691,7 @@ registerComponent("air-conditioner", {
       root.append(textWrap);
     }
     return root;
-  },
+  }
 });
 export function cameraRadiusRatio(radius, fallback = 0.04) {
   const numeric = Number(radius);
@@ -2793,23 +1701,12 @@ export function cameraRadiusRatio(radius, fallback = 0.04) {
     return fallback;
   }
 }
-export function appendCameraFrame(
-  container,
-  component,
-  properties = {},
-  namespace = "renderer",
-) {
+export function appendCameraFrame(container, component, properties = {}, namespace = "renderer") {
   if (!container || properties.frameVisible === false) {
     return null;
   }
-  const frameSize = Math.max(
-    20,
-    Number(component?.position?.width || container.clientWidth || 320),
-  );
-  const frameHeight = Math.max(
-    20,
-    Number(component?.position?.height || container.clientHeight || 180),
-  );
+  const frameSize = Math.max(20, Number(component?.position?.width || container.clientWidth || 320));
+  const frameHeight = Math.max(20, Number(component?.position?.height || container.clientHeight || 180));
   const frameWidth = clampWithDefault(properties.frameWidth, 0, 20, 1);
   if (frameWidth <= 0) {
     return null;
@@ -2821,15 +1718,12 @@ export function appendCameraFrame(
   const rx = Math.min(width, height) * radiusRatio;
   const frameOpacity = clampWithDefault(properties.frameOpacity, 0, 1, 0.9);
   const frameColor = safeCssColor(properties.frameColor, "#d4d4d4");
-  const gradientId =
-    namespace +
-    "-camera-frame-" +
-    String(component?.id || "").replace(/[^a-z0-9_-]/gi, "");
+  const gradientId = namespace + "-camera-frame-" + String(component?.id || "").replace(/[^a-z0-9_-]/gi, "");
   const svg = appendSvgChild(container, "svg", {
     class: "hb-camera-frame",
     viewBox: "0 0 " + frameSize + " " + frameHeight,
     preserveAspectRatio: "none",
-    "aria-hidden": "true",
+    "aria-hidden": "true"
   });
   const defs = appendSvgChild(svg, "defs");
   const gradient = appendSvgChild(defs, "linearGradient", {
@@ -2837,85 +1731,70 @@ export function appendCameraFrame(
     gradientUnits: "userSpaceOnUse",
     x1: 0,
     y1: frameHeight / 2,
-    frameSize: frameSize,
+    x2: frameSize,
     y2: frameHeight / 2,
-    gradientTransform:
-      "rotate(" +
-      clampWithDefault(properties.frameAngle, 0, 360, 45) +
-      " " +
-      frameSize / 2 +
-      " " +
-      frameHeight / 2 +
-      ")",
+    gradientTransform: "rotate(" + clampWithDefault(properties.frameAngle, 0, 360, 45) + " " + frameSize / 2 + " " + frameHeight / 2 + ")"
   });
-  for (const [offset, stopOpacity] of [
-    [0, 0.96],
-    [0.22, 0.72],
-    [0.52, 0.3],
-    [0.78, 0.66],
-    [1, 0.42],
-  ]) {
+  for (const [offset, stopOpacity] of [[0, 0.96], [0.22, 0.72], [0.52, 0.3], [0.78, 0.66], [1, 0.42]]) {
     appendSvgChild(gradient, "stop", {
-      offset: offset,
+      offset,
       "stop-color": frameColor,
-      "stop-opacity": stopOpacity * frameOpacity,
+      "stop-opacity": stopOpacity * frameOpacity
     });
   }
   appendSvgChild(svg, "rect", {
     x: inset,
     y: inset,
-    width: width,
-    height: height,
-    rx: rx,
+    width,
+    height,
+    rx,
     fill: "none",
     stroke: "url(#" + gradientId + "-edge)",
     "stroke-width": frameWidth,
-    "vector-effect": "non-scaling-stroke",
+    "vector-effect": "non-scaling-stroke"
   });
   return svg;
 }
 const CAMERA_HLS_CACHE_TTL_MS = 30000;
 const CAMERA_PREWARM_LIMIT = 4;
 const CAMERA_HLS_SOURCE_CACHE = new Map();
-const CAMERA_HLS_INFLIGHT_REQUESTS = new Map();
-async function fetchCameraHlsSource(entityId) {
-  const key = String(entityId || "").trim();
-  if (!key) {
+const ie = new Map();
+async function fetchCameraHlsSource(component) {
+  const accent = String(component || "").trim();
+  if (!accent) {
     throw new Error("Camera entity is required");
   }
-  const now = Date.now();
-  const cached = CAMERA_HLS_SOURCE_CACHE.get(key);
-  if (cached && now - cached.createdAt < CAMERA_HLS_CACHE_TTL_MS) {
-    return cached.source;
+  const isOpen = Date.now();
+  const label = CAMERA_HLS_SOURCE_CACHE.get(accent);
+  if (label && isOpen - label.createdAt < CAMERA_HLS_CACHE_TTL_MS) {
+    return label.source;
   }
-  const inflight = CAMERA_HLS_INFLIGHT_REQUESTS.get(key);
-  if (inflight) {
-    return inflight;
+  const root = ie.get(accent);
+  if (root) {
+    return root;
   }
-  const request = (async () => {
-    const response = await fetch(
-      "/api/camera_hls/" + encodeURIComponent(key),
-    );
-    if (!response.ok) {
-      throw new Error("Camera HLS request failed: " + response.status);
+  const visual = (async () => {
+    const ok = await fetch("/api/camera_hls/" + encodeURIComponent(accent));
+    if (!ok.ok) {
+      throw new Error("Camera HLS request failed: " + ok.status);
     }
-    const payload = await response.json();
-    const source = typeof payload?.url == "string" ? payload.url.trim() : "";
-    if (!source.startsWith("/")) {
+    const url = await ok.json();
+    const startsWith = typeof url?.url == "string" ? url.url.trim() : "";
+    if (!startsWith.startsWith("/")) {
       throw new Error("Camera HLS response has no proxy URL");
     }
-    CAMERA_HLS_SOURCE_CACHE.set(key, {
-      source: source,
-      createdAt: Date.now(),
+    CAMERA_HLS_SOURCE_CACHE.set(accent, {
+      source: startsWith,
+      createdAt: Date.now()
     });
-    return source;
+    return startsWith;
   })();
-  CAMERA_HLS_INFLIGHT_REQUESTS.set(key, request);
+  ie.set(accent, visual);
   try {
-    return await request;
+    return await visual;
   } finally {
-    if (CAMERA_HLS_INFLIGHT_REQUESTS.get(key) === request) {
-      CAMERA_HLS_INFLIGHT_REQUESTS.delete(key);
+    if (ie.get(accent) === visual) {
+      ie.delete(accent);
     }
   }
 }
@@ -2923,23 +1802,17 @@ export async function prewarmCameraMedia(entityIds = []) {
   if (document.visibilityState === "hidden") {
     return;
   }
-  const uniqueIds = [
-    ...new Set(
-      (entityIds || [])
-        .map((entityId) => String(entityId || "").trim())
-        .filter(Boolean),
-    ),
-  ].slice(0, CAMERA_PREWARM_LIMIT);
-  await Promise.allSettled(uniqueIds.map((item) => fetchCameraHlsSource(item)));
+  const uniqueIds = [...new Set((entityIds || []).map(entityId => String(entityId || "").trim()).filter(Boolean))].slice(0, CAMERA_PREWARM_LIMIT);
+  await Promise.allSettled(uniqueIds.map(item => fetchCameraHlsSource(item)));
 }
 export function mountCameraSnapshot({
-  container: container,
-  entityId: entityId,
-  label: label,
-  objectFit: objectFit = "cover",
-  refreshInterval: refreshInterval = 10,
+  container,
+  entityId,
+  label,
+  objectFit = "cover",
+  refreshInterval = 10,
   placeholder: element,
-  cleanup: registerCleanup = () => {},
+  cleanup: registerCleanup = () => {}
 }) {
   const image = document.createElement("img");
   image.className = "hb-camera-image";
@@ -2947,9 +1820,7 @@ export function mountCameraSnapshot({
   image.draggable = false;
   image.style.objectFit = objectFit;
   const numeric = Number(refreshInterval);
-  const intervalSeconds = Number.isFinite(numeric)
-    ? Math.max(6, Math.round(numeric))
-    : 10;
+  const intervalSeconds = Number.isFinite(numeric) ? Math.max(6, Math.round(numeric)) : 10;
   const intervalMs = Math.min(2147483000, intervalSeconds * 1000);
   let disposed = false;
   let suspended = document.visibilityState === "hidden";
@@ -2971,8 +1842,7 @@ export function mountCameraSnapshot({
       return;
     }
     clearRefreshTimer();
-    const url =
-      "/api/camera_proxy/" + encodeURIComponent(entityId) + "?hb=" + Date.now();
+    const url = "/api/camera_proxy/" + encodeURIComponent(entityId) + "?hb=" + Date.now();
     if (!hasLoadedOnce) {
       element.hidden = false;
       element.textContent = "正在载入摄像头快照";
@@ -3039,18 +1909,18 @@ export function mountCameraSnapshot({
     image.removeAttribute("src");
   });
   return {
-    image: image,
+    image
   };
 }
 export function mountCameraMedia({
-  container: container,
-  entityId: entityId,
-  label: label,
-  objectFit: objectFit = "cover",
+  container,
+  entityId,
+  label,
+  objectFit = "cover",
   placeholder: element,
-  onReady: onReady = () => {},
-  onUnavailable: onUnavailable = () => {},
-  cleanup: registerCleanup = () => {},
+  onReady = () => {},
+  onUnavailable = () => {},
+  cleanup: registerCleanup = () => {}
 }) {
   const video = document.createElement("video");
   video.className = "hb-camera-video";
@@ -3118,11 +1988,7 @@ export function mountCameraMedia({
   };
   const loadSnapshotFallback = () => {
     if (!disposed && !suspended) {
-      image.src =
-        "/api/camera_proxy/" +
-        encodeURIComponent(entityId) +
-        "?hb=" +
-        Date.now();
+      image.src = "/api/camera_proxy/" + encodeURIComponent(entityId) + "?hb=" + Date.now();
     }
   };
   const startSnapshotFallback = (item = sessionId) => {
@@ -3154,17 +2020,13 @@ export function mountCameraMedia({
   };
   video.addEventListener("loadeddata", markReady);
   video.addEventListener("playing", markReady);
-  video.addEventListener(
-    "error",
-    () => {
-      if (!hlsPlayer) {
-        startLegacyStream();
-      }
-    },
-    {
-      once: true,
-    },
-  );
+  video.addEventListener("error", () => {
+    if (!hlsPlayer) {
+      startLegacyStream();
+    }
+  }, {
+    once: true
+  });
   image.addEventListener("load", markReady);
   image.addEventListener("error", () => {
     if (!disposed && !suspended) {
@@ -3176,7 +2038,7 @@ export function mountCameraMedia({
     }
   });
   container.prepend(video);
-  const startHls = async (item) => {
+  const startHls = async item => {
     try {
       const hlsSource = await fetchCameraHlsSource(entityId);
       if (disposed || suspended || item !== sessionId) {
@@ -3188,48 +2050,32 @@ export function mountCameraMedia({
         hlsPlayer = new window.Hls({
           lowLatencyMode: true,
           backBufferLength: 15,
-          maxBufferLength: 15,
+          maxBufferLength: 15
         });
-        hlsPlayer.on(window.Hls.Events.MEDIA_ATTACHED, () =>
-          hlsPlayer?.loadSource(hlsSource),
-        );
+        hlsPlayer.on(window.Hls.Events.MEDIA_ATTACHED, () => hlsPlayer?.loadSource(hlsSource));
         hlsPlayer.on(window.Hls.Events.MANIFEST_PARSED, () => {
           container.dataset.cameraState = "manifest-parsed";
           video.play().catch(() => {});
         });
-        hlsPlayer.on(window.Hls.Events.ERROR, (_, hlsError) => {
+        hlsPlayer.on(window.Hls.Events.ERROR, (arg, hlsError) => {
           if (!disposed && !suspended && item === sessionId) {
             if (hlsError?.fatal) {
               CAMERA_HLS_SOURCE_CACHE.delete(String(entityId || "").trim());
               container.dataset.cameraState = "hls-failed";
-              container.dataset.cameraError = [
-                hlsError.type,
-                hlsError.details,
-                hlsError.url || hlsError.response?.url || "",
-                hlsError.response?.code || 0,
-                hlsError.reason || hlsError.error?.message || "",
-              ].join(" | ");
-              window.HABridgeLog?.report(
-                "error",
-                "摄像头",
-                "摄像头播放失败：" +
-                  (hlsError.type || "") +
-                  " / " +
-                  (hlsError.details || ""),
-                {
-                  entityId: entityId,
-                  phase: "hls-playback",
-                  status: hlsError.response?.code || 0,
-                  path: hlsError.url || hlsError.response?.url || "",
-                },
-              );
+              container.dataset.cameraError = [hlsError.type, hlsError.details, hlsError.url || hlsError.response?.url || "", hlsError.response?.code || 0, hlsError.reason || hlsError.error?.message || ""].join(" | ");
+              window.HABridgeLog?.report("error", "摄像头", "摄像头播放失败：" + (hlsError.type || "") + " / " + (hlsError.details || ""), {
+                entityId,
+                phase: "hls-playback",
+                status: hlsError.response?.code || 0,
+                path: hlsError.url || hlsError.response?.url || ""
+              });
               console.warn("[HA Bridge camera] HLS playback failed", {
-                entityId: entityId,
+                entityId,
                 type: hlsError.type,
                 details: hlsError.details,
                 url: hlsError.url || hlsError.response?.url || "",
                 status: hlsError.response?.code || 0,
-                reason: hlsError.reason || hlsError.error?.message || "",
+                reason: hlsError.reason || hlsError.error?.message || ""
               });
               startLegacyStream(item);
             }
@@ -3246,17 +2092,13 @@ export function mountCameraMedia({
       }
       container.dataset.cameraState = "setup-failed";
       container.dataset.cameraError = String(error);
-      window.HABridgeLog?.error(
-        error,
-        {
-          entityId: entityId,
-          phase: "hls-setup",
-        },
-        "摄像头连接失败：" + (error?.message || error),
-      );
+      window.HABridgeLog?.error(error, {
+        entityId,
+        phase: "hls-setup"
+      }, "摄像头连接失败：" + (error?.message || error));
       console.warn("[HA Bridge camera] HLS setup failed", {
-        entityId: entityId,
-        error: String(error),
+        entityId,
+        error: String(error)
       });
       startLegacyStream(item);
     }
@@ -3306,8 +2148,8 @@ export function mountCameraMedia({
     teardownPlayback();
   });
   return {
-    video: video,
-    image: image,
+    video,
+    image
   };
 }
 registerComponent("camera", {
@@ -3318,46 +2160,33 @@ registerComponent("camera", {
     container.className = "hb-camera-component";
     const boxWidth = Math.max(1, Number(component.position?.width || 320));
     const boxHeight = Math.max(1, Number(component.position?.height || 180));
-    const contentUnit = Math.max(
-      0.01,
-      Number(context.document?.canvas?.componentScale || 1),
-    );
-    const borderRadius =
-      (Math.min(boxWidth, boxHeight) * cameraRadiusRatio(properties.radius)) / contentUnit;
+    const contentUnit = Math.max(0.01, Number(context.document?.canvas?.componentScale || 1));
+    const borderRadius = Math.min(boxWidth, boxHeight) * cameraRadiusRatio(properties.radius) / contentUnit;
     container.style.borderRadius = borderRadius + "px";
     if (context.editable) {
       const element = document.createElement("div");
       element.className = "hb-camera-placeholder";
-      element.textContent =
-        properties.mediaVisible === false
-          ? "摄像头画面已隐藏"
-          : "编辑模式不加载实时画面";
+      element.textContent = properties.mediaVisible === false ? "摄像头画面已隐藏" : "编辑模式不加载实时画面";
       container.append(element);
     } else if (context.liveMedia !== false && properties.mediaVisible !== false) {
       const placeholder = document.createElement("div");
       placeholder.className = "hb-camera-placeholder";
       const isSnapshot = properties.displayMode === "snapshot";
-      placeholder.textContent = entityId
-        ? isSnapshot
-          ? "正在载入摄像头快照"
-          : "正在载入摄像头实时预览"
-        : "未选择摄像头实体";
+      placeholder.textContent = entityId ? isSnapshot ? "正在载入摄像头快照" : "正在载入摄像头实时预览" : "未选择摄像头实体";
       container.append(placeholder);
       if (entityId) {
         const mountOptions = {
-          container: container,
-          entityId: entityId,
-          label:
-            readState(context.states?.get(entityId))?.attributes?.friendly_name ||
-            entityId,
+          container,
+          entityId,
+          label: readState(context.states?.get(entityId))?.attributes?.friendly_name || entityId,
           objectFit: properties.fit === "contain" ? "contain" : "fill",
-          placeholder: placeholder,
-          cleanup: (cleanup) => context.cleanup(cleanup),
+          placeholder,
+          cleanup: cleanup => context.cleanup(cleanup)
         };
         if (isSnapshot) {
           mountCameraSnapshot({
             ...mountOptions,
-            refreshInterval: properties.refreshInterval,
+            refreshInterval: properties.refreshInterval
           });
         } else {
           mountCameraMedia(mountOptions);
@@ -3366,7 +2195,7 @@ registerComponent("camera", {
     }
     appendCameraFrame(container, component, properties, context.renderNamespace);
     return container;
-  },
+  }
 });
 registerComponent("vacuum-map", {
   render(component, context) {
@@ -3387,10 +2216,7 @@ registerComponent("vacuum-map", {
     }
     const image = document.createElement("img");
     image.className = "hb-vacuum-map-image";
-    image.alt =
-      properties.label ||
-      readState(context.states?.get(entityId))?.attributes?.friendly_name ||
-      entityId;
+    image.alt = properties.label || readState(context.states?.get(entityId))?.attributes?.friendly_name || entityId;
     image.draggable = false;
     const encodedEntityId = encodeURIComponent(entityId);
     const isImageEntity = entityId.startsWith("image.");
@@ -3399,12 +2225,7 @@ registerComponent("vacuum-map", {
     if (trackVisibility && document.visibilityState === "hidden") {
       image.dataset.vacuumMapSuspended = "true";
     }
-    const resolveMapUrl = () =>
-      isImageEntity
-        ? vacuumMapImageSource(entityId, context.states?.get(entityId))
-        : context.editable
-          ? "/api/camera_proxy/" + encodedEntityId + "?hb=" + Date.now()
-          : "/api/camera_proxy_stream/" + encodedEntityId;
+    const resolveMapUrl = () => isImageEntity ? vacuumMapImageSource(entityId, context.states?.get(entityId)) : context.editable ? "/api/camera_proxy/" + encodedEntityId + "?hb=" + Date.now() : "/api/camera_proxy_stream/" + encodedEntityId;
     let retryTimer = 0;
     let retryCount = 0;
     const maxRetries = 4;
@@ -3451,20 +2272,11 @@ registerComponent("vacuum-map", {
       const retryDelayMs = Math.min(4000, 2 ** (retryCount - 1) * 700);
       retryTimer = window.setTimeout(() => {
         retryTimer = 0;
-        if (
-          image.dataset.vacuumMapSuspended === "true" ||
-          !image.isConnected
-        ) {
+        if (image.dataset.vacuumMapSuspended === "true" || !image.isConnected) {
           return;
         }
         const resolvedUrl = resolveMapUrl();
-        const imageSrc = isImageEntity
-          ? resolvedUrl
-          : "" +
-            resolvedUrl +
-            (resolvedUrl.includes("?") ? "&" : "?") +
-            "hb=" +
-            Date.now();
+        const imageSrc = isImageEntity ? resolvedUrl : "" + resolvedUrl + (resolvedUrl.includes("?") ? "&" : "?") + "hb=" + Date.now();
         if (isImageEntity) {
           image.dataset.vacuumMapSource = imageSrc;
         }
@@ -3494,13 +2306,11 @@ registerComponent("vacuum-map", {
         }
       };
       document.addEventListener("visibilitychange", onVisibilityChange);
-      context.cleanup(() =>
-        document.removeEventListener("visibilitychange", onVisibilityChange),
-      );
+      context.cleanup(() => document.removeEventListener("visibilitychange", onVisibilityChange));
     }
     if (!allowLive) {
       image.addEventListener("error", showUnavailable, {
-        once: true,
+        once: true
       });
     }
     root.append(image);
@@ -3513,7 +2323,7 @@ registerComponent("vacuum-map", {
       image.removeAttribute("src");
     });
     return root;
-  },
+  }
 });
 registerComponent("time", {
   render(component, context) {
@@ -3541,13 +2351,10 @@ registerComponent("time", {
       element2.hidden = !element3.suffix;
     };
     tick();
-    const intervalId = window.setInterval(
-      tick,
-      properties.showSeconds === true ? 250 : 1000,
-    );
+    const intervalId = window.setInterval(tick, properties.showSeconds === true ? 250 : 1000);
     context.cleanup(() => window.clearInterval(intervalId));
     return root;
-  },
+  }
 });
 registerComponent("date", {
   render(component, context) {
@@ -3572,8 +2379,7 @@ registerComponent("date", {
       const now = clampWithDefault(properties.lunarSize, 10, 500, 24);
       element2.style.fontSize = now + "px";
       applyTextStroke(element2, properties.lunarWeight, now);
-      element2.style.letterSpacing =
-        clampWithDefault(properties.lunarSpacing, -20, 100, 1) + "px";
+      element2.style.letterSpacing = clampWithDefault(properties.lunarSpacing, -20, 100, 1) + "px";
       root.append(element2);
     }
     const tick = () => {
@@ -3587,7 +2393,7 @@ registerComponent("date", {
     const intervalId = window.setInterval(tick, 30000);
     context.cleanup(() => window.clearInterval(intervalId));
     return root;
-  },
+  }
 });
 registerComponent("weather", {
   render(component, context) {
@@ -3618,18 +2424,13 @@ registerComponent("weather", {
     if (properties.temperatureVisible !== false) {
       const element = document.createElement("strong");
       const numeric = Number(attributes.temperature);
-      const text = String(
-        attributes.temperature_unit || attributes.unit_of_measurement || "°C",
-      );
-      element.textContent = Number.isFinite(numeric)
-        ? "" + numeric + text
-        : "--" + text;
+      const text = String(attributes.temperature_unit || attributes.unit_of_measurement || "°C");
+      element.textContent = Number.isFinite(numeric) ? "" + numeric + text : "--" + text;
       element.style.color = safeCssColor(properties.temperatureColor, "#aeb3b7");
       const clamped = clampWithDefault(properties.temperatureSize, 12, 500, 32);
       element.style.fontSize = clamped + "px";
       applyTextStroke(element, properties.temperatureWeight, clamped);
-      element.style.letterSpacing =
-        clampWithDefault(properties.temperatureSpacing, -20, 100, 1) + "px";
+      element.style.letterSpacing = clampWithDefault(properties.temperatureSpacing, -20, 100, 1) + "px";
       content.append(element);
     }
     if (properties.conditionVisible !== false || properties.humidityVisible !== false) {
@@ -3640,24 +2441,21 @@ registerComponent("weather", {
       }
       const numeric = Number(attributes.humidity);
       if (properties.humidityVisible !== false) {
-        list.push(
-          Number.isFinite(numeric) ? "湿度 " + numeric + "%" : "湿度 --",
-        );
+        list.push(Number.isFinite(numeric) ? "湿度 " + numeric + "%" : "湿度 --");
       }
       element.textContent = list.join(" · ");
       element.style.color = safeCssColor(properties.secondaryColor, "#8d9296");
       const secondarySize = clampWithDefault(properties.secondarySize, 10, 500, 18);
       element.style.fontSize = secondarySize + "px";
       applyTextStroke(element, properties.secondaryWeight, secondarySize);
-      element.style.letterSpacing =
-        clampWithDefault(properties.secondarySpacing, -20, 100, 1) + "px";
+      element.style.letterSpacing = clampWithDefault(properties.secondarySpacing, -20, 100, 1) + "px";
       content.append(element);
     }
     if (content.childElementCount) {
       root.append(content);
     }
     return root;
-  },
+  }
 });
 registerComponent("line-chart", {
   render(component, context) {
@@ -3667,11 +2465,7 @@ registerComponent("line-chart", {
     const text = String(stateEntry?.attributes?.unit_of_measurement || "");
     const currentValue = Number.parseFloat(stateEntry?.state);
     const series = buildLineChartSeries(context, entityId, currentValue, properties.hours);
-    const thresholds = resolvedThresholds(
-      properties.thresholds,
-      series,
-      properties.thresholdMode,
-    );
+    const thresholds = resolvedThresholds(properties.thresholds, series, properties.thresholdMode);
     const element = document.createElement("div");
     element.className = "hb-line-chart-component";
     element.style.borderRadius = clampWithDefault(properties.cornerRadius, 0, 50, 10) + "%";
@@ -3679,14 +2473,7 @@ registerComponent("line-chart", {
     valueEl.className = "hb-line-chart-value";
     valueEl.hidden = properties.valueVisible === false;
     valueEl.style.color = safeCssColor(properties.valueColor, "#dce1e5");
-    valueEl.style.fontSize =
-      Math.max(
-        10,
-        (Number(component.position?.height || 300) *
-          0.12 *
-          clampWithDefault(properties.valueScale, 10, 500, 100)) /
-          100,
-      ) + "px";
+    valueEl.style.fontSize = Math.max(10, Number(component.position?.height || 300) * 0.12 * clampWithDefault(properties.valueScale, 10, 500, 100) / 100) + "px";
     valueEl.style.left = 95 + clampWithDefault(properties.valueOffsetX, -100, 100, 0) + "%";
     valueEl.style.top = 8 + clampWithDefault(properties.valueOffsetY, -100, 100, 0) + "%";
     const element2 = document.createElement("strong");
@@ -3695,39 +2482,28 @@ registerComponent("line-chart", {
     element3.textContent = text;
     valueEl.append(element2, element3);
     element.append(valueEl);
-    element.syncLineChartState = (geometryOrState) => {
+    element.syncLineChartState = geometryOrState => {
       const minimum = Number.parseFloat(geometryOrState?.state);
-      element2.textContent = formatLineChartValue(
-        minimum,
-        properties.statePrecision,
-      );
-      element3.textContent = String(
-        geometryOrState?.attributes?.unit_of_measurement || "",
-      );
-      element.style.setProperty(
-        "--hb-chart-current-color",
-        Number.isFinite(minimum) ? thresholdColor(thresholds, minimum) : "#68cc3e",
-      );
+      element2.textContent = formatLineChartValue(minimum, properties.statePrecision);
+      element3.textContent = String(geometryOrState?.attributes?.unit_of_measurement || "");
+      element.style.setProperty("--hb-chart-current-color", Number.isFinite(minimum) ? thresholdColor(thresholds, minimum) : "#68cc3e");
     };
     const element4 = appendSvgChild(element, "svg", {
       viewBox: "0 0 100 70",
       preserveAspectRatio: "none",
-      "aria-hidden": "true",
+      "aria-hidden": "true"
     });
     element4.classList.add("hb-line-chart-graph");
     if (series.length) {
       const geometry = lineChartGeometry(series);
       const {
         minimum: chartMinimum,
-        maximum: maximum,
-        span: span,
-        points: points,
+        maximum,
+        span,
+        points
       } = geometry;
       const path = smoothChartPath(points);
-      const gradientId =
-        (context.renderNamespace || "renderer") +
-        "-chart-" +
-        String(component.id || "").replace(/[^a-z0-9_-]/gi, "");
+      const gradientId = (context.renderNamespace || "renderer") + "-chart-" + String(component.id || "").replace(/[^a-z0-9_-]/gi, "");
       const defs = appendSvgChild(element4, "defs");
       const gradient = appendSvgChild(defs, "linearGradient", {
         id: gradientId + "-line",
@@ -3735,63 +2511,46 @@ registerComponent("line-chart", {
         x1: 0,
         y1: 0,
         x2: 0,
-        y2: 70,
+        y2: 70
       });
-      const stops = thresholds.length
-        ? thresholds
-        : [
-            {
-              value: chartMinimum,
-              color: "#68cc3e",
-            },
-          ];
-      for (const element5 of [...stops].sort(
-        (element6, element7) => element7.value - element6.value,
-      )) {
+      const stops = thresholds.length ? thresholds : [{
+        value: chartMinimum,
+        color: "#68cc3e"
+      }];
+      for (const element5 of [...stops].sort((element6, element7) => element7.value - element6.value)) {
         appendSvgChild(gradient, "stop", {
-          offset:
-            clampWithDefault(((maximum - element5.value) / span) * 100, 0, 100, 0) + "%",
-          "stop-color": element5.color,
+          offset: clampWithDefault((maximum - element5.value) / span * 100, 0, 100, 0) + "%",
+          "stop-color": element5.color
         });
       }
       appendSvgChild(element4, "path", {
         d: path + " L100 70 L0 70 Z",
         fill: "url(#" + gradientId + "-line)",
-        opacity: 0.18,
+        opacity: 0.18
       });
       appendSvgChild(element4, "path", {
         d: path,
         fill: "none",
         stroke: "url(#" + gradientId + "-line)",
         "stroke-width": 1.6,
-        "vector-effect": "non-scaling-stroke",
+        "vector-effect": "non-scaling-stroke"
       });
       if (!context.editable) {
         const hoverLayer = document.createElement("span");
         hoverLayer.className = "hb-line-chart-hover-layer";
         element.append(hoverLayer);
-        const cleanupHover = setupLineChartHoverTooltip(
-          hoverLayer,
-          element,
-          geometry,
-          text,
-          (point) => ({
-            x: point.x,
-            y: (point.y / 70) * 100,
-          }),
-          properties.statePrecision,
-        );
+        const cleanupHover = setupLineChartHoverTooltip(hoverLayer, element, geometry, text, point => ({
+          x: point.x,
+          y: point.y / 70 * 100
+        }), properties.statePrecision);
         context.cleanup?.(cleanupHover);
       }
     } else {
       element.classList.add("history-loading");
     }
-    element.style.setProperty(
-      "--hb-chart-current-color",
-      Number.isFinite(currentValue) ? thresholdColor(thresholds, currentValue) : "#68cc3e",
-    );
+    element.style.setProperty("--hb-chart-current-color", Number.isFinite(currentValue) ? thresholdColor(thresholds, currentValue) : "#68cc3e");
     return element;
-  },
+  }
 });
 export function renderLineChartDetails(component, context) {
   const entityId = component.bindings?.entity?.entityId || "";
@@ -3801,21 +2560,11 @@ export function renderLineChartDetails(component, context) {
   const series = buildLineChartSeries(context, entityId, currentValue, component.properties?.hours);
   const section = document.createElement("section");
   section.className = "hb-line-chart-details";
-  const thresholds = resolvedThresholds(
-    component.properties?.thresholds,
-    series,
-    component.properties?.thresholdMode,
-  );
-  section.style.setProperty(
-    "--hb-chart-current-color",
-    Number.isFinite(currentValue) ? thresholdColor(thresholds, currentValue) : "#68cc3e",
-  );
-  section.syncLineChartState = (tickOrPoint) => {
-    const t = Number.parseFloat(tickOrPoint?.state);
-    section.style.setProperty(
-      "--hb-chart-current-color",
-      Number.isFinite(t) ? thresholdColor(thresholds, t) : "#68cc3e",
-    );
+  const thresholds = resolvedThresholds(component.properties?.thresholds, series, component.properties?.thresholdMode);
+  section.style.setProperty("--hb-chart-current-color", Number.isFinite(currentValue) ? thresholdColor(thresholds, currentValue) : "#68cc3e");
+  section.syncLineChartState = tickOrPoint => {
+    const value7 = Number.parseFloat(tickOrPoint?.state);
+    section.style.setProperty("--hb-chart-current-color", Number.isFinite(value7) ? thresholdColor(thresholds, value7) : "#68cc3e");
   };
   if (!series.length) {
     const element2 = document.createElement("p");
@@ -3830,138 +2579,103 @@ export function renderLineChartDetails(component, context) {
   const left = compactHorizontal ? 44 : 66;
   const rightPad = compactHorizontal ? 44 : 26;
   const plot = {
-    left: left,
+    left,
     top: 24,
     width: viewWidth - left - rightPad,
-    height: 258 + extraHeight,
+    height: 258 + extraHeight
   };
-  const geometry = lineChartGeometry(
-    series,
-    plot.left,
-    plot.top,
-    plot.width,
-    plot.height,
-  );
+  const geometry = lineChartGeometry(series, plot.left, plot.top, plot.width, plot.height);
   const svg = appendSvgChild(section, "svg", {
     viewBox: "0 0 " + viewWidth + " " + viewHeight,
     preserveAspectRatio: "xMidYMid meet",
     role: "img",
-    "aria-label": "带时间轴和数值轴的历史折线图",
+    "aria-label": "带时间轴和数值轴的历史折线图"
   });
-  const gradientId =
-    (context.renderNamespace || "renderer") +
-    "-chart-details-" +
-    String(component.id || "").replace(/[^a-z0-9_-]/gi, "");
+  const gradientId = (context.renderNamespace || "renderer") + "-chart-details-" + String(component.id || "").replace(/[^a-z0-9_-]/gi, "");
   const defs = appendSvgChild(svg, "defs");
   const gradient = appendSvgChild(defs, "linearGradient", {
     id: gradientId + "-line",
     gradientUnits: "userSpaceOnUse",
     x1: 0,
     y1: plot.top,
-    boxWidth: 0,
-    y2: plot.top + plot.height,
+    x2: 0,
+    y2: plot.top + plot.height
   });
-  const stops = thresholds.length
-    ? thresholds
-    : [
-        {
-          value: geometry.minimum,
-          color: "#68cc3e",
-        },
-      ];
-  for (const element2 of [...stops].sort(
-    (element3, element4) => element4.value - element3.value,
-  )) {
+  const stops = thresholds.length ? thresholds : [{
+    value: geometry.minimum,
+    color: "#68cc3e"
+  }];
+  for (const element2 of [...stops].sort((element3, element4) => element4.value - element3.value)) {
     appendSvgChild(gradient, "stop", {
-      offset:
-        clampWithDefault(
-          ((geometry.maximum - element2.value) / geometry.span) * 100,
-          0,
-          100,
-          0,
-        ) + "%",
-      "stop-color": element2.color,
+      offset: clampWithDefault((geometry.maximum - element2.value) / geometry.span * 100, 0, 100, 0) + "%",
+      "stop-color": element2.color
     });
   }
-  for (let i = 0; i <= 4; i += 1) {
-    const t = i / 4;
-    const y1 = plot.top + t * plot.height;
-    const tickValue = geometry.maximum - t * geometry.span;
+  for (let value12 = 0; value12 <= 4; value12 += 1) {
+    const value9 = value12 / 4;
+    const y1 = plot.top + value9 * plot.height;
+    const tickValue = geometry.maximum - value9 * geometry.span;
     appendSvgChild(svg, "line", {
       x1: plot.left,
-      y1: y1,
-      boxWidth: plot.left + plot.width,
+      y1,
+      x2: plot.left + plot.width,
       y2: y1,
-      class: "hb-line-chart-details-grid",
+      class: "hb-line-chart-details-grid"
     });
     const element2 = appendSvgChild(svg, "text", {
       x: plot.left - (compactHorizontal ? 8 : 12),
       y: y1 + 4,
       "text-anchor": "end",
-      class: "hb-line-chart-details-axis-label",
+      class: "hb-line-chart-details-axis-label"
     });
-    element2.textContent = formatLineChartValue(
-      tickValue,
-      component.properties?.statePrecision,
-    );
+    element2.textContent = formatLineChartValue(tickValue, component.properties?.statePrecision);
   }
   const includeDate = Number(component.properties?.hours || 24) > 24;
-  for (let i = 0; i <= 5; i += 1) {
-    const t = i / 5;
-    const x1 = plot.left + t * plot.width;
-    const tickTime =
-      geometry.firstTime + t * (geometry.lastTime - geometry.firstTime);
+  for (let value13 = 0; value13 <= 5; value13 += 1) {
+    const value10 = value13 / 5;
+    const x1 = plot.left + value10 * plot.width;
+    const tickTime = geometry.firstTime + value10 * (geometry.lastTime - geometry.firstTime);
     appendSvgChild(svg, "line", {
-      x1: x1,
+      x1,
       y1: plot.top,
-      boxWidth: x1,
+      x2: x1,
       y2: plot.top + plot.height,
-      class: "hb-line-chart-details-grid vertical",
+      class: "hb-line-chart-details-grid vertical"
     });
     const element2 = appendSvgChild(svg, "text", {
       x: x1,
       y: plot.top + plot.height + 25,
       "text-anchor": "middle",
-      class: "hb-line-chart-details-axis-label",
+      class: "hb-line-chart-details-axis-label"
     });
     element2.textContent = formatChartTime(tickTime, includeDate);
   }
   appendSvgChild(svg, "line", {
     x1: plot.left,
     y1: plot.top,
-    boxWidth: plot.left,
+    x2: plot.left,
     y2: plot.top + plot.height,
-    class: "hb-line-chart-details-axis",
+    class: "hb-line-chart-details-axis"
   });
   appendSvgChild(svg, "line", {
     x1: plot.left,
     y1: plot.top + plot.height,
-    boxWidth: plot.left + plot.width,
+    x2: plot.left + plot.width,
     y2: plot.top + plot.height,
-    class: "hb-line-chart-details-axis",
+    class: "hb-line-chart-details-axis"
   });
   const element = appendSvgChild(svg, "text", {
     x: plot.left,
     y: 20,
-    class: "hb-line-chart-details-axis-title",
+    class: "hb-line-chart-details-axis-title"
   });
   element.textContent = text || "数值";
   const path = smoothChartPath(geometry.points);
   appendSvgChild(svg, "path", {
-    d:
-      path +
-      " L" +
-      (plot.left + plot.width) +
-      " " +
-      (plot.top + plot.height) +
-      " L" +
-      plot.left +
-      " " +
-      (plot.top + plot.height) +
-      " Z",
+    d: path + " L" + (plot.left + plot.width) + " " + (plot.top + plot.height) + " L" + plot.left + " " + (plot.top + plot.height) + " Z",
     fill: "url(#" + gradientId + "-line)",
     opacity: 0.12,
-    class: "hb-line-chart-details-fill",
+    class: "hb-line-chart-details-fill"
   });
   appendSvgChild(svg, "path", {
     d: path,
@@ -3970,40 +2684,31 @@ export function renderLineChartDetails(component, context) {
     "stroke-width": 2.4,
     pathLength: 100,
     "vector-effect": "non-scaling-stroke",
-    class: "hb-line-chart-details-line",
+    class: "hb-line-chart-details-line"
   });
   const leadDot = appendSvgChild(svg, "circle", {
     cx: 0,
     cy: 0,
     r: 4.2,
-    class: "hb-line-chart-details-lead-dot",
+    class: "hb-line-chart-details-lead-dot"
   });
   if (context.animate !== false) {
     appendSvgChild(leadDot, "animateMotion", {
-      path: path,
+      path,
       dur: "1.1s",
       begin: ".28s",
-      fill: "freeze",
+      fill: "freeze"
     });
   }
   section.cleanupLineChartHover = () => {};
   if (context.interactive !== false) {
-    section.cleanupLineChartHover = setupLineChartHoverTooltip(
-      svg,
-      section,
-      geometry,
-      text,
-      (item) => ({
-        x: (item.x / viewWidth) * 100,
-        y: (item.y / viewHeight) * 100,
-      }),
-      component.properties?.statePrecision,
-      {
-        start: plot.left / viewWidth,
-        end: (plot.left + plot.width) / viewWidth,
-      },
-      section,
-    );
+    section.cleanupLineChartHover = setupLineChartHoverTooltip(svg, section, geometry, text, item => ({
+      x: item.x / viewWidth * 100,
+      y: item.y / viewHeight * 100
+    }), component.properties?.statePrecision, {
+      start: plot.left / viewWidth,
+      end: (plot.left + plot.width) / viewWidth
+    }, section);
   }
   return section;
 }
@@ -4024,67 +2729,51 @@ registerComponent("panel-frame", {
     const stdDeviation = Math.min(width, height) * 0.06 * glowSize;
     const edgeColor = safeCssColor(properties.edgeColor, "#d4d4d4");
     const glowColor = safeCssColor(properties.glowColor, "#ffffff");
-    const gradientId =
-      (context.renderNamespace || "renderer") +
-      "-frame-" +
-      String(component.id || "").replace(/[^a-z0-9_-]/gi, "");
+    const gradientId = (context.renderNamespace || "renderer") + "-frame-" + String(component.id || "").replace(/[^a-z0-9_-]/gi, "");
     const root = document.createElement("div");
     root.className = "hb-panel-frame-component";
     const svg = appendSvgChild(root, "svg", {
       viewBox: "0 0 " + boxWidth + " " + boxHeight,
       preserveAspectRatio: "none",
-      "aria-hidden": "true",
+      "aria-hidden": "true"
     });
     const defs = appendSvgChild(svg, "defs");
     const glassGradient = appendSvgChild(defs, "linearGradient", {
       id: gradientId + "-glass",
       x1: 0,
       y1: 0,
-      boxWidth: 1,
-      y2: 1,
+      x2: 1,
+      y2: 1
     });
     appendSvgChild(glassGradient, "stop", {
       offset: 0,
       "stop-color": glowColor,
-      "stop-opacity": Math.min(0.35, glowStrength * 0.035),
+      "stop-opacity": Math.min(0.35, glowStrength * 0.035)
     });
     appendSvgChild(glassGradient, "stop", {
       offset: 0.52,
       "stop-color": glowColor,
-      "stop-opacity": Math.min(0.12, glowStrength * 0.01),
+      "stop-opacity": Math.min(0.12, glowStrength * 0.01)
     });
     appendSvgChild(glassGradient, "stop", {
       offset: 1,
       "stop-color": glowColor,
-      "stop-opacity": Math.min(0.25, glowStrength * 0.025),
+      "stop-opacity": Math.min(0.25, glowStrength * 0.025)
     });
     const edgeGradient = appendSvgChild(defs, "linearGradient", {
       id: gradientId + "-edge",
       gradientUnits: "userSpaceOnUse",
       x1: 0,
       y1: boxHeight / 2,
-      boxWidth: boxWidth,
+      x2: boxWidth,
       y2: boxHeight / 2,
-      gradientTransform:
-        "rotate(" +
-        clampWithDefault(properties.edgeAngle, 0, 360, 45) +
-        " " +
-        boxWidth / 2 +
-        " " +
-        boxHeight / 2 +
-        ")",
+      gradientTransform: "rotate(" + clampWithDefault(properties.edgeAngle, 0, 360, 45) + " " + boxWidth / 2 + " " + boxHeight / 2 + ")"
     });
-    for (const [offset, stopOpacityOrWeight] of [
-      [0, 0.96],
-      [0.22, 0.72],
-      [0.52, 0.3],
-      [0.78, 0.66],
-      [1, 0.42],
-    ]) {
+    for (const [offset, stopOpacityOrWeight] of [[0, 0.96], [0.22, 0.72], [0.52, 0.3], [0.78, 0.66], [1, 0.42]]) {
       appendSvgChild(edgeGradient, "stop", {
-        offset: offset,
+        offset,
         "stop-color": edgeColor,
-        "stop-opacity": stopOpacityOrWeight * edgeOpacity,
+        "stop-opacity": stopOpacityOrWeight * edgeOpacity
       });
     }
     const glowGradient = appendSvgChild(defs, "linearGradient", {
@@ -4092,72 +2781,60 @@ registerComponent("panel-frame", {
       gradientUnits: "userSpaceOnUse",
       x1: 0,
       y1: boxHeight / 2,
-      boxWidth: boxWidth,
+      x2: boxWidth,
       y2: boxHeight / 2,
-      gradientTransform:
-        "rotate(" +
-        clampWithDefault(properties.glowAngle, 0, 360, 242) +
-        " " +
-        boxWidth / 2 +
-        " " +
-        boxHeight / 2 +
-        ")",
+      gradientTransform: "rotate(" + clampWithDefault(properties.glowAngle, 0, 360, 242) + " " + boxWidth / 2 + " " + boxHeight / 2 + ")"
     });
-    for (const [offset, val] of [
-      [0, 0.32],
-      [0.42, 0.09],
-      [0.72, 0.05],
-      [1, 0.22],
-    ]) {
+    for (const [offset, val] of [[0, 0.32], [0.42, 0.09], [0.72, 0.05], [1, 0.22]]) {
       appendSvgChild(glowGradient, "stop", {
-        offset: offset,
+        offset,
         "stop-color": glowColor,
-        "stop-opacity": Math.min(1, val * glowStrength),
+        "stop-opacity": Math.min(1, val * glowStrength)
       });
     }
     const clipPath = appendSvgChild(defs, "clipPath", {
-      id: gradientId + "-clip",
+      id: gradientId + "-clip"
     });
     appendSvgChild(clipPath, "rect", {
       x: halfStroke,
       y: halfStroke,
-      width: width,
-      height: height,
-      rx: rx,
+      width,
+      height,
+      rx
     });
     const blurFilter = appendSvgChild(defs, "filter", {
       id: gradientId + "-blur",
       x: "-35%",
       y: "-55%",
       width: "170%",
-      height: "210%",
+      height: "210%"
     });
     appendSvgChild(blurFilter, "feGaussianBlur", {
-      stdDeviation: stdDeviation,
+      stdDeviation
     });
     if (properties.glowVisible !== false) {
       const svgG = appendSvgChild(svg, "g", {
-        "clip-path": "url(#" + gradientId + "-clip)",
+        "clip-path": "url(#" + gradientId + "-clip)"
       });
       appendSvgChild(svgG, "rect", {
         x: halfStroke,
         y: halfStroke,
-        width: width,
-        height: height,
-        rx: rx,
-        fill: "url(#" + gradientId + "-glass)",
+        width,
+        height,
+        rx,
+        fill: "url(#" + gradientId + "-glass)"
       });
       if (glowStroke > 0 && glowStrength > 0) {
         appendSvgChild(svgG, "rect", {
           x: halfStroke,
           y: halfStroke,
-          width: width,
-          height: height,
-          rx: rx,
+          width,
+          height,
+          rx,
           fill: "none",
           stroke: "url(#" + gradientId + "-glow)",
           "stroke-width": glowStroke,
-          filter: "url(#" + gradientId + "-blur)",
+          filter: "url(#" + gradientId + "-blur)"
         });
       }
     }
@@ -4165,30 +2842,20 @@ registerComponent("panel-frame", {
       appendSvgChild(svg, "rect", {
         x: halfStroke,
         y: halfStroke,
-        width: width,
-        height: height,
-        rx: rx,
+        width,
+        height,
+        rx,
         fill: "none",
         stroke: "url(#" + gradientId + "-edge)",
-        "stroke-width": edgeWidth,
+        "stroke-width": edgeWidth
       });
     }
     const textLeft = clampWithDefault(properties.textLeft, -100, 200, 5.2);
     const textTop = clampWithDefault(properties.textTop, -100, 200, 28);
-    const mainX = (boxWidth * clampWithDefault(properties.mainTextLeft, -100, 200, textLeft)) / 100;
-    const mainY =
-      (boxHeight *
-        clampWithDefault(
-          properties.mainTextTop,
-          -100,
-          200,
-          textTop - (clampWithDefault(properties.lineGap, 0, 500, 24) / boxHeight) * 100,
-        )) /
-      100;
-    const secondaryX =
-      (boxWidth * clampWithDefault(properties.secondaryTextLeft, -100, 200, textLeft)) / 100;
-    const secondaryY =
-      (boxHeight * clampWithDefault(properties.secondaryTextTop, -100, 200, textTop)) / 100;
+    const mainX = boxWidth * clampWithDefault(properties.mainTextLeft, -100, 200, textLeft) / 100;
+    const mainY = boxHeight * clampWithDefault(properties.mainTextTop, -100, 200, textTop - clampWithDefault(properties.lineGap, 0, 500, 24) / boxHeight * 100) / 100;
+    const secondaryX = boxWidth * clampWithDefault(properties.secondaryTextLeft, -100, 200, textLeft) / 100;
+    const secondaryY = boxHeight * clampWithDefault(properties.secondaryTextTop, -100, 200, textTop) / 100;
     const mainOpacity = clampWithDefault(properties.mainOpacity, 0, 1, 0.72);
     const secondaryOpacity = clampWithDefault(properties.secondaryOpacity, 0, 1, 0.36);
     if (properties.mainTextVisible !== false) {
@@ -4201,7 +2868,7 @@ registerComponent("panel-frame", {
         "font-family": "PingFang SC,Noto Sans SC,Microsoft YaHei,sans-serif",
         "font-size": clampWithDefault(properties.mainSize, 8, 500, 30),
         "font-weight": 300,
-        "letter-spacing": clampWithDefault(properties.mainSpacing, -20, 100, 2),
+        "letter-spacing": clampWithDefault(properties.mainSpacing, -20, 100, 2)
       });
       const clamped = clampWithDefault(properties.mainWeight, 0, 3, 0);
       if (clamped > 0) {
@@ -4209,10 +2876,8 @@ registerComponent("panel-frame", {
           stroke: safeCssColor(properties.mainColor, "#ffffff"),
           "stroke-opacity": mainOpacity,
           "stroke-width": clamped,
-          "paint-order": "stroke fill",
-        }).forEach(([attrName, attrValue]) =>
-          element.setAttribute(attrName, attrValue),
-        );
+          "paint-order": "stroke fill"
+        }).forEach(([attrName, attrValue]) => element.setAttribute(attrName, attrValue));
       }
       element.textContent = String(properties.mainText || "");
     }
@@ -4226,7 +2891,7 @@ registerComponent("panel-frame", {
         "font-family": "Helvetica Neue,Arial,sans-serif",
         "font-size": clampWithDefault(properties.secondarySize, 6, 500, 15),
         "font-weight": 300,
-        "letter-spacing": clampWithDefault(properties.secondarySpacing, -20, 100, 2.1),
+        "letter-spacing": clampWithDefault(properties.secondarySpacing, -20, 100, 2.1)
       });
       const clamped = clampWithDefault(properties.secondaryWeight, 0, 3, 0);
       if (clamped > 0) {
@@ -4234,88 +2899,43 @@ registerComponent("panel-frame", {
           stroke: safeCssColor(properties.secondaryColor, "#ffffff"),
           "stroke-opacity": secondaryOpacity,
           "stroke-width": clamped,
-          "paint-order": "stroke fill",
-        }).forEach(([attrName, attrValue]) =>
-          element.setAttribute(attrName, attrValue),
-        );
+          "paint-order": "stroke fill"
+        }).forEach(([attrName, attrValue]) => element.setAttribute(attrName, attrValue));
       }
       element.textContent = String(properties.secondaryText || "");
     }
     return root;
-  },
+  }
 });
 export function componentContentUnitsPx(component, context) {
-  const count = Math.max(
-    0.01,
-    Number(context?.document?.canvas?.componentScale || 1),
-  );
+  const count = Math.max(0.01, Number(context?.document?.canvas?.componentScale || 1));
   return {
     width: Math.max(1, Number(component?.position?.width || 100)) / count / 100,
-    height: Math.max(1, Number(component?.position?.height || 100)) / count / 100,
+    height: Math.max(1, Number(component?.position?.height || 100)) / count / 100
   };
 }
 export function navigationContentUnitPx(component, context) {
-  return (componentContentUnitsPx(component, context).height * 100) / 64.36;
+  return componentContentUnitsPx(component, context).height * 100 / 64.36;
 }
 registerComponent("navigation-button", {
   render(component, context) {
     const properties = component.properties || {};
-    const targetPage =
-      ["tap", "doubleTap", "hold"]
-        .map((actionOrIconUrl) => component.actions?.[actionOrIconUrl])
-        .find((item) => item?.type === "navigate" && item.target)
-        ?.target ||
-      properties.targetPage ||
-      "";
+    const targetPage = ["tap", "doubleTap", "hold"].map(actionOrIconUrl => component.actions?.[actionOrIconUrl]).find(item => item?.type === "navigate" && item.target)?.target || properties.targetPage || "";
     const entityId = component.bindings?.entity?.entityId || "";
-    const previewState =
-      context.editable && ["off", "on"].includes(context.previewState)
-        ? context.previewState
-        : "auto";
-    const entityActive =
-      !!entityId &&
-      !!componentIsActive(component, entityId, context.states?.get(entityId), context);
+    const previewState = context.editable && ["off", "on"].includes(context.previewState) ? context.previewState : "auto";
+    const entityActive = !!entityId && !!componentIsActive(component, entityId, context.states?.get(entityId), context);
     const isActive = navigationButtonIsActive({
-      targetPage: targetPage,
+      targetPage,
       currentPagePath: context.page?.path || "",
-      entityId: entityId,
-      entityActive: entityActive,
-      previewState: previewState,
+      entityId,
+      entityActive,
+      previewState
     });
-    const textOpacity = clampWithDefault(
-      isActive
-        ? (properties.textActiveOpacity ?? properties.activeOpacity)
-        : (properties.textIdleOpacity ?? properties.idleOpacity),
-      0,
-      1,
-      isActive ? 0.96 : 0.3,
-    );
-    const iconOpacity = clampWithDefault(
-      isActive
-        ? (properties.iconActiveOpacity ?? properties.activeOpacity)
-        : (properties.iconIdleOpacity ?? properties.idleOpacity),
-      0,
-      1,
-      isActive ? 0.96 : 0.3,
-    );
-    const frameOpacity = clampWithDefault(
-      isActive ? properties.frameActiveOpacity : properties.frameIdleOpacity,
-      0,
-      1,
-      isActive ? 0.98 : 0.48,
-    );
-    const glowStrength = clampWithDefault(
-      isActive ? properties.glowActiveStrength : properties.glowIdleStrength,
-      0,
-      5,
-      isActive ? 2.2 : 0.5,
-    );
-    const glowSize = clampWithDefault(
-      isActive ? properties.glowActiveSize : properties.glowIdleSize,
-      0,
-      3,
-      isActive ? 3 : 1.5,
-    );
+    const textOpacity = clampWithDefault(isActive ? properties.textActiveOpacity ?? properties.activeOpacity : properties.textIdleOpacity ?? properties.idleOpacity, 0, 1, isActive ? 0.96 : 0.3);
+    const iconOpacity = clampWithDefault(isActive ? properties.iconActiveOpacity ?? properties.activeOpacity : properties.iconIdleOpacity ?? properties.idleOpacity, 0, 1, isActive ? 0.96 : 0.3);
+    const frameOpacity = clampWithDefault(isActive ? properties.frameActiveOpacity : properties.frameIdleOpacity, 0, 1, isActive ? 0.98 : 0.48);
+    const glowStrength = clampWithDefault(isActive ? properties.glowActiveStrength : properties.glowIdleStrength, 0, 5, isActive ? 2.2 : 0.5);
+    const glowSize = clampWithDefault(isActive ? properties.glowActiveSize : properties.glowIdleSize, 0, 3, isActive ? 3 : 1.5);
     const mainColor = safeCssColor(properties.mainColor, "#e9edf0");
     const secondaryColor = safeCssColor(properties.secondaryColor, "#e9edf0");
     const lineGapUnit = 100 / 64.36;
@@ -4331,34 +2951,13 @@ registerComponent("navigation-button", {
     root.dataset.targetPage = targetPage;
     root.style.setProperty("--navigation-text-opacity", String(textOpacity));
     root.style.setProperty("--navigation-icon-opacity", String(iconOpacity));
-    root.style.setProperty(
-      "--navigation-icon-size",
-      clampWithDefault(properties.iconSize, 1, 500, 50) * contentUnit + "px",
-    );
-    root.style.setProperty(
-      "--navigation-icon-left",
-      clampWithDefault(properties.iconLeft, -100, 200, 14) + "%",
-    );
-    root.style.setProperty(
-      "--navigation-icon-top",
-      clampWithDefault(properties.iconTop, -100, 200, 50) + "%",
-    );
-    root.style.setProperty(
-      "--navigation-main-size",
-      clampWithDefault(properties.mainSize, 1, 500, 30) * contentUnit + "px",
-    );
-    root.style.setProperty(
-      "--navigation-secondary-size",
-      clampWithDefault(properties.secondarySize, 1, 500, 11) * contentUnit + "px",
-    );
-    root.style.setProperty(
-      "--navigation-main-spacing",
-      clampWithDefault(properties.mainSpacing, -20, 100, 8) * contentUnit + "px",
-    );
-    root.style.setProperty(
-      "--navigation-secondary-spacing",
-      clampWithDefault(properties.secondarySpacing, -20, 100, 3) * contentUnit + "px",
-    );
+    root.style.setProperty("--navigation-icon-size", clampWithDefault(properties.iconSize, 1, 500, 50) * contentUnit + "px");
+    root.style.setProperty("--navigation-icon-left", clampWithDefault(properties.iconLeft, -100, 200, 14) + "%");
+    root.style.setProperty("--navigation-icon-top", clampWithDefault(properties.iconTop, -100, 200, 50) + "%");
+    root.style.setProperty("--navigation-main-size", clampWithDefault(properties.mainSize, 1, 500, 30) * contentUnit + "px");
+    root.style.setProperty("--navigation-secondary-size", clampWithDefault(properties.secondarySize, 1, 500, 11) * contentUnit + "px");
+    root.style.setProperty("--navigation-main-spacing", clampWithDefault(properties.mainSpacing, -20, 100, 8) * contentUnit + "px");
+    root.style.setProperty("--navigation-secondary-spacing", clampWithDefault(properties.secondarySpacing, -20, 100, 3) * contentUnit + "px");
     root.style.setProperty("--navigation-main-left", mainLeft + "%");
     root.style.setProperty("--navigation-secondary-left", secondaryLeft + "%");
     root.style.setProperty("--navigation-main-top", mainTop + "%");
@@ -4373,8 +2972,8 @@ registerComponent("navigation-button", {
         icon.className = "hb-navigation-icon";
         icon.setAttribute("aria-hidden", "true");
         icon.style.backgroundColor = safeCssColor(properties.iconColor, "#e9edf0");
-        icon.style.maskImage = 'url("' + iconUrl + '")';
-        icon.style.webkitMaskImage = 'url("' + iconUrl + '")';
+        icon.style.maskImage = "url(\"" + iconUrl + "\")";
+        icon.style.webkitMaskImage = "url(\"" + iconUrl + "\")";
         root.append(icon);
       }
     }
@@ -4385,8 +2984,7 @@ registerComponent("navigation-button", {
       element.textContent = properties.mainText || "页面导航";
       element.style.color = mainColor;
       element.style.webkitTextStrokeColor = mainColor;
-      element.style.webkitTextStrokeWidth =
-        clampWithDefault(properties.mainWeight, 0, 3, 0) * contentUnit + "px";
+      element.style.webkitTextStrokeWidth = clampWithDefault(properties.mainWeight, 0, 3, 0) * contentUnit + "px";
       textWrap.append(element);
     }
     if (properties.secondaryTextVisible !== false) {
@@ -4394,13 +2992,12 @@ registerComponent("navigation-button", {
       element.textContent = properties.secondaryText || "NAVIGATION";
       element.style.color = secondaryColor;
       element.style.webkitTextStrokeColor = secondaryColor;
-      element.style.webkitTextStrokeWidth =
-        clampWithDefault(properties.secondaryWeight, 0, 3, 0) * contentUnit + "px";
+      element.style.webkitTextStrokeWidth = clampWithDefault(properties.secondaryWeight, 0, 3, 0) * contentUnit + "px";
       textWrap.append(element);
     }
     if (textWrap.childElementCount) {
       root.append(textWrap);
     }
     return root;
-  },
+  }
 });

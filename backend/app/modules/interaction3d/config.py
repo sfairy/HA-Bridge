@@ -11,18 +11,36 @@ PROPERTY_KEYS = frozenset(
         'label',
         'camera',
         'lights',
+        'devices',
         'sceneId',
+        'floorGap',
+        'security',
         'autoRotate',
         'layoutMode',
+        'navigation',
+        'environment',
         'interaction',
         'renderScale',
         'baseLighting',
+        'floorCameras',
+        'floorNumbers',
         'instanceName',
+        'lightingMode',
         'popupOpacity',
+        'behaviorScope',
+        'idleExitFocus',
         'idleHideIcons',
+        'pageBehaviors',
         'floorSelection',
+        'pageSaturation',
+        'pageDimStrength',
+        'focusDimStrength',
+        'groundReflection',
         'backgroundVisible',
+        'motionRenderScale',
+        'lightRegionOverrides',
         'focusVignetteStrength',
+        'hideIconsWhileRotating',
     }
 )
 LIGHT_KEYS = frozenset(
@@ -80,7 +98,7 @@ LIGHTING_BOUNDS = {
 
 def validate_config(properties) -> None:
     def fail() -> None:
-        raise HTTPException(422, detail='3D 交互配置无效，请检查户型、灯光及图标设置。')
+        raise HTTPException(422, detail='3D 交互配置无效，请检查户型、灯光、环境及图标设置。')
 
     def number(value, low, high) -> bool:
         if isinstance(value, bool) or not isinstance(value, (int, float)):
@@ -273,3 +291,124 @@ def validate_config(properties) -> None:
             elif not number(effect_range, 0, 10000):
                 fail()
     validate_camera(properties.get('camera'), allow_legacy_interaction=True)
+
+    # Extended 0.5.0 surfaces with nested contract checks.
+    security = properties.get('security', {})
+    if security not in (None, {}):
+        if not isinstance(security, dict) or set(security) - {'presenceSensors'}:
+            fail()
+        people = security.get('presenceSensors', [])
+        if not isinstance(people, list) or len(people) > 128:
+            fail()
+        presence_ids = set()
+        for person in people:
+            if not isinstance(person, dict):
+                fail()
+            person_id = person.get('id')
+            if not isinstance(person_id, str) or not person_id or person_id in presence_ids or len(person_id) > 128:
+                fail()
+            presence_ids.add(person_id)
+            for key in ('entityId', 'label', 'floorId', 'modelId'):
+                if key in person and not text(person[key], 255 if key == 'entityId' else 128):
+                    fail()
+
+    environment = properties.get('environment', {})
+    if environment not in (None, {}):
+        if not isinstance(environment, dict) or set(environment) - {
+            'curtains',
+            'dimStrength',
+            'airConditioners',
+        }:
+            fail()
+        if 'dimStrength' in environment and not number(environment['dimStrength'], 0, 100):
+            fail()
+        for list_key in ('curtains', 'airConditioners'):
+            items = environment.get(list_key, [])
+            if items in (None, []):
+                continue
+            if not isinstance(items, list) or len(items) > 128:
+                fail()
+            item_ids = set()
+            for item in items:
+                if not isinstance(item, dict):
+                    fail()
+                item_id = item.get('id')
+                if not isinstance(item_id, str) or not item_id or item_id in item_ids or len(item_id) > 128:
+                    fail()
+                item_ids.add(item_id)
+                for key in ('entityId', 'label', 'floorId', 'modelId'):
+                    if key in item and not text(item[key], 255 if key == 'entityId' else 128):
+                        fail()
+
+    devices = properties.get('devices', {})
+    if devices not in (None, {}):
+        if not isinstance(devices, dict) or set(devices) - {'nas', 'vacuums', 'televisions'}:
+            fail()
+        for list_key in ('nas', 'vacuums', 'televisions'):
+            items = devices.get(list_key, [])
+            if items in (None, []):
+                continue
+            if not isinstance(items, list) or len(items) > 128:
+                fail()
+            item_ids = set()
+            for item in items:
+                if not isinstance(item, dict):
+                    fail()
+                item_id = item.get('id')
+                if not isinstance(item_id, str) or not item_id or item_id in item_ids or len(item_id) > 128:
+                    fail()
+                item_ids.add(item_id)
+                for key in ('entityId', 'powerEntityId', 'label', 'floorId', 'modelId', 'statusSource'):
+                    if key in item and item[key] is not None and not isinstance(item[key], (str, dict)):
+                        fail()
+                    if key in item and isinstance(item[key], str) and not text(item[key], 255 if 'Entity' in key else 128):
+                        fail()
+
+    page_behaviors = properties.get('pageBehaviors', {})
+    if page_behaviors not in (None, {}):
+        if not isinstance(page_behaviors, dict):
+            fail()
+        allowed_pages = frozenset({'light', 'vacuum', 'devices', 'overview', 'security', 'environment'})
+        if set(page_behaviors) - allowed_pages:
+            fail()
+        for value in page_behaviors.values():
+            if value is not None and not isinstance(value, dict):
+                fail()
+
+    for key in (
+        'navigation',
+        'groundReflection',
+        'floorCameras',
+        'floorNumbers',
+        'lightRegionOverrides',
+        'pageDimStrength',
+        'idleExitFocus',
+    ):
+        value = properties.get(key)
+        if value in (None, {}, []):
+            continue
+        if not isinstance(value, (dict, list)):
+            fail()
+        if isinstance(value, list) and len(value) > 256:
+            fail()
+        if isinstance(value, dict) and len(value) > 256:
+            fail()
+    for key in ('floorGap', 'pageSaturation', 'focusDimStrength'):
+        if key in properties and properties[key] is not None and not number(properties[key], -10000, 10000):
+            fail()
+    if 'motionRenderScale' in properties and properties['motionRenderScale'] is not None:
+        if not number(properties['motionRenderScale'], 0.25, 1):
+            raise HTTPException(422, detail='3D 转动分辨率无效')
+    if 'lightingMode' in properties and properties['lightingMode'] not in (
+        None,
+        '',
+        'auto',
+        'manual',
+        'region',
+        'standard',
+    ):
+        fail()
+    if 'behaviorScope' in properties and not text(properties['behaviorScope']):
+        fail()
+    if 'hideIconsWhileRotating' in properties and not isinstance(properties['hideIconsWhileRotating'], bool):
+        fail()

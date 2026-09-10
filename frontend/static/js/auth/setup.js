@@ -1,7 +1,7 @@
 const form = document.querySelector("#setup-form");
 const message = document.querySelector("#message");
 const submit = form.querySelector('button[type="submit"]');
-form.addEventListener("submit", async (event) => {
+form.addEventListener("submit", async event => {
   event.preventDefault();
   message.textContent = "";
   message.hidden = true;
@@ -17,18 +17,18 @@ form.addEventListener("submit", async (event) => {
   try {
     const response = await fetch("/api/v1/setup/admin", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json"
+      },
       body: JSON.stringify({
         username: String(data.get("username") || ""),
         password,
-        passwordConfirmation,
-      }),
+        passwordConfirmation
+      })
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(
-        payload.detail?.[0]?.msg || payload.detail || "初始化失败。",
-      );
+      throw new Error(payload.detail?.[0]?.msg || payload.detail || "初始化失败。");
     }
     window.location.assign("/");
   } catch (error) {

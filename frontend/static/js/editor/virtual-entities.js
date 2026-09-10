@@ -3,13 +3,7 @@ export const ICON_VISIBILITY_VIRTUAL_KIND = "icon_visibility";
 export const ICON_VISIBILITY_VIRTUAL_NAME = "图标·显示隐藏";
 export const ICON_VISIBILITY_VIRTUAL_SCOPE = "current_page";
 export function iconVisibilityVirtualEntityId() {
-  return (
-    "" +
-    VIRTUAL_ENTITY_PREFIX +
-    ICON_VISIBILITY_VIRTUAL_KIND +
-    "." +
-    ICON_VISIBILITY_VIRTUAL_SCOPE
-  );
+  return "" + VIRTUAL_ENTITY_PREFIX + ICON_VISIBILITY_VIRTUAL_KIND + "." + ICON_VISIBILITY_VIRTUAL_SCOPE;
 }
 export function parseVirtualEntityId(entityId) {
   const id = String(entityId || "");
@@ -25,7 +19,7 @@ export function parseVirtualEntityId(entityId) {
   if (kind && scope) {
     return {
       kind,
-      scope,
+      scope
     };
   } else {
     return null;
@@ -42,6 +36,6 @@ export function createIconVisibilityVirtualEntity(pagePath = "") {
     originalName: ICON_VISIBILITY_VIRTUAL_NAME,
     virtual: true,
     virtualKind: ICON_VISIBILITY_VIRTUAL_KIND,
-    pagePath: String(pagePath || ""),
+    pagePath: String(pagePath || "")
   };
 }

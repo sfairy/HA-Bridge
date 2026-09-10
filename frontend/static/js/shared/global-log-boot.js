@@ -3,12 +3,10 @@ async function api(path, options = {}) {
   const response = await fetch("/api/v1" + path, {
     cache: "no-store",
     ...options,
-    headers: options.body
-      ? {
-          "Content-Type": "application/json",
-          ...(options.headers || {}),
-        }
-      : options.headers,
+    headers: options.body ? {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    } : options.headers
   });
   const text = response.status === 204 ? "" : await response.text();
   let payload = null;
@@ -27,14 +25,10 @@ async function api(path, options = {}) {
   }
   if (!response.ok) {
     const detail = payload?.detail;
-    throw new Error(
-      typeof detail == "string"
-        ? detail
-        : detail?.message || "请求失败（HTTP " + response.status + "）",
-    );
+    throw new Error(typeof detail == "string" ? detail : detail?.message || "请求失败（HTTP " + response.status + "）");
   }
   return payload;
 }
 setupGlobalLog({
-  api,
+  api
 });

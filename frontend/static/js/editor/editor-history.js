@@ -1,114 +1,122 @@
-const COMPONENT_OWN_KEYS = new Set([
-  "actions",
-  "bindings",
-  "position",
-  "properties",
-  "style",
-]);
-export function editorComponentEntries(document) {
-  const entries = new Map();
-  const order = [];
-  const visit = (component, scope, pagePath, parentId = null) => {
-    if (!component?.id) {
-      return;
+const COMPONENT_OWN_KEYS = new Set(["actions", "bindings", "position", "properties", "style"]);
+export function createRecoveryWriter(document, {
+  delay: arg7 = 200,
+  setTimer: arg8 = setTimeout,
+  clearTimer: arg9 = clearTimeout
+} = {}) {
+  let entries = null;
+  let order = null;
+  const flush = () => {
+    if (order !== null) {
+      arg9(order);
     }
-    const componentId = String(component.id);
-    entries.set(componentId, {
-      component,
-      scope,
-      pagePath,
-      parentId,
-    });
-    order.push(
-      scope +
-        ":" +
-        (pagePath || "") +
-        ":" +
-        (parentId || "") +
-        ":" +
-        componentId,
-    );
-    for (const child of component.children || []) {
-      visit(child, scope, pagePath, componentId);
+    order = null;
+    const componentId = entries;
+    entries = null;
+    if (componentId) {
+      document(componentId);
     }
   };
-  for (const component of document?.sharedComponents || []) {
-    visit(component, "shared", "", null);
+  return {
+    schedule(projectId) {
+      if (entries && entries.projectId !== projectId.projectId) {
+        flush();
+      }
+      entries = projectId;
+      if (order === null) {
+        order = arg8(flush, arg7);
+      }
+    },
+    flush,
+    cancel(arg5) {
+      if (!!entries && entries.projectId === arg5) {
+        entries = null;
+        if (order !== null) {
+          arg9(order);
+        }
+        order = null;
+      }
+    }
+  };
+}
+export function editorComponentEntries(component) {
+  const snapshot = new Map();
+  const push = [];
+  const value8 = (id, scope, pagePath, parentId = null) => {
+    if (!id?.id) {
+      return;
+    }
+    const value3 = String(id.id);
+    snapshot.set(value3, {
+      component: id,
+      scope,
+      pagePath,
+      parentId
+    });
+    push.push(scope + ":" + (pagePath || "") + ":" + (parentId || "") + ":" + value3);
+    for (const value2 of id.children || []) {
+      value8(value2, scope, pagePath, value3);
+    }
+  };
+  for (const value5 of component?.sharedComponents || []) {
+    value8(value5, "shared", "", null);
   }
-  for (const page of document?.pages || []) {
-    for (const component of page.components || []) {
-      visit(component, "page", page.path, null);
+  for (const components of component?.pages || []) {
+    for (const value4 of components.components || []) {
+      value8(value4, "page", components.path, null);
     }
   }
   return {
-    entries,
-    order,
+    entries: snapshot,
+    order: push
   };
 }
-export function editorComponentStructure(component) {
-  const snapshot = {};
-  for (const [key, field] of Object.entries(component || {})) {
-    if (!COMPONENT_OWN_KEYS.has(key) && key !== "children") {
-      snapshot[key] = field;
+export function editorComponentStructure(document) {
+  const frame = {};
+  for (const [value6, value7] of Object.entries(document || {})) {
+    if (!COMPONENT_OWN_KEYS.has(value6) && value6 !== "children") {
+      frame[value6] = value7;
     }
   }
-  snapshot.children = (component?.children || []).map((child) =>
-    editorComponentStructure(child),
-  );
-  return JSON.stringify(snapshot);
+  frame.children = (document?.children || []).map(arg4 => editorComponentStructure(arg4));
+  return JSON.stringify(frame);
 }
 export function editorDocumentFrameSignature(document) {
-  const frame = structuredClone(document || {});
-  frame.sharedComponents = [];
-  for (const page of frame.pages || []) {
-    page.components = [];
+  const normalizeAction = structuredClone(document || {});
+  normalizeAction.sharedComponents = [];
+  for (const components2 of normalizeAction.pages || []) {
+    components2.components = [];
   }
-  return documentSignature(frame);
+  return documentSignature(normalizeAction);
 }
-export function documentSignature(document) {
-  const normalizeAction = (action) => {
-    if (!action || !action.type || action.type === "none") {
+export function documentSignature(prefix) {
+  const value9 = type => {
+    if (!type || !type.type || type.type === "none") {
       return null;
     }
-    const next = {
-      ...action,
+    const data = {
+      ...type
     };
-    if (!next.data || !Object.keys(next.data).length) {
-      delete next.data;
+    if (!data.data || !Object.keys(data.data).length) {
+      delete data.data;
     }
-    if (next.type !== "navigate") {
-      delete next.target;
+    if (data.type !== "navigate") {
+      delete data.target;
     }
-    delete next.domain;
-    delete next.service;
-    return stableValue(next);
+    delete data.domain;
+    delete data.service;
+    return value10(data);
   };
-  const stableValue = (value, key = "") =>
-    Array.isArray(value)
-      ? value.map((item) => stableValue(item))
-      : value && typeof value == "object"
-        ? Object.fromEntries(
-            key === "actions"
-              ? Object.keys(value)
-                  .sort()
-                  .flatMap((actionKey) => {
-                    const action = normalizeAction(value[actionKey]);
-                    if (action) {
-                      return [[actionKey, action]];
-                    } else {
-                      return [];
-                    }
-                  })
-              : Object.keys(value)
-                  .sort()
-                  .map((childKey) => [
-                    childKey,
-                    stableValue(value[childKey], childKey),
-                  ]),
-          )
-        : value;
-  return JSON.stringify(stableValue(document || null));
+  const value10 = (map, arg6 = "") => Array.isArray(map) ? map.map(arg3 => value10(arg3)) : map && typeof map == "object" ? Object.fromEntries(arg6 === "actions" ? Object.keys(map).sort().flatMap(arg => {
+    const value = value9(map[arg]);
+    if (value) {
+      return [[arg, value]];
+    } else {
+      return [];
+    }
+  }) : Object.keys(map).sort().map(arg2 => [arg2, value10(map[arg2], arg2)])) : map;
+  return JSON.stringify(value10(prefix || null));
 }
-export function recoveryStorageKey(prefix, suffix) {
-  return "" + prefix + suffix;
+export function recoveryStorageKey(arg10, arg11) {
+  return "" + arg10 + arg11;
 }

@@ -5,7 +5,7 @@ function loginDestination() {
   const next = new URLSearchParams(window.location.search).get("next") || "/";
   return next.startsWith("/") && !next.startsWith("//") ? next : "/";
 }
-form.addEventListener("submit", async (event) => {
+form.addEventListener("submit", async event => {
   event.preventDefault();
   message.textContent = "";
   message.hidden = true;
@@ -14,11 +14,13 @@ form.addEventListener("submit", async (event) => {
   try {
     const response = await fetch("/api/v1/auth/login", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json"
+      },
       body: JSON.stringify({
         username: String(data.get("username") || ""),
-        password: String(data.get("password") || ""),
-      }),
+        password: String(data.get("password") || "")
+      })
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {

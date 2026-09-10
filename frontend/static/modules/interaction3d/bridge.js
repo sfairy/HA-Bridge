@@ -1,5 +1,5 @@
 import { createAccessMonitor } from "./access-monitor.js?v=20260905-interaction3d-v1-20260905-i3d-polish-v1-20260906-access-state-v2";
-import { createInteraction3dCover } from "./cover.js?v=20260905-interaction3d-cover-v1";
+import { createInteraction3dCover } from "./cover.js?v=20260905-interaction3d-cover-v1-20260908-access-lock-v1";
 import { createInteraction3dFocusLayout } from "./focus-layout.js?v=20260906-i3d-complete-v6";
 export async function requestInteraction3dAccess() {
   const controller = new AbortController();
@@ -8,20 +8,20 @@ export async function requestInteraction3dAccess() {
     const response = await fetch("/api/v1/modules/interaction3d/access", {
       cache: "no-store",
       credentials: "same-origin",
-      signal: controller.signal,
+      signal: controller.signal
     });
     if (!response.ok) {
-      const error = new Error(
-        response.status === 403
-          ? "3D 交互授权不可用，请在授权信息中查看。"
-          : response.status === 401
-            ? "登录状态已失效，请重新登录。"
-            : "暂时无法验证 3D 交互授权，请稍候重试。",
-      );
+      const error = new Error(response.status === 403 ? "3D 交互授权不可用，请在授权信息中查看。" : response.status === 401 ? "登录状态已失效，请重新登录。" : "暂时无法验证 3D 交互授权，请稍候重试。");
       error.status = response.status;
       throw error;
     }
-    return await response.json();
+    const allowed = await response.json();
+    if (allowed?.allowed !== true || !Number.isFinite(Number(allowed.validForSeconds)) || Number(allowed.validForSeconds) <= 0) {
+      const status = new Error("暂时无法验证 3D 交互授权，请稍候重试。");
+      status.status = allowed?.allowed === false ? 403 : 502;
+      throw status;
+    }
+    return allowed;
   } finally {
     clearTimeout(timeoutId);
   }
@@ -46,7 +46,7 @@ export function waitInteraction3dEditorView(componentId) {
         viewWaiters.delete(componentId);
       }
     };
-    const onNotify = (error) => {
+    const onNotify = error => {
       const view = editorViews.get(componentId);
       if (error) {
         cleanup();
@@ -72,26 +72,19 @@ export function cancelOtherInteraction3dViews(keepId) {
     if (componentId !== keepId && view.viewEditing) {
       view.setViewEditing(false);
     }
+    if (componentId !== keepId && view.rangeEditing) {
+      view.closeRangeEditor?.();
+    }
   }
 }
 function getAccessMonitor() {
-  return (
-    accessMonitor ||
-    ((accessMonitor = createAccessMonitor({
-      requestGrant: requestInteraction3dAccess,
-    })),
-    document.addEventListener("visibilitychange", () =>
-      document.hidden ? accessMonitor.suspend() : accessMonitor.resume(),
-    ),
-    window.addEventListener("pagehide", () => accessMonitor.suspend()),
-    window.addEventListener("pageshow", () => {
-      if (!document.hidden) {
-        accessMonitor.resume();
-      }
-    }),
-    document.hidden && accessMonitor.suspend(),
-    accessMonitor)
-  );
+  return accessMonitor || (accessMonitor = createAccessMonitor({
+    requestGrant: requestInteraction3dAccess
+  }), document.addEventListener("visibilitychange", () => document.hidden ? accessMonitor.suspend() : accessMonitor.resume()), window.addEventListener("pagehide", () => accessMonitor.suspend()), window.addEventListener("pageshow", () => {
+    if (!document.hidden) {
+      accessMonitor.resume();
+    }
+  }), document.hidden && accessMonitor.suspend(), accessMonitor);
 }
 export function subscribeInteraction3dAccess(listener) {
   return getAccessMonitor().subscribe(listener);
@@ -107,17 +100,11 @@ export function renderInteraction3d(component, context = {}) {
   let runtimeView;
   let stylesheetLink;
   const focusLayout = createInteraction3dFocusLayout(host, context);
-  host.classList.toggle(
-    "is-background-hidden",
-    component.properties?.backgroundVisible === false,
-  );
+  host.classList.toggle("is-background-hidden", component.properties?.backgroundVisible === false);
   host.updateInteraction3d = (nextComponent, documentRef) => {
     component = nextComponent;
     context.document = documentRef;
-    host.classList.toggle(
-      "is-background-hidden",
-      component.properties?.backgroundVisible === false,
-    );
+    host.classList.toggle("is-background-hidden", component.properties?.backgroundVisible === false);
     runtimeView?.update(component.properties || {});
     focusLayout.refresh();
   };
@@ -136,10 +123,13 @@ export function renderInteraction3d(component, context = {}) {
     runtimeView = null;
     stylesheetLink?.remove();
     stylesheetLink = null;
-    host.replaceChildren(createInteraction3dCover());
+    if (host.dataset.access !== "locked") {
+      host.replaceChildren(createInteraction3dCover());
+    }
     host.dataset.access = "locked";
+    host.setAttribute("aria-busy", "false");
   }
-  const unsubscribeAccess = subscribeInteraction3dAccess(async (grant) => {
+  const unsubscribeAccess = subscribeInteraction3dAccess(async grant => {
     if (disposed) {
       return;
     }
@@ -148,16 +138,20 @@ export function renderInteraction3d(component, context = {}) {
         return lockView(grant.message);
       }
       runtimeView?.setAuthorized(false);
+      if (host.dataset.access === "locked") {
+        host.setAttribute("aria-busy", grant.status === "checking" ? "true" : "false");
+        return;
+      }
       host.dataset.access = "pending";
       host.setAttribute("aria-busy", "true");
       if (!mounted) {
         loadGeneration += 1;
         loading = false;
-        const pending = document.createElement("div");
-        pending.className = "i3d-access-pending";
-        pending.setAttribute("role", "status");
-        pending.setAttribute("aria-label", "正在准备 3D 户型");
-        host.replaceChildren(pending);
+        const setAttribute = document.createElement("div");
+        setAttribute.className = "i3d-access-pending";
+        setAttribute.setAttribute("role", "status");
+        setAttribute.setAttribute("aria-label", "正在准备 3D 户型");
+        host.replaceChildren(setAttribute);
       }
       return;
     }
@@ -176,16 +170,13 @@ export function renderInteraction3d(component, context = {}) {
     loading = true;
     const generation = ++loadGeneration;
     try {
-      const runtime = await import(
-        "/api/v1/modules/interaction3d/runtime.js?v=20260907-layout-v2-20260905-interaction3d-v1-20260905-i3d-lighting-v1-20260906-i3d-preload-v1-20260906-i3d-marker-v1-20260907-coherence-v1"
-      );
+      const runtime = await import("/api/v1/modules/interaction3d/runtime.js?v=20260909-preview-sleep-v1");
       if (disposed || generation !== loadGeneration || document.hidden) {
         return;
       }
       stylesheetLink = document.createElement("link");
       stylesheetLink.rel = "stylesheet";
-      stylesheetLink.href =
-        "/api/v1/modules/interaction3d/runtime.css?v=20260906-i3d-complete-v6";
+      stylesheetLink.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15";
       host.append(stylesheetLink);
       const mountRoot = document.createElement("div");
       host.replaceChildren(stylesheetLink, mountRoot);
@@ -197,12 +188,12 @@ export function renderInteraction3d(component, context = {}) {
             notifyViewWaiters(component.id);
           }
         },
-        onLoadError: (error) => {
+        onLoadError: error => {
           if (context.editable) {
             notifyViewWaiters(component.id, error);
           }
         },
-        onFocusChange: (focused) => focusLayout.setActive(focused),
+        onFocusChange: focused => focusLayout.setActive(focused)
       });
       if (context.editable) {
         editorViews.set(component.id, runtimeView);

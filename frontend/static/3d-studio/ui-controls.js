@@ -1,8 +1,4 @@
-export function syncControlValue(
-  control,
-  value,
-  activeElement = globalThis.document?.activeElement,
-) {
+export function syncControlValue(control, value, activeElement = globalThis.document?.activeElement) {
   if (!control || activeElement === control) {
     return false;
   }

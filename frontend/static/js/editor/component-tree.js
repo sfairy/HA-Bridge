@@ -18,7 +18,7 @@ export function findComponent(document, componentId) {
   if (shared) {
     return {
       component: shared,
-      scope: "shared",
+      scope: "shared"
     };
   }
   for (const page of document.pages || []) {
@@ -27,7 +27,7 @@ export function findComponent(document, componentId) {
       return {
         component: pageComponent,
         scope: "page",
-        page,
+        page
       };
     }
   }
@@ -47,7 +47,7 @@ export function findComponentLocation(document, componentId) {
           index,
           scope,
           page,
-          root,
+          root
         };
       }
       const nested = search(component.children, scope, page, false);

@@ -13,12 +13,10 @@ const WEATHER_ICON_MAP = {
   windy: ["wind", "大风"],
   "windy-variant": ["wind", "有风"],
   hail: ["hail", "冰雹"],
-  exceptional: ["code-red", "异常天气"],
+  exceptional: ["code-red", "异常天气"]
 };
 export function weatherVisual(condition, sunState = "") {
-  let conditionKey = String(condition || "")
-    .trim()
-    .toLowerCase();
+  let conditionKey = String(condition || "").trim().toLowerCase();
   const belowHorizon = sunState === "below_horizon";
   if (belowHorizon && conditionKey === "sunny") {
     conditionKey = "clear-night";
@@ -26,14 +24,7 @@ export function weatherVisual(condition, sunState = "") {
   if (belowHorizon && conditionKey === "partlycloudy") {
     return ["partly-cloudy-night", "多云"];
   } else {
-    return (
-      WEATHER_ICON_MAP[conditionKey] || [
-        "code-red",
-        conditionKey && !["unknown", "unavailable"].includes(conditionKey)
-          ? conditionKey
-          : "天气不可用",
-      ]
-    );
+    return WEATHER_ICON_MAP[conditionKey] || ["code-red", conditionKey && !["unknown", "unavailable"].includes(conditionKey) ? conditionKey : "天气不可用"];
   }
 }
 export function meteoconUrl(iconName) {
@@ -46,9 +37,7 @@ export function meteoconUrl(iconName) {
 }
 function safeCssColor(color, fallback) {
   const trimmed = String(color || "").trim();
-  if (
-    /^(#[\da-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%]+\))$/i.test(trimmed)
-  ) {
+  if (/^(#[\da-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%]+\))$/i.test(trimmed)) {
     return trimmed;
   } else {
     return fallback;
@@ -65,26 +54,17 @@ function percentile(sortedValues, quantile) {
   if (lowerIndex === upperIndex) {
     return sortedValues[lowerIndex];
   } else {
-    return (
-      sortedValues[lowerIndex] +
-      (sortedValues[upperIndex] - sortedValues[lowerIndex]) * (rank - lowerIndex)
-    );
+    return sortedValues[lowerIndex] + (sortedValues[upperIndex] - sortedValues[lowerIndex]) * (rank - lowerIndex);
   }
 }
 export function normalizedThresholds(thresholds) {
-  return (Array.isArray(thresholds) ? thresholds : [])
-    .filter((element) => Number.isFinite(Number(element?.value)))
-    .map((element) => ({
-      value: Number(element.value),
-      color: safeCssColor(element.color, "#68cc3e"),
-    }))
-    .sort((element, element2) => element.value - element2.value);
+  return (Array.isArray(thresholds) ? thresholds : []).filter(element => Number.isFinite(Number(element?.value))).map(element => ({
+    value: Number(element.value),
+    color: safeCssColor(element.color, "#68cc3e")
+  })).sort((element, element2) => element.value - element2.value);
 }
 export function automaticThresholds(samples) {
-  const sorted = (Array.isArray(samples) ? samples : [])
-    .map((element) => Number(element?.value ?? element))
-    .filter((sample) => Number.isFinite(sample))
-    .sort((a, b) => a - b);
+  const sorted = (Array.isArray(samples) ? samples : []).map(element => Number(element?.value ?? element)).filter(sample => Number.isFinite(sample)).sort((arg, arg2) => arg - arg2);
   if (!sorted.length) {
     return [];
   }
@@ -100,29 +80,24 @@ export function automaticThresholds(samples) {
   const epsilon = Math.max(Math.abs(low), Math.abs(high), 1) * 1e-9;
   if (span <= epsilon) {
     const step = Math.max(Math.abs(low) * 0.01, 0.01);
-    return [
-      {
-        value: low - step,
-        color: ALERT_LEVEL_COLORS[0],
-      },
-      {
-        value: low,
-        color: ALERT_LEVEL_COLORS[1],
-      },
-      {
-        value: low + step,
-        color: ALERT_LEVEL_COLORS[2],
-      },
-      {
-        value: low + step * 2,
-        color: ALERT_LEVEL_COLORS[3],
-      },
-    ];
+    return [{
+      value: low - step,
+      color: ALERT_LEVEL_COLORS[0]
+    }, {
+      value: low,
+      color: ALERT_LEVEL_COLORS[1]
+    }, {
+      value: low + step,
+      color: ALERT_LEVEL_COLORS[2]
+    }, {
+      value: low + step * 2,
+      color: ALERT_LEVEL_COLORS[3]
+    }];
   }
   const step = span / (ALERT_LEVEL_COLORS.length - 1);
   return ALERT_LEVEL_COLORS.map((color, index) => ({
     value: low + step * index,
-    color: color,
+    color
   }));
 }
 export function resolvedThresholds(configured, samples, mode = "") {
@@ -136,11 +111,7 @@ export function resolvedThresholds(configured, samples, mode = "") {
   }
 }
 export function thresholdColor(thresholds, sampleValue) {
-  return (
-    thresholds.filter((element) => sampleValue >= element.value).at(-1)?.color ||
-    thresholds[0]?.color ||
-    "#68cc3e"
-  );
+  return thresholds.filter(element => sampleValue >= element.value).at(-1)?.color || thresholds[0]?.color || "#68cc3e";
 }
 export function smoothChartPath(points) {
   if (!points.length) {
@@ -159,19 +130,7 @@ export function smoothChartPath(points) {
     const control1Y = current.y + (next.y - previous.y) / 6;
     const control2X = next.x - (afterNext.x - current.x) / 6;
     const control2Y = next.y - (afterNext.y - current.y) / 6;
-    path +=
-      " C" +
-      control1X.toFixed(3) +
-      " " +
-      control1Y.toFixed(3) +
-      " " +
-      control2X.toFixed(3) +
-      " " +
-      control2Y.toFixed(3) +
-      " " +
-      next.x.toFixed(3) +
-      " " +
-      next.y.toFixed(3);
+    path += " C" + control1X.toFixed(3) + " " + control1Y.toFixed(3) + " " + control2X.toFixed(3) + " " + control2Y.toFixed(3) + " " + next.x.toFixed(3) + " " + next.y.toFixed(3);
   }
   return path;
 }

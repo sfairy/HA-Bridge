@@ -5,16 +5,16 @@
       "sha256": "66fafb0a0b7536e972cc80c9d63f97c26d25102a4e99c26b1e970f0a8dfbb5e8"
     },
     "backend": {
-      "files": 44,
-      "sha256": "19b5efc71a252c001ba69edb6de28dc222ad94461f0f34544bab27497208dfd0"
+      "files": 50,
+      "sha256": "69608f1c4d0d5190ddb0b028220d386268f3480514a3c6d448919ffae9bf1470"
     },
     "frontend": {
-      "files": 7763,
-      "sha256": "4de233d9e5cc00a18396357ea653777722d39b9f3e676ab79070964e619cea46"
+      "files": 7838,
+      "sha256": "91f6557891c99a97a7e93a9bd4840241ecc127de6187cfd515913ba1a46680f4"
     },
     "image": {
       "files": 61,
-      "sha256": "c7d3345d531893c3d527980c84039a8e693bcceef5ef09a7f857478f14f9bc94"
+      "sha256": "00337a8a2c14257c0f40d964f4628691212b8715cfff94c9b80e9f187d4be856"
     },
     "keys": {
       "files": 2,
@@ -22,18 +22,18 @@
     },
     "migrations": {
       "files": 14,
-      "sha256": "767f2e1d9241d20360cce835346151a591d9997ca0c64331d2a971347ba45df5"
+      "sha256": "61f1019d71fe75ae0cdf38707653e323d65123b28b9e6adcdf15e7728fecf61a"
     }
   },
   "customerFingerprintSha256": "1c332cd11682bcc51255b498d1ec0b977d475db58cc7409b8f390c2fcf3500a5",
   "files": {
-    "VERSION": "aee8cd7067db4ba68b056e2e49072621d7dbcdf9b3952e98e6d9e5b024200e83",
-    "alembic.ini": "20b40e325f79c624b08d7467e454420d2d867e7ebbe0aacb18a41f8eebf1abea",
+    "VERSION": "d1f62539db82b51da84bda2f4885db5e847db8389183be41389efd0ae6edab94",
+    "alembic.ini": "2eb6b83f889d9449a1345d691697bc9f1e76eb7c331277544c671de455417696",
     "sbom.cdx.json": "21fc1899b4f31cb1ed1acd529c2b9c7d2da9cb7079093deced210e4a34035147"
   },
   "product": "ha-bridge",
   "releaseBatch": "2026-09-a",
   "releaseId": "8b3528fb02ef4fb48b30643ae9e57797",
   "schemaVersion": 1,
-  "version": "0.4.8"
+  "version": "0.5.0"
 }

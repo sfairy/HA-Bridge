@@ -1,5 +1,5 @@
 let decoderPending = null;
-self.onmessage = (event) => {
+self.onmessage = event => {
   const message = event.data || {};
   if (message.type === "init") {
     decoderPending = initializeDecoder(message);
@@ -8,82 +8,65 @@ self.onmessage = (event) => {
   if (message.type !== "decode") {
     return;
   }
-  (
-    decoderPending ||
-    Promise.reject(new Error("Draco decoder is not initialized"))
-  )
-    .then(({ draco }) => {
-      const decoder = new draco.Decoder();
-      try {
-        const geometry = decodeGeometry(
-          draco,
-          decoder,
-          new Int8Array(message.buffer),
-          message.taskConfig,
-        );
-        const transferables = geometry.attributes.map(
-          (attribute) => attribute.array.buffer,
-        );
-        if (geometry.index) {
-          transferables.push(geometry.index.array.buffer);
-        }
-        self.postMessage(
-          {
-            type: "decode",
-            id: message.id,
-            geometry: geometry,
-          },
-          transferables,
-        );
-      } catch (error) {
-        self.postMessage({
-          type: "error",
-          id: message.id,
-          error: error?.message || String(error),
-        });
-      } finally {
-        draco.destroy(decoder);
+  (decoderPending || Promise.reject(new Error("Draco decoder is not initialized"))).then(({
+    draco
+  }) => {
+    const decoder = new draco.Decoder();
+    try {
+      const geometry = decodeGeometry(draco, decoder, new Int8Array(message.buffer), message.taskConfig);
+      const transferables = geometry.attributes.map(attribute => attribute.array.buffer);
+      if (geometry.index) {
+        transferables.push(geometry.index.array.buffer);
       }
-    })
-    .catch((error) => {
+      self.postMessage({
+        type: "decode",
+        id: message.id,
+        geometry
+      }, transferables);
+    } catch (error) {
       self.postMessage({
         type: "error",
         id: message.id,
-        error: error?.message || String(error),
+        error: error?.message || String(error)
       });
+    } finally {
+      draco.destroy(decoder);
+    }
+  }).catch(error => {
+    self.postMessage({
+      type: "error",
+      id: message.id,
+      error: error?.message || String(error)
     });
+  });
 };
 function initializeDecoder(message) {
   const decoderPath = String(message.decoderPath || "");
   const decoderConfig = {
-    ...(message.decoderConfig || {}),
+    ...(message.decoderConfig || {})
   };
-  const scriptName =
-    decoderConfig.type === "js" ? "draco_decoder.js" : "draco_wasm_wrapper.js";
+  const scriptName = decoderConfig.type === "js" ? "draco_decoder.js" : "draco_wasm_wrapper.js";
   try {
     self.importScripts("" + decoderPath + scriptName);
   } catch (error) {
     return Promise.reject(error);
   }
-  decoderConfig.locateFile = (fileName) =>
-    "" +
-    decoderPath +
-    (fileName === "draco_decoder_gltf.wasm" ? "draco_decoder.wasm" : fileName);
+  decoderConfig.locateFile = fileName => "" + decoderPath + (fileName === "draco_decoder_gltf.wasm" ? "draco_decoder.wasm" : fileName);
   return new Promise((resolve, reject) => {
     let resolvedFromCallback = false;
-    decoderConfig.onModuleLoaded = (module) => {
+    decoderConfig.onModuleLoaded = module => {
       resolvedFromCallback = true;
       resolve({
-        draco: module,
+        draco: module
       });
     };
     try {
       const moduleOrPromise = self.DracoDecoderModule(decoderConfig);
       if (moduleOrPromise && typeof moduleOrPromise.then == "function") {
-        moduleOrPromise.then((module) => {
+        moduleOrPromise.then(module => {
           if (!resolvedFromCallback) {
             resolve({
-              draco: module,
+              draco: module
             });
           }
         }, reject);
@@ -101,56 +84,33 @@ function decodeGeometry(draco, decoder, buffer, taskConfig) {
   const geometryType = decoder.GetEncodedGeometryType(buffer);
   if (geometryType === draco.TRIANGULAR_MESH) {
     geometry = new draco.Mesh();
-    decodingStatus = decoder.DecodeArrayToMesh(
-      buffer,
-      buffer.byteLength,
-      geometry,
-    );
+    decodingStatus = decoder.DecodeArrayToMesh(buffer, buffer.byteLength, geometry);
   } else if (geometryType === draco.POINT_CLOUD) {
     geometry = new draco.PointCloud();
-    decodingStatus = decoder.DecodeArrayToPointCloud(
-      buffer,
-      buffer.byteLength,
-      geometry,
-    );
+    decodingStatus = decoder.DecodeArrayToPointCloud(buffer, buffer.byteLength, geometry);
   } else {
     throw new Error("THREE.DRACOLoader: Unexpected geometry type.");
   }
   if (!decodingStatus.ok() || geometry.ptr === 0) {
-    throw new Error(
-      "THREE.DRACOLoader: Decoding failed: " + decodingStatus.error_msg(),
-    );
+    throw new Error("THREE.DRACOLoader: Decoding failed: " + decodingStatus.error_msg());
   }
   const result = {
     index: null,
-    attributes: [],
+    attributes: []
   };
   for (const attributeName in attributeIDs) {
     const attributeType = self[attributeTypes[attributeName]];
     let attribute;
     if (taskConfig.useUniqueIDs) {
-      attribute = decoder.GetAttributeByUniqueId(
-        geometry,
-        attributeIDs[attributeName],
-      );
+      attribute = decoder.GetAttributeByUniqueId(geometry, attributeIDs[attributeName]);
     } else {
-      const attributeId = decoder.GetAttributeId(
-        geometry,
-        draco[attributeIDs[attributeName]],
-      );
+      const attributeId = decoder.GetAttributeId(geometry, draco[attributeIDs[attributeName]]);
       if (attributeId === -1) {
         continue;
       }
       attribute = decoder.GetAttribute(geometry, attributeId);
     }
-    const decoded = decodeAttribute(
-      draco,
-      decoder,
-      geometry,
-      attributeName,
-      attributeType,
-      attribute,
-    );
+    const decoded = decodeAttribute(draco, decoder, geometry, attributeName, attributeType, attribute);
     if (attributeName === "color") {
       decoded.vertexColorSpace = taskConfig.vertexColorSpace;
     }
@@ -170,18 +130,11 @@ function decodeIndex(draco, decoder, geometry) {
   const array = new Uint32Array(draco.HEAPF32.buffer, pointer, indexCount).slice();
   draco._free(pointer);
   return {
-    array: array,
-    itemSize: 1,
+    array,
+    itemSize: 1
   };
 }
-function decodeAttribute(
-  draco,
-  decoder,
-  geometry,
-  attributeName,
-  attributeType,
-  attribute,
-) {
+function decodeAttribute(draco, decoder, geometry, attributeName, attributeType, attribute) {
   const numPoints = geometry.num_points();
   const numComponents = attribute.num_components();
   const dataType = getDracoDataType(draco, attributeType);
@@ -191,18 +144,8 @@ function decodeAttribute(
   const dataByteLength = numPoints * byteStride;
   const alignedByteLength = numPoints * alignedByteStride;
   const pointer = draco._malloc(dataByteLength);
-  decoder.GetAttributeDataArrayForAllPoints(
-    geometry,
-    attribute,
-    dataType,
-    dataByteLength,
-    pointer,
-  );
-  const packed = new attributeType(
-    draco.HEAPF32.buffer,
-    pointer,
-    dataByteLength / attributeType.BYTES_PER_ELEMENT,
-  );
+  decoder.GetAttributeDataArrayForAllPoints(geometry, attribute, dataType, dataByteLength, pointer);
+  const packed = new attributeType(draco.HEAPF32.buffer, pointer, dataByteLength / attributeType.BYTES_PER_ELEMENT);
   let array;
   if (byteStride === alignedByteStride) {
     array = packed.slice();
@@ -221,8 +164,8 @@ function decodeAttribute(
     name: attributeName,
     count: numPoints,
     itemSize: numComponents,
-    array: array,
-    stride: alignedItemSize,
+    array,
+    stride: alignedItemSize
   };
 }
 function getDracoDataType(draco, attributeType) {
