@@ -1,81 +1,81 @@
 import { mapSource, vacuumStatusPresentation, vacuumBindingsForMap } from "./vacuum-map.js?v=20260909-curtain-action-v15";
-const S = arg12 => typeof arg12 == "number" && Number.isFinite(arg12);
-const z = x5 => x5 && S(x5.x) && S(x5.y) ? x5 : null;
-export function vacuumMapPoint(x6, length2, width, width2) {
-  if (!z(x6) || !Array.isArray(length2) || length2.length < 3 || !(width?.width > 0) || !(width?.height > 0) || !(width2?.width > 0) || !(width2?.depth > 0)) {
+const isFiniteNumber = value => typeof value == "number" && Number.isFinite(value);
+const asPoint = point => point && isFiniteNumber(point.x) && isFiniteNumber(point.y) ? point : null;
+export function vacuumMapPoint(point, calibrationPoints, imageSize, mapPlacement) {
+  if (!asPoint(point) || !Array.isArray(calibrationPoints) || calibrationPoints.length < 3 || !(imageSize?.width > 0) || !(imageSize?.height > 0) || !(mapPlacement?.width > 0) || !(mapPlacement?.depth > 0)) {
     return null;
   }
-  const [vacuum2, vacuum3, vacuum4] = length2;
-  if (![vacuum2, vacuum3, vacuum4].every(vacuum => z(vacuum?.vacuum) && z(vacuum?.map))) {
+  const [p0, p1, p2] = calibrationPoints;
+  if (![p0, p1, p2].every(entry => asPoint(entry?.vacuum) && asPoint(entry?.map))) {
     return null;
   }
-  const value26 = vacuum3.vacuum.x - vacuum2.vacuum.x;
-  const value27 = vacuum3.vacuum.y - vacuum2.vacuum.y;
-  const value28 = vacuum4.vacuum.x - vacuum2.vacuum.x;
-  const value29 = vacuum4.vacuum.y - vacuum2.vacuum.y;
-  const value30 = value26 * value29 - value27 * value28;
-  if (Math.abs(value30) < 1e-8) {
+  const v1x = p1.vacuum.x - p0.vacuum.x;
+  const v1y = p1.vacuum.y - p0.vacuum.y;
+  const v2x = p2.vacuum.x - p0.vacuum.x;
+  const v2y = p2.vacuum.y - p0.vacuum.y;
+  const det = v1x * v2y - v1y * v2x;
+  if (Math.abs(det) < 1e-8) {
     return null;
   }
-  const value31 = x6.x - vacuum2.vacuum.x;
-  const value32 = x6.y - vacuum2.vacuum.y;
-  const value33 = (value31 * value29 - value32 * value28) / value30;
-  const value34 = (value26 * value32 - value27 * value31) / value30;
-  const value35 = vacuum2.map.x + value33 * (vacuum3.map.x - vacuum2.map.x) + value34 * (vacuum4.map.x - vacuum2.map.x);
-  const value36 = vacuum2.map.y + value33 * (vacuum3.map.y - vacuum2.map.y) + value34 * (vacuum4.map.y - vacuum2.map.y);
-  const value37 = (value35 / width.width - 0.5) * width2.width;
-  const value38 = (value36 / width.height - 0.5) * width2.depth;
-  const value39 = (width2.rotation || 0) * Math.PI / 180;
+  const dx = point.x - p0.vacuum.x;
+  const dy = point.y - p0.vacuum.y;
+  const u = (dx * v2y - dy * v2x) / det;
+  const v = (v1x * dy - v1y * dx) / det;
+  const mapX = p0.map.x + u * (p1.map.x - p0.map.x) + v * (p2.map.x - p0.map.x);
+  const mapY = p0.map.y + u * (p1.map.y - p0.map.y) + v * (p2.map.y - p0.map.y);
+  const localX = (mapX / imageSize.width - 0.5) * mapPlacement.width;
+  const localY = (mapY / imageSize.height - 0.5) * mapPlacement.depth;
+  const radians = (mapPlacement.rotation || 0) * Math.PI / 180;
   return {
-    x: (width2.x || 0) + value37 * Math.cos(value39) - value38 * Math.sin(value39),
-    y: (width2.y || 0) + value37 * Math.sin(value39) + value38 * Math.cos(value39)
+    x: (mapPlacement.x || 0) + localX * Math.cos(radians) - localY * Math.sin(radians),
+    y: (mapPlacement.y || 0) + localX * Math.sin(radians) + localY * Math.cos(radians)
   };
 }
-export function vacuumTelemetry(map3, arg13, arg14) {
-  if (map3.map?.sourceMapId && !vacuumBindingsForMap([map3], arg13).length) {
+export function vacuumTelemetry(binding, states, imageSize) {
+  if (binding.map?.sourceMapId && !vacuumBindingsForMap([binding], states).length) {
     return null;
   }
-  const state = arg13[map3.entityId]?.newState || arg13[map3.entityId];
-  const available = vacuumStatusPresentation(map3, arg13);
-  const newState2 = arg13[map3.map?.entityId];
-  const calibration_points2 = (newState2?.newState || newState2)?.attributes || {};
-  const value40 = z(calibration_points2.charger_position);
-  const value41 = z(calibration_points2.vacuum_position || calibration_points2.robot_position);
-  if (!available.available || !value40 || !arg14) {
+  const entityState = states[binding.entityId]?.newState || states[binding.entityId];
+  const presentation = vacuumStatusPresentation(binding, states);
+  const mapState = states[binding.map?.entityId];
+  const mapAttrs = (mapState?.newState || mapState)?.attributes || {};
+  const charger = asPoint(mapAttrs.charger_position);
+  const robot = asPoint(mapAttrs.vacuum_position || mapAttrs.robot_position);
+  if (!presentation.available || !charger || !imageSize) {
     return null;
   }
-  const docked = ["docked", "charging", "charging_completed"].includes(state?.state) || state?.attributes?.charging === true;
-  const value42 = docked ? value40 : value41;
-  const x7 = vacuumMapPoint(value40, calibration_points2.calibration_points, arg14, map3.map);
-  const x8 = vacuumMapPoint(value42, calibration_points2.calibration_points, arg14, map3.map);
-  if (!x7 || !x8) {
+  const docked = ["docked", "charging", "charging_completed"].includes(entityState?.state) || entityState?.attributes?.charging === true;
+  const activePoint = docked ? charger : robot;
+  const chargerWorld = vacuumMapPoint(charger, mapAttrs.calibration_points, imageSize, binding.map);
+  const robotWorld = vacuumMapPoint(activePoint, mapAttrs.calibration_points, imageSize, binding.map);
+  if (!chargerWorld || !robotWorld) {
     return null;
   }
-  const value43 = a => {
-    if (!S(a?.a)) {
+  const headingAt = pose => {
+    if (!isFiniteNumber(pose?.a)) {
       return null;
     }
-    const value16 = a.a * Math.PI / 180;
-    const y = vacuumMapPoint(a, calibration_points2.calibration_points, arg14, map3.map);
-    const y2 = vacuumMapPoint({
-      x: a.x + Math.cos(value16) * 100,
-      y: a.y + Math.sin(value16) * 100
-    }, calibration_points2.calibration_points, arg14, map3.map);
-    if (y && y2) {
-      return Math.atan2(y2.y - y.y, y2.x - y.x);
+    const radians = pose.a * Math.PI / 180;
+    const origin = vacuumMapPoint(pose, mapAttrs.calibration_points, imageSize, binding.map);
+    const ahead = vacuumMapPoint({
+      x: pose.x + Math.cos(radians) * 100,
+      y: pose.y + Math.sin(radians) * 100
+    }, mapAttrs.calibration_points, imageSize, binding.map);
+    if (origin && ahead) {
+      return Math.atan2(ahead.y - origin.y, ahead.x - origin.x);
     } else {
       return null;
     }
   };
-  const value44 = value43(value42);
-  const value45 = value43(value40);
+  const robotHeading = headingAt(activePoint);
+  const chargerHeading = headingAt(charger);
   return {
-    x: x8.x - x7.x,
-    y: x8.y - x7.y,
-    angle: value44 !== null && value45 !== null ? Math.atan2(Math.sin(value44 - value45), Math.cos(value44 - value45)) : 0,
+    x: robotWorld.x - chargerWorld.x,
+    y: robotWorld.y - chargerWorld.y,
+    angle: robotHeading !== null && chargerHeading !== null ? Math.atan2(Math.sin(robotHeading - chargerHeading), Math.cos(robotHeading - chargerHeading)) : 0,
     docked,
-    paused: state?.state === "paused",
-    active: available.active
+    paused: entityState?.state === "paused",
+    active: presentation.active
   };
 }
 export const VACUUM_CHAT = {
@@ -83,76 +83,76 @@ export const VACUUM_CHAT = {
   returning: ["电量告急，回家吃饭！", "打工结束，回窝充电。", "基站，我回来啦！"],
   washing: ["洗个拖布，继续加油。", "爱干净，也要洗洗自己。"]
 };
-export function vacuumQuip(entityId, arg15, arg16) {
-  if (entityId.funMessages === false) {
+export function vacuumQuip(binding, states, nowMs) {
+  if (binding.funMessages === false) {
     return "";
   }
-  const attributes = arg15[entityId.entityId]?.newState || arg15[entityId.entityId];
-  const returning = attributes?.attributes || {};
-  const length3 = attributes?.state === "returning" || returning.returning ? VACUUM_CHAT.returning : returning.washing || returning.drying ? VACUUM_CHAT.washing : VACUUM_CHAT.working;
-  return length3[Math.floor(arg16 / 7000) % length3.length];
+  const entityState = states[binding.entityId]?.newState || states[binding.entityId];
+  const attrs = entityState?.attributes || {};
+  const lines = entityState?.state === "returning" || attrs.returning ? VACUUM_CHAT.returning : attrs.washing || attrs.drying ? VACUUM_CHAT.washing : VACUUM_CHAT.working;
+  return lines[Math.floor(nowMs / 7000) % lines.length];
 }
-export function createVacuumMotion(setVacuumMoving, arg17) {
+export function createVacuumMotion(host, requestRender) {
   const {
-    THREE: Vector3
-  } = setVacuumMoving;
-  const items = new Map();
-  const get2 = new Map();
-  let value46 = [];
-  let value47 = {};
-  let value48 = false;
-  let value49 = false;
-  const value50 = floorId => {
-    let value17;
-    setVacuumMoving.modelRoot?.traverse(userData2 => {
-      if (userData2.userData?.environmentFloorId === floorId.floorId && userData2.userData?.environmentModelId === floorId.modelId) {
-        value17 = userData2;
+    THREE
+  } = host;
+  const entries = new Map();
+  const imageSizes = new Map();
+  let bindings = [];
+  let states = {};
+  let enabled = false;
+  let disposed = false;
+  const findModel = binding => {
+    let found;
+    host.modelRoot?.traverse(node => {
+      if (node.userData?.environmentFloorId === binding.floorId && node.userData?.environmentModelId === binding.modelId) {
+        found = node;
       }
     });
-    return value17;
+    return found;
   };
-  function fn(updateWorldMatrix, floorId2) {
-    updateWorldMatrix.updateWorldMatrix(true, true);
-    const clone2 = updateWorldMatrix.matrixWorld.clone().invert();
-    const forEach = [];
-    const height = setVacuumMoving.document.floors.find(id => id.id === floorId2.floorId)?.scene.items.find(id3 => id3.id === floorId2.modelId);
-    const value22 = height?.height || 0.85;
-    const value23 = height?.depth || 0.5;
-    updateWorldMatrix.traverse(geometry => {
-      if (!geometry.isMesh || !geometry.geometry || geometry.userData?.environmentEffect) {
+  function createEntry(modelNode, binding) {
+    modelNode.updateWorldMatrix(true, true);
+    const inverseWorld = modelNode.matrixWorld.clone().invert();
+    const bodyMeshes = [];
+    const item = host.document.floors.find(floor => floor.id === binding.floorId)?.scene.items.find(sceneItem => sceneItem.id === binding.modelId);
+    const modelHeight = item?.height || 0.85;
+    const modelDepth = item?.depth || 0.5;
+    modelNode.traverse(mesh => {
+      if (!mesh.isMesh || !mesh.geometry || mesh.userData?.environmentEffect) {
         return;
       }
-      geometry.geometry.computeBoundingBox();
-      const max = geometry.geometry.boundingBox?.clone().applyMatrix4(clone2.clone().multiply(geometry.matrixWorld));
-      if (max && max.max.y < value22 * 0.3 && max.getCenter(new Vector3.Vector3()).z > value23 * 0.05) {
-        forEach.push(geometry);
+      mesh.geometry.computeBoundingBox();
+      const localBounds = mesh.geometry.boundingBox?.clone().applyMatrix4(inverseWorld.clone().multiply(mesh.matrixWorld));
+      if (localBounds && localBounds.max.y < modelHeight * 0.3 && localBounds.getCenter(new THREE.Vector3()).z > modelDepth * 0.05) {
+        bodyMeshes.push(mesh);
       }
     });
-    if (!forEach.length) {
+    if (!bodyMeshes.length) {
       return null;
     }
-    const expandByObject = new Vector3.Box3();
-    forEach.forEach(arg2 => expandByObject.expandByObject(arg2));
-    const y3 = updateWorldMatrix.worldToLocal(expandByObject.getCenter(new Vector3.Vector3()));
-    y3.y = 0;
-    const position = new Vector3.Group();
-    position.name = "vacuum-mobile-body";
-    position.position.copy(y3);
-    updateWorldMatrix.add(position);
-    updateWorldMatrix.updateWorldMatrix(true, true);
-    const originals = forEach.map(mesh => ({
+    const bodyBounds = new THREE.Box3();
+    bodyMeshes.forEach(mesh => bodyBounds.expandByObject(mesh));
+    const localCenter = modelNode.worldToLocal(bodyBounds.getCenter(new THREE.Vector3()));
+    localCenter.y = 0;
+    const mobile = new THREE.Group();
+    mobile.name = "vacuum-mobile-body";
+    mobile.position.copy(localCenter);
+    modelNode.add(mobile);
+    modelNode.updateWorldMatrix(true, true);
+    const originals = bodyMeshes.map(mesh => ({
       mesh,
       parent: mesh.parent,
       position: mesh.position.clone(),
       quaternion: mesh.quaternion.clone(),
       scale: mesh.scale.clone()
     }));
-    forEach.forEach(arg3 => position.attach(arg3));
-    const rest = position.position.clone();
-    updateWorldMatrix.userData.vacuumMobileRoot = position;
+    bodyMeshes.forEach(mesh => mobile.attach(mesh));
+    const rest = mobile.position.clone();
+    modelNode.userData.vacuumMobileRoot = mobile;
     return {
-      model: updateWorldMatrix,
-      mobile: position,
+      model: modelNode,
+      mobile,
       rest,
       originals,
       x: 0,
@@ -162,351 +162,351 @@ export function createVacuumMotion(setVacuumMoving, arg17) {
       initialized: false
     };
   }
-  function fn2(originals2) {
-    for (const mesh2 of originals2.originals) {
-      mesh2.parent.add(mesh2.mesh);
-      mesh2.mesh.position.copy(mesh2.position);
-      mesh2.mesh.quaternion.copy(mesh2.quaternion);
-      mesh2.mesh.scale.copy(mesh2.scale);
+  function disposeEntry(entry) {
+    for (const original of entry.originals) {
+      original.parent.add(original.mesh);
+      original.mesh.position.copy(original.position);
+      original.mesh.quaternion.copy(original.quaternion);
+      original.mesh.scale.copy(original.scale);
     }
-    originals2.mobile.removeFromParent();
-    delete originals2.model.userData.vacuumMobileRoot;
-    setVacuumMoving.invalidateReflections?.([originals2.item.floorId]);
-    setVacuumMoving.setVacuumMoving?.(true);
-    setVacuumMoving.requestRender?.();
+    entry.mobile.removeFromParent();
+    delete entry.model.userData.vacuumMobileRoot;
+    host.invalidateReflections?.([entry.item.floorId]);
+    host.setVacuumMoving?.(true);
+    host.requestRender?.();
   }
-  function fn3(map2) {
-    const value24 = map2.map?.entityId;
-    if (!value24 || !mapSource(value24)) {
+  function mapImageSize(binding) {
+    const entityId = binding.map?.entityId;
+    if (!entityId || !mapSource(entityId)) {
       return null;
     }
-    const newState = value47[value24];
-    const calibration_points = (newState?.newState || newState)?.attributes || {};
-    if (!calibration_points.calibration_points || !calibration_points.charger_position) {
+    const mapState = states[entityId];
+    const mapAttrs = (mapState?.newState || mapState)?.attributes || {};
+    if (!mapAttrs.calibration_points || !mapAttrs.charger_position) {
       return null;
     }
-    const key = JSON.stringify([value24, calibration_points.calibration_points]);
-    let retryAt = get2.get(value24);
-    if (retryAt?.key === key && (!retryAt.retryAt || performance.now() < retryAt.retryAt)) {
-      return retryAt.size;
+    const key = JSON.stringify([entityId, mapAttrs.calibration_points]);
+    let cache = imageSizes.get(entityId);
+    if (cache?.key === key && (!cache.retryAt || performance.now() < cache.retryAt)) {
+      return cache.size;
     }
-    const failures = retryAt?.key === key && retryAt.failures || 0;
-    if (retryAt) {
-      clearTimeout(retryAt.timer);
-      retryAt.image.onload = retryAt.image.onerror = null;
-      retryAt.image.src = "";
+    const failures = cache?.key === key && cache.failures || 0;
+    if (cache) {
+      clearTimeout(cache.timer);
+      cache.image.onload = cache.image.onerror = null;
+      cache.image.src = "";
     }
-    const image2 = new Image();
-    retryAt = {
+    const image = new Image();
+    cache = {
       key,
-      image: image2,
+      image,
       size: null,
       failures,
       retryAt: 0,
       timer: null
     };
-    get2.set(value24, retryAt);
-    image2.onload = () => {
-      if (!value49 && get2.get(value24) === retryAt) {
-        clearTimeout(retryAt.timer);
-        retryAt.timer = null;
-        retryAt.retryAt = 0;
-        retryAt.failures = 0;
-        retryAt.size = {
-          width: image2.naturalWidth,
-          height: image2.naturalHeight
+    imageSizes.set(entityId, cache);
+    image.onload = () => {
+      if (!disposed && imageSizes.get(entityId) === cache) {
+        clearTimeout(cache.timer);
+        cache.timer = null;
+        cache.retryAt = 0;
+        cache.failures = 0;
+        cache.size = {
+          width: image.naturalWidth,
+          height: image.naturalHeight
         };
-        fn4();
-        arg17();
+        refreshTargets();
+        requestRender();
       }
     };
-    image2.onerror = () => {
-      if (value49 || get2.get(value24) !== retryAt) {
+    image.onerror = () => {
+      if (disposed || imageSizes.get(entityId) !== cache) {
         return;
       }
-      const value9 = Math.min(5000, 2 ** Math.min(retryAt.failures++, 3) * 1000);
-      retryAt.retryAt = performance.now() + value9;
-      retryAt.timer = setTimeout(() => {
-        retryAt.timer = null;
-        if (!value49 && value48 && get2.get(value24) === retryAt) {
-          retryAt.retryAt = performance.now();
-          fn4();
-          arg17();
+      const delayMs = Math.min(5000, 2 ** Math.min(cache.failures++, 3) * 1000);
+      cache.retryAt = performance.now() + delayMs;
+      cache.timer = setTimeout(() => {
+        cache.timer = null;
+        if (!disposed && enabled && imageSizes.get(entityId) === cache) {
+          cache.retryAt = performance.now();
+          refreshTargets();
+          requestRender();
         }
-      }, value9);
+      }, delayMs);
     };
-    image2.src = mapSource(value24);
+    image.src = mapSource(entityId);
     return null;
   }
-  function fn4() {
-    for (const id4 of value46) {
-      if (id4.motionEnabled === false || id4.visible === false || !value48) {
+  function refreshTargets() {
+    for (const binding of bindings) {
+      if (binding.motionEnabled === false || binding.visible === false || !enabled) {
         continue;
       }
-      const value13 = value50(id4);
-      let target = items.get(id4.id);
-      if (target?.model !== value13) {
-        if (target) {
-          fn2(target);
+      const modelNode = findModel(binding);
+      let entry = entries.get(binding.id);
+      if (entry?.model !== modelNode) {
+        if (entry) {
+          disposeEntry(entry);
         }
-        items.delete(id4.id);
-        target = null;
+        entries.delete(binding.id);
+        entry = null;
       }
-      if (!value13) {
+      if (!modelNode) {
         continue;
       }
-      const x3 = vacuumTelemetry(id4, value47, fn3(id4));
-      if (!x3) {
-        if (target) {
-          target.target = null;
+      const telemetry = vacuumTelemetry(binding, states, mapImageSize(binding));
+      if (!telemetry) {
+        if (entry) {
+          entry.target = null;
         }
         continue;
       }
-      if (!target) {
-        target = fn(value13, id4);
+      if (!entry) {
+        entry = createEntry(modelNode, binding);
+        if (!entry) {
+          continue;
+        }
+        entries.set(binding.id, entry);
+      }
+      entry.item = binding;
+      if (telemetry.paused) {
+        entry.target = null;
+        continue;
+      }
+      if (entry.target?.x !== telemetry.x || entry.target?.y !== telemetry.y || entry.target?.angle !== telemetry.angle) {
+        entry.target = telemetry;
+        if (!entry.initialized) {
+          entry.x = telemetry.x;
+          entry.y = telemetry.y;
+          entry.angle = telemetry.angle;
+          entry.initialized = true;
+          entry.dirty = true;
+        }
+      }
+    }
+  }
+  return {
+    sync(nextBindings, nextStates, nextEnabled) {
+      bindings = nextBindings;
+      states = nextStates;
+      enabled = nextEnabled && !disposed;
+      const activeIds = new Set(nextBindings.filter(binding => binding.motionEnabled !== false && binding.visible !== false).map(binding => binding.id));
+      for (const [id, entry] of entries) {
+        if (!activeIds.has(id) || !enabled) {
+          disposeEntry(entry);
+          entries.delete(id);
+        }
+      }
+      if (enabled) {
+        refreshTargets();
+      } else {
+        host.setVacuumMoving?.(false);
+      }
+    },
+    offset(id) {
+      const entry = entries.get(id.replace(/^vacuum:/, ""));
+      if (entry) {
+        return {
+          x: entry.x,
+          y: entry.y
+        };
+      } else {
+        return null;
+      }
+    },
+    worldPosition(id) {
+      const entry = entries.get(id.replace(/^vacuum:/, ""));
+      if (entry) {
+        return entry.mobile.getWorldPosition(new THREE.Vector3());
+      } else {
+        return null;
+      }
+    },
+    tick(deltaSeconds) {
+      if (!enabled) {
+        return false;
+      }
+      let moving = false;
+      let posed = false;
+      for (const entry of entries.values()) {
+        const target = entry.target;
         if (!target) {
           continue;
         }
-        items.set(id4.id, target);
-      }
-      target.item = id4;
-      if (x3.paused) {
-        target.target = null;
-        continue;
-      }
-      if (target.target?.x !== x3.x || target.target?.y !== x3.y || target.target?.angle !== x3.angle) {
-        target.target = x3;
-        if (!target.initialized) {
-          target.x = x3.x;
-          target.y = x3.y;
-          target.angle = x3.angle;
-          target.initialized = true;
-          target.dirty = true;
+        let dx = target.x - entry.x;
+        let dy = target.y - entry.y;
+        let distance = Math.hypot(dx, dy);
+        if (host.worldPoint(entry.item.floorId, target.x, target.y, 0)?.distanceTo(host.worldPoint(entry.item.floorId, entry.x, entry.y, 0)) > 2.5) {
+          entry.x = target.x;
+          entry.y = target.y;
+          dx = dy = distance = 0;
+          entry.dirty = true;
         }
-      }
-    }
-  }
-  return {
-    sync(filter, arg6, arg7) {
-      value46 = filter;
-      value47 = arg6;
-      value48 = arg7 && !value49;
-      const has = new Set(filter.filter(motionEnabled => motionEnabled.motionEnabled !== false && motionEnabled.visible !== false).map(id2 => id2.id));
-      for (const [value10, value11] of items) {
-        if (!has.has(value10) || !value48) {
-          fn2(value11);
-          items.delete(value10);
-        }
-      }
-      if (value48) {
-        fn4();
-      } else {
-        setVacuumMoving.setVacuumMoving?.(false);
-      }
-    },
-    offset(replace) {
-      const x4 = items.get(replace.replace(/^vacuum:/, ""));
-      if (x4) {
-        return {
-          x: x4.x,
-          y: x4.y
-        };
-      } else {
-        return null;
-      }
-    },
-    worldPosition(replace2) {
-      const mobile = items.get(replace2.replace(/^vacuum:/, ""));
-      if (mobile) {
-        return mobile.mobile.getWorldPosition(new Vector3.Vector3());
-      } else {
-        return null;
-      }
-    },
-    tick(arg8) {
-      if (!value48) {
-        return false;
-      }
-      let value18 = false;
-      let value19 = false;
-      for (const x2 of items.values()) {
-        const x = x2.target;
-        if (!x) {
-          continue;
-        }
-        let value = x.x - x2.x;
-        let value2 = x.y - x2.y;
-        let value3 = Math.hypot(value, value2);
-        if (setVacuumMoving.worldPoint(x2.item.floorId, x.x, x.y, 0)?.distanceTo(setVacuumMoving.worldPoint(x2.item.floorId, x2.x, x2.y, 0)) > 2.5) {
-          x2.x = x.x;
-          x2.y = x.y;
-          value = value2 = value3 = 0;
-          x2.dirty = true;
-        }
-        const value4 = 1 - Math.exp(-Math.min(arg8, 0.1) * 5);
-        x2.x += value * value4;
-        x2.y += value2 * value4;
-        let value5 = Math.atan2(Math.sin(x.angle - x2.angle), Math.cos(x.angle - x2.angle));
-        x2.angle += value5 * value4;
-        if (value3 > 0.02 || Math.abs(value5) > 0.002) {
-          value18 = true;
+        const blend = 1 - Math.exp(-Math.min(deltaSeconds, 0.1) * 5);
+        entry.x += dx * blend;
+        entry.y += dy * blend;
+        let angleDelta = Math.atan2(Math.sin(target.angle - entry.angle), Math.cos(target.angle - entry.angle));
+        entry.angle += angleDelta * blend;
+        if (distance > 0.02 || Math.abs(angleDelta) > 0.002) {
+          moving = true;
         } else {
-          x2.x = x.x;
-          x2.y = x.y;
-          x2.angle = x.angle;
+          entry.x = target.x;
+          entry.y = target.y;
+          entry.angle = target.angle;
         }
-        if (value3 < 0.000001 && Math.abs(value5) < 0.000001 && !x2.dirty) {
+        if (distance < 0.000001 && Math.abs(angleDelta) < 0.000001 && !entry.dirty) {
           continue;
         }
-        x2.dirty = false;
-        value19 = true;
-        const value6 = setVacuumMoving.worldPoint(x2.item.floorId, 0, 0, 0);
-        const sub = setVacuumMoving.worldPoint(x2.item.floorId, x2.x, x2.y, 0);
-        if (!value6 || !sub) {
+        entry.dirty = false;
+        posed = true;
+        const origin = host.worldPoint(entry.item.floorId, 0, 0, 0);
+        const world = host.worldPoint(entry.item.floorId, entry.x, entry.y, 0);
+        if (!origin || !world) {
           continue;
         }
-        x2.model.updateWorldMatrix(true, false);
-        const add = x2.model.localToWorld(x2.rest.clone());
-        const value7 = add.add(sub.sub(value6));
-        x2.mobile.position.copy(x2.model.worldToLocal(value7));
-        x2.mobile.rotation.y = -x2.angle;
-        x2.mobile.updateWorldMatrix(true, true);
-        setVacuumMoving.invalidateReflections?.([x2.item.floorId]);
+        entry.model.updateWorldMatrix(true, false);
+        const restWorld = entry.model.localToWorld(entry.rest.clone());
+        const nextWorld = restWorld.add(world.sub(origin));
+        entry.mobile.position.copy(entry.model.worldToLocal(nextWorld));
+        entry.mobile.rotation.y = -entry.angle;
+        entry.mobile.updateWorldMatrix(true, true);
+        host.invalidateReflections?.([entry.item.floorId]);
       }
-      setVacuumMoving.setVacuumMoving?.(value18 || value19);
-      if (value19) {
-        setVacuumMoving.requestRender?.();
+      host.setVacuumMoving?.(moving || posed);
+      if (posed) {
+        host.requestRender?.();
       }
-      return value18 || value19;
+      return moving || posed;
     },
-    hasTracking(replace3) {
-      return items.has(replace3.replace(/^vacuum:/, ""));
+    hasTracking(id) {
+      return entries.has(id.replace(/^vacuum:/, ""));
     },
     dispose() {
-      value49 = true;
-      for (const value12 of items.values()) {
-        fn2(value12);
+      disposed = true;
+      for (const entry of entries.values()) {
+        disposeEntry(entry);
       }
-      items.clear();
-      for (const image of get2.values()) {
-        clearTimeout(image.timer);
-        image.image.onload = image.image.onerror = null;
-        image.image.src = "";
+      entries.clear();
+      for (const cache of imageSizes.values()) {
+        clearTimeout(cache.timer);
+        cache.image.onload = cache.image.onerror = null;
+        cache.image.src = "";
       }
-      get2.clear();
-      setVacuumMoving.setVacuumMoving?.(false);
+      imageSizes.clear();
+      host.setVacuumMoving?.(false);
     }
   };
 }
-export function vacuumBirdCamera(position2, arg18) {
-  const value51 = (position2?.position?.[0] || 0) - (position2?.target?.[0] || 0);
-  const value52 = (position2?.position?.[2] || 1) - (position2?.target?.[2] || 0);
-  const value53 = Math.hypot(value51, value52) || 1;
+export function vacuumBirdCamera(camera, target) {
+  const offsetX = (camera?.position?.[0] || 0) - (camera?.target?.[0] || 0);
+  const offsetZ = (camera?.position?.[2] || 1) - (camera?.target?.[2] || 0);
+  const length = Math.hypot(offsetX, offsetZ) || 1;
   return {
-    ...position2,
+    ...camera,
     mode: "perspective",
-    position: [arg18[0] + value51 / value53 * 2.5, arg18[1] + 6, arg18[2] + value52 / value53 * 2.5],
-    target: [...arg18],
+    position: [target[0] + offsetX / length * 2.5, target[1] + 6, target[2] + offsetZ / length * 2.5],
+    target: [...target],
     up: [0, 1, 0],
     zoom: 1,
     focalLength: 40,
     frameSize: 5
   };
 }
-export function vacuumFollowPose(position3, arg19) {
+export function vacuumFollowPose(camera, target) {
   return {
-    ...position3,
-    target: [...arg19],
-    position: position3.position.map((arg4, arg5) => arg19[arg5] + arg4 - position3.target[arg5])
+    ...camera,
+    target: [...target],
+    position: camera.position.map((coord, index) => target[index] + coord - camera.target[index])
   };
 }
-export function createVacuumFollowCamera(Raycaster) {
-  const set = new Raycaster.Raycaster();
-  const clear = new Map();
-  let traverse = null;
-  let value54 = null;
-  let value55 = "";
-  let push = [];
-  function fn5(modelRoot, floorId3) {
-    const value25 = JSON.stringify([floorId3.floorId, floorId3.modelId]);
-    if (traverse !== modelRoot.modelRoot || value54 !== modelRoot.sceneRevision || value55 !== value25) {
+export function createVacuumFollowCamera(THREE) {
+  const raycaster = new THREE.Raycaster();
+  const occluders = new Map();
+  let modelRoot = null;
+  let sceneRevision = null;
+  let focusKey = "";
+  let meshes = [];
+  function ensureMeshes(host, focus) {
+    const nextFocusKey = JSON.stringify([focus.floorId, focus.modelId]);
+    if (modelRoot !== host.modelRoot || sceneRevision !== host.sceneRevision || focusKey !== nextFocusKey) {
       reset();
-      traverse = modelRoot.modelRoot;
-      value54 = modelRoot.sceneRevision;
-      value55 = value25;
-      push = [];
-      traverse?.traverse(isMesh => {
-        if (!!isMesh.isMesh && !!isMesh.geometry) {
-          for (let userData = isMesh; userData; userData = userData.parent) {
-            if (userData.userData?.environmentEffect || userData.userData?.environmentFloorId === floorId3.floorId && userData.userData?.environmentModelId === floorId3.modelId) {
+      modelRoot = host.modelRoot;
+      sceneRevision = host.sceneRevision;
+      focusKey = nextFocusKey;
+      meshes = [];
+      modelRoot?.traverse(mesh => {
+        if (!!mesh.isMesh && !!mesh.geometry) {
+          for (let node = mesh; node; node = node.parent) {
+            if (node.userData?.environmentEffect || node.userData?.environmentFloorId === focus.floorId && node.userData?.environmentModelId === focus.modelId) {
               return;
             }
           }
-          push.push(isMesh);
+          meshes.push(mesh);
         }
       });
     }
   }
   function reset() {
-    for (const [material, replacement] of clear) {
-      if (material.material === replacement.replacement) {
-        material.material = replacement.original;
+    for (const [mesh, entry] of occluders) {
+      if (mesh.material === entry.replacement) {
+        mesh.material = entry.original;
       }
-      replacement.clones.forEach(dispose2 => dispose2.dispose());
+      entry.clones.forEach(clone => clone.dispose());
     }
-    clear.clear();
+    occluders.clear();
   }
-  function reveal(arg9, arg10, clone3, arg11) {
-    fn5(arg9, arg10);
-    const add2 = new Set();
-    for (const [value20, value21] of [[0, 0], [0.18, 0], [-0.18, 0], [0, 0.18], [0, -0.18]]) {
-      const sub2 = clone3.clone().add(new Raycaster.Vector3(value20, 0, value21));
-      const length = sub2.sub(arg11);
-      const value14 = length.length();
-      set.set(arg11, length.normalize());
-      set.near = 0;
-      set.far = Math.max(0, value14 - 0.015);
-      for (const object of set.intersectObjects(push, false)) {
-        let value8 = true;
-        for (let parent = object.object; parent; parent = parent.parent) {
+  function reveal(host, focus, cameraWorld, targetWorld) {
+    ensureMeshes(host, focus);
+    const hitMeshes = new Set();
+    for (const [offsetX, offsetZ] of [[0, 0], [0.18, 0], [-0.18, 0], [0, 0.18], [0, -0.18]]) {
+      const sample = cameraWorld.clone().add(new THREE.Vector3(offsetX, 0, offsetZ));
+      const direction = sample.sub(targetWorld);
+      const distance = direction.length();
+      raycaster.set(targetWorld, direction.normalize());
+      raycaster.near = 0;
+      raycaster.far = Math.max(0, distance - 0.015);
+      for (const hit of raycaster.intersectObjects(meshes, false)) {
+        let isVisible = true;
+        for (let parent = hit.object; parent; parent = parent.parent) {
           if (!parent.visible) {
-            value8 = false;
+            isVisible = false;
           }
         }
-        if (value8) {
-          add2.add(object.object);
+        if (isVisible) {
+          hitMeshes.add(hit.object);
         }
       }
     }
-    for (const [material2, replacement2] of clear) {
-      if (!add2.has(material2)) {
-        if (material2.material === replacement2.replacement) {
-          material2.material = replacement2.original;
+    for (const [mesh, entry] of occluders) {
+      if (!hitMeshes.has(mesh)) {
+        if (mesh.material === entry.replacement) {
+          mesh.material = entry.original;
         }
-        replacement2.clones.forEach(dispose => dispose.dispose());
-        clear.delete(material2);
+        entry.clones.forEach(clone => clone.dispose());
+        occluders.delete(mesh);
       }
     }
-    for (const material3 of add2) {
-      let original2 = clear.get(material3);
-      if (!original2) {
-        const original = material3.material;
-        const map = Array.isArray(original) ? original : [original];
-        const clones = map.map(clone => clone.clone());
-        original2 = {
+    for (const mesh of hitMeshes) {
+      let entry = occluders.get(mesh);
+      if (!entry) {
+        const original = mesh.material;
+        const materials = Array.isArray(original) ? original : [original];
+        const clones = materials.map(material => material.clone());
+        entry = {
           original,
           clones,
           replacement: Array.isArray(original) ? clones : clones[0]
         };
-        clear.set(material3, original2);
-        material3.material = original2.replacement;
+        occluders.set(mesh, entry);
+        mesh.material = entry.replacement;
       }
-      const value15 = Array.isArray(original2.original) ? original2.original : [original2.original];
-      original2.clones.forEach((copy, arg) => {
-        copy.copy(value15[arg]);
-        copy.transparent = true;
-        copy.opacity = Math.min(value15[arg].opacity, 0.1);
-        copy.depthWrite = false;
+      const originals = Array.isArray(entry.original) ? entry.original : [entry.original];
+      entry.clones.forEach((clone, index) => {
+        clone.copy(originals[index]);
+        clone.transparent = true;
+        clone.opacity = Math.min(originals[index].opacity, 0.1);
+        clone.depthWrite = false;
       });
     }
   }

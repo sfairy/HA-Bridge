@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#172029">
+    <title>使用教程 · HA Bridge</title>
+    <link rel="icon" href="/bridge-static/assets/brand/ha-bridge-favicon-h5.ico" sizes="16x16 32x32 48x48">
+    <link rel="icon" href="/bridge-static/assets/brand/ha-bridge-favicon-h5.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/bridge-static/css/auth/auth.css?v=20260726-brand-v1">
+    <link rel="stylesheet" href="/bridge-static/css/shared/help.css?v=20260910-local-help-v1">
+</head>
+
+<body class="help-page">
+    <header class="help-header">
+        <a class="help-brand" href="/">
+            <img src="/bridge-static/assets/brand/ha-bridge-mark-white-orange.svg?v=20260726-h2" alt="">
+            <strong>HA Bridge</strong>
+            <span>使用教程</span>
+        </a>
+        <nav class="help-nav" aria-label="教程章节">
+            <a href="#first-setup">首次使用</a>
+            <a href="#floorplan">户型图</a>
+            <a href="#license-store">本机授权店</a>
+        </nav>
+    </header>
+    <main class="help-main">
+        <section id="first-setup" class="help-section">
+            <p class="help-kicker">FIRST SETUP</p>
+            <h1>首次使用</h1>
+            <ol>
+                <li>打开 <code>/setup</code>，创建管理员账号（用户名 3–64 个字符，密码至少 8 位）。</li>
+                <li>登录后进入 <code>/license</code>。另开本机授权店
+                    <a href="http://127.0.0.1:18082/" target="_blank" rel="noopener noreferrer">http://127.0.0.1:18082/</a>，用邮箱领取激活码，再回到授权页激活。
+                </li>
+                <li>在编辑器里配置 Home Assistant 地址和长期访问令牌，然后创建空白仪表盘。</li>
+                <li>使用 3D 交互：先在 <code>/3d-studio</code> 保存户型，再在编辑器添加「3D 交互」控件并载入户型快照，绑定灯或开关实体后即可在舞台里控制。</li>
+                <li>墙面中控：在编辑器生成 6 位配对码，设备打开 <code>/pair</code> 完成配对。</li>
+            </ol>
+            <p>主应用默认 <strong>18081</strong>，本机授权店默认 <strong>18082</strong>。仓库根目录执行 <code>python3 start.py</code> 可同时启动两者。</p>
+        </section>
+        <section id="floorplan" class="help-section">
+            <p class="help-kicker">FLOORPLAN STUDIO</p>
+            <h1>户型图绘制</h1>
+            <ol>
+                <li><strong>导入底图</strong>：在工作室左侧导入 PNG / JPG / WebP 户型图。</li>
+                <li><strong>标定比例</strong>：用参考线工具画一段已知长度，填写真实米数。</li>
+                <li><strong>描绘户型</strong>：连续画墙，再吸附窗户、门与栏杆。</li>
+                <li><strong>摆放物件</strong>：从模型库拖入家具、电器与结构件。</li>
+                <li><strong>放置灯光</strong>：添加筒射灯、吸顶灯或灯带，并按灯组管理。</li>
+                <li><strong>保存图片</strong>：打开导图工作区，按楼层或全楼导出，图片会写回仪表盘可用的导图资源。</li>
+            </ol>
+            <p>返回编辑器后，可用「户型自动图」或「3D 交互」控件引用导出结果。3D 交互舞台支持灯光、窗帘、空调、电视、NAS、人体存在与扫地机等绑定。</p>
+            <p><a class="help-action" href="/3d-studio">打开户型图工作室</a></p>
+        </section>
+        <section id="license-store" class="help-section">
+            <p class="help-kicker">LOCAL LICENSE STORE</p>
+            <h1>本机授权店</h1>
+            <p>本仓库不连接官方授权云或商城。激活只走本机授权店：</p>
+            <ul>
+                <li>领取激活码：<a href="http://127.0.0.1:18082/" target="_blank" rel="noopener noreferrer">http://127.0.0.1:18082/</a></li>
+                <li>按邮箱查询：<a href="http://127.0.0.1:18082/lookup" target="_blank" rel="noopener noreferrer">http://127.0.0.1:18082/lookup</a></li>
+                <li>主应用激活页：<a href="/license">/license</a></li>
+            </ul>
+            <p>本机店签发的基础版租约包含编辑器、展示、HA 同步/控制、3D 交互等全部基础能力。</p>
+        </section>
+    </main>
+</body>
+
+</html>

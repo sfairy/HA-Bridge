@@ -64,7 +64,7 @@ export function normalizedThresholds(thresholds) {
   })).sort((element, element2) => element.value - element2.value);
 }
 export function automaticThresholds(samples) {
-  const sorted = (Array.isArray(samples) ? samples : []).map(element => Number(element?.value ?? element)).filter(sample => Number.isFinite(sample)).sort((arg, arg2) => arg - arg2);
+  const sorted = (Array.isArray(samples) ? samples : []).map(element => Number(element?.value ?? element)).filter(sample => Number.isFinite(sample)).sort((left, right) => left - right);
   if (!sorted.length) {
     return [];
   }

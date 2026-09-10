@@ -1,157 +1,157 @@
-const Je = "http://www.w3.org/2000/svg";
-const H = (arg38, arg39, arg40) => Math.max(arg39, Math.min(arg40, arg38));
-const Y = (arg41, arg42 = 0) => Number.isFinite(Number(arg41)) ? Number(arg41) : arg42;
-const T = arg43 => JSON.parse(JSON.stringify(arg43 || {}));
-const B = arg44 => Math.round(arg44 * 100) / 100;
-const Ye = (arg45, arg46) => JSON.stringify([String(arg45), String(arg46)]);
-export function resizeRegionDimensions(width10, arg47, arg48, arg49, arg50 = false) {
-  if (["n", "s"].includes(arg49)) {
-    arg47 = width10.width;
+const SVG_NS = "http://www.w3.org/2000/svg";
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const toFiniteNumber = (input, fallback = 0) => Number.isFinite(Number(input)) ? Number(input) : fallback;
+const cloneJson = data => JSON.parse(JSON.stringify(data || {}));
+const round2 = num => Math.round(num * 100) / 100;
+const makeRegionKey = (floorId, itemId) => JSON.stringify([String(floorId), String(itemId)]);
+export function resizeRegionDimensions(baseDims, nextWidth, nextDepth, handle, keepAspect = false) {
+  if (["n", "s"].includes(handle)) {
+    nextWidth = baseDims.width;
   }
-  if (["w", "e"].includes(arg49)) {
-    arg48 = width10.depth;
+  if (["w", "e"].includes(handle)) {
+    nextDepth = baseDims.depth;
   }
-  if (arg50) {
-    const value61 = arg47 / width10.width;
-    const value62 = arg48 / width10.depth;
-    let value63 = ["w", "e"].includes(arg49) ? value61 : ["n", "s"].includes(arg49) ? value62 : Math.abs(value61 - 1) >= Math.abs(value62 - 1) ? value61 : value62;
-    value63 = H(value63, Math.max(0.5 / width10.width, 0.5 / width10.depth), Math.min(20 / width10.width, 20 / width10.depth));
+  if (keepAspect) {
+    const widthScale = nextWidth / baseDims.width;
+    const depthScale = nextDepth / baseDims.depth;
+    let uniformScale = ["w", "e"].includes(handle) ? widthScale : ["n", "s"].includes(handle) ? depthScale : Math.abs(widthScale - 1) >= Math.abs(depthScale - 1) ? widthScale : depthScale;
+    uniformScale = clamp(uniformScale, Math.max(0.5 / baseDims.width, 0.5 / baseDims.depth), Math.min(20 / baseDims.width, 20 / baseDims.depth));
     return {
-      width: B(width10.width * value63),
-      depth: B(width10.depth * value63)
+      width: round2(baseDims.width * uniformScale),
+      depth: round2(baseDims.depth * uniformScale)
     };
   }
   return {
-    width: B(H(arg47, 0.5, 20)),
-    depth: B(H(arg48, 0.5, 20))
+    width: round2(clamp(nextWidth, 0.5, 20)),
+    depth: round2(clamp(nextDepth, 0.5, 20))
   };
 }
-export function mountRegionRangeEditor(invalidateRegionLighting, {
-  getConfig: arg51 = () => ({}),
-  onChange: arg52 = () => {},
-  onClose: arg53 = () => {},
-  wake: arg54 = () => {},
-  standalone: element4 = false
+export function mountRegionRangeEditor(host, {
+  getConfig = () => ({}),
+  onChange = () => {},
+  onClose = () => {},
+  wake = () => {},
+  standalone = false
 } = {}) {
-  const createElement = invalidateRegionLighting.container.ownerDocument;
-  const win = createElement.defaultView;
-  const Vector3 = invalidateRegionLighting.THREE;
-  const querySelector = createElement.createElement("section");
-  querySelector.className = "plan2-range-editor";
-  querySelector.dataset.testid = "range-editor";
-  querySelector.hidden = true;
-  querySelector.setAttribute("aria-label", "平面光区编辑");
-  querySelector.innerHTML = "\n    <svg aria-label=\"灯具与照射范围\" role=\"group\"></svg>\n    <header class=\"p2r-top\"><div class=\"p2r-title\">平面光区编辑<small>拖动边角调整范围，按住 Shift 等比例缩放</small></div><span class=\"p2r-compact-caption\">自由拖动 · Shift 等比</span></header>\n    <div class=\"p2r-panel\">\n      <h3>照射范围</h3>\n      <div class=\"p2r-selectors\">\n        <label class=\"p2r-field\">楼层<select data-field=\"floor\" aria-label=\"楼层\"></select></label>\n        <label class=\"p2r-field\">灯具<select data-field=\"fixture\" aria-label=\"灯具\"></select></label>\n      </div>\n      <div class=\"p2r-grid\">\n        <label class=\"p2r-field p2r-shape\">光区形状<select data-field=\"shape\" aria-label=\"光区形状\"><option value=\"circle\">圆形</option><option value=\"square\">方形</option></select></label>\n        <label class=\"p2r-field\"><span data-width-label>宽度（米）</span><input data-field=\"width\" aria-label=\"宽度（米）\" type=\"number\" min=\"0.5\" max=\"20\" step=\"0.1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field\"><span data-depth-label>深度（米）</span><input data-field=\"depth\" aria-label=\"深度（米）\" type=\"number\" min=\"0.5\" max=\"20\" step=\"0.1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field p2r-rotation\">旋转（度）<input data-field=\"rotation\" aria-label=\"旋转（度）\" type=\"number\" min=\"-180\" max=\"180\" step=\"1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field p2r-soft-field\">边缘柔和度<span class=\"p2r-softness\"><input data-field=\"softness\" aria-label=\"边缘柔和度\" type=\"range\" min=\"5\" max=\"100\" step=\"1\"><output data-soft-value>35%</output></span></label>\n      </div>\n      <div class=\"p2r-options\">\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"moveCenter\" type=\"checkbox\">允许移动范围中心</label>\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"group\" type=\"checkbox\">同步本组范围</label>\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"preview\" type=\"checkbox\"><span data-preview-label>仅预览当前灯</span></label>\n      </div>\n      <div class=\"p2r-actions\"><button type=\"button\" data-action=\"reset-center\">中心回到灯位</button><button type=\"button\" data-action=\"reset\">恢复模型默认</button><button type=\"button\" class=\"p2r-done\" data-action=\"close\">完成</button></div>\n      <p class=\"p2r-status\" role=\"status\" aria-live=\"polite\"></p>\n    </div>\n    <div class=\"p2r-help\">外边界为光照衰减到零的位置 · 范围不代表墙体挡光</div>";
-  querySelector.querySelector("[data-action=close]").hidden = element4;
-  invalidateRegionLighting.container.append(querySelector);
-  const addEventListener2 = querySelector.querySelector("svg");
-  const getBoundingClientRect2 = querySelector.querySelector(".p2r-panel");
-  const group = Object.fromEntries([...querySelector.querySelectorAll("[data-field]")].map(dataset => [dataset.dataset.field, dataset]));
-  const textContent3 = querySelector.querySelector(".p2r-status");
-  const value102 = querySelector.querySelector("[data-soft-value]");
-  const close = mountRangeFormControls(querySelector);
-  const setFromCamera = new Vector3.Raycaster();
-  const set = new Vector3.Vector2();
-  const constant = new Vector3.Plane(new Vector3.Vector3(0, 1, 0), 0);
-  let value103 = false;
-  let value104 = false;
-  let value105 = {};
-  let filter = [];
-  let element5 = "";
-  let element6 = "";
-  let value106 = "";
-  let value107 = null;
-  let value108 = "";
-  let value109 = true;
-  let up = null;
-  let point3 = null;
-  let value110 = 0;
-  let value111 = false;
-  let value112 = false;
-  let value113 = null;
-  let value114 = 0;
-  let value115 = 0;
-  const value116 = () => invalidateRegionLighting.regionLighting;
-  const value117 = () => filter.find(key9 => key9.key === element5);
-  const value118 = arg9 => (invalidateRegionLighting.document?.floors || []).find(id4 => String(id4.id) === String(arg9));
-  const value119 = groupId2 => groupId2 ? filter.filter(floorId5 => String(floorId5.floorId) === String(groupId2.floorId) && (groupId2.groupId ? floorId5.groupId === groupId2.groupId : floorId5.key === groupId2.key)) : [];
-  const value120 = () => group.group.checked ? value119(value117()).map(key5 => key5.key) : value117() ? [element5] : [];
-  function fn() {
-    filter = (value116()?.listRegions?.() || []).map(floorId6 => {
-      const scene = value118(floorId6.floorId);
+  const doc = host.container.ownerDocument;
+  const win = doc.defaultView;
+  const THREE = host.THREE;
+  const editorEl = doc.createElement("section");
+  editorEl.className = "plan2-range-editor";
+  editorEl.dataset.testid = "range-editor";
+  editorEl.hidden = true;
+  editorEl.setAttribute("aria-label", "平面光区编辑");
+  editorEl.innerHTML = "\n    <svg aria-label=\"灯具与照射范围\" role=\"group\"></svg>\n    <header class=\"p2r-top\"><div class=\"p2r-title\">平面光区编辑<small>拖动边角调整范围，按住 Shift 等比例缩放</small></div><span class=\"p2r-compact-caption\">自由拖动 · Shift 等比</span></header>\n    <div class=\"p2r-panel\">\n      <h3>照射范围</h3>\n      <div class=\"p2r-selectors\">\n        <label class=\"p2r-field\">楼层<select data-field=\"floor\" aria-label=\"楼层\"></select></label>\n        <label class=\"p2r-field\">灯具<select data-field=\"fixture\" aria-label=\"灯具\"></select></label>\n      </div>\n      <div class=\"p2r-grid\">\n        <label class=\"p2r-field p2r-shape\">光区形状<select data-field=\"shape\" aria-label=\"光区形状\"><option value=\"circle\">圆形</option><option value=\"square\">方形</option></select></label>\n        <label class=\"p2r-field\"><span data-width-label>宽度（米）</span><input data-field=\"width\" aria-label=\"宽度（米）\" type=\"number\" min=\"0.5\" max=\"20\" step=\"0.1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field\"><span data-depth-label>深度（米）</span><input data-field=\"depth\" aria-label=\"深度（米）\" type=\"number\" min=\"0.5\" max=\"20\" step=\"0.1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field p2r-rotation\">旋转（度）<input data-field=\"rotation\" aria-label=\"旋转（度）\" type=\"number\" min=\"-180\" max=\"180\" step=\"1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field p2r-soft-field\">边缘柔和度<span class=\"p2r-softness\"><input data-field=\"softness\" aria-label=\"边缘柔和度\" type=\"range\" min=\"5\" max=\"100\" step=\"1\"><output data-soft-value>35%</output></span></label>\n      </div>\n      <div class=\"p2r-options\">\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"moveCenter\" type=\"checkbox\">允许移动范围中心</label>\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"group\" type=\"checkbox\">同步本组范围</label>\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"preview\" type=\"checkbox\"><span data-preview-label>仅预览当前灯</span></label>\n      </div>\n      <div class=\"p2r-actions\"><button type=\"button\" data-action=\"reset-center\">中心回到灯位</button><button type=\"button\" data-action=\"reset\">恢复模型默认</button><button type=\"button\" class=\"p2r-done\" data-action=\"close\">完成</button></div>\n      <p class=\"p2r-status\" role=\"status\" aria-live=\"polite\"></p>\n    </div>\n    <div class=\"p2r-help\">外边界为光照衰减到零的位置 · 范围不代表墙体挡光</div>";
+  editorEl.querySelector("[data-action=close]").hidden = standalone;
+  host.container.append(editorEl);
+  const svg = editorEl.querySelector("svg");
+  const panelEl = editorEl.querySelector(".p2r-panel");
+  const fields = Object.fromEntries([...editorEl.querySelectorAll("[data-field]")].map(dataset => [dataset.dataset.field, dataset]));
+  const statusEl = editorEl.querySelector(".p2r-status");
+  const softValueEl = editorEl.querySelector("[data-soft-value]");
+  const close = mountRangeFormControls(editorEl);
+  const raycaster = new THREE.Raycaster();
+  const pointerNdc = new THREE.Vector2();
+  const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  let editorOpen = false;
+  let disposed = false;
+  let overrides = {};
+  let regions = [];
+  let selectedKey = "";
+  let selectedFloorId = "";
+  let saveError = "";
+  let savedCamera = null;
+  let savedFloorId = "";
+  let savedControlsEnabled = true;
+  let topViewCamera = null;
+  let dragState = null;
+  let redrawRaf = 0;
+  let pendingFit = false;
+  let fittingCamera = false;
+  let unsubscribeCamera = null;
+  let lastFitWidth = 0;
+  let lastFitHeight = 0;
+  const getRegionLighting = () => host.regionLighting;
+  const selectedRegion = () => regions.find(key9 => key9.key === selectedKey);
+  const findFloor = floorId => (host.document?.floors || []).find(id4 => String(id4.id) === String(floorId));
+  const regionsInGroup = groupId2 => groupId2 ? regions.filter(floorId5 => String(floorId5.floorId) === String(groupId2.floorId) && (groupId2.groupId ? floorId5.groupId === groupId2.groupId : floorId5.key === groupId2.key)) : [];
+  const activeEditKeys = () => fields.group.checked ? regionsInGroup(selectedRegion()).map(key5 => key5.key) : selectedRegion() ? [selectedKey] : [];
+  function refreshRegions() {
+    regions = (getRegionLighting()?.listRegions?.() || []).map(floorId6 => {
+      const scene = findFloor(floorId6.floorId);
       const lightGroupId = scene?.scene?.items?.find(id => String(id.id) === String(floorId6.id));
       const groupId = lightGroupId?.lightGroupId || "";
-      const label = (arg51()?.lights || []).find(floorId => String(floorId.floorId) === String(floorId6.floorId) && floorId.groupId === groupId);
+      const label = (getConfig()?.lights || []).find(floorId => String(floorId.floorId) === String(floorId6.floorId) && floorId.groupId === groupId);
       const name = scene?.scene?.lightGroups?.find(id2 => id2.id === groupId);
       return {
         ...floorId6,
-        key: floorId6.key || Ye(floorId6.floorId, floorId6.id),
+        key: floorId6.key || makeRegionKey(floorId6.floorId, floorId6.id),
         groupId,
         label: label?.label || name?.name || lightGroupId?.name || "灯具"
       };
     });
-    for (const fixtureLabel of filter) {
-      const length = value119(fixtureLabel);
+    for (const fixtureLabel of regions) {
+      const length = regionsInGroup(fixtureLabel);
       fixtureLabel.fixtureLabel = "" + fixtureLabel.label + (length.length > 1 ? " · " + (length.findIndex(key => key.key === fixtureLabel.key) + 1) + "/" + length.length : "");
     }
-    const some = filter.filter(floorId7 => String(floorId7.floorId) === element6);
-    if (!some.some(key6 => key6.key === element5)) {
-      element5 = some[0]?.key || "";
+    const some = regions.filter(floorId7 => String(floorId7.floorId) === selectedFloorId);
+    if (!some.some(key6 => key6.key === selectedKey)) {
+      selectedKey = some[0]?.key || "";
     }
   }
-  function fn2(element2, element3) {
-    const value65 = createElement.createElement("option");
-    value65.value = element2;
-    value65.textContent = element3;
-    return value65;
+  function createOption(element2, element3) {
+    const optionEl = doc.createElement("option");
+    optionEl.value = element2;
+    optionEl.textContent = element3;
+    return optionEl;
   }
-  function fn3() {
-    group.floor.replaceChildren(...(invalidateRegionLighting.document?.floors || []).map(id3 => fn2(String(id3.id), id3.name || "楼层")));
-    group.floor.value = element6;
-    group.fixture.replaceChildren(...filter.filter(floorId2 => String(floorId2.floorId) === element6).map(key3 => fn2(key3.key, key3.fixtureLabel)));
-    group.fixture.value = element5;
-    const moveCenterEnabled = value117();
-    const value66 = !!moveCenterEnabled;
-    const length2 = value119(moveCenterEnabled);
-    for (const value52 of ["fixture", "shape", "width", "depth", "rotation", "softness", "preview", "moveCenter"]) {
-      group[value52].disabled = !value66;
+  function syncForm() {
+    fields.floor.replaceChildren(...(host.document?.floors || []).map(id3 => createOption(String(id3.id), id3.name || "楼层")));
+    fields.floor.value = selectedFloorId;
+    fields.fixture.replaceChildren(...regions.filter(floorId2 => String(floorId2.floorId) === selectedFloorId).map(key3 => createOption(key3.key, key3.fixtureLabel)));
+    fields.fixture.value = selectedKey;
+    const moveCenterEnabled = selectedRegion();
+    const hasSelection = !!moveCenterEnabled;
+    const length2 = regionsInGroup(moveCenterEnabled);
+    for (const fieldKey of ["fixture", "shape", "width", "depth", "rotation", "softness", "preview", "moveCenter"]) {
+      fields[fieldKey].disabled = !hasSelection;
     }
-    group.group.disabled = length2.length < 2;
-    querySelector.querySelector("[data-preview-label]").textContent = group.group.checked && length2.length > 1 ? "仅预览当前灯组" : "仅预览当前灯";
-    querySelector.querySelector("[data-action=reset]").disabled = !value66;
-    querySelector.querySelector("[data-action=reset-center]").hidden = !moveCenterEnabled || !moveCenterEnabled.offsetX && !moveCenterEnabled.offsetZ;
-    group.moveCenter.checked = moveCenterEnabled?.moveCenterEnabled === true;
+    fields.group.disabled = length2.length < 2;
+    editorEl.querySelector("[data-preview-label]").textContent = fields.group.checked && length2.length > 1 ? "仅预览当前灯组" : "仅预览当前灯";
+    editorEl.querySelector("[data-action=reset]").disabled = !hasSelection;
+    editorEl.querySelector("[data-action=reset-center]").hidden = !moveCenterEnabled || !moveCenterEnabled.offsetX && !moveCenterEnabled.offsetZ;
+    fields.moveCenter.checked = moveCenterEnabled?.moveCenterEnabled === true;
     if (moveCenterEnabled) {
-      group.shape.value = ["square", "strip"].includes(moveCenterEnabled.shape) ? "square" : "circle";
-      for (const value20 of ["width", "depth", "rotation"]) {
-        if (createElement.activeElement !== group[value20]) {
-          group[value20].value = B(moveCenterEnabled[value20]);
+      fields.shape.value = ["square", "strip"].includes(moveCenterEnabled.shape) ? "square" : "circle";
+      for (const numericField of ["width", "depth", "rotation"]) {
+        if (doc.activeElement !== fields[numericField]) {
+          fields[numericField].value = round2(moveCenterEnabled[numericField]);
         }
       }
-      group.softness.value = Math.round(moveCenterEnabled.softness * 100);
-      value102.value = group.softness.value + "%";
-      textContent3.textContent = group.group.checked && length2.length > 1 ? "本组 " + length2.length + " 盏 · 修改会同步到各自灯位" : length2.length > 1 ? "本组 " + length2.length + " 盏 · 当前只调整这一盏" : moveCenterEnabled.moveCenterEnabled ? "拖动光区或中心十字移动范围 · 灯位不变" : "范围中心已锁定 · 可拖动边角调整大小";
+      fields.softness.value = Math.round(moveCenterEnabled.softness * 100);
+      softValueEl.value = fields.softness.value + "%";
+      statusEl.textContent = fields.group.checked && length2.length > 1 ? "本组 " + length2.length + " 盏 · 修改会同步到各自灯位" : length2.length > 1 ? "本组 " + length2.length + " 盏 · 当前只调整这一盏" : moveCenterEnabled.moveCenterEnabled ? "拖动光区或中心十字移动范围 · 灯位不变" : "范围中心已锁定 · 可拖动边角调整大小";
     } else {
-      textContent3.textContent = "当前楼层暂无可编辑灯具，请切换楼层。";
+      statusEl.textContent = "当前楼层暂无可编辑灯具，请切换楼层。";
     }
-    if (value106) {
-      textContent3.textContent = "本次保存未成功：" + value106 + "。当前预览仍保留。";
-      textContent3.style.color = "#ffc28d";
+    if (saveError) {
+      statusEl.textContent = "本次保存未成功：" + saveError + "。当前预览仍保留。";
+      statusEl.style.color = "#ffc28d";
     } else {
-      textContent3.style.removeProperty("color");
+      statusEl.style.removeProperty("color");
     }
     close.sync();
   }
-  function fn4() {
-    const value67 = group.preview.checked ? value120() : null;
-    value116()?.setPreview?.(value67);
-    invalidateRegionLighting.invalidateRegionLighting?.();
-    arg54();
+  function applyPreview() {
+    const previewKeys = fields.preview.checked ? activeEditKeys() : null;
+    getRegionLighting()?.setPreview?.(previewKeys);
+    host.invalidateRegionLighting?.();
+    wake();
   }
-  function fn5(arg17, arg18 = false) {
-    if (value117()) {
-      for (const value21 of value120()) {
-        const width = filter.find(key2 => key2.key === value21);
+  function applyOverrides(patch, commit = false) {
+    if (selectedRegion()) {
+      for (const editKey of activeEditKeys()) {
+        const width = regions.find(key2 => key2.key === editKey);
         const shape = {
           width: width.width,
           depth: width.depth,
@@ -161,148 +161,148 @@ export function mountRegionRangeEditor(invalidateRegionLighting, {
           offsetX: width.offsetX || 0,
           offsetZ: width.offsetZ || 0,
           moveCenterEnabled: width.moveCenterEnabled === true,
-          ...(value105[value21] || {}),
-          ...arg17
+          ...(overrides[editKey] || {}),
+          ...patch
         };
         shape.shape = ["square", "strip"].includes(shape.shape) ? "square" : "circle";
-        value105[value21] = shape;
+        overrides[editKey] = shape;
       }
-      value116()?.setOverrides?.(value105);
-      invalidateRegionLighting.invalidateRegionLighting?.();
-      arg54();
-      fn();
-      fn3();
-      fn12();
-      if (arg18) {
-        fn6();
+      getRegionLighting()?.setOverrides?.(overrides);
+      host.invalidateRegionLighting?.();
+      wake();
+      refreshRegions();
+      syncForm();
+      redrawOverlay();
+      if (commit) {
+        emitChange();
       }
     }
   }
-  function fn6() {
-    value105 = T(value116()?.getOverrides?.() || value105);
-    arg52(T(value105));
+  function emitChange() {
+    overrides = cloneJson(getRegionLighting()?.getOverrides?.() || overrides);
+    onChange(cloneJson(overrides));
   }
-  function fn7(arg19, arg20, arg21) {
-    const left = invalidateRegionLighting.canvas.getBoundingClientRect();
-    const left2 = querySelector.getBoundingClientRect();
-    const x3 = new Vector3.Vector3(arg19, arg20, arg21).project(invalidateRegionLighting.camera);
+  function projectWorldToEditor(worldX, worldY, worldZ) {
+    const left = host.canvas.getBoundingClientRect();
+    const left2 = editorEl.getBoundingClientRect();
+    const x3 = new THREE.Vector3(worldX, worldY, worldZ).project(host.camera);
     return [left.left - left2.left + (x3.x + 1) * left.width / 2, left.top - left2.top + (1 - x3.y) * left.height / 2];
   }
-  function fn8() {
-    return Y(invalidateRegionLighting.worldPoint?.(element6, 0, 0, 0.065)?.y, 0.065);
+  function planeHeight() {
+    return toFiniteNumber(host.worldPoint?.(selectedFloorId, 0, 0, 0.065)?.y, 0.065);
   }
-  function fn9(center2, arg22, arg23, arg24) {
-    const [value68, value69] = center2.axis;
-    return fn7(center2.center[0] + arg22 * value68 - arg23 * value69, arg24, center2.center[2] + arg22 * value69 + arg23 * value68);
+  function offsetOnPlaneToEditor(center2, localX, localZ, heightY) {
+    const [axisXComp, axisZComp] = center2.axis;
+    return projectWorldToEditor(center2.center[0] + localX * axisXComp - localZ * axisZComp, heightY, center2.center[2] + localX * axisZComp + localZ * axisXComp);
   }
-  function fn10(arg25, arg26, append4 = addEventListener2) {
-    const setAttribute2 = createElement.createElementNS(Je, arg25);
-    for (const [value53, value54] of Object.entries(arg26 || {})) {
-      setAttribute2.setAttribute(value53, String(value54));
+  function createSvgNode(tagName, attrs, append4 = svg) {
+    const setAttribute2 = doc.createElementNS(SVG_NS, tagName);
+    for (const [attrName, attrValue] of Object.entries(attrs || {})) {
+      setAttribute2.setAttribute(attrName, String(attrValue));
     }
     append4.append(setAttribute2);
     return setAttribute2;
   }
-  function fn11(shape2, arg27, arg28 = 1) {
-    const value70 = shape2.width * arg28 / 2;
-    const value71 = shape2.depth * arg28 / 2;
+  function regionPathData(shape2, pathHeight, scale = 1) {
+    const halfWidth = shape2.width * scale / 2;
+    const halfDepth = shape2.depth * scale / 2;
     const push2 = [];
     if (shape2.shape === "square") {
-      return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([arg, arg2], arg3) => {
-        const value = fn9(shape2, arg * value70, arg2 * value71, arg27);
-        return "" + (arg3 ? "L" : "M") + value[0].toFixed(2) + "," + value[1].toFixed(2);
+      return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz], pointIndex) => {
+        const value = offsetOnPlaneToEditor(shape2, sx * halfWidth, sz * halfDepth, pathHeight);
+        return "" + (pointIndex ? "L" : "M") + value[0].toFixed(2) + "," + value[1].toFixed(2);
       }).join("") + "Z";
     }
-    for (let value55 = 0; value55 < 64; value55 += 1) {
-      const value32 = value55 * Math.PI * 2 / 64;
-      const value33 = Math.cos(value32);
-      const value34 = Math.sin(value32);
-      const value35 = Math.min(value70, value71);
-      const value36 = shape2.shape === "strip" ? Math.sign(value33) * (value70 - value35) + value33 * value35 : value33 * value70;
-      const value37 = shape2.shape === "strip" ? Math.sign(value34) * (value71 - value35) + value34 * value35 : value34 * value71;
-      push2.push(fn9(shape2, value36, value37, arg27));
+    for (let seg = 0; seg < 64; seg += 1) {
+      const theta = seg * Math.PI * 2 / 64;
+      const cosT = Math.cos(theta);
+      const sinT = Math.sin(theta);
+      const minHalf = Math.min(halfWidth, halfDepth);
+      const ellipseX = shape2.shape === "strip" ? Math.sign(cosT) * (halfWidth - minHalf) + cosT * minHalf : cosT * halfWidth;
+      const ellipseZ = shape2.shape === "strip" ? Math.sign(sinT) * (halfDepth - minHalf) + sinT * minHalf : sinT * halfDepth;
+      push2.push(offsetOnPlaneToEditor(shape2, ellipseX, ellipseZ, pathHeight));
     }
-    return push2.map((arg4, arg5) => "" + (arg5 ? "L" : "M") + arg4[0].toFixed(2) + "," + arg4[1].toFixed(2)).join("") + "Z";
+    return push2.map((pt, ptIndex) => "" + (ptIndex ? "L" : "M") + pt[0].toFixed(2) + "," + pt[1].toFixed(2)).join("") + "Z";
   }
-  function fn12() {
-    if (!value103 || !invalidateRegionLighting.camera) {
+  function redrawOverlay() {
+    if (!editorOpen || !host.camera) {
       return;
     }
-    invalidateRegionLighting.camera.updateMatrixWorld();
-    const width6 = querySelector.getBoundingClientRect();
-    const value72 = fn8();
-    addEventListener2.setAttribute("viewBox", "0 0 " + (width6.width || 1) + " " + (width6.height || 1));
-    addEventListener2.replaceChildren();
-    const value73 = fn10("g");
-    const value74 = fn10("g");
-    const depth = value117();
-    const has = new Set(value119(depth).map(key4 => key4.key));
-    const value75 = filter.filter(floorId3 => String(floorId3.floorId) === element6).sort((key7, key8) => +(key7.key === element5) - +(key8.key === element5));
-    for (const key11 of value75) {
-      const value38 = key11.key === element5;
-      const value39 = has.has(key11.key);
-      if (value38 || value39) {
-        fn10("path", {
-          ...(value38 && key11.moveCenterEnabled ? {
+    host.camera.updateMatrixWorld();
+    const width6 = editorEl.getBoundingClientRect();
+    const drawHeight = planeHeight();
+    svg.setAttribute("viewBox", "0 0 " + (width6.width || 1) + " " + (width6.height || 1));
+    svg.replaceChildren();
+    const rangesGroup = createSvgNode("g");
+    const markersGroup = createSvgNode("g");
+    const depth = selectedRegion();
+    const has = new Set(regionsInGroup(depth).map(key4 => key4.key));
+    const floorRegions = regions.filter(floorId3 => String(floorId3.floorId) === selectedFloorId).sort((key7, key8) => +(key7.key === selectedKey) - +(key8.key === selectedKey));
+    for (const key11 of floorRegions) {
+      const isSelected = key11.key === selectedKey;
+      const inGroup = has.has(key11.key);
+      if (isSelected || inGroup) {
+        createSvgNode("path", {
+          ...(isSelected && key11.moveCenterEnabled ? {
             "data-range-handle": "move",
             cursor: "move"
           } : {}),
-          d: fn11(key11, value72),
-          fill: value38 ? "#edb06012" : "none",
-          stroke: value38 ? "#f2b768" : "#99afc0",
-          "stroke-width": value38 ? 1.6 : 1,
-          "stroke-dasharray": value38 ? "none" : "4 4",
-          opacity: value38 ? 1 : 0.45
-        }, value73);
+          d: regionPathData(key11, drawHeight),
+          fill: isSelected ? "#edb06012" : "none",
+          stroke: isSelected ? "#f2b768" : "#99afc0",
+          "stroke-width": isSelected ? 1.6 : 1,
+          "stroke-dasharray": isSelected ? "none" : "4 4",
+          opacity: isSelected ? 1 : 0.45
+        }, rangesGroup);
       }
-      if (value38) {
-        fn10("path", {
-          d: fn11(key11, value72, Math.max(0.05, 1 - key11.softness)),
+      if (isSelected) {
+        createSvgNode("path", {
+          d: regionPathData(key11, drawHeight, Math.max(0.05, 1 - key11.softness)),
           fill: "none",
           stroke: "#efb56f",
           "stroke-width": 1,
           "stroke-dasharray": "3 5",
           opacity: 0.42
-        }, value73);
+        }, rangesGroup);
       }
-      const value40 = key11.lampCenter || key11.center;
-      const [cx, cy] = fn7(value40[0], value72, value40[2]);
-      const value41 = fn10("g", {
+      const lampPos = key11.lampCenter || key11.center;
+      const [cx, cy] = projectWorldToEditor(lampPos[0], drawHeight, lampPos[2]);
+      const markerGroup = createSvgNode("g", {
         "data-region-key": key11.key,
         role: "button",
         tabindex: "0",
         "aria-label": "选择" + key11.fixtureLabel
-      }, value74);
-      fn10("circle", {
+      }, markersGroup);
+      createSvgNode("circle", {
         cx,
         cy,
         r: 12,
         fill: "transparent"
-      }, value41);
-      fn10("circle", {
+      }, markerGroup);
+      createSvgNode("circle", {
         cx,
         cy,
-        r: value38 ? 5 : 3.8,
-        fill: value38 ? "#ffd498" : "#e9f0f5",
-        stroke: value38 ? "#a87029" : "#536777",
+        r: isSelected ? 5 : 3.8,
+        fill: isSelected ? "#ffd498" : "#e9f0f5",
+        stroke: isSelected ? "#a87029" : "#536777",
         "stroke-width": 1.7,
         class: "p2r-marker"
-      }, value41);
-      const textContent = fn10("title", {}, value41);
+      }, markerGroup);
+      const textContent = createSvgNode("title", {}, markerGroup);
       textContent.textContent = key11.fixtureLabel;
     }
     if (!depth) {
       return;
     }
-    const value76 = fn9(depth, 0, 0, value72);
-    const value77 = depth.lampCenter || depth.center;
-    const value78 = fn7(value77[0], value72, value77[2]);
+    const centerScreen = offsetOnPlaneToEditor(depth, 0, 0, drawHeight);
+    const lampWorld = depth.lampCenter || depth.center;
+    const lampScreen = projectWorldToEditor(lampWorld[0], drawHeight, lampWorld[2]);
     if (depth.offsetX || depth.offsetZ) {
-      fn10("line", {
-        x1: value78[0],
-        y1: value78[1],
-        x2: value76[0],
-        y2: value76[1],
+      createSvgNode("line", {
+        x1: lampScreen[0],
+        y1: lampScreen[1],
+        x2: centerScreen[0],
+        y2: centerScreen[1],
         stroke: "#e8b76e",
         "stroke-width": 1,
         "stroke-dasharray": "4 4",
@@ -310,33 +310,33 @@ export function mountRegionRangeEditor(invalidateRegionLighting, {
       });
     }
     if (depth.moveCenterEnabled) {
-      const [cx2, cy2] = value76;
-      const value42 = fn10("g", {
+      const [cx2, cy2] = centerScreen;
+      const moveHandle = createSvgNode("g", {
         "data-range-handle": "move",
         role: "button",
         tabindex: "0",
         "aria-label": "拖动光区中心",
         cursor: "move"
       });
-      fn10("circle", {
+      createSvgNode("circle", {
         cx: cx2,
         cy: cy2,
         r: 14,
         fill: "#edb06033",
         stroke: "#f2b768"
-      }, value42);
-      fn10("path", {
+      }, moveHandle);
+      createSvgNode("path", {
         d: "M" + (cx2 - 8) + "," + cy2 + "H" + (cx2 + 8) + "M" + cx2 + "," + (cy2 - 8) + "V" + (cy2 + 8),
         stroke: "#ffe0ad",
         "stroke-width": 2,
         fill: "none"
-      }, value42);
+      }, moveHandle);
     }
     const push3 = [["nw", -1, -1], ["ne", 1, -1], ["se", 1, 1], ["sw", -1, 1]];
     push3.push(["w", -1, 0], ["e", 1, 0], ["n", 0, -1], ["s", 0, 1]);
-    for (const [data_range_handle, value56, value57] of push3) {
-      const [cx3, cy3] = fn9(depth, value56 * depth.width / 2, value57 * depth.depth / 2, value72);
-      const value43 = fn10("g", {
+    for (const [data_range_handle, hx, hz] of push3) {
+      const [cx3, cy3] = offsetOnPlaneToEditor(depth, hx * depth.width / 2, hz * depth.depth / 2, drawHeight);
+      const resizeHandle = createSvgNode("g", {
         "data-range-handle": data_range_handle,
         role: "button",
         tabindex: "0",
@@ -351,13 +351,13 @@ export function mountRegionRangeEditor(invalidateRegionLighting, {
           s: "下边调整深度"
         }[data_range_handle]
       });
-      fn10("circle", {
+      createSvgNode("circle", {
         cx: cx3,
         cy: cy3,
         r: 13,
         fill: "transparent"
-      }, value43);
-      fn10("rect", {
+      }, resizeHandle);
+      createSvgNode("rect", {
         x: cx3 - 4.5,
         y: cy3 - 4.5,
         width: 9,
@@ -367,167 +367,167 @@ export function mountRegionRangeEditor(invalidateRegionLighting, {
         stroke: "#9f6e33",
         "stroke-width": 1.2,
         class: "p2r-handle"
-      }, value43);
+      }, resizeHandle);
     }
-    const value79 = fn9(depth, 0, 0, value72);
-    const value80 = fn9(depth, 0, -depth.depth / 2, value72);
-    const value81 = value80[0] - value79[0];
-    const value82 = value80[1] - value79[1];
-    const value83 = Math.max(1, Math.hypot(value81, value82));
-    const value84 = [value80[0] + value81 / value83 * 27, value80[1] + value82 / value83 * 27];
-    fn10("line", {
-      x1: value80[0],
-      y1: value80[1],
-      x2: value84[0],
-      y2: value84[1],
+    const rotateOrigin = offsetOnPlaneToEditor(depth, 0, 0, drawHeight);
+    const rotateEdge = offsetOnPlaneToEditor(depth, 0, -depth.depth / 2, drawHeight);
+    const rotateDx = rotateEdge[0] - rotateOrigin[0];
+    const rotateDy = rotateEdge[1] - rotateOrigin[1];
+    const rotateLen = Math.max(1, Math.hypot(rotateDx, rotateDy));
+    const rotateHandlePos = [rotateEdge[0] + rotateDx / rotateLen * 27, rotateEdge[1] + rotateDy / rotateLen * 27];
+    createSvgNode("line", {
+      x1: rotateEdge[0],
+      y1: rotateEdge[1],
+      x2: rotateHandlePos[0],
+      y2: rotateHandlePos[1],
       stroke: "#eabc7b",
       "stroke-width": 1.2
     });
-    const value85 = fn10("g", {
+    const rotateHandle = createSvgNode("g", {
       "data-range-handle": "rotate",
       role: "button",
       tabindex: "0",
       "aria-label": "拖动旋转照射范围"
     });
-    fn10("circle", {
-      cx: value84[0],
-      cy: value84[1],
+    createSvgNode("circle", {
+      cx: rotateHandlePos[0],
+      cy: rotateHandlePos[1],
       r: 14,
       fill: "transparent"
-    }, value85);
-    fn10("circle", {
-      cx: value84[0],
-      cy: value84[1],
+    }, rotateHandle);
+    createSvgNode("circle", {
+      cx: rotateHandlePos[0],
+      cy: rotateHandlePos[1],
       r: 5,
       fill: "#f3c581",
       stroke: "#956527",
       "stroke-width": 1.2,
       class: "p2r-handle"
-    }, value85);
+    }, rotateHandle);
   }
-  function fn13(clientX) {
-    const width7 = invalidateRegionLighting.canvas.getBoundingClientRect();
+  function pickGroundPoint(clientX) {
+    const width7 = host.canvas.getBoundingClientRect();
     if (!width7.width || !width7.height) {
       return null;
     } else {
-      set.set((clientX.clientX - width7.left) / width7.width * 2 - 1, 1 - (clientX.clientY - width7.top) / width7.height * 2);
-      setFromCamera.setFromCamera(set, invalidateRegionLighting.camera);
-      constant.constant = -fn8();
-      return setFromCamera.ray.intersectPlane(constant, new Vector3.Vector3());
+      pointerNdc.set((clientX.clientX - width7.left) / width7.width * 2 - 1, 1 - (clientX.clientY - width7.top) / width7.height * 2);
+      raycaster.setFromCamera(pointerNdc, host.camera);
+      groundPlane.constant = -planeHeight();
+      return raycaster.ray.intersectPlane(groundPlane, new THREE.Vector3());
     }
   }
-  function fn14(target4) {
-    if (target4.button !== 0 || !value103) {
+  function onOverlayPointerDown(target4) {
+    if (target4.button !== 0 || !editorOpen) {
       return;
     }
     const dataset4 = target4.target.closest?.("[data-range-handle]");
-    if (dataset4 && value117()) {
-      if (dataset4.dataset.rangeHandle === "move" && !value117().moveCenterEnabled) {
+    if (dataset4 && selectedRegion()) {
+      if (dataset4.dataset.rangeHandle === "move" && !selectedRegion().moveCenterEnabled) {
         return;
       }
       target4.preventDefault();
       target4.stopPropagation();
       dataset4.focus?.();
-      const value44 = value117();
-      const point2 = fn13(target4);
+      const dragRegion = selectedRegion();
+      const point2 = pickGroundPoint(target4);
       if (!point2) {
         return;
       }
-      point3 = {
+      dragState = {
         pointerId: target4.pointerId,
         handle: dataset4.dataset.rangeHandle,
-        region: T(value44),
+        region: cloneJson(dragRegion),
         point: point2,
-        initial: T(value105),
+        initial: cloneJson(overrides),
         changed: false
       };
-      addEventListener2.setPointerCapture(target4.pointerId);
+      svg.setPointerCapture(target4.pointerId);
     } else {
       const dataset2 = target4.target.closest?.("[data-region-key]");
       if (dataset2) {
         target4.preventDefault();
-        fn17(dataset2.dataset.regionKey);
+        selectRegion(dataset2.dataset.regionKey);
       }
     }
   }
-  function fn15(shiftKey) {
-    if (!point3 || shiftKey.pointerId !== point3.pointerId) {
+  function onOverlayPointerMove(shiftKey) {
+    if (!dragState || shiftKey.pointerId !== dragState.pointerId) {
       return;
     }
-    const x4 = fn13(shiftKey);
+    const x4 = pickGroundPoint(shiftKey);
     if (!x4) {
       return;
     }
     shiftKey.preventDefault();
-    const center3 = point3.region;
-    const [value86, value87] = center3.axis;
-    const value88 = x4.x - center3.center[0];
-    const value89 = x4.z - center3.center[2];
-    if (point3.handle === "move") {
-      fn5({
-        offsetX: B(H((center3.offsetX || 0) + x4.x - point3.point.x, -100, 100)),
-        offsetZ: B(H((center3.offsetZ || 0) + x4.z - point3.point.z, -100, 100))
+    const center3 = dragState.region;
+    const [dragAxisX, dragAxisZ] = center3.axis;
+    const deltaX = x4.x - center3.center[0];
+    const deltaZ = x4.z - center3.center[2];
+    if (dragState.handle === "move") {
+      applyOverrides({
+        offsetX: round2(clamp((center3.offsetX || 0) + x4.x - dragState.point.x, -100, 100)),
+        offsetZ: round2(clamp((center3.offsetZ || 0) + x4.z - dragState.point.z, -100, 100))
       });
-    } else if (point3.handle === "rotate") {
-      const value22 = Math.atan2(point3.point.z - center3.center[2], point3.point.x - center3.center[0]);
-      const value23 = Math.atan2(value89, value88) - value22;
-      let value24 = center3.rotation + value23 * 180 / Math.PI;
-      value24 = ((value24 + 180) % 360 + 360) % 360 - 180;
+    } else if (dragState.handle === "rotate") {
+      const startAngle = Math.atan2(dragState.point.z - center3.center[2], dragState.point.x - center3.center[0]);
+      const deltaAngle = Math.atan2(deltaZ, deltaX) - startAngle;
+      let nextRotation = center3.rotation + deltaAngle * 180 / Math.PI;
+      nextRotation = ((nextRotation + 180) % 360 + 360) % 360 - 180;
       if (shiftKey.shiftKey) {
-        value24 = Math.round(value24 / 15) * 15;
+        nextRotation = Math.round(nextRotation / 15) * 15;
       }
-      fn5({
-        rotation: B(value24)
+      applyOverrides({
+        rotation: round2(nextRotation)
       });
     } else {
-      const value25 = Math.abs(value88 * value86 + value89 * value87) * 2;
-      const value26 = Math.abs(-value88 * value87 + value89 * value86) * 2;
-      fn5(resizeRegionDimensions(center3, value25, value26, point3.handle, shiftKey.shiftKey));
+      const measuredWidth = Math.abs(deltaX * dragAxisX + deltaZ * dragAxisZ) * 2;
+      const measuredDepth = Math.abs(-deltaX * dragAxisZ + deltaZ * dragAxisX) * 2;
+      applyOverrides(resizeRegionDimensions(center3, measuredWidth, measuredDepth, dragState.handle, shiftKey.shiftKey));
     }
-    point3.changed = true;
+    dragState.changed = true;
   }
-  function fn16(pointerId, arg29 = false) {
-    if (!point3 || pointerId && pointerId.pointerId !== point3.pointerId) {
+  function endDrag(pointerId, cancel = false) {
+    if (!dragState || pointerId && pointerId.pointerId !== dragState.pointerId) {
       return;
     }
-    const pointerId2 = point3;
-    point3 = null;
-    if (addEventListener2.hasPointerCapture(pointerId2.pointerId)) {
-      addEventListener2.releasePointerCapture(pointerId2.pointerId);
+    const pointerId2 = dragState;
+    dragState = null;
+    if (svg.hasPointerCapture(pointerId2.pointerId)) {
+      svg.releasePointerCapture(pointerId2.pointerId);
     }
-    if (arg29) {
-      value105 = pointerId2.initial;
-      value116()?.setOverrides?.(value105);
-      invalidateRegionLighting.invalidateRegionLighting?.();
-      fn();
-      fn3();
-      fn12();
+    if (cancel) {
+      overrides = pointerId2.initial;
+      getRegionLighting()?.setOverrides?.(overrides);
+      host.invalidateRegionLighting?.();
+      refreshRegions();
+      syncForm();
+      redrawOverlay();
     } else if (pointerId2.changed) {
-      fn6();
+      emitChange();
     }
   }
-  function fn17(arg30) {
-    if (point3) {
-      fn16(null);
+  function selectRegion(regionKey) {
+    if (dragState) {
+      endDrag(null);
     }
-    element5 = arg30;
-    fn3();
-    fn4();
-    fn12();
+    selectedKey = regionKey;
+    syncForm();
+    applyPreview();
+    redrawOverlay();
   }
-  function fn18() {
-    if (invalidateRegionLighting.controls) {
-      invalidateRegionLighting.controls.enabled = false;
+  function disableOrbitControls() {
+    if (host.controls) {
+      host.controls.enabled = false;
     }
   }
-  function fn19(arg31, arg32) {
-    const walls = value118(element6)?.scene;
+  function boundsOnAxes(axisX, axisZ) {
+    const walls = findFloor(selectedFloorId)?.scene;
     const push4 = [];
-    const value90 = (arg7, arg8, radius = 0) => {
-      if (!Number.isFinite(Number(arg7)) || !Number.isFinite(Number(arg8))) {
+    const pushCorner = (planX, planY, radius = 0) => {
+      if (!Number.isFinite(Number(planX)) || !Number.isFinite(Number(planY))) {
         return;
       }
-      const point = invalidateRegionLighting.worldPoint?.(element6, Number(arg7), Number(arg8), 0.065);
+      const point = host.worldPoint?.(selectedFloorId, Number(planX), Number(planY), 0.065);
       if (point) {
         push4.push({
           point,
@@ -536,25 +536,25 @@ export function mountRegionRangeEditor(invalidateRegionLighting, {
       }
     };
     for (const start of walls?.walls || []) {
-      const value45 = Math.max(0, Y(start.thickness, 0.12)) / 2;
-      value90(start.start?.x, start.start?.y, value45);
-      value90(start.end?.x, start.end?.y, value45);
+      const halfThickness = Math.max(0, toFiniteNumber(start.thickness, 0.12)) / 2;
+      pushCorner(start.start?.x, start.start?.y, halfThickness);
+      pushCorner(start.end?.x, start.end?.y, halfThickness);
     }
     if (!push4.length) {
       for (const x2 of walls?.items || []) {
-        const x = invalidateRegionLighting.worldPoint?.(element6, x2.x, x2.y, 0.065);
+        const x = host.worldPoint?.(selectedFloorId, x2.x, x2.y, 0.065);
         if (!x) {
           continue;
         }
-        const value11 = Y(x2.rotation) * Math.PI / 180;
-        const value12 = Math.cos(value11);
-        const value13 = Math.sin(value11);
-        for (const value7 of [-1, 1]) {
-          for (const value4 of [-1, 1]) {
-            const value2 = value7 * Math.max(0.1, Y(x2.width, 0.5)) / 2;
-            const value3 = value4 * Math.max(0.1, Y(x2.depth, 0.5)) / 2;
+        const itemRot = toFiniteNumber(x2.rotation) * Math.PI / 180;
+        const itemCos = Math.cos(itemRot);
+        const itemSin = Math.sin(itemRot);
+        for (const signX of [-1, 1]) {
+          for (const signZ of [-1, 1]) {
+            const localOffsetX = signX * Math.max(0.1, toFiniteNumber(x2.width, 0.5)) / 2;
+            const localOffsetZ = signZ * Math.max(0.1, toFiniteNumber(x2.depth, 0.5)) / 2;
             push4.push({
-              point: new Vector3.Vector3(x.x + value2 * value12 - value3 * value13, x.y, x.z + value2 * value13 + value3 * value12),
+              point: new THREE.Vector3(x.x + localOffsetX * itemCos - localOffsetZ * itemSin, x.y, x.z + localOffsetX * itemSin + localOffsetZ * itemCos),
               radius: 0
             });
           }
@@ -562,16 +562,16 @@ export function mountRegionRangeEditor(invalidateRegionLighting, {
       }
     }
     if (!push4.length) {
-      for (const center of filter.filter(floorId4 => String(floorId4.floorId) === element6)) {
+      for (const center of regions.filter(floorId4 => String(floorId4.floorId) === selectedFloorId)) {
         push4.push({
-          point: new Vector3.Vector3().fromArray(center.center),
+          point: new THREE.Vector3().fromArray(center.center),
           radius: 0.5
         });
       }
     }
     if (!push4.length) {
       push4.push({
-        point: new Vector3.Vector3(0, 0, 0),
+        point: new THREE.Vector3(0, 0, 0),
         radius: 2.5
       });
     }
@@ -581,14 +581,14 @@ export function mountRegionRangeEditor(invalidateRegionLighting, {
     let top = -Infinity;
     for (const {
       point: dot,
-      radius: value58
+      radius: padRadius
     } of push4) {
-      const value46 = dot.dot(arg31);
-      const value47 = dot.dot(arg32);
-      left3 = Math.min(left3, value46 - value58);
-      right2 = Math.max(right2, value46 + value58);
-      bottom = Math.min(bottom, value47 - value58);
-      top = Math.max(top, value47 + value58);
+      const projX = dot.dot(axisX);
+      const projZ = dot.dot(axisZ);
+      left3 = Math.min(left3, projX - padRadius);
+      right2 = Math.max(right2, projX + padRadius);
+      bottom = Math.min(bottom, projZ - padRadius);
+      top = Math.max(top, projZ + padRadius);
     }
     return {
       left: left3,
@@ -597,14 +597,14 @@ export function mountRegionRangeEditor(invalidateRegionLighting, {
       top
     };
   }
-  function fn20() {
-    if (!value103 || !up || value112) {
+  function fitTopView() {
+    if (!editorOpen || !topViewCamera || fittingCamera) {
       return;
     }
-    const width8 = querySelector.getBoundingClientRect();
-    const top2 = getBoundingClientRect2.getBoundingClientRect();
+    const width8 = editorEl.getBoundingClientRect();
+    const top2 = panelEl.getBoundingClientRect();
     if (!(width8.width < 2) && !(width8.height < 2)) {
-      value112 = true;
+      fittingCamera = true;
       try {
         const width2 = width8.width <= 620 ? {
           x: 14,
@@ -617,360 +617,360 @@ export function mountRegionRangeEditor(invalidateRegionLighting, {
           width: Math.max(70, top2.left - width8.left - 35),
           height: Math.max(70, width8.height - 115)
         };
-        const target = T(up);
-        const clone = new Vector3.Vector3().fromArray(up.up || [0, 0, -1]).normalize();
-        const value14 = new Vector3.Vector3().fromArray(up.target).sub(new Vector3.Vector3().fromArray(up.position)).normalize();
-        const clone2 = new Vector3.Vector3().crossVectors(value14, clone).normalize();
-        const right = fn19(clone2, clone);
-        const value15 = Math.max(1, right.right - right.left);
-        const value16 = Math.max(1, right.top - right.bottom);
-        const value17 = Math.max((value15 + 0.4) / width2.width, (value16 + 0.4) / width2.height) * 1.08;
-        const value18 = width2.x + width2.width / 2 - width8.width / 2;
-        const value19 = width2.y + width2.height / 2 - width8.height / 2;
+        const target = cloneJson(topViewCamera);
+        const clone = new THREE.Vector3().fromArray(topViewCamera.up || [0, 0, -1]).normalize();
+        const viewForward = new THREE.Vector3().fromArray(topViewCamera.target).sub(new THREE.Vector3().fromArray(topViewCamera.position)).normalize();
+        const clone2 = new THREE.Vector3().crossVectors(viewForward, clone).normalize();
+        const right = boundsOnAxes(clone2, clone);
+        const spanX = Math.max(1, right.right - right.left);
+        const spanZ = Math.max(1, right.top - right.bottom);
+        const worldPerPixel = Math.max((spanX + 0.4) / width2.width, (spanZ + 0.4) / width2.height) * 1.08;
+        const offsetPxX = width2.x + width2.width / 2 - width8.width / 2;
+        const offsetPxY = width2.y + width2.height / 2 - width8.height / 2;
         const y = clone2.clone().multiplyScalar((right.left + right.right) / 2).add(clone.clone().multiplyScalar((right.bottom + right.top) / 2));
-        y.y = fn8() + 0.6;
-        y.addScaledVector(clone2, -value18 * value17).addScaledVector(clone, value19 * value17);
+        y.y = planeHeight() + 0.6;
+        y.addScaledVector(clone2, -offsetPxX * worldPerPixel).addScaledVector(clone, offsetPxY * worldPerPixel);
         target.target = y.toArray();
-        target.position = y.clone().addScaledVector(value14, -Math.max(20, value15 * 2, value16 * 2)).toArray();
-        target.frameSize = value17 * Math.min(width8.width, width8.height);
+        target.position = y.clone().addScaledVector(viewForward, -Math.max(20, spanX * 2, spanZ * 2)).toArray();
+        target.frameSize = worldPerPixel * Math.min(width8.width, width8.height);
         target.zoom = 1;
-        invalidateRegionLighting.restoreCamera(target);
-        fn18();
-        invalidateRegionLighting.invalidateRegionLighting?.();
-        arg54();
-        value114 = width8.width;
-        value115 = width8.height;
-        fn12();
+        host.restoreCamera(target);
+        disableOrbitControls();
+        host.invalidateRegionLighting?.();
+        wake();
+        lastFitWidth = width8.width;
+        lastFitHeight = width8.height;
+        redrawOverlay();
       } finally {
-        value112 = false;
+        fittingCamera = false;
       }
     }
   }
-  function fn21({
-    fit: arg33 = false
+  function scheduleRedraw({
+    fit: fit = false
   } = {}) {
-    if (value103) {
-      value111 ||= arg33;
-      if (value110) {
-        win.cancelAnimationFrame(value110);
+    if (editorOpen) {
+      pendingFit ||= fit;
+      if (redrawRaf) {
+        win.cancelAnimationFrame(redrawRaf);
       }
-      value110 = win.requestAnimationFrame(() => {
-        value110 = 0;
-        const value6 = value111;
-        value111 = false;
-        if (value103) {
-          fn();
-          fn3();
-          if (value6) {
-            fn20();
+      redrawRaf = win.requestAnimationFrame(() => {
+        redrawRaf = 0;
+        const shouldFit = pendingFit;
+        pendingFit = false;
+        if (editorOpen) {
+          refreshRegions();
+          syncForm();
+          if (shouldFit) {
+            fitTopView();
           } else {
-            fn12();
+            redrawOverlay();
           }
         }
       });
     }
   }
-  function fn22(arg34) {
-    if (point3) {
-      fn16(null);
+  function selectFloor(floorIdValue) {
+    if (dragState) {
+      endDrag(null);
     }
-    element6 = String(arg34);
-    element5 = "";
-    invalidateRegionLighting.setFloor(element6);
-    invalidateRegionLighting.setCameraProjection("orthographic");
-    invalidateRegionLighting.topView();
-    up = T(invalidateRegionLighting.cameraState(true));
-    fn18();
-    invalidateRegionLighting.invalidateRegionLighting?.();
-    fn();
-    fn3();
-    fn4();
-    fn21({
+    selectedFloorId = String(floorIdValue);
+    selectedKey = "";
+    host.setFloor(selectedFloorId);
+    host.setCameraProjection("orthographic");
+    host.topView();
+    topViewCamera = cloneJson(host.cameraState(true));
+    disableOrbitControls();
+    host.invalidateRegionLighting?.();
+    refreshRegions();
+    syncForm();
+    applyPreview();
+    scheduleRedraw({
       fit: true
     });
   }
-  function fn23(target5) {
-    const value91 = target5.target;
-    const value92 = value91.dataset.field;
-    if (value92 === "floor") {
-      return fn22(value91.value);
+  function onFieldChange(target5) {
+    const fieldEl = target5.target;
+    const fieldName = fieldEl.dataset.field;
+    if (fieldName === "floor") {
+      return selectFloor(fieldEl.value);
     }
-    if (value92 === "fixture") {
-      return fn17(value91.value);
+    if (fieldName === "fixture") {
+      return selectRegion(fieldEl.value);
     }
-    if (value92 === "group" || value92 === "preview") {
-      fn3();
-      fn4();
-      fn12();
+    if (fieldName === "group" || fieldName === "preview") {
+      syncForm();
+      applyPreview();
+      redrawOverlay();
       return;
     }
-    if (value92 === "moveCenter") {
-      return fn5({
-        moveCenterEnabled: value91.checked
+    if (fieldName === "moveCenter") {
+      return applyOverrides({
+        moveCenterEnabled: fieldEl.checked
       }, true);
     }
-    if (value92 === "shape") {
-      return fn5({
-        shape: value91.value
+    if (fieldName === "shape") {
+      return applyOverrides({
+        shape: fieldEl.value
       }, true);
     }
-    if (value92 === "softness") {
-      return fn5({
-        softness: H(Y(value91.value, 35) / 100, 0.05, 1)
+    if (fieldName === "softness") {
+      return applyOverrides({
+        softness: clamp(toFiniteNumber(fieldEl.value, 35) / 100, 0.05, 1)
       }, true);
     }
-    if (["width", "depth", "rotation"].includes(value92)) {
-      const value48 = value117()?.[value92];
-      const value49 = value91.value.trim() === "" ? value48 : Y(value91.value, value48);
-      value91.value = B(H(value49, value92 === "rotation" ? -180 : 0.5, value92 === "rotation" ? 180 : 20));
-      fn5({
-        [value92]: Number(value91.value)
+    if (["width", "depth", "rotation"].includes(fieldName)) {
+      const prevFieldValue = selectedRegion()?.[fieldName];
+      const parsedFieldValue = fieldEl.value.trim() === "" ? prevFieldValue : toFiniteNumber(fieldEl.value, prevFieldValue);
+      fieldEl.value = round2(clamp(parsedFieldValue, fieldName === "rotation" ? -180 : 0.5, fieldName === "rotation" ? 180 : 20));
+      applyOverrides({
+        [fieldName]: Number(fieldEl.value)
       }, true);
     }
   }
-  function fn24(key12) {
-    if (!value103 || key12.defaultPrevented) {
+  function onEditorKeyDown(key12) {
+    if (!editorOpen || key12.defaultPrevented) {
       return;
     }
     if (key12.key === "Escape") {
       key12.preventDefault();
       key12.stopPropagation();
-      close2();
+      closeEditor();
       return;
     }
     const dataset5 = key12.target.closest?.("[data-region-key]");
     if (dataset5 && ["Enter", " "].includes(key12.key)) {
       key12.preventDefault();
-      fn17(dataset5.dataset.regionKey);
+      selectRegion(dataset5.dataset.regionKey);
     }
     const dataset6 = key12.target.closest?.("[data-range-handle]");
-    if (!dataset6 || !value117() || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key12.key)) {
+    if (!dataset6 || !selectedRegion() || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key12.key)) {
       return;
     }
     key12.preventDefault();
-    const value93 = ["ArrowUp", "ArrowRight"].includes(key12.key) ? 1 : -1;
+    const stepSign = ["ArrowUp", "ArrowRight"].includes(key12.key) ? 1 : -1;
     if (dataset6.dataset.rangeHandle === "move") {
-      if (!value117().moveCenterEnabled) {
+      if (!selectedRegion().moveCenterEnabled) {
         return;
       }
-      const value50 = ["ArrowLeft", "ArrowRight"].includes(key12.key) ? "offsetX" : "offsetZ";
-      const value51 = ["ArrowRight", "ArrowDown"].includes(key12.key) ? 1 : -1;
-      fn5({
-        [value50]: B(H((value117()[value50] || 0) + value51 * (key12.shiftKey ? 0.5 : 0.1), -100, 100))
+      const offsetAxis = ["ArrowLeft", "ArrowRight"].includes(key12.key) ? "offsetX" : "offsetZ";
+      const offsetSign = ["ArrowRight", "ArrowDown"].includes(key12.key) ? 1 : -1;
+      applyOverrides({
+        [offsetAxis]: round2(clamp((selectedRegion()[offsetAxis] || 0) + offsetSign * (key12.shiftKey ? 0.5 : 0.1), -100, 100))
       }, true);
     } else if (dataset6.dataset.rangeHandle === "rotate") {
-      fn5({
-        rotation: H(value117().rotation + value93 * (key12.shiftKey ? 15 : 1), -180, 180)
+      applyOverrides({
+        rotation: clamp(selectedRegion().rotation + stepSign * (key12.shiftKey ? 15 : 1), -180, 180)
       }, true);
     } else {
-      const value27 = dataset6.dataset.rangeHandle;
-      const value28 = ["w", "e"].includes(value27) ? "width" : ["n", "s"].includes(value27) ? "depth" : ["ArrowLeft", "ArrowRight"].includes(key12.key) ? "width" : "depth";
-      const width3 = value117();
+      const handleName = dataset6.dataset.rangeHandle;
+      const dimKey = ["w", "e"].includes(handleName) ? "width" : ["n", "s"].includes(handleName) ? "depth" : ["ArrowLeft", "ArrowRight"].includes(key12.key) ? "width" : "depth";
+      const width3 = selectedRegion();
       const width4 = {
         width: width3.width,
         depth: width3.depth,
-        [value28]: width3[value28] + value93 * 0.1
+        [dimKey]: width3[dimKey] + stepSign * 0.1
       };
-      fn5(resizeRegionDimensions(width3, width4.width, width4.depth, value28 === "width" ? "e" : "s", key12.shiftKey), true);
+      applyOverrides(resizeRegionDimensions(width3, width4.width, width4.depth, dimKey === "width" ? "e" : "s", key12.shiftKey), true);
     }
   }
-  function fn25(target6) {
-    const value94 = target6.target.closest?.("[data-action]")?.dataset.action;
-    if (value94 === "close") {
-      close2();
+  function onActionClick(target6) {
+    const actionName = target6.target.closest?.("[data-action]")?.dataset.action;
+    if (actionName === "close") {
+      closeEditor();
     }
-    if (value94 === "reset-center") {
-      fn5({
+    if (actionName === "reset-center") {
+      applyOverrides({
         offsetX: 0,
         offsetZ: 0
       }, true);
     }
-    if (value94 === "reset") {
-      for (const value29 of value120()) {
-        delete value105[value29];
+    if (actionName === "reset") {
+      for (const resetKey of activeEditKeys()) {
+        delete overrides[resetKey];
       }
-      value116()?.setOverrides?.(value105);
-      invalidateRegionLighting.invalidateRegionLighting?.();
-      arg54();
-      fn();
-      fn3();
-      fn12();
-      fn6();
+      getRegionLighting()?.setOverrides?.(overrides);
+      host.invalidateRegionLighting?.();
+      wake();
+      refreshRegions();
+      syncForm();
+      redrawOverlay();
+      emitChange();
     }
   }
-  querySelector.addEventListener("change", fn23);
-  querySelector.addEventListener("input", target2 => {
-    if (target2.target === group.softness) {
-      fn5({
-        softness: H(Y(group.softness.value, 35) / 100, 0.05, 1)
+  editorEl.addEventListener("change", onFieldChange);
+  editorEl.addEventListener("input", target2 => {
+    if (target2.target === fields.softness) {
+      applyOverrides({
+        softness: clamp(toFiniteNumber(fields.softness.value, 35) / 100, 0.05, 1)
       });
     }
   });
-  querySelector.addEventListener("click", fn25);
-  addEventListener2.addEventListener("pointerdown", fn14);
-  addEventListener2.addEventListener("pointermove", fn15);
-  addEventListener2.addEventListener("pointerup", arg10 => fn16(arg10));
-  addEventListener2.addEventListener("pointercancel", arg11 => fn16(arg11, true));
-  addEventListener2.addEventListener("lostpointercapture", arg12 => fn16(arg12));
-  const observe = new win.ResizeObserver(() => {
-    if (!value103 || value112) {
+  editorEl.addEventListener("click", onActionClick);
+  svg.addEventListener("pointerdown", onOverlayPointerDown);
+  svg.addEventListener("pointermove", onOverlayPointerMove);
+  svg.addEventListener("pointerup", pointerUpEvent => endDrag(pointerUpEvent));
+  svg.addEventListener("pointercancel", pointerCancelEvent => endDrag(pointerCancelEvent, true));
+  svg.addEventListener("lostpointercapture", lostCaptureEvent => endDrag(lostCaptureEvent));
+  const resizeObserver = new win.ResizeObserver(() => {
+    if (!editorOpen || fittingCamera) {
       return;
     }
-    const width5 = querySelector.getBoundingClientRect();
-    if (Math.abs(width5.width - value114) > 1 || Math.abs(width5.height - value115) > 1) {
-      fn21({
+    const width5 = editorEl.getBoundingClientRect();
+    if (Math.abs(width5.width - lastFitWidth) > 1 || Math.abs(width5.height - lastFitHeight) > 1) {
+      scheduleRedraw({
         fit: true
       });
     } else {
-      fn21();
+      scheduleRedraw();
     }
   });
-  observe.observe(invalidateRegionLighting.container);
+  resizeObserver.observe(host.container);
   function open() {
-    if (!value103 && !value104) {
-      if (!value116()?.listRegions) {
+    if (!editorOpen && !disposed) {
+      if (!getRegionLighting()?.listRegions) {
         throw new Error("区域灯光尚未准备好，请稍后重试。");
       }
-      value108 = String(arg51()?.floorSelection || invalidateRegionLighting.document?.activeFloorId || invalidateRegionLighting.document?.floors?.[0]?.id || "");
-      value109 = invalidateRegionLighting.controls?.enabled;
-      value107 = T(invalidateRegionLighting.cameraState(true));
-      value103 = true;
-      querySelector.hidden = false;
-      value105 = T(arg51()?.lightRegionOverrides || value116()?.getOverrides?.() || {});
-      value116().setOverrides(value105);
-      element6 = value108 === "all" ? String(invalidateRegionLighting.document?.activeFloorId || invalidateRegionLighting.document?.floors?.[0]?.id || "") : value108;
-      invalidateRegionLighting.setFloor(element6);
-      invalidateRegionLighting.setCameraProjection("orthographic");
-      invalidateRegionLighting.topView();
-      up = T(invalidateRegionLighting.cameraState(true));
-      fn18();
-      createElement.addEventListener("keydown", fn24, true);
-      value113 = invalidateRegionLighting.onCameraChange?.(() => {
-        if (!value112) {
-          fn21();
+      savedFloorId = String(getConfig()?.floorSelection || host.document?.activeFloorId || host.document?.floors?.[0]?.id || "");
+      savedControlsEnabled = host.controls?.enabled;
+      savedCamera = cloneJson(host.cameraState(true));
+      editorOpen = true;
+      editorEl.hidden = false;
+      overrides = cloneJson(getConfig()?.lightRegionOverrides || getRegionLighting()?.getOverrides?.() || {});
+      getRegionLighting().setOverrides(overrides);
+      selectedFloorId = savedFloorId === "all" ? String(host.document?.activeFloorId || host.document?.floors?.[0]?.id || "") : savedFloorId;
+      host.setFloor(selectedFloorId);
+      host.setCameraProjection("orthographic");
+      host.topView();
+      topViewCamera = cloneJson(host.cameraState(true));
+      disableOrbitControls();
+      doc.addEventListener("keydown", onEditorKeyDown, true);
+      unsubscribeCamera = host.onCameraChange?.(() => {
+        if (!fittingCamera) {
+          scheduleRedraw();
         }
       });
-      invalidateRegionLighting.invalidateRegionLighting?.();
-      fn();
-      fn3();
-      fn4();
-      fn21({
+      host.invalidateRegionLighting?.();
+      refreshRegions();
+      syncForm();
+      applyPreview();
+      scheduleRedraw({
         fit: true
       });
-      querySelector.querySelector("[data-action=close]").focus({
+      editorEl.querySelector("[data-action=close]").focus({
         preventScroll: true
       });
     }
   }
-  function close2() {
-    if (value103) {
+  function closeEditor() {
+    if (editorOpen) {
       close.close();
-      fn16(null);
-      value103 = false;
-      querySelector.hidden = true;
-      if (value110) {
-        win.cancelAnimationFrame(value110);
-        value110 = 0;
+      endDrag(null);
+      editorOpen = false;
+      editorEl.hidden = true;
+      if (redrawRaf) {
+        win.cancelAnimationFrame(redrawRaf);
+        redrawRaf = 0;
       }
-      value113?.();
-      value113 = null;
-      createElement.removeEventListener("keydown", fn24, true);
-      value116()?.setPreview?.(null);
-      invalidateRegionLighting.setFloor(value108);
-      invalidateRegionLighting.restoreCamera(value107);
-      if (invalidateRegionLighting.controls) {
-        invalidateRegionLighting.controls.enabled = value109 !== false;
+      unsubscribeCamera?.();
+      unsubscribeCamera = null;
+      doc.removeEventListener("keydown", onEditorKeyDown, true);
+      getRegionLighting()?.setPreview?.(null);
+      host.setFloor(savedFloorId);
+      host.restoreCamera(savedCamera);
+      if (host.controls) {
+        host.controls.enabled = savedControlsEnabled !== false;
       }
-      invalidateRegionLighting.invalidateRegionLighting?.();
-      arg54();
-      up = null;
-      arg53();
+      host.invalidateRegionLighting?.();
+      wake();
+      topViewCamera = null;
+      onClose();
     }
   }
   function refresh() {
-    if (value103) {
-      fn21();
+    if (editorOpen) {
+      scheduleRedraw();
     }
   }
   function setSaveStatus(message) {
-    value106 = message ? String(message.message || message) : "";
-    if (value103) {
-      fn3();
+    saveError = message ? String(message.message || message) : "";
+    if (editorOpen) {
+      syncForm();
     }
   }
   function dispose() {
-    if (!value104) {
-      close2();
-      value104 = true;
+    if (!disposed) {
+      closeEditor();
+      disposed = true;
       close.dispose();
-      observe.disconnect();
-      querySelector.remove();
+      resizeObserver.disconnect();
+      editorEl.remove();
     }
   }
   return {
     open,
-    close: close2,
+    close: closeEditor,
     flush() {
       close.close();
-      fn16(null);
-      fn6();
+      endDrag(null);
+      emitChange();
     },
-    isOpen: () => value103,
+    isOpen: () => editorOpen,
     refresh,
     dispose,
     setSaveStatus
   };
 }
-export function mountRangeFormControls(querySelectorAll) {
-  const defaultView = querySelectorAll.ownerDocument;
-  const viewWin = defaultView.defaultView;
-  const forEach = [];
-  const push5 = [];
-  const push6 = [];
-  let wrapper = null;
-  let value121 = null;
-  const value122 = (arg13, element) => {
-    const className = defaultView.createElement(arg13);
+export function mountRangeFormControls(formRoot) {
+  const formDoc = formRoot.ownerDocument;
+  const formWin = formDoc.defaultView;
+  const customSelects = [];
+  const numberControls = [];
+  const listenerCleanups = [];
+  let openSelect = null;
+  let stopRepeat = null;
+  const createEl = (tag, element) => {
+    const className = formDoc.createElement(tag);
     className.className = element;
     return className;
   };
-  const value123 = (addEventListener, arg14, arg15, arg16) => {
-    addEventListener.addEventListener(arg14, arg15, arg16);
-    push6.push(() => addEventListener.removeEventListener(arg14, arg15, arg16));
+  const listen = (addEventListener, eventName, handler, listenOpts) => {
+    addEventListener.addEventListener(eventName, handler, listenOpts);
+    listenerCleanups.push(() => addEventListener.removeEventListener(eventName, handler, listenOpts));
   };
-  function fn26(arg35 = false) {
-    if (!wrapper) {
+  function closeMenu(restoreFocus = false) {
+    if (!openSelect) {
       return;
     }
-    const button3 = wrapper;
-    wrapper = null;
+    const button3 = openSelect;
+    openSelect = null;
     button3.menu.hidden = true;
     button3.button.setAttribute("aria-expanded", "false");
-    if (arg35) {
+    if (restoreFocus) {
       button3.button.focus({
         preventScroll: true
       });
     }
   }
-  function fn27() {
-    if (!wrapper) {
+  function positionMenu() {
+    if (!openSelect) {
       return;
     }
     const {
       button: getBoundingClientRect,
       menu: style
-    } = wrapper;
+    } = openSelect;
     const width9 = getBoundingClientRect.getBoundingClientRect();
-    const value95 = Math.max(40, Math.min(320, viewWin.innerHeight - 16));
+    const maxMenuHeight = Math.max(40, Math.min(320, formWin.innerHeight - 16));
     Object.assign(style.style, {
       width: width9.width + "px",
-      maxHeight: value95 + "px",
-      left: Math.max(8, Math.min(viewWin.innerWidth - width9.width - 8, width9.left)) + "px"
+      maxHeight: maxMenuHeight + "px",
+      left: Math.max(8, Math.min(formWin.innerWidth - width9.width - 8, width9.left)) + "px"
     });
-    const value96 = Math.min(style.scrollHeight, value95);
-    style.style.top = (width9.bottom + value96 + 12 <= viewWin.innerHeight ? width9.bottom + 4 : Math.max(8, width9.top - value96 - 4)) + "px";
+    const menuHeight = Math.min(style.scrollHeight, maxMenuHeight);
+    style.style.top = (width9.bottom + menuHeight + 12 <= formWin.innerHeight ? width9.bottom + 4 : Math.max(8, width9.top - menuHeight - 4)) + "px";
   }
-  function fn28(signature) {
+  function syncCustomSelect(signature) {
     const {
       select: disabled4,
       button: textContent2,
@@ -979,16 +979,16 @@ export function mountRangeFormControls(querySelectorAll) {
     textContent2.textContent = disabled4.selectedOptions[0]?.textContent || "请选择";
     textContent2.disabled = disabled4.disabled;
     textContent2.setAttribute("aria-label", disabled4.getAttribute("aria-label") || "打开选择菜单");
-    const signature2 = JSON.stringify([...disabled4.options].map(value8 => [value8.value, value8.textContent, value8.disabled, value8.hidden]));
+    const signature2 = JSON.stringify([...disabled4.options].map(opt => [opt.value, opt.textContent, opt.disabled, opt.hidden]));
     if (signature2 !== signature.signature) {
       signature.signature = signature2;
-      replaceChildren.replaceChildren(...[...disabled4.options].filter(hidden => !hidden.hidden).map(value5 => {
-        const type = value122("button", "custom-select-option");
+      replaceChildren.replaceChildren(...[...disabled4.options].filter(hidden => !hidden.hidden).map(nativeOpt => {
+        const type = createEl("button", "custom-select-option");
         type.type = "button";
-        type.dataset.value = value5.value;
+        type.dataset.value = nativeOpt.value;
         type.setAttribute("role", "option");
-        type.textContent = value5.textContent;
-        type.disabled = value5.disabled;
+        type.textContent = nativeOpt.textContent;
+        type.disabled = nativeOpt.disabled;
         return type;
       }));
     }
@@ -996,46 +996,46 @@ export function mountRangeFormControls(querySelectorAll) {
       dataset3.classList.toggle("active", dataset3.dataset.value === disabled4.value);
       dataset3.setAttribute("aria-selected", String(dataset3.dataset.value === disabled4.value));
     }
-    if (disabled4.disabled && wrapper === signature) {
-      fn26();
+    if (disabled4.disabled && openSelect === signature) {
+      closeMenu();
     }
   }
-  function fn29(menu2, arg36 = false) {
-    fn26();
-    fn28(menu2);
+  function openMenu(menu2, focusOption = false) {
+    closeMenu();
+    syncCustomSelect(menu2);
     if (!menu2.select.disabled) {
-      wrapper = menu2;
+      openSelect = menu2;
       menu2.menu.hidden = false;
       menu2.button.setAttribute("aria-expanded", "true");
-      fn27();
-      if (arg36) {
+      positionMenu();
+      if (focusOption) {
         (menu2.menu.querySelector(".active:not(:disabled)") || menu2.menu.querySelector("button:not(:disabled)"))?.focus({
           preventScroll: true
         });
       }
     }
   }
-  function fn30(select, disabled5) {
+  function chooseOption(select, disabled5) {
     if (!disabled5 || disabled5.disabled || select.select.disabled) {
       return;
     }
-    const value97 = select.select.value;
+    const prevSelectValue = select.select.value;
     select.select.value = disabled5.dataset.value;
-    fn26(true);
-    if (value97 !== select.select.value) {
+    closeMenu(true);
+    if (prevSelectValue !== select.select.value) {
       select.select.dispatchEvent(new Event("change", {
         bubbles: true
       }));
     }
-    fn28(select);
+    syncCustomSelect(select);
   }
-  for (const before of querySelectorAll.querySelectorAll("select")) {
-    const append = value122("span", "custom-select");
-    const setAttribute = value122("button", "custom-select-button");
-    const id5 = value122("div", "custom-select-menu");
+  for (const before of formRoot.querySelectorAll("select")) {
+    const append = createEl("span", "custom-select");
+    const setAttribute = createEl("button", "custom-select-button");
+    const id5 = createEl("div", "custom-select-menu");
     before.before(append);
     append.append(before, setAttribute);
-    querySelectorAll.append(id5);
+    formRoot.append(id5);
     before.classList.add("native-select-control");
     before.tabIndex = -1;
     before.setAttribute("aria-hidden", "true");
@@ -1047,127 +1047,127 @@ export function mountRangeFormControls(querySelectorAll) {
     id5.hidden = true;
     setAttribute.setAttribute("aria-controls", id5.id);
     id5.setAttribute("aria-label", before.getAttribute("aria-label") || "选项");
-    const value64 = {
+    const selectUi = {
       select: before,
-      wrapper: append,
+      openSelect: append,
       button: setAttribute,
       menu: id5
     };
-    forEach.push(value64);
-    fn28(value64);
-    value123(setAttribute, "click", preventDefault2 => {
+    customSelects.push(selectUi);
+    syncCustomSelect(selectUi);
+    listen(setAttribute, "click", preventDefault2 => {
       preventDefault2.preventDefault();
-      if (wrapper === value64) {
-        fn26();
+      if (openSelect === selectUi) {
+        closeMenu();
       } else {
-        fn29(value64);
+        openMenu(selectUi);
       }
     });
-    value123(id5, "click", preventDefault3 => {
+    listen(id5, "click", preventDefault3 => {
       preventDefault3.preventDefault();
-      fn30(value64, preventDefault3.target.closest(".custom-select-option"));
+      chooseOption(selectUi, preventDefault3.target.closest(".custom-select-option"));
     });
-    value123(before, "change", () => fn28(value64));
+    listen(before, "change", () => syncCustomSelect(selectUi));
   }
-  function fn31(value98, arg37) {
-    if (value98.disabled || value98.readOnly) {
+  function stepNumberInput(numberInput, stepDir) {
+    if (numberInput.disabled || numberInput.readOnly) {
       return false;
     }
-    const value99 = value98.value;
+    const prevNumberValue = numberInput.value;
     try {
-      if (arg37 > 0) {
-        value98.stepUp();
+      if (stepDir > 0) {
+        numberInput.stepUp();
       } else {
-        value98.stepDown();
+        numberInput.stepDown();
       }
     } catch {
       return false;
     }
-    if (value99 === value98.value) {
+    if (prevNumberValue === numberInput.value) {
       return false;
     } else {
-      value98.dispatchEvent(new Event("input", {
+      numberInput.dispatchEvent(new Event("input", {
         bubbles: true
       }));
-      value98.dispatchEvent(new Event("change", {
+      numberInput.dispatchEvent(new Event("change", {
         bubbles: true
       }));
       return true;
     }
   }
-  for (const before2 of querySelectorAll.querySelectorAll("input[type=number]")) {
-    const append2 = value122("span", "inspector-number-control");
-    const append3 = value122("span", "inspector-number-steppers");
+  for (const before2 of formRoot.querySelectorAll("input[type=number]")) {
+    const append2 = createEl("span", "inspector-number-control");
+    const append3 = createEl("span", "inspector-number-steppers");
     before2.before(append2);
     append2.append(before2, append3);
     const push = [];
-    for (const [value59, title, value60] of [[1, "增加数值", "M1 5 5 1l4 4"], [-1, "减少数值", "M1 1 5 5l4-4"]]) {
-      const type2 = value122("button", "inspector-number-stepper");
+    for (const [stepDelta, title, iconPath] of [[1, "增加数值", "M1 5 5 1l4 4"], [-1, "减少数值", "M1 1 5 5l4-4"]]) {
+      const type2 = createEl("button", "inspector-number-stepper");
       type2.type = "button";
       type2.tabIndex = -1;
       type2.setAttribute("aria-label", title);
       type2.title = title;
-      type2.innerHTML = "<svg viewBox=\"0 0 10 6\" aria-hidden=\"true\"><path d=\"" + value60 + "\"></path></svg>";
+      type2.innerHTML = "<svg viewBox=\"0 0 10 6\" aria-hidden=\"true\"><path d=\"" + iconPath + "\"></path></svg>";
       append3.append(type2);
       push.push(type2);
-      value123(type2, "click", preventDefault => {
+      listen(type2, "click", preventDefault => {
         preventDefault.preventDefault();
         if (preventDefault.detail === 0) {
-          fn31(before2, value59);
+          stepNumberInput(before2, stepDelta);
         }
       });
-      value123(type2, "pointerdown", button => {
+      listen(type2, "pointerdown", button => {
         if (button.button !== 0 || before2.disabled || before2.readOnly) {
           return;
         }
         button.preventDefault();
-        value121?.();
+        stopRepeat?.();
         before2.focus({
           preventScroll: true
         });
-        fn31(before2, value59);
-        let value9;
-        let value10;
-        value121 = () => {
-          viewWin.clearTimeout(value9);
-          viewWin.clearInterval(value10);
-          value121 = null;
+        stepNumberInput(before2, stepDelta);
+        let repeatTimeout;
+        let repeatInterval;
+        stopRepeat = () => {
+          formWin.clearTimeout(repeatTimeout);
+          formWin.clearInterval(repeatInterval);
+          stopRepeat = null;
         };
-        value9 = viewWin.setTimeout(() => {
-          value10 = viewWin.setInterval(() => fn31(before2, value59), 55);
+        repeatTimeout = formWin.setTimeout(() => {
+          repeatInterval = formWin.setInterval(() => stepNumberInput(before2, stepDelta), 55);
         }, 320);
         try {
           type2.setPointerCapture(button.pointerId);
         } catch {}
       });
-      for (const value30 of ["pointerup", "pointercancel", "lostpointercapture"]) {
-        value123(type2, value30, () => value121?.());
+      for (const releaseEvent of ["pointerup", "pointercancel", "lostpointercapture"]) {
+        listen(type2, releaseEvent, () => stopRepeat?.());
       }
     }
-    value123(before2, "keydown", key10 => {
+    listen(before2, "keydown", key10 => {
       if (["ArrowUp", "ArrowDown"].includes(key10.key)) {
         key10.preventDefault();
-        fn31(before2, key10.key === "ArrowUp" ? 1 : -1);
+        stepNumberInput(before2, key10.key === "ArrowUp" ? 1 : -1);
       }
     });
-    push5.push({
+    numberControls.push({
       field: before2,
       peers: push
     });
   }
-  function fn32(key13) {
-    const menu3 = forEach.find(button2 => button2.button === key13.target || button2.menu.contains(key13.target));
+  function onSelectKeyDown(key13) {
+    const menu3 = customSelects.find(button2 => button2.button === key13.target || button2.menu.contains(key13.target));
     if (!menu3) {
       return;
     }
-    if (key13.key === "Escape" && wrapper) {
+    if (key13.key === "Escape" && openSelect) {
       key13.preventDefault();
       key13.stopImmediatePropagation();
-      fn26(true);
+      closeMenu(true);
       return;
     }
     if (key13.key === "Tab") {
-      fn26();
+      closeMenu();
       return;
     }
     if (!["ArrowUp", "ArrowDown", "Home", "End", "Enter", " "].includes(key13.key)) {
@@ -1175,60 +1175,60 @@ export function mountRangeFormControls(querySelectorAll) {
     }
     key13.preventDefault();
     key13.stopImmediatePropagation();
-    if (wrapper !== menu3) {
-      fn29(menu3, true);
+    if (openSelect !== menu3) {
+      openMenu(menu3, true);
       return;
     }
     if (["Enter", " "].includes(key13.key)) {
-      fn30(menu3, key13.target.closest(".custom-select-option") || menu3.menu.querySelector(".active"));
+      chooseOption(menu3, key13.target.closest(".custom-select-option") || menu3.menu.querySelector(".active"));
       return;
     }
     const length3 = [...menu3.menu.children].filter(disabled2 => !disabled2.disabled);
-    const value100 = length3.indexOf(defaultView.activeElement);
-    const value101 = key13.key === "Home" ? 0 : key13.key === "End" ? length3.length - 1 : (value100 + (key13.key === "ArrowUp" ? -1 : 1) + length3.length) % length3.length;
-    length3[value101]?.focus();
+    const activeIndex = length3.indexOf(formDoc.activeElement);
+    const nextIndex = key13.key === "Home" ? 0 : key13.key === "End" ? length3.length - 1 : (activeIndex + (key13.key === "ArrowUp" ? -1 : 1) + length3.length) % length3.length;
+    length3[nextIndex]?.focus();
   }
-  value123(defaultView, "keydown", fn32, true);
-  value123(defaultView, "pointerdown", target3 => {
-    if (wrapper && !wrapper.wrapper.contains(target3.target) && !wrapper.menu.contains(target3.target)) {
-      fn26();
+  listen(formDoc, "keydown", onSelectKeyDown, true);
+  listen(formDoc, "pointerdown", target3 => {
+    if (openSelect && !openSelect.wrapper.contains(target3.target) && !openSelect.menu.contains(target3.target)) {
+      closeMenu();
     }
   }, true);
-  value123(viewWin, "resize", () => fn26());
-  value123(viewWin, "blur", () => {
-    value121?.();
-    fn26();
+  listen(formWin, "resize", () => closeMenu());
+  listen(formWin, "blur", () => {
+    stopRepeat?.();
+    closeMenu();
   });
-  value123(defaultView, "visibilitychange", () => {
-    if (defaultView.hidden) {
-      value121?.();
-      fn26();
+  listen(formDoc, "visibilitychange", () => {
+    if (formDoc.hidden) {
+      stopRepeat?.();
+      closeMenu();
     }
   });
-  value123(querySelectorAll.querySelector(".p2r-panel"), "scroll", () => fn26(), {
+  listen(formRoot.querySelector(".p2r-panel"), "scroll", () => closeMenu(), {
     passive: true
   });
   return {
     sync() {
-      forEach.forEach(fn28);
+      customSelects.forEach(syncCustomSelect);
       for (const {
         field: disabled3,
-        peers: value31
-      } of push5) {
-        for (const disabled of value31) {
+        peers: stepperButtons
+      } of numberControls) {
+        for (const disabled of stepperButtons) {
           disabled.disabled = disabled3.disabled || disabled3.readOnly;
         }
       }
     },
     close() {
-      fn26();
-      value121?.();
+      closeMenu();
+      stopRepeat?.();
     },
     dispose() {
-      fn26();
-      value121?.();
-      push6.forEach(arg6 => arg6());
-      forEach.forEach(menu => menu.menu.remove());
+      closeMenu();
+      stopRepeat?.();
+      listenerCleanups.forEach(cleanup => cleanup());
+      customSelects.forEach(menu => menu.menu.remove());
     }
   };
 }

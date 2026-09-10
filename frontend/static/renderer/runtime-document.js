@@ -32,9 +32,9 @@ export function collectEntityIds(components, entityIds = new Set()) {
       }
     }
     if (component.type === "light-statistics") {
-      for (const value2 of Array.isArray(component.properties?.entityIds) ? component.properties.entityIds : []) {
-        if (value2 && !isVirtualEntityId(value2)) {
-          entityIds.add(String(value2));
+      for (const lightStatisticsEntityId of Array.isArray(component.properties?.entityIds) ? component.properties.entityIds : []) {
+        if (lightStatisticsEntityId && !isVirtualEntityId(lightStatisticsEntityId)) {
+          entityIds.add(String(lightStatisticsEntityId));
         }
       }
     }

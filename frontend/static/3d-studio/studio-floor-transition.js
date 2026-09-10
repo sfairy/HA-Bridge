@@ -1,242 +1,242 @@
 export function createFloorTransition({
-  THREE: Vector3,
-  getRoot: arg16,
-  dispose: arg17,
-  release: arg18 = () => false,
-  suspendReflections: arg19 = () => {},
-  invalidate: arg20 = () => {}
+  THREE,
+  getRoot,
+  dispose,
+  release = () => false,
+  suspendReflections = () => {},
+  invalidate = () => {}
 }) {
-  let push = [];
-  let value14 = false;
-  let from2 = null;
-  const value15 = decompose2 => {
-    const position = new Vector3.Vector3();
-    const quaternion = new Vector3.Quaternion();
-    const scale = new Vector3.Vector3();
-    decompose2.decompose(position, quaternion, scale);
+  let records = [];
+  let active = false;
+  let slideCameras = null;
+  const decomposeTransform = matrix => {
+    const position = new THREE.Vector3();
+    const quaternion = new THREE.Quaternion();
+    const scale = new THREE.Vector3();
+    matrix.decompose(position, quaternion, scale);
     return {
       position,
       quaternion,
       scale
     };
   };
-  function capture(map2, arg4, arg5) {
-    const children = arg16();
-    children.updateMatrixWorld(true);
-    return map2.map(id4 => {
-      const userData2 = new Vector3.Group();
-      userData2.name = "floor-transition-" + id4;
-      userData2.userData.floorId = userData2.userData.regionFloorId = id4;
-      const value5 = arg5 ? children.children.filter(userData => userData.userData.floorId === id4) : [...children.children];
-      children.add(userData2);
-      for (const value2 of value5) {
-        userData2.attach(value2);
+  function capture(floorIds, getBaseFrame, filterByFloor) {
+    const root = getRoot();
+    root.updateMatrixWorld(true);
+    return floorIds.map(floorId => {
+      const group = new THREE.Group();
+      group.name = "floor-transition-" + floorId;
+      group.userData.floorId = group.userData.regionFloorId = floorId;
+      const children = filterByFloor ? root.children.filter(child => child.userData.floorId === floorId) : [...root.children];
+      root.add(group);
+      for (const child of children) {
+        group.attach(child);
       }
-      const ground = {
-        id: id4,
-        node: userData2,
-        baseFrame: arg4(id4),
+      const record = {
+        id: floorId,
+        node: group,
+        baseFrame: getBaseFrame(floorId),
         ground: [],
         groundAlpha: 1
       };
-      userData2.traverse(material => {
-        if (!material.material || !["background", "grid", "contact-shadow"].includes(material.userData?.exportRole)) {
+      group.traverse(mesh => {
+        if (!mesh.material || !["background", "grid", "contact-shadow"].includes(mesh.userData?.exportRole)) {
           return;
         }
-        const map = material.material;
-        const value = clone => {
-          const onBeforeCompile = clone.clone();
-          onBeforeCompile.onBeforeCompile = clone.onBeforeCompile;
-          onBeforeCompile.customProgramCacheKey = clone.customProgramCacheKey.bind(clone);
-          onBeforeCompile.transparent = true;
-          onBeforeCompile.depthWrite = false;
-          return onBeforeCompile;
+        const originalMaterial = mesh.material;
+        const cloneTransparent = material => {
+          const cloned = material.clone();
+          cloned.onBeforeCompile = material.onBeforeCompile;
+          cloned.customProgramCacheKey = material.customProgramCacheKey.bind(material);
+          cloned.transparent = true;
+          cloned.depthWrite = false;
+          return cloned;
         };
-        material.material = Array.isArray(map) ? map.map(value) : value(map);
-        ground.ground.push({
-          node: material,
-          followsFloor: material.userData.exportRole === "contact-shadow",
-          original: map,
-          materials: Array.isArray(material.material) ? material.material : [material.material],
-          opacity: (Array.isArray(map) ? map : [map]).map(opacity => opacity.opacity)
+        mesh.material = Array.isArray(originalMaterial) ? originalMaterial.map(cloneTransparent) : cloneTransparent(originalMaterial);
+        record.ground.push({
+          node: mesh,
+          followsFloor: mesh.userData.exportRole === "contact-shadow",
+          original: originalMaterial,
+          materials: Array.isArray(mesh.material) ? mesh.material : [mesh.material],
+          opacity: (Array.isArray(originalMaterial) ? originalMaterial : [originalMaterial]).map(material => material.opacity)
         });
       });
-      return ground;
+      return record;
     });
   }
-  function fn(node5) {
-    node5.node.updateMatrix();
-    return node5.node.matrix.clone().multiply(node5.baseFrame);
+  function currentFrame(record) {
+    record.node.updateMatrix();
+    return record.node.matrix.clone().multiply(record.baseFrame);
   }
-  function fn2(ground2) {
-    for (const node of ground2.ground) {
-      node.node.material = node.original;
-      for (const dispose of node.materials) {
-        dispose.dispose();
+  function restoreGround(record) {
+    for (const ground of record.ground) {
+      ground.node.material = ground.original;
+      for (const material of ground.materials) {
+        material.dispose();
       }
     }
-    ground2.ground = [];
+    record.ground = [];
   }
-  function fn3(node6, arg6 = true) {
-    fn2(node6);
-    node6.node.removeFromParent();
-    if (!node6.transferred && (!arg6 || !arg18(node6))) {
-      arg17(node6.node);
+  function disposeRecord(record, tryRelease = true) {
+    restoreGround(record);
+    record.node.removeFromParent();
+    if (!record.transferred && (!tryRelease || !release(record))) {
+      dispose(record.node);
     }
   }
-  function reuse(node7, clone3) {
-    fn2(node7);
-    const length = [...node7.node.children];
-    let userData3;
-    if (length.length === 1 && length[0].userData.floorId === node7.id) {
-      userData3 = length[0];
-      node7.node.remove(userData3);
+  function reuse(record, worldFrame) {
+    restoreGround(record);
+    const children = [...record.node.children];
+    let floorGroup;
+    if (children.length === 1 && children[0].userData.floorId === record.id) {
+      floorGroup = children[0];
+      record.node.remove(floorGroup);
     } else {
-      userData3 = new Vector3.Group();
-      userData3.name = "floor-" + node7.id;
-      userData3.userData.floorId = userData3.userData.regionFloorId = node7.id;
-      for (const value6 of length) {
-        node7.node.remove(value6);
-        userData3.add(value6);
+      floorGroup = new THREE.Group();
+      floorGroup.name = "floor-" + record.id;
+      floorGroup.userData.floorId = floorGroup.userData.regionFloorId = record.id;
+      for (const child of children) {
+        record.node.remove(child);
+        floorGroup.add(child);
       }
     }
-    userData3.applyMatrix4(clone3.clone().multiply(node7.baseFrame.clone().invert()));
-    arg16().add(userData3);
-    userData3.updateMatrixWorld(true);
-    node7.transferred = true;
-    return userData3;
+    floorGroup.applyMatrix4(worldFrame.clone().multiply(record.baseFrame.clone().invert()));
+    getRoot().add(floorGroup);
+    floorGroup.updateMatrixWorld(true);
+    record.transferred = true;
+    return floorGroup;
   }
-  function take(arg7, arg8, arg9) {
-    const value10 = value14 ? push : capture(arg7, arg8, arg9);
-    for (const frame2 of value10) {
-      frame2.frame = fn(frame2);
-      frame2.node.removeFromParent();
+  function take(floorIds, getBaseFrame, filterByFloor) {
+    const taken = active ? records : capture(floorIds, getBaseFrame, filterByFloor);
+    for (const record of taken) {
+      record.frame = currentFrame(record);
+      record.node.removeFromParent();
     }
-    push = [];
-    value14 = false;
-    from2 = null;
-    return value10;
+    records = [];
+    active = false;
+    slideCameras = null;
+    return taken;
   }
-  function begin(map3, map4, indexOf, spread, arg10 = false, arg11 = null) {
-    const add = arg16();
-    const items = new Map(map3.map(id => [id.id, id]));
-    const has = new Map(map4.map(id2 => [id2.id, id2]));
-    const id6 = map4.find(id3 => items.has(id3.id)) || map4[0];
-    const id7 = items.get(id6.id) || map3[0];
-    const value11 = arg2 => indexOf.indexOf(arg2);
-    const value12 = (clone2, arg3) => {
-      const elements = clone2.clone();
-      const value7 = (arg10 ? Math.sign(arg3) : arg3) * spread;
-      const x = arg10 && arg11 ? arg11 : new Vector3.Vector3(0, 1, 0);
-      elements.elements[12] += x.x * value7;
-      elements.elements[13] += x.y * value7;
-      elements.elements[14] += x.z * value7;
-      return elements;
+  function begin(fromRecords, toRecords, floorOrder, spread, useSlide = false, slideAxis = null) {
+    const root = getRoot();
+    const fromById = new Map(fromRecords.map(record => [record.id, record]));
+    const toById = new Map(toRecords.map(record => [record.id, record]));
+    const sharedTo = toRecords.find(record => fromById.has(record.id)) || toRecords[0];
+    const sharedFrom = fromById.get(sharedTo.id) || fromRecords[0];
+    const floorIndex = floorId => floorOrder.indexOf(floorId);
+    const offsetFrame = (frame, indexDelta) => {
+      const matrix = frame.clone();
+      const offset = (useSlide ? Math.sign(indexDelta) : indexDelta) * spread;
+      const axis = useSlide && slideAxis ? slideAxis : new THREE.Vector3(0, 1, 0);
+      matrix.elements[12] += axis.x * offset;
+      matrix.elements[13] += axis.y * offset;
+      matrix.elements[14] += axis.z * offset;
+      return matrix;
     };
-    push = [];
-    for (const node2 of map4) {
-      const frame = items.get(node2.id);
-      const decompose = (frame?.frame || value12(id7.frame, value11(node2.id) - value11(id7.id))).clone().multiply(node2.baseFrame.clone().invert());
-      decompose.decompose(node2.node.position, node2.node.quaternion, node2.node.scale);
-      node2.from = value15(decompose);
-      node2.to = value15(new Vector3.Matrix4());
-      node2.keep = true;
-      node2.groundFrom = frame?.groundAlpha ?? 0;
-      node2.groundTo = 1;
-      push.push(node2);
-      if (frame) {
-        fn3(frame, false);
+    records = [];
+    for (const record of toRecords) {
+      const previous = fromById.get(record.id);
+      const transform = (previous?.frame || offsetFrame(sharedFrom.frame, floorIndex(record.id) - floorIndex(sharedFrom.id))).clone().multiply(record.baseFrame.clone().invert());
+      transform.decompose(record.node.position, record.node.quaternion, record.node.scale);
+      record.from = decomposeTransform(transform);
+      record.to = decomposeTransform(new THREE.Matrix4());
+      record.keep = true;
+      record.groundFrom = previous?.groundAlpha ?? 0;
+      record.groundTo = 1;
+      records.push(record);
+      if (previous) {
+        disposeRecord(previous, false);
       }
     }
-    for (const id5 of map3) {
-      if (has.has(id5.id)) {
+    for (const record of fromRecords) {
+      if (toById.has(record.id)) {
         continue;
       }
-      add.add(id5.node);
-      const multiply = value12(id6.baseFrame, value11(id5.id) - value11(id6.id));
-      id5.from = value15(id5.node.matrix);
-      id5.to = value15(multiply.multiply(id5.baseFrame.clone().invert()));
-      id5.keep = false;
-      id5.groundFrom = id5.groundAlpha;
-      id5.groundTo = 0;
-      push.push(id5);
+      root.add(record.node);
+      const transform = offsetFrame(sharedTo.baseFrame, floorIndex(record.id) - floorIndex(sharedTo.id));
+      record.from = decomposeTransform(record.node.matrix);
+      record.to = decomposeTransform(transform.multiply(record.baseFrame.clone().invert()));
+      record.keep = false;
+      record.groundFrom = record.groundAlpha;
+      record.groundTo = 0;
+      records.push(record);
     }
-    from2 = arg10 ? {
-      direction: Math.sign(value11(id6.id) - value11(id7.id)),
+    slideCameras = useSlide ? {
+      direction: Math.sign(floorIndex(sharedTo.id) - floorIndex(sharedFrom.id)),
       spread
     } : null;
-    value14 = true;
-    arg19(true);
+    active = true;
+    suspendReflections(true);
     sample(0);
   }
   function finish() {
-    if (!value14 && !push.length) {
+    if (!active && !records.length) {
       return;
     }
-    const attach = arg16();
-    for (const node3 of push) {
-      if (node3.keep && node3.node.parent === attach) {
-        node3.node.position.set(0, 0, 0);
-        node3.node.quaternion.identity();
-        node3.node.scale.set(1, 1, 1);
-        node3.node.updateMatrixWorld(true);
-        fn2(node3);
-        for (const value3 of [...node3.node.children]) {
-          attach.attach(value3);
+    const root = getRoot();
+    for (const record of records) {
+      if (record.keep && record.node.parent === root) {
+        record.node.position.set(0, 0, 0);
+        record.node.quaternion.identity();
+        record.node.scale.set(1, 1, 1);
+        record.node.updateMatrixWorld(true);
+        restoreGround(record);
+        for (const child of [...record.node.children]) {
+          root.attach(child);
         }
-        node3.node.removeFromParent();
+        record.node.removeFromParent();
       } else {
-        fn3(node3);
+        disposeRecord(record);
       }
     }
-    push = [];
-    value14 = false;
-    from2 = null;
-    arg19(false);
-    arg20(true);
+    records = [];
+    active = false;
+    slideCameras = null;
+    suspendReflections(false);
+    invalidate(true);
   }
-  const value16 = position2 => {
-    const value8 = new Vector3.Vector3().fromArray(position2.position);
-    const value9 = new Vector3.Vector3().fromArray(position2.target);
-    return new Vector3.Matrix4().lookAt(value8, value9, new Vector3.Vector3().fromArray(position2.up || [0, 1, 0])).setPosition(value8);
+  const cameraMatrixFromView = view => {
+    const position = new THREE.Vector3().fromArray(view.position);
+    const target = new THREE.Vector3().fromArray(view.target);
+    return new THREE.Matrix4().lookAt(position, target, new THREE.Vector3().fromArray(view.up || [0, 1, 0])).setPosition(position);
   };
-  function setSlideCameras(arg12, arg13) {
-    if (from2) {
-      from2.from = value16(arg12).invert();
-      from2.to = value16(arg13).invert();
-      for (const from of push) {
-        from.slideBase = from.keep ? new Vector3.Matrix4() : new Vector3.Matrix4().compose(from.from.position, from.from.quaternion, from.from.scale);
+  function setSlideCameras(fromView, toView) {
+    if (slideCameras) {
+      slideCameras.from = cameraMatrixFromView(fromView).invert();
+      slideCameras.to = cameraMatrixFromView(toView).invert();
+      for (const record of records) {
+        record.slideBase = record.keep ? new THREE.Matrix4() : new THREE.Matrix4().compose(record.from.position, record.from.quaternion, record.from.scale);
       }
     }
   }
-  function sample(arg14, arg15 = null) {
-    if (!value14) {
+  function sample(progress, cameraView = null) {
+    if (!active) {
       return;
     }
-    if (push.some(keep => keep.keep && keep.node.parent !== arg16())) {
+    if (records.some(record => record.keep && record.node.parent !== getRoot())) {
       finish();
       return;
     }
-    const value13 = Math.max(0, Math.min(1, arg14));
-    for (const node4 of push) {
-      if (from2?.from && arg15) {
-        const value4 = from2.direction * from2.spread * (node4.keep ? 1 - value13 : -value13);
-        value16(arg15).multiply(new Vector3.Matrix4().makeTranslation(0, value4, 0)).multiply(node4.keep ? from2.to : from2.from).multiply(node4.slideBase).decompose(node4.node.position, node4.node.quaternion, node4.node.scale);
+    const t = Math.max(0, Math.min(1, progress));
+    for (const record of records) {
+      if (slideCameras?.from && cameraView) {
+        const slideOffset = slideCameras.direction * slideCameras.spread * (record.keep ? 1 - t : -t);
+        cameraMatrixFromView(cameraView).multiply(new THREE.Matrix4().makeTranslation(0, slideOffset, 0)).multiply(record.keep ? slideCameras.to : slideCameras.from).multiply(record.slideBase).decompose(record.node.position, record.node.quaternion, record.node.scale);
       } else {
-        node4.node.position.lerpVectors(node4.from.position, node4.to.position, value13);
-        node4.node.quaternion.slerpQuaternions(node4.from.quaternion, node4.to.quaternion, value13);
-        node4.node.scale.lerpVectors(node4.from.scale, node4.to.scale, value13);
+        record.node.position.lerpVectors(record.from.position, record.to.position, t);
+        record.node.quaternion.slerpQuaternions(record.from.quaternion, record.to.quaternion, t);
+        record.node.scale.lerpVectors(record.from.scale, record.to.scale, t);
       }
-      node4.node.updateMatrixWorld(true);
-      node4.groundAlpha = node4.groundFrom + (node4.groundTo - node4.groundFrom) * value13;
-      for (const materials of node4.ground) {
-        materials.materials.forEach((opacity2, arg) => {
-          opacity2.opacity = materials.opacity[arg] * (materials.followsFloor ? 1 : node4.groundAlpha);
+      record.node.updateMatrixWorld(true);
+      record.groundAlpha = record.groundFrom + (record.groundTo - record.groundFrom) * t;
+      for (const ground of record.ground) {
+        ground.materials.forEach((material, index) => {
+          material.opacity = ground.opacity[index] * (ground.followsFloor ? 1 : record.groundAlpha);
         });
       }
     }
-    arg20(false);
-    if (value13 === 1) {
+    invalidate(false);
+    if (t === 1) {
       finish();
     }
   }
@@ -249,10 +249,10 @@ export function createFloorTransition({
     setSlideCameras,
     finish,
     get active() {
-      return value14;
+      return active;
     },
     get records() {
-      return push;
+      return records;
     }
   };
 }

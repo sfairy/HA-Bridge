@@ -1,6 +1,6 @@
 import { vacuumMapIdentity } from "./vacuum-map.js?v=20260909-curtain-action-v15";
 import { openInteraction3dRangeEditor } from "./range-dialog.js?v=20260910-document-shadow-v1";
-import { mountInteraction3d } from "./runtime.js?v=20260909-preview-sleep-v1";
+import { mountInteraction3d } from "./runtime.js?v=20260910-control-projectid-v1";
 import { lightState } from "./light-state.js?v=20260906-i3d-render-recovery-v1";
 import { openVacuumMapEditor } from "./vacuum-map-editor.js?v=20260909-curtain-action-v15";
 import { nasGroups } from "./nas-panel.js";
@@ -16,62 +16,63 @@ export async function openInteraction3dEditor({
   states,
   pickers,
   onSave,
-  deviceKind: arg75 = "light",
-  startAdding: arg76 = false,
-  vacuumId: arg77 = "",
-  editingFloorId: arg78 = ""
+  deviceKind = "light",
+  startAdding = false,
+  vacuumId = "",
+  editingFloorId = ""
 }) {
   await requestInteraction3dAccess();
-  const stylesheet = arg75 === "devices" || arg75 === "nas" || arg75 === "television";
-  if (arg75 === "devices") {
-    arg75 = "nas";
+  let deviceKindLocal = deviceKind;
+  const isDeviceMode = deviceKindLocal === "devices" || deviceKindLocal === "nas" || deviceKindLocal === "television";
+  if (deviceKindLocal === "devices") {
+    deviceKindLocal = "nas";
   }
-  const createEl = arg75 === "vacuum-shortcut";
-  const createButton = arg75 === "vacuum";
-  const dialog = stylesheet || createButton || createEl;
-  const header = arg75 === "television";
-  const body = arg75 === "climate";
-  const viewPane = arg75 === "cover";
-  const sidebar = arg75 === "nas";
-  const aspectBox = body || viewPane || sidebar || header || createButton || createEl;
-  const stage = createEl ? "快捷指令" : createButton ? "扫地机" : stylesheet ? "设备" : viewPane ? "窗帘" : body ? "空调" : "灯光";
-  const statusNote = createButton || createEl ? "vacuums" : header ? "televisions" : sidebar ? "nas" : viewPane ? "curtains" : "airConditioners";
-  const errorNote = createEl ? "mdi:broom" : createButton ? "mdi:robot-vacuum" : header ? "mdi:television" : sidebar ? "mdi:nas" : viewPane ? "mdi:curtains" : body ? "mdi:air-conditioner" : "mdi:lightbulb-outline";
-  const draft = name3 => name3.name || name3.label || stage;
-  const selectedLightId = aspectBox ? "modelId" : "groupId";
-  const sceneMeta = arg53 => dialog ? ["focus", "focus-panel", "panel"].includes(arg53) ? arg53 : "focus-panel" : viewPane ? arg53 === "panel" ? "panel" : "focus" : ["turn-on-focus", "turn-on", "turn-on-panel"].includes(arg53) ? arg53 : "focus";
+  const isVacuumShortcut = deviceKindLocal === "vacuum-shortcut";
+  const isVacuum = deviceKindLocal === "vacuum";
+  const isDeviceLike = isDeviceMode || isVacuum || isVacuumShortcut;
+  const isTelevision = deviceKindLocal === "television";
+  const isClimate = deviceKindLocal === "climate";
+  const isCover = deviceKindLocal === "cover";
+  const isNas = deviceKindLocal === "nas";
+  const isNonLight = isClimate || isCover || isNas || isTelevision || isVacuum || isVacuumShortcut;
+  const stageLabel = isVacuumShortcut ? "快捷指令" : isVacuum ? "扫地机" : isDeviceMode ? "设备" : isCover ? "窗帘" : isClimate ? "空调" : "灯光";
+  const statusNote = isVacuum || isVacuumShortcut ? "vacuums" : isTelevision ? "televisions" : isNas ? "nas" : isCover ? "curtains" : "airConditioners";
+  const errorNote = isVacuumShortcut ? "mdi:broom" : isVacuum ? "mdi:robot-vacuum" : isTelevision ? "mdi:television" : isNas ? "mdi:nas" : isCover ? "mdi:curtains" : isClimate ? "mdi:air-conditioner" : "mdi:lightbulb-outline";
+  const draft = name3 => name3.name || name3.label || stageLabel;
+  const selectedLightId = isNonLight ? "modelId" : "groupId";
+  const sceneMeta = clickActionValue => isDeviceLike ? ["focus", "focus-panel", "panel"].includes(clickActionValue) ? clickActionValue : "focus-panel" : isCover ? clickActionValue === "panel" ? "panel" : "focus" : ["turn-on-focus", "turn-on", "turn-on-panel"].includes(clickActionValue) ? clickActionValue : "focus";
   const rel = document.createElement("link");
   rel.rel = "stylesheet";
   rel.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15";
   document.head.append(rel);
-  const value128 = (arg54, arg55, element4) => {
-    const className9 = document.createElement(arg54);
-    className9.className = arg55 || "";
+  const createEl = (tagName, elClassName, element4) => {
+    const className9 = document.createElement(tagName);
+    className9.className = elClassName || "";
     if (element4) {
       className9.textContent = element4;
     }
     return className9;
   };
-  const accessAllowed = (arg56, arg57) => {
-    const type2 = value128("button", "", arg56);
+  const accessAllowed = (buttonLabel, onClick) => {
+    const type2 = createEl("button", "", buttonLabel);
     type2.type = "button";
-    type2.addEventListener("click", arg57);
+    type2.addEventListener("click", onClick);
     return type2;
   };
-  const setAttribute11 = value128("dialog", "i3d-editor");
-  setAttribute11.setAttribute("aria-label", "3D " + stage + "配置");
-  setAttribute11.setAttribute("data-i3d-preview-scope", "");
-  const focusBusy = value128("header");
-  const append47 = value128("div", "i3d-editor-body");
-  const append48 = value128("div", "i3d-editor-view");
-  const focusQueue = value128("aside");
-  const append49 = value128("div", "i3d-editor-aspect");
-  const value129 = value128("div", "i3d-editor-stage");
-  const setAttribute12 = value128("p", "i3d-editor-status");
-  setAttribute12.setAttribute("role", "status");
-  append49.append(value129);
-  append48.append(append49, setAttribute12);
-  const pickerGeneration = value128("p", "i3d-error");
+  const editorDialog = createEl("dialog", "i3d-editor");
+  editorDialog.setAttribute("aria-label", "3D " + stageLabel + "配置");
+  editorDialog.setAttribute("data-i3d-preview-scope", "");
+  const focusBusy = createEl("header");
+  const editorBody = createEl("div", "i3d-editor-body");
+  const previewView = createEl("div", "i3d-editor-view");
+  const focusQueue = createEl("aside");
+  const previewAspect = createEl("div", "i3d-editor-aspect");
+  const previewHost = createEl("div", "i3d-editor-stage");
+  const accessStatusEl = createEl("p", "i3d-editor-status");
+  accessStatusEl.setAttribute("role", "status");
+  previewAspect.append(previewHost);
+  previewView.append(previewAspect, accessStatusEl);
+  const pickerGeneration = createEl("p", "i3d-error");
   pickerGeneration.setAttribute("role", "status");
   let effectRangeOpen = structuredClone(component.properties || {});
   let saving = "";
@@ -79,7 +80,7 @@ export async function openInteraction3dEditor({
   let liveStates = null;
   let refreshCapabilities = false;
   let capabilityCache = true;
-  let syncPreviewSize = arg78 || (effectRangeOpen.floorSelection !== "all" ? effectRangeOpen.floorSelection : "");
+  let syncPreviewSize = editingFloorId || (effectRangeOpen.floorSelection !== "all" ? effectRangeOpen.floorSelection : "");
   effectRangeOpen.lightingMode = normalizeInteraction3dLightingMode(effectRangeOpen.lightingMode);
   let resizeObserver = false;
   let closeEditor = null;
@@ -87,31 +88,31 @@ export async function openInteraction3dEditor({
   let saveButton = false;
   let unsubscribeAccess = false;
   let mode = null;
-  let value130 = 0;
-  let value131 = Promise.resolve();
+  let cameraCommandGeneration = 0;
+  let cameraCommandChain = Promise.resolve();
   let close5 = null;
   let close6 = null;
-  let value132 = 0;
+  let pickerSession = 0;
   let open = false;
-  let value133 = false;
-  let value134 = 0;
-  let value135 = null;
-  let value136 = () => {};
+  let isSavingConfig = false;
+  let dirtyRevision = 0;
+  let latestStatesByEntity = null;
+  let refreshEffectCapabilityUi = () => {};
   const get5 = new Map();
-  if (dialog) {
+  if (isDeviceLike) {
     effectRangeOpen.devices = {
       ...effectRangeOpen.devices,
       [statusNote]: effectRangeOpen.devices?.[statusNote] || []
     };
   }
-  if (aspectBox && !dialog) {
+  if (isNonLight && !isDeviceLike) {
     effectRangeOpen.environment = {
       ...effectRangeOpen.environment,
       dimStrength: Number.isFinite(effectRangeOpen.environment?.dimStrength) ? Math.max(0, Math.min(100, effectRangeOpen.environment.dimStrength)) : 70,
       [statusNote]: effectRangeOpen.environment?.[statusNote] || []
     };
   }
-  if (createEl) {
+  if (isVacuumShortcut) {
     for (const shortcuts2 of effectRangeOpen.devices.vacuums) {
       shortcuts2.shortcuts = (shortcuts2.shortcuts || []).map(visible => visible.visible === false ? {
         ...visible,
@@ -121,53 +122,53 @@ export async function openInteraction3dEditor({
       } : visible);
     }
   }
-  arg77 ||= effectRangeOpen.devices?.vacuums?.[0]?.id || "";
-  const value137 = () => effectRangeOpen.devices?.vacuums?.find(id36 => id36.id === arg77);
-  const value138 = () => createEl ? value137()?.shortcuts || [] : dialog ? effectRangeOpen.devices[statusNote] : aspectBox ? effectRangeOpen.environment[statusNote] : effectRangeOpen.lights;
-  const value139 = shortcuts3 => {
-    if (createEl) {
-      if (value137()) {
-        value137().shortcuts = shortcuts3;
+  vacuumId ||= effectRangeOpen.devices?.vacuums?.[0]?.id || "";
+  const getCurrentVacuum = () => effectRangeOpen.devices?.vacuums?.find(id36 => id36.id === vacuumId);
+  const getCurrentItems = () => isVacuumShortcut ? getCurrentVacuum()?.shortcuts || [] : isDeviceLike ? effectRangeOpen.devices[statusNote] : isNonLight ? effectRangeOpen.environment[statusNote] : effectRangeOpen.lights;
+  const setCurrentItems = shortcuts3 => {
+    if (isVacuumShortcut) {
+      if (getCurrentVacuum()) {
+        getCurrentVacuum().shortcuts = shortcuts3;
       }
-    } else if (dialog) {
+    } else if (isDeviceLike) {
       effectRangeOpen.devices[statusNote] = shortcuts3;
-    } else if (aspectBox) {
+    } else if (isNonLight) {
       effectRangeOpen.environment[statusNote] = shortcuts3;
     } else {
       effectRangeOpen.lights = shortcuts3;
     }
   };
-  value139((value138() || []).filter(visible2 => createEl || visible2.visible !== false).map(size2 => {
+  setCurrentItems((getCurrentItems() || []).filter(visible2 => isVacuumShortcut || visible2.visible !== false).map(size2 => {
     const size3 = Number.isFinite(size2.size) && size2.size > 0 ? size2.size : 44;
     return {
       ...size2,
       size: size3,
-      visible: createEl ? size2.visible !== false : true,
+      visible: isVacuumShortcut ? size2.visible !== false : true,
       icon: size2.icon || errorNote,
-      ...(aspectBox ? {} : {
+      ...(isNonLight ? {} : {
         fadeDuration: size2.fadeDuration ?? 0.3
       }),
-      ...(viewPane ? {
+      ...(isCover ? {
         coverDirection: ["left", "right", "split"].includes(size2.coverDirection) ? size2.coverDirection : "auto"
       } : {}),
-      ...(createEl ? {} : {
+      ...(isVacuumShortcut ? {} : {
         clickAction: sceneMeta(size2.clickAction)
       }),
       iconSize: Number.isFinite(size2.iconSize) && size2.iconSize > 0 ? size2.iconSize : Math.min(size3, Math.max(4, size3 - 18))
     };
   }));
-  const filter = aspectBox ? [...(createButton ? [] : [["icon", "图标", ""]]), ["size", createButton ? "状态框缩放" : "按钮大小", createButton ? "%" : "px"], ["iconSize", createButton ? "文字大小" : "图标大小", "px"], ["hitSize", "点击范围", "px"], ["buttonVisibility", "按钮显示", ""], ...(createEl ? [["fontSize", "文字大小", "px"], ["iconHidden", "隐藏图标", ""], ["labelHidden", "隐藏名称", ""]] : [])] : [["size", "按钮大小", "px"], ["iconSize", "图标大小", "px"], ["hitSize", "点击范围", "px"], ["fadeDuration", "缓开缓灭", "秒"], ["effectDefaults.brightness", "默认亮度", "%"], ["effectDefaults.kelvin", "默认色温", "K"], ["effectRange.brightnessMin", "最暗亮度", "%"], ["effectRange.brightnessMax", "最亮亮度", "%"], ["effectRange.temperatureMin", "最低色温", "K"], ["effectRange.temperatureMax", "最高色温", "K"]];
-  const capabilityCache2 = new Map(value138().map(id37 => [id37.id, structuredClone(id37)]));
+  const filter = isNonLight ? [...(isVacuum ? [] : [["icon", "图标", ""]]), ["size", isVacuum ? "状态框缩放" : "按钮大小", isVacuum ? "%" : "px"], ["iconSize", isVacuum ? "文字大小" : "图标大小", "px"], ["hitSize", "点击范围", "px"], ["buttonVisibility", "按钮显示", ""], ...(isVacuumShortcut ? [["fontSize", "文字大小", "px"], ["iconHidden", "隐藏图标", ""], ["labelHidden", "隐藏名称", ""]] : [])] : [["size", "按钮大小", "px"], ["iconSize", "图标大小", "px"], ["hitSize", "点击范围", "px"], ["fadeDuration", "缓开缓灭", "秒"], ["effectDefaults.brightness", "默认亮度", "%"], ["effectDefaults.kelvin", "默认色温", "K"], ["effectRange.brightnessMin", "最暗亮度", "%"], ["effectRange.brightnessMax", "最亮亮度", "%"], ["effectRange.temperatureMin", "最低色温", "K"], ["effectRange.temperatureMax", "最高色温", "K"]];
+  const capabilityCache2 = new Map(getCurrentItems().map(id37 => [id37.id, structuredClone(id37)]));
   let close7 = null;
-  let value140 = () => {};
-  function markDirty(size4, minimum = fn4(size4)) {
-    if (aspectBox) {
+  let updateBatchApplyState = () => {};
+  function markDirty(size4, minimum = resolveEntityLightState(size4)) {
+    if (isNonLight) {
       return {
         icon: size4.icon || errorNote,
         size: size4.size ?? 44,
         iconSize: size4.iconSize ?? 26,
         hitSize: size4.hitSize ?? Math.max(44, size4.size ?? 44),
-        ...(createEl ? {
+        ...(isVacuumShortcut ? {
           fontSize: size4.fontSize ?? 12,
           iconHidden: size4.iconHidden === true,
           labelHidden: size4.labelHidden === true
@@ -191,15 +192,15 @@ export async function openInteraction3dEditor({
       };
     }
   }
-  const value141 = (arg58, split) => split.split(".").reduce((arg42, arg43) => arg42?.[arg43], arg58);
+  const getByPath = (pathObject, split) => split.split(".").reduce((pathAcc, pathKey) => pathAcc?.[pathKey], pathObject);
   function resolveLightCapability(id40) {
     if (!capabilityCache2.has(id40.id)) {
       capabilityCache2.set(id40.id, structuredClone(id40));
     }
-    const entityId = fn4(id40);
+    const entityId = resolveEntityLightState(id40);
     const entityState = markDirty(capabilityCache2.get(id40.id), entityId);
     const cachedCapability = markDirty(id40, entityId);
-    return filter.filter(([arg44]) => value141(entityState, arg44) !== value141(cachedCapability, arg44));
+    return filter.filter(([diffFieldPath]) => getByPath(entityState, diffFieldPath) !== getByPath(cachedCapability, diffFieldPath));
   }
   function appendLabeled(parent, fieldLabel, control) {
     for (const split2 of control) {
@@ -208,21 +209,21 @@ export async function openInteraction3dEditor({
         parent.hiddenClickable = fieldLabel.buttonVisibility === "隐藏（可点击）";
         continue;
       }
-      const [value75, value76] = split2.split(".");
-      if (!value76) {
-        parent[value75] = fieldLabel[value75];
+      const [fieldRootKey, fieldChildKey] = split2.split(".");
+      if (!fieldChildKey) {
+        parent[fieldRootKey] = fieldLabel[fieldRootKey];
         continue;
       }
-      parent[value75] = {
-        ...(value75 === "effectRange" ? markDirty(parent).effectRange : parent[value75])
+      parent[fieldRootKey] = {
+        ...(fieldRootKey === "effectRange" ? markDirty(parent).effectRange : parent[fieldRootKey])
       };
-      if (fieldLabel[value75][value76] === undefined) {
-        delete parent[value75][value76];
+      if (fieldLabel[fieldRootKey][fieldChildKey] === undefined) {
+        delete parent[fieldRootKey][fieldChildKey];
       } else {
-        parent[value75][value76] = fieldLabel[value75][value76];
+        parent[fieldRootKey][fieldChildKey] = fieldLabel[fieldRootKey][fieldChildKey];
       }
-      if (!Object.keys(parent[value75]).length) {
-        delete parent[value75];
+      if (!Object.keys(parent[fieldRootKey]).length) {
+        delete parent[fieldRootKey];
       }
     }
   }
@@ -238,264 +239,264 @@ export async function openInteraction3dEditor({
     }
     const has2 = new Set(select.visibleMetrics || select.metrics.map(entityId20 => entityId20.entityId));
     const push2 = [];
-    const setAttribute9 = value128("dialog", "settings-dialog i3d-add-dialog i3d-nas-fields-dialog");
-    close7 = setAttribute9;
-    setAttribute9.setAttribute("aria-label", "选择 NAS 显示内容");
-    const append23 = value128("div", "dialog-heading");
-    const value109 = value128("h2", "", "选择显示内容");
+    const nasFieldsDialog = createEl("dialog", "settings-dialog i3d-add-dialog i3d-nas-fields-dialog");
+    close7 = nasFieldsDialog;
+    nasFieldsDialog.setAttribute("aria-label", "选择 NAS 显示内容");
+    const nasFieldsHeading = createEl("div", "dialog-heading");
+    const nasFieldsTitle = createEl("h2", "", "选择显示内容");
     const className11 = accessAllowed("×", renderSidebar);
     className11.className = "icon-button";
     className11.setAttribute("aria-label", "关闭显示内容选择");
-    append23.append(value109, className11);
-    const append24 = value128("div", "i3d-add-dialog-body");
-    const append25 = value128("div", "dialog-actions");
-    const textContent6 = value128("span", "i3d-note");
-    const value110 = () => {
-      textContent6.textContent = "已选 " + has2.size + " 项";
+    nasFieldsHeading.append(nasFieldsTitle, className11);
+    const nasFieldsBody = createEl("div", "i3d-add-dialog-body");
+    const nasFieldsToolbar = createEl("div", "dialog-actions");
+    const nasFieldsCountEl = createEl("span", "i3d-note");
+    const updateNasFieldsCount = () => {
+      nasFieldsCountEl.textContent = "已选 " + has2.size + " 项";
       for (const checked6 of push2) {
         checked6.checked = has2.has(checked6.value);
       }
     };
-    append25.append(accessAllowed("全选", () => {
+    nasFieldsToolbar.append(accessAllowed("全选", () => {
       select.metrics.forEach(entityId16 => has2.add(entityId16.entityId));
-      value110();
+      updateNasFieldsCount();
     }), accessAllowed("全不选", () => {
       has2.clear();
-      value110();
-    }), textContent6);
-    const append26 = value128("div", "i3d-nas-fields");
-    const options = nasGroups(select).filter(([arg41]) => select.metrics.some(group2 => group2.group === arg41));
+      updateNasFieldsCount();
+    }), nasFieldsCountEl);
+    const nasFieldsList = createEl("div", "i3d-nas-fields");
+    const options = nasGroups(select).filter(([nasGroupId]) => select.metrics.some(group2 => group2.group === nasGroupId));
     const get4 = new Map();
-    const value111 = () => {
-      options.forEach(([arg18], arg19) => {
+    const rerenderNasFieldGroups = () => {
+      options.forEach(([nasGroupKey], nasGroupIndex) => {
         const {
-          section: value18,
+          section: nasGroupSectionEl,
           up: disabled,
           down: disabled2
-        } = get4.get(arg18);
-        disabled.disabled = arg19 === 0;
-        disabled2.disabled = arg19 === options.length - 1;
-        append26.append(value18);
+        } = get4.get(nasGroupKey);
+        disabled.disabled = nasGroupIndex === 0;
+        disabled2.disabled = nasGroupIndex === options.length - 1;
+        nasFieldsList.append(nasGroupSectionEl);
       });
     };
     for (const [optValue, optLabel] of options) {
       const option = select.metrics.filter(group3 => group3.group === optValue);
-      const append11 = value128("section");
-      const append12 = value128("div", "i3d-nas-fields-heading");
-      const value77 = arg32 => {
-        const value50 = options.findIndex(([arg10]) => arg10 === optValue);
-        const value51 = value50 + arg32;
-        if (!(value51 < 0) && !(value51 >= options.length)) {
-          [options[value50], options[value51]] = [options[value51], options[value50]];
-          value111();
+      const nasGroupSection = createEl("section");
+      const nasGroupHeading = createEl("div", "i3d-nas-fields-heading");
+      const moveNasGroup = nasGroupDelta => {
+        const nasGroupFromIndex = options.findIndex(([nasGroupMatchId]) => nasGroupMatchId === optValue);
+        const nasGroupToIndex = nasGroupFromIndex + nasGroupDelta;
+        if (!(nasGroupToIndex < 0) && !(nasGroupToIndex >= options.length)) {
+          [options[nasGroupFromIndex], options[nasGroupToIndex]] = [options[nasGroupToIndex], options[nasGroupFromIndex]];
+          rerenderNasFieldGroups();
         }
       };
-      const setAttribute6 = accessAllowed("↑", () => value77(-1));
-      const select = accessAllowed("↓", () => value77(1));
-      setAttribute6.setAttribute("aria-label", "上移" + optLabel + "分组");
+      const nasGroupUpBtn = accessAllowed("↑", () => moveNasGroup(-1));
+      const select = accessAllowed("↓", () => moveNasGroup(1));
+      nasGroupUpBtn.setAttribute("aria-label", "上移" + optLabel + "分组");
       select.setAttribute("aria-label", "下移" + optLabel + "分组");
-      setAttribute6.title = "上移分组";
+      nasGroupUpBtn.title = "上移分组";
       select.title = "下移分组";
-      append12.append(value128("h4", "", optLabel), setAttribute6, select);
-      append11.append(append12);
+      nasGroupHeading.append(createEl("h4", "", optLabel), nasGroupUpBtn, select);
+      nasGroupSection.append(nasGroupHeading);
       get4.set(optValue, {
-        section: append11,
-        up: setAttribute6,
+        section: nasGroupSection,
+        up: nasGroupUpBtn,
         down: select,
         metrics: option
       });
       const get3 = new Map();
-      const value78 = () => option.forEach((entityId19, arg20) => {
+      const rerenderNasGroupRows = () => option.forEach((entityId19, nasMetricIndex) => {
         const up = get3.get(entityId19.entityId);
-        up.up.disabled = arg20 === 0;
-        up.down.disabled = arg20 === option.length - 1;
-        append11.append(up.row);
+        up.up.disabled = nasMetricIndex === 0;
+        up.down.disabled = nasMetricIndex === option.length - 1;
+        nasGroupSection.append(up.row);
       });
       for (const label2 of option) {
-        const row = value128("div", "i3d-nas-fields-row");
-        const title = value128("label");
-        const value53 = value128("input");
-        value53.type = "checkbox";
-        value53.value = label2.entityId;
-        value53.setAttribute("aria-label", label2.label);
+        const row = createEl("div", "i3d-nas-fields-row");
+        const title = createEl("label");
+        const nasMetricCheckbox = createEl("input");
+        nasMetricCheckbox.type = "checkbox";
+        nasMetricCheckbox.value = label2.entityId;
+        nasMetricCheckbox.setAttribute("aria-label", label2.label);
         title.title = label2.entityId;
-        value53.addEventListener("change", () => {
-          if (value53.checked) {
-            has2.add(value53.value);
+        nasMetricCheckbox.addEventListener("change", () => {
+          if (nasMetricCheckbox.checked) {
+            has2.add(nasMetricCheckbox.value);
           } else {
-            has2.delete(value53.value);
+            has2.delete(nasMetricCheckbox.value);
           }
-          value110();
+          updateNasFieldsCount();
         });
-        const value54 = arg21 => {
-          const value19 = option.indexOf(label2);
-          const value20 = value19 + arg21;
-          if (!(value20 < 0) && !(value20 >= option.length)) {
-            [option[value19], option[value20]] = [option[value20], option[value19]];
-            value78();
+        const moveNasMetric = nasMetricDelta => {
+          const nasMetricFromIndex = option.indexOf(label2);
+          const nasMetricToIndex = nasMetricFromIndex + nasMetricDelta;
+          if (!(nasMetricToIndex < 0) && !(nasMetricToIndex >= option.length)) {
+            [option[nasMetricFromIndex], option[nasMetricToIndex]] = [option[nasMetricToIndex], option[nasMetricFromIndex]];
+            rerenderNasGroupRows();
           }
         };
-        const setAttribute4 = accessAllowed("↑", () => value54(-1));
-        const setAttribute5 = accessAllowed("↓", () => value54(1));
-        setAttribute4.setAttribute("aria-label", "上移" + label2.label);
-        setAttribute5.setAttribute("aria-label", "下移" + label2.label);
-        setAttribute4.title = "上移内容";
-        setAttribute5.title = "下移内容";
+        const nasMetricUpBtn = accessAllowed("↑", () => moveNasMetric(-1));
+        const nasMetricDownBtn = accessAllowed("↓", () => moveNasMetric(1));
+        nasMetricUpBtn.setAttribute("aria-label", "上移" + label2.label);
+        nasMetricDownBtn.setAttribute("aria-label", "下移" + label2.label);
+        nasMetricUpBtn.title = "上移内容";
+        nasMetricDownBtn.title = "下移内容";
         get3.set(label2.entityId, {
           row,
-          up: setAttribute4,
-          down: setAttribute5
+          up: nasMetricUpBtn,
+          down: nasMetricDownBtn
         });
-        push2.push(value53);
-        title.append(value53, value128("span", "", label2.label));
-        row.append(title, setAttribute4, setAttribute5);
-        append11.append(row);
+        push2.push(nasMetricCheckbox);
+        title.append(nasMetricCheckbox, createEl("span", "", label2.label));
+        row.append(title, nasMetricUpBtn, nasMetricDownBtn);
+        nasGroupSection.append(row);
       }
-      value78();
-      append26.append(append11);
+      rerenderNasGroupRows();
+      nasFieldsList.append(nasGroupSection);
     }
-    value111();
-    const append27 = value128("div", "dialog-actions");
+    rerenderNasFieldGroups();
+    const nasFieldsActions = createEl("div", "dialog-actions");
     const className12 = accessAllowed("确定", () => {
-      if (refreshCapabilities || !capabilityCache || selectParent.statusSource !== select || !value138().includes(selectParent)) {
+      if (refreshCapabilities || !capabilityCache || selectParent.statusSource !== select || !getCurrentItems().includes(selectParent)) {
         return renderSidebar();
       }
-      select.metrics = options.flatMap(([arg12]) => get4.get(arg12).metrics);
+      select.metrics = options.flatMap(([nasConfirmGroupId]) => get4.get(nasConfirmGroupId).metrics);
       select.visibleMetrics = select.metrics.filter(entityId12 => has2.has(entityId12.entityId)).map(entityId15 => entityId15.entityId);
-      select.groupOrder = options.map(([arg13]) => arg13);
+      select.groupOrder = options.map(([nasConfirmOrderId]) => nasConfirmOrderId);
       renderSidebar();
       mountRuntime();
-      fn12();
-      textContent8.textContent = "显示内容已调整，待保存配置";
+      rebuildConfigSidebar();
+      saveStatusEl.textContent = "显示内容已调整，待保存配置";
     });
     className12.className = "primary";
-    append27.append(accessAllowed("取消", renderSidebar), className12);
-    append24.append(append25, append26, value128("p", "i3d-note", "用 ↑ ↓ 调整分组和组内内容顺序；确定后点击“保存配置”保存。"), append27);
-    setAttribute9.append(append23, append24);
-    document.body.append(setAttribute9);
-    value110();
-    setAttribute9.addEventListener("cancel", preventDefault => {
+    nasFieldsActions.append(accessAllowed("取消", renderSidebar), className12);
+    nasFieldsBody.append(nasFieldsToolbar, nasFieldsList, createEl("p", "i3d-note", "用 ↑ ↓ 调整分组和组内内容顺序；确定后点击“保存配置”保存。"), nasFieldsActions);
+    nasFieldsDialog.append(nasFieldsHeading, nasFieldsBody);
+    document.body.append(nasFieldsDialog);
+    updateNasFieldsCount();
+    nasFieldsDialog.addEventListener("cancel", preventDefault => {
       preventDefault.preventDefault();
       renderSidebar();
     });
-    setAttribute9.showModal();
+    nasFieldsDialog.showModal();
   }
   function appendNumber(numParent) {
     if (refreshCapabilities || !capabilityCache || saveButton || unsubscribeAccess || resizeObserver || close7) {
       return;
     }
-    const numInput = aspectBox ? stage : "灯光";
-    const value112 = aspectBox ? "图标设置" : "灯光设置";
+    const numInput = isNonLight ? stageLabel : "灯光";
+    const batchApplyTitle = isNonLight ? "图标设置" : "灯光设置";
     const length6 = resolveLightCapability(numParent);
-    const length7 = value138().filter(id31 => id31.id !== numParent.id && (createEl || id31.floorId === numParent.floorId));
+    const length7 = getCurrentItems().filter(id31 => id31.id !== numParent.id && (isVacuumShortcut || id31.floorId === numParent.floorId));
     if (!length6.length) {
       return;
     }
-    const value113 = structuredClone(markDirty(numParent));
-    const Object2 = value128("dialog", "settings-dialog navigation-style-apply-dialog i3d-batch-dialog");
-    Object2.setAttribute("aria-label", "应用" + value112);
+    const batchSourceSnapshot = structuredClone(markDirty(numParent));
+    const Object2 = createEl("dialog", "settings-dialog navigation-style-apply-dialog i3d-batch-dialog");
+    Object2.setAttribute("aria-label", "应用" + batchApplyTitle);
     close7 = Object2;
-    const append28 = value128("div", "dialog-heading");
-    const append29 = value128("div");
-    append29.append(value128("span", "", "BATCH APPLY"), value128("h2", "", "应用" + value112));
+    const batchHeading = createEl("div", "dialog-heading");
+    const batchHeadingText = createEl("div");
+    batchHeadingText.append(createEl("span", "", "BATCH APPLY"), createEl("h2", "", "应用" + batchApplyTitle));
     const className13 = accessAllowed("×", renderSidebar);
     className13.className = "icon-button";
     className13.setAttribute("aria-label", "关闭应用设置窗口");
-    append28.append(append29, className13);
-    const append30 = value128("div", "navigation-style-apply-body");
-    const append31 = value128("div", "navigation-style-apply-columns");
-    const append32 = value128("section");
-    const append33 = value128("section");
-    const value114 = (arg45, arg46) => {
-      const append8 = value128("div", "navigation-style-apply-heading");
-      append8.append(value128("strong", "", arg45), value128("span", "", arg46));
-      return append8;
+    batchHeading.append(batchHeadingText, className13);
+    const batchBody = createEl("div", "navigation-style-apply-body");
+    const batchColumns = createEl("div", "navigation-style-apply-columns");
+    const batchFieldsSection = createEl("section");
+    const batchTargetsSection = createEl("section");
+    const makeBatchSectionHeading = (batchHeadingTitle, batchHeadingHint) => {
+      const batchSectionHeadingEl = createEl("div", "navigation-style-apply-heading");
+      batchSectionHeadingEl.append(createEl("strong", "", batchHeadingTitle), createEl("span", "", batchHeadingHint));
+      return batchSectionHeadingEl;
     };
-    const append34 = value128("div", "navigation-style-apply-options");
-    const append35 = value128("div", "navigation-style-apply-options grouped-by-page");
+    const batchFieldOptions = createEl("div", "navigation-style-apply-options");
+    const batchTargetOptions = createEl("div", "navigation-style-apply-options grouped-by-page");
     const at = [];
     const push3 = [];
-    const value115 = (element2, arg47, arg48, push) => {
-      const append9 = value128("label", "navigation-style-apply-option");
-      const type = value128("input");
-      const append10 = value128("span", "", arg47);
+    const makeBatchOption = (element2, batchOptionTitle, batchOptionHint, push) => {
+      const batchOptionLabel = createEl("label", "navigation-style-apply-option");
+      const type = createEl("input");
+      const batchOptionText = createEl("span", "", batchOptionTitle);
       type.type = "checkbox";
       type.checked = true;
       type.value = element2;
-      type.setAttribute("aria-label", arg47);
+      type.setAttribute("aria-label", batchOptionTitle);
       push.push(type);
-      append10.append(value128("small", "", arg48));
-      append9.append(type, append10);
-      return append9;
+      batchOptionText.append(createEl("small", "", batchOptionHint));
+      batchOptionLabel.append(type, batchOptionText);
+      return batchOptionLabel;
     };
-    const has3 = new Set(length6.map(([arg33]) => arg33));
+    const has3 = new Set(length6.map(([batchFieldId]) => batchFieldId));
     const add = new Set(has3);
     for (const replace of has3) {
       if (replace.startsWith("effectRange.")) {
         add.add(replace.endsWith("Min") ? replace.replace(/Min$/, "Max") : replace.replace(/Max$/, "Min"));
       }
     }
-    for (const [value89, value90, value91] of filter.filter(([arg49]) => add.has(arg49))) {
-      const value79 = value141(value113, value89);
-      const value80 = createButton && value89 === "size" ? Math.round(value79 / 44 * 100) : createButton && value89 === "iconSize" ? value79 / 2 : value79;
-      const element3 = has3.has(value89);
-      append34.append(value115(value89, value90, typeof value80 == "boolean" ? value80 ? "是" : "否" : value80 === undefined ? "跟随模型" : "" + (element3 ? "" : "配套上/下限 · ") + (typeof value80 == "number" ? Math.round(value80 * 1000) / 1000 : value80) + " " + value91, at));
+    for (const [batchFieldPath, batchFieldLabel, batchFieldUnit] of filter.filter(([batchFilterPath]) => add.has(batchFilterPath))) {
+      const batchFieldRaw = getByPath(batchSourceSnapshot, batchFieldPath);
+      const batchFieldDisplay = isVacuum && batchFieldPath === "size" ? Math.round(batchFieldRaw / 44 * 100) : isVacuum && batchFieldPath === "iconSize" ? batchFieldRaw / 2 : batchFieldRaw;
+      const element3 = has3.has(batchFieldPath);
+      batchFieldOptions.append(makeBatchOption(batchFieldPath, batchFieldLabel, typeof batchFieldDisplay == "boolean" ? batchFieldDisplay ? "是" : "否" : batchFieldDisplay === undefined ? "跟随模型" : "" + (element3 ? "" : "配套上/下限 · ") + (typeof batchFieldDisplay == "number" ? Math.round(batchFieldDisplay * 1000) / 1000 : batchFieldDisplay) + " " + batchFieldUnit, at));
       at.at(-1).checked = element3;
     }
     const has4 = new Map();
     for (const floorId4 of length7) {
-      const value81 = createEl ? value137()?.floorId : floorId4.floorId;
-      if (!has4.has(value81)) {
-        has4.set(value81, []);
+      const batchTargetFloorId = isVacuumShortcut ? getCurrentVacuum()?.floorId : floorId4.floorId;
+      if (!has4.has(batchTargetFloorId)) {
+        has4.set(batchTargetFloorId, []);
       }
-      has4.get(value81).push(floorId4);
+      has4.get(batchTargetFloorId).push(floorId4);
     }
-    for (const [value92, value93] of has4) {
-      const append13 = value128("section", "navigation-style-apply-page-group");
-      const append14 = value128("div", "navigation-style-apply-page-heading");
-      const value82 = draftRevision?.floors.find(id21 => id21.id === value92)?.name || "原楼层";
-      const append15 = value128("div", "navigation-style-apply-page-controls");
-      const textContent3 = value128("span");
-      const append16 = value128("div", "navigation-style-apply-page-options");
+    for (const [batchFloorId, batchFloorItems] of has4) {
+      const batchFloorGroup = createEl("section", "navigation-style-apply-page-group");
+      const batchFloorHeading = createEl("div", "navigation-style-apply-page-heading");
+      const batchFloorName = draftRevision?.floors.find(id21 => id21.id === batchFloorId)?.name || "原楼层";
+      const batchFloorControls = createEl("div", "navigation-style-apply-page-controls");
+      const batchFloorCountEl = createEl("span");
+      const batchFloorOptions = createEl("div", "navigation-style-apply-page-options");
       const length4 = [];
-      for (const id38 of value93) {
-        append16.append(value115(id38.id, id38.label || numInput, aspectBox ? "图标设置" : "灯光设置", length4));
+      for (const id38 of batchFloorItems) {
+        batchFloorOptions.append(makeBatchOption(id38.id, id38.label || numInput, isNonLight ? "图标设置" : "灯光设置", length4));
       }
       push3.push(...length4);
-      const value83 = () => {
-        const value52 = length4.filter(checked3 => checked3.checked).length;
-        textContent3.textContent = value52 + "/" + length4.length + " 个" + numInput;
-        textContent4.textContent = value52 === length4.length ? "取消全选" : "全选";
+      const updateBatchFloorToggle = () => {
+        const batchFloorCheckedCount = length4.filter(checked3 => checked3.checked).length;
+        batchFloorCountEl.textContent = batchFloorCheckedCount + "/" + length4.length + " 个" + numInput;
+        batchFloorToggleBtn.textContent = batchFloorCheckedCount === length4.length ? "取消全选" : "全选";
       };
-      const textContent4 = accessAllowed("", () => {
+      const batchFloorToggleBtn = accessAllowed("", () => {
         const element = !length4.every(checked => checked.checked);
         length4.forEach(checked5 => {
           checked5.checked = element;
         });
-        value83();
+        updateBatchFloorToggle();
       });
-      textContent4.className = "navigation-style-apply-page-toggle";
-      textContent4.setAttribute("aria-label", "全选或取消 " + value82 + " 的" + numInput);
-      append16.addEventListener("change", value83);
-      append15.append(textContent3, textContent4);
-      append14.append(value128("strong", "", value82), append15);
-      append13.append(append14, append16);
-      append35.append(append13);
-      value83();
+      batchFloorToggleBtn.className = "navigation-style-apply-page-toggle";
+      batchFloorToggleBtn.setAttribute("aria-label", "全选或取消 " + batchFloorName + " 的" + numInput);
+      batchFloorOptions.addEventListener("change", updateBatchFloorToggle);
+      batchFloorControls.append(batchFloorCountEl, batchFloorToggleBtn);
+      batchFloorHeading.append(createEl("strong", "", batchFloorName), batchFloorControls);
+      batchFloorGroup.append(batchFloorHeading, batchFloorOptions);
+      batchTargetOptions.append(batchFloorGroup);
+      updateBatchFloorToggle();
     }
-    append32.append(value114("要应用的修改", "可单独取消"), append34);
-    append33.append(value114("应用到其他" + numInput, "按楼层区分"), append35);
-    append31.append(append32, append33);
-    const hidden = value128("p", "navigation-style-apply-message");
+    batchFieldsSection.append(makeBatchSectionHeading("要应用的修改", "可单独取消"), batchFieldOptions);
+    batchTargetsSection.append(makeBatchSectionHeading("应用到其他" + numInput, "按楼层区分"), batchTargetOptions);
+    batchColumns.append(batchFieldsSection, batchTargetsSection);
+    const hidden = createEl("p", "navigation-style-apply-message");
     hidden.hidden = length7.length > 0;
     if (!length7.length) {
       hidden.textContent = "当前配置中没有其他" + numInput + "可应用。";
     }
     hidden.setAttribute("role", "status");
-    const append36 = value128("div", "dialog-actions");
+    const batchActions = createEl("div", "dialog-actions");
     const disabled12 = accessAllowed("应用所选", async () => {
-      const length3 = at.filter(checked4 => checked4.checked).map(value7 => value7.value);
-      const size = new Set(push3.filter(checked2 => checked2.checked).map(value2 => value2.value));
+      const length3 = at.filter(checked4 => checked4.checked).map(batchCheckedFieldInput => batchCheckedFieldInput.value);
+      const size = new Set(push3.filter(checked2 => checked2.checked).map(batchCheckedTargetInput => batchCheckedTargetInput.value));
       if (!length3.length || !size.size) {
         hidden.textContent = "请至少选择一项修改和一个目标" + numInput + "。";
         hidden.hidden = false;
@@ -507,9 +508,9 @@ export async function openInteraction3dEditor({
         if (refreshCapabilities || !capabilityCache || close7 !== Object2) {
           return;
         }
-        const length2 = value138().filter(focalLength => size.has(focalLength.id) && focalLength.id !== numParent.id && (createEl || focalLength.floorId === numParent.floorId)).map(label => {
+        const length2 = getCurrentItems().filter(focalLength => size.has(focalLength.id) && focalLength.id !== numParent.id && (isVacuumShortcut || focalLength.floorId === numParent.floorId)).map(label => {
           const effectRange = structuredClone(label);
-          appendLabeled(effectRange, value113, length3);
+          appendLabeled(effectRange, batchSourceSnapshot, length3);
           const brightnessMin = effectRange.effectRange;
           if (brightnessMin && (brightnessMin.brightnessMin > brightnessMin.brightnessMax || brightnessMin.temperatureMin > brightnessMin.temperatureMax)) {
             throw new Error("“" + (label.label || "灯光") + "”的上下限会冲突，请同时勾选对应的最小值与最大值。");
@@ -520,16 +521,16 @@ export async function openInteraction3dEditor({
           throw new Error("目标" + numInput + "已不存在，请重新选择。");
         }
         const get2 = new Map(length2.map(id12 => [id12.id, id12]));
-        value139(value138().map(id14 => get2.get(id14.id) || id14));
+        setCurrentItems(getCurrentItems().map(id14 => get2.get(id14.id) || id14));
         for (const id22 of [numParent, ...length2]) {
-          const value8 = capabilityCache2.get(id22.id) || structuredClone(id22);
-          appendLabeled(value8, value113, length3);
-          capabilityCache2.set(id22.id, value8);
+          const batchTargetCached = capabilityCache2.get(id22.id) || structuredClone(id22);
+          appendLabeled(batchTargetCached, batchSourceSnapshot, length3);
+          capabilityCache2.set(id22.id, batchTargetCached);
         }
         renderSidebar();
         mountRuntime();
-        fn12();
-        textContent8.textContent = "已应用到 " + length2.length + " 个" + numInput + "，待保存配置";
+        rebuildConfigSidebar();
+        saveStatusEl.textContent = "已应用到 " + length2.length + " 个" + numInput + "，待保存配置";
       } catch (message8) {
         if (close7 === Object2) {
           hidden.textContent = message8.message;
@@ -541,9 +542,9 @@ export async function openInteraction3dEditor({
     });
     disabled12.className = "primary";
     disabled12.disabled = !length7.length;
-    append36.append(accessAllowed("取消", renderSidebar), disabled12);
-    append30.append(value128("p", "navigation-style-apply-summary", createEl ? "将“" + (numParent.label || stage) + "”的图标修改应用到勾选的快捷按钮，保留各自的指令绑定、名称、位置和高度。应用后点击“保存配置”。" : aspectBox ? "将“" + (numParent.label || stage) + "”的图标修改应用到勾选的" + stage + "。保留各自的模型、实体、位置、高度、点击行为、聚焦视角和状态内容。应用后点击“保存配置”完成保存。" : "将“" + (numParent.label || "灯光") + "”中选定的修改应用到勾选的灯光。保留各灯的实体、名称、位置、聚焦视角与照射范围。应用后点击“保存配置”完成保存。"), append31, hidden, append36);
-    Object2.append(append28, append30);
+    batchActions.append(accessAllowed("取消", renderSidebar), disabled12);
+    batchBody.append(createEl("p", "navigation-style-apply-summary", isVacuumShortcut ? "将“" + (numParent.label || stageLabel) + "”的图标修改应用到勾选的快捷按钮，保留各自的指令绑定、名称、位置和高度。应用后点击“保存配置”。" : isNonLight ? "将“" + (numParent.label || stageLabel) + "”的图标修改应用到勾选的" + stageLabel + "。保留各自的模型、实体、位置、高度、点击行为、聚焦视角和状态内容。应用后点击“保存配置”完成保存。" : "将“" + (numParent.label || "灯光") + "”中选定的修改应用到勾选的灯光。保留各灯的实体、名称、位置、聚焦视角与照射范围。应用后点击“保存配置”完成保存。"), batchColumns, hidden, batchActions);
+    Object2.append(batchHeading, batchBody);
     document.body.append(Object2);
     Object2.addEventListener("cancel", preventDefault2 => {
       preventDefault2.preventDefault();
@@ -551,41 +552,41 @@ export async function openInteraction3dEditor({
     });
     Object2.showModal();
   }
-  const value142 = () => {
-    const width = interaction3dPreviewSize(component, doc, append48.clientWidth, append48.clientHeight);
-    Object.assign(append49.style, {
+  const fitPreviewAspect = () => {
+    const width = interaction3dPreviewSize(component, doc, previewView.clientWidth, previewView.clientHeight);
+    Object.assign(previewAspect.style, {
       width: width.width + "px",
       height: width.height + "px"
     });
   };
-  const header2 = new ResizeObserver(value142);
-  header2.observe(append48);
-  const value143 = () => {
+  const header2 = new ResizeObserver(fitPreviewAspect);
+  header2.observe(previewView);
+  const closeMainEditor = () => {
     if (!refreshCapabilities) {
       refreshCapabilities = true;
-      fn8();
+      closeAddDialog();
       renderSidebar();
       closeEditor?.close();
       header2.disconnect();
-      value132++;
+      pickerSession++;
       close6?.close();
       liveStates?.();
-      value145();
-      setAttribute11.remove();
+      unsubscribeAccessWatch();
+      editorDialog.remove();
       rel.remove();
       document.dispatchEvent(new Event("hb-i3d-preview-scope"));
     }
   };
-  const textContent8 = value128("span", "i3d-save-status");
-  textContent8.setAttribute("role", "status");
+  const saveStatusEl = createEl("span", "i3d-save-status");
+  saveStatusEl.setAttribute("role", "status");
   const disabled17 = accessAllowed("保存配置", async () => {
-    if (value133 || refreshCapabilities || !capabilityCache || saveButton || unsubscribeAccess) {
+    if (isSavingConfig || refreshCapabilities || !capabilityCache || saveButton || unsubscribeAccess) {
       return;
     }
-    const value84 = structuredClone(effectRangeOpen);
-    const value85 = value134;
-    value133 = true;
-    textContent8.textContent = "保存中…";
+    const pendingSaveSnapshot = structuredClone(effectRangeOpen);
+    const pendingSaveRevision = dirtyRevision;
+    isSavingConfig = true;
+    saveStatusEl.textContent = "保存中…";
     disabled17.disabled = true;
     pickerGeneration.textContent = "";
     try {
@@ -593,33 +594,33 @@ export async function openInteraction3dEditor({
       if (refreshCapabilities) {
         return;
       }
-      await onSave(value84);
+      await onSave(pendingSaveSnapshot);
       if (!refreshCapabilities) {
-        textContent8.textContent = value85 === value134 ? "已保存" : "已保存，另有新修改";
+        saveStatusEl.textContent = pendingSaveRevision === dirtyRevision ? "已保存" : "已保存，另有新修改";
       }
     } catch (message11) {
       if (!refreshCapabilities) {
         pickerGeneration.textContent = message11.message;
-        textContent8.textContent = "";
+        saveStatusEl.textContent = "";
       }
     } finally {
-      value133 = false;
+      isSavingConfig = false;
       if (!refreshCapabilities) {
         disabled17.disabled = !capabilityCache || saveButton || unsubscribeAccess;
       }
     }
   });
   disabled17.className = "primary";
-  focusBusy.append(value128("strong", "", "3D " + stage + "配置"), textContent8, disabled17, accessAllowed("退出", value143));
-  append47.append(append48, focusQueue);
-  setAttribute11.append(focusBusy, append47);
-  document.body.append(setAttribute11);
-  setAttribute11.addEventListener("cancel", preventDefault4 => {
+  focusBusy.append(createEl("strong", "", "3D " + stageLabel + "配置"), saveStatusEl, disabled17, accessAllowed("退出", closeMainEditor));
+  editorBody.append(previewView, focusQueue);
+  editorDialog.append(focusBusy, editorBody);
+  document.body.append(editorDialog);
+  editorDialog.addEventListener("cancel", preventDefault4 => {
     preventDefault4.preventDefault();
-    value143();
+    closeMainEditor();
   });
-  const value144 = () => {
-    const floorSelection = createEl && value137() ? value137().floorId : syncPreviewSize;
+  const getPreviewProperties = () => {
+    const floorSelection = isVacuumShortcut && getCurrentVacuum() ? getCurrentVacuum().floorId : syncPreviewSize;
     const camera2 = effectRangeOpen.floorCameras?.[floorSelection] || (floorSelection === effectRangeOpen.floorSelection ? effectRangeOpen.camera : null);
     return {
       ...effectRangeOpen,
@@ -630,119 +631,119 @@ export async function openInteraction3dEditor({
     };
   };
   function mountRuntime() {
-    value134++;
-    if (!value133) {
-      textContent8.textContent = "";
+    dirtyRevision++;
+    if (!isSavingConfig) {
+      saveStatusEl.textContent = "";
     }
-    liveStates?.update(value144(), createEl && saving ? "vacuum-room:" + arg77 + ":" + saving : saving);
-    value140();
+    liveStates?.update(getPreviewProperties(), isVacuumShortcut && saving ? "vacuum-room:" + vacuumId + ":" + saving : saving);
+    updateBatchApplyState();
   }
-  function fn(append37, lightItem, capabilityInfo) {
-    capabilityInfo.name = "i3d-" + arg75 + "-" + (saving || "scene") + "-" + lightItem;
-    const effectDetails = value128("label", capabilityInfo.type === "checkbox" ? "i3d-setting-toggle" : "");
-    effectDetails.append(value128("span", "", lightItem), capabilityInfo);
-    append37.append(effectDetails);
+  function appendSetting(settingParent, lightItem, capabilityInfo) {
+    capabilityInfo.name = "i3d-" + deviceKindLocal + "-" + (saving || "scene") + "-" + lightItem;
+    const effectDetails = createEl("label", capabilityInfo.type === "checkbox" ? "i3d-setting-toggle" : "");
+    effectDetails.append(createEl("span", "", lightItem), capabilityInfo);
+    settingParent.append(effectDetails);
     return capabilityInfo;
   }
-  function appendPositiveNumber(posParent, posLabel, getValue, onPositive, arg63) {
-    const posInput = value128("select");
-    for (const [element5, value94] of getValue) {
-      const value86 = value128("option", "", value94);
-      value86.value = element5;
-      posInput.append(value86);
+  function appendPositiveNumber(posParent, posLabel, getValue, onPositive, onSelectChange) {
+    const posInput = createEl("select");
+    for (const [element5, selectOptionLabel] of getValue) {
+      const selectOptionEl = createEl("option", "", selectOptionLabel);
+      selectOptionEl.value = element5;
+      posInput.append(selectOptionEl);
     }
     posInput.value = onPositive;
-    posInput.addEventListener("change", () => arg63(posInput.value));
-    return fn(posParent, posLabel, posInput);
+    posInput.addEventListener("change", () => onSelectChange(posInput.value));
+    return appendSetting(posParent, posLabel, posInput);
   }
-  function fn2(arg64, arg65, arg66, arg67, arg68, arg69, arg70, type3 = "number") {
-    const value116 = value128("input");
-    Object.assign(value116, {
+  function appendBoundedInput(boundedParent, boundedLabel, boundedValue, boundedMin, boundedMax, boundedStep, onBoundedChange, type3 = "number") {
+    const boundedInputEl = createEl("input");
+    Object.assign(boundedInputEl, {
       type: type3,
-      min: String(arg67),
-      max: String(arg68),
-      step: String(arg69),
-      value: String(arg66)
+      min: String(boundedMin),
+      max: String(boundedMax),
+      step: String(boundedStep),
+      value: String(boundedValue)
     });
-    value116.addEventListener(type3 === "range" ? "input" : "change", () => {
-      const value65 = value116.value.trim() === "" ? NaN : Number(value116.value);
-      if (Number.isFinite(value65)) {
-        arg70(Math.max(arg67, Math.min(arg68, value65)));
+    boundedInputEl.addEventListener(type3 === "range" ? "input" : "change", () => {
+      const boundedInputNumber = boundedInputEl.value.trim() === "" ? NaN : Number(boundedInputEl.value);
+      if (Number.isFinite(boundedInputNumber)) {
+        onBoundedChange(Math.max(boundedMin, Math.min(boundedMax, boundedInputNumber)));
       }
     });
-    return fn(arg64, arg65, value116);
+    return appendSetting(boundedParent, boundedLabel, boundedInputEl);
   }
-  function fn3(arg71, arg72, arg73, arg74) {
-    const value117 = value128("input");
-    Object.assign(value117, {
+  function appendPositiveInput(positiveParent, positiveLabel, getPositiveValue, onPositiveChange) {
+    const positiveInputEl = createEl("input");
+    Object.assign(positiveInputEl, {
       type: "number",
       step: "any",
-      value: String(Number(arg73().toPrecision(12)))
+      value: String(Number(getPositiveValue().toPrecision(12)))
     });
-    value117.addEventListener("change", () => {
-      const value66 = value117.value.trim() === "" ? NaN : Number(value117.value);
-      if (Number.isFinite(value66) && value66 > 0) {
-        value117.value = String(value66);
-        arg74(value66);
+    positiveInputEl.addEventListener("change", () => {
+      const positiveInputNumber = positiveInputEl.value.trim() === "" ? NaN : Number(positiveInputEl.value);
+      if (Number.isFinite(positiveInputNumber) && positiveInputNumber > 0) {
+        positiveInputEl.value = String(positiveInputNumber);
+        onPositiveChange(positiveInputNumber);
       } else {
-        value117.value = String(arg73());
+        positiveInputEl.value = String(getPositiveValue());
       }
     });
-    return fn(arg71, arg72, value117);
+    return appendSetting(positiveParent, positiveLabel, positiveInputEl);
   }
-  function fn4(entityId21) {
+  function resolveEntityLightState(entityId21) {
     const startsWith = entityId21.entityId || "";
-    const newState2 = value135 === null ? states?.get?.(startsWith) : value135[startsWith];
+    const newState2 = latestStatesByEntity === null ? states?.get?.(startsWith) : latestStatesByEntity[startsWith];
     const known2 = get5.get(startsWith);
     const supported_color_modes = (newState2?.newState || newState2)?.attributes || {};
-    const value118 = supported_color_modes.supported_features;
-    const value119 = value118 != null && value118 !== "" && typeof value118 != "boolean" && Number.isFinite(Number(value118));
+    const supportedFeaturesRaw = supported_color_modes.supported_features;
+    const hasSupportedFeatures = supportedFeaturesRaw != null && supportedFeaturesRaw !== "" && typeof supportedFeaturesRaw != "boolean" && Number.isFinite(Number(supportedFeaturesRaw));
     const known3 = lightState(startsWith, newState2, known2);
-    known3.known = startsWith.startsWith("switch.") || known2?.known === true || Array.isArray(supported_color_modes.supported_color_modes) && supported_color_modes.supported_color_modes.some(arg14 => arg14 !== "unknown") || value119 || known3.brightnessSupported || known3.temperatureSupported;
+    known3.known = startsWith.startsWith("switch.") || known2?.known === true || Array.isArray(supported_color_modes.supported_color_modes) && supported_color_modes.supported_color_modes.some(colorMode => colorMode !== "unknown") || hasSupportedFeatures || known3.brightnessSupported || known3.temperatureSupported;
     if (startsWith && known3.known) {
       get5.set(startsWith, known3);
     }
     return known3;
   }
-  function fn5(append38, effectDefaults2, known4) {
-    append38.replaceChildren();
+  function renderLightEffectPanel(effectPanelHost, effectDefaults2, known4) {
+    effectPanelHost.replaceChildren();
     if (effectDefaults2.entityId && !known4.known) {
-      const setAttribute7 = value128("p", "i3d-note", "正在识别灯具能力…");
-      setAttribute7.setAttribute("role", "status");
-      append38.append(setAttribute7);
+      const effectDetectingNote = createEl("p", "i3d-note", "正在识别灯具能力…");
+      effectDetectingNote.setAttribute("role", "status");
+      effectPanelHost.append(effectDetectingNote);
     }
     if (effectDefaults2.entityId && known4.known && (!known4.brightnessSupported || !known4.temperatureSupported)) {
-      const append17 = value128("section", "i3d-focus-settings");
-      append17.append(value128("h4", "", "默认效果"));
-      const value87 = value128("div", "i3d-coordinate-grid");
-      append17.append(value87);
-      for (const [value67, value68, value69, value70, value71, value72] of [["默认亮度（%）", "brightness", known4.brightnessSupported, 0, 100, 1], ["默认色温（K）", "kelvin", known4.temperatureSupported, 1000, 20000, 100]]) {
-        if (value69) {
+      const defaultEffectSection = createEl("section", "i3d-focus-settings");
+      defaultEffectSection.append(createEl("h4", "", "默认效果"));
+      const defaultEffectGrid = createEl("div", "i3d-coordinate-grid");
+      defaultEffectSection.append(defaultEffectGrid);
+      for (const [defaultEffectLabel, defaultEffectKey, defaultEffectSupported, defaultEffectMin, defaultEffectMax, defaultEffectStep] of [["默认亮度（%）", "brightness", known4.brightnessSupported, 0, 100, 1], ["默认色温（K）", "kelvin", known4.temperatureSupported, 1000, 20000, 100]]) {
+        if (defaultEffectSupported) {
           continue;
         }
-        const value55 = value128("input");
-        Object.assign(value55, {
+        const defaultEffectInput = createEl("input");
+        Object.assign(defaultEffectInput, {
           type: "number",
-          min: String(value70),
-          max: String(value71),
-          step: String(value72),
-          value: Number.isFinite(effectDefaults2.effectDefaults?.[value68]) ? String(effectDefaults2.effectDefaults[value68]) : "",
+          min: String(defaultEffectMin),
+          max: String(defaultEffectMax),
+          step: String(defaultEffectStep),
+          value: Number.isFinite(effectDefaults2.effectDefaults?.[defaultEffectKey]) ? String(effectDefaults2.effectDefaults[defaultEffectKey]) : "",
           placeholder: "跟随模型"
         });
-        value55.addEventListener("change", () => {
-          const value21 = value55.value.trim();
-          const value22 = Number(value21);
+        defaultEffectInput.addEventListener("change", () => {
+          const defaultEffectRaw = defaultEffectInput.value.trim();
+          const defaultEffectNumber = Number(defaultEffectRaw);
           const effectDefaults = {
             ...effectDefaults2.effectDefaults
           };
-          if (value21) {
-            if (Number.isFinite(value22)) {
-              effectDefaults[value68] = Math.max(value70, Math.min(value71, value22));
+          if (defaultEffectRaw) {
+            if (Number.isFinite(defaultEffectNumber)) {
+              effectDefaults[defaultEffectKey] = Math.max(defaultEffectMin, Math.min(defaultEffectMax, defaultEffectNumber));
             }
           } else {
-            delete effectDefaults[value68];
+            delete effectDefaults[defaultEffectKey];
           }
-          value55.value = Number.isFinite(effectDefaults[value68]) ? String(effectDefaults[value68]) : "";
+          defaultEffectInput.value = Number.isFinite(effectDefaults[defaultEffectKey]) ? String(effectDefaults[defaultEffectKey]) : "";
           if (Object.keys(effectDefaults).length) {
             effectDefaults2.effectDefaults = effectDefaults;
           } else {
@@ -750,11 +751,11 @@ export async function openInteraction3dEditor({
           }
           mountRuntime();
         });
-        fn(value87, value67, value55);
+        appendSetting(defaultEffectGrid, defaultEffectLabel, defaultEffectInput);
       }
-      const append18 = value128("div", "i3d-focus-actions");
-      append17.append(append18);
-      append18.append(accessAllowed("预览默认效果", async () => {
+      const defaultEffectActions = createEl("div", "i3d-focus-actions");
+      defaultEffectSection.append(defaultEffectActions);
+      defaultEffectActions.append(accessAllowed("预览默认效果", async () => {
         try {
           await liveStates.focusCommand("preview-light-effect", effectDefaults2.id, "defaults");
         } catch (message6) {
@@ -763,33 +764,33 @@ export async function openInteraction3dEditor({
       }), accessAllowed("跟随模型", () => {
         delete effectDefaults2.effectDefaults;
         mountRuntime();
-        fn12();
+        rebuildConfigSidebar();
       }));
-      append38.append(append17);
+      effectPanelHost.append(defaultEffectSection);
     }
-    const append39 = value128("details", "i3d-effect-settings");
-    append39.open = open;
-    append39.addEventListener("toggle", () => {
-      open = append39.open;
+    const effectRangeDetails = createEl("details", "i3d-effect-settings");
+    effectRangeDetails.open = open;
+    effectRangeDetails.addEventListener("toggle", () => {
+      open = effectRangeDetails.open;
     });
-    append39.append(value128("summary", "", "效果范围"));
-    const value120 = {
+    effectRangeDetails.append(createEl("summary", "", "效果范围"));
+    const effectRangeValues = {
       brightnessMin: 1,
       brightnessMax: 100,
       temperatureMin: known4.minimum,
       temperatureMax: known4.maximum,
       ...effectDefaults2.effectRange
     };
-    const append40 = value128("div", "i3d-effect-grid");
-    append39.append(append40);
-    for (const [value95, endsWith, value96, value97, value98, value99] of [["最暗亮度（%）", "brightnessMin", "brightnessMax", 0, 100, 1], ["最亮亮度（%）", "brightnessMax", "brightnessMin", 0, 100, 1], ["最低色温（K）", "temperatureMin", "temperatureMax", 1000, 20000, 100], ["最高色温（K）", "temperatureMax", "temperatureMin", 1000, 20000, 100]]) {
-      const append19 = value128("div", "i3d-effect-option");
-      append40.append(append19);
-      const value88 = fn2(append19, value95, value120[endsWith], value97, value98, value99, arg31 => {
-        value120[endsWith] = endsWith.endsWith("Min") ? Math.min(arg31, value120[value96]) : Math.max(arg31, value120[value96]);
-        value88.value = String(value120[endsWith]);
+    const effectRangeGrid = createEl("div", "i3d-effect-grid");
+    effectRangeDetails.append(effectRangeGrid);
+    for (const [effectRangeLabel, endsWith, effectRangeSiblingKey, effectRangeMin, effectRangeMax, effectRangeStep] of [["最暗亮度（%）", "brightnessMin", "brightnessMax", 0, 100, 1], ["最亮亮度（%）", "brightnessMax", "brightnessMin", 0, 100, 1], ["最低色温（K）", "temperatureMin", "temperatureMax", 1000, 20000, 100], ["最高色温（K）", "temperatureMax", "temperatureMin", 1000, 20000, 100]]) {
+      const effectRangeOption = createEl("div", "i3d-effect-option");
+      effectRangeGrid.append(effectRangeOption);
+      const effectRangeInput = appendBoundedInput(effectRangeOption, effectRangeLabel, effectRangeValues[endsWith], effectRangeMin, effectRangeMax, effectRangeStep, effectRangeNext => {
+        effectRangeValues[endsWith] = endsWith.endsWith("Min") ? Math.min(effectRangeNext, effectRangeValues[effectRangeSiblingKey]) : Math.max(effectRangeNext, effectRangeValues[effectRangeSiblingKey]);
+        effectRangeInput.value = String(effectRangeValues[endsWith]);
         effectDefaults2.effectRange = {
-          ...value120
+          ...effectRangeValues
         };
         mountRuntime();
       });
@@ -804,29 +805,45 @@ export async function openInteraction3dEditor({
       if (!effectDefaults2.entityId) {
         disabled9.title = "绑定实体后预览效果";
       }
-      disabled9.setAttribute("aria-label", "预览" + value95);
-      append19.append(disabled9);
+      disabled9.setAttribute("aria-label", "预览" + effectRangeLabel);
+      effectRangeOption.append(disabled9);
     }
-    append39.append(accessAllowed("恢复默认效果", () => {
+    effectRangeDetails.append(accessAllowed("恢复默认效果", () => {
       delete effectDefaults2.effectRange;
       mountRuntime();
-      fn12();
+      rebuildConfigSidebar();
     }));
-    append38.append(append39);
+    effectPanelHost.append(effectRangeDetails);
   }
-  function fn6() {
-    return (draftRevision?.floors || []).filter(id30 => id30.id === syncPreviewSize).flatMap(id39 => (aspectBox ? id39[statusNote] || [] : id39.groups || []).filter(id25 => !value138().some(floorId2 => floorId2.floorId === id39.id && floorId2[selectedLightId] === id25.id)).map(group4 => ({
-      floor: id39,
-      group: group4,
-      key: JSON.stringify([id39.id, group4.id])
+  function listFloorTargets() {
+    return (draftRevision?.floors || []).filter(floor => floor.id === syncPreviewSize).flatMap(floor => (isNonLight ? floor[statusNote] || [] : floor.groups || []).map(group => ({
+      floor,
+      group,
+      key: JSON.stringify([floor.id, group.id])
     })));
   }
-  async function fn7(deviceKind, startAdding = false) {
-    if (refreshCapabilities || value133 || !capabilityCache || saveButton || unsubscribeAccess) {
+  function listAvailableTargets() {
+    return listFloorTargets().filter(target => !getCurrentItems().some(item => item.floorId === target.floor.id && item[selectedLightId] === target.group.id));
+  }
+  function unavailableAddHint(availableTargets = listAvailableTargets(), floorTargets = listFloorTargets()) {
+    if (availableTargets.length) {
+      return "";
+    }
+    if (getCurrentItems().length >= 128) {
+      return "已达到 128 个上限。";
+    }
+    const targetNoun = isNonLight ? stageLabel + "模型" : "灯组";
+    if (floorTargets.length) {
+      return "当前楼层" + targetNoun + "均已添加；如需新增，请先在户型绘制中新建" + targetNoun + "并更新户型。";
+    }
+    return isVacuum ? "当前楼层暂无扫地机模型，请先在户型绘制中添加扫地机器人后更新户型。" : isTelevision ? "当前楼层暂无电视模型，请先在户型绘制中添加电视后更新户型。" : isNas ? "当前楼层暂无 NAS 模型，请先在户型绘制中添加模型后更新户型。" : isCover ? "当前楼层暂无窗帘模型，请在户型绘制中添加普通窗帘后更新户型。" : isClimate ? "当前楼层暂无空调模型，请在户型绘制中添加壁挂空调、柜机或出风口后更新户型。" : "当前楼层暂无灯组，请在户型绘制中添加灯组后更新户型。";
+  }
+  async function reopenEditorAs(deviceKind, startAdding = false) {
+    if (refreshCapabilities || isSavingConfig || !capabilityCache || saveButton || unsubscribeAccess) {
       return;
     }
     const properties = structuredClone(effectRangeOpen);
-    value143();
+    closeMainEditor();
     await openInteraction3dEditor({
       component: {
         ...component,
@@ -840,12 +857,12 @@ export async function openInteraction3dEditor({
       deviceKind,
       startAdding,
       editingFloorId: syncPreviewSize,
-      vacuumId: createButton ? saving : arg77
+      vacuumId: isVacuum ? saving : vacuumId
     });
   }
-  function fn8() {
+  function closeAddDialog() {
     if (close5) {
-      value132++;
+      pickerSession++;
       close6?.close();
       close6 = null;
     }
@@ -853,62 +870,62 @@ export async function openInteraction3dEditor({
     close5?.remove();
     close5 = null;
   }
-  function fn9(currentTarget) {
+  function openAddDialog(currentTarget) {
     if (refreshCapabilities || !capabilityCache || saveButton || unsubscribeAccess || resizeObserver || close5) {
       return;
     }
-    if (createEl) {
-      fn10(currentTarget?.currentTarget || currentTarget?.target);
+    if (isVacuumShortcut) {
+      openAddShortcutEntityPicker(currentTarget?.currentTarget || currentTarget?.target);
       return;
     }
-    const length8 = fn6();
-    if (!length8.length || value138().length >= 128) {
+    const length8 = listAvailableTargets();
+    if (!length8.length || getCurrentItems().length >= 128) {
       return;
     }
-    value132++;
+    pickerSession++;
     close6?.close();
-    const setAttribute10 = value128("dialog", "settings-dialog i3d-add-dialog");
-    close5 = setAttribute10;
-    setAttribute10.setAttribute("aria-label", stylesheet ? "添加设备" : "添加" + stage + "按钮");
-    const append41 = value128("div", "dialog-heading");
-    const append42 = value128("div");
-    append42.append(value128("span", "", "ADD BUTTON"), value128("h2", "", stylesheet ? "添加设备" : "添加" + stage + "按钮"));
-    const className14 = accessAllowed("×", fn8);
+    const addDialog = createEl("dialog", "settings-dialog i3d-add-dialog");
+    close5 = addDialog;
+    addDialog.setAttribute("aria-label", isDeviceMode ? "添加设备" : "添加" + stageLabel + "按钮");
+    const addDialogHeading = createEl("div", "dialog-heading");
+    const addDialogHeadingText = createEl("div");
+    addDialogHeadingText.append(createEl("span", "", "ADD BUTTON"), createEl("h2", "", isDeviceMode ? "添加设备" : "添加" + stageLabel + "按钮"));
+    const className14 = accessAllowed("×", closeAddDialog);
     className14.className = "icon-button";
     className14.setAttribute("aria-label", "关闭添加按钮窗口");
-    append41.append(append42, className14);
-    const append43 = value128("div", "i3d-add-dialog-body");
-    const textContent7 = value128("p", "i3d-error");
-    textContent7.setAttribute("role", "status");
-    if (stylesheet) {
-      appendPositiveNumber(append43, "设备类型", [["nas", "NAS"], ["television", "电视"]], arg75, arg22 => {
-        if (arg22 !== arg75) {
-          fn7(arg22, true);
+    addDialogHeading.append(addDialogHeadingText, className14);
+    const addDialogBody = createEl("div", "i3d-add-dialog-body");
+    const addDialogError = createEl("p", "i3d-error");
+    addDialogError.setAttribute("role", "status");
+    if (isDeviceMode) {
+      appendPositiveNumber(addDialogBody, "设备类型", [["nas", "NAS"], ["television", "电视"]], deviceKindLocal, deviceTypeChoice => {
+        if (deviceTypeChoice !== deviceKindLocal) {
+          reopenEditorAs(deviceTypeChoice, true);
         }
       }).setAttribute("aria-label", "设备类型");
     }
-    const disabled13 = appendPositiveNumber(append43, aspectBox ? "关联" + stage + "模型" : "关联灯组", length8.map(key5 => [key5.key, draft(key5.group)]), length8[0].key, () => {
-      textContent7.textContent = "";
+    const disabled13 = appendPositiveNumber(addDialogBody, isNonLight ? "关联" + stageLabel + "模型" : "关联灯组", length8.map(key5 => [key5.key, draft(key5.group)]), length8[0].key, () => {
+      addDialogError.textContent = "";
     });
-    disabled13.setAttribute("aria-label", aspectBox ? "关联" + stage + "模型" : "关联灯组");
-    const append44 = value128("div", "dialog-actions");
-    let value121 = false;
+    disabled13.setAttribute("aria-label", isNonLight ? "关联" + stageLabel + "模型" : "关联灯组");
+    const addDialogActions = createEl("div", "dialog-actions");
+    let isAddingItem = false;
     const disabled14 = accessAllowed("确定添加", async () => {
-      if (value121 || refreshCapabilities || !capabilityCache || close5 !== setAttribute10) {
+      if (isAddingItem || refreshCapabilities || !capabilityCache || close5 !== addDialog) {
         return;
       }
-      value121 = true;
+      isAddingItem = true;
       disabled14.disabled = true;
       disabled13.disabled = true;
-      textContent7.textContent = "";
-      const value56 = disabled13.value;
+      addDialogError.textContent = "";
+      const selectedAddTargetKey = disabled13.value;
       try {
         await requestInteraction3dAccess();
-        if (refreshCapabilities || !capabilityCache || close5 !== setAttribute10) {
+        if (refreshCapabilities || !capabilityCache || close5 !== addDialog) {
           return;
         }
-        const group = fn6().find(key2 => key2.key === value56);
-        if (!group || value138().length >= 128) {
+        const group = listAvailableTargets().find(key2 => key2.key === selectedAddTargetKey);
+        if (!group || getCurrentItems().length >= 128) {
           throw new Error("该对象已添加或不再可用，请关闭窗口后重新选择。");
         }
         const id26 = {
@@ -917,53 +934,53 @@ export async function openInteraction3dEditor({
           [selectedLightId]: group.group.id,
           entityId: "",
           label: draft(group.group),
-          ...(aspectBox ? {} : {
+          ...(isNonLight ? {} : {
             x: group.group.x,
             y: group.group.y,
             height: group.group.height ?? group.floor.wallHeight ?? 2.8,
             fadeDuration: 0.3
           }),
-          ...(viewPane ? {
+          ...(isCover ? {
             coverDirection: "auto"
           } : {}),
           size: 44,
           iconSize: 26,
           visible: true,
           icon: errorNote,
-          clickAction: dialog ? "focus-panel" : "focus"
+          clickAction: isDeviceLike ? "focus-panel" : "focus"
         };
-        value138().push(id26);
+        getCurrentItems().push(id26);
         saving = id26.id;
-        fn8();
+        closeAddDialog();
         mountRuntime();
-        fn12();
+        rebuildConfigSidebar();
       } catch (message9) {
-        if (close5 === setAttribute10) {
-          textContent7.textContent = message9.message;
+        if (close5 === addDialog) {
+          addDialogError.textContent = message9.message;
         }
       } finally {
-        value121 = false;
+        isAddingItem = false;
         disabled14.disabled = false;
         disabled13.disabled = false;
       }
     });
     disabled14.className = "primary";
-    append44.append(accessAllowed("取消", fn8), disabled14);
-    append43.append(value128("p", "i3d-note", "添加后可继续设置" + stage + "按钮，最后点击“保存配置”完成保存。"), textContent7, append44);
-    setAttribute10.append(append41, append43);
-    document.body.append(setAttribute10);
-    setAttribute10.addEventListener("cancel", preventDefault3 => {
+    addDialogActions.append(accessAllowed("取消", closeAddDialog), disabled14);
+    addDialogBody.append(createEl("p", "i3d-note", "添加后可继续设置" + stageLabel + "按钮，最后点击“保存配置”完成保存。"), addDialogError, addDialogActions);
+    addDialog.append(addDialogHeading, addDialogBody);
+    document.body.append(addDialog);
+    addDialog.addEventListener("cancel", preventDefault3 => {
       preventDefault3.preventDefault();
-      fn8();
+      closeAddDialog();
     });
-    setAttribute10.showModal();
+    addDialog.showModal();
   }
-  async function fn10(trigger4) {
-    const floorId5 = value137();
-    if (!floorId5 || value138().length >= 64) {
+  async function openAddShortcutEntityPicker(trigger4) {
+    const floorId5 = getCurrentVacuum();
+    if (!floorId5 || getCurrentItems().length >= 64) {
       return;
     }
-    const value122 = ++value132;
+    const addShortcutPickerSession = ++pickerSession;
     close6?.close();
     try {
       const close4 = await pickers.entity({
@@ -971,22 +988,22 @@ export async function openInteraction3dEditor({
         deviceKind: "vacuum-room",
         current: "",
         onSelect(entityId17) {
-          if (refreshCapabilities || !capabilityCache || value122 !== value132 || value137() !== floorId5 || value138().length >= 64 || !entityId17) {
+          if (refreshCapabilities || !capabilityCache || addShortcutPickerSession !== pickerSession || getCurrentVacuum() !== floorId5 || getCurrentItems().length >= 64 || !entityId17) {
             return;
           }
           const name = entities.find(entityId9 => entityId9.entityId === entityId17);
           const newState = states?.get?.(entityId17);
           const attributes = newState?.newState || newState;
           const vacuums = draftRevision.floors.find(id8 => id8.id === floorId5.floorId);
-          const value14 = vacuums?.vacuums?.find(id9 => id9.id === floorId5.modelId);
+          const vacuumModelOnFloor = vacuums?.vacuums?.find(id9 => id9.id === floorId5.modelId);
           const length = (vacuums?.plan?.walls || []).flatMap(start => [start.start, start.end]);
-          const value15 = arg5 => length.length ? length.reduce((arg3, arg4) => arg3 + arg4[arg5], 0) / length.length : value14?.[arg5] || 0;
+          const averageWallCoord = wallCoordAxis => length.length ? length.reduce((wallCoordSum, wallCoordPoint) => wallCoordSum + wallCoordPoint[wallCoordAxis], 0) / length.length : vacuumModelOnFloor?.[wallCoordAxis] || 0;
           const id23 = {
             id: randomUuid(),
             entityId: entityId17,
             label: name?.name || attributes?.attributes?.friendly_name || entityId17,
-            x: value15("x"),
-            y: value15("y"),
+            x: averageWallCoord("x"),
+            y: averageWallCoord("y"),
             height: 0.08,
             size: 44,
             iconSize: 26,
@@ -995,16 +1012,16 @@ export async function openInteraction3dEditor({
             icon: "mdi:broom",
             visible: true
           };
-          value139([...value138(), id23]);
+          setCurrentItems([...getCurrentItems(), id23]);
           saving = id23.id;
-          value132++;
+          pickerSession++;
           close6?.close();
           close6 = null;
-          fn12();
+          rebuildConfigSidebar();
           mountRuntime();
         }
       });
-      if (refreshCapabilities || value122 !== value132) {
+      if (refreshCapabilities || addShortcutPickerSession !== pickerSession) {
         close4?.close();
       } else {
         close6 = close4;
@@ -1015,83 +1032,83 @@ export async function openInteraction3dEditor({
       }
     }
   }
-  function fn11() {
-    focusQueue.append(accessAllowed("返回扫地机配置", () => void fn7("vacuum")));
+  function renderVacuumShortcutSidebar() {
+    focusQueue.append(accessAllowed("返回扫地机配置", () => void reopenEditorAs("vacuum")));
     if (!draftRevision) {
       return;
     }
     const length9 = effectRangeOpen.devices?.vacuums || [];
     if (!length9.length) {
-      focusQueue.append(value128("p", "i3d-note", "请先在扫地机配置中添加并绑定扫地机。"));
+      focusQueue.append(createEl("p", "i3d-note", "请先在扫地机配置中添加并绑定扫地机。"));
       return;
     }
-    appendPositiveNumber(focusQueue, "所属扫地机", length9.map(id32 => [id32.id, id32.label || id32.deviceName || "扫地机"]), arg77, arg50 => {
-      arg77 = arg50;
+    appendPositiveNumber(focusQueue, "所属扫地机", length9.map(id32 => [id32.id, id32.label || id32.deviceName || "扫地机"]), vacuumId, selectedVacuumId => {
+      vacuumId = selectedVacuumId;
       saving = "";
       capabilityCache2.clear();
       liveStates?.();
       liveStates = null;
-      fn13();
-      fn12();
+      mountPreviewRuntime();
+      rebuildConfigSidebar();
     });
-    const append45 = value128("div", "i3d-light-heading");
-    const disabled15 = accessAllowed("添加快捷指令", fn9);
-    disabled15.disabled = value138().length >= 64;
-    append45.append(value128("h4", "", "快捷按钮"), disabled15);
-    focusQueue.append(append45);
-    if (!value138().some(id33 => id33.id === saving)) {
-      saving = value138()[0]?.id || "";
+    const shortcutListHeading = createEl("div", "i3d-light-heading");
+    const disabled15 = accessAllowed("添加快捷指令", openAddDialog);
+    disabled15.disabled = getCurrentItems().length >= 64;
+    shortcutListHeading.append(createEl("h4", "", "快捷按钮"), disabled15);
+    focusQueue.append(shortcutListHeading);
+    if (!getCurrentItems().some(id33 => id33.id === saving)) {
+      saving = getCurrentItems()[0]?.id || "";
     }
     if (!saving) {
-      focusQueue.append(value128("p", "i3d-note", "添加按钮后，选择全部实体中的清扫指令，在户型中拖动按钮放置。"));
+      focusQueue.append(createEl("p", "i3d-note", "添加按钮后，选择全部实体中的清扫指令，在户型中拖动按钮放置。"));
       return;
     }
-    appendPositiveNumber(focusQueue, "当前按钮", value138().map(id34 => [id34.id, id34.label]), saving, arg51 => {
-      saving = arg51;
-      value132++;
+    appendPositiveNumber(focusQueue, "当前按钮", getCurrentItems().map(id34 => [id34.id, id34.label]), saving, selectedShortcutId => {
+      saving = selectedShortcutId;
+      pickerSession++;
       close6?.close();
-      fn12();
+      rebuildConfigSidebar();
       mountRuntime();
     });
-    const icon2 = value138().find(id35 => id35.id === saving);
+    const icon2 = getCurrentItems().find(id35 => id35.id === saving);
     const className15 = accessAllowed("删除此快捷按钮", () => {
-      value132++;
+      pickerSession++;
       close6?.close();
-      value139(value138().filter(arg15 => arg15 !== icon2));
+      setCurrentItems(getCurrentItems().filter(shortcutItem => shortcutItem !== icon2));
       saving = "";
-      fn12();
+      rebuildConfigSidebar();
       mountRuntime();
     });
     className15.className = "i3d-remove-light";
     focusQueue.append(className15);
-    const value123 = value128("input");
-    value123.value = icon2.label;
-    value123.maxLength = 128;
-    value123.onchange = () => {
-      icon2.label = value123.value.trim() || "房间清扫";
-      fn12();
+    const shortcutNameInput = createEl("input");
+    shortcutNameInput.value = icon2.label;
+    shortcutNameInput.maxLength = 128;
+    shortcutNameInput.onchange = () => {
+      icon2.label = shortcutNameInput.value.trim() || "房间清扫";
+      rebuildConfigSidebar();
       mountRuntime();
     };
-    fn(focusQueue, "名称", value123);
-    const value124 = (arg52, trigger3) => {
-      const value73 = ++value132;
-      Promise.resolve(pickers[arg52]({
+    appendSetting(focusQueue, "名称", shortcutNameInput);
+    const openShortcutPicker = (shortcutPickerKind, trigger3) => {
+      const shortcutPickerSession = ++pickerSession;
+      Promise.resolve(pickers[shortcutPickerKind]({
         trigger: trigger3,
         deviceKind: "vacuum-room",
-        current: arg52 === "icon" ? icon2.icon : icon2.entityId,
+        current: shortcutPickerKind === "icon" ? icon2.icon : icon2.entityId,
         onSelect(icon) {
-          if (!refreshCapabilities && !!capabilityCache && value73 === value132 && !!value138().includes(icon2)) {
-            if (arg52 === "icon") {
+          if (!refreshCapabilities && !!capabilityCache && shortcutPickerSession === pickerSession && !!getCurrentItems().includes(icon2)) {
+            if (shortcutPickerKind === "icon") {
               icon2.icon = icon;
             } else {
               icon2.entityId = icon;
             }
-            fn12();
+            rebuildConfigSidebar();
             mountRuntime();
           }
         }
       })).then(close3 => {
-        if (refreshCapabilities || value73 !== value132) {
+        if (refreshCapabilities || shortcutPickerSession !== pickerSession) {
           close3?.close();
         } else {
           close6 = close3;
@@ -1100,81 +1117,81 @@ export async function openInteraction3dEditor({
         pickerGeneration.textContent = message10.message;
       });
     };
-    const className16 = accessAllowed(icon2.entityId || "选择实体（全部）", () => value124("entity", className16));
+    const className16 = accessAllowed(icon2.entityId || "选择实体（全部）", () => openShortcutPicker("entity", className16));
     className16.className = "i3d-picker-button";
-    fn(focusQueue, "指令实体", className16);
-    const className17 = accessAllowed("", () => value124("icon", className17));
+    appendSetting(focusQueue, "指令实体", className16);
+    const className17 = accessAllowed("", () => openShortcutPicker("icon", className17));
     className17.className = "i3d-picker-button i3d-icon-picker-button";
-    const style2 = value128("i");
+    const style2 = createEl("i");
     style2.style.maskImage = "url('/bridge-static/vendor/mdi/7.4.47/svg/" + (icon2.icon || errorNote).slice(4) + ".svg')";
     style2.style.webkitMaskImage = style2.style.maskImage;
-    className17.append(style2, value128("span", "", icon2.icon || errorNote));
-    fn(focusQueue, "图标", className17);
-    const value125 = value128("div", "i3d-button-visibility-row i3d-shortcut-visibility");
-    focusQueue.append(value125);
-    for (const [value100, value101] of [["hiddenClickable", "隐藏（可点击）"], ["buttonHidden", "隐藏（不可点击）"]]) {
-      const checked9 = value128("input");
+    className17.append(style2, createEl("span", "", icon2.icon || errorNote));
+    appendSetting(focusQueue, "图标", className17);
+    const shortcutVisibilityRow = createEl("div", "i3d-button-visibility-row i3d-shortcut-visibility");
+    focusQueue.append(shortcutVisibilityRow);
+    for (const [shortcutVisKey, shortcutVisLabel] of [["hiddenClickable", "隐藏（可点击）"], ["buttonHidden", "隐藏（不可点击）"]]) {
+      const checked9 = createEl("input");
       checked9.type = "checkbox";
-      checked9.checked = icon2[value100] === true;
+      checked9.checked = icon2[shortcutVisKey] === true;
       checked9.onchange = () => {
-        icon2[value100] = checked9.checked;
+        icon2[shortcutVisKey] = checked9.checked;
         if (checked9.checked) {
-          icon2[value100 === "buttonHidden" ? "hiddenClickable" : "buttonHidden"] = false;
+          icon2[shortcutVisKey === "buttonHidden" ? "hiddenClickable" : "buttonHidden"] = false;
         }
-        fn12();
+        rebuildConfigSidebar();
         mountRuntime();
       };
-      fn(value125, value101, checked9);
+      appendSetting(shortcutVisibilityRow, shortcutVisLabel, checked9);
     }
-    for (const [value102, value103] of [["iconHidden", "隐藏图标"], ["labelHidden", "隐藏名称"]]) {
-      const checked10 = value128("input");
+    for (const [shortcutHideKey, shortcutHideLabel] of [["iconHidden", "隐藏图标"], ["labelHidden", "隐藏名称"]]) {
+      const checked10 = createEl("input");
       checked10.type = "checkbox";
-      checked10.checked = icon2[value102] === true;
+      checked10.checked = icon2[shortcutHideKey] === true;
       checked10.onchange = () => {
-        icon2[value102] = checked10.checked;
+        icon2[shortcutHideKey] = checked10.checked;
         mountRuntime();
       };
-      fn(value125, value103, checked10);
+      appendSetting(shortcutVisibilityRow, shortcutHideLabel, checked10);
     }
-    const value126 = value128("div", "i3d-coordinate-grid i3d-size-grid i3d-shortcut-size-grid");
-    focusQueue.append(value126);
-    for (const [value104, value105, value106] of [["size", "按钮大小（px）", 44], ["iconSize", "图标大小（px）", 26], ["fontSize", "文字大小（px）", 12], ["hitSize", "触控范围（px）", 44]]) {
-      fn3(value126, value105, () => icon2[value104] || value106, arg34 => {
-        icon2[value104] = arg34;
+    const shortcutSizeGrid = createEl("div", "i3d-coordinate-grid i3d-size-grid i3d-shortcut-size-grid");
+    focusQueue.append(shortcutSizeGrid);
+    for (const [shortcutSizeKey, shortcutSizeLabel, shortcutSizeDefault] of [["size", "按钮大小（px）", 44], ["iconSize", "图标大小（px）", 26], ["fontSize", "文字大小（px）", 12], ["hitSize", "触控范围（px）", 44]]) {
+      appendPositiveInput(shortcutSizeGrid, shortcutSizeLabel, () => icon2[shortcutSizeKey] || shortcutSizeDefault, shortcutSizeValue => {
+        icon2[shortcutSizeKey] = shortcutSizeValue;
         mountRuntime();
       });
     }
-    const value127 = value128("div", "i3d-coordinate-grid");
-    focusQueue.append(value127);
+    const shortcutCoordGrid = createEl("div", "i3d-coordinate-grid");
+    focusQueue.append(shortcutCoordGrid);
     for (const toUpperCase2 of ["x", "y"]) {
-      fn2(value127, "位置 " + toUpperCase2.toUpperCase(), icon2[toUpperCase2], -1000000, 1000000, 1, arg35 => {
-        icon2[toUpperCase2] = arg35;
+      appendBoundedInput(shortcutCoordGrid, "位置 " + toUpperCase2.toUpperCase(), icon2[toUpperCase2], -1000000, 1000000, 1, shortcutCoordValue => {
+        icon2[toUpperCase2] = shortcutCoordValue;
         mountRuntime();
       });
     }
-    fn2(value127, "高度（米）", icon2.height ?? 0.08, 0, 20, 0.1, height2 => {
+    appendBoundedInput(shortcutCoordGrid, "高度（米）", icon2.height ?? 0.08, 0, 20, 0.1, height2 => {
       icon2.height = height2;
       mountRuntime();
     });
-    focusQueue.append(value128("p", "i3d-note", "拖动按钮调整位置，拖动空白处旋转户型。点击只执行绑定指令，不弹窗、不聚焦。"));
-    const append46 = value128("section", "navigation-batch-section i3d-light-batch");
+    focusQueue.append(createEl("p", "i3d-note", "拖动按钮调整位置，拖动空白处旋转户型。点击只执行绑定指令，不弹窗、不聚焦。"));
+    const shortcutBatchSection = createEl("section", "navigation-batch-section i3d-light-batch");
     const disabled16 = accessAllowed("一键应用到其他快捷按钮", () => appendNumber(icon2));
-    append46.append(value128("h4", "", "图标设置一键应用"), disabled16);
-    focusQueue.append(append46);
-    value140 = () => {
+    shortcutBatchSection.append(createEl("h4", "", "图标设置一键应用"), disabled16);
+    focusQueue.append(shortcutBatchSection);
+    updateBatchApplyState = () => {
       disabled16.disabled = !resolveLightCapability(icon2).length || !capabilityCache;
     };
-    value140();
+    updateBatchApplyState();
   }
-  function fn12() {
-    value136 = () => {};
-    value140 = () => {};
+  function rebuildConfigSidebar() {
+    refreshEffectCapabilityUi = () => {};
+    updateBatchApplyState = () => {};
     focusQueue.replaceChildren();
-    if (createEl) {
-      fn11();
+    if (isVacuumShortcut) {
+      renderVacuumShortcutSidebar();
       return;
     }
-    if (!aspectBox && effectRangeOpen.lightingMode === "region") {
+    if (!isNonLight && effectRangeOpen.lightingMode === "region") {
       const disabled10 = accessAllowed("编辑照射范围", async () => {
         if (!resizeObserver) {
           resizeObserver = true;
@@ -1183,22 +1200,22 @@ export async function openInteraction3dEditor({
             const close = await openInteraction3dRangeEditor({
               component: {
                 ...component,
-                properties: structuredClone(value144())
+                properties: structuredClone(getPreviewProperties())
               },
               document: doc,
               states,
-              onSave(arg2) {
+              onSave(savedRegionOverrides) {
                 if (refreshCapabilities || !capabilityCache) {
                   throw new Error("灯光配置已关闭，请重新打开。");
                 }
-                effectRangeOpen.lightRegionOverrides = structuredClone(arg2);
+                effectRangeOpen.lightRegionOverrides = structuredClone(savedRegionOverrides);
                 mountRuntime();
               },
               onClose() {
                 closeEditor = null;
                 resizeObserver = false;
                 if (!refreshCapabilities) {
-                  fn12();
+                  rebuildConfigSidebar();
                 }
               }
             });
@@ -1214,108 +1231,114 @@ export async function openInteraction3dEditor({
             }
           } finally {
             if (!refreshCapabilities) {
-              fn12();
+              rebuildConfigSidebar();
             }
           }
         }
       });
       disabled10.dataset.interaction3dRangeEditor = "true";
       disabled10.disabled = resizeObserver || !effectRangeOpen.sceneId;
-      focusQueue.append(disabled10, value128("p", "i3d-note", "在独立弹窗中拖动范围；保存范围后，再点击“保存配置”保存到当前控件。"));
+      focusQueue.append(disabled10, createEl("p", "i3d-note", "在独立弹窗中拖动范围；保存范围后，再点击“保存配置”保存到当前控件。"));
     }
     if (draftRevision) {
-      if (stylesheet) {
-        appendPositiveNumber(focusQueue, "设备类别", [["nas", "NAS"], ["television", "电视"]], arg75, arg23 => {
-          if (arg23 !== arg75) {
-            fn7(arg23);
+      if (isDeviceMode) {
+        appendPositiveNumber(focusQueue, "设备类别", [["nas", "NAS"], ["television", "电视"]], deviceKindLocal, sidebarDeviceKind => {
+          if (sidebarDeviceKind !== deviceKindLocal) {
+            reopenEditorAs(sidebarDeviceKind);
           }
         });
       }
-      appendPositiveNumber(focusQueue, "配置楼层", draftRevision.floors.map(id27 => [id27.id, id27.name]), syncPreviewSize, arg36 => {
-        syncPreviewSize = arg36;
+      appendPositiveNumber(focusQueue, "配置楼层", draftRevision.floors.map(id27 => [id27.id, id27.name]), syncPreviewSize, selectedFloorId => {
+        syncPreviewSize = selectedFloorId;
         mountRuntime();
-        fn12();
+        rebuildConfigSidebar();
       });
-      const append20 = value128("div", "i3d-light-heading");
-      const length5 = fn6();
-      const disabled11 = accessAllowed("添加" + stage, fn9);
-      disabled11.disabled = !length5.length || value138().length >= 128;
-      append20.append(value128("h4", "", stylesheet ? "设备列表" : stage + "按钮"), disabled11);
-      focusQueue.append(append20);
-      const some2 = value138().filter(floorId3 => floorId3.floorId === syncPreviewSize || aspectBox && !draftRevision.floors.some(id15 => id15.id === floorId3.floorId));
+      const itemListHeading = createEl("div", "i3d-light-heading");
+      const floorTargets = listFloorTargets();
+      const length5 = listAvailableTargets();
+      const disabled11 = accessAllowed("添加" + stageLabel, openAddDialog);
+      disabled11.disabled = !length5.length || getCurrentItems().length >= 128;
+      const addBlockedHint = unavailableAddHint(length5, floorTargets);
+      disabled11.title = addBlockedHint;
+      itemListHeading.append(createEl("h4", "", isDeviceMode ? "设备列表" : stageLabel + "按钮"), disabled11);
+      focusQueue.append(itemListHeading);
+      const some2 = getCurrentItems().filter(floorId3 => floorId3.floorId === syncPreviewSize || isNonLight && !draftRevision.floors.some(id15 => id15.id === floorId3.floorId));
+      if (addBlockedHint && !length5.length && some2.length) {
+        focusQueue.append(createEl("p", "i3d-note", addBlockedHint));
+      }
       if (!some2.some(id28 => id28.id === saving)) {
         saving = some2[0]?.id || "";
       }
       if (some2.length) {
-        appendPositiveNumber(focusQueue, stylesheet ? "当前设备" : "当前按钮", some2.map(id24 => [id24.id, id24.label]), saving, arg24 => {
-          value132++;
+        appendPositiveNumber(focusQueue, isDeviceMode ? "当前设备" : "当前按钮", some2.map(id24 => [id24.id, id24.label]), saving, selectedItemId => {
+          pickerSession++;
           close6?.close();
-          saving = arg24;
+          saving = selectedItemId;
           mountRuntime();
-          fn12();
+          rebuildConfigSidebar();
         });
       }
-      const statusSource = value138().find(id29 => id29.id === saving);
+      const statusSource = getCurrentItems().find(id29 => id29.id === saving);
       if (statusSource) {
-        const className7 = accessAllowed(stylesheet ? "删除此设备" : "删除此" + stage + "按钮", () => {
-          value132++;
+        const className7 = accessAllowed(isDeviceMode ? "删除此设备" : "删除此" + stageLabel + "按钮", () => {
+          pickerSession++;
           close6?.close();
-          value139(value138().filter(id10 => id10.id !== statusSource.id));
+          setCurrentItems(getCurrentItems().filter(id10 => id10.id !== statusSource.id));
           saving = "";
           mountRuntime();
-          fn12();
+          rebuildConfigSidebar();
         });
         className7.className = "i3d-remove-light";
         focusQueue.append(className7);
-        if (stylesheet) {
-          const value39 = value128("input");
-          value39.value = header ? "电视" : "NAS";
-          value39.readOnly = true;
-          fn(focusQueue, "设备类型", value39);
+        if (isDeviceMode) {
+          const deviceTypeReadonly = createEl("input");
+          deviceTypeReadonly.value = isTelevision ? "电视" : "NAS";
+          deviceTypeReadonly.readOnly = true;
+          appendSetting(focusQueue, "设备类型", deviceTypeReadonly);
         }
-        const value57 = value128("input");
-        value57.value = statusSource.label;
-        value57.maxLength = 128;
-        value57.addEventListener("change", () => {
-          statusSource.label = value57.value.trim() || stage;
+        const itemNameInput = createEl("input");
+        itemNameInput.value = statusSource.label;
+        itemNameInput.maxLength = 128;
+        itemNameInput.addEventListener("change", () => {
+          statusSource.label = itemNameInput.value.trim() || stageLabel;
           mountRuntime();
         });
-        fn(focusQueue, "名称", value57);
-        if (aspectBox) {
-          const some = draftRevision.floors.filter(id13 => id13.id === syncPreviewSize).flatMap(id16 => (id16[statusNote] || []).filter(id3 => !value138().some(floorId => floorId !== statusSource && floorId.floorId === id16.id && floorId.modelId === id3.id)).map(model => ({
+        appendSetting(focusQueue, "名称", itemNameInput);
+        if (isNonLight) {
+          const some = draftRevision.floors.filter(id13 => id13.id === syncPreviewSize).flatMap(id16 => (id16[statusNote] || []).filter(id3 => !getCurrentItems().some(floorId => floorId !== statusSource && floorId.floorId === id16.id && floorId.modelId === id3.id)).map(model => ({
             floor: id16,
             model,
             key: id16.id + "/" + model.id
           })));
-          const value40 = statusSource.floorId + "/" + statusSource.modelId;
-          const value41 = some.some(key3 => key3.key === value40);
+          const boundModelKey = statusSource.floorId + "/" + statusSource.modelId;
+          const boundModelStillExists = some.some(key3 => key3.key === boundModelKey);
           const unshift = some.map(key4 => [key4.key, draft(key4.model)]);
-          if (!value41) {
-            unshift.unshift([value40, "原模型已移除，请重新选择"]);
+          if (!boundModelStillExists) {
+            unshift.unshift([boundModelKey, "原模型已移除，请重新选择"]);
           }
-          appendPositiveNumber(focusQueue, "关联" + stage + "模型", unshift, value40, arg16 => {
-            const floor = some.find(key => key.key === arg16);
-            if (!!floor && arg16 !== value40) {
+          appendPositiveNumber(focusQueue, "关联" + stageLabel + "模型", unshift, boundModelKey, selectedModelKey => {
+            const floor = some.find(key => key.key === selectedModelKey);
+            if (!!floor && selectedModelKey !== boundModelKey) {
               statusSource.floorId = floor.floor.id;
               statusSource.modelId = floor.model.id;
               delete statusSource.focusCamera;
               delete statusSource.followCamera;
               mountRuntime();
-              fn12();
+              rebuildConfigSidebar();
             }
           });
-          if (!value41) {
-            focusQueue.append(value128("p", "i3d-note", "原模型已移除，请重新选择。已保存的实体绑定和按钮设置仍然保留。"));
+          if (!boundModelStillExists) {
+            focusQueue.append(createEl("p", "i3d-note", "原模型已移除，请重新选择。已保存的实体绑定和按钮设置仍然保留。"));
           }
         }
-        if (viewPane) {
-          appendPositiveNumber(focusQueue, "开合方向", [["auto", "继承模型"], ["left", "单开 · 向左收拢"], ["right", "单开 · 向右收拢"], ["split", "双开 · 向两侧收拢"]], statusSource.coverDirection, arg17 => {
-            statusSource.coverDirection = ["left", "right", "split"].includes(arg17) ? arg17 : "auto";
+        if (isCover) {
+          appendPositiveNumber(focusQueue, "开合方向", [["auto", "继承模型"], ["left", "单开 · 向左收拢"], ["right", "单开 · 向右收拢"], ["split", "双开 · 向两侧收拢"]], statusSource.coverDirection, coverDirectionChoice => {
+            statusSource.coverDirection = ["left", "right", "split"].includes(coverDirectionChoice) ? coverDirectionChoice : "auto";
             mountRuntime();
           });
         }
-        if (viewPane) {
-          const addEventListener2 = value128("input");
+        if (isCover) {
+          const addEventListener2 = createEl("input");
           Object.assign(addEventListener2, {
             type: "checkbox",
             checked: statusSource.iconStateReversed === true
@@ -1324,23 +1347,23 @@ export async function openInteraction3dEditor({
             statusSource.iconStateReversed = addEventListener2.checked;
             mountRuntime();
           });
-          fn(focusQueue, "图标状态反向", addEventListener2);
+          appendSetting(focusQueue, "图标状态反向", addEventListener2);
         }
-        const value58 = async (arg25, trigger) => {
-          const value23 = ++value132;
+        const openItemPicker = async (itemPickerKind, trigger) => {
+          const itemPickerSession = ++pickerSession;
           pickerGeneration.textContent = "";
           try {
-            const value3 = pickers?.[arg25 === "powerEntity" ? "entity" : arg25];
-            if (!value3) {
+            const pickerOpener = pickers?.[itemPickerKind === "powerEntity" ? "entity" : itemPickerKind];
+            if (!pickerOpener) {
               throw new Error("选择器尚未准备好，请保存后刷新页面。");
             }
-            const close2 = await value3({
+            const close2 = await pickerOpener({
               trigger,
-              deviceKind: arg25 === "powerEntity" ? "television-power" : arg75,
-              current: arg25 === "vacuum" ? statusSource.deviceId : arg25 === "powerEntity" ? statusSource.powerEntityId : arg25 === "nas" ? statusSource.statusSource?.deviceId : arg25 === "icon" ? statusSource.icon : statusSource.entityId,
+              deviceKind: itemPickerKind === "powerEntity" ? "television-power" : deviceKindLocal,
+              current: itemPickerKind === "vacuum" ? statusSource.deviceId : itemPickerKind === "powerEntity" ? statusSource.powerEntityId : itemPickerKind === "nas" ? statusSource.statusSource?.deviceId : itemPickerKind === "icon" ? statusSource.icon : statusSource.entityId,
               onSelect(deviceId) {
-                if (!refreshCapabilities && !!capabilityCache && value23 === value132 && !!value138().includes(statusSource)) {
-                  if (arg25 === "vacuum") {
+                if (!refreshCapabilities && !!capabilityCache && itemPickerSession === pickerSession && !!getCurrentItems().includes(statusSource)) {
+                  if (itemPickerKind === "vacuum") {
                     statusSource.deviceId = deviceId?.deviceId || "";
                     statusSource.deviceName = deviceId?.name || "";
                     statusSource.entityId = deviceId?.entities.length === 1 ? deviceId.entities[0].entityId : "";
@@ -1352,13 +1375,13 @@ export async function openInteraction3dEditor({
                       statusSource.label = deviceId.name;
                       get5.set(deviceId.deviceId, deviceId);
                     }
-                  } else if (arg25 === "powerEntity") {
+                  } else if (itemPickerKind === "powerEntity") {
                     if (deviceId) {
                       statusSource.powerEntityId = deviceId;
                     } else {
                       delete statusSource.powerEntityId;
                     }
-                  } else if (arg25 === "nas") {
+                  } else if (itemPickerKind === "nas") {
                     if (deviceId) {
                       if (statusSource.statusSource?.deviceId === deviceId.deviceId) {
                         const items = new Map(statusSource.statusSource.metrics.map((entityId2, arg) => [entityId2.entityId, arg]));
@@ -1377,50 +1400,50 @@ export async function openInteraction3dEditor({
                     } else {
                       delete statusSource.statusSource;
                     }
-                  } else if (arg25 === "icon") {
+                  } else if (itemPickerKind === "icon") {
                     statusSource.icon = deviceId;
                   } else {
                     statusSource.entityId = deviceId;
                   }
                   mountRuntime();
-                  fn12();
+                  rebuildConfigSidebar();
                 }
               }
             });
-            if (refreshCapabilities || !capabilityCache || value23 !== value132) {
+            if (refreshCapabilities || !capabilityCache || itemPickerSession !== pickerSession) {
               close2?.close();
             } else {
               close6 = close2;
             }
           } catch (message4) {
-            if (!refreshCapabilities && value23 === value132) {
+            if (!refreshCapabilities && itemPickerSession === pickerSession) {
               pickerGeneration.textContent = message4.message;
             }
           }
         };
         const name2 = entities.find(entityId18 => entityId18.entityId === statusSource.entityId);
-        if (sidebar) {
-          const className2 = accessAllowed(statusSource.statusSource?.name || "选择飞牛或群晖", () => void value58("nas", className2));
+        if (isNas) {
+          const className2 = accessAllowed(statusSource.statusSource?.name || "选择飞牛或群晖", () => void openItemPicker("nas", className2));
           className2.className = "i3d-picker-button";
-          fn(focusQueue, "NAS 数据来源", className2);
+          appendSetting(focusQueue, "NAS 数据来源", className2);
           if (statusSource.statusSource) {
-            const value16 = statusSource.statusSource.visibleMetrics?.length ?? statusSource.statusSource.metrics.length;
-            const className = accessAllowed("选择显示内容（" + value16 + " 项）", () => appendSelect(statusSource));
+            const nasVisibleMetricCount = statusSource.statusSource.visibleMetrics?.length ?? statusSource.statusSource.metrics.length;
+            const className = accessAllowed("选择显示内容（" + nasVisibleMetricCount + " 项）", () => appendSelect(statusSource));
             className.className = "i3d-picker-button";
             focusQueue.append(className);
           }
-          focusQueue.append(value128("p", "i3d-note", statusSource.statusSource ? "已匹配 " + statusSource.statusSource.metrics.length + " 项状态。点击数据来源可重新匹配；弹窗只展示状态。" : "选择整台 NAS，自动匹配 CPU、内存、温度、存储和网络。无需逐个选择传感器。"));
+          focusQueue.append(createEl("p", "i3d-note", statusSource.statusSource ? "已匹配 " + statusSource.statusSource.metrics.length + " 项状态。点击数据来源可重新匹配；弹窗只展示状态。" : "选择整台 NAS，自动匹配 CPU、内存、温度、存储和网络。无需逐个选择传感器。"));
         }
-        const className8 = accessAllowed("", () => void value58("entity", className8));
+        const className8 = accessAllowed("", () => void openItemPicker("entity", className8));
         className8.className = "i3d-picker-button";
-        className8.title = statusSource.entityId || (aspectBox ? "选择" + stage + "实体" : "选择灯或开关");
-        className8.append(value128("span", "", name2?.name || statusSource.entityId || (aspectBox ? "选择" + stage + "实体" : "选择灯或开关")));
-        if (!createButton && (!sidebar || !statusSource.statusSource)) {
-          fn(focusQueue, sidebar ? "原开启实体（未关联 NAS）" : "绑定实体", className8);
+        className8.title = statusSource.entityId || (isNonLight ? "选择" + stageLabel + "实体" : "选择灯或开关");
+        className8.append(createEl("span", "", name2?.name || statusSource.entityId || (isNonLight ? "选择" + stageLabel + "实体" : "选择灯或开关")));
+        if (!isVacuum && (!isNas || !statusSource.statusSource)) {
+          appendSetting(focusQueue, isNas ? "原开启实体（未关联 NAS）" : "绑定实体", className8);
         }
-        if (createButton) {
-          const value42 = value128("input");
-          Object.assign(value42, {
+        if (isVacuum) {
+          const followOffsetInput = createEl("input");
+          Object.assign(followOffsetInput, {
             type: "number",
             min: "0",
             max: "300",
@@ -1428,36 +1451,36 @@ export async function openInteraction3dEditor({
             value: String(effectRangeOpen.navigation?.followOffset ?? 16),
             title: "所有扫地机共用此标签偏移"
           });
-          value42.addEventListener("change", () => {
+          followOffsetInput.addEventListener("change", () => {
             if (!capabilityCache || refreshCapabilities) {
               return;
             }
-            const value9 = value42.value.trim() === "" ? NaN : Number(value42.value);
-            if (Number.isFinite(value9)) {
+            const followOffsetValue = followOffsetInput.value.trim() === "" ? NaN : Number(followOffsetInput.value);
+            if (Number.isFinite(followOffsetValue)) {
               effectRangeOpen.navigation = {
                 ...effectRangeOpen.navigation,
-                followOffset: Math.max(0, Math.min(300, value9))
+                followOffset: Math.max(0, Math.min(300, followOffsetValue))
               };
               mountRuntime();
             }
-            value42.value = String(effectRangeOpen.navigation?.followOffset ?? 16);
+            followOffsetInput.value = String(effectRangeOpen.navigation?.followOffset ?? 16);
           });
-          fn(focusQueue, "跟随标签上移（px）", value42);
-          for (const [value24, value25] of [["motionEnabled", "跟随真实位置移动"], ["funMessages", "工作时显示趣味短句"]]) {
-            const addEventListener = value128("input");
+          appendSetting(focusQueue, "跟随标签上移（px）", followOffsetInput);
+          for (const [vacuumToggleKey, vacuumToggleLabel] of [["motionEnabled", "跟随真实位置移动"], ["funMessages", "工作时显示趣味短句"]]) {
+            const addEventListener = createEl("input");
             Object.assign(addEventListener, {
               type: "checkbox",
-              checked: statusSource[value24] !== false
+              checked: statusSource[vacuumToggleKey] !== false
             });
             addEventListener.addEventListener("change", () => {
-              statusSource[value24] = addEventListener.checked;
+              statusSource[vacuumToggleKey] = addEventListener.checked;
               mountRuntime();
             });
-            fn(focusQueue, value25, addEventListener);
+            appendSetting(focusQueue, vacuumToggleLabel, addEventListener);
           }
-          const className3 = accessAllowed(statusSource.deviceName || "选择扫地机设备", () => void value58("vacuum", className3));
+          const className3 = accessAllowed(statusSource.deviceName || "选择扫地机设备", () => void openItemPicker("vacuum", className3));
           className3.className = "i3d-picker-button";
-          fn(focusQueue, "绑定设备", className3);
+          appendSetting(focusQueue, "绑定设备", className3);
           const entities2 = get5.get(statusSource.deviceId) || {
             entities: entities.filter(entityId10 => /^vacuum\./.test(entityId10.entityId) && (entityId10.deviceId === statusSource.deviceId || entityId10.entityId === statusSource.deviceId)),
             maps: entities.filter(entityId11 => /^(camera|image)\./.test(entityId11.entityId) && entityId11.deviceId === statusSource.deviceId)
@@ -1468,7 +1491,7 @@ export async function openInteraction3dEditor({
               mountRuntime();
             });
           } else if (statusSource.entityId) {
-            focusQueue.append(value128("p", "i3d-note", "已识别：" + statusSource.entityId));
+            focusQueue.append(createEl("p", "i3d-note", "已识别：" + statusSource.entityId));
           }
           if (entities2?.maps.length > 1) {
             appendPositiveNumber(focusQueue, "已识别的地图", [["", "请选择地图"], ...entities2.maps.map(entityId8 => [entityId8.entityId, entityId8.name || entityId8.entityId])], statusSource.map?.entityId || "", entityId14 => {
@@ -1477,24 +1500,24 @@ export async function openInteraction3dEditor({
                 entityId: entityId14
               };
               mountRuntime();
-              fn12();
+              rebuildConfigSidebar();
             });
           }
           const trigger2 = accessAllowed(statusSource.map?.entityId || "选择扫地机地图", async () => {
-            const value4 = ++value132;
+            const mapPickerSession = ++pickerSession;
             try {
               close6 = await pickers.entity({
                 trigger: trigger2,
                 deviceKind: "vacuum-map",
                 current: statusSource.map?.entityId || "",
                 onSelect(entityId6) {
-                  if (!refreshCapabilities && !!capabilityCache && value4 === value132 && !!value138().includes(statusSource)) {
+                  if (!refreshCapabilities && !!capabilityCache && mapPickerSession === pickerSession && !!getCurrentItems().includes(statusSource)) {
                     statusSource.map = {
                       ...statusSource.map,
                       entityId: entityId6
                     };
                     mountRuntime();
-                    fn12();
+                    rebuildConfigSidebar();
                   }
                 }
               });
@@ -1503,11 +1526,11 @@ export async function openInteraction3dEditor({
             }
           });
           trigger2.className = "i3d-picker-button";
-          fn(focusQueue, "地图来源", trigger2);
-          const value43 = accessAllowed("底图对齐", () => {
-            const value5 = value135 === null ? states?.get?.(statusSource.map?.entityId) : value135[statusSource.map?.entityId];
-            const value6 = value135 === null ? states?.get?.(statusSource.entityId) : value135[statusSource.entityId];
-            const sourceMapId = vacuumMapIdentity(value5, value6);
+          appendSetting(focusQueue, "地图来源", trigger2);
+          const openMapAlignButton = accessAllowed("底图对齐", () => {
+            const mapEntityState = latestStatesByEntity === null ? states?.get?.(statusSource.map?.entityId) : latestStatesByEntity[statusSource.map?.entityId];
+            const vacuumEntityState = latestStatesByEntity === null ? states?.get?.(statusSource.entityId) : latestStatesByEntity[statusSource.entityId];
+            const sourceMapId = vacuumMapIdentity(mapEntityState, vacuumEntityState);
             const map2 = {
               ...statusSource,
               map: {
@@ -1525,32 +1548,32 @@ export async function openInteraction3dEditor({
               document: doc,
               pickers,
               onSave(map) {
-                if (!refreshCapabilities && capabilityCache && value138().includes(statusSource)) {
+                if (!refreshCapabilities && capabilityCache && getCurrentItems().includes(statusSource)) {
                   statusSource.map = map.map;
                   mountRuntime();
-                  fn12();
+                  rebuildConfigSidebar();
                 }
               }
             });
           });
-          focusQueue.append(value43);
+          focusQueue.append(openMapAlignButton);
         }
-        if (header) {
-          const className4 = accessAllowed(statusSource.powerEntityId || "不单独绑定", () => void value58("powerEntity", className4));
+        if (isTelevision) {
+          const className4 = accessAllowed(statusSource.powerEntityId || "不单独绑定", () => void openItemPicker("powerEntity", className4));
           className4.className = "i3d-picker-button";
-          fn(focusQueue, "电视电源状态（可选）", className4);
-          focusQueue.append(value128("p", "i3d-note", "绑定 Apple TV 的 media_player 实体，同步封面、应用、节目和播放状态。电源状态可单独绑定电视；弹窗只读，不同步实际视频。"));
+          appendSetting(focusQueue, "电视电源状态（可选）", className4);
+          focusQueue.append(createEl("p", "i3d-note", "绑定 Apple TV 的 media_player 实体，同步封面、应用、节目和播放状态。电源状态可单独绑定电视；弹窗只读，不同步实际视频。"));
         }
-        if (sidebar) {
-          focusQueue.append(value128("p", "i3d-note", statusSource.statusSource ? "已选择 NAS 自身状态数据作为呼吸灯依据。安全状态只用于告警。" : "请先选择 NAS 数据来源。原来的试绑实体不会自动作为 NAS 数据来源。"));
+        if (isNas) {
+          focusQueue.append(createEl("p", "i3d-note", statusSource.statusSource ? "已选择 NAS 自身状态数据作为呼吸灯依据。安全状态只用于告警。" : "请先选择 NAS 数据来源。原来的试绑实体不会自动作为 NAS 数据来源。"));
         }
-        appendPositiveNumber(focusQueue, "点击" + stage, dialog ? [["focus-panel", "聚焦并显示状态"], ["panel", "仅显示状态"], ["focus", "仅聚焦"]] : viewPane ? [["focus", "聚焦并显示控制"], ["panel", "仅显示控制"]] : body ? [["focus", "聚焦并显示控制"], ["turn-on-focus", "聚焦并开启"], ["turn-on", "仅开关空调"], ["turn-on-panel", "开启并显示控制"]] : [["focus", "仅聚焦"], ["turn-on-focus", "聚焦并开灯"], ["turn-on", "仅开关灯"], ["turn-on-panel", "开灯并弹窗"]], statusSource.clickAction, arg26 => {
-          statusSource.clickAction = sceneMeta(arg26);
+        appendPositiveNumber(focusQueue, "点击" + stageLabel, isDeviceLike ? [["focus-panel", "聚焦并显示状态"], ["panel", "仅显示状态"], ["focus", "仅聚焦"]] : isCover ? [["focus", "聚焦并显示控制"], ["panel", "仅显示控制"]] : isClimate ? [["focus", "聚焦并显示控制"], ["turn-on-focus", "聚焦并开启"], ["turn-on", "仅开关空调"], ["turn-on-panel", "开启并显示控制"]] : [["focus", "仅聚焦"], ["turn-on-focus", "聚焦并开灯"], ["turn-on", "仅开关灯"], ["turn-on-panel", "开灯并弹窗"]], statusSource.clickAction, clickActionChoice => {
+          statusSource.clickAction = sceneMeta(clickActionChoice);
           mountRuntime();
         });
-        const value59 = value128("div", "i3d-button-visibility-row");
-        focusQueue.append(value59);
-        const checked7 = value128("input");
+        const visibilityRow = createEl("div", "i3d-button-visibility-row");
+        focusQueue.append(visibilityRow);
+        const checked7 = createEl("input");
         Object.assign(checked7, {
           type: "checkbox",
           checked: statusSource.hiddenClickable === true && statusSource.buttonHidden !== true
@@ -1563,8 +1586,8 @@ export async function openInteraction3dEditor({
           }
           mountRuntime();
         });
-        fn(value59, "隐藏（可点击）", checked7).parentElement.className += " i3d-hidden-clickable-setting";
-        const checked8 = value128("input");
+        appendSetting(visibilityRow, "隐藏（可点击）", checked7).parentElement.className += " i3d-hidden-clickable-setting";
+        const checked8 = createEl("input");
         Object.assign(checked8, {
           type: "checkbox",
           checked: statusSource.buttonHidden === true
@@ -1577,227 +1600,228 @@ export async function openInteraction3dEditor({
           }
           mountRuntime();
         });
-        fn(value59, "隐藏（不可点击）", checked8).parentElement.className += " i3d-hidden-clickable-setting";
-        if (!createButton) {
-          const className5 = accessAllowed("", () => void value58("icon", className5));
+        appendSetting(visibilityRow, "隐藏（不可点击）", checked8).parentElement.className += " i3d-hidden-clickable-setting";
+        if (!isVacuum) {
+          const className5 = accessAllowed("", () => void openItemPicker("icon", className5));
           className5.className = "i3d-picker-button i3d-icon-picker-button";
-          const style = value128("i");
+          const style = createEl("i");
           style.setAttribute("aria-hidden", "true");
-          const value44 = "/bridge-static/vendor/mdi/7.4.47/svg/" + statusSource.icon.replace(/^mdi:/, "") + ".svg";
-          style.style.maskImage = "url(\"" + value44 + "\")";
-          style.style.webkitMaskImage = "url(\"" + value44 + "\")";
-          className5.append(style, value128("span", "", statusSource.icon));
-          fn(focusQueue, "图标", className5);
+          const iconSvgUrl = "/bridge-static/vendor/mdi/7.4.47/svg/" + statusSource.icon.replace(/^mdi:/, "") + ".svg";
+          style.style.maskImage = "url(\"" + iconSvgUrl + "\")";
+          style.style.webkitMaskImage = "url(\"" + iconSvgUrl + "\")";
+          className5.append(style, createEl("span", "", statusSource.icon));
+          appendSetting(focusQueue, "图标", className5);
         }
-        const value60 = value128("div", "i3d-coordinate-grid i3d-size-grid");
-        focusQueue.append(value60);
-        const value61 = () => Number.isFinite(statusSource.hitSize) && statusSource.hitSize > 0 ? statusSource.hitSize : Math.max(44, statusSource.size);
-        fn3(value60, createButton ? "状态框缩放（%）" : "按钮大小（px）", () => createButton ? Math.round(statusSource.size / 44 * 100) : statusSource.size, arg27 => {
-          statusSource.size = createButton ? arg27 / 100 * 44 : arg27;
-          value62.value = String(Number(value61().toPrecision(12)));
+        const sizeGrid = createEl("div", "i3d-coordinate-grid i3d-size-grid");
+        focusQueue.append(sizeGrid);
+        const resolveHitSize = () => Number.isFinite(statusSource.hitSize) && statusSource.hitSize > 0 ? statusSource.hitSize : Math.max(44, statusSource.size);
+        appendPositiveInput(sizeGrid, isVacuum ? "状态框缩放（%）" : "按钮大小（px）", () => isVacuum ? Math.round(statusSource.size / 44 * 100) : statusSource.size, sizeInputValue => {
+          statusSource.size = isVacuum ? sizeInputValue / 100 * 44 : sizeInputValue;
+          hitSizeInput.value = String(Number(resolveHitSize().toPrecision(12)));
           mountRuntime();
         });
-        fn3(value60, createButton ? "文字大小（px）" : "图标大小（px）", () => createButton ? statusSource.iconSize / 2 : statusSource.iconSize, arg28 => {
-          statusSource.iconSize = createButton ? arg28 * 2 : arg28;
+        appendPositiveInput(sizeGrid, isVacuum ? "文字大小（px）" : "图标大小（px）", () => isVacuum ? statusSource.iconSize / 2 : statusSource.iconSize, iconSizeInputValue => {
+          statusSource.iconSize = isVacuum ? iconSizeInputValue * 2 : iconSizeInputValue;
           mountRuntime();
         });
-        const value62 = fn3(value60, "触控范围（px）", value61, hitSize => {
+        const hitSizeInput = appendPositiveInput(sizeGrid, "触控范围（px）", resolveHitSize, hitSize => {
           statusSource.hitSize = hitSize;
           mountRuntime();
         });
-        if (aspectBox) {
+        if (isNonLight) {
           const elevation = draftRevision.floors.find(id11 => id11.id === statusSource.floorId)?.[statusNote]?.find(id17 => id17.id === statusSource.modelId);
-          const value45 = value128("div", "i3d-coordinate-grid");
-          focusQueue.append(value45);
+          const modelCoordGrid = createEl("div", "i3d-coordinate-grid");
+          focusQueue.append(modelCoordGrid);
           const disabled4 = accessAllowed("恢复跟随模型", () => {
             delete statusSource.x;
             delete statusSource.y;
             delete statusSource.height;
             mountRuntime();
-            fn12();
+            rebuildConfigSidebar();
           });
-          disabled4.disabled = !["x", "y", "height"].some(arg7 => Number.isFinite(statusSource[arg7]));
-          for (const [value26, value27, value28, value29, value30] of [["x", "位置 X", -1000000, 1000000, 1], ["y", "位置 Y", -1000000, 1000000, 1], ["height", "高度（米）", 0, 20, 0.1]]) {
-            const value17 = Number.isFinite(statusSource[value26]) ? statusSource[value26] : createButton && value26 === "height" ? (Number(elevation?.elevation) || 0) + (Number(elevation?.height) || 0.85) + 0.25 : Number.isFinite(elevation?.[value26]) ? elevation[value26] : 0;
-            fn2(value45, createButton && value26 === "height" ? "离地高度（米）" : value27, value17, value28, value29, value30, arg8 => {
-              statusSource[value26] = arg8;
+          disabled4.disabled = !["x", "y", "height"].some(positionKey => Number.isFinite(statusSource[positionKey]));
+          for (const [coordKey, coordLabel, coordMin, coordMax, coordStep] of [["x", "位置 X", -1000000, 1000000, 1], ["y", "位置 Y", -1000000, 1000000, 1], ["height", "高度（米）", 0, 20, 0.1]]) {
+            const coordCurrent = Number.isFinite(statusSource[coordKey]) ? statusSource[coordKey] : isVacuum && coordKey === "height" ? (Number(elevation?.elevation) || 0) + (Number(elevation?.height) || 0.85) + 0.25 : Number.isFinite(elevation?.[coordKey]) ? elevation[coordKey] : 0;
+            appendBoundedInput(modelCoordGrid, isVacuum && coordKey === "height" ? "离地高度（米）" : coordLabel, coordCurrent, coordMin, coordMax, coordStep, positionValue => {
+              statusSource[coordKey] = positionValue;
               disabled4.disabled = false;
               mountRuntime();
             });
           }
           focusQueue.append(disabled4);
-          const append = value128("section", "navigation-batch-section i3d-light-batch");
-          const append2 = value128("h4");
-          const textContent = value128("span");
-          append2.append(value128("span", "", "图标设置一键应用"), textContent);
-          const disabled5 = accessAllowed("一键应用到其他" + stage, () => appendNumber(statusSource));
-          value140 = () => {
-            const value10 = resolveLightCapability(statusSource).length;
-            textContent.textContent = value10 + " 项修改";
-            disabled5.disabled = !value10 || !capabilityCache || saveButton || unsubscribeAccess;
+          const append = createEl("section", "navigation-batch-section i3d-light-batch");
+          const batchSectionTitle = createEl("h4");
+          const textContent = createEl("span");
+          batchSectionTitle.append(createEl("span", "", "图标设置一键应用"), textContent);
+          const disabled5 = accessAllowed("一键应用到其他" + stageLabel, () => appendNumber(statusSource));
+          updateBatchApplyState = () => {
+            const nonLightDirtyCount = resolveLightCapability(statusSource).length;
+            textContent.textContent = nonLightDirtyCount + " 项修改";
+            disabled5.disabled = !nonLightDirtyCount || !capabilityCache || saveButton || unsubscribeAccess;
           };
-          value140();
-          append.append(append2, disabled5);
+          updateBatchApplyState();
+          append.append(batchSectionTitle, disabled5);
           focusQueue.append(append);
         } else {
-          const value46 = value128("div", "i3d-coordinate-grid");
-          focusQueue.append(value46);
+          const lightCoordGrid = createEl("div", "i3d-coordinate-grid");
+          focusQueue.append(lightCoordGrid);
           for (const toUpperCase of ["x", "y"]) {
-            fn2(value46, "位置 " + toUpperCase.toUpperCase(), statusSource[toUpperCase], -1000000, 1000000, 1, arg9 => {
-              statusSource[toUpperCase] = arg9;
+            appendBoundedInput(lightCoordGrid, "位置 " + toUpperCase.toUpperCase(), statusSource[toUpperCase], -1000000, 1000000, 1, lightPositionValue => {
+              statusSource[toUpperCase] = lightPositionValue;
               mountRuntime();
             });
           }
-          fn2(value46, "高度（米）", statusSource.height, 0, 20, 0.1, height => {
+          appendBoundedInput(lightCoordGrid, "高度（米）", statusSource.height, 0, 20, 0.1, height => {
             statusSource.height = height;
             mountRuntime();
           });
-          fn2(focusQueue, "缓开缓灭（秒）", statusSource.fadeDuration, 0, 10, 0.1, fadeDuration => {
+          appendBoundedInput(focusQueue, "缓开缓灭（秒）", statusSource.fadeDuration, 0, 10, 0.1, fadeDuration => {
             statusSource.fadeDuration = fadeDuration;
             mountRuntime();
           });
-          const contains = value128("div");
+          const contains = createEl("div");
           focusQueue.append(contains);
-          const value47 = known => JSON.stringify([known.known, known.brightnessSupported, known.temperatureSupported, known.minimum, known.maximum]);
-          const value48 = fn4(statusSource);
-          let value49 = value47(value48);
-          value136 = () => {
+          const capabilitySignature = known => JSON.stringify([known.known, known.brightnessSupported, known.temperatureSupported, known.minimum, known.maximum]);
+          const itemLightCapability = resolveEntityLightState(statusSource);
+          let lastCapabilitySignature = capabilitySignature(itemLightCapability);
+          refreshEffectCapabilityUi = () => {
             if (refreshCapabilities || !capabilityCache || saveButton || unsubscribeAccess || contains.contains?.(document.activeElement)) {
               return;
             }
-            const value11 = fn4(statusSource);
-            const value12 = value47(value11);
-            if (value12 !== value49) {
-              value49 = value12;
-              fn5(contains, statusSource, value11);
+            const freshLightCapability = resolveEntityLightState(statusSource);
+            const freshCapabilitySignature = capabilitySignature(freshLightCapability);
+            if (freshCapabilitySignature !== lastCapabilitySignature) {
+              lastCapabilitySignature = freshCapabilitySignature;
+              renderLightEffectPanel(contains, statusSource, freshLightCapability);
             }
           };
-          contains.addEventListener("focusout", () => queueMicrotask(value136));
-          fn5(contains, statusSource, value48);
-          const append3 = value128("section", "navigation-batch-section i3d-light-batch");
-          const append4 = value128("h4");
-          const textContent2 = value128("span");
-          append4.append(value128("span", "", "灯光设置一键应用"), textContent2);
+          contains.addEventListener("focusout", () => queueMicrotask(refreshEffectCapabilityUi));
+          renderLightEffectPanel(contains, statusSource, itemLightCapability);
+          const lightBatchSection = createEl("section", "navigation-batch-section i3d-light-batch");
+          const lightBatchTitle = createEl("h4");
+          const lightBatchCountEl = createEl("span");
+          lightBatchTitle.append(createEl("span", "", "灯光设置一键应用"), lightBatchCountEl);
           const disabled6 = accessAllowed("一键应用到其他灯光", () => appendNumber(statusSource));
-          value140 = () => {
-            const value13 = resolveLightCapability(statusSource).length;
-            textContent2.textContent = value13 + " 项修改";
-            disabled6.disabled = !value13 || !capabilityCache || saveButton || unsubscribeAccess || resizeObserver;
+          updateBatchApplyState = () => {
+            const lightDirtyCount = resolveLightCapability(statusSource).length;
+            lightBatchCountEl.textContent = lightDirtyCount + " 项修改";
+            disabled6.disabled = !lightDirtyCount || !capabilityCache || saveButton || unsubscribeAccess || resizeObserver;
           };
-          value140();
-          append3.append(append4, disabled6);
-          focusQueue.append(append3);
+          updateBatchApplyState();
+          lightBatchSection.append(lightBatchTitle, disabled6);
+          focusQueue.append(lightBatchSection);
         }
-        const append6 = value128("section", "i3d-focus-settings");
-        focusQueue.append(append6);
-        const value63 = createButton && saveStatus === "follow" ? "followCamera" : "focusCamera";
-        append6.append(value128("h4", "", value63 === "followCamera" ? "跟随视角" : "聚焦视角"));
-        if (createButton && !saveButton) {
-          const append5 = value128("div", "i3d-focus-actions");
-          for (const [value31, value32] of [["focus", "聚焦视角"], ["follow", "跟随视角"]]) {
-            const setAttribute = accessAllowed(value32, () => {
-              saveStatus = value31;
-              fn12();
+        const focusSettingsSection = createEl("section", "i3d-focus-settings");
+        focusQueue.append(focusSettingsSection);
+        const activeCameraKey = isVacuum && saveStatus === "follow" ? "followCamera" : "focusCamera";
+        focusSettingsSection.append(createEl("h4", "", activeCameraKey === "followCamera" ? "跟随视角" : "聚焦视角"));
+        if (isVacuum && !saveButton) {
+          const focusModeActions = createEl("div", "i3d-focus-actions");
+          for (const [focusModeKey, focusModeLabel] of [["focus", "聚焦视角"], ["follow", "跟随视角"]]) {
+            const setAttribute = accessAllowed(focusModeLabel, () => {
+              saveStatus = focusModeKey;
+              rebuildConfigSidebar();
             });
-            setAttribute.setAttribute("aria-pressed", String(saveStatus === value31));
+            setAttribute.setAttribute("aria-pressed", String(saveStatus === focusModeKey));
             setAttribute.disabled = unsubscribeAccess;
-            append5.append(setAttribute);
+            focusModeActions.append(setAttribute);
           }
-          append6.append(append5);
+          focusSettingsSection.append(focusModeActions);
         }
-        if (value63 === "followCamera") {
-          append6.append(value128("p", "i3d-note", "固定鸟瞰角度跟随机器人平移，不随机器人转向。调整角度和远近后保存；跟随时不弹出控制面板。"));
+        if (activeCameraKey === "followCamera") {
+          focusSettingsSection.append(createEl("p", "i3d-note", "固定鸟瞰角度跟随机器人平移，不随机器人转向。调整角度和远近后保存；跟随时不弹出控制面板。"));
         }
-        const value64 = async (arg29, arg30) => {
-          const value33 = value130;
-          const value34 = arg29 === "focus-focal-length";
-          const value35 = value131;
-          let value36;
-          value131 = new Promise(arg6 => {
-            value36 = arg6;
+        const runFocusCameraCommand = async (focusCommandName, focusCommandPayload) => {
+          const focusCommandGen = cameraCommandGeneration;
+          const isFocalLengthCommand = focusCommandName === "focus-focal-length";
+          const priorCameraChain = cameraCommandChain;
+          let resolveCameraChain;
+          cameraCommandChain = new Promise(resolveCameraChainSettle => {
+            resolveCameraChain = resolveCameraChainSettle;
           });
-          if (!value34) {
+          if (!isFocalLengthCommand) {
             unsubscribeAccess = true;
             pickerGeneration.textContent = "";
-            fn12();
+            rebuildConfigSidebar();
           }
           try {
-            await value35;
-            if (refreshCapabilities || value33 !== value130) {
+            await priorCameraChain;
+            if (refreshCapabilities || focusCommandGen !== cameraCommandGeneration) {
               return;
             }
-            const camera = await liveStates.focusCommand(value63 === "followCamera" && arg29 === "edit-light-camera" ? "edit-follow-camera" : arg29, statusSource.id, arg30);
-            if (refreshCapabilities || value33 !== value130) {
+            const camera = await liveStates.focusCommand(activeCameraKey === "followCamera" && focusCommandName === "edit-light-camera" ? "edit-follow-camera" : focusCommandName, statusSource.id, focusCommandPayload);
+            if (refreshCapabilities || focusCommandGen !== cameraCommandGeneration) {
               return;
             }
-            if (arg29 === "save-light-camera") {
-              statusSource[value63] = camera.camera;
+            if (focusCommandName === "save-light-camera") {
+              statusSource[activeCameraKey] = camera.camera;
               saveButton = false;
               mode = null;
               mountRuntime();
-            } else if (arg29 === "cancel-light-camera") {
+            } else if (focusCommandName === "cancel-light-camera") {
               saveButton = false;
               mode = null;
-            } else if (arg29 !== "preview-light-camera") {
+            } else if (focusCommandName !== "preview-light-camera") {
               saveButton = true;
               mode = camera.camera;
             }
           } catch (message5) {
-            if (!refreshCapabilities && value33 === value130) {
+            if (!refreshCapabilities && focusCommandGen === cameraCommandGeneration) {
               pickerGeneration.textContent = message5.message;
             }
           } finally {
-            value36();
-            if (!refreshCapabilities && value33 === value130 && !value34) {
+            resolveCameraChain();
+            if (!refreshCapabilities && focusCommandGen === cameraCommandGeneration && !isFocalLengthCommand) {
               unsubscribeAccess = false;
-              fn12();
+              rebuildConfigSidebar();
             }
           }
         };
-        const append7 = value128("div", "i3d-focus-actions");
-        append6.append(append7);
+        const focusActionsRow = createEl("div", "i3d-focus-actions");
+        focusSettingsSection.append(focusActionsRow);
         if (saveButton) {
-          const className6 = accessAllowed(aspectBox ? "保存此" + stage + "视角" : "保存此灯视角", () => void value64("save-light-camera"));
+          const className6 = accessAllowed(isNonLight ? "保存此" + stageLabel + "视角" : "保存此灯视角", () => void runFocusCameraCommand("save-light-camera"));
           className6.className = "primary";
-          append7.append(className6, accessAllowed("取消调整", () => void value64("cancel-light-camera")));
-          const setAttribute3 = value128("div", "i3d-focus-actions");
-          setAttribute3.setAttribute("role", "group");
-          setAttribute3.setAttribute("aria-label", "聚焦投影");
-          append6.append(setAttribute3);
-          for (const [value37, value38] of [["orthographic", "正交"], ["perspective", "透视"]]) {
-            const setAttribute2 = accessAllowed(value38, () => void value64("focus-projection", value37));
-            setAttribute2.setAttribute("aria-pressed", String((mode?.mode || "orthographic") === value37));
-            setAttribute3.append(setAttribute2);
+          focusActionsRow.append(className6, accessAllowed("取消调整", () => void runFocusCameraCommand("cancel-light-camera")));
+          const projectionGroup = createEl("div", "i3d-focus-actions");
+          projectionGroup.setAttribute("role", "group");
+          projectionGroup.setAttribute("aria-label", "聚焦投影");
+          focusSettingsSection.append(projectionGroup);
+          for (const [projectionMode, projectionLabel] of [["orthographic", "正交"], ["perspective", "透视"]]) {
+            const projectionButton = accessAllowed(projectionLabel, () => void runFocusCameraCommand("focus-projection", projectionMode));
+            projectionButton.setAttribute("aria-pressed", String((mode?.mode || "orthographic") === projectionMode));
+            projectionGroup.append(projectionButton);
           }
-          const disabled7 = fn2(append6, "焦段（mm）", Math.round(mode?.focalLength || 50), 18, 120, 1, arg11 => void value64("focus-focal-length", arg11));
+          const disabled7 = appendBoundedInput(focusSettingsSection, "焦段（mm）", Math.round(mode?.focalLength || 50), 18, 120, 1, focalLengthValue => void runFocusCameraCommand("focus-focal-length", focalLengthValue));
           disabled7.disabled = mode?.mode !== "perspective";
         } else {
-          append7.append(accessAllowed(statusSource[value63] ? "调整视角" : "设置视角", () => void value64("edit-light-camera")), ...(value63 === "followCamera" ? [] : [accessAllowed("预览聚焦", () => void value64("preview-light-camera"))]));
-          const disabled8 = accessAllowed(value63 === "followCamera" ? "恢复默认鸟瞰" : statusSource[value63] ? "恢复自动聚焦" : "自动聚焦", async () => {
+          focusActionsRow.append(accessAllowed(statusSource[activeCameraKey] ? "调整视角" : "设置视角", () => void runFocusCameraCommand("edit-light-camera")), ...(activeCameraKey === "followCamera" ? [] : [accessAllowed("预览聚焦", () => void runFocusCameraCommand("preview-light-camera"))]));
+          const disabled8 = accessAllowed(activeCameraKey === "followCamera" ? "恢复默认鸟瞰" : statusSource[activeCameraKey] ? "恢复自动聚焦" : "自动聚焦", async () => {
             try {
               await liveStates.focusCommand("cancel-light-camera", statusSource.id);
-              delete statusSource[value63];
+              delete statusSource[activeCameraKey];
               mountRuntime();
-              fn12();
+              rebuildConfigSidebar();
             } catch (message2) {
               pickerGeneration.textContent = message2.message;
             }
           });
-          disabled8.disabled = !statusSource[value63];
+          disabled8.disabled = !statusSource[activeCameraKey];
           disabled8.className = "i3d-focus-reset";
-          append6.append(disabled8);
+          focusSettingsSection.append(disabled8);
         }
         if (unsubscribeAccess) {
-          for (const disabled3 of append6.querySelectorAll("button, input")) {
+          for (const disabled3 of focusSettingsSection.querySelectorAll("button, input")) {
             disabled3.disabled = true;
           }
         }
       } else {
-        focusQueue.append(value128("p", "i3d-note", createButton ? length5.length ? "点击“添加扫地机”，选择模型后绑定扫地机设备。" : "当前楼层暂无扫地机模型，请先在户型绘制中添加扫地机器人后更新户型。" : header ? length5.length ? "点击“添加设备”，选择电视模型并绑定媒体播放器实体。" : "当前楼层暂无电视模型，请先在户型绘制中添加电视后更新户型。" : sidebar ? length5.length ? "点击“添加设备”，选择设备类型和模型，再绑定开启实体。" : "当前楼层暂无 NAS 模型，请先在户型绘制中添加模型后更新户型。" : viewPane ? length5.length ? "点击“添加窗帘”，选择需要控制的窗帘模型。" : "当前楼层暂无窗帘模型，请在户型绘制中添加普通窗帘后更新户型。" : body ? length5.length ? "点击“添加空调”，选择需要控制的空调模型。" : "当前楼层暂无空调模型，请在户型绘制中添加壁挂空调、柜机或出风口后更新户型。" : length5.length ? "点击“添加灯光”，选择需要控制的灯组。" : "当前楼层暂无灯组，请在户型绘制中添加灯组后更新户型。"));
+        const emptyListHint = length5.length ? isVacuum ? "点击“添加扫地机”，选择模型后绑定扫地机设备。" : isTelevision || isNas ? "点击“添加设备”，选择" + (isTelevision ? "电视模型并绑定媒体播放器实体。" : "设备类型和模型，再绑定开启实体。") : isCover ? "点击“添加窗帘”，选择需要控制的窗帘模型。" : isClimate ? "点击“添加空调”，选择需要控制的空调模型。" : "点击“添加灯光”，选择需要控制的灯组。" : unavailableAddHint(length5, floorTargets);
+        focusQueue.append(createEl("p", "i3d-note", emptyListHint));
       }
     }
     focusQueue.append(pickerGeneration);
-    disabled17.disabled = value133 || !capabilityCache || saveButton || unsubscribeAccess;
+    disabled17.disabled = isSavingConfig || !capabilityCache || saveButton || unsubscribeAccess;
     if (saveButton || unsubscribeAccess) {
       for (const closest of focusQueue.querySelectorAll("input, select, button")) {
         if (!closest.closest(".i3d-focus-settings")) {
@@ -1813,57 +1837,57 @@ export async function openInteraction3dEditor({
       }
     }
   }
-  function fn13() {
-    liveStates = mountInteraction3d(value129, {
+  function mountPreviewRuntime() {
+    liveStates = mountInteraction3d(previewHost, {
       component: {
         ...component,
-        properties: value144()
+        properties: getPreviewProperties()
       },
       context: {
         document: doc,
         states
       },
       editing: true,
-      editingVacuumId: createEl ? arg77 : "",
-      editingModule: dialog ? arg75 : viewPane ? "cover" : body ? "climate" : "light",
-      onStates(arg37) {
+      editingVacuumId: isVacuumShortcut ? vacuumId : "",
+      editingModule: isDeviceLike ? deviceKindLocal : isCover ? "cover" : isClimate ? "climate" : "light",
+      onStates(incomingStates) {
         if (!refreshCapabilities) {
-          value135 = arg37;
-          if (!aspectBox) {
-            for (const value of value138()) {
-              fn4(value);
+          latestStatesByEntity = incomingStates;
+          if (!isNonLight) {
+            for (const value of getCurrentItems()) {
+              resolveEntityLightState(value);
             }
           }
-          value136();
+          refreshEffectCapabilityUi();
         }
       },
-      onReady(arg38) {
-        value130++;
+      onReady(readyDraft) {
+        cameraCommandGeneration++;
         saveButton = false;
         unsubscribeAccess = false;
         mode = null;
-        draftRevision = arg38;
+        draftRevision = readyDraft;
         if (!draftRevision.floors.some(id18 => id18.id === syncPreviewSize)) {
           syncPreviewSize = draftRevision.floors[0]?.id || "";
         }
-        fn12();
+        rebuildConfigSidebar();
         mountRuntime();
-        if (arg76) {
-          arg76 = false;
-          queueMicrotask(fn9);
+        if (startAdding) {
+          startAdding = false;
+          queueMicrotask(openAddDialog);
         }
       },
       onEdit(action) {
         if (!refreshCapabilities && !!capabilityCache && !close5 && !close7) {
           if (action.action === "light-region-overrides") {
             effectRangeOpen.lightRegionOverrides = structuredClone(action.overrides || {});
-            value134++;
-            if (!value133) {
-              textContent8.textContent = "";
+            dirtyRevision++;
+            if (!isSavingConfig) {
+              saveStatusEl.textContent = "";
             }
           }
-          if (createEl) {
-            const id19 = value138().find(id4 => "vacuum-room:" + arg77 + ":" + id4.id === action.id);
+          if (isVacuumShortcut) {
+            const id19 = getCurrentItems().find(id4 => "vacuum-room:" + vacuumId + ":" + id4.id === action.id);
             if (id19) {
               saving = id19.id;
               if (action.action === "position") {
@@ -1871,15 +1895,15 @@ export async function openInteraction3dEditor({
                 id19.y = action.y;
                 mountRuntime();
               }
-              fn12();
+              rebuildConfigSidebar();
               if (action.action === "select") {
                 mountRuntime();
               }
             }
             return;
           }
-          if (createButton && action.id?.startsWith("vacuum-room:")) {
-            const id20 = value138().find(shortcuts => (shortcuts.shortcuts || []).some(id2 => "vacuum-room:" + shortcuts.id + ":" + id2.id === action.id));
+          if (isVacuum && action.id?.startsWith("vacuum-room:")) {
+            const id20 = getCurrentItems().find(shortcuts => (shortcuts.shortcuts || []).some(id2 => "vacuum-room:" + shortcuts.id + ":" + id2.id === action.id));
             const x = id20?.shortcuts.find(id5 => "vacuum-room:" + id20.id + ":" + id5.id === action.id);
             if (x) {
               saving = id20.id;
@@ -1889,7 +1913,7 @@ export async function openInteraction3dEditor({
                 mountRuntime();
               }
               if (action.action === "select") {
-                fn12();
+                rebuildConfigSidebar();
               }
             }
             return;
@@ -1897,19 +1921,19 @@ export async function openInteraction3dEditor({
           if (action.action === "focus-exited") {
             saveButton = false;
             mode = null;
-            fn12();
+            rebuildConfigSidebar();
           }
           if (action.action === "select") {
             saving = action.id;
-            fn12();
+            rebuildConfigSidebar();
             mountRuntime();
           }
           if (action.action === "position") {
-            const x2 = value138().find(id6 => id6.id === action.id);
+            const x2 = getCurrentItems().find(id6 => id6.id === action.id);
             if (x2) {
               x2.x = action.x;
               x2.y = action.y;
-              fn12();
+              rebuildConfigSidebar();
               mountRuntime();
             }
           }
@@ -1927,43 +1951,43 @@ export async function openInteraction3dEditor({
       }
     });
   }
-  const value145 = subscribeInteraction3dAccess(status => {
+  const unsubscribeAccessWatch = subscribeInteraction3dAccess(status => {
     if (!refreshCapabilities) {
       capabilityCache = status.allowed;
-      disabled17.disabled = value133 || !capabilityCache || saveButton || unsubscribeAccess;
+      disabled17.disabled = isSavingConfig || !capabilityCache || saveButton || unsubscribeAccess;
       focusQueue.inert = !capabilityCache;
-      setAttribute12.hidden = capabilityCache || !!liveStates && status.status !== "denied";
-      setAttribute12.textContent = status.status === "denied" || status.status === "unavailable" ? status.message : "正在准备户型…";
+      accessStatusEl.hidden = capabilityCache || !!liveStates && status.status !== "denied";
+      accessStatusEl.textContent = status.status === "denied" || status.status === "unavailable" ? status.message : "正在准备户型…";
       if (capabilityCache) {
         if (liveStates) {
           liveStates.setAuthorized(true);
         } else {
-          fn13();
+          mountPreviewRuntime();
         }
       } else {
-        fn8();
+        closeAddDialog();
         renderSidebar();
         closeEditor?.close();
-        value132++;
+        pickerSession++;
         close6?.close();
-        value130++;
+        cameraCommandGeneration++;
         saveButton = false;
         unsubscribeAccess = false;
         mode = null;
-        fn12();
+        rebuildConfigSidebar();
         liveStates?.setAuthorized(false);
         if (status.status === "denied") {
           liveStates?.();
           liveStates = null;
-          fn12();
+          rebuildConfigSidebar();
         }
       }
     }
   });
-  fn12();
-  setAttribute11.showModal();
+  rebuildConfigSidebar();
+  editorDialog.showModal();
   document.dispatchEvent(new Event("hb-i3d-preview-scope"));
-  value142();
+  fitPreviewAspect();
 }
 export async function openInteraction3dAppearanceEditor({
   component: appearanceComponent,
@@ -1988,34 +2012,34 @@ export async function openInteraction3dAppearanceEditor({
   rel2.rel = "stylesheet";
   rel2.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15";
   document.head.append(rel2);
-  const value146 = (arg59, element6 = "") => {
-    const textContent5 = document.createElement(arg59);
-    textContent5.textContent = element6;
-    return textContent5;
+  const createEl = (appearanceTag, element6 = "") => {
+    const appearanceNode = document.createElement(appearanceTag);
+    appearanceNode.textContent = element6;
+    return appearanceNode;
   };
-  const getBoundingClientRect = value146("dialog");
+  const getBoundingClientRect = createEl("dialog");
   getBoundingClientRect.className = "i3d-editor i3d-appearance-editor";
   getBoundingClientRect.setAttribute("aria-label", "户型进阶设置");
-  const addEventListener3 = value146("header");
-  const append50 = value146("div");
-  append50.className = "i3d-appearance-body";
-  const className18 = value146("p");
+  const addEventListener3 = createEl("header");
+  const appearanceBody = createEl("div");
+  appearanceBody.className = "i3d-appearance-body";
+  const className18 = createEl("p");
   className18.className = "i3d-error";
   className18.setAttribute("role", "status");
   let id41;
-  const value147 = (arg60, arg61) => {
+  const positionAppearanceDialog = (dialogLeft, dialogTop) => {
     const currentRect = getBoundingClientRect.getBoundingClientRect();
     Object.assign(getBoundingClientRect.style, {
       margin: "0",
       right: "auto",
       bottom: "auto",
-      left: Math.max(8, Math.min(arg60, window.innerWidth - currentRect.width - 8)) + "px",
-      top: Math.max(8, Math.min(arg61, window.innerHeight - currentRect.height - 8)) + "px"
+      left: Math.max(8, Math.min(dialogLeft, window.innerWidth - currentRect.width - 8)) + "px",
+      top: Math.max(8, Math.min(dialogTop, window.innerHeight - currentRect.height - 8)) + "px"
     });
   };
-  const value148 = () => {
+  const clampAppearanceDialog = () => {
     const left = getBoundingClientRect.getBoundingClientRect();
-    value147(left.left, left.top);
+    positionAppearanceDialog(left.left, left.top);
   };
   addEventListener3.title = "按住标题栏拖动";
   addEventListener3.addEventListener("pointerdown", pointerEvent => {
@@ -2035,7 +2059,7 @@ export async function openInteraction3dAppearanceEditor({
   });
   addEventListener3.addEventListener("pointermove", moveEvent => {
     if (!!id41 && id41.id === moveEvent.pointerId) {
-      value147(id41.left + moveEvent.clientX - id41.x, id41.top + moveEvent.clientY - id41.y);
+      positionAppearanceDialog(id41.left + moveEvent.clientX - id41.x, id41.top + moveEvent.clientY - id41.y);
     }
   });
   for (const endEventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
@@ -2043,53 +2067,53 @@ export async function openInteraction3dAppearanceEditor({
       id41 = null;
     });
   }
-  window.addEventListener("resize", value148);
-  const value149 = () => editorView.update({
+  window.addEventListener("resize", clampAppearanceDialog);
+  const previewAppearanceLighting = () => editorView.update({
     ...appearanceProps,
     baseLighting: floorBrightness
   });
-  const value150 = (arg62 = false) => {
+  const closeAppearanceEditor = (keepAppearancePreview = false) => {
     if (!appearanceStylesheet) {
       appearanceStylesheet = true;
-      if (!arg62) {
+      if (!keepAppearancePreview) {
         editorView.update(appearanceProps);
       }
-      window.removeEventListener("resize", value148);
+      window.removeEventListener("resize", clampAppearanceDialog);
       getBoundingClientRect.close();
       getBoundingClientRect.remove();
       rel2.remove();
     }
   };
-  const disabled18 = value146("button", "完成");
+  const disabled18 = createEl("button", "完成");
   disabled18.type = "button";
   disabled18.addEventListener("click", async () => {
     disabled18.disabled = true;
     try {
       await requestInteraction3dAccess();
       await appearanceOnSave(floorBrightness);
-      value150(true);
+      closeAppearanceEditor(true);
     } catch (doneError) {
       className18.textContent = doneError.message;
       disabled18.disabled = false;
     }
   });
-  const type4 = value146("button", "取消");
+  const type4 = createEl("button", "取消");
   type4.type = "button";
-  type4.addEventListener("click", () => value150());
-  const className19 = value146("span", "拖动");
+  type4.addEventListener("click", () => closeAppearanceEditor());
+  const className19 = createEl("span", "拖动");
   className19.className = "i3d-drag-hint";
-  addEventListener3.append(value146("strong", "户型进阶设置"), className19, disabled18, type4);
+  addEventListener3.append(createEl("strong", "户型进阶设置"), className19, disabled18, type4);
   const map = new Map();
   const helpNote = [];
-  const APPEARANCE_LIGHTING_SECTIONS = baseLighting ? [["整体画面", APPEARANCE_LIGHTING_SECTIONS[0][1].filter(([, arg39]) => arg39 === "exposure")]] : APPEARANCE_LIGHTING_SECTIONS;
+  const APPEARANCE_LIGHTING_SECTIONS = baseLighting ? [["整体画面", APPEARANCE_LIGHTING_SECTIONS[0][1].filter(([, lightingFilterKey]) => lightingFilterKey === "exposure")]] : APPEARANCE_LIGHTING_SECTIONS;
   for (const [sectionTitle, sectionFields] of APPEARANCE_LIGHTING_SECTIONS) {
-    const sectionEl = value146("section");
-    const fieldsGrid = value146("div");
+    const sectionEl = createEl("section");
+    const fieldsGrid = createEl("div");
     fieldsGrid.className = "i3d-appearance-grid";
-    sectionEl.append(value146("h4", sectionTitle), fieldsGrid);
+    sectionEl.append(createEl("h4", sectionTitle), fieldsGrid);
     for (const [fieldTitle, fieldKey, fieldMin, fieldMax, fieldStep] of sectionFields) {
-      const fieldLabelEl = value146("label");
-      const fieldInput = value146("input");
+      const fieldLabelEl = createEl("label");
+      const fieldInput = createEl("input");
       Object.assign(fieldInput, {
         name: "i3d-base-light-" + fieldKey,
         type: "number",
@@ -2101,76 +2125,76 @@ export async function openInteraction3dAppearanceEditor({
       fieldInput.addEventListener("input", () => {
         if (Number.isFinite(fieldInput.valueAsNumber)) {
           floorBrightness[fieldKey] = Math.max(fieldMin, Math.min(fieldMax, fieldInput.valueAsNumber));
-          value149();
+          previewAppearanceLighting();
         }
       });
-      fieldLabelEl.append(value146("span", fieldTitle), fieldInput);
+      fieldLabelEl.append(createEl("span", fieldTitle), fieldInput);
       fieldsGrid.append(fieldLabelEl);
       map.set(fieldKey, fieldInput);
     }
-    append50.append(sectionEl);
+    appearanceBody.append(sectionEl);
   }
   if (baseLighting) {
-    const append21 = value146("section");
-    const append22 = value146("label");
-    const className10 = value146("div");
-    append21.append(value146("h4", "地面颜色"));
+    const floorBrightnessSection = createEl("section");
+    const floorBrightnessLabel = createEl("label");
+    const className10 = createEl("div");
+    floorBrightnessSection.append(createEl("h4", "地面颜色"));
     className10.className = "i3d-floor-brightness";
-    const value107 = value146("input");
-    const setAttribute8 = value146("input");
-    Object.assign(value107, {
+    const floorBrightnessRange = createEl("input");
+    const floorBrightnessNumber = createEl("input");
+    Object.assign(floorBrightnessRange, {
       type: "range",
       min: "50",
       max: "150",
       step: "1",
       value: String(floorBrightness.floorBrightness)
     });
-    Object.assign(setAttribute8, {
+    Object.assign(floorBrightnessNumber, {
       type: "number",
       name: "i3d-base-light-floorBrightness",
       min: "50",
       max: "150",
       step: "1",
-      value: value107.value
+      value: floorBrightnessRange.value
     });
-    value107.setAttribute("aria-label", "地面颜色深浅");
-    setAttribute8.setAttribute("aria-label", "地面亮度百分比");
-    const value108 = valueAsNumber => {
+    floorBrightnessRange.setAttribute("aria-label", "地面颜色深浅");
+    floorBrightnessNumber.setAttribute("aria-label", "地面亮度百分比");
+    const syncFloorBrightness = valueAsNumber => {
       if (Number.isFinite(valueAsNumber.valueAsNumber)) {
         floorBrightness.floorBrightness = Math.max(50, Math.min(150, valueAsNumber.valueAsNumber));
-        value107.value = setAttribute8.value = String(floorBrightness.floorBrightness);
-        value149();
+        floorBrightnessRange.value = floorBrightnessNumber.value = String(floorBrightness.floorBrightness);
+        previewAppearanceLighting();
       }
     };
-    value107.addEventListener("input", () => value108(value107));
-    setAttribute8.addEventListener("input", () => value108(setAttribute8));
-    className10.append(value146("span", "深"), value107, value146("span", "浅"), setAttribute8, value146("span", "%"));
-    append22.append(className10);
-    append21.append(append22, value146("p", "100% 为原色，仅调整户型地面，保留纹理与阴影。"));
-    append50.insertBefore(append21, append50.children[1] || null);
-    map.set("floorBrightness", setAttribute8);
+    floorBrightnessRange.addEventListener("input", () => syncFloorBrightness(floorBrightnessRange));
+    floorBrightnessNumber.addEventListener("input", () => syncFloorBrightness(floorBrightnessNumber));
+    className10.append(createEl("span", "深"), floorBrightnessRange, createEl("span", "浅"), floorBrightnessNumber, createEl("span", "%"));
+    floorBrightnessLabel.append(className10);
+    floorBrightnessSection.append(floorBrightnessLabel, createEl("p", "100% 为原色，仅调整户型地面，保留纹理与阴影。"));
+    appearanceBody.insertBefore(floorBrightnessSection, appearanceBody.children[1] || null);
+    map.set("floorBrightness", floorBrightnessNumber);
     helpNote.push(() => {
-      value107.value = "100";
+      floorBrightnessRange.value = "100";
     });
   }
-  const resetLightingBtn = value146("button", "恢复默认");
+  const resetLightingBtn = createEl("button", "恢复默认");
   resetLightingBtn.type = "button";
   resetLightingBtn.addEventListener("click", () => {
-    for (const [value74, lightingInput] of map) {
-      floorBrightness[value74] = value74 === "floorBrightness" ? 100 : editorView.metadata.defaults[value74];
-      lightingInput.value = String(floorBrightness[value74]);
+    for (const [lightingFieldKey, lightingInput] of map) {
+      floorBrightness[lightingFieldKey] = lightingFieldKey === "floorBrightness" ? 100 : editorView.metadata.defaults[lightingFieldKey];
+      lightingInput.value = String(floorBrightness[lightingFieldKey]);
     }
-    helpNote.forEach(arg40 => arg40());
-    value149();
+    helpNote.forEach(resetFloorBrightnessHook => resetFloorBrightnessHook());
+    previewAppearanceLighting();
   });
-  const helpNote2 = value146("p", baseLighting ? "曝光影响整体画面，地面颜色深浅独立调整。完成后点击页面上方保存。" : "调整当前户型的整体光照与阴影。完成后点击页面上方保存，仅保存至当前 3D 控件。");
+  const helpNote2 = createEl("p", baseLighting ? "曝光影响整体画面，地面颜色深浅独立调整。完成后点击页面上方保存。" : "调整当前户型的整体光照与阴影。完成后点击页面上方保存，仅保存至当前 3D 控件。");
   helpNote2.className = "i3d-note";
-  append50.append(resetLightingBtn, helpNote2, className18);
-  getBoundingClientRect.append(addEventListener3, append50);
+  appearanceBody.append(resetLightingBtn, helpNote2, className18);
+  getBoundingClientRect.append(addEventListener3, appearanceBody);
   document.body.append(getBoundingClientRect);
   getBoundingClientRect.addEventListener("cancel", appearanceCancelEvent => {
     appearanceCancelEvent.preventDefault();
-    value150();
+    closeAppearanceEditor();
   });
   getBoundingClientRect.showModal();
 }

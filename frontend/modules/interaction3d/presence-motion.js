@@ -1,108 +1,108 @@
 export const PRESENCE_PAGES = [["overview", "总览"], ["light", "灯光"], ["environment", "环境"], ["devices", "设备"], ["vacuum", "扫地机"], ["security", "安防"]];
-export function presenceVisibleOnPage(displayPages, arg5) {
-  const includes = displayPages.displayPages ?? ["overview", "security"];
-  return PRESENCE_PAGES.some(([arg2]) => arg2 === arg5) && (includes === "all" || Array.isArray(includes) && includes.includes(arg5));
+export function presenceVisibleOnPage(sensor, pageId) {
+  const includes = sensor.displayPages ?? ["overview", "security"];
+  return PRESENCE_PAGES.some(([id]) => id === pageId) && (includes === "all" || Array.isArray(includes) && includes.includes(pageId));
 }
-export function validPresenceRoute(length2) {
-  if (!Array.isArray(length2) || length2.length < 3 || length2.length > 128 || length2.some(x3 => !x3 || !Number.isFinite(x3.x) || !Number.isFinite(x3.y) || Math.abs(x3.x) > 1000000 || Math.abs(x3.y) > 1000000)) {
+export function validPresenceRoute(route) {
+  if (!Array.isArray(route) || route.length < 3 || route.length > 128 || route.some(point => !point || !Number.isFinite(point.x) || !Number.isFinite(point.y) || Math.abs(point.x) > 1000000 || Math.abs(point.y) > 1000000)) {
     return false;
   }
-  const x6 = length2[0];
-  if (new Set(length2.map(x => x.x + "," + x.y)).size !== length2.length) {
+  const first = route[0];
+  if (new Set(route.map(point => point.x + "," + point.y)).size !== route.length) {
     return false;
   } else {
-    return length2.slice(1, -1).some((x2, arg) => {
-      const y = length2[arg + 2];
-      return Math.abs((x2.x - x6.x) * (y.y - x6.y) - (x2.y - x6.y) * (y.x - x6.x)) > 0.000001;
+    return route.slice(1, -1).some((point, index) => {
+      const next = route[index + 2];
+      return Math.abs((point.x - first.x) * (next.y - first.y) - (point.y - first.y) * (next.x - first.x)) > 0.000001;
     });
   }
 }
-export function snapsToPresenceStart(arg6, x7, arg7, arg8 = 16) {
-  return validPresenceRoute(arg6) && !!x7 && Math.hypot(x7.x - arg6[0].x, x7.y - arg6[0].y) * Math.abs(arg7) <= arg8;
+export function snapsToPresenceStart(route, point, scale, threshold = 16) {
+  return validPresenceRoute(route) && !!point && Math.hypot(point.x - route[0].x, point.y - route[0].y) * Math.abs(scale) <= threshold;
 }
 export function presenceIsActive(newState) {
   const available = newState?.newState || newState;
   return available?.available !== false && available?.state === "on";
 }
-export function createPresenceTriggers(arg9 = () => Date.now()) {
-  const map = new Map();
+export function createPresenceTriggers(getNow = () => Date.now()) {
+  const triggers = new Map();
   return {
-    sync(map, arg3) {
-      const has = new Set(map.map(id => id.id));
-      for (const value2 of map.keys()) {
-        if (!has.has(value2)) {
-          map.delete(value2);
+    sync(sensors, states) {
+      const keepIds = new Set(sensors.map(sensor => sensor.id));
+      for (const id of triggers.keys()) {
+        if (!keepIds.has(id)) {
+          triggers.delete(id);
         }
       }
-      for (const entityId of map) {
-        const state = arg3[entityId.entityId]?.newState || arg3[entityId.entityId];
-        if (entityId.entityId?.startsWith("event.")) {
+      for (const sensor of sensors) {
+        const state = states[sensor.entityId]?.newState || states[sensor.entityId];
+        if (sensor.entityId?.startsWith("event.")) {
           const started = /^\d{4}-\d{2}-\d{2}T/.test(state?.state || "") ? Date.parse(state.state) : NaN;
-          map.set(entityId.id, {
-            entityId: entityId.entityId,
+          triggers.set(sensor.id, {
+            entityId: sensor.entityId,
             on: state?.available !== false && Number.isFinite(started),
             started,
-            duration: entityId.displayDuration > 0 ? entityId.displayDuration : 30
+            duration: sensor.displayDuration > 0 ? sensor.displayDuration : 30
           });
           continue;
         }
         const on = presenceIsActive(state);
-        const on2 = map.get(entityId.id);
-        const value = Date.parse(state?.lastChanged || state?.last_changed || "");
-        const timestamp = Number.isFinite(value) ? Math.min(value, arg9()) : null;
-        if (!on2 || on2.entityId !== entityId.entityId || on && (!on2.on || timestamp !== null && timestamp !== on2.timestamp)) {
-          map.set(entityId.id, {
-            entityId: entityId.entityId,
+        const previous = triggers.get(sensor.id);
+        const parsed = Date.parse(state?.lastChanged || state?.last_changed || "");
+        const timestamp = Number.isFinite(parsed) ? Math.min(parsed, getNow()) : null;
+        if (!previous || previous.entityId !== sensor.entityId || on && (!previous.on || timestamp !== null && timestamp !== previous.timestamp)) {
+          triggers.set(sensor.id, {
+            entityId: sensor.entityId,
             on,
             timestamp,
-            started: timestamp ?? arg9(),
-            duration: entityId.displayDuration ?? 0
+            started: timestamp ?? getNow(),
+            duration: sensor.displayDuration ?? 0
           });
         } else {
-          on2.on = on;
-          on2.duration = entityId.displayDuration ?? 0;
+          previous.on = on;
+          previous.duration = sensor.displayDuration ?? 0;
         }
       }
     },
-    visible(arg4) {
-      const started2 = map.get(arg4);
-      return !!started2?.on && arg9() >= started2.started && (!started2.duration || arg9() - started2.started < started2.duration * 1000);
+    visible(id) {
+      const trigger = triggers.get(id);
+      return !!trigger?.on && getNow() >= trigger.started && (!trigger.duration || getNow() - trigger.started < trigger.duration * 1000);
     }
   };
 }
-export function closedPath(length3) {
-  const push = [];
-  let start2 = 0;
-  for (let value3 = 0; value3 < length3.length; value3++) {
-    const x4 = length3[value3];
-    const x5 = length3[(value3 + 1) % length3.length];
-    const length = Math.hypot(x5.x - x4.x, x5.y - x4.y, x5.z - x4.z);
+export function closedPath(points) {
+  const segments = [];
+  let offset = 0;
+  for (let i = 0; i < points.length; i++) {
+    const from = points[i];
+    const to = points[(i + 1) % points.length];
+    const length = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
     if (length > 1e-8) {
-      push.push({
-        a: x4,
-        b: x5,
-        start: start2,
+      segments.push({
+        a: from,
+        b: to,
+        start: offset,
         length
       });
-      start2 += length;
+      offset += length;
     }
   }
   return {
-    length: start2,
-    segments: push
+    length: offset,
+    segments
   };
 }
-export function sampleClosedPath(length4, arg10) {
-  if (!(length4.length > 0)) {
+export function sampleClosedPath(path, distance) {
+  if (!(path.length > 0)) {
     return null;
   }
-  const value4 = (arg10 % length4.length + length4.length) % length4.length;
-  const a = length4.segments.find(start => value4 < start.start + start.length) || length4.segments.at(-1);
-  const value5 = (value4 - a.start) / a.length;
+  const wrapped = (distance % path.length + path.length) % path.length;
+  const segment = path.segments.find(entry => wrapped < entry.start + entry.length) || path.segments.at(-1);
+  const t = (wrapped - segment.start) / segment.length;
   return {
-    x: a.a.x + (a.b.x - a.a.x) * value5,
-    y: a.a.y + (a.b.y - a.a.y) * value5,
-    z: a.a.z + (a.b.z - a.a.z) * value5,
-    heading: Math.atan2(a.b.x - a.a.x, a.b.z - a.a.z)
+    x: segment.a.x + (segment.b.x - segment.a.x) * t,
+    y: segment.a.y + (segment.b.y - segment.a.y) * t,
+    z: segment.a.z + (segment.b.z - segment.a.z) * t,
+    heading: Math.atan2(segment.b.x - segment.a.x, segment.b.z - segment.a.z)
   };
 }

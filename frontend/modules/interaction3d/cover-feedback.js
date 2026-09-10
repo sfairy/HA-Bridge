@@ -1,53 +1,63 @@
 export function createCoverFeedback({
-  now: arg12 = () => performance.now(),
-  travelTime: arg13 = 2000
+  now = () => performance.now(),
+  travelTime = 2000
 } = {}) {
   const items = new Map();
-  function fn(motion, arg) {
-    if (!motion.motion) {
+  const displayPosition = (position, actual) => {
+    if (typeof position == "number" && Number.isFinite(position)) {
+      return Math.max(0, Math.min(100, position));
+    }
+    const state = String(actual?.state || "").trim().toLowerCase();
+    if (state === "closed" || state === "closing") {
+      return 0;
+    }
+    return 100;
+  };
+  function advanceMotion(entry, nowMs) {
+    if (!entry.motion) {
       return false;
     }
     const {
-      from: value10,
-      to: value11,
-      start: value12,
-      duration: value13,
-      linear: value14
-    } = motion.motion;
-    const value15 = Math.max(0, Math.min(1, (arg - value12) / value13));
-    const value16 = value14 ? value15 : value15 * value15 * (3 - value15 * 2);
-    motion.position = value10 + (value11 - value10) * value16;
-    if (value15 === 1) {
-      motion.motion = null;
+      from,
+      to,
+      start,
+      duration,
+      linear
+    } = entry.motion;
+    const progress = Math.max(0, Math.min(1, (nowMs - start) / duration));
+    const eased = linear ? progress : progress * progress * (3 - progress * 2);
+    entry.position = from + (to - from) * eased;
+    if (progress === 1) {
+      entry.motion = null;
     }
     return true;
   }
-  function fn2(position, to, duration = 420, linear = false) {
-    fn(position, arg12());
+  function setMotionTo(entry, to, duration = 420, linear = false) {
+    advanceMotion(entry, now());
     if (to === null) {
-      position.motion = null;
-      position.position = null;
+      entry.motion = null;
+      entry.position = null;
       return;
     }
-    if (position.position === null || position.position === to) {
-      position.position = to;
-      position.motion = null;
+    if (entry.position === null || entry.position === to) {
+      entry.position = to;
+      entry.motion = null;
       return;
     }
-    position.motion = {
-      from: position.position,
+    entry.motion = {
+      from: entry.position,
       to,
-      start: arg12(),
+      start: now(),
       duration,
       linear
     };
   }
-  function sync(arg2, position2) {
-    let intent3 = items.get(arg2);
-    if (!intent3) {
-      items.set(arg2, {
-        actual: position2,
-        position: position2.position,
+  function sync(entityId, nextState) {
+    let entry = items.get(entityId);
+    if (!entry) {
+      items.set(entityId, {
+        actual: nextState,
+        position: nextState.position,
         motion: null,
         intent: null,
         token: null,
@@ -56,137 +66,138 @@ export function createCoverFeedback({
       });
       return;
     }
-    const raw2 = intent3.actual;
-    const value17 = raw => Date.parse(raw.raw.last_updated ?? raw.raw.updatedAt ?? "");
-    if (value17(position2) < value17(raw2)) {
+    const prevActual = entry.actual;
+    const parseUpdatedAt = cover => Date.parse(cover.raw.last_updated ?? cover.raw.updatedAt ?? "");
+    if (parseUpdatedAt(nextState) < parseUpdatedAt(prevActual)) {
       return;
     }
-    intent3.actual = position2;
-    if (!position2.available) {
-      intent3.intent = null;
-      intent3.draft = null;
-      intent3.error = "";
-      fn2(intent3, position2.position);
+    entry.actual = nextState;
+    if (!nextState.available) {
+      entry.intent = null;
+      entry.draft = null;
+      entry.error = "";
+      setMotionTo(entry, nextState.position);
       return;
     }
-    const value18 = position2.position !== raw2.position;
-    const value19 = position2.state !== raw2.state;
-    if (intent3.intent) {
-      const confirmed = intent3.intent;
-      const value = value18 || value19 || position2.raw.last_updated !== raw2.raw.last_updated || position2.raw.updatedAt !== raw2.raw.updatedAt;
-      const value2 = confirmed.stop && value && !position2.moving;
-      const value3 = value && position2.position !== null && position2.position === confirmed.target;
-      const value4 = confirmed.confirmed && value19 && !position2.moving;
-      const value5 = confirmed.direction;
-      const value6 = value18 && position2.position !== null && (confirmed.initialPosition === null || (position2.position - confirmed.initialPosition) * value5 > 0);
-      const value7 = value19 && (value5 > 0 && position2.opening || value5 < 0 && position2.closing);
-      if (value7) {
+    const positionChanged = nextState.position !== prevActual.position;
+    const stateChanged = nextState.state !== prevActual.state;
+    if (entry.intent) {
+      const confirmed = entry.intent;
+      const hasUpdate = positionChanged || stateChanged || nextState.raw.last_updated !== prevActual.raw.last_updated || nextState.raw.updatedAt !== prevActual.raw.updatedAt;
+      const stopConfirmed = confirmed.stop && hasUpdate && !nextState.moving;
+      const reachedTarget = hasUpdate && nextState.position !== null && nextState.position === confirmed.target;
+      const settledAfterConfirm = confirmed.confirmed && stateChanged && !nextState.moving;
+      const direction = confirmed.direction;
+      const movedToward = positionChanged && nextState.position !== null && (confirmed.initialPosition === null || (nextState.position - confirmed.initialPosition) * direction > 0);
+      const movingInDirection = stateChanged && (direction > 0 && nextState.opening || direction < 0 && nextState.closing);
+      if (movingInDirection) {
         confirmed.expires = Infinity;
         confirmed.confirmed = true;
       }
-      if (!value2 && !value4 && !value6 && !value3 && (!value7 || !value18)) {
+      if (!stopConfirmed && !settledAfterConfirm && !movedToward && !reachedTarget && (!movingInDirection || !positionChanged)) {
         return;
       }
-      intent3.intent = null;
-      intent3.error = "";
-    } else if (!value18) {
+      entry.intent = null;
+      entry.error = "";
+    } else if (!positionChanged) {
       return;
     }
-    fn2(intent3, position2.position);
+    setMotionTo(entry, nextState.position);
   }
   function begin(service, token) {
-    const position3 = items.get(service.entityId);
-    if (!position3) {
+    const entry = items.get(service.entityId);
+    if (!entry) {
       return;
     }
-    fn(position3, arg12());
-    position3.error = "";
-    position3.token = token;
-    if (position3.draft !== null) {
-      position3.position = position3.draft;
-      position3.motion = null;
-      position3.draft = null;
+    advanceMotion(entry, now());
+    entry.error = "";
+    entry.token = token;
+    if (entry.draft !== null) {
+      entry.position = entry.draft;
+      entry.motion = null;
+      entry.draft = null;
     }
     const stop = service.service === "stop_cover";
-    const target = stop ? position3.position : service.service === "open_cover" ? 100 : service.service === "close_cover" ? 0 : service.data.position;
-    const position4 = position3.position ?? 0;
-    position3.intent = {
+    const target = stop ? entry.position : service.service === "open_cover" ? 100 : service.service === "close_cover" ? 0 : service.data.position;
+    const fromPosition = displayPosition(entry.position, entry.actual);
+    entry.intent = {
       stop,
       target,
       confirmed: false,
-      direction: Math.sign((target ?? position4) - (target === position4 ? position3.actual.position ?? position4 : position4)),
-      initialPosition: position3.actual.position,
-      expires: arg12() + 15000
+      direction: Math.sign((target ?? fromPosition) - (target === fromPosition ? displayPosition(entry.actual.position, entry.actual) : fromPosition)),
+      initialPosition: entry.actual.position,
+      expires: now() + 15000
     };
     if (stop) {
-      position3.motion = null;
+      entry.motion = null;
     } else {
-      position3.position = position4;
-      fn2(position3, target, Math.max(420, Math.abs(target - position4) / 100 * arg13), true);
+      entry.position = fromPosition;
+      setMotionTo(entry, target, Math.max(420, Math.abs(target - fromPosition) / 100 * travelTime), true);
     }
   }
-  function fail(arg3, arg4, error) {
-    const token2 = items.get(arg3);
-    if (!token2 || token2.token !== arg4) {
+  function fail(entityId, token, error) {
+    const entry = items.get(entityId);
+    if (!entry || entry.token !== token) {
       return false;
     } else {
-      token2.intent = null;
-      token2.error = error;
-      fn2(token2, token2.actual.position);
+      entry.intent = null;
+      entry.error = error;
+      setMotionTo(entry, entry.actual.position);
       return true;
     }
   }
-  function read(arg5, arg6) {
-    const draft = items.get(arg5);
-    if (!draft) {
-      return arg6;
+  function read(entityId, fallback) {
+    const entry = items.get(entityId);
+    if (!entry) {
+      return fallback;
     }
-    const opening = draft.actual;
-    const stop2 = draft.intent;
-    const opening2 = stop2 ? !stop2.stop && stop2.direction > 0 && !!draft.motion : opening.opening;
-    const closing = stop2 ? !stop2.stop && stop2.direction < 0 && !!draft.motion : opening.closing;
-    const state = draft.draft !== null ? draft.draft === 0 ? "closed" : "open" : stop2 ? opening2 ? "opening" : closing ? "closing" : draft.position === 0 ? "closed" : "open" : opening.state;
+    const actual = entry.actual;
+    const intent = entry.intent;
+    const isOpening = intent ? !intent.stop && intent.direction > 0 && !!entry.motion : actual.opening;
+    const closing = intent ? !intent.stop && intent.direction < 0 && !!entry.motion : actual.closing;
+    const state = entry.draft !== null ? entry.draft === 0 ? "closed" : "open" : intent ? isOpening ? "opening" : closing ? "closing" : entry.position === 0 ? "closed" : "open" : actual.state;
+    const pose = displayPosition(entry.draft ?? entry.position, actual);
     return {
-      ...opening,
+      ...actual,
       state,
-      position: draft.draft ?? draft.position,
-      opening: opening2,
+      position: entry.draft ?? entry.position,
+      opening: isOpening,
       closing,
-      moving: opening2 || closing,
-      on: opening.available && (opening2 || (draft.draft ?? draft.position ?? 0) > 0),
-      preview: !!stop2,
-      error: draft.error
+      moving: isOpening || closing,
+      on: actual.available && (isOpening || pose > 0),
+      preview: !!intent,
+      error: entry.error
     };
   }
-  function tick(arg7 = arg12()) {
-    let value20 = false;
-    for (const [value8, intent] of items) {
-      if (intent.intent?.expires <= arg7) {
-        value20 = fail(value8, intent.token, "窗帘未响应，请重试。") || value20;
+  function tick(nowMs = now()) {
+    let changed = false;
+    for (const [entityId, entry] of items) {
+      if (entry.intent?.expires <= nowMs) {
+        changed = fail(entityId, entry.token, "窗帘未响应，请重试。") || changed;
       }
-      value20 = fn(intent, arg7) || value20;
+      changed = advanceMotion(entry, nowMs) || changed;
     }
-    return value20;
+    return changed;
   }
-  function nextDelay(arg8 = arg12()) {
-    let value21 = Infinity;
-    for (const intent2 of items.values()) {
-      value21 = Math.min(value21, intent2.motion ? 1000 / 30 : Infinity, intent2.intent ? Math.max(0, intent2.intent.expires - arg8) : Infinity);
+  function nextDelay(nowMs = now()) {
+    let delay = Infinity;
+    for (const entry of items.values()) {
+      delay = Math.min(delay, entry.motion ? 1000 / 30 : Infinity, entry.intent ? Math.max(0, entry.intent.expires - nowMs) : Infinity);
     }
-    return value21;
+    return delay;
   }
-  function retain(arg9) {
-    const has = new Set(arg9);
-    for (const value9 of items.keys()) {
-      if (!has.has(value9)) {
-        items.delete(value9);
+  function retain(entityIds) {
+    const has = new Set(entityIds);
+    for (const entityId of items.keys()) {
+      if (!has.has(entityId)) {
+        items.delete(entityId);
       }
     }
   }
-  function preview(arg10, arg11) {
-    const draft2 = items.get(arg10);
-    if (draft2) {
-      draft2.draft = Number.isFinite(arg11) ? Math.max(0, Math.min(100, arg11)) : null;
+  function preview(entityId, position) {
+    const entry = items.get(entityId);
+    if (entry) {
+      entry.draft = Number.isFinite(position) ? Math.max(0, Math.min(100, position)) : null;
     }
   }
   return {

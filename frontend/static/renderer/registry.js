@@ -166,28 +166,28 @@ export function coverComponentIsDream(component, entityId = "", stateEntry = nul
   const searchText = entityId + " " + (state.attributes?.friendly_name || "") + " " + (metadata.name || "") + " " + (metadata.originalName || "");
   return Number.isFinite(Number(state.attributes?.current_tilt_position)) || !!(numeric & 240) || /梦幻|竖帘|垂直帘|百叶|(^|[._-])novo([._-]|$)/i.test(searchText);
 }
-function Ge(component, arg11, arg12, entityMetadata) {
-  const coverMotorDirection = readState(arg12) || {};
+function Ge(component, coverEntityId, entityOrEvent, entityMetadata) {
+  const coverMotorDirection = readState(entityOrEvent) || {};
   const reverseEntity = String(coverMotorDirection.state || "").trim().toLowerCase();
   const stateEntry = he(component);
-  const value17 = stateEntry && {
+  const presentationState = stateEntry && {
     open: "closed",
     closed: "open",
     opening: "closing",
     closing: "opening"
   }[reverseEntity] || reverseEntity;
-  if (value17 === "opening") {
+  if (presentationState === "opening") {
     return true;
   }
-  if (value17 === "closing") {
+  if (presentationState === "closing") {
     return false;
   }
-  if (coverComponentIsDream(component, arg11, coverMotorDirection, entityMetadata.entityMetadata)) {
-    return value17 === "open";
+  if (coverComponentIsDream(component, coverEntityId, coverMotorDirection, entityMetadata.entityMetadata)) {
+    return presentationState === "open";
   }
-  const value18 = Number(coverMotorDirection.attributes?.current_position);
-  if (Number.isFinite(value18)) {
-    return (stateEntry ? 100 - value18 : value18) > COVER_CLOSED_POSITION_EPSILON;
+  const currentPosition = Number(coverMotorDirection.attributes?.current_position);
+  if (Number.isFinite(currentPosition)) {
+    return (stateEntry ? 100 - currentPosition : currentPosition) > COVER_CLOSED_POSITION_EPSILON;
   } else if (stateEntry) {
     return !entityStateIsActive(coverMotorDirection);
   } else {
@@ -251,7 +251,7 @@ function tt(entityMetadata, entityId) {
   if (metadata) {
     return metadata;
   }
-  const value19 = String(entityMetadata || "").split(".")[0];
+  const entityDomain = String(entityMetadata || "").split(".")[0];
   return {
     binary_sensor: "mdi:radiobox-marked",
     button: "mdi:gesture-tap-button",
@@ -267,7 +267,7 @@ function tt(entityMetadata, entityId) {
     sensor: "mdi:gauge",
     switch: "mdi:toggle-switch-outline",
     water_heater: "mdi:water-boiler"
-  }[value19] || "mdi:devices";
+  }[entityDomain] || "mdi:devices";
 }
 export function formatEntityState(component, entityId = "", context = {}) {
   const state = readState(component);
@@ -329,11 +329,11 @@ function iconButtonEffectIsActive(entityId, stateEntry) {
   return !!icon && !!componentIsActive(entityId, icon, stateEntry.states?.get(icon), stateEntry);
 }
 export const ICON_BUTTON_EFFECT_BASE_TEMPERATURE_KELVIN = 3500;
-function nt(arg13) {
-  if (arg13 == null || arg13 === "" || !Number.isFinite(Number(arg13))) {
+function nt(brightnessPercent) {
+  if (brightnessPercent == null || brightnessPercent === "" || !Number.isFinite(Number(brightnessPercent))) {
     return 1;
   }
-  const numeric = Math.max(0, Math.min(1, Number(arg13) / 100));
+  const numeric = Math.max(0, Math.min(1, Number(brightnessPercent) / 100));
   if (numeric <= 0) {
     return 0;
   } else {
@@ -401,10 +401,10 @@ function ot(component, context) {
 }
 function st(component, context) {
   const entityId = component.bindings?.entity?.entityId || "";
-  const value20 = readState(context.states?.get(entityId));
-  const value21 = resolveClimateDeviceType(component, value20, entityId);
+  const climateState = readState(context.states?.get(entityId));
+  const climateDeviceType = resolveClimateDeviceType(component, climateState, entityId);
   if (context.editable && context.previewState === "on") {
-    if (value21 === "bath-heater") {
+    if (climateDeviceType === "bath-heater") {
       return "heat";
     } else {
       return "cool";
@@ -412,7 +412,7 @@ function st(component, context) {
   } else if (context.editable && context.previewState === "off") {
     return "off";
   } else {
-    return climatePresentationMode(value20, value21).toLowerCase();
+    return climatePresentationMode(climateState, climateDeviceType).toLowerCase();
   }
 }
 function climateIsPoweredOnForComponent(component, context) {
@@ -429,92 +429,92 @@ function climateIsPoweredOnForComponent(component, context) {
 function at(component, context) {
   const entityId = component.bindings?.entity?.entityId || "";
   const state = readState(context.states?.get(entityId));
-  const value22 = resolveClimateDeviceType(component, state, entityId);
+  const effectDeviceType = resolveClimateDeviceType(component, state, entityId);
   if (context.editable && context.previewState === "on") {
     return "cool";
   } else if (context.editable && context.previewState === "off") {
     return "off";
   } else {
-    return climateEffectMode(state, value22);
+    return climateEffectMode(state, effectDeviceType);
   }
 }
 function rt(component, states2) {
   const entityId = component.bindings?.entity?.entityId || "";
   const state = readState(states2.states?.get(entityId));
   const deviceType = st(component, states2);
-  const value23 = resolveClimateDeviceType(component, state, entityId);
-  const value24 = climateModeLabel(deviceType, value23);
+  const labelDeviceType = resolveClimateDeviceType(component, state, entityId);
+  const climateModeText = climateModeLabel(deviceType, labelDeviceType);
   if (!climateIsPoweredOnForComponent(component, states2)) {
-    return value24;
+    return climateModeText;
   }
   const targetTemperature = normalizeClimateCapabilities(state);
   if (targetTemperature.targetTemperature !== null) {
-    return value24 + " · " + targetTemperature.targetTemperature + "°C";
+    return climateModeText + " · " + targetTemperature.targetTemperature + "°C";
   } else if (targetTemperature.currentTemperature !== null) {
-    return value24 + " · " + targetTemperature.currentTemperature + "°C";
+    return climateModeText + " · " + targetTemperature.currentTemperature + "°C";
   } else {
-    return value24;
+    return climateModeText;
   }
 }
-function ct(airflowMotion = {}, arg14 = "other") {
+function ct(airflowMotion = {}, effectMode = "other") {
   const entityId = airflowMotion.airflowMotion === "static" ? "static" : "dynamic";
-  const state = arg14 === "cool" ? safeCssColor(airflowMotion.airflowCoolColor, "#73c8ff") : arg14 === "heat" ? safeCssColor(airflowMotion.airflowHeatColor, "#ff8a65") : safeCssColor(airflowMotion.airflowOtherColor, "#ffffff");
+  const state = effectMode === "cool" ? safeCssColor(airflowMotion.airflowCoolColor, "#73c8ff") : effectMode === "heat" ? safeCssColor(airflowMotion.airflowHeatColor, "#ff8a65") : safeCssColor(airflowMotion.airflowOtherColor, "#ffffff");
   const presentationMode = clampWithDefault(airflowMotion.airflowAngle, -360, 360, 7);
   const deviceType = clampWithDefault(airflowMotion.airflowLength, 10, 300, 200) / 100;
   const modeLabel = clampWithDefault(airflowMotion.airflowFadePosition, 15, 100, 50) / 100;
   const climateCapabilities = clampWithDefault(airflowMotion.airflowSpread, 10, 300, 100);
-  const value25 = Math.tanh(clampWithDefault(airflowMotion.airflowCurve, -200, 200, 20) / 140);
-  const value26 = clampWithDefault(airflowMotion.airflowDensity, 20, 200, 60) / 100;
-  const value27 = clampWithDefault(airflowMotion.airflowIrregularity, 0, 200, 50) / 100;
-  const value28 = clampWithDefault(airflowMotion.airflowThickness, 5, 300, 40) / 100;
-  const value29 = clampWithDefault(airflowMotion.airflowStrength, 0, 500, 200) / 100;
-  const value30 = clampWithDefault(airflowMotion.airflowBlur, 0, 30, 6);
-  const value31 = clampWithDefault(airflowMotion.airflowSpeed, 0.3, 12, 1);
-  const value32 = 6;
-  const toFixed8 = value32 + (228 - value32) * modeLabel;
-  const toFixed9 = value32 + (toFixed8 - value32) * 0.63;
+  const airflowCurve = Math.tanh(clampWithDefault(airflowMotion.airflowCurve, -200, 200, 20) / 140);
+  const airflowDensity = clampWithDefault(airflowMotion.airflowDensity, 20, 200, 60) / 100;
+  const airflowIrregularity = clampWithDefault(airflowMotion.airflowIrregularity, 0, 200, 50) / 100;
+  const airflowThickness = clampWithDefault(airflowMotion.airflowThickness, 5, 300, 40) / 100;
+  const airflowStrength = clampWithDefault(airflowMotion.airflowStrength, 0, 500, 200) / 100;
+  const airflowBlur = clampWithDefault(airflowMotion.airflowBlur, 0, 30, 6);
+  const airflowSpeed = clampWithDefault(airflowMotion.airflowSpeed, 0.3, 12, 1);
+  const pathStartY = 6;
+  const toFixed8 = pathStartY + (228 - pathStartY) * modeLabel;
+  const toFixed9 = pathStartY + (toFixed8 - pathStartY) * 0.63;
   const toFixed10 = toFixed9 + (toFixed8 - toFixed9) * 0.56;
-  const value33 = Math.min(70, Math.sqrt(climateCapabilities / 100) * 44);
-  const value34 = arg10 => {
-    const value8 = Math.sin(arg10 * 12.9898) * 43758.5453;
-    return value8 - Math.floor(value8);
+  const spreadWidth = Math.min(70, Math.sqrt(climateCapabilities / 100) * 44);
+  const hashNoise = noiseSeed => {
+    const hashFract = Math.sin(noiseSeed * 12.9898) * 43758.5453;
+    return hashFract - Math.floor(hashFract);
   };
-  const length = Math.max(3, Math.min(12, Math.round(value26 * 8)));
-  const length2 = Math.max(2, Math.min(4, Math.round(1.5 + value26 * 1.2)));
+  const length = Math.max(3, Math.min(12, Math.round(airflowDensity * 8)));
+  const length2 = Math.max(2, Math.min(4, Math.round(1.5 + airflowDensity * 1.2)));
   const map = Array.from({
     length
-  }, (arg5, arg6) => {
-    const value4 = length === 1 ? 0.5 : arg6 / (length - 1);
-    const value5 = (value34(arg6 + 3) - 0.5) * 10 * value27;
-    return Math.max(10, Math.min(170, 90 + (value4 - 0.5) * value33 * 2 + value5));
+  }, (_laneUnused, laneIndex) => {
+    const laneRatio = length === 1 ? 0.5 : laneIndex / (length - 1);
+    const laneJitter = (hashNoise(laneIndex + 3) - 0.5) * 10 * airflowIrregularity;
+    return Math.max(10, Math.min(170, 90 + (laneRatio - 0.5) * spreadWidth * 2 + laneJitter));
   });
-  const value35 = Math.min(...map);
-  const value36 = Math.max(...map);
-  const value37 = value25 >= 0 ? 168 - value36 : value35 - 12;
-  const value38 = value25 * Math.max(0, value37);
+  const minLaneX = Math.min(...map);
+  const maxLaneX = Math.max(...map);
+  const curveRoom = airflowCurve >= 0 ? 168 - maxLaneX : minLaneX - 12;
+  const curveOffset = airflowCurve * Math.max(0, curveRoom);
   const flatMap = map.map(toFixed5 => {
-    const toFixed6 = toFixed5 + value38;
-    const toFixed7 = toFixed5 + value38 * 0.42;
-    return "M" + toFixed5.toFixed(2) + " " + value32 + "L" + toFixed5.toFixed(2) + " " + toFixed9.toFixed(2) + "C" + toFixed5.toFixed(2) + " " + toFixed10.toFixed(2) + " " + toFixed7.toFixed(2) + " " + toFixed8.toFixed(2) + " " + toFixed6.toFixed(2) + " " + toFixed8.toFixed(2);
+    const toFixed6 = toFixed5 + curveOffset;
+    const toFixed7 = toFixed5 + curveOffset * 0.42;
+    return "M" + toFixed5.toFixed(2) + " " + pathStartY + "L" + toFixed5.toFixed(2) + " " + toFixed9.toFixed(2) + "C" + toFixed5.toFixed(2) + " " + toFixed10.toFixed(2) + " " + toFixed7.toFixed(2) + " " + toFixed8.toFixed(2) + " " + toFixed6.toFixed(2) + " " + toFixed8.toFixed(2);
   });
-  const join = flatMap.flatMap((arg7, arg8) => Array.from({
+  const join = flatMap.flatMap((motionPath, pathIndex) => Array.from({
     length: length2
-  }, (arg3, arg4) => {
-    const value = arg8 * 41 + arg4 * 67 + 11;
-    const toFixed = Math.max(8, Math.min(112, (34 + value34(value) * 42 * (0.7 + value27 * 0.3)) * deviceType));
-    const value2 = Math.max(0.2, Math.min(14, (1.5 + value34(value + 7) * 2.9) * value28));
-    const toFixed2 = value31 * (0.8 + value34(value + 13) * 0.42 * (0.55 + value27 * 0.45));
-    const toFixed3 = (arg4 / length2 + arg8 * 0.067 + (value34(value + 19) - 0.5) * 0.08 * value27 + 1) % 1;
-    const toFixed4 = Math.min(1, value29 * (0.62 + value34(value + 29) * 0.5));
-    const value3 = "<rect x=\"" + (-toFixed / 2).toFixed(2) + "\" y=\"" + (-value2 * 1.3).toFixed(2) + "\" width=\"" + toFixed.toFixed(2) + "\" height=\"" + (value2 * 2.6).toFixed(2) + "\" rx=\"" + (value2 * 1.3).toFixed(2) + "\" fill=\"url(#wisp)\" filter=\"url(#glow)\"/><rect x=\"" + (-toFixed * 0.42).toFixed(2) + "\" y=\"" + (-value2 * 0.22).toFixed(2) + "\" width=\"" + (toFixed * 0.82).toFixed(2) + "\" height=\"" + (value2 * 0.44).toFixed(2) + "\" rx=\"" + (value2 * 0.22).toFixed(2) + "\" fill=\"url(#core)\"/>";
+  }, (_wispUnused, wispIndex) => {
+    const value = pathIndex * 41 + wispIndex * 67 + 11;
+    const toFixed = Math.max(8, Math.min(112, (34 + hashNoise(value) * 42 * (0.7 + airflowIrregularity * 0.3)) * deviceType));
+    const wispHeight = Math.max(0.2, Math.min(14, (1.5 + hashNoise(value + 7) * 2.9) * airflowThickness));
+    const toFixed2 = airflowSpeed * (0.8 + hashNoise(value + 13) * 0.42 * (0.55 + airflowIrregularity * 0.45));
+    const toFixed3 = (wispIndex / length2 + pathIndex * 0.067 + (hashNoise(value + 19) - 0.5) * 0.08 * airflowIrregularity + 1) % 1;
+    const toFixed4 = Math.min(1, airflowStrength * (0.62 + hashNoise(value + 29) * 0.5));
+    const wispRects = "<rect x=\"" + (-toFixed / 2).toFixed(2) + "\" y=\"" + (-wispHeight * 1.3).toFixed(2) + "\" width=\"" + toFixed.toFixed(2) + "\" height=\"" + (wispHeight * 2.6).toFixed(2) + "\" rx=\"" + (wispHeight * 1.3).toFixed(2) + "\" fill=\"url(#wisp)\" filter=\"url(#glow)\"/><rect x=\"" + (-toFixed * 0.42).toFixed(2) + "\" y=\"" + (-wispHeight * 0.22).toFixed(2) + "\" width=\"" + (toFixed * 0.82).toFixed(2) + "\" height=\"" + (wispHeight * 0.44).toFixed(2) + "\" rx=\"" + (wispHeight * 0.22).toFixed(2) + "\" fill=\"url(#core)\"/>";
     if (entityId === "static") {
-      return "<g opacity=\"" + toFixed4.toFixed(3) + "\">" + value3 + "<animateMotion path=\"" + arg7 + "\" dur=\"0.001s\" keyPoints=\"" + toFixed3.toFixed(4) + ";" + toFixed3.toFixed(4) + "\" keyTimes=\"0;1\" fill=\"freeze\" rotate=\"auto\"/></g>";
+      return "<g opacity=\"" + toFixed4.toFixed(3) + "\">" + wispRects + "<animateMotion path=\"" + motionPath + "\" dur=\"0.001s\" keyPoints=\"" + toFixed3.toFixed(4) + ";" + toFixed3.toFixed(4) + "\" keyTimes=\"0;1\" fill=\"freeze\" rotate=\"auto\"/></g>";
     } else {
-      return "<g opacity=\"0\">" + value3 + "<animate attributeName=\"opacity\" values=\"0;" + toFixed4.toFixed(3) + ";" + toFixed4.toFixed(3) + ";0\" keyTimes=\"0;.06;.78;1\" dur=\"" + toFixed2.toFixed(3) + "s\" begin=\"" + (-toFixed2 * toFixed3).toFixed(3) + "s\" repeatCount=\"indefinite\"/><animateMotion path=\"" + arg7 + "\" dur=\"" + toFixed2.toFixed(3) + "s\" begin=\"" + (-toFixed2 * toFixed3).toFixed(3) + "s\" rotate=\"auto\" repeatCount=\"indefinite\"/></g>";
+      return "<g opacity=\"0\">" + wispRects + "<animate attributeName=\"opacity\" values=\"0;" + toFixed4.toFixed(3) + ";" + toFixed4.toFixed(3) + ";0\" keyTimes=\"0;.06;.78;1\" dur=\"" + toFixed2.toFixed(3) + "s\" begin=\"" + (-toFixed2 * toFixed3).toFixed(3) + "s\" repeatCount=\"indefinite\"/><animateMotion path=\"" + motionPath + "\" dur=\"" + toFixed2.toFixed(3) + "s\" begin=\"" + (-toFixed2 * toFixed3).toFixed(3) + "s\" rotate=\"auto\" repeatCount=\"indefinite\"/></g>";
     }
   }));
-  const value39 = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 180 240\" preserveAspectRatio=\"none\"><defs><linearGradient id=\"bed\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"" + state + "\" stop-opacity=\"0\"/><stop offset=\".22\" stop-color=\"" + state + "\" stop-opacity=\".25\"/><stop offset=\".58\" stop-color=\"" + state + "\" stop-opacity=\".8\"/><stop offset=\"1\" stop-color=\"" + state + "\" stop-opacity=\"0\"/></linearGradient><linearGradient id=\"wisp\"><stop offset=\"0\" stop-color=\"" + state + "\" stop-opacity=\"0\"/><stop offset=\".2\" stop-color=\"" + state + "\" stop-opacity=\".18\"/><stop offset=\".52\" stop-color=\"" + state + "\"/><stop offset=\".78\" stop-color=\"" + state + "\" stop-opacity=\".52\"/><stop offset=\"1\" stop-color=\"" + state + "\" stop-opacity=\"0\"/></linearGradient><linearGradient id=\"core\"><stop offset=\"0\" stop-color=\"" + state + "\" stop-opacity=\"0\"/><stop offset=\".34\" stop-color=\"" + state + "\" stop-opacity=\".12\"/><stop offset=\".58\" stop-color=\"" + state + "\"/><stop offset=\".82\" stop-color=\"" + state + "\" stop-opacity=\".28\"/><stop offset=\"1\" stop-color=\"" + state + "\" stop-opacity=\"0\"/></linearGradient><filter id=\"glow\" x=\"-120%\" y=\"-240%\" width=\"340%\" height=\"580%\"><feGaussianBlur stdDeviation=\"" + Math.max(0.2, value30 * 1.35) + "\"/><feComponentTransfer><feFuncA type=\"linear\" slope=\"" + (value29 <= 1 ? 1 : 1 + (value29 - 1) * 0.9).toFixed(3) + "\"/></feComponentTransfer></filter></defs><g transform=\"rotate(" + presentationMode + " 90 120)\">" + flatMap.map(arg2 => "<path d=\"" + arg2 + "\" fill=\"none\" stroke=\"url(#bed)\" stroke-width=\"1.2\" stroke-linecap=\"round\" opacity=\"" + Math.min(1, value29 * 0.075).toFixed(3) + "\"/>").join("") + join.join("") + "</g></svg>";
-  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(value39);
+  const svgMarkup = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 180 240\" preserveAspectRatio=\"none\"><defs><linearGradient id=\"bed\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"" + state + "\" stop-opacity=\"0\"/><stop offset=\".22\" stop-color=\"" + state + "\" stop-opacity=\".25\"/><stop offset=\".58\" stop-color=\"" + state + "\" stop-opacity=\".8\"/><stop offset=\"1\" stop-color=\"" + state + "\" stop-opacity=\"0\"/></linearGradient><linearGradient id=\"wisp\"><stop offset=\"0\" stop-color=\"" + state + "\" stop-opacity=\"0\"/><stop offset=\".2\" stop-color=\"" + state + "\" stop-opacity=\".18\"/><stop offset=\".52\" stop-color=\"" + state + "\"/><stop offset=\".78\" stop-color=\"" + state + "\" stop-opacity=\".52\"/><stop offset=\"1\" stop-color=\"" + state + "\" stop-opacity=\"0\"/></linearGradient><linearGradient id=\"core\"><stop offset=\"0\" stop-color=\"" + state + "\" stop-opacity=\"0\"/><stop offset=\".34\" stop-color=\"" + state + "\" stop-opacity=\".12\"/><stop offset=\".58\" stop-color=\"" + state + "\"/><stop offset=\".82\" stop-color=\"" + state + "\" stop-opacity=\".28\"/><stop offset=\"1\" stop-color=\"" + state + "\" stop-opacity=\"0\"/></linearGradient><filter id=\"glow\" x=\"-120%\" y=\"-240%\" width=\"340%\" height=\"580%\"><feGaussianBlur stdDeviation=\"" + Math.max(0.2, airflowBlur * 1.35) + "\"/><feComponentTransfer><feFuncA type=\"linear\" slope=\"" + (airflowStrength <= 1 ? 1 : 1 + (airflowStrength - 1) * 0.9).toFixed(3) + "\"/></feComponentTransfer></filter></defs><g transform=\"rotate(" + presentationMode + " 90 120)\">" + flatMap.map(strokePath => "<path d=\"" + strokePath + "\" fill=\"none\" stroke=\"url(#bed)\" stroke-width=\"1.2\" stroke-linecap=\"round\" opacity=\"" + Math.min(1, airflowStrength * 0.075).toFixed(3) + "\"/>").join("") + join.join("") + "</g></svg>";
+  return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgMarkup);
 }
 export function renderAirConditionerAirflowLayer(component, context) {
   const properties = component.properties || {};
@@ -551,33 +551,33 @@ function buildLineChartSeries(component, entityId, stateEntry, context = 24) {
     });
   }
   text.sort((timestamp4, timestamp5) => timestamp4.timestamp - timestamp5.timestamp);
-  const length3 = text.filter((timestamp3, arg9) => arg9 === 0 || timestamp3.timestamp !== text[arg9 - 1].timestamp || timestamp3.value !== text[arg9 - 1].value);
+  const length3 = text.filter((timestamp3, sampleIndex) => sampleIndex === 0 || timestamp3.timestamp !== text[sampleIndex - 1].timestamp || timestamp3.value !== text[sampleIndex - 1].value);
   if (!length3.length) {
     return [];
   }
-  const value40 = Math.round(clampWithDefault(context, 1, 168, 24));
-  const value41 = 3600000;
-  const value42 = powerStateEntry - value40 * value41;
+  const hours = Math.round(clampWithDefault(context, 1, 168, 24));
+  const msPerHour = 3600000;
+  const windowStart = powerStateEntry - hours * msPerHour;
   const push = [];
-  let value43 = 0;
-  let value44 = null;
-  for (let value14 = 0; value14 <= value40; value14 += 1) {
-    const timestamp6 = value14 === value40 ? powerStateEntry : value42 + value14 * value41;
-    while (value43 < length3.length && length3[value43].timestamp <= timestamp6) {
-      value44 = length3[value43];
-      value43 += 1;
+  let pointCursor = 0;
+  let latestPoint = null;
+  for (let hourStep = 0; hourStep <= hours; hourStep += 1) {
+    const timestamp6 = hourStep === hours ? powerStateEntry : windowStart + hourStep * msPerHour;
+    while (pointCursor < length3.length && length3[pointCursor].timestamp <= timestamp6) {
+      latestPoint = length3[pointCursor];
+      pointCursor += 1;
     }
-    const value11 = value44 || length3[value43] || length3[0];
-    if (value11) {
+    const samplePoint = latestPoint || length3[pointCursor] || length3[0];
+    if (samplePoint) {
       push.push({
         timestamp: timestamp6,
-        value: value11.value
+        value: samplePoint.value
       });
     }
   }
   return push;
 }
-function formatChartTime(arg15, mode = true) {
+function formatChartTime(timestampMs, mode = true) {
   const motion = mode ? {
     month: "2-digit",
     day: "2-digit",
@@ -589,7 +589,7 @@ function formatChartTime(arg15, mode = true) {
     minute: "2-digit",
     hour12: false
   };
-  return new Intl.DateTimeFormat("zh-CN", motion).format(new Date(arg15)).replace(/\//g, "-");
+  return new Intl.DateTimeFormat("zh-CN", motion).format(new Date(timestampMs)).replace(/\//g, "-");
 }
 function setupLineChartHoverTooltip(chartElement, overlayRoot, geometry, unit, pointToPercent, statePrecision = "auto", xRange = {
   start: 0,
@@ -733,8 +733,8 @@ function dt(timestamp, states3) {
     return false;
   }
   const options = states3?.states?.get?.(String(timestamp));
-  const value45 = String(options?.newState?.state ?? options?.state ?? "").toLowerCase();
-  return ["on", "true", "1", "open", "opening", "active", "playing"].includes(value45);
+  const normalizedState = String(options?.newState?.state ?? options?.state ?? "").toLowerCase();
+  return ["on", "true", "1", "open", "opening", "active", "playing"].includes(normalizedState);
 }
 registerComponent("floorplan-auto-diagram", {
   render(component, context = {}) {
@@ -1402,31 +1402,31 @@ function renderDoorWindowSensor(component, properties, presentation, context) {
 function mt(entityId, context) {
   const stateEntry = safeCssColor(entityId.waterLeakColor, "#42c8ff");
   const state = context.key === "occupied";
-  const value46 = state ? "检测到水浸" : context.key === "clear" ? "正常" : context.key === "unavailable" ? "离线" : "未知";
+  const waterLeakLabel = state ? "检测到水浸" : context.key === "clear" ? "正常" : context.key === "unavailable" ? "离线" : "未知";
   const setAttribute3 = document.createElement("div");
   setAttribute3.className = "hb-water-leak-sensor is-" + (state ? "wet" : context.key);
   setAttribute3.dataset.sensorState = state ? "wet" : context.key;
   setAttribute3.style.setProperty("--hb-water-leak-accent", stateEntry);
   setAttribute3.setAttribute("role", "img");
-  setAttribute3.setAttribute("aria-label", "水浸传感器：" + value46);
+  setAttribute3.setAttribute("aria-label", "水浸传感器：" + waterLeakLabel);
   const className4 = document.createElement("div");
   className4.className = "hb-water-leak-visual";
   const className5 = document.createElement("span");
   className5.className = "hb-water-leak-puddle";
   const className6 = document.createElement("span");
   className6.className = "hb-water-leak-ripples";
-  for (let value15 = 0; value15 < 3; value15 += 1) {
+  for (let rippleIndex = 0; rippleIndex < 3; rippleIndex += 1) {
     className6.append(document.createElement("i"));
   }
-  const value47 = "http://www.w3.org/2000/svg";
-  const setAttribute4 = document.createElementNS(value47, "svg");
+  const svgNs = "http://www.w3.org/2000/svg";
+  const setAttribute4 = document.createElementNS(svgNs, "svg");
   setAttribute4.setAttribute("class", "hb-water-leak-droplet");
   setAttribute4.setAttribute("viewBox", "0 0 48 64");
   setAttribute4.setAttribute("aria-hidden", "true");
-  const setAttribute5 = document.createElementNS(value47, "path");
+  const setAttribute5 = document.createElementNS(svgNs, "path");
   setAttribute5.setAttribute("class", "body");
   setAttribute5.setAttribute("d", "M24 3C20 10 6 27 6 40c0 11 8 20 18 20s18-9 18-20C42 27 28 10 24 3Z");
-  const setAttribute6 = document.createElementNS(value47, "path");
+  const setAttribute6 = document.createElementNS(svgNs, "path");
   setAttribute6.setAttribute("class", "highlight");
   setAttribute6.setAttribute("d", "M15 40c0-6 3-12 8-18");
   setAttribute4.append(setAttribute5, setAttribute6);
@@ -1453,9 +1453,9 @@ function ut(properties, presentation) {
   setAttribute8.setAttribute("class", "hb-smoke-wisps");
   setAttribute8.setAttribute("viewBox", "0 0 100 100");
   setAttribute8.setAttribute("aria-hidden", "true");
-  for (const value16 of ["M27 94C12 76 41 67 27 49C13 32 38 22 30 7", "M50 97C34 79 65 69 49 50C35 33 61 21 52 3", "M73 93C60 77 86 66 72 48C59 32 83 22 75 8"]) {
+  for (const smokePathD of ["M27 94C12 76 41 67 27 49C13 32 38 22 30 7", "M50 97C34 79 65 69 49 50C35 33 61 21 52 3", "M73 93C60 77 86 66 72 48C59 32 83 22 75 8"]) {
     const setAttribute = document.createElementNS(ripples, "path");
-    setAttribute.setAttribute("d", value16);
+    setAttribute.setAttribute("d", smokePathD);
     setAttribute8.append(setAttribute);
   }
   className7.append(puddle, setAttribute8);
@@ -1581,7 +1581,7 @@ registerComponent("presence-sensor", {
     halo.className = "hb-presence-sensor-halo";
     const space = document.createElement("span");
     space.className = "hb-presence-sensor-space";
-    for (let value6 = 0; value6 < 3; value6 += 1) {
+    for (let presenceRippleIndex = 0; presenceRippleIndex < 3; presenceRippleIndex += 1) {
       space.append(document.createElement("i"));
     }
     const person = document.createElement("span");
@@ -2057,7 +2057,7 @@ export function mountCameraMedia({
           container.dataset.cameraState = "manifest-parsed";
           video.play().catch(() => {});
         });
-        hlsPlayer.on(window.Hls.Events.ERROR, (arg, hlsError) => {
+        hlsPlayer.on(window.Hls.Events.ERROR, (_event, hlsError) => {
           if (!disposed && !suspended && item === sessionId) {
             if (hlsError?.fatal) {
               CAMERA_HLS_SOURCE_CACHE.delete(String(entityId || "").trim());
@@ -2563,8 +2563,8 @@ export function renderLineChartDetails(component, context) {
   const thresholds = resolvedThresholds(component.properties?.thresholds, series, component.properties?.thresholdMode);
   section.style.setProperty("--hb-chart-current-color", Number.isFinite(currentValue) ? thresholdColor(thresholds, currentValue) : "#68cc3e");
   section.syncLineChartState = tickOrPoint => {
-    const value7 = Number.parseFloat(tickOrPoint?.state);
-    section.style.setProperty("--hb-chart-current-color", Number.isFinite(value7) ? thresholdColor(thresholds, value7) : "#68cc3e");
+    const parsedState = Number.parseFloat(tickOrPoint?.state);
+    section.style.setProperty("--hb-chart-current-color", Number.isFinite(parsedState) ? thresholdColor(thresholds, parsedState) : "#68cc3e");
   };
   if (!series.length) {
     const element2 = document.createElement("p");
@@ -2611,10 +2611,10 @@ export function renderLineChartDetails(component, context) {
       "stop-color": element2.color
     });
   }
-  for (let value12 = 0; value12 <= 4; value12 += 1) {
-    const value9 = value12 / 4;
-    const y1 = plot.top + value9 * plot.height;
-    const tickValue = geometry.maximum - value9 * geometry.span;
+  for (let valueTickIndex = 0; valueTickIndex <= 4; valueTickIndex += 1) {
+    const valueTickRatio = valueTickIndex / 4;
+    const y1 = plot.top + valueTickRatio * plot.height;
+    const tickValue = geometry.maximum - valueTickRatio * geometry.span;
     appendSvgChild(svg, "line", {
       x1: plot.left,
       y1,
@@ -2631,10 +2631,10 @@ export function renderLineChartDetails(component, context) {
     element2.textContent = formatLineChartValue(tickValue, component.properties?.statePrecision);
   }
   const includeDate = Number(component.properties?.hours || 24) > 24;
-  for (let value13 = 0; value13 <= 5; value13 += 1) {
-    const value10 = value13 / 5;
-    const x1 = plot.left + value10 * plot.width;
-    const tickTime = geometry.firstTime + value10 * (geometry.lastTime - geometry.firstTime);
+  for (let timeTickIndex = 0; timeTickIndex <= 5; timeTickIndex += 1) {
+    const timeTickRatio = timeTickIndex / 5;
+    const x1 = plot.left + timeTickRatio * plot.width;
+    const tickTime = geometry.firstTime + timeTickRatio * (geometry.lastTime - geometry.firstTime);
     appendSvgChild(svg, "line", {
       x1,
       y1: plot.top,

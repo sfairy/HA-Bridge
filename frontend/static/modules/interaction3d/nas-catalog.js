@@ -21,7 +21,7 @@ const I = {
   disk_below_remain_life_thr: ["寿命告警", "health", "problem"]
 };
 const f = disabledBy => !disabledBy.disabledBy && !["disabled", "missing"].includes(disabledBy.status);
-const b = arg => ["fnos", "synology_dsm"].includes(arg) ? arg : null;
+const b = platform => ["fnos", "synology_dsm"].includes(platform) ? platform : null;
 export function nasProfiles(filter = [], filter2 = []) {
   const filter3 = filter.filter(entityId4 => f(entityId4) && /^(sensor|binary_sensor)\./.test(entityId4.entityId) && b(entityId4.platform));
   const items = new Map(filter2.filter(f).map(deviceId4 => [deviceId4.deviceId, deviceId4]));
@@ -29,7 +29,7 @@ export function nasProfiles(filter = [], filter2 = []) {
   const has = new Set();
   return filter4.filter(deviceId2 => !has.has(deviceId2.deviceId) && has.add(deviceId2.deviceId)).map(entityId3 => {
     const deviceId5 = items.get(entityId3.deviceId);
-    const value5 = entityId3.entityId.split(".")[1].replace(/_cpu_utilization_total$/, "");
+    const entityIdStem = entityId3.entityId.split(".")[1].replace(/_cpu_utilization_total$/, "");
     const metrics = {
       deviceId: deviceId5.deviceId,
       name: deviceId5.name || entityId3.name || "NAS",
@@ -42,17 +42,17 @@ export function nasProfiles(filter = [], filter2 = []) {
         continue;
       }
       const name = items.get(deviceId3.deviceId);
-      const value2 = deviceId3.deviceId === deviceId5.deviceId || name?.name?.startsWith(deviceId5.name + " (") || value5 !== entityId3.entityId.split(".")[1] && deviceId3.entityId.split(".")[1].startsWith(value5 + "_") && !filter4.some(deviceId => deviceId.deviceId !== deviceId5.deviceId && deviceId.deviceId === deviceId3.deviceId);
-      const value3 = I[deviceId3.translationKey];
-      if (!value2 || !value3 || value3[2] === "problem" && !deviceId3.entityId.startsWith("binary_sensor.")) {
+      const belongsToNas = deviceId3.deviceId === deviceId5.deviceId || name?.name?.startsWith(deviceId5.name + " (") || entityIdStem !== entityId3.entityId.split(".")[1] && deviceId3.entityId.split(".")[1].startsWith(entityIdStem + "_") && !filter4.some(deviceId => deviceId.deviceId !== deviceId5.deviceId && deviceId.deviceId === deviceId3.deviceId);
+      const metricMeta = I[deviceId3.translationKey];
+      if (!belongsToNas || !metricMeta || metricMeta[2] === "problem" && !deviceId3.entityId.startsWith("binary_sensor.")) {
         continue;
       }
-      const value4 = name?.name?.match(/\(([^)]+)\)$/)?.[1] || "";
+      const volumeLabel = name?.name?.match(/\(([^)]+)\)$/)?.[1] || "";
       metrics.metrics.push({
         entityId: deviceId3.entityId,
-        label: "" + (value4 ? value4 + " · " : "") + value3[0],
-        group: value3[1],
-        kind: value3[2] || "number"
+        label: "" + (volumeLabel ? volumeLabel + " · " : "") + metricMeta[0],
+        group: metricMeta[1],
+        kind: metricMeta[2] || "number"
       });
     }
     const indexOf = Object.keys(I);

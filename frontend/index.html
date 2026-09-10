@@ -30,6 +30,7 @@
         <div class="brand-lockup"><img class="brand-icon"
                 src="/bridge-static/assets/brand/ha-bridge-mark-white-orange.svg?v=20260726-h2" alt=""><strong>HA
                 Bridge</strong><span class="version">0.5.0</span></div>
+        <a class="header-resource-link" href="/help" target="_blank" rel="noopener noreferrer">使用教程</a>
         <div class="header-actions"><button id="ha-open" class="ha-status" type="button"><i></i><span>HA
                     未配置</span></button><button id="license-open" class="ha-status"
                 type="button"><i></i><span>授权状态</span></button><button id="global-log-open"
@@ -2274,12 +2275,40 @@
                 <div><strong id="license-detail-status">正在读取授权状态</strong><span id="license-detail-edition">—</span>
                 </div>
             </div>
+            <div id="license-card-details" hidden>
+                <dl class="license-card-fields">
+                    <div>
+                        <dt>商品类型</dt>
+                        <dd id="license-card-type">—</dd>
+                    </div>
+                    <div>
+                        <dt>商品名称</dt>
+                        <dd id="license-card-name">—</dd>
+                    </div>
+                    <div>
+                        <dt>有效期</dt>
+                        <dd id="license-card-validity">—</dd>
+                    </div>
+                </dl>
+                <p id="license-validity-note" class="license-card-note" hidden></p>
+                <section class="license-rights" aria-label="授权功能">
+                    <h3>授权功能</h3>
+                    <ul>
+                        <li id="license-right-0"><i data-right-icon aria-hidden="true">—</i><span>HA Bridge
+                                编辑器</span><small data-right-state>未开通</small></li>
+                        <li id="license-right-1"><i data-right-icon aria-hidden="true">—</i><span>3D
+                                交互功能增量包</span><small data-right-state>未开通</small></li>
+                    </ul>
+                </section>
+            </div>
             <div id="license-detail-error" class="settings-message error" hidden></div>
         </section>
+        <div class="license-store-actions"><a href="http://127.0.0.1:18082/" target="_blank"
+                rel="noopener noreferrer">前往本机授权店 <span aria-hidden="true">↗</span></a></div>
         <form id="license-form" class="settings-form"> <label><span>授权邮箱</span><input name="email" type="email"
-                    maxlength="255" autocomplete="email" placeholder="购买授权时使用的邮箱" required></label>
+                    maxlength="255" autocomplete="email" placeholder="领取激活码时使用的邮箱" required></label>
             <label><span>激活码</span><input name="activationCode" maxlength="128" autocomplete="off"
-                    placeholder="HB-XXXX-XXXX-XXXX" required><small>首次激活会绑定当前安装；保留数据目录重新部署后可继续使用。</small></label>
+                    placeholder="HB-XXXX-XXXX-XXXX" required><small>首次激活会绑定当前安装；保留数据目录重新部署后可继续使用。激活码在本机授权店领取。</small></label>
             <div id="license-message" class="settings-message" hidden></div>
             <div class="dialog-actions"><button class="primary" type="submit">激活当前实例</button></div>
         </form>
@@ -2610,9 +2639,9 @@
         </div>
     </dialog>
     <script type="module" src="/bridge-static/js/shared/global-log-boot.js?v=20260905-global-log-v2"></script>
-    <script src="/bridge-static/vendor/hls.js/1.6.16/hls.min.js"></script>
+    <script src="/bridge-static/vendor/hls.js/1.7.2/hls.min.js"></script>
     <script type="module"
-        src="/bridge-static/js/editor/home.js?v=20260910-0500-align"></script>
+        src="/bridge-static/js/editor/home.js?v=20260910-license-card-help-v1"></script>
 </body>
 
 </html>

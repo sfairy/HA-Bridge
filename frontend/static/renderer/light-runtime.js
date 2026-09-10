@@ -84,9 +84,9 @@ export function hsToRgbColor(hs) {
   const [red, green, blue] = sector < 1 ? [chroma, secondary, 0] : sector < 2 ? [secondary, chroma, 0] : sector < 3 ? [0, chroma, secondary] : sector < 4 ? [0, secondary, chroma] : sector < 5 ? [secondary, 0, chroma] : [chroma, 0, secondary];
   return [red, green, blue].map(channel => Math.round((channel + match) * 255));
 }
-export function lightColorPickerHsFromPoint(arg, arg2) {
-  const normalizedX = Math.max(0, Math.min(1, Number(arg) || 0));
-  const normalizedY = Math.max(0, Math.min(1, Number(arg2) || 0));
+export function lightColorPickerHsFromPoint(normalizedPointX, normalizedPointY) {
+  const normalizedX = Math.max(0, Math.min(1, Number(normalizedPointX) || 0));
+  const normalizedY = Math.max(0, Math.min(1, Number(normalizedPointY) || 0));
   const offsetX = normalizedX - 0.5;
   const offsetY = normalizedY - 0.5;
   const saturation = Math.min(1, Math.hypot(offsetX / 0.36, offsetY / 0.36));

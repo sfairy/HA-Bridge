@@ -38,13 +38,13 @@ function easeProgress(elapsed, duration, rate) {
 export function sampleFocusCamera(THREE, from, to, elapsed, durationMs = 1100) {
   return createFocusCameraSampler(THREE, from, to, durationMs)(elapsed);
 }
-export function createFocusCameraSampler(THREE, fromCamera, toCamera, durationMs = 1100, arg3 = "focus", fromPivot2 = null) {
+export function createFocusCameraSampler(THREE, fromCamera, toCamera, durationMs = 1100, mode = "focus", pivots = null) {
   fromCamera = cloneCameraState(fromCamera);
   toCamera = cloneCameraState(toCamera);
   const duration = Math.max(0, finite(durationMs, 1100));
   let fromFrame;
   let toFrame;
-  let fromPivot3;
+  let pivotLocals;
   return function (elapsed) {
     const time = Number.isNaN(elapsed) ? 0 : elapsed;
     if (duration === 0 || time >= duration) {
@@ -57,46 +57,46 @@ export function createFocusCameraSampler(THREE, fromCamera, toCamera, durationMs
     toFrame ||= cameraFrame(THREE, toCamera);
     const positionT = time / duration;
     const rotationT = positionT * positionT * (3 - positionT * 2);
-    const value3 = arg3 === "floor" ? rotationT : easeProgress(time, duration, 5);
-    const target = arg3 === "floor" ? rotationT : easeProgress(time, duration, 4);
-    const distance = fromFrame.rotation.clone().slerp(toFrame.rotation, target).normalize();
-    let position = fromFrame.target.clone().lerp(toFrame.target, value3);
-    const up = Math.max(1e-8, fromFrame.distance + (toFrame.distance - fromFrame.distance) * value3);
-    let next = new THREE.Vector3(0, 0, up).applyQuaternion(distance).add(position);
-    if (arg3 === "floor" && fromPivot2?.fromPivot && fromPivot2?.toPivot) {
-      if (!fromPivot3) {
-        const fromPivot = vectorFrom(THREE, fromPivot2.fromPivot, [0, 0, 0]);
-        const toPivot = vectorFrom(THREE, fromPivot2.toPivot, [0, 0, 0]);
-        const value = (arg, arg2, clone) => vectorFrom(THREE, arg, [0, 0, 0]).sub(arg2).applyQuaternion(clone.clone().invert());
-        fromPivot3 = {
+    const lerpT = mode === "floor" ? rotationT : easeProgress(time, duration, 5);
+    const rotationLerp = mode === "floor" ? rotationT : easeProgress(time, duration, 4);
+    const rotation = fromFrame.rotation.clone().slerp(toFrame.rotation, rotationLerp).normalize();
+    let target = fromFrame.target.clone().lerp(toFrame.target, lerpT);
+    const distance = Math.max(1e-8, fromFrame.distance + (toFrame.distance - fromFrame.distance) * lerpT);
+    let position = new THREE.Vector3(0, 0, distance).applyQuaternion(rotation).add(target);
+    if (mode === "floor" && pivots?.fromPivot && pivots?.toPivot) {
+      if (!pivotLocals) {
+        const fromPivot = vectorFrom(THREE, pivots.fromPivot, [0, 0, 0]);
+        const toPivot = vectorFrom(THREE, pivots.toPivot, [0, 0, 0]);
+        const localOffset = (cameraValues, pivot, frameRotation) => vectorFrom(THREE, cameraValues, [0, 0, 0]).sub(pivot).applyQuaternion(frameRotation.clone().invert());
+        pivotLocals = {
           fromPivot,
           toPivot,
-          fromPosition: value(fromCamera.position, fromPivot, fromFrame.rotation),
-          toPosition: value(toCamera.position, toPivot, toFrame.rotation),
-          fromTarget: value(fromCamera.target, fromPivot, fromFrame.rotation),
-          toTarget: value(toCamera.target, toPivot, toFrame.rotation)
+          fromPosition: localOffset(fromCamera.position, fromPivot, fromFrame.rotation),
+          toPosition: localOffset(toCamera.position, toPivot, toFrame.rotation),
+          fromTarget: localOffset(fromCamera.target, fromPivot, fromFrame.rotation),
+          toTarget: localOffset(toCamera.target, toPivot, toFrame.rotation)
         };
       }
-      const value2 = fromPivot3.fromPivot.clone().lerp(fromPivot3.toPivot, value3);
-      next = fromPivot3.fromPosition.clone().lerp(fromPivot3.toPosition, value3).applyQuaternion(distance).add(value2);
-      position = fromPivot3.fromTarget.clone().lerp(fromPivot3.toTarget, value3).applyQuaternion(distance).add(value2);
+      const pivot = pivotLocals.fromPivot.clone().lerp(pivotLocals.toPivot, lerpT);
+      position = pivotLocals.fromPosition.clone().lerp(pivotLocals.toPosition, lerpT).applyQuaternion(rotation).add(pivot);
+      target = pivotLocals.fromTarget.clone().lerp(pivotLocals.toTarget, lerpT).applyQuaternion(rotation).add(pivot);
     }
-    const toArray = new THREE.Vector3(0, 1, 0).applyQuaternion(distance).normalize();
-    const next2 = {
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(rotation).normalize();
+    const result = {
       ...cloneCameraState(fromCamera),
       ...cloneCameraState(toCamera),
-      position: next.toArray(),
-      target: position.toArray(),
-      up: toArray.toArray()
+      position: position.toArray(),
+      target: target.toArray(),
+      up: up.toArray()
     };
     for (const [key, fallback] of [["zoom", 1], ["focalLength", 50], ["frameSize", 10]]) {
       if (key in fromCamera || key in toCamera) {
         const fromValue = finite(fromCamera[key], fallback);
         const toValue = finite(toCamera[key], fallback);
-        next2[key] = fromValue + (toValue - fromValue) * value3;
+        result[key] = fromValue + (toValue - fromValue) * lerpT;
       }
     }
-    return next2;
+    return result;
   };
 }
 function projectAlongRay(THREE, origin, direction, maxDistance) {
@@ -151,50 +151,50 @@ export function automaticLightCamera(THREE, camera, lightTarget) {
   }
   return next;
 }
-export function automaticAirConditionerCamera(Vector3, arg4, arg5, arg6, arg7, {
-  minimumFrameSize: arg8 = 3,
-  minimumDistance: arg9 = 3
+export function automaticAirConditionerCamera(THREE, camera, targetPosition, facing, halfExtents, {
+  minimumFrameSize = 3,
+  minimumDistance = 3
 } = {}) {
-  const aspect = arg4 || {};
-  const x2 = vectorFrom(Vector3, arg5, [0, 0, 0]).clampScalar(-10000, 10000);
-  const y = vectorFrom(Vector3, arg6, [0, 0, 1]);
-  y.y = 0;
-  const value5 = Math.max(Math.abs(y.x), Math.abs(y.z));
-  if (value5 < 1e-8) {
-    y.set(0, 0, 1);
+  const source = camera || {};
+  const focus = vectorFrom(THREE, targetPosition, [0, 0, 0]).clampScalar(-10000, 10000);
+  const facingFlat = vectorFrom(THREE, facing, [0, 0, 1]);
+  facingFlat.y = 0;
+  const horizontal = Math.max(Math.abs(facingFlat.x), Math.abs(facingFlat.z));
+  if (horizontal < 1e-8) {
+    facingFlat.set(0, 0, 1);
   } else {
-    y.divideScalar(value5).normalize();
+    facingFlat.divideScalar(horizontal).normalize();
   }
-  const clone2 = new Vector3.Vector3(0, 1, 0);
-  const clone3 = y.clone().addScaledVector(clone2, 0.38).normalize();
-  const value6 = clone2.clone().cross(clone3).normalize();
-  const value7 = clone3.clone().cross(value6).normalize();
-  const x3 = vectorFrom(Vector3, arg7, [0.9, 0.28, 0.22]);
-  for (const value4 of ["x", "y", "z"]) {
-    x3[value4] = clamp(Math.abs(x3[value4]), 0.01, 10000);
+  const worldUp = new THREE.Vector3(0, 1, 0);
+  const lookDirection = facingFlat.clone().addScaledVector(worldUp, 0.38).normalize();
+  const right = worldUp.clone().cross(lookDirection).normalize();
+  const viewUp = lookDirection.clone().cross(right).normalize();
+  const halfSize = vectorFrom(THREE, halfExtents, [0.9, 0.28, 0.22]);
+  for (const axis of ["x", "y", "z"]) {
+    halfSize[axis] = clamp(Math.abs(halfSize[axis]), 0.01, 10000);
   }
-  const value8 = x => Math.abs(x.x) * x3.x + Math.abs(x.y) * x3.y + Math.abs(x.z) * x3.z;
-  const value9 = clamp(finite(aspect.aspect, finite(aspect.viewportAspect, 1.6)), 0.25, 4);
-  const value10 = value8(value7);
-  const value11 = value8(value6);
-  const value12 = value8(clone3);
-  const frameSize = clamp(Math.max(arg8, value10 * 2.1, value11 / value9 * 1.8), arg8, 20000);
-  const value13 = aspect.mode === "perspective";
+  const extentAlong = direction => Math.abs(direction.x) * halfSize.x + Math.abs(direction.y) * halfSize.y + Math.abs(direction.z) * halfSize.z;
+  const aspectRatio = clamp(finite(source.aspect, finite(source.viewportAspect, 1.6)), 0.25, 4);
+  const upExtent = extentAlong(viewUp);
+  const rightExtent = extentAlong(right);
+  const forwardExtent = extentAlong(lookDirection);
+  const frameSize = clamp(Math.max(minimumFrameSize, upExtent * 2.1, rightExtent / aspectRatio * 1.8), minimumFrameSize, 20000);
+  const perspective = source.mode === "perspective";
   const focalLength = 35;
-  const value14 = clamp(value13 ? frameSize * Math.max(value9, 1) + value12 * 0.5 : value12 * 0.5 + 2, arg9, 10000);
-  let distanceTo = projectAlongRay(Vector3, x2, clone3.clone(), value14);
-  if (distanceTo.distanceTo(x2) < arg9 - 1e-8) {
-    const z = new Vector3.Vector3(-Math.sign(x2.x), -Math.sign(x2.y) * 0.38, -Math.sign(x2.z));
-    if (Math.abs(z.x) + Math.abs(z.z) < 1e-8) {
-      z.z = 1;
+  const distance = clamp(perspective ? frameSize * Math.max(aspectRatio, 1) + forwardExtent * 0.5 : forwardExtent * 0.5 + 2, minimumDistance, 10000);
+  let position = projectAlongRay(THREE, focus, lookDirection.clone(), distance);
+  if (position.distanceTo(focus) < minimumDistance - 1e-8) {
+    const fallbackDirection = new THREE.Vector3(-Math.sign(focus.x), -Math.sign(focus.y) * 0.38, -Math.sign(focus.z));
+    if (Math.abs(fallbackDirection.x) + Math.abs(fallbackDirection.z) < 1e-8) {
+      fallbackDirection.z = 1;
     }
-    distanceTo = projectAlongRay(Vector3, x2, z.normalize(), value14);
+    position = projectAlongRay(THREE, focus, fallbackDirection.normalize(), distance);
   }
   return {
-    mode: value13 ? "perspective" : "orthographic",
-    position: distanceTo.toArray(),
-    target: x2.toArray(),
-    up: clone2.toArray(),
+    mode: perspective ? "perspective" : "orthographic",
+    position: position.toArray(),
+    target: focus.toArray(),
+    up: worldUp.toArray(),
     zoom: 1,
     frameSize,
     focalLength,

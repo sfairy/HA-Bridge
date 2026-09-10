@@ -1,69 +1,69 @@
 import { createWalker, animateWalker, disposeWalker } from "./presence-character.js";
 import { validPresenceRoute, createPresenceTriggers, closedPath, sampleClosedPath, presenceVisibleOnPage } from "./presence-motion.js";
-export function createPresenceScene(api, arg14 = () => {}, arg15) {
-  const items = new Map();
-  const entryMap = new Map();
-  let value23 = 0;
-  const visible = createPresenceTriggers(arg15);
-  const y3 = new api.THREE.Vector3();
-  const value24 = arg2 => {
-    const routeLine2 = items.get(arg2);
-    entryMap.set(arg2, {
-      key: routeLine2.progressKey,
-      distance: routeLine2.distance
+export function createPresenceScene(api, wake = () => {}, getNow) {
+  const walkers = new Map();
+  const progressCache = new Map();
+  let elapsed = 0;
+  const triggers = createPresenceTriggers(getNow);
+  const footWorld = new api.THREE.Vector3();
+  const removeWalker = id => {
+    const entry = walkers.get(id);
+    progressCache.set(id, {
+      key: entry.progressKey,
+      distance: entry.distance
     });
-    disposeWalker(routeLine2.root);
-    if (routeLine2.routeLine) {
-      routeLine2.routeLine.geometry.dispose();
-      routeLine2.routeLine.material.dispose();
-      routeLine2.routeLine.removeFromParent();
+    disposeWalker(entry.root);
+    if (entry.routeLine) {
+      entry.routeLine.geometry.dispose();
+      entry.routeLine.material.dispose();
+      entry.routeLine.removeFromParent();
     }
-    items.delete(arg2);
+    walkers.delete(id);
   };
-  function fn(root6) {
-    const y2 = sampleClosedPath(root6.path, root6.distance);
-    if (!y2) {
+  function placeWalker(entry) {
+    const sample = sampleClosedPath(entry.path, entry.distance);
+    if (!sample) {
       return;
     }
-    root6.root.position.set(y2.x, y2.y, y2.z);
-    root6.root.rotation.y = y2.heading;
-    animateWalker(root6.root, root6.distance / root6.size * 12, root6.preview ? 0 : 1, value23);
-    root6.root.updateMatrixWorld(true);
-    const value22 = Math.min(...root6.root.userData.parts.legs.map(foot => {
-      foot.foot.getWorldPosition(y3);
-      return y3.y - root6.root.userData.soleHeight * root6.size;
+    entry.root.position.set(sample.x, sample.y, sample.z);
+    entry.root.rotation.y = sample.heading;
+    animateWalker(entry.root, entry.distance / entry.size * 12, entry.preview ? 0 : 1, elapsed);
+    entry.root.updateMatrixWorld(true);
+    const lowestFootY = Math.min(...entry.root.userData.parts.legs.map(leg => {
+      leg.foot.getWorldPosition(footWorld);
+      return footWorld.y - entry.root.userData.soleHeight * entry.size;
     }));
-    root6.root.position.y += y2.y + root6.size * 0.014 - value22;
+    entry.root.position.y += sample.y + entry.size * 0.014 - lowestFootY;
   }
-  function hitRects(arg13, getBoundingClientRect2, find2) {
-    const left2 = getBoundingClientRect2.getBoundingClientRect();
-    const push2 = [];
-    for (const [id6, root4] of items) {
-      const clickToFocus = find2.find(id3 => id3.id === id6);
-      if (!clickToFocus?.clickToFocus) {
+  function hitRects(camera, canvas, sensors) {
+    const rect = canvas.getBoundingClientRect();
+    const results = [];
+    for (const [id, entry] of walkers) {
+      const sensor = sensors.find(item => item.id === id);
+      if (!sensor?.clickToFocus) {
         continue;
       }
-      const min = new api.THREE.Box3().setFromObject(root4.root);
-      const map = [];
-      for (const value6 of [min.min.x, min.max.x]) {
-        for (const value3 of [min.min.y, min.max.y]) {
-          for (const value2 of [min.min.z, min.max.z]) {
-            map.push(new api.THREE.Vector3(value6, value3, value2).project(arg13));
+      const box = new api.THREE.Box3().setFromObject(entry.root);
+      const projected = [];
+      for (const x of [box.min.x, box.max.x]) {
+        for (const y of [box.min.y, box.max.y]) {
+          for (const z of [box.min.z, box.max.z]) {
+            projected.push(new api.THREE.Vector3(x, y, z).project(camera));
           }
         }
       }
-      if (map.every(z => z.z < -1 || z.z > 1)) {
+      if (projected.every(point => point.z < -1 || point.z > 1)) {
         continue;
       }
-      const value16 = map.map(x4 => left2.left + (x4.x + 1) * left2.width / 2);
-      const value17 = map.map(y => left2.top + (1 - y.y) * left2.height / 2);
-      const left = Math.min(...value16);
-      const top = Math.min(...value17);
-      const width = Math.max(...value16) - left;
-      const height = Math.max(...value17) - top;
-      const padding = clickToFocus.hitPadding ?? 8;
-      push2.push({
-        id: id6,
+      const screenXs = projected.map(point => rect.left + (point.x + 1) * rect.width / 2);
+      const screenYs = projected.map(point => rect.top + (1 - point.y) * rect.height / 2);
+      const left = Math.min(...screenXs);
+      const top = Math.min(...screenYs);
+      const width = Math.max(...screenXs) - left;
+      const height = Math.max(...screenYs) - top;
+      const padding = sensor.hitPadding ?? 8;
+      results.push({
+        id,
         left,
         top,
         width,
@@ -71,142 +71,142 @@ export function createPresenceScene(api, arg14 = () => {}, arg15) {
         padding
       });
     }
-    return push2;
+    return results;
   }
   return {
-    sync(some2 = [], arg3 = {}, arg4 = false, arg5 = "all", simulated = false, arg6 = false, arg7 = "overview") {
-      visible.sync(some2, arg3);
-      const add2 = new Set();
-      let value18 = false;
+    sync(sensors = [], states = {}, visible = false, floorId = "all", simulated = false, previewWalk = false, page = "overview") {
+      triggers.sync(sensors, states);
+      const keepIds = new Set();
+      let changed = false;
       if (api.overlayScene && api.worldPoint) {
-        for (const id4 of some2) {
-          if (id4.routeClosed === false || !simulated && !id4.entityId || !validPresenceRoute(id4.route) || !arg4 || arg5 !== "all" && id4.floorId !== arg5 || !simulated && (!visible.visible(id4.id) || !presenceVisibleOnPage(id4, arg7))) {
+        for (const sensor of sensors) {
+          if (sensor.routeClosed === false || !simulated && !sensor.entityId || !validPresenceRoute(sensor.route) || !visible || floorId !== "all" && sensor.floorId !== floorId || !simulated && (!triggers.visible(sensor.id) || !presenceVisibleOnPage(sensor, page))) {
             continue;
           }
-          const some = id4.route.map(x2 => api.worldPoint(id4.floorId, x2.x, x2.y, 0));
-          if (some.some(x3 => !x3 || ![x3.x, x3.y, x3.z].every(Number.isFinite))) {
+          const worldRoute = sensor.route.map(point => api.worldPoint(sensor.floorId, point.x, point.y, 0));
+          if (worldRoute.some(point => !point || ![point.x, point.y, point.z].every(Number.isFinite))) {
             continue;
           }
-          const signature = JSON.stringify([id4, some, simulated, arg6]);
-          let routeLine = items.get(id4.id);
-          if (routeLine && routeLine.signature !== signature) {
-            value24(id4.id);
-            routeLine = null;
+          const signature = JSON.stringify([sensor, worldRoute, simulated, previewWalk]);
+          let entry = walkers.get(sensor.id);
+          if (entry && entry.signature !== signature) {
+            removeWalker(sensor.id);
+            entry = null;
           }
-          if (!routeLine) {
-            const traverse = createWalker(api.THREE, id4.color === "orange" ? 15376452 : 5421233, id4.character);
-            const add = new Set();
-            traverse.traverse(isMesh => {
-              if (isMesh.isMesh) {
-                add.add(isMesh.material);
+          if (!entry) {
+            const root = createWalker(api.THREE, sensor.color === "orange" ? 15376452 : 5421233, sensor.character);
+            const materials = new Set();
+            root.traverse(object => {
+              if (object.isMesh) {
+                materials.add(object.material);
               }
             });
-            for (const emissive of add) {
-              if (!emissive.emissive?.getHex()) {
-                emissive.emissive.copy(emissive.color);
-                emissive.emissiveIntensity = 0.55;
+            for (const material of materials) {
+              if (!material.emissive?.getHex()) {
+                material.emissive.copy(material.color);
+                material.emissiveIntensity = 0.55;
               }
             }
-            const size = id4.size ?? 1;
-            traverse.scale.setScalar(size);
-            traverse.userData.presenceId = id4.id;
-            api.overlayScene.add(traverse);
-            const progressKey = JSON.stringify([id4.entityId, id4.floorId, id4.route, simulated]);
-            const key = entryMap.get(id4.id);
-            routeLine = {
-              root: traverse,
+            const size = sensor.size ?? 1;
+            root.scale.setScalar(size);
+            root.userData.presenceId = sensor.id;
+            api.overlayScene.add(root);
+            const progressKey = JSON.stringify([sensor.entityId, sensor.floorId, sensor.route, simulated]);
+            const cached = progressCache.get(sensor.id);
+            entry = {
+              root,
               size,
-              path: closedPath(some),
-              distance: key?.key === progressKey ? key.distance : 0,
+              path: closedPath(worldRoute),
+              distance: cached?.key === progressKey ? cached.distance : 0,
               progressKey,
-              speed: id4.speed ?? 0.45,
+              speed: sensor.speed ?? 0.45,
               signature,
               simulated,
-              preview: simulated && !arg6
+              preview: simulated && !previewWalk
             };
             if (simulated) {
-              const value = [...some, some[0]].map(x => new api.THREE.Vector3(x.x, x.y + 0.025, x.z));
-              routeLine.routeLine = new api.THREE.Line(new api.THREE.BufferGeometry().setFromPoints(value), new api.THREE.LineBasicMaterial({
-                color: id4.color === "orange" ? 15376452 : 5421233,
+              const linePoints = [...worldRoute, worldRoute[0]].map(point => new api.THREE.Vector3(point.x, point.y + 0.025, point.z));
+              entry.routeLine = new api.THREE.Line(new api.THREE.BufferGeometry().setFromPoints(linePoints), new api.THREE.LineBasicMaterial({
+                color: sensor.color === "orange" ? 15376452 : 5421233,
                 depthTest: true
               }));
-              routeLine.routeLine.name = "presence-route-preview";
-              api.overlayScene.add(routeLine.routeLine);
+              entry.routeLine.name = "presence-route-preview";
+              api.overlayScene.add(entry.routeLine);
             }
-            items.set(id4.id, routeLine);
-            fn(routeLine);
-            value18 = true;
+            walkers.set(sensor.id, entry);
+            placeWalker(entry);
+            changed = true;
           }
-          add2.add(id4.id);
+          keepIds.add(sensor.id);
         }
       }
-      for (const value7 of items.keys()) {
-        if (!add2.has(value7)) {
-          value24(value7);
-          value18 = true;
+      for (const id of walkers.keys()) {
+        if (!keepIds.has(id)) {
+          removeWalker(id);
+          changed = true;
         }
       }
-      for (const value8 of entryMap.keys()) {
-        if (!some2.some(id2 => id2.id === value8) || !simulated && !visible.visible(value8)) {
-          entryMap.delete(value8);
+      for (const id of progressCache.keys()) {
+        if (!sensors.some(sensor => sensor.id === id) || !simulated && !triggers.visible(id)) {
+          progressCache.delete(id);
         }
       }
-      if (value18) {
+      if (changed) {
         api.requestRender?.();
-        arg14();
+        wake();
       }
     },
-    tick(arg8) {
-      const value19 = Math.max(0, Math.min(0.1, Number(arg8) || 0));
-      value23 += value19;
-      let value20 = false;
-      for (const value9 of items.keys()) {
-        if (!items.get(value9).simulated && !visible.visible(value9)) {
-          value24(value9);
-          entryMap.delete(value9);
-          value20 = true;
+    tick(dt) {
+      const delta = Math.max(0, Math.min(0.1, Number(dt) || 0));
+      elapsed += delta;
+      let removed = false;
+      for (const id of walkers.keys()) {
+        if (!walkers.get(id).simulated && !triggers.visible(id)) {
+          removeWalker(id);
+          progressCache.delete(id);
+          removed = true;
         }
       }
-      for (const distance3 of items.values()) {
-        if (!distance3.preview) {
-          distance3.distance = (distance3.distance + value19 * distance3.speed) % distance3.path.length;
-          fn(distance3);
+      for (const entry of walkers.values()) {
+        if (!entry.preview) {
+          entry.distance = (entry.distance + delta * entry.speed) % entry.path.length;
+          placeWalker(entry);
         }
       }
-      const value21 = [...items.values()].some(preview => !preview.preview);
-      if (value21 || value20) {
+      const hasLive = [...walkers.values()].some(entry => !entry.preview);
+      if (hasLive || removed) {
         api.requestRender?.();
       }
-      return value21;
+      return hasLive;
     },
-    anchor(arg9) {
-      const root5 = items.get(arg9);
-      if (root5) {
+    anchor(id) {
+      const entry = walkers.get(id);
+      if (entry) {
         return {
-          center: [root5.root.position.x, root5.root.position.y + root5.size * 0.7, root5.root.position.z]
+          center: [entry.root.position.x, entry.root.position.y + entry.size * 0.7, entry.root.position.z]
         };
       } else {
         return null;
       }
     },
     hitRects,
-    pick(arg10, arg11, arg12, getBoundingClientRect, find) {
-      const width2 = getBoundingClientRect.getBoundingClientRect();
-      if (!width2.width || !width2.height) {
+    pick(clientX, clientY, camera, canvas, sensors) {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) {
         return null;
       }
-      const map2 = [...items.entries()].filter(([arg]) => find.find(id => id.id === arg)?.clickToFocus === true);
-      const setFromCamera = new api.THREE.Raycaster();
-      setFromCamera.setFromCamera(new api.THREE.Vector2((arg10 - width2.left) / width2.width * 2 - 1, 1 - (arg11 - width2.top) / width2.height * 2), arg12);
-      for (const [, root3] of map2) {
-        root3.root.updateMatrixWorld(true);
+      const focusable = [...walkers.entries()].filter(([id]) => sensors.find(sensor => sensor.id === id)?.clickToFocus === true);
+      const raycaster = new api.THREE.Raycaster();
+      raycaster.setFromCamera(new api.THREE.Vector2((clientX - rect.left) / rect.width * 2 - 1, 1 - (clientY - rect.top) / rect.height * 2), camera);
+      for (const [, entry] of focusable) {
+        entry.root.updateMatrixWorld(true);
       }
-      const length = setFromCamera.intersectObjects(map2.map(([, root2]) => root2.root), true);
-      if (length.length) {
-        return map2.find(([, root]) => {
-          let parent = length[0].object;
+      const hits = raycaster.intersectObjects(focusable.map(([, entry]) => entry.root), true);
+      if (hits.length) {
+        return focusable.find(([, entry]) => {
+          let parent = hits[0].object;
           while (parent) {
-            if (parent === root.root) {
+            if (parent === entry.root) {
               return true;
             }
             parent = parent.parent;
@@ -214,34 +214,34 @@ export function createPresenceScene(api, arg14 = () => {}, arg15) {
           return false;
         })?.[0] || null;
       }
-      const push = [];
+      const paddedHits = [];
       for (const {
-        id: id5,
-        left: value10,
-        top: value11,
-        width: value12,
-        height: value13,
-        padding: value14
-      } of hitRects(arg12, getBoundingClientRect, find)) {
-        if (!value14) {
+        id,
+        left,
+        top,
+        width,
+        height,
+        padding
+      } of hitRects(camera, canvas, sensors)) {
+        if (!padding) {
           continue;
         }
-        const value4 = Math.max(value10 - arg10, 0, arg10 - value10 - value12);
-        const value5 = Math.max(value11 - arg11, 0, arg11 - value11 - value13);
-        if (Math.hypot(value4, value5) <= value14) {
-          push.push({
-            id: id5,
-            distance: Math.hypot(value4, value5)
+        const dx = Math.max(left - clientX, 0, clientX - left - width);
+        const dy = Math.max(top - clientY, 0, clientY - top - height);
+        if (Math.hypot(dx, dy) <= padding) {
+          paddedHits.push({
+            id,
+            distance: Math.hypot(dx, dy)
           });
         }
       }
-      return push.sort((distance, distance2) => distance.distance - distance2.distance)[0]?.id || null;
+      return paddedHits.sort((a, b) => a.distance - b.distance)[0]?.id || null;
     },
     dispose() {
-      for (const value15 of items.keys()) {
-        value24(value15);
+      for (const id of walkers.keys()) {
+        removeWalker(id);
       }
-      entryMap.clear();
+      progressCache.clear();
     }
   };
 }

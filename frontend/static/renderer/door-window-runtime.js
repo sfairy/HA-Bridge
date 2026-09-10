@@ -9,27 +9,27 @@ export function doorWindowPerspectiveCorners(corners) {
   });
 }
 export function doorWindowPerspectiveMatrix(width, height, corners) {
-  const value = Math.max(1, Number(width) || 1);
-  const value2 = Math.max(1, Number(height) || 1);
+  const safeWidth = Math.max(1, Number(width) || 1);
+  const safeHeight = Math.max(1, Number(height) || 1);
   const map = doorWindowPerspectiveCorners(corners);
-  const [value3, y0, x3, y3, value4, value5, value6, value7] = map.map((arg, arg2) => arg * (arg2 % 2 === 0 ? value : value2));
-  const value8 = x3 - value4;
-  const deltaX = value6 - value4;
-  const value9 = value3 - x3 + value4 - value6;
-  const value10 = y3 - value5;
-  const deltaY = value7 - value5;
-  const value11 = y0 - y3 + value5 - value7;
-  const value12 = value8 * deltaY - deltaX * value10;
-  if (Math.abs(value12) < 0.000001) {
+  const [x0, y0, x3, y3, x1, y1, x2, y2] = map.map((corner, index) => corner * (index % 2 === 0 ? safeWidth : safeHeight));
+  const dx30 = x3 - x1;
+  const deltaX = x2 - x1;
+  const sx = x0 - x3 + x1 - x2;
+  const dy30 = y3 - y1;
+  const deltaY = y2 - y1;
+  const sy = y0 - y3 + y1 - y2;
+  const det = dx30 * deltaY - deltaX * dy30;
+  if (Math.abs(det) < 0.000001) {
     return "matrix3d(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)";
   }
-  const coeffH = (value9 * deltaY - deltaX * value11) / value12;
-  const coeffG = (value8 * value11 - value9 * value10) / value12;
-  const value13 = (x3 - value3 + coeffH * x3) / value;
-  const value14 = (value6 - value3 + coeffG * value6) / value2;
-  const value15 = (y3 - y0 + coeffH * y3) / value;
-  const value16 = (value7 - y0 + coeffG * value7) / value2;
-  const value17 = coeffH / value;
-  const value18 = coeffG / value2;
-  return "matrix3d(" + [value13, value15, 0, value17, value14, value16, 0, value18, 0, 0, 1, 0, value3, y0, 0, 1].map(value => Math.abs(value) < 1e-8 ? 0 : Number(value.toFixed(8))).join(",") + ")";
+  const coeffH = (sx * deltaY - deltaX * sy) / det;
+  const coeffG = (dx30 * sy - sx * dy30) / det;
+  const a11 = (x3 - x0 + coeffH * x3) / safeWidth;
+  const a21 = (x2 - x0 + coeffG * x2) / safeHeight;
+  const a12 = (y3 - y0 + coeffH * y3) / safeWidth;
+  const a22 = (y2 - y0 + coeffG * y2) / safeHeight;
+  const a14 = coeffH / safeWidth;
+  const a24 = coeffG / safeHeight;
+  return "matrix3d(" + [a11, a12, 0, a14, a21, a22, 0, a24, 0, 0, 1, 0, x0, y0, 0, 1].map(value => Math.abs(value) < 1e-8 ? 0 : Number(value.toFixed(8))).join(",") + ")";
 }

@@ -1,28 +1,28 @@
-import { MeshoptSimplifier } from "../vendor/meshoptimizer/0.25/meshopt_simplifier.module.js";
+import { MeshoptSimplifier } from "../vendor/meshoptimizer/1.2.0/meshopt_simplifier.module.js";
 export async function simplifyReflection({
-  indices: length,
-  positions: arg,
-  attributes: arg2,
-  stride: arg3,
-  weights: arg4,
-  error: arg5
+  indices,
+  positions,
+  attributes,
+  stride,
+  weights,
+  error
 }) {
   await MeshoptSimplifier.ready;
-  return MeshoptSimplifier.simplifyWithAttributes(length, arg, 3, arg2, arg3, arg4, null, Math.floor(length.length * 0.45 / 3) * 3, arg5, ["ErrorAbsolute", "LockBorder"])[0];
+  return MeshoptSimplifier.simplifyWithAttributes(indices, positions, 3, attributes, stride, weights, null, Math.floor(indices.length * 0.45 / 3) * 3, error, ["ErrorAbsolute", "LockBorder"])[0];
 }
 if (typeof self !== "undefined" && typeof document === "undefined") {
   self.onmessage = async ({
-    data: id
+    data: message
   }) => {
     try {
-      const indices = await simplifyReflection(id);
+      const simplifiedIndices = await simplifyReflection(message);
       self.postMessage({
-        id: id.id,
-        indices
-      }, [indices.buffer]);
+        id: message.id,
+        indices: simplifiedIndices
+      }, [simplifiedIndices.buffer]);
     } catch {
       self.postMessage({
-        id: id.id,
+        id: message.id,
         failed: true
       });
     }

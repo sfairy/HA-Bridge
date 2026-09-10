@@ -1,170 +1,170 @@
-const T = {
+const HVAC_COLORS = {
   cool: "#73c8ff",
   heat: "#ff8a65",
   other: "#dce2e6"
 };
-const ae = new Set(["cooling", "cool", "heating", "heat", "fan", "fan_only", "drying"]);
-const $ = (arg6, arg7) => JSON.stringify([String(arg6 ?? ""), String(arg7 ?? "")]);
+const ACTIVE_HVAC_ACTIONS = new Set(["cooling", "cool", "heating", "heat", "fan", "fan_only", "drying"]);
+const modelKey = (floorId, modelId) => JSON.stringify([String(floorId ?? ""), String(modelId ?? "")]);
 export function createEnvironmentAirflow({
-  THREE: Float32BufferAttribute,
-  requestFrame: arg9 = () => {},
-  reducedMotion: arg8
+  THREE,
+  requestFrame = () => {},
+  reducedMotion: reducedMotionOption
 } = {}) {
-  let traverse = null;
-  let value38;
-  let value39 = false;
-  let length4 = [];
-  let get = {};
-  let value40 = "";
-  let value41 = false;
-  let clear = new Map();
-  let values = new Map();
-  let value42 = false;
-  let value43 = -Infinity;
-  let value44;
-  const value45 = () => value44 ?? !value40;
-  let value46 = typeof arg8 == "boolean" ? arg8 : undefined;
-  const matches = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)");
-  const value47 = () => value46 ?? matches?.matches ?? false;
+  let root = null;
+  let sceneRevision;
+  let enabled = false;
+  let bindings = [];
+  let states = {};
+  let focusedId = "";
+  let disposed = false;
+  let modelNodes = new Map();
+  let entries = new Map();
+  let modelsIndexed = false;
+  let lastFrameAt = -Infinity;
+  let overviewOverride;
+  const isOverview = () => overviewOverride ?? !focusedId;
+  let reducedMotionOverride = typeof reducedMotionOption == "boolean" ? reducedMotionOption : undefined;
+  const reducedMotionQuery = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)");
+  const prefersReducedMotion = () => reducedMotionOverride ?? reducedMotionQuery?.matches ?? false;
   const vertexShader = "attribute float flowLayer;\n    uniform float flowOverview;\n    varying vec2 vFlowUv;\n    varying float vFlowLayer;\n    void main() {\n      vFlowUv = uv; vFlowLayer = flowLayer;\n      vec3 expanded = position;\n      // Expand away from the outlet; the mouth keeps its authored position and width.\n      expanded.x *= 1.0 + flowOverview * 0.15 * uv.y;\n      expanded.y *= 1.0 + flowOverview * 0.25;\n      expanded.z *= 1.0 + flowOverview * 0.35;\n      gl_Position = projectionMatrix * modelViewMatrix * vec4(expanded, 1.0);\n    }";
   const fragmentShader = "uniform vec3 flowColor;\n    uniform float flowOpacity;\n    uniform float flowTime;\n    uniform float flowOverview;\n    varying vec2 vFlowUv;\n    varying float vFlowLayer;\n    float hash(vec2 p) {\n      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);\n    }\n    float noise(vec2 p) {\n      vec2 cell = floor(p), f = fract(p);\n      f = f * f * (3.0 - 2.0 * f);\n      return mix(mix(hash(cell), hash(cell + vec2(1.0, 0.0)), f.x),\n        mix(hash(cell + vec2(0.0, 1.0)), hash(cell + vec2(1.0)), f.x), f.y);\n    }\n    void main() {\n      float t = vFlowUv.y, across = vFlowUv.x * 2.0 - 1.0;\n      float edge = exp(-0.8 * across * across) * (1.0 - smoothstep(0.45, 1.0, abs(across)));\n      float distanceFade = smoothstep(0.0, 0.025, t) * exp(-mix(1.15, 0.9, flowOverview) * t)\n        * (1.0 - smoothstep(0.62, 1.0, t));\n      // Advected, lengthwise fibres: deliberately much longer than they are\n      // wide, so the air reads as a continuous breeze, never dots or light bars.\n      float drift = sin(t * 4.0 - flowTime * 0.45 + vFlowLayer * 2.0) * t * 0.16;\n      // Broader, lower-frequency strands survive the smaller screen footprint\n      // in the whole-home view; focus retains the finer, softer texture.\n      vec2 p = vec2(vFlowUv.x * mix(15.0, 7.0, flowOverview) + drift + vFlowLayer * 23.0,\n        t * mix(1.8, 1.25, flowOverview) - flowTime * 0.9);\n      float detail = mix(0.28, 0.1, flowOverview);\n      float fibres = noise(p) * (1.0 - detail) + noise(p * vec2(1.9, 0.7) + 13.0) * detail;\n      // Keep the broad haze nearly invisible; most opacity belongs to the\n      // lengthwise fibres so the stronger breeze does not become a solid fan.\n      float density = 0.012 + 0.95 * fibres * fibres;\n      // A soft density ceiling keeps the stronger near-outlet strands\n      // translucent while letting their motion remain readable at room scale.\n      density = density / (1.0 + density * 0.55);\n      float alpha = flowOpacity * edge * distanceFade * density * mix(1.0, 0.42, vFlowLayer);\n      gl_FragColor = vec4(flowColor, alpha);\n      #include <colorspace_fragment>\n    }";
-  function fn2(arg2) {
-    const union = new Float32BufferAttribute.Box3();
-    const value29 = new Float32BufferAttribute.Matrix4();
-    function fn(userData2, arg) {
-      if (!userData2.userData?.environmentAirflow && (userData2 === arg2 || userData2.userData?.environmentModelId == null)) {
-        if (userData2.isMesh && userData2.geometry?.attributes?.position) {
-          const count = userData2.geometry.attributes.position;
-          if (count.count > 0 && typeof count.getX == "function") {
-            const min = new Float32BufferAttribute.Box3().setFromBufferAttribute(count).applyMatrix4(arg);
-            if ([min.min.x, min.min.y, min.min.z, min.max.x, min.max.y, min.max.z].every(Number.isFinite)) {
-              union.union(min);
+  function modelBounds(modelNode) {
+    const box = new THREE.Box3();
+    const identity = new THREE.Matrix4();
+    function accumulate(node, worldMatrix) {
+      if (!node.userData?.environmentAirflow && (node === modelNode || node.userData?.environmentModelId == null)) {
+        if (node.isMesh && node.geometry?.attributes?.position) {
+          const position = node.geometry.attributes.position;
+          if (position.count > 0 && typeof position.getX == "function") {
+            const meshBox = new THREE.Box3().setFromBufferAttribute(position).applyMatrix4(worldMatrix);
+            if ([meshBox.min.x, meshBox.min.y, meshBox.min.z, meshBox.max.x, meshBox.max.y, meshBox.max.z].every(Number.isFinite)) {
+              box.union(meshBox);
             }
           }
         }
-        for (const matrixAutoUpdate of userData2.children || []) {
-          if (matrixAutoUpdate.matrixAutoUpdate) {
-            matrixAutoUpdate.updateMatrix();
+        for (const child of node.children || []) {
+          if (child.matrixAutoUpdate) {
+            child.updateMatrix();
           }
-          fn(matrixAutoUpdate, new Float32BufferAttribute.Matrix4().multiplyMatrices(arg, matrixAutoUpdate.matrix));
+          accumulate(child, new THREE.Matrix4().multiplyMatrices(worldMatrix, child.matrix));
         }
       }
     }
-    fn(arg2, value29);
-    if (union.isEmpty()) {
+    accumulate(modelNode, identity);
+    if (box.isEmpty()) {
       return null;
     } else {
-      return union;
+      return box;
     }
   }
-  function fn3(userData3) {
-    const max = fn2(userData3);
-    if (!max) {
+  function outletLayout(modelNode) {
+    const bounds = modelBounds(modelNode);
+    if (!bounds) {
       return null;
     }
-    const y = max.getSize(new Float32BufferAttribute.Vector3());
-    if (y.x <= 0 || y.y <= 0 || y.z <= 0) {
+    const size = bounds.getSize(new THREE.Vector3());
+    if (size.x <= 0 || size.y <= 0 || size.z <= 0) {
       return null;
     }
-    const type = userData3.userData.environmentModelType || (y.y > y.x * 1.5 && y.y > y.z * 1.5 ? "floorac" : "wallac");
+    const type = modelNode.userData.environmentModelType || (size.y > size.x * 1.5 && size.y > size.z * 1.5 ? "floorac" : "wallac");
     if (type === "airoutlet") {
-      const length = Math.min(2.4, Math.max(0.6, y.z * 0.9));
+      const length = Math.min(2.4, Math.max(0.6, size.z * 0.9));
       return {
         type,
-        width: y.z * 0.88,
+        width: size.z * 0.88,
         length,
         fall: length * 0.28,
         rotationY: Math.PI / 2,
         spread: 0.3,
-        outlet: [max.max.x + Math.max(0.003, y.x * 0.03), max.min.y + y.y * 0.48, (max.min.z + max.max.z) / 2]
+        outlet: [bounds.max.x + Math.max(0.003, size.x * 0.03), bounds.min.y + size.y * 0.48, (bounds.min.z + bounds.max.z) / 2]
       };
     }
-    const value30 = type === "floorac";
-    const width = y.x * (value30 ? 0.48 : 0.84);
-    const length2 = Math.min(2.8, Math.max(0.3, value30 ? Math.max(y.y * 0.95, y.x * 3) : y.x * 1.8));
+    const isFloorAc = type === "floorac";
+    const width = size.x * (isFloorAc ? 0.48 : 0.84);
+    const length = Math.min(2.8, Math.max(0.3, isFloorAc ? Math.max(size.y * 0.95, size.x * 3) : size.x * 1.8));
     return {
       type,
       width,
-      length: length2,
-      verticalSpan: value30 ? y.y * 0.4 : 0,
-      fall: length2 * (value30 ? 0.12 : 0.38),
-      outlet: [(max.min.x + max.max.x) / 2, max.min.y + y.y * (value30 ? 0.68 : 0.18), max.max.z + Math.max(0.003, y.z * 0.03)]
+      length,
+      verticalSpan: isFloorAc ? size.y * 0.4 : 0,
+      fall: length * (isFloorAc ? 0.12 : 0.38),
+      outlet: [(bounds.min.x + bounds.max.x) / 2, bounds.min.y + size.y * (isFloorAc ? 0.68 : 0.18), bounds.max.z + Math.max(0.003, size.z * 0.03)]
     };
   }
-  function fn4(width2) {
-    const length3 = [];
-    const push = [];
-    const push2 = [];
-    const push3 = [];
-    for (let value25 = 0; value25 < 2; value25++) {
-      const value17 = length3.length / 3;
-      for (let value15 = 0; value15 <= 24; value15++) {
-        const value11 = value15 / 24;
-        const value12 = 1 + (value11 * 0.8 + value11 * value11 * 0.15) * (width2.spread ?? 1);
-        for (let value8 = 0; value8 <= 6; value8++) {
-          const value3 = value8 / 6;
-          const value4 = value3 * 2 - 1;
-          const value5 = (1 - value4 * value4) * width2.width * value11 * 0.09;
-          const value6 = value25 * width2.width * value11 * 0.075;
-          const value7 = width2.verticalSpan > 0 && value25 === 0;
-          length3.push(value7 ? value5 : value4 * width2.width * 0.5 * value12, -width2.fall * (value11 * 0.35 + value11 * 0.65 * value11) + (value7 ? value4 * width2.verticalSpan * 0.5 * (1 + value11 * 0.2) : value5 + value6), width2.length * value11);
-          push.push(value3, value11);
-          push2.push(value25);
-          if (value15 < 24 && value8 < 6) {
-            const value = value17 + value15 * 7 + value8;
-            const value2 = value + 6 + 1;
-            push3.push(value, value + 1, value2, value + 1, value2 + 1, value2);
+  function buildFlowGeometry(layout) {
+    const positions = [];
+    const uvs = [];
+    const layers = [];
+    const indices = [];
+    for (let layer = 0; layer < 2; layer++) {
+      const baseIndex = positions.length / 3;
+      for (let along = 0; along <= 24; along++) {
+        const t = along / 24;
+        const spread = 1 + (t * 0.8 + t * t * 0.15) * (layout.spread ?? 1);
+        for (let across = 0; across <= 6; across++) {
+          const u = across / 6;
+          const acrossSigned = u * 2 - 1;
+          const arch = (1 - acrossSigned * acrossSigned) * layout.width * t * 0.09;
+          const layerLift = layer * layout.width * t * 0.075;
+          const useVertical = layout.verticalSpan > 0 && layer === 0;
+          positions.push(useVertical ? arch : acrossSigned * layout.width * 0.5 * spread, -layout.fall * (t * 0.35 + t * 0.65 * t) + (useVertical ? acrossSigned * layout.verticalSpan * 0.5 * (1 + t * 0.2) : arch + layerLift), layout.length * t);
+          uvs.push(u, t);
+          layers.push(layer);
+          if (along < 24 && across < 6) {
+            const i0 = baseIndex + along * 7 + across;
+            const i1 = i0 + 6 + 1;
+            indices.push(i0, i0 + 1, i1, i0 + 1, i1 + 1, i1);
           }
         }
       }
     }
-    const setAttribute = new Float32BufferAttribute.BufferGeometry();
-    setAttribute.setAttribute("position", new Float32BufferAttribute.Float32BufferAttribute(length3, 3));
-    setAttribute.setAttribute("uv", new Float32BufferAttribute.Float32BufferAttribute(push, 2));
-    setAttribute.setAttribute("flowLayer", new Float32BufferAttribute.Float32BufferAttribute(push2, 1));
-    setAttribute.setIndex(push3);
-    setAttribute.computeBoundingBox();
-    const set = new Float32BufferAttribute.Vector3();
-    for (let value26 = 0; value26 < length3.length / 3; value26++) {
-      setAttribute.boundingBox.expandByPoint(set.set(length3[value26 * 3] * (1 + push[value26 * 2 + 1] * 0.15), length3[value26 * 3 + 1] * 1.25, length3[value26 * 3 + 2] * 1.35));
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setAttribute("flowLayer", new THREE.Float32BufferAttribute(layers, 1));
+    geometry.setIndex(indices);
+    geometry.computeBoundingBox();
+    const scratch = new THREE.Vector3();
+    for (let i = 0; i < positions.length / 3; i++) {
+      geometry.boundingBox.expandByPoint(scratch.set(positions[i * 3] * (1 + uvs[i * 2 + 1] * 0.15), positions[i * 3 + 1] * 1.25, positions[i * 3 + 2] * 1.35));
     }
-    setAttribute.boundingSphere = setAttribute.boundingBox.getBoundingSphere(new Float32BufferAttribute.Sphere());
-    return setAttribute;
+    geometry.boundingSphere = geometry.boundingBox.getBoundingSphere(new THREE.Sphere());
+    return geometry;
   }
-  function fn5(mesh2) {
-    mesh2.mesh.removeFromParent();
-    mesh2.mesh.geometry.dispose();
-    mesh2.mesh.material.dispose();
+  function disposeEntry(entry) {
+    entry.mesh.removeFromParent();
+    entry.mesh.geometry.dispose();
+    entry.mesh.material.dispose();
   }
-  function fn6(mesh3) {
-    const outlet = fn3(mesh3.model);
-    if (!outlet) {
+  function refreshLayout(entry) {
+    const layout = outletLayout(entry.model);
+    if (!layout) {
       return false;
     }
-    const layoutSignature = JSON.stringify(outlet);
-    if (layoutSignature !== mesh3.layoutSignature) {
-      mesh3.mesh.geometry.dispose();
-      mesh3.mesh.geometry = fn4(outlet);
-      mesh3.mesh.position.fromArray(outlet.outlet);
-      mesh3.mesh.rotation.y = outlet.rotationY || 0;
-      mesh3.mesh.updateMatrix();
-      mesh3.layoutSignature = layoutSignature;
-      mesh3.mesh.userData.outletLayout = outlet;
+    const layoutSignature = JSON.stringify(layout);
+    if (layoutSignature !== entry.layoutSignature) {
+      entry.mesh.geometry.dispose();
+      entry.mesh.geometry = buildFlowGeometry(layout);
+      entry.mesh.position.fromArray(layout.outlet);
+      entry.mesh.rotation.y = layout.rotationY || 0;
+      entry.mesh.updateMatrix();
+      entry.layoutSignature = layoutSignature;
+      entry.mesh.userData.outletLayout = layout;
     }
     return true;
   }
-  function fn7(add, id) {
-    const outlet2 = fn3(add);
-    if (!outlet2) {
+  function createEntry(modelNode, binding) {
+    const layout = outletLayout(modelNode);
+    if (!layout) {
       return null;
     }
-    const value31 = value45() ? 1 : 0;
-    const value32 = new Float32BufferAttribute.ShaderMaterial({
+    const overviewAmount = isOverview() ? 1 : 0;
+    const material = new THREE.ShaderMaterial({
       vertexShader,
       fragmentShader,
       uniforms: {
         flowColor: {
-          value: new Float32BufferAttribute.Color(T.other)
+          value: new THREE.Color(HVAC_COLORS.other)
         },
         flowOpacity: {
           value: 0
@@ -173,274 +173,274 @@ export function createEnvironmentAirflow({
           value: 0
         },
         flowOverview: {
-          value: value31
+          value: overviewAmount
         }
       },
       transparent: true,
       depthWrite: false,
       depthTest: true,
-      side: Float32BufferAttribute.DoubleSide,
+      side: THREE.DoubleSide,
       forceSinglePass: true,
       toneMapped: false
     });
-    const userData4 = new Float32BufferAttribute.Mesh(fn4(outlet2), value32);
-    userData4.name = "environment-airflow-" + (id.id || id.modelId);
-    userData4.userData.environmentAirflow = true;
-    userData4.userData.environmentEffect = true;
-    userData4.userData.outletLayout = outlet2;
-    userData4.position.fromArray(outlet2.outlet);
-    userData4.rotation.y = outlet2.rotationY || 0;
-    userData4.updateMatrix();
-    userData4.matrixAutoUpdate = false;
-    userData4.castShadow = false;
-    userData4.receiveShadow = false;
-    userData4.renderOrder = 4;
-    userData4.visible = false;
-    userData4.raycast = () => {};
-    add.add(userData4);
+    const mesh = new THREE.Mesh(buildFlowGeometry(layout), material);
+    mesh.name = "environment-airflow-" + (binding.id || binding.modelId);
+    mesh.userData.environmentAirflow = true;
+    mesh.userData.environmentEffect = true;
+    mesh.userData.outletLayout = layout;
+    mesh.position.fromArray(layout.outlet);
+    mesh.rotation.y = layout.rotationY || 0;
+    mesh.updateMatrix();
+    mesh.matrixAutoUpdate = false;
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.renderOrder = 4;
+    mesh.visible = false;
+    mesh.raycast = () => {};
+    modelNode.add(mesh);
     return {
-      mesh: userData4,
-      model: add,
-      binding: id,
-      layoutSignature: JSON.stringify(outlet2),
+      mesh,
+      model: modelNode,
+      binding,
+      layoutSignature: JSON.stringify(layout),
       target: 0,
       startOpacity: 0,
-      overviewTarget: value31,
-      startOverview: value31,
+      overviewTarget: overviewAmount,
+      startOverview: overviewAmount,
       startTime: null
     };
   }
-  function fn8() {
-    clear = new Map();
-    traverse?.traverse?.(userData => {
-      if (userData.userData?.environmentAirflow || userData.userData?.environmentModelId == null) {
+  function indexModels() {
+    modelNodes = new Map();
+    root?.traverse?.(node => {
+      if (node.userData?.environmentAirflow || node.userData?.environmentModelId == null) {
         return;
       }
-      let value16 = userData.userData.environmentFloorId;
-      for (let parent = userData.parent; value16 == null && parent; parent = parent.parent) {
-        value16 = parent.userData?.environmentFloorId;
+      let floorId = node.userData.environmentFloorId;
+      for (let parent = node.parent; floorId == null && parent; parent = parent.parent) {
+        floorId = parent.userData?.environmentFloorId;
       }
-      clear.set($(value16, userData.userData.environmentModelId), userData);
+      modelNodes.set(modelKey(floorId, node.userData.environmentModelId), node);
     });
-    value42 = true;
+    modelsIndexed = true;
   }
-  function fn9(arg3 = false) {
-    if (!value42 && value39 && length4.length) {
-      fn8();
+  function syncEntries(refreshLayouts = false) {
+    if (!modelsIndexed && enabled && bindings.length) {
+      indexModels();
     }
-    const add2 = new Set();
-    for (const modelId of length4) {
-      if (modelId.visible === false || modelId.modelId == null) {
+    const activeKeys = new Set();
+    for (const binding of bindings) {
+      if (binding.visible === false || binding.modelId == null) {
         continue;
       }
-      const value18 = $(modelId.floorId, modelId.modelId);
-      const value19 = clear.get(value18);
-      if (!value19) {
+      const key = modelKey(binding.floorId, binding.modelId);
+      const modelNode = modelNodes.get(key);
+      if (!modelNode) {
         continue;
       }
-      add2.add(value18);
-      let model = values.get(value18);
-      if (model && model.model !== value19) {
-        fn5(model);
-        values.delete(value18);
-        model = null;
+      activeKeys.add(key);
+      let entry = entries.get(key);
+      if (entry && entry.model !== modelNode) {
+        disposeEntry(entry);
+        entries.delete(key);
+        entry = null;
       }
-      if (!model && value39) {
-        model = fn7(value19, modelId);
-        if (model) {
-          values.set(value18, model);
+      if (!entry && enabled) {
+        entry = createEntry(modelNode, binding);
+        if (entry) {
+          entries.set(key, entry);
         }
       }
-      if (model) {
-        model.binding = modelId;
-        if (arg3 && !fn6(model)) {
-          fn5(model);
-          values.delete(value18);
+      if (entry) {
+        entry.binding = binding;
+        if (refreshLayouts && !refreshLayout(entry)) {
+          disposeEntry(entry);
+          entries.delete(key);
         }
       }
     }
-    for (const [value27, value28] of values) {
-      if (!add2.has(value27)) {
-        fn5(value28);
-        values.delete(value27);
-      }
-    }
-  }
-  function fn10() {
-    let value33 = false;
-    for (const mesh of values.values()) {
-      const entityId = mesh.binding;
-      const newState = get instanceof Map ? get.get(entityId.entityId) : get?.[entityId.entityId];
-      const state = newState?.newState || newState || {};
-      const value20 = String(state.state || "").toLowerCase();
-      const value21 = String(state.attributes?.hvac_action || "").toLowerCase();
-      const value22 = !value40 || entityId.id === value40;
-      const value23 = !["", "off", "unknown", "unavailable"].includes(value20) && (value21 === "" || ae.has(value21));
-      const element4 = value45() ? 1 : 0;
-      const target3 = value39 && value22 && value23 ? element4 ? 1 : 0.68 : 0;
-      const flowOpacity = mesh.mesh.material.uniforms;
-      const value24 = new Float32BufferAttribute.Color(T[value20] || T.other);
-      if (target3 > 0 && !flowOpacity.flowColor.value.equals(value24)) {
-        flowOpacity.flowColor.value.copy(value24);
-        value33 = true;
-      }
-      if (mesh.target !== target3 || mesh.overviewTarget !== element4) {
-        mesh.target = target3;
-        mesh.startOpacity = flowOpacity.flowOpacity.value;
-        mesh.overviewTarget = element4;
-        mesh.startOverview = flowOpacity.flowOverview.value;
-        mesh.startTime = null;
-        value33 = true;
-      }
-      if (!value22 || value47()) {
-        if (flowOpacity.flowOpacity.value !== target3 || flowOpacity.flowOverview.value !== element4) {
-          value33 = true;
-        }
-        flowOpacity.flowOpacity.value = target3;
-        flowOpacity.flowOverview.value = element4;
-        mesh.mesh.visible = target3 > 0;
-        if (value47()) {
-          flowOpacity.flowTime.value = 0;
-        }
-      } else if (target3 > 0) {
-        mesh.mesh.visible = true;
-      } else if (flowOpacity.flowOpacity.value === 0) {
-        mesh.mesh.visible = false;
-        flowOpacity.flowOverview.value = element4;
-      }
-    }
-    if (value33) {
-      arg9();
-    }
-  }
-  function setRoot(arg4, arg5) {
-    if (!value41 && (traverse !== arg4 || value38 !== arg5)) {
-      if (traverse !== arg4) {
-        for (const value9 of values.values()) {
-          fn5(value9);
-        }
-        values.clear();
-        clear.clear();
-        value42 = false;
-      }
-      traverse = arg4 || null;
-      value38 = arg5;
-      value42 = false;
-      if (!!value39 || !!values.size) {
-        fn8();
-        fn9(true);
-        fn10();
-        arg9();
+    for (const [key, entry] of entries) {
+      if (!activeKeys.has(key)) {
+        disposeEntry(entry);
+        entries.delete(key);
       }
     }
   }
-  function setState(bindings = {}) {
-    if (value41) {
+  function syncTargets() {
+    let changed = false;
+    for (const entry of entries.values()) {
+      const binding = entry.binding;
+      const rawState = states instanceof Map ? states.get(binding.entityId) : states?.[binding.entityId];
+      const state = rawState?.newState || rawState || {};
+      const hvacMode = String(state.state || "").toLowerCase();
+      const hvacAction = String(state.attributes?.hvac_action || "").toLowerCase();
+      const isFocused = !focusedId || binding.id === focusedId;
+      const isActive = !["", "off", "unknown", "unavailable"].includes(hvacMode) && (hvacAction === "" || ACTIVE_HVAC_ACTIONS.has(hvacAction));
+      const overviewAmount = isOverview() ? 1 : 0;
+      const targetOpacity = enabled && isFocused && isActive ? overviewAmount ? 1 : 0.68 : 0;
+      const uniforms = entry.mesh.material.uniforms;
+      const flowColor = new THREE.Color(HVAC_COLORS[hvacMode] || HVAC_COLORS.other);
+      if (targetOpacity > 0 && !uniforms.flowColor.value.equals(flowColor)) {
+        uniforms.flowColor.value.copy(flowColor);
+        changed = true;
+      }
+      if (entry.target !== targetOpacity || entry.overviewTarget !== overviewAmount) {
+        entry.target = targetOpacity;
+        entry.startOpacity = uniforms.flowOpacity.value;
+        entry.overviewTarget = overviewAmount;
+        entry.startOverview = uniforms.flowOverview.value;
+        entry.startTime = null;
+        changed = true;
+      }
+      if (!isFocused || prefersReducedMotion()) {
+        if (uniforms.flowOpacity.value !== targetOpacity || uniforms.flowOverview.value !== overviewAmount) {
+          changed = true;
+        }
+        uniforms.flowOpacity.value = targetOpacity;
+        uniforms.flowOverview.value = overviewAmount;
+        entry.mesh.visible = targetOpacity > 0;
+        if (prefersReducedMotion()) {
+          uniforms.flowTime.value = 0;
+        }
+      } else if (targetOpacity > 0) {
+        entry.mesh.visible = true;
+      } else if (uniforms.flowOpacity.value === 0) {
+        entry.mesh.visible = false;
+        uniforms.flowOverview.value = overviewAmount;
+      }
+    }
+    if (changed) {
+      requestFrame();
+    }
+  }
+  function setRoot(nextRoot, revision) {
+    if (!disposed && (root !== nextRoot || sceneRevision !== revision)) {
+      if (root !== nextRoot) {
+        for (const entry of entries.values()) {
+          disposeEntry(entry);
+        }
+        entries.clear();
+        modelNodes.clear();
+        modelsIndexed = false;
+      }
+      root = nextRoot || null;
+      sceneRevision = revision;
+      modelsIndexed = false;
+      if (!!enabled || !!entries.size) {
+        indexModels();
+        syncEntries(true);
+        syncTargets();
+        requestFrame();
+      }
+    }
+  }
+  function setState(next = {}) {
+    if (disposed) {
       return;
     }
-    const value34 = value47();
-    if (Object.hasOwn(bindings, "enabled")) {
-      value39 = bindings.enabled === true;
+    const wasReduced = prefersReducedMotion();
+    if (Object.hasOwn(next, "enabled")) {
+      enabled = next.enabled === true;
     }
-    if (Object.hasOwn(bindings, "bindings")) {
-      length4 = Array.isArray(bindings.bindings) ? bindings.bindings : [];
+    if (Object.hasOwn(next, "bindings")) {
+      bindings = Array.isArray(next.bindings) ? next.bindings : [];
     }
-    if (Object.hasOwn(bindings, "states")) {
-      get = bindings.states || {};
+    if (Object.hasOwn(next, "states")) {
+      states = next.states || {};
     }
-    if (Object.hasOwn(bindings, "focusedId")) {
-      value40 = bindings.focusedId || "";
+    if (Object.hasOwn(next, "focusedId")) {
+      focusedId = next.focusedId || "";
     }
-    if (Object.hasOwn(bindings, "overview")) {
-      value44 = typeof bindings.overview == "boolean" ? bindings.overview : undefined;
+    if (Object.hasOwn(next, "overview")) {
+      overviewOverride = typeof next.overview == "boolean" ? next.overview : undefined;
     }
-    if (Object.hasOwn(bindings, "reducedMotion")) {
-      value46 = bindings.reducedMotion === true;
+    if (Object.hasOwn(next, "reducedMotion")) {
+      reducedMotionOverride = next.reducedMotion === true;
     }
-    fn9();
-    fn10();
-    if (value34 !== value47()) {
-      arg9();
+    syncEntries();
+    syncTargets();
+    if (wasReduced !== prefersReducedMotion()) {
+      requestFrame();
     }
   }
-  function tick(startTime) {
-    if (value41 || value47() || (Number.isFinite(startTime) || (startTime = globalThis.performance?.now() ?? Date.now()), ![...values.values()].some(target => target.target > 0 || target.mesh.material.uniforms.flowOpacity.value > 0))) {
+  function tick(nowMs) {
+    if (disposed || prefersReducedMotion() || (Number.isFinite(nowMs) || (nowMs = globalThis.performance?.now() ?? Date.now()), ![...entries.values()].some(entry => entry.target > 0 || entry.mesh.material.uniforms.flowOpacity.value > 0))) {
       return false;
     }
-    const value35 = 1000 / 30;
-    if (startTime >= value43 && startTime - value43 < value35) {
+    const frameIntervalMs = 1000 / 30;
+    if (nowMs >= lastFrameAt && nowMs - lastFrameAt < frameIntervalMs) {
       return true;
     }
-    value43 = Number.isFinite(value43) && startTime >= value43 ? startTime - (startTime - value43) % value35 : startTime;
-    let value36 = false;
-    let value37 = false;
-    for (const target4 of values.values()) {
-      const flowOpacity2 = target4.mesh.material.uniforms;
-      if (flowOpacity2.flowOpacity.value !== target4.target || flowOpacity2.flowOverview.value !== target4.overviewTarget) {
-        if (target4.startTime === null) {
-          target4.startTime = startTime;
+    lastFrameAt = Number.isFinite(lastFrameAt) && nowMs >= lastFrameAt ? nowMs - (nowMs - lastFrameAt) % frameIntervalMs : nowMs;
+    let animating = false;
+    let changed = false;
+    for (const entry of entries.values()) {
+      const uniforms = entry.mesh.material.uniforms;
+      if (uniforms.flowOpacity.value !== entry.target || uniforms.flowOverview.value !== entry.overviewTarget) {
+        if (entry.startTime === null) {
+          entry.startTime = nowMs;
         }
-        const value13 = Math.max(0, Math.min(1, (startTime - target4.startTime) / 240));
-        const element = target4.startOpacity + (target4.target - target4.startOpacity) * value13;
-        const value14 = value13 * value13 * (3 - value13 * 2);
-        const element2 = target4.startOverview + (target4.overviewTarget - target4.startOverview) * value14;
-        if (flowOpacity2.flowOpacity.value !== element || flowOpacity2.flowOverview.value !== element2) {
-          value37 = true;
+        const progress = Math.max(0, Math.min(1, (nowMs - entry.startTime) / 240));
+        const nextOpacity = entry.startOpacity + (entry.target - entry.startOpacity) * progress;
+        const eased = progress * progress * (3 - progress * 2);
+        const nextOverview = entry.startOverview + (entry.overviewTarget - entry.startOverview) * eased;
+        if (uniforms.flowOpacity.value !== nextOpacity || uniforms.flowOverview.value !== nextOverview) {
+          changed = true;
         }
-        flowOpacity2.flowOpacity.value = element;
-        flowOpacity2.flowOverview.value = element2;
-        if (value13 === 1) {
-          flowOpacity2.flowOpacity.value = target4.target;
-          flowOpacity2.flowOverview.value = target4.overviewTarget;
-          target4.mesh.visible = target4.target > 0;
+        uniforms.flowOpacity.value = nextOpacity;
+        uniforms.flowOverview.value = nextOverview;
+        if (progress === 1) {
+          uniforms.flowOpacity.value = entry.target;
+          uniforms.flowOverview.value = entry.overviewTarget;
+          entry.mesh.visible = entry.target > 0;
         } else {
-          value36 = true;
+          animating = true;
         }
       }
-      if (target4.mesh.visible && (target4.target > 0 || flowOpacity2.flowOpacity.value > 0)) {
-        const element3 = startTime / 1000 % 1000;
-        if (flowOpacity2.flowTime.value !== element3) {
-          value37 = true;
+      if (entry.mesh.visible && (entry.target > 0 || uniforms.flowOpacity.value > 0)) {
+        const flowTime = nowMs / 1000 % 1000;
+        if (uniforms.flowTime.value !== flowTime) {
+          changed = true;
         }
-        flowOpacity2.flowTime.value = element3;
-        value36 = true;
+        uniforms.flowTime.value = flowTime;
+        animating = true;
       }
     }
-    if (value37) {
-      arg9();
+    if (changed) {
+      requestFrame();
     }
-    return value36;
+    return animating;
   }
-  const value48 = () => {
-    if (!value41) {
-      fn10();
-      arg9();
+  const onReducedMotionChange = () => {
+    if (!disposed) {
+      syncTargets();
+      requestFrame();
     }
   };
-  matches?.addEventListener?.("change", value48);
+  reducedMotionQuery?.addEventListener?.("change", onReducedMotionChange);
   return {
     setRoot,
     setState,
     tick,
     nextDelay() {
-      if (!value41 && !value47() && [...values.values()].some(target2 => target2.target > 0 || target2.mesh.material.uniforms.flowOpacity.value > 0)) {
+      if (!disposed && !prefersReducedMotion() && [...entries.values()].some(entry => entry.target > 0 || entry.mesh.material.uniforms.flowOpacity.value > 0)) {
         return 1000 / 30;
       } else {
         return Infinity;
       }
     },
     dispose() {
-      if (!value41) {
-        value41 = true;
-        matches?.removeEventListener?.("change", value48);
-        for (const value10 of values.values()) {
-          fn5(value10);
+      if (!disposed) {
+        disposed = true;
+        reducedMotionQuery?.removeEventListener?.("change", onReducedMotionChange);
+        for (const entry of entries.values()) {
+          disposeEntry(entry);
         }
-        values.clear();
-        clear.clear();
-        length4 = [];
-        get = {};
-        traverse = null;
+        entries.clear();
+        modelNodes.clear();
+        bindings = [];
+        states = {};
+        root = null;
       }
     }
   };

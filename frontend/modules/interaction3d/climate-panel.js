@@ -1,5 +1,5 @@
 import { climateState, climateControl, climatePowerControl, climateModeLabel, climateSwingModeLabel } from "./climate-state.js?v=20260908-climate-v1";
-const oe = {
+const fanModeLabels = {
   auto: "自动",
   low: "低风",
   medium: "中风",
@@ -12,243 +12,243 @@ const oe = {
   focus: "集中"
 };
 export function createClimatePanel({
-  element: ownerDocument,
-  onControl: arg11 = async () => {}
+  element: hostElement,
+  onControl = async () => {}
 } = {}) {
-  const createElement = ownerDocument?.ownerDocument || globalThis.document;
-  const value11 = (arg5, element, element2 = "") => {
-    const className = createElement.createElement(arg5);
-    className.className = element;
-    className.textContent = element2;
-    return className;
+  const doc = hostElement?.ownerDocument || globalThis.document;
+  const createEl = (tagName, className, text = "") => {
+    const node = doc.createElement(tagName);
+    node.className = className;
+    node.textContent = text;
+    return node;
   };
-  const value12 = (replaceChildren, ...arg6) => {
-    if (typeof replaceChildren.replaceChildren == "function") {
-      replaceChildren.replaceChildren(...arg6);
+  const setChildren = (parent, ...children) => {
+    if (typeof parent.replaceChildren == "function") {
+      parent.replaceChildren(...children);
     } else {
-      for (const remove of [...(replaceChildren.children || [])]) {
-        remove.remove?.();
+      for (const child of [...(parent.children || [])]) {
+        child.remove?.();
       }
-      replaceChildren.append(...arg6);
+      parent.append(...children);
     }
   };
-  const classList = ownerDocument || value11("section", "");
-  classList.classList.add("i3d-climate-panel");
-  const append2 = value11("div", "i3d-climate-heading");
-  const textContent = value11("h3", "", "空调");
-  const textContent2 = value11("p", "", "尚未绑定设备");
-  const setAttribute2 = value11("button", "i3d-climate-power");
-  setAttribute2.type = "button";
-  const append3 = value11("div", "i3d-climate-heading-text");
-  append3.append(textContent, textContent2);
-  append2.append(append3, setAttribute2);
-  const append4 = value11("div", "i3d-climate-thermostat-slot");
-  const append5 = value11("section", "hb-climate-thermostat");
-  const type2 = value11("button", "hb-climate-temperature-step", "−");
-  const type3 = value11("button", "hb-climate-temperature-step", "+");
-  type2.type = type3.type = "button";
-  type2.setAttribute("aria-label", "降低设定温度");
-  type3.setAttribute("aria-label", "提高设定温度");
-  const append6 = value11("div", "i3d-climate-temperature-content");
-  const setAttribute3 = value11("output", "i3d-climate-target");
-  const textContent3 = value11("span", "", "当前温度 --");
-  setAttribute3.setAttribute("aria-label", "设定温度");
-  append6.append(value11("small", "", "设定温度"), setAttribute3, textContent3);
-  append5.append(type2, append6, type3);
-  append4.append(append5);
-  const hidden = value11("p", "i3d-climate-temperature-interval");
-  const append7 = value11("div", "i3d-climate-groups");
-  const setAttribute4 = value11("p", "i3d-climate-empty");
-  const textContent4 = value11("p", "i3d-climate-error");
-  setAttribute4.setAttribute("role", "status");
-  textContent4.setAttribute("role", "status");
-  value12(classList, append2, append4, hidden, append7, setAttribute4, textContent4);
+  const root = hostElement || createEl("section", "");
+  root.classList.add("i3d-climate-panel");
+  const heading = createEl("div", "i3d-climate-heading");
+  const titleEl = createEl("h3", "", "空调");
+  const subtitleEl = createEl("p", "", "尚未绑定设备");
+  const powerButton = createEl("button", "i3d-climate-power");
+  powerButton.type = "button";
+  const headingText = createEl("div", "i3d-climate-heading-text");
+  headingText.append(titleEl, subtitleEl);
+  heading.append(headingText, powerButton);
+  const thermostatSlot = createEl("div", "i3d-climate-thermostat-slot");
+  const thermostat = createEl("section", "hb-climate-thermostat");
+  const decreaseButton = createEl("button", "hb-climate-temperature-step", "−");
+  const increaseButton = createEl("button", "hb-climate-temperature-step", "+");
+  decreaseButton.type = increaseButton.type = "button";
+  decreaseButton.setAttribute("aria-label", "降低设定温度");
+  increaseButton.setAttribute("aria-label", "提高设定温度");
+  const temperatureContent = createEl("div", "i3d-climate-temperature-content");
+  const targetOutput = createEl("output", "i3d-climate-target");
+  const currentTempLabel = createEl("span", "", "当前温度 --");
+  targetOutput.setAttribute("aria-label", "设定温度");
+  temperatureContent.append(createEl("small", "", "设定温度"), targetOutput, currentTempLabel);
+  thermostat.append(decreaseButton, temperatureContent, increaseButton);
+  thermostatSlot.append(thermostat);
+  const rangeInfo = createEl("p", "i3d-climate-temperature-interval");
+  const optionGroups = createEl("div", "i3d-climate-groups");
+  const emptyStatus = createEl("p", "i3d-climate-empty");
+  const errorStatus = createEl("p", "i3d-climate-error");
+  emptyStatus.setAttribute("role", "status");
+  errorStatus.setAttribute("role", "status");
+  setChildren(root, heading, thermostatSlot, rangeInfo, optionGroups, emptyStatus, errorStatus);
   let editing = {};
-  let on = climateState("", null);
-  let value13 = false;
-  let value14 = false;
-  let value15 = "";
-  let value16 = 0;
-  let value17 = null;
-  let value18 = null;
-  let value19 = "";
-  let value20 = "";
-  let push = [];
-  const value21 = () => !value13 && !editing.editing && !editing.busy && !value14 && on.available;
-  const value22 = () => {
-    if (value18 !== null) {
-      clearTimeout(value18);
+  let climate = climateState("", null);
+  let disposed = false;
+  let controlling = false;
+  let controlError = "";
+  let requestGeneration = 0;
+  let pendingTemperature = null;
+  let pendingTemperatureTimer = null;
+  let lastActiveMode = "";
+  let optionsSignature = "";
+  let choiceButtons = [];
+  const canControl = () => !disposed && !editing.editing && !editing.busy && !controlling && climate.available;
+  const clearPendingTemperature = () => {
+    if (pendingTemperatureTimer !== null) {
+      clearTimeout(pendingTemperatureTimer);
     }
-    value18 = null;
-    value17 = null;
+    pendingTemperatureTimer = null;
+    pendingTemperature = null;
   };
-  function fn() {
-    return value17 ?? on.temperature;
+  function getDisplayTemperature() {
+    return pendingTemperature ?? climate.temperature;
   }
-  function fn2(arg7 = fn()) {
-    setAttribute3.value = arg7 === null ? "" : String(arg7);
-    setAttribute3.textContent = arg7 === null ? "--" : arg7 + "°C";
-    textContent3.textContent = on.currentTemperature === null ? "当前温度 --" : "当前温度 " + on.currentTemperature + "°C";
-    type2.disabled = !value21() || arg7 === null || arg7 <= on.minimum;
-    type3.disabled = !value21() || arg7 === null || arg7 >= on.maximum;
+  function renderTemperature(temperature = getDisplayTemperature()) {
+    targetOutput.value = temperature === null ? "" : String(temperature);
+    targetOutput.textContent = temperature === null ? "--" : temperature + "°C";
+    currentTempLabel.textContent = climate.currentTemperature === null ? "当前温度 --" : "当前温度 " + climate.currentTemperature + "°C";
+    decreaseButton.disabled = !canControl() || temperature === null || temperature <= climate.minimum;
+    increaseButton.disabled = !canControl() || temperature === null || temperature >= climate.maximum;
   }
-  async function fn3(service) {
-    if (!value21()) {
+  async function runControl(service) {
+    if (!canControl()) {
       return;
     }
-    const value6 = value16;
-    value14 = true;
-    value15 = "";
+    const generationAtStart = requestGeneration;
+    controlling = true;
+    controlError = "";
     if (service.service === "set_temperature") {
-      value22();
-      value17 = service.data.temperature;
-      value18 = setTimeout(() => {
-        value18 = null;
-        value17 = null;
-        if (!value13) {
-          fn6();
+      clearPendingTemperature();
+      pendingTemperature = service.data.temperature;
+      pendingTemperatureTimer = setTimeout(() => {
+        pendingTemperatureTimer = null;
+        pendingTemperature = null;
+        if (!disposed) {
+          render();
         }
       }, 8000);
     }
-    fn6();
+    render();
     try {
-      await arg11(service);
-    } catch (message2) {
-      if (!value13 && value6 === value16) {
-        value15 = message2?.message || "空调控制失败，请重试。";
-        value22();
+      await onControl(service);
+    } catch (error) {
+      if (!disposed && generationAtStart === requestGeneration) {
+        controlError = error?.message || "空调控制失败，请重试。";
+        clearPendingTemperature();
       }
     } finally {
-      if (!value13 && value6 === value16) {
-        value14 = false;
-        fn6();
+      if (!disposed && generationAtStart === requestGeneration) {
+        controlling = false;
+        render();
       }
     }
   }
-  function fn4(arg8, arg9) {
-    if (value21()) {
+  function applyControl(action, value) {
+    if (canControl()) {
       try {
-        return fn3(climateControl(on, arg8, arg9));
-      } catch (message) {
-        value15 = message.message;
-        fn6();
+        return runControl(climateControl(climate, action, value));
+      } catch (error) {
+        controlError = error.message;
+        render();
       }
     }
   }
   function power({
-    toggle: arg10 = true
+    toggle = true
   } = {}) {
-    if (!value21() || !arg10 && on.on) {
+    if (!canControl() || !toggle && climate.on) {
       return Promise.resolve(false);
     }
     try {
-      return fn3(climatePowerControl(on, arg10 ? !on.on : true, value19));
-    } catch (message3) {
-      value15 = message3.message;
-      fn6();
+      return runControl(climatePowerControl(climate, toggle ? !climate.on : true, lastActiveMode));
+    } catch (error) {
+      controlError = error.message;
+      render();
       return Promise.resolve(false);
     }
   }
-  setAttribute2.addEventListener("click", () => power());
-  type2.addEventListener("click", () => fn4("set_temperature", (fn() ?? on.minimum) - on.step));
-  type3.addEventListener("click", () => fn4("set_temperature", (fn() ?? on.minimum) + on.step));
-  function fn5() {
-    value12(append7);
-    push = [];
-    for (const [value3, length, field, value4, value5] of [["运行模式", on.modes.filter(arg4 => arg4 !== "off"), "mode", "set_hvac_mode", Object.fromEntries(on.modes.map(arg2 => [arg2, climateModeLabel(arg2)]))], ["风速", on.fanModes, "fanMode", "set_fan_mode", oe], ["摆风", on.swingModes, "swingMode", "set_swing_mode", Object.fromEntries(on.swingModes.map(arg3 => [arg3, climateSwingModeLabel(arg3)]))]]) {
-      if (!length.length) {
+  powerButton.addEventListener("click", () => power());
+  decreaseButton.addEventListener("click", () => applyControl("set_temperature", (getDisplayTemperature() ?? climate.minimum) - climate.step));
+  increaseButton.addEventListener("click", () => applyControl("set_temperature", (getDisplayTemperature() ?? climate.minimum) + climate.step));
+  function rebuildOptionGroups() {
+    setChildren(optionGroups);
+    choiceButtons = [];
+    for (const [groupLabel, choices, field, action, labels] of [["运行模式", climate.modes.filter(mode => mode !== "off"), "mode", "set_hvac_mode", Object.fromEntries(climate.modes.map(mode => [mode, climateModeLabel(mode)]))], ["风速", climate.fanModes, "fanMode", "set_fan_mode", fanModeLabels], ["摆风", climate.swingModes, "swingMode", "set_swing_mode", Object.fromEntries(climate.swingModes.map(mode => [mode, climateSwingModeLabel(mode)]))]]) {
+      if (!choices.length) {
         continue;
       }
-      const append = value11("section", "i3d-climate-option-group");
-      const value2 = value11("h4", "", value3);
-      append.append(value2);
-      const setAttribute = value11("div", "i3d-climate-choices");
-      setAttribute.setAttribute("role", "group");
-      setAttribute.setAttribute("aria-label", value3);
-      for (const value of length) {
-        const type = value11("button", "i3d-climate-choice", value5[value] || value);
-        type.type = "button";
-        type.addEventListener("click", () => fn4(value4, value));
-        push.push({
-          element: type,
+      const group = createEl("section", "i3d-climate-option-group");
+      const groupHeading = createEl("h4", "", groupLabel);
+      group.append(groupHeading);
+      const choicesEl = createEl("div", "i3d-climate-choices");
+      choicesEl.setAttribute("role", "group");
+      choicesEl.setAttribute("aria-label", groupLabel);
+      for (const choice of choices) {
+        const button = createEl("button", "i3d-climate-choice", labels[choice] || choice);
+        button.type = "button";
+        button.addEventListener("click", () => applyControl(action, choice));
+        choiceButtons.push({
+          element: button,
           field,
-          value
+          value: choice
         });
-        setAttribute.append(type);
+        choicesEl.append(button);
       }
-      append.append(setAttribute);
-      append7.append(append);
+      group.append(choicesEl);
+      optionGroups.append(group);
     }
   }
-  function fn6() {
-    if (value13) {
+  function render() {
+    if (disposed) {
       return;
     }
-    const entityId = editing.item || {};
-    const value7 = !!entityId.entityId;
-    const value8 = value21();
-    textContent.textContent = entityId.label || on.name || "空调";
-    textContent.title = textContent.textContent;
-    textContent2.textContent = editing.editing ? "控制预览" : value7 ? on.available ? on.on ? climateModeLabel(on.mode) : "已关闭" : "设备不可用" : "尚未绑定设备";
-    classList.dataset.climateMode = on.available ? on.visualMode : "off";
-    classList.classList.toggle("is-on", on.available && on.on);
-    classList.classList.toggle("is-running", on.available && on.running);
-    setAttribute2.textContent = on.on ? "关闭" : "开启";
-    classList.setAttribute("aria-busy", String(value14 || !!editing.busy));
-    setAttribute2.disabled = !value8 || !on.modes.some(arg => arg !== "off") || on.on && !on.modes.includes("off");
-    setAttribute2.setAttribute("aria-pressed", String(on.on));
-    setAttribute2.setAttribute("aria-label", textContent.textContent + "，" + (on.on ? "关闭空调" : "开启空调"));
-    if (on.on) {
-      value19 = on.mode;
+    const entity = editing.item || {};
+    const hasEntity = !!entity.entityId;
+    const interactive = canControl();
+    titleEl.textContent = entity.label || climate.name || "空调";
+    titleEl.title = titleEl.textContent;
+    subtitleEl.textContent = editing.editing ? "控制预览" : hasEntity ? climate.available ? climate.on ? climateModeLabel(climate.mode) : "已关闭" : "设备不可用" : "尚未绑定设备";
+    root.dataset.climateMode = climate.available ? climate.visualMode : "off";
+    root.classList.toggle("is-on", climate.available && climate.on);
+    root.classList.toggle("is-running", climate.available && climate.running);
+    powerButton.textContent = climate.on ? "关闭" : "开启";
+    root.setAttribute("aria-busy", String(controlling || !!editing.busy));
+    powerButton.disabled = !interactive || !climate.modes.some(mode => mode !== "off") || climate.on && !climate.modes.includes("off");
+    powerButton.setAttribute("aria-pressed", String(climate.on));
+    powerButton.setAttribute("aria-label", titleEl.textContent + "，" + (climate.on ? "关闭空调" : "开启空调"));
+    if (climate.on) {
+      lastActiveMode = climate.mode;
     }
-    append4.hidden = setAttribute3.hidden = !on.temperatureSupported;
-    fn2();
-    hidden.hidden = !on.rangeSupported || on.temperatureSupported;
-    hidden.textContent = "设定温区 " + (on.targetLow ?? "--") + "–" + (on.targetHigh ?? "--") + "°C · 当前 " + (on.currentTemperature ?? "--") + "°C";
-    const value9 = JSON.stringify([on.entityId, on.modes, on.fanModes, on.swingModes]);
-    if (value20 !== value9) {
-      value20 = value9;
-      fn5();
+    thermostatSlot.hidden = targetOutput.hidden = !climate.temperatureSupported;
+    renderTemperature();
+    rangeInfo.hidden = !climate.rangeSupported || climate.temperatureSupported;
+    rangeInfo.textContent = "设定温区 " + (climate.targetLow ?? "--") + "–" + (climate.targetHigh ?? "--") + "°C · 当前 " + (climate.currentTemperature ?? "--") + "°C";
+    const signature = JSON.stringify([climate.entityId, climate.modes, climate.fanModes, climate.swingModes]);
+    if (optionsSignature !== signature) {
+      optionsSignature = signature;
+      rebuildOptionGroups();
     }
-    for (const element3 of push) {
-      element3.element.disabled = !value8;
-      element3.element.setAttribute("aria-pressed", String(on[element3.field] === element3.value));
+    for (const choice of choiceButtons) {
+      choice.element.disabled = !interactive;
+      choice.element.setAttribute("aria-pressed", String(climate[choice.field] === choice.value));
     }
-    setAttribute4.hidden = on.available && (on.temperatureSupported || push.length > 0);
-    setAttribute4.textContent = value7 ? on.available ? "设备尚未提供控制能力，状态到达后会自动更新。" : "正在等待设备状态，连接恢复后会自动更新。" : "绑定空调实体后显示设备控制。";
-    textContent4.textContent = editing.error || value15;
-    textContent4.hidden = !textContent4.textContent;
+    emptyStatus.hidden = climate.available && (climate.temperatureSupported || choiceButtons.length > 0);
+    emptyStatus.textContent = hasEntity ? climate.available ? "设备尚未提供控制能力，状态到达后会自动更新。" : "正在等待设备状态，连接恢复后会自动更新。" : "绑定空调实体后显示设备控制。";
+    errorStatus.textContent = editing.error || controlError;
+    errorStatus.hidden = !errorStatus.textContent;
   }
   function update(state = {}) {
-    if (value13) {
+    if (disposed) {
       return;
     }
-    const value10 = state.item?.entityId || "";
-    if (value10 !== on.entityId) {
-      value16++;
-      value14 = false;
-      value15 = "";
-      value19 = "";
-      value22();
+    const entityId = state.item?.entityId || "";
+    if (entityId !== climate.entityId) {
+      requestGeneration++;
+      controlling = false;
+      controlError = "";
+      lastActiveMode = "";
+      clearPendingTemperature();
     }
     editing = state;
-    on = state.state?.entityId === value10 && Array.isArray(state.state?.modes) ? state.state : climateState(value10, state.state);
-    if (value17 !== null && on.temperature !== null && Math.abs(on.temperature - value17) < on.step / 2 + 0.001) {
-      value22();
+    climate = state.state?.entityId === entityId && Array.isArray(state.state?.modes) ? state.state : climateState(entityId, state.state);
+    if (pendingTemperature !== null && climate.temperature !== null && Math.abs(climate.temperature - pendingTemperature) < climate.step / 2 + 0.001) {
+      clearPendingTemperature();
     }
-    fn6();
+    render();
   }
   function dispose() {
-    if (!value13) {
-      value13 = true;
-      value16++;
-      value22();
-      value12(classList);
+    if (!disposed) {
+      disposed = true;
+      requestGeneration++;
+      clearPendingTemperature();
+      setChildren(root);
     }
   }
-  fn6();
+  render();
   return {
-    root: classList,
+    root,
     update,
     power,
     dispose

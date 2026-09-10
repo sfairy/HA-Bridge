@@ -1,13 +1,13 @@
-const S = new URL(import.meta.url.startsWith("file:") ? "../../static/modules/interaction3d/page-behavior.js?v=20260910-full-page-behavior-v1" : "/bridge-static/modules/interaction3d/page-behavior.js?v=20260910-full-page-behavior-v1", import.meta.url);
+const pageBehaviorModuleUrl = new URL(import.meta.url.startsWith("file:") ? "../../static/modules/interaction3d/page-behavior.js?v=20260910-full-page-behavior-v1" : "/bridge-static/modules/interaction3d/page-behavior.js?v=20260910-full-page-behavior-v1", import.meta.url);
 export const {
   resolvePageBehavior
-} = await import(S.href);
+} = await import(pageBehaviorModuleUrl.href);
 export function createIdleRotation({
   now = () => performance.now(),
-  returnToBase: arg20,
-  start: arg21,
-  rotate: arg22,
-  stop: arg23
+  returnToBase,
+  start,
+  rotate,
+  stop
 }) {
   let config = {
     enabled: false,
@@ -17,22 +17,22 @@ export function createIdleRotation({
   };
   let available = false;
   let held = false;
-  let hidden = "waiting";
-  let disposed = now();
-  let lastActivityAt = 0;
-  let value5 = 0;
-  let value6 = 0;
-  let value7 = 0;
-  function activity(arg16 = now()) {
-    const value4 = hidden === "returning" || hidden === "rotating";
-    value7++;
-    hidden = "waiting";
-    disposed = arg16;
-    lastActivityAt = 0;
-    value5 = 0;
-    value6 = 0;
-    if (value4) {
-      arg23();
+  let currentPhase = "waiting";
+  let idleSince = now();
+  let lastTickAt = 0;
+  let angle = 0;
+  let rampElapsed = 0;
+  let generation = 0;
+  function activity(at = now()) {
+    const wasActive = currentPhase === "returning" || currentPhase === "rotating";
+    generation++;
+    currentPhase = "waiting";
+    idleSince = at;
+    lastTickAt = 0;
+    angle = 0;
+    rampElapsed = 0;
+    if (wasActive) {
+      stop();
     }
   }
   return {
@@ -61,25 +61,25 @@ export function createIdleRotation({
     activity,
     tick(at = now()) {
       if (!!config.enabled && !!available && !held) {
-        if (hidden === "waiting" && at - disposed >= config.idleSeconds * 1000) {
-          hidden = "returning";
-          const value3 = ++value7;
-          arg20(() => {
-            if (value3 === value7 && hidden === "returning" && !!available && !held && !!config.enabled) {
-              hidden = "rotating";
-              lastActivityAt = now();
-              value5 = 0;
-              value6 = 0;
-              arg21();
+        if (currentPhase === "waiting" && at - idleSince >= config.idleSeconds * 1000) {
+          currentPhase = "returning";
+          const token = ++generation;
+          returnToBase(() => {
+            if (token === generation && currentPhase === "returning" && !!available && !held && !!config.enabled) {
+              currentPhase = "rotating";
+              lastTickAt = now();
+              angle = 0;
+              rampElapsed = 0;
+              start();
             }
           });
-        } else if (hidden === "rotating") {
-          const value = Math.max(0, Math.min(0.1, (at - lastActivityAt) / 1000));
-          lastActivityAt = at;
-          const value2 = Math.min(1, value6 / 0.6);
-          value6 += value;
-          value5 = (value5 + value * config.speed * Math.PI / 180 * (value2 + Math.min(1, value6 / 0.6)) / 2) % (Math.PI * 2);
-          arg22(config.direction === "counterclockwise" ? -value5 : value5);
+        } else if (currentPhase === "rotating") {
+          const deltaSeconds = Math.max(0, Math.min(0.1, (at - lastTickAt) / 1000));
+          lastTickAt = at;
+          const rampFactor = Math.min(1, rampElapsed / 0.6);
+          rampElapsed += deltaSeconds;
+          angle = (angle + deltaSeconds * config.speed * Math.PI / 180 * (rampFactor + Math.min(1, rampElapsed / 0.6)) / 2) % (Math.PI * 2);
+          rotate(config.direction === "counterclockwise" ? -angle : angle);
         }
       }
     },
@@ -87,171 +87,171 @@ export function createIdleRotation({
       available = false;
       activity();
     },
-    nextDelay(arg = now()) {
+    nextDelay(at = now()) {
       if (!config.enabled || !available || held) {
         return Infinity;
-      } else if (hidden === "rotating") {
+      } else if (currentPhase === "rotating") {
         return 0;
-      } else if (hidden === "waiting") {
-        return Math.max(0, disposed + config.idleSeconds * 1000 - arg);
+      } else if (currentPhase === "waiting") {
+        return Math.max(0, idleSince + config.idleSeconds * 1000 - at);
       } else {
         return Infinity;
       }
     },
     get phase() {
-      return hidden;
+      return currentPhase;
     }
   };
 }
 export function createIdleFocusExit({
-  now: arg25 = () => performance.now(),
-  onExit: arg24
+  now = () => performance.now(),
+  onExit
 } = {}) {
-  let enabled3 = {
+  let config = {
     enabled: false,
     idleSeconds: 30
   };
-  let value8 = false;
-  let value9 = false;
-  let value10 = false;
-  let value11 = false;
-  let value12 = arg25();
-  function activity2(arg17 = arg25()) {
-    if (!value10) {
-      value12 = arg17;
-      value11 = false;
+  let available = false;
+  let held = false;
+  let disposed = false;
+  let exited = false;
+  let lastActivityAt = now();
+  function noteActivity(at = now()) {
+    if (!disposed) {
+      lastActivityAt = at;
+      exited = false;
     }
   }
   return {
-    configure(idleSeconds = {}, arg2 = arg25()) {
-      if (value10) {
+    configure(nextConfig = {}, at = now()) {
+      if (disposed) {
         return;
       }
-      const enabled = {
-        enabled: idleSeconds?.enabled === true,
-        idleSeconds: Number.isInteger(idleSeconds?.idleSeconds) ? Math.max(1, Math.min(3600, idleSeconds.idleSeconds)) : 30
+      const normalized = {
+        enabled: nextConfig?.enabled === true,
+        idleSeconds: Number.isInteger(nextConfig?.idleSeconds) ? Math.max(1, Math.min(3600, nextConfig.idleSeconds)) : 30
       };
-      if (enabled.enabled !== enabled3.enabled || enabled.idleSeconds !== enabled3.idleSeconds) {
-        enabled3 = enabled;
-        activity2(arg2);
+      if (normalized.enabled !== config.enabled || normalized.idleSeconds !== config.idleSeconds) {
+        config = normalized;
+        noteActivity(at);
       }
     },
-    setAvailable(arg3, arg4 = arg25()) {
-      if (!value10 && value8 !== !!arg3) {
-        value8 = !!arg3;
-        if (!value8) {
-          value9 = false;
+    setAvailable(nextAvailable, at = now()) {
+      if (!disposed && available !== !!nextAvailable) {
+        available = !!nextAvailable;
+        if (!available) {
+          held = false;
         }
-        activity2(arg4);
+        noteActivity(at);
       }
     },
-    hold(arg5, arg6 = arg25()) {
-      if (!value10) {
-        value9 = !!arg5;
-        activity2(arg6);
+    hold(nextHeld, at = now()) {
+      if (!disposed) {
+        held = !!nextHeld;
+        noteActivity(at);
       }
     },
-    activity: activity2,
-    tick(arg7 = arg25()) {
-      if (!value10 && !!enabled3.enabled && !!value8 && !value9 && !value11) {
-        if (arg7 - value12 >= enabled3.idleSeconds * 1000) {
-          value11 = true;
-          arg24();
+    activity: noteActivity,
+    tick(at = now()) {
+      if (!disposed && !!config.enabled && !!available && !held && !exited) {
+        if (at - lastActivityAt >= config.idleSeconds * 1000) {
+          exited = true;
+          onExit();
         }
       }
     },
-    nextDelay(arg8 = arg25()) {
-      if (value10 || !enabled3.enabled || !value8 || value9 || value11) {
+    nextDelay(at = now()) {
+      if (disposed || !config.enabled || !available || held || exited) {
         return Infinity;
       } else {
-        return Math.max(0, value12 + enabled3.idleSeconds * 1000 - arg8);
+        return Math.max(0, lastActivityAt + config.idleSeconds * 1000 - at);
       }
     },
     dispose() {
-      value10 = true;
-      value8 = false;
-      value9 = false;
+      disposed = true;
+      available = false;
+      held = false;
     }
   };
 }
 export function createIdleIconVisibility({
-  now: arg26 = () => performance.now(),
-  onChange: arg27 = () => {}
+  now = () => performance.now(),
+  onChange = () => {}
 } = {}) {
-  let enabled4 = {
+  let config = {
     enabled: false,
     idleSeconds: 30
   };
-  let value13 = false;
-  let value14 = false;
-  let value15 = false;
-  let value16 = false;
-  let value17 = arg26();
-  function fn(arg18) {
-    if (value15 !== arg18) {
-      value15 = arg18;
-      arg27(value15);
+  let available = false;
+  let held = false;
+  let hidden = false;
+  let disposed = false;
+  let lastActivityAt = now();
+  function setHidden(nextHidden) {
+    if (hidden !== nextHidden) {
+      hidden = nextHidden;
+      onChange(hidden);
     }
   }
-  function activity3(arg19 = arg26()) {
-    if (!value16) {
-      value17 = arg19;
-      fn(false);
+  function noteActivity(at = now()) {
+    if (!disposed) {
+      lastActivityAt = at;
+      setHidden(false);
     }
   }
   return {
-    configure(idleSeconds2 = {}, arg9 = arg26()) {
-      if (value16) {
+    configure(nextConfig = {}, at = now()) {
+      if (disposed) {
         return;
       }
-      const enabled2 = {
-        enabled: idleSeconds2?.enabled === true,
-        idleSeconds: Number.isInteger(idleSeconds2?.idleSeconds) ? Math.max(1, Math.min(3600, idleSeconds2.idleSeconds)) : 30
+      const normalized = {
+        enabled: nextConfig?.enabled === true,
+        idleSeconds: Number.isInteger(nextConfig?.idleSeconds) ? Math.max(1, Math.min(3600, nextConfig.idleSeconds)) : 30
       };
-      if (enabled2.enabled !== enabled4.enabled || enabled2.idleSeconds !== enabled4.idleSeconds) {
-        enabled4 = enabled2;
-        activity3(arg9);
+      if (normalized.enabled !== config.enabled || normalized.idleSeconds !== config.idleSeconds) {
+        config = normalized;
+        noteActivity(at);
       }
     },
-    setAvailable(arg10, arg11 = arg26()) {
-      if (!value16 && value13 !== !!arg10) {
-        value13 = !!arg10;
-        if (!value13) {
-          value14 = false;
+    setAvailable(nextAvailable, at = now()) {
+      if (!disposed && available !== !!nextAvailable) {
+        available = !!nextAvailable;
+        if (!available) {
+          held = false;
         }
-        activity3(arg11);
+        noteActivity(at);
       }
     },
-    hold(arg12, arg13 = arg26()) {
-      if (!value16) {
-        value14 = !!arg12;
-        activity3(arg13);
+    hold(nextHeld, at = now()) {
+      if (!disposed) {
+        held = !!nextHeld;
+        noteActivity(at);
       }
     },
-    activity: activity3,
-    tick(arg14 = arg26()) {
-      if (!value16 && !!enabled4.enabled && !!value13 && !value14) {
-        if (arg14 - value17 >= enabled4.idleSeconds * 1000) {
-          fn(true);
+    activity: noteActivity,
+    tick(at = now()) {
+      if (!disposed && !!config.enabled && !!available && !held) {
+        if (at - lastActivityAt >= config.idleSeconds * 1000) {
+          setHidden(true);
         }
       }
     },
     dispose() {
-      if (!value16) {
-        value16 = true;
-        value13 = false;
-        value14 = false;
-        fn(false);
+      if (!disposed) {
+        disposed = true;
+        available = false;
+        held = false;
+        setHidden(false);
       }
     },
     get hidden() {
-      return value15;
+      return hidden;
     },
-    nextDelay(arg15 = arg26()) {
-      if (value16 || !enabled4.enabled || !value13 || value14 || value15) {
+    nextDelay(at = now()) {
+      if (disposed || !config.enabled || !available || held || hidden) {
         return Infinity;
       } else {
-        return Math.max(0, value17 + enabled4.idleSeconds * 1000 - arg15);
+        return Math.max(0, lastActivityAt + config.idleSeconds * 1000 - at);
       }
     }
   };

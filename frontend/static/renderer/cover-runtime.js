@@ -348,7 +348,7 @@ function isCoverMotorReversed(entityMetadata, states, entityId) {
   const reverseEntity = relatedCoverMotorReverseEntity(entityMetadata, entityId);
   return !!reverseEntity?.entityId && !!stateLooksEnabled(states.get(reverseEntity.entityId));
 }
-export function coverMotorIsReversedForComponent(component, arg, arg2, arg3) {
+export function coverMotorIsReversedForComponent(component, entityMetadata, states, entityId) {
   const coverMotorDirection = component?.properties?.coverMotorDirection;
   if (coverMotorDirection === "normal") {
     return false;

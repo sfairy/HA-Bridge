@@ -1,17 +1,17 @@
 export function createReflectionDetail({
-  THREE: BufferAttribute,
-  requestFrame: arg7 = () => {},
-  makeWorker: arg8 = () => new Worker(new URL("./studio-reflection-detail-worker.js", import.meta.url), {
+  THREE,
+  requestFrame = () => {},
+  makeWorker = () => new Worker(new URL("./studio-reflection-detail-worker.js", import.meta.url), {
     type: "module"
   })
 }) {
-  const items = new Map();
-  const size = new Map();
-  let terminate;
-  let value12 = 0;
-  let value13 = false;
-  let value14 = false;
-  const pending = {
+  const entriesByGeometry = new Map();
+  const pendingById = new Map();
+  let worker;
+  let nextId = 0;
+  let disposed = false;
+  let workerFailed = false;
+  const stats = {
     prepared: 0,
     pending: 0,
     failed: 0,
@@ -19,188 +19,188 @@ export function createReflectionDetail({
     detailTriangles: 0,
     bytes: 0
   };
-  const value15 = 16777216;
-  const value16 = index => [["index", index.index], ...Object.entries(index.attributes)].map(([name, attribute]) => ({
+  const maxBytes = 16777216;
+  const geometrySignature = geometry => [["index", geometry.index], ...Object.entries(geometry.attributes)].map(([name, attribute]) => ({
     name,
     attribute,
     version: attribute.version,
     dataVersion: attribute.data?.version,
     count: attribute.count
   }));
-  const value17 = source2 => source2.signature.every(name2 => {
-    const version = name2.name === "index" ? source2.source.index : source2.source.attributes[name2.name];
-    return version === name2.attribute && version.version === name2.version && version.data?.version === name2.dataVersion && version.count === name2.count;
+  const signatureMatches = entry => entry.signature.every(part => {
+    const attribute = part.name === "index" ? entry.source.index : entry.source.attributes[part.name];
+    return attribute === part.attribute && attribute.version === part.version && attribute.data?.version === part.dataVersion && attribute.count === part.count;
   });
-  const value18 = material => {
-    const transparent = material.material;
-    return material.userData?.reflectionSimplifiable && transparent && !Array.isArray(transparent) && !transparent.transparent && !transparent.alphaTest && !transparent.displacementMap && !(transparent.transmission > 0);
+  const isSimplifiable = mesh => {
+    const material = mesh.material;
+    return mesh.userData?.reflectionSimplifiable && material && !Array.isArray(material) && !material.transparent && !material.alphaTest && !material.displacementMap && !(material.transmission > 0);
   };
-  function fn(removeEventListener) {
-    const geometry4 = items.get(removeEventListener);
-    if (geometry4) {
-      removeEventListener.removeEventListener("dispose", geometry4.release);
-      items.delete(removeEventListener);
-      size.delete(geometry4.id);
-      if (geometry4.geometry) {
-        geometry4.geometry.dispose();
-        pending.bytes -= geometry4.bytes;
-        pending.prepared--;
-        pending.sourceTriangles -= geometry4.sourceTriangles;
-        pending.detailTriangles -= geometry4.detailTriangles;
+  function releaseEntry(geometry) {
+    const entry = entriesByGeometry.get(geometry);
+    if (entry) {
+      geometry.removeEventListener("dispose", entry.release);
+      entriesByGeometry.delete(geometry);
+      pendingById.delete(entry.id);
+      if (entry.geometry) {
+        entry.geometry.dispose();
+        stats.bytes -= entry.bytes;
+        stats.prepared--;
+        stats.sourceTriangles -= entry.sourceTriangles;
+        stats.detailTriangles -= entry.detailTriangles;
       }
-      pending.pending = size.size;
+      stats.pending = pendingById.size;
     }
   }
-  function fn2() {
-    if (!terminate && !value14) {
+  function ensureWorker() {
+    if (!worker && !workerFailed) {
       try {
-        terminate = arg8();
-        terminate.onerror = () => {
-          value14 = true;
-          pending.failed += size.size;
-          size.clear();
-          pending.pending = 0;
-          terminate.terminate();
-          terminate = null;
+        worker = makeWorker();
+        worker.onerror = () => {
+          workerFailed = true;
+          stats.failed += pendingById.size;
+          pendingById.clear();
+          stats.pending = 0;
+          worker.terminate();
+          worker = null;
         };
-        terminate.onmessage = ({
-          data: indices
+        worker.onmessage = ({
+          data: message
         }) => {
-          const source = size.get(indices.id);
-          size.delete(indices.id);
-          pending.pending = size.size;
-          if (!source || value13) {
+          const entry = pendingById.get(message.id);
+          pendingById.delete(message.id);
+          stats.pending = pendingById.size;
+          if (!entry || disposed) {
             return;
           }
-          if (!value17(source)) {
-            fn(source.source);
+          if (!signatureMatches(entry)) {
+            releaseEntry(entry.source);
             return;
           }
-          if (indices.failed) {
-            pending.failed++;
+          if (message.failed) {
+            stats.failed++;
             return;
           }
-          if (indices.indices.length >= source.source.index.count * 0.9) {
+          if (message.indices.length >= entry.source.index.count * 0.9) {
             return;
           }
-          const setIndex = source.source.clone();
-          setIndex.setIndex(new BufferAttribute.BufferAttribute(indices.indices, 1));
-          const bytes = Object.values(setIndex.attributes).reduce((arg, array) => arg + array.array.byteLength, setIndex.index.array.byteLength);
-          if (pending.bytes + bytes > value15) {
-            setIndex.dispose();
+          const simplified = entry.source.clone();
+          simplified.setIndex(new THREE.BufferAttribute(message.indices, 1));
+          const bytes = Object.values(simplified.attributes).reduce((total, attribute) => total + attribute.array.byteLength, simplified.index.array.byteLength);
+          if (stats.bytes + bytes > maxBytes) {
+            simplified.dispose();
             return;
           }
-          source.geometry = setIndex;
-          source.bytes = bytes;
-          pending.bytes += bytes;
-          pending.prepared++;
-          source.sourceTriangles = source.source.index.count / 3;
-          source.detailTriangles = indices.indices.length / 3;
-          pending.sourceTriangles += source.sourceTriangles;
-          pending.detailTriangles += source.detailTriangles;
-          arg7();
+          entry.geometry = simplified;
+          entry.bytes = bytes;
+          stats.bytes += bytes;
+          stats.prepared++;
+          entry.sourceTriangles = entry.source.index.count / 3;
+          entry.detailTriangles = message.indices.length / 3;
+          stats.sourceTriangles += entry.sourceTriangles;
+          stats.detailTriangles += entry.detailTriangles;
+          requestFrame();
         };
       } catch {
-        value14 = true;
-        pending.failed++;
+        workerFailed = true;
+        stats.failed++;
       }
     }
   }
-  function prepare(traverse) {
-    if (!value13 && !value14) {
-      traverse.traverse(geometry => {
-        const attributes = geometry.geometry;
-        if (!value18(geometry) || !attributes?.index || !attributes.attributes.position || attributes.index.count < 900) {
+  function prepare(root) {
+    if (!disposed && !workerFailed) {
+      root.traverse(mesh => {
+        const geometry = mesh.geometry;
+        if (!isSimplifiable(mesh) || !geometry?.index || !geometry.attributes.position || geometry.index.count < 900) {
           return;
         }
-        const value9 = items.get(attributes);
-        if (value9 && !value17(value9)) {
-          fn(attributes);
+        const existing = entriesByGeometry.get(geometry);
+        if (existing && !signatureMatches(existing)) {
+          releaseEntry(geometry);
         }
-        if (items.has(attributes) || (fn2(), !terminate)) {
+        if (entriesByGeometry.has(geometry) || (ensureWorker(), !worker)) {
           return;
         }
-        const map = ["position", "normal", "color", "uv"].filter(arg3 => attributes.attributes[arg3]);
-        const position = Object.fromEntries(map.map(arg2 => {
-          const itemSize = attributes.attributes[arg2];
-          const value3 = new Float32Array(itemSize.count * itemSize.itemSize);
-          const value4 = ["getX", "getY", "getZ", "getW"];
-          for (let value2 = 0; value2 < itemSize.count; value2++) {
-            for (let value = 0; value < itemSize.itemSize; value++) {
-              value3[value2 * itemSize.itemSize + value] = itemSize[value4[value]](value2);
+        const attributeNames = ["position", "normal", "color", "uv"].filter(name => geometry.attributes[name]);
+        const attributeArrays = Object.fromEntries(attributeNames.map(name => {
+          const attribute = geometry.attributes[name];
+          const array = new Float32Array(attribute.count * attribute.itemSize);
+          const getters = ["getX", "getY", "getZ", "getW"];
+          for (let vertexIndex = 0; vertexIndex < attribute.count; vertexIndex++) {
+            for (let component = 0; component < attribute.itemSize; component++) {
+              array[vertexIndex * attribute.itemSize + component] = attribute[getters[component]](vertexIndex);
             }
           }
-          return [arg2, value3];
+          return [name, array];
         }));
-        const reduce = map.filter(arg4 => arg4 !== "position");
-        const stride = reduce.reduce((arg5, arg6) => arg5 + attributes.attributes[arg6].itemSize, 0);
-        const set = new Float32Array(attributes.attributes.position.count * stride);
-        const push = [];
-        let value10 = 0;
-        for (const value8 of reduce) {
-          const value7 = attributes.attributes[value8].itemSize;
-          for (let value5 = 0; value5 < value7; value5++) {
-            push.push(value8 === "normal" ? 0.2 : value8 === "color" ? 1 : 2);
+        const extraNames = attributeNames.filter(name => name !== "position");
+        const stride = extraNames.reduce((total, name) => total + geometry.attributes[name].itemSize, 0);
+        const packedAttributes = new Float32Array(geometry.attributes.position.count * stride);
+        const weights = [];
+        let attributeOffset = 0;
+        for (const name of extraNames) {
+          const itemSize = geometry.attributes[name].itemSize;
+          for (let component = 0; component < itemSize; component++) {
+            weights.push(name === "normal" ? 0.2 : name === "color" ? 1 : 2);
           }
-          for (let value6 = 0; value6 < attributes.attributes.position.count; value6++) {
-            set.set(position[value8].subarray(value6 * value7, (value6 + 1) * value7), value6 * stride + value10);
+          for (let vertexIndex = 0; vertexIndex < geometry.attributes.position.count; vertexIndex++) {
+            packedAttributes.set(attributeArrays[name].subarray(vertexIndex * itemSize, (vertexIndex + 1) * itemSize), vertexIndex * stride + attributeOffset);
           }
-          value10 += value7;
+          attributeOffset += itemSize;
         }
-        const id = ++value12;
-        const release = {
+        const id = ++nextId;
+        const entry = {
           id,
-          source: attributes,
-          signature: value16(attributes),
+          source: geometry,
+          signature: geometrySignature(geometry),
           geometry: null,
           bytes: 0,
-          release: () => fn(attributes)
+          release: () => releaseEntry(geometry)
         };
-        attributes.addEventListener("dispose", release.release);
-        items.set(attributes, release);
-        size.set(id, release);
-        pending.pending = size.size;
-        const indices2 = new Uint32Array(attributes.index.array);
-        const positions = position.position;
-        const x = new BufferAttribute.Vector3();
-        geometry.getWorldScale(x);
+        geometry.addEventListener("dispose", entry.release);
+        entriesByGeometry.set(geometry, entry);
+        pendingById.set(id, entry);
+        stats.pending = pendingById.size;
+        const indices = new Uint32Array(geometry.index.array);
+        const positions = attributeArrays.position;
+        const worldScale = new THREE.Vector3();
+        mesh.getWorldScale(worldScale);
         try {
-          terminate.postMessage({
+          worker.postMessage({
             id,
-            indices: indices2,
+            indices,
             positions,
-            attributes: set,
+            attributes: packedAttributes,
             stride,
-            weights: push,
-            error: 0.01 / Math.max(Math.abs(x.x), Math.abs(x.y), Math.abs(x.z), 0.001)
-          }, [indices2.buffer, positions.buffer, set.buffer]);
+            weights,
+            error: 0.01 / Math.max(Math.abs(worldScale.x), Math.abs(worldScale.y), Math.abs(worldScale.z), 0.001)
+          }, [indices.buffer, positions.buffer, packedAttributes.buffer]);
         } catch {
-          size.delete(id);
-          pending.pending = size.size;
-          pending.failed++;
+          pendingById.delete(id);
+          stats.pending = pendingById.size;
+          stats.failed++;
         }
       });
     }
   }
   return {
-    stats: pending,
+    stats,
     prepare,
-    get: geometry2 => {
-      if (!value18(geometry2)) {
+    get: mesh => {
+      if (!isSimplifiable(mesh)) {
         return null;
       }
-      const geometry3 = items.get(geometry2.geometry);
-      if (geometry3 && value17(geometry3)) {
-        return geometry3.geometry;
+      const entry = entriesByGeometry.get(mesh.geometry);
+      if (entry && signatureMatches(entry)) {
+        return entry.geometry;
       } else {
         return null;
       }
     },
     dispose() {
-      value13 = true;
-      terminate?.terminate();
-      for (const value11 of [...items.keys()]) {
-        fn(value11);
+      disposed = true;
+      worker?.terminate();
+      for (const geometry of [...entriesByGeometry.keys()]) {
+        releaseEntry(geometry);
       }
     }
   };

@@ -1,454 +1,458 @@
-const T = new Set(["left", "right", "split"]);
-const _ = new Set(["cloth", "band"]);
-const nt = new Set(["rod", "cap", ..._]);
-const j = 1000 / 30;
-const et = 420;
-const it = 0.12;
-const st = 0.15;
-const Q = curtainWidth2 => Math.max(4, Math.min(96, Math.round((Number(curtainWidth2.curtainWidth) || 1.8) / ($(curtainWidth2) === "split" ? 2 : 1) / st)));
-const L = (arg32, arg33) => JSON.stringify([String(arg32 ?? ""), String(arg33 ?? "")]);
-const $ = coverDirection => T.has(coverDirection.coverDirection) ? coverDirection.coverDirection : T.has(coverDirection.curtainPosition) ? coverDirection.curtainPosition : "split";
-const X = position5 => typeof position5?.position == "number" && Number.isFinite(position5.position) ? Math.max(0, Math.min(100, position5.position)) : null;
-const Y = userData7 => Array.isArray(userData7.userData?.curtainRigBasis) && userData7.userData.curtainRigBasis.length === 3 && userData7.userData.curtainRigBasis.every(arg11 => typeof arg11 == "number" && Number.isFinite(arg11) && arg11 > 0) ? [...userData7.userData.curtainRigBasis] : [1.8, 2.4, 0.18];
-function at(Float32BufferAttribute, arg35) {
-  const value54 = Math.max(64, arg35 * 6);
-  const value55 = 2.28168;
-  const value56 = 0.046;
-  const value57 = 0.003;
-  const length = [];
-  const push = [];
-  const push2 = [];
-  const push3 = [];
-  const value58 = arg13 => value56 * Math.sin(arg13 * arg35 * Math.PI * 2);
-  const value59 = arg14 => value56 * arg35 * Math.PI * 2 * Math.cos(arg14 * arg35 * Math.PI * 2);
-  const value60 = (arg15, arg16, arg17, arg18, arg19, arg20, arg21, arg22) => {
-    length.push(arg15, arg16, arg17);
-    push.push(arg18, arg19, arg20);
-    push2.push(arg21, arg22);
+const COVER_DIRECTIONS = new Set(["left", "right", "split"]);
+const CLOTH_PARTS = new Set(["cloth", "band"]);
+const CURTAIN_PARTS = new Set(["rod", "cap", ...CLOTH_PARTS]);
+const FRAME_INTERVAL_MS = 1000 / 30;
+// Built-in easing is available for callers that omit { immediate: true }.
+// Stage runtime owns travel timing in cover-feedback and pushes poses here with
+// immediate:true each tick, so MOTION_DURATION_MS rarely drives stage animation.
+const MOTION_DURATION_MS = 420;
+const MIN_PANEL_SCALE = 0.12;
+const FOLD_WIDTH = 0.15;
+const foldCountForBinding = binding => Math.max(4, Math.min(96, Math.round((Number(binding.curtainWidth) || 1.8) / (resolveCoverDirection(binding) === "split" ? 2 : 1) / FOLD_WIDTH)));
+const modelKey = (floorId, modelId) => JSON.stringify([String(floorId ?? ""), String(modelId ?? "")]);
+const resolveCoverDirection = binding => COVER_DIRECTIONS.has(binding.coverDirection) ? binding.coverDirection : COVER_DIRECTIONS.has(binding.curtainPosition) ? binding.curtainPosition : "split";
+const clampPosition = state => typeof state?.position == "number" && Number.isFinite(state.position) ? Math.max(0, Math.min(100, state.position)) : null;
+const rigBasis = node => Array.isArray(node.userData?.curtainRigBasis) && node.userData.curtainRigBasis.length === 3 && node.userData.curtainRigBasis.every(n => typeof n == "number" && Number.isFinite(n) && n > 0) ? [...node.userData.curtainRigBasis] : [1.8, 2.4, 0.18];
+function buildFoldGeometry(THREE, folds) {
+  const segments = Math.max(64, folds * 6);
+  const height = 2.28168;
+  const waveAmp = 0.046;
+  const thickness = 0.003;
+  const positions = [];
+  const normals = [];
+  const uvs = [];
+  const indices = [];
+  const waveAt = t => waveAmp * Math.sin(t * folds * Math.PI * 2);
+  const waveDerivAt = t => waveAmp * folds * Math.PI * 2 * Math.cos(t * folds * Math.PI * 2);
+  const pushVertex = (x, y, z, nx, ny, nz, u, v) => {
+    positions.push(x, y, z);
+    normals.push(nx, ny, nz);
+    uvs.push(u, v);
   };
-  for (const value43 of ["front", "back", "top", "bottom"]) {
-    const value28 = length.length / 3;
-    for (let value26 = 0; value26 <= value54; value26++) {
-      const value17 = value26 / value54;
-      const value18 = value58(value17);
-      const value19 = value59(value17);
-      const value20 = Math.hypot(value19, 1);
-      if (value43 === "front" || value43 === "back") {
-        const value6 = value43 === "front" ? 1 : -1;
-        for (const value4 of [0, value55]) {
-          value60(value17, value4, value18 + value6 * value57 / 2, -value6 * value19 / value20, 0, value6 / value20, value17, value4 / value55);
+  for (const face of ["front", "back", "top", "bottom"]) {
+    const baseIndex = positions.length / 3;
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const wave = waveAt(t);
+      const deriv = waveDerivAt(t);
+      const hyp = Math.hypot(deriv, 1);
+      if (face === "front" || face === "back") {
+        const side = face === "front" ? 1 : -1;
+        for (const y of [0, height]) {
+          pushVertex(t, y, wave + side * thickness / 2, -side * deriv / hyp, 0, side / hyp, t, y / height);
         }
       } else {
-        const value7 = value43 === "top" ? 1 : -1;
-        for (const value5 of [-value57 / 2, value57 / 2]) {
-          value60(value17, value7 > 0 ? value55 : 0, value18 + value5, 0, value7, 0, value17, value5 > 0 ? 1 : 0);
+        const side = face === "top" ? 1 : -1;
+        for (const z of [-thickness / 2, thickness / 2]) {
+          pushVertex(t, side > 0 ? height : 0, wave + z, 0, side, 0, t, z > 0 ? 1 : 0);
         }
       }
-      if (value26 < value54) {
-        const value8 = value28 + value26 * 2;
-        if (value43 === "front" || value43 === "bottom") {
-          push3.push(value8, value8 + 2, value8 + 1, value8 + 1, value8 + 2, value8 + 3);
+      if (i < segments) {
+        const idx = baseIndex + i * 2;
+        if (face === "front" || face === "bottom") {
+          indices.push(idx, idx + 2, idx + 1, idx + 1, idx + 2, idx + 3);
         } else {
-          push3.push(value8, value8 + 1, value8 + 2, value8 + 1, value8 + 3, value8 + 2);
+          indices.push(idx, idx + 1, idx + 2, idx + 1, idx + 3, idx + 2);
         }
       }
     }
   }
-  for (const value44 of [0, 1]) {
-    const value29 = length.length / 3;
-    const value30 = value44 === 0 ? -1 : 1;
-    for (const value27 of [0, value55]) {
-      for (const value10 of [-value57 / 2, value57 / 2]) {
-        value60(value44, value27, value58(value44) + value10, value30, 0, 0, value10 > 0 ? 1 : 0, value27 / value55);
+  for (const end of [0, 1]) {
+    const baseIndex = positions.length / 3;
+    const nx = end === 0 ? -1 : 1;
+    for (const y of [0, height]) {
+      for (const z of [-thickness / 2, thickness / 2]) {
+        pushVertex(end, y, waveAt(end) + z, nx, 0, 0, z > 0 ? 1 : 0, y / height);
       }
     }
-    if (value30 > 0) {
-      push3.push(value29, value29 + 2, value29 + 1, value29 + 1, value29 + 2, value29 + 3);
+    if (nx > 0) {
+      indices.push(baseIndex, baseIndex + 2, baseIndex + 1, baseIndex + 1, baseIndex + 2, baseIndex + 3);
     } else {
-      push3.push(value29, value29 + 1, value29 + 2, value29 + 1, value29 + 3, value29 + 2);
+      indices.push(baseIndex, baseIndex + 1, baseIndex + 2, baseIndex + 1, baseIndex + 3, baseIndex + 2);
     }
   }
-  const setAttribute = new Float32BufferAttribute.BufferGeometry();
-  setAttribute.setAttribute("position", new Float32BufferAttribute.Float32BufferAttribute(length, 3));
-  setAttribute.setAttribute("normal", new Float32BufferAttribute.Float32BufferAttribute(push, 3));
-  setAttribute.setAttribute("uv", new Float32BufferAttribute.Float32BufferAttribute(push2, 2));
-  setAttribute.setIndex(push3);
-  setAttribute.computeBoundingBox();
-  setAttribute.computeBoundingSphere();
-  return setAttribute;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
 }
-function U(arg36, arg37) {
-  for (let parent2 = arg36; parent2; parent2 = parent2.parent) {
-    if (parent2 === arg37) {
+function isDescendantOf(node, ancestor) {
+  for (let current = node; current; current = current.parent) {
+    if (current === ancestor) {
       return true;
     }
   }
   return false;
 }
-function lt(arg38) {
-  const every = [];
-  const push4 = [];
-  function fn8(userData8) {
-    if (!userData8.userData?.curtainMotionRig && !userData8.userData?.curtainMotionPanel && (userData8 === arg38 || userData8.userData?.environmentModelId == null)) {
-      if (userData8.userData?.curtainRigRoot === true) {
-        push4.push(userData8);
+function locateCurtainRig(modelNode) {
+  const parts = [];
+  const roots = [];
+  function visit(node) {
+    if (!node.userData?.curtainMotionRig && !node.userData?.curtainMotionPanel && (node === modelNode || node.userData?.environmentModelId == null)) {
+      if (node.userData?.curtainRigRoot === true) {
+        roots.push(node);
       }
-      if (userData8.isMesh && nt.has(userData8.userData?.curtainPart)) {
-        every.push(userData8);
+      if (node.isMesh && CURTAIN_PARTS.has(node.userData?.curtainPart)) {
+        parts.push(node);
       }
-      for (const value11 of userData8.children || []) {
-        fn8(value11);
+      for (const child of node.children || []) {
+        visit(child);
       }
     }
   }
-  fn8(arg38);
-  if (!every.some(userData5 => _.has(userData5.userData.curtainPart))) {
+  visit(modelNode);
+  if (!parts.some(part => CLOTH_PARTS.has(part.userData.curtainPart))) {
     return null;
   }
-  let parent3 = push4.find(arg12 => every.every(arg10 => U(arg10, arg12)));
-  if (!parent3) {
-    for (parent3 = every[0].parent; parent3 && !every.every(arg9 => U(arg9, parent3));) {
-      parent3 = parent3.parent;
+  let anchor = roots.find(root => parts.every(part => isDescendantOf(part, root)));
+  if (!anchor) {
+    for (anchor = parts[0].parent; anchor && !parts.every(part => isDescendantOf(part, anchor));) {
+      anchor = anchor.parent;
     }
   }
-  if (parent3 && U(parent3, arg38)) {
+  if (anchor && isDescendantOf(anchor, modelNode)) {
     return {
-      anchor: parent3,
-      parts: every
+      anchor,
+      parts
     };
   } else {
     return null;
   }
 }
 export function createCurtainMotion({
-  THREE: MeshStandardMaterial,
-  requestRender: arg34 = () => {}
+  THREE,
+  requestRender = () => {}
 } = {}) {
-  let traverse = null;
-  let value45;
-  let value46 = "";
-  let value47 = false;
-  const has4 = new Map();
-  function fn(arg23) {
-    if (!has4.has(arg23)) {
-      has4.set(arg23, at(MeshStandardMaterial, arg23));
+  let root = null;
+  let sceneRevision;
+  let bindingsSignature = "";
+  let disposed = false;
+  const geometryCache = new Map();
+  function geometryForFolds(folds) {
+    if (!geometryCache.has(folds)) {
+      geometryCache.set(folds, buildFoldGeometry(THREE, folds));
     }
-    return has4.get(arg23);
+    return geometryCache.get(folds);
   }
-  let values = new Map();
-  let keys = new Map();
-  let value48 = -Infinity;
-  let value49 = true;
-  let value50 = "";
-  let has5 = new Map();
-  let value51 = 1;
-  let value52 = true;
-  let value53 = "";
-  function fn2() {
-    value49 = true;
-    arg34();
+  let entries = new Map();
+  let pendingStates = new Map();
+  let lastFrameAt = -Infinity;
+  let poseDirty = true;
+  let cachedPoseKey = "";
+  let entityById = new Map();
+  let nextGeneration = 1;
+  let structureDirty = true;
+  let cachedStructureKey = "";
+  function markDirty() {
+    poseDirty = true;
+    requestRender();
   }
-  function fn3(model2, id4, anchor) {
-    const some = anchor.parts.filter(userData3 => _.has(userData3.userData.curtainPart));
-    const reduce = some.filter(userData => userData.userData.curtainPart === "cloth").flatMap(material => Array.isArray(material.material) ? material.material : [material.material]).filter(Boolean);
-    const value31 = color => color.color ? color.color.r + color.color.g + color.color.b : 0;
-    const color2 = reduce.reduce((arg, arg2) => !arg || value31(arg2) > value31(arg) ? arg2 : arg, null)?.clone?.() || new MeshStandardMaterial.MeshStandardMaterial({
+  function createEntry(modelNode, binding, located) {
+    const clothParts = located.parts.filter(part => CLOTH_PARTS.has(part.userData.curtainPart));
+    const sourceMaterials = clothParts.filter(part => part.userData.curtainPart === "cloth").flatMap(mesh => Array.isArray(mesh.material) ? mesh.material : [mesh.material]).filter(Boolean);
+    const colorSum = material => material.color ? material.color.r + material.color.g + material.color.b : 0;
+    const material = sourceMaterials.reduce((best, candidate) => !best || colorSum(candidate) > colorSum(best) ? candidate : best, null)?.clone?.() || new THREE.MeshStandardMaterial({
       color: 13094354,
       roughness: 0.94,
       metalness: 0
     });
-    color2.color?.lerp(new MeshStandardMaterial.Color(16777215), 0.2);
-    color2.side = MeshStandardMaterial.DoubleSide;
-    color2.forceSinglePass = true;
-    const folds2 = Q(id4);
-    const value32 = fn(folds2);
-    const name = new MeshStandardMaterial.Group();
-    const basis2 = Y(anchor.anchor);
-    name.name = "curtain-motion-" + id4.id;
-    name.userData.curtainMotionRig = true;
-    name.scale.set(basis2[0] / 1.8, basis2[1] / 2.4, basis2[2] / 0.18);
-    anchor.anchor.add(name);
+    material.color?.lerp(new THREE.Color(16777215), 0.2);
+    material.side = THREE.DoubleSide;
+    material.forceSinglePass = true;
+    const folds = foldCountForBinding(binding);
+    const geometry = geometryForFolds(folds);
+    const rig = new THREE.Group();
+    const basis = rigBasis(located.anchor);
+    rig.name = "curtain-motion-" + binding.id;
+    rig.userData.curtainMotionRig = true;
+    rig.scale.set(basis[0] / 1.8, basis[1] / 2.4, basis[2] / 0.18);
+    located.anchor.add(rig);
     const panels = ["left", "right"].map(curtainSide => {
-      const userData4 = new MeshStandardMaterial.Mesh(value32, color2);
-      userData4.name = "curtain-motion-" + id4.id + "-" + curtainSide;
-      userData4.userData.curtainMotionPanel = true;
-      userData4.userData.curtainSide = curtainSide;
-      userData4.userData.externalModelSharedGeometry = true;
-      userData4.userData.externalModelSharedTextures = true;
-      userData4.userData.externalModelSharedMaterial = true;
-      userData4.position.set(curtainSide === "left" ? -0.9 : 0.9, 0.06, 0);
-      userData4.castShadow = some.some(castShadow => castShadow.castShadow);
-      userData4.receiveShadow = some.some(receiveShadow => receiveShadow.receiveShadow);
-      userData4.visible = false;
-      name.add(userData4);
-      return userData4;
+      const panel = new THREE.Mesh(geometry, material);
+      panel.name = "curtain-motion-" + binding.id + "-" + curtainSide;
+      panel.userData.curtainMotionPanel = true;
+      panel.userData.curtainSide = curtainSide;
+      panel.userData.externalModelSharedGeometry = true;
+      panel.userData.externalModelSharedTextures = true;
+      panel.userData.externalModelSharedMaterial = true;
+      panel.position.set(curtainSide === "left" ? -0.9 : 0.9, 0.06, 0);
+      panel.castShadow = clothParts.some(part => part.castShadow);
+      panel.receiveShadow = clothParts.some(part => part.receiveShadow);
+      panel.visible = false;
+      rig.add(panel);
+      return panel;
     });
     return {
-      model: model2,
-      binding: id4,
-      folds: folds2,
-      anchor: anchor.anchor,
-      parts: anchor.parts,
-      rig: name,
-      basis: basis2,
-      generation: value51++,
+      model: modelNode,
+      binding,
+      folds,
+      anchor: located.anchor,
+      parts: located.parts,
+      rig,
+      basis,
+      generation: nextGeneration++,
       panels,
-      material: color2,
-      originals: new Map(some.map(visible => [visible, visible.visible])),
-      direction: $(id4),
+      material,
+      originals: new Map(clothParts.map(part => [part, part.visible])),
+      direction: resolveCoverDirection(binding),
       position: null,
       target: null,
       motionFrom: null,
       motionStart: null
     };
   }
-  function fn4(originals) {
-    for (const [visible2, visible3] of originals.originals) {
-      visible2.visible = visible3;
+  function disposeEntry(entry) {
+    for (const [part, wasVisible] of entry.originals) {
+      part.visible = wasVisible;
     }
-    originals.rig.removeFromParent();
-    originals.material.dispose();
+    entry.rig.removeFromParent();
+    entry.material.dispose();
   }
-  function fn5(position4) {
-    position4.position = null;
-    position4.target = null;
-    position4.motionFrom = null;
-    position4.motionStart = null;
-    fn6(position4);
+  function resetMotion(entry) {
+    entry.position = null;
+    entry.target = null;
+    entry.motionFrom = null;
+    entry.motionStart = null;
+    applyPose(entry);
   }
-  function fn6(direction2) {
-    const value33 = direction2.position ?? 0;
-    const value34 = direction2.direction === "split";
-    const value35 = value34 ? 0.906 : 1.8;
-    const value36 = 1 - (1 - it) * value33 / 100;
-    for (const visible4 of direction2.originals.keys()) {
-      visible4.visible = false;
+  function applyPose(entry) {
+    // Unconfigured / unknown cover position previews as open (retracted).
+    const position = entry.position ?? 100;
+    const isSplit = entry.direction === "split";
+    const fullWidth = isSplit ? 0.906 : 1.8;
+    const scaleX = 1 - (1 - MIN_PANEL_SCALE) * position / 100;
+    for (const part of entry.originals.keys()) {
+      part.visible = false;
     }
-    for (const userData6 of direction2.panels) {
-      const value12 = userData6.userData.curtainSide === "left";
-      userData6.visible = value34 || direction2.direction === (value12 ? "left" : "right");
-      userData6.scale.x = (value12 ? 1 : -1) * value35 * value36;
-      userData6.updateMatrix();
+    for (const panel of entry.panels) {
+      const isLeft = panel.userData.curtainSide === "left";
+      panel.visible = isSplit || entry.direction === (isLeft ? "left" : "right");
+      panel.scale.x = (isLeft ? 1 : -1) * fullWidth * scaleX;
+      panel.updateMatrix();
     }
-    value49 = true;
+    poseDirty = true;
   }
-  function fn7(target, arg24, arg25 = false) {
-    const target2 = X(arg24);
-    if (target2 === null) {
-      const value13 = target.target !== target.position;
-      target.target = target.position;
-      target.motionStart = null;
-      return value13;
+  function setEntryTarget(entry, state, immediate = false) {
+    const nextPosition = clampPosition(state);
+    if (nextPosition === null) {
+      const changed = entry.target !== entry.position;
+      entry.target = entry.position;
+      entry.motionStart = null;
+      return changed;
     }
-    if (target.position === null || arg25) {
-      const value14 = target.position !== target2 || target.target !== target2;
-      target.position = target2;
-      target.target = target2;
-      target.motionStart = null;
-      if (value14) {
-        fn6(target);
+    if (entry.position === null || immediate) {
+      const changed = entry.position !== nextPosition || entry.target !== nextPosition;
+      entry.position = nextPosition;
+      entry.target = nextPosition;
+      entry.motionStart = null;
+      if (changed) {
+        applyPose(entry);
       }
-      return value14;
+      return changed;
     }
-    if (target.target === target2) {
+    if (entry.target === nextPosition) {
       return false;
     } else {
-      target.target = target2;
-      target.motionFrom = target.position;
-      target.motionStart = null;
+      entry.target = nextPosition;
+      entry.motionFrom = entry.position;
+      entry.motionStart = null;
       return true;
     }
   }
-  function setBindings(arg26, arg27 = [], arg28) {
-    if (value47) {
+  function setBindings(nextRoot, rawBindings = [], revision) {
+    if (disposed) {
       return;
     }
-    const has = new Set();
-    const has2 = new Set();
-    const map = (Array.isArray(arg27) ? arg27 : []).filter(id => {
-      if (!id || id.id == null || id.modelId == null) {
+    const seenIds = new Set();
+    const seenModelKeys = new Set();
+    const bindings = (Array.isArray(rawBindings) ? rawBindings : []).filter(binding => {
+      if (!binding || binding.id == null || binding.modelId == null) {
         return false;
       }
-      const value = String(id.id);
-      const value2 = L(id.floorId, id.modelId);
-      if (has.has(value) || has2.has(value2)) {
+      const id = String(binding.id);
+      const key = modelKey(binding.floorId, binding.modelId);
+      if (seenIds.has(id) || seenModelKeys.has(key)) {
         return false;
       } else {
-        has.add(value);
-        has2.add(value2);
+        seenIds.add(id);
+        seenModelKeys.add(key);
         return true;
       }
-    }).map(curtainWidth => ({
-      id: String(curtainWidth.id),
-      entityId: String(curtainWidth.entityId ?? ""),
-      floorId: String(curtainWidth.floorId ?? ""),
-      modelId: String(curtainWidth.modelId),
-      curtainWidth: Number(curtainWidth.curtainWidth) > 0 ? Number(curtainWidth.curtainWidth) : 1.8,
-      coverDirection: curtainWidth.coverDirection || "auto",
-      curtainPosition: curtainWidth.curtainPosition || "split"
+    }).map(binding => ({
+      id: String(binding.id),
+      entityId: String(binding.entityId ?? ""),
+      floorId: String(binding.floorId ?? ""),
+      modelId: String(binding.modelId),
+      curtainWidth: Number(binding.curtainWidth) > 0 ? Number(binding.curtainWidth) : 1.8,
+      coverDirection: binding.coverDirection || "auto",
+      curtainPosition: binding.curtainPosition || "split"
     }));
-    const value37 = JSON.stringify(map);
-    if (traverse === arg26 && value45 === arg28 && value46 === value37) {
+    const nextSignature = JSON.stringify(bindings);
+    if (root === nextRoot && sceneRevision === revision && bindingsSignature === nextSignature) {
       return;
     }
-    const has3 = new Map(map.map(id2 => [id2.id, id2.entityId]));
-    for (const value21 of keys.keys()) {
-      if (!has3.has(value21) || has5.has(value21) && has5.get(value21) !== has3.get(value21)) {
-        keys.delete(value21);
+    const nextEntityById = new Map(bindings.map(binding => [binding.id, binding.entityId]));
+    for (const id of pendingStates.keys()) {
+      if (!nextEntityById.has(id) || entityById.has(id) && entityById.get(id) !== nextEntityById.get(id)) {
+        pendingStates.delete(id);
       }
     }
-    has5 = has3;
-    traverse = arg26 || null;
-    value45 = arg28;
-    value46 = value37;
-    const map2 = new Map();
-    if (map.length) {
-      traverse?.traverse?.(userData2 => {
-        if (userData2.userData?.environmentModelType !== "curtain" || userData2.userData?.environmentModelId == null) {
+    entityById = nextEntityById;
+    root = nextRoot || null;
+    sceneRevision = revision;
+    bindingsSignature = nextSignature;
+    const modelNodes = new Map();
+    if (bindings.length) {
+      root?.traverse?.(node => {
+        if (node.userData?.environmentModelType !== "curtain" || node.userData?.environmentModelId == null) {
           return;
         }
-        let value3 = userData2.userData.environmentFloorId;
-        for (let parent = userData2.parent; value3 == null && parent; parent = parent.parent) {
-          value3 = parent.userData?.environmentFloorId;
+        let floorId = node.userData.environmentFloorId;
+        for (let parent = node.parent; floorId == null && parent; parent = parent.parent) {
+          floorId = parent.userData?.environmentFloorId;
         }
-        map2.set(L(value3, userData2.userData.environmentModelId), userData2);
+        modelNodes.set(modelKey(floorId, node.userData.environmentModelId), node);
       });
     }
-    const value38 = map.map(floorId => {
-      const model = map2.get(L(floorId.floorId, floorId.modelId));
-      const located = model ? lt(model) : null;
+    const locatedBindings = bindings.map(binding => {
+      const modelNode = modelNodes.get(modelKey(binding.floorId, binding.modelId));
+      const located = modelNode ? locateCurtainRig(modelNode) : null;
       if (located) {
         return {
-          binding: floorId,
-          model,
+          binding,
+          model: modelNode,
           located
         };
       } else {
         return null;
       }
     }).filter(Boolean);
-    const set2 = new Map();
-    for (const located2 of value38) {
-      const parts = values.get(located2.binding.id);
-      if (parts && parts.model === located2.model && parts.anchor === located2.located.anchor && parts.parts.length === located2.located.parts.length && parts.parts.every((arg7, arg8) => arg7 === located2.located.parts[arg8])) {
-        set2.set(located2.binding.id, parts);
+    const reused = new Map();
+    for (const item of locatedBindings) {
+      const existing = entries.get(item.binding.id);
+      if (existing && existing.model === item.model && existing.anchor === item.located.anchor && existing.parts.length === item.located.parts.length && existing.parts.every((part, index) => part === item.located.parts[index])) {
+        reused.set(item.binding.id, existing);
       }
     }
-    for (const [value22, value23] of values) {
-      if (!set2.has(value22)) {
-        fn4(value23);
+    for (const [id, entry] of entries) {
+      if (!reused.has(id)) {
+        disposeEntry(entry);
       }
     }
-    values = new Map();
+    entries = new Map();
     for (const {
-      binding: id3,
-      model: value24,
-      located: value25
-    } of value38) {
-      const basis = set2.get(id3.id) || fn3(value24, id3, value25);
-      const direction = $(id3);
-      if (basis.binding.entityId !== id3.entityId) {
-        fn5(basis);
+      binding,
+      model: modelNode,
+      located
+    } of locatedBindings) {
+      const entry = reused.get(binding.id) || createEntry(modelNode, binding, located);
+      const direction = resolveCoverDirection(binding);
+      if (entry.binding.entityId !== binding.entityId) {
+        resetMotion(entry);
       }
-      basis.binding = id3;
-      const folds = Q(id3);
-      if (basis.folds !== folds) {
-        basis.folds = folds;
-        for (const geometry of basis.panels) {
-          geometry.geometry = fn(folds);
+      entry.binding = binding;
+      const folds = foldCountForBinding(binding);
+      if (entry.folds !== folds) {
+        entry.folds = folds;
+        for (const panel of entry.panels) {
+          panel.geometry = geometryForFolds(folds);
         }
       }
-      basis.basis = Y(basis.anchor);
-      basis.rig.scale.set(basis.basis[0] / 1.8, basis.basis[1] / 2.4, basis.basis[2] / 0.18);
-      if (basis.direction !== direction) {
-        basis.direction = direction;
-        fn6(basis);
+      entry.basis = rigBasis(entry.anchor);
+      entry.rig.scale.set(entry.basis[0] / 1.8, entry.basis[1] / 2.4, entry.basis[2] / 0.18);
+      if (entry.direction !== direction) {
+        entry.direction = direction;
+        applyPose(entry);
       }
-      values.set(id3.id, basis);
-      if (keys.has(id3.id)) {
-        fn7(basis, keys.get(id3.id));
+      entries.set(binding.id, entry);
+      if (pendingStates.has(binding.id)) {
+        setEntryTarget(entry, pendingStates.get(binding.id));
       }
-      if (basis.position === null) {
-        fn6(basis);
+      if (entry.position === null) {
+        applyPose(entry);
       }
     }
-    value52 = true;
-    fn2();
+    structureDirty = true;
+    markDirty();
   }
-  function setState(arg29, arg30, {
-    immediate: arg31 = false
+  function setState(id, state, {
+    immediate = false
   } = {}) {
-    if (value47 || arg29 == null) {
+    if (disposed || id == null) {
       return;
     }
-    const value39 = String(arg29);
-    const value40 = {
-      position: X(arg30)
+    const key = String(id);
+    const nextState = {
+      position: clampPosition(state)
     };
-    keys.set(value39, value40);
-    const value41 = values.get(value39);
-    if (value41 && fn7(value41, value40, arg31)) {
-      fn2();
+    pendingStates.set(key, nextState);
+    const entry = entries.get(key);
+    if (entry && setEntryTarget(entry, nextState, immediate)) {
+      markDirty();
     }
   }
   function isMoving() {
-    return !value47 && [...values.values()].some(position => position.position !== null && position.target !== position.position);
+    return !disposed && [...entries.values()].some(entry => entry.position !== null && entry.target !== entry.position);
   }
-  function update(motionStart) {
-    if (!isMoving() || (Number.isFinite(motionStart) || (motionStart = globalThis.performance?.now() ?? Date.now()), motionStart >= value48 && motionStart - value48 < j)) {
+  function update(nowMs) {
+    if (!isMoving() || (Number.isFinite(nowMs) || (nowMs = globalThis.performance?.now() ?? Date.now()), nowMs >= lastFrameAt && nowMs - lastFrameAt < FRAME_INTERVAL_MS)) {
       return false;
     }
-    value48 = Number.isFinite(value48) && motionStart >= value48 ? motionStart - (motionStart - value48) % j : motionStart;
-    let value42 = false;
-    for (const position3 of values.values()) {
-      if (position3.position === null || position3.target === position3.position) {
+    lastFrameAt = Number.isFinite(lastFrameAt) && nowMs >= lastFrameAt ? nowMs - (nowMs - lastFrameAt) % FRAME_INTERVAL_MS : nowMs;
+    let changed = false;
+    for (const entry of entries.values()) {
+      if (entry.position === null || entry.target === entry.position) {
         continue;
       }
-      if (position3.motionStart === null || motionStart < position3.motionStart) {
-        position3.motionStart = motionStart;
+      if (entry.motionStart === null || nowMs < entry.motionStart) {
+        entry.motionStart = nowMs;
       }
-      const value15 = Math.min(1, (motionStart - position3.motionStart) / et);
-      const value16 = value15 * value15 * (3 - value15 * 2);
-      const position2 = value15 === 1 ? position3.target : position3.motionFrom + (position3.target - position3.motionFrom) * value16;
-      if (position2 !== position3.position) {
-        position3.position = position2;
-        fn6(position3);
-        value42 = true;
+      const progress = Math.min(1, (nowMs - entry.motionStart) / MOTION_DURATION_MS);
+      const eased = progress * progress * (3 - progress * 2);
+      const nextPosition = progress === 1 ? entry.target : entry.motionFrom + (entry.target - entry.motionFrom) * eased;
+      if (nextPosition !== entry.position) {
+        entry.position = nextPosition;
+        applyPose(entry);
+        changed = true;
       }
     }
-    return value42;
+    return changed;
   }
   function poseKey() {
-    if (value49) {
-      value50 = JSON.stringify([...values.values()].map(binding => [binding.binding.id, binding.binding.floorId, binding.binding.modelId, binding.binding.entityId, binding.generation, binding.direction, binding.basis, binding.folds, binding.position === null ? "preview-closed" : Math.round(binding.position * 100) / 100]).sort((arg3, arg4) => arg3[0].localeCompare(arg4[0])));
-      value49 = false;
+    if (poseDirty) {
+      cachedPoseKey = JSON.stringify([...entries.values()].map(entry => [entry.binding.id, entry.binding.floorId, entry.binding.modelId, entry.binding.entityId, entry.generation, entry.direction, entry.basis, entry.folds, entry.position === null ? "preview-open" : Math.round(entry.position * 100) / 100]).sort((a, b) => a[0].localeCompare(b[0])));
+      poseDirty = false;
     }
-    return value50;
+    return cachedPoseKey;
   }
   function structureKey() {
-    if (value52) {
-      value53 = JSON.stringify([...values.values()].map(binding2 => [binding2.binding.id, binding2.binding.floorId, binding2.binding.modelId, binding2.generation, binding2.direction, binding2.basis, binding2.folds]).sort((arg5, arg6) => arg5[0].localeCompare(arg6[0])));
-      value52 = false;
+    if (structureDirty) {
+      cachedStructureKey = JSON.stringify([...entries.values()].map(entry => [entry.binding.id, entry.binding.floorId, entry.binding.modelId, entry.generation, entry.direction, entry.basis, entry.folds]).sort((a, b) => a[0].localeCompare(b[0])));
+      structureDirty = false;
     }
-    return value53;
+    return cachedStructureKey;
   }
-  function dispose2() {
-    if (!value47) {
-      value47 = true;
-      for (const value9 of values.values()) {
-        fn4(value9);
+  function dispose() {
+    if (!disposed) {
+      disposed = true;
+      for (const entry of entries.values()) {
+        disposeEntry(entry);
       }
-      values.clear();
-      keys.clear();
-      has5.clear();
-      for (const dispose of has4.values()) {
-        dispose.dispose();
+      entries.clear();
+      pendingStates.clear();
+      entityById.clear();
+      for (const geometry of geometryCache.values()) {
+        geometry.dispose();
       }
-      has4.clear();
-      traverse = null;
-      value49 = true;
-      value52 = true;
-      arg34();
+      geometryCache.clear();
+      root = null;
+      poseDirty = true;
+      structureDirty = true;
+      requestRender();
     }
   }
   return {
@@ -458,6 +462,6 @@ export function createCurtainMotion({
     isMoving,
     poseKey,
     structureKey,
-    dispose: dispose2
+    dispose
   };
 }

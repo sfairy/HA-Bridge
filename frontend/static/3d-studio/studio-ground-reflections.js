@@ -1,24 +1,24 @@
 import { normalizeGroundReflection } from "../modules/interaction3d/reflection-settings.js";
 import { createReflectionCulling } from "./studio-reflection-culling.js?v=20260909-reflection-scope-v1";
 export function createGroundReflections({
-  THREE: Vector4,
-  renderer: xr,
-  scene: background2,
-  getRoot: arg19,
-  syncLighting: arg20,
-  getStateKey: arg21 = () => "",
-  getSceneRevision: arg22 = () => "",
-  floorLighting: arg23 = false,
-  detail: prepare = null,
-  cull: arg24 = true,
-  requestFrame: arg25 = () => {}
+  THREE,
+  renderer,
+  scene,
+  getRoot,
+  syncLighting,
+  getStateKey = () => "",
+  getSceneRevision = () => "",
+  floorLighting = false,
+  detail = null,
+  cull = true,
+  requestFrame = () => {}
 }) {
-  const mode2 = {
+  const settings = {
     ...normalizeGroundReflection(),
     fps: 30
   };
-  const restore = createReflectionCulling(Vector4);
-  const inCapture = {
+  const culling = createReflectionCulling(THREE);
+  const stats = {
     captures: 0,
     renders: 0,
     lastMs: 0,
@@ -29,123 +29,123 @@ export function createGroundReflections({
     cachedBytes: 0,
     inCapture: false
   };
-  const has2 = new WeakMap();
-  const entryMap = new Map();
-  function fn(transmission2) {
-    if (!transmission2 || !(transmission2.transmission > 0)) {
-      return transmission2;
+  const transmissionClones = new WeakMap();
+  const transmissionDisposers = new Map();
+  function withoutTransmission(material) {
+    if (!material || !(material.transmission > 0)) {
+      return material;
     }
-    if (!has2.has(transmission2)) {
-      const transmission = transmission2.clone();
-      transmission.transmission = 0;
-      transmission.forceSinglePass = true;
-      transmission.onBeforeCompile = transmission2.onBeforeCompile;
-      transmission.customProgramCacheKey = () => transmission2.customProgramCacheKey() + "|reflection-no-refraction";
-      const value11 = () => {
-        transmission2.removeEventListener("dispose", value11);
-        has2.delete(transmission2);
-        entryMap.delete(transmission);
-        transmission.dispose();
+    if (!transmissionClones.has(material)) {
+      const clone = material.clone();
+      clone.transmission = 0;
+      clone.forceSinglePass = true;
+      clone.onBeforeCompile = material.onBeforeCompile;
+      clone.customProgramCacheKey = () => material.customProgramCacheKey() + "|reflection-no-refraction";
+      const onDispose = () => {
+        material.removeEventListener("dispose", onDispose);
+        transmissionClones.delete(material);
+        transmissionDisposers.delete(clone);
+        clone.dispose();
       };
-      transmission2.addEventListener("dispose", value11);
-      has2.set(transmission2, transmission);
-      entryMap.set(transmission, value11);
+      material.addEventListener("dispose", onDispose);
+      transmissionClones.set(material, clone);
+      transmissionDisposers.set(clone, onDispose);
     }
-    return has2.get(transmission2);
+    return transmissionClones.get(material);
   }
-  let push5 = [];
-  let traverse = null;
-  let value33 = null;
-  let value34 = true;
-  let value35 = -Infinity;
-  let value36 = "";
-  let value37 = "";
-  let value38 = false;
-  let value39 = 0;
-  let value40;
-  let value41 = false;
-  let value42 = false;
-  let value43 = null;
-  let value44 = null;
-  let value45 = null;
-  let value46 = 0;
-  const values = new Map();
-  const get3 = new Map();
-  const value47 = 33554432;
-  let set2 = new Map();
-  let get4 = new Map();
-  function fn2(arg12) {
-    for (let userData4 = arg12; userData4; userData4 = userData4.parent) {
-      const value12 = userData4.userData?.floorId || userData4.userData?.regionFloorId || userData4.userData?.environmentFloorId || userData4.userData?.lightFloorId;
-      if (value12) {
-        return String(value12);
+  let overlays = [];
+  let root = null;
+  let firstChild = null;
+  let dirty = true;
+  let lastCaptureTime = -Infinity;
+  let lastCameraKey = "";
+  let lastLightingKey = "";
+  let disposed = false;
+  let globalRevision = 0;
+  let sceneRevision;
+  let suspended = false;
+  let resumeFade = false;
+  let fadeStart = null;
+  let throttleTimer = null;
+  let outsideFloorId = null;
+  let useCounter = 0;
+  const overlayBySource = new Map();
+  const floorRevision = new Map();
+  const maxCacheBytes = 33554432;
+  let floorMaxHeight = new Map();
+  let lightsByFloor = new Map();
+  function floorIdOf(object) {
+    for (let node = object; node; node = node.parent) {
+      const floorId = node.userData?.floorId || node.userData?.regionFloorId || node.userData?.environmentFloorId || node.userData?.lightFloorId;
+      if (floorId) {
+        return String(floorId);
       }
     }
     return "";
   }
-  const has3 = new WeakMap();
-  let value48 = 0;
-  function fn3(arg13) {
-    if (arg13) {
-      if (!has3.has(arg13)) {
-        has3.set(arg13, ++value48);
+  const attributeIds = new WeakMap();
+  let nextAttributeId = 0;
+  function attributeId(attribute) {
+    if (attribute) {
+      if (!attributeIds.has(attribute)) {
+        attributeIds.set(attribute, ++nextAttributeId);
       }
-      return has3.get(arg13);
+      return attributeIds.get(attribute);
     } else {
       return 0;
     }
   }
-  function fn4(geometry6) {
-    const index = geometry6.geometry;
-    return [index.uuid, fn3(index.index), index.index?.version, ...Object.entries(index.attributes).flatMap(([arg, version]) => [arg, fn3(version), version.version, version.data?.version, version.count]), index.drawRange.start, index.drawRange.count].join("|");
+  function geometryKey(mesh) {
+    const geometry = mesh.geometry;
+    return [geometry.uuid, attributeId(geometry.index), geometry.index?.version, ...Object.entries(geometry.attributes).flatMap(([name, attribute]) => [name, attributeId(attribute), attribute.version, attribute.data?.version, attribute.count]), geometry.drawRange.start, geometry.drawRange.count].join("|");
   }
-  function fn5(overlay6) {
-    overlay6.geometry.removeEventListener("dispose", overlay6.onSourceDispose);
-    overlay6.overlay.removeFromParent();
-    overlay6.overlay.geometry.dispose();
-    overlay6.overlay.material.dispose();
-    overlay6.map.dispose();
-    overlay6.scratch.dispose();
-    values.delete(overlay6.source);
+  function disposeOverlay(entry) {
+    entry.geometry.removeEventListener("dispose", entry.onSourceDispose);
+    entry.overlay.removeFromParent();
+    entry.overlay.geometry.dispose();
+    entry.overlay.material.dispose();
+    entry.map.dispose();
+    entry.scratch.dispose();
+    overlayBySource.delete(entry.source);
   }
-  function fn6() {
-    const has = new Set(push5);
-    const value19 = [...values.values()].filter(arg4 => !has.has(arg4)).sort((used, used2) => used2.used - used.used);
+  function pruneCache() {
+    const active = new Set(overlays);
+    const cached = [...overlayBySource.values()].filter(entry => !active.has(entry)).sort((a, b) => b.used - a.used);
     let cachedBytes = 0;
     let cachedRecords = 0;
-    for (const map3 of value19) {
-      const value13 = map3.map.width * map3.map.height * ((1 + map3.map.samples) * 12 + 8);
-      if (map3.dead || cachedRecords >= 4 || cachedBytes + value13 > value47) {
-        fn5(map3);
+    for (const entry of cached) {
+      const bytes = entry.map.width * entry.map.height * ((1 + entry.map.samples) * 12 + 8);
+      if (entry.dead || cachedRecords >= 4 || cachedBytes + bytes > maxCacheBytes) {
+        disposeOverlay(entry);
         continue;
       }
-      cachedBytes += value13;
+      cachedBytes += bytes;
       cachedRecords++;
     }
-    inCapture.cachedRecords = cachedRecords;
-    inCapture.cachedBytes = cachedBytes;
+    stats.cachedRecords = cachedRecords;
+    stats.cachedBytes = cachedBytes;
   }
-  function fn7(map5) {
-    return map5.map(color => [color.uuid, fn12(color), color.intensity, color.color?.r, color.color?.g, color.color?.b, color.distance, color.decay, color.angle, color.penumbra, ...color.matrixWorld.elements, ...(color.target?.matrixWorld.elements || [])].join(",")).join(";");
+  function lightsSignature(lights) {
+    return lights.map(light => [light.uuid, isVisibleInHierarchy(light), light.intensity, light.color?.r, light.color?.g, light.color?.b, light.distance, light.decay, light.angle, light.penumbra, ...light.matrixWorld.elements, ...(light.target?.matrixWorld.elements || [])].join(",")).join(";");
   }
-  function fn8(height2, get) {
-    return [...set2].filter(([arg2, arg3]) => !arg23 || !arg2 || arg3 >= height2.height - 0.1).map(([arg5]) => get.get(arg5)).join("|");
+  function floorStateKey(entry, floorKeys) {
+    return [...floorMaxHeight].filter(([floorId, height]) => !floorLighting || !floorId || height >= entry.height - 0.1).map(([floorId]) => floorKeys.get(floorId)).join("|");
   }
-  function fn9(arg14) {
-    if (value45 === null) {
+  function matchesOutsideFloor(object) {
+    if (outsideFloorId === null) {
       return true;
     }
-    for (let userData5 = arg14; userData5; userData5 = userData5.parent) {
-      const value14 = userData5.userData?.floorId || userData5.userData?.regionFloorId;
-      if (value14) {
-        return value14 === value45;
+    for (let node = object; node; node = node.parent) {
+      const floorId = node.userData?.floorId || node.userData?.regionFloorId;
+      if (floorId) {
+        return floorId === outsideFloorId;
       }
     }
     return false;
   }
-  const add = new Vector4.Scene();
-  const value49 = new Vector4.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-  const uniforms = new Vector4.ShaderMaterial({
+  const blurScene = new THREE.Scene();
+  const blurCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const blurMaterial = new THREE.ShaderMaterial({
     depthTest: false,
     depthWrite: false,
     uniforms: {
@@ -153,106 +153,106 @@ export function createGroundReflections({
         value: null
       },
       step: {
-        value: new Vector4.Vector2()
+        value: new THREE.Vector2()
       }
     },
     vertexShader: "varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}",
     fragmentShader: "uniform sampler2D source; uniform vec2 step; varying vec2 vUv;\n      void main(){ gl_FragColor=texture2D(source,vUv)*.227027;\n      gl_FragColor+=(texture2D(source,vUv+step*1.384615)+texture2D(source,vUv-step*1.384615))*.316216;\n      gl_FragColor+=(texture2D(source,vUv+step*3.230769)+texture2D(source,vUv-step*3.230769))*.070270; }"
   });
-  const geometry7 = new Vector4.Mesh(new Vector4.PlaneGeometry(2, 2), uniforms);
-  add.add(geometry7);
-  const value50 = (arg7, arg8 = false) => new Vector4.WebGLRenderTarget(arg7, arg7, {
-    type: Vector4.HalfFloatType,
-    depthBuffer: !arg8,
-    samples: arg8 ? 0 : Math.min(2, xr.capabilities.maxSamples)
+  const blurQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), blurMaterial);
+  blurScene.add(blurQuad);
+  const createTarget = (size, colorOnly = false) => new THREE.WebGLRenderTarget(size, size, {
+    type: THREE.HalfFloatType,
+    depthBuffer: !colorOnly,
+    samples: colorOnly ? 0 : Math.min(2, renderer.capabilities.maxSamples)
   });
-  function fn10() {
-    for (const value17 of [...values.values()]) {
-      fn5(value17);
+  function clearOverlays() {
+    for (const entry of [...overlayBySource.values()]) {
+      disposeOverlay(entry);
     }
-    push5 = [];
-    inCapture.cachedRecords = inCapture.cachedBytes = 0;
+    overlays = [];
+    stats.cachedRecords = stats.cachedBytes = 0;
   }
-  function fn11(arg15) {
-    const children = arg19();
-    if (!children) {
-      fn10();
-      traverse = value33 = null;
+  function rebuildOverlays(revision) {
+    const nextRoot = getRoot();
+    if (!nextRoot) {
+      clearOverlays();
+      root = firstChild = null;
       return;
     }
-    if (value40 === arg15 && traverse === children && value33 === children.children[0] && push5.every(source => source.source.parent && !source.dead)) {
+    if (sceneRevision === revision && root === nextRoot && firstChild === nextRoot.children[0] && overlays.every(entry => entry.source.parent && !entry.dead)) {
       return;
     }
-    for (const overlay4 of push5) {
-      overlay4.overlay.visible = false;
-      overlay4.overlay.removeFromParent();
+    for (const entry of overlays) {
+      entry.overlay.visible = false;
+      entry.overlay.removeFromParent();
     }
-    push5 = [];
-    value40 = arg15;
-    traverse = children;
-    value33 = children.children[0];
-    traverse.updateWorldMatrix(true, true);
-    set2 = new Map();
-    get4 = new Map();
-    const copy = new Vector4.Box3();
-    traverse.traverse(geometry => {
-      if (geometry.userData?.reflectionOverlay || geometry.userData?.environmentEffect) {
+    overlays = [];
+    sceneRevision = revision;
+    root = nextRoot;
+    firstChild = nextRoot.children[0];
+    root.updateWorldMatrix(true, true);
+    floorMaxHeight = new Map();
+    lightsByFloor = new Map();
+    const worldBox = new THREE.Box3();
+    root.traverse(object => {
+      if (object.userData?.reflectionOverlay || object.userData?.environmentEffect) {
         return;
       }
-      const value7 = fn2(geometry);
-      if (geometry.isLight) {
-        if (!get4.has(value7)) {
-          get4.set(value7, []);
+      const floorId = floorIdOf(object);
+      if (object.isLight) {
+        if (!lightsByFloor.has(floorId)) {
+          lightsByFloor.set(floorId, []);
         }
-        get4.get(value7).push(geometry);
+        lightsByFloor.get(floorId).push(object);
       }
-      if (!geometry.isMesh || !geometry.geometry) {
+      if (!object.isMesh || !object.geometry) {
         return;
       }
-      if (!geometry.geometry.boundingBox) {
-        geometry.geometry.computeBoundingBox();
+      if (!object.geometry.boundingBox) {
+        object.geometry.computeBoundingBox();
       }
-      if (geometry.isInstancedMesh) {
-        geometry.computeBoundingBox();
+      if (object.isInstancedMesh) {
+        object.computeBoundingBox();
       }
-      const value8 = geometry.isInstancedMesh ? geometry.boundingBox : geometry.geometry.boundingBox;
-      const value9 = geometry.isSkinnedMesh || geometry.morphTargetInfluences?.length ? Infinity : value8 ? copy.copy(value8).applyMatrix4(geometry.matrixWorld).max.y : Infinity;
-      set2.set(value7, Math.max(set2.get(value7) ?? -Infinity, value9));
+      const localBox = object.isInstancedMesh ? object.boundingBox : object.geometry.boundingBox;
+      const maxY = object.isSkinnedMesh || object.morphTargetInfluences?.length ? Infinity : localBox ? worldBox.copy(localBox).applyMatrix4(object.matrixWorld).max.y : Infinity;
+      floorMaxHeight.set(floorId, Math.max(floorMaxHeight.get(floorId) ?? -Infinity, maxY));
     });
-    const push = [];
-    traverse.traverse(userData => {
-      if (userData.isMesh && (userData.userData.regionReceiverKind === "floor" || userData.userData.exportRole === "background")) {
-        push.push(userData);
+    const floorMeshes = [];
+    root.traverse(object => {
+      if (object.isMesh && (object.userData.regionReceiverKind === "floor" || object.userData.exportRole === "background")) {
+        floorMeshes.push(object);
       }
     });
-    for (const geometry5 of push) {
-      const kind2 = geometry5.userData.exportRole === "background" ? "outside" : "inside";
-      if (mode2.mode !== "all" && kind2 !== mode2.mode || kind2 === "outside" && !fn9(geometry5)) {
+    for (const mesh of floorMeshes) {
+      const kind = mesh.userData.exportRole === "background" ? "outside" : "inside";
+      if (settings.mode !== "all" && kind !== settings.mode || kind === "outside" && !matchesOutsideFloor(mesh)) {
         continue;
       }
-      const max = new Vector4.Box3().setFromObject(geometry5);
-      const height = max.max.y;
-      const key = fn4(geometry5);
-      let overlay3 = values.get(geometry5);
-      if (overlay3 && (overlay3.dead || overlay3.key !== key)) {
-        fn5(overlay3);
-        overlay3 = null;
+      const bounds = new THREE.Box3().setFromObject(mesh);
+      const height = bounds.max.y;
+      const key = geometryKey(mesh);
+      let entry = overlayBySource.get(mesh);
+      if (entry && (entry.dead || entry.key !== key)) {
+        disposeOverlay(entry);
+        entry = null;
       }
-      if (overlay3) {
-        overlay3.height = height;
-        overlay3.used = ++value46;
-        overlay3.overlay.position.copy(geometry5.position);
-        overlay3.overlay.quaternion.copy(geometry5.quaternion);
-        overlay3.overlay.scale.copy(geometry5.scale);
-        geometry5.parent.add(overlay3.overlay);
-        push5.push(overlay3);
-        inCapture.reuses++;
+      if (entry) {
+        entry.height = height;
+        entry.used = ++useCounter;
+        entry.overlay.position.copy(mesh.position);
+        entry.overlay.quaternion.copy(mesh.quaternion);
+        entry.overlay.scale.copy(mesh.scale);
+        mesh.parent.add(entry.overlay);
+        overlays.push(entry);
+        stats.reuses++;
         continue;
       }
-      const texture2 = value50(mode2.resolution);
-      const scratch = value50(mode2.resolution, true);
-      const value15 = new Vector4.Matrix4();
-      const value16 = new Vector4.ShaderMaterial({
+      const map = createTarget(settings.resolution);
+      const scratch = createTarget(settings.resolution, true);
+      const reflectionMatrix = new THREE.Matrix4();
+      const overlayMaterial = new THREE.ShaderMaterial({
         transparent: true,
         depthWrite: false,
         polygonOffset: true,
@@ -260,345 +260,345 @@ export function createGroundReflections({
         polygonOffsetUnits: -2,
         uniforms: {
           reflection: {
-            value: texture2.texture
+            value: map.texture
           },
           reflectionMatrix: {
-            value: value15
+            value: reflectionMatrix
           },
           strength: {
-            value: mode2.strength
+            value: settings.strength
           }
         },
         vertexShader: "uniform mat4 reflectionMatrix; varying vec4 reflected; varying float up;\n          void main(){vec4 world=modelMatrix*vec4(position,1.);reflected=reflectionMatrix*world;\n          up=normalize(mat3(modelMatrix)*normal).y;gl_Position=projectionMatrix*viewMatrix*world;}",
         fragmentShader: "uniform sampler2D reflection; uniform float strength; varying vec4 reflected; varying float up;\n          void main(){if(up<.9||reflected.w<=0.)discard;vec2 uv=reflected.xy/reflected.w;\n          if(any(lessThan(uv,vec2(0.)))||any(greaterThan(uv,vec2(1.))))discard;\n          vec4 value=texture2D(reflection,uv);gl_FragColor=vec4(value.rgb/max(value.a,.001),clamp(value.a*strength,0.,.7));\n          #include <tonemapping_fragment>\n          #include <colorspace_fragment>\n          }"
       });
-      const userData3 = new Vector4.Mesh(geometry5.geometry.clone(), value16);
-      userData3.position.copy(geometry5.position);
-      userData3.quaternion.copy(geometry5.quaternion);
-      userData3.scale.copy(geometry5.scale);
-      userData3.renderOrder = 1;
-      userData3.userData.environmentEffect = true;
-      userData3.userData.reflectionOverlay = true;
-      userData3.userData.externalModelSharedGeometry = userData3.userData.externalModelSharedMaterial = userData3.userData.externalModelSharedTextures = true;
-      overlay3 = {
-        source: geometry5,
-        geometry: geometry5.geometry,
-        kind: kind2,
+      const overlayMesh = new THREE.Mesh(mesh.geometry.clone(), overlayMaterial);
+      overlayMesh.position.copy(mesh.position);
+      overlayMesh.quaternion.copy(mesh.quaternion);
+      overlayMesh.scale.copy(mesh.scale);
+      overlayMesh.renderOrder = 1;
+      overlayMesh.userData.environmentEffect = true;
+      overlayMesh.userData.reflectionOverlay = true;
+      overlayMesh.userData.externalModelSharedGeometry = overlayMesh.userData.externalModelSharedMaterial = overlayMesh.userData.externalModelSharedTextures = true;
+      entry = {
+        source: mesh,
+        geometry: mesh.geometry,
+        kind,
         height,
-        overlay: userData3,
-        map: texture2,
+        overlay: overlayMesh,
+        map,
         scratch,
-        matrix: value15,
+        matrix: reflectionMatrix,
         key,
-        used: ++value46,
+        used: ++useCounter,
         state: "",
         dead: false
       };
-      overlay3.onSourceDispose = () => {
-        overlay3.dead = true;
-        userData3.visible = false;
+      entry.onSourceDispose = () => {
+        entry.dead = true;
+        overlayMesh.visible = false;
       };
-      geometry5.geometry.addEventListener("dispose", overlay3.onSourceDispose);
-      values.set(geometry5, overlay3);
-      inCapture.allocations++;
-      geometry5.parent.add(userData3);
-      push5.push(overlay3);
+      mesh.geometry.addEventListener("dispose", entry.onSourceDispose);
+      overlayBySource.set(mesh, entry);
+      stats.allocations++;
+      mesh.parent.add(overlayMesh);
+      overlays.push(entry);
     }
-    prepare?.prepare(traverse);
-    fn6();
-    value34 = true;
+    detail?.prepare(root);
+    pruneCache();
+    dirty = true;
   }
-  function fn12(arg16) {
-    for (let parent = arg16; parent; parent = parent.parent) {
-      if (!parent.visible) {
+  function isVisibleInHierarchy(object) {
+    for (let node = object; node; node = node.parent) {
+      if (!node.visible) {
         return false;
       }
     }
     return true;
   }
-  function fn13(kind3) {
-    return (mode2.mode === "all" || mode2.mode === kind3.kind) && (kind3.kind !== "outside" || fn9(kind3.source));
+  function overlayAllowed(entry) {
+    return (settings.mode === "all" || settings.mode === entry.kind) && (entry.kind !== "outside" || matchesOutsideFloor(entry.source));
   }
-  function configure(arg17) {
-    const mode = normalizeGroundReflection(arg17);
-    if (mode.mode === mode2.mode && mode.resolution === mode2.resolution && mode.strength === mode2.strength) {
+  function configure(options) {
+    const next = normalizeGroundReflection(options);
+    if (next.mode === settings.mode && next.resolution === settings.resolution && next.strength === settings.strength) {
       return false;
     }
-    const value20 = mode2.resolution !== mode.resolution;
-    const value21 = mode2.mode !== mode.mode;
-    Object.assign(mode2, mode);
-    if (value20 || mode.mode === "off" || mode.strength === 0) {
-      fn10();
-      value33 = null;
+    const resolutionChanged = settings.resolution !== next.resolution;
+    const modeChanged = settings.mode !== next.mode;
+    Object.assign(settings, next);
+    if (resolutionChanged || next.mode === "off" || next.strength === 0) {
+      clearOverlays();
+      firstChild = null;
     }
-    if (value21) {
-      value33 = null;
+    if (modeChanged) {
+      firstChild = null;
     }
-    value34 ||= value20 || value21;
-    arg25();
+    dirty ||= resolutionChanged || modeChanged;
+    requestFrame();
     return true;
   }
-  function fn14(clone, arg18, set) {
-    const projectionMatrix = clone.clone();
-    projectionMatrix.layers.mask = clone.layers.mask;
-    const y = clone.getWorldPosition(new Vector4.Vector3());
-    const y2 = clone.getWorldDirection(new Vector4.Vector3());
-    y.y = arg18 * 2 - y.y;
-    y2.y *= -1;
-    projectionMatrix.position.copy(y);
-    projectionMatrix.up.setFromMatrixColumn(clone.matrixWorld, 1).normalize();
-    projectionMatrix.up.y *= -1;
-    projectionMatrix.lookAt(y.clone().add(y2));
-    projectionMatrix.updateMatrixWorld(true);
-    projectionMatrix.projectionMatrix.copy(clone.projectionMatrix);
-    projectionMatrix.projectionMatrix.elements[8] *= -1;
-    projectionMatrix.projectionMatrix.elements[12] *= -1;
-    set.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1).multiply(projectionMatrix.projectionMatrix).multiply(projectionMatrix.matrixWorldInverse);
-    const normal = new Vector4.Plane(new Vector4.Vector3(0, 1, 0), -arg18).applyMatrix4(projectionMatrix.matrixWorldInverse);
-    const x = new Vector4.Vector4(normal.normal.x, normal.normal.y, normal.normal.z, normal.constant);
-    const value22 = projectionMatrix.projectionMatrix.elements;
-    const value23 = new Vector4.Vector4(Math.sign(x.x), Math.sign(x.y), 1, 1).applyMatrix4(projectionMatrix.projectionMatrix.clone().invert());
-    x.multiplyScalar(2 / x.dot(value23));
-    value22[2] = x.x - value22[3];
-    value22[6] = x.y - value22[7];
-    value22[10] = x.z - value22[11];
-    value22[14] = x.w - value22[15];
-    projectionMatrix.projectionMatrixInverse.copy(projectionMatrix.projectionMatrix).invert();
-    return projectionMatrix;
+  function mirrorCamera(camera, planeY, reflectionMatrix) {
+    const mirrored = camera.clone();
+    mirrored.layers.mask = camera.layers.mask;
+    const position = camera.getWorldPosition(new THREE.Vector3());
+    const direction = camera.getWorldDirection(new THREE.Vector3());
+    position.y = planeY * 2 - position.y;
+    direction.y *= -1;
+    mirrored.position.copy(position);
+    mirrored.up.setFromMatrixColumn(camera.matrixWorld, 1).normalize();
+    mirrored.up.y *= -1;
+    mirrored.lookAt(position.clone().add(direction));
+    mirrored.updateMatrixWorld(true);
+    mirrored.projectionMatrix.copy(camera.projectionMatrix);
+    mirrored.projectionMatrix.elements[8] *= -1;
+    mirrored.projectionMatrix.elements[12] *= -1;
+    reflectionMatrix.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1).multiply(mirrored.projectionMatrix).multiply(mirrored.matrixWorldInverse);
+    const clipPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -planeY).applyMatrix4(mirrored.matrixWorldInverse);
+    const clipVector = new THREE.Vector4(clipPlane.normal.x, clipPlane.normal.y, clipPlane.normal.z, clipPlane.constant);
+    const projection = mirrored.projectionMatrix.elements;
+    const q = new THREE.Vector4(Math.sign(clipVector.x), Math.sign(clipVector.y), 1, 1).applyMatrix4(mirrored.projectionMatrix.clone().invert());
+    clipVector.multiplyScalar(2 / clipVector.dot(q));
+    projection[2] = clipVector.x - projection[3];
+    projection[6] = clipVector.y - projection[7];
+    projection[10] = clipVector.z - projection[11];
+    projection[14] = clipVector.w - projection[15];
+    mirrored.projectionMatrixInverse.copy(mirrored.projectionMatrix).invert();
+    return mirrored;
   }
-  function render(matrixWorld) {
-    if (value38 || inCapture.inCapture || !matrixWorld || value41 || mode2.mode === "off" || mode2.strength === 0 || (fn11(arg22()), !traverse)) {
+  function render(camera) {
+    if (disposed || stats.inCapture || !camera || suspended || settings.mode === "off" || settings.strength === 0 || (rebuildOverlays(getSceneRevision()), !root)) {
       return;
     }
-    const value24 = value42 ? 0 : value43 === null ? 1 : Math.min(1, (performance.now() - value43) / 260);
-    if (value24 < 1) {
-      arg25();
+    const fade = resumeFade ? 0 : fadeStart === null ? 1 : Math.min(1, (performance.now() - fadeStart) / 260);
+    if (fade < 1) {
+      requestFrame();
     } else {
-      value43 = null;
+      fadeStart = null;
     }
-    for (const overlay5 of push5) {
-      overlay5.overlay.visible = fn12(overlay5.kind === "outside" ? overlay5.source.parent : overlay5.source) && fn13(overlay5);
-      overlay5.overlay.material.uniforms.strength.value = mode2.strength * value24;
+    for (const entry of overlays) {
+      entry.overlay.visible = isVisibleInHierarchy(entry.kind === "outside" ? entry.source.parent : entry.source) && overlayAllowed(entry);
+      entry.overlay.material.uniforms.strength.value = settings.strength * fade;
     }
-    if (mode2.mode === "off" || !push5.length) {
+    if (settings.mode === "off" || !overlays.length) {
       return;
     }
-    const value25 = performance.now();
-    const value26 = matrixWorld.matrixWorld.elements.join(",") + matrixWorld.projectionMatrix.elements.join(",");
-    const value27 = value26 !== value36;
-    const value28 = mode2.resolution;
-    for (const map4 of push5) {
-      if (map4.map.width !== value28) {
-        map4.map.setSize(value28, value28);
-        map4.scratch.setSize(value28, value28);
-        value34 = true;
+    const now = performance.now();
+    const cameraKey = camera.matrixWorld.elements.join(",") + camera.projectionMatrix.elements.join(",");
+    const cameraChanged = cameraKey !== lastCameraKey;
+    const resolution = settings.resolution;
+    for (const entry of overlays) {
+      if (entry.map.width !== resolution) {
+        entry.map.setSize(resolution, resolution);
+        entry.scratch.setSize(resolution, resolution);
+        dirty = true;
       }
     }
-    const value29 = arg21() + "|" + value39 + "|" + fn7(get4.get("") || []) + "|" + (arg23 ? "" : fn7([...get4.values()].flat()));
-    const value30 = value34 || value27 || value29 !== value37;
-    const value31 = new Map([...set2.keys()].map(arg6 => [arg6, arg6 + ":" + (get3.get(arg6) || 0) + ":" + (arg23 ? fn7(get4.get(arg6) || []) : "")]));
-    const get2 = new Map();
-    const length = push5.filter(overlay2 => {
-      if (!overlay2.overlay.visible || matrixWorld.position.y <= overlay2.height) {
+    const lightingKey = getStateKey() + "|" + globalRevision + "|" + lightsSignature(lightsByFloor.get("") || []) + "|" + (floorLighting ? "" : lightsSignature([...lightsByFloor.values()].flat()));
+    const contentChanged = dirty || cameraChanged || lightingKey !== lastLightingKey;
+    const floorKeys = new Map([...floorMaxHeight.keys()].map(floorId => [floorId, floorId + ":" + (floorRevision.get(floorId) || 0) + ":" + (floorLighting ? lightsSignature(lightsByFloor.get(floorId) || []) : "")]));
+    const entryStateKeys = new Map();
+    const dirtyOverlays = overlays.filter(entry => {
+      if (!entry.overlay.visible || camera.position.y <= entry.height) {
         return false;
       }
-      const value5 = fn8(overlay2, value31);
-      get2.set(overlay2, value5);
-      return value30 || overlay2.state !== value5;
+      const stateKey = floorStateKey(entry, floorKeys);
+      entryStateKeys.set(entry, stateKey);
+      return contentChanged || entry.state !== stateKey;
     });
-    if (!length.length) {
+    if (!dirtyOverlays.length) {
       return;
     }
-    if (!value34 && !value27 && value25 - value35 < 1000 / mode2.fps) {
-      if (value44 === null) {
-        value44 = setTimeout(() => {
-          value44 = null;
-          arg25();
-        }, 1000 / mode2.fps - (value25 - value35));
+    if (!dirty && !cameraChanged && now - lastCaptureTime < 1000 / settings.fps) {
+      if (throttleTimer === null) {
+        throttleTimer = setTimeout(() => {
+          throttleTimer = null;
+          requestFrame();
+        }, 1000 / settings.fps - (now - lastCaptureTime));
       }
       return;
     }
-    const background = {
-      target: xr.getRenderTarget(),
-      cubeFace: xr.getActiveCubeFace(),
-      mipmap: xr.getActiveMipmapLevel(),
-      xr: xr.xr.enabled,
-      shadow: xr.shadowMap.autoUpdate,
-      alpha: xr.getClearAlpha(),
-      color: xr.getClearColor(new Vector4.Color()),
-      background: background2.background,
-      viewport: xr.getViewport(new Vector4.Vector4()),
-      scissor: xr.getScissor(new Vector4.Vector4()),
-      scissorTest: xr.getScissorTest(),
-      autoClear: xr.autoClear
+    const previous = {
+      target: renderer.getRenderTarget(),
+      cubeFace: renderer.getActiveCubeFace(),
+      mipmap: renderer.getActiveMipmapLevel(),
+      webxrEnabled: renderer.xr.enabled,
+      shadow: renderer.shadowMap.autoUpdate,
+      alpha: renderer.getClearAlpha(),
+      color: renderer.getClearColor(new THREE.Color()),
+      background: scene.background,
+      viewport: renderer.getViewport(new THREE.Vector4()),
+      scissor: renderer.getScissor(new THREE.Vector4()),
+      scissorTest: renderer.getScissorTest(),
+      autoClear: renderer.autoClear
     };
-    const push2 = [];
-    const push3 = [];
-    const push4 = [];
-    restore.reset();
-    traverse.traverse(userData2 => {
-      if (userData2.name === "interaction3d-curtain-shadow-refresh" || userData2.userData.reflectionOverlay || ["background", "grid", "outline"].includes(userData2.userData.exportRole) || userData2.userData.regionReceiverKind === "floor" || userData2.userData.environmentEffect) {
-        push2.push([userData2, userData2.visible]);
-        userData2.visible = false;
+    const hiddenVisibility = [];
+    const swappedMaterials = [];
+    const swappedGeometries = [];
+    culling.reset();
+    root.traverse(object => {
+      if (object.name === "interaction3d-curtain-shadow-refresh" || object.userData.reflectionOverlay || ["background", "grid", "outline"].includes(object.userData.exportRole) || object.userData.regionReceiverKind === "floor" || object.userData.environmentEffect) {
+        hiddenVisibility.push([object, object.visible]);
+        object.visible = false;
       }
-      if (arg24) {
-        restore.add(userData2, !arg23);
+      if (cull) {
+        culling.add(object, !floorLighting);
       }
-      const geometry2 = prepare?.get(userData2);
-      if (geometry2) {
-        push4.push([userData2, userData2.geometry]);
-        userData2.geometry = geometry2;
+      const simplified = detail?.get(object);
+      if (simplified) {
+        swappedGeometries.push([object, object.geometry]);
+        object.geometry = simplified;
       }
-      if (userData2.isMesh && userData2.material) {
-        const map = userData2.material;
-        const material = Array.isArray(map) ? map.map(fn) : fn(map);
-        if (material !== map) {
-          push3.push([userData2, map]);
-          userData2.material = material;
+      if (object.isMesh && object.material) {
+        const original = object.material;
+        const replacement = Array.isArray(original) ? original.map(withoutTransmission) : withoutTransmission(original);
+        if (replacement !== original) {
+          swappedMaterials.push([object, original]);
+          object.material = replacement;
         }
       }
     });
-    const value32 = performance.now();
-    inCapture.inCapture = true;
-    inCapture.lastDrawCalls = inCapture.lastTriangles = 0;
+    const captureStart = performance.now();
+    stats.inCapture = true;
+    stats.lastDrawCalls = stats.lastTriangles = 0;
     try {
-      xr.xr.enabled = false;
-      xr.shadowMap.autoUpdate = false;
-      xr.autoClear = true;
-      background2.background = null;
-      xr.setClearColor(0, 0);
-      xr.setScissorTest(false);
-      for (const map2 of length) {
-        const value6 = fn14(matrixWorld, map2.height, map2.matrix);
-        arg20(value6);
-        if (arg24 && !restore.begin(map2, value6)) {
-          map2.state = get2.get(map2);
+      renderer.xr.enabled = false;
+      renderer.shadowMap.autoUpdate = false;
+      renderer.autoClear = true;
+      scene.background = null;
+      renderer.setClearColor(0, 0);
+      renderer.setScissorTest(false);
+      for (const entry of dirtyOverlays) {
+        const mirrored = mirrorCamera(camera, entry.height, entry.matrix);
+        syncLighting(mirrored);
+        if (cull && !culling.begin(entry, mirrored)) {
+          entry.state = entryStateKeys.get(entry);
           continue;
         }
-        xr.setRenderTarget(map2.map);
-        xr.clear();
-        xr.render(background2, value6);
-        inCapture.renders++;
-        inCapture.lastDrawCalls += xr.info?.render.calls || 0;
-        inCapture.lastTriangles += xr.info?.render.triangles || 0;
-        restore.restore();
-        for (const [texture, value, value2, value3] of [[map2.map, map2.scratch, 1, 0], [map2.scratch, map2.map, 0, 1]]) {
-          uniforms.uniforms.source.value = texture.texture;
-          uniforms.uniforms.step.value.set(value2 * 2 / 512, value3 * 2 / 512);
-          xr.setRenderTarget(value);
-          xr.clear();
-          xr.render(add, value49);
+        renderer.setRenderTarget(entry.map);
+        renderer.clear();
+        renderer.render(scene, mirrored);
+        stats.renders++;
+        stats.lastDrawCalls += renderer.info?.render.calls || 0;
+        stats.lastTriangles += renderer.info?.render.triangles || 0;
+        culling.restore();
+        for (const [source, destination, stepX, stepY] of [[entry.map, entry.scratch, 1, 0], [entry.scratch, entry.map, 0, 1]]) {
+          blurMaterial.uniforms.source.value = source.texture;
+          blurMaterial.uniforms.step.value.set(stepX * 2 / 512, stepY * 2 / 512);
+          renderer.setRenderTarget(destination);
+          renderer.clear();
+          renderer.render(blurScene, blurCamera);
         }
-        inCapture.captures++;
-        map2.state = get2.get(map2);
+        stats.captures++;
+        entry.state = entryStateKeys.get(entry);
       }
-      if (value42) {
-        value42 = false;
-        value43 = performance.now();
-        arg25();
+      if (resumeFade) {
+        resumeFade = false;
+        fadeStart = performance.now();
+        requestFrame();
       }
-      value34 = false;
-      value35 = value25;
-      value36 = value26;
-      value37 = value29;
+      dirty = false;
+      lastCaptureTime = now;
+      lastCameraKey = cameraKey;
+      lastLightingKey = lightingKey;
     } finally {
-      restore.restore();
-      inCapture.culling = {
-        ...restore.stats
+      culling.restore();
+      stats.culling = {
+        ...culling.stats
       };
-      for (const [geometry3, geometry4] of push4) {
-        geometry3.geometry = geometry4;
+      for (const [object, geometry] of swappedGeometries) {
+        object.geometry = geometry;
       }
-      for (const [visible, visible2] of push2) {
-        visible.visible = visible2;
+      for (const [object, visible] of hiddenVisibility) {
+        object.visible = visible;
       }
-      for (const [material2, material3] of push3) {
-        material2.material = material3;
+      for (const [object, material] of swappedMaterials) {
+        object.material = material;
       }
-      background2.background = background.background;
-      xr.setClearColor(background.color, background.alpha);
-      xr.setRenderTarget(background.target, background.cubeFace, background.mipmap);
-      xr.setViewport(background.viewport);
-      xr.setScissor(background.scissor);
-      xr.setScissorTest(background.scissorTest);
-      xr.xr.enabled = background.xr;
-      xr.shadowMap.autoUpdate = background.shadow;
-      xr.autoClear = background.autoClear;
-      arg20(matrixWorld);
-      inCapture.inCapture = false;
-      inCapture.lastMs = performance.now() - value32;
-      inCapture.totalMs += inCapture.lastMs;
+      scene.background = previous.background;
+      renderer.setClearColor(previous.color, previous.alpha);
+      renderer.setRenderTarget(previous.target, previous.cubeFace, previous.mipmap);
+      renderer.setViewport(previous.viewport);
+      renderer.setScissor(previous.scissor);
+      renderer.setScissorTest(previous.scissorTest);
+      renderer.xr.enabled = previous.webxrEnabled;
+      renderer.shadowMap.autoUpdate = previous.shadow;
+      renderer.autoClear = previous.autoClear;
+      syncLighting(camera);
+      stats.inCapture = false;
+      stats.lastMs = performance.now() - captureStart;
+      stats.totalMs += stats.lastMs;
     }
   }
   return {
-    settings: mode2,
-    stats: inCapture,
+    settings,
+    stats,
     render,
     configure,
-    setOutsideFloor(arg9) {
-      const value18 = arg9 == null ? null : String(arg9);
-      if (value18 !== value45) {
-        value45 = value18;
-        for (const kind of push5) {
-          if (kind.kind === "outside" && !fn9(kind.source)) {
-            kind.overlay.visible = false;
+    setOutsideFloor(floorId) {
+      const next = floorId == null ? null : String(floorId);
+      if (next !== outsideFloorId) {
+        outsideFloorId = next;
+        for (const entry of overlays) {
+          if (entry.kind === "outside" && !matchesOutsideFloor(entry.source)) {
+            entry.overlay.visible = false;
           }
         }
-        value33 = null;
-        value34 = true;
-        arg25();
+        firstChild = null;
+        dirty = true;
+        requestFrame();
       }
     },
-    setSuspended(arg10) {
-      if (value41 !== (arg10 === true)) {
-        value41 = arg10 === true;
-        value43 = null;
-        value42 = !value41;
-        for (const overlay of push5) {
-          overlay.overlay.visible = false;
-          if (value41) {
-            overlay.overlay.removeFromParent();
+    setSuspended(nextSuspended) {
+      if (suspended !== (nextSuspended === true)) {
+        suspended = nextSuspended === true;
+        fadeStart = null;
+        resumeFade = !suspended;
+        for (const entry of overlays) {
+          entry.overlay.visible = false;
+          if (suspended) {
+            entry.overlay.removeFromParent();
           }
         }
-        value34 = true;
-        if (!value41) {
-          value33 = null;
-          arg25();
+        dirty = true;
+        if (!suspended) {
+          firstChild = null;
+          requestFrame();
         }
       }
     },
     get records() {
-      return push5;
+      return overlays;
     },
     invalidate() {
-      value34 = true;
+      dirty = true;
     },
-    changed(arg11) {
-      if (arg11 == null) {
-        value39++;
+    changed(floorIds) {
+      if (floorIds == null) {
+        globalRevision++;
       } else {
-        for (const value4 of new Set(arg11)) {
-          if (!value4 || !set2.has(String(value4))) {
-            value39++;
+        for (const floorId of new Set(floorIds)) {
+          if (!floorId || !floorMaxHeight.has(String(floorId))) {
+            globalRevision++;
             continue;
           }
-          get3.set(String(value4), (get3.get(String(value4)) || 0) + 1);
+          floorRevision.set(String(floorId), (floorRevision.get(String(floorId)) || 0) + 1);
         }
       }
     },
     dispose() {
-      value38 = true;
-      prepare?.dispose();
-      clearTimeout(value44);
-      fn10();
-      geometry7.geometry.dispose();
-      uniforms.dispose();
-      for (const value10 of [...entryMap.values()]) {
-        value10();
+      disposed = true;
+      detail?.dispose();
+      clearTimeout(throttleTimer);
+      clearOverlays();
+      blurQuad.geometry.dispose();
+      blurMaterial.dispose();
+      for (const disposeClone of [...transmissionDisposers.values()]) {
+        disposeClone();
       }
-      get3.clear();
-      set2.clear();
-      get4.clear();
+      floorRevision.clear();
+      floorMaxHeight.clear();
+      lightsByFloor.clear();
     }
   };
 }

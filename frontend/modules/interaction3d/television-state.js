@@ -1,31 +1,31 @@
-const y = (get, arg3) => get instanceof Map ? get.get(arg3) : get?.[arg3];
-export function televisionArtwork(entity_picture_local = {}) {
-  return [entity_picture_local.entity_picture_local, entity_picture_local.entity_picture, entity_picture_local.media_image_url].find(arg => typeof arg == "string" && /^\/api\/(?:media_player_proxy|image_proxy)\/[^\s]+$/.test(arg)) || "";
+const lookupState = (states, entityId) => states instanceof Map ? states.get(entityId) : states?.[entityId];
+export function televisionArtwork(attributes = {}) {
+  return [attributes.entity_picture_local, attributes.entity_picture, attributes.media_image_url].find(url => typeof url == "string" && /^\/api\/(?:media_player_proxy|image_proxy)\/[^\s]+$/.test(url)) || "";
 }
-export function televisionState(entityId, arg4 = {}, arg5 = Date.now()) {
-  const newState = y(arg4, entityId.entityId);
-  const attributes = newState?.newState || newState || {};
-  const app_name = attributes.attributes || {};
-  const state = String(attributes.state || "unknown").toLowerCase();
-  const available = !!entityId.entityId && attributes.available !== false && !["unknown", "unavailable", ""].includes(state);
-  const newState2 = y(arg4, entityId.powerEntityId);
-  const state2 = newState2?.newState || newState2 || {};
-  const value3 = entityId.powerEntityId && ["off", "standby"].includes(String(state2.state || "").toLowerCase());
-  const on = available && !value3 && !["off", "standby"].includes(state);
+export function televisionState(binding, states = {}, nowMs = Date.now()) {
+  const entry = lookupState(states, binding.entityId);
+  const entity = entry?.newState || entry || {};
+  const attributes = entity.attributes || {};
+  const state = String(entity.state || "unknown").toLowerCase();
+  const available = !!binding.entityId && entity.available !== false && !["unknown", "unavailable", ""].includes(state);
+  const powerEntry = lookupState(states, binding.powerEntityId);
+  const powerEntity = powerEntry?.newState || powerEntry || {};
+  const powerOff = binding.powerEntityId && ["off", "standby"].includes(String(powerEntity.state || "").toLowerCase());
+  const on = available && !powerOff && !["off", "standby"].includes(state);
   const idle = on && ["on", "idle"].includes(state);
-  const value4 = arg2 => arg2 !== null && arg2 !== "" && Number.isFinite(Number(arg2)) ? Number(arg2) : null;
-  const value5 = value4(app_name.media_duration);
-  const value6 = value4(app_name.media_position);
-  const value7 = Date.parse(app_name.media_position_updated_at || "");
-  const value8 = on && state === "playing" && Number.isFinite(value7) ? Math.max(0, (arg5 - value7) / 1000) : 0;
-  let includes = on && !idle ? televisionArtwork(app_name) : "";
-  if (includes) {
-    const length = JSON.stringify([app_name.media_content_id, app_name.media_title, app_name.media_series_title, app_name.media_season, app_name.media_episode, app_name.media_album_name, app_name.media_artist, app_name.app_name, app_name.source]);
-    let value2 = 2166136261;
-    for (let value = 0; value < length.length; value++) {
-      value2 = Math.imul(value2 ^ length.charCodeAt(value), 16777619);
+  const toNumber = raw => raw !== null && raw !== "" && Number.isFinite(Number(raw)) ? Number(raw) : null;
+  const duration = toNumber(attributes.media_duration);
+  const position = toNumber(attributes.media_position);
+  const positionUpdatedAt = Date.parse(attributes.media_position_updated_at || "");
+  const elapsedSeconds = on && state === "playing" && Number.isFinite(positionUpdatedAt) ? Math.max(0, (nowMs - positionUpdatedAt) / 1000) : 0;
+  let artwork = on && !idle ? televisionArtwork(attributes) : "";
+  if (artwork) {
+    const fingerprintSource = JSON.stringify([attributes.media_content_id, attributes.media_title, attributes.media_series_title, attributes.media_season, attributes.media_episode, attributes.media_album_name, attributes.media_artist, attributes.app_name, attributes.source]);
+    let hash = 2166136261;
+    for (let index = 0; index < fingerprintSource.length; index++) {
+      hash = Math.imul(hash ^ fingerprintSource.charCodeAt(index), 16777619);
     }
-    includes += (includes.includes("?") ? "&" : "?") + "hb_i3d=" + (value2 >>> 0).toString(36);
+    artwork += (artwork.includes("?") ? "&" : "?") + "hb_i3d=" + (hash >>> 0).toString(36);
   }
   return {
     state,
@@ -33,8 +33,8 @@ export function televisionState(entityId, arg4 = {}, arg5 = Date.now()) {
     on,
     idle,
     playing: on && state === "playing",
-    name: entityId.label || app_name.friendly_name || "电视",
-    status: entityId.entityId ? available ? value3 ? "电视已关闭" : {
+    name: binding.label || attributes.friendly_name || "电视",
+    status: binding.entityId ? available ? powerOff ? "电视已关闭" : {
       playing: "播放中",
       paused: "已暂停",
       buffering: "缓冲中",
@@ -43,43 +43,43 @@ export function televisionState(entityId, arg4 = {}, arg5 = Date.now()) {
       off: "已关闭",
       standby: "待机"
     }[state] || state : "设备不可用" : "尚未绑定媒体实体",
-    title: idle ? "暂无播放内容" : String(app_name.media_title || app_name.media_series_title || app_name.app_name || app_name.source || "暂无播放内容"),
-    app: String(app_name.app_name || app_name.source || ""),
-    artist: String(app_name.media_artist || ""),
-    artwork: includes,
-    duration: value5 > 0 ? value5 : null,
-    position: value6 !== null ? Math.min(value5 > 0 ? value5 : Infinity, Math.max(0, value6 + value8)) : null,
-    updated: attributes.updatedAt || attributes.last_updated || ""
+    title: idle ? "暂无播放内容" : String(attributes.media_title || attributes.media_series_title || attributes.app_name || attributes.source || "暂无播放内容"),
+    app: String(attributes.app_name || attributes.source || ""),
+    artist: String(attributes.media_artist || ""),
+    artwork,
+    duration: duration > 0 ? duration : null,
+    position: position !== null ? Math.min(duration > 0 ? duration : Infinity, Math.max(0, position + elapsedSeconds)) : null,
+    updated: entity.updatedAt || entity.last_updated || ""
   };
 }
-export function televisionTime(arg6) {
-  if (!Number.isFinite(arg6)) {
+export function televisionTime(seconds) {
+  if (!Number.isFinite(seconds)) {
     return "—";
   }
-  const value9 = Math.max(0, Math.floor(arg6));
-  return Math.floor(value9 / 60) + ":" + String(value9 % 60).padStart(2, "0");
+  const totalSeconds = Math.max(0, Math.floor(seconds));
+  return Math.floor(totalSeconds / 60) + ":" + String(totalSeconds % 60).padStart(2, "0");
 }
-export function televisionPower(powerEntityId, arg7 = {}, arg8) {
-  const entityId2 = powerEntityId.powerEntityId || powerEntityId.entityId || "";
-  const domain = entityId2.split(".")[0];
-  const newState3 = y(arg7, entityId2);
-  const state3 = newState3?.newState || newState3 || {};
-  const available2 = !!entityId2 && state3.available !== false && typeof state3.state == "string" && !["unknown", "unavailable", ""].includes(state3.state);
-  const on2 = available2 && !["off", "standby"].includes(state3.state);
-  const value10 = typeof arg8 == "boolean" ? arg8 : !on2;
-  const service = value10 ? "turn_on" : "turn_off";
-  const value11 = Number(state3.attributes?.supported_features) || 0;
-  const supported = domain === "switch" || domain === "media_player" && !!(value11 & (value10 ? 128 : 256));
+export function televisionPower(binding, states = {}, wantOn) {
+  const entityId = binding.powerEntityId || binding.entityId || "";
+  const domain = entityId.split(".")[0];
+  const entry = lookupState(states, entityId);
+  const entity = entry?.newState || entry || {};
+  const available = !!entityId && entity.available !== false && typeof entity.state == "string" && !["unknown", "unavailable", ""].includes(entity.state);
+  const on = available && !["off", "standby"].includes(entity.state);
+  const turnOn = typeof wantOn == "boolean" ? wantOn : !on;
+  const service = turnOn ? "turn_on" : "turn_off";
+  const supportedFeatures = Number(entity.attributes?.supported_features) || 0;
+  const supported = domain === "switch" || domain === "media_player" && !!(supportedFeatures & (turnOn ? 128 : 256));
   return {
-    entityId: entityId2,
+    entityId,
     domain,
-    on: on2,
-    available: available2,
+    on,
+    available,
     supported,
     service,
-    reason: available2 ? supported ? "" : "此实体不支持开关机" : "电源状态不可用",
+    reason: available ? supported ? "" : "此实体不支持开关机" : "电源状态不可用",
     command: {
-      entityId: entityId2,
+      entityId,
       domain,
       service,
       data: {},
@@ -87,24 +87,24 @@ export function televisionPower(powerEntityId, arg7 = {}, arg8) {
     }
   };
 }
-export function televisionMediaControl(entityId3, arg9, arg10) {
-  const newState4 = y(arg9, entityId3.entityId);
-  const attributes2 = newState4?.newState || newState4 || {};
-  const playing = televisionState(entityId3, arg9);
-  const value12 = Number(attributes2.attributes?.supported_features) || 0;
-  const service2 = arg10 === "previous" ? "media_previous_track" : arg10 === "next" ? "media_next_track" : playing.playing ? "media_pause" : "media_play";
-  const value13 = {
+export function televisionMediaControl(binding, states, action) {
+  const entry = lookupState(states, binding.entityId);
+  const entity = entry?.newState || entry || {};
+  const media = televisionState(binding, states);
+  const supportedFeatures = Number(entity.attributes?.supported_features) || 0;
+  const service = action === "previous" ? "media_previous_track" : action === "next" ? "media_next_track" : media.playing ? "media_pause" : "media_play";
+  const featureBit = {
     media_previous_track: 16,
     media_next_track: 32,
     media_pause: 1,
     media_play: 16384
-  }[service2];
+  }[service];
   return {
-    enabled: playing.on && !!(value12 & value13),
+    enabled: media.on && !!(supportedFeatures & featureBit),
     command: {
       domain: "media_player",
-      entityId: entityId3.entityId,
-      service: service2,
+      entityId: binding.entityId,
+      service,
       data: {},
       deviceKind: "television"
     }

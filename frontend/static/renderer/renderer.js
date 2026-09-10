@@ -215,7 +215,7 @@ function buildSwitchVisual({
     sync
   };
 }
-function lerpHexColor(fromHex, toHex, arg88 = 0) {
+function lerpHexColor(fromHex, toHex, lerpAmount = 0) {
   const normalizeHexColor = hex => {
     const asString = String(hex || "").trim();
     const mapped = /^#[0-9a-f]{3}$/i.test(asString) ? "#" + asString.slice(1).split("").map(digit => "" + digit + digit).join("") : asString;
@@ -230,7 +230,7 @@ function lerpHexColor(fromHex, toHex, arg88 = 0) {
   if (!fromNormalized || !toNormalized) {
     return fromHex;
   }
-  const amount = Math.max(0, Math.min(1, Number(arg88) || 0));
+  const amount = Math.max(0, Math.min(1, Number(lerpAmount) || 0));
   const readHexByte = (hex, offset) => Number.parseInt(hex.slice(offset, offset + 2), 16);
   return "#" + [1, 3, 5].map(offset => Math.round(readHexByte(fromNormalized, offset) + (readHexByte(toNormalized, offset) - readHexByte(fromNormalized, offset)) * amount)).map(channel => channel.toString(16).padStart(2, "0")).join("");
 }
@@ -414,9 +414,9 @@ export class PanelRenderer {
     const flatMapped = listImageSources([...(this.document.sharedComponents || []), ...this.document.pages.flatMap(arg => arg.components || [])]);
     this.runtimeStaticImageCache.setSources(flatMapped, state);
   }
-  setEntityCatalog(catalog = [], entityTranslations = {}, arg3 = []) {
+  setEntityCatalog(catalog = [], entityTranslations = {}, deviceCatalog = []) {
     this.entityMetadata = new Map((catalog || []).map(arg => [String(arg.entityId || ""), arg]).filter(([arg]) => arg));
-    this.deviceMetadata = new Map((arg3 || []).map(arg => [String(arg.deviceId || ""), arg]).filter(([arg]) => arg));
+    this.deviceMetadata = new Map((deviceCatalog || []).map(arg => [String(arg.deviceId || ""), arg]).filter(([arg]) => arg));
     this.entityTranslations = entityTranslations && typeof entityTranslations == "object" ? entityTranslations : {};
     this.entityCatalogReady = true;
     this.tryOpenPendingEntityDetails();
@@ -586,9 +586,9 @@ export class PanelRenderer {
   setSelectedComponent(componentId) {
     this.setSelectedComponents(componentId ? [componentId] : [], componentId);
   }
-  setSelectedComponents(componentIds, arg2 = null) {
+  setSelectedComponents(componentIds, primaryComponentId = null) {
     this.selectedComponentIds = new Set((componentIds || []).filter(arg => this.componentRecords.has(arg)));
-    this.selectedComponentId = this.selectedComponentIds.has(arg2) ? arg2 : this.selectedComponentIds.values().next().value || null;
+    this.selectedComponentId = this.selectedComponentIds.has(primaryComponentId) ? primaryComponentId : this.selectedComponentIds.values().next().value || null;
     this.syncSelection();
   }
   setActiveGroup(groupId = null) {
@@ -823,18 +823,18 @@ export class PanelRenderer {
     return state;
   }
   componentWorldTransform(componentId) {
-    return this.componentTransformChain(componentId).reduce((arg, arg2) => ({
-      rotation: arg.rotation + Number(arg2.position?.rotation || 0),
-      scale: arg.scale * Math.max(0.01, Math.min(5, Number(arg2.style?.scale || 1)))
+    return this.componentTransformChain(componentId).reduce((arg, outTransform) => ({
+      rotation: arg.rotation + Number(outTransform.position?.rotation || 0),
+      scale: arg.scale * Math.max(0.01, Math.min(5, Number(outTransform.style?.scale || 1)))
     }), {
       rotation: 0,
       scale: 1
     });
   }
-  worldPointToComponentLocal(componentId, point, arg3) {
+  worldPointToComponentLocal(componentId, point, outLocalPoint) {
     let state = {
       x: Number(point || 0),
-      y: Number(arg3 || 0)
+      y: Number(outLocalPoint || 0)
     };
     const state1 = this.componentTransformChain(componentId).reverse();
     for (const item of state1) {
@@ -856,7 +856,7 @@ export class PanelRenderer {
     }
     return state;
   }
-  componentVisualBounds(componentId, arg2 = null) {
+  componentVisualBounds(componentId, transformOverride = null) {
     const numeric = componentId.position || {};
     const count = Math.max(0.01, Number(numeric.width || 100));
     const count2 = Math.max(0.01, Number(numeric.height || 100));
@@ -864,8 +864,8 @@ export class PanelRenderer {
     let state = count2;
     let state1 = 0;
     let state2 = 0;
-    if (componentId.type === "light-statistics" && arg2) {
-      const element = arg2.querySelector(":scope > .hb-selection-bounds");
+    if (componentId.type === "light-statistics" && transformOverride) {
+      const element = transformOverride.querySelector(":scope > .hb-selection-bounds");
       const size2 = element ? [Number.parseFloat(element.style.left), Number.parseFloat(element.style.top), Number.parseFloat(element.style.width), Number.parseFloat(element.style.height)] : [];
       if (size2.every(Number.isFinite) && size2[2] > 0 && size2[3] > 0) {
         [state1, state2, size, state] = size2;
@@ -1004,15 +1004,15 @@ export class PanelRenderer {
     this.syncSelection();
     this.options.onComponentsTransformPreview?.(componentIds, transform);
   }
-  startComponentsScale(event, handle, arg3, element) {
+  startComponentsScale(event, handle, pointerEvent, element) {
     event.preventDefault();
     event.stopPropagation();
     const domRect = element.getBoundingClientRect();
     const size = domRect.left + domRect.width / 2;
     const size1 = domRect.top + domRect.height / 2;
     const count = Math.max(1, Math.hypot(event.clientX - size, event.clientY - size1));
-    const size2 = (arg3.left + arg3.right) / 2;
-    const size3 = (arg3.top + arg3.bottom) / 2;
+    const size2 = (pointerEvent.left + pointerEvent.right) / 2;
+    const size3 = (pointerEvent.top + pointerEvent.bottom) / 2;
     const mapped = handle.map(arg => {
       const numeric = arg.component.position || {};
       const width = Number(numeric.width || 100);
@@ -1065,10 +1065,10 @@ export class PanelRenderer {
         };
       });
       Object.assign(element.style, {
-        left: size2 + (arg3.left - size2) * scale + "px",
-        top: size3 + (arg3.top - size3) * scale + "px",
-        width: Math.max(1, (arg3.right - arg3.left) * scale) + "px",
-        height: Math.max(1, (arg3.bottom - arg3.top) * scale) + "px"
+        left: size2 + (pointerEvent.left - size2) * scale + "px",
+        top: size3 + (pointerEvent.top - size3) * scale + "px",
+        width: Math.max(1, (pointerEvent.right - pointerEvent.left) * scale) + "px",
+        height: Math.max(1, (pointerEvent.bottom - pointerEvent.top) * scale) + "px"
       });
       this.updateMultiSelectionHandleScale(element);
       this.options.onComponentsTransformPreview?.(scale1, this.selectedComponentId);
@@ -1090,15 +1090,15 @@ export class PanelRenderer {
     window.addEventListener("pointercancel", state, true);
     window.addEventListener("blur", state);
   }
-  startComponentsRotate(event, arg2, arg3, element) {
+  startComponentsRotate(event, pointerEvent, handleEl, element) {
     event.preventDefault();
     event.stopPropagation();
     const domRect = element.getBoundingClientRect();
     const size = domRect.left + domRect.width / 2;
     const event1 = domRect.top + domRect.height / 2;
-    const size1 = (arg3.left + arg3.right) / 2;
-    const size2 = (arg3.top + arg3.bottom) / 2;
-    const mapped = arg2.map(arg => {
+    const size1 = (handleEl.left + handleEl.right) / 2;
+    const size2 = (handleEl.top + handleEl.bottom) / 2;
+    const mapped = pointerEvent.map(arg => {
       const numeric = arg.component.position || {};
       const width = Number(numeric.width || 100);
       const height = Number(numeric.height || 100);
@@ -1236,7 +1236,7 @@ export class PanelRenderer {
     this.renderComponents(state, preservedHosts);
     this.resize();
   }
-  renderComponents(preserveSelection = false, arg2 = null) {
+  renderComponents(preserveSelection = false, renderOptions = null) {
     if (!this.canvas || !this.page) {
       return;
     }
@@ -1248,7 +1248,7 @@ export class PanelRenderer {
       state: this.iconVisibilityState() ? "on" : "off",
       attributes: {}
     });
-    const componentById = new Map([...(preserveSelection ? [...this.componentHosts].filter(([arg]) => ["camera", "vacuum-map", "floorplan-auto-diagram"].includes(this.componentRecords.get(arg)?.type)) : []), ...(arg2 && typeof arg2[Symbol.iterator] == "function" ? arg2 : [])]);
+    const componentById = new Map([...(preserveSelection ? [...this.componentHosts].filter(([arg]) => ["camera", "vacuum-map", "floorplan-auto-diagram"].includes(this.componentRecords.get(arg)?.type)) : []), ...(renderOptions && typeof renderOptions[Symbol.iterator] == "function" ? renderOptions : [])]);
     for (const [item, parentElement] of this.componentHosts) {
       if (preserveSelection && this.componentRecords.get(item)?.type === "interaction3d" && parentElement.parentElement === this.canvas && allowed.has(item)) {
         componentById.set(item, parentElement);
@@ -1256,12 +1256,12 @@ export class PanelRenderer {
     }
     const add = new Set();
     const currentById = new Map(collectComponents([...(this.page.components || []), ...filtered], () => true).map(arg => [arg.id, arg]));
-    for (const [value127] of componentById) {
-      if (this.componentRecords.get(value127)?.type === "interaction3d") {
-        if (currentById.get(value127)?.type === "interaction3d") {
-          add.add(value127);
+    for (const [selectionSnapshot] of componentById) {
+      if (this.componentRecords.get(selectionSnapshot)?.type === "interaction3d") {
+        if (currentById.get(selectionSnapshot)?.type === "interaction3d") {
+          add.add(selectionSnapshot);
         } else {
-          componentById.delete(value127);
+          componentById.delete(selectionSnapshot);
         }
       }
     }
@@ -1287,14 +1287,14 @@ export class PanelRenderer {
     for (const item of this.page.components || []) {
       this.renderComponent(item, this.canvas, 0, componentById, componentById1);
     }
-    for (const value128 of filtered) {
-      this.renderComponent(value128, this.canvas, 100000, componentById, componentById1);
+    for (const preservedSelectionIds of filtered) {
+      this.renderComponent(preservedSelectionIds, this.canvas, 100000, componentById, componentById1);
     }
     this.syncActiveGroup();
     this.syncSelection();
     this.runtimeEffectImageLoader.pruneDisconnected();
   }
-  registerRuntimeStateHandler(entityIds, handler, arg3 = null) {
+  registerRuntimeStateHandler(entityIds, handler, ownerToken = null) {
     const text = String(entityIds || "");
     if (!text || typeof handler != "function") {
       return;
@@ -1310,20 +1310,20 @@ export class PanelRenderer {
         this.runtimeStateHandlers.delete(text);
       }
     };
-    if (arg3) {
-      this.registerComponentCleanup(arg3, state);
+    if (ownerToken) {
+      this.registerComponentCleanup(ownerToken, state);
     } else {
       this.cleanups.push(state);
     }
   }
-  registerHistoryChartRefresher(refresher, arg2 = null) {
+  registerHistoryChartRefresher(refresher, ownerToken = null) {
     if (typeof refresher != "function") {
       return;
     }
     this.historyChartRefreshers.add(refresher);
     const state = () => this.historyChartRefreshers.delete(refresher);
-    if (arg2) {
-      this.registerComponentCleanup(arg2, state);
+    if (ownerToken) {
+      this.registerComponentCleanup(ownerToken, state);
     } else {
       this.cleanups.push(state);
     }
@@ -1399,7 +1399,7 @@ export class PanelRenderer {
       isIconVisible: isIconVisible => this.iconVisibilityState(isIconVisible),
       navigate: navigate => this.navigate(navigate),
       callEntityService: (...callEntityService) => this.callEntityService(...callEntityService),
-      openVacuumDetails: (onError, arg32, arg33) => this.openInteraction3dVacuumDetails(onError, arg32, arg33),
+      openVacuumDetails: (onError, vacuumOptions, extraOptions) => this.openInteraction3dVacuumDetails(onError, vacuumOptions, extraOptions),
       runVacuumRoom: registerRuntimeStateHandler => this.dispatchAction({
         id: state.id + ":room:" + registerRuntimeStateHandler.id,
         type: "device-button",
@@ -1415,10 +1415,10 @@ export class PanelRenderer {
         type: "toggle",
         data: {}
       }),
-      onError: arg34 => this.options.onError?.(arg34),
-      registerRuntimeStateHandler: (arg35, cleanup) => this.registerRuntimeStateHandler(arg35, cleanup, componentId),
+      onError: error => this.options.onError?.(error),
+      registerRuntimeStateHandler: (entityIds, cleanup) => this.registerRuntimeStateHandler(entityIds, cleanup, componentId),
       invalidate: () => this.refreshRuntimeComponent(componentId),
-      cleanup: arg36 => this.registerComponentCleanup(componentId, arg36)
+      cleanup: cleanupFn => this.registerComponentCleanup(componentId, cleanupFn)
     };
     const state3 = renderRegisteredComponent(this.runtimePowerComponent(state), state2);
     const numeric = Number(this.document.canvas.componentScale || 1);
@@ -1466,12 +1466,12 @@ export class PanelRenderer {
     if (!component || !element?.isConnected || component.type === "group") {
       return false;
     }
-    const parentElement = element.parentElement;
-    if (!parentElement) {
+    const hostParentEl = element.parentElement;
+    if (!hostParentEl) {
       return false;
     }
     if (component.type === "interaction3d") {
-      this.renderComponent(component, parentElement, parentElement === this.canvas && (this.page.sharedComponentIds || []).includes(component.id) ? 100000 : 0, new Map([[component.id, element]]));
+      this.renderComponent(component, hostParentEl, hostParentEl === this.canvas && (this.page.sharedComponentIds || []).includes(component.id) ? 100000 : 0, new Map([[component.id, element]]));
       this.syncSelection();
       return true;
     }
@@ -1479,35 +1479,35 @@ export class PanelRenderer {
       const position = component.properties?.previewReady === true && (component.properties?.generated !== true || component.properties?.previewing === true);
       const position1 = element.querySelector(".hb-floorplan-auto-diagram-preview");
       if (!!position1 === position) {
-        const value75 = component.position || {};
-        const value76 = parentElement === this.canvas && component.properties?.layoutMode === "fill";
-        const zIndex = value76 ? {
-          ...value75,
+        const componentPosition = component.position || {};
+        const isFillLayout = hostParentEl === this.canvas && component.properties?.layoutMode === "fill";
+        const zIndex = isFillLayout ? {
+          ...componentPosition,
           x: 0,
           y: 0,
           width: Number(this.document.canvas?.width || 2778),
           height: Number(this.document.canvas?.height || 1940),
           rotation: 0
-        } : value75;
-        const value77 = Math.max(0.01, Math.min(5, Number(component.style?.scale || 1)));
-        const value78 = Number(zIndex.zIndex || 1);
-        const value79 = componentHostZIndex(component, value78, parentElement === this.canvas);
+        } : componentPosition;
+        const componentScale = Math.max(0.01, Math.min(5, Number(component.style?.scale || 1)));
+        const baseZIndex = Number(zIndex.zIndex || 1);
+        const hostZIndex = componentHostZIndex(component, baseZIndex, hostParentEl === this.canvas);
         Object.assign(element.style, {
           left: (zIndex.x || 0) + "px",
           top: (zIndex.y || 0) + "px",
           width: (zIndex.width || 100) + "px",
           height: (zIndex.height || 100) + "px",
-          zIndex: String(value79),
-          transform: "rotate(" + (zIndex.rotation || 0) + "deg) scale(" + (value76 ? 1 : value77) + ")"
+          zIndex: String(hostZIndex),
+          transform: "rotate(" + (zIndex.rotation || 0) + "deg) scale(" + (isFillLayout ? 1 : componentScale) + ")"
         });
-        element.style.setProperty("--hb-component-z", String(value79));
-        element.classList.toggle("layout-fill", value76);
-        const textContent2 = element.querySelector(".hb-floorplan-auto-diagram-preview-hint");
-        const value80 = component.properties?.interactionMode === "view";
-        position1?.classList.toggle("is-view-mode", value80);
-        position1?.classList.toggle("is-position-mode", !value80);
-        if (textContent2) {
-          textContent2.textContent = value80 ? "拖动旋转 · 右键平移 · 滚轮缩放" : "拖动控件调整位置，右下角调整大小";
+        element.style.setProperty("--hb-component-z", String(hostZIndex));
+        element.classList.toggle("layout-fill", isFillLayout);
+        const hintEl = element.querySelector(".hb-floorplan-auto-diagram-preview-hint");
+        const isViewMode = component.properties?.interactionMode === "view";
+        position1?.classList.toggle("is-view-mode", isViewMode);
+        position1?.classList.toggle("is-position-mode", !isViewMode);
+        if (hintEl) {
+          hintEl.textContent = isViewMode ? "拖动旋转 · 右键平移 · 滚轮缩放" : "拖动控件调整位置，右下角调整大小";
         }
         this.syncSelection();
         this.updateTransformHandleScale(element, component);
@@ -1525,10 +1525,10 @@ export class PanelRenderer {
     this.componentAirflowLayers.get(component1)?.remove();
     this.componentAirflowLayers.delete(component1);
     element.remove();
-    this.renderComponent(component, parentElement);
+    this.renderComponent(component, hostParentEl);
     const state = this.componentHosts.get(component1);
-    if (state && nextSibling?.parentElement === parentElement) {
-      parentElement.insertBefore(state, nextSibling);
+    if (state && nextSibling?.parentElement === hostParentEl) {
+      hostParentEl.insertBefore(state, nextSibling);
     }
     this.syncSelection();
     return true;
@@ -1555,15 +1555,15 @@ export class PanelRenderer {
       }
     }
   }
-  applyEditorComponentUpdates(updates, documentModel, arg3 = []) {
-    if (!this.options.editable || !this.document || !Array.isArray(arg3) || !arg3.length) {
+  applyEditorComponentUpdates(updates, documentModel, removedComponentIds = []) {
+    if (!this.options.editable || !this.document || !Array.isArray(removedComponentIds) || !removedComponentIds.length) {
       return false;
     }
-    const filtered = arg3.map(arg => ({
+    const filtered = removedComponentIds.map(arg => ({
       componentId: String(arg?.componentId || ""),
       component: arg?.component
     })).filter(arg => arg.componentId && arg.component);
-    if (!filtered.length || filtered.length !== arg3.length || filtered.some(({
+    if (!filtered.length || filtered.length !== removedComponentIds.length || filtered.some(({
       componentId,
       component
     }) => {
@@ -1614,7 +1614,7 @@ export class PanelRenderer {
     }
     return true;
   }
-  scheduleRuntimeRender(entityIds, arg2 = 120) {
+  scheduleRuntimeRender(entityIds, delayMs = 120) {
     if (!this.destroyed && !!this.document && !!entityIds) {
       this.runtimeRenderEntityIds.add(String(entityIds));
       window.clearTimeout(this.runtimeRenderTimer);
@@ -1625,10 +1625,10 @@ export class PanelRenderer {
         if (!this.destroyed) {
           this.refreshRuntimeComponents(state);
         }
-      }, Math.max(0, Number(arg2) || 0));
+      }, Math.max(0, Number(delayMs) || 0));
     }
   }
-  setEffectLayerActive(element, active, arg3 = 0) {
+  setEffectLayerActive(element, active, fadeMs = 0) {
     if (!element) {
       return;
     }
@@ -1638,16 +1638,16 @@ export class PanelRenderer {
     const state = element.classList.contains("active") !== active;
     window.clearTimeout(element.hbTransitionTimer);
     element.classList.remove("is-transitioning");
-    if (state && arg3 > 0) {
+    if (state && fadeMs > 0) {
       element.classList.add("is-transitioning");
       element.offsetWidth;
     }
     element.classList.toggle("active", active);
-    if (state && arg3 > 0) {
+    if (state && fadeMs > 0) {
       element.hbTransitionTimer = window.setTimeout(() => {
         element.classList.remove("is-transitioning");
         element.hbTransitionTimer = null;
-      }, arg3 * 1000 + 80);
+      }, fadeMs * 1000 + 80);
     }
   }
   syncEffectLayerLightVisual(component, element) {
@@ -2011,10 +2011,10 @@ export class PanelRenderer {
       }
     };
   }
-  renderComponent(component, parentHost = this.canvas, renderOptions = 0, arg4 = null, arg5 = null) {
+  renderComponent(component, parentHost = this.canvas, renderOptions = 0, renderContext = null, parentComponent = null) {
     const iconButtonEffectComponent = normalizeIconButtonEffectComponent(component);
     const component2 = this.runtimePowerComponent(iconButtonEffectComponent);
-    const element = ["camera", "vacuum-map", "floorplan-auto-diagram", "interaction3d"].includes(component.type) ? arg4?.get(component.id) : null;
+    const element = ["camera", "vacuum-map", "floorplan-auto-diagram", "interaction3d"].includes(component.type) ? renderContext?.get(component.id) : null;
     if (element) {
       const position2 = component.position || {};
       const position3 = parentHost === this.canvas && ["floorplan-auto-diagram", "interaction3d"].includes(component.type) && component.properties?.layoutMode === "fill";
@@ -2116,7 +2116,7 @@ export class PanelRenderer {
       isIconVisible: isIconVisible => this.iconVisibilityState(isIconVisible),
       navigate: navigate => this.navigate(navigate),
       callEntityService: (...callEntityService) => this.callEntityService(...callEntityService),
-      openVacuumDetails: (onError, arg37, arg38) => this.openInteraction3dVacuumDetails(onError, arg37, arg38),
+      openVacuumDetails: (onError, vacuumOptions, extraOptions) => this.openInteraction3dVacuumDetails(onError, vacuumOptions, extraOptions),
       runVacuumRoom: registerRuntimeStateHandler => this.dispatchAction({
         id: component.id + ":room:" + registerRuntimeStateHandler.id,
         type: "device-button",
@@ -2132,24 +2132,24 @@ export class PanelRenderer {
         type: "toggle",
         data: {}
       }),
-      onError: arg39 => this.options.onError?.(arg39),
-      registerRuntimeStateHandler: (cleanup, arg40) => this.registerRuntimeStateHandler(cleanup, arg40, component.id),
+      onError: error => this.options.onError?.(error),
+      registerRuntimeStateHandler: (cleanup, entityIds) => this.registerRuntimeStateHandler(cleanup, entityIds, component.id),
       invalidate: () => this.renderComponents(true),
-      cleanup: arg41 => {
+      cleanup: cleanupFn => {
         if (["camera", "vacuum-map"].includes(component.type)) {
           if (!this.cameraCleanups.has(component.id)) {
             this.cameraCleanups.set(component.id, []);
           }
-          this.cameraCleanups.get(component.id).push(arg41);
+          this.cameraCleanups.get(component.id).push(cleanupFn);
         } else {
-          this.registerComponentCleanup(component.id, arg41);
+          this.registerComponentCleanup(component.id, cleanupFn);
         }
       }
     };
     if (component.type === "icon-button-effect") {
       const element4 = renderIconButtonEffectLayer(component2, state1);
       if (element4) {
-        const state2 = arg5?.get(component.id) || null;
+        const state2 = parentComponent?.get(component.id) || null;
         const element5 = state2 || element4;
         const element6 = element4.querySelector("img");
         const element7 = element5.querySelector("img");
@@ -2377,10 +2377,10 @@ export class PanelRenderer {
       element3.hidden = !state2;
     }
     for (const child of component.children || []) {
-      this.renderComponent(child, element2, 0, arg4, arg5);
+      this.renderComponent(child, element2, 0, renderContext, parentComponent);
     }
   }
-  startComponentMove(event, component, arg3, arg4 = arg3) {
+  startComponentMove(event, component, pointerEvent, originEvent = pointerEvent) {
     if (!this.options.editable || !this.selectedComponentIds.has(component.id) || component.properties?.layoutMode === "fill" || event.button !== 0 || event.target.closest(".hb-transform-handle")) {
       return;
     }
@@ -2422,8 +2422,8 @@ export class PanelRenderer {
         maxY: numeric8 - arg.height / 2 - arg.initialY
       };
     };
-    const clampNumber = (arg, arg2, arg31) => {
-      const state8 = groupedComponentLocalDelta(arg2, arg31, arg.parentTransform);
+    const clampNumber = (arg, second, pointerEvent) => {
+      const state8 = groupedComponentLocalDelta(second, pointerEvent, arg.parentTransform);
       const state9 = runHelper(arg);
       return {
         x: Math.max(state9.minX, Math.min(state9.maxX, state8.x)),
@@ -2446,15 +2446,15 @@ export class PanelRenderer {
     let state6 = "";
     let event1 = false;
     const pointerId = event.pointerId;
-    arg4.setPointerCapture(pointerId);
+    originEvent.setPointerCapture(pointerId);
     filtered.forEach(arg => arg.host.classList.add("moving"));
     const event2 = event3 => {
       if (event3.pointerId !== pointerId) {
         return;
       }
-      if (!arg4.hasPointerCapture?.(pointerId) && arg4.isConnected) {
+      if (!originEvent.hasPointerCapture?.(pointerId) && originEvent.isConnected) {
         try {
-          arg4.setPointerCapture(pointerId);
+          originEvent.setPointerCapture(pointerId);
         } catch {}
       }
       if (!state && eventHasCommandModifier(event3)) {
@@ -2479,15 +2479,15 @@ export class PanelRenderer {
             copiedComponent
           };
         });
-        state3 = state4.map((arg, arg2) => ({
+        state3 = state4.map((arg, index) => ({
           component: arg.copiedComponent,
           host: this.componentHosts.get(arg.copiedComponent.id),
-          initialX: filtered[arg2].initialX,
-          initialY: filtered[arg2].initialY,
-          width: filtered[arg2].width,
-          height: filtered[arg2].height,
-          parentId: filtered[arg2].parentId,
-          parentTransform: filtered[arg2].parentTransform
+          initialX: filtered[index].initialX,
+          initialY: filtered[index].initialY,
+          width: filtered[index].width,
+          height: filtered[index].height,
+          parentId: filtered[index].parentId,
+          parentTransform: filtered[index].parentTransform
         }));
         id = state4.find(arg => arg.sourceComponentId === component.id)?.copiedComponent.id || state4[0]?.copiedComponent.id;
         state5 = true;
@@ -2563,7 +2563,7 @@ export class PanelRenderer {
       if (!event1 && (event3?.pointerId == null || event3.pointerId === pointerId) && (event1 = true, state3.forEach(arg => arg.host?.classList.remove("moving")), filtered.forEach(arg => arg.host.classList.remove("moving")), window.removeEventListener("pointermove", event2, true), window.removeEventListener("pointerup", state7, true), window.removeEventListener("pointercancel", state7, true), window.removeEventListener("blur", state7), position !== numeric5 || state2 !== numeric6)) {
         if (state5) {
           state3.forEach(arg => {
-            const found = mapped.find(arg1 => arg1.componentId === arg.component.id);
+            const found = mapped.find(entry => entry.componentId === arg.component.id);
             arg.component.position = {
               ...(arg.component.position || {}),
               x: found?.x ?? arg.initialX,
@@ -2573,7 +2573,7 @@ export class PanelRenderer {
           this.options.onComponentsDuplicate?.(state4, component.id, id);
         } else if (filtered.length > 1) {
           const found = mapped.map(arg => {
-            const found1 = filtered.find(arg1 => arg1.component.id === arg.componentId);
+            const found1 = filtered.find(entry => entry.component.id === arg.componentId);
             if (found1) {
               found1.component.position = {
                 ...(found1.component.position || {}),
@@ -2610,7 +2610,7 @@ export class PanelRenderer {
     if (!host || !component || !host.parentElement || host.parentElement !== this.canvas && !host.hidden) {
       return null;
     }
-    const parentElement = host.parentElement;
+    const hostParentEl2 = host.parentElement;
     const element = document.createElement("div");
     element.className = "hb-component-selection-overlay";
     if (component.type === "light-statistics") {
@@ -2630,7 +2630,7 @@ export class PanelRenderer {
     if (component.type !== "light-statistics") {
       element.addEventListener("pointerdown", arg => this.startComponentMove(arg, component, host, element));
     }
-    parentElement.append(element);
+    hostParentEl2.append(element);
     this.componentSelectionOverlays.set(component.id, element);
     return element;
   }
@@ -2652,11 +2652,11 @@ export class PanelRenderer {
     this.componentSelectionOverlays.set(component.id, componentSelectionOverlayEl);
     return componentSelectionOverlayEl;
   }
-  syncAirflowLayerGeometry(componentId, arg2, arg3 = null) {
-    if (!componentId || !arg2) {
+  syncAirflowLayerGeometry(componentId, airflowEl, geometryOverride = null) {
+    if (!componentId || !airflowEl) {
       return;
     }
-    const airflowGeometry = airflowLayerGeometry(arg2, {
+    const airflowGeometry = airflowLayerGeometry(airflowEl, {
       grouped: componentId.parentElement !== this.canvas
     });
     const size = {
@@ -2667,8 +2667,8 @@ export class PanelRenderer {
       transform: "rotate(" + airflowGeometry.rotation + "deg) scale(" + airflowGeometry.scale + ")"
     };
     Object.assign(componentId.style, size);
-    if (arg3) {
-      Object.assign(arg3.style, size);
+    if (geometryOverride) {
+      Object.assign(geometryOverride.style, size);
     }
   }
   appendEffectSelectionBounds(host, component) {
@@ -2807,7 +2807,7 @@ export class PanelRenderer {
       height
     };
   }
-  applyDoorWindowPerspective(element, corners, arg3) {
+  applyDoorWindowPerspective(element, corners, corners2) {
     const matchedEl = element?.querySelector(".hb-door-window-visual");
     if (!matchedEl || !corners) {
       return;
@@ -2815,13 +2815,13 @@ export class PanelRenderer {
     const count = Math.max(0.01, Number(this.document?.canvas?.componentScale || 1));
     const count2 = Math.max(1, Number(corners.position?.width || 100) / count);
     const count3 = Math.max(1, Number(corners.position?.height || 100) / count);
-    matchedEl.style.transform = doorWindowPerspectiveMatrix(count2, count3, arg3);
+    matchedEl.style.transform = doorWindowPerspectiveMatrix(count2, count3, corners2);
   }
-  updateDoorWindowPerspectiveHandles(componentId, arg2) {
+  updateDoorWindowPerspectiveHandles(componentId, handleHost) {
     if (!componentId) {
       return;
     }
-    const state = doorWindowPerspectiveCorners(arg2);
+    const state = doorWindowPerspectiveCorners(handleHost);
     componentId.querySelector(".hb-door-window-perspective-guide polygon")?.setAttribute("points", [0, 1, 2, 3].map(arg => state[arg * 2] + "," + state[arg * 2 + 1]).join(" "));
     componentId.querySelectorAll(".hb-door-window-perspective-handle").forEach(arg => {
       const numeric = Number(arg.dataset.perspectiveCornerIndex || 0);
@@ -2829,7 +2829,7 @@ export class PanelRenderer {
       arg.style.top = state[numeric * 2 + 1] * 100 + "%";
     });
   }
-  appendDoorWindowPerspectiveHandles(host, component, arg3 = host) {
+  appendDoorWindowPerspectiveHandles(host, component, handleLayer = host) {
     if (!host || !component || component.properties?.sensorKind !== "door-window") {
       return;
     }
@@ -2853,7 +2853,7 @@ export class PanelRenderer {
       doorWindowPerspectiveHandleEl2.addEventListener("pointerdown", arg => this.startDoorWindowPerspective(arg, component, host, selectionBoundsEl1, doorWindowPerspectiveHandleEl1));
       selectionBoundsEl1.append(doorWindowPerspectiveHandleEl2);
     }
-    arg3.append(selectionBoundsEl1);
+    handleLayer.append(selectionBoundsEl1);
     this.updateDoorWindowPerspectiveHandles(selectionBoundsEl1, selectionBoundsEl);
     this.updateTransformHandleScale(host, component, selectionBoundsEl1);
   }
@@ -3042,7 +3042,7 @@ export class PanelRenderer {
     const domRect = element.getBoundingClientRect();
     element.classList.toggle("handles-outside", domRect.width < 132 || domRect.height < 112);
   }
-  startAirflowScale(event, component, handle, element, arg5) {
+  startAirflowScale(event, component, handle, element, pointerEvent) {
     event.preventDefault();
     event.stopPropagation();
     const domRect = element.getBoundingClientRect();
@@ -3055,7 +3055,7 @@ export class PanelRenderer {
     const currentTarget = event.currentTarget;
     currentTarget.setPointerCapture(event.pointerId);
     const runHelper = () => {
-      this.syncAirflowLayerGeometry(handle, component, arg5);
+      this.syncAirflowLayerGeometry(handle, component, pointerEvent);
       this.updateAirflowHandleScale(component, element);
     };
     const clamped = event1 => {
@@ -3089,7 +3089,7 @@ export class PanelRenderer {
     currentTarget.addEventListener("pointercancel", state1);
     currentTarget.addEventListener("lostpointercapture", state1);
   }
-  startAirflowRotate(event, component, arg3, element, arg5) {
+  startAirflowRotate(event, component, pointerEvent, element, handleEl) {
     event.preventDefault();
     event.stopPropagation();
     const domRect = element.getBoundingClientRect();
@@ -3108,7 +3108,7 @@ export class PanelRenderer {
         ...(component.properties || {}),
         airflowRotation
       };
-      this.syncAirflowLayerGeometry(arg3, component, arg5);
+      this.syncAirflowLayerGeometry(pointerEvent, component, handleEl);
       this.options.onComponentPropertiesPreview?.(component.id, {
         airflowRotation
       });
@@ -3132,8 +3132,8 @@ export class PanelRenderer {
     currentTarget.addEventListener("pointercancel", state2);
     currentTarget.addEventListener("lostpointercapture", state2);
   }
-  updateAirConditionerButtonSelectionBounds(componentId, component, arg3) {
-    if (!componentId || component?.type !== "air-conditioner" || !arg3) {
+  updateAirConditionerButtonSelectionBounds(componentId, component, selectionBounds) {
+    if (!componentId || component?.type !== "air-conditioner" || !selectionBounds) {
       return;
     }
     const position = component.properties || {};
@@ -3141,23 +3141,23 @@ export class PanelRenderer {
     const count2 = Math.max(1, Number(component.position?.height || 100));
     const count3 = Math.max(0.01, Number(this.document?.canvas?.componentScale || 1));
     const state = [];
-    const clampNumber = (arg, arg2, arg31, arg4) => {
+    const clampNumber = (arg, second, selectionBounds, fourth) => {
       const numeric = Number(arg);
-      return Math.max(arg2, Math.min(arg31, Number.isFinite(numeric) ? numeric : arg4));
+      return Math.max(second, Math.min(selectionBounds, Number.isFinite(numeric) ? numeric : fourth));
     };
-    const runHelper = (arg, arg2, arg31, arg4) => {
+    const runHelper = (arg, second, selectionBounds, fourth) => {
       state.push({
-        left: arg - arg31 / 2,
-        top: arg2 - arg4 / 2,
-        right: arg + arg31 / 2,
-        bottom: arg2 + arg4 / 2
+        left: arg - selectionBounds / 2,
+        top: second - fourth / 2,
+        right: arg + selectionBounds / 2,
+        bottom: second + fourth / 2
       });
     };
-    const runHelper1 = (arg, arg2, arg31, arg4) => {
-      const count4 = Math.max(arg4, Number(arg?.offsetWidth || 0) * count3);
-      const count5 = Math.max(arg4, Number(arg?.offsetHeight || 0) * count3);
-      const left = count * clampNumber(arg2, -100, 200, 0) / 100;
-      const size1 = count2 * clampNumber(arg31, -100, 200, 50) / 100;
+    const runHelper1 = (arg, second, selectionBounds, element) => {
+      const count4 = Math.max(element, Number(arg?.offsetWidth || 0) * count3);
+      const count5 = Math.max(element, Number(arg?.offsetHeight || 0) * count3);
+      const left = count * clampNumber(second, -100, 200, 0) / 100;
+      const size1 = count2 * clampNumber(selectionBounds, -100, 200, 50) / 100;
       state.push({
         left,
         top: size1 - count5 / 2,
@@ -3176,7 +3176,7 @@ export class PanelRenderer {
       runHelper1(componentId.querySelector(":scope > .hb-air-conditioner .hb-air-conditioner-text small"), position.secondaryTextLeft, position.secondaryTextTop, count2 * clampNumber(position.secondarySize, 5, 80, 12) / 100);
     }
     if (!state.length) {
-      Object.assign(arg3.style, {
+      Object.assign(selectionBounds.style, {
         left: "0px",
         top: "0px",
         width: count + "px",
@@ -3189,15 +3189,15 @@ export class PanelRenderer {
     const mapped1 = Math.min(...state.map(arg => arg.top)) - size;
     const mapped2 = Math.max(...state.map(arg => arg.right)) + size;
     const mapped3 = Math.max(...state.map(arg => arg.bottom)) + size;
-    Object.assign(arg3.style, {
+    Object.assign(selectionBounds.style, {
       left: mapped + "px",
       top: mapped1 + "px",
       width: Math.max(1, mapped2 - mapped) + "px",
       height: Math.max(1, mapped3 - mapped1) + "px"
     });
   }
-  updateDeviceButtonSelectionBounds(componentId, component, arg3) {
-    if (!componentId || component?.type !== "device-button" || !arg3) {
+  updateDeviceButtonSelectionBounds(componentId, component, selectionBounds) {
+    if (!componentId || component?.type !== "device-button" || !selectionBounds) {
       return false;
     }
     const state = component.properties || {};
@@ -3206,25 +3206,25 @@ export class PanelRenderer {
     const count2 = Math.max(1, Number(component.position?.height || 100));
     const count3 = Math.max(0.01, Number(this.document?.canvas?.componentScale || 1));
     const state1 = [];
-    const clampNumber = (arg, arg2, arg31, arg4) => {
+    const clampNumber = (arg, second, selectionBounds, fourth) => {
       const numeric = Number(arg);
-      return Math.max(arg2, Math.min(arg31, Number.isFinite(numeric) ? numeric : arg4));
+      return Math.max(second, Math.min(selectionBounds, Number.isFinite(numeric) ? numeric : fourth));
     };
-    const runHelper = (arg, arg2, arg31, arg4) => {
-      if (!![arg, arg2, arg31, arg4].every(Number.isFinite) && !(arg31 <= 0) && !(arg4 <= 0)) {
+    const runHelper = (arg, top, selectionBounds, height) => {
+      if (!![arg, top, selectionBounds, height].every(Number.isFinite) && !(selectionBounds <= 0) && !(height <= 0)) {
         state1.push({
-          left: arg - arg31 / 2,
-          top: arg2 - arg4 / 2,
-          right: arg + arg31 / 2,
-          bottom: arg2 + arg4 / 2
+          left: arg - selectionBounds / 2,
+          top: top - height / 2,
+          right: arg + selectionBounds / 2,
+          bottom: top + height / 2
         });
       }
     };
-    const runHelper1 = (arg, arg2, arg31, arg4) => {
-      const count4 = Math.max(arg4, Number(arg?.offsetWidth || 0) * count3);
-      const count5 = Math.max(arg4, Number(arg?.offsetHeight || 0) * count3);
-      const left = count * clampNumber(arg2, -100, 200, 0) / 100;
-      const size1 = count2 * clampNumber(arg31, -100, 200, 50) / 100;
+    const runHelper1 = (arg, second, selectionBounds, element) => {
+      const count4 = Math.max(element, Number(arg?.offsetWidth || 0) * count3);
+      const count5 = Math.max(element, Number(arg?.offsetHeight || 0) * count3);
+      const left = count * clampNumber(second, -100, 200, 0) / 100;
+      const size1 = count2 * clampNumber(selectionBounds, -100, 200, 50) / 100;
       state1.push({
         left,
         top: size1 - count5 / 2,
@@ -3250,7 +3250,7 @@ export class PanelRenderer {
     const mapped1 = Math.min(...state1.map(arg => arg.top)) - size;
     const mapped2 = Math.max(...state1.map(arg => arg.right)) + size;
     const mapped3 = Math.max(...state1.map(arg => arg.bottom)) + size;
-    Object.assign(arg3.style, {
+    Object.assign(selectionBounds.style, {
       left: mapped + "px",
       top: mapped1 + "px",
       width: Math.max(1, mapped2 - mapped) + "px",
@@ -3258,8 +3258,8 @@ export class PanelRenderer {
     });
     return true;
   }
-  updateTitleButtonSelectionBounds(componentId, component, arg3) {
-    if (!componentId || component?.type !== "title-button" || !arg3) {
+  updateTitleButtonSelectionBounds(componentId, component, selectionBounds) {
+    if (!componentId || component?.type !== "title-button" || !selectionBounds) {
       return false;
     }
     const state = component.properties || {};
@@ -3268,19 +3268,19 @@ export class PanelRenderer {
     const count2 = Math.max(1, Number(component.position?.height || 100));
     const count3 = Math.max(0.01, Number(this.document?.canvas?.componentScale || 1));
     const size = [];
-    const runHelper = (left, top, arg31, arg4) => {
-      if (!![left, top, arg31, arg4].every(Number.isFinite) && !(arg31 <= 0) && !(arg4 <= 0)) {
+    const runHelper = (left, top, selectionBounds, height) => {
+      if (!![left, top, selectionBounds, height].every(Number.isFinite) && !(selectionBounds <= 0) && !(height <= 0)) {
         size.push({
           left,
           top,
-          right: left + arg31,
-          bottom: top + arg4
+          right: left + selectionBounds,
+          bottom: top + height
         });
       }
     };
-    const clampNumber = (arg, arg2, arg31, arg4) => {
+    const clampNumber = (arg, second, selectionBounds, fourth) => {
       const numeric = Number(arg);
-      return Math.max(arg2, Math.min(arg31, Number.isFinite(numeric) ? numeric : arg4));
+      return Math.max(second, Math.min(selectionBounds, Number.isFinite(numeric) ? numeric : fourth));
     };
     if (state.frameVisible !== false || position) {
       const state1 = clampNumber(state.frameSize, 10, 300, 100) / 100;
@@ -3322,7 +3322,7 @@ export class PanelRenderer {
     const mapped1 = Math.min(...size.map(arg => arg.top)) - size1;
     const mapped2 = Math.max(...size.map(arg => arg.right)) + size1;
     const mapped3 = Math.max(...size.map(arg => arg.bottom)) + size1;
-    Object.assign(arg3.style, {
+    Object.assign(selectionBounds.style, {
       left: mapped + "px",
       top: mapped1 + "px",
       width: Math.max(1, mapped2 - mapped) + "px",
@@ -3330,8 +3330,8 @@ export class PanelRenderer {
     });
     return true;
   }
-  updateLightStatisticsSelectionBounds(componentId, arg2, arg3) {
-    if (!componentId || arg2?.type !== "light-statistics" || !arg3 || componentId.hidden) {
+  updateLightStatisticsSelectionBounds(componentId, hostEl, selectionBounds) {
+    if (!componentId || hostEl?.type !== "light-statistics" || !selectionBounds || componentId.hidden) {
       return false;
     }
     const element = componentId.querySelector(":scope > .hb-light-statistics");
@@ -3348,7 +3348,7 @@ export class PanelRenderer {
     const mapped1 = (Math.min(...filtered.map(arg => arg.offsetTop)) - state) * count;
     const mapped2 = (Math.max(...filtered.map(arg => arg.offsetLeft + arg.offsetWidth)) + state) * count;
     const mapped3 = (Math.max(...filtered.map(arg => arg.offsetTop + arg.offsetHeight)) + state) * count;
-    Object.assign(arg3.style, {
+    Object.assign(selectionBounds.style, {
       left: mapped + "px",
       top: mapped1 + "px",
       width: Math.max(1, mapped2 - mapped) + "px",
@@ -3356,8 +3356,8 @@ export class PanelRenderer {
     });
     return true;
   }
-  updateTextSelectionBounds(componentId, arg2, arg3) {
-    if (!componentId || !["time", "date", "weather"].includes(arg2?.type) || !arg3) {
+  updateTextSelectionBounds(componentId, hostEl, selectionBounds) {
+    if (!componentId || !["time", "date", "weather"].includes(hostEl?.type) || !selectionBounds) {
       return false;
     } else {
       return this.withSelectionMeasurementHost(componentId, () => {
@@ -3365,13 +3365,13 @@ export class PanelRenderer {
         if (!element) {
           return false;
         }
-        const matchedEl = (arg2.type === "time" ? [...element.querySelectorAll(":scope > .hb-time-value, :scope > .hb-time-period")] : arg2.type === "date" ? [...element.querySelectorAll(":scope > .hb-date-primary, :scope > .hb-date-lunar")] : [...element.querySelectorAll(":scope > .hb-weather-icon, :scope > .hb-weather-content > strong, :scope > .hb-weather-content > small")]).filter(arg => this.selectionElementIsVisible(arg));
+        const matchedEl = (hostEl.type === "time" ? [...element.querySelectorAll(":scope > .hb-time-value, :scope > .hb-time-period")] : hostEl.type === "date" ? [...element.querySelectorAll(":scope > .hb-date-primary, :scope > .hb-date-lunar")] : [...element.querySelectorAll(":scope > .hb-weather-icon, :scope > .hb-weather-content > strong, :scope > .hb-weather-content > small")]).filter(arg => this.selectionElementIsVisible(arg));
         const count = Math.max(0.01, Number(this.document?.canvas?.componentScale || 1));
-        const count2 = Math.max(1, Number(arg2.position?.width || 100));
-        const count3 = Math.max(1, Number(arg2.position?.height || 100));
+        const count2 = Math.max(1, Number(hostEl.position?.width || 100));
+        const count3 = Math.max(1, Number(hostEl.position?.height || 100));
         if (!matchedEl.length) {
           const clamped = Math.min(32, Math.max(20, Math.min(count2, count3) * 0.2));
-          Object.assign(arg3.style, {
+          Object.assign(selectionBounds.style, {
             left: (count2 - clamped) / 2 + "px",
             top: (count3 - clamped) / 2 + "px",
             width: clamped + "px",
@@ -3385,7 +3385,7 @@ export class PanelRenderer {
         const mapped2 = (Math.min(...mapped.map(arg => arg.top)) - size) * count;
         const mapped3 = (Math.max(...mapped.map(arg => arg.left + arg.width)) + size) * count;
         const mapped4 = (Math.max(...mapped.map(arg => arg.top + arg.height)) + size) * count;
-        Object.assign(arg3.style, {
+        Object.assign(selectionBounds.style, {
           left: mapped1 + "px",
           top: mapped2 + "px",
           width: Math.max(1, mapped3 - mapped1) + "px",
@@ -3395,7 +3395,7 @@ export class PanelRenderer {
       });
     }
   }
-  async updateImageSelectionBounds(componentId, arg2, arg3) {
+  async updateImageSelectionBounds(componentId, hostEl, selectionBounds) {
     const element = componentId.querySelector(":scope > .hb-image-component");
     if (!element || ((!element.complete || !element.naturalWidth) && (await new Promise(arg => {
       element.addEventListener("load", arg, {
@@ -3404,33 +3404,33 @@ export class PanelRenderer {
       element.addEventListener("error", arg, {
         once: true
       });
-    })), !componentId.isConnected || !arg3.isConnected || !element.naturalWidth || !element.naturalHeight)) {
+    })), !componentId.isConnected || !selectionBounds.isConnected || !element.naturalWidth || !element.naturalHeight)) {
       return;
     }
-    const numeric = Number(arg2.position?.width || 100);
-    const numeric2 = Number(arg2.position?.height || 100);
+    const numeric = Number(hostEl.position?.width || 100);
+    const numeric2 = Number(hostEl.position?.height || 100);
     const position = element.naturalWidth / element.naturalHeight;
     const state = numeric / numeric2;
     const state1 = position >= state ? numeric : numeric2 * position;
     const state2 = position >= state ? numeric / position : numeric2;
     const size = (numeric - state1) / 2;
     const size1 = (numeric2 - state2) / 2;
-    Object.assign(arg3.style, {
+    Object.assign(selectionBounds.style, {
       left: size / numeric * 100 + "%",
       top: size1 / numeric2 * 100 + "%",
       width: state1 / numeric * 100 + "%",
       height: state2 / numeric2 * 100 + "%"
     });
   }
-  updateTransformHandleScale(componentId, arg2, arg3 = null) {
-    if (!componentId || !arg2) {
+  updateTransformHandleScale(componentId, handleRoot, scaleOverride = null) {
+    if (!componentId || !handleRoot) {
       return;
     }
     const state = Math.min(this.appliedScaleX || 1, this.appliedScaleY || 1);
-    const count = Math.max(0.01, Math.min(5, Number(arg2.style?.scale || 1)));
-    const scale = this.componentParentTransform(arg2.id).scale;
+    const count = Math.max(0.01, Math.min(5, Number(handleRoot.style?.scale || 1)));
+    const scale = this.componentParentTransform(handleRoot.id).scale;
     const scale1 = 1 / Math.max(0.001, state * count * scale);
-    const element = arg3 || this.componentSelectionOverlays.get(arg2.id)?.querySelector(":scope > .hb-selection-bounds") || componentId.querySelector(":scope > .hb-selection-bounds");
+    const element = scaleOverride || this.componentSelectionOverlays.get(handleRoot.id)?.querySelector(":scope > .hb-selection-bounds") || componentId.querySelector(":scope > .hb-selection-bounds");
     if (!element) {
       return;
     }
@@ -3694,9 +3694,9 @@ export class PanelRenderer {
       runHelper2();
     });
   }
-  runAction(component, component1, arg3 = {}) {
+  runAction(component, component1, actionOptions = {}) {
     if (!!component1?.type && component1.type !== "none") {
-      this.dispatchAction(component, component1, arg3).catch(arg => {
+      this.dispatchAction(component, component1, actionOptions).catch(arg => {
         window.HABridgeLog?.error(arg, {
           componentId: component.id,
           entityId: component.bindings?.entity?.entityId || "",
@@ -3713,7 +3713,7 @@ export class PanelRenderer {
       });
     }
   }
-  popupComponentForEntity(entityId1, arg2 = "") {
+  popupComponentForEntity(entityId1, preferredType = "") {
     let entityId = String(entityId1 || "");
     let entityId2 = entityId.split(".")[0];
     const state = this.deviceProfile(entityId);
@@ -3744,7 +3744,7 @@ export class PanelRenderer {
         }
       },
       properties: {
-        label: arg2 || "",
+        label: preferredType || "",
         ...(["air-conditioner", "bath-heater"].includes(state?.deviceType) ? {
           deviceType: state.deviceType
         } : {}),
@@ -3952,19 +3952,19 @@ export class PanelRenderer {
       state1 = !!arg;
       element.disabled = preview || state1 || !state2;
       element2.disabled = state1;
-      mediaBrowserListEl.querySelectorAll("button").forEach(arg1 => {
-        arg1.disabled = state1;
+      mediaBrowserListEl.querySelectorAll("button").forEach(buttonEl => {
+        buttonEl.disabled = state1;
       });
     };
     const runHelper1 = arg => String(arg?.title || arg?.name || arg?.media_content_id || "未命名媒体");
-    const runHelper2 = async (arg, arg2 = "", {
+    const runHelper2 = async (arg, labelText = "", {
       pushHistory = true
     } = {}) => {
       if (!state1 && !preview && !!state2) {
         queryChildElement(true);
         runHelper("读取中…");
         try {
-          const state3 = await this.browseMedia(entityId, arg, arg2);
+          const state3 = await this.browseMedia(entityId, arg, labelText);
           if (pushHistory && id !== arg) {
             state.push({
               id,
@@ -3973,7 +3973,7 @@ export class PanelRenderer {
             });
           }
           id = arg;
-          type = arg2 || "";
+          type = labelText || "";
           element3.textContent = runHelper1(state3) || "媒体库";
           element2.hidden = state.length === 0;
           mediaBrowserListEl.replaceChildren();
@@ -4078,15 +4078,15 @@ export class PanelRenderer {
       }
     };
   }
-  registerRuntimeDialogScale(dialogLayer, dialog, arg3, arg4) {
+  registerRuntimeDialogScale(dialogLayer, dialog, designWidth, designHeight) {
     const state = runtimeDialogUsesStableMotion();
     dialogLayer.classList.toggle("hb-runtime-stable-motion", state);
     dialogLayer.classList.toggle("hb-runtime-simplified-motion", state && dialog.classList.contains("hb-custom-popup-dialog"));
     const runtimeDialogScaleContext = {
       dialogLayer,
       dialog,
-      designWidth: Math.max(1, Number(arg3) || 1),
-      designHeight: Math.max(1, Number(arg4) || 1),
+      designWidth: Math.max(1, Number(designWidth) || 1),
+      designHeight: Math.max(1, Number(designHeight) || 1),
       fillAvailable: dialog.dataset.runtimeDialogLayout === "fill" || dialog.classList.contains("media-player-details"),
       tightFill: dialog.classList.contains("media-player-details"),
       targetOccupancy: dialog.dataset.runtimeDialogLayout === "compact" ? COMPACT_TARGET_OCCUPANCY : DEFAULT_TARGET_OCCUPANCY,
@@ -4212,14 +4212,14 @@ export class PanelRenderer {
       }
     }
   }
-  bindRuntimeDialogOutsideDismiss(dialog, arg2, event) {
+  bindRuntimeDialogOutsideDismiss(dialog, popupApi, event) {
     const state = performance.now() + 320;
     dialog.addEventListener("click", event => {
       if (!event.contains(event.target)) {
         event.preventDefault();
         event.stopPropagation();
         if (!(performance.now() < state)) {
-          arg2.close();
+          popupApi.close();
         }
       }
     });
@@ -4270,7 +4270,7 @@ export class PanelRenderer {
     let state = 0;
     let state1 = null;
     let state2 = 0;
-    const runHelper = (arg, arg2 = 0) => "translateX(-50%) perspective(260px) rotateY(" + arg + "deg) rotateZ(" + arg * 0.035 + "deg) translateY(" + arg2 + "px)";
+    const runHelper = (arg, delayOrNumber = 0) => "translateX(-50%) perspective(260px) rotateY(" + arg + "deg) rotateZ(" + arg * 0.035 + "deg) translateY(" + delayOrNumber + "px)";
     const filtered = () => {
       if (!cameraDeviceBodyEl.isConnected) {
         return;
@@ -4373,9 +4373,9 @@ export class PanelRenderer {
         onUnavailable,
         cleanup: cleanup => state5.push(cleanup)
       });
-      const runHelper1 = (arg, arg2) => {
-        if (!!state3 && !!arg && !!arg2) {
-          state7 = arg / arg2;
+      const runHelper1 = (arg, second) => {
+        if (!!state3 && !!arg && !!second) {
+          state7 = arg / second;
           applyElementStyle();
         }
       };
@@ -4491,8 +4491,8 @@ export class PanelRenderer {
     if (state3) {
       capabilityDetailsControlsEl.append(lowered.visual);
     }
-    const createChildElement = (arg, arg2, arg3, service, dataKey, arg6 = asString) => {
-      const set = [...new Set((arg2 || []).map(arg1 => String(arg1 ?? "").trim()).filter(Boolean))];
+    const createChildElement = (arg, second, third, service, dataKey, param6 = asString) => {
+      const set = [...new Set((second || []).map(item => String(item ?? "").trim()).filter(Boolean))];
       if (!set.length && (!["electric-bed", "electric-bed-memory"].includes(variant) || asString !== "select")) {
         return;
       }
@@ -4515,63 +4515,63 @@ export class PanelRenderer {
         const electricBedSelectMenuEl = document.createElement("i");
         electricBedSelectMenuEl.setAttribute("aria-hidden", "true");
         trigger.append(element2, electricBedSelectMenuEl);
-        const menu = document.createElement("div");
-        menu.className = "hb-electric-bed-select-menu";
-        menu.id = "hb-bed-select-" + String(this.renderNamespace || "runtime").replace(/[^a-z0-9_-]/gi, "-") + "-" + entityId.replace(/[^a-z0-9_-]/gi, "-");
-        menu.setAttribute("role", "listbox");
-        menu.setAttribute("popover", "auto");
-        menu.hidden = true;
-        trigger.setAttribute("aria-controls", menu.id);
+        const electricBedSelectMenuEl2 = document.createElement("div");
+        electricBedSelectMenuEl2.className = "hb-electric-bed-select-menu";
+        electricBedSelectMenuEl2.id = "hb-bed-select-" + String(this.renderNamespace || "runtime").replace(/[^a-z0-9_-]/gi, "-") + "-" + entityId.replace(/[^a-z0-9_-]/gi, "-");
+        electricBedSelectMenuEl2.setAttribute("role", "listbox");
+        electricBedSelectMenuEl2.setAttribute("popover", "auto");
+        electricBedSelectMenuEl2.hidden = true;
+        trigger.setAttribute("aria-controls", electricBedSelectMenuEl2.id);
         let state4 = false;
         const computeResult = () => {
           try {
-            return menu.matches(":popover-open");
+            return electricBedSelectMenuEl2.matches(":popover-open");
           } catch {
-            return menu.dataset.open === "true";
+            return electricBedSelectMenuEl2.dataset.open === "true";
           }
         };
         const applyElementStyle = () => {
-          if (!computeResult() && menu.hidden) {
+          if (!computeResult() && electricBedSelectMenuEl2.hidden) {
             return;
           }
           const domRect = trigger.getBoundingClientRect();
           const innerWidth = window.innerWidth;
           const innerHeight = window.innerHeight;
           const clamped = Math.min(Math.max(domRect.width, 150), Math.max(150, innerWidth - 20));
-          menu.style.width = clamped + "px";
-          menu.style.maxHeight = Math.min(306, Math.max(96, innerHeight - 20)) + "px";
-          const size = Math.min(menu.scrollHeight || 0, 306);
+          electricBedSelectMenuEl2.style.width = clamped + "px";
+          electricBedSelectMenuEl2.style.maxHeight = Math.min(306, Math.max(96, innerHeight - 20)) + "px";
+          const size = Math.min(electricBedSelectMenuEl2.scrollHeight || 0, 306);
           const size1 = innerHeight - domRect.bottom - 10;
           const size2 = domRect.top - 10;
           const clamped1 = size1 < Math.min(size, 160) && size2 > size1 ? Math.max(10, domRect.top - size - 5) : Math.min(innerHeight - size - 10, domRect.bottom + 5);
-          menu.style.left = Math.max(10, Math.min(domRect.left, innerWidth - clamped - 10)) + "px";
-          menu.style.top = Math.max(10, clamped1) + "px";
+          electricBedSelectMenuEl2.style.left = Math.max(10, Math.min(domRect.left, innerWidth - clamped - 10)) + "px";
+          electricBedSelectMenuEl2.style.top = Math.max(10, clamped1) + "px";
         };
         const closeMenu = () => {
-          if (computeResult() && typeof menu.hidePopover == "function") {
-            menu.hidePopover();
+          if (computeResult() && typeof electricBedSelectMenuEl2.hidePopover == "function") {
+            electricBedSelectMenuEl2.hidePopover();
           }
-          menu.hidden = true;
-          menu.dataset.open = "false";
+          electricBedSelectMenuEl2.hidden = true;
+          electricBedSelectMenuEl2.dataset.open = "false";
           trigger.setAttribute("aria-expanded", "false");
         };
-        const syncAriaState = (arg1 = false) => {
+        const syncAriaState = (flag = false) => {
           if (!trigger.disabled) {
-            menu.hidden = false;
-            if (typeof menu.showPopover == "function") {
-              menu.showPopover();
+            electricBedSelectMenuEl2.hidden = false;
+            if (typeof electricBedSelectMenuEl2.showPopover == "function") {
+              electricBedSelectMenuEl2.showPopover();
             } else {
-              menu.dataset.open = "true";
+              electricBedSelectMenuEl2.dataset.open = "true";
             }
             trigger.setAttribute("aria-expanded", "true");
             applyElementStyle();
-            if (arg1) {
-              (menu.querySelector("[aria-selected=\"true\"]") || menu.querySelector("[role=\"option\"]"))?.focus();
+            if (flag) {
+              (electricBedSelectMenuEl2.querySelector("[aria-selected=\"true\"]") || electricBedSelectMenuEl2.querySelector("[role=\"option\"]"))?.focus();
             }
           }
         };
-        const invokeEntityService = async arg1 => {
-          if (!interactive || state4 || !arg1 || runHelper1()) {
+        const invokeEntityService = async item => {
+          if (!interactive || state4 || !item || runHelper1()) {
             return;
           }
           const state5 = entityState;
@@ -4579,16 +4579,16 @@ export class PanelRenderer {
           closeMenu();
           entityState = {
             ...entityState,
-            state: service === "select_option" ? arg1 : entityState.state,
+            state: service === "select_option" ? item : entityState.state,
             attributes: {
               ...runHelper(),
-              [dataKey]: arg1
+              [dataKey]: item
             }
           };
           runHelper2(entityState);
           try {
-            await this.callEntityService(arg6, service, entityId, {
-              [dataKey]: arg1
+            await this.callEntityService(param6, service, entityId, {
+              [dataKey]: item
             });
           } catch (error) {
             entityState = state5;
@@ -4600,7 +4600,7 @@ export class PanelRenderer {
           }
         };
         const renderOptions = (electricBedSelectOptionEl, electricBedSelectOptionEl1) => {
-          menu.replaceChildren(...electricBedSelectOptionEl.map(electricBedSelectOptionEl2 => {
+          electricBedSelectMenuEl2.replaceChildren(...electricBedSelectOptionEl.map(electricBedSelectOptionEl2 => {
             const element3 = document.createElement("button");
             element3.type = "button";
             element3.className = "hb-electric-bed-select-option";
@@ -4618,7 +4618,7 @@ export class PanelRenderer {
           element2.title = state5;
         };
         trigger.addEventListener("click", () => {
-          if (computeResult() || menu.dataset.open === "true") {
+          if (computeResult() || electricBedSelectMenuEl2.dataset.open === "true") {
             closeMenu();
           } else {
             syncAriaState();
@@ -4630,8 +4630,8 @@ export class PanelRenderer {
             syncAriaState(true);
           }
         });
-        menu.addEventListener("keydown", event => {
-          const matchedEl = [...menu.querySelectorAll("[role=\"option\"]")];
+        electricBedSelectMenuEl2.addEventListener("keydown", event => {
+          const matchedEl = [...electricBedSelectMenuEl2.querySelectorAll("[role=\"option\"]")];
           const state5 = matchedEl.indexOf(document.activeElement);
           if (event.key === "Escape") {
             event.preventDefault();
@@ -4646,16 +4646,16 @@ export class PanelRenderer {
             document.activeElement?.click();
           }
         });
-        menu.addEventListener("toggle", arg1 => {
-          const state5 = arg1.newState === "open";
-          menu.hidden = !state5;
-          menu.dataset.open = String(state5);
+        electricBedSelectMenuEl2.addEventListener("toggle", toggleEvent => {
+          const state5 = toggleEvent.newState === "open";
+          electricBedSelectMenuEl2.hidden = !state5;
+          electricBedSelectMenuEl2.dataset.open = String(state5);
           trigger.setAttribute("aria-expanded", String(state5));
           if (state5) {
             applyElementStyle();
           }
         });
-        electricBedSelectEl.append(trigger, menu);
+        electricBedSelectEl.append(trigger, electricBedSelectMenuEl2);
         capabilityOptionGroupEl.append(element, electricBedSelectEl);
         capabilityDetailsControlsEl.append(capabilityOptionGroupEl);
         state2.push({
@@ -4663,7 +4663,7 @@ export class PanelRenderer {
           service,
           dataKey,
           trigger,
-          menu,
+          electricBedSelectMenuEl2,
           renderOptions,
           closeMenu,
           isPending: () => state4
@@ -4684,13 +4684,13 @@ export class PanelRenderer {
         };
         element2.textContent = variant === "air-purifier" && arg === "运行模式" ? state4[item.toLowerCase()] || item : asString === "fan" && state === "bath-heater" && arg === "运行模式" ? climateModeLabel(item, "bath-heater", state1) : item;
         element2.dataset.value = item;
-        element2.classList.toggle("active", item === String(arg3 ?? ""));
+        element2.classList.toggle("active", item === String(third ?? ""));
         element2.addEventListener("click", async () => {
           if (!interactive) {
             return;
           }
-          buttons.forEach(arg1 => {
-            arg1.disabled = true;
+          buttons.forEach(buttonEl => {
+            buttonEl.disabled = true;
           });
           const state5 = entityState;
           entityState = {
@@ -4703,7 +4703,7 @@ export class PanelRenderer {
           };
           runHelper2(entityState);
           try {
-            await this.callEntityService(arg6, service, entityId, {
+            await this.callEntityService(param6, service, entityId, {
               [dataKey]: item
             });
           } catch (error) {
@@ -4711,8 +4711,8 @@ export class PanelRenderer {
             runHelper2(state5);
             this.options.onError?.(error);
           } finally {
-            buttons.forEach(arg1 => {
-              arg1.disabled = false;
+            buttons.forEach(buttonEl => {
+              buttonEl.disabled = false;
             });
           }
         });
@@ -4797,21 +4797,21 @@ export class PanelRenderer {
         capabilityRangeHeadingEl.className = "hb-capability-range-heading";
         const element = document.createElement("strong");
         element.textContent = "风速";
-        const output = document.createElement("output");
-        capabilityRangeHeadingEl.append(element, output);
-        const input = document.createElement("input");
-        input.type = "range";
-        input.min = "0";
-        input.max = "100";
-        input.step = "1";
-        input.value = String(numeric);
-        input.addEventListener("change", async () => {
+        const controlOutputEl = document.createElement("output");
+        capabilityRangeHeadingEl.append(element, controlOutputEl);
+        const controlInputEl = document.createElement("input");
+        controlInputEl.type = "range";
+        controlInputEl.min = "0";
+        controlInputEl.max = "100";
+        controlInputEl.step = "1";
+        controlInputEl.value = String(numeric);
+        controlInputEl.addEventListener("change", async () => {
           if (!interactive || runHelper1()) {
             return;
           }
-          input.disabled = true;
+          controlInputEl.disabled = true;
           const state4 = entityState;
-          const percentage = Number(input.value);
+          const percentage = Number(controlInputEl.value);
           entityState = {
             ...entityState,
             attributes: {
@@ -4829,15 +4829,15 @@ export class PanelRenderer {
             runHelper2(state4);
             this.options.onError?.(error);
           } finally {
-            input.disabled = false;
+            controlInputEl.disabled = false;
           }
         });
-        capabilityRangeGroupEl.append(capabilityRangeHeadingEl, input);
+        capabilityRangeGroupEl.append(capabilityRangeHeadingEl, controlInputEl);
         capabilityDetailsControlsEl.append(capabilityRangeGroupEl);
         state2.push({
           type: "range",
-          input,
-          output,
+          controlInputEl,
+          controlOutputEl,
           dataKey: "percentage"
         });
       }
@@ -4858,21 +4858,21 @@ export class PanelRenderer {
       capabilityRangeHeadingEl.className = "hb-capability-range-heading";
       const element = document.createElement("strong");
       element.textContent = runHelper().unit_of_measurement ? "数值（" + runHelper().unit_of_measurement + "）" : "数值";
-      const output = document.createElement("output");
-      capabilityRangeHeadingEl.append(element, output);
-      const input = document.createElement("input");
-      input.type = "range";
-      input.min = String(finiteNumber);
-      input.max = String(capabilityRangeGroupEl);
-      input.step = String(capabilityRangeGroupEl1);
-      input.value = String(Number(entityState?.state) || finiteNumber);
-      input.addEventListener("change", async () => {
+      const controlOutputEl2 = document.createElement("output");
+      capabilityRangeHeadingEl.append(element, controlOutputEl2);
+      const controlInputEl2 = document.createElement("input");
+      controlInputEl2.type = "range";
+      controlInputEl2.min = String(finiteNumber);
+      controlInputEl2.max = String(capabilityRangeGroupEl);
+      controlInputEl2.step = String(capabilityRangeGroupEl1);
+      controlInputEl2.value = String(Number(entityState?.state) || finiteNumber);
+      controlInputEl2.addEventListener("change", async () => {
         if (!interactive || runHelper1()) {
           return;
         }
-        input.disabled = true;
+        controlInputEl2.disabled = true;
         const state4 = entityState;
-        const asNumber = Number(input.value);
+        const asNumber = Number(controlInputEl2.value);
         entityState = {
           ...entityState,
           state: String(asNumber)
@@ -4887,15 +4887,15 @@ export class PanelRenderer {
           runHelper2(state4);
           this.options.onError?.(error);
         } finally {
-          input.disabled = false;
+          controlInputEl2.disabled = false;
         }
       });
-      capabilityRangeGroupEl2.append(capabilityRangeHeadingEl, input);
+      capabilityRangeGroupEl2.append(capabilityRangeHeadingEl, controlInputEl2);
       capabilityDetailsControlsEl.append(capabilityRangeGroupEl2);
       state2.push({
         type: "range",
-        input,
-        output,
+        controlInputEl2,
+        controlOutputEl2,
         dataKey: "state"
       });
     }
@@ -4914,7 +4914,7 @@ export class PanelRenderer {
           const state6 = item.service === "select_option" ? entityState?.state : runHelper()[item.dataKey];
           item.buttons.forEach(element => element.classList.toggle("active", state5 && element.dataset.value === String(state6 ?? "")));
         } else if (item.type === "bed-select") {
-          const set = [...new Set((runHelper().options || []).map(arg1 => String(arg1 ?? "").trim()).filter(Boolean))];
+          const set = [...new Set((runHelper().options || []).map(item2 => String(item2 ?? "").trim()).filter(Boolean))];
           const state6 = item.service === "select_option" ? entityState?.state : runHelper()[item.dataKey];
           item.renderOptions(set, state6);
           item.trigger.disabled = !interactive || item.isPending() || !set.length || runHelper1();
@@ -4922,14 +4922,14 @@ export class PanelRenderer {
             item.closeMenu();
           }
         } else if (item.type === "select") {
-          const set = [...new Set((runHelper().options || []).map(arg1 => String(arg1 ?? "").trim()).filter(Boolean))];
+          const set = [...new Set((runHelper().options || []).map(item2 => String(item2 ?? "").trim()).filter(Boolean))];
           if (set.length) {
             const mapped = [...item.input.options].map(element => element.value);
-            if (mapped.length !== set.length || mapped.some((arg1, arg2) => arg1 !== set[arg2])) {
-              item.input.replaceChildren(...set.map(arg1 => {
+            if (mapped.length !== set.length || mapped.some((item2, second) => item2 !== set[second])) {
+              item.input.replaceChildren(...set.map(item2 => {
                 const element = document.createElement("option");
-                element.value = arg1;
-                element.textContent = arg1;
+                element.value = item2;
+                element.textContent = item2;
                 return element;
               }));
             }
@@ -4985,8 +4985,8 @@ export class PanelRenderer {
     };
     const entityDetailsDialogEl = this.deviceProfile(entityId);
     const entityDetailsDialogEl1 = entityDetailsDialogEl?.deviceType === "air-purifier";
-    const dialog = document.createElement("dialog");
-    dialog.className = "hb-entity-details-dialog capability-details" + (entityDetailsDialogEl1 ? " air-purifier-details" : "");
+    const entityDetailsDialogEl2 = document.createElement("dialog");
+    entityDetailsDialogEl2.className = "hb-entity-details-dialog capability-details" + (entityDetailsDialogEl1 ? " air-purifier-details" : "");
     const entityDetailsCardEl = document.createElement("div");
     entityDetailsCardEl.className = "hb-entity-details-card";
     const entityDetailsHeadingEl = document.createElement("div");
@@ -5010,7 +5010,7 @@ export class PanelRenderer {
     });
     capabilityDetailsBodyEl.append(state);
     entityDetailsCardEl.append(entityDetailsHeadingEl, capabilityDetailsBodyEl);
-    dialog.append(entityDetailsCardEl);
+    entityDetailsDialogEl2.append(entityDetailsCardEl);
     const temperature = {
       pm25: "PM2.5",
       airQuality: "空气质量",
@@ -5054,9 +5054,9 @@ export class PanelRenderer {
     const rendererRuntimeDialogLayerEl = document.createElement("div");
     rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
     rendererRuntimeDialogLayerEl.tabIndex = -1;
-    rendererRuntimeDialogLayerEl.append(dialog);
+    rendererRuntimeDialogLayerEl.append(entityDetailsDialogEl2);
     this.container.append(rendererRuntimeDialogLayerEl);
-    this.detailsDialog = dialog;
+    this.detailsDialog = entityDetailsDialogEl2;
     const lowered = entityState1 => {
       state.syncCapabilityState?.(entityState1);
       element2.textContent = ["unknown", "unavailable"].includes(String(entityState1?.state || "").toLowerCase()) ? "当前不可用" : "设备控制";
@@ -5075,31 +5075,31 @@ export class PanelRenderer {
       handlers.set(item.entityId, [runHelper]);
     }
     this.detailsStateSync = {
-      dialog,
+      entityDetailsDialogEl2,
       handlers
     };
-    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, dialog, entityDetailsDialogEl1 ? 620 : 560, entityDetailsDialogEl1 ? 560 : 500);
-    element3.addEventListener("click", () => dialog.close());
-    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, dialog, entityDetailsCardEl);
+    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogEl2, entityDetailsDialogEl1 ? 620 : 560, entityDetailsDialogEl1 ? 560 : 500);
+    element3.addEventListener("click", () => entityDetailsDialogEl2.close());
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogEl2, entityDetailsCardEl);
     rendererRuntimeDialogLayerEl.addEventListener("keydown", arg => {
       if (arg.key === "Escape") {
-        dialog.close();
+        entityDetailsDialogEl2.close();
       }
     });
-    dialog.addEventListener("close", () => {
+    entityDetailsDialogEl2.addEventListener("close", () => {
       state.cleanupCapabilityDetails?.();
-      this.clearRuntimeDialogScale(dialog);
-      if (this.detailsDialog === dialog) {
+      this.clearRuntimeDialogScale(entityDetailsDialogEl2);
+      if (this.detailsDialog === entityDetailsDialogEl2) {
         this.detailsDialog = null;
       }
-      if (this.detailsStateSync?.dialog === dialog) {
+      if (this.detailsStateSync?.dialog === entityDetailsDialogEl2) {
         this.detailsStateSync = null;
       }
       rendererRuntimeDialogLayerEl.remove();
     }, {
       once: true
     });
-    dialog.show();
+    entityDetailsDialogEl2.show();
   }
   showAirPurifierDetails(component, {
     preview = false,
@@ -5117,8 +5117,8 @@ export class PanelRenderer {
       state: "unknown",
       attributes: {}
     };
-    const dialog = document.createElement("dialog");
-    dialog.className = "hb-entity-details-dialog air-purifier-details capability-details";
+    const entityDetailsDialogEl3 = document.createElement("dialog");
+    entityDetailsDialogEl3.className = "hb-entity-details-dialog air-purifier-details capability-details";
     const entityDetailsCardEl = document.createElement("div");
     entityDetailsCardEl.className = "hb-entity-details-card";
     const entityDetailsHeadingEl = document.createElement("div");
@@ -5197,7 +5197,7 @@ export class PanelRenderer {
     airPurifierControlsPaneEl1.append(airPurifierControlsPaneEl);
     airPurifierLayoutEl.append(airPurifierSummaryEl, airPurifierControlsPaneEl1);
     entityDetailsCardEl.append(entityDetailsHeadingEl, airPurifierLayoutEl);
-    dialog.append(entityDetailsCardEl);
+    entityDetailsDialogEl3.append(entityDetailsCardEl);
     const state2 = [{
       key: "pm25",
       label: "PM2.5",
@@ -5229,7 +5229,7 @@ export class PanelRenderer {
         id: state?.roles?.[role]
       })).filter(({
         id
-      }, arg2, arg3) => id && arg3.findIndex(arg1 => arg1.id === id) === arg2).map(candidates => ({
+      }, candidate, candidate2) => id && candidate2.findIndex(candidate => candidate.id === id) === candidate).map(candidates => ({
         ...candidates,
         item: this.entityMetadata.get(candidates.id)
       })).filter(({
@@ -5253,13 +5253,13 @@ export class PanelRenderer {
     }, () => {
       const item = document.createElement("div");
       item.className = "hb-air-purifier-secondary-metric";
-      const label = document.createElement("small");
+      const airPurifierDetailsSmallEl = document.createElement("small");
       const strongEl1 = document.createElement("strong");
-      item.append(label, strongEl1);
+      item.append(airPurifierDetailsSmallEl, strongEl1);
       airPurifierSecondaryMetricsEl.append(item);
       return {
         item,
-        label,
+        airPurifierDetailsSmallEl,
         value: strongEl1
       };
     });
@@ -5273,7 +5273,7 @@ export class PanelRenderer {
       temperature: "°C",
       humidity: "%"
     };
-    const runHelper3 = (entityState, arg2) => {
+    const runHelper3 = (entityState, second) => {
       if (["unknown", "unavailable"].includes(String(entityState?.state || "").toLowerCase())) {
         return "--";
       }
@@ -5283,20 +5283,20 @@ export class PanelRenderer {
         days: "天",
         day: "天"
       };
-      const entityState1 = entityState?.attributes?.unit_of_measurement || state3[arg2] || "";
+      const entityState1 = entityState?.attributes?.unit_of_measurement || state3[second] || "";
       const lowered = state9[String(entityState1).toLowerCase()] || entityState1;
       return "" + (entityState?.state ?? "--") + (lowered ? " " + lowered : "");
     };
     const handlers = new Map();
-    const runHelper4 = (arg, arg2) => {
+    const runHelper4 = (arg, handler) => {
       if (arg) {
         if (!handlers.has(arg)) {
           handlers.set(arg, []);
         }
-        handlers.get(arg).push(arg2);
+        handlers.get(arg).push(handler);
       }
     };
-    const mapped = state2.flatMap(arg => arg.candidates.map(arg1 => arg1.id));
+    const mapped = state2.flatMap(arg => arg.candidates.map(candidate => candidate.id));
     const state4 = state?.roles?.airQuality || "";
     const state5 = state1 !== null ? this.createWaterHeaterExtensionControls(entityId, {
       component,
@@ -5305,7 +5305,7 @@ export class PanelRenderer {
     }) : null;
     if (state5) {
       entityDetailsCardEl.append(state5);
-      dialog.classList.add("has-related-extensions");
+      entityDetailsDialogEl3.classList.add("has-related-extensions");
       for (const [item, item1] of state5.stateHandlers || []) {
         handlers.set(item, item1);
       }
@@ -5396,8 +5396,8 @@ export class PanelRenderer {
         poor: "rgba(219,119,112,.15)",
         unknown: "rgba(125,137,144,.13)"
       }[localValue1] || "rgba(118,207,161,.13)";
-      dialog.style.setProperty("--hb-air-purifier-accent", state9);
-      dialog.style.setProperty("--hb-air-purifier-accent-soft", color);
+      entityDetailsDialogEl3.style.setProperty("--hb-air-purifier-accent", state9);
+      entityDetailsDialogEl3.style.setProperty("--hb-air-purifier-accent-soft", color);
     };
     const runHelper6 = entityId2 => {
       state7 = entityId2;
@@ -5427,8 +5427,8 @@ export class PanelRenderer {
       })).filter(({
         selected
       }) => runHelper(runHelper1(selected)) != null).slice(0, airPurifierSecondaryMetricEl.length);
-      airPurifierSecondaryMetricEl.forEach((element12, arg2) => {
-        const state9 = filtered[arg2];
+      airPurifierSecondaryMetricEl.forEach((element12, index) => {
+        const state9 = filtered[index];
         element12.item.hidden = !state9;
         element12.item.className = "hb-air-purifier-secondary-metric" + (state9 ? " hb-air-purifier-secondary-metric--" + state9.metric.key : "");
         if (!state9) {
@@ -5462,35 +5462,35 @@ export class PanelRenderer {
     const rendererRuntimeDialogLayerEl = document.createElement("div");
     rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
     rendererRuntimeDialogLayerEl.tabIndex = -1;
-    rendererRuntimeDialogLayerEl.append(dialog);
+    rendererRuntimeDialogLayerEl.append(entityDetailsDialogEl3);
     this.container.append(rendererRuntimeDialogLayerEl);
-    this.detailsDialog = dialog;
+    this.detailsDialog = entityDetailsDialogEl3;
     this.detailsStateSync = {
-      dialog,
+      entityDetailsDialogEl3,
       handlers
     };
-    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, dialog, 920, state5 ? 620 : 540);
-    element5.addEventListener("click", () => dialog.close());
-    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, dialog, entityDetailsCardEl);
+    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogEl3, 920, state5 ? 620 : 540);
+    element5.addEventListener("click", () => entityDetailsDialogEl3.close());
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogEl3, entityDetailsCardEl);
     rendererRuntimeDialogLayerEl.addEventListener("keydown", arg => {
       if (arg.key === "Escape") {
-        dialog.close();
+        entityDetailsDialogEl3.close();
       }
     });
-    dialog.addEventListener("close", () => {
+    entityDetailsDialogEl3.addEventListener("close", () => {
       airPurifierControlsPaneEl.cleanupCapabilityDetails?.();
-      this.clearRuntimeDialogScale(dialog);
-      if (this.detailsDialog === dialog) {
+      this.clearRuntimeDialogScale(entityDetailsDialogEl3);
+      if (this.detailsDialog === entityDetailsDialogEl3) {
         this.detailsDialog = null;
       }
-      if (this.detailsStateSync?.dialog === dialog) {
+      if (this.detailsStateSync?.dialog === entityDetailsDialogEl3) {
         this.detailsStateSync = null;
       }
       rendererRuntimeDialogLayerEl.remove();
     }, {
       once: true
     });
-    dialog.show();
+    entityDetailsDialogEl3.show();
   }
   showMediaPlayerDetails(component, {
     preview = false
@@ -5505,8 +5505,8 @@ export class PanelRenderer {
       state: "unknown",
       attributes: {}
     };
-    const dialog = document.createElement("dialog");
-    dialog.className = "hb-entity-details-dialog media-player-details capability-details";
+    const entityDetailsDialogEl4 = document.createElement("dialog");
+    entityDetailsDialogEl4.className = "hb-entity-details-dialog media-player-details capability-details";
     const entityDetailsCardEl = document.createElement("div");
     entityDetailsCardEl.className = "hb-entity-details-card";
     const entityDetailsHeadingEl = document.createElement("div");
@@ -5556,7 +5556,7 @@ export class PanelRenderer {
     element4.append(mediaPlayerArtworkEl, mediaPlayerCopyEl);
     const mediaPlayerActionsEl = document.createElement("div");
     mediaPlayerActionsEl.className = "hb-media-player-actions";
-    const buildElementTree = (arg, arg2, arg3 = {}) => {
+    const buildElementTree = (arg, serviceName, options = {}) => {
       const element14 = document.createElement("button");
       element14.type = "button";
       element14.textContent = arg;
@@ -5564,7 +5564,7 @@ export class PanelRenderer {
         if (!preview) {
           element14.disabled = true;
           try {
-            await this.callEntityService("media_player", arg2, entityId, arg3);
+            await this.callEntityService("media_player", serviceName, entityId, options);
           } catch (error) {
             this.options.onError?.(error);
           } finally {
@@ -5633,7 +5633,7 @@ export class PanelRenderer {
       element9.textContent = runHelper(state1);
     };
     const state5 = window.setInterval(clampNumber, 1000);
-    const runHelper1 = (arg, arg2) => Number.isFinite(arg) && Number.isFinite(arg2) && Math.abs(arg - arg2) <= 0.005;
+    const runHelper1 = (arg, right) => Number.isFinite(arg) && Number.isFinite(right) && Math.abs(arg - right) <= 0.005;
     const clampNumber1 = arg => {
       showMediaPlayerDetailsValue1 = Math.max(0, Math.min(1, Number(arg) || 0));
       element13.value = String(showMediaPlayerDetailsValue1);
@@ -5745,7 +5745,7 @@ export class PanelRenderer {
           window.clearTimeout(state);
         }
       }
-      const trimmed = [numeric1.entity_picture_local, numeric1.entity_picture, numeric1.media_image_url].map(arg1 => String(arg1 || "").trim()).find(arg1 => arg1.startsWith("/api/media_player_proxy/") || arg1.startsWith("/api/image_proxy/")) || "";
+      const trimmed = [numeric1.entity_picture_local, numeric1.entity_picture, numeric1.media_image_url].map(item => String(item || "").trim()).find(urlCandidate => urlCandidate.startsWith("/api/media_player_proxy/") || urlCandidate.startsWith("/api/image_proxy/")) || "";
       if (trimmed !== showMediaPlayerDetailsValue) {
         showMediaPlayerDetailsValue = trimmed;
         mediaPlayerArtworkEl.hidden = !showMediaPlayerDetailsValue;
@@ -5763,44 +5763,44 @@ export class PanelRenderer {
     };
     syncVisualState(entityDetailsDialogEl);
     entityDetailsCardEl.append(entityDetailsHeadingEl, mediaPlayerDetailsBodyEl, capabilityRangeGroupEl2.panel);
-    dialog.append(entityDetailsCardEl);
+    entityDetailsDialogEl4.append(entityDetailsCardEl);
     const rendererRuntimeDialogLayerEl = document.createElement("div");
     rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
     rendererRuntimeDialogLayerEl.tabIndex = -1;
-    rendererRuntimeDialogLayerEl.append(dialog);
+    rendererRuntimeDialogLayerEl.append(entityDetailsDialogEl4);
     this.container.append(rendererRuntimeDialogLayerEl);
-    this.detailsDialog = dialog;
+    this.detailsDialog = entityDetailsDialogEl4;
     this.detailsStateSync = {
-      dialog,
+      entityDetailsDialogEl4,
       handlers: new Map([[entityId, [syncVisualState]]])
     };
-    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, dialog, 540, 368);
-    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, dialog, entityDetailsCardEl);
+    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogEl4, 540, 368);
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogEl4, entityDetailsCardEl);
     rendererRuntimeDialogLayerEl.addEventListener("keydown", arg => {
       if (arg.key === "Escape") {
-        dialog.close();
+        entityDetailsDialogEl4.close();
       }
     });
-    let dialog1 = null;
-    dialog.addEventListener("close", () => {
-      dialog1?.cancel();
+    let pendingRef = null;
+    entityDetailsDialogEl4.addEventListener("close", () => {
+      pendingRef?.cancel();
       capabilityRangeGroupEl2.cleanup?.();
       window.clearInterval(state5);
       window.clearTimeout(showMediaPlayerDetailsValue6);
       window.clearTimeout(state);
-      this.clearRuntimeDialogScale(dialog);
-      if (this.detailsDialog === dialog) {
+      this.clearRuntimeDialogScale(entityDetailsDialogEl4);
+      if (this.detailsDialog === entityDetailsDialogEl4) {
         this.detailsDialog = null;
       }
-      if (this.detailsStateSync?.dialog === dialog) {
+      if (this.detailsStateSync?.dialog === entityDetailsDialogEl4) {
         this.detailsStateSync = null;
       }
       rendererRuntimeDialogLayerEl.remove();
     }, {
       once: true
     });
-    dialog.show();
-    dialog1 = playMediaSpeakerEntrance(element3);
+    entityDetailsDialogEl4.show();
+    pendingRef = playMediaSpeakerEntrance(element3);
   }
   showCustomPopup(popupId, {
     preview = false
@@ -5809,15 +5809,15 @@ export class PanelRenderer {
     this.historyPopupGeneration += 1;
     this.activePopupId = String(popupId?.id || "");
     this.connectRuntime();
-    const dialog = document.createElement("dialog");
-    dialog.className = "hb-custom-popup-dialog";
+    const customPopupDialogEl = document.createElement("dialog");
+    customPopupDialogEl.className = "hb-custom-popup-dialog";
     const customPopupCardEl = document.createElement("div");
     customPopupCardEl.className = "hb-custom-popup-card";
     const state = popupId.modules || [];
     const popupMetrics = popupLayoutMetrics(state, popupId.layout);
     const popupWidth = popupMetrics.popupWidth;
     const popupHeight = popupMetrics.popupHeight;
-    dialog.dataset.runtimeDialogLayout = popupMetrics.rows === 1 && popupMetrics.columns === 2 ? "compact" : "fill";
+    customPopupDialogEl.dataset.runtimeDialogLayout = popupMetrics.rows === 1 && popupMetrics.columns === 2 ? "compact" : "fill";
     customPopupCardEl.style.width = popupWidth + "px";
     customPopupCardEl.style.height = popupHeight + "px";
     customPopupCardEl.style.maxHeight = "none";
@@ -5842,11 +5842,11 @@ export class PanelRenderer {
     const state4 = [];
     const state5 = [];
     const handlers = new Map();
-    const runHelper = (arg, arg2) => {
+    const runHelper = (arg, handler) => {
       if (!handlers.has(arg)) {
         handlers.set(arg, []);
       }
-      handlers.get(arg).push(arg2);
+      handlers.get(arg).push(handler);
     };
     for (const [entry, entry1] of state.entries()) {
       const component = entry1.type === "capability-device" ? {
@@ -6045,7 +6045,7 @@ export class PanelRenderer {
               return null;
             }
           };
-          const applyElementStyle1 = (arg, arg8, element11) => {
+          const applyElementStyle1 = (arg, second, element11) => {
             const state11 = runHelper2(state10[arg]);
             element11.textContent = state11 === null ? "--" : Math.round(state11) + "°";
             if (state11 !== null) {
@@ -6083,7 +6083,7 @@ export class PanelRenderer {
         let state9 = 0;
         let state10 = null;
         let state11 = 0;
-        const runHelper2 = (arg, arg2 = 0) => "translateX(-50%) perspective(260px) rotateY(" + arg + "deg) rotateZ(" + arg * 0.035 + "deg) translateY(" + arg2 + "px)";
+        const runHelper2 = (arg, delayOrNumber = 0) => "translateX(-50%) perspective(260px) rotateY(" + arg + "deg) rotateZ(" + arg * 0.035 + "deg) translateY(" + delayOrNumber + "px)";
         const filtered = () => {
           if (!cameraDeviceBodyEl.isConnected) {
             return;
@@ -6213,7 +6213,7 @@ export class PanelRenderer {
         let state11 = 0;
         const state12 = () => {
           state11 = 0;
-          if (!state10?.isConnected || this.detailsStateSync?.dialog !== dialog) {
+          if (!state10?.isConnected || this.detailsStateSync?.dialog !== customPopupDialogEl) {
             return;
           }
           const state13 = renderLineChartDetails(component4, state9);
@@ -6360,7 +6360,7 @@ export class PanelRenderer {
           const clamped = (Math.max(2000, Math.min(6500, Number(finiteNumber3.colorTemperatureKelvin) || 4250)) - 2000) / 4500;
           const color = [255, 132, 42];
           const color1 = [172, 225, 255];
-          const mapped = finiteNumber3.colorRgb || color.map((arg, arg2) => Math.round(arg + (color1[arg2] - arg) * clamped));
+          const mapped = finiteNumber3.colorRgb || color.map((arg, second) => Math.round(arg + (color1[second] - arg) * clamped));
           element7.classList.toggle("is-on", finiteNumber3.isOn);
           element7.style.setProperty("--hb-light-visual-color", "rgb(" + mapped.join(",") + ")");
           element7.style.setProperty("--hb-light-visual-opacity", finiteNumber3.isOn ? String(0.08 + count / 100 * 0.92) : "0");
@@ -6609,7 +6609,7 @@ export class PanelRenderer {
         const state17 = this.states.get(state16);
         const motorState = state17?.newState || state17 || null;
         const state18 = airer ? relatedAirerMotorActionEntities(this.entityMetadata, entityId) : {};
-        const airerActionEntityIds = Object.fromEntries(Object.entries(state18).map(([arg, arg2]) => [arg, arg2?.entityId || ""]));
+        const airerActionEntityIds = Object.fromEntries(Object.entries(state18).map(([arg, item]) => [arg, item?.entityId || ""]));
         const position2 = this.states.get(state15 || positionCommandEntityId);
         const positionState = position2?.newState || position2 || null;
         const tilt = dream && finiteNumber;
@@ -7083,7 +7083,7 @@ export class PanelRenderer {
         element8.append(mediaPlayerArtworkEl, mediaPlayerCopyEl);
         const mediaPlayerActionsEl = document.createElement("div");
         mediaPlayerActionsEl.className = "hb-media-player-actions";
-        const buildElementTree = (arg, arg2) => {
+        const buildElementTree = (arg, serviceName) => {
           const element18 = document.createElement("button");
           element18.type = "button";
           element18.textContent = arg;
@@ -7091,7 +7091,7 @@ export class PanelRenderer {
             if (!preview) {
               element18.disabled = true;
               try {
-                await this.callEntityService("media_player", arg2, entityId);
+                await this.callEntityService("media_player", serviceName, entityId);
               } catch (error) {
                 this.options.onError?.(error);
               } finally {
@@ -7178,7 +7178,7 @@ export class PanelRenderer {
           mediaSpeakerArtworkEl.hidden = false;
           element7.classList.add("has-artwork");
         });
-        const runHelper3 = (arg, arg2) => Number.isFinite(arg) && Number.isFinite(arg2) && Math.abs(arg - arg2) <= 0.005;
+        const runHelper3 = (arg, right) => Number.isFinite(arg) && Number.isFinite(right) && Math.abs(arg - right) <= 0.005;
         const clampNumber1 = arg => {
           showCustomPopupValue5 = Math.max(0, Math.min(1, Number(arg) || 0));
           element17.value = String(showCustomPopupValue5);
@@ -7315,25 +7315,25 @@ export class PanelRenderer {
       customPopupGridEl.append(element3);
     }
     customPopupCardEl.append(customPopupHeadingEl, customPopupGridEl, ...state3);
-    dialog.append(customPopupCardEl);
+    customPopupDialogEl.append(customPopupCardEl);
     const rendererRuntimeDialogLayerEl = document.createElement("div");
     rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
     rendererRuntimeDialogLayerEl.tabIndex = -1;
-    rendererRuntimeDialogLayerEl.append(dialog);
+    rendererRuntimeDialogLayerEl.append(customPopupDialogEl);
     this.container.append(rendererRuntimeDialogLayerEl);
-    this.detailsDialog = dialog;
-    const runHelper1 = arg => arg.map(arg1 => {
-      const state7 = arg1.type === "electric-bed" ? this.deviceProfile(this.runtimeEntityId(arg1.entityId)) : null;
+    this.detailsDialog = customPopupDialogEl;
+    const runHelper1 = arg => arg.map(candidate => {
+      const state7 = candidate.type === "electric-bed" ? this.deviceProfile(this.runtimeEntityId(candidate.entityId)) : null;
       const state8 = state7?.deviceType === "electric-bed" ? state7.roles || {} : {};
-      return [arg1.id, state7?.deviceType || arg1.type || "generic", "backrest", "leg", "waist", "mode", "memory1", "memory2"].map(arg2 => String(arg2 === arg1.id ? arg1.id : state8[arg2] || "")).join(":");
+      return [candidate.id, state7?.deviceType || candidate.type || "generic", "backrest", "leg", "waist", "mode", "memory1", "memory2"].map(candidate => String(candidate === candidate.id ? candidate.id : state8[candidate] || "")).join(":");
     }).join("|");
     const state6 = runHelper1(state);
     this.detailsStateSync = {
-      dialog,
+      customPopupDialogEl,
       handlers,
       refreshHistory: () => state5.forEach(refreshHistory => refreshHistory()),
       refreshEntityCatalog: () => {
-        if (this.detailsDialog === dialog && !!dialog.open) {
+        if (this.detailsDialog === customPopupDialogEl && !!customPopupDialogEl.open) {
           if (runHelper1(state) !== state6) {
             this.showCustomPopup(popupId, {
               preview
@@ -7342,23 +7342,23 @@ export class PanelRenderer {
         }
       }
     };
-    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, dialog, popupWidth, popupHeight);
-    element2.addEventListener("click", () => dialog.close());
-    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, dialog, customPopupCardEl);
+    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, customPopupDialogEl, popupWidth, popupHeight);
+    element2.addEventListener("click", () => customPopupDialogEl.close());
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, customPopupDialogEl, customPopupCardEl);
     rendererRuntimeDialogLayerEl.addEventListener("keydown", arg => {
       if (arg.key === "Escape") {
-        dialog.close();
+        customPopupDialogEl.close();
       }
     });
-    dialog.addEventListener("close", () => {
+    customPopupDialogEl.addEventListener("close", () => {
       for (const runHelper2 of state1.splice(0)) {
         runHelper2();
       }
-      this.clearRuntimeDialogScale(dialog);
-      if (this.detailsDialog === dialog) {
+      this.clearRuntimeDialogScale(customPopupDialogEl);
+      if (this.detailsDialog === customPopupDialogEl) {
         this.detailsDialog = null;
       }
-      if (this.detailsStateSync?.dialog === dialog) {
+      if (this.detailsStateSync?.dialog === customPopupDialogEl) {
         this.detailsStateSync = null;
       }
       if (!this.replacingDocument && this.activePopupId === String(popupId?.id || "")) {
@@ -7371,7 +7371,7 @@ export class PanelRenderer {
     }, {
       once: true
     });
-    dialog.show();
+    customPopupDialogEl.show();
     this.refreshHistorySeries();
     for (const item of state2) {
       const state7 = playMediaSpeakerEntrance(item);
@@ -7433,20 +7433,20 @@ export class PanelRenderer {
       const count = Math.max(minimum, Math.min(maximum, value));
       element6.textContent = "" + Math.round(count) + suffix;
       lightDetailsSliderHeadingEl.append(element4, element5, element6);
-      const input = document.createElement("input");
-      input.type = "range";
-      input.min = String(minimum);
-      input.max = String(maximum);
-      input.step = String(step);
-      input.value = String(count);
-      input.disabled = !supported3;
+      const controlInputEl3 = document.createElement("input");
+      controlInputEl3.type = "range";
+      controlInputEl3.min = String(minimum);
+      controlInputEl3.max = String(maximum);
+      controlInputEl3.step = String(step);
+      controlInputEl3.value = String(count);
+      controlInputEl3.disabled = !supported3;
       const updateSliderValue = ({
         notify = false
       } = {}) => {
-        const brightnessPercent = Number(input.value);
+        const brightnessPercent = Number(controlInputEl3.value);
         const brightness1 = (brightnessPercent - minimum) / Math.max(1, maximum - minimum) * 100;
         element6.textContent = supported3 ? "" + Math.round(brightnessPercent) + suffix : "不支持";
-        input.style.setProperty("--hb-light-slider-progress", Math.max(0, Math.min(100, brightness1)) + "%");
+        controlInputEl3.style.setProperty("--hb-light-slider-progress", Math.max(0, Math.min(100, brightness1)) + "%");
         if (notify && supported3) {
           onVisualChange?.(dataKey === "brightness_pct" ? {
             brightnessPercent
@@ -7456,17 +7456,17 @@ export class PanelRenderer {
         }
       };
       updateSliderValue();
-      input.addEventListener("input", () => {
+      controlInputEl3.addEventListener("input", () => {
         scheduleTimeout();
         updateSliderValue({
           notify: true
         });
       });
-      input.addEventListener("change", async () => {
+      controlInputEl3.addEventListener("change", async () => {
         if (!!interactive && !!supported3) {
           try {
             await this.callEntityService("light", "turn_on", entityId, {
-              [dataKey]: Number(input.value)
+              [dataKey]: Number(controlInputEl3.value)
             });
             onTurnOn?.();
           } catch (error) {
@@ -7482,10 +7482,10 @@ export class PanelRenderer {
       const element8 = document.createElement("small");
       element8.textContent = maximumLabel;
       lightDetailsSliderLegendEl.append(element7, element8);
-      element3.append(lightDetailsSliderHeadingEl, input, lightDetailsSliderLegendEl);
+      element3.append(lightDetailsSliderHeadingEl, controlInputEl3, lightDetailsSliderLegendEl);
       element.append(element3);
       index.set(dataKey, {
-        input,
+        controlInputEl3,
         updateSliderValue,
         supported: supported3
       });
@@ -7688,15 +7688,15 @@ export class PanelRenderer {
     lightDetailsPresetsEl1.className = "hb-light-details-presets";
     lightDetailsPresetsEl1.hidden = lightDetailsControlsEl || !supported && !lightDetailsControlsEl1;
     const event = lightDetailsPresetsEl.map(arg => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.disabled = !brightness;
+      const actionButtonEl = document.createElement("button");
+      actionButtonEl.type = "button";
+      actionButtonEl.disabled = !brightness;
       const element3 = document.createElement("strong");
       element3.textContent = arg.label;
       const element4 = document.createElement("small");
       element4.textContent = supported ? arg.detail : "开启";
-      button.append(element3, element4);
-      button.addEventListener("click", async () => {
+      actionButtonEl.append(element3, element4);
+      actionButtonEl.addEventListener("click", async () => {
         if (!interactive || !brightness) {
           return;
         }
@@ -7734,7 +7734,7 @@ export class PanelRenderer {
           });
         }
         for (const event1 of event) {
-          event1.button.classList.toggle("is-active", event1.button === button);
+          event1.button.classList.toggle("is-active", event1.button === actionButtonEl);
         }
         onVisualChange?.({
           isOn: true,
@@ -7752,13 +7752,13 @@ export class PanelRenderer {
           scheduleTimeout({
             resync: true
           });
-          button.classList.remove("is-active");
+          actionButtonEl.classList.remove("is-active");
           this.options.onError?.(error);
         }
       });
-      lightDetailsPresetsEl1.append(button);
+      lightDetailsPresetsEl1.append(actionButtonEl);
       return {
-        button,
+        actionButtonEl,
         ...arg
       };
     });
@@ -8055,13 +8055,13 @@ export class PanelRenderer {
         state
       });
     };
-    coverDetailsControlsEl.setDreamCurtainRetracted = (arg, arg2 = false) => {
+    coverDetailsControlsEl.setDreamCurtainRetracted = (arg, flag = false) => {
       if (dream) {
         retracted = !!arg;
         element3.disabled = !interactive;
         onCurtainPositionChange?.({
           retracted,
-          moving: !!arg2
+          moving: !!flag
         });
       }
     };
@@ -8096,8 +8096,8 @@ export class PanelRenderer {
       };
       const state7 = performance.now();
       const count = Math.max(900, Math.abs(target - initialPosition) * 28);
-      const state8 = arg1 => {
-        const state9 = Math.min(1, (arg1 - state7) / count);
+      const state8 = item => {
+        const state9 = Math.min(1, (item - state7) / count);
         const state10 = 1 - (1 - state9) ** 3;
         syncVisualState(initialPosition + (target - initialPosition) * state10, state);
         if (state9 < 1) {
@@ -8392,7 +8392,7 @@ export class PanelRenderer {
       });
       const currentTemperature2 = normalizeClimateCapabilities(entityState).currentTemperature;
       element6.textContent = currentTemperature2 !== null ? "当前温度 " + currentTemperature2 + "°C" : "当前温度 --";
-      const syncClimateControl3 = arg1 => arg1 === "set_hvac_mode" ? entityState?.state : arg1 === "set_fan_mode" ? entityState?.attributes?.fan_mode : arg1 === "set_swing_mode" ? entityState?.attributes?.swing_mode : arg1 === "set_swing_horizontal_mode" ? entityState?.attributes?.swing_horizontal_mode : arg1 === "set_preset_mode" ? entityState?.attributes?.preset_mode : arg1 === "set_operation_mode" ? entityState?.attributes?.operation_mode : null;
+      const syncClimateControl3 = climateService => climateService === "set_hvac_mode" ? entityState?.state : climateService === "set_fan_mode" ? entityState?.attributes?.fan_mode : climateService === "set_swing_mode" ? entityState?.attributes?.swing_mode : climateService === "set_swing_horizontal_mode" ? entityState?.attributes?.swing_horizontal_mode : climateService === "set_preset_mode" ? entityState?.attributes?.preset_mode : climateService === "set_operation_mode" ? entityState?.attributes?.operation_mode : null;
       for (const element8 of element.querySelectorAll("button[data-climate-service]")) {
         const climateService = element8.dataset.climateService;
         const state13 = syncClimateControl3(climateService);
@@ -8401,7 +8401,7 @@ export class PanelRenderer {
       for (const item of element.querySelectorAll(".hb-climate-select[data-climate-service]")) {
         const text = String(syncClimateControl3(item.dataset.climateService) ?? "");
         item.dataset.currentValue = text;
-        const element8 = Array.from(item.querySelectorAll("[role=\"option\"]")).find(arg1 => arg1.dataset.value === text);
+        const element8 = Array.from(item.querySelectorAll("[role=\"option\"]")).find(optionEl => optionEl.dataset.value === text);
         const element9 = item.querySelector(".hb-climate-select-trigger > span");
         if (element9) {
           element9.textContent = element8?.textContent || text || "请选择";
@@ -8441,7 +8441,7 @@ export class PanelRenderer {
     let state6 = previous;
     let state7 = false;
     let state8 = null;
-    const runHelper = (arg, arg2) => arg !== null && arg2 !== null && Math.abs(arg - arg2) < 1e-8;
+    const runHelper = (arg, second) => arg !== null && second !== null && Math.abs(arg - second) < 1e-8;
     const runHelper1 = () => state4.at(-1) ?? state5;
     const runHelper2 = () => {
       const state12 = runHelper1();
@@ -8668,7 +8668,7 @@ export class PanelRenderer {
         const syncVisualState = arg => {
           const text = String(arg ?? "");
           climateSelectEl.dataset.currentValue = text;
-          const element12 = Array.from(climateSelectMenuEl1.querySelectorAll("[role=\"option\"]")).find(arg1 => arg1.dataset.value === text);
+          const element12 = Array.from(climateSelectMenuEl1.querySelectorAll("[role=\"option\"]")).find(optionEl => optionEl.dataset.value === text);
           element11.textContent = element12?.textContent || text || "请选择";
           element11.title = element11.textContent;
           climateSelectMenuEl1.querySelectorAll("[role=\"option\"]").forEach(element13 => {
@@ -9736,7 +9736,7 @@ export class PanelRenderer {
     return element;
   }
   showElectricBedLoadingDetails(component, {
-    preview: arg82 = false
+    preview: preview = false
   } = {}) {
     if (!component.bindings?.entity?.entityId) {
       return;
@@ -9809,11 +9809,11 @@ export class PanelRenderer {
     })).filter(arg => arg.entityId);
     const text = String(state1.mode || "");
     const entityId1 = this.entityMetadata.get(entityId);
-    const filtered1 = entityId1?.deviceId ? [...this.entityMetadata.values()].filter(metadata => metadata.deviceId === entityId1.deviceId && ["button", "select"].includes(String(metadata.domain || metadata.entityId || "").split(".", 1)[0]) && metadata.entityId !== state1.mode && entityMetadataIsAvailable(metadata)).sort((arg, arg2) => String(arg.entityId || "").localeCompare(String(arg2.entityId || ""))).map(arg => arg.entityId) : [];
+    const filtered1 = entityId1?.deviceId ? [...this.entityMetadata.values()].filter(metadata => metadata.deviceId === entityId1.deviceId && ["button", "select"].includes(String(metadata.domain || metadata.entityId || "").split(".", 1)[0]) && metadata.entityId !== state1.mode && entityMetadataIsAvailable(metadata)).sort((arg, second) => String(arg.entityId || "").localeCompare(String(second.entityId || ""))).map(arg => arg.entityId) : [];
     const entityDetailsDialogEl = [...new Set([String(state1.memory1 || ""), String(state1.memory2 || ""), ...filtered1].filter(Boolean))].slice(0, 2);
     this.closeRuntimeDialog();
-    const dialog = document.createElement("dialog");
-    dialog.className = "hb-entity-details-dialog electric-bed-details";
+    const entityDetailsDialogEl5 = document.createElement("dialog");
+    entityDetailsDialogEl5.className = "hb-entity-details-dialog electric-bed-details";
     const entityDetailsCardEl = document.createElement("div");
     entityDetailsCardEl.className = "hb-entity-details-card";
     const entityDetailsHeadingEl = document.createElement("div");
@@ -9991,8 +9991,8 @@ export class PanelRenderer {
     electricBedMainEl.append(electricBedVisualEl, electricBedAngleControlsEl);
     electricBedDetailsBodyEl.append(electricBedUtilitiesEl, electricBedMainEl);
     entityDetailsCardEl.append(entityDetailsHeadingEl, electricBedDetailsBodyEl);
-    dialog.append(entityDetailsCardEl);
-    const clampNumber = (arg58, fallback) => {
+    entityDetailsDialogEl5.append(entityDetailsCardEl);
+    const clampNumber = (detailsEntityId, fallback) => {
       const numeric = Number(fallback?.state);
       const numeric2 = Number(fallback?.attributes?.min);
       const numeric3 = Number(fallback?.attributes?.max);
@@ -10041,42 +10041,42 @@ export class PanelRenderer {
       handlers.get(text)?.push(() => applyElementStyle());
     }
     this.detailsStateSync = {
-      dialog,
+      entityDetailsDialogEl5,
       handlers
     };
     const rendererRuntimeDialogLayerEl = document.createElement("div");
     rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
     rendererRuntimeDialogLayerEl.tabIndex = -1;
-    rendererRuntimeDialogLayerEl.append(dialog);
+    rendererRuntimeDialogLayerEl.append(entityDetailsDialogEl5);
     this.container.append(rendererRuntimeDialogLayerEl);
-    this.detailsDialog = dialog;
-    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, dialog, 760, 560);
-    element3.addEventListener("click", () => dialog.close());
-    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, dialog, entityDetailsCardEl);
+    this.detailsDialog = entityDetailsDialogEl5;
+    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogEl5, 760, 560);
+    element3.addEventListener("click", () => entityDetailsDialogEl5.close());
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogEl5, entityDetailsCardEl);
     rendererRuntimeDialogLayerEl.addEventListener("keydown", arg => {
       if (arg.key === "Escape") {
-        dialog.close();
+        entityDetailsDialogEl5.close();
       }
     });
-    dialog.addEventListener("close", () => {
+    entityDetailsDialogEl5.addEventListener("close", () => {
       for (const item of state2) {
         item.cleanup?.();
       }
-      this.clearRuntimeDialogScale(dialog);
-      if (this.detailsDialog === dialog) {
+      this.clearRuntimeDialogScale(entityDetailsDialogEl5);
+      if (this.detailsDialog === entityDetailsDialogEl5) {
         this.detailsDialog = null;
       }
-      if (this.detailsStateSync?.dialog === dialog) {
+      if (this.detailsStateSync?.dialog === entityDetailsDialogEl5) {
         this.detailsStateSync = null;
       }
       rendererRuntimeDialogLayerEl.remove();
     }, {
       once: true
     });
-    dialog.show();
+    entityDetailsDialogEl5.show();
   }
-  openInteraction3dVacuumDetails(component, arg83, {
-    states: arg84 = {},
+  openInteraction3dVacuumDetails(component, detailsOptions, {
+    states: states = {},
     root,
     frame,
     popupOpacity = 74,
@@ -10085,22 +10085,22 @@ export class PanelRenderer {
     const entityId = new Set([component.entityId, ...(component.relatedEntityIds || [])]);
     let state = null;
     let entityDetailsDialogEl = "";
-    const entityDetailsDialogEl1 = () => JSON.stringify([...entityId].filter(arg22 => /^(vacuum|select)\./.test(arg22)).map(arg31 => {
-      const newState5 = this.states.get(arg31);
+    const entityDetailsDialogEl1 = () => JSON.stringify([...entityId].filter(toggleEvent => /^(vacuum|select)\./.test(toggleEvent)).map(toggleEvent => {
+      const newState5 = this.states.get(toggleEvent);
       const fan_speed_list = (newState5?.newState || newState5)?.attributes || {};
-      return [arg31, fan_speed_list.fan_speed_list, fan_speed_list.suction_level_list, fan_speed_list.cleaning_mode_list, fan_speed_list.options];
+      return [toggleEvent, fan_speed_list.fan_speed_list, fan_speed_list.suction_level_list, fan_speed_list.cleaning_mode_list, fan_speed_list.options];
     }));
-    const dialog = arg59 => {
+    const buildEntityStateMap = statesByEntityId => {
       for (const entityId6 of entityId) {
-        const value28 = arg59[entityId6] || {
+        const entityStateEntry = statesByEntityId[entityId6] || {
           entityId: entityId6,
           state: "unavailable",
           attributes: {}
         };
-        this.states.set(entityId6, value28);
+        this.states.set(entityId6, entityStateEntry);
         if (this.detailsStateSync?.dialog === state) {
-          for (const value6 of this.detailsStateSync.handlers.get(entityId6) || []) {
-            value6(value28);
+          for (const childStates of this.detailsStateSync.handlers.get(entityId6) || []) {
+            childStates(entityStateEntry);
           }
         }
       }
@@ -10108,21 +10108,21 @@ export class PanelRenderer {
         vacuumDetailsSubtitleEl();
       }
     };
-    dialog(arg84);
-    const element = arg60 => {
-      for (const type6 of arg60 || []) {
+    buildEntityStateMap(states);
+    const element = componentNode => {
+      for (const type6 of componentNode || []) {
         if (type6.type === "vacuum-control" && type6.bindings?.entity?.entityId === component.entityId) {
           return type6;
         }
-        const value29 = element(type6.children);
-        if (value29) {
-          return value29;
+        const childStateMap = element(type6.children);
+        if (childStateMap) {
+          return childStateMap;
         }
       }
       return null;
     };
     const entityDetailsHeadingEl = (this.document?.pages || []).map(components => element(components.components)).find(Boolean);
-    const divEl = entityDetailsHeadingEl?.properties?.relatedEntities?.mode === "selected" ? (entityDetailsHeadingEl.properties.relatedEntities.entityIds || []).filter(arg42 => entityId.has(arg42)) : [];
+    const divEl = entityDetailsHeadingEl?.properties?.relatedEntities?.mode === "selected" ? (entityDetailsHeadingEl.properties.relatedEntities.entityIds || []).filter(item => entityId.has(item)) : [];
     const element2 = {
       id: "vacuum:" + component.id,
       type: "vacuum-control",
@@ -10140,7 +10140,7 @@ export class PanelRenderer {
       }
     };
     const vacuumDetailsSubtitleEl = () => {
-      state?.removeEventListener("close", arg83);
+      state?.removeEventListener("close", detailsOptions);
       this.showVacuumDetails(element2, {
         preview: !!this.options.editable,
         interaction3d: {
@@ -10152,19 +10152,19 @@ export class PanelRenderer {
       });
       state = this.detailsDialog;
       entityDetailsDialogEl = entityDetailsDialogEl1();
-      state?.addEventListener("close", arg83, {
+      state?.addEventListener("close", detailsOptions, {
         once: true
       });
     };
     vacuumDetailsSubtitleEl();
     return {
-      updateStates: dialog,
+      updateStates: buildEntityStateMap,
       updateLayout: () => state?.resizeInteraction3d?.(),
       close: () => {
-        state?.removeEventListener("close", arg83);
+        state?.removeEventListener("close", detailsOptions);
         state?.close();
       },
-      contains: arg56 => state?.contains(arg56)
+      contains: relatedEntityId => state?.contains(relatedEntityId)
     };
   }
   showVacuumDetails(component, {
@@ -10182,10 +10182,10 @@ export class PanelRenderer {
       state: "unknown",
       attributes: {}
     };
-    const style2 = document.createElement("dialog");
-    style2.className = "hb-entity-details-dialog vacuum-details";
+    const entityDetailsDialogEl = document.createElement("dialog");
+    entityDetailsDialogEl.className = "hb-entity-details-dialog vacuum-details";
     if (root2) {
-      style2.classList.add("i3d-vacuum-details");
+      entityDetailsDialogEl.classList.add("i3d-vacuum-details");
     }
     const append5 = document.createElement("div");
     append5.className = "hb-entity-details-card";
@@ -10193,78 +10193,78 @@ export class PanelRenderer {
     const append6 = document.createElement("div");
     append6.className = "hb-entity-details-heading";
     const state4 = document.createElement("div");
-    const textContent16 = document.createElement("strong");
-    const dialog = String(entityState.attributes?.friendly_name || "扫地机器人").replace(/^\d+/, "") || "扫地机器人";
-    textContent16.textContent = componentDialogTitle(component, dialog);
-    const className30 = document.createElement("span");
-    className30.className = "hb-vacuum-details-subtitle";
-    const type7 = document.createElement("button");
-    type7.type = "button";
-    type7.setAttribute("aria-label", "关闭扫地机器人详情");
-    type7.textContent = "×";
-    state4.append(textContent16, className30);
-    append6.append(state4, type7);
+    const vacuumDetailsStrongEl = document.createElement("strong");
+    const vacuumFriendlyTitle = String(entityState.attributes?.friendly_name || "扫地机器人").replace(/^\d+/, "") || "扫地机器人";
+    vacuumDetailsStrongEl.textContent = componentDialogTitle(component, vacuumFriendlyTitle);
+    const vacuumDetailsSubtitleEl = document.createElement("span");
+    vacuumDetailsSubtitleEl.className = "hb-vacuum-details-subtitle";
+    const vacuumDetailsButtonEl = document.createElement("button");
+    vacuumDetailsButtonEl.type = "button";
+    vacuumDetailsButtonEl.setAttribute("aria-label", "关闭扫地机器人详情");
+    vacuumDetailsButtonEl.textContent = "×";
+    state4.append(vacuumDetailsStrongEl, vacuumDetailsSubtitleEl);
+    append6.append(state4, vacuumDetailsButtonEl);
     const divEl = document.createElement("div");
     divEl.className = "hb-vacuum-details-layout";
     const append7 = document.createElement("section");
     append7.className = "hb-vacuum-details-overview";
-    const classList2 = document.createElement("div");
-    classList2.className = "hb-vacuum-visual";
-    const className31 = document.createElement("div");
-    className31.className = "hb-vacuum-battery-ring";
-    const className32 = document.createElement("div");
-    className32.className = "hb-vacuum-robot";
-    const className33 = document.createElement("i");
-    className33.className = "hb-vacuum-robot-lidar";
-    const className34 = document.createElement("i");
-    className34.className = "hb-vacuum-robot-sensor";
-    const className35 = document.createElement("i");
-    className35.className = "hb-vacuum-robot-bumper";
+    const vacuumVisualEl = document.createElement("div");
+    vacuumVisualEl.className = "hb-vacuum-visual";
+    const vacuumBatteryRingEl = document.createElement("div");
+    vacuumBatteryRingEl.className = "hb-vacuum-battery-ring";
+    const vacuumRobotEl = document.createElement("div");
+    vacuumRobotEl.className = "hb-vacuum-robot";
+    const vacuumRobotLidarEl = document.createElement("i");
+    vacuumRobotLidarEl.className = "hb-vacuum-robot-lidar";
+    const vacuumRobotSensorEl = document.createElement("i");
+    vacuumRobotSensorEl.className = "hb-vacuum-robot-sensor";
+    const vacuumRobotBumperEl = document.createElement("i");
+    vacuumRobotBumperEl.className = "hb-vacuum-robot-bumper";
     const element6 = document.createElement("i");
     element6.className = "hb-vacuum-robot-brush";
-    const className36 = document.createElement("i");
-    className36.className = "hb-vacuum-robot-mop left";
+    const vacuumRobotMopEl = document.createElement("i");
+    vacuumRobotMopEl.className = "hb-vacuum-robot-mop left";
     const buildElementTree = document.createElement("i");
     buildElementTree.className = "hb-vacuum-robot-mop right";
-    className32.append(className33, className34, className35, element6, className36, buildElementTree);
+    vacuumRobotEl.append(vacuumRobotLidarEl, vacuumRobotSensorEl, vacuumRobotBumperEl, element6, vacuumRobotMopEl, buildElementTree);
     const element7 = document.createElement("div");
     element7.className = "hb-vacuum-battery";
-    const textContent17 = document.createElement("strong");
+    const vacuumDetailsStrongEl2 = document.createElement("strong");
     const element9 = document.createElement("small");
     element9.textContent = "电量";
-    element7.append(textContent17, element9);
-    className31.append(className32);
+    element7.append(vacuumDetailsStrongEl2, element9);
+    vacuumBatteryRingEl.append(vacuumRobotEl);
     append6.append(element7);
     const presenceDetailsTimelineEl = document.createElement("span");
     presenceDetailsTimelineEl.className = "hb-vacuum-visual-status";
-    classList2.append(className31, presenceDetailsTimelineEl);
+    vacuumVisualEl.append(vacuumBatteryRingEl, presenceDetailsTimelineEl);
     const divEl1 = document.createElement("div");
     divEl1.className = "hb-vacuum-details-stats";
     const element10 = (element, element2) => {
       const append = document.createElement("div");
-      const className9 = document.createElement("span");
-      className9.className = "hb-vacuum-details-stat-value";
-      const textContent4 = document.createElement("i");
-      textContent4.textContent = element2;
-      textContent4.setAttribute("aria-hidden", "true");
-      const value86 = document.createElement("strong");
-      const textContent5 = document.createElement("small");
-      textContent5.textContent = element;
-      className9.append(textContent4, value86);
-      append.append(className9, textContent5);
+      const vacuumDetailsStatValueEl = document.createElement("span");
+      vacuumDetailsStatValueEl.className = "hb-vacuum-details-stat-value";
+      const vacuumDetailsIEl = document.createElement("i");
+      vacuumDetailsIEl.textContent = element2;
+      vacuumDetailsIEl.setAttribute("aria-hidden", "true");
+      const statusEmphasisEl = document.createElement("strong");
+      const vacuumDetailsSmallEl = document.createElement("small");
+      vacuumDetailsSmallEl.textContent = element;
+      vacuumDetailsStatValueEl.append(vacuumDetailsIEl, statusEmphasisEl);
+      append.append(vacuumDetailsStatValueEl, vacuumDetailsSmallEl);
       divEl1.append(append);
-      return value86;
+      return statusEmphasisEl;
     };
     const element11 = element10("本次面积", "◇");
     const divEl2 = element10("清扫时长", "◷");
     if (!root2) {
-      append7.append(classList2);
+      append7.append(vacuumVisualEl);
     }
     append7.append(divEl1);
     const append8 = document.createElement("section");
     append8.className = "hb-vacuum-details-controls";
-    const className37 = document.createElement("div");
-    className37.className = "hb-vacuum-details-actions";
+    const vacuumDetailsActionsEl = document.createElement("div");
+    vacuumDetailsActionsEl.className = "hb-vacuum-details-actions";
     const createChildElement = (element3, element4, element5, service) => {
       const nowMs = document.createElement("button");
       nowMs.type = "button";
@@ -10274,29 +10274,29 @@ export class PanelRenderer {
       length.textContent = element5;
       length.setAttribute("aria-hidden", "true");
       const rounded = document.createElement("span");
-      const textContent6 = document.createElement("strong");
-      textContent6.textContent = element3;
-      const textContent7 = document.createElement("small");
-      textContent7.textContent = element4;
-      rounded.append(textContent6, textContent7);
+      const vacuumDetailsStrongEl3 = document.createElement("strong");
+      vacuumDetailsStrongEl3.textContent = element3;
+      const vacuumDetailsSmallEl2 = document.createElement("small");
+      vacuumDetailsSmallEl2.textContent = element4;
+      rounded.append(vacuumDetailsStrongEl3, vacuumDetailsSmallEl2);
       nowMs.append(length, rounded);
-      className37.append(nowMs);
+      vacuumDetailsActionsEl.append(nowMs);
       return {
         button: nowMs,
-        name: textContent6,
-        description: textContent7
+        name: vacuumDetailsStrongEl3,
+        description: vacuumDetailsSmallEl2
       };
     };
     const runHelper2 = [["start", "开始清扫", "启动全屋任务", "▶"], ["pause", "暂停", "保留当前进度", "Ⅱ"], ["stop", "停止", "结束当前任务", "■"], ["return_to_base", "回充", "返回充电座", "⌂"], ["locate", "定位", "让设备发出声音", "◎"], ["clean_spot", "局部清扫", "清扫当前位置", "⌖"]];
-    const items = new Map(runHelper2.map(([arg43, arg44, arg45, arg46]) => [arg43, createChildElement(arg44, arg45, arg46, arg43)]));
+    const items = new Map(runHelper2.map(([item, item2, item3, item4]) => [item, createChildElement(item2, item3, item4, item)]));
     const state5 = items.get("start");
     const handlers = items.get("pause");
     const rendererRuntimeDialogLayerEl = items.get("stop");
     const rendererRuntimeDialogLayerEl1 = items.get("return_to_base");
-    const button7 = items.get("locate");
-    const button8 = items.get("clean_spot");
-    append8.append(className37);
-    const value149 = arg61 => String(arg61 || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    const actionEntry = items.get("locate");
+    const actionEntry2 = items.get("clean_spot");
+    append8.append(vacuumDetailsActionsEl);
+    const normalizeModeKey = modeValue => String(modeValue || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
     const labels = {
       sweeping: "扫地",
       mopping: "拖地",
@@ -10311,14 +10311,14 @@ export class PanelRenderer {
       turbo: "超强"
     };
     const push3 = [];
-    const value150 = ({
+    const buildOptionControl = ({
       label: element62,
       detail: element63,
       options: length,
-      current: arg62,
-      labels: arg63,
-      onSelect: arg64,
-      enabled: arg65 = true
+      current: currentValue,
+      labels: optionLabels,
+      onSelect: onSelect,
+      enabled: enabled2 = true
     }) => {
       if (!length.length) {
         return null;
@@ -10326,38 +10326,38 @@ export class PanelRenderer {
       const group = document.createElement("section");
       group.className = "hb-vacuum-details-option-group";
       const append2 = document.createElement("div");
-      const textContent8 = document.createElement("strong");
-      textContent8.textContent = element62;
-      const textContent9 = document.createElement("small");
-      textContent9.textContent = element63;
-      append2.append(textContent8, textContent9);
-      const className10 = document.createElement("div");
-      className10.className = "hb-vacuum-details-options";
-      const entries = length.map(arg23 => {
-        const key = value149(arg23);
-        const type3 = document.createElement("button");
-        type3.type = "button";
-        type3.textContent = arg63[key] || String(arg23);
-        type3.disabled = element12 || !arg65;
-        type3.addEventListener("click", () => arg64(arg23, type3));
-        className10.append(type3);
+      const vacuumDetailsStrongEl4 = document.createElement("strong");
+      vacuumDetailsStrongEl4.textContent = element62;
+      const vacuumDetailsSmallEl3 = document.createElement("small");
+      vacuumDetailsSmallEl3.textContent = element63;
+      append2.append(vacuumDetailsStrongEl4, vacuumDetailsSmallEl3);
+      const vacuumDetailsOptionsEl = document.createElement("div");
+      vacuumDetailsOptionsEl.className = "hb-vacuum-details-options";
+      const entries = length.map(optionValue => {
+        const key = normalizeModeKey(optionValue);
+        const vacuumDetailsButtonEl2 = document.createElement("button");
+        vacuumDetailsButtonEl2.type = "button";
+        vacuumDetailsButtonEl2.textContent = optionLabels[key] || String(optionValue);
+        vacuumDetailsButtonEl2.disabled = element12 || !enabled2;
+        vacuumDetailsButtonEl2.addEventListener("click", () => onSelect(optionValue, vacuumDetailsButtonEl2));
+        vacuumDetailsOptionsEl.append(vacuumDetailsButtonEl2);
         return {
-          button: type3,
+          button: vacuumDetailsButtonEl2,
           key
         };
       });
-      const sync = arg29 => {
-        const value24 = value149(arg29);
+      const sync = selectedValue => {
+        const normalizedOption = normalizeModeKey(selectedValue);
         for (const button of entries) {
-          button.button.classList.toggle("active", button.key === value24);
+          button.button.classList.toggle("active", button.key === normalizedOption);
         }
       };
-      sync(arg62);
+      sync(currentValue);
       push3.push({
         group,
         sync
       });
-      group.append(append2, className10);
+      group.append(append2, vacuumDetailsOptionsEl);
       append8.append(group);
       return {
         group,
@@ -10366,52 +10366,52 @@ export class PanelRenderer {
       };
     };
     const fan_speed_list2 = entityState.attributes || {};
-    const value151 = "select." + entityId.slice(entityId.indexOf(".") + 1) + "_cleaning_mode";
-    const entityId22 = relatedDeviceEntity(this.entityMetadata, entityId, "select", "cleaning_mode", value151);
-    const value152 = String(entityId22?.entityId || "");
-    const newState7 = value152 ? this.states.get(value152) : null;
+    const cleaningModeEntityId = "select." + entityId.slice(entityId.indexOf(".") + 1) + "_cleaning_mode";
+    const entityId22 = relatedDeviceEntity(this.entityMetadata, entityId, "select", "cleaning_mode", cleaningModeEntityId);
+    const cleaningModeSelectEntityId = String(entityId22?.entityId || "");
+    const newState7 = cleaningModeSelectEntityId ? this.states.get(cleaningModeSelectEntityId) : null;
     let attributes5 = newState7?.newState || newState7 || null;
     const entityId23 = relatedVacuumBatteryEntity(this.entityMetadata, this.states, entityId);
-    const value153 = String(entityId23?.entityId || "");
-    const newState8 = value153 ? this.states.get(value153) : null;
-    let value154 = newState8?.newState || newState8 || null;
+    const fanSpeedSelectEntityId = String(entityId23?.entityId || "");
+    const newState8 = fanSpeedSelectEntityId ? this.states.get(fanSpeedSelectEntityId) : null;
+    let batteryEntityState = newState8?.newState || newState8 || null;
     let sync2 = null;
-    const value155 = state6 => {
+    const syncCleaningModeFromState = state6 => {
       if (state6) {
         attributes5 = state6;
         sync2?.sync(state6.state);
       }
     };
-    let value156 = false;
-    const value157 = arg66 => {
-      value156 = arg66;
-      append8.classList.toggle("is-pending", arg66);
+    let vacuumServicePending = false;
+    const setVacuumServicePending = pending => {
+      vacuumServicePending = pending;
+      append8.classList.toggle("is-pending", pending);
       for (const disabled of append8.querySelectorAll(":scope > .hb-vacuum-details-actions button, :scope > .hb-vacuum-details-option-group button")) {
-        disabled.disabled = element12 || arg66 || disabled.dataset.unsupported === "true";
+        disabled.disabled = element12 || pending || disabled.dataset.unsupported === "true";
       }
     };
-    const value158 = async (arg67, arg68, arg69, arg70, arg71 = null, arg72 = fn, arg73 = entityState) => {
-      if (element12 || value156) {
+    const invokeVacuumService = async (domain, service, targetEntityId, serviceData, optimisticState = null, onSuccess = syncVacuumDetailsState, baseState = entityState) => {
+      if (element12 || vacuumServicePending) {
         return false;
       }
-      if (arg71) {
-        arg72(arg71);
+      if (optimisticState) {
+        onSuccess(optimisticState);
       }
-      value157(true);
+      setVacuumServicePending(true);
       try {
-        await this.callEntityService(arg67, arg68, arg69, arg70);
+        await this.callEntityService(domain, service, targetEntityId, serviceData);
         return true;
-      } catch (value30) {
-        arg72(arg73);
-        this.options.onError?.(value30);
+      } catch (optionEntry) {
+        onSuccess(baseState);
+        this.options.onError?.(optionEntry);
         return false;
       } finally {
-        value157(false);
+        setVacuumServicePending(false);
       }
     };
     const options = Array.isArray(attributes5?.attributes?.options) ? attributes5.attributes.options : Array.isArray(fan_speed_list2.cleaning_mode_list) ? fan_speed_list2.cleaning_mode_list : [];
-    const enabled = !!value152;
-    sync2 = value150({
+    const enabled = !!cleaningModeSelectEntityId;
+    sync2 = buildOptionControl({
       label: "清洁模式",
       detail: enabled ? "选择本次任务方式" : "当前设备未提供模式切换实体",
       options,
@@ -10425,7 +10425,7 @@ export class PanelRenderer {
             options
           }
         };
-        const value31 = {
+        const optimisticCleaningModeState = {
           ...attributes,
           state: state3,
           attributes: {
@@ -10433,18 +10433,18 @@ export class PanelRenderer {
             options
           }
         };
-        await value158("select", "select_option", value152, {
+        await invokeVacuumService("select", "select_option", cleaningModeSelectEntityId, {
           option: state3
-        }, value31, value155, attributes);
+        }, optimisticCleaningModeState, syncCleaningModeFromState, attributes);
       }
     });
     if (sync2 && !enabled) {
-      for (const button4 of sync2.entries) {
-        button4.button.dataset.unsupported = "true";
+      for (const actionEntry3 of sync2.entries) {
+        actionEntry3.button.dataset.unsupported = "true";
       }
     }
     const options2 = Array.isArray(fan_speed_list2.fan_speed_list) && fan_speed_list2.fan_speed_list.length ? fan_speed_list2.fan_speed_list : Array.isArray(fan_speed_list2.suction_level_list) ? fan_speed_list2.suction_level_list : [];
-    const sync3 = value150({
+    const sync3 = buildOptionControl({
       label: "吸力",
       detail: "按地面情况调节",
       options: options2,
@@ -10452,7 +10452,7 @@ export class PanelRenderer {
       labels: labels2,
       onSelect: async fan_speed => {
         const attributes2 = entityState;
-        const value32 = {
+        const optimisticFanSpeedState = {
           ...attributes2,
           attributes: {
             ...(attributes2.attributes || {}),
@@ -10460,27 +10460,27 @@ export class PanelRenderer {
             suction_level: fan_speed
           }
         };
-        await value158("vacuum", "set_fan_speed", entityId, {
+        await invokeVacuumService("vacuum", "set_fan_speed", entityId, {
           fan_speed
-        }, value32);
+        }, optimisticFanSpeedState);
       }
     });
     const stateHandlers = state !== null ? this.createWaterHeaterExtensionControls(entityId, {
       component,
       interactive: !element12,
-      excludedEntityIds: [value152, value153].filter(Boolean)
+      excludedEntityIds: [cleaningModeSelectEntityId, fanSpeedSelectEntityId].filter(Boolean)
     }) : null;
-    const className38 = document.createElement("p");
-    className38.className = "hb-vacuum-details-warning";
-    append8.append(className38);
+    const vacuumDetailsWarningEl = document.createElement("p");
+    vacuumDetailsWarningEl.className = "hb-vacuum-details-warning";
+    append8.append(vacuumDetailsWarningEl);
     divEl.append(append7, append8);
     append5.append(append6, divEl);
     if (stateHandlers) {
       append5.append(stateHandlers);
-      style2.classList.add("has-related-extensions");
+      entityDetailsDialogEl.classList.add("has-related-extensions");
     }
-    style2.append(append5);
-    const value159 = state7 => {
+    entityDetailsDialogEl.append(append5);
+    const vacuumStatusLabel = state7 => {
       const washing = state7?.attributes || {};
       if (washing.washing) {
         if (washing.washing_paused) {
@@ -10501,7 +10501,7 @@ export class PanelRenderer {
       if (washing.mapping) {
         return "正在绘制地图";
       }
-      const value87 = String(washing.vacuum_state || state7?.state || "").toLowerCase();
+      const vacuumStateKey = String(washing.vacuum_state || state7?.state || "").toLowerCase();
       return {
         cleaning: "正在清扫",
         sweeping: "正在扫地",
@@ -10518,88 +10518,88 @@ export class PanelRenderer {
         washing: "正在清洗拖布",
         drying: "正在烘干拖布",
         mapping: "正在绘制地图"
-      }[value87] || String(state7?.state || "状态未知");
+      }[vacuumStateKey] || String(state7?.state || "状态未知");
     };
-    const value160 = (arg74, arg75 = "--") => Number.isFinite(Number(arg74)) ? Number(arg74) : arg75;
-    const value161 = attributes3 => {
+    const finiteOrFallback = (rawNumber, fallback = "--") => Number.isFinite(Number(rawNumber)) ? Number(rawNumber) : fallback;
+    const isVacuumWorking = attributes3 => {
       const running2 = attributes3?.attributes || {};
       return !!running2.running || !!running2.returning || !!running2.washing || !!running2.drying || !!running2.mapping || ["cleaning", "returning"].includes(String(attributes3?.state || "").toLowerCase());
     };
-    const value162 = () => {
-      const value88 = vacuumBatteryPercent(entityState, value154);
-      textContent17.textContent = value88 === null ? "--" : Math.round(value88) + "%";
+    const refreshBatteryDisplay = () => {
+      const batteryPercent = vacuumBatteryPercent(entityState, batteryEntityState);
+      vacuumDetailsStrongEl2.textContent = batteryPercent === null ? "--" : Math.round(batteryPercent) + "%";
     };
-    const value163 = arg76 => {
-      value154 = arg76 || value154;
-      value162();
+    const updateBatteryEntityState = nextBatteryState => {
+      batteryEntityState = nextBatteryState || batteryEntityState;
+      refreshBatteryDisplay();
     };
-    function fn(state9) {
+    function syncVacuumDetailsState(state9) {
       if (!state9) {
         return;
       }
       entityState = state9;
       const cleaning_mode = state9.attributes || {};
-      const element8 = value159(state9);
-      const value129 = value161(state9);
-      const value130 = !!cleaning_mode.paused || !!cleaning_mode.washing_paused || state9.state === "paused";
-      const value131 = !!cleaning_mode.returning || state9.state === "returning";
-      const value132 = value149(cleaning_mode.cleaning_mode);
-      const value133 = ["sweeping", "sweeping_and_mopping", "mopping_after_sweeping"].includes(value132);
-      const value134 = ["mopping", "sweeping_and_mopping", "mopping_after_sweeping"].includes(value132);
+      const element8 = vacuumStatusLabel(state9);
+      const isWorking = isVacuumWorking(state9);
+      const isPaused = !!cleaning_mode.paused || !!cleaning_mode.washing_paused || state9.state === "paused";
+      const isReturning = !!cleaning_mode.returning || state9.state === "returning";
+      const normalizedCleaningMode = normalizeModeKey(cleaning_mode.cleaning_mode);
+      const isSweeping = ["sweeping", "sweeping_and_mopping", "mopping_after_sweeping"].includes(normalizedCleaningMode);
+      const isMopping = ["mopping", "sweeping_and_mopping", "mopping_after_sweeping"].includes(normalizedCleaningMode);
       const has3 = new Set(vacuumSupportedActions(state9));
-      for (const [value89, button5] of items) {
-        button5.button.hidden = !has3.has(value89) || !!root2 && value89 === "clean_spot";
+      for (const [actionKey, actionEntry4] of items) {
+        actionEntry4.button.hidden = !has3.has(actionKey) || !!root2 && actionKey === "clean_spot";
       }
       const length3 = [...items.values()].filter(button2 => !button2.button.hidden);
-      const value135 = length3.length;
-      className37.hidden = value135 === 0;
-      className37.classList.toggle("has-many-actions", value135 > 3);
-      for (const button6 of items.values()) {
-        button6.button.classList.remove("is-last-row-pair", "is-last-row-single");
+      const visibleActionCount = length3.length;
+      vacuumDetailsActionsEl.hidden = visibleActionCount === 0;
+      vacuumDetailsActionsEl.classList.toggle("has-many-actions", visibleActionCount > 3);
+      for (const actionEntry5 of items.values()) {
+        actionEntry5.button.classList.remove("is-last-row-pair", "is-last-row-single");
       }
-      const value136 = value135 % 3 || Math.min(value135, 3);
-      if (value136 === 2) {
-        for (const button3 of length3.slice(-2)) {
-          button3.button.classList.add("is-last-row-pair");
+      const lastRowCount = visibleActionCount % 3 || Math.min(visibleActionCount, 3);
+      if (lastRowCount === 2) {
+        for (const actionEntry6 of length3.slice(-2)) {
+          actionEntry6.button.classList.add("is-last-row-pair");
         }
-      } else if (value136 === 1) {
+      } else if (lastRowCount === 1) {
         length3.at(-1)?.button.classList.add("is-last-row-single");
       }
-      className30.textContent = element8;
-      className30.classList.toggle("is-active", value129 && !value130);
+      vacuumDetailsSubtitleEl.textContent = element8;
+      vacuumDetailsSubtitleEl.classList.toggle("is-active", isWorking && !isPaused);
       presenceDetailsTimelineEl.textContent = element8;
-      value162();
-      classList2.classList.toggle("is-working", value129 && !value130);
-      classList2.classList.toggle("is-paused", value130);
-      classList2.classList.toggle("is-returning", value131);
-      classList2.classList.toggle("is-sweeping", value133);
-      classList2.classList.toggle("is-mopping", value134);
-      element11.textContent = value160(cleaning_mode.cleaned_area) + " m²";
-      divEl2.textContent = value160(cleaning_mode.cleaning_time) + " min";
-      state5.button.classList.toggle("active", value129 && !value130 && !value131);
-      handlers.button.classList.toggle("active", value130);
+      refreshBatteryDisplay();
+      vacuumVisualEl.classList.toggle("is-working", isWorking && !isPaused);
+      vacuumVisualEl.classList.toggle("is-paused", isPaused);
+      vacuumVisualEl.classList.toggle("is-returning", isReturning);
+      vacuumVisualEl.classList.toggle("is-sweeping", isSweeping);
+      vacuumVisualEl.classList.toggle("is-mopping", isMopping);
+      element11.textContent = finiteOrFallback(cleaning_mode.cleaned_area) + " m²";
+      divEl2.textContent = finiteOrFallback(cleaning_mode.cleaning_time) + " min";
+      state5.button.classList.toggle("active", isWorking && !isPaused && !isReturning);
+      handlers.button.classList.toggle("active", isPaused);
       rendererRuntimeDialogLayerEl.button.classList.toggle("active", false);
-      rendererRuntimeDialogLayerEl1.button.classList.toggle("active", value131);
-      button7.button.classList.toggle("active", false);
-      button8.button.classList.toggle("active", value129 && !value130 && !value131 && state9.state === "cleaning");
-      state5.name.textContent = value130 ? "继续清扫" : "开始清扫";
-      if (!value152) {
+      rendererRuntimeDialogLayerEl1.button.classList.toggle("active", isReturning);
+      actionEntry.button.classList.toggle("active", false);
+      actionEntry2.button.classList.toggle("active", isWorking && !isPaused && !isReturning && state9.state === "cleaning");
+      state5.name.textContent = isPaused ? "继续清扫" : "开始清扫";
+      if (!cleaningModeSelectEntityId) {
         sync2?.sync(cleaning_mode.cleaning_mode);
       }
       sync3?.sync(cleaning_mode.fan_speed || cleaning_mode.suction_level);
-      const value137 = String(cleaning_mode.error || "").trim();
-      const value138 = String(cleaning_mode.low_water_warning || "").trim();
+      const errorText = String(cleaning_mode.error || "").trim();
+      const lowWaterWarningText = String(cleaning_mode.low_water_warning || "").trim();
       const push2 = [];
-      if (value137 && !/^no error$/i.test(value137)) {
-        push2.push(value137);
+      if (errorText && !/^no error$/i.test(errorText)) {
+        push2.push(errorText);
       }
-      if (value138 && !/^no warning$/i.test(value138)) {
-        push2.push(value138);
+      if (lowWaterWarningText && !/^no warning$/i.test(lowWaterWarningText)) {
+        push2.push(lowWaterWarningText);
       }
-      className38.textContent = push2.length ? "注意：" + push2.join(" · ") : "";
-      className38.hidden = !push2.length;
+      vacuumDetailsWarningEl.textContent = push2.length ? "注意：" + push2.join(" · ") : "";
+      vacuumDetailsWarningEl.hidden = !push2.length;
     }
-    state5.button.addEventListener("click", () => value158("vacuum", vacuumActionService(entityState, "start"), entityId, {}, {
+    state5.button.addEventListener("click", () => invokeVacuumService("vacuum", vacuumActionService(entityState, "start"), entityId, {}, {
       ...entityState,
       state: "cleaning",
       attributes: {
@@ -10609,7 +10609,7 @@ export class PanelRenderer {
         returning: false
       }
     }));
-    handlers.button.addEventListener("click", () => value158("vacuum", "pause", entityId, {}, {
+    handlers.button.addEventListener("click", () => invokeVacuumService("vacuum", "pause", entityId, {}, {
       ...entityState,
       state: "paused",
       attributes: {
@@ -10618,7 +10618,7 @@ export class PanelRenderer {
         paused: true
       }
     }));
-    rendererRuntimeDialogLayerEl1.button.addEventListener("click", () => value158("vacuum", "return_to_base", entityId, {}, {
+    rendererRuntimeDialogLayerEl1.button.addEventListener("click", () => invokeVacuumService("vacuum", "return_to_base", entityId, {}, {
       ...entityState,
       state: "returning",
       attributes: {
@@ -10628,7 +10628,7 @@ export class PanelRenderer {
         returning: true
       }
     }));
-    rendererRuntimeDialogLayerEl.button.addEventListener("click", () => value158("vacuum", vacuumActionService(entityState, "stop"), entityId, {}, {
+    rendererRuntimeDialogLayerEl.button.addEventListener("click", () => invokeVacuumService("vacuum", vacuumActionService(entityState, "stop"), entityId, {}, {
       ...entityState,
       state: "idle",
       attributes: {
@@ -10638,8 +10638,8 @@ export class PanelRenderer {
         returning: false
       }
     }));
-    button7.button.addEventListener("click", () => value158("vacuum", "locate", entityId, {}));
-    button8.button.addEventListener("click", () => value158("vacuum", "clean_spot", entityId, {}, {
+    actionEntry.button.addEventListener("click", () => invokeVacuumService("vacuum", "locate", entityId, {}));
+    actionEntry2.button.addEventListener("click", () => invokeVacuumService("vacuum", "clean_spot", entityId, {}, {
       ...entityState,
       state: "cleaning",
       attributes: {
@@ -10649,50 +10649,50 @@ export class PanelRenderer {
         returning: false
       }
     }));
-    fn(entityState);
-    const className39 = document.createElement("div");
-    className39.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
-    className39.tabIndex = -1;
-    className39.append(style2);
-    this.container.append(className39);
-    this.detailsDialog = style2;
-    const handlers2 = new Map([[entityId, [fn]]]);
-    if (value152) {
-      handlers2.set(value152, [value155]);
+    syncVacuumDetailsState(entityState);
+    const rendererRuntimeDialogLayerEl3 = document.createElement("div");
+    rendererRuntimeDialogLayerEl3.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
+    rendererRuntimeDialogLayerEl3.tabIndex = -1;
+    rendererRuntimeDialogLayerEl3.append(entityDetailsDialogEl);
+    this.container.append(rendererRuntimeDialogLayerEl3);
+    this.detailsDialog = entityDetailsDialogEl;
+    const handlers2 = new Map([[entityId, [syncVacuumDetailsState]]]);
+    if (cleaningModeSelectEntityId) {
+      handlers2.set(cleaningModeSelectEntityId, [syncCleaningModeFromState]);
     }
-    if (value153) {
-      handlers2.set(value153, [value163]);
+    if (fanSpeedSelectEntityId) {
+      handlers2.set(fanSpeedSelectEntityId, [updateBatteryEntityState]);
     }
-    for (const [rendererRuntimeDialogLayerEl2, value139] of stateHandlers?.stateHandlers || []) {
-      handlers2.set(rendererRuntimeDialogLayerEl2, value139);
+    for (const [rendererRuntimeDialogLayerEl2, presenceTimelineItem] of stateHandlers?.stateHandlers || []) {
+      handlers2.set(rendererRuntimeDialogLayerEl2, presenceTimelineItem);
     }
     this.detailsStateSync = {
-      dialog: style2,
+      dialog: entityDetailsDialogEl,
       handlers: handlers2
     };
     let observe = null;
     if (root2) {
-      className39.classList.add("i3d-vacuum-dialog-layer");
-      (root2.root || this.container).append(className39);
-      style2.style.setProperty("--i3d-panel-opacity", String(Math.max(0, Math.min(100, Number.isFinite(root2.popupOpacity) ? root2.popupOpacity : 74)) / 100));
+      rendererRuntimeDialogLayerEl3.classList.add("i3d-vacuum-dialog-layer");
+      (root2.root || this.container).append(rendererRuntimeDialogLayerEl3);
+      entityDetailsDialogEl.style.setProperty("--i3d-panel-opacity", String(Math.max(0, Math.min(100, Number.isFinite(root2.popupOpacity) ? root2.popupOpacity : 74)) / 100));
       const resizeInteraction3d = () => {
-        const clientWidth = root2.root || this.container;
-        const value47 = clientWidth.clientWidth;
-        const value48 = clientWidth.clientHeight;
+        const viewportRootEl = root2.root || this.container;
+        const viewportWidth = viewportRootEl.clientWidth;
+        const viewportHeight = viewportRootEl.clientHeight;
         const width = root2.getPresentationLayout?.();
-        const value49 = width?.width > 0 ? width.width : value47;
-        const value50 = width?.height > 0 ? width.height : value48;
-        const value51 = value47 / Math.max(1, value49);
-        const value52 = value48 / Math.max(1, value50);
-        const value53 = value51 * 2;
-        const value54 = value52 * 2;
-        const value55 = Math.max(12, Math.min(value50 * 0.56 - 400, value50 - 812)) * value52;
-        style2.style.top = value55 + "px";
-        style2.style.right = value51 * 16 + "px";
-        style2.style.transform = "scale(" + value53 + "," + value54 + ")";
-        style2.style.maxHeight = Math.max(100, (value48 - value55 - value52 * 12) / value54) + "px";
+        const contentWidth = width?.width > 0 ? width.width : viewportWidth;
+        const contentHeight = width?.height > 0 ? width.height : viewportHeight;
+        const scaleX = viewportWidth / Math.max(1, contentWidth);
+        const scaleY = viewportHeight / Math.max(1, contentHeight);
+        const scaleX2x = scaleX * 2;
+        const scaleY2x = scaleY * 2;
+        const panelOffsetY = Math.max(12, Math.min(contentHeight * 0.56 - 400, contentHeight - 812)) * scaleY;
+        entityDetailsDialogEl.style.top = panelOffsetY + "px";
+        entityDetailsDialogEl.style.right = scaleX * 16 + "px";
+        entityDetailsDialogEl.style.transform = "scale(" + scaleX2x + "," + scaleY2x + ")";
+        entityDetailsDialogEl.style.maxHeight = Math.max(100, (viewportHeight - panelOffsetY - scaleY * 12) / scaleY2x) + "px";
       };
-      style2.resizeInteraction3d = resizeInteraction3d;
+      entityDetailsDialogEl.resizeInteraction3d = resizeInteraction3d;
       observe = new ResizeObserver(resizeInteraction3d);
       observe.observe(root2.root || this.container);
       if (root2.frame) {
@@ -10700,29 +10700,29 @@ export class PanelRenderer {
       }
       resizeInteraction3d();
     } else {
-      this.registerRuntimeDialogScale(className39, style2, 840, stateHandlers ? 560 : 458);
+      this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl3, entityDetailsDialogEl, 840, stateHandlers ? 560 : 458);
     }
-    type7.addEventListener("click", () => style2.close());
-    this.bindRuntimeDialogOutsideDismiss(className39, style2, append5);
-    className39.addEventListener("keydown", key2 => {
+    vacuumDetailsButtonEl.addEventListener("click", () => entityDetailsDialogEl.close());
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl3, entityDetailsDialogEl, append5);
+    rendererRuntimeDialogLayerEl3.addEventListener("keydown", key2 => {
       if (key2.key === "Escape") {
-        style2.close();
+        entityDetailsDialogEl.close();
       }
     });
-    style2.addEventListener("close", () => {
+    entityDetailsDialogEl.addEventListener("close", () => {
       observe?.disconnect();
-      this.clearRuntimeDialogScale(style2);
-      if (this.detailsDialog === style2) {
+      this.clearRuntimeDialogScale(entityDetailsDialogEl);
+      if (this.detailsDialog === entityDetailsDialogEl) {
         this.detailsDialog = null;
       }
-      if (this.detailsStateSync?.dialog === style2) {
+      if (this.detailsStateSync?.dialog === entityDetailsDialogEl) {
         this.detailsStateSync = null;
       }
-      className39.remove();
+      rendererRuntimeDialogLayerEl3.remove();
     }, {
       once: true
     });
-    style2.show();
+    entityDetailsDialogEl.show();
   }
   showPresenceDetails(component, {
     preview = false
@@ -10789,56 +10789,56 @@ export class PanelRenderer {
     const set = this.historySeries.get(entityId)?.points || [];
     const state1 = component.properties?.iconOnColor || component.properties?.occupiedColor || "#ffffff";
     const entityState = component.properties?.iconColor || component.properties?.clearColor || "#758189";
-    const entityState1 = (arg77, now = Date.now()) => presenceSensorPresentation(arg77, "auto", {
-      ...presenceMotionEventConfig(entityId, arg77, this.entityMetadata, this.states, component.properties),
+    const entityState1 = (presenceEntityId, now = Date.now()) => presenceSensorPresentation(presenceEntityId, "auto", {
+      ...presenceMotionEventConfig(entityId, presenceEntityId, this.entityMetadata, this.states, component.properties),
       now
     });
-    const dataset = document.createElement("dialog");
-    dataset.className = "hb-entity-details-dialog presence-details";
-    dataset.dataset.sensorKind = entityId2;
-    dataset.style.setProperty("--hb-presence-occupied", state1);
-    dataset.style.setProperty("--hb-presence-clear", entityState);
-    const className40 = document.createElement("div");
-    className40.className = "hb-entity-details-card";
+    const entityDetailsDialogEl6 = document.createElement("dialog");
+    entityDetailsDialogEl6.className = "hb-entity-details-dialog presence-details";
+    entityDetailsDialogEl6.dataset.sensorKind = entityId2;
+    entityDetailsDialogEl6.style.setProperty("--hb-presence-occupied", state1);
+    entityDetailsDialogEl6.style.setProperty("--hb-presence-clear", entityState);
+    const entityDetailsCardEl = document.createElement("div");
+    entityDetailsCardEl.className = "hb-entity-details-card";
     const state4 = document.createElement("div");
     state4.className = "hb-entity-details-heading";
     const airer = document.createElement("div");
-    const textContent18 = document.createElement("strong");
-    textContent18.textContent = componentDialogTitle(component, component1.attributes?.friendly_name || entityId1.title);
+    const presenceDetailsStrongEl = document.createElement("strong");
+    presenceDetailsStrongEl.textContent = componentDialogTitle(component, component1.attributes?.friendly_name || entityId1.title);
     const state5 = document.createElement("span");
-    airer.append(textContent18, state5);
+    airer.append(presenceDetailsStrongEl, state5);
     const finiteNumber = document.createElement("button");
     finiteNumber.type = "button";
     finiteNumber.textContent = "×";
     finiteNumber.setAttribute("aria-label", "关闭弹窗");
     state4.append(airer, finiteNumber);
-    const className41 = document.createElement("div");
-    className41.className = "hb-presence-details-body";
+    const presenceDetailsBodyEl = document.createElement("div");
+    presenceDetailsBodyEl.className = "hb-presence-details-body";
     const append9 = document.createElement("section");
     append9.className = "hb-presence-details-visual";
     let tilt = null;
     if (entityId2 === "presence") {
-      const className11 = document.createElement("span");
-      className11.className = "hb-presence-sensor-space";
-      for (let value90 = 0; value90 < 3; value90 += 1) {
-        className11.append(document.createElement("i"));
+      const presenceSensorSpaceEl = document.createElement("span");
+      presenceSensorSpaceEl.className = "hb-presence-sensor-space";
+      for (let bucketIndex = 0; bucketIndex < 3; bucketIndex += 1) {
+        presenceSensorSpaceEl.append(document.createElement("i"));
       }
-      const className12 = document.createElement("span");
-      className12.className = "hb-presence-sensor-floor";
-      const className13 = document.createElement("span");
-      className13.className = "hb-presence-sensor-person";
-      const value112 = document.createElement("i");
-      const value113 = document.createElement("b");
-      const className14 = document.createElement("span");
-      className14.className = "arm left";
-      const className15 = document.createElement("span");
-      className15.className = "arm right";
-      const className16 = document.createElement("span");
-      className16.className = "leg left";
-      const className17 = document.createElement("span");
-      className17.className = "leg right";
-      className13.append(value112, value113, className14, className15, className16, className17);
-      append9.append(className11, className12, className13);
+      const presenceSensorFloorEl = document.createElement("span");
+      presenceSensorFloorEl.className = "hb-presence-sensor-floor";
+      const presenceSensorPersonEl = document.createElement("span");
+      presenceSensorPersonEl.className = "hb-presence-sensor-person";
+      const timelineIconEl = document.createElement("i");
+      const timelineBoldEl = document.createElement("b");
+      const presenceDetailsSpanEl = document.createElement("span");
+      presenceDetailsSpanEl.className = "arm left";
+      const presenceDetailsSpanEl2 = document.createElement("span");
+      presenceDetailsSpanEl2.className = "arm right";
+      const presenceDetailsSpanEl3 = document.createElement("span");
+      presenceDetailsSpanEl3.className = "leg left";
+      const presenceDetailsSpanEl4 = document.createElement("span");
+      presenceDetailsSpanEl4.className = "leg right";
+      presenceSensorPersonEl.append(timelineIconEl, timelineBoldEl, presenceDetailsSpanEl, presenceDetailsSpanEl2, presenceDetailsSpanEl3, presenceDetailsSpanEl4);
+      append9.append(presenceSensorSpaceEl, presenceSensorFloorEl, presenceSensorPersonEl);
     } else {
       tilt = renderRegisteredComponent({
         ...component,
@@ -10857,52 +10857,52 @@ export class PanelRenderer {
       tilt.classList.add("hb-presence-details-sensor");
       append9.append(tilt);
     }
-    const textContent19 = document.createElement("strong");
+    const presenceDetailsStrongEl2 = document.createElement("strong");
     const position = document.createElement("small");
-    append9.append(textContent19, position);
-    const className42 = document.createElement("section");
-    className42.className = "hb-presence-details-metrics";
+    append9.append(presenceDetailsStrongEl2, position);
+    const presenceDetailsMetricsEl = document.createElement("section");
+    presenceDetailsMetricsEl.className = "hb-presence-details-metrics";
     const positionCommandEntityId = element6 => {
       const append3 = document.createElement("div");
-      const textContent10 = document.createElement("small");
-      textContent10.textContent = element6;
-      const value91 = document.createElement("strong");
-      append3.append(textContent10, value91);
-      className42.append(append3);
-      return value91;
+      const presenceDetailsSmallEl = document.createElement("small");
+      presenceDetailsSmallEl.textContent = element6;
+      const sensorNameEmphasisEl = document.createElement("strong");
+      append3.append(presenceDetailsSmallEl, sensorNameEmphasisEl);
+      presenceDetailsMetricsEl.append(append3);
+      return sensorNameEmphasisEl;
     };
     const position2 = positionCommandEntityId("当前状态持续");
     const positionCommandState = positionCommandEntityId("最近检测到人");
     const state8 = positionCommandEntityId(state + " 小时有人时长");
-    const className43 = document.createElement("section");
-    className43.className = "hb-presence-details-timeline";
+    const presenceDetailsTimelineEl = document.createElement("section");
+    presenceDetailsTimelineEl.className = "hb-presence-details-timeline";
     const state10 = document.createElement("div");
-    const textContent20 = document.createElement("strong");
-    textContent20.textContent = state + " 小时在家时间轴";
+    const presenceDetailsStrongEl3 = document.createElement("strong");
+    presenceDetailsStrongEl3.textContent = state + " 小时在家时间轴";
     const state11 = document.createElement("span");
     state11.textContent = "亮色为有人";
-    state10.append(textContent20, state11);
+    state10.append(presenceDetailsStrongEl3, state11);
     const airerActionEntityIds = document.createElement("div");
     const position3 = document.createElement("div");
     position3.innerHTML = "<span>" + state + " 小时前</span><span>现在</span>";
-    className43.append(state10, airerActionEntityIds, position3);
-    className41.append(append9, className42, className43);
-    className40.append(state4, className41);
-    dataset.append(className40);
-    const positionState = arg78 => {
-      if (!Number.isFinite(arg78)) {
+    presenceDetailsTimelineEl.append(state10, airerActionEntityIds, position3);
+    presenceDetailsBodyEl.append(append9, presenceDetailsMetricsEl, presenceDetailsTimelineEl);
+    entityDetailsCardEl.append(state4, presenceDetailsBodyEl);
+    entityDetailsDialogEl6.append(entityDetailsCardEl);
+    const positionState = presenceState => {
+      if (!Number.isFinite(presenceState)) {
         return "--";
       }
-      const getFullYear = new Date(arg78);
+      const getFullYear = new Date(presenceState);
       const getFullYear2 = new Date();
-      const value92 = getFullYear.getFullYear() === getFullYear2.getFullYear() && getFullYear.getMonth() === getFullYear2.getMonth() && getFullYear.getDate() === getFullYear2.getDate();
-      const value93 = new Intl.DateTimeFormat("zh-CN", {
+      const isSameDay = getFullYear.getFullYear() === getFullYear2.getFullYear() && getFullYear.getMonth() === getFullYear2.getMonth() && getFullYear.getDate() === getFullYear2.getDate();
+      const formatClockTime = new Intl.DateTimeFormat("zh-CN", {
         hour: "2-digit",
         minute: "2-digit",
         hour12: false
       }).format(getFullYear);
-      if (value92) {
-        return "今天 " + value93;
+      if (isSameDay) {
+        return "今天 " + formatClockTime;
       } else {
         return new Intl.DateTimeFormat("zh-CN", {
           month: "2-digit",
@@ -10915,24 +10915,24 @@ export class PanelRenderer {
     };
     const motorReversed = () => {
       const length2 = presenceHistoryBuckets(set, component1, Date.now(), state, 48, presenceMotionEventConfig(entityId, component1, this.entityMetadata, this.states, component.properties));
-      airerActionEntityIds.replaceChildren(...length2.map((arg14, arg15) => {
-        const className = document.createElement("i");
-        className.className = "is-" + arg14;
-        const value7 = Math.round(state * 60 * (length2.length - arg15 - 1) / length2.length);
-        className.title = (value7 ? value7 + " 分钟前" : "现在") + "：" + {
+      airerActionEntityIds.replaceChildren(...length2.map((presenceKey, bucketOffset) => {
+        const presenceBucketMarkEl = document.createElement("i");
+        presenceBucketMarkEl.className = "is-" + presenceKey;
+        const minutesAgo = Math.round(state * 60 * (length2.length - bucketOffset - 1) / length2.length);
+        presenceBucketMarkEl.title = (minutesAgo ? minutesAgo + " 分钟前" : "现在") + "：" + {
           occupied: "有人",
           clear: "无人",
           unavailable: "离线",
           unknown: "未知"
-        }[arg14];
-        return className;
+        }[presenceKey];
+        return presenceBucketMarkEl;
       }));
-      const value94 = length2.filter(arg16 => arg16 === "occupied").length;
-      const value95 = Math.round(state * 60 * value94 / Math.max(1, length2.length));
-      state8.textContent = value95 >= 60 ? Math.floor(value95 / 60) + " 小时 " + value95 % 60 + " 分钟" : value95 + " 分钟";
+      const occupiedBucketCount = length2.filter(bucketState => bucketState === "occupied").length;
+      const occupiedMinutes = Math.round(state * 60 * occupiedBucketCount / Math.max(1, length2.length));
+      state8.textContent = occupiedMinutes >= 60 ? Math.floor(occupiedMinutes / 60) + " 小时 " + occupiedMinutes % 60 + " 分钟" : occupiedMinutes + " 分钟";
     };
     const state12 = () => {
-      const value96 = presenceMotionEventConfig(entityId, component1, this.entityMetadata, this.states, component.properties);
+      const motionEventConfig = presenceMotionEventConfig(entityId, component1, this.entityMetadata, this.states, component.properties);
       const push = set.map(timestamp2 => ({
         timestamp: Date.parse(timestamp2?.timestamp),
         state: {
@@ -10942,7 +10942,7 @@ export class PanelRenderer {
         state: timestamp3?.state?.state,
         lastChanged: new Date(timestamp3.timestamp).toISOString()
       }, "auto", {
-        ...value96,
+        ...motionEventConfig,
         now: timestamp3.timestamp,
         noMotionSeconds: null,
         noMotionStateTimestamp: null
@@ -10959,85 +10959,85 @@ export class PanelRenderer {
         return null;
       }
     };
-    const size = arg79 => {
-      component1 = arg79 || component1;
+    const size = sensorConfig => {
+      component1 = sensorConfig || component1;
       const key3 = entityState1(component1);
-      const value97 = presenceStateTimestamp(component1);
-      dataset.dataset.presenceState = key3.key;
+      const stateTimestamp = presenceStateTimestamp(component1);
+      entityDetailsDialogEl6.dataset.presenceState = key3.key;
       append9.className = "hb-presence-details-visual is-" + key3.key;
       const element7 = entityId1[key3.key] || entityId1.unknown;
       state5.textContent = element7;
       state5.classList.toggle("is-on", key3.key === "occupied");
-      textContent19.textContent = element7;
+      presenceDetailsStrongEl2.textContent = element7;
       position.textContent = key3.key === "occupied" ? entityId1.hintOccupied : key3.key === "clear" ? entityId1.hintClear : key3.key === "unavailable" ? "设备当前不可用" : "正在等待状态";
       if (tilt) {
-        const value33 = {
+        const presenceSensorClassMap = {
           "door-window": "hb-door-window-sensor is-" + (key3.key === "occupied" ? "open" : key3.key),
           "water-leak": "hb-water-leak-sensor is-" + (key3.key === "occupied" ? "wet" : key3.key),
           smoke: "hb-smoke-sensor is-" + (key3.key === "occupied" ? "alert" : key3.key),
           "natural-gas": "hb-natural-gas-sensor is-" + (key3.key === "occupied" ? "alert" : key3.key)
         }[entityId2];
-        tilt.className = value33 + " hb-presence-details-sensor";
+        tilt.className = presenceSensorClassMap + " hb-presence-details-sensor";
         tilt.dataset.sensorState = key3.key;
         tilt.setAttribute("aria-label", entityId1.title + "：" + element7);
       }
-      position2.textContent = ["unknown", "unavailable"].includes(key3.key) ? "--" : formatPresenceDuration(value97);
+      position2.textContent = ["unknown", "unavailable"].includes(key3.key) ? "--" : formatPresenceDuration(stateTimestamp);
       positionCommandState.textContent = positionState(state12());
       motorReversed();
     };
     size(component1);
     const size1 = presenceMotionEventConfig(entityId, component1, this.entityMetadata, this.states, component.properties);
     const momentary = new Map([[entityId, [size]]]);
-    for (const value140 of size1.companionEntityIds) {
-      momentary.set(value140, [() => size(component1)]);
+    for (const presenceDetailsApi of size1.companionEntityIds) {
+      momentary.set(presenceDetailsApi, [() => size(component1)]);
     }
     const state13 = size1.motionEvent ? window.setInterval(() => size(component1), 1000) : null;
-    const className44 = document.createElement("div");
-    className44.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
-    className44.tabIndex = -1;
-    className44.append(dataset);
-    this.container.append(className44);
-    this.detailsDialog = dataset;
+    const rendererRuntimeDialogLayerEl = document.createElement("div");
+    rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
+    rendererRuntimeDialogLayerEl.tabIndex = -1;
+    rendererRuntimeDialogLayerEl.append(entityDetailsDialogEl6);
+    this.container.append(rendererRuntimeDialogLayerEl);
+    this.detailsDialog = entityDetailsDialogEl6;
     this.detailsStateSync = {
-      dialog: dataset,
+      dialog: entityDetailsDialogEl6,
       handlers: momentary
     };
-    this.registerRuntimeDialogScale(className44, dataset, 760, 560);
-    finiteNumber.addEventListener("click", () => dataset.close());
-    this.bindRuntimeDialogOutsideDismiss(className44, dataset, className40);
-    className44.addEventListener("keydown", key4 => {
+    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogEl6, 760, 560);
+    finiteNumber.addEventListener("click", () => entityDetailsDialogEl6.close());
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogEl6, entityDetailsCardEl);
+    rendererRuntimeDialogLayerEl.addEventListener("keydown", key4 => {
       if (key4.key === "Escape") {
-        dataset.close();
+        entityDetailsDialogEl6.close();
       }
     });
-    dataset.addEventListener("close", () => {
+    entityDetailsDialogEl6.addEventListener("close", () => {
       if (state13) {
         window.clearInterval(state13);
       }
-      this.clearRuntimeDialogScale(dataset);
-      if (this.detailsDialog === dataset) {
+      this.clearRuntimeDialogScale(entityDetailsDialogEl6);
+      if (this.detailsDialog === entityDetailsDialogEl6) {
         this.detailsDialog = null;
       }
-      if (this.detailsStateSync?.dialog === dataset) {
+      if (this.detailsStateSync?.dialog === entityDetailsDialogEl6) {
         this.detailsStateSync = null;
       }
-      className44.remove();
+      rendererRuntimeDialogLayerEl.remove();
     }, {
       once: true
     });
-    dataset.show();
+    entityDetailsDialogEl6.show();
   }
   showEntityDetails(type8, {
     preview = false
   } = {}) {
-    const clientWidth = type8.bindings?.entity?.entityId;
-    if (!clientWidth) {
+    const detailsBoundEntityId = type8.bindings?.entity?.entityId;
+    if (!detailsBoundEntityId) {
       throw new Error("该控件没有关联实体。");
     }
-    const clientHeight = String(clientWidth);
-    const size = this.deviceProfile(clientHeight);
+    const detailsBoundEntityIdText = String(detailsBoundEntityId);
+    const size = this.deviceProfile(detailsBoundEntityIdText);
     type8 = applyXiaomiDeviceProfile(type8, size);
-    const scale = clientHeight.split(".", 1)[0];
+    const scale = detailsBoundEntityIdText.split(".", 1)[0];
     const scale1 = type8.properties?.deviceType === "electric-bed" || size?.deviceType === "electric-bed";
     if (!this.entityCatalogReady) {
       this.deferEntityDetailsUntilReady({
@@ -11069,7 +11069,7 @@ export class PanelRenderer {
       }
       return;
     }
-    if (scale === "water_heater" && !this.waterHeaterDetailsReady(clientHeight)) {
+    if (scale === "water_heater" && !this.waterHeaterDetailsReady(detailsBoundEntityIdText)) {
       this.deferEntityDetailsUntilReady(type8, preview);
       return;
     }
@@ -11116,197 +11116,197 @@ export class PanelRenderer {
         type: "air-conditioner"
       };
     }
-    if (type8.type === "vacuum-control" || !clamped && clientHeight.startsWith("vacuum.")) {
+    if (type8.type === "vacuum-control" || !clamped && detailsBoundEntityIdText.startsWith("vacuum.")) {
       this.showVacuumDetails(type8, {
         preview
       });
       return;
     }
-    const appliedScaleX = this.states.get(clientHeight);
+    const appliedScaleX = this.states.get(detailsBoundEntityIdText);
     const appliedScaleY = appliedScaleX?.newState || appliedScaleX;
     const friendly_name = appliedScaleY?.attributes || {};
-    const value164 = type8.type === "line-chart";
-    const value165 = !value164 && scale === "cover";
-    const value166 = ["standard", "dream", "airer"].includes(type8.properties?.coverKind) ? type8.properties.coverKind : "auto";
-    const airer = value165 && coverComponentIsAirer(type8, clientHeight, appliedScaleY, this.entityMetadata, this.deviceMetadata);
-    const value167 = Number(friendly_name.supported_features || 0);
-    const value168 = clientHeight + " " + (friendly_name.friendly_name || "") + " " + (type8.properties?.label || "");
-    const value169 = Number.isFinite(Number(friendly_name.current_tilt_position)) || !!(value167 & 240);
-    const value170 = /梦幻|竖帘|垂直帘|百叶|(^|[._-])novo([._-]|$)/i.test(value168);
-    const dream = value165 && !airer && (value166 === "dream" || value166 === "auto" && (value169 || value170));
-    const tilt = dream && value169;
-    const value171 = (airer ? relatedAirerLightEntity(this.entityMetadata, clientHeight) : null)?.entityId || "";
-    const newState9 = value171 ? this.states.get(value171) : null;
+    const isLineChart = type8.type === "line-chart";
+    const isCoverEntity = !isLineChart && scale === "cover";
+    const coverKind = ["standard", "dream", "airer"].includes(type8.properties?.coverKind) ? type8.properties.coverKind : "auto";
+    const airer = isCoverEntity && coverComponentIsAirer(type8, detailsBoundEntityIdText, appliedScaleY, this.entityMetadata, this.deviceMetadata);
+    const supportedFeatures = Number(friendly_name.supported_features || 0);
+    const coverIdentityText = detailsBoundEntityIdText + " " + (friendly_name.friendly_name || "") + " " + (type8.properties?.label || "");
+    const supportsTilt = Number.isFinite(Number(friendly_name.current_tilt_position)) || !!(supportedFeatures & 240);
+    const looksLikeDreamCurtain = /梦幻|竖帘|垂直帘|百叶|(^|[._-])novo([._-]|$)/i.test(coverIdentityText);
+    const dream = isCoverEntity && !airer && (coverKind === "dream" || coverKind === "auto" && (supportsTilt || looksLikeDreamCurtain));
+    const tilt = dream && supportsTilt;
+    const airerLightEntityId = (airer ? relatedAirerLightEntity(this.entityMetadata, detailsBoundEntityIdText) : null)?.entityId || "";
+    const newState9 = airerLightEntityId ? this.states.get(airerLightEntityId) : null;
     let state10 = newState9?.newState || newState9 || null;
-    const positionCommandEntityId = (airer ? relatedAirerPositionNumberEntity(this.entityMetadata, clientHeight) : null)?.entityId || "";
+    const positionCommandEntityId = (airer ? relatedAirerPositionNumberEntity(this.entityMetadata, detailsBoundEntityIdText) : null)?.entityId || "";
     const newState10 = this.states.get(positionCommandEntityId);
     const positionCommandState = newState10?.newState || newState10 || null;
-    const value172 = (airer ? relatedAirerCurrentPositionSensor(this.entityMetadata, clientHeight) : null)?.entityId || "";
-    const value173 = (airer ? relatedAirerMotorSpeedSensor(this.entityMetadata, clientHeight) : null)?.entityId || "";
-    const newState11 = this.states.get(value173);
+    const airerPositionSensorId = (airer ? relatedAirerCurrentPositionSensor(this.entityMetadata, detailsBoundEntityIdText) : null)?.entityId || "";
+    const airerMotorSpeedSensorId = (airer ? relatedAirerMotorSpeedSensor(this.entityMetadata, detailsBoundEntityIdText) : null)?.entityId || "";
+    const newState11 = this.states.get(airerMotorSpeedSensorId);
     const motorState = newState11?.newState || newState11 || null;
-    const value174 = airer ? relatedAirerMotorActionEntities(this.entityMetadata, clientHeight) : {};
-    const airerActionEntityIds = Object.fromEntries(Object.entries(value174).map(([arg47, entityId7]) => [arg47, entityId7?.entityId || ""]));
-    const newState12 = this.states.get(value172 || positionCommandEntityId);
+    const airerMotorActions = airer ? relatedAirerMotorActionEntities(this.entityMetadata, detailsBoundEntityIdText) : {};
+    const airerActionEntityIds = Object.fromEntries(Object.entries(airerMotorActions).map(([item, entityId7]) => [item, entityId7?.entityId || ""]));
+    const newState12 = this.states.get(airerPositionSensorId || positionCommandEntityId);
     const positionState = newState12?.newState || newState12 || null;
-    const motorReversed = value165 && coverMotorIsReversedForComponent(type8, this.entityMetadata, this.states, clientHeight);
-    const value175 = motorReversed ? "open_cover" : "close_cover";
-    const value176 = motorReversed ? "close_cover" : "open_cover";
-    const value177 = ["left", "right"].includes(type8.properties?.coverDirection) ? type8.properties.coverDirection : "split";
-    const momentary = !value164 && scale === "button";
-    const value178 = !value164 && (momentary || ["switch", "input_boolean"].includes(scale));
-    const value179 = type8.type === "icon-button" && scale === "light";
-    const value180 = !value164 && (type8.type === "air-conditioner" || type8.type === "water-heater" || ["climate", "water_heater"].includes(scale));
-    const deviceType = value180 ? scale === "water_heater" || type8.type === "water-heater" ? "water-heater" : resolveClimateDeviceType(type8, appliedScaleY, clientHeight) : "air-conditioner";
-    const value181 = climateDeviceLabel(deviceType);
-    const value182 = componentDialogTitle(type8, String(friendly_name.friendly_name || "").trim() || value181).replace(/(浴霸)(?:\s+浴霸)+$/i, "$1");
+    const motorReversed = isCoverEntity && coverMotorIsReversedForComponent(type8, this.entityMetadata, this.states, detailsBoundEntityIdText);
+    const openCoverService = motorReversed ? "open_cover" : "close_cover";
+    const closeCoverService = motorReversed ? "close_cover" : "open_cover";
+    const coverDirection = ["left", "right"].includes(type8.properties?.coverDirection) ? type8.properties.coverDirection : "split";
+    const momentary = !isLineChart && scale === "button";
+    const isSwitchEntity = !isLineChart && (momentary || ["switch", "input_boolean"].includes(scale));
+    const isLightControl = type8.type === "icon-button" && scale === "light";
+    const isClimateEntity = !isLineChart && (type8.type === "air-conditioner" || type8.type === "water-heater" || ["climate", "water_heater"].includes(scale));
+    const deviceType = isClimateEntity ? scale === "water_heater" || type8.type === "water-heater" ? "water-heater" : resolveClimateDeviceType(type8, appliedScaleY, detailsBoundEntityIdText) : "air-conditioner";
+    const climateDeviceLabelText = climateDeviceLabel(deviceType);
+    const detailsDialogTitle = componentDialogTitle(type8, String(friendly_name.friendly_name || "").trim() || climateDeviceLabelText).replace(/(浴霸)(?:\s+浴霸)+$/i, "$1");
     const label = componentDialogTitle(type8, String(friendly_name.friendly_name || "").trim() || (momentary ? "按钮" : "开关"));
-    const value183 = value179 || value180 || value178;
+    const usesRichDetailsChrome = isLightControl || isClimateEntity || isSwitchEntity;
     this.closeRuntimeDialog();
-    const value184 = (state8, attributes4 = friendly_name) => momentary ? false : value179 || value178 ? state8 === "on" : climateIsPoweredOn({
+    const entityIsActive = (state8, attributes4 = friendly_name) => momentary ? false : isLightControl || isSwitchEntity ? state8 === "on" : climateIsPoweredOn({
       state: state8,
       attributes: attributes4
     }, deviceType);
-    const classList3 = document.createElement("dialog");
-    classList3.className = "hb-entity-details-dialog";
-    classList3.tabIndex = -1;
-    classList3.classList.toggle("line-chart-details", value164);
-    classList3.classList.toggle("light-details", value179);
-    classList3.classList.toggle("cover-details", value165);
-    classList3.classList.toggle("dream-cover-details", dream);
-    classList3.classList.toggle("airer-cover-details", airer);
-    classList3.classList.toggle("climate-details", value180);
-    classList3.classList.toggle("bath-heater-details", deviceType === "bath-heater");
-    classList3.classList.toggle("water-heater-details", deviceType === "water-heater");
-    classList3.classList.toggle("switch-details", value178);
-    classList3.classList.toggle("momentary-button-details", momentary);
+    const entityDetailsDialogEl7 = document.createElement("dialog");
+    entityDetailsDialogEl7.className = "hb-entity-details-dialog";
+    entityDetailsDialogEl7.tabIndex = -1;
+    entityDetailsDialogEl7.classList.toggle("line-chart-details", isLineChart);
+    entityDetailsDialogEl7.classList.toggle("light-details", isLightControl);
+    entityDetailsDialogEl7.classList.toggle("cover-details", isCoverEntity);
+    entityDetailsDialogEl7.classList.toggle("dream-cover-details", dream);
+    entityDetailsDialogEl7.classList.toggle("airer-cover-details", airer);
+    entityDetailsDialogEl7.classList.toggle("climate-details", isClimateEntity);
+    entityDetailsDialogEl7.classList.toggle("bath-heater-details", deviceType === "bath-heater");
+    entityDetailsDialogEl7.classList.toggle("water-heater-details", deviceType === "water-heater");
+    entityDetailsDialogEl7.classList.toggle("switch-details", isSwitchEntity);
+    entityDetailsDialogEl7.classList.toggle("momentary-button-details", momentary);
     const append10 = document.createElement("div");
     append10.className = "hb-entity-details-card";
-    const className45 = document.createElement("div");
-    className45.className = "hb-entity-details-heading";
+    const entityDetailsHeadingEl = document.createElement("div");
+    entityDetailsHeadingEl.className = "hb-entity-details-heading";
     const append11 = document.createElement("div");
-    const textContent21 = document.createElement("strong");
-    textContent21.textContent = value179 ? componentDialogTitle(type8, "灯光") : value165 ? componentDialogTitle(type8, airer ? "晾衣机" : "窗帘") : value180 ? value182 : value178 ? label : componentDialogTitle(type8, "设备详情");
-    append11.append(textContent21);
-    let textContent22 = null;
-    let textContent23 = null;
-    let value185 = String(appliedScaleY?.state || "");
-    let textContent24 = null;
-    let textContent25 = null;
-    let textContent26 = null;
-    if (value179) {
-      const textContent12 = document.createElement("span");
-      textContent12.textContent = appliedScaleY?.state === "on" ? "已开启" : "已关闭";
-      textContent12.classList.toggle("is-on", appliedScaleY?.state === "on");
-      textContent22 = textContent12;
-      append11.append(textContent12);
-    } else if (value165) {
-      const textContent11 = document.createElement("span");
-      const value98 = physicalCoverState(appliedScaleY?.state, motorReversed);
-      const value99 = Number(friendly_name[tilt ? "current_tilt_position" : "current_position"]);
-      const value100 = {
+    const entityDetailsStrongEl = document.createElement("strong");
+    entityDetailsStrongEl.textContent = isLightControl ? componentDialogTitle(type8, "灯光") : isCoverEntity ? componentDialogTitle(type8, airer ? "晾衣机" : "窗帘") : isClimateEntity ? detailsDialogTitle : isSwitchEntity ? label : componentDialogTitle(type8, "设备详情");
+    append11.append(entityDetailsStrongEl);
+    let pendingRef2 = null;
+    let pendingRef3 = null;
+    let rawEntityState = String(appliedScaleY?.state || "");
+    let pendingRef4 = null;
+    let pendingRef5 = null;
+    let pendingRef6 = null;
+    if (isLightControl) {
+      const entityDetailsSpanEl = document.createElement("span");
+      entityDetailsSpanEl.textContent = appliedScaleY?.state === "on" ? "已开启" : "已关闭";
+      entityDetailsSpanEl.classList.toggle("is-on", appliedScaleY?.state === "on");
+      pendingRef2 = entityDetailsSpanEl;
+      append11.append(entityDetailsSpanEl);
+    } else if (isCoverEntity) {
+      const entityDetailsSpanEl2 = document.createElement("span");
+      const physicalCoverStateValue = physicalCoverState(appliedScaleY?.state, motorReversed);
+      const currentCoverPosition = Number(friendly_name[tilt ? "current_tilt_position" : "current_position"]);
+      const coverStateLabels = {
         open: "已打开",
         closed: "已关闭",
         opening: "正在打开",
         closing: "正在关闭"
       };
-      textContent11.textContent = airer ? coverLiftStateLabel(value98) || value98 || "状态未知" : dream ? dreamCurtainStatusText(appliedScaleY?.state, value99, motorReversed) : value100[value98] || value98 || "状态未知";
-      textContent11.classList.toggle("is-on", value98 === "open" || value98 === "opening");
-      textContent23 = textContent11;
-      append11.append(textContent11);
-    } else if (value180 || value178) {
-      const textContent3 = document.createElement("span");
-      const value81 = value184(appliedScaleY?.state);
-      textContent3.textContent = momentary ? ["unknown", "unavailable"].includes(appliedScaleY?.state) ? "当前不可用" : "按下执行" : deviceType === "water-heater" ? waterHeaterStatusLabel(appliedScaleY) : ["unknown", "unavailable"].includes(appliedScaleY?.state) ? "当前不可用" : value81 ? "已开启" : "已关闭";
-      textContent3.classList.toggle("is-on", value81);
-      if (value180) {
-        textContent24 = textContent3;
+      entityDetailsSpanEl2.textContent = airer ? coverLiftStateLabel(physicalCoverStateValue) || physicalCoverStateValue || "状态未知" : dream ? dreamCurtainStatusText(appliedScaleY?.state, currentCoverPosition, motorReversed) : coverStateLabels[physicalCoverStateValue] || physicalCoverStateValue || "状态未知";
+      entityDetailsSpanEl2.classList.toggle("is-on", physicalCoverStateValue === "open" || physicalCoverStateValue === "opening");
+      pendingRef3 = entityDetailsSpanEl2;
+      append11.append(entityDetailsSpanEl2);
+    } else if (isClimateEntity || isSwitchEntity) {
+      const entityDetailsSpanEl3 = document.createElement("span");
+      const isEntityActive = entityIsActive(appliedScaleY?.state);
+      entityDetailsSpanEl3.textContent = momentary ? ["unknown", "unavailable"].includes(appliedScaleY?.state) ? "当前不可用" : "按下执行" : deviceType === "water-heater" ? waterHeaterStatusLabel(appliedScaleY) : ["unknown", "unavailable"].includes(appliedScaleY?.state) ? "当前不可用" : isEntityActive ? "已开启" : "已关闭";
+      entityDetailsSpanEl3.classList.toggle("is-on", isEntityActive);
+      if (isClimateEntity) {
+        pendingRef4 = entityDetailsSpanEl3;
       } else {
-        textContent25 = textContent3;
+        pendingRef5 = entityDetailsSpanEl3;
       }
-      append11.append(textContent3);
+      append11.append(entityDetailsSpanEl3);
     } else if (type8.type === "line-chart") {
-      const textContent = document.createElement("span");
-      textContent.textContent = appliedScaleY?.state == null || ["unknown", "unavailable"].includes(appliedScaleY.state) ? "暂无数据" : "实时数据";
-      textContent26 = textContent;
-      append11.append(textContent);
+      const statusTextEl = document.createElement("span");
+      statusTextEl.textContent = appliedScaleY?.state == null || ["unknown", "unavailable"].includes(appliedScaleY.state) ? "暂无数据" : "实时数据";
+      pendingRef6 = statusTextEl;
+      append11.append(statusTextEl);
     }
-    const type9 = document.createElement("button");
-    type9.type = "button";
-    type9.setAttribute("aria-label", "关闭实体详情");
-    type9.textContent = "×";
-    className45.append(append11, type9);
+    const entityDetailsButtonEl = document.createElement("button");
+    entityDetailsButtonEl.type = "button";
+    entityDetailsButtonEl.setAttribute("aria-label", "关闭实体详情");
+    entityDetailsButtonEl.textContent = "×";
+    entityDetailsHeadingEl.append(append11, entityDetailsButtonEl);
     let attributes6 = appliedScaleY;
     let syncClimateState = null;
-    let value186 = null;
+    let coverDetailsControls = null;
     let setAttribute2 = null;
-    let value187 = null;
-    let classList4 = null;
-    let value188 = null;
-    let value189 = null;
-    let value190 = 0;
-    const positionCalibration = airerPositionCalibration(this.entityMetadata, this.deviceMetadata, clientHeight);
-    let value191 = false;
-    let classList5 = null;
-    let value192 = null;
-    let value193 = null;
-    let value194 = null;
-    let value195 = null;
-    let value196 = false;
-    let value197 = null;
-    let value198 = "idle";
-    let value199 = "";
+    let lightDetailsControls = null;
+    let pendingRef7 = null;
+    let climateDetailsControls = null;
+    let switchDetailsControls = null;
+    let detailsSyncToken = 0;
+    const positionCalibration = airerPositionCalibration(this.entityMetadata, this.deviceMetadata, detailsBoundEntityIdText);
+    let detailsDisposed = false;
+    let pendingRef8 = null;
+    let pendingCoverPosition = null;
+    let pendingCoverState = null;
+    let pendingLightBrightness = null;
+    let pendingLightColorTemp = null;
+    let lightInteractionActive = false;
+    let climateTargetTemperature = null;
+    let coverInteractionPhase = "idle";
+    let statusMessageText = "";
     let toggleBathLight = null;
     let stateHandlers2 = null;
-    let value200 = new Set();
-    const value201 = selectedRelatedEntityIds(type8);
-    const value202 = new Set(value201 || []);
-    if (value179) {
+    let subscribedEntityIds = new Set();
+    const relatedEntityIds2 = selectedRelatedEntityIds(type8);
+    const relatedEntityIdSet = new Set(relatedEntityIds2 || []);
+    if (isLightControl) {
       setAttribute2 = document.createElement("button");
       setAttribute2.type = "button";
       setAttribute2.className = "hb-light-visual";
       setAttribute2.inert = preview;
       setAttribute2.setAttribute("aria-disabled", String(preview));
-      const className18 = document.createElement("div");
-      className18.className = "hb-light-visual-aura";
-      const className19 = document.createElement("div");
-      className19.className = "hb-light-visual-lamp";
-      for (const value101 of ["cord", "shade", "bulb", "filament"]) {
-        const className6 = document.createElement("i");
-        className6.className = "hb-light-visual-" + value101;
-        className6.setAttribute("aria-hidden", "true");
-        className19.append(className6);
+      const lightVisualAuraEl = document.createElement("div");
+      lightVisualAuraEl.className = "hb-light-visual-aura";
+      const lightVisualLampEl = document.createElement("div");
+      lightVisualLampEl.className = "hb-light-visual-lamp";
+      for (const localValue of ["cord", "shade", "bulb", "filament"]) {
+        const lightVisualEl = document.createElement("i");
+        lightVisualEl.className = "hb-light-visual-" + localValue;
+        lightVisualEl.setAttribute("aria-hidden", "true");
+        lightVisualLampEl.append(lightVisualEl);
       }
-      const textContent13 = document.createElement("span");
-      textContent13.className = "hb-light-visual-status";
-      setAttribute2.append(className18, className19, textContent13);
-      const value114 = Number(friendly_name.min_color_temp_kelvin) || (Number.isFinite(Number(friendly_name.max_mireds)) ? 1000000 / Number(friendly_name.max_mireds) : 2000);
-      const value115 = Number(friendly_name.max_color_temp_kelvin) || (Number.isFinite(Number(friendly_name.min_mireds)) ? 1000000 / Number(friendly_name.min_mireds) : 6500);
-      const value116 = Number(friendly_name.color_temp_kelvin) || (Number.isFinite(Number(friendly_name.color_temp)) ? 1000000 / Number(friendly_name.color_temp) : NaN);
-      const colorTemperatureKelvin = Number.isFinite(value116) ? value116 : (value114 + value115) / 2;
-      const value117 = lightSupportsColor(friendly_name);
+      const lightVisualStatusEl = document.createElement("span");
+      lightVisualStatusEl.className = "hb-light-visual-status";
+      setAttribute2.append(lightVisualAuraEl, lightVisualLampEl, lightVisualStatusEl);
+      const minColorTempKelvin = Number(friendly_name.min_color_temp_kelvin) || (Number.isFinite(Number(friendly_name.max_mireds)) ? 1000000 / Number(friendly_name.max_mireds) : 2000);
+      const maxColorTempKelvin = Number(friendly_name.max_color_temp_kelvin) || (Number.isFinite(Number(friendly_name.min_mireds)) ? 1000000 / Number(friendly_name.min_mireds) : 6500);
+      const colorTempKelvin = Number(friendly_name.color_temp_kelvin) || (Number.isFinite(Number(friendly_name.color_temp)) ? 1000000 / Number(friendly_name.color_temp) : NaN);
+      const colorTemperatureKelvin = Number.isFinite(colorTempKelvin) ? colorTempKelvin : (minColorTempKelvin + maxColorTempKelvin) / 2;
+      const supportsColor = lightSupportsColor(friendly_name);
       const isOn3 = {
         isOn: appliedScaleY?.state === "on",
         brightnessPercent: Number.isFinite(Number(friendly_name.brightness)) ? Number(friendly_name.brightness) / 255 * 100 : 100,
         colorTemperatureKelvin,
-        colorRgb: value117 && Array.isArray(friendly_name.rgb_color) ? friendly_name.rgb_color.slice(0, 3).map(arg17 => Number(arg17) || 0) : value117 && Array.isArray(friendly_name.hs_color) ? hsToRgbColor(friendly_name.hs_color) : null
+        colorRgb: supportsColor && Array.isArray(friendly_name.rgb_color) ? friendly_name.rgb_color.slice(0, 3).map(item => Number(item) || 0) : supportsColor && Array.isArray(friendly_name.hs_color) ? hsToRgbColor(friendly_name.hs_color) : null
       };
-      const value118 = () => {
-        const value56 = Math.max(1, Math.min(100, Number(isOn3.brightnessPercent) || 1));
-        const value57 = Math.max(2000, Math.min(6500, Number(isOn3.colorTemperatureKelvin) || 3000));
-        const value58 = (value57 - 2000) / 4500;
+      const applyLightVisual = () => {
+        const brightnessPercent = Math.max(1, Math.min(100, Number(isOn3.brightnessPercent) || 1));
+        const visualColorTempKelvin = Math.max(2000, Math.min(6500, Number(isOn3.colorTemperatureKelvin) || 3000));
+        const colorTempT = (visualColorTempKelvin - 2000) / 4500;
         const map2 = [255, 132, 42];
-        const value59 = [172, 225, 255];
-        const value60 = "rgb(" + (isOn3.colorRgb || map2.map((arg2, arg3) => Math.round(arg2 + (value59[arg3] - arg2) * value58))).join(",") + ")";
+        const coolRgb = [172, 225, 255];
+        const mixedRgbCss = "rgb(" + (isOn3.colorRgb || map2.map((item, second) => Math.round(item + (coolRgb[second] - item) * colorTempT))).join(",") + ")";
         setAttribute2.classList.toggle("is-on", isOn3.isOn);
-        setAttribute2.style.setProperty("--hb-light-visual-color", value60);
-        setAttribute2.style.setProperty("--hb-light-visual-opacity", isOn3.isOn ? String(0.08 + value56 / 100 * 0.92) : "0");
-        setAttribute2.style.setProperty("--hb-light-visual-blur", Math.round(15 + value56 * 1.14) + "px");
-        setAttribute2.style.setProperty("--hb-light-visual-scale", String(0.62 + value56 / 100 * 1.05));
-        textContent13.textContent = isOn3.isOn ? Math.round(value56) + "%  ·  " + Math.round(value57) + "K" : "灯光已关闭";
-        setAttribute2.setAttribute("aria-label", textContent13.textContent);
+        setAttribute2.style.setProperty("--hb-light-visual-color", mixedRgbCss);
+        setAttribute2.style.setProperty("--hb-light-visual-opacity", isOn3.isOn ? String(0.08 + brightnessPercent / 100 * 0.92) : "0");
+        setAttribute2.style.setProperty("--hb-light-visual-blur", Math.round(15 + brightnessPercent * 1.14) + "px");
+        setAttribute2.style.setProperty("--hb-light-visual-scale", String(0.62 + brightnessPercent / 100 * 1.05));
+        lightVisualStatusEl.textContent = isOn3.isOn ? Math.round(brightnessPercent) + "%  ·  " + Math.round(visualColorTempKelvin) + "K" : "灯光已关闭";
+        setAttribute2.setAttribute("aria-label", lightVisualStatusEl.textContent);
       };
-      value187 = (isOn = {}) => {
+      lightDetailsControls = (isOn = {}) => {
         const brightness = isOn.attributes || {};
         if (typeof isOn.isOn == "boolean") {
           isOn3.isOn = isOn.isOn;
@@ -11325,223 +11325,223 @@ export class PanelRenderer {
         } else if (Number.isFinite(Number(brightness.color_temp))) {
           isOn3.colorTemperatureKelvin = 1000000 / Number(brightness.color_temp);
         }
-        if (value117 && Array.isArray(isOn.colorRgb)) {
-          isOn3.colorRgb = isOn.colorRgb.slice(0, 3).map(arg9 => Number(arg9) || 0);
-        } else if (value117 && Array.isArray(brightness.rgb_color)) {
-          isOn3.colorRgb = brightness.rgb_color.slice(0, 3).map(arg7 => Number(arg7) || 0);
-        } else if (value117 && Array.isArray(brightness.hs_color)) {
+        if (supportsColor && Array.isArray(isOn.colorRgb)) {
+          isOn3.colorRgb = isOn.colorRgb.slice(0, 3).map(item => Number(item) || 0);
+        } else if (supportsColor && Array.isArray(brightness.rgb_color)) {
+          isOn3.colorRgb = brightness.rgb_color.slice(0, 3).map(item => Number(item) || 0);
+        } else if (supportsColor && Array.isArray(brightness.hs_color)) {
           isOn3.colorRgb = hsToRgbColor(brightness.hs_color);
         }
-        value118();
+        applyLightVisual();
       };
-      value118();
+      applyLightVisual();
     }
-    if (value165) {
-      classList4 = document.createElement("button");
-      classList4.type = "button";
-      classList4.className = "hb-cover-visual";
-      classList4.inert = preview;
-      classList4.setAttribute("aria-disabled", String(preview));
-      const className20 = document.createElement("i");
-      className20.className = "hb-cover-visual-rail";
-      const className21 = document.createElement("i");
-      className21.className = "hb-cover-visual-panel left";
-      const className22 = document.createElement("i");
-      className22.className = "hb-cover-visual-panel right";
-      const className23 = document.createElement("span");
-      className23.className = "hb-cover-visual-slats";
-      const value119 = 13;
-      for (let value102 = 0; value102 < value119; value102 += 1) {
-        const style = document.createElement("span");
-        style.className = "hb-cover-visual-slat";
-        const value82 = document.createElement("i");
-        style.style.setProperty("--hb-cover-slat-index", String(value102));
-        const value83 = value177 === "right" ? value119 - 1 - value102 : value177 === "split" ? Math.abs((value119 - 1) / 2 - value102) : value102;
-        style.style.setProperty("--hb-cover-slat-delay-index", String(value83));
-        const value84 = value177 === "left" ? -value102 * 14.5 : value177 === "right" ? (value119 - 1 - value102) * 14.5 : value102 <= (value119 - 1) / 2 ? -value102 * 14.5 : (value119 - 1 - value102) * 14.5;
-        style.style.setProperty("--hb-cover-retracted-shift", value84 + "px");
-        style.append(value82);
-        className23.append(style);
+    if (isCoverEntity) {
+      pendingRef7 = document.createElement("button");
+      pendingRef7.type = "button";
+      pendingRef7.className = "hb-cover-visual";
+      pendingRef7.inert = preview;
+      pendingRef7.setAttribute("aria-disabled", String(preview));
+      const coverVisualRailEl = document.createElement("i");
+      coverVisualRailEl.className = "hb-cover-visual-rail";
+      const coverVisualPanelEl = document.createElement("i");
+      coverVisualPanelEl.className = "hb-cover-visual-panel left";
+      const coverVisualPanelEl2 = document.createElement("i");
+      coverVisualPanelEl2.className = "hb-cover-visual-panel right";
+      const coverVisualSlatsEl = document.createElement("span");
+      coverVisualSlatsEl.className = "hb-cover-visual-slats";
+      const bladeCount = 13;
+      for (let bladeIndex = 0; bladeIndex < bladeCount; bladeIndex += 1) {
+        const coverVisualSlatEl = document.createElement("span");
+        coverVisualSlatEl.className = "hb-cover-visual-slat";
+        const bladeEl = document.createElement("i");
+        coverVisualSlatEl.style.setProperty("--hb-cover-slat-index", String(bladeIndex));
+        const bladeDepth = coverDirection === "right" ? bladeCount - 1 - bladeIndex : coverDirection === "split" ? Math.abs((bladeCount - 1) / 2 - bladeIndex) : bladeIndex;
+        coverVisualSlatEl.style.setProperty("--hb-cover-slat-delay-index", String(bladeDepth));
+        const bladeOffsetX = coverDirection === "left" ? -bladeIndex * 14.5 : coverDirection === "right" ? (bladeCount - 1 - bladeIndex) * 14.5 : bladeIndex <= (bladeCount - 1) / 2 ? -bladeIndex * 14.5 : (bladeCount - 1 - bladeIndex) * 14.5;
+        coverVisualSlatEl.style.setProperty("--hb-cover-retracted-shift", bladeOffsetX + "px");
+        coverVisualSlatEl.append(bladeEl);
+        coverVisualSlatsEl.append(coverVisualSlatEl);
       }
-      const className24 = document.createElement("i");
-      className24.className = "hb-cover-visual-window";
-      classList4.classList.toggle("is-dream", dream);
-      classList4.classList.toggle("is-airer", airer);
-      classList4.classList.add("direction-" + value177);
-      classList4.append(className24, className20, className21, className22, className23);
+      const coverVisualWindowEl = document.createElement("i");
+      coverVisualWindowEl.className = "hb-cover-visual-window";
+      pendingRef7.classList.toggle("is-dream", dream);
+      pendingRef7.classList.toggle("is-airer", airer);
+      pendingRef7.classList.add("direction-" + coverDirection);
+      pendingRef7.append(coverVisualWindowEl, coverVisualRailEl, coverVisualPanelEl, coverVisualPanelEl2, coverVisualSlatsEl);
       if (airer) {
-        appendAirerVisual(classList4);
+        appendAirerVisual(pendingRef7);
       }
-      value189 = (arg48 = state10) => {
+      switchDetailsControls = (lightState = state10) => {
         if (!airer) {
           return;
         }
-        state10 = arg48 || state10;
-        const value61 = !value171 || ["unknown", "unavailable"].includes(String(state10?.state || "unknown"));
-        const value62 = state10?.state === "on";
-        classList4.classList.toggle("is-light-on", value62 && !value61);
-        classList4.classList.toggle("is-light-unavailable", value61);
-        classList4.disabled = preview || value61;
-        classList4.setAttribute("aria-pressed", String(value62 && !value61));
-        classList4.setAttribute("aria-label", value61 ? "晾衣机灯光实体不可用" : "晾衣机灯光" + (value62 ? "已开启，点击关闭" : "已关闭，点击开启"));
+        state10 = lightState || state10;
+        const isAirerLightUnavailable = !airerLightEntityId || ["unknown", "unavailable"].includes(String(state10?.state || "unknown"));
+        const isAirerLightOn = state10?.state === "on";
+        pendingRef7.classList.toggle("is-light-on", isAirerLightOn && !isAirerLightUnavailable);
+        pendingRef7.classList.toggle("is-light-unavailable", isAirerLightUnavailable);
+        pendingRef7.disabled = preview || isAirerLightUnavailable;
+        pendingRef7.setAttribute("aria-pressed", String(isAirerLightOn && !isAirerLightUnavailable));
+        pendingRef7.setAttribute("aria-label", isAirerLightUnavailable ? "晾衣机灯光实体不可用" : "晾衣机灯光" + (isAirerLightOn ? "已开启，点击关闭" : "已关闭，点击开启"));
       };
-      value189();
-      value188 = ({
-        position: arg49 = 0,
+      switchDetailsControls();
+      climateDetailsControls = ({
+        position: options = 0,
         state: state5 = ""
       } = {}) => {
-        const current_position = Math.max(0, Math.min(100, Number(arg49) || 0));
-        const value63 = coverPresentationState({
+        const current_position = Math.max(0, Math.min(100, Number(options) || 0));
+        const coverPresentation = coverPresentationState({
           state: state5,
           attributes: {
             current_position
           }
         }, motorReversed);
-        const value64 = physicalCoverState(state5 || value185, motorReversed);
-        const value65 = value64 === "open" || value64 === "opening";
-        value190 = current_position;
-        classList4.style.setProperty("--hb-cover-open-position", current_position + "%");
-        classList4.style.setProperty("--hb-airer-drop", airerVisualDrop(current_position) + "px");
-        classList4.style.setProperty("--hb-cover-panel-width", 45.9 - current_position * 0.331 + "%");
-        classList4.style.setProperty("--hb-cover-single-panel-width", 91.8 - current_position * 0.79 + "%");
-        classList4.style.setProperty("--hb-cover-slat-angle", current_position * 1.8 + "deg");
-        classList4.classList.toggle("is-tilt-reversed", current_position > 50);
-        classList4.classList.toggle("is-tilt-center", Math.abs(current_position - 50) <= 2);
-        classList4.classList.toggle("is-open", dream ? value65 : value63 === "open" || value63 === "opening");
-        classList4.classList.toggle("is-moving", state5 === "opening" || state5 === "closing");
-        classList4.setAttribute("aria-pressed", String(dream ? value65 : value63 === "open" || value63 === "opening"));
+        const resolvedPhysicalCoverState = physicalCoverState(state5 || rawEntityState, motorReversed);
+        const isCoverOpenOrOpening = resolvedPhysicalCoverState === "open" || resolvedPhysicalCoverState === "opening";
+        detailsSyncToken = current_position;
+        pendingRef7.style.setProperty("--hb-cover-open-position", current_position + "%");
+        pendingRef7.style.setProperty("--hb-airer-drop", airerVisualDrop(current_position) + "px");
+        pendingRef7.style.setProperty("--hb-cover-panel-width", 45.9 - current_position * 0.331 + "%");
+        pendingRef7.style.setProperty("--hb-cover-single-panel-width", 91.8 - current_position * 0.79 + "%");
+        pendingRef7.style.setProperty("--hb-cover-slat-angle", current_position * 1.8 + "deg");
+        pendingRef7.classList.toggle("is-tilt-reversed", current_position > 50);
+        pendingRef7.classList.toggle("is-tilt-center", Math.abs(current_position - 50) <= 2);
+        pendingRef7.classList.toggle("is-open", dream ? isCoverOpenOrOpening : coverPresentation === "open" || coverPresentation === "opening");
+        pendingRef7.classList.toggle("is-moving", state5 === "opening" || state5 === "closing");
+        pendingRef7.setAttribute("aria-pressed", String(dream ? isCoverOpenOrOpening : coverPresentation === "open" || coverPresentation === "opening"));
         if (!airer) {
-          classList4.setAttribute("aria-label", dream ? "" + componentDialogTitle(type8, "梦幻帘") + dreamCurtainStatusText(state5 || value185, current_position, motorReversed) : "" + componentDialogTitle(type8, "窗帘") + (value63 === "open" || value63 === "opening" ? "已打开，点击关闭" : "已关闭，点击打开"));
+          pendingRef7.setAttribute("aria-label", dream ? "" + componentDialogTitle(type8, "梦幻帘") + dreamCurtainStatusText(state5 || rawEntityState, current_position, motorReversed) : "" + componentDialogTitle(type8, "窗帘") + (coverPresentation === "open" || coverPresentation === "opening" ? "已打开，点击关闭" : "已关闭，点击打开"));
         }
       };
-      value188({
+      climateDetailsControls({
         position: Number.isFinite(Number(friendly_name[tilt ? "current_tilt_position" : "current_position"])) ? Number(friendly_name[tilt ? "current_tilt_position" : "current_position"]) : appliedScaleY?.state === "open" ? 100 : 0,
         state: appliedScaleY?.state
       });
-      classList4.addEventListener("click", async () => {
-        if (preview || value191) {
+      pendingRef7.addEventListener("click", async () => {
+        if (preview || detailsDisposed) {
           return;
         }
-        value191 = true;
-        classList4.setAttribute("aria-busy", "true");
+        detailsDisposed = true;
+        pendingRef7.setAttribute("aria-busy", "true");
         if (airer) {
-          const value15 = state10;
-          value189({
+          const airerLightState = state10;
+          switchDetailsControls({
             ...(state10 || {}),
             state: state10?.state === "on" ? "off" : "on"
           });
           try {
-            await this.callEntityService("homeassistant", "toggle", value171);
-          } catch (value4) {
-            value189(value15);
-            this.options.onError?.(value4);
+            await this.callEntityService("homeassistant", "toggle", airerLightEntityId);
+          } catch (socketPayload) {
+            switchDetailsControls(airerLightState);
+            this.options.onError?.(socketPayload);
           } finally {
-            value191 = false;
-            classList4.removeAttribute("aria-busy");
+            detailsDisposed = false;
+            pendingRef7.removeAttribute("aria-busy");
           }
           return;
         }
-        const position2 = value190;
-        const value66 = syncClimateState?.isDreamCurtainRetracted?.() ?? classList4.dataset.curtainRetracted === "true";
-        const value67 = position2 > COVER_CLOSED_POSITION_EPSILON;
+        const position2 = detailsSyncToken;
+        const isDreamRetracted = syncClimateState?.isDreamCurtainRetracted?.() ?? pendingRef7.dataset.curtainRetracted === "true";
+        const isCoverOpenPosition = position2 > COVER_CLOSED_POSITION_EPSILON;
         if (dream) {
-          syncClimateState?.beginDreamCurtainMotion?.(!value66);
+          syncClimateState?.beginDreamCurtainMotion?.(!isDreamRetracted);
         }
         if (!dream) {
-          syncClimateState?.beginCoverMotion?.(value67 ? 0 : 100, value67 ? "closing" : "opening");
+          syncClimateState?.beginCoverMotion?.(isCoverOpenPosition ? 0 : 100, isCoverOpenPosition ? "closing" : "opening");
         }
         try {
-          await this.callEntityService("cover", dream ? dreamCurtainToggleService(value66, value176, value175) : value67 ? value175 : value176, clientHeight);
-        } catch (value16) {
+          await this.callEntityService("cover", dream ? dreamCurtainToggleService(isDreamRetracted, closeCoverService, openCoverService) : isCoverOpenPosition ? openCoverService : closeCoverService, detailsBoundEntityIdText);
+        } catch (presenceBucket) {
           if (dream) {
             syncClimateState?.cancelDreamCurtainMotion?.();
-            syncClimateState?.setDreamCurtainRetracted?.(value66, false);
+            syncClimateState?.setDreamCurtainRetracted?.(isDreamRetracted, false);
           } else {
             syncClimateState?.cancelCoverMotion?.();
           }
           syncClimateState?.syncCoverState?.(appliedScaleY);
-          value188({
+          climateDetailsControls({
             position: position2,
             state: appliedScaleY?.state
           });
-          this.options.onError?.(value16);
+          this.options.onError?.(presenceBucket);
         } finally {
-          value191 = false;
-          classList4.removeAttribute("aria-busy");
+          detailsDisposed = false;
+          pendingRef7.removeAttribute("aria-busy");
         }
       });
     }
-    if (value180) {
-      const value120 = {
-        entityId: clientHeight,
+    if (isClimateEntity) {
+      const relatedPopupOptions = {
+        entityId: detailsBoundEntityIdText,
         entityMetadata: this.entityMetadata,
         entityTranslations: this.entityTranslations
       };
-      classList5 = document.createElement("button");
-      classList5.type = "button";
-      classList5.className = "hb-climate-visual";
-      classList5.classList.toggle("is-bath-heater", deviceType === "bath-heater");
-      classList5.classList.toggle("is-water-heater", deviceType === "water-heater");
-      classList5.inert = preview;
-      classList5.setAttribute("aria-disabled", String(preview));
-      const className25 = document.createElement("div");
-      className25.className = "hb-climate-visual-unit";
-      const className26 = document.createElement("span");
-      className26.className = "hb-climate-visual-brand";
-      className26.textContent = deviceType === "bath-heater" ? "BATH HEATER" : deviceType === "water-heater" ? "SMART WATER" : "SMART AIR";
-      const className27 = document.createElement("strong");
-      className27.className = "hb-climate-visual-display";
-      const className28 = document.createElement("div");
-      className28.className = "hb-climate-visual-vent";
-      for (let value103 = 0; value103 < 5; value103 += 1) {
-        className28.append(document.createElement("i"));
+      pendingRef8 = document.createElement("button");
+      pendingRef8.type = "button";
+      pendingRef8.className = "hb-climate-visual";
+      pendingRef8.classList.toggle("is-bath-heater", deviceType === "bath-heater");
+      pendingRef8.classList.toggle("is-water-heater", deviceType === "water-heater");
+      pendingRef8.inert = preview;
+      pendingRef8.setAttribute("aria-disabled", String(preview));
+      const climateVisualUnitEl = document.createElement("div");
+      climateVisualUnitEl.className = "hb-climate-visual-unit";
+      const climateVisualBrandEl = document.createElement("span");
+      climateVisualBrandEl.className = "hb-climate-visual-brand";
+      climateVisualBrandEl.textContent = deviceType === "bath-heater" ? "BATH HEATER" : deviceType === "water-heater" ? "SMART WATER" : "SMART AIR";
+      const climateVisualDisplayEl = document.createElement("strong");
+      climateVisualDisplayEl.className = "hb-climate-visual-display";
+      const climateVisualVentEl = document.createElement("div");
+      climateVisualVentEl.className = "hb-climate-visual-vent";
+      for (let dragStartX = 0; dragStartX < 5; dragStartX += 1) {
+        climateVisualVentEl.append(document.createElement("i"));
       }
-      className25.append(className26, className27, className28);
-      const className29 = document.createElement("div");
-      className29.className = "hb-climate-visual-airflow";
-      for (let value104 = 0; value104 < 3; value104 += 1) {
-        className29.append(document.createElement("i"));
+      climateVisualUnitEl.append(climateVisualBrandEl, climateVisualDisplayEl, climateVisualVentEl);
+      const climateVisualAirflowEl = document.createElement("div");
+      climateVisualAirflowEl.className = "hb-climate-visual-airflow";
+      for (let dragStartY = 0; dragStartY < 3; dragStartY += 1) {
+        climateVisualAirflowEl.append(document.createElement("i"));
       }
-      classList5.append(className25, className29);
-      value192 = ({
-        mode: arg51 = "off",
+      pendingRef8.append(climateVisualUnitEl, climateVisualAirflowEl);
+      pendingCoverPosition = ({
+        mode: options = "off",
         visualMode: visualMode2 = "off",
-        running: arg52 = false,
-        accentColor: arg53 = "#65717a",
-        targetTemperature: arg50
+        running: options2 = false,
+        accentColor: options3 = "#65717a",
+        targetTemperature: temperature
       } = {}) => {
-        const value68 = visualMode2 !== "off";
-        classList5.classList.toggle("is-on", value68);
-        classList5.classList.toggle("is-running", arg52);
-        classList5.classList.toggle("is-airflow-mode", deviceType === "bath-heater" && value68 && bathHeaterModeUsesAirflow(arg51));
-        classList5.dataset.visualMode = visualMode2;
-        classList5.style.setProperty("--hb-climate-visual-accent", arg53);
-        const value69 = arg50 != null && arg50 !== "" && Number.isFinite(Number(arg50));
-        className27.textContent = value68 ? value69 ? Number(arg50) + "°" : climateModeLabel(arg51, deviceType, value120) : "OFF";
+        const isClimateModeOn = visualMode2 !== "off";
+        pendingRef8.classList.toggle("is-on", isClimateModeOn);
+        pendingRef8.classList.toggle("is-running", options2);
+        pendingRef8.classList.toggle("is-airflow-mode", deviceType === "bath-heater" && isClimateModeOn && bathHeaterModeUsesAirflow(options));
+        pendingRef8.dataset.visualMode = visualMode2;
+        pendingRef8.style.setProperty("--hb-climate-visual-accent", options3);
+        const hasFiniteTemperature = temperature != null && temperature !== "" && Number.isFinite(Number(temperature));
+        climateVisualDisplayEl.textContent = isClimateModeOn ? hasFiniteTemperature ? Number(temperature) + "°" : climateModeLabel(options, deviceType, relatedPopupOptions) : "OFF";
       };
     }
-    if (value178) {
+    if (isSwitchEntity) {
       const visual = buildSwitchVisual({
         label,
         interactive: !preview,
         momentary,
-        onToggle: () => value195?.()
+        onToggle: () => pendingLightColorTemp?.()
       });
-      value193 = visual.visual;
-      value194 = visual.sync;
-      value194(value184(appliedScaleY?.state), {
+      pendingCoverState = visual.visual;
+      pendingLightBrightness = visual.sync;
+      pendingLightBrightness(entityIsActive(appliedScaleY?.state), {
         unavailable: ["unknown", "unavailable"].includes(appliedScaleY?.state)
       });
     }
-    const classList6 = document.createElement(value183 ? "button" : "div");
-    classList6.className = "hb-entity-details-state";
-    if (value183) {
-      classList6.type = "button";
+    const entityDetailsStateEl = document.createElement(usesRichDetailsChrome ? "button" : "div");
+    entityDetailsStateEl.className = "hb-entity-details-state";
+    if (usesRichDetailsChrome) {
+      entityDetailsStateEl.type = "button";
     }
-    const textContent27 = document.createElement("span");
-    textContent27.textContent = value183 ? "⏻" : "当前状态";
-    const textContent28 = document.createElement("strong");
-    const value203 = {
+    const entityDetailsSpanEl4 = document.createElement("span");
+    entityDetailsSpanEl4.textContent = usesRichDetailsChrome ? "⏻" : "当前状态";
+    const entityDetailsStrongEl2 = document.createElement("strong");
+    const hvacModeLabels = {
       off: "关闭",
       auto: "自动",
       cool: "制冷",
@@ -11550,129 +11550,129 @@ export class PanelRenderer {
       fan_only: "送风",
       heat_cool: "冷暖自动"
     };
-    textContent28.textContent = value183 ? appliedScaleY?.state ? value184(appliedScaleY.state) ? "已开启" : "已关闭" : "状态未知" : scale === "climate" ? value203[appliedScaleY?.state] || appliedScaleY?.state || "暂无状态" : appliedScaleY?.state ?? "暂无状态";
-    classList6.classList.toggle("hb-light-details-power", value179);
-    classList6.classList.toggle("hb-climate-details-power", value180);
-    classList6.classList.toggle("hb-switch-details-power", value178);
-    classList6.classList.toggle("is-on", value183 && value184(appliedScaleY?.state));
-    classList6.append(textContent27, textContent28);
-    if (value183) {
-      classList6.inert = preview;
-      classList6.setAttribute("aria-disabled", String(preview));
-      value186 = (isOn2, {
+    entityDetailsStrongEl2.textContent = usesRichDetailsChrome ? appliedScaleY?.state ? entityIsActive(appliedScaleY.state) ? "已开启" : "已关闭" : "状态未知" : scale === "climate" ? hvacModeLabels[appliedScaleY?.state] || appliedScaleY?.state || "暂无状态" : appliedScaleY?.state ?? "暂无状态";
+    entityDetailsStateEl.classList.toggle("hb-light-details-power", isLightControl);
+    entityDetailsStateEl.classList.toggle("hb-climate-details-power", isClimateEntity);
+    entityDetailsStateEl.classList.toggle("hb-switch-details-power", isSwitchEntity);
+    entityDetailsStateEl.classList.toggle("is-on", usesRichDetailsChrome && entityIsActive(appliedScaleY?.state));
+    entityDetailsStateEl.append(entityDetailsSpanEl4, entityDetailsStrongEl2);
+    if (usesRichDetailsChrome) {
+      entityDetailsStateEl.inert = preview;
+      entityDetailsStateEl.setAttribute("aria-disabled", String(preview));
+      coverDetailsControls = (isOn2, {
         unavailable = false,
-        syncClimate: arg54 = true
+        syncClimate: options = true
       } = {}) => {
-        classList6.classList.toggle("is-on", isOn2);
-        classList6.classList.toggle("is-unavailable", unavailable);
-        classList6.setAttribute("aria-pressed", String(isOn2));
-        classList6.disabled = unavailable || preview;
-        textContent28.textContent = unavailable ? "当前不可用" : momentary ? value198 === "success" ? "执行成功" : value196 ? "执行中" : "等待执行" : isOn2 ? "已开启" : "已关闭";
-        classList6.setAttribute("aria-label", unavailable ? (value179 ? componentDialogTitle(type8, "灯光") : value180 ? value182 : label) + "当前不可用" : momentary ? "" + label + (value198 === "success" ? "执行成功" : value196 ? "正在执行" : "，点击执行") : "" + componentDialogTitle(type8, value179 ? "灯光" : value180 ? value181 : "开关") + (isOn2 ? "已开启，点击关闭" : "已关闭，点击开启"));
-        if (value179) {
-          value187?.({
+        entityDetailsStateEl.classList.toggle("is-on", isOn2);
+        entityDetailsStateEl.classList.toggle("is-unavailable", unavailable);
+        entityDetailsStateEl.setAttribute("aria-pressed", String(isOn2));
+        entityDetailsStateEl.disabled = unavailable || preview;
+        entityDetailsStrongEl2.textContent = unavailable ? "当前不可用" : momentary ? coverInteractionPhase === "success" ? "执行成功" : lightInteractionActive ? "执行中" : "等待执行" : isOn2 ? "已开启" : "已关闭";
+        entityDetailsStateEl.setAttribute("aria-label", unavailable ? (isLightControl ? componentDialogTitle(type8, "灯光") : isClimateEntity ? detailsDialogTitle : label) + "当前不可用" : momentary ? "" + label + (coverInteractionPhase === "success" ? "执行成功" : lightInteractionActive ? "正在执行" : "，点击执行") : "" + componentDialogTitle(type8, isLightControl ? "灯光" : isClimateEntity ? climateDeviceLabelText : "开关") + (isOn2 ? "已开启，点击关闭" : "已关闭，点击开启"));
+        if (isLightControl) {
+          lightDetailsControls?.({
             isOn: isOn2
           });
-          textContent22.textContent = isOn2 ? "已开启" : "已关闭";
-          textContent22.classList.toggle("is-on", isOn2);
+          pendingRef2.textContent = isOn2 ? "已开启" : "已关闭";
+          pendingRef2.classList.toggle("is-on", isOn2);
           setAttribute2.setAttribute("aria-pressed", String(isOn2));
           setAttribute2.setAttribute("aria-label", "" + componentDialogTitle(type8, "灯光") + (isOn2 ? "已开启，点击关闭" : "已关闭，点击开启"));
         }
-        if (value180 && syncClimateState?.syncClimateState && arg54) {
+        if (isClimateEntity && syncClimateState?.syncClimateState && options) {
           const operationModes = normalizeClimateCapabilities(attributes6 || appliedScaleY);
-          const value17 = deviceType === "water-heater" ? operationModes.operationModes.find(arg4 => !["off", "空"].includes(String(arg4).trim().toLowerCase())) || "普通" : operationModes.hvacModes.find(arg5 => arg5 !== "off") || (deviceType === "bath-heater" ? "heat" : "auto");
-          const value18 = syncClimateState.dataset.lastClimateMode || (appliedScaleY?.state && appliedScaleY.state !== "off" ? appliedScaleY.state : value17);
+          const preferredOperationMode = deviceType === "water-heater" ? operationModes.operationModes.find(item => !["off", "空"].includes(String(item).trim().toLowerCase())) || "普通" : operationModes.hvacModes.find(item => item !== "off") || (deviceType === "bath-heater" ? "heat" : "auto");
+          const lastClimateMode = syncClimateState.dataset.lastClimateMode || (appliedScaleY?.state && appliedScaleY.state !== "off" ? appliedScaleY.state : preferredOperationMode);
           syncClimateState.syncClimateState({
-            state: isOn2 ? deviceType === "water-heater" ? "on" : value18 : "off",
+            state: isOn2 ? deviceType === "water-heater" ? "on" : lastClimateMode : "off",
             attributes: {
               ...(attributes6?.attributes || appliedScaleY?.attributes || {}),
-              operation_mode: deviceType === "water-heater" ? isOn2 ? attributes6?.attributes?.operation_mode || value17 : "off" : undefined,
-              hvac_action: deviceType === "water-heater" ? undefined : isOn2 ? appliedScaleY?.attributes?.hvac_action || value18 : "off"
+              operation_mode: deviceType === "water-heater" ? isOn2 ? attributes6?.attributes?.operation_mode || preferredOperationMode : "off" : undefined,
+              hvac_action: deviceType === "water-heater" ? undefined : isOn2 ? appliedScaleY?.attributes?.hvac_action || lastClimateMode : "off"
             }
           });
         }
-        if (value180) {
-          textContent24.textContent = deviceType === "water-heater" ? waterHeaterStatusLabel({
+        if (isClimateEntity) {
+          pendingRef4.textContent = deviceType === "water-heater" ? waterHeaterStatusLabel({
             ...(attributes6 || appliedScaleY || {}),
             state: isOn2 ? "on" : "off"
           }) : isOn2 ? "已开启" : "已关闭";
-          textContent24.classList.toggle("is-on", isOn2);
+          pendingRef4.classList.toggle("is-on", isOn2);
           if (deviceType === "bath-heater") {
             if (!toggleBathLight) {
-              classList5.setAttribute("aria-pressed", "false");
+              pendingRef8.setAttribute("aria-pressed", "false");
             }
-            classList5.setAttribute("aria-label", value182 + "，点击切换浴霸灯");
+            pendingRef8.setAttribute("aria-label", detailsDialogTitle + "，点击切换浴霸灯");
           } else {
-            classList5.setAttribute("aria-pressed", String(isOn2));
-            classList5.setAttribute("aria-label", "" + value182 + (isOn2 ? "已开启，点击关闭" : "已关闭，点击开启"));
+            pendingRef8.setAttribute("aria-pressed", String(isOn2));
+            pendingRef8.setAttribute("aria-label", "" + detailsDialogTitle + (isOn2 ? "已开启，点击关闭" : "已关闭，点击开启"));
           }
         }
-        if (value178) {
-          value194?.(isOn2, {
-            pending: value196 && value198 !== "success",
-            success: value198 === "success",
+        if (isSwitchEntity) {
+          pendingLightBrightness?.(isOn2, {
+            pending: lightInteractionActive && coverInteractionPhase !== "success",
+            success: coverInteractionPhase === "success",
             unavailable
           });
-          textContent25.textContent = unavailable ? "当前不可用" : momentary ? value198 === "success" ? "执行成功" : value196 ? "正在执行" : "按下执行" : isOn2 ? "已开启" : "已关闭";
-          textContent25.classList.toggle("is-on", (momentary ? value196 || value198 === "success" : isOn2) && !unavailable);
+          pendingRef5.textContent = unavailable ? "当前不可用" : momentary ? coverInteractionPhase === "success" ? "执行成功" : lightInteractionActive ? "正在执行" : "按下执行" : isOn2 ? "已开启" : "已关闭";
+          pendingRef5.classList.toggle("is-on", (momentary ? lightInteractionActive || coverInteractionPhase === "success" : isOn2) && !unavailable);
         }
       };
       if (appliedScaleY?.state) {
-        value186(value184(appliedScaleY.state), {
+        coverDetailsControls(entityIsActive(appliedScaleY.state), {
           unavailable: ["unknown", "unavailable"].includes(appliedScaleY.state)
         });
       }
-      value195 = async () => {
-        if (preview || value196 || !attributes6?.state) {
+      pendingLightColorTemp = async () => {
+        if (preview || lightInteractionActive || !attributes6?.state) {
           return;
         }
-        value196 = true;
-        const setAttribute = value179 ? setAttribute2 : value180 ? classList5 : value193;
+        lightInteractionActive = true;
+        const setAttribute = isLightControl ? setAttribute2 : isClimateEntity ? pendingRef8 : pendingCoverState;
         setAttribute?.setAttribute("aria-busy", "true");
-        const value70 = classList6.classList.contains("is-on");
-        const value71 = momentary || !value70;
-        value186(value71);
+        const isSwitchOn = entityDetailsStateEl.classList.contains("is-on");
+        const nextSwitchPowerOn = momentary || !isSwitchOn;
+        coverDetailsControls(nextSwitchPowerOn);
         try {
           if (momentary) {
-            await this.callEntityService("button", "press", clientHeight);
-            value198 = "success";
-            value186(false);
-            await new Promise(arg6 => window.setTimeout(arg6, 900));
-          } else if (value180) {
-            if (!value71 && deviceType === "bath-heater") {
+            await this.callEntityService("button", "press", detailsBoundEntityIdText);
+            coverInteractionPhase = "success";
+            coverDetailsControls(false);
+            await new Promise(item => window.setTimeout(item, 900));
+          } else if (isClimateEntity) {
+            if (!nextSwitchPowerOn && deviceType === "bath-heater") {
               const preset_mode = normalizeClimateCapabilities(attributes6).presetModes.find(onPowerChange => ["idle", "standby", "待机", "关闭"].includes(String(onPowerChange).trim().toLowerCase()));
               if (preset_mode) {
-                await this.callEntityService(scale === "fan" ? "fan" : "climate", "set_preset_mode", clientHeight, {
+                await this.callEntityService(scale === "fan" ? "fan" : "climate", "set_preset_mode", detailsBoundEntityIdText, {
                   preset_mode
                 });
               }
             }
-            const domain = climatePowerCommand(clientHeight, attributes6, value71, deviceType, syncClimateState?.dataset.lastClimateMode || "");
-            await this.callEntityService(domain.domain, domain.service, clientHeight, domain.data);
+            const domain = climatePowerCommand(detailsBoundEntityIdText, attributes6, nextSwitchPowerOn, deviceType, syncClimateState?.dataset.lastClimateMode || "");
+            await this.callEntityService(domain.domain, domain.service, detailsBoundEntityIdText, domain.data);
           } else {
-            await this.callEntityService("homeassistant", "toggle", clientHeight);
+            await this.callEntityService("homeassistant", "toggle", detailsBoundEntityIdText);
           }
-        } catch (value19) {
-          value198 = "idle";
-          value186(value70);
-          this.options.onError?.(value19);
+        } catch (climateModeOption) {
+          coverInteractionPhase = "idle";
+          coverDetailsControls(isSwitchOn);
+          this.options.onError?.(climateModeOption);
         } finally {
-          value196 = false;
+          lightInteractionActive = false;
           if (momentary) {
-            value198 = "idle";
-            value186(false);
-          } else if (value178) {
-            value194?.(classList6.classList.contains("is-on"));
+            coverInteractionPhase = "idle";
+            coverDetailsControls(false);
+          } else if (isSwitchEntity) {
+            pendingLightBrightness?.(entityDetailsStateEl.classList.contains("is-on"));
           }
           setAttribute?.removeAttribute("aria-busy");
         }
       };
-      classList6.addEventListener("click", value195);
-      if (value179) {
-        setAttribute2.addEventListener("click", value195);
+      entityDetailsStateEl.addEventListener("click", pendingLightColorTemp);
+      if (isLightControl) {
+        setAttribute2.addEventListener("click", pendingLightColorTemp);
       }
-      if (value180) {
-        classList5.addEventListener("click", () => {
+      if (isClimateEntity) {
+        pendingRef8.addEventListener("click", () => {
           if (deviceType === "bath-heater") {
             if (toggleBathLight?.toggleBathLight) {
               toggleBathLight.toggleBathLight();
@@ -11681,14 +11681,14 @@ export class PanelRenderer {
             }
             return;
           }
-          value195();
+          pendingLightColorTemp();
         });
       }
     }
-    const value204 = value180 ? arg57 => this.createClimateDetailsControls(clientHeight, arg57, {
+    const buildClimateControls = isClimateEntity ? climateState => this.createClimateDetailsControls(detailsBoundEntityIdText, climateState, {
       interactive: !preview,
       deviceType,
-      onPowerChange: arg24 => value186?.(arg24, {
+      onPowerChange: item => coverDetailsControls?.(item, {
         syncClimate: false
       }),
       onVisualChange: ({
@@ -11696,17 +11696,17 @@ export class PanelRenderer {
         visualMode,
         running,
         accentColor,
-        accentSoft: arg25,
+        accentSoft: item,
         targetTemperature
       }) => {
-        classList6.classList.toggle("is-running", running);
-        classList6.style.setProperty("--hb-climate-accent", accentColor);
-        classList6.style.setProperty("--hb-climate-accent-soft", arg25);
-        textContent24.style.setProperty("--hb-climate-accent", accentColor);
+        entityDetailsStateEl.classList.toggle("is-running", running);
+        entityDetailsStateEl.style.setProperty("--hb-climate-accent", accentColor);
+        entityDetailsStateEl.style.setProperty("--hb-climate-accent-soft", item);
+        pendingRef4.style.setProperty("--hb-climate-accent", accentColor);
         if (deviceType === "water-heater") {
-          textContent24.textContent = visualMode === "off" ? "已关闭" : running ? "正在加热" : "保温中";
+          pendingRef4.textContent = visualMode === "off" ? "已关闭" : running ? "正在加热" : "保温中";
         }
-        value192?.({
+        pendingCoverPosition?.({
           mode,
           visualMode,
           running,
@@ -11720,11 +11720,11 @@ export class PanelRenderer {
         other: type8.properties?.airflowOtherColor || "#dce2e6"
       }
     }) : null;
-    syncClimateState = value179 ? this.createLightDetailsControls(clientHeight, appliedScaleY, {
+    syncClimateState = isLightControl ? this.createLightDetailsControls(detailsBoundEntityIdText, appliedScaleY, {
       interactive: !preview,
-      onTurnOn: () => value186?.(true),
-      onVisualChange: arg30 => value187?.(arg30)
-    }) : value180 ? value204(appliedScaleY) : value165 ? this.createCoverDetailsControls(clientHeight, appliedScaleY, {
+      onTurnOn: () => coverDetailsControls?.(true),
+      onVisualChange: coverPosition => lightDetailsControls?.(coverPosition)
+    }) : isClimateEntity ? buildClimateControls(appliedScaleY) : isCoverEntity ? this.createCoverDetailsControls(detailsBoundEntityIdText, appliedScaleY, {
       interactive: !preview,
       dream,
       airer,
@@ -11741,82 +11741,82 @@ export class PanelRenderer {
         state
       }) => {
         if (state) {
-          value185 = state;
+          rawEntityState = state;
         }
-        value188?.({
+        climateDetailsControls?.({
           position,
           state
         });
-        const value8 = coverPresentationState({
+        const updatedCoverPresentation = coverPresentationState({
           state,
           attributes: {
             current_position: position
           }
         }, motorReversed);
-        const value9 = {
+        const coverStatusLabels = {
           open: "已打开",
           closed: "已关闭",
           opening: "正在打开",
           closing: "正在关闭"
         };
-        const value10 = physicalCoverState(value185, motorReversed);
-        textContent23.textContent = airer ? coverLiftStateLabel(value8) || Math.round(position) + "%" : dream ? dreamCurtainStatusText(value185, position, motorReversed) : value9[value8] || Math.round(position) + "%";
-        textContent23.classList.toggle("is-on", dream ? value10 === "open" || value10 === "opening" : value8 === "open" || value8 === "opening");
+        const baselinePhysicalCoverState = physicalCoverState(rawEntityState, motorReversed);
+        pendingRef3.textContent = airer ? coverLiftStateLabel(updatedCoverPresentation) || Math.round(position) + "%" : dream ? dreamCurtainStatusText(rawEntityState, position, motorReversed) : coverStatusLabels[updatedCoverPresentation] || Math.round(position) + "%";
+        pendingRef3.classList.toggle("is-on", dream ? baselinePhysicalCoverState === "open" || baselinePhysicalCoverState === "opening" : updatedCoverPresentation === "open" || updatedCoverPresentation === "opening");
       },
       onCurtainPositionChange: ({
-        retracted: arg18,
-        moving: arg19
+        retracted: item,
+        moving: item2
       }) => {
-        classList4.classList.toggle("is-curtain-retracted", arg18);
-        classList4.classList.toggle("is-curtain-moving", arg19);
-        classList4.dataset.curtainRetracted = String(arg18);
+        pendingRef7.classList.toggle("is-curtain-retracted", item);
+        pendingRef7.classList.toggle("is-curtain-moving", item2);
+        pendingRef7.dataset.curtainRetracted = String(item);
         if (dream) {
-          textContent23.textContent = dreamCurtainStatusFromRetraction(arg18, arg19, value190);
-          textContent23.classList.toggle("is-on", arg18);
+          pendingRef3.textContent = dreamCurtainStatusFromRetraction(item, item2, detailsSyncToken);
+          pendingRef3.classList.toggle("is-on", item);
         }
       }
     }) : null;
-    if (value179 && syncClimateState?.classList.contains("has-color-picker")) {
-      classList3.classList.add("color-picker-details");
+    if (isLightControl && syncClimateState?.classList.contains("has-color-picker")) {
+      entityDetailsDialogEl7.classList.add("color-picker-details");
     }
-    if (value180 && deviceType === "water-heater" && syncClimateState && classList5) {
-      syncClimateState.prepend(classList5);
+    if (isClimateEntity && deviceType === "water-heater" && syncClimateState && pendingRef8) {
+      syncClimateState.prepend(pendingRef8);
       syncClimateState.syncClimateGrid?.();
     }
-    const value205 = value180 && deviceType === "bath-heater" && size?.roles?.light || "";
-    value199 = (value205 ? this.entityMetadata.get(value205) : value180 && deviceType === "bath-heater" ? relatedDeviceDomainEntity(this.entityMetadata, clientHeight, "light") : null)?.entityId || "";
-    if (value199 && syncClimateState) {
-      const newState6 = this.states.get(value199);
-      const value121 = newState6?.newState || newState6 || {
+    const bathHeaterLightEntityId = isClimateEntity && deviceType === "bath-heater" && size?.roles?.light || "";
+    statusMessageText = (bathHeaterLightEntityId ? this.entityMetadata.get(bathHeaterLightEntityId) : isClimateEntity && deviceType === "bath-heater" ? relatedDeviceDomainEntity(this.entityMetadata, detailsBoundEntityIdText, "light") : null)?.entityId || "";
+    if (statusMessageText && syncClimateState) {
+      const newState6 = this.states.get(statusMessageText);
+      const relatedEntityState = newState6?.newState || newState6 || {
         state: "unknown",
         attributes: {}
       };
-      toggleBathLight = this.createBathHeaterLightControl(value199, value121, {
+      toggleBathLight = this.createBathHeaterLightControl(statusMessageText, relatedEntityState, {
         interactive: !preview,
         onStateChange: ({
-          isOn: arg26,
-          unavailable: arg27
+          isOn: item,
+          unavailable: item2
         }) => {
-          classList5?.classList.toggle("is-light-on", arg26 && !arg27);
-          classList5?.setAttribute("aria-pressed", String(arg26 && !arg27));
+          pendingRef8?.classList.toggle("is-light-on", item && !item2);
+          pendingRef8?.setAttribute("aria-pressed", String(item && !item2));
         }
       });
       syncClimateState.append(toggleBathLight);
       syncClimateState.syncClimateGrid?.();
     }
-    const refreshEntityCatalog = value180 && (deviceType === "water-heater" || value201 !== null) ? () => {
-      const value85 = value200;
-      const relatedEntityIds = this.createWaterHeaterExtensionControls(clientHeight, {
+    const refreshEntityCatalog = isClimateEntity && (deviceType === "water-heater" || relatedEntityIds2 !== null) ? () => {
+      const activeEntityIdSet = subscribedEntityIds;
+      const relatedEntityIds = this.createWaterHeaterExtensionControls(detailsBoundEntityIdText, {
         component: type8,
         interactive: !preview,
-        excludedEntityIds: value199 ? [value199] : []
+        excludedEntityIds: statusMessageText ? [statusMessageText] : []
       });
       stateHandlers2?.remove();
       stateHandlers2 = relatedEntityIds;
-      value200 = new Set(relatedEntityIds?.relatedEntityIds || []);
+      subscribedEntityIds = new Set(relatedEntityIds?.relatedEntityIds || []);
       syncClimateState?.classList.toggle("has-multiline-water-heater-extensions", deviceType === "water-heater" && Number(relatedEntityIds?.dataset?.controlCount || 0) > 2);
       if (deviceType !== "water-heater" && append10.isConnected) {
-        classList3.classList.toggle("has-related-extensions", !!relatedEntityIds);
+        entityDetailsDialogEl7.classList.toggle("has-related-extensions", !!relatedEntityIds);
       }
       if (relatedEntityIds && syncClimateState) {
         if (deviceType === "water-heater") {
@@ -11824,247 +11824,247 @@ export class PanelRenderer {
           syncClimateState.syncClimateGrid?.();
         } else if (append10.isConnected) {
           append10.append(relatedEntityIds);
-          classList3.classList.add("has-related-extensions");
+          entityDetailsDialogEl7.classList.add("has-related-extensions");
         }
       }
       const entryMap = this.detailsStateSync?.handlers;
       if (entryMap) {
-        for (const value20 of value85) {
-          entryMap.delete(value20);
+        for (const detailsStateSyncApi of activeEntityIdSet) {
+          entryMap.delete(detailsStateSyncApi);
         }
-        for (const [value21, value22] of relatedEntityIds?.stateHandlers || []) {
-          entryMap.set(value21, value22);
-          const newState2 = this.states.get(value21);
+        for (const [relatedEntityRef, entityIdCandidate] of relatedEntityIds?.stateHandlers || []) {
+          entryMap.set(relatedEntityRef, entityIdCandidate);
+          const newState2 = this.states.get(relatedEntityRef);
           if (newState2) {
-            for (const value2 of value22) {
-              value2(newState2.newState || newState2);
+            for (const detailsCleanup of entityIdCandidate) {
+              detailsCleanup(newState2.newState || newState2);
             }
           }
         }
       }
     } : null;
     refreshEntityCatalog?.();
-    let style3 = type8.type === "line-chart" ? renderLineChartDetails(type8, {
+    let lineChartDetailsView = type8.type === "line-chart" ? renderLineChartDetails(type8, {
       states: this.states,
       history: this.historySeries,
       renderNamespace: this.renderNamespace
     }) : null;
-    let style4 = null;
-    let textContent29 = null;
-    let textContent30 = null;
-    const className46 = document.createElement("dl");
-    className46.className = "hb-entity-details-attributes";
-    for (const [item, item1] of Object.entries(friendly_name).filter(([arg80]) => arg80 !== "friendly_name")) {
+    let lineChartDetailsView2 = null;
+    let pendingRef9 = null;
+    let pendingRef10 = null;
+    const entityDetailsAttributesEl = document.createElement("dl");
+    entityDetailsAttributesEl.className = "hb-entity-details-attributes";
+    for (const [item, item1] of Object.entries(friendly_name).filter(([item]) => item !== "friendly_name")) {
       const append4 = document.createElement("div");
-      const textContent14 = document.createElement("dt");
-      textContent14.textContent = item;
-      const textContent15 = document.createElement("dd");
-      textContent15.textContent = typeof item1 == "string" ? item1 : JSON.stringify(item1);
-      append4.append(textContent14, textContent15);
-      className46.append(append4);
+      const entityDetailsDtEl = document.createElement("dt");
+      entityDetailsDtEl.textContent = item;
+      const entityDetailsDdEl = document.createElement("dd");
+      entityDetailsDdEl.textContent = typeof item1 == "string" ? item1 : JSON.stringify(item1);
+      append4.append(entityDetailsDtEl, entityDetailsDdEl);
+      entityDetailsAttributesEl.append(append4);
     }
-    if (style3) {
-      style4 = document.createElement("section");
-      style4.className = "hb-line-chart-current-visual";
-      style4.style.setProperty("--hb-chart-current-color", style3.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
-      textContent29 = document.createElement("strong");
-      const value122 = Number.parseFloat(appliedScaleY?.state);
-      textContent29.textContent = Number.isFinite(value122) ? formatLineChartValue(value122, type8.properties?.statePrecision) : appliedScaleY?.state || "--";
-      textContent30 = document.createElement("small");
-      textContent30.textContent = String(friendly_name.unit_of_measurement || "实时数值");
-      style4.append(textContent29, textContent30);
-      classList6.style.setProperty("--hb-chart-current-color", style3.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
-      textContent27.textContent = "●";
-      textContent28.textContent = "实时数据";
-      append10.append(className45, style4, style3);
-    } else if (value180) {
-      append10.append(className45, ...(deviceType === "water-heater" ? [syncClimateState] : [classList5, syncClimateState]), ...(deviceType !== "water-heater" && stateHandlers2 ? [stateHandlers2] : []));
-      classList3.classList.toggle("has-related-extensions", deviceType !== "water-heater" && !!stateHandlers2);
-    } else if (value179) {
-      const className7 = document.createElement("div");
-      className7.className = "hb-light-details-layout";
-      const className8 = document.createElement("section");
-      className8.className = "hb-light-details-panel";
-      className8.append(...(syncClimateState ? [syncClimateState] : []));
-      className7.append(className8, setAttribute2);
-      append10.append(className45, className7);
-    } else if (value178) {
-      const className5 = document.createElement("div");
-      className5.className = "hb-switch-details-layout";
-      className5.append(value193);
-      append10.append(className45, className5);
-    } else if (value165) {
-      const className3 = document.createElement("div");
-      className3.className = "hb-cover-details-layout";
-      const className4 = document.createElement("section");
-      className4.className = "hb-cover-details-panel";
-      className4.append(...(syncClimateState ? [syncClimateState] : []));
-      className3.append(className4, classList4);
-      append10.append(className45, className3);
-    } else if (className46.childElementCount) {
-      append10.append(className45, classList6, ...(syncClimateState ? [syncClimateState] : []), className46);
+    if (lineChartDetailsView) {
+      lineChartDetailsView2 = document.createElement("section");
+      lineChartDetailsView2.className = "hb-line-chart-current-visual";
+      lineChartDetailsView2.style.setProperty("--hb-chart-current-color", lineChartDetailsView.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
+      pendingRef9 = document.createElement("strong");
+      const numericSensorValue = Number.parseFloat(appliedScaleY?.state);
+      pendingRef9.textContent = Number.isFinite(numericSensorValue) ? formatLineChartValue(numericSensorValue, type8.properties?.statePrecision) : appliedScaleY?.state || "--";
+      pendingRef10 = document.createElement("small");
+      pendingRef10.textContent = String(friendly_name.unit_of_measurement || "实时数值");
+      lineChartDetailsView2.append(pendingRef9, pendingRef10);
+      entityDetailsStateEl.style.setProperty("--hb-chart-current-color", lineChartDetailsView.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
+      entityDetailsSpanEl4.textContent = "●";
+      entityDetailsStrongEl2.textContent = "实时数据";
+      append10.append(entityDetailsHeadingEl, lineChartDetailsView2, lineChartDetailsView);
+    } else if (isClimateEntity) {
+      append10.append(entityDetailsHeadingEl, ...(deviceType === "water-heater" ? [syncClimateState] : [pendingRef8, syncClimateState]), ...(deviceType !== "water-heater" && stateHandlers2 ? [stateHandlers2] : []));
+      entityDetailsDialogEl7.classList.toggle("has-related-extensions", deviceType !== "water-heater" && !!stateHandlers2);
+    } else if (isLightControl) {
+      const lightDetailsLayoutEl = document.createElement("div");
+      lightDetailsLayoutEl.className = "hb-light-details-layout";
+      const lightDetailsPanelEl = document.createElement("section");
+      lightDetailsPanelEl.className = "hb-light-details-panel";
+      lightDetailsPanelEl.append(...(syncClimateState ? [syncClimateState] : []));
+      lightDetailsLayoutEl.append(lightDetailsPanelEl, setAttribute2);
+      append10.append(entityDetailsHeadingEl, lightDetailsLayoutEl);
+    } else if (isSwitchEntity) {
+      const switchDetailsLayoutEl = document.createElement("div");
+      switchDetailsLayoutEl.className = "hb-switch-details-layout";
+      switchDetailsLayoutEl.append(pendingCoverState);
+      append10.append(entityDetailsHeadingEl, switchDetailsLayoutEl);
+    } else if (isCoverEntity) {
+      const coverDetailsLayoutEl = document.createElement("div");
+      coverDetailsLayoutEl.className = "hb-cover-details-layout";
+      const coverDetailsPanelEl = document.createElement("section");
+      coverDetailsPanelEl.className = "hb-cover-details-panel";
+      coverDetailsPanelEl.append(...(syncClimateState ? [syncClimateState] : []));
+      coverDetailsLayoutEl.append(coverDetailsPanelEl, pendingRef7);
+      append10.append(entityDetailsHeadingEl, coverDetailsLayoutEl);
+    } else if (entityDetailsAttributesEl.childElementCount) {
+      append10.append(entityDetailsHeadingEl, entityDetailsStateEl, ...(syncClimateState ? [syncClimateState] : []), entityDetailsAttributesEl);
     } else {
-      const className2 = document.createElement("p");
-      className2.className = "hb-entity-details-empty";
-      className2.textContent = "该实体暂无附加属性。";
-      className46.replaceWith(className2);
-      append10.append(className45, classList6, ...(syncClimateState ? [syncClimateState] : []), className2);
+      const entityDetailsEmptyEl = document.createElement("p");
+      entityDetailsEmptyEl.className = "hb-entity-details-empty";
+      entityDetailsEmptyEl.textContent = "该实体暂无附加属性。";
+      entityDetailsAttributesEl.replaceWith(entityDetailsEmptyEl);
+      append10.append(entityDetailsHeadingEl, entityDetailsStateEl, ...(syncClimateState ? [syncClimateState] : []), entityDetailsEmptyEl);
     }
-    classList3.append(append10);
-    const className47 = document.createElement("div");
-    className47.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
-    className47.tabIndex = -1;
-    className47.append(classList3);
-    this.container.append(className47);
-    this.detailsDialog = classList3;
-    const value206 = value180 ? 840 : type8.type === "line-chart" ? 780 : value179 || value165 ? 760 : value178 ? 620 : 460;
-    const value207 = value180 ? deviceType !== "water-heater" && stateHandlers2 ? 620 : 540 : value179 || value165 ? 620 : value178 ? 500 : 680;
-    this.registerRuntimeDialogScale(className47, classList3, value206, value207);
-    let value208 = 0;
-    if (type8.type === "line-chart" && style3) {
-      const value123 = () => {
-        value208 = 0;
-        if (!style3?.isConnected || this.detailsStateSync?.dialog !== classList3) {
+    entityDetailsDialogEl7.append(append10);
+    const rendererRuntimeDialogLayerEl2 = document.createElement("div");
+    rendererRuntimeDialogLayerEl2.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
+    rendererRuntimeDialogLayerEl2.tabIndex = -1;
+    rendererRuntimeDialogLayerEl2.append(entityDetailsDialogEl7);
+    this.container.append(rendererRuntimeDialogLayerEl2);
+    this.detailsDialog = entityDetailsDialogEl7;
+    const detailsDialogWidth = isClimateEntity ? 840 : type8.type === "line-chart" ? 780 : isLightControl || isCoverEntity ? 760 : isSwitchEntity ? 620 : 460;
+    const detailsDialogHeight = isClimateEntity ? deviceType !== "water-heater" && stateHandlers2 ? 620 : 540 : isLightControl || isCoverEntity ? 620 : isSwitchEntity ? 500 : 680;
+    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl2, entityDetailsDialogEl7, detailsDialogWidth, detailsDialogHeight);
+    let detailsSyncTimer = 0;
+    if (type8.type === "line-chart" && lineChartDetailsView) {
+      const runDetailsStateSync = () => {
+        detailsSyncTimer = 0;
+        if (!lineChartDetailsView?.isConnected || this.detailsStateSync?.dialog !== entityDetailsDialogEl7) {
           return;
         }
-        const value72 = renderLineChartDetails(type8, {
+        const lineChartDetailsHandle = renderLineChartDetails(type8, {
           states: this.states,
           history: this.historySeries,
           renderNamespace: this.renderNamespace
         });
-        style3.cleanupLineChartHover?.();
-        style3.replaceWith(value72);
-        style3 = value72;
-        style4.style.setProperty("--hb-chart-current-color", style3.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
+        lineChartDetailsView.cleanupLineChartHover?.();
+        lineChartDetailsView.replaceWith(lineChartDetailsHandle);
+        lineChartDetailsView = lineChartDetailsHandle;
+        lineChartDetailsView2.style.setProperty("--hb-chart-current-color", lineChartDetailsView.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
       };
-      const value124 = (arg55 = 700) => {
-        value208 ||= window.setTimeout(value123, Math.max(0, Number(arg55) || 0));
+      const scheduleDetailsStateSync = (delayMs = 700) => {
+        detailsSyncTimer ||= window.setTimeout(runDetailsStateSync, Math.max(0, Number(delayMs) || 0));
       };
       this.detailsStateSync = {
-        dialog: classList3,
-        entityId: clientHeight,
-        refreshHistory: () => value124(0),
+        dialog: entityDetailsDialogEl7,
+        entityId: detailsBoundEntityIdText,
+        refreshHistory: () => scheduleDetailsStateSync(0),
         apply: state2 => {
-          const value25 = Number.parseFloat(state2?.state);
-          textContent29.textContent = Number.isFinite(value25) ? formatLineChartValue(value25, type8.properties?.statePrecision) : state2?.state || "--";
-          textContent30.textContent = String(state2?.attributes?.unit_of_measurement || "实时数值");
-          textContent26.textContent = state2?.state == null || ["unknown", "unavailable"].includes(state2.state) ? "暂无数据" : "实时数据";
-          style3.syncLineChartState?.(state2);
-          style4.style.setProperty("--hb-chart-current-color", style3.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
+          const parsedSensorNumber = Number.parseFloat(state2?.state);
+          pendingRef9.textContent = Number.isFinite(parsedSensorNumber) ? formatLineChartValue(parsedSensorNumber, type8.properties?.statePrecision) : state2?.state || "--";
+          pendingRef10.textContent = String(state2?.attributes?.unit_of_measurement || "实时数值");
+          pendingRef6.textContent = state2?.state == null || ["unknown", "unavailable"].includes(state2.state) ? "暂无数据" : "实时数据";
+          lineChartDetailsView.syncLineChartState?.(state2);
+          lineChartDetailsView2.style.setProperty("--hb-chart-current-color", lineChartDetailsView.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
         }
       };
-    } else if (value183 && value186) {
-      const value105 = state4 => {
+    } else if (usesRichDetailsChrome && coverDetailsControls) {
+      const applyEntityDetailsState = state4 => {
         attributes6 = state4;
-        if (value180 && value204 && syncClimateState) {
-          const value11 = climateControlStructureKey(clientHeight, state4, deviceType);
-          if (syncClimateState.dataset.climateStructureKey !== value11) {
-            const classList = value204(state4);
-            classList.classList.toggle("has-multiline-water-heater-extensions", syncClimateState.classList.contains("has-multiline-water-heater-extensions"));
-            classList.classList.add("is-runtime-hydrated");
-            if (deviceType === "water-heater" && classList5) {
-              classList.prepend(classList5);
+        if (isClimateEntity && buildClimateControls && syncClimateState) {
+          const climateStructureKey = climateControlStructureKey(detailsBoundEntityIdText, state4, deviceType);
+          if (syncClimateState.dataset.climateStructureKey !== climateStructureKey) {
+            const climateControlsRoot = buildClimateControls(state4);
+            climateControlsRoot.classList.toggle("has-multiline-water-heater-extensions", syncClimateState.classList.contains("has-multiline-water-heater-extensions"));
+            climateControlsRoot.classList.add("is-runtime-hydrated");
+            if (deviceType === "water-heater" && pendingRef8) {
+              climateControlsRoot.prepend(pendingRef8);
             }
             if (toggleBathLight) {
-              classList.append(toggleBathLight);
-              classList.syncClimateGrid?.();
+              climateControlsRoot.append(toggleBathLight);
+              climateControlsRoot.syncClimateGrid?.();
             }
             if (stateHandlers2 && deviceType === "water-heater") {
-              (classList.waterHeaterControlPanel || classList).append(stateHandlers2);
-              classList.syncClimateGrid?.();
+              (climateControlsRoot.waterHeaterControlPanel || climateControlsRoot).append(stateHandlers2);
+              climateControlsRoot.syncClimateGrid?.();
             }
-            syncClimateState.replaceWith(classList);
-            syncClimateState = classList;
+            syncClimateState.replaceWith(climateControlsRoot);
+            syncClimateState = climateControlsRoot;
           }
         }
         if (state4?.state) {
-          value186(value184(state4.state, state4.attributes), {
+          coverDetailsControls(entityIsActive(state4.state, state4.attributes), {
             unavailable: ["unknown", "unavailable"].includes(state4.state)
           });
         }
         syncClimateState?.syncLightState?.(state4);
         syncClimateState?.syncClimateState?.(state4);
       };
-      const set2 = new Map([[clientHeight, [value105]]]);
-      if (value199 && toggleBathLight) {
-        set2.set(value199, [arg20 => toggleBathLight.syncBathLightState?.(arg20)]);
+      const set2 = new Map([[detailsBoundEntityIdText, [applyEntityDetailsState]]]);
+      if (statusMessageText && toggleBathLight) {
+        set2.set(statusMessageText, [stateHandler => toggleBathLight.syncBathLightState?.(stateHandler)]);
       }
       if (stateHandlers2?.stateHandlers) {
-        for (const [value34, value35] of stateHandlers2.stateHandlers) {
-          set2.set(value34, value35);
+        for (const [runtimeHandlerRef, runtimeCleanupRef] of stateHandlers2.stateHandlers) {
+          set2.set(runtimeHandlerRef, runtimeCleanupRef);
         }
       }
       this.detailsStateSync = {
-        dialog: classList3,
+        dialog: entityDetailsDialogEl7,
         handlers: set2,
         refreshEntityCatalog
       };
-      if (value180 && syncClimateState?.querySelector(".hb-climate-details-loading")) {
-        const value73 = Date.now();
-        value197 = window.setInterval(() => {
-          const newState3 = this.states.get(clientHeight);
-          const value12 = newState3?.newState || newState3;
-          if (value12) {
-            value105(value12);
+      if (isClimateEntity && syncClimateState?.querySelector(".hb-climate-details-loading")) {
+        const openedAtMs = Date.now();
+        climateTargetTemperature = window.setInterval(() => {
+          const newState3 = this.states.get(detailsBoundEntityIdText);
+          const incomingEntityState = newState3?.newState || newState3;
+          if (incomingEntityState) {
+            applyEntityDetailsState(incomingEntityState);
           }
-          if (!syncClimateState?.querySelector(".hb-climate-details-loading") || Date.now() - value73 >= 30000) {
-            window.clearInterval(value197);
-            value197 = null;
+          if (!syncClimateState?.querySelector(".hb-climate-details-loading") || Date.now() - openedAtMs >= 30000) {
+            window.clearInterval(climateTargetTemperature);
+            climateTargetTemperature = null;
           }
         }, 120);
       }
-    } else if (value165) {
-      const map = new Map([[clientHeight, [arg10 => syncClimateState?.syncCoverState?.(arg10)]]]);
-      if (value171) {
-        map.set(value171, [value189]);
+    } else if (isCoverEntity) {
+      const map = new Map([[detailsBoundEntityIdText, [item => syncClimateState?.syncCoverState?.(item)]]]);
+      if (airerLightEntityId) {
+        map.set(airerLightEntityId, [switchDetailsControls]);
       }
-      if (value172) {
-        map.set(value172, [arg11 => syncClimateState?.syncCoverPositionState?.(arg11)]);
+      if (airerPositionSensorId) {
+        map.set(airerPositionSensorId, [item => syncClimateState?.syncCoverPositionState?.(item)]);
       }
       if (positionCommandEntityId) {
-        map.set(positionCommandEntityId, [arg12 => {
-          syncClimateState?.syncCoverPositionCommandState?.(arg12);
-          if (!value172) {
-            syncClimateState?.syncCoverPositionState?.(arg12);
+        map.set(positionCommandEntityId, [item => {
+          syncClimateState?.syncCoverPositionCommandState?.(item);
+          if (!airerPositionSensorId) {
+            syncClimateState?.syncCoverPositionState?.(item);
           }
         }]);
       }
-      if (value173) {
-        map.set(value173, [arg13 => syncClimateState?.syncAirerMotorState?.(arg13)]);
+      if (airerMotorSpeedSensorId) {
+        map.set(airerMotorSpeedSensorId, [item => syncClimateState?.syncAirerMotorState?.(item)]);
       }
       this.detailsStateSync = {
-        dialog: classList3,
+        dialog: entityDetailsDialogEl7,
         handlers: map
       };
     }
-    type9.addEventListener("click", () => classList3.close());
-    this.bindRuntimeDialogOutsideDismiss(className47, classList3, append10);
-    className47.addEventListener("keydown", key5 => {
+    entityDetailsButtonEl.addEventListener("click", () => entityDetailsDialogEl7.close());
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl2, entityDetailsDialogEl7, append10);
+    rendererRuntimeDialogLayerEl2.addEventListener("keydown", key5 => {
       if (key5.key === "Escape") {
-        classList3.close();
+        entityDetailsDialogEl7.close();
       }
     });
-    classList3.addEventListener("close", () => {
-      window.clearTimeout(value208);
-      window.clearInterval(value197);
-      value197 = null;
+    entityDetailsDialogEl7.addEventListener("close", () => {
+      window.clearTimeout(detailsSyncTimer);
+      window.clearInterval(climateTargetTemperature);
+      climateTargetTemperature = null;
       syncClimateState?.cleanupLightDetails?.();
       syncClimateState?.cleanupClimateDetails?.();
       syncClimateState?.cleanupCoverDetails?.();
-      style3?.cleanupLineChartHover?.();
-      this.clearRuntimeDialogScale(classList3);
-      if (this.detailsDialog === classList3) {
+      lineChartDetailsView?.cleanupLineChartHover?.();
+      this.clearRuntimeDialogScale(entityDetailsDialogEl7);
+      if (this.detailsDialog === entityDetailsDialogEl7) {
         this.detailsDialog = null;
       }
-      if (this.detailsStateSync?.dialog === classList3) {
+      if (this.detailsStateSync?.dialog === entityDetailsDialogEl7) {
         this.detailsStateSync = null;
       }
-      className47.remove();
+      rendererRuntimeDialogLayerEl2.remove();
     }, {
       once: true
     });
-    classList3.show();
-    classList3.focus({
+    entityDetailsDialogEl7.show();
+    entityDetailsDialogEl7.focus({
       preventScroll: true
     });
   }
@@ -12090,8 +12090,8 @@ export class PanelRenderer {
     this.viewport.style.height = this.document.canvas.height * state + "px";
     this.container.dataset.viewportAspect = (socketGeneration / documentModel).toFixed(3);
     this.container.dataset.renderScale = Math.min(entityIds, state).toFixed(4);
-    for (const [value141, value142] of this.componentHosts) {
-      this.updateTransformHandleScale(value142, this.componentRecords.get(value141));
+    for (const [presenceSensorRow, presenceHistoryPoint] of this.componentHosts) {
+      this.updateTransformHandleScale(presenceHistoryPoint, this.componentRecords.get(presenceSensorRow));
     }
     this.updateMultiSelectionHandleScale(this.canvas.querySelector(":scope > .hb-multi-selection-bounds"));
     this.updateRuntimeDialogScale();
@@ -12112,28 +12112,28 @@ export class PanelRenderer {
       readyState.close();
       return;
     }
-    let value209;
-    const value210 = () => {
-      window.clearTimeout(value209);
-      readyState.removeEventListener("open", value211);
-      readyState.removeEventListener("close", value210);
+    let socketCloseTimer;
+    const cleanupSocketWait = () => {
+      window.clearTimeout(socketCloseTimer);
+      readyState.removeEventListener("open", forceCloseSocket);
+      readyState.removeEventListener("close", cleanupSocketWait);
     };
-    const value211 = () => {
-      value210();
+    const forceCloseSocket = () => {
+      cleanupSocketWait();
       if (readyState.readyState < WebSocket.CLOSING) {
         readyState.close();
       }
     };
-    readyState.addEventListener("open", value211, {
+    readyState.addEventListener("open", forceCloseSocket, {
       once: true
     });
-    readyState.addEventListener("close", value210, {
+    readyState.addEventListener("close", cleanupSocketWait, {
       once: true
     });
-    value209 = window.setTimeout(value211, 12000);
+    socketCloseTimer = window.setTimeout(forceCloseSocket, 12000);
   }
   connectRuntime({
-    force: arg85 = false
+    force: entityId5 = false
   } = {}) {
     if (!this.document || this.destroyed) {
       this.disconnectRuntime();
@@ -12141,7 +12141,7 @@ export class PanelRenderer {
     }
     const historyRetryAttempt = this.page || this.document.pages?.[0];
     const state = new Map((this.document.sharedComponents || []).map(id => [id.id, id]));
-    const runtimeComponents = [...(historyRetryAttempt?.sharedComponentIds || []).map(arg28 => state.get(arg28)).filter(Boolean), ...(historyRetryAttempt?.components || [])];
+    const runtimeComponents = [...(historyRetryAttempt?.sharedComponentIds || []).map(socketEvent => state.get(socketEvent)).filter(Boolean), ...(historyRetryAttempt?.components || [])];
     const add2 = collectEntityIds(runtimeComponents);
     const modules = this.activePopupId ? (this.document.customPopups || []).find(id2 => String(id2.id || "") === this.activePopupId) : null;
     for (const entityId20 of modules?.modules || []) {
@@ -12149,21 +12149,21 @@ export class PanelRenderer {
         add2.add(entityId20.entityId);
       }
     }
-    for (const value143 of [...add2]) {
-      if (this.entityMetadata.get(value143)?.domain !== "event") {
+    for (const subscribedEntityList of [...add2]) {
+      if (this.entityMetadata.get(subscribedEntityList)?.domain !== "event") {
         continue;
       }
-      const properties2 = collectComponents(runtimeComponents, type5 => type5.type === "presence-sensor" && type5.bindings?.entity?.entityId === value143)[0];
+      const properties2 = collectComponents(runtimeComponents, type5 => type5.type === "presence-sensor" && type5.bindings?.entity?.entityId === subscribedEntityList)[0];
       if (!properties2) {
         continue;
       }
-      const companionEntityIds = presenceMotionEventConfig(value143, this.states.get(value143), this.entityMetadata, this.states, properties2.properties);
-      for (const value106 of companionEntityIds.companionEntityIds) {
-        add2.add(value106);
+      const companionEntityIds = presenceMotionEventConfig(subscribedEntityList, this.states.get(subscribedEntityList), this.entityMetadata, this.states, properties2.properties);
+      for (const runtimeEntityIds of companionEntityIds.companionEntityIds) {
+        add2.add(runtimeEntityIds);
       }
     }
-    for (const value144 of [...add2]) {
-      const deviceId2 = this.entityMetadata.get(value144);
+    for (const pageEntityIds of [...add2]) {
+      const deviceId2 = this.entityMetadata.get(pageEntityIds);
       if (deviceId2?.domain !== "sensor" || !deviceId2.deviceId || !["state", "status", "task_status"].includes(deviceId2.translationKey)) {
         continue;
       }
@@ -12176,8 +12176,8 @@ export class PanelRenderer {
       if (this.entityMetadata.get(slice)?.domain !== "vacuum") {
         continue;
       }
-      const value125 = slice.slice(slice.indexOf(".") + 1);
-      const entityId12 = relatedDeviceEntity(this.entityMetadata, slice, "select", "cleaning_mode", "select." + value125 + "_cleaning_mode");
+      const entityLocalId = slice.slice(slice.indexOf(".") + 1);
+      const entityId12 = relatedDeviceEntity(this.entityMetadata, slice, "select", "cleaning_mode", "select." + entityLocalId + "_cleaning_mode");
       if (entityId12?.entityId) {
         add2.add(entityId12.entityId);
       }
@@ -12186,61 +12186,61 @@ export class PanelRenderer {
         add2.add(entityId13.entityId);
       }
     }
-    for (const value145 of [...add2]) {
-      if ((this.entityMetadata.get(value145)?.domain || String(value145 || "").split(".", 1)[0]) !== "cover") {
+    for (const coverEntityId of [...add2]) {
+      if ((this.entityMetadata.get(coverEntityId)?.domain || String(coverEntityId || "").split(".", 1)[0]) !== "cover") {
         continue;
       }
-      const entityId14 = relatedCoverMotorReverseEntity(this.entityMetadata, value145);
+      const entityId14 = relatedCoverMotorReverseEntity(this.entityMetadata, coverEntityId);
       if (entityId14?.entityId) {
         add2.add(entityId14.entityId);
       }
-      const entityId15 = relatedAirerLightEntity(this.entityMetadata, value145);
+      const entityId15 = relatedAirerLightEntity(this.entityMetadata, coverEntityId);
       if (entityId15?.entityId) {
         add2.add(entityId15.entityId);
       }
-      const entityId16 = relatedAirerPositionNumberEntity(this.entityMetadata, value145);
+      const entityId16 = relatedAirerPositionNumberEntity(this.entityMetadata, coverEntityId);
       if (entityId16?.entityId) {
         add2.add(entityId16.entityId);
       }
-      const entityId17 = relatedAirerCurrentPositionSensor(this.entityMetadata, value145);
+      const entityId17 = relatedAirerCurrentPositionSensor(this.entityMetadata, coverEntityId);
       if (entityId17?.entityId) {
         add2.add(entityId17.entityId);
       }
-      const entityId18 = relatedAirerMotorSpeedSensor(this.entityMetadata, value145);
+      const entityId18 = relatedAirerMotorSpeedSensor(this.entityMetadata, coverEntityId);
       if (entityId18?.entityId) {
         add2.add(entityId18.entityId);
       }
-      const value126 = relatedAirerMotorActionEntities(this.entityMetadata, value145);
-      for (const entityId9 of Object.values(value126)) {
+      const coverMotorActions = relatedAirerMotorActionEntities(this.entityMetadata, coverEntityId);
+      for (const entityId9 of Object.values(coverMotorActions)) {
         if (entityId9?.entityId) {
           add2.add(entityId9.entityId);
         }
       }
     }
-    for (const value146 of [...add2]) {
-      const domain2 = this.entityMetadata.get(value146);
+    for (const popupEntityIds of [...add2]) {
+      const domain2 = this.entityMetadata.get(popupEntityIds);
       if (!["climate", "fan"].includes(String(domain2?.domain || ""))) {
         continue;
       }
-      const entityId19 = relatedDeviceDomainEntity(this.entityMetadata, value146, "light");
+      const entityId19 = relatedDeviceDomainEntity(this.entityMetadata, popupEntityIds, "light");
       if (entityId19?.entityId) {
         add2.add(entityId19.entityId);
       }
     }
-    for (const value147 of [...add2]) {
-      if (this.entityMetadata.get(value147)?.domain === "water_heater") {
-        for (const entityId8 of relatedWaterHeaterEntities(this.entityMetadata, value147)) {
+    for (const effectEntityIds of [...add2]) {
+      if (this.entityMetadata.get(effectEntityIds)?.domain === "water_heater") {
+        for (const entityId8 of relatedWaterHeaterEntities(this.entityMetadata, effectEntityIds)) {
           add2.add(entityId8.entityId);
         }
       }
     }
-    for (const value148 of [...add2]) {
-      const roles = this.deviceProfile(value148);
+    for (const allRuntimeEntityIds of [...add2]) {
+      const roles = this.deviceProfile(allRuntimeEntityIds);
       if (roles) {
-        for (const value74 of ["climate", "cover", "fan", "light", "power", "mode", "temperature", "humidity", "pm25", "hcho", "pm10", "filterLife", "filterLeftTime", "airQuality", "backrest", "leg", "waist", "memory1", "memory2"]) {
-          const value36 = roles.roles?.[value74];
-          if (value36) {
-            add2.add(value36);
+        for (const roleKey of ["climate", "cover", "fan", "light", "power", "mode", "temperature", "humidity", "pm25", "hcho", "pm10", "filterLife", "filterLeftTime", "airQuality", "backrest", "leg", "waist", "memory1", "memory2"]) {
+          const roleBoundEntityId = roles.roles?.[roleKey];
+          if (roleBoundEntityId) {
+            add2.add(roleBoundEntityId);
           }
         }
       }
@@ -12263,13 +12263,13 @@ export class PanelRenderer {
     this.runtimeEntityLimitSignature = "";
     const signature = JSON.stringify([...length4].sort());
     const signature2 = this.runtimeSubscription;
-    const value212 = this.socket?.readyState === WebSocket.CONNECTING;
-    const value213 = this.socket?.readyState === WebSocket.OPEN;
-    if (!arg85 && signature2 && (value212 || value213 && signature2.signature === signature)) {
+    const isSocketConnecting = this.socket?.readyState === WebSocket.CONNECTING;
+    const isSocketOpen = this.socket?.readyState === WebSocket.OPEN;
+    if (!entityId5 && signature2 && (isSocketConnecting || isSocketOpen && signature2.signature === signature)) {
       signature2.entityIds = length4;
       signature2.runtimeComponents = runtimeComponents;
       signature2.signature = signature;
-      if (value213) {
+      if (isSocketOpen) {
         this.scheduleRuntimeHydrationRetry(signature2, this.socketGeneration);
       }
       return;
@@ -12278,18 +12278,18 @@ export class PanelRenderer {
       this.runtimeHydrationRetryAttempt = 0;
     }
     this.disconnectRuntime();
-    const value214 = this.socketGeneration;
+    const socketGeneration = this.socketGeneration;
     const entityIds = {
       entityIds: length4,
       runtimeComponents,
       signature
     };
     this.runtimeSubscription = entityIds;
-    const value215 = window.location.protocol === "https:" ? "wss" : "ws";
-    const addEventListener = new WebSocket(value215 + "://" + window.location.host + "/api/v1/ws/runtime");
+    const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
+    const addEventListener = new WebSocket(wsProtocol + "://" + window.location.host + "/api/v1/ws/runtime");
     this.socket = addEventListener;
     addEventListener.addEventListener("open", () => {
-      if (value214 === this.socketGeneration) {
+      if (socketGeneration === this.socketGeneration) {
         if (this.reconnectAttempt > 0) {
           window.HABridgeLog?.report("success", "实时连接", "实时状态连接已恢复", {
             phase: "websocket-reconnected",
@@ -12304,17 +12304,17 @@ export class PanelRenderer {
       }
     });
     addEventListener.addEventListener("message", data => {
-      if (value214 !== this.socketGeneration) {
+      if (socketGeneration !== this.socketGeneration) {
         return;
       }
       const {
-        entityIds: value107
+        entityIds: wsUrl
       } = entityIds;
       let entityId10;
       try {
         entityId10 = JSON.parse(data.data);
-      } catch (value37) {
-        window.HABridgeLog?.error(value37, {
+      } catch (reconnectTimerRef) {
+        window.HABridgeLog?.error(reconnectTimerRef, {
           phase: "websocket-message",
           path: "/api/v1/ws/runtime"
         }, "实时状态消息格式异常");
@@ -12323,12 +12323,12 @@ export class PanelRenderer {
       if (entityId10.type === "snapshot") {
         const map = entityId10.states || [];
         const has = new Set(map.map(entityId => String(entityId?.entityId || "")).filter(Boolean));
-        for (const value26 of value107) {
-          if (!has.has(value26)) {
-            if (this.states.has(value26)) {
-              this.removedRuntimeEntityIds.add(value26);
+        for (const socketMessageHandler of wsUrl) {
+          if (!has.has(socketMessageHandler)) {
+            if (this.states.has(socketMessageHandler)) {
+              this.removedRuntimeEntityIds.add(socketMessageHandler);
             }
-            this.states.delete(value26);
+            this.states.delete(socketMessageHandler);
           }
         }
         for (const entityId2 of map) {
@@ -12345,10 +12345,10 @@ export class PanelRenderer {
           this.refreshVacuumMapEntity(entityId3.entityId);
         }
         if (this.detailsStateSync?.handlers) {
-          for (const [value13, value14] of this.detailsStateSync.handlers) {
-            const newState = this.states.get(value13);
+          for (const [historyEntityRef, historyHoursRef] of this.detailsStateSync.handlers) {
+            const newState = this.states.get(historyEntityRef);
             if (newState) {
-              for (const value of value14) {
+              for (const value of historyHoursRef) {
                 value(newState.newState || newState);
               }
             }
@@ -12360,13 +12360,13 @@ export class PanelRenderer {
           }
         }
         this.refreshRuntimeComponents([...has, ...this.removedRuntimeEntityIds]);
-        this.scheduleRuntimeHydrationRetry(entityIds, value214);
+        this.scheduleRuntimeHydrationRetry(entityIds, socketGeneration);
       } else if (entityId10.type === "state_removed") {
         const entityId4 = String(entityId10.entityId || "");
         if (!entityId4) {
           return;
         }
-        const value27 = {
+        const unavailableStateEvent = {
           type: "state_changed",
           entityId: entityId4,
           domain: entityId4.split(".", 1)[0],
@@ -12379,23 +12379,23 @@ export class PanelRenderer {
         this.options.onRuntimeStateChange?.([]);
         this.tryOpenPendingEntityDetails();
         if (this.detailsStateSync?.handlers?.has(entityId4)) {
-          for (const value5 of this.detailsStateSync.handlers.get(entityId4)) {
-            value5(value27);
+          for (const parsedSocketMessage of this.detailsStateSync.handlers.get(entityId4)) {
+            parsedSocketMessage(unavailableStateEvent);
           }
         } else if (this.detailsStateSync?.entityId === entityId4) {
-          this.detailsStateSync.apply(value27);
+          this.detailsStateSync.apply(unavailableStateEvent);
         }
-        this.applyRuntimeStateHandlers(entityId4, value27);
+        this.applyRuntimeStateHandlers(entityId4, unavailableStateEvent);
         this.refreshRuntimeComponents([entityId4]);
-        for (const value23 of this.runtimeEntityComponentIndex.get(entityId4) || []) {
-          const type2 = this.componentRecords.get(value23);
+        for (const stateChangedPayload of this.runtimeEntityComponentIndex.get(entityId4) || []) {
+          const type2 = this.componentRecords.get(stateChangedPayload);
           if (["line-chart", "camera", "vacuum-map"].includes(type2?.type)) {
-            this.refreshRuntimeComponent(value23);
+            this.refreshRuntimeComponent(stateChangedPayload);
           }
         }
         this.refreshVacuumMapEntity(entityId4);
       } else if (entityId10.type === "resync_required") {
-        if (value214 === this.socketGeneration && !this.destroyed) {
+        if (socketGeneration === this.socketGeneration && !this.destroyed) {
           this.connectRuntime({
             force: true
           });
@@ -12411,8 +12411,8 @@ export class PanelRenderer {
         this.tryOpenPendingEntityDetails();
         this.refreshVacuumMapEntity(entityId10.entityId);
         if (this.detailsStateSync?.handlers?.has(entityId10.entityId)) {
-          for (const value3 of this.detailsStateSync.handlers.get(entityId10.entityId)) {
-            value3(entityId10.newState || entityId10);
+          for (const entityStateUpdate of this.detailsStateSync.handlers.get(entityId10.entityId)) {
+            entityStateUpdate(entityId10.newState || entityId10);
           }
         } else if (this.detailsStateSync?.entityId === entityId10.entityId) {
           this.detailsStateSync.apply(entityId10.newState || entityId10);
@@ -12422,7 +12422,7 @@ export class PanelRenderer {
       }
     });
     addEventListener.addEventListener("close", code => {
-      if (value214 !== this.socketGeneration || this.destroyed) {
+      if (socketGeneration !== this.socketGeneration || this.destroyed) {
         return;
       }
       this.socket = null;
@@ -12435,8 +12435,8 @@ export class PanelRenderer {
         path: "/api/v1/ws/runtime"
       });
       if (code.code === 4401) {
-        const value38 = window.location.pathname.startsWith("/display/") || window.location.pathname.startsWith("/habridge/");
-        window.location.assign(value38 ? "/pair?next=" + encodeURIComponent("" + window.location.pathname + window.location.search) : "/login");
+        const isDisplayPath = window.location.pathname.startsWith("/display/") || window.location.pathname.startsWith("/habridge/");
+        window.location.assign(isDisplayPath ? "/pair?next=" + encodeURIComponent("" + window.location.pathname + window.location.search) : "/login");
         return;
       }
       if (code.code === 4403) {
@@ -12444,13 +12444,13 @@ export class PanelRenderer {
         return;
       }
       if (code.code === 4400) {
-        const value39 = code.reason === "too many entities" ? "当前项目的实时订阅实体超过 " + MAX_REALTIME_SUBSCRIBED_ENTITIES + " 个，已停止重连。请减少统计或控件中绑定的实体。" : "实时状态订阅请求无效，已停止自动重连。";
-        this.options.onError?.(new Error(value39));
+        const disconnectReason = code.reason === "too many entities" ? "当前项目的实时订阅实体超过 " + MAX_REALTIME_SUBSCRIBED_ENTITIES + " 个，已停止重连。请减少统计或控件中绑定的实体。" : "实时状态订阅请求无效，已停止自动重连。";
+        this.options.onError?.(new Error(disconnectReason));
         return;
       }
-      const value108 = Math.min(2 ** this.reconnectAttempt * 1000, 15000);
+      const reconnectDelayMs = Math.min(2 ** this.reconnectAttempt * 1000, 15000);
       this.reconnectAttempt += 1;
-      this.reconnectTimer = window.setTimeout(() => this.connectRuntime(), value108);
+      this.reconnectTimer = window.setTimeout(() => this.connectRuntime(), reconnectDelayMs);
     });
     addEventListener.addEventListener("error", () => {
       if (addEventListener.readyState === WebSocket.OPEN) {
@@ -12458,14 +12458,14 @@ export class PanelRenderer {
       }
     });
   }
-  scheduleRuntimeHydrationRetry(arg86, arg87) {
+  scheduleRuntimeHydrationRetry(closeEvent, messageEvent) {
     const documentGeneration = () => {
       const {
         entityIds: filter,
-        runtimeComponents: value109
-      } = arg86;
-      const has2 = new Set(collectComponents(value109, type => type.type === "line-chart").map(bindings => String(bindings.bindings?.entity?.entityId || "")).filter(Boolean));
-      return filter.filter(arg21 => has2.has(arg21) && lineChartRuntimeStateNeedsHydration(this.states.get(arg21))).length > 0;
+        runtimeComponents: historyTarget
+      } = closeEvent;
+      const has2 = new Set(collectComponents(historyTarget, type => type.type === "line-chart").map(bindings => String(bindings.bindings?.entity?.entityId || "")).filter(Boolean));
+      return filter.filter(item => has2.has(item) && lineChartRuntimeStateNeedsHydration(this.states.get(item))).length > 0;
     };
     if (!documentGeneration()) {
       window.clearTimeout(this.runtimeHydrationRetryTimer);
@@ -12480,7 +12480,7 @@ export class PanelRenderer {
     const popupGeneration = Math.min(10000, 2 ** (this.runtimeHydrationRetryAttempt - 1) * 500);
     this.runtimeHydrationRetryTimer = window.setTimeout(() => {
       this.runtimeHydrationRetryTimer = null;
-      if (arg87 === this.socketGeneration && !this.destroyed) {
+      if (messageEvent === this.socketGeneration && !this.destroyed) {
         if (documentGeneration()) {
           this.connectRuntime({
             force: true
@@ -12495,20 +12495,20 @@ export class PanelRenderer {
     if (!this.document || this.destroyed || document.visibilityState === "hidden") {
       return;
     }
-    const value216 = [this.historyDocumentGeneration, this.page?.path || "", this.activePopupId || "", this.historyPopupGeneration].join(":");
-    return this.historyRefreshCoordinator.request(value216, () => this.refreshHistorySeriesPass());
+    const historyRefreshKey = [this.historyDocumentGeneration, this.page?.path || "", this.activePopupId || "", this.historyPopupGeneration].join(":");
+    return this.historyRefreshCoordinator.request(historyRefreshKey, () => this.refreshHistorySeriesPass());
   }
   scheduleHistoryRetry() {
     if (this.destroyed || document.visibilityState === "hidden" || this.historyRetryTimer || this.historyRetryAttempt >= 4) {
       return;
     }
-    const value217 = this.historyRetryAttempt;
-    const value218 = Math.min(8000, 2 ** value217 * 1000);
+    const retryAttempt = this.historyRetryAttempt;
+    const retryDelayMs = Math.min(8000, 2 ** retryAttempt * 1000);
     this.historyRetryAttempt += 1;
     this.historyRetryTimer = window.setTimeout(() => {
       this.historyRetryTimer = 0;
       this.refreshHistorySeries();
-    }, value218);
+    }, retryDelayMs);
   }
   async refreshHistorySeriesPass() {
     if (!this.document || this.destroyed || document.visibilityState === "hidden") {
@@ -12518,20 +12518,20 @@ export class PanelRenderer {
     const popupGeneration = this.historyPopupGeneration;
     const pagePath = this.page?.path || "";
     const get2 = new Map();
-    const value219 = (arg81, shared) => {
-      const value110 = collectComponents(arg81, type4 => type4.type === "line-chart" || type4.type === "presence-sensor");
-      for (const properties of value110) {
-        const value40 = properties.bindings?.entity?.entityId;
-        if (!value40) {
+    const collectHistoryTargets = (documentModel, shared) => {
+      const historyCapableComponents = collectComponents(documentModel, type4 => type4.type === "line-chart" || type4.type === "presence-sensor");
+      for (const properties of historyCapableComponents) {
+        const boundEntityId = properties.bindings?.entity?.entityId;
+        if (!boundEntityId) {
           continue;
         }
-        const value41 = properties.type === "presence-sensor";
-        const value42 = Math.max(30, Math.min(86400, Number(value41 ? 300 : properties.properties?.updateInterval || 600)));
-        const value43 = Math.max(1, Math.min(168, Number(value41 ? properties.properties?.historyHours || 24 : properties.properties?.hours || 24)));
-        const interval = get2.get(value40);
-        get2.set(value40, {
-          interval: Math.min(interval?.interval ?? value42, value42),
-          hours: Math.max(interval?.hours ?? value43, value43),
+        const isPresenceSensor = properties.type === "presence-sensor";
+        const updateIntervalSec = Math.max(30, Math.min(86400, Number(isPresenceSensor ? 300 : properties.properties?.updateInterval || 600)));
+        const historyHours = Math.max(1, Math.min(168, Number(isPresenceSensor ? properties.properties?.historyHours || 24 : properties.properties?.hours || 24)));
+        const interval = get2.get(boundEntityId);
+        get2.set(boundEntityId, {
+          interval: Math.min(interval?.interval ?? updateIntervalSec, updateIntervalSec),
+          hours: Math.max(interval?.hours ?? historyHours, historyHours),
           documentGeneration,
           shared: !!interval?.shared || !!shared.shared,
           pagePath: interval?.pagePath ?? shared.pagePath ?? null,
@@ -12540,10 +12540,10 @@ export class PanelRenderer {
         });
       }
     };
-    value219(this.document.sharedComponents || [], {
+    collectHistoryTargets(this.document.sharedComponents || [], {
       shared: true
     });
-    value219(this.page?.components || [], {
+    collectHistoryTargets(this.page?.components || [], {
       pagePath
     });
     const modules2 = this.activePopupId ? (this.document.customPopups || []).find(id3 => String(id3.id || "") === this.activePopupId) : null;
@@ -12561,32 +12561,32 @@ export class PanelRenderer {
         });
       }
     }
-    value219(push4, {
+    collectHistoryTargets(push4, {
       popupId: this.activePopupId || null
     });
-    const value220 = Date.now();
-    let value221 = false;
-    let value222 = false;
+    const passStartedAtMs = Date.now();
+    let historyFetchFailed = false;
+    let historyFetchAborted = false;
     const length5 = [...get2];
-    const value223 = () => ({
+    const historyRequestContext = () => ({
       documentGeneration: this.historyDocumentGeneration,
       pagePath: this.page?.path || "",
       popupId: this.activePopupId || null,
       popupGeneration: this.historyPopupGeneration
     });
-    const value224 = async () => {
+    const fetchNextHistorySeries = async () => {
       while (length5.length) {
         const [entityId5, hours] = length5.shift();
-        if (this.destroyed || !historyRequestStillRelevant(hours, value223())) {
+        if (this.destroyed || !historyRequestStillRelevant(hours, historyRequestContext())) {
           continue;
         }
-        const value44 = this.historySeries.get(entityId5);
-        const value45 = this.historySeriesCache.get(historySeriesCacheKey(entityId5, hours.hours));
-        const fetchedAt3 = [value44, value45].filter(points => points && points.hours === hours.hours && Array.isArray(points.points) && points.points.length > 0).sort((fetchedAt, fetchedAt2) => fetchedAt2.fetchedAt - fetchedAt.fetchedAt)[0];
-        if (fetchedAt3 && value220 - fetchedAt3.fetchedAt < hours.interval * 1000) {
-          if (value44 !== fetchedAt3) {
+        const existingSeries = this.historySeries.get(entityId5);
+        const seriesCacheEntry = this.historySeriesCache.get(historySeriesCacheKey(entityId5, hours.hours));
+        const fetchedAt3 = [existingSeries, seriesCacheEntry].filter(points => points && points.hours === hours.hours && Array.isArray(points.points) && points.points.length > 0).sort((fetchedAt, fetchedAt2) => fetchedAt2.fetchedAt - fetchedAt.fetchedAt)[0];
+        if (fetchedAt3 && passStartedAtMs - fetchedAt3.fetchedAt < hours.interval * 1000) {
+          if (existingSeries !== fetchedAt3) {
             this.historySeries.set(entityId5, fetchedAt3);
-            value221 = true;
+            historyFetchFailed = true;
           }
           continue;
         }
@@ -12595,7 +12595,7 @@ export class PanelRenderer {
         }
         this.historyFetches.add(entityId5);
         const abort = typeof AbortController == "function" ? new AbortController() : null;
-        const value46 = window.setTimeout(() => abort?.abort(), HISTORY_FETCH_TIMEOUT_MS);
+        const historyFetchTimeoutId = window.setTimeout(() => abort?.abort(), HISTORY_FETCH_TIMEOUT_MS);
         try {
           const ok = await fetch("/api/v1/ha/history?entityId=" + encodeURIComponent(entityId5) + "&hours=" + hours.hours, {
             credentials: "same-origin",
@@ -12607,11 +12607,11 @@ export class PanelRenderer {
             } : {})
           });
           if (!ok.ok) {
-            value222 = true;
+            historyFetchAborted = true;
             continue;
           }
           const points2 = await ok.json();
-          if (!historyRequestStillRelevant(hours, value223())) {
+          if (!historyRequestStillRelevant(hours, historyRequestContext())) {
             continue;
           }
           const points3 = {
@@ -12621,9 +12621,9 @@ export class PanelRenderer {
           };
           this.historySeries.set(entityId5, points3);
           cacheHistorySeries(this.historySeriesCache, entityId5, points3);
-          value221 = true;
+          historyFetchFailed = true;
           if (!points3.points.length) {
-            value222 = true;
+            historyFetchAborted = true;
           }
         } catch (name) {
           if (name?.name === "AbortError") {
@@ -12634,25 +12634,25 @@ export class PanelRenderer {
               durationMs: HISTORY_FETCH_TIMEOUT_MS
             });
           }
-          value222 = true;
+          historyFetchAborted = true;
         } finally {
-          window.clearTimeout(value46);
+          window.clearTimeout(historyFetchTimeoutId);
           this.historyFetches.delete(entityId5);
         }
       }
     };
     await Promise.all(Array.from({
       length: Math.min(2, length5.length)
-    }, () => value224()));
-    if (value222 && !this.destroyed) {
+    }, () => fetchNextHistorySeries()));
+    if (historyFetchAborted && !this.destroyed) {
       this.scheduleHistoryRetry();
     } else {
       this.historyRetryAttempt = 0;
     }
-    if (value221 && !this.destroyed) {
+    if (historyFetchFailed && !this.destroyed) {
       this.detailsStateSync?.refreshHistory?.();
-      for (const value111 of this.historyChartRefreshers) {
-        value111();
+      for (const historyPassResult of this.historyChartRefreshers) {
+        historyPassResult();
       }
     }
   }

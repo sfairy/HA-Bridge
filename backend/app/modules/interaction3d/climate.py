@@ -54,9 +54,11 @@ def require_air_conditioner_model(bindings, entity_id: str, scene: dict) -> None
         floor = floors[0]
     if not isinstance(floor, dict) or not model_id:
         raise HTTPException(409, detail='空调模型已失联，请在环境配置中重新选择模型。')
+    scene_payload = floor.get('scene') if isinstance(floor.get('scene'), dict) else {}
+    catalog = floor.get('models') or scene_payload.get('items') or scene_payload.get('models') or []
     models = [
         item
-        for item in (floor.get('models') or floor.get('scene', {}).get('models') or [])
+        for item in catalog
         if isinstance(item, dict) and str(item.get('id') or '') == model_id
     ]
     if len(models) != 1 or models[0].get('type') not in AIR_CONDITIONER_TYPES:

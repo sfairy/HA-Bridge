@@ -122,11 +122,11 @@ export function popupModuleDropPosition(element, pointerEvent) {
     };
   }
 }
-export function greatestCommonDivisor(arg, arg2) {
-  let value = Math.abs(Math.trunc(arg));
-  let value2 = Math.abs(Math.trunc(arg2));
-  while (value2) {
-    [value, value2] = [value2, value % value2];
+export function greatestCommonDivisor(left, right) {
+  let a = Math.abs(Math.trunc(left));
+  let b = Math.abs(Math.trunc(right));
+  while (b) {
+    [a, b] = [b, a % b];
   }
-  return value || 1;
+  return a || 1;
 }

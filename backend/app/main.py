@@ -378,6 +378,7 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
         '/bridge-static/js/auth/license.js',
         '/bridge-static/js/auth/auth-shell.js',
         '/bridge-static/js/shared/client-log.js',
+        '/bridge-static/css/shared/help.css',
         '/bridge-static/assets/manifests/manifest.webmanifest',
         '/bridge-static/assets/manifests/dashboard.webmanifest',
         '/bridge-static/assets/brand/ha-bridge-favicon.ico',
@@ -442,7 +443,7 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
         response = await call_next(request)
         app_surface = (
             path == '/'
-            or path in frozenset({'/pair', '/login', '/setup', '/license', '/3d-studio'})
+            or path in frozenset({'/pair', '/login', '/setup', '/license', '/help', '/3d-studio'})
             or path.startswith('/api/v1/')
             or path.startswith('/bridge-static/')
             or path.startswith('/assets/builtin/')
@@ -472,12 +473,15 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
             response.headers['X-Frame-Options'] = 'SAMEORIGIN' if embedded_auto_diagram or embedded_i3d_stage else 'DENY'
             response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
         if (
-            path in frozenset({'/', '/pair', '/login', '/setup', '/license', '/3d-studio'})
+            path in frozenset({'/', '/pair', '/login', '/setup', '/license', '/help', '/3d-studio'})
             or (path.startswith('/api/v1/') and not immutable_private_asset(path))
             or path.startswith('/display/')
             or path.startswith('/habridge/')
             or path.startswith('/projects/')
             or path.startswith('/bridge-static/3d-studio/')
+            or path.startswith('/bridge-static/modules/')
+            or path.startswith('/bridge-static/renderer/')
+            or path.startswith('/bridge-static/js/editor/')
             or path in frozenset({'/bridge-static/js/display/display.js', '/bridge-static/css/display/display.css'})
         ):
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
@@ -584,6 +588,12 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
         if request.app.state.license_service.allows('editor'):
             return RedirectResponse('/', status_code=303)
         return FileResponse(app_settings.frontend_dir / 'license.html')
+
+    @app.get('/help', include_in_schema=False)
+    def help_page(request: Request):
+        if not initialized(request):
+            return RedirectResponse('/setup', status_code=303)
+        return FileResponse(app_settings.frontend_dir / 'help.html')
 
     @app.get('/3d-studio', include_in_schema=False)
     def three_d_studio_page(request: Request):

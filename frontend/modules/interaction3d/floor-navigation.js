@@ -1,9 +1,9 @@
-export function floorNavigationChoices(length, arg3 = {}) {
-  const value8 = includes => {
-    if (/^\d+$/.test(includes)) {
-      return Number(includes);
+export function floorNavigationChoices(floors, overrides = {}) {
+  const parseChineseNumber = text => {
+    if (/^\d+$/.test(text)) {
+      return Number(text);
     }
-    const value7 = {
+    const digits = {
       一: 1,
       二: 2,
       两: 2,
@@ -15,35 +15,35 @@ export function floorNavigationChoices(length, arg3 = {}) {
       八: 8,
       九: 9
     };
-    if (includes.includes("十")) {
-      const [value, value2] = includes.split("十");
-      return (value7[value] || 1) * 10 + (value7[value2] || 0);
+    if (text.includes("十")) {
+      const [tensPart, onesPart] = text.split("十");
+      return (digits[tensPart] || 1) * 10 + (digits[onesPart] || 0);
     }
-    return value7[includes] || 0;
+    return digits[text] || 0;
   };
-  const filter = [...length].sort((elevation, elevation2) => (Number(elevation.elevation) || 0) - (Number(elevation2.elevation) || 0)).map(name => {
-    const match = String(name.name || "").trim();
-    const value5 = match.match(/^(?:B|地下|负|[-−])\s*([0-9一二两三四五六七八九十]+)(?:F|楼|层)?$/i);
-    const value6 = match.match(/^([0-9一二两三四五六七八九十]+)(?:F|楼|层)$/i);
+  const ranked = [...floors].sort((a, b) => (Number(a.elevation) || 0) - (Number(b.elevation) || 0)).map(floor => {
+    const name = String(floor.name || "").trim();
+    const basementMatch = name.match(/^(?:B|地下|负|[-−])\s*([0-9一二两三四五六七八九十]+)(?:F|楼|层)?$/i);
+    const floorMatch = name.match(/^([0-9一二两三四五六七八九十]+)(?:F|楼|层)$/i);
     return {
-      floor: name,
-      basement: !!value5 || !value6 && Number(name.elevation) < 0,
-      explicit: value8((value5 || value6)?.[1] || "")
+      floor,
+      basement: !!basementMatch || !floorMatch && Number(floor.elevation) < 0,
+      explicit: parseChineseNumber((basementMatch || floorMatch)?.[1] || "")
     };
   });
-  let value9 = filter.filter(basement => basement.basement).length;
-  let value10 = 0;
-  return [...(length.length > 1 ? [["all", "ALL", "全部楼层"]] : []), ...filter.map(({
-    floor: id,
-    basement: arg,
-    explicit: arg2
+  let remainingBasementIndex = ranked.filter(entry => entry.basement).length;
+  let nextFloorIndex = 0;
+  return [...(floors.length > 1 ? [["all", "ALL", "全部楼层"]] : []), ...ranked.map(({
+    floor,
+    basement,
+    explicit
   }) => {
-    const value3 = arg ? value9-- : ++value10;
-    const value4 = arg3[id.id];
-    if (Number.isInteger(value4) && value4 !== 0 && Math.abs(value4) <= 99) {
-      return [id.id, value4 < 0 ? "B" + -value4 : value4 + "F", id.name || "未命名楼层"];
+    const sequentialLevel = basement ? remainingBasementIndex-- : ++nextFloorIndex;
+    const override = overrides[floor.id];
+    if (Number.isInteger(override) && override !== 0 && Math.abs(override) <= 99) {
+      return [floor.id, override < 0 ? "B" + -override : override + "F", floor.name || "未命名楼层"];
     } else {
-      return [id.id, arg ? "B" + (arg2 || value3) : (arg2 || value3) + "F", id.name || "未命名楼层"];
+      return [floor.id, basement ? "B" + (explicit || sequentialLevel) : (explicit || sequentialLevel) + "F", floor.name || "未命名楼层"];
     }
   })];
 }

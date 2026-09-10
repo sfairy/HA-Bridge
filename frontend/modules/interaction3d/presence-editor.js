@@ -4,252 +4,252 @@ import { validPresenceRoute, snapsToPresenceStart, PRESENCE_PAGES } from "./pres
 import { DESIGNS, createWalker, animateWalker, disposeWalker } from "./presence-character.js";
 import { randomUuid } from "/bridge-static/utils/random-id.js";
 export async function openPresenceEditor({
-  component: properties2,
+  component,
   panelDocument,
-  floors: find = [],
-  entities: map = [],
-  pickers: entity,
-  onSave: arg19
+  floors = [],
+  entities = [],
+  pickers,
+  onSave
 }) {
-  const dispatchEvent = window.document;
-  const security = structuredClone(properties2.properties || {});
+  const doc = window.document;
+  const security = structuredClone(component.properties || {});
   security.security = {
     ...security.security,
     presenceSensors: structuredClone(security.security?.presenceSensors || [])
   };
-  const indexOf = security.security.presenceSensors;
-  const items = new Map(map.map(entityId => [entityId.entityId, entityId.name]));
-  for (const displayDuration of indexOf) {
-    Object.assign(displayDuration, {
-      character: displayDuration.character ?? "traveler",
-      color: displayDuration.color ?? "cyan",
-      speed: displayDuration.speed ?? 0.45,
-      size: displayDuration.size ?? 1,
-      displayDuration: displayDuration.entityId?.startsWith("event.") ? displayDuration.displayDuration > 0 ? displayDuration.displayDuration : 30 : displayDuration.displayDuration ?? 0
+  const presenceSensors = security.security.presenceSensors;
+  const entityNames = new Map(entities.map(entity => [entity.entityId, entity.name]));
+  for (const sensor of presenceSensors) {
+    Object.assign(sensor, {
+      character: sensor.character ?? "traveler",
+      color: sensor.color ?? "cyan",
+      speed: sensor.speed ?? 0.45,
+      size: sensor.size ?? 1,
+      displayDuration: sensor.entityId?.startsWith("event.") ? sensor.displayDuration > 0 ? sensor.displayDuration : 30 : sensor.displayDuration ?? 0
     });
   }
-  const value33 = (arg5, element, element2) => {
-    const textContent3 = dispatchEvent.createElement(arg5);
-    if (element) {
-      textContent3.textContent = element;
+  const el = (tag, text, className) => {
+    const node = doc.createElement(tag);
+    if (text) {
+      node.textContent = text;
     }
-    if (element2) {
-      textContent3.className = element2;
+    if (className) {
+      node.className = className;
     }
-    return textContent3;
+    return node;
   };
-  const value34 = (arg6, arg7) => {
-    const setAttribute5 = dispatchEvent.createElementNS("http://www.w3.org/2000/svg", arg6);
-    for (const [value3, value4] of Object.entries(arg7 || {})) {
-      setAttribute5.setAttribute(value3, value4);
+  const svgEl = (tag, attrs) => {
+    const node = doc.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [name, value] of Object.entries(attrs || {})) {
+      node.setAttribute(name, value);
     }
-    return setAttribute5;
+    return node;
   };
-  const remove = value33("link");
-  remove.rel = "stylesheet";
-  remove.href = "/api/v1/modules/interaction3d/presence-editor.css";
-  const addEventListener = value33("dialog", "", "i3d-editor i3d-presence-editor");
-  addEventListener.setAttribute("aria-label", "配置安防");
-  const focus = dispatchEvent.activeElement;
-  let route = indexOf[0] || null;
-  let value35 = false;
-  let map2 = new Set(indexOf.filter(routeClosed => routeClosed.routeClosed !== false && validPresenceRoute(routeClosed.route)).map(id7 => id7.id));
-  let index = null;
+  const stylesheet = el("link");
+  stylesheet.rel = "stylesheet";
+  stylesheet.href = "/api/v1/modules/interaction3d/presence-editor.css";
+  const dialog = el("dialog", "", "i3d-editor i3d-presence-editor");
+  dialog.setAttribute("aria-label", "配置安防");
+  const previousFocus = doc.activeElement;
+  let selected = presenceSensors[0] || null;
+  let closed = false;
+  let closedRoutes = new Set(presenceSensors.filter(sensor => sensor.routeClosed !== false && validPresenceRoute(sensor.route)).map(sensor => sensor.id));
+  let dragPoint = null;
   let box;
-  let root2 = null;
-  let value36 = "";
-  let value37 = 0;
-  let value38 = 0;
-  let value39 = 0;
-  let value40 = 0;
+  let preview = null;
+  let previewKey = "";
+  let rafId = 0;
+  let lastFrameTime = 0;
+  let walkPhase = 0;
+  let animTime = 0;
   let focusCommand = null;
-  let value41 = false;
-  let value42 = "plan";
-  let value43 = false;
-  let element4 = false;
-  let value44 = 0;
-  let value45 = null;
-  let push = [];
-  const value46 = () => {
-    for (const value5 of push) {
-      value5();
+  let presented = false;
+  let viewMode = "plan";
+  let previewWalk = false;
+  let showHitRange = false;
+  let topViewTimer = 0;
+  let pointerPlanPoint = null;
+  let flushers = [];
+  const flushInputs = () => {
+    for (const flush of flushers) {
+      flush();
     }
   };
-  const textContent4 = value33("span", "", "presence-status");
-  textContent4.setAttribute("role", "status");
-  const value47 = (arg8, arg9) => {
-    const type = value33("button", arg8);
-    type.type = "button";
-    type.addEventListener("click", arg9);
-    return type;
+  const status = el("span", "", "presence-status");
+  status.setAttribute("role", "status");
+  const button = (label, onClick) => {
+    const btn = el("button", label);
+    btn.type = "button";
+    btn.addEventListener("click", onClick);
+    return btn;
   };
   function close() {
-    if (!value35) {
-      value35 = true;
-      cancelAnimationFrame(value37);
-      disconnect.disconnect();
-      clearTimeout(value44);
+    if (!closed) {
+      closed = true;
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+      clearTimeout(topViewTimer);
       focusCommand?.();
-      dispatchEvent.removeEventListener("visibilitychange", fn10);
-      if (root2) {
-        disposeWalker(root2.root);
-        root2.renderer.dispose();
-        root2.renderer.forceContextLoss();
+      doc.removeEventListener("visibilitychange", onVisibilityChange);
+      if (preview) {
+        disposeWalker(preview.root);
+        preview.renderer.dispose();
+        preview.renderer.forceContextLoss();
       }
-      addEventListener.close();
-      addEventListener.remove();
-      remove.remove();
-      dispatchEvent.dispatchEvent(new Event("hb-i3d-preview-scope"));
-      focus?.focus?.();
+      dialog.close();
+      dialog.remove();
+      stylesheet.remove();
+      doc.dispatchEvent(new Event("hb-i3d-preview-scope"));
+      previousFocus?.focus?.();
     }
   }
-  const disabled4 = value47("保存安防配置", async () => {
-    value46();
-    for (const routeClosed2 of indexOf) {
-      routeClosed2.routeClosed = map2.has(routeClosed2.id) && validPresenceRoute(routeClosed2.route);
+  const saveBtn = button("保存安防配置", async () => {
+    flushInputs();
+    for (const sensor of presenceSensors) {
+      sensor.routeClosed = closedRoutes.has(sensor.id) && validPresenceRoute(sensor.route);
     }
-    disabled4.disabled = true;
+    saveBtn.disabled = true;
     try {
-      await arg19(structuredClone(security));
-      if (!value35) {
-        textContent4.textContent = "已应用到编辑器，请在退出后保存仪表盘";
+      await onSave(structuredClone(security));
+      if (!closed) {
+        status.textContent = "已应用到编辑器，请在退出后保存仪表盘";
       }
-    } catch (message2) {
-      if (!value35) {
-        textContent4.textContent = message2.message || "保存失败，请重试。";
+    } catch (error) {
+      if (!closed) {
+        status.textContent = error.message || "保存失败，请重试。";
       }
     } finally {
-      if (!value35) {
-        disabled4.disabled = false;
+      if (!closed) {
+        saveBtn.disabled = false;
       }
     }
   });
-  disabled4.className = "primary";
-  addEventListener.addEventListener("input", () => {
-    textContent4.textContent = "配置已修改，请保存安防配置。";
+  saveBtn.className = "primary";
+  dialog.addEventListener("input", () => {
+    status.textContent = "配置已修改，请保存安防配置。";
   });
-  const append5 = value33("header");
-  append5.append(value33("strong", "配置安防"), textContent4, disabled4, value47("退出", close));
-  const append6 = value33("div", "", "presence-body");
-  const append7 = value33("aside", "", "presence-bindings");
-  const append8 = value33("aside", "", "presence-controls");
-  const append9 = value33("div", "", "presence-plan");
-  const textContent5 = value33("strong", "行走路线");
-  const textContent6 = value33("p", "", "presence-note");
-  const append10 = value33("div", "", "presence-viewport");
-  const value48 = value33("div", "", "presence-plan-runtime");
-  const addEventListener2 = value34("svg", {
+  const header = el("header");
+  header.append(el("strong", "配置安防"), status, saveBtn, button("退出", close));
+  const body = el("div", "", "presence-body");
+  const bindingsAside = el("aside", "", "presence-bindings");
+  const controlsAside = el("aside", "", "presence-controls");
+  const planSection = el("div", "", "presence-plan");
+  const planTitle = el("strong", "行走路线");
+  const planNote = el("p", "", "presence-note");
+  const viewport = el("div", "", "presence-viewport");
+  const runtimeHost = el("div", "", "presence-plan-runtime");
+  const planSvg = svgEl("svg", {
     role: "img",
     "aria-label": "平面图行走路线",
     tabindex: "0"
   });
-  const replaceChildren = value34("g");
-  const append11 = value34("g");
-  addEventListener2.append(replaceChildren, append11);
-  const append12 = value33("div", "", "presence-route-tools");
-  append12.append(value47("闭合路线", () => {
-    if (route && validPresenceRoute(route.route)) {
-      map2.add(route.id);
-      textContent4.textContent = "";
-      fn5();
+  const underlay = svgEl("g");
+  const routeLayer = svgEl("g");
+  planSvg.append(underlay, routeLayer);
+  const routeTools = el("div", "", "presence-route-tools");
+  routeTools.append(button("闭合路线", () => {
+    if (selected && validPresenceRoute(selected.route)) {
+      closedRoutes.add(selected.id);
+      status.textContent = "";
+      redrawPlan();
     } else {
-      textContent4.textContent = "至少绘制三个不共线的点，才能闭合路线。";
+      status.textContent = "至少绘制三个不共线的点，才能闭合路线。";
     }
-  }), value47("撤销一点", () => {
-    if (route) {
-      map2.delete(route.id);
-      route.route.pop();
-      fn5();
-      fn3();
+  }), button("撤销一点", () => {
+    if (selected) {
+      closedRoutes.delete(selected.id);
+      selected.route.pop();
+      redrawPlan();
+      syncRuntime();
     }
-  }), value47("重新绘制", () => {
-    if (route) {
-      route.route = [];
-      map2.delete(route.id);
-      fn5();
-      fn3();
+  }), button("重新绘制", () => {
+    if (selected) {
+      selected.route = [];
+      closedRoutes.delete(selected.id);
+      redrawPlan();
+      syncRuntime();
     }
   }));
-  const append13 = value33("div", "", "i3d-focus-actions presence-view-tools");
-  const value49 = arg10 => {
-    value42 = arg10;
-    addEventListener2.toggleAttribute("hidden", arg10 !== "plan");
-    append12.hidden = arg10 !== "plan";
-    index = null;
-    value45 = null;
-    setAttribute7.setAttribute("aria-pressed", String(arg10 === "plan"));
-    setAttribute8.setAttribute("aria-pressed", String(arg10 === "3d"));
-    if (value41) {
-      if (arg10 === "plan") {
-        fn2();
+  const viewTools = el("div", "", "i3d-focus-actions presence-view-tools");
+  const setViewMode = mode => {
+    viewMode = mode;
+    planSvg.toggleAttribute("hidden", mode !== "plan");
+    routeTools.hidden = mode !== "plan";
+    dragPoint = null;
+    pointerPlanPoint = null;
+    planBtn.setAttribute("aria-pressed", String(mode === "plan"));
+    view3dBtn.setAttribute("aria-pressed", String(mode === "3d"));
+    if (presented) {
+      if (mode === "plan") {
+        scheduleTopView();
       } else {
         focusCommand.focusCommand("presence-3d-view").catch(onLoadError);
       }
     }
-    fn5();
+    redrawPlan();
   };
-  const setAttribute7 = value47("平面", () => value49("plan"));
-  const setAttribute8 = value47("3D", () => value49("3d"));
-  setAttribute7.setAttribute("aria-pressed", "true");
-  setAttribute8.setAttribute("aria-pressed", "false");
-  const textContent7 = value47("预览行走", () => {
-    if (!route || !map2.has(route.id) || !validPresenceRoute(route.route)) {
-      textContent4.textContent = "请先绘制路径并闭合，再预览行走。";
+  const planBtn = button("平面", () => setViewMode("plan"));
+  const view3dBtn = button("3D", () => setViewMode("3d"));
+  planBtn.setAttribute("aria-pressed", "true");
+  view3dBtn.setAttribute("aria-pressed", "false");
+  const previewWalkBtn = button("预览行走", () => {
+    if (!selected || !closedRoutes.has(selected.id) || !validPresenceRoute(selected.route)) {
+      status.textContent = "请先绘制路径并闭合，再预览行走。";
       return;
     }
-    value43 = !value43;
-    textContent7.textContent = value43 ? "停止预览" : "预览行走";
-    if (value41) {
-      focusCommand.focusCommand("presence-preview-walk", "", value43).catch(onLoadError);
+    previewWalk = !previewWalk;
+    previewWalkBtn.textContent = previewWalk ? "停止预览" : "预览行走";
+    if (presented) {
+      focusCommand.focusCommand("presence-preview-walk", "", previewWalk).catch(onLoadError);
     }
   });
-  append13.append(setAttribute7, setAttribute8, textContent7);
-  append10.append(value48, addEventListener2);
-  append9.append(textContent5, textContent6, append13, append10, append12);
-  append6.append(append7, append9, append8);
-  addEventListener.append(append5, append6);
-  await new Promise((arg2, arg3) => {
-    remove.addEventListener("load", arg2, {
+  viewTools.append(planBtn, view3dBtn, previewWalkBtn);
+  viewport.append(runtimeHost, planSvg);
+  planSection.append(planTitle, planNote, viewTools, viewport, routeTools);
+  body.append(bindingsAside, planSection, controlsAside);
+  dialog.append(header, body);
+  await new Promise((resolve, reject) => {
+    stylesheet.addEventListener("load", resolve, {
       once: true
     });
-    remove.addEventListener("error", () => arg3(new Error("安防样式加载失败，请重试。")), {
+    stylesheet.addEventListener("error", () => reject(new Error("安防样式加载失败，请重试。")), {
       once: true
     });
-    dispatchEvent.head.append(remove);
-  }).catch(arg4 => {
-    remove.remove();
-    throw arg4;
+    doc.head.append(stylesheet);
+  }).catch(error => {
+    stylesheet.remove();
+    throw error;
   });
-  dispatchEvent.body.append(addEventListener);
-  addEventListener.dataset.i3dPreviewScope = "presence";
-  function onLoadError(message3) {
-    if (!value35) {
-      textContent4.textContent = message3.message || String(message3);
+  doc.body.append(dialog);
+  dialog.dataset.i3dPreviewScope = "presence";
+  function onLoadError(error) {
+    if (!closed) {
+      status.textContent = error.message || String(error);
     }
   }
-  function fn() {
-    if (route) {
-      return find.find(id5 => id5.id === route.floorId);
+  function activeFloor() {
+    if (selected) {
+      return floors.find(floor => floor.id === selected.floorId);
     } else {
-      return find.find(id3 => id3.id === security.floorSelection) || find[0];
+      return floors.find(floor => floor.id === security.floorSelection) || floors[0];
     }
   }
-  function fn2() {
-    clearTimeout(value44);
-    if (!!value41 && !!fn() && value42 === "plan" && !!box) {
-      value44 = setTimeout(() => {
-        const id4 = fn();
-        if (!value35 && value41 && value42 === "plan" && id4) {
+  function scheduleTopView() {
+    clearTimeout(topViewTimer);
+    if (!!presented && !!activeFloor() && viewMode === "plan" && !!box) {
+      topViewTimer = setTimeout(() => {
+        const floor = activeFloor();
+        if (!closed && presented && viewMode === "plan" && floor) {
           focusCommand.focusCommand("presence-top-view", "", {
-            floorId: id4.id,
+            floorId: floor.id,
             box
           }).catch(onLoadError);
         }
       }, 30);
     }
   }
-  function fn3() {
-    const floorSelection = fn()?.id;
+  function syncRuntime() {
+    const floorSelection = activeFloor()?.id;
     if (!floorSelection) {
       return;
     }
@@ -258,9 +258,9 @@ export async function openPresenceEditor({
       floorSelection,
       camera: security.floorCameras?.[floorSelection] || (security.floorSelection === floorSelection ? security.camera : null),
       security: {
-        presenceSensors: route ? [{
-          ...structuredClone(route),
-          routeClosed: map2.has(route.id)
+        presenceSensors: selected ? [{
+          ...structuredClone(selected),
+          routeClosed: closedRoutes.has(selected.id)
         }] : []
       },
       pageDimStrength: {
@@ -279,9 +279,9 @@ export async function openPresenceEditor({
       focusCommand.update(properties);
       return;
     }
-    focusCommand = mountInteraction3d(value48, {
+    focusCommand = mountInteraction3d(runtimeHost, {
       component: {
-        ...properties2,
+        ...component,
         properties
       },
       context: {
@@ -291,169 +291,169 @@ export async function openPresenceEditor({
       editing: true,
       editingModule: "security",
       onPresented: () => {
-        if (!value35) {
-          value41 = true;
-          fn2();
-          if (value43) {
+        if (!closed) {
+          presented = true;
+          scheduleTopView();
+          if (previewWalk) {
             focusCommand.focusCommand("presence-preview-walk", "", true).catch(onLoadError);
           }
-          focusCommand.focusCommand("presence-show-hit-range", "", element4).catch(onLoadError);
+          focusCommand.focusCommand("presence-show-hit-range", "", showHitRange).catch(onLoadError);
         }
       },
       onLoadError
     });
-    dispatchEvent.dispatchEvent(new Event("hb-i3d-preview-scope"));
+    doc.dispatchEvent(new Event("hb-i3d-preview-scope"));
   }
-  function fn4() {
-    const plan = fn();
-    const length = [...(plan?.plan?.walls || []).flatMap(start => [start.start, start.end]), ...(route?.route || [])];
-    const value16 = length.map(x3 => x3.x);
-    const value17 = length.map(y => y.y);
-    const value18 = plan?.plan?.pixelsPerMeter || 100;
-    const value19 = length.length ? Math.min(...value16) : 0;
-    const value20 = length.length ? Math.min(...value17) : 0;
-    const value21 = Math.max(value18, length.length ? Math.max(...value16) - value19 : value18 * 10);
-    const value22 = Math.max(value18, length.length ? Math.max(...value17) - value20 : value18 * 8);
-    const value23 = Math.max(value21, value22) * 0.1;
+  function recomputeBox() {
+    const floor = activeFloor();
+    const points = [...(floor?.plan?.walls || []).flatMap(wall => [wall.start, wall.end]), ...(selected?.route || [])];
+    const xs = points.map(point => point.x);
+    const ys = points.map(point => point.y);
+    const ppm = floor?.plan?.pixelsPerMeter || 100;
+    const minX = points.length ? Math.min(...xs) : 0;
+    const minY = points.length ? Math.min(...ys) : 0;
+    const width = Math.max(ppm, points.length ? Math.max(...xs) - minX : ppm * 10);
+    const height = Math.max(ppm, points.length ? Math.max(...ys) - minY : ppm * 8);
+    const pad = Math.max(width, height) * 0.1;
     box = {
-      x: value19 - value23,
-      y: value20 - value23,
-      w: value21 + value23 * 2,
-      h: value22 + value23 * 2
+      x: minX - pad,
+      y: minY - pad,
+      w: width + pad * 2,
+      h: height + pad * 2
     };
-    fn5();
+    redrawPlan();
   }
-  function fn5(arg12 = true) {
+  function redrawPlan(scheduleView = true) {
     if (!box) {
       return;
     }
-    const disabled2 = append8.querySelector("[data-presence-focus]");
-    if (disabled2) {
-      disabled2.disabled = !route || !map2.has(route.id) || !validPresenceRoute(route.route);
+    const focusBtn = controlsAside.querySelector("[data-presence-focus]");
+    if (focusBtn) {
+      focusBtn.disabled = !selected || !closedRoutes.has(selected.id) || !validPresenceRoute(selected.route);
     }
-    addEventListener2.setAttribute("viewBox", box.x + " " + box.y + " " + box.w + " " + box.h);
-    replaceChildren.replaceChildren();
-    append11.replaceChildren();
-    const name3 = fn();
-    textContent7.disabled = !route || !map2.has(route.id) || !validPresenceRoute(route.route);
-    for (const disabled of append12.querySelectorAll("button")) {
-      disabled.disabled = !route;
+    planSvg.setAttribute("viewBox", box.x + " " + box.y + " " + box.w + " " + box.h);
+    underlay.replaceChildren();
+    routeLayer.replaceChildren();
+    const floor = activeFloor();
+    previewWalkBtn.disabled = !selected || !closedRoutes.has(selected.id) || !validPresenceRoute(selected.route);
+    for (const btn of routeTools.querySelectorAll("button")) {
+      btn.disabled = !selected;
     }
-    textContent6.textContent = route ? name3 ? value42 === "3d" ? "拖动旋转、滚轮缩放；调整人物大小，再预览行走效果。" : map2.has(route.id) ? "路线已闭合 · 可拖动圆点调整路径；切换 3D 查看人物大小。" : "请绘制行走路径：依次点击至少三个点，靠近起点可吸附闭合。" : "请选择有效楼层。" : "添加人在传感器后，在顶视图中绘制行走路径。";
-    textContent5.textContent = name3 ? (name3.name || "楼层") + " · 行走路线" : "行走路线";
-    if (arg12 !== false) {
-      fn2();
+    planNote.textContent = selected ? floor ? viewMode === "3d" ? "拖动旋转、滚轮缩放；调整人物大小，再预览行走效果。" : closedRoutes.has(selected.id) ? "路线已闭合 · 可拖动圆点调整路径；切换 3D 查看人物大小。" : "请绘制行走路径：依次点击至少三个点，靠近起点可吸附闭合。" : "请选择有效楼层。" : "添加人在传感器后，在顶视图中绘制行走路径。";
+    planTitle.textContent = floor ? (floor.name || "楼层") + " · 行走路线" : "行走路线";
+    if (scheduleView !== false) {
+      scheduleTopView();
     }
-    if (!route) {
+    if (!selected) {
       return;
     }
-    const stroke = route.color === "orange" ? "#eaa044" : "#52b8b1";
-    append11.append(value34(map2.has(route.id) ? "polygon" : "polyline", {
-      points: route.route.map(x => x.x + "," + x.y).join(" "),
-      fill: map2.has(route.id) ? stroke + "14" : "none",
+    const stroke = selected.color === "orange" ? "#eaa044" : "#52b8b1";
+    routeLayer.append(svgEl(closedRoutes.has(selected.id) ? "polygon" : "polyline", {
+      points: selected.route.map(point => point.x + "," + point.y).join(" "),
+      fill: closedRoutes.has(selected.id) ? stroke + "14" : "none",
       stroke,
       "stroke-width": 3,
       "vector-effect": "non-scaling-stroke",
       "pointer-events": "none",
       "stroke-linejoin": "round"
     }));
-    const value24 = 1 / Math.max(0.0001, Math.abs(addEventListener2.getScreenCTM()?.a || 1));
-    route.route.forEach((x4, data_point) => {
-      append11.append(value34("circle", {
-        cx: x4.x,
-        cy: x4.y,
-        r: (data_point === 0 ? 8 : 6) * value24,
-        fill: data_point === 0 ? stroke : "#f7fafc",
+    const pixelScale = 1 / Math.max(0.0001, Math.abs(planSvg.getScreenCTM()?.a || 1));
+    selected.route.forEach((point, pointIndex) => {
+      routeLayer.append(svgEl("circle", {
+        cx: point.x,
+        cy: point.y,
+        r: (pointIndex === 0 ? 8 : 6) * pixelScale,
+        fill: pointIndex === 0 ? stroke : "#f7fafc",
         stroke,
         "stroke-width": 2,
         "vector-effect": "non-scaling-stroke",
-        "data-point": data_point
+        "data-point": pointIndex
       }));
-      const textContent = value34("text", {
-        x: x4.x + value24 * 11,
-        y: x4.y - value24 * 9,
+      const label = svgEl("text", {
+        x: point.x + pixelScale * 11,
+        y: point.y - pixelScale * 9,
         fill: "#64748b",
-        "font-size": value24 * 11,
+        "font-size": pixelScale * 11,
         "pointer-events": "none"
       });
-      textContent.textContent = String(data_point + 1);
-      append11.append(textContent);
+      label.textContent = String(pointIndex + 1);
+      routeLayer.append(label);
     });
-    if (!map2.has(route.id) && value45 && route.route.length) {
-      const value9 = snapsToPresenceStart(route.route, value45, 1 / value24);
-      const x5 = value9 ? route.route[0] : value45;
-      const x6 = route.route.at(-1);
-      append11.append(value34("line", {
-        x1: x6.x,
-        y1: x6.y,
-        x2: x5.x,
-        y2: x5.y,
+    if (!closedRoutes.has(selected.id) && pointerPlanPoint && selected.route.length) {
+      const snapped = snapsToPresenceStart(selected.route, pointerPlanPoint, 1 / pixelScale);
+      const hoverPoint = snapped ? selected.route[0] : pointerPlanPoint;
+      const lastPoint = selected.route.at(-1);
+      routeLayer.append(svgEl("line", {
+        x1: lastPoint.x,
+        y1: lastPoint.y,
+        x2: hoverPoint.x,
+        y2: hoverPoint.y,
         stroke,
         "stroke-width": 2,
         "stroke-dasharray": "5 4",
         "vector-effect": "non-scaling-stroke",
         "pointer-events": "none"
       }));
-      if (value9) {
-        append11.append(value34("circle", {
-          cx: x5.x,
-          cy: x5.y,
-          r: value24 * 16,
+      if (snapped) {
+        routeLayer.append(svgEl("circle", {
+          cx: hoverPoint.x,
+          cy: hoverPoint.y,
+          r: pixelScale * 16,
           fill: stroke + "33",
           stroke,
           "stroke-width": 2,
           "vector-effect": "non-scaling-stroke",
           "pointer-events": "none"
         }));
-        textContent6.textContent = "已吸附起点 · 点击即可闭合路线。";
+        planNote.textContent = "已吸附起点 · 点击即可闭合路线。";
       }
     }
   }
-  function fn6(arg13, arg14) {
-    const append = value33("label", "", "presence-field");
-    append.append(value33("span", arg13), arg14);
-    append8.append(append);
-    return arg14;
+  function addField(label, control) {
+    const field = el("label", "", "presence-field");
+    field.append(el("span", label), control);
+    controlsAside.append(field);
+    return control;
   }
-  function fn7(arg15, arg16, min, max, step, arg17 = 1) {
-    const value25 = value33("input");
-    Object.assign(value25, {
+  function addNumberField(label, key, min, max, step, displayScale = 1) {
+    const input = el("input");
+    Object.assign(input, {
       type: "number",
       min,
       max,
       step,
-      value: route[arg16] * arg17
+      value: selected[key] * displayScale
     });
-    value25.setAttribute("aria-label", arg15);
-    const value26 = route;
-    const value27 = () => {
-      const value6 = Number(value25.value);
-      if (value25.value.trim() && Number.isFinite(value6)) {
-        value26[arg16] = Math.max(min, Math.min(max, value6)) / arg17;
+    input.setAttribute("aria-label", label);
+    const target = selected;
+    const commit = () => {
+      const n = Number(input.value);
+      if (input.value.trim() && Number.isFinite(n)) {
+        target[key] = Math.max(min, Math.min(max, n)) / displayScale;
       }
-      value25.value = value26[arg16] * arg17;
+      input.value = target[key] * displayScale;
     };
-    push.push(value27);
-    value25.addEventListener("change", () => {
-      value27();
-      fn3();
+    flushers.push(commit);
+    input.addEventListener("change", () => {
+      commit();
+      syncRuntime();
     });
-    fn6(arg15, value25).parentElement.classList.add("presence-number-field");
+    addField(label, input).parentElement.classList.add("presence-number-field");
   }
-  function fn8() {
-    value46();
-    push = [];
-    index = null;
-    value45 = null;
-    append7.replaceChildren();
-    append8.replaceChildren();
-    append7.append(value33("strong", "人在传感器"), value33("p", "每个传感器独立设置路线和人物。", "presence-note"));
-    const disabled3 = value47("＋ 添加人在传感器", () => {
-      route = {
+  function rebuildUi() {
+    flushInputs();
+    flushers = [];
+    dragPoint = null;
+    pointerPlanPoint = null;
+    bindingsAside.replaceChildren();
+    controlsAside.replaceChildren();
+    bindingsAside.append(el("strong", "人在传感器"), el("p", "每个传感器独立设置路线和人物。", "presence-note"));
+    const addBtn = button("＋ 添加人在传感器", () => {
+      selected = {
         id: randomUuid(),
         label: "",
         entityId: "",
-        floorId: find.find(id => id.id === properties2.properties?.floorSelection)?.id || find[0]?.id || "",
+        floorId: floors.find(floor => floor.id === component.properties?.floorSelection)?.id || floors[0]?.id || "",
         route: [],
         speed: 0.45,
         size: 1,
@@ -463,350 +463,350 @@ export async function openPresenceEditor({
         character: "traveler",
         color: "cyan"
       };
-      indexOf.push(route);
-      value43 = false;
-      textContent7.textContent = "预览行走";
-      value49("plan");
-      textContent4.textContent = "选择人在传感器后，请在顶视图中绘制行走路径。";
-      fn8();
+      presenceSensors.push(selected);
+      previewWalk = false;
+      previewWalkBtn.textContent = "预览行走";
+      setViewMode("plan");
+      status.textContent = "选择人在传感器后，请在顶视图中绘制行走路径。";
+      rebuildUi();
     });
-    disabled3.disabled = indexOf.length >= 128 || !find.length;
-    append7.append(disabled3);
-    for (const entityId2 of indexOf) {
-      const setAttribute2 = value47(entityId2.label || items.get(entityId2.entityId) || entityId2.entityId || "未选择传感器", () => {
-        route = entityId2;
-        fn8();
+    addBtn.disabled = presenceSensors.length >= 128 || !floors.length;
+    bindingsAside.append(addBtn);
+    for (const sensor of presenceSensors) {
+      const selectBtn = button(sensor.label || entityNames.get(sensor.entityId) || sensor.entityId || "未选择传感器", () => {
+        selected = sensor;
+        rebuildUi();
       });
-      setAttribute2.setAttribute("aria-pressed", String(entityId2 === route));
-      append7.append(setAttribute2);
+      selectBtn.setAttribute("aria-pressed", String(sensor === selected));
+      bindingsAside.append(selectBtn);
     }
-    if (!route) {
-      append8.append(value33("p", "有人时走动，无人时隐藏。", "presence-note"));
-      fn4();
-      fn3();
+    if (!selected) {
+      controlsAside.append(el("p", "有人时走动，无人时隐藏。", "presence-note"));
+      recomputeBox();
+      syncRuntime();
       return;
     }
-    const entityId3 = route;
-    const trigger = value47(items.get(entityId3.entityId) || entityId3.entityId || "选择人在传感器", async () => {
+    const sensor = selected;
+    const trigger = button(entityNames.get(sensor.entityId) || sensor.entityId || "选择人在传感器", async () => {
       try {
-        await entity.entity({
+        await pickers.entity({
           trigger,
-          current: entityId3.entityId,
+          current: sensor.entityId,
           deviceKind: "presence",
-          onSelect: (startsWith, name) => {
-            value46();
-            push = [];
-            entityId3.entityId = startsWith;
-            if (startsWith.startsWith("event.") && !(entityId3.displayDuration > 0)) {
-              entityId3.displayDuration = 30;
+          onSelect: (entityId, meta) => {
+            flushInputs();
+            flushers = [];
+            sensor.entityId = entityId;
+            if (entityId.startsWith("event.") && !(sensor.displayDuration > 0)) {
+              sensor.displayDuration = 30;
             }
-            if (name?.name) {
-              items.set(startsWith, name.name);
+            if (meta?.name) {
+              entityNames.set(entityId, meta.name);
             }
-            if (!entityId3.route.length) {
-              textContent4.textContent = "已选择传感器，请在顶视图中绘制行走路径。";
+            if (!sensor.route.length) {
+              status.textContent = "已选择传感器，请在顶视图中绘制行走路径。";
             }
-            fn8();
+            rebuildUi();
           }
         });
-      } catch (message) {
-        textContent4.textContent = message.message;
+      } catch (error) {
+        status.textContent = error.message;
       }
     });
     trigger.setAttribute("aria-label", "选择人在传感器");
-    fn6("人在传感器", trigger);
-    const value28 = value33("input");
-    value28.value = entityId3.label;
-    value28.maxLength = 128;
-    value28.placeholder = "可选，自定义名称";
-    value28.setAttribute("aria-label", "显示名称");
-    const value29 = () => {
-      entityId3.label = value28.value.slice(0, 128);
+    addField("人在传感器", trigger);
+    const labelInput = el("input");
+    labelInput.value = sensor.label;
+    labelInput.maxLength = 128;
+    labelInput.placeholder = "可选，自定义名称";
+    labelInput.setAttribute("aria-label", "显示名称");
+    const commitLabel = () => {
+      sensor.label = labelInput.value.slice(0, 128);
     };
-    push.push(value29);
-    value28.addEventListener("input", value29);
-    value28.addEventListener("change", () => {
-      value29();
-      const textContent2 = append7.querySelectorAll("button")[indexOf.indexOf(entityId3) + 1];
-      if (textContent2) {
-        textContent2.textContent = entityId3.label || items.get(entityId3.entityId) || entityId3.entityId || "未选择传感器";
+    flushers.push(commitLabel);
+    labelInput.addEventListener("input", commitLabel);
+    labelInput.addEventListener("change", () => {
+      commitLabel();
+      const listBtn = bindingsAside.querySelectorAll("button")[presenceSensors.indexOf(sensor) + 1];
+      if (listBtn) {
+        listBtn.textContent = sensor.label || entityNames.get(sensor.entityId) || sensor.entityId || "未选择传感器";
       }
     });
-    fn6("显示名称", value28);
-    const append2 = value33("select");
-    append2.setAttribute("aria-label", "路线楼层");
-    if (!find.some(id6 => id6.id === entityId3.floorId)) {
-      const value10 = value33("option", "原楼层已不存在，请重新选择");
-      value10.value = "";
-      append2.append(value10);
+    addField("显示名称", labelInput);
+    const floorSelect = el("select");
+    floorSelect.setAttribute("aria-label", "路线楼层");
+    if (!floors.some(floor => floor.id === sensor.floorId)) {
+      const missingOption = el("option", "原楼层已不存在，请重新选择");
+      missingOption.value = "";
+      floorSelect.append(missingOption);
     }
-    for (const id8 of find) {
-      const value11 = value33("option", id8.name || id8.id);
-      value11.value = id8.id;
-      append2.append(value11);
+    for (const floor of floors) {
+      const option = el("option", floor.name || floor.id);
+      option.value = floor.id;
+      floorSelect.append(option);
     }
-    append2.value = entityId3.floorId;
-    append2.addEventListener("change", () => {
-      entityId3.floorId = append2.value;
-      entityId3.route = [];
-      map2.delete(entityId3.id);
-      fn8();
+    floorSelect.value = sensor.floorId;
+    floorSelect.addEventListener("change", () => {
+      sensor.floorId = floorSelect.value;
+      sensor.route = [];
+      closedRoutes.delete(sensor.id);
+      rebuildUi();
     });
-    fn6("路线楼层", append2);
-    const value30 = value33("select");
-    value30.setAttribute("aria-label", "显示页面");
-    for (const [element3, value13] of [["all", "全部页面"], ["custom", "指定页面"]]) {
-      const value12 = value33("option", value13);
-      value12.value = element3;
-      value30.append(value12);
+    addField("路线楼层", floorSelect);
+    const pagesSelect = el("select");
+    pagesSelect.setAttribute("aria-label", "显示页面");
+    for (const [value, label] of [["all", "全部页面"], ["custom", "指定页面"]]) {
+      const option = el("option", label);
+      option.value = value;
+      pagesSelect.append(option);
     }
-    value30.value = entityId3.displayPages === "all" ? "all" : "custom";
-    value30.addEventListener("change", () => {
-      entityId3.displayPages = value30.value === "all" ? "all" : ["overview", "security"];
-      fn8();
+    pagesSelect.value = sensor.displayPages === "all" ? "all" : "custom";
+    pagesSelect.addEventListener("change", () => {
+      sensor.displayPages = pagesSelect.value === "all" ? "all" : ["overview", "security"];
+      rebuildUi();
     });
-    fn6("显示页面", value30);
-    if (entityId3.displayPages !== "all") {
-      const includes = entityId3.displayPages ?? ["overview", "security"];
-      const setAttribute3 = value33("div", "", "presence-pages");
-      setAttribute3.setAttribute("role", "group");
-      setAttribute3.setAttribute("aria-label", "指定显示页面");
-      for (const [value7, value8] of PRESENCE_PAGES) {
-        const setAttribute = value47(value8, () => {
-          entityId3.displayPages = includes.includes(value7) ? includes.filter(arg => arg !== value7) : [...includes, value7];
-          fn8();
+    addField("显示页面", pagesSelect);
+    if (sensor.displayPages !== "all") {
+      const includes = sensor.displayPages ?? ["overview", "security"];
+      const pagesGroup = el("div", "", "presence-pages");
+      pagesGroup.setAttribute("role", "group");
+      pagesGroup.setAttribute("aria-label", "指定显示页面");
+      for (const [pageId, pageLabel] of PRESENCE_PAGES) {
+        const pageBtn = button(pageLabel, () => {
+          sensor.displayPages = includes.includes(pageId) ? includes.filter(id => id !== pageId) : [...includes, pageId];
+          rebuildUi();
         });
-        setAttribute.setAttribute("aria-pressed", String(includes.includes(value7)));
-        setAttribute.disabled = includes.length === 1 && includes.includes(value7);
-        setAttribute3.append(setAttribute);
+        pageBtn.setAttribute("aria-pressed", String(includes.includes(pageId)));
+        pageBtn.disabled = includes.length === 1 && includes.includes(pageId);
+        pagesGroup.append(pageBtn);
       }
-      append8.append(setAttribute3);
+      controlsAside.append(pagesGroup);
     }
-    append8.append(value33("strong", "人物方案"));
-    const append3 = value33("div", "", "presence-designs");
-    for (const [character, name2] of Object.entries(DESIGNS)) {
-      const setAttribute4 = value47(name2.name, () => {
-        entityId3.character = character;
-        fn8();
+    controlsAside.append(el("strong", "人物方案"));
+    const designs = el("div", "", "presence-designs");
+    for (const [character, design] of Object.entries(DESIGNS)) {
+      const designBtn = button(design.name, () => {
+        sensor.character = character;
+        rebuildUi();
       });
-      setAttribute4.setAttribute("aria-pressed", String(entityId3.character === character));
-      append3.append(setAttribute4);
+      designBtn.setAttribute("aria-pressed", String(sensor.character === character));
+      designs.append(designBtn);
     }
-    append8.append(append3);
-    const setAttribute6 = value33("div", "", "presence-character-preview");
-    setAttribute6.setAttribute("aria-label", "人物行走预览");
-    append8.append(setAttribute6);
-    if (root2) {
-      setAttribute6.append(root2.renderer.domElement);
+    controlsAside.append(designs);
+    const characterPreview = el("div", "", "presence-character-preview");
+    characterPreview.setAttribute("aria-label", "人物行走预览");
+    controlsAside.append(characterPreview);
+    if (preview) {
+      characterPreview.append(preview.renderer.domElement);
     }
-    append8.append(value33("p", DESIGNS[entityId3.character]?.description || "", "presence-note"));
-    const append4 = value33("div", "", "presence-colors");
-    for (const [color, value14] of [["cyan", "统一青色"], ["orange", "统一橙色"]]) {
-      const dataset = value47(value14, () => {
-        entityId3.color = color;
-        fn8();
+    controlsAside.append(el("p", DESIGNS[sensor.character]?.description || "", "presence-note"));
+    const colors = el("div", "", "presence-colors");
+    for (const [color, label] of [["cyan", "统一青色"], ["orange", "统一橙色"]]) {
+      const colorBtn = button(label, () => {
+        sensor.color = color;
+        rebuildUi();
       });
-      dataset.dataset.color = color;
-      dataset.setAttribute("aria-pressed", String(entityId3.color === color));
-      append4.append(dataset);
+      colorBtn.dataset.color = color;
+      colorBtn.setAttribute("aria-pressed", String(sensor.color === color));
+      colors.append(colorBtn);
     }
-    append8.append(append4);
-    const value31 = entityId3.entityId.startsWith("event.");
-    fn7("每次触发显示时长（秒）", "displayDuration", value31 ? 1 : 0, 3600, 1);
-    append8.append(value33("p", value31 ? "移动事件触发后显示，再次触发重新计时；到时隐藏。" : "0：随有人状态显示；其他值：到时隐藏，无人立即隐藏，下次触发重新计时。", "presence-note"));
-    fn7("行走速度（米/秒）", "speed", 0.1, 2, 0.05);
-    fn7("人物大小（%）", "size", 25, 300, 5, 100);
-    append8.append(value33("p", (value31 ? "事件触发后沿路线走动；计时结束或离线时隐藏。" : "有人时沿路线循环走动；无人或离线时隐藏。") + "路线是展示动画，不代表实际人员位置。", "presence-note"));
-    const checked2 = value33("input");
-    checked2.type = "checkbox";
-    checked2.checked = entityId3.clickToFocus === true;
-    checked2.setAttribute("aria-label", "点击模型聚焦");
-    checked2.addEventListener("change", () => {
-      entityId3.clickToFocus = checked2.checked;
-      fn8();
+    controlsAside.append(colors);
+    const isEventEntity = sensor.entityId.startsWith("event.");
+    addNumberField("每次触发显示时长（秒）", "displayDuration", isEventEntity ? 1 : 0, 3600, 1);
+    controlsAside.append(el("p", isEventEntity ? "移动事件触发后显示，再次触发重新计时；到时隐藏。" : "0：随有人状态显示；其他值：到时隐藏，无人立即隐藏，下次触发重新计时。", "presence-note"));
+    addNumberField("行走速度（米/秒）", "speed", 0.1, 2, 0.05);
+    addNumberField("人物大小（%）", "size", 25, 300, 5, 100);
+    controlsAside.append(el("p", (isEventEntity ? "事件触发后沿路线走动；计时结束或离线时隐藏。" : "有人时沿路线循环走动；无人或离线时隐藏。") + "路线是展示动画，不代表实际人员位置。", "presence-note"));
+    const focusToggle = el("input");
+    focusToggle.type = "checkbox";
+    focusToggle.checked = sensor.clickToFocus === true;
+    focusToggle.setAttribute("aria-label", "点击模型聚焦");
+    focusToggle.addEventListener("change", () => {
+      sensor.clickToFocus = focusToggle.checked;
+      rebuildUi();
     });
-    const parentElement = fn6("点击模型聚焦", checked2);
-    parentElement.parentElement.className = "i3d-setting-toggle";
-    if (entityId3.clickToFocus) {
-      entityId3.hitPadding ??= 8;
-      fn7("触控范围扩展（px）", "hitPadding", 0, 80, 1);
-      const checked = value33("input");
-      checked.type = "checkbox";
-      checked.checked = element4;
-      checked.setAttribute("aria-label", "显示触控范围");
-      checked.addEventListener("change", () => {
-        element4 = checked.checked;
-        if (value41) {
-          focusCommand.focusCommand("presence-show-hit-range", "", element4).catch(onLoadError);
+    const focusField = addField("点击模型聚焦", focusToggle);
+    focusField.parentElement.className = "i3d-setting-toggle";
+    if (sensor.clickToFocus) {
+      sensor.hitPadding ??= 8;
+      addNumberField("触控范围扩展（px）", "hitPadding", 0, 80, 1);
+      const hitRangeToggle = el("input");
+      hitRangeToggle.type = "checkbox";
+      hitRangeToggle.checked = showHitRange;
+      hitRangeToggle.setAttribute("aria-label", "显示触控范围");
+      hitRangeToggle.addEventListener("change", () => {
+        showHitRange = hitRangeToggle.checked;
+        if (presented) {
+          focusCommand.focusCommand("presence-show-hit-range", "", showHitRange).catch(onLoadError);
         }
       });
-      fn6("显示触控范围", checked).parentElement.className = "i3d-setting-toggle";
-      append8.append(value33("p", "在模型周围扩展点击范围，不改变人物大小。0 表示只点击模型本身。", "presence-note"));
-      const dataset2 = value47(entityId3.focusCamera ? "调整聚焦视角" : "设置聚焦视角", () => openPresenceFocusEditor({
-        component: properties2,
+      addField("显示触控范围", hitRangeToggle).parentElement.className = "i3d-setting-toggle";
+      controlsAside.append(el("p", "在模型周围扩展点击范围，不改变人物大小。0 表示只点击模型本身。", "presence-note"));
+      const focusCameraBtn = button(sensor.focusCamera ? "调整聚焦视角" : "设置聚焦视角", () => openPresenceFocusEditor({
+        component,
         properties: security,
-        item: entityId3,
-        panelDocument: panelDocument,
+        item: sensor,
+        panelDocument,
         onSave: focusCamera => {
-          entityId3.focusCamera = focusCamera;
-          fn8();
+          sensor.focusCamera = focusCamera;
+          rebuildUi();
         }
       }));
-      dataset2.dataset.presenceFocus = "true";
-      dataset2.disabled = !map2.has(entityId3.id) || !validPresenceRoute(entityId3.route);
-      append8.append(dataset2);
-      if (entityId3.focusCamera) {
-        append8.append(value47("恢复自动聚焦", () => {
-          delete entityId3.focusCamera;
-          fn8();
+      focusCameraBtn.dataset.presenceFocus = "true";
+      focusCameraBtn.disabled = !closedRoutes.has(sensor.id) || !validPresenceRoute(sensor.route);
+      controlsAside.append(focusCameraBtn);
+      if (sensor.focusCamera) {
+        controlsAside.append(button("恢复自动聚焦", () => {
+          delete sensor.focusCamera;
+          rebuildUi();
         }));
       }
     }
-    append8.append(value47("删除此传感器", () => {
-      indexOf.splice(indexOf.indexOf(entityId3), 1);
-      map2.delete(entityId3.id);
-      route = indexOf[0] || null;
-      fn8();
+    controlsAside.append(button("删除此传感器", () => {
+      presenceSensors.splice(presenceSensors.indexOf(sensor), 1);
+      closedRoutes.delete(sensor.id);
+      selected = presenceSensors[0] || null;
+      rebuildUi();
     }));
-    fn4();
-    fn3();
+    recomputeBox();
+    syncRuntime();
   }
-  const value50 = clientX => {
-    const x7 = addEventListener2.createSVGPoint();
-    x7.x = clientX.clientX;
-    x7.y = clientX.clientY;
-    return x7.matrixTransform(addEventListener2.getScreenCTM().inverse());
+  const clientToPlan = event => {
+    const point = planSvg.createSVGPoint();
+    point.x = event.clientX;
+    point.y = event.clientY;
+    return point.matrixTransform(planSvg.getScreenCTM().inverse());
   };
-  addEventListener2.addEventListener("pointerdown", button => {
-    if (value42 !== "plan" || button.button !== 0 || !route || !find.some(id2 => id2.id === route.floorId)) {
+  planSvg.addEventListener("pointerdown", event => {
+    if (viewMode !== "plan" || event.button !== 0 || !selected || !floors.some(floor => floor.id === selected.floorId)) {
       return;
     }
-    const value15 = button.target.getAttribute("data-point");
-    button.preventDefault();
-    addEventListener2.setPointerCapture(button.pointerId);
-    if (!map2.has(route.id) && snapsToPresenceStart(route.route, value50(button), addEventListener2.getScreenCTM()?.a || 1)) {
-      map2.add(route.id);
-      value45 = null;
-      textContent4.textContent = "路径已吸附闭合，可以切换 3D 预览大小和行走效果。";
-      fn5();
-      fn3();
+    const pointAttr = event.target.getAttribute("data-point");
+    event.preventDefault();
+    planSvg.setPointerCapture(event.pointerId);
+    if (!closedRoutes.has(selected.id) && snapsToPresenceStart(selected.route, clientToPlan(event), planSvg.getScreenCTM()?.a || 1)) {
+      closedRoutes.add(selected.id);
+      pointerPlanPoint = null;
+      status.textContent = "路径已吸附闭合，可以切换 3D 预览大小和行走效果。";
+      redrawPlan();
+      syncRuntime();
       return;
     }
-    if (value15 !== null) {
-      if (Number(value15) === 0 && !map2.has(route.id) && validPresenceRoute(route.route)) {
-        map2.add(route.id);
-        fn5();
+    if (pointAttr !== null) {
+      if (Number(pointAttr) === 0 && !closedRoutes.has(selected.id) && validPresenceRoute(selected.route)) {
+        closedRoutes.add(selected.id);
+        redrawPlan();
         return;
       }
-      index = {
-        index: Number(value15)
+      dragPoint = {
+        index: Number(pointAttr)
       };
-    } else if (!map2.has(route.id) && route.route.length < 128) {
-      const x2 = value50(button);
-      route.route.push({
-        x: x2.x,
-        y: x2.y
+    } else if (!closedRoutes.has(selected.id) && selected.route.length < 128) {
+      const point = clientToPlan(event);
+      selected.route.push({
+        x: point.x,
+        y: point.y
       });
-      fn5();
+      redrawPlan();
     }
   });
-  addEventListener2.addEventListener("pointermove", arg11 => {
-    if (value42 !== "plan") {
+  planSvg.addEventListener("pointermove", event => {
+    if (viewMode !== "plan") {
       return;
     }
-    const x8 = value50(arg11);
-    if (!index) {
-      if (route && !map2.has(route.id)) {
-        value45 = x8;
-        fn5(false);
+    const point = clientToPlan(event);
+    if (!dragPoint) {
+      if (selected && !closedRoutes.has(selected.id)) {
+        pointerPlanPoint = point;
+        redrawPlan(false);
       }
       return;
     }
-    route.route[index.index] = {
-      x: x8.x,
-      y: x8.y
+    selected.route[dragPoint.index] = {
+      x: point.x,
+      y: point.y
     };
-    fn5(false);
+    redrawPlan(false);
   });
-  addEventListener2.addEventListener("pointerleave", () => {
-    value45 = null;
-    if (!index) {
-      fn5(false);
+  planSvg.addEventListener("pointerleave", () => {
+    pointerPlanPoint = null;
+    if (!dragPoint) {
+      redrawPlan(false);
     }
   });
-  const value51 = () => {
-    index = null;
-    fn3();
+  const endDrag = () => {
+    dragPoint = null;
+    syncRuntime();
   };
-  for (const value32 of ["pointerup", "pointercancel", "lostpointercapture"]) {
-    addEventListener2.addEventListener(value32, value51);
+  for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    planSvg.addEventListener(eventName, endDrag);
   }
-  const disconnect = new ResizeObserver(fn5);
-  disconnect.observe(addEventListener2);
-  addEventListener.addEventListener("cancel", preventDefault => {
-    preventDefault.preventDefault();
+  const resizeObserver = new ResizeObserver(redrawPlan);
+  resizeObserver.observe(planSvg);
+  dialog.addEventListener("cancel", event => {
+    event.preventDefault();
     close();
   });
-  function fn9(arg18) {
-    if (!value35 && !dispatchEvent.hidden) {
-      if (root2 && route) {
-        const value = route.character + ":" + route.color;
-        if (value36 !== value) {
-          disposeWalker(root2.root);
-          root2.root = createWalker(root2.THREE, route.color === "orange" ? 15376452 : 5421233, route.character);
-          root2.scene.add(root2.root);
-          value36 = value;
+  function tickPreview(now) {
+    if (!closed && !doc.hidden) {
+      if (preview && selected) {
+        const key = selected.character + ":" + selected.color;
+        if (previewKey !== key) {
+          disposeWalker(preview.root);
+          preview.root = createWalker(preview.THREE, selected.color === "orange" ? 15376452 : 5421233, selected.character);
+          preview.scene.add(preview.root);
+          previewKey = key;
         }
-        const value2 = value38 ? Math.min(0.1, (arg18 - value38) / 1000) : 0;
-        value38 = arg18;
-        value40 += value2;
-        value39 += value2 * route.speed * 12;
-        animateWalker(root2.root, value39, 1, value40);
-        root2.renderer.render(root2.scene, root2.camera);
+        const dt = lastFrameTime ? Math.min(0.1, (now - lastFrameTime) / 1000) : 0;
+        lastFrameTime = now;
+        animTime += dt;
+        walkPhase += dt * selected.speed * 12;
+        animateWalker(preview.root, walkPhase, 1, animTime);
+        preview.renderer.render(preview.scene, preview.camera);
       }
-      value37 = requestAnimationFrame(fn9);
+      rafId = requestAnimationFrame(tickPreview);
     }
   }
-  function fn10() {
-    cancelAnimationFrame(value37);
-    value38 = 0;
-    if (!dispatchEvent.hidden && !value35) {
-      value37 = requestAnimationFrame(fn9);
+  function onVisibilityChange() {
+    cancelAnimationFrame(rafId);
+    lastFrameTime = 0;
+    if (!doc.hidden && !closed) {
+      rafId = requestAnimationFrame(tickPreview);
     }
   }
-  dispatchEvent.addEventListener("visibilitychange", fn10);
-  addEventListener.showModal();
-  fn8();
+  doc.addEventListener("visibilitychange", onVisibilityChange);
+  dialog.showModal();
+  rebuildUi();
   try {
-    const WebGLRenderer = await import("/bridge-static/vendor/three/0.182.0/three.module.min.js");
-    if (value35) {
+    const THREE = await import("/bridge-static/vendor/three/0.186.0/three.module.min.js");
+    if (closed) {
       return;
     }
-    const setPixelRatio = new WebGLRenderer.WebGLRenderer({
+    const renderer = new THREE.WebGLRenderer({
       alpha: true,
       antialias: true
     });
-    setPixelRatio.setPixelRatio(Math.min(devicePixelRatio, 2));
-    setPixelRatio.setSize(240, 160);
-    const add = new WebGLRenderer.Scene();
-    const position = new WebGLRenderer.PerspectiveCamera(32, 1.5, 0.1, 20);
-    position.position.set(2, 1.7, 3);
-    position.lookAt(0, 0.7, 0);
-    add.add(new WebGLRenderer.HemisphereLight(16777215, 7831948, 2.5));
-    const position2 = new WebGLRenderer.DirectionalLight(16772824, 3);
-    position2.position.set(3, 5, 3);
-    add.add(position2);
-    const root = createWalker(WebGLRenderer);
-    add.add(root);
-    root2 = {
-      THREE: WebGLRenderer,
-      renderer: setPixelRatio,
-      scene: add,
-      camera: position,
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.setSize(240, 160);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(32, 1.5, 0.1, 20);
+    camera.position.set(2, 1.7, 3);
+    camera.lookAt(0, 0.7, 0);
+    scene.add(new THREE.HemisphereLight(16777215, 7831948, 2.5));
+    const keyLight = new THREE.DirectionalLight(16772824, 3);
+    keyLight.position.set(3, 5, 3);
+    scene.add(keyLight);
+    const root = createWalker(THREE);
+    scene.add(root);
+    preview = {
+      THREE,
+      renderer,
+      scene,
+      camera,
       root
     };
-    append8.querySelector(".presence-character-preview")?.append(setPixelRatio.domElement);
-    fn10();
+    controlsAside.querySelector(".presence-character-preview")?.append(renderer.domElement);
+    onVisibilityChange();
   } catch {}
   return {
     close

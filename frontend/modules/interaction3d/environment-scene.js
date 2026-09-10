@@ -1,12 +1,12 @@
 import { createEnvironmentHalos } from "./environment-halos.js?v=20260908-model-halo-v1";
-export function pageDimming(pageDimStrength, arg23, arg24 = false) {
+export function pageDimming(settings, pageOrAlias, focused = false) {
   const page = {
     climate: "environment",
     cover: "environment",
     nas: "devices",
     television: "devices",
     "vacuum-shortcut": "vacuum"
-  }[arg23] || arg23;
+  }[pageOrAlias] || pageOrAlias;
   if (!["overview", "light", "environment", "devices", "vacuum", "security"].includes(page)) {
     return {
       page,
@@ -14,17 +14,17 @@ export function pageDimming(pageDimStrength, arg23, arg24 = false) {
       enabled: false
     };
   }
-  const value56 = (arg13, arg14) => Number.isFinite(arg13) ? Math.max(0, Math.min(100, arg13)) : arg14;
-  const value57 = value56(pageDimStrength.pageDimStrength?.[page], page === "overview" ? 0 : value56(pageDimStrength.environment?.dimStrength, 70));
-  const saturation2 = value56(pageDimStrength.pageSaturation?.[page], page === "overview" ? 100 : 75);
+  const clampPercent = (value, fallback) => Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : fallback;
+  const dimStrength = clampPercent(settings.pageDimStrength?.[page], page === "overview" ? 0 : clampPercent(settings.environment?.dimStrength, 70));
+  const saturation = clampPercent(settings.pageSaturation?.[page], page === "overview" ? 100 : 75);
   return {
     page,
-    saturation: saturation2,
-    enabled: page !== "overview" || value57 > 0 || saturation2 < 100,
-    strength: Math.min(100, value57 + (arg24 && page !== "overview" ? value56(pageDimStrength.focusDimStrength, 15) : 0))
+    saturation,
+    enabled: page !== "overview" || dimStrength > 0 || saturation < 100,
+    strength: Math.min(100, dimStrength + (focused && page !== "overview" ? clampPercent(settings.focusDimStrength, 15) : 0))
   };
 }
-const Ce = {
+const PAGE_BY_MODEL_TYPE = {
   wallac: "environment",
   floorac: "environment",
   airoutlet: "environment",
@@ -33,7 +33,7 @@ const Ce = {
   tv: "devices",
   robotvacuum: "vacuum"
 };
-const Ie = {
+const DEVICE_KIND_BY_MODEL_TYPE = {
   wallac: "climate",
   floorac: "climate",
   airoutlet: "climate",
@@ -42,579 +42,579 @@ const Ie = {
   tv: "television",
   robotvacuum: "vacuum"
 };
-export function pageModelBindings(filter, map2, arg25, arg26) {
-  const get2 = new Map(map2.map(floorId3 => [JSON.stringify([floorId3.floorId, floorId3.modelId]), floorId3]));
-  return filter.filter(id3 => arg26 === "all" || id3.id === arg26).flatMap(id5 => (id5.scene?.items || []).flatMap(type => {
-    const value15 = Ce[type.type];
-    if (!value15 || arg25 !== "overview" && value15 !== arg25) {
+export function pageModelBindings(floors, bindings, page, floorFilter) {
+  const bindingByModel = new Map(bindings.map(binding => [JSON.stringify([binding.floorId, binding.modelId]), binding]));
+  return floors.filter(floor => floorFilter === "all" || floor.id === floorFilter).flatMap(floor => (floor.scene?.items || []).flatMap(item => {
+    const itemPage = PAGE_BY_MODEL_TYPE[item.type];
+    if (!itemPage || page !== "overview" && itemPage !== page) {
       return [];
     }
-    const value16 = JSON.stringify([id5.id, type.id]);
-    const id4 = get2.get(value16);
+    const modelKey = JSON.stringify([floor.id, item.id]);
+    const binding = bindingByModel.get(modelKey);
     return [{
-      ...id4,
-      id: id4?.id || "presentation:" + value16,
-      floorId: id5.id,
-      modelId: type.id,
-      deviceKind: Ie[type.type],
-      modelType: type.type,
+      ...binding,
+      id: binding?.id || "presentation:" + modelKey,
+      floorId: floor.id,
+      modelId: item.id,
+      deviceKind: DEVICE_KIND_BY_MODEL_TYPE[item.type],
+      modelType: item.type,
       modelAvailable: true,
       visible: true,
-      previewOnly: !id4
+      previewOnly: !binding
     }];
   }));
 }
 export function createEnvironmentScene({
-  THREE: Color,
-  requestFrame: arg27 = () => {}
+  THREE,
+  requestFrame = () => {}
 }) {
-  const value58 = {
+  const amountUniform = {
     value: 0
   };
-  const value59 = {
+  const modeUniform = {
     value: 0
   };
-  const value60 = {
+  const saturationUniform = {
     value: 0.75
   };
-  const delete2 = new Map();
-  const values5 = new Map();
-  const delete3 = new Set();
-  const has5 = new Set();
-  const clear = new Map();
-  const value61 = () => globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true || globalThis.window?.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
-  const setVisible = createEnvironmentHalos({
-    THREE: Color,
-    modeAmount: value59
+  const patchedMaterials = new Map();
+  const materialClones = new Map();
+  const fadingEntries = new Set();
+  const retainedRoots = new Set();
+  const retainedMeshes = new Map();
+  const prefersReducedMotion = () => globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true || globalThis.window?.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+  const halos = createEnvironmentHalos({
+    THREE,
+    modeAmount: modeUniform
   });
-  const selected = {
-    cool: new Color.Color("#c8e2eb"),
-    heat: new Color.Color("#efd1ae"),
-    other: new Color.Color("#eee9df"),
-    selected: new Color.Color("#ffe1aa")
+  const glowColors = {
+    cool: new THREE.Color("#c8e2eb"),
+    heat: new THREE.Color("#efd1ae"),
+    other: new THREE.Color("#eee9df"),
+    selected: new THREE.Color("#ffe1aa")
   };
-  let traverse = null;
-  let value62;
-  let filter2 = [];
-  let value63 = false;
-  let value64 = false;
-  let value65 = false;
-  let length = [];
-  let value66 = "[]";
-  let get3 = {};
-  let value67 = "";
-  let value68 = "";
-  const clear2 = new Map();
-  const value69 = () => [...length, ...clear2.values()];
-  let value70 = 0;
-  let value71 = 0;
-  let value72 = 0;
-  let value73 = 0;
-  let value74 = null;
-  let value75 = false;
-  let value76 = 0.7;
-  const value77 = (arg15, arg16) => JSON.stringify([String(arg15 ?? ""), String(arg16 ?? "")]);
-  const value78 = id6 => JSON.stringify([String(id6.id ?? ""), id6.floorId, id6.modelId]);
-  const value79 = arg17 => Array.isArray(arg17) ? arg17 : arg17 ? [arg17] : [];
-  const value80 = isMaterial => isMaterial?.isMaterial && !isMaterial.isShaderMaterial && (isMaterial.isMeshStandardMaterial || isMaterial.isMeshPhysicalMaterial || isMaterial.isMeshBasicMaterial || isMaterial.isMeshLambertMaterial || isMaterial.isMeshPhongMaterial || isMaterial.isMeshToonMaterial);
-  const value81 = () => ({
-    amount: value58,
+  let root = null;
+  let sceneRevision;
+  let meshEntries = [];
+  let disposed = false;
+  let modeEnabled = false;
+  let meshesIndexed = false;
+  let bindings = [];
+  let bindingsSignature = "[]";
+  let states = {};
+  let focusedId = "";
+  let selectedId = "";
+  const fadingOutBindings = new Map();
+  const allBindings = () => [...bindings, ...fadingOutBindings.values()];
+  let amountTarget = 0;
+  let amountFrom = 0;
+  let modeTarget = 0;
+  let modeFrom = 0;
+  let modeFadeStarted = null;
+  let materialsApplied = false;
+  let dimStrength = 0.7;
+  const modelKey = (floorId, modelId) => JSON.stringify([String(floorId ?? ""), String(modelId ?? "")]);
+  const bindingKey = binding => JSON.stringify([String(binding.id ?? ""), binding.floorId, binding.modelId]);
+  const asMaterialList = material => Array.isArray(material) ? material : material ? [material] : [];
+  const isPatchableMaterial = material => material?.isMaterial && !material.isShaderMaterial && (material.isMeshStandardMaterial || material.isMeshPhysicalMaterial || material.isMeshBasicMaterial || material.isMeshLambertMaterial || material.isMeshPhongMaterial || material.isMeshToonMaterial);
+  const createUniforms = () => ({
+    amount: amountUniform,
     retain: {
       value: 0
     },
     glow: {
-      value: new Color.Color(0, 0, 0)
+      value: new THREE.Color(0, 0, 0)
     }
   });
-  const value82 = value81();
-  function fn(onBeforeCompile, amount, source2 = null) {
-    if (!value80(onBeforeCompile) || delete2.has(onBeforeCompile)) {
+  const sharedUniforms = createUniforms();
+  function patchMaterial(material, uniforms, sourceMaterial = null) {
+    if (!isPatchableMaterial(material) || patchedMaterials.has(material)) {
       return;
     }
-    const oldCompile = onBeforeCompile.onBeforeCompile;
-    const oldKey = onBeforeCompile.customProgramCacheKey;
-    const hasCompile = Object.hasOwn(onBeforeCompile, "onBeforeCompile");
-    const hasKey = Object.hasOwn(onBeforeCompile, "customProgramCacheKey");
-    const priorCompile = source2 ? delete2.get(source2) : null;
-    const call = priorCompile?.priorCompile || oldCompile;
-    const call2 = priorCompile?.priorKey || oldKey;
-    const value36 = source2 || onBeforeCompile;
-    const compile = function (fragmentShader, arg11) {
-      call?.call(this, fragmentShader, arg11);
-      const value17 = "#include <opaque_fragment>";
-      if (!fragmentShader.fragmentShader.includes(value17) || (fragmentShader.uniforms.hbEnvironmentAmount = amount.amount, fragmentShader.uniforms.hbEnvironmentMode = value59, fragmentShader.uniforms.hbEnvironmentSaturation = value60, fragmentShader.uniforms.hbEnvironmentRetain = amount.retain, fragmentShader.uniforms.hbEnvironmentGlow = amount.glow, fragmentShader.fragmentShader.includes("uniform float hbEnvironmentAmount;"))) {
+    const oldCompile = material.onBeforeCompile;
+    const oldKey = material.customProgramCacheKey;
+    const hasCompile = Object.hasOwn(material, "onBeforeCompile");
+    const hasKey = Object.hasOwn(material, "customProgramCacheKey");
+    const priorPatch = sourceMaterial ? patchedMaterials.get(sourceMaterial) : null;
+    const priorCompile = priorPatch?.priorCompile || oldCompile;
+    const priorKey = priorPatch?.priorKey || oldKey;
+    const keySource = sourceMaterial || material;
+    const compile = function (shader, renderer) {
+      priorCompile?.call(this, shader, renderer);
+      const opaqueInclude = "#include <opaque_fragment>";
+      if (!shader.fragmentShader.includes(opaqueInclude) || (shader.uniforms.hbEnvironmentAmount = uniforms.amount, shader.uniforms.hbEnvironmentMode = modeUniform, shader.uniforms.hbEnvironmentSaturation = saturationUniform, shader.uniforms.hbEnvironmentRetain = uniforms.retain, shader.uniforms.hbEnvironmentGlow = uniforms.glow, shader.fragmentShader.includes("uniform float hbEnvironmentAmount;"))) {
         return;
       }
-      fragmentShader.fragmentShader = "uniform float hbEnvironmentAmount;\nuniform float hbEnvironmentMode;\nuniform float hbEnvironmentSaturation;\nuniform float hbEnvironmentRetain;\nuniform vec3 hbEnvironmentGlow;\n" + fragmentShader.fragmentShader.replace(value17, "float hbEnvironmentLuma = dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722));\noutgoingLight = mix(outgoingLight, vec3(hbEnvironmentLuma) * vec3(1.005, 1.0, 0.99), hbEnvironmentMode * (1.0 - hbEnvironmentRetain) * (1.0 - hbEnvironmentSaturation));\noutgoingLight += hbEnvironmentGlow * hbEnvironmentMode * (vec3(0.12) + clamp(outgoingLight, 0.0, 1.0) * 0.8);\n" + value17);
-      const value18 = "#include <colorspace_fragment>";
-      fragmentShader.fragmentShader = fragmentShader.fragmentShader.replace(value18, value18 + "\ngl_FragColor.rgb *= mix(1.0, 0.15, hbEnvironmentAmount * (1.0 - hbEnvironmentRetain));");
+      shader.fragmentShader = "uniform float hbEnvironmentAmount;\nuniform float hbEnvironmentMode;\nuniform float hbEnvironmentSaturation;\nuniform float hbEnvironmentRetain;\nuniform vec3 hbEnvironmentGlow;\n" + shader.fragmentShader.replace(opaqueInclude, "float hbEnvironmentLuma = dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722));\noutgoingLight = mix(outgoingLight, vec3(hbEnvironmentLuma) * vec3(1.005, 1.0, 0.99), hbEnvironmentMode * (1.0 - hbEnvironmentRetain) * (1.0 - hbEnvironmentSaturation));\noutgoingLight += hbEnvironmentGlow * hbEnvironmentMode * (vec3(0.12) + clamp(outgoingLight, 0.0, 1.0) * 0.8);\n" + opaqueInclude);
+      const colorspaceInclude = "#include <colorspace_fragment>";
+      shader.fragmentShader = shader.fragmentShader.replace(colorspaceInclude, colorspaceInclude + "\ngl_FragColor.rgb *= mix(1.0, 0.15, hbEnvironmentAmount * (1.0 - hbEnvironmentRetain));");
     };
-    const key = function () {
-      return (call2 === Color.Material.prototype.customProgramCacheKey ? call?.toString() || "" : call2?.call(value36) || "") + "|hb-environment-saturation-v6";
+    const cacheKey = function () {
+      return (priorKey === THREE.Material.prototype.customProgramCacheKey ? priorCompile?.toString() || "" : priorKey?.call(keySource) || "") + "|hb-environment-saturation-v6";
     };
-    delete2.set(onBeforeCompile, {
+    patchedMaterials.set(material, {
       oldCompile,
       oldKey,
       hasCompile,
       hasKey,
-      priorCompile: call,
-      priorKey: call2,
+      priorCompile,
+      priorKey,
       compile,
-      key,
-      source: source2
+      key: cacheKey,
+      source: sourceMaterial
     });
-    onBeforeCompile.onBeforeCompile = compile;
-    onBeforeCompile.customProgramCacheKey = key;
-    onBeforeCompile.needsUpdate = true;
+    material.onBeforeCompile = compile;
+    material.customProgramCacheKey = cacheKey;
+    material.needsUpdate = true;
   }
-  function fn2() {
-    setVisible.setVisible(false);
-    for (const applied2 of filter2) {
-      if (applied2.applied && applied2.mesh.material === applied2.applied) {
-        applied2.mesh.material = applied2.original;
+  function hideEffects() {
+    halos.setVisible(false);
+    for (const entry of meshEntries) {
+      if (entry.applied && entry.mesh.material === entry.applied) {
+        entry.mesh.material = entry.original;
       }
     }
-    value75 = false;
+    materialsApplied = false;
   }
-  function fn3() {
-    for (const applied3 of clear.values()) {
-      if (applied3.applied && applied3.mesh.material === applied3.applied) {
-        applied3.mesh.material = applied3.original;
+  function resetScene() {
+    for (const entry of retainedMeshes.values()) {
+      if (entry.applied && entry.mesh.material === entry.applied) {
+        entry.mesh.material = entry.original;
       }
     }
-    clear.clear();
-    has5.clear();
-    fn2();
-    setVisible.clear();
-    delete3.clear();
-    clear2.clear();
-    for (const [value31, value32] of delete2) {
-      fn4(value31, value32);
+    retainedMeshes.clear();
+    retainedRoots.clear();
+    hideEffects();
+    halos.clear();
+    fadingEntries.clear();
+    fadingOutBindings.clear();
+    for (const [material, patch] of patchedMaterials) {
+      restoreMaterial(material, patch);
     }
-    for (const values of values5.values()) {
-      for (const material2 of values.values()) {
-        material2.material.dispose();
+    for (const cloneMap of materialClones.values()) {
+      for (const cloneEntry of cloneMap.values()) {
+        cloneEntry.material.dispose();
       }
     }
-    delete2.clear();
-    values5.clear();
-    filter2 = [];
-    value65 = false;
+    patchedMaterials.clear();
+    materialClones.clear();
+    meshEntries = [];
+    meshesIndexed = false;
   }
-  function fn4(onBeforeCompile2, compile2) {
-    let value37 = false;
-    if (onBeforeCompile2.onBeforeCompile === compile2.compile) {
-      if (compile2.hasCompile) {
-        onBeforeCompile2.onBeforeCompile = compile2.oldCompile;
+  function restoreMaterial(material, patch) {
+    let changed = false;
+    if (material.onBeforeCompile === patch.compile) {
+      if (patch.hasCompile) {
+        material.onBeforeCompile = patch.oldCompile;
       } else {
-        delete onBeforeCompile2.onBeforeCompile;
+        delete material.onBeforeCompile;
       }
-      value37 = true;
+      changed = true;
     }
-    if (onBeforeCompile2.customProgramCacheKey === compile2.key) {
-      if (compile2.hasKey) {
-        onBeforeCompile2.customProgramCacheKey = compile2.oldKey;
+    if (material.customProgramCacheKey === patch.key) {
+      if (patch.hasKey) {
+        material.customProgramCacheKey = patch.oldKey;
       } else {
-        delete onBeforeCompile2.customProgramCacheKey;
+        delete material.customProgramCacheKey;
       }
-      value37 = true;
+      changed = true;
     }
-    if (value37) {
-      if (!compile2.source) {
-        onBeforeCompile2.dispose();
+    if (changed) {
+      if (!patch.source) {
+        material.dispose();
       }
-      onBeforeCompile2.needsUpdate = true;
+      material.needsUpdate = true;
     }
   }
-  function fn5(defines2, binding) {
-    if (!value80(defines2)) {
-      return defines2;
+  function cloneMaterialForBinding(sourceMaterial, binding) {
+    if (!isPatchableMaterial(sourceMaterial)) {
+      return sourceMaterial;
     }
-    let items = values5.get(defines2);
-    if (!items) {
-      items = new Map();
-      values5.set(defines2, items);
+    let clonesByBinding = materialClones.get(sourceMaterial);
+    if (!clonesByBinding) {
+      clonesByBinding = new Map();
+      materialClones.set(sourceMaterial, clonesByBinding);
     }
-    const value38 = value78(binding);
-    let binding2 = items.get(value38);
-    if (!binding2) {
-      const defines = defines2.clone();
-      const uniforms = value81();
-      if (defines2.defines) {
-        defines.defines = {
-          ...defines2.defines
+    const key = bindingKey(binding);
+    let cloneEntry = clonesByBinding.get(key);
+    if (!cloneEntry) {
+      const clone = sourceMaterial.clone();
+      const uniforms = createUniforms();
+      if (sourceMaterial.defines) {
+        clone.defines = {
+          ...sourceMaterial.defines
         };
       }
-      Object.defineProperty(defines, "environmentSourceMaterial", {
-        value: defines2,
+      Object.defineProperty(clone, "environmentSourceMaterial", {
+        value: sourceMaterial,
         configurable: true
       });
-      fn(defines, uniforms, defines2);
-      binding2 = {
-        material: defines,
+      patchMaterial(clone, uniforms, sourceMaterial);
+      cloneEntry = {
+        material: clone,
         uniforms,
         binding
       };
-      items.set(value38, binding2);
+      clonesByBinding.set(key, cloneEntry);
     }
-    binding2.binding = binding;
-    return binding2.material;
+    cloneEntry.binding = binding;
+    return cloneEntry.material;
   }
-  function fn6() {
-    if (!traverse || !value64 && value58.value === 0 && value59.value === 0) {
-      fn2();
-      fn7();
+  function applyMaterials() {
+    if (!root || !modeEnabled && amountUniform.value === 0 && modeUniform.value === 0) {
+      hideEffects();
+      pruneUnusedClones();
       return;
     }
-    setVisible.sync(traverse, value69(), value62, new Map(filter2.filter(modelNode => modelNode.modelNode).map(modelKey => [modelKey.modelKey, modelKey.modelNode])));
-    setVisible.setVisible(true);
-    const has3 = new Map();
-    for (const modelId of value69()) {
-      if (modelId.modelId != null && modelId.visible !== false) {
-        const value5 = value77(modelId.floorId, modelId.modelId);
-        if (!has3.has(value5)) {
-          has3.set(value5, modelId);
+    halos.sync(root, allBindings(), sceneRevision, new Map(meshEntries.filter(entry => entry.modelNode).map(entry => [entry.modelKey, entry.modelNode])));
+    halos.setVisible(true);
+    const bindingByModelKey = new Map();
+    for (const binding of allBindings()) {
+      if (binding.modelId != null && binding.visible !== false) {
+        const key = modelKey(binding.floorId, binding.modelId);
+        if (!bindingByModelKey.has(key)) {
+          bindingByModelKey.set(key, binding);
         }
       }
     }
-    for (const applied4 of filter2) {
-      const value22 = has3.get(applied4.modelKey);
-      if (value22) {
-        const value6 = value79(applied4.original).map(arg => fn5(arg, value22));
-        applied4.applied = Array.isArray(applied4.original) ? value6 : value6[0];
-        applied4.mesh.material = applied4.applied;
+    for (const entry of meshEntries) {
+      const binding = bindingByModelKey.get(entry.modelKey);
+      if (binding) {
+        const applied = asMaterialList(entry.original).map(material => cloneMaterialForBinding(material, binding));
+        entry.applied = Array.isArray(entry.original) ? applied : applied[0];
+        entry.mesh.material = entry.applied;
       } else {
-        if (applied4.applied && applied4.mesh.material === applied4.applied) {
-          applied4.mesh.material = applied4.original;
+        if (entry.applied && entry.mesh.material === entry.applied) {
+          entry.mesh.material = entry.original;
         }
-        applied4.applied = null;
+        entry.applied = null;
       }
     }
-    value75 = true;
-    fn7();
+    materialsApplied = true;
+    pruneUnusedClones();
   }
-  function fn7() {
-    const has4 = new Set(value69().map(value78));
-    for (const [value33, entryMap] of values5) {
-      for (const [value19, material3] of entryMap) {
-        if (!has4.has(value19)) {
-          delete3.delete(material3);
-          delete2.delete(material3.material);
-          material3.material.dispose();
-          entryMap.delete(value19);
+  function pruneUnusedClones() {
+    const activeKeys = new Set(allBindings().map(bindingKey));
+    for (const [sourceMaterial, cloneMap] of materialClones) {
+      for (const [key, cloneEntry] of cloneMap) {
+        if (!activeKeys.has(key)) {
+          fadingEntries.delete(cloneEntry);
+          patchedMaterials.delete(cloneEntry.material);
+          cloneEntry.material.dispose();
+          cloneMap.delete(key);
         }
       }
-      if (!entryMap.size) {
-        values5.delete(value33);
+      if (!cloneMap.size) {
+        materialClones.delete(sourceMaterial);
       }
     }
   }
-  function fn8(arg20 = false, add = new Set()) {
-    const value39 = value68 || value67;
-    const value40 = !!value39 && length.some(id => id.id === value39);
-    let value41 = false;
-    for (const values2 of values5.values()) {
-      for (const target2 of values2.values()) {
-        const id2 = target2.binding;
-        const element = !clear2.has(value78(id2)) && (!value40 || id2.id === value39) ? 1 : 0;
-        const value7 = id2.entityId || (id2.deviceKind === "nas" ? id2.statusSource?.primaryEntityId : "");
-        const newState = get3 instanceof Map ? get3.get(value7) : get3?.[value7];
-        const state = newState?.newState || newState || {};
-        const value8 = String(state.state || "").toLowerCase();
-        const value9 = !["", "off", "unknown", "unavailable"].includes(value8);
-        const value10 = id2.id === value68;
-        const value11 = element ? value10 ? 1.45 : id2.deviceKind === "cover" ? 1.2 : value9 ? 1.125 : 0.325 : 0;
-        const r = value10 ? selected.selected : value9 && selected[value8] || selected.other;
-        const value12 = value11 * r.r;
-        const value13 = value11 * r.g;
-        const value14 = value11 * r.b;
-        const retain = target2.uniforms;
-        const r2 = retain.glow.value;
-        const target = [element, value12, value13, value14];
-        if (!target2.target?.every((arg2, arg3) => arg2 === target[arg3])) {
-          value41 = true;
-          add.add(id2.floorId);
-          if (arg20 && value59.value > 0 && !value61()) {
-            target2.fade = {
-              from: [retain.retain.value, r2.r, r2.g, r2.b],
+  function syncGlowTargets(animate = false, dirtyFloors = new Set()) {
+    const focusOrSelected = selectedId || focusedId;
+    const hasFocusedBinding = !!focusOrSelected && bindings.some(binding => binding.id === focusOrSelected);
+    let changed = false;
+    for (const cloneMap of materialClones.values()) {
+      for (const entry of cloneMap.values()) {
+        const binding = entry.binding;
+        const retainAmount = !fadingOutBindings.has(bindingKey(binding)) && (!hasFocusedBinding || binding.id === focusOrSelected) ? 1 : 0;
+        const entityId = binding.entityId || (binding.deviceKind === "nas" ? binding.statusSource?.primaryEntityId : "");
+        const rawState = states instanceof Map ? states.get(entityId) : states?.[entityId];
+        const state = rawState?.newState || rawState || {};
+        const hvacMode = String(state.state || "").toLowerCase();
+        const isOn = !["", "off", "unknown", "unavailable"].includes(hvacMode);
+        const isSelected = binding.id === selectedId;
+        const glowScale = retainAmount ? isSelected ? 1.45 : binding.deviceKind === "cover" ? 1.2 : isOn ? 1.125 : 0.325 : 0;
+        const baseColor = isSelected ? glowColors.selected : isOn && glowColors[hvacMode] || glowColors.other;
+        const glowR = glowScale * baseColor.r;
+        const glowG = glowScale * baseColor.g;
+        const glowB = glowScale * baseColor.b;
+        const uniforms = entry.uniforms;
+        const glow = uniforms.glow.value;
+        const target = [retainAmount, glowR, glowG, glowB];
+        if (!entry.target?.every((value, index) => value === target[index])) {
+          changed = true;
+          dirtyFloors.add(binding.floorId);
+          if (animate && modeUniform.value > 0 && !prefersReducedMotion()) {
+            entry.fade = {
+              from: [uniforms.retain.value, glow.r, glow.g, glow.b],
               started: null
             };
-            delete3.add(target2);
+            fadingEntries.add(entry);
           } else {
-            delete3.delete(target2);
-            target2.fade = null;
-            retain.retain.value = element;
-            r2.setRGB(value12, value13, value14);
-            setVisible.setColor(id2.id, r2);
+            fadingEntries.delete(entry);
+            entry.fade = null;
+            uniforms.retain.value = retainAmount;
+            glow.setRGB(glowR, glowG, glowB);
+            halos.setColor(binding.id, glow);
           }
-          target2.target = target;
+          entry.target = target;
         }
       }
     }
-    return value41;
+    return changed;
   }
-  function setRoot(arg21, arg22) {
-    if (!value63 && (traverse !== arg21 || value62 !== arg22)) {
-      if (traverse !== arg21) {
-        fn3();
+  function setRoot(nextRoot, revision) {
+    if (!disposed && (root !== nextRoot || sceneRevision !== revision)) {
+      if (root !== nextRoot) {
+        resetScene();
       }
-      traverse = arg21 || null;
-      value62 = arg22;
-      if (!!value65 || !!value64 || !!length.length) {
-        fn9();
-        fn6();
-        fn8();
-        arg27();
+      root = nextRoot || null;
+      sceneRevision = revision;
+      if (!!meshesIndexed || !!modeEnabled || !!bindings.length) {
+        indexMeshes();
+        applyMaterials();
+        syncGlowTargets();
+        requestFrame();
       }
     }
   }
-  function fn9() {
-    if (!traverse?.traverse) {
+  function indexMeshes() {
+    if (!root?.traverse) {
       return;
     }
-    const values4 = new Map([...clear, ...filter2.map(mesh => [mesh.mesh, mesh])]);
-    const push = [];
-    const add2 = new Set();
-    traverse?.traverse?.(material4 => {
-      if (!material4.isMesh || !material4.material || material4.userData?.environmentEffect) {
+    const previousEntries = new Map([...retainedMeshes, ...meshEntries.map(entry => [entry.mesh, entry])]);
+    const nextEntries = [];
+    const liveMaterials = new Set();
+    root?.traverse?.(mesh => {
+      if (!mesh.isMesh || !mesh.material || mesh.userData?.environmentEffect) {
         return;
       }
-      let value20;
-      let value21;
-      let modelNode2;
-      for (let userData = material4; userData && (value20 == null && userData.userData?.environmentModelId != null && (value20 = userData.userData.environmentModelId, modelNode2 = userData), value21 == null && userData.userData?.environmentFloorId != null && (value21 = userData.userData.environmentFloorId), userData !== traverse); userData = userData.parent);
-      const applied = values4.get(material4);
-      const original = applied?.applied && material4.material === applied.applied ? applied.original : material4.material;
-      const modelNode3 = applied && original === applied.original ? applied : {
-        mesh: material4,
+      let modelId;
+      let floorId;
+      let modelNode;
+      for (let node = mesh; node && (modelId == null && node.userData?.environmentModelId != null && (modelId = node.userData.environmentModelId, modelNode = node), floorId == null && node.userData?.environmentFloorId != null && (floorId = node.userData.environmentFloorId), node !== root); node = node.parent);
+      const previous = previousEntries.get(mesh);
+      const original = previous?.applied && mesh.material === previous.applied ? previous.original : mesh.material;
+      const entry = previous && original === previous.original ? previous : {
+        mesh,
         original,
         applied: null
       };
-      modelNode3.modelNode = modelNode2;
-      modelNode3.modelKey = value20 == null ? null : value77(value21, value20);
-      push.push(modelNode3);
-      values4.delete(material4);
-      for (const value of value79(original)) {
-        add2.add(value);
-        fn(value, value82);
+      entry.modelNode = modelNode;
+      entry.modelKey = modelId == null ? null : modelKey(floorId, modelId);
+      nextEntries.push(entry);
+      previousEntries.delete(mesh);
+      for (const material of asMaterialList(original)) {
+        liveMaterials.add(material);
+        patchMaterial(material, sharedUniforms);
       }
     });
-    for (const mesh2 of values4.values()) {
-      let value23 = false;
-      for (let parent2 = mesh2.mesh; parent2; parent2 = parent2.parent) {
-        if (has5.has(parent2)) {
-          value23 = true;
+    for (const entry of previousEntries.values()) {
+      let underRetainedRoot = false;
+      for (let node = entry.mesh; node; node = node.parent) {
+        if (retainedRoots.has(node)) {
+          underRetainedRoot = true;
           break;
         }
       }
-      if (!value23 && mesh2.applied && mesh2.mesh.material === mesh2.applied) {
-        mesh2.mesh.material = mesh2.original;
+      if (!underRetainedRoot && entry.applied && entry.mesh.material === entry.applied) {
+        entry.mesh.material = entry.original;
       }
     }
-    clear.clear();
-    const value42 = arg12 => {
-      for (let parent = arg12; parent; parent = parent.parent) {
-        if (has5.has(parent)) {
+    retainedMeshes.clear();
+    const isUnderRetainedRoot = node => {
+      for (let current = node; current; current = current.parent) {
+        if (retainedRoots.has(current)) {
           return true;
         }
       }
       return false;
     };
-    for (const mesh3 of values4.values()) {
-      if (value42(mesh3.mesh)) {
-        clear.set(mesh3.mesh, mesh3);
-        for (const value2 of value79(mesh3.original)) {
-          add2.add(value2);
+    for (const entry of previousEntries.values()) {
+      if (isUnderRetainedRoot(entry.mesh)) {
+        retainedMeshes.set(entry.mesh, entry);
+        for (const material of asMaterialList(entry.original)) {
+          liveMaterials.add(material);
         }
       }
     }
-    filter2 = push;
-    for (const [value34, values3] of values5) {
-      if (!add2.has(value34)) {
-        for (const material of values3.values()) {
-          delete3.delete(material);
-          delete2.delete(material.material);
-          material.material.dispose();
+    meshEntries = nextEntries;
+    for (const [sourceMaterial, cloneMap] of materialClones) {
+      if (!liveMaterials.has(sourceMaterial)) {
+        for (const cloneEntry of cloneMap.values()) {
+          fadingEntries.delete(cloneEntry);
+          patchedMaterials.delete(cloneEntry.material);
+          cloneEntry.material.dispose();
         }
-        values5.delete(value34);
+        materialClones.delete(sourceMaterial);
       }
     }
-    for (const [value35, source] of delete2) {
-      if (!source.source && !add2.has(value35)) {
-        fn4(value35, source);
-        delete2.delete(value35);
+    for (const [material, patch] of patchedMaterials) {
+      if (!patch.source && !liveMaterials.has(material)) {
+        restoreMaterial(material, patch);
+        patchedMaterials.delete(material);
       }
     }
-    value65 = true;
+    meshesIndexed = true;
   }
-  function setMode(saturation = {}) {
-    if (value63) {
+  function setMode(options = {}) {
+    if (disposed) {
       return;
     }
-    if (Number.isFinite(saturation.saturation)) {
-      const element2 = Math.max(0, Math.min(100, saturation.saturation)) / 100;
-      if (element2 !== value60.value) {
-        value60.value = element2;
-        arg27();
+    if (Number.isFinite(options.saturation)) {
+      const nextSaturation = Math.max(0, Math.min(100, options.saturation)) / 100;
+      if (nextSaturation !== saturationUniform.value) {
+        saturationUniform.value = nextSaturation;
+        requestFrame();
       }
     }
-    const value43 = Object.hasOwn(saturation, "enabled") ? saturation.enabled === true : value64;
-    if (Object.hasOwn(saturation, "dimStrength")) {
-      const value24 = Number(saturation.dimStrength);
-      value76 = Number.isFinite(value24) ? Math.max(0, Math.min(100, value24)) / 100 : 0.7;
+    const nextEnabled = Object.hasOwn(options, "enabled") ? options.enabled === true : modeEnabled;
+    if (Object.hasOwn(options, "dimStrength")) {
+      const nextDim = Number(options.dimStrength);
+      dimStrength = Number.isFinite(nextDim) ? Math.max(0, Math.min(100, nextDim)) / 100 : 0.7;
     }
-    const map = Object.hasOwn(saturation, "bindings") ? Array.isArray(saturation.bindings) ? saturation.bindings : [] : length;
-    const value44 = JSON.stringify(map.map(({
-      id: arg6,
-      floorId: arg7,
-      modelId: arg8,
-      entityId: arg9,
-      visible: arg10
-    }) => [arg6, arg7, arg8, arg9, arg10]));
-    const value45 = value66 !== value44;
-    const value46 = value64 !== value43;
-    const value47 = value45 && saturation.animateBindings === true && value59.value > 0 && !value61();
-    if (value45) {
-      if (value47) {
-        const map2 = new Set(map.map(value78));
-        const has2 = new Set(map.map(floorId => value77(floorId.floorId, floorId.modelId)));
-        for (const value3 of length) {
-          if (!map2.has(value78(value3))) {
-            clear2.set(value78(value3), value3);
+    const nextBindings = Object.hasOwn(options, "bindings") ? Array.isArray(options.bindings) ? options.bindings : [] : bindings;
+    const nextSignature = JSON.stringify(nextBindings.map(({
+      id,
+      floorId,
+      modelId,
+      entityId,
+      visible
+    }) => [id, floorId, modelId, entityId, visible]));
+    const bindingsChanged = bindingsSignature !== nextSignature;
+    const enabledChanged = modeEnabled !== nextEnabled;
+    const animateBindings = bindingsChanged && options.animateBindings === true && modeUniform.value > 0 && !prefersReducedMotion();
+    if (bindingsChanged) {
+      if (animateBindings) {
+        const nextKeys = new Set(nextBindings.map(bindingKey));
+        const nextModelKeys = new Set(nextBindings.map(binding => modelKey(binding.floorId, binding.modelId)));
+        for (const binding of bindings) {
+          if (!nextKeys.has(bindingKey(binding))) {
+            fadingOutBindings.set(bindingKey(binding), binding);
           }
         }
-        for (const [value4, floorId2] of clear2) {
-          if (map2.has(value4) || has2.has(value77(floorId2.floorId, floorId2.modelId))) {
-            clear2.delete(value4);
+        for (const [key, binding] of fadingOutBindings) {
+          if (nextKeys.has(key) || nextModelKeys.has(modelKey(binding.floorId, binding.modelId))) {
+            fadingOutBindings.delete(key);
           }
         }
       } else {
-        clear2.clear();
+        fadingOutBindings.clear();
       }
     }
-    value64 = value43;
-    length = map;
-    value66 = value44;
-    if (Object.hasOwn(saturation, "states")) {
-      get3 = saturation.states || {};
+    modeEnabled = nextEnabled;
+    bindings = nextBindings;
+    bindingsSignature = nextSignature;
+    if (Object.hasOwn(options, "states")) {
+      states = options.states || {};
     }
-    const value48 = Object.hasOwn(saturation, "focusedId") && (saturation.focusedId || "") !== value67 && !(saturation.selectedId ?? value68);
-    if (Object.hasOwn(saturation, "focusedId")) {
-      value67 = saturation.focusedId || "";
+    const focusChanged = Object.hasOwn(options, "focusedId") && (options.focusedId || "") !== focusedId && !(options.selectedId ?? selectedId);
+    if (Object.hasOwn(options, "focusedId")) {
+      focusedId = options.focusedId || "";
     }
-    if (Object.hasOwn(saturation, "selectedId")) {
-      value68 = saturation.selectedId || "";
+    if (Object.hasOwn(options, "selectedId")) {
+      selectedId = options.selectedId || "";
     }
-    const value49 = value64 ? value76 : 0;
-    const value50 = value64 ? 1 : 0;
-    const value51 = value49 !== value70 || value50 !== value72;
-    if (value51) {
-      value71 = value58.value;
-      value73 = value59.value;
-      value70 = value49;
-      value72 = value50;
-      value74 = null;
+    const nextAmountTarget = modeEnabled ? dimStrength : 0;
+    const nextModeTarget = modeEnabled ? 1 : 0;
+    const targetsChanged = nextAmountTarget !== amountTarget || nextModeTarget !== modeTarget;
+    if (targetsChanged) {
+      amountFrom = amountUniform.value;
+      modeFrom = modeUniform.value;
+      amountTarget = nextAmountTarget;
+      modeTarget = nextModeTarget;
+      modeFadeStarted = null;
     }
-    if (!value65 && (value64 || length.length)) {
-      fn9();
+    if (!meshesIndexed && (modeEnabled || bindings.length)) {
+      indexMeshes();
     }
-    if (value45 || value46 || !value75 && value64) {
-      fn6();
+    if (bindingsChanged || enabledChanged || !materialsApplied && modeEnabled) {
+      applyMaterials();
     }
-    const value52 = new Set();
-    const value53 = fn8(value48 || value47, value52);
-    if (clear2.size && !delete3.size) {
-      clear2.clear();
-      fn6();
+    const dirtyFloors = new Set();
+    const glowChanged = syncGlowTargets(focusChanged || animateBindings, dirtyFloors);
+    if (fadingOutBindings.size && !fadingEntries.size) {
+      fadingOutBindings.clear();
+      applyMaterials();
     }
-    if (value46 || value51 || value45) {
-      arg27();
-    } else if (value53 && (value64 || value59.value > 0)) {
-      arg27([...value52]);
+    if (enabledChanged || targetsChanged || bindingsChanged) {
+      requestFrame();
+    } else if (glowChanged && (modeEnabled || modeUniform.value > 0)) {
+      requestFrame([...dirtyFloors]);
     }
   }
-  function tick(started2) {
-    if (value63) {
+  function tick(nowMs) {
+    if (disposed) {
       return false;
     }
-    setVisible.update();
-    const value54 = value58.value !== value70 || value59.value !== value72;
-    if (!value54 && !delete3.size) {
+    halos.update();
+    const fadingMode = amountUniform.value !== amountTarget || modeUniform.value !== modeTarget;
+    if (!fadingMode && !fadingEntries.size) {
       return false;
     }
-    if (!Number.isFinite(started2)) {
-      started2 = globalThis.performance?.now() ?? Date.now();
+    if (!Number.isFinite(nowMs)) {
+      nowMs = globalThis.performance?.now() ?? Date.now();
     }
-    let value55 = false;
-    const add3 = new Set();
-    if (value54) {
-      if (value74 === null) {
-        value74 = started2;
+    let changed = false;
+    const dirtyFloors = new Set();
+    if (fadingMode) {
+      if (modeFadeStarted === null) {
+        modeFadeStarted = nowMs;
       }
-      const value25 = value61() ? 1 : Math.max(0, Math.min(1, (started2 - value74) / 400));
-      const value26 = value58.value;
-      const value27 = value59.value;
-      value58.value = value25 === 1 ? value70 : value71 + (value70 - value71) * (1 - (1 - value25) ** 2);
-      value59.value = value25 === 1 ? value72 : value73 + (value72 - value73) * (1 - (1 - value25) ** 2);
-      value55 ||= value26 !== value58.value || value27 !== value59.value;
+      const progress = prefersReducedMotion() ? 1 : Math.max(0, Math.min(1, (nowMs - modeFadeStarted) / 400));
+      const prevAmount = amountUniform.value;
+      const prevMode = modeUniform.value;
+      amountUniform.value = progress === 1 ? amountTarget : amountFrom + (amountTarget - amountFrom) * (1 - (1 - progress) ** 2);
+      modeUniform.value = progress === 1 ? modeTarget : modeFrom + (modeTarget - modeFrom) * (1 - (1 - progress) ** 2);
+      changed ||= prevAmount !== amountUniform.value || prevMode !== modeUniform.value;
     }
-    for (const uniforms2 of delete3) {
-      const started = uniforms2.fade;
-      if (started.started === null) {
-        started.started = started2;
+    for (const entry of fadingEntries) {
+      const fade = entry.fade;
+      if (fade.started === null) {
+        fade.started = nowMs;
       }
-      const value28 = value61() ? 1 : Math.max(0, Math.min(1, (started2 - started.started) / 360));
-      const value29 = value28 * value28 * (3 - value28 * 2);
-      const value30 = uniforms2.target.map((arg4, arg5) => value28 === 1 ? arg4 : started.from[arg5] + (arg4 - started.from[arg5]) * value29);
-      const r3 = uniforms2.uniforms.glow.value;
-      if (uniforms2.uniforms.retain.value !== value30[0] || r3.r !== value30[1] || r3.g !== value30[2] || r3.b !== value30[3]) {
-        value55 = true;
-        add3.add(uniforms2.binding.floorId);
+      const progress = prefersReducedMotion() ? 1 : Math.max(0, Math.min(1, (nowMs - fade.started) / 360));
+      const eased = progress * progress * (3 - progress * 2);
+      const next = entry.target.map((value, index) => progress === 1 ? value : fade.from[index] + (value - fade.from[index]) * eased);
+      const glow = entry.uniforms.glow.value;
+      if (entry.uniforms.retain.value !== next[0] || glow.r !== next[1] || glow.g !== next[2] || glow.b !== next[3]) {
+        changed = true;
+        dirtyFloors.add(entry.binding.floorId);
       }
-      uniforms2.uniforms.retain.value = value30[0];
-      r3.setRGB(value30[1], value30[2], value30[3]);
-      setVisible.setColor(uniforms2.binding.id, r3);
-      if (value28 === 1) {
-        delete3.delete(uniforms2);
-        uniforms2.fade = null;
+      entry.uniforms.retain.value = next[0];
+      glow.setRGB(next[1], next[2], next[3]);
+      halos.setColor(entry.binding.id, glow);
+      if (progress === 1) {
+        fadingEntries.delete(entry);
+        entry.fade = null;
       }
     }
-    if (clear2.size && !delete3.size) {
-      clear2.clear();
-      fn6();
+    if (fadingOutBindings.size && !fadingEntries.size) {
+      fadingOutBindings.clear();
+      applyMaterials();
     }
-    if (!value64 && value58.value === 0 && value59.value === 0) {
-      fn2();
+    if (!modeEnabled && amountUniform.value === 0 && modeUniform.value === 0) {
+      hideEffects();
     }
-    if (value55) {
-      arg27(value54 ? undefined : [...add3]);
+    if (changed) {
+      requestFrame(fadingMode ? undefined : [...dirtyFloors]);
     }
-    return value58.value !== value70 || value59.value !== value72 || delete3.size > 0;
+    return amountUniform.value !== amountTarget || modeUniform.value !== modeTarget || fadingEntries.size > 0;
   }
   return {
     setRoot,
     setMode,
     tick,
-    retainRoot(arg18) {
-      has5.add(arg18);
+    retainRoot(node) {
+      retainedRoots.add(node);
     },
-    releaseRoot(arg19) {
-      has5.delete(arg19);
+    releaseRoot(node) {
+      retainedRoots.delete(node);
     },
     get isActive() {
-      return !value63 && (value64 || value59.value > 0);
+      return !disposed && (modeEnabled || modeUniform.value > 0);
     },
     dispose() {
-      if (!value63) {
-        value58.value = 0;
-        value59.value = 0;
-        value64 = false;
-        fn3();
-        setVisible.dispose();
-        traverse = null;
-        length = [];
-        get3 = {};
-        value63 = true;
+      if (!disposed) {
+        amountUniform.value = 0;
+        modeUniform.value = 0;
+        modeEnabled = false;
+        resetScene();
+        halos.dispose();
+        root = null;
+        bindings = [];
+        states = {};
+        disposed = true;
       }
     }
   };

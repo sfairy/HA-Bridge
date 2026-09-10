@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import shutil
 from urllib.parse import urlencode
@@ -24,6 +25,7 @@ from modules.interaction3d.render_cache import MAX_ENTRY_BYTES, cache_path, read
 from schemas import HAServiceCallRequest
 
 router = APIRouter(prefix='/modules/interaction3d', tags=['3D interaction'])
+logger = logging.getLogger(__name__)
 SCENE_ID = re.compile('[0-9a-f]{32}')
 RESOURCE_TYPES = {
     **{
@@ -145,6 +147,15 @@ def scene_floors(scene: dict) -> list[dict]:
     return [{'scene': scene}]
 
 
+def floor_item_catalog(floor: dict) -> list:
+    """Studio floors store furniture under scene.items (legacy: models)."""
+    if not isinstance(floor, dict):
+        return []
+    scene = floor.get('scene') if isinstance(floor.get('scene'), dict) else {}
+    # Empty models:[] must not win over scene.items (same as cover/climate).
+    return floor.get('models') or scene.get('items') or scene.get('models') or []
+
+
 def apply_background_urls(payload: dict, scene_id: str, project_id: str) -> None:
     scene = payload.get('scene')
     if not isinstance(scene, dict):
@@ -236,9 +247,10 @@ def get_current_scene(
         payload['referenceScene'] = reference.get('scene')
         apply_background_urls(payload, scene_id, projectId)
         return JSONResponse(payload, headers={'Cache-Control': 'no-store'})
-    except (OSError, ValueError, AttributeError):
+    except (OSError, ValueError, AttributeError) as exc:
         if since:
             raise HTTPException(409, detail='户型保存尚未完成，稍后自动重试。')
+        logger.debug('场景 current 回退到快照 scene=%s: %s', scene_id, exc)
         payload = reference
         apply_background_urls(payload, scene_id, projectId)
         return JSONResponse(payload, headers={'Cache-Control': 'no-store'})
@@ -274,8 +286,8 @@ def get_background(
             )
             if asset:
                 return FileResponse(asset, headers={'Cache-Control': 'no-store'})
-        except (OSError, ValueError, KeyError, AttributeError):
-            pass
+        except (OSError, ValueError, KeyError, AttributeError) as exc:
+            logger.debug('背景图解析跳过 scene=%s asset=%s: %s', scene_id, asset_id, exc)
     raise HTTPException(404, detail='户型底图不存在。')
 
 
@@ -297,8 +309,8 @@ def _scene_payload(request: Request, scene_id: str) -> dict:
             payload = json.loads(source.read_text(encoding='utf-8'))
             if isinstance(payload.get('scene'), dict):
                 return payload
-    except (OSError, ValueError, KeyError, TypeError, AttributeError):
-        pass
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        logger.debug('场景草稿回退到快照 scene=%s: %s', scene_id, exc)
     return reference
 
 
@@ -366,7 +378,7 @@ async def control_device(
                     continue
                 if floor_id and str(floor.get('id') or '') != floor_id:
                     continue
-                for item in floor.get('models') or (floor.get('scene') or {}).get('models') or []:
+                for item in floor_item_catalog(floor):
                     if isinstance(item, dict) and str(item.get('id') or '') == model_id:
                         models.append(item)
             if len(models) != 1 or models[0].get('type') != 'tv':
@@ -464,7 +476,7 @@ def get_stage(
     html = (request.app.state.settings.frontend_dir / '3d-studio.html').read_text(encoding='utf-8')
     html = html.replace(
         '</head>',
-        '<link rel="stylesheet" href="/api/v1/modules/interaction3d/stage.css?v=20260908-curtains-v1"></head>',
+        '<link rel="stylesheet" href="/api/v1/modules/interaction3d/stage.css?v=20260910-health-fixes-v1"></head>',
     )
     scope = light_history_scope(active_connection(database), viewer, projectId)
     html = html.replace('<body>', f'<body class="interaction3d-stage" data-i3d-light-history-scope="{scope}">')

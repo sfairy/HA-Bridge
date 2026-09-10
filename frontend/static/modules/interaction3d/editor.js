@@ -141,40 +141,40 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
   hidden.dataset.componentId = component.id;
   const position = new Map([...hidden.querySelectorAll("details")].filter(dataset => dataset.dataset.inspectorGroup).map(dataset2 => [dataset2.dataset.inspectorGroup, dataset2.open]));
   hidden.replaceChildren();
-  const value67 = (arg2, element2 = "", element3 = "") => {
-    const className = document.createElement(arg2);
+  const createEl = (tagName, element2 = "", element3 = "") => {
+    const className = document.createElement(tagName);
     className.className = element2;
     className.textContent = element3;
     return className;
   };
-  const value68 = arg3 => {
-    const append = value67("section", "inspector-section");
-    append.append(value67("h3", "", arg3));
+  const createInspectorSection = sectionTitle => {
+    const append = createEl("section", "inspector-section");
+    append.append(createEl("h3", "", sectionTitle));
     hidden.append(append);
     return append;
   };
-  const viewEditing = (append2, arg4, arg5) => {
-    const append3 = value67("label");
-    append3.append(value67("span", "", arg4), arg5);
+  const viewEditing = (append2, labelText, controlEl) => {
+    const append3 = createEl("label");
+    append3.append(createEl("span", "", labelText), controlEl);
     append2.append(append3);
-    return arg5;
+    return controlEl;
   };
-  const value69 = arg6 => Promise.resolve(callbacks.onChange(arg6)).catch(topPercent => callbacks.onError?.(topPercent));
+  const applyInspectorChange = changePatch => Promise.resolve(callbacks.onChange(changePatch)).catch(topPercent => callbacks.onError?.(topPercent));
   const canvasWidth = component.properties || {};
   const canvasHeight = component.position || {};
   const compWidth = new WeakSet();
-  const compHeight = (value39, arg7) => {
-    value39.value = String(arg7);
-    compWidth.add(value39);
+  const compHeight = (inputEl, nextInputValue) => {
+    inputEl.value = String(nextInputValue);
+    compWidth.add(inputEl);
     try {
-      value39.dispatchEvent?.(new Event("change", {
+      inputEl.dispatchEvent?.(new Event("change", {
         bubbles: true
       }));
     } finally {
-      compWidth.delete(value39);
+      compWidth.delete(inputEl);
     }
   };
-  const layoutSection = async arg8 => (await confirmPerformanceWarning(performanceWarnings(canvasWidth, arg8), {
+  const layoutSection = async pendingProperties => (await confirmPerformanceWarning(performanceWarnings(canvasWidth, pendingProperties), {
     document,
     signal: inspector.signal
   })) && !inspector.signal.aborted && !hidden.hidden && hidden.dataset.componentId === component.id;
@@ -186,17 +186,17 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
   const metadata3 = getInteraction3dEditorView(component.id);
   const positionGrid = !!metadata3?.viewEditing;
   const addPositionField = callbacks.document?.canvas || {};
-  const value70 = Number(addPositionField.width || 2778);
-  const value71 = Number(addPositionField.height || 1940);
+  const canvasWidthPx = Number(addPositionField.width || 2778);
+  const canvasHeightPx = Number(addPositionField.height || 1940);
   const sceneCacheKey = Number(canvasHeight.width || 100);
   const sceneLoad = Number(canvasHeight.height || 100);
-  const reloadBtn = value68("布局与位置");
-  const setAttribute2 = value67("div", "image-layout-options");
+  const reloadBtn = createInspectorSection("布局与位置");
+  const setAttribute2 = createEl("div", "image-layout-options");
   setAttribute2.setAttribute("role", "group");
   setAttribute2.setAttribute("aria-label", "3D 交互布局");
   const disabled4 = canvasWidth.layoutMode === "fill";
   for (const [layoutMode, layoutLabel] of [["free", "自由"], ["fill", "铺满"]]) {
-    const layoutBtn = value67("button", "", layoutLabel);
+    const layoutBtn = createEl("button", "", layoutLabel);
     layoutBtn.type = "button";
     layoutBtn.dataset.interaction3dLayout = layoutMode;
     const isActiveLayout = (disabled4 ? "fill" : "free") === layoutMode;
@@ -204,7 +204,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     layoutBtn.setAttribute("aria-pressed", String(isActiveLayout));
     layoutBtn.addEventListener("click", () => {
       if (!isActiveLayout) {
-        value69({
+        applyInspectorChange({
           properties: {
             layoutMode
           }
@@ -213,59 +213,59 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     });
     setAttribute2.append(layoutBtn);
   }
-  const prepareEditorView = value67("div", "inspector-grid two-columns");
+  const prepareEditorView = createEl("div", "inspector-grid two-columns");
   reloadBtn.append(setAttribute2, prepareEditorView);
   prepareEditorView.hidden = disabled4;
-  const value72 = (arg9, arg10, arg11, arg12, arg13) => {
-    const valueAsNumber2 = value67("input");
+  const addPositionPercentField = (fieldTitle, currentValue, minValue, maxValue, buildPatch) => {
+    const valueAsNumber2 = createEl("input");
     Object.assign(valueAsNumber2, {
-      name: "i3d-position-" + arg9,
+      name: "i3d-position-" + fieldTitle,
       type: "number",
-      min: String(arg11),
-      max: String(arg12),
+      min: String(minValue),
+      max: String(maxValue),
       step: ".1",
-      value: String(Math.round(arg10 * 10) / 10),
+      value: String(Math.round(currentValue * 10) / 10),
       disabled: disabled4
     });
     valueAsNumber2.addEventListener("change", () => {
       if (Number.isFinite(valueAsNumber2.valueAsNumber)) {
-        value69(arg13(Math.max(arg11, Math.min(arg12, valueAsNumber2.valueAsNumber))));
+        applyInspectorChange(buildPatch(Math.max(minValue, Math.min(maxValue, valueAsNumber2.valueAsNumber))));
       }
     });
-    viewEditing(prepareEditorView, arg9, valueAsNumber2);
+    viewEditing(prepareEditorView, fieldTitle, valueAsNumber2);
   };
-  value72("左侧（%）", (Number(canvasHeight.x || 0) + sceneCacheKey / 2) / value70 * 100, 0, 100, widthPercent => ({
+  addPositionPercentField("左侧（%）", (Number(canvasHeight.x || 0) + sceneCacheKey / 2) / canvasWidthPx * 100, 0, 100, widthPercent => ({
     position: {
-      x: widthPercent * value70 / 100 - sceneCacheKey / 2
+      x: widthPercent * canvasWidthPx / 100 - sceneCacheKey / 2
     }
   }));
-  value72("顶部（%）", (Number(canvasHeight.y || 0) + sceneLoad / 2) / value71 * 100, 0, 100, heightPercent => ({
+  addPositionPercentField("顶部（%）", (Number(canvasHeight.y || 0) + sceneLoad / 2) / canvasHeightPx * 100, 0, 100, heightPercent => ({
     position: {
-      y: heightPercent * value71 / 100 - sceneLoad / 2
+      y: heightPercent * canvasHeightPx / 100 - sceneLoad / 2
     }
   }));
-  value72("宽度（%）", sceneCacheKey / value70 * 100, 0.1, 100, scalePercent => ({
+  addPositionPercentField("宽度（%）", sceneCacheKey / canvasWidthPx * 100, 0.1, 100, scalePercent => ({
     position: {
-      width: scalePercent * value70 / 100
+      width: scalePercent * canvasWidthPx / 100
     }
   }));
-  value72("高度（%）", sceneLoad / value71 * 100, 0.1, 100, rotationDeg => ({
+  addPositionPercentField("高度（%）", sceneLoad / canvasHeightPx * 100, 0.1, 100, rotationDeg => ({
     position: {
-      height: rotationDeg * value71 / 100
+      height: rotationDeg * canvasHeightPx / 100
     }
   }));
-  value72("缩放（%）", Number(component.style?.scale || 1) * 100, 1, 500, arg14 => ({
+  addPositionPercentField("缩放（%）", Number(component.style?.scale || 1) * 100, 1, 500, scaleFieldPercent => ({
     style: {
-      scale: arg14 / 100
+      scale: scaleFieldPercent / 100
     }
   }));
-  value72("旋转（°）", Number(canvasHeight.rotation || 0), -360, 360, rotation => ({
+  addPositionPercentField("旋转（°）", Number(canvasHeight.rotation || 0), -360, 360, rotation => ({
     position: {
       rotation
     }
   }));
-  const append5 = value68("户型");
-  const loadScene = value67("p", "inspector-section-note");
+  const append5 = createInspectorSection("户型");
+  const loadScene = createEl("p", "inspector-section-note");
   loadScene.setAttribute("role", "status");
   const houseSectionRef = (callbacks.document?.projectId || "") + "/" + component.id;
   if (!Vt.has(houseSectionRef)) {
@@ -275,26 +275,26 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     });
   }
   const viewEditBtn = Vt.get(houseSectionRef);
-  const type4 = value67("button", "", "重新载入户型");
+  const type4 = createEl("button", "", "重新载入户型");
   type4.type = "button";
-  const disabled5 = value67("button", "", "配置灯光");
+  const disabled5 = createEl("button", "", "配置灯光");
   disabled5.type = "button";
-  const disabled6 = value67("button", "", "配置空调");
+  const disabled6 = createEl("button", "", "配置空调");
   disabled6.type = "button";
-  const disabled7 = value67("button", "", "配置窗帘");
+  const disabled7 = createEl("button", "", "配置窗帘");
   disabled7.type = "button";
-  const disabled8 = value67("button", "", "户型渲染");
+  const disabled8 = createEl("button", "", "户型渲染");
   disabled8.type = "button";
   const focalInput = async () => {
     callbacks.prepareCanvas?.();
     renderScaleSelect.hidden = false;
     renderScaleSelect.textContent = "正在准备户型…";
-    const value40 = await waitInteraction3dEditorView(component.id);
+    const editorView = await waitInteraction3dEditorView(component.id);
     if (hidden.hidden || hidden.dataset.componentId !== component.id) {
       return null;
     } else {
       renderScaleSelect.hidden = true;
-      return value40;
+      return editorView;
     }
   };
   disabled8.addEventListener("click", async () => {
@@ -305,9 +305,9 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       }
       await requestInteraction3dAccess();
       const {
-        openInteraction3dAppearanceEditor: value10
+        openInteraction3dAppearanceEditor: openAppearanceEditor
       } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1");
-      await value10({
+      await openAppearanceEditor({
         component,
         onSave: baseLighting => callbacks.onChange({
           properties: {
@@ -322,24 +322,24 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       disabled8.disabled = false;
     }
   });
-  const append6 = value67("div", "i3d-house-actions");
+  const append6 = createEl("div", "i3d-house-actions");
   append5.append(loadScene, type4, append6);
-  const rotationControl = value68("灯光效果");
-  const rotationOptions = value68("灯光");
+  const rotationControl = createInspectorSection("灯光效果");
+  const rotationOptions = createInspectorSection("灯光");
   rotationOptions.append(disabled5);
-  const autoRotateSection = value68("环境");
+  const autoRotateSection = createInspectorSection("环境");
   autoRotateSection.append(disabled6, disabled7);
-  const autoRotate = value68("设备");
-  const autoRotateToggle = value67("button", "", "配置设备");
+  const autoRotate = createInspectorSection("设备");
+  const autoRotateToggle = createEl("button", "", "配置设备");
   autoRotateToggle.type = "button";
   autoRotate.append(autoRotateToggle);
   autoRotateToggle.addEventListener("click", async () => {
     autoRotateToggle.disabled = true;
     try {
       const {
-        openInteraction3dEditor: value11
+        openInteraction3dEditor: openDevicesEditor
       } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1");
-      await value11({
+      await openDevicesEditor({
         component,
         deviceKind: "devices",
         document: callbacks.document,
@@ -352,14 +352,14 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
           replaceProperties: true
         })
       });
-    } catch (value12) {
-      callbacks.onError?.(value12);
+    } catch (devicesConfigError) {
+      callbacks.onError?.(devicesConfigError);
     } finally {
       autoRotateToggle.disabled = false;
     }
   });
-  const append7 = value68("安防");
-  const disabled9 = value67("button", "", "配置安防");
+  const append7 = createInspectorSection("安防");
+  const disabled9 = createEl("button", "", "配置安防");
   disabled9.type = "button";
   append7.append(disabled9);
   disabled9.addEventListener("click", async () => {
@@ -371,9 +371,9 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
         return;
       }
       const {
-        openPresenceEditor: value13
+        openPresenceEditor: openPresenceEditorFn
       } = await import("/api/v1/modules/interaction3d/presence-editor.js?v=20260910-presence-v9");
-      await value13({
+      await openPresenceEditorFn({
         component,
         panelDocument: callbacks.document,
         floors: metadata.metadata?.floors || [],
@@ -387,23 +387,23 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
           });
         }
       });
-    } catch (value14) {
-      callbacks.onError?.(value14);
+    } catch (presenceConfigError) {
+      callbacks.onError?.(presenceConfigError);
     } finally {
       disabled9.disabled = false;
     }
   });
-  const append8 = value68("扫地机");
-  const disabled10 = value67("button", "", "配置扫地机");
+  const append8 = createInspectorSection("扫地机");
+  const disabled10 = createEl("button", "", "配置扫地机");
   disabled10.type = "button";
   append8.append(disabled10);
   disabled10.addEventListener("click", async () => {
     disabled10.disabled = true;
     try {
       const {
-        openInteraction3dEditor: value15
+        openInteraction3dEditor: openVacuumEditor
       } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1");
-      await value15({
+      await openVacuumEditor({
         component,
         deviceKind: "vacuum",
         document: callbacks.document,
@@ -416,22 +416,22 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
           replaceProperties: true
         })
       });
-    } catch (value16) {
-      callbacks.onError?.(value16);
+    } catch (vacuumConfigError) {
+      callbacks.onError?.(vacuumConfigError);
     } finally {
       disabled10.disabled = false;
     }
   });
-  const disabled11 = value67("button", "", "快捷指令设置");
+  const disabled11 = createEl("button", "", "快捷指令设置");
   disabled11.type = "button";
   append8.append(disabled11);
   disabled11.addEventListener("click", async () => {
     disabled11.disabled = true;
     try {
       const {
-        openInteraction3dEditor: value17
+        openInteraction3dEditor: openShortcutEditor
       } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1");
-      await value17({
+      await openShortcutEditor({
         component,
         deviceKind: "vacuum-shortcut",
         document: callbacks.document,
@@ -444,8 +444,8 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
           replaceProperties: true
         })
       });
-    } catch (value18) {
-      callbacks.onError?.(value18);
+    } catch (shortcutConfigError) {
+      callbacks.onError?.(shortcutConfigError);
     } finally {
       disabled11.disabled = false;
     }
@@ -484,9 +484,9 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     try {
       await requestInteraction3dAccess();
       const {
-        openInteraction3dEditor: value19
+        openInteraction3dEditor: openClimateEditor
       } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1");
-      await value19({
+      await openClimateEditor({
         component,
         document: callbacks.document,
         entities: callbacks.entities,
@@ -498,8 +498,8 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
           replaceProperties: true
         })
       });
-    } catch (value20) {
-      callbacks.onError?.(value20);
+    } catch (climateConfigError) {
+      callbacks.onError?.(climateConfigError);
     } finally {
       disabled5.disabled = false;
     }
@@ -509,9 +509,9 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     try {
       await requestInteraction3dAccess();
       const {
-        openInteraction3dEditor: value21
+        openInteraction3dEditor: openTelevisionEditor
       } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1");
-      await value21({
+      await openTelevisionEditor({
         component,
         deviceKind: "climate",
         document: callbacks.document,
@@ -524,8 +524,8 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
           replaceProperties: true
         })
       });
-    } catch (value22) {
-      callbacks.onError?.(value22);
+    } catch (televisionConfigError) {
+      callbacks.onError?.(televisionConfigError);
     } finally {
       disabled6.disabled = false;
     }
@@ -535,9 +535,9 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     try {
       await requestInteraction3dAccess();
       const {
-        openInteraction3dEditor: value23
+        openInteraction3dEditor: openNasEditor
       } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1");
-      await value23({
+      await openNasEditor({
         component,
         deviceKind: "cover",
         document: callbacks.document,
@@ -550,20 +550,20 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
           replaceProperties: true
         })
       });
-    } catch (value24) {
-      callbacks.onError?.(value24);
+    } catch (nasConfigError) {
+      callbacks.onError?.(nasConfigError);
     } finally {
       disabled7.disabled = false;
     }
   });
-  const append9 = value68("楼层视角");
-  const value73 = value67("div", "i3d-view-floor-row");
-  append9.append(value73);
-  const value74 = value67("select");
-  value74.name = "i3d-view-floor";
-  value74.disabled = positionGrid;
-  viewEditing(value73, "视角楼层", value74);
-  const disabled12 = value67("input");
+  const append9 = createInspectorSection("楼层视角");
+  const viewFloorRow = createEl("div", "i3d-view-floor-row");
+  append9.append(viewFloorRow);
+  const viewFloorSelect = createEl("select");
+  viewFloorSelect.name = "i3d-view-floor";
+  viewFloorSelect.disabled = positionGrid;
+  viewEditing(viewFloorRow, "视角楼层", viewFloorSelect);
+  const disabled12 = createEl("input");
   Object.assign(disabled12, {
     name: "i3d-floor-gap",
     type: "number",
@@ -572,14 +572,14 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     step: "0.1",
     value: String(canvasWidth.floorGap ?? metadata3?.metadata?.floorGap ?? 3)
   });
-  viewEditing(value73, "楼层间距（m）", disabled12);
+  viewEditing(viewFloorRow, "楼层间距（m）", disabled12);
   disabled12.disabled = canvasWidth.floorSelection !== "all";
   disabled12.addEventListener("change", () => {
     if (!disabled12.disabled) {
       if (Number.isFinite(disabled12.valueAsNumber)) {
         const floorGap = Math.max(0, Math.min(20, disabled12.valueAsNumber));
         disabled12.value = String(floorGap);
-        value69({
+        applyInspectorChange({
           properties: {
             floorGap
           }
@@ -589,45 +589,45 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       }
     }
   });
-  const append10 = value67("div", "i3d-floor-number-group");
-  append10.append(value67("span", "i3d-floor-number-title", "楼层编号"));
-  const idleIconsGrid = value67("div", "i3d-floor-number-fields");
+  const append10 = createEl("div", "i3d-floor-number-group");
+  append10.append(createEl("span", "i3d-floor-number-title", "楼层编号"));
+  const idleIconsGrid = createEl("div", "i3d-floor-number-fields");
   append10.append(idleIconsGrid);
   append9.append(append10);
   const idleSecondsInput = length => {
     idleIconsGrid.replaceChildren();
     append10.hidden = !length.length;
-    for (const [value33, id2] of length.entries()) {
-      const value25 = id2.id;
-      const value26 = id2.name || "未命名楼层";
-      const value27 = canvasWidth.floorNumbers?.[value25] ?? id2.number ?? value33 + 1;
-      const value28 = value67("input");
-      Object.assign(value28, {
+    for (const [floorIndex, id2] of length.entries()) {
+      const floorId = id2.id;
+      const floorName = id2.name || "未命名楼层";
+      const floorNumber = canvasWidth.floorNumbers?.[floorId] ?? id2.number ?? floorIndex + 1;
+      const floorNumberInput = createEl("input");
+      Object.assign(floorNumberInput, {
         type: "number",
         min: "-99",
         max: "99",
         step: "1",
-        value: String(value27),
-        name: "i3d-floor-number-" + value25,
+        value: String(floorNumber),
+        name: "i3d-floor-number-" + floorId,
         title: "负数为地下层，1 为一层",
         disabled: positionGrid
       });
-      viewEditing(idleIconsGrid, value26, value28);
-      let value29 = value27;
-      value28.addEventListener("change", async () => {
-        let value3 = value28.valueAsNumber;
-        if (value3 === 0) {
-          value3 = value29 < 0 ? 1 : -1;
+      viewEditing(idleIconsGrid, floorName, floorNumberInput);
+      let previousFloorNumber = floorNumber;
+      floorNumberInput.addEventListener("change", async () => {
+        let nextFloorNumber = floorNumberInput.valueAsNumber;
+        if (nextFloorNumber === 0) {
+          nextFloorNumber = previousFloorNumber < 0 ? 1 : -1;
         }
-        if (!Number.isInteger(value3) || value3 < -99 || value3 > 99) {
-          value28.value = String(value29);
+        if (!Number.isInteger(nextFloorNumber) || nextFloorNumber < -99 || nextFloorNumber > 99) {
+          floorNumberInput.value = String(previousFloorNumber);
           return;
         }
         const floorNumbers = {
           ...canvasWidth.floorNumbers,
-          [value25]: value3
+          [floorId]: nextFloorNumber
         };
-        value28.disabled = true;
+        floorNumberInput.disabled = true;
         try {
           await callbacks.onChange({
             properties: {
@@ -635,19 +635,19 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
             }
           });
           canvasWidth.floorNumbers = floorNumbers;
-          value29 = value3;
-          value28.value = String(value3);
+          previousFloorNumber = nextFloorNumber;
+          floorNumberInput.value = String(nextFloorNumber);
         } catch (value) {
-          value28.value = String(value29);
+          floorNumberInput.value = String(previousFloorNumber);
           callbacks.onError?.(value);
         } finally {
-          value28.disabled = positionGrid;
+          floorNumberInput.disabled = positionGrid;
         }
       });
     }
   };
   const displaySection = metadata2 => {
-    if (!value74.isConnected) {
+    if (!viewFloorSelect.isConnected) {
       return;
     }
     const length2 = metadata2?.metadata?.floors || [];
@@ -655,26 +655,26 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     if (canvasWidth.floorGap === undefined && Number.isFinite(metadata2?.metadata?.floorGap)) {
       disabled12.value = String(metadata2.metadata.floorGap);
     }
-    value74.replaceChildren();
-    const value41 = length2.length ? [...(length2.length > 1 ? [["all", "全部楼层"]] : []), ...length2.map(id => [id.id, id.name || "未命名楼层"])] : [[canvasWidth.floorSelection || "all", "当前楼层"]];
-    for (const [element, value34] of value41) {
-      const value30 = value67("option", "", value34);
-      value30.value = element;
-      value74.append(value30);
+    viewFloorSelect.replaceChildren();
+    const viewFloorOptions = length2.length ? [...(length2.length > 1 ? [["all", "全部楼层"]] : []), ...length2.map(id => [id.id, id.name || "未命名楼层"])] : [[canvasWidth.floorSelection || "all", "当前楼层"]];
+    for (const [element, floorOptionLabel] of viewFloorOptions) {
+      const floorOption = createEl("option", "", floorOptionLabel);
+      floorOption.value = element;
+      viewFloorSelect.append(floorOption);
     }
-    value74.value = canvasWidth.floorSelection || value41[0][0];
-    disabled12.disabled = value74.value !== "all" || length2.length < 2;
-    value74.disabled = positionGrid || length2.length < 2;
+    viewFloorSelect.value = canvasWidth.floorSelection || viewFloorOptions[0][0];
+    disabled12.disabled = viewFloorSelect.value !== "all" || length2.length < 2;
+    viewFloorSelect.disabled = positionGrid || length2.length < 2;
   };
   displaySection(metadata3);
   if (canvasWidth.sceneId && !metadata3?.metadata?.floors?.length && typeof waitInteraction3dEditorView == "function") {
     waitInteraction3dEditorView(component.id).then(displaySection).catch(() => {});
   }
-  value74.addEventListener("change", async () => {
+  viewFloorSelect.addEventListener("change", async () => {
     if (positionGrid) {
       return;
     }
-    const floorSelection = value74.value;
+    const floorSelection = viewFloorSelect.value;
     const floorCameras2 = {
       ...canvasWidth.floorCameras
     };
@@ -686,7 +686,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       floorCameras: floorCameras2,
       camera: floorCameras2[floorSelection] || null
     };
-    await value69({
+    await applyInspectorChange({
       properties: properties2
     });
     renderInteraction3dInspector(panel, {
@@ -697,14 +697,14 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       }
     }, callbacks);
   });
-  const disabled13 = value67("button", positionGrid ? "primary" : "", positionGrid ? "完成并固定" : "调整户型视角");
+  const disabled13 = createEl("button", positionGrid ? "primary" : "", positionGrid ? "完成并固定" : "调整户型视角");
   disabled13.type = "button";
   disabled13.disabled = !canvasWidth.sceneId;
   disabled13.setAttribute("aria-pressed", String(positionGrid));
-  const type5 = value67("button", "", "取消本次调整");
+  const type5 = createEl("button", "", "取消本次调整");
   type5.type = "button";
   type5.hidden = !positionGrid;
-  const renderScaleSelect = value67("p", "inspector-section-note");
+  const renderScaleSelect = createEl("p", "inspector-section-note");
   renderScaleSelect.hidden = true;
   disabled13.addEventListener("click", async () => {
     disabled13.disabled = true;
@@ -717,7 +717,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
         const camera = await setViewEditing.captureView();
         const floorCameras = {
           ...canvasWidth.floorCameras,
-          [canvasWidth.floorSelection || value74.value]: camera
+          [canvasWidth.floorSelection || viewFloorSelect.value]: camera
         };
         await callbacks.onChange({
           properties: {
@@ -754,41 +754,41 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
   append6.append(disabled13);
   append9.append(append6);
   append9.append(type5, renderScaleSelect);
-  const hidden2 = value67("div", "i3d-view-options");
+  const hidden2 = createEl("div", "i3d-view-options");
   hidden2.hidden = !positionGrid;
   append9.append(hidden2);
   const popupTransparencyInput = metadata3?.viewCamera || canvasWidth.camera || {};
-  const popupTransparencyOutput = async (arg15, arg16) => {
+  const popupTransparencyOutput = async (viewCommandKey, viewCommandValue) => {
     try {
       const viewEditing2 = getInteraction3dEditorView(component.id);
       if (!viewEditing2?.viewEditing) {
         return;
       }
-      await viewEditing2.viewCommand(arg15, arg16);
+      await viewEditing2.viewCommand(viewCommandKey, viewCommandValue);
       renderInteraction3dInspector(panel, component, callbacks);
     } catch (message3) {
       renderScaleSelect.hidden = false;
       renderScaleSelect.textContent = message3.message;
     }
   };
-  ((arg17, arg18, arg19, arg20) => {
-    const append4 = value67("div", "navigation-property-control");
-    const setAttribute = value67("div", "navigation-segmented-options");
+  ((segmentTitle, viewCommandName, segmentOptions, selectedSegment) => {
+    const append4 = createEl("div", "navigation-property-control");
+    const setAttribute = createEl("div", "navigation-segmented-options");
     setAttribute.setAttribute("role", "group");
-    setAttribute.setAttribute("aria-label", "3D " + arg17);
-    for (const [value35, value36] of arg19) {
-      const type = value67("button", "", value36);
+    setAttribute.setAttribute("aria-label", "3D " + segmentTitle);
+    for (const [segmentValue, segmentLabel] of segmentOptions) {
+      const type = createEl("button", "", segmentLabel);
       type.type = "button";
       type.disabled = !positionGrid;
-      type.classList.toggle("active", value35 === arg20);
-      type.setAttribute("aria-pressed", String(value35 === arg20));
-      type.addEventListener("click", () => void popupTransparencyOutput(arg18, value35));
+      type.classList.toggle("active", segmentValue === selectedSegment);
+      type.setAttribute("aria-pressed", String(segmentValue === selectedSegment));
+      type.addEventListener("click", () => void popupTransparencyOutput(viewCommandName, segmentValue));
       setAttribute.append(type);
     }
-    append4.append(value67("span", "", arg17), setAttribute);
+    append4.append(createEl("span", "", segmentTitle), setAttribute);
     hidden2.append(append4);
   })("投影", "projection", [["orthographic", "正交"], ["perspective", "透视"]], popupTransparencyInput.mode || "orthographic");
-  const popupTransparency = value67("input");
+  const popupTransparency = createEl("input");
   Object.assign(popupTransparency, {
     name: "i3d-focal-length",
     type: "number",
@@ -804,7 +804,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     }
   });
   viewEditing(hidden2, "焦段（mm）", popupTransparency);
-  const append11 = value68("导航位置");
+  const append11 = createInspectorSection("导航位置");
   const vignetteInput = {
     categories: {
       x: 50,
@@ -820,37 +820,37 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
   };
   const vignetteOutput = [];
   for (const [rotMode, rotLabel] of [["categories", "分类栏"], ["floors", "楼层栏"]]) {
-    const rotBtn = value67("div", "i3d-finishing-row");
+    const rotBtn = createEl("div", "i3d-finishing-row");
     append11.append(rotBtn);
-    for (const [value42, value43] of [["x", "横向"], ["y", "纵向"]]) {
-      const valueAsNumber = value67("input");
+    for (const [navAxis, navAxisLabel] of [["x", "横向"], ["y", "纵向"]]) {
+      const valueAsNumber = createEl("input");
       Object.assign(valueAsNumber, {
-        name: "i3d-navigation-" + rotMode + "-" + value42,
+        name: "i3d-navigation-" + rotMode + "-" + navAxis,
         type: "number",
         min: "0",
         max: "100",
         step: "1",
-        value: String(vignetteInput[rotMode][value42]),
+        value: String(vignetteInput[rotMode][navAxis]),
         disabled: positionGrid
       });
       valueAsNumber.addEventListener("change", () => {
         if (!positionGrid) {
           if (Number.isFinite(valueAsNumber.valueAsNumber)) {
-            vignetteInput[rotMode][value42] = Math.max(0, Math.min(100, valueAsNumber.valueAsNumber));
-            value69({
+            vignetteInput[rotMode][navAxis] = Math.max(0, Math.min(100, valueAsNumber.valueAsNumber));
+            applyInspectorChange({
               properties: {
                 navigation: structuredClone(vignetteInput)
               }
             });
           }
-          valueAsNumber.value = String(vignetteInput[rotMode][value42]);
+          valueAsNumber.value = String(vignetteInput[rotMode][navAxis]);
         }
       });
-      viewEditing(rotBtn, "" + rotLabel + value43 + "（%）", valueAsNumber);
-      vignetteOutput.push([valueAsNumber, rotMode, value42]);
+      viewEditing(rotBtn, "" + rotLabel + navAxisLabel + "（%）", valueAsNumber);
+      vignetteOutput.push([valueAsNumber, rotMode, navAxis]);
     }
   }
-  const type6 = value67("button", "secondary-button", "恢复默认位置");
+  const type6 = createEl("button", "secondary-button", "恢复默认位置");
   type6.type = "button";
   type6.disabled = positionGrid;
   type6.addEventListener("click", () => {
@@ -865,10 +865,10 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
           y: 50
         }
       });
-      for (const [value6, value7, value8] of vignetteOutput) {
-        value6.value = String(vignetteInput[value7][value8]);
+      for (const [vignetteInputEl, vignetteGroupKey, vignetteFieldKey] of vignetteOutput) {
+        vignetteInputEl.value = String(vignetteInput[vignetteGroupKey][vignetteFieldKey]);
       }
-      value69({
+      applyInspectorChange({
         properties: {
           navigation: structuredClone(vignetteInput)
         }
@@ -876,102 +876,102 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     }
   });
   append11.append(type6);
-  const append12 = value68("交互行为");
+  const append12 = createInspectorSection("交互行为");
   let vignetteStrength = canvasWidth.behaviorScope === "page" ? "page" : "global";
-  const value75 = [["overview", "总览"], ["light", "灯光"], ["environment", "环境"], ["devices", "设备"], ["vacuum", "扫地机"], ["security", "安防"]];
+  const behaviorPageOptions = [["overview", "总览"], ["light", "灯光"], ["environment", "环境"], ["devices", "设备"], ["vacuum", "扫地机"], ["security", "安防"]];
   let element8 = panel.dataset.behaviorPage || "overview";
   let pageBehaviors = structuredClone(canvasWidth.pageBehaviors || {});
-  let value76 = {
+  let behaviorDocument = {
     ...canvasWidth,
     pageBehaviors
   };
-  const value77 = () => resolvePageBehavior({
-    ...value76,
+  const currentPageBehavior = () => resolvePageBehavior({
+    ...behaviorDocument,
     behaviorScope: vignetteStrength,
     pageBehaviors
   }, element8);
-  const value78 = arg21 => arg21 === "hideIconsWhileRotating" ? value77()[arg21] : value77()[arg21].enabled;
-  const vignetteInput2 = value67("div", "i3d-behavior-scope-row");
-  const popupTransparencyInput2 = value67("select");
-  const value79 = value67("select");
+  const isPageBehaviorEnabled = behaviorFlag => behaviorFlag === "hideIconsWhileRotating" ? currentPageBehavior()[behaviorFlag] : currentPageBehavior()[behaviorFlag].enabled;
+  const vignetteInput2 = createEl("div", "i3d-behavior-scope-row");
+  const popupTransparencyInput2 = createEl("select");
+  const behaviorPageSelect = createEl("select");
   Object.assign(popupTransparencyInput2, {
     name: "i3d-behavior-scope",
     disabled: positionGrid
   });
   popupTransparencyInput2.setAttribute("aria-label", "交互行为设置范围");
   for (const [dirValue, dirLabel] of [["global", "全部页面"], ["page", "单页面"]]) {
-    const dirBtn = value67("option", "", dirLabel);
+    const dirBtn = createEl("option", "", dirLabel);
     dirBtn.value = dirValue;
     popupTransparencyInput2.append(dirBtn);
   }
   popupTransparencyInput2.value = vignetteStrength;
-  Object.assign(value79, {
+  Object.assign(behaviorPageSelect, {
     name: "i3d-behavior-page",
     disabled: positionGrid
   });
-  value79.setAttribute("aria-label", "交互设置页面");
-  for (const [bgVisible, bgLabel] of value75) {
-    const value48 = value67("option", "", bgLabel);
-    value48.value = bgVisible;
-    value79.append(value48);
+  behaviorPageSelect.setAttribute("aria-label", "交互设置页面");
+  for (const [bgVisible, bgLabel] of behaviorPageOptions) {
+    const behaviorPageOption = createEl("option", "", bgLabel);
+    behaviorPageOption.value = bgVisible;
+    behaviorPageSelect.append(behaviorPageOption);
   }
-  value79.value = element8;
-  const hidden3 = value67("div");
-  hidden3.append(value79);
+  behaviorPageSelect.value = element8;
+  const hidden3 = createEl("div");
+  hidden3.append(behaviorPageSelect);
   hidden3.hidden = vignetteStrength !== "page";
   vignetteInput2.append(popupTransparencyInput2, hidden3);
   append12.append(vignetteInput2);
-  append12.append(value67("p", "inspector-section-note", "以下设置统一应用于所选范围；单页面未单独设置的参数沿用全部页面。"));
-  const value80 = (arg22, arg23) => {
+  append12.append(createEl("p", "inspector-section-note", "以下设置统一应用于所选范围；单页面未单独设置的参数沿用全部页面。"));
+  const updatePageBehavior = (behaviorName, behaviorUpdate) => {
     if (!positionGrid) {
       if (vignetteStrength === "page") {
-        const enabled = pageBehaviors[element8]?.[arg22];
-        const value4 = typeof arg23 == "boolean" ? arg23 : {
+        const enabled = pageBehaviors[element8]?.[behaviorName];
+        const behaviorValue = typeof behaviorUpdate == "boolean" ? behaviorUpdate : {
           ...(typeof enabled == "boolean" ? {
             enabled
           } : enabled || {}),
-          ...arg23
+          ...behaviorUpdate
         };
         pageBehaviors = {
           ...pageBehaviors,
           [element8]: {
             ...pageBehaviors[element8],
-            [arg22]: value4
+            [behaviorName]: behaviorValue
           }
         };
-        value69({
+        applyInspectorChange({
           properties: {
             pageBehaviors
           }
         });
       } else {
-        const value5 = typeof arg23 == "boolean" ? arg23 : {
+        const behaviorPatch = typeof behaviorUpdate == "boolean" ? behaviorUpdate : {
           ...resolvePageBehavior({
-            ...value76,
+            ...behaviorDocument,
             behaviorScope: "global"
-          })[arg22],
-          ...arg23
+          })[behaviorName],
+          ...behaviorUpdate
         };
-        value76 = {
-          ...value76,
-          [arg22]: value5
+        behaviorDocument = {
+          ...behaviorDocument,
+          [behaviorName]: behaviorPatch
         };
-        value69({
+        applyInspectorChange({
           properties: {
-            [arg22]: value5
+            [behaviorName]: behaviorPatch
           }
         });
       }
     }
   };
-  const value81 = (arg24, enabled2) => value80(arg24, arg24 === "hideIconsWhileRotating" ? enabled2 : {
+  const setPageBehaviorEnabled = (behaviorKey, enabled2) => updatePageBehavior(behaviorKey, behaviorKey === "hideIconsWhileRotating" ? enabled2 : {
     enabled: enabled2
   });
   popupTransparencyInput2.addEventListener("change", () => {
     if (!positionGrid) {
       vignetteStrength = popupTransparencyInput2.value;
-      fn();
-      value69({
+      syncAutoRotateControls();
+      applyInspectorChange({
         properties: {
           behaviorScope: vignetteStrength,
           ...(vignetteStrength === "page" ? {
@@ -981,54 +981,54 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       });
     }
   });
-  value79.addEventListener("change", () => {
-    element8 = value79.value;
+  behaviorPageSelect.addEventListener("change", () => {
+    element8 = behaviorPageSelect.value;
     panel.dataset.behaviorPage = element8;
-    fn();
+    syncAutoRotateControls();
   });
-  const append13 = value67("div", "navigation-property-control");
-  const setAttribute3 = value67("div", "navigation-segmented-options three-columns");
+  const append13 = createEl("div", "navigation-property-control");
+  const setAttribute3 = createEl("div", "navigation-segmented-options three-columns");
   setAttribute3.setAttribute("role", "group");
   setAttribute3.setAttribute("aria-label", "3D 旋转方式");
   for (const [scaleValue, scaleLabel] of [["free", "自由"], ["horizontal", "仅左右"], ["vertical", "仅上下"]]) {
-    const scaleOption = value67("button", "", scaleLabel);
+    const scaleOption = createEl("button", "", scaleLabel);
     scaleOption.type = "button";
     scaleOption.disabled = positionGrid;
     scaleOption.dataset.rotationMode = scaleValue;
-    const value49 = value77().interaction.rotationMode === scaleValue;
-    scaleOption.classList.toggle("active", value49);
-    scaleOption.setAttribute("aria-pressed", String(value49));
+    const isRotationModeActive = currentPageBehavior().interaction.rotationMode === scaleValue;
+    scaleOption.classList.toggle("active", isRotationModeActive);
+    scaleOption.setAttribute("aria-pressed", String(isRotationModeActive));
     scaleOption.addEventListener("click", () => {
-      value80("interaction", {
+      updatePageBehavior("interaction", {
         rotationMode: scaleValue
       });
-      fn();
+      syncAutoRotateControls();
     });
     setAttribute3.append(scaleOption);
   }
-  append13.append(value67("span", "", "旋转方式"), setAttribute3);
+  append13.append(createEl("span", "", "旋转方式"), setAttribute3);
   append12.append(append13);
-  const append14 = value68("自动旋转");
+  const append14 = createInspectorSection("自动旋转");
   const enabled3 = {
-    ...value77().autoRotate
+    ...currentPageBehavior().autoRotate
   };
-  const append15 = value67("label", "i3d-setting-toggle i3d-view-toggle");
-  const checked = value67("input");
+  const append15 = createEl("label", "i3d-setting-toggle i3d-view-toggle");
+  const checked = createEl("input");
   Object.assign(checked, {
     name: "i3d-auto-rotate-enabled",
     type: "checkbox",
     checked: enabled3.enabled,
     disabled: positionGrid
   });
-  append15.append(value67("span", "", "开启自动旋转"), checked);
-  const hidden4 = value67("div", "inspector-grid two-columns");
+  append15.append(createEl("span", "", "开启自动旋转"), checked);
+  const hidden4 = createEl("div", "inspector-grid two-columns");
   hidden4.hidden = !enabled3.enabled;
-  const append16 = value67("div", "i3d-auto-rotate-row");
-  const setAttribute4 = value67("div", "navigation-segmented-options");
+  const append16 = createEl("div", "i3d-auto-rotate-row");
+  const setAttribute4 = createEl("div", "navigation-segmented-options");
   setAttribute4.setAttribute("role", "group");
   setAttribute4.setAttribute("aria-label", "自动旋转方向");
-  for (const [direction, value57] of [["clockwise", "顺时针"], ["counterclockwise", "逆时针"]]) {
-    const type2 = value67("button", "", value57);
+  for (const [direction, directionLabel] of [["clockwise", "顺时针"], ["counterclockwise", "逆时针"]]) {
+    const type2 = createEl("button", "", directionLabel);
     type2.type = "button";
     type2.disabled = positionGrid;
     type2.dataset.direction = direction;
@@ -1038,11 +1038,11 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       if (!positionGrid && enabled3.direction !== direction) {
         enabled3.direction = direction;
         for (const classList of setAttribute4.children) {
-          const value2 = classList === type2;
-          classList.classList.toggle("active", value2);
-          classList.setAttribute("aria-pressed", String(value2));
+          const isDirectionPressed = classList === type2;
+          classList.classList.toggle("active", isDirectionPressed);
+          classList.setAttribute("aria-pressed", String(isDirectionPressed));
         }
-        value80("autoRotate", {
+        updatePageBehavior("autoRotate", {
           direction: enabled3.direction
         });
       }
@@ -1051,44 +1051,44 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
   }
   append16.append(append15, setAttribute4);
   append14.append(append16, hidden4);
-  const value82 = (arg25, arg26, arg27, arg28, arg29) => {
-    const addEventListener = value67("input");
+  const addAutoRotateNumberField = (fieldLabel, fieldKey, fieldMin, fieldMax, fieldStep) => {
+    const addEventListener = createEl("input");
     Object.assign(addEventListener, {
       type: "number",
-      min: String(arg27),
-      max: String(arg28),
-      step: String(arg29),
-      name: "i3d-auto-rotate-" + arg26,
-      value: String(enabled3[arg26]),
+      min: String(fieldMin),
+      max: String(fieldMax),
+      step: String(fieldStep),
+      name: "i3d-auto-rotate-" + fieldKey,
+      value: String(enabled3[fieldKey]),
       disabled: positionGrid || !enabled3.enabled
     });
     addEventListener.addEventListener("change", () => {
-      const value9 = addEventListener.valueAsNumber;
-      if (Number.isFinite(value9)) {
-        enabled3[arg26] = Math.max(arg27, Math.min(arg28, arg26 === "idleSeconds" ? Math.round(value9) : value9));
-        value80("autoRotate", {
-          [arg26]: enabled3[arg26]
+      const autoRotateFieldValue = addEventListener.valueAsNumber;
+      if (Number.isFinite(autoRotateFieldValue)) {
+        enabled3[fieldKey] = Math.max(fieldMin, Math.min(fieldMax, fieldKey === "idleSeconds" ? Math.round(autoRotateFieldValue) : autoRotateFieldValue));
+        updatePageBehavior("autoRotate", {
+          [fieldKey]: enabled3[fieldKey]
         });
       }
-      addEventListener.value = String(enabled3[arg26]);
+      addEventListener.value = String(enabled3[fieldKey]);
     });
-    viewEditing(hidden4, arg25, addEventListener);
+    viewEditing(hidden4, fieldLabel, addEventListener);
   };
-  value82("等待时间（秒）", "idleSeconds", 1, 3600, 1);
-  value82("旋转速度（°/秒）", "speed", 0.5, 30, 0.5);
-  const append17 = value67("label", "i3d-setting-toggle i3d-view-toggle i3d-return-default");
-  const disabled14 = value67("input");
+  addAutoRotateNumberField("等待时间（秒）", "idleSeconds", 1, 3600, 1);
+  addAutoRotateNumberField("旋转速度（°/秒）", "speed", 0.5, 30, 0.5);
+  const append17 = createEl("label", "i3d-setting-toggle i3d-view-toggle i3d-return-default");
+  const disabled14 = createEl("input");
   Object.assign(disabled14, {
     name: "i3d-auto-rotate-return-default",
     type: "checkbox",
     checked: enabled3.returnToDefault,
     disabled: positionGrid || !enabled3.enabled
   });
-  append17.append(value67("span", "", "旋转前回到默认视角"), disabled14);
+  append17.append(createEl("span", "", "旋转前回到默认视角"), disabled14);
   disabled14.addEventListener("change", () => {
     if (!disabled14.disabled) {
       enabled3.returnToDefault = disabled14.checked;
-      value80("autoRotate", {
+      updatePageBehavior("autoRotate", {
         returnToDefault: enabled3.returnToDefault
       });
     }
@@ -1101,25 +1101,25 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       for (const disabled of hidden4.querySelectorAll("input")) {
         disabled.disabled = positionGrid || !enabled3.enabled;
       }
-      value81("autoRotate", enabled3.enabled);
+      setPageBehaviorEnabled("autoRotate", enabled3.enabled);
     }
   });
-  const append18 = value68("闲置退出聚焦");
+  const append18 = createInspectorSection("闲置退出聚焦");
   const enabled4 = {
-    ...value77().idleExitFocus
+    ...currentPageBehavior().idleExitFocus
   };
-  const append19 = value67("label", "i3d-setting-toggle i3d-view-toggle");
-  const checked2 = value67("input");
+  const append19 = createEl("label", "i3d-setting-toggle i3d-view-toggle");
+  const checked2 = createEl("input");
   Object.assign(checked2, {
     name: "i3d-idle-exit-enabled",
     type: "checkbox",
     checked: enabled4.enabled,
     disabled: positionGrid
   });
-  append19.append(value67("span", "", "无操作时自动退出"), checked2);
-  const hidden5 = value67("div", "inspector-grid");
+  append19.append(createEl("span", "", "无操作时自动退出"), checked2);
+  const hidden5 = createEl("div", "inspector-grid");
   hidden5.hidden = !enabled4.enabled;
-  const disabled15 = value67("input");
+  const disabled15 = createEl("input");
   Object.assign(disabled15, {
     name: "i3d-idle-exit-seconds",
     type: "number",
@@ -1133,7 +1133,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     if (!disabled15.disabled) {
       if (Number.isFinite(disabled15.valueAsNumber)) {
         enabled4.idleSeconds = Math.max(1, Math.min(3600, Math.round(disabled15.valueAsNumber)));
-        value80("idleExitFocus", {
+        updatePageBehavior("idleExitFocus", {
           idleSeconds: enabled4.idleSeconds
         });
       }
@@ -1147,27 +1147,27 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       enabled4.enabled = checked2.checked;
       hidden5.hidden = !enabled4.enabled;
       disabled15.disabled = positionGrid || !enabled4.enabled;
-      value81("idleExitFocus", enabled4.enabled);
+      setPageBehaviorEnabled("idleExitFocus", enabled4.enabled);
     }
   });
   append18.append(append19, hidden5);
-  const append20 = value68("图标显示");
+  const append20 = createInspectorSection("图标显示");
   append20.classList.add("i3d-icon-visibility-row");
   const enabled5 = {
-    ...value77().idleHideIcons
+    ...currentPageBehavior().idleHideIcons
   };
-  const append21 = value67("label", "i3d-setting-toggle i3d-view-toggle");
-  const checked3 = value67("input");
+  const append21 = createEl("label", "i3d-setting-toggle i3d-view-toggle");
+  const checked3 = createEl("input");
   Object.assign(checked3, {
     name: "i3d-idle-icons-enabled",
     type: "checkbox",
     checked: enabled5.enabled,
     disabled: positionGrid
   });
-  append21.append(value67("span", "", "闲置后隐藏图标"), checked3);
-  const hidden6 = value67("div", "inspector-grid");
+  append21.append(createEl("span", "", "闲置后隐藏图标"), checked3);
+  const hidden6 = createEl("div", "inspector-grid");
   hidden6.hidden = !enabled5.enabled;
-  const valueAsNumber3 = value67("input");
+  const valueAsNumber3 = createEl("input");
   Object.assign(valueAsNumber3, {
     name: "i3d-idle-icons-seconds",
     type: "number",
@@ -1180,7 +1180,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
   valueAsNumber3.addEventListener("change", () => {
     if (Number.isFinite(valueAsNumber3.valueAsNumber)) {
       enabled5.idleSeconds = Math.max(1, Math.min(3600, Math.round(valueAsNumber3.valueAsNumber)));
-      value80("idleHideIcons", {
+      updatePageBehavior("idleHideIcons", {
         idleSeconds: enabled5.idleSeconds
       });
     }
@@ -1193,39 +1193,39 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       enabled5.enabled = checked3.checked;
       hidden6.hidden = !enabled5.enabled;
       valueAsNumber3.disabled = positionGrid || !enabled5.enabled;
-      value81("idleHideIcons", enabled5.enabled);
+      setPageBehaviorEnabled("idleHideIcons", enabled5.enabled);
     }
   });
   append20.append(append21, hidden6);
-  const append22 = value67("label", "i3d-setting-toggle i3d-view-toggle");
-  const checked4 = value67("input");
+  const append22 = createEl("label", "i3d-setting-toggle i3d-view-toggle");
+  const checked4 = createEl("input");
   Object.assign(checked4, {
     type: "checkbox",
     name: "i3d-hide-icons-rotating",
-    checked: value78("hideIconsWhileRotating"),
+    checked: isPageBehaviorEnabled("hideIconsWhileRotating"),
     disabled: positionGrid
   });
-  checked4.addEventListener("change", () => value81("hideIconsWhileRotating", checked4.checked));
-  append22.append(value67("span", "", "旋转时隐藏图标"), checked4);
+  checked4.addEventListener("change", () => setPageBehaviorEnabled("hideIconsWhileRotating", checked4.checked));
+  append22.append(createEl("span", "", "旋转时隐藏图标"), checked4);
   append20.append(append22);
-  function fn() {
+  function syncAutoRotateControls() {
     hidden3.hidden = vignetteStrength !== "page";
-    const autoRotate2 = value77();
+    const autoRotate2 = currentPageBehavior();
     Object.assign(enabled3, autoRotate2.autoRotate);
     Object.assign(enabled4, autoRotate2.idleExitFocus);
     Object.assign(enabled5, autoRotate2.idleHideIcons);
     for (const dataset3 of setAttribute3.children) {
-      const value37 = dataset3.dataset.rotationMode === autoRotate2.interaction.rotationMode;
-      dataset3.classList.toggle("active", value37);
-      dataset3.setAttribute("aria-pressed", String(value37));
+      const isRotationModeSelected = dataset3.dataset.rotationMode === autoRotate2.interaction.rotationMode;
+      dataset3.classList.toggle("active", isRotationModeSelected);
+      dataset3.setAttribute("aria-pressed", String(isRotationModeSelected));
     }
     for (const dataset4 of setAttribute4.children) {
-      const value38 = dataset4.dataset.direction === enabled3.direction;
-      dataset4.classList.toggle("active", value38);
-      dataset4.setAttribute("aria-pressed", String(value38));
+      const isDirectionActive = dataset4.dataset.direction === enabled3.direction;
+      dataset4.classList.toggle("active", isDirectionActive);
+      dataset4.setAttribute("aria-pressed", String(isDirectionActive));
     }
-    for (const value44 of hidden4.querySelectorAll("input")) {
-      value44.value = String(enabled3[value44.name.replace("i3d-auto-rotate-", "")]);
+    for (const autoRotateInput of hidden4.querySelectorAll("input")) {
+      autoRotateInput.value = String(enabled3[autoRotateInput.name.replace("i3d-auto-rotate-", "")]);
     }
     disabled14.checked = enabled3.returnToDefault;
     checked2.checked = enabled4.enabled;
@@ -1239,31 +1239,31 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     for (const disabled3 of hidden4.querySelectorAll("input")) {
       disabled3.disabled = positionGrid || !enabled3.enabled;
     }
-    enabled5.enabled = value78("idleHideIcons");
+    enabled5.enabled = isPageBehaviorEnabled("idleHideIcons");
     checked3.checked = enabled5.enabled;
     hidden6.hidden = !enabled5.enabled;
     valueAsNumber3.disabled = positionGrid || !enabled5.enabled;
-    checked4.checked = value78("hideIconsWhileRotating");
+    checked4.checked = isPageBehaviorEnabled("hideIconsWhileRotating");
   }
-  const append23 = value68("画面显示");
+  const append23 = createInspectorSection("画面显示");
   let element9 = normalizeInteraction3dLightingMode(canvasWidth.lightingMode);
-  const value83 = value67("select");
-  value83.name = "i3d-lighting-mode";
-  value83.setAttribute("aria-label", "灯光模式");
-  for (const [element4, value58] of INTERACTION3D_LIGHTING_MODES) {
-    const value50 = value67("option", "", value58);
-    value50.value = element4;
-    value83.append(value50);
+  const lightingModeSelect = createEl("select");
+  lightingModeSelect.name = "i3d-lighting-mode";
+  lightingModeSelect.setAttribute("aria-label", "灯光模式");
+  for (const [element4, lightingModeLabel] of INTERACTION3D_LIGHTING_MODES) {
+    const lightingModeOption = createEl("option", "", lightingModeLabel);
+    lightingModeOption.value = element4;
+    lightingModeSelect.append(lightingModeOption);
   }
-  value83.value = element9;
-  viewEditing(rotationControl, "灯光模式", value83);
-  value83.addEventListener("change", async () => {
-    if (compWidth.has(value83)) {
+  lightingModeSelect.value = element9;
+  viewEditing(rotationControl, "灯光模式", lightingModeSelect);
+  lightingModeSelect.addEventListener("change", async () => {
+    if (compWidth.has(lightingModeSelect)) {
       return;
     }
-    const lightingMode = normalizeInteraction3dLightingMode(value83.value);
-    compHeight(value83, element9);
-    value83.disabled = true;
+    const lightingMode = normalizeInteraction3dLightingMode(lightingModeSelect.value);
+    compHeight(lightingModeSelect, element9);
+    lightingModeSelect.disabled = true;
     try {
       await requestInteraction3dAccess();
       if (hidden.hidden || hidden.dataset.componentId !== component.id || !(await layoutSection({
@@ -1277,28 +1277,28 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
         }
       });
       element9 = lightingMode;
-      compHeight(value83, lightingMode);
-    } catch (value31) {
-      value83.value = element9;
-      callbacks.onError?.(value31);
+      compHeight(lightingModeSelect, lightingMode);
+    } catch (lightingError) {
+      lightingModeSelect.value = element9;
+      callbacks.onError?.(lightingError);
     } finally {
-      value83.disabled = positionGrid;
+      lightingModeSelect.disabled = positionGrid;
     }
   });
   rotationControl.append(disabled8);
-  const append24 = value67("div", "navigation-property-control");
-  const setAttribute5 = value67("div", "navigation-segmented-options");
+  const append24 = createEl("div", "navigation-property-control");
+  const setAttribute5 = createEl("div", "navigation-segmented-options");
   setAttribute5.setAttribute("role", "group");
   setAttribute5.setAttribute("aria-label", "户型底图");
-  for (const [backgroundVisible, value59] of [[true, "显示"], [false, "隐藏"]]) {
-    const type3 = value67("button", "", value59);
+  for (const [backgroundVisible, backgroundVisibleLabel] of [[true, "显示"], [false, "隐藏"]]) {
+    const type3 = createEl("button", "", backgroundVisibleLabel);
     type3.type = "button";
-    const value51 = canvasWidth.backgroundVisible !== false === backgroundVisible;
-    type3.classList.toggle("active", value51);
-    type3.setAttribute("aria-pressed", String(value51));
+    const isBackgroundVisibleActive = canvasWidth.backgroundVisible !== false === backgroundVisible;
+    type3.classList.toggle("active", isBackgroundVisibleActive);
+    type3.setAttribute("aria-pressed", String(isBackgroundVisibleActive));
     type3.addEventListener("click", () => {
-      if (!value51) {
-        value69({
+      if (!isBackgroundVisibleActive) {
+        applyInspectorChange({
           properties: {
             backgroundVisible
           }
@@ -1307,52 +1307,52 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     });
     setAttribute5.append(type3);
   }
-  append24.append(value67("span", "", "户型底图"), setAttribute5);
+  append24.append(createEl("span", "", "户型底图"), setAttribute5);
   append23.append(append24);
-  const value84 = value67("select");
-  value84.name = "i3d-render-scale";
-  for (const [value60, value61] of [[1.5, "高清 150%"], [1, "标准 100%"], [0.8, "均衡 80%"], [0.75, "均衡 75%"], [0.5, "流畅 50%"], [0.25, "低负载 25%"]]) {
-    const value52 = value67("option", "", value61);
-    value52.value = String(value60);
-    value84.append(value52);
+  const renderScaleSelectEl = createEl("select");
+  renderScaleSelectEl.name = "i3d-render-scale";
+  for (const [renderScaleValue, renderScaleLabel] of [[1.5, "高清 150%"], [1, "标准 100%"], [0.8, "均衡 80%"], [0.75, "均衡 75%"], [0.5, "流畅 50%"], [0.25, "低负载 25%"]]) {
+    const renderScaleOption = createEl("option", "", renderScaleLabel);
+    renderScaleOption.value = String(renderScaleValue);
+    renderScaleSelectEl.append(renderScaleOption);
   }
-  const append25 = value68("渲染分辨率");
-  value84.setAttribute("aria-label", "渲染分辨率");
-  value84.value = String(canvasWidth.renderScale ?? 1);
-  value84.addEventListener("change", async () => {
-    if (compWidth.has(value84)) {
+  const append25 = createInspectorSection("渲染分辨率");
+  renderScaleSelectEl.setAttribute("aria-label", "渲染分辨率");
+  renderScaleSelectEl.value = String(canvasWidth.renderScale ?? 1);
+  renderScaleSelectEl.addEventListener("change", async () => {
+    if (compWidth.has(renderScaleSelectEl)) {
       return;
     }
-    const renderScale = Number(value84.value);
-    const value45 = canvasWidth.renderScale ?? 1;
-    compHeight(value84, value45);
-    value84.disabled = true;
+    const renderScale = Number(renderScaleSelectEl.value);
+    const currentRenderScale = canvasWidth.renderScale ?? 1;
+    compHeight(renderScaleSelectEl, currentRenderScale);
+    renderScaleSelectEl.disabled = true;
     try {
       if (await layoutSection({
         renderScale
       })) {
-        await value69({
+        await applyInspectorChange({
           properties: {
             renderScale
           }
         });
       }
     } finally {
-      value84.disabled = positionGrid;
+      renderScaleSelectEl.disabled = positionGrid;
     }
   });
-  append25.append(value84);
-  value84.title = "画面卡顿时，可降低渲染分辨率。";
-  const append26 = value68("转动分辨率");
-  const value85 = value67("div", "inspector-grid two-columns");
-  const disabled16 = value67("select");
-  const disabled17 = value67("input");
-  let value86 = typeof canvasWidth.motionRenderScale == "number" && Number.isFinite(canvasWidth.motionRenderScale) ? Math.max(0.25, Math.min(1, canvasWidth.motionRenderScale)) : null;
-  let value87 = value86 ?? 0.75;
-  for (const [element5, value62] of [["auto", "自动"], ["custom", "自定义"]]) {
-    const value53 = value67("option", "", value62);
-    value53.value = element5;
-    disabled16.append(value53);
+  append25.append(renderScaleSelectEl);
+  renderScaleSelectEl.title = "画面卡顿时，可降低渲染分辨率。";
+  const append26 = createInspectorSection("转动分辨率");
+  const motionScaleGrid = createEl("div", "inspector-grid two-columns");
+  const disabled16 = createEl("select");
+  const disabled17 = createEl("input");
+  let currentMotionScale = typeof canvasWidth.motionRenderScale == "number" && Number.isFinite(canvasWidth.motionRenderScale) ? Math.max(0.25, Math.min(1, canvasWidth.motionRenderScale)) : null;
+  let customMotionScale = currentMotionScale ?? 0.75;
+  for (const [element5, motionModeLabel] of [["auto", "自动"], ["custom", "自定义"]]) {
+    const motionModeOption = createEl("option", "", motionModeLabel);
+    motionModeOption.value = element5;
+    disabled16.append(motionModeOption);
   }
   disabled16.name = "i3d-motion-resolution-mode";
   disabled16.setAttribute("aria-label", "转动分辨率调整方式");
@@ -1364,84 +1364,84 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     step: "1"
   });
   disabled17.setAttribute("aria-label", "转动分辨率百分比");
-  const value88 = () => {
-    compHeight(disabled16, value86 === null ? "auto" : "custom");
+  const syncMotionScaleControls = () => {
+    compHeight(disabled16, currentMotionScale === null ? "auto" : "custom");
     disabled16.disabled = positionGrid;
-    disabled17.disabled = positionGrid || value86 === null;
-    disabled17.value = String(Math.round(value87 * 100));
+    disabled17.disabled = positionGrid || currentMotionScale === null;
+    disabled17.value = String(Math.round(customMotionScale * 100));
   };
-  const value89 = async motionRenderScale => {
+  const commitMotionRenderScale = async motionRenderScale => {
     disabled16.disabled = disabled17.disabled = true;
     try {
       if (await layoutSection({
         motionRenderScale
       })) {
-        await value69({
+        await applyInspectorChange({
           properties: {
             motionRenderScale
           }
         });
-        value86 = motionRenderScale;
+        currentMotionScale = motionRenderScale;
         if (motionRenderScale !== null) {
-          value87 = motionRenderScale;
+          customMotionScale = motionRenderScale;
         }
       }
-    } catch (value32) {
-      callbacks.onError?.(value32);
+    } catch (backgroundError) {
+      callbacks.onError?.(backgroundError);
     } finally {
-      value88();
+      syncMotionScaleControls();
     }
   };
   disabled16.addEventListener("change", () => {
     if (!compWidth.has(disabled16) && !disabled16.disabled) {
-      value89(disabled16.value === "auto" ? null : value87);
+      commitMotionRenderScale(disabled16.value === "auto" ? null : customMotionScale);
     }
   });
   disabled17.addEventListener("change", () => {
     if (disabled17.disabled) {
       return;
     }
-    const value46 = disabled17.value.trim() === "" ? NaN : Number(disabled17.value);
-    if (!Number.isFinite(value46)) {
-      value88();
+    const parsedMotionPercent = disabled17.value.trim() === "" ? NaN : Number(disabled17.value);
+    if (!Number.isFinite(parsedMotionPercent)) {
+      syncMotionScaleControls();
       return;
     }
-    value89(Math.max(25, Math.min(100, Math.round(value46))) / 100);
+    commitMotionRenderScale(Math.max(25, Math.min(100, Math.round(parsedMotionPercent))) / 100);
   });
-  viewEditing(value85, "调整方式", disabled16);
-  viewEditing(value85, "转动比例（%）", disabled17);
-  append26.append(value85);
-  value88();
-  const value90 = value67("p", "inspector-section-note", "按静止分辨率计算，停止转动后恢复。100% 不降清晰度。");
-  append26.append(value90);
-  const classList6 = value68("地面反射");
+  viewEditing(motionScaleGrid, "调整方式", disabled16);
+  viewEditing(motionScaleGrid, "转动比例（%）", disabled17);
+  append26.append(motionScaleGrid);
+  syncMotionScaleControls();
+  const motionScaleNote = createEl("p", "inspector-section-note", "按静止分辨率计算，停止转动后恢复。100% 不降清晰度。");
+  append26.append(motionScaleNote);
+  const classList6 = createInspectorSection("地面反射");
   classList6.classList.add("i3d-reflection-section");
   let mode = normalizeGroundReflection(canvasWidth.groundReflection);
-  const value91 = value67("select");
-  const value92 = value67("select");
-  value91.name = "i3d-reflection-mode";
-  value91.setAttribute("aria-label", "地面反射范围");
-  value92.name = "i3d-reflection-resolution";
-  value92.setAttribute("aria-label", "反射清晰度");
-  for (const [element6, value63] of [["off", "关闭"], ["inside", "室内"], ["outside", "室外"], ["all", "室内＋室外"]]) {
-    const value54 = value67("option", "", value63);
-    value54.value = element6;
-    value91.append(value54);
+  const reflectionModeSelect = createEl("select");
+  const reflectionResolutionSelect = createEl("select");
+  reflectionModeSelect.name = "i3d-reflection-mode";
+  reflectionModeSelect.setAttribute("aria-label", "地面反射范围");
+  reflectionResolutionSelect.name = "i3d-reflection-resolution";
+  reflectionResolutionSelect.setAttribute("aria-label", "反射清晰度");
+  for (const [element6, reflectionModeLabel] of [["off", "关闭"], ["inside", "室内"], ["outside", "室外"], ["all", "室内＋室外"]]) {
+    const reflectionModeOption = createEl("option", "", reflectionModeLabel);
+    reflectionModeOption.value = element6;
+    reflectionModeSelect.append(reflectionModeOption);
   }
-  for (const [value64, value65] of [[256, "低"], [512, "中"], [768, "高"]]) {
-    const value55 = value67("option", "", value65);
-    value55.value = String(value64);
-    value92.append(value55);
+  for (const [reflectionResValue, reflectionResLabel] of [[256, "低"], [512, "中"], [768, "高"]]) {
+    const reflectionResOption = createEl("option", "", reflectionResLabel);
+    reflectionResOption.value = String(reflectionResValue);
+    reflectionResolutionSelect.append(reflectionResOption);
   }
-  value91.value = mode.mode;
-  value92.value = String(mode.resolution);
-  const value93 = value67("div", "i3d-reflection-options");
-  viewEditing(value93, "范围", value91);
-  viewEditing(value93, "清晰度", value92);
-  const append27 = value67("div", "i3d-vignette-setting");
-  const value94 = value67("input");
-  const textContent = value67("output");
-  Object.assign(value94, {
+  reflectionModeSelect.value = mode.mode;
+  reflectionResolutionSelect.value = String(mode.resolution);
+  const reflectionOptionsRow = createEl("div", "i3d-reflection-options");
+  viewEditing(reflectionOptionsRow, "范围", reflectionModeSelect);
+  viewEditing(reflectionOptionsRow, "清晰度", reflectionResolutionSelect);
+  const append27 = createEl("div", "i3d-vignette-setting");
+  const reflectionStrengthInput = createEl("input");
+  const textContent = createEl("output");
+  Object.assign(reflectionStrengthInput, {
     name: "i3d-reflection-strength",
     type: "range",
     min: "0",
@@ -1449,35 +1449,35 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     step: "1",
     value: String(Math.round(mode.strength * 100))
   });
-  value94.setAttribute("aria-label", "反射强度");
-  textContent.textContent = value94.value + "%";
-  append27.append(value94, textContent);
-  classList6.append(value93);
+  reflectionStrengthInput.setAttribute("aria-label", "反射强度");
+  textContent.textContent = reflectionStrengthInput.value + "%";
+  append27.append(reflectionStrengthInput, textContent);
+  classList6.append(reflectionOptionsRow);
   viewEditing(classList6, "强度", append27);
-  const value95 = () => {
-    value92.disabled = value94.disabled = positionGrid || mode.mode === "off";
+  const syncReflectionControls = () => {
+    reflectionResolutionSelect.disabled = reflectionStrengthInput.disabled = positionGrid || mode.mode === "off";
   };
-  const value96 = async target => {
+  const commitReflectionSettings = async target => {
     if (compWidth.has(target?.target)) {
       return;
     }
     const groundReflection = normalizeGroundReflection({
-      mode: value91.value,
-      resolution: Number(value92.value),
-      strength: Number(value94.value) / 100
+      mode: reflectionModeSelect.value,
+      resolution: Number(reflectionResolutionSelect.value),
+      strength: Number(reflectionStrengthInput.value) / 100
     });
-    compHeight(value91, mode.mode);
-    compHeight(value92, mode.resolution);
-    value94.value = String(Math.round(mode.strength * 100));
-    textContent.textContent = value94.value + "%";
-    value91.disabled = value92.disabled = value94.disabled = true;
+    compHeight(reflectionModeSelect, mode.mode);
+    compHeight(reflectionResolutionSelect, mode.resolution);
+    reflectionStrengthInput.value = String(Math.round(mode.strength * 100));
+    textContent.textContent = reflectionStrengthInput.value + "%";
+    reflectionModeSelect.disabled = reflectionResolutionSelect.disabled = reflectionStrengthInput.disabled = true;
     try {
       if (!(await layoutSection({
         groundReflection
       }))) {
         return;
       }
-      await value69({
+      await applyInspectorChange({
         properties: {
           groundReflection: {
             ...groundReflection
@@ -1485,110 +1485,110 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
         }
       });
     } finally {
-      value91.disabled = positionGrid;
-      value95();
+      reflectionModeSelect.disabled = positionGrid;
+      syncReflectionControls();
     }
   };
-  value91.addEventListener("change", value96);
-  value92.addEventListener("change", value96);
-  value94.addEventListener("input", () => {
-    textContent.textContent = value94.value + "%";
+  reflectionModeSelect.addEventListener("change", commitReflectionSettings);
+  reflectionResolutionSelect.addEventListener("change", commitReflectionSettings);
+  reflectionStrengthInput.addEventListener("input", () => {
+    textContent.textContent = reflectionStrengthInput.value + "%";
   });
-  value94.addEventListener("change", value96);
-  value95();
-  const append28 = value67("section", "inspector-section i3d-page-dimming");
-  append28.append(value67("h3", "", "画面压暗"));
-  const value97 = value67("select");
-  const value98 = value67("input");
-  const textContent2 = value67("output");
-  value97.name = "i3d-dim-page";
-  value97.setAttribute("aria-label", "压暗页面");
-  for (const [element7, value66] of [["overview", "总览"], ["light", "灯光"], ["environment", "环境"], ["devices", "设备"], ["vacuum", "扫地机"], ["security", "安防"]]) {
-    const value56 = value67("option", "", value66);
-    value56.value = element7;
-    value97.append(value56);
+  reflectionStrengthInput.addEventListener("change", commitReflectionSettings);
+  syncReflectionControls();
+  const append28 = createEl("section", "inspector-section i3d-page-dimming");
+  append28.append(createEl("h3", "", "画面压暗"));
+  const dimPageSelect = createEl("select");
+  const pageDimInput = createEl("input");
+  const textContent2 = createEl("output");
+  dimPageSelect.name = "i3d-dim-page";
+  dimPageSelect.setAttribute("aria-label", "压暗页面");
+  for (const [element7, dimPageLabel] of [["overview", "总览"], ["light", "灯光"], ["environment", "环境"], ["devices", "设备"], ["vacuum", "扫地机"], ["security", "安防"]]) {
+    const dimPageOption = createEl("option", "", dimPageLabel);
+    dimPageOption.value = element7;
+    dimPageSelect.append(dimPageOption);
   }
-  value97.value = panel.dataset.dimmingPage || "light";
-  let value99 = {
+  dimPageSelect.value = panel.dataset.dimmingPage || "light";
+  let dimStrengthByPage = {
     ...canvasWidth.pageDimStrength
   };
-  let value100 = {
+  let saturationByPage = {
     ...canvasWidth.pageSaturation
   };
-  const value101 = value67("input");
-  const textContent3 = value67("output");
-  const append29 = value67("div", "i3d-vignette-setting");
-  const value102 = () => value100[value97.value] ?? (value97.value === "overview" ? 100 : 75);
-  Object.assign(value101, {
+  const pageSaturationInput = createEl("input");
+  const textContent3 = createEl("output");
+  const append29 = createEl("div", "i3d-vignette-setting");
+  const currentPageSaturation = () => saturationByPage[dimPageSelect.value] ?? (dimPageSelect.value === "overview" ? 100 : 75);
+  Object.assign(pageSaturationInput, {
     name: "i3d-page-saturation",
     type: "range",
     min: "0",
     max: "100",
     step: "1",
-    value: String(value102())
+    value: String(currentPageSaturation())
   });
-  value101.setAttribute("aria-label", "页面饱和度");
-  textContent3.textContent = value101.value + "%";
-  value101.addEventListener("input", () => {
-    textContent3.textContent = value101.value + "%";
+  pageSaturationInput.setAttribute("aria-label", "页面饱和度");
+  textContent3.textContent = pageSaturationInput.value + "%";
+  pageSaturationInput.addEventListener("input", () => {
+    textContent3.textContent = pageSaturationInput.value + "%";
   });
-  value101.addEventListener("change", async () => {
+  pageSaturationInput.addEventListener("change", async () => {
     const pageSaturation = {
-      ...value100,
-      [value97.value]: Number(value101.value)
+      ...saturationByPage,
+      [dimPageSelect.value]: Number(pageSaturationInput.value)
     };
-    await value69({
+    await applyInspectorChange({
       properties: {
         pageSaturation
       }
     });
-    value100 = pageSaturation;
+    saturationByPage = pageSaturation;
   });
-  append29.append(value101, textContent3);
-  const value103 = () => value99[value97.value] ?? (value97.value === "overview" ? 0 : canvasWidth.environment?.dimStrength ?? 70);
-  Object.assign(value98, {
+  append29.append(pageSaturationInput, textContent3);
+  const currentPageDimStrength = () => dimStrengthByPage[dimPageSelect.value] ?? (dimPageSelect.value === "overview" ? 0 : canvasWidth.environment?.dimStrength ?? 70);
+  Object.assign(pageDimInput, {
     name: "i3d-page-dim-strength",
     type: "range",
     min: "0",
     max: "100",
     step: "1",
-    value: String(value103())
+    value: String(currentPageDimStrength())
   });
-  value98.setAttribute("aria-label", "页面压暗强度");
-  textContent2.textContent = value98.value + "%";
-  value97.addEventListener("change", () => {
-    panel.dataset.dimmingPage = value97.value;
-    value98.value = String(value103());
-    textContent2.textContent = value98.value + "%";
-    value101.value = String(value102());
-    textContent3.textContent = value101.value + "%";
+  pageDimInput.setAttribute("aria-label", "页面压暗强度");
+  textContent2.textContent = pageDimInput.value + "%";
+  dimPageSelect.addEventListener("change", () => {
+    panel.dataset.dimmingPage = dimPageSelect.value;
+    pageDimInput.value = String(currentPageDimStrength());
+    textContent2.textContent = pageDimInput.value + "%";
+    pageSaturationInput.value = String(currentPageSaturation());
+    textContent3.textContent = pageSaturationInput.value + "%";
   });
-  value98.addEventListener("input", () => {
-    textContent2.textContent = value98.value + "%";
+  pageDimInput.addEventListener("input", () => {
+    textContent2.textContent = pageDimInput.value + "%";
   });
-  value98.addEventListener("change", async () => {
+  pageDimInput.addEventListener("change", async () => {
     const pageDimStrength = {
-      ...value99,
-      [value97.value]: Number(value98.value)
+      ...dimStrengthByPage,
+      [dimPageSelect.value]: Number(pageDimInput.value)
     };
-    await value69({
+    await applyInspectorChange({
       properties: {
         pageDimStrength
       }
     });
-    value99 = pageDimStrength;
+    dimStrengthByPage = pageDimStrength;
   });
-  const append30 = value67("div", "i3d-page-dim-row");
-  const append31 = value67("div", "i3d-vignette-setting");
-  append31.append(value98, textContent2);
-  append30.append(value97);
+  const append30 = createEl("div", "i3d-page-dim-row");
+  const append31 = createEl("div", "i3d-vignette-setting");
+  append31.append(pageDimInput, textContent2);
+  append30.append(dimPageSelect);
   append28.append(append30);
   viewEditing(append28, "整体压暗", append31);
   viewEditing(append28, "饱和度", append29);
-  const value104 = value67("input");
-  const textContent4 = value67("output");
-  const append32 = value67("div", "i3d-vignette-setting");
-  Object.assign(value104, {
+  const focusDimInput = createEl("input");
+  const textContent4 = createEl("output");
+  const append32 = createEl("div", "i3d-vignette-setting");
+  Object.assign(focusDimInput, {
     name: "i3d-focus-dim-strength",
     type: "range",
     min: "0",
@@ -1596,74 +1596,74 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     step: "1",
     value: String(canvasWidth.focusDimStrength ?? 15)
   });
-  value104.setAttribute("aria-label", "聚焦加深");
-  textContent4.textContent = value104.value + "%";
-  value104.addEventListener("input", () => {
-    textContent4.textContent = value104.value + "%";
+  focusDimInput.setAttribute("aria-label", "聚焦加深");
+  textContent4.textContent = focusDimInput.value + "%";
+  focusDimInput.addEventListener("input", () => {
+    textContent4.textContent = focusDimInput.value + "%";
   });
-  value104.addEventListener("change", () => void value69({
+  focusDimInput.addEventListener("change", () => void applyInspectorChange({
     properties: {
-      focusDimStrength: Number(value104.value)
+      focusDimStrength: Number(focusDimInput.value)
     }
   }));
-  append32.append(value104, textContent4);
+  append32.append(focusDimInput, textContent4);
   viewEditing(append28, "聚焦加深", append32);
-  const value105 = value67("section", "inspector-section i3d-finishing-row");
-  const append33 = value67("div", "i3d-vignette-setting");
-  const addEventListener2 = value67("input");
-  const textContent5 = value67("output");
-  const value106 = 100 - (Number.isFinite(canvasWidth.popupOpacity) ? Math.max(0, Math.min(100, canvasWidth.popupOpacity)) : 74);
+  const finishingSection = createEl("section", "inspector-section i3d-finishing-row");
+  const append33 = createEl("div", "i3d-vignette-setting");
+  const addEventListener2 = createEl("input");
+  const textContent5 = createEl("output");
+  const popupTransparencyPercent = 100 - (Number.isFinite(canvasWidth.popupOpacity) ? Math.max(0, Math.min(100, canvasWidth.popupOpacity)) : 74);
   Object.assign(addEventListener2, {
     name: "i3d-popup-transparency",
     type: "range",
     min: "0",
     max: "100",
     step: "1",
-    value: String(value106)
+    value: String(popupTransparencyPercent)
   });
   addEventListener2.setAttribute("aria-label", "弹窗透明度");
-  textContent5.textContent = value106 + "%";
+  textContent5.textContent = popupTransparencyPercent + "%";
   addEventListener2.addEventListener("input", () => {
     textContent5.textContent = addEventListener2.value + "%";
   });
   addEventListener2.addEventListener("change", () => {
-    const value47 = Math.max(0, Math.min(100, Number(addEventListener2.value)));
-    if (Number.isFinite(value47)) {
-      value69({
+    const popupTransparencyValue = Math.max(0, Math.min(100, Number(addEventListener2.value)));
+    if (Number.isFinite(popupTransparencyValue)) {
+      applyInspectorChange({
         properties: {
-          popupOpacity: 100 - value47
+          popupOpacity: 100 - popupTransparencyValue
         }
       });
     }
   });
   append33.append(addEventListener2, textContent5);
-  viewEditing(value105, "弹窗透明度", append33);
-  const append34 = value67("div", "i3d-vignette-setting");
-  const addEventListener3 = value67("input");
-  const textContent6 = value67("output");
-  const value107 = Number.isFinite(canvasWidth.focusVignetteStrength) ? Math.max(0, Math.min(60, canvasWidth.focusVignetteStrength)) : 14;
+  viewEditing(finishingSection, "弹窗透明度", append33);
+  const append34 = createEl("div", "i3d-vignette-setting");
+  const addEventListener3 = createEl("input");
+  const textContent6 = createEl("output");
+  const focusVignettePercent = Number.isFinite(canvasWidth.focusVignetteStrength) ? Math.max(0, Math.min(60, canvasWidth.focusVignetteStrength)) : 14;
   Object.assign(addEventListener3, {
     name: "i3d-focus-vignette",
     type: "range",
     min: "0",
     max: "60",
     step: "1",
-    value: String(value107)
+    value: String(focusVignettePercent)
   });
   addEventListener3.setAttribute("aria-label", "聚焦暗角强度");
-  textContent6.textContent = value107 + "%";
+  textContent6.textContent = focusVignettePercent + "%";
   addEventListener3.addEventListener("input", () => {
     textContent6.textContent = addEventListener3.value + "%";
   });
-  addEventListener3.addEventListener("change", () => void value69({
+  addEventListener3.addEventListener("change", () => void applyInspectorChange({
     properties: {
       focusVignetteStrength: Number(addEventListener3.value)
     }
   }));
   append34.append(addEventListener3, textContent6);
-  viewEditing(value105, "聚焦暗角", append34);
+  viewEditing(finishingSection, "聚焦暗角", append34);
   if (positionGrid) {
-    for (const querySelectorAll of [reloadBtn, rotationOptions, autoRotateSection, autoRotate, append8, rotationControl, append23, append25, classList6, append28, value105]) {
+    for (const querySelectorAll of [reloadBtn, rotationOptions, autoRotateSection, autoRotate, append8, rotationControl, append23, append25, classList6, append28, finishingSection]) {
       for (const disabled2 of querySelectorAll.querySelectorAll("input, select, button")) {
         disabled2.disabled = true;
       }
@@ -1675,7 +1675,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
   append5.classList.add("i3d-house-section");
   reloadBtn.classList.add("i3d-placement-section");
   rotationControl.classList.add("i3d-light-effects-row");
-  value83.parentElement.children[0].hidden = true;
+  lightingModeSelect.parentElement.children[0].hidden = true;
   for (const classList3 of [append14, append18, append20]) {
     classList3.classList.add("i3d-inspector-subsection");
   }
@@ -1685,24 +1685,24 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     classList5.children[0].children[0].textContent = "秒";
   }
   append19.children[0].textContent = "闲置时退出聚焦";
-  const append35 = value67("div", "i3d-behavior-row i3d-inspector-subsection");
+  const append35 = createEl("div", "i3d-behavior-row i3d-inspector-subsection");
   append18.classList.remove("i3d-inspector-subsection");
   append14.append(append17);
   append35.append(append18);
   append12.append(append14, append35, append20);
-  const value108 = (inspectorGroup, arg30, arg31, arg32 = false) => {
-    const dataset5 = value67("details", "i3d-inspector-group");
+  const appendInspectorGroup = (inspectorGroup, groupTitle, groupChildren, defaultOpen = false) => {
+    const dataset5 = createEl("details", "i3d-inspector-group");
     dataset5.dataset.inspectorGroup = inspectorGroup;
-    dataset5.open = position.get(inspectorGroup) ?? arg32;
-    dataset5.append(value67("summary", "", arg30), ...arg31);
+    dataset5.open = position.get(inspectorGroup) ?? defaultOpen;
+    dataset5.append(createEl("summary", "", groupTitle), ...groupChildren);
     hidden.append(dataset5);
   };
-  value108("layout", "户型与布局", [append5, reloadBtn, append23], !canvasWidth.sceneId);
-  value108("devices", "设备配置", [rotationOptions, autoRotateSection, autoRotate, append8, append7], true);
-  value108("appearance", "画面效果", [rotationControl, append25, append26, classList6, append28, value105]);
-  value108("view", "视角与导航", [append9, append11], positionGrid);
+  appendInspectorGroup("layout", "户型与布局", [append5, reloadBtn, append23], !canvasWidth.sceneId);
+  appendInspectorGroup("devices", "设备配置", [rotationOptions, autoRotateSection, autoRotate, append8, append7], true);
+  appendInspectorGroup("appearance", "画面效果", [rotationControl, append25, append26, classList6, append28, finishingSection]);
+  appendInspectorGroup("view", "视角与导航", [append9, append11], positionGrid);
   append12.children[0].hidden = true;
-  value108("interaction", "交互行为", [append12], true);
+  appendInspectorGroup("interaction", "交互行为", [append12], true);
   viewEditBtn.refresh();
   callbacks.enhanceControls?.(hidden);
   hidden.style.minHeight = properties;

@@ -170,7 +170,7 @@ export function renderInteraction3d(component, context = {}) {
     loading = true;
     const generation = ++loadGeneration;
     try {
-      const runtime = await import("/api/v1/modules/interaction3d/runtime.js?v=20260909-preview-sleep-v1");
+      const runtime = await import("/api/v1/modules/interaction3d/runtime.js?v=20260910-control-projectid-v1");
       if (disposed || generation !== loadGeneration || document.hidden) {
         return;
       }
