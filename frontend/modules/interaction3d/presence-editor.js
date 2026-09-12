@@ -1,4 +1,4 @@
-import { openPresenceFocusEditor } from "./presence-focus-editor.js?v=20260910-dashboard-aspect-v1";
+import { openPresenceFocusEditor } from "./presence-focus-editor.js?v=20260911-security-focal-v1";
 import { mountInteraction3d } from "./runtime.js";
 import { validPresenceRoute, snapsToPresenceStart, PRESENCE_PAGES } from "./presence-motion.js";
 import { DESIGNS, createWalker, animateWalker, disposeWalker } from "./presence-character.js";

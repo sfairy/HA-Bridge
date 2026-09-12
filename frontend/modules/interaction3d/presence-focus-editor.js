@@ -45,6 +45,8 @@ export function openPresenceFocusEditor({
   let presented = false;
   let closed = false;
   let busy = false;
+  let cameraState = null;
+  let commandQueue = Promise.resolve();
   const actionButtons = [];
   const button = (label, onClick) => {
     const btn = el("button", label);
@@ -63,26 +65,59 @@ export function openPresenceFocusEditor({
       doc.dispatchEvent(new Event("hb-i3d-preview-scope"));
     }
   };
+  const syncControls = () => {
+    actionButtons.forEach(btn => {
+      btn.disabled = !presented || busy;
+    });
+    focalInput.disabled = !presented || busy || cameraState?.mode !== "perspective";
+    if (doc.activeElement !== focalInput) {
+      focalInput.value = String(Math.round(cameraState?.focalLength || 50));
+    }
+    for (const [mode, btn] of projectionButtons) {
+      btn.setAttribute("aria-pressed", String((cameraState?.mode || "orthographic") === mode));
+    }
+  };
   const runCommand = async (command, payload) => {
-    if (!!presented && !busy) {
+    if (!presented || busy || closed) {
+      return;
+    }
+    const isFocalLength = command === "focus-focal-length";
+    const previous = commandQueue;
+    let release;
+    commandQueue = new Promise(resolve => {
+      release = resolve;
+    });
+    if (!isFocalLength) {
       busy = true;
-      actionButtons.forEach(btn => btn.disabled = true);
-      try {
-        const result = await focusCommand.focusCommand(command, "presence:" + item.id, payload);
-        if (closed) {
-          return;
-        }
-        if (command === "save-light-camera") {
-          onSave(result.camera);
-          close();
-        } else {
-          status.textContent = "拖动旋转，滚轮缩放；调整完成后保存此视角。";
-        }
-      } catch (error) {
+      syncControls();
+    }
+    try {
+      await previous;
+      if (closed) {
+        return;
+      }
+      const result = await focusCommand.focusCommand(command, "presence:" + item.id, payload);
+      if (closed) {
+        return;
+      }
+      result?.camera && (cameraState = result.camera);
+      if (command === "save-light-camera") {
+        onSave(result.camera);
+        close();
+      } else {
+        status.textContent = "拖动旋转，滚轮缩放；调整完成后保存此视角。";
+      }
+    } catch (error) {
+      if (!closed) {
         status.textContent = error.message;
-      } finally {
+      }
+    } finally {
+      release();
+      if (!isFocalLength) {
         busy = false;
-        actionButtons.forEach(btn => btn.disabled = false);
+      }
+      if (!closed) {
+        syncControls();
       }
     }
   };
@@ -91,8 +126,36 @@ export function openPresenceFocusEditor({
   header.append(el("strong", "人在传感器 · 聚焦视角"), saveBtn, button("取消", close));
   const projectionActions = el("div");
   projectionActions.className = "i3d-focus-actions";
-  projectionActions.append(button("正交", () => runCommand("focus-projection", "orthographic")), button("透视", () => runCommand("focus-projection", "perspective")));
-  aside.append(status, projectionActions, el("p", "此视角用于点击小人后的聚焦展示，不弹出控制面板。"));
+  projectionActions.setAttribute("role", "group");
+  projectionActions.setAttribute("aria-label", "聚焦投影");
+  const projectionButtons = new Map();
+  for (const [mode, label] of [["orthographic", "正交"], ["perspective", "透视"]]) {
+    const projectionBtn = button(label, () => runCommand("focus-projection", mode));
+    projectionButtons.set(mode, projectionBtn);
+    projectionActions.append(projectionBtn);
+  }
+  const focalInput = el("input");
+  Object.assign(focalInput, {
+    type: "number",
+    min: "18",
+    max: "120",
+    step: "1",
+    value: "50"
+  });
+  focalInput.setAttribute("aria-label", "焦段（mm）");
+  focalInput.addEventListener("change", () => {
+    const value = Number(focalInput.value);
+    if (!focalInput.value.trim() || !Number.isFinite(value)) {
+      focalInput.value = String(cameraState?.focalLength || 50);
+      return;
+    }
+    focalInput.value = String(Math.max(18, Math.min(120, value)));
+    runCommand("focus-focal-length", Number(focalInput.value));
+  });
+  const focalField = el("label");
+  focalField.append(el("span", "焦段（mm）"), focalInput);
+  syncControls();
+  aside.append(status, projectionActions, focalField, el("p", "此视角用于点击小人后的聚焦展示，不弹出控制面板。"));
   body.append(view, aside);
   dialog.append(header, body);
   doc.body.append(dialog);

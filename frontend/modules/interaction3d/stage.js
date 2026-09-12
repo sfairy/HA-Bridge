@@ -19,7 +19,8 @@ import { createClimatePanel } from "./climate-panel.js?v=20260908-climate-v1";
 import { createEnvironmentScene, pageDimming, pageModelBindings } from "./environment-scene.js?v=20260909-reflection-cache-v4";
 import { startSceneSync } from "./scene-sync.js?v=20260907-scene-sync-v1";
 import { lightCommand, createLightPreview, createLightStateCache, lightRenderState } from "./light-state.js?v=20260907-demand-v1";
-import { createFocusCameraSampler, automaticLightCamera, automaticAirConditionerCamera } from "./camera-motion.js?v=20260908-environment-v1-20260909-floor-slide-v2-20260909-floor-camera-pivot-v4-20260909-floor-screen-slide-v5";
+import { createDampedCameraMotion, automaticLightCamera, automaticAirConditionerCamera } from "./camera-motion.js?v=20260911-focus-damped-compare-v2-navigation-light-v1";
+import { createScreenOutlines } from "./environment-halos.js?v=20260911-screen-outline-pulse-v1";
 import { resolvePageBehavior, createIdleRotation, createIdleIconVisibility, createIdleFocusExit } from "./idle-rotation.js?v=20260907-idle-focus-exit-v1-20260909-page-behavior-airflow-zoom-v1";
 const defaultMarkerSvg = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" aria-hidden=\"true\"><path d=\"M8 15c0-2-3-3-3-7a7 7 0 0 1 14 0c0 4-3 5-3 7l-1 3H9l-1-3Z\"/><path d=\"M9 21h6M9 15h6\"/></svg>";
 const lightPresets = [{
@@ -597,6 +598,11 @@ export function mountStage(options) {
   viewHelpEl.hidden = true;
   navigationEl.append(moduleTabsEl);
   presentationRootEl.append(markersRootNode, vacuumWorkingLayer, navigationEl, floorTabsEl, moduleEmptyEl, lightPanelEl, viewHelpEl);
+  const screenOutlines = createScreenOutlines({
+    THREE,
+    container: presentationRootEl,
+    getCamera: () => options.camera
+  });
   navigationEl.append(toolbarEl);
   container.append(focusVignetteEl, presentationRootEl);
   function syncIdleAvailability() {
@@ -1138,6 +1144,7 @@ export function mountStage(options) {
       const bindings = pageModelBindings(options.document.floors, filter, enabled.page, activeFloorId);
       isActive.setRoot(options.modelRoot, options.environmentRevision ?? options.sceneRevision);
       setRoot.setRoot(options.modelRoot, options.sceneRevision);
+      screenOutlines.sync(options.modelRoot, options.environmentRevision ?? options.sceneRevision, bindings.filter(binding => !selectedId || binding.id === selectedId), !focusedLightId && !viewEditing && !active2 && activeFloorId !== "all" && ["environment", "devices", "vacuum", "security"].includes(enabled.page));
       isActive.setMode({
         enabled: enabled2,
         saturation: enabled.saturation,
@@ -1471,10 +1478,9 @@ export function mountStage(options) {
     }
     const done = presentedVisible;
     const transitionElapsed = Math.max(0, now - presentedVisible.started);
-    const transitionT = presentedVisible.duration ? Math.min(1, transitionElapsed / presentedVisible.duration) : 1;
-    const transitionEase = presentedVisible.owner === "floor" ? transitionT * transitionT * (3 - transitionT * 2) : transitionT === 1 ? 1 : (1 - Math.exp(transitionElapsed * -5 / 1000)) / (1 - Math.exp(presentedVisible.duration * -5 / 1000));
+    const transitionEase = presentedVisible.transition.progress(transitionElapsed);
     wakeFrameLoop = presentedVisible.inset + (presentedVisible.targetInset - presentedVisible.inset) * transitionEase;
-    const transitionSample = presentedVisible.sample(transitionElapsed);
+    const transitionSample = presentedVisible.transition.sample(transitionElapsed);
     if (presentedVisible.owner === "floor") {
       options.advanceFloorTransition?.(transitionEase, transitionSample);
     }
@@ -1484,7 +1490,7 @@ export function mountStage(options) {
       options.applyCameraPose(transitionSample, transitionEase);
       options.setFocusViewport(wakeFrameLoop);
     }
-    if (transitionT === 1 && presentedVisible === done) {
+    if (presentedVisible.transition.settled(transitionElapsed) && presentedVisible === done) {
       presentedVisible = null;
       options.endCameraMotion();
       pointerToFloorPoint();
@@ -1508,17 +1514,20 @@ export function mountStage(options) {
     if (owner === "floor") {
       options.setFloorSlideCameras?.(from, mode);
     }
-    const duration = immediate || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? 0 : owner === "floor" ? 650 : 1100;
+    const reducedMotion = immediate || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
     presentedVisible = {
       from,
       to: structuredClone(mode),
       inset: wakeFrameLoop,
       targetInset: focused2 ? focusPanelInset() : 0,
-      sample: createFocusCameraSampler(THREE, from, mode, duration, owner, motionOptions),
+      transition: createDampedCameraMotion(THREE, from, mode, {
+        immediate: reducedMotion,
+        owner,
+        floorFrame: motionOptions
+      }),
       focused: focused2,
       owner,
       started: performance.now(),
-      duration,
       done: done2
     };
     syncIdleAvailability2();
@@ -2174,6 +2183,10 @@ export function mountStage(options) {
     if (active2 || toolbar || disposed) {
       return;
     }
+    if (options.floorTransitionActive || presentedVisible) {
+      screenOutlines.pause();
+    }
+    screenOutlines.update();
     if (currentCamera !== null && performance.now() - currentCamera >= 240 && !visibleBindings().some(deviceKind7 => deviceKind7.deviceKind === "vacuum" && vacuumStatusPresentation(deviceKind7, states).active)) {
       lastMarkerLayoutKey = "";
       return;
@@ -2881,9 +2894,10 @@ export function mountStage(options) {
   window.addEventListener("message", onParentMessage);
   const controls2 = options.controls;
   const unsubscribeCameraChange = options.onCameraChange?.(() => {
+    const cameraMoved = screenOutlines.cameraChanged();
     updateMarkerPositions2();
     syncLightPanel();
-    if (focusMode.hideIconsWhileRotating === true) {
+    if (cameraMoved || focusMode.hideIconsWhileRotating === true) {
       wake();
     }
   });
@@ -3039,7 +3053,7 @@ export function mountStage(options) {
     followRoamBtn.disabled = !presets && !anyVacuumFollowing;
     updateMarkerPositions2();
     canvas.dataset.stageFrameChecks = String(markersById.stats.frames);
-    return Math.min(presenceWaveTicked ? 1000 / 30 : Infinity, presenceTicked ? 1000 / 30 : Infinity, vacuumMapTicked || presets ? 1000 / 30 : Infinity, temperatureSlider ? 100 : Infinity, anyVacuumActive ? 7000 - frameTime % 7000 : Infinity, presentedVisible || curtainTickMs || vacuumTickMs ? 0 : Infinity, curtainMotion.isMoving() ? 1000 / 30 : Infinity, nextDelay.nextDelay(frameTime), setRoot.nextDelay(), markersRoot.nextDelay(), activity3.nextDelay(frameTime), activity.nextDelay(frameTime), activity2.nextDelay(frameTime), reject4.nextDelay(frameTime));
+    return Math.min(presenceWaveTicked ? 1000 / 30 : Infinity, presenceTicked ? 1000 / 30 : Infinity, vacuumMapTicked || presets ? 1000 / 30 : Infinity, temperatureSlider ? 100 : Infinity, anyVacuumActive ? 7000 - frameTime % 7000 : Infinity, presentedVisible || curtainTickMs || vacuumTickMs ? 0 : Infinity, curtainMotion.isMoving() ? 1000 / 30 : Infinity, nextDelay.nextDelay(frameTime), setRoot.nextDelay(), markersRoot.nextDelay(), screenOutlines.nextDelay(), activity3.nextDelay(frameTime), activity.nextDelay(frameTime), activity2.nextDelay(frameTime), reject4.nextDelay(frameTime));
   }
   markersById = options.createFrameLoop({
     step: frameDt => options.profileFrameWork ? options.profileFrameWork("stage-updates", () => tickStageFrame(frameDt)) : tickStageFrame(frameDt)
@@ -3075,6 +3089,7 @@ export function mountStage(options) {
     sceneSync();
     root3.dispose();
     markersRoot.dispose();
+    screenOutlines.dispose();
     cameraStatus.dispose();
     root4.dispose();
     sync.dispose();
