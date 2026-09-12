@@ -478,7 +478,7 @@ def get_stage(
     html = (request.app.state.settings.frontend_dir / '3d-studio.html').read_text(encoding='utf-8')
     html = html.replace(
         '</head>',
-        '<link rel="stylesheet" href="/api/v1/modules/interaction3d/stage.css?v=20260910-health-fixes-v1"></head>',
+        '<link rel="stylesheet" href="/api/v1/modules/interaction3d/stage.css?v=20260910-health-fixes-v1-20260911-ui-selector-parity-v1"></head>',
     )
     scope = light_history_scope(active_connection(database), viewer, projectId)
     html = html.replace('<body>', f'<body class="interaction3d-stage" data-i3d-light-history-scope="{scope}">')

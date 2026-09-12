@@ -4,7 +4,7 @@ import { compactRuntimeFurniture } from "./studio-runtime-furniture.js?v=2026090
 import { createReflectionDetail } from "./studio-reflection-detail.js?v=20260909-reflection-scope-v1";
 import { createFloorTransition } from "./studio-floor-transition.js?v=20260909-floor-reuse-v2-20260911-floor-handoff-v1";
 import { floorOpeningPolygon } from "./studio-floor-openings.js?v=20260908-floor-openings-v1";
-import { createGroundReflections } from "./studio-ground-reflections.js?v=20260909-reflection-scope-v1";
+import { createGroundReflections } from "./studio-ground-reflections.js?v=20260909-reflection-scope-v1-20260910-wall-runtime-v21-floor-handoff-v20-effects-settle-v5-no-blur-v1-overlay-scope-v1";
 import { createMotionPresentation } from "./studio-motion-presentation.js?v=20260910-effects-settle-v6-focus-live-v1";
 import { createWallSideMaterial, setWallGradientHeight, setWallCornerDistances, mergeWallBands } from "./studio-wall-materials.js?v=wall-device-D6-20260910210335-shade-v2";
 import { RENDER_CACHE_VERSION, createRenderCache, cacheSceneDescriptor, sha256, stableCacheJSON } from "../modules/interaction3d/render-cache.js?v=20260907-demand-v1-20260908-curtains-v1";
@@ -15267,7 +15267,7 @@ async function clearInspectorHover() {
       await new Promise(requestAnimationFrame);
       const {
         mountStage: awaitedValue2
-      } = await import("/api/v1/modules/interaction3d/stage.js?v=20260910-health-fixes-v3");
+      } = await import("/api/v1/modules/interaction3d/stage.js?v=20260910-health-fixes-v3-reflection-visible-floor-v1");
       awaitedValue2(bootstrapStudioFromLoadedProject());
       return;
     }
@@ -17551,6 +17551,7 @@ function bootstrapStudioFromLoadedProject() {
     getSceneRevision: () => planCanvas,
     floorLighting: yt,
     cull: !comparisonFlag2,
+    blur: false,
     syncLighting: argPrimary => comparisonFlag2 ? studioReady?.sync(argPrimary, true) : studioReady?.syncCamera(argPrimary),
     requestFrame: () => updateLightPreview(),
     getStateKey: () => [planCanvas, floorSelectionQuery, yt ? "" : lightCacheEpoch, lightCacheReady, renderer.toneMappingExposure].join("|")

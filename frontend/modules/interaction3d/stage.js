@@ -931,7 +931,9 @@ export function mountStage(options) {
     navigationEl.hidden = editing || viewEditing || active2;
     floorTabsEl.hidden = navigationEl.hidden || options.document.floors.length < 2;
     const brightness = floorNavigationChoices(options.document.floors, properties.floorNumbers);
-    options.groundReflections?.setOutsideFloor?.(activeFloorId === "all" ? brightness.find(([, floorLabel]) => floorLabel === "1F")?.[0] || "" : null);
+    const reflectionFloorId = activeFloorId === "all" ? brightness.find(([, floorLabel]) => floorLabel === "1F")?.[0] || "" : null;
+    options.groundReflections?.setOutsideFloor?.(reflectionFloorId);
+    options.groundReflections?.setVisibleFloor?.(reflectionFloorId);
     const temperatureRatio = JSON.stringify(brightness);
     if (temperatureRatio !== markerProjectionKey) {
       markerProjectionKey = temperatureRatio;
