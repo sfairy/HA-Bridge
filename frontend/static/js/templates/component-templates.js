@@ -1,4 +1,4 @@
-import { interaction3dTemplate } from "../../modules/interaction3d/definition.js?v=20260909-curtain-action-v15";
+import { interaction3dTemplate } from "../../modules/interaction3d/definition.js?v=20260909-curtain-action-v15-20260911-page-dimming-defaults-v1";
 const templateRegistry = new Map();
 registerComponentTemplate(interaction3dTemplate);
 const uiPackRegistry = new Map();
