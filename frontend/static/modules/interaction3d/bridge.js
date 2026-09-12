@@ -1,6 +1,6 @@
 import { createAccessMonitor } from "./access-monitor.js?v=20260905-interaction3d-v1-20260905-i3d-polish-v1-20260906-access-state-v2";
 import { createInteraction3dCover } from "./cover.js?v=20260905-interaction3d-cover-v1-20260908-access-lock-v1";
-import { createInteraction3dFocusLayout } from "./focus-layout.js?v=20260911-navigation-light-v14";
+import { createInteraction3dFocusLayout } from "./focus-layout.js?v=20260911-navigation-light-v14-focus-layout-anim-v1";
 export async function requestInteraction3dAccess() {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);

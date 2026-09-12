@@ -2,7 +2,7 @@ import { randomUuid } from "../utils/random-id.js?v=20260724-revert-hold-popup-s
 import { climateDefaultIcon, climateEffectMode, climateIsPoweredOn, climateModeLabel, climatePresentationMode, normalizeClimateCapabilities, resolveClimateDeviceType } from "./climate.js?v=20260812-presence-phase-v79-20260904-climate-capability-options-v3";
 import { entityPowerIsOn } from "./entity-power.js?v=20260813-generic-device-power-v2";
 import { lightRealtimeCapabilities } from "./light-runtime.js?v=20260901-renderer-light-runtime-v1";
-import { renderInteraction3d } from "../modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1";
+import { renderInteraction3d } from "../modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1-focus-layout-anim-v1";
 const COMPONENT_RENDERERS = new Map();
 registerComponent("interaction3d", {
   render: renderInteraction3d

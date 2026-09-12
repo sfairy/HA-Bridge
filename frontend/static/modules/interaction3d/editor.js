@@ -306,7 +306,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       await requestInteraction3dAccess();
       const {
         openInteraction3dAppearanceEditor: openAppearanceEditor
-      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1");
+      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1-20260911-unified-settings-v1-focus-layout-anim-v1");
       await openAppearanceEditor({
         component,
         onSave: baseLighting => callbacks.onChange({
@@ -338,7 +338,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     try {
       const {
         openInteraction3dEditor: openDevicesEditor
-      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1");
+      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1-20260911-unified-settings-v1-focus-layout-anim-v1");
       await openDevicesEditor({
         component,
         deviceKind: "devices",
@@ -368,7 +368,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       await requestInteraction3dAccess();
       const {
         openSecurityEditor
-      } = await import("/api/v1/modules/interaction3d/security-editor.js?v=20260911-security-focal-v1");
+      } = await import("/api/v1/modules/interaction3d/security-editor.js?v=20260911-security-focal-v1-focus-layout-anim-v1");
       await openSecurityEditor({
         component,
         panelDocument: callbacks.document,
@@ -397,7 +397,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     try {
       const {
         openInteraction3dEditor: openVacuumEditor
-      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1");
+      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1-20260911-unified-settings-v1-focus-layout-anim-v1");
       await openVacuumEditor({
         component,
         deviceKind: "vacuum",
@@ -425,7 +425,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     try {
       const {
         openInteraction3dEditor: openShortcutEditor
-      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1");
+      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1-20260911-unified-settings-v1-focus-layout-anim-v1");
       await openShortcutEditor({
         component,
         deviceKind: "vacuum-shortcut",
@@ -480,7 +480,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       await requestInteraction3dAccess();
       const {
         openInteraction3dEditor: openClimateEditor
-      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1");
+      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1-20260911-unified-settings-v1-focus-layout-anim-v1");
       await openClimateEditor({
         component,
         document: callbacks.document,
@@ -505,7 +505,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       await requestInteraction3dAccess();
       const {
         openInteraction3dEditor: openTelevisionEditor
-      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1");
+      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1-20260911-unified-settings-v1-focus-layout-anim-v1");
       await openTelevisionEditor({
         component,
         deviceKind: "climate",
@@ -531,7 +531,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       await requestInteraction3dAccess();
       const {
         openInteraction3dEditor: openNasEditor
-      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1");
+      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1-20260911-unified-settings-v1-focus-layout-anim-v1");
       await openNasEditor({
         component,
         deviceKind: "cover",
