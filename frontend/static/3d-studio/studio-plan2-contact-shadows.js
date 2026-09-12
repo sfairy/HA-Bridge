@@ -111,6 +111,8 @@ export function createContactShadowController({
   let disposed = false;
   let suspended = false;
   let inMotion = false;
+  let visibleFloorId = null;
+  const matchesVisibleFloor = floorId => visibleFloorId === null || floorId === visibleFloorId;
   let lastRoot = null;
   let frameProvider = null;
   let staggeredRebuild = false;
@@ -919,6 +921,19 @@ export function createContactShadowController({
     setEnabled,
     setSuspended,
     setMotion,
+    setVisibleFloor(floorId) {
+      const next = floorId == null ? null : String(floorId);
+      if (next !== visibleFloorId) {
+        visibleFloorId = next;
+        for (const entry of floorsById.values()) {
+          if (!suspended && !matchesVisibleFloor(entry.id)) {
+            entry.fade = null;
+            entry.uniforms.plan2ContactOpacity.value = entry.uniforms.plan2SurfaceOpacity.value = 0;
+          }
+        }
+        invalidate(null, true);
+      }
+    },
     setFrameProvider(provider) {
       frameProvider = provider;
       invalidate();

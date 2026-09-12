@@ -17566,6 +17566,7 @@ function bootstrapStudioFromLoadedProject() {
       });
     },
     shadows(active) {
+      renderCache?.setVisibleFloor?.(getPreviewFloorMode2() === "all" ? null : activeFloorId);
       renderCache?.setMotion?.(active);
     }
   });
