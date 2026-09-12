@@ -655,3 +655,19 @@ input {
     white-space: nowrap;
   }
 }
+.account-reset-help a {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  color: #929da5;
+  font-size: 12px;
+  text-underline-offset: 3px;
+}
+.account-reset-help a:hover {
+  color: #f5bc5f;
+}
+.account-reset-help a:focus-visible {
+  outline: 2px solid rgba(224,154,42,.72);
+  outline-offset: 4px;
+  border-radius: 2px;
+}

@@ -29,3 +29,7 @@
 .i3d-editor aside .i3d-security-settings:first-child{border-top:0;padding-top:0}
 .i3d-editor aside .i3d-security-settings h4{margin:0 0 2px;color:#ded4c4;font-size:13px}
 .i3d-editor aside .i3d-security-settings .i3d-coordinate-grid{margin:0}
+.interaction3d-stage button:disabled:not(.i3d-marker){opacity:.4;cursor:not-allowed}
+.interaction3d-stage .i3d-floor-tabs button[data-floor=all]{margin-top:6px}
+.interaction3d-stage .i3d-navigation .i3d-module-tabs[hidden]{display:none}
+.interaction3d-stage .i3d-model-outlines{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;opacity:0;transition:opacity .24s linear}
