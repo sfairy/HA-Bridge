@@ -1,6 +1,6 @@
 # HA Bridge
 
-面向 [Home Assistant](https://www.home-assistant.io/) 的本机仪表盘与中控平台，当前版本 **0.5.0**。
+面向 [Home Assistant](https://www.home-assistant.io/) 的本机仪表盘与中控平台，当前版本 **0.5.1**。
 
 提供可视化编辑器、3D 户型工作室、全屏展示页和中控配对。后端是 FastAPI，前端是原生 HTML / CSS / JavaScript，数据默认落在本机 SQLite。
 
@@ -202,6 +202,22 @@ docker exec ha-bridge rm /tmp/app.tar.gz
 - 3D 交互舞台脚本由 `/api/v1/modules/interaction3d/{filename}` 下发，需要已登录或已配对，且当前授权允许编辑器。
 
 ## 更新日志
+
+### v0.5.1
+
+新增
+
+- 3D 安防：户型舞台支持摄像头与在场传感器标记，新增安防配置编辑器（`security-editor.js`），统一管理 `security.cameras` 与 `security.presenceSensors`。
+- 新增摄像头状态组件（`camera-status.js`）与摄像头弹窗布局计算（`camera-popup-layout.js`）。
+- 户型工作室新增安防模型（`studio-security-models.js`）、车漆材质（`studio-car-finish.js`）、动态演示（`studio-motion-presentation.js`）、墙面材质（`studio-wall-materials.js`）与窗户几何（`studio-window-geometry.js`）模块。
+- 在场编辑器支持按楼层定位与聚焦（`security-focal`）、在场页面（`presence-pages`）与路线重绘，并新增地面世界波纹（`world-waves`）。
+- 3D 配置编辑器统一设备设置版式（`unified-settings`）与工作区切换（`workspace-switch`）；展示页与仪表盘新增导航灯（`navigation-light`）与 3D 舞台保留（`stage-retain`）。
+- 后端 3D 配置契约新增 `security.cameras` 校验（实体需匹配 `camera.*`，楼层不得为 `all`）。
+
+说明
+
+- 授权仍使用本机 `register` 商店（`APP_LICENSE_STORE_URL`），不接入官方授权云。
+- 本版本以 0.5.1 参考实现对齐前后端功能，保留本仓库既有改造（静态目录 `js/`、`css/`、`assets/`，`help.html`，three.js 0.186.0，hls.js 1.7.2，端口 18081）。
 
 ### v0.5.0
 

@@ -12,3 +12,4 @@ data/
 register/data/
 /app/
 app.tar.gz
+.deobf/
