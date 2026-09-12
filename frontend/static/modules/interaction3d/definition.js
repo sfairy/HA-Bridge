@@ -43,13 +43,13 @@ export const interaction3dTemplate = {
         },
         pageDimStrength: {
           overview: 0,
-          light: 70,
-          environment: 70,
-          devices: 70,
-          vacuum: 70,
-          security: 70
+          light: 0,
+          environment: 30,
+          devices: 40,
+          vacuum: 15,
+          security: 31
         },
-        focusDimStrength: 15,
+        focusDimStrength: 7,
         focusVignetteStrength: 14,
         popupOpacity: 74,
         interaction: {

@@ -1,3 +1,269 @@
+export function outlineHull(points) {
+  const sorted = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cross = (origin, a, b) => (a[0] - origin[0]) * (b[1] - origin[1]) - (a[1] - origin[1]) * (b[0] - origin[0]);
+  const buildHull = list => {
+    const hull = [];
+    for (const point of list) {
+      while (hull.length > 1 && cross(hull.at(-2), hull.at(-1), point) <= 0) {
+        hull.pop();
+      }
+      hull.push(point);
+    }
+    return hull;
+  };
+  return [...buildHull(sorted).slice(0, -1), ...buildHull(sorted.reverse()).slice(0, -1)];
+}
+export function createScreenOutlines({
+  THREE,
+  container,
+  camera,
+  getCamera
+}) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const strokePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  const glowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  const softPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  svg.setAttribute("class", "i3d-model-outlines");
+  svg.setAttribute("aria-hidden", "true");
+  for (const [path, width, opacity] of [[glowPath, 10, 0.14], [softPath, 6, 0.22], [strokePath, 2.6, 0.48]]) {
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", "#d5dedb");
+    path.setAttribute("stroke-width", String(width));
+    path.setAttribute("stroke-opacity", String(opacity));
+    path.setAttribute("stroke-linejoin", "round");
+    path.setAttribute("stroke-linecap", "round");
+  }
+  glowPath.style.filter = "blur(2px)";
+  softPath.style.filter = "blur(.8px)";
+  svg.append(glowPath);
+  svg.append(softPath);
+  svg.append(strokePath);
+  container.append(svg);
+  let lastRoot;
+  let lastCamera;
+  let lastBindingsSignature = "";
+  let outlineModels = [];
+  let active = false;
+  let lastViewKey = "";
+  let resumeAt = 0;
+  let lastCameraSignature = "";
+  let pointCache = new WeakMap();
+  const pulseAnimations = globalThis.window?.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true ? [] : [glowPath, softPath, strokePath].map(path => path.animate?.([{
+    opacity: 1
+  }, {
+    opacity: 0.3
+  }, {
+    opacity: 1
+  }], {
+    duration: 2200,
+    iterations: 1 / 0,
+    easing: "ease-in-out"
+  })).filter(Boolean);
+  let pulsePlaying = false;
+  pulseAnimations.forEach(animation => animation.pause());
+  function setPulsePlaying(nextPlaying) {
+    if (pulsePlaying !== nextPlaying) {
+      pulsePlaying = nextPlaying;
+      for (const animation of pulseAnimations) {
+        if (nextPlaying) {
+          animation.currentTime = 0;
+          animation.play();
+        } else {
+          animation.pause();
+        }
+      }
+    }
+  }
+  const modelKey = binding => JSON.stringify([binding.floorId, binding.modelId]);
+  const hullDirections = [];
+  for (const x of [-1, 0, 1]) {
+    for (const y of [-1, 0, 1]) {
+      for (const z of [-1, 0, 1]) {
+        if (x || y || z) {
+          hullDirections.push(new THREE.Vector3(x, y, z));
+        }
+      }
+    }
+  }
+  function computeOutlinePoints(modelNode) {
+    const bestPerDirection = hullDirections.map(() => ({
+      score: -1 / 0,
+      point: null
+    }));
+    const point = new THREE.Vector3();
+    function accumulate(node, worldMatrix) {
+      if (node.userData?.environmentEffect || node === modelNode.userData?.vacuumMobileRoot || node !== modelNode && node.visible === false || node !== modelNode && node.userData?.environmentModelId != null) {
+        return;
+      }
+      const position = node.isMesh && node.geometry?.attributes?.position;
+      if (position) {
+        for (let index = 0; index < position.count; index++) {
+          point.fromBufferAttribute(position, index).applyMatrix4(worldMatrix);
+          hullDirections.forEach((direction, directionIndex) => {
+            const score = point.dot(direction);
+            if (score > bestPerDirection[directionIndex].score) {
+              bestPerDirection[directionIndex] = {
+                score,
+                point: point.clone()
+              };
+            }
+          });
+        }
+      }
+      for (const child of node.children || []) {
+        if (child.matrixAutoUpdate) {
+          child.updateMatrix();
+        }
+        accumulate(child, new THREE.Matrix4().multiplyMatrices(worldMatrix, child.matrix));
+      }
+    }
+    accumulate(modelNode, new THREE.Matrix4());
+    return bestPerDirection.filter(entry => entry.point).map(entry => entry.point);
+  }
+  function sync(nextRoot, nextCamera, bindings, nextActive) {
+    active = nextActive;
+    const shouldResume = nextActive && performance.now() >= resumeAt;
+    svg.style.opacity = shouldResume ? "1" : "0";
+    setPulsePlaying(shouldResume);
+    const bindingsSignature = JSON.stringify(bindings.map(modelKey));
+    if (lastRoot === nextRoot && lastCamera === nextCamera && lastBindingsSignature === bindingsSignature) {
+      return;
+    }
+    if (lastRoot !== nextRoot || lastCamera !== nextCamera) {
+      pointCache = new WeakMap();
+    }
+    lastRoot = nextRoot;
+    lastCamera = nextCamera;
+    lastBindingsSignature = bindingsSignature;
+    lastViewKey = "";
+    const nodesByKey = new Map();
+    lastRoot?.traverse(node => {
+      if (!["wallac", "floorac", "airoutlet", "curtain", "nas", "tv", "robotvacuum", "camera", "presence"].includes(node.userData?.environmentModelType)) {
+        return;
+      }
+      let floorId = node.userData.environmentFloorId;
+      for (let parent = node.parent; floorId == null && parent; parent = parent.parent) {
+        floorId = parent.userData.environmentFloorId;
+      }
+      nodesByKey.set(modelKey({
+        floorId,
+        modelId: node.userData.environmentModelId
+      }), node);
+    });
+    outlineModels = bindings.flatMap(binding => {
+      const modelNode = nodesByKey.get(modelKey(binding));
+      return modelNode ? [modelNode] : [];
+    });
+  }
+  function outlineTargets(modelNode) {
+    if (modelNode.userData.environmentModelType === "curtain") {
+      const panels = [];
+      modelNode.traverse(child => {
+        if (child.userData?.curtainMotionPanel) {
+          panels.push(child);
+        }
+      });
+      if (panels.length) {
+        return panels;
+      }
+    }
+    return modelNode.userData.vacuumMobileRoot ? [modelNode, modelNode.userData.vacuumMobileRoot] : [modelNode];
+  }
+  function cachedOutlinePoints(node) {
+    const geometry = node.geometry;
+    const mobile = node.userData?.vacuumMobileRoot;
+    const cached = pointCache.get(node);
+    if (cached && cached.geometry === geometry && cached.mobile === mobile) {
+      return cached.points;
+    }
+    const points = computeOutlinePoints(node);
+    pointCache.set(node, {
+      geometry,
+      mobile,
+      points
+    });
+    return points;
+  }
+  function update() {
+    if (!active || performance.now() < resumeAt) {
+      return;
+    }
+    svg.style.transition = "opacity .18s linear";
+    svg.style.opacity = "1";
+    setPulsePlaying(true);
+    const activeCamera = getCamera?.() || camera;
+    activeCamera.updateMatrixWorld();
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    const visibleTargets = outlineModels.flatMap(outlineTargets).filter(node => {
+      for (let current = node; current; current = current.parent) {
+        if (current.visible === false) {
+          return false;
+        }
+      }
+      return true;
+    }).map(node => ({
+      model: node,
+      points: cachedOutlinePoints(node)
+    }));
+    for (const target of visibleTargets) {
+      target.model.updateWorldMatrix(true, false);
+    }
+    const viewKey = width + ":" + height + ":" + activeCamera.matrixWorld.elements + ":" + activeCamera.projectionMatrix.elements + ":" + visibleTargets.map(target => target.model.uuid + ":" + (target.model.geometry?.uuid || "") + ":" + target.model.matrixWorld.elements).join("|");
+    if (viewKey === lastViewKey) {
+      return;
+    }
+    lastViewKey = viewKey;
+    svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+    const projectedPoint = new THREE.Vector3();
+    const pathData = visibleTargets.map(target => {
+      const projected = target.points.map(point => {
+        projectedPoint.copy(point).applyMatrix4(target.model.matrixWorld).project(activeCamera);
+        return [(projectedPoint.x + 1) * width / 2, (1 - projectedPoint.y) * height / 2, projectedPoint.z];
+      });
+      if (projected.some(point => point[2] < -1 || point[2] > 1)) {
+        return "";
+      }
+      const hull = outlineHull(projected);
+      return hull.length > 2 ? "M" + hull.map(point => point[0].toFixed(1) + "," + point[1].toFixed(1)).join("L") + "Z" : "";
+    }).join("");
+    for (const path of [glowPath, softPath, strokePath]) {
+      path.setAttribute("d", pathData);
+    }
+  }
+  function pause() {
+    setPulsePlaying(false);
+    resumeAt = performance.now() + 120;
+    svg.style.transition = "none";
+    svg.style.opacity = "0";
+  }
+  return {
+    sync,
+    update,
+    pause,
+    cameraChanged() {
+      if (!active) {
+        return false;
+      }
+      const currentCamera = getCamera?.() || camera;
+      const signature = currentCamera.matrixWorld.elements + ":" + currentCamera.projectionMatrix.elements;
+      if (signature === lastCameraSignature) {
+        return false;
+      }
+      lastCameraSignature = signature;
+      pause();
+      return true;
+    },
+    nextDelay() {
+      return active && performance.now() < resumeAt ? Math.max(1, resumeAt - performance.now()) : 1 / 0;
+    },
+    dispose() {
+      pulseAnimations.forEach(animation => animation.cancel());
+      svg.remove();
+      outlineModels = [];
+    }
+  };
+}
 export function createEnvironmentHalos({
   THREE,
   modeAmount: haloMode

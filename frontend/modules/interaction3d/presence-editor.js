@@ -9,9 +9,16 @@ export async function openPresenceEditor({
   floors = [],
   entities = [],
   pickers,
-  onSave
+  onSave,
+  initialSelectedId = "",
+  editingFloorId = "",
+  manageBindings = true,
+  onClose
 }) {
   const doc = window.document;
+  const editorLabel = manageBindings ? "配置安防" : "人物与行走路线";
+  const applyLabel = manageBindings ? "保存安防配置" : "应用人物与路线";
+  const dirtyLabel = manageBindings ? "配置已修改，请保存安防配置。" : "配置已修改，请应用人物与路线。";
   const security = structuredClone(component.properties || {});
   security.security = {
     ...security.security,
@@ -49,9 +56,9 @@ export async function openPresenceEditor({
   stylesheet.rel = "stylesheet";
   stylesheet.href = "/api/v1/modules/interaction3d/presence-editor.css";
   const dialog = el("dialog", "", "i3d-editor i3d-presence-editor");
-  dialog.setAttribute("aria-label", "配置安防");
+  dialog.setAttribute("aria-label", editorLabel);
   const previousFocus = doc.activeElement;
-  let selected = presenceSensors[0] || null;
+  let selected = presenceSensors.find(sensor => sensor.id === initialSelectedId) || presenceSensors.find(sensor => sensor.floorId === editingFloorId) || presenceSensors[0] || null;
   let closed = false;
   let closedRoutes = new Set(presenceSensors.filter(sensor => sensor.routeClosed !== false && validPresenceRoute(sensor.route)).map(sensor => sensor.id));
   let dragPoint = null;
@@ -101,9 +108,10 @@ export async function openPresenceEditor({
       stylesheet.remove();
       doc.dispatchEvent(new Event("hb-i3d-preview-scope"));
       previousFocus?.focus?.();
+      onClose?.();
     }
   }
-  const saveBtn = button("保存安防配置", async () => {
+  const saveBtn = button(applyLabel, async () => {
     flushInputs();
     for (const sensor of presenceSensors) {
       sensor.routeClosed = closedRoutes.has(sensor.id) && validPresenceRoute(sensor.route);
@@ -126,10 +134,10 @@ export async function openPresenceEditor({
   });
   saveBtn.className = "primary";
   dialog.addEventListener("input", () => {
-    status.textContent = "配置已修改，请保存安防配置。";
+    status.textContent = dirtyLabel;
   });
   const header = el("header");
-  header.append(el("strong", "配置安防"), status, saveBtn, button("退出", close));
+  header.append(el("strong", editorLabel), status, saveBtn, button("退出", close));
   const body = el("div", "", "presence-body");
   const bindingsAside = el("aside", "", "presence-bindings");
   const controlsAside = el("aside", "", "presence-controls");
@@ -162,10 +170,17 @@ export async function openPresenceEditor({
       redrawPlan();
       syncRuntime();
     }
-  }), button("重新绘制", () => {
+  }), button("清空并重新绘制", () => {
     if (selected) {
+      flushInputs();
       selected.route = [];
+      selected.routeClosed = false;
       closedRoutes.delete(selected.id);
+      pointerPlanPoint = null;
+      dragPoint = null;
+      previewWalk = false;
+      previewWalkBtn.textContent = "预览行走";
+      status.textContent = "路径已清空，请重新绘制。";
       redrawPlan();
       syncRuntime();
     }
@@ -231,7 +246,7 @@ export async function openPresenceEditor({
     if (selected) {
       return floors.find(floor => floor.id === selected.floorId);
     } else {
-      return floors.find(floor => floor.id === security.floorSelection) || floors[0];
+      return floors.find(floor => floor.id === (editingFloorId || security.floorSelection)) || floors[0];
     }
   }
   function scheduleTopView() {
@@ -471,7 +486,9 @@ export async function openPresenceEditor({
       rebuildUi();
     });
     addBtn.disabled = presenceSensors.length >= 128 || !floors.length;
-    bindingsAside.append(addBtn);
+    if (manageBindings) {
+      bindingsAside.append(addBtn);
+    }
     for (const sensor of presenceSensors) {
       const selectBtn = button(sensor.label || entityNames.get(sensor.entityId) || sensor.entityId || "未选择传感器", () => {
         selected = sensor;
@@ -514,7 +531,11 @@ export async function openPresenceEditor({
       }
     });
     trigger.setAttribute("aria-label", "选择人在传感器");
-    addField("人在传感器", trigger);
+    if (manageBindings) {
+      addField("人在传感器", trigger);
+    } else {
+      controlsAside.append(el("p", "检测设备：" + (sensor.deviceName || entityNames.get(sensor.entityId) || sensor.entityId || "未绑定") + "（在安防设置中修改）", "presence-note"));
+    }
     const labelInput = el("input");
     labelInput.value = sensor.label;
     labelInput.maxLength = 128;
@@ -527,7 +548,7 @@ export async function openPresenceEditor({
     labelInput.addEventListener("input", commitLabel);
     labelInput.addEventListener("change", () => {
       commitLabel();
-      const listBtn = bindingsAside.querySelectorAll("button")[presenceSensors.indexOf(sensor) + 1];
+      const listBtn = bindingsAside.querySelectorAll("button")[presenceSensors.indexOf(sensor) + (manageBindings ? 1 : 0)];
       if (listBtn) {
         listBtn.textContent = sensor.label || entityNames.get(sensor.entityId) || sensor.entityId || "未选择传感器";
       }
@@ -548,11 +569,13 @@ export async function openPresenceEditor({
     floorSelect.value = sensor.floorId;
     floorSelect.addEventListener("change", () => {
       sensor.floorId = floorSelect.value;
+      delete sensor.modelId;
       sensor.route = [];
       closedRoutes.delete(sensor.id);
       rebuildUi();
     });
     addField("路线楼层", floorSelect);
+    floorSelect.disabled = !manageBindings;
     const pagesSelect = el("select");
     pagesSelect.setAttribute("aria-label", "显示页面");
     for (const [value, label] of [["all", "全部页面"], ["custom", "指定页面"]]) {
@@ -662,12 +685,14 @@ export async function openPresenceEditor({
         }));
       }
     }
-    controlsAside.append(button("删除此传感器", () => {
-      presenceSensors.splice(presenceSensors.indexOf(sensor), 1);
-      closedRoutes.delete(sensor.id);
-      selected = presenceSensors[0] || null;
-      rebuildUi();
-    }));
+    if (manageBindings) {
+      controlsAside.append(button("删除此传感器", () => {
+        presenceSensors.splice(presenceSensors.indexOf(sensor), 1);
+        closedRoutes.delete(sensor.id);
+        selected = presenceSensors[0] || null;
+        rebuildUi();
+      }));
+    }
     recomputeBox();
     syncRuntime();
   }

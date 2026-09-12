@@ -385,6 +385,8 @@ export function mountInteraction3d(host, {
     rangeRequestWaiters.clear();
   }
   function dismissFocusUi(immediate = false) {
+    closeCameraPopup();
+    focusedId = "";
     closeVacuumPopup();
     focusPanelOpen = false;
     setFocusUiActive(false);
@@ -395,6 +397,15 @@ export function mountInteraction3d(host, {
   }
   let vacuumPopup = null;
   let vacuumFollowActive = false;
+  let cameraPopup = null;
+  let cameraPopupId = "";
+  let focusedId = "";
+  const closeCameraPopup = () => {
+    const close = cameraPopup;
+    cameraPopup = null;
+    cameraPopupId = "";
+    close?.close?.();
+  };
   const closeVacuumPopup = () => {
     const close = vacuumPopup;
     vacuumPopup = null;
@@ -471,10 +482,14 @@ export function mountInteraction3d(host, {
     loadingEl.hidden = false;
     loadingEl.textContent = "";
     loadingEl.setAttribute("aria-label", "正在准备 3D 户型");
+    const wallTrial = (new URLSearchParams(window.location.search).get("wall-trial") || "").split(",").filter(entry => ["shader", "single", "depth", "merge"].includes(entry)).join(",");
     frameEl.src = INTERACTION3D_API + "/stage.html?" + new URLSearchParams({
       sceneId: properties.sceneId,
       projectId: documentProjectId,
       lighting: normalizeLightingMode(properties.lightingMode),
+      ...(wallTrial ? {
+        "wall-trial": wallTrial
+      } : {}),
       ...(new URLSearchParams(window.location.search).get("furniture-runtime") === "compact" ? {
         "furniture-runtime": "compact"
       } : {}),
@@ -509,6 +524,27 @@ export function mountInteraction3d(host, {
     }
     if (type.type === "vacuum-popup-close") {
       closeVacuumPopup();
+    }
+    if (type.type === "camera-popup-close") {
+      closeCameraPopup();
+    }
+    if (type.type === "camera-popup" && authorized && framePresented && !editing && !context.editable && focusedId === type.id) {
+      const cameraBinding = (properties.security?.cameras || []).find(id2 => "camera:" + id2.id === type.id && id2.visible !== false && id2.entityId);
+      if (cameraBinding && context.openCameraPreview && cameraPopupId !== type.id) {
+        closeCameraPopup();
+        closeVacuumPopup();
+        cameraPopupId = type.id;
+        cameraPopup = context.openCameraPreview(cameraBinding, () => {
+          cameraPopup = null;
+          cameraPopupId = "";
+          dismissFocusUi();
+        }, {
+          root: host,
+          frame: frameEl,
+          popupOpacity: properties.popupOpacity,
+          getPresentationLayout: () => presentationLayout
+        });
+      }
     }
     if (type.type === "vacuum-popup" && !vacuumFollowActive && authorized && framePresented && !editing && !context.editable) {
       const vacuumBinding = (properties.devices?.vacuums || []).find(id2 => "vacuum:" + id2.id === type.id && id2.visible !== false && id2.entityId);
@@ -551,6 +587,10 @@ export function mountInteraction3d(host, {
     }
     if (type.type === "focus-state" && !editing && !context.editable) {
       const focusAllowed = authorized && framePresented && isFocusTargetId(type.id);
+      focusedId = focusAllowed && type.active === true ? type.id : "";
+      if (cameraPopupId && cameraPopupId !== focusedId) {
+        closeCameraPopup();
+      }
       focusPanelOpen = focusAllowed && type.panelOpen === true;
       setFocusUiActive(focusAllowed && type.active === true);
     }
@@ -643,10 +683,18 @@ export function mountInteraction3d(host, {
       notifyEditListeners(type);
     }
     if (type.type === "control" && authorized && framePresented && !editing && !context.editable) {
-      const trim = type.command?.entityId;
-      if (typeof trim != "string" || !trim.trim() || ![...(properties.lights || []), ...(properties.environment?.airConditioners || []), ...(properties.environment?.curtains || []), ...(properties.devices?.televisions || []), ...(properties.devices?.televisions || []).map(powerEntityId => ({
+      const controlEntityId = type.command?.entityId;
+      if (typeof controlEntityId != "string" || !controlEntityId.trim()) {
+        return;
+      }
+      if (![...(properties.lights || []), ...(properties.environment?.airConditioners || []), ...(properties.environment?.curtains || []), ...(properties.devices?.televisions || []), ...(properties.devices?.televisions || []).map(powerEntityId => ({
         entityId: powerEntityId.powerEntityId || powerEntityId.entityId
-      }))].some(entityId4 => entityId4.entityId === trim)) {
+      }))].some(entityId4 => entityId4.entityId === controlEntityId)) {
+        postFrameMessage({
+          type: "control-result",
+          requestId: type.requestId,
+          error: "此实体未绑定到当前 3D 控件，请检查设备配置。"
+        });
         return;
       }
       const frameGeneration = frame;
@@ -777,6 +825,7 @@ export function mountInteraction3d(host, {
     };
     presentationLayout = layoutPayload;
     vacuumPopup?.updateLayout?.();
+    cameraPopup?.updateLayout?.();
     const layoutJson = JSON.stringify(layoutPayload);
     if (forcePost === true || layoutJson !== lastLayoutJson) {
       lastLayoutJson = layoutJson;
@@ -795,6 +844,7 @@ export function mountInteraction3d(host, {
       syncActivityVisibility(true);
       setFocusUiActive(false);
       closeVacuumPopup();
+      closeCameraPopup();
       intersectionObserver?.dispose();
       editSubscribers.clear();
       rangeEditingActive = false;
@@ -830,10 +880,15 @@ export function mountInteraction3d(host, {
     const prevSceneId = properties.sceneId;
     const prevCameraJson = JSON.stringify(properties.camera);
     const prevLightingMode = normalizeLightingMode(properties.lightingMode);
+    const prevFloorSelection = properties.floorSelection;
+    const prevCameraPopupJson = JSON.stringify((properties.security?.cameras || []).find(camera2 => "camera:" + camera2.id === cameraPopupId));
     properties = structuredClone(nextProperties);
     selectedId = nextSelectedId;
     syncBackgroundVisibilityClass();
     applyBackgroundHiddenClass();
+    if (cameraPopup && (prevFloorSelection !== properties.floorSelection || prevCameraPopupJson !== JSON.stringify((properties.security?.cameras || []).find(camera3 => "camera:" + camera3.id === cameraPopupId)))) {
+      dismissFocusUi(true);
+    }
     if (viewEditing && (prevSceneId !== properties.sceneId || prevLightingMode !== normalizeLightingMode(properties.lightingMode) || prevCameraJson !== JSON.stringify(properties.camera))) {
       viewEditing = false;
       viewCamera = properties.floorCameras?.[properties.floorSelection] || properties.camera || stageCamera;

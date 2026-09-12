@@ -1,4 +1,4 @@
-import { createPresenceScene } from "./presence-scene.js?v=20260910-presence-v1";
+import { createPresenceScene, createPresenceWaves } from "./presence-scene.js?v=20260910-presence-v1-20260911-presence-pages-v2-20260911-world-waves-v3-wave-settings-v1";
 import { floorNavigationChoices } from "./floor-navigation.js?v=20260909-floor-numbers-v1";
 import { createVacuumMotion, vacuumQuip, createVacuumFollowCamera, vacuumBirdCamera, vacuumFollowPose } from "./vacuum-motion.js?v=20260909-reflection-cache-v4";
 import { createVacuumMaps, vacuumStatusPresentation, vacuumBindingsForMap } from "./vacuum-map.js?v=20260909-curtain-action-v15";
@@ -7,6 +7,7 @@ import { createTelevisionPanel } from "./television-panel.js";
 import { createTelevisionScreens } from "./television-screen.js?v=20260909-reflection-cache-v4";
 import { createNasPanel } from "./nas-panel.js";
 import { createNasStatus, nasDeviceState } from "./nas-status.js?v=20260908-nas-v1";
+import { createCameraStatus, cameraOnline } from "./camera-status.js";
 import { coverState, coverIconIsOn } from "./cover-state.js?v=20260910-curtain-default-open-v2";
 import { createCoverFeedback } from "./cover-feedback.js?v=20260910-curtain-default-open-v2";
 import { createCoverPanel } from "./cover-panel.js?v=20260910-curtain-default-open-v2";
@@ -129,6 +130,14 @@ export function mountStage(options) {
         ...focusCamera3,
         ...(focusCamera3.focusCamera ? {
           focusCamera: transformCameraForFloor(focusCamera3.focusCamera, clonedProperties.floorSelection)
+        } : {})
+      }));
+    }
+    if (clonedProperties.security?.cameras) {
+      clonedProperties.security.cameras = clonedProperties.security.cameras.map(focusCamera4 => ({
+        ...focusCamera4,
+        ...(focusCamera4.focusCamera ? {
+          focusCamera: transformCameraForFloor(focusCamera4.focusCamera, clonedProperties.floorSelection)
         } : {})
       }));
     }
@@ -496,6 +505,45 @@ export function mountStage(options) {
       });
     }
   }
+  const cameraStatus = createCameraStatus({
+    THREE,
+    requestFrame: () => options.requestRender?.()
+  });
+  let securityStatusKey;
+  function syncSecurityStatus() {
+    const hideClickable = !viewEditing && !active2;
+    const modelRoot = options.modelRoot;
+    const revision = options.sceneRevision;
+    const brightness = preFocusCamera === "security" && activeFloorId !== "all" ? 1 : 0.55;
+    if (securityStatusKey?.root === modelRoot && securityStatusKey.revision === revision && securityStatusKey.config === properties && securityStatusKey.states === states && securityStatusKey.enabled === hideClickable && securityStatusKey.brightness === brightness) {
+      return;
+    }
+    securityStatusKey = {
+      root: modelRoot,
+      revision,
+      config: properties,
+      states,
+      enabled: hideClickable,
+      brightness
+    };
+    const bindings = (properties.security?.cameras || []).map(camera => {
+      const model = options.document.floors.find(floor => floor.id === camera.floorId)?.scene.items.find(item => item.id === camera.modelId && item.type === "camera");
+      return {
+        ...camera,
+        width: model?.width || 0.2,
+        height: model?.height || 0.3,
+        depth: model?.depth || 0.2
+      };
+    });
+    cameraStatus.sync({
+      root: modelRoot,
+      revision,
+      bindings,
+      states,
+      enabled: hideClickable,
+      brightness
+    });
+  }
   const sync = createTelevisionScreens({
     THREE,
     requestFrame: tvReason => {
@@ -679,13 +727,14 @@ export function mountStage(options) {
     options.setFocusViewport(0);
     options.applyCameraPose(position);
   }
-  const isDeviceFocusKind = deviceKind10 => ["nas", "television", "vacuum", "presence"].includes(deviceKind10?.deviceKind);
+  const isDeviceFocusKind = deviceKind10 => ["nas", "television", "vacuum", "presence", "camera"].includes(deviceKind10?.deviceKind);
   const sync2 = createVacuumMaps(options, () => {
     options.requestRender?.();
     wake();
   });
   const hasTracking = createVacuumMotion(options, wake);
   const hitRects = createPresenceScene(options, wake);
+  const presenceWaves = createPresenceWaves(options);
   let presenceSyncKey = null;
   let presenceEditorActive = false;
   let presenceHitTesting = false;
@@ -786,6 +835,13 @@ export function mountStage(options) {
     })));
   }
   function onUserInput(event) {
+    if (!editing && interactive && event.deviceKind === "camera" && event.entityId && focusedLightId === event.id && frameLoop !== "edit") {
+      deviceStatus({
+        type: "camera-popup",
+        id: event.id
+      });
+      return;
+    }
     if (!presets && !editing && interactive && event.deviceKind === "vacuum" && event.entityId && (frameLoop === "panel" || event.clickAction !== "focus") && focusedLightId === event.id) {
       deviceStatus({
         type: "vacuum-popup",
@@ -836,6 +892,8 @@ export function mountStage(options) {
       }));
     } else if (preFocusCamera === "television") {
       return startCameraMotion();
+    } else if (preFocusCamera === "security") {
+      return [...cameraBindings(), ...presenceBindings()];
     } else if (preFocusCamera === "devices") {
       return [...clearInputHold(), ...startCameraMotion()].map(deviceKind4 => ({
         ...deviceKind4,
@@ -853,7 +911,7 @@ export function mountStage(options) {
     }
   }
   const visibleBindings = () => {
-    let filter2 = preFocusCamera === "light" ? properties.lights || [] : [...focusLight(), ...(preFocusCamera === "vacuum" && !editing ? vacuumRoomBindings() : [])];
+    let filter2 = preFocusCamera === "security" ? [...cameraBindings(), ...presenceBindings().filter(binding => editing && binding.modelId)] : preFocusCamera === "light" ? properties.lights || [] : [...focusLight(), ...(preFocusCamera === "vacuum" && !editing ? vacuumRoomBindings() : [])];
     if (!editing && preFocusCamera === "overview") {
       filter2 = tickCameraMotion().filter(entityId6 => entityId6.entityId && vacuumStatusPresentation(entityId6, states).active && vacuumQuip(entityId6, states, performance.now())).map(id23 => ({
         ...id23,
@@ -1019,6 +1077,22 @@ export function mountStage(options) {
       markersConcealedAt = false;
     }
   }
+  const cameraBindings = () => (properties.security?.cameras || []).map(camera => {
+    const model = options.document.floors.find(floor => floor.id === camera.floorId)?.scene.items.find(item => item.id === camera.modelId && item.type === "camera");
+    return {
+      ...camera,
+      buttonHidden: false,
+      hiddenClickable: false,
+      id: "camera:" + camera.id,
+      deviceKind: "camera",
+      clickAction: "focus",
+      modelAvailable: !!model,
+      icon: camera.icon || "mdi:cctv",
+      x: Number.isFinite(camera.x) ? camera.x : model?.x ?? 0,
+      y: Number.isFinite(camera.y) ? camera.y : model?.y ?? 0,
+      height: Number.isFinite(camera.height) ? camera.height : (Number(model?.elevation) || 0) + (Number(model?.height) || 0.3) / 2
+    };
+  });
   const presenceBindings = () => (properties.security?.presenceSensors || []).map(route => ({
     ...route,
     id: "presence:" + route.id,
@@ -1028,20 +1102,36 @@ export function mountStage(options) {
     y: route.route?.[0]?.y || 0,
     height: (route.size ?? 1) * 0.7
   }));
-  const findBinding = bindingId => visibleBindings().find(id34 => id34.id === bindingId) || presenceBindings().find(id35 => id35.id === bindingId);
+  const findBinding = bindingId => visibleBindings().find(id34 => id34.id === bindingId) || cameraBindings().find(id35 => id35.id === bindingId) || presenceBindings().find(id36 => id36.id === bindingId);
   function queueOrSendCommand() {
     configureIdleBehaviors();
     syncMarkers();
+    presenceWaves.sync({
+      bindings: (properties.security?.presenceSensors || []).filter(sensor => !editing || "presence:" + sensor.id === selectedId).map(sensor => {
+        const model = options.document.floors.find(floor => floor.id === sensor.floorId)?.scene.items.find(item => item.id === sensor.modelId);
+        return {
+          ...sensor,
+          width: model?.width,
+          height: model?.height,
+          depth: model?.depth
+        };
+      }),
+      states,
+      floorId: activeFloorId,
+      preview: editing,
+      enabled: preFocusCamera === "security" && !focusedLightId && !frameLoop && !viewEditing && !active2 && !options.floorTransitionActive && presentedVisible?.owner !== "floor"
+    });
     collectMetadata();
     if (!options.floorTransitionActive && presentedVisible?.owner !== "floor") {
       syncCurtainLayout();
       syncNasStatus();
+      syncSecurityStatus();
       syncPresentationChrome();
       syncVacuumMap();
       const focusableLights = focusLight().filter(idleCameraBase);
-      const filter = (editing ? [...focusableLights, ...(["climate", "devices", "nas", "television", "vacuum"].includes(preFocusCamera) ? [] : previewCoverBindings())] : [...syncIdleAvailability(), ...syncInputHold(), ...clearInputHold(), ...startCameraMotion(), ...tickCameraMotion()].map(deviceKind3 => ({
+      const filter = (editing ? [...focusableLights, ...(["climate", "devices", "nas", "television", "vacuum"].includes(preFocusCamera) ? [] : previewCoverBindings())] : [...syncIdleAvailability(), ...syncInputHold(), ...clearInputHold(), ...startCameraMotion(), ...tickCameraMotion(), ...cameraBindings(), ...presenceBindings()].map(deviceKind3 => ({
         ...deviceKind3,
-        id: deviceKind3.deviceKind + ":" + deviceKind3.id
+        id: ["camera", "presence"].includes(deviceKind3.deviceKind) ? deviceKind3.id : deviceKind3.deviceKind + ":" + deviceKind3.id
       })).concat(previewCoverBindings())).filter(modelAvailable => modelAvailable.modelAvailable && idleCameraBase(modelAvailable));
       const enabled = pageDimming(properties, preFocusCamera, !!focusedLightId && frameLoop !== "panel");
       const enabled2 = !viewEditing && !active2 && enabled.enabled;
@@ -1084,8 +1174,8 @@ export function mountStage(options) {
       hidden2.disabled = element;
       hidden2.setAttribute("aria-pressed", String(moduleId === selectedModule));
     }
-    moduleEmptyEl.hidden = moduleTabsEl.hidden || !activityVisible && (preFocusCamera === "security" ? (properties.security?.presenceSensors || []).some(idleCameraBase) : preFocusCamera === "overview" || preFocusCamera === "light" || pending.length > 0);
-    moduleEmptyEl.textContent = activityVisible ? "请选择楼层，再使用" + (controls.get(activityVisible)?.textContent || "控制") + "。" : preFocusCamera === "security" ? "尚未配置人在传感器，请在 3D 交互属性 → 安防 → 配置安防中添加。" : preFocusCamera === "vacuum" ? "尚未配置扫地机，请在 3D 交互属性 → 扫地机中选择设备。" : preFocusCamera === "devices" ? "尚未配置设备，请在 3D 交互属性 → 设备中添加 NAS 或电视。" : "尚未配置环境设备，请在 3D 交互属性 → 环境中添加空调或窗帘。";
+    moduleEmptyEl.hidden = moduleTabsEl.hidden || !activityVisible && (preFocusCamera === "security" ? [...(properties.security?.presenceSensors || []), ...(properties.security?.cameras || [])].some(idleCameraBase) : preFocusCamera === "overview" || preFocusCamera === "light" || pending.length > 0);
+    moduleEmptyEl.textContent = activityVisible ? "请选择楼层，再使用" + (controls.get(activityVisible)?.textContent || "控制") + "。" : preFocusCamera === "security" ? "尚未配置安防相关设备" : preFocusCamera === "vacuum" ? "尚未配置扫地机，请在 3D 交互属性 → 扫地机中选择设备。" : preFocusCamera === "devices" ? "尚未配置设备，请在 3D 交互属性 → 设备中添加 NAS 或电视。" : "尚未配置环境设备，请在 3D 交互属性 → 环境中添加空调或窗帘。";
   }
   let pendingFloorTransition = null;
   function finishCommand() {
@@ -1369,7 +1459,7 @@ export function mountStage(options) {
     focusVignetteEl.hidden = viewEditing || frameLoop === "edit" || frameLoop === "panel";
     focusVignetteEl.classList.toggle("is-active", vignetteStrength > 0 && !!focusedLightId && !!frameLoop && !focusVignetteEl.hidden);
     viewHelpEl.hidden = !viewEditing && frameLoop !== "edit" && (!editing || !!frameLoop);
-    viewHelpEl.textContent = frameLoop === "edit" ? "拖动旋转 · 右键平移 · 滚轮缩放。调整完成后保存" + (preFocusCamera === "television" ? "电视" : preFocusCamera === "nas" ? "NAS" : preFocusCamera === "cover" ? "窗帘" : preFocusCamera === "climate" ? "空调" : "此灯") + "视角。" : editing && !viewEditing ? "拖动空白处旋转 · 右键平移 · 滚轮缩放。临时查看不改变已保存视角。" : "拖动旋转 · 右键平移 · 滚轮缩放。调整完成后固定视角。";
+    viewHelpEl.textContent = frameLoop === "edit" ? "拖动旋转 · 右键平移 · 滚轮缩放。调整完成后保存" + (focusedLightBinding2()?.deviceKind === "camera" ? "摄像头" : preFocusCamera === "television" ? "电视" : preFocusCamera === "nas" ? "NAS" : preFocusCamera === "cover" ? "窗帘" : preFocusCamera === "climate" ? "空调" : "此灯") + "视角。" : editing && !viewEditing ? "拖动空白处旋转 · 右键平移 · 滚轮缩放。临时查看不改变已保存视角。" : "拖动旋转 · 右键平移 · 滚轮缩放。调整完成后固定视角。";
     markersRootNode.classList.toggle("is-view-editing", viewEditing || frameLoop === "edit");
     lightPanelEl.classList.toggle("is-preview", editing);
     queueOrSendCommand();
@@ -1572,6 +1662,11 @@ export function mountStage(options) {
         type: "vacuum-popup-close"
       });
     }
+    if (focusedLightBinding2()?.deviceKind === "camera") {
+      deviceStatus({
+        type: "camera-popup-close"
+      });
+    }
     root4.hide();
     if (!focusedLightId && !frameLoop && (!activityTracked || immediate.immediate !== true)) {
       return;
@@ -1712,7 +1807,7 @@ export function mountStage(options) {
   }
   function syncLightPanel2() {
     const entityId19 = focusedLightBinding2();
-    if (["vacuum", "presence"].includes(entityId19?.deviceKind)) {
+    if (["vacuum", "presence", "camera"].includes(entityId19?.deviceKind)) {
       lightPanelEl.classList.remove("is-open");
       lightPanelEl.setAttribute("inert", "");
       return;
@@ -2145,11 +2240,11 @@ export function mountStage(options) {
     for (const deviceKind11 of visibleBindings()) {
       let classList2 = rawProperties.get(deviceKind11.id);
       if (!classList2) {
-        classList2 = createEl("button", "i3d-marker");
+        classList2 = createEl(deviceKind11.passiveSensor ? "div" : "button", "i3d-marker");
         classList2.type = "button";
         classList2.addEventListener("click", stopPropagation => {
           stopPropagation.stopPropagation();
-          if (!toolbar && !viewEditing && frameLoop !== "edit" && (!!editing || findBinding(deviceKind11.id)?.buttonHidden !== true)) {
+          if (!deviceKind11.passiveSensor && !toolbar && !viewEditing && frameLoop !== "edit" && (!!editing || findBinding(deviceKind11.id)?.buttonHidden !== true)) {
             if (classList2.dataset.dragged === "true") {
               classList2.dataset.dragged = "";
               return;
@@ -2189,6 +2284,8 @@ export function mountStage(options) {
       classList2.style.width = classList2.style.height = hitSizeNode + "px";
       classList2.classList.toggle("is-vacuum-status", isVacuumMarker);
       classList2.classList.toggle("is-overview-quip", deviceKind11.overviewQuip === true);
+      classList2.classList.toggle("is-presence-wave", deviceKind11.passiveSensor === true);
+      classList2.classList.toggle("is-security-label", deviceKind11.deviceKind === "camera" || deviceKind11.deviceKind === "presence" && editing);
       if (isVacuumMarker) {
         let querySelector = classList2.querySelector(".i3d-vacuum-status");
         if (!querySelector || querySelector.dataset.compact !== String(deviceKind11.overviewQuip === true)) {
@@ -2220,6 +2317,37 @@ export function mountStage(options) {
         classList2.title = (deviceKind11.label || "扫地机器人") + " · " + status.status + " · " + status.battery;
         on.on = status.active;
         on.available = status.available;
+      }
+      if (deviceKind11.deviceKind === "camera" || deviceKind11.deviceKind === "presence") {
+        const securityState = states[deviceKind11.entityId]?.newState || states[deviceKind11.entityId];
+        const available = deviceKind11.deviceKind === "camera" ? cameraOnline(securityState) : securityState?.available !== false && !!securityState?.state && !["unknown", "unavailable"].includes(securityState.state);
+        on.available = available;
+        on.on = deviceKind11.deviceKind === "camera" ? securityState?.state === "recording" : securityState?.state === "on";
+        if (deviceKind11.passiveSensor) {
+          classList2.querySelector(".i3d-sensor-wave") || classList2.replaceChildren(...[0, 1, 2].map(() => createEl("span", "i3d-sensor-wave")));
+          classList2.hidden = !available;
+          classList2.setAttribute("aria-hidden", "true");
+          classList2.classList.toggle("is-inactive", !available);
+        } else {
+          const isSensorChoice = deviceKind11.deviceKind === "presence" && editing;
+          classList2.classList.toggle("is-sensor-choice", isSensorChoice);
+          let securityLabel = classList2.querySelector(".i3d-security-label");
+          securityLabel || (securityLabel = createEl("span", "i3d-security-label"), securityLabel.append(createEl("strong"), createEl("span")), classList2.append(securityLabel));
+          securityLabel.children[0].textContent = deviceKind11.label || (deviceKind11.deviceKind === "camera" ? "摄像头" : "人体传感器");
+          securityLabel.children[1].textContent = editing && !deviceKind11.entityId ? "未绑定实体" : available ? deviceKind11.deviceKind === "presence" ? securityState.state === "on" ? "有人" : "检测中" : "在线" : "离线";
+          securityLabel.children[1].hidden = isSensorChoice;
+          securityLabel.classList.toggle("is-camera-status", deviceKind11.deviceKind === "camera");
+          securityLabel.classList.toggle("is-camera-offline", !available);
+          securityLabel.style.fontSize = (deviceKind11.fontSize || 12) + "px";
+          if (deviceKind11.deviceKind === "camera") {
+            const markerIcon = classList2.querySelector(".i3d-marker-icon");
+            markerIcon && markerIcon.parentNode !== securityLabel && securityLabel.append(markerIcon);
+            securityLabel.style.setProperty("--i3d-marker-icon-size", iconSizeNode + "px");
+          }
+          classList2.style.setProperty("--i3d-security-scale", String(markerSize / 44));
+          classList2.style.width = Math.max(hitSizeNode, (deviceKind11.deviceKind === "camera" ? securityLabel.offsetWidth || 0 : isSensorChoice ? 120 : 180) * markerSize / 44) + "px";
+          classList2.style.height = Math.max(hitSizeNode, (deviceKind11.deviceKind === "camera" ? securityLabel.offsetHeight || 0 : isSensorChoice ? 32 : 58) * markerSize / 44) + "px";
+        }
       }
       classList2.classList.toggle("i3d-vacuum-room", isVacuumRoomMarker);
       classList2.classList.toggle("is-icon-hidden", isVacuumRoomMarker && deviceKind11.iconHidden === true);
@@ -2337,7 +2465,7 @@ export function mountStage(options) {
       if (dragState.moved) {
         pointerId4.currentTarget.dataset.dragged = "true";
         const deviceKind8 = findBinding(dragState.id);
-        const vacuumForRoom = deviceKind8.deviceKind === "vacuum-room" ? properties.devices?.vacuums?.find(id6 => id6.id === deviceKind8.vacuumId)?.shortcuts?.find(id14 => id14.id === deviceKind8.shortcutId) : preFocusCamera === "light" ? deviceKind8 : (["nas", "television", "vacuum"].includes(preFocusCamera) ? properties.devices?.[preFocusCamera === "vacuum" ? "vacuums" : preFocusCamera === "television" ? "televisions" : "nas"] || [] : properties.environment?.[preFocusCamera === "cover" ? "curtains" : "airConditioners"] || []).find(id12 => id12.id === dragState.id);
+        const vacuumForRoom = deviceKind8.deviceKind === "camera" ? properties.security?.cameras?.find(id13 => "camera:" + id13.id === deviceKind8.id) : deviceKind8.deviceKind === "vacuum-room" ? properties.devices?.vacuums?.find(id6 => id6.id === deviceKind8.vacuumId)?.shortcuts?.find(id14 => id14.id === deviceKind8.shortcutId) : preFocusCamera === "light" ? deviceKind8 : (["nas", "television", "vacuum"].includes(preFocusCamera) ? properties.devices?.[preFocusCamera === "vacuum" ? "vacuums" : preFocusCamera === "television" ? "televisions" : "nas"] || [] : properties.environment?.[preFocusCamera === "cover" ? "curtains" : "airConditioners"] || []).find(id12 => id12.id === dragState.id);
         if (vacuumForRoom) {
           Object.assign(vacuumForRoom, dragState.point);
         }
@@ -2844,6 +2972,7 @@ export function mountStage(options) {
     if (!cameraBusy) {
       syncCurtainLayout();
       syncNasStatus();
+      syncSecurityStatus();
       syncPresentationChrome();
       syncVacuumMap();
       markersRoot.tick(frameTime);
@@ -2862,6 +2991,7 @@ export function mountStage(options) {
       floorIds,
       moving: curtainMotion.isMoving() || nextDelay.nextDelay() <= 1000 / 30
     });
+    const presenceWaveTicked = presenceWaves.tick(frameTime);
     const curtainTickMs = isActive.tick(frameTime);
     if (!cameraBusy) {
       setRoot.tick(frameTime);
@@ -2909,7 +3039,7 @@ export function mountStage(options) {
     followRoamBtn.disabled = !presets && !anyVacuumFollowing;
     updateMarkerPositions2();
     canvas.dataset.stageFrameChecks = String(markersById.stats.frames);
-    return Math.min(presenceTicked ? 1000 / 30 : Infinity, vacuumMapTicked || presets ? 1000 / 30 : Infinity, temperatureSlider ? 100 : Infinity, anyVacuumActive ? 7000 - frameTime % 7000 : Infinity, presentedVisible || curtainTickMs || vacuumTickMs ? 0 : Infinity, curtainMotion.isMoving() ? 1000 / 30 : Infinity, nextDelay.nextDelay(frameTime), setRoot.nextDelay(), markersRoot.nextDelay(), activity3.nextDelay(frameTime), activity.nextDelay(frameTime), activity2.nextDelay(frameTime), reject4.nextDelay(frameTime));
+    return Math.min(presenceWaveTicked ? 1000 / 30 : Infinity, presenceTicked ? 1000 / 30 : Infinity, vacuumMapTicked || presets ? 1000 / 30 : Infinity, temperatureSlider ? 100 : Infinity, anyVacuumActive ? 7000 - frameTime % 7000 : Infinity, presentedVisible || curtainTickMs || vacuumTickMs ? 0 : Infinity, curtainMotion.isMoving() ? 1000 / 30 : Infinity, nextDelay.nextDelay(frameTime), setRoot.nextDelay(), markersRoot.nextDelay(), activity3.nextDelay(frameTime), activity.nextDelay(frameTime), activity2.nextDelay(frameTime), reject4.nextDelay(frameTime));
   }
   markersById = options.createFrameLoop({
     step: frameDt => options.profileFrameWork ? options.profileFrameWork("stage-updates", () => tickStageFrame(frameDt)) : tickStageFrame(frameDt)
@@ -2921,6 +3051,7 @@ export function mountStage(options) {
     sync2.dispose();
     hasTracking.dispose();
     hitRects.dispose();
+    presenceWaves.dispose();
     if (presets) {
       displayLightState(false);
     }
@@ -2944,6 +3075,7 @@ export function mountStage(options) {
     sceneSync();
     root3.dispose();
     markersRoot.dispose();
+    cameraStatus.dispose();
     root4.dispose();
     sync.dispose();
     setRoot.dispose();

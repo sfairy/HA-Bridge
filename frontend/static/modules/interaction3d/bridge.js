@@ -1,6 +1,6 @@
 import { createAccessMonitor } from "./access-monitor.js?v=20260905-interaction3d-v1-20260905-i3d-polish-v1-20260906-access-state-v2";
 import { createInteraction3dCover } from "./cover.js?v=20260905-interaction3d-cover-v1-20260908-access-lock-v1";
-import { createInteraction3dFocusLayout } from "./focus-layout.js?v=20260906-i3d-complete-v6";
+import { createInteraction3dFocusLayout } from "./focus-layout.js?v=20260911-navigation-light-v14";
 export async function requestInteraction3dAccess() {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -98,6 +98,11 @@ export function renderInteraction3d(component, context = {}) {
   let mounted = false;
   let loadGeneration = 0;
   let runtimeView;
+  let pageVisible = true;
+  host.setInteraction3dPageVisible = nextPageVisible => {
+    pageVisible = nextPageVisible !== false;
+    runtimeView?.setPageVisible?.(pageVisible);
+  };
   let stylesheetLink;
   const focusLayout = createInteraction3dFocusLayout(host, context);
   host.classList.toggle("is-background-hidden", component.properties?.backgroundVisible === false);
@@ -170,7 +175,7 @@ export function renderInteraction3d(component, context = {}) {
     loading = true;
     const generation = ++loadGeneration;
     try {
-      const runtime = await import("/api/v1/modules/interaction3d/runtime.js?v=20260910-control-projectid-v1");
+      const runtime = await import("/api/v1/modules/interaction3d/runtime.js?v=20260911-stage-retain-v1-security-camera-popup-v6");
       if (disposed || generation !== loadGeneration || document.hidden) {
         return;
       }
@@ -184,6 +189,7 @@ export function renderInteraction3d(component, context = {}) {
         component,
         context,
         onPresented: () => {
+          focusLayout.refresh();
           if (context.editable) {
             notifyViewWaiters(component.id);
           }
@@ -195,6 +201,7 @@ export function renderInteraction3d(component, context = {}) {
         },
         onFocusChange: focused => focusLayout.setActive(focused)
       });
+      runtimeView.setPageVisible?.(pageVisible);
       if (context.editable) {
         editorViews.set(component.id, runtimeView);
       }

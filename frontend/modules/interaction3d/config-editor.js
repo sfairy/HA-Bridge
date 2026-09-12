@@ -1,12 +1,12 @@
 import { vacuumMapIdentity } from "./vacuum-map.js?v=20260909-curtain-action-v15";
-import { openInteraction3dRangeEditor } from "./range-dialog.js?v=20260910-document-shadow-v1";
-import { mountInteraction3d } from "./runtime.js?v=20260910-control-projectid-v1";
+import { openInteraction3dRangeEditor } from "./range-dialog.js?v=20260910-document-shadow-v1-20260911-navigation-light-v14-stage-retain-v1";
+import { mountInteraction3d } from "./runtime.js?v=20260910-control-projectid-v1-20260911-workspace-switch-v1-20260911-security-camera-popup-v6";
 import { lightState } from "./light-state.js?v=20260906-i3d-render-recovery-v1";
 import { openVacuumMapEditor } from "./vacuum-map-editor.js?v=20260909-curtain-action-v15";
 import { nasGroups } from "./nas-panel.js";
 import { randomUuid } from "/bridge-static/utils/random-id.js?v=20260724-revert-hold-popup-shield-v324";
 import { interaction3dPreviewSize } from "/bridge-static/modules/interaction3d/preview-layout.js?v=20260906-i3d-preview-layout-v1-20260908-curtains-v1";
-import { requestInteraction3dAccess, getInteraction3dEditorView, subscribeInteraction3dAccess } from "/bridge-static/modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1";
+import { requestInteraction3dAccess, getInteraction3dEditorView, subscribeInteraction3dAccess } from "/bridge-static/modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1";
 import { normalizeInteraction3dLightingMode } from "/bridge-static/modules/interaction3d/definition.js?v=20260909-curtain-action-v15";
 const APPEARANCE_LIGHTING_SECTIONS = [["整体", [["曝光", "exposure", 0.5, 2, 0.05], ["半球光", "hemisphereIntensity", 0, 3, 0.05], ["环境光", "ambientIntensity", 0, 2, 0.05]]], ["主光与阴影", [["强度", "mainIntensity", 0, 5, 0.05], ["水平角", "mainAzimuth", -180, 180, 5], ["高度角", "mainElevation", 5, 89, 5], ["阴影浓度", "mainShadowIntensity", 0, 1, 0.05]]], ["侧面补光", [["强度", "fillIntensity", 0, 3, 0.05], ["水平角", "fillAzimuth", -180, 180, 5], ["高度角", "fillElevation", 0, 89, 5]]], ["顶部补光", [["强度", "topIntensity", 0, 3, 0.05], ["水平角", "topAzimuth", -180, 180, 5], ["高度角", "topElevation", 0, 89, 5]]]];
 export async function openInteraction3dEditor({
@@ -23,6 +23,10 @@ export async function openInteraction3dEditor({
 }) {
   await requestInteraction3dAccess();
   let deviceKindLocal = deviceKind;
+  const isEnvironmentKind = ["environment", "climate", "cover"].includes(deviceKindLocal);
+  if (deviceKindLocal === "environment") {
+    deviceKindLocal = "climate";
+  }
   const isDeviceMode = deviceKindLocal === "devices" || deviceKindLocal === "nas" || deviceKindLocal === "television";
   if (deviceKindLocal === "devices") {
     deviceKindLocal = "nas";
@@ -43,7 +47,7 @@ export async function openInteraction3dEditor({
   const sceneMeta = clickActionValue => isDeviceLike ? ["focus", "focus-panel", "panel"].includes(clickActionValue) ? clickActionValue : "focus-panel" : isCover ? clickActionValue === "panel" ? "panel" : "focus" : ["turn-on-focus", "turn-on", "turn-on-panel"].includes(clickActionValue) ? clickActionValue : "focus";
   const rel = document.createElement("link");
   rel.rel = "stylesheet";
-  rel.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15";
+  rel.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15-20260911-unified-settings-v1";
   document.head.append(rel);
   const createEl = (tagName, elClassName, element4) => {
     const className9 = document.createElement(tagName);
@@ -62,6 +66,7 @@ export async function openInteraction3dEditor({
   const editorDialog = createEl("dialog", "i3d-editor");
   editorDialog.setAttribute("aria-label", "3D " + stageLabel + "配置");
   editorDialog.setAttribute("data-i3d-preview-scope", "");
+  editorDialog.className += " i3d-unified-settings";
   const focusBusy = createEl("header");
   const editorBody = createEl("div", "i3d-editor-body");
   const previewView = createEl("div", "i3d-editor-view");
@@ -1032,8 +1037,25 @@ export async function openInteraction3dEditor({
       }
     }
   }
+  function makeConfigSection(sectionLabel) {
+    const sectionEl = createEl("section", "i3d-config-section");
+    sectionEl.append(createEl("h4", "", sectionLabel));
+    focusQueue.append(sectionEl);
+    return sectionEl;
+  }
+  function makeConfigRow(rowParent) {
+    const rowEl = createEl("div", "i3d-config-row");
+    rowParent.append(rowEl);
+    return rowEl;
+  }
   function renderVacuumShortcutSidebar() {
     focusQueue.append(accessAllowed("返回扫地机配置", () => void reopenEditorAs("vacuum")));
+    const scopeRow = makeConfigRow(makeConfigSection("配置范围"));
+    appendPositiveNumber(scopeRow, "配置内容", [["vacuum", "设备与地图"], ["vacuum-shortcut", "快捷指令"]], deviceKindLocal, sidebarContentKind => {
+      if (sidebarContentKind !== deviceKindLocal) {
+        reopenEditorAs(sidebarContentKind);
+      }
+    });
     if (!draftRevision) {
       return;
     }
@@ -1042,7 +1064,7 @@ export async function openInteraction3dEditor({
       focusQueue.append(createEl("p", "i3d-note", "请先在扫地机配置中添加并绑定扫地机。"));
       return;
     }
-    appendPositiveNumber(focusQueue, "所属扫地机", length9.map(id32 => [id32.id, id32.label || id32.deviceName || "扫地机"]), vacuumId, selectedVacuumId => {
+    appendPositiveNumber(scopeRow, "所属扫地机", length9.map(id32 => [id32.id, id32.label || id32.deviceName || "扫地机"]), vacuumId, selectedVacuumId => {
       vacuumId = selectedVacuumId;
       saving = "";
       capabilityCache2.clear();
@@ -1051,11 +1073,13 @@ export async function openInteraction3dEditor({
       mountPreviewRuntime();
       rebuildConfigSidebar();
     });
-    const shortcutListHeading = createEl("div", "i3d-light-heading");
+    const shortcutListSection = makeConfigSection("快捷按钮");
+    shortcutListSection.className += " i3d-compact-list";
+    const shortcutListHeading = createEl("div", "i3d-config-list-row");
     const disabled15 = accessAllowed("添加快捷指令", openAddDialog);
     disabled15.disabled = getCurrentItems().length >= 64;
-    shortcutListHeading.append(createEl("h4", "", "快捷按钮"), disabled15);
-    focusQueue.append(shortcutListHeading);
+    shortcutListHeading.append(disabled15);
+    shortcutListSection.append(shortcutListHeading);
     if (!getCurrentItems().some(id33 => id33.id === saving)) {
       saving = getCurrentItems()[0]?.id || "";
     }
@@ -1063,7 +1087,7 @@ export async function openInteraction3dEditor({
       focusQueue.append(createEl("p", "i3d-note", "添加按钮后，选择全部实体中的清扫指令，在户型中拖动按钮放置。"));
       return;
     }
-    appendPositiveNumber(focusQueue, "当前按钮", getCurrentItems().map(id34 => [id34.id, id34.label]), saving, selectedShortcutId => {
+    appendPositiveNumber(shortcutListHeading, "当前按钮", getCurrentItems().map(id34 => [id34.id, id34.label]), saving, selectedShortcutId => {
       saving = selectedShortcutId;
       pickerSession++;
       close6?.close();
@@ -1080,7 +1104,8 @@ export async function openInteraction3dEditor({
       mountRuntime();
     });
     className15.className = "i3d-remove-light";
-    focusQueue.append(className15);
+    const shortcutBaseSection = makeConfigSection("基础绑定");
+    const shortcutBaseRow = makeConfigRow(shortcutBaseSection);
     const shortcutNameInput = createEl("input");
     shortcutNameInput.value = icon2.label;
     shortcutNameInput.maxLength = 128;
@@ -1089,7 +1114,7 @@ export async function openInteraction3dEditor({
       rebuildConfigSidebar();
       mountRuntime();
     };
-    appendSetting(focusQueue, "名称", shortcutNameInput);
+    appendSetting(shortcutBaseRow, "名称", shortcutNameInput);
     const openShortcutPicker = (shortcutPickerKind, trigger3) => {
       const shortcutPickerSession = ++pickerSession;
       Promise.resolve(pickers[shortcutPickerKind]({
@@ -1119,16 +1144,18 @@ export async function openInteraction3dEditor({
     };
     const className16 = accessAllowed(icon2.entityId || "选择实体（全部）", () => openShortcutPicker("entity", className16));
     className16.className = "i3d-picker-button";
-    appendSetting(focusQueue, "指令实体", className16);
+    appendSetting(shortcutBaseRow, "指令实体", className16);
+    const shortcutAppearanceSection = makeConfigSection("按钮外观");
+    const shortcutAppearanceRow = makeConfigRow(shortcutAppearanceSection);
     const className17 = accessAllowed("", () => openShortcutPicker("icon", className17));
     className17.className = "i3d-picker-button i3d-icon-picker-button";
     const style2 = createEl("i");
     style2.style.maskImage = "url('/bridge-static/vendor/mdi/7.4.47/svg/" + (icon2.icon || errorNote).slice(4) + ".svg')";
     style2.style.webkitMaskImage = style2.style.maskImage;
     className17.append(style2, createEl("span", "", icon2.icon || errorNote));
-    appendSetting(focusQueue, "图标", className17);
+    appendSetting(shortcutAppearanceRow, "图标", className17);
     const shortcutVisibilityRow = createEl("div", "i3d-button-visibility-row i3d-shortcut-visibility");
-    focusQueue.append(shortcutVisibilityRow);
+    shortcutAppearanceSection.append(shortcutVisibilityRow);
     for (const [shortcutVisKey, shortcutVisLabel] of [["hiddenClickable", "隐藏（可点击）"], ["buttonHidden", "隐藏（不可点击）"]]) {
       const checked9 = createEl("input");
       checked9.type = "checkbox";
@@ -1154,15 +1181,18 @@ export async function openInteraction3dEditor({
       appendSetting(shortcutVisibilityRow, shortcutHideLabel, checked10);
     }
     const shortcutSizeGrid = createEl("div", "i3d-coordinate-grid i3d-size-grid i3d-shortcut-size-grid");
-    focusQueue.append(shortcutSizeGrid);
+    const shortcutSizeDetails = createEl("details");
+    shortcutSizeDetails.append(createEl("summary", "", "更多尺寸设置"), shortcutSizeGrid);
+    shortcutAppearanceSection.append(shortcutSizeDetails);
     for (const [shortcutSizeKey, shortcutSizeLabel, shortcutSizeDefault] of [["size", "按钮大小（px）", 44], ["iconSize", "图标大小（px）", 26], ["fontSize", "文字大小（px）", 12], ["hitSize", "触控范围（px）", 44]]) {
-      appendPositiveInput(shortcutSizeGrid, shortcutSizeLabel, () => icon2[shortcutSizeKey] || shortcutSizeDefault, shortcutSizeValue => {
+      appendPositiveInput(shortcutSizeKey === "size" ? shortcutAppearanceRow : shortcutSizeGrid, shortcutSizeLabel, () => icon2[shortcutSizeKey] || shortcutSizeDefault, shortcutSizeValue => {
         icon2[shortcutSizeKey] = shortcutSizeValue;
         mountRuntime();
       });
     }
+    const shortcutPositionSection = makeConfigSection("按钮位置");
     const shortcutCoordGrid = createEl("div", "i3d-coordinate-grid");
-    focusQueue.append(shortcutCoordGrid);
+    shortcutPositionSection.append(shortcutCoordGrid);
     for (const toUpperCase2 of ["x", "y"]) {
       appendBoundedInput(shortcutCoordGrid, "位置 " + toUpperCase2.toUpperCase(), icon2[toUpperCase2], -1000000, 1000000, 1, shortcutCoordValue => {
         icon2[toUpperCase2] = shortcutCoordValue;
@@ -1173,7 +1203,7 @@ export async function openInteraction3dEditor({
       icon2.height = height2;
       mountRuntime();
     });
-    focusQueue.append(createEl("p", "i3d-note", "拖动按钮调整位置，拖动空白处旋转户型。点击只执行绑定指令，不弹窗、不聚焦。"));
+    shortcutPositionSection.append(createEl("p", "i3d-note", "拖动按钮调整位置，拖动空白处旋转户型。点击只执行绑定指令，不弹窗、不聚焦。"));
     const shortcutBatchSection = createEl("section", "navigation-batch-section i3d-light-batch");
     const disabled16 = accessAllowed("一键应用到其他快捷按钮", () => appendNumber(icon2));
     shortcutBatchSection.append(createEl("h4", "", "图标设置一键应用"), disabled16);
@@ -1182,6 +1212,7 @@ export async function openInteraction3dEditor({
       disabled16.disabled = !resolveLightCapability(icon2).length || !capabilityCache;
     };
     updateBatchApplyState();
+    makeConfigSection("绑定管理").append(className15);
   }
   function rebuildConfigSidebar() {
     refreshEffectCapabilityUi = () => {};
@@ -1192,6 +1223,7 @@ export async function openInteraction3dEditor({
       return;
     }
     if (!isNonLight && effectRangeOpen.lightingMode === "region") {
+      const rangeSection = makeConfigSection("照射范围");
       const disabled10 = accessAllowed("编辑照射范围", async () => {
         if (!resizeObserver) {
           resizeObserver = true;
@@ -1238,39 +1270,56 @@ export async function openInteraction3dEditor({
       });
       disabled10.dataset.interaction3dRangeEditor = "true";
       disabled10.disabled = resizeObserver || !effectRangeOpen.sceneId;
-      focusQueue.append(disabled10, createEl("p", "i3d-note", "在独立弹窗中拖动范围；保存范围后，再点击“保存配置”保存到当前控件。"));
+      rangeSection.append(disabled10, createEl("p", "i3d-note", "在独立弹窗中拖动范围；保存范围后，再点击“保存配置”保存到当前控件。"));
     }
     if (draftRevision) {
+      const scopeRow = makeConfigRow(makeConfigSection("配置范围"));
+      appendPositiveNumber(scopeRow, "配置楼层", draftRevision.floors.map(id27 => [id27.id, id27.name]), syncPreviewSize, selectedFloorId => {
+        syncPreviewSize = selectedFloorId;
+        mountRuntime();
+        rebuildConfigSidebar();
+      });
       if (isDeviceMode) {
-        appendPositiveNumber(focusQueue, "设备类别", [["nas", "NAS"], ["television", "电视"]], deviceKindLocal, sidebarDeviceKind => {
+        appendPositiveNumber(scopeRow, "设备类别", [["nas", "NAS"], ["television", "电视"]], deviceKindLocal, sidebarDeviceKind => {
           if (sidebarDeviceKind !== deviceKindLocal) {
             reopenEditorAs(sidebarDeviceKind);
           }
         });
       }
-      appendPositiveNumber(focusQueue, "配置楼层", draftRevision.floors.map(id27 => [id27.id, id27.name]), syncPreviewSize, selectedFloorId => {
-        syncPreviewSize = selectedFloorId;
-        mountRuntime();
-        rebuildConfigSidebar();
-      });
-      const itemListHeading = createEl("div", "i3d-light-heading");
+      if (isEnvironmentKind) {
+        appendPositiveNumber(scopeRow, "环境类别", [["climate", "空调"], ["cover", "窗帘"]], deviceKindLocal, sidebarEnvironmentKind => {
+          if (sidebarEnvironmentKind !== deviceKindLocal) {
+            reopenEditorAs(sidebarEnvironmentKind);
+          }
+        });
+      }
+      if (isVacuum) {
+        appendPositiveNumber(scopeRow, "配置内容", [["vacuum", "设备与地图"], ["vacuum-shortcut", "快捷指令"]], deviceKindLocal, sidebarContentKind => {
+          if (sidebarContentKind !== deviceKindLocal) {
+            reopenEditorAs(sidebarContentKind);
+          }
+        });
+      }
+      const itemListSection = makeConfigSection(isNonLight ? "模型列表" : "灯光列表");
+      itemListSection.className += " i3d-compact-list";
+      const itemListHeading = createEl("div", "i3d-config-list-row");
       const floorTargets = listFloorTargets();
       const length5 = listAvailableTargets();
       const disabled11 = accessAllowed("添加" + stageLabel, openAddDialog);
       disabled11.disabled = !length5.length || getCurrentItems().length >= 128;
       const addBlockedHint = unavailableAddHint(length5, floorTargets);
       disabled11.title = addBlockedHint;
-      itemListHeading.append(createEl("h4", "", isDeviceMode ? "设备列表" : stageLabel + "按钮"), disabled11);
-      focusQueue.append(itemListHeading);
+      itemListHeading.append(disabled11);
+      itemListSection.append(itemListHeading);
       const some2 = getCurrentItems().filter(floorId3 => floorId3.floorId === syncPreviewSize || isNonLight && !draftRevision.floors.some(id15 => id15.id === floorId3.floorId));
       if (addBlockedHint && !length5.length && some2.length) {
-        focusQueue.append(createEl("p", "i3d-note", addBlockedHint));
+        itemListSection.append(createEl("p", "i3d-note", addBlockedHint));
       }
       if (!some2.some(id28 => id28.id === saving)) {
         saving = some2[0]?.id || "";
       }
       if (some2.length) {
-        appendPositiveNumber(focusQueue, isDeviceMode ? "当前设备" : "当前按钮", some2.map(id24 => [id24.id, id24.label]), saving, selectedItemId => {
+        appendPositiveNumber(itemListHeading, isDeviceMode ? "当前设备" : "当前按钮", some2.map(id24 => [id24.id, id24.label]), saving, selectedItemId => {
           pickerSession++;
           close6?.close();
           saving = selectedItemId;
@@ -1289,12 +1338,13 @@ export async function openInteraction3dEditor({
           rebuildConfigSidebar();
         });
         className7.className = "i3d-remove-light";
-        focusQueue.append(className7);
+        const baseSection = makeConfigSection("基础绑定");
+        const baseRow = makeConfigRow(baseSection);
         if (isDeviceMode) {
           const deviceTypeReadonly = createEl("input");
           deviceTypeReadonly.value = isTelevision ? "电视" : "NAS";
           deviceTypeReadonly.readOnly = true;
-          appendSetting(focusQueue, "设备类型", deviceTypeReadonly);
+          appendSetting(baseRow, "设备类型", deviceTypeReadonly);
         }
         const itemNameInput = createEl("input");
         itemNameInput.value = statusSource.label;
@@ -1303,7 +1353,7 @@ export async function openInteraction3dEditor({
           statusSource.label = itemNameInput.value.trim() || stageLabel;
           mountRuntime();
         });
-        appendSetting(focusQueue, "名称", itemNameInput);
+        appendSetting(baseRow, "名称", itemNameInput);
         if (isNonLight) {
           const some = draftRevision.floors.filter(id13 => id13.id === syncPreviewSize).flatMap(id16 => (id16[statusNote] || []).filter(id3 => !getCurrentItems().some(floorId => floorId !== statusSource && floorId.floorId === id16.id && floorId.modelId === id3.id)).map(model => ({
             floor: id16,
@@ -1316,7 +1366,7 @@ export async function openInteraction3dEditor({
           if (!boundModelStillExists) {
             unshift.unshift([boundModelKey, "原模型已移除，请重新选择"]);
           }
-          appendPositiveNumber(focusQueue, "关联" + stageLabel + "模型", unshift, boundModelKey, selectedModelKey => {
+          appendPositiveNumber(baseRow, "关联" + stageLabel + "模型", unshift, boundModelKey, selectedModelKey => {
             const floor = some.find(key => key.key === selectedModelKey);
             if (!!floor && selectedModelKey !== boundModelKey) {
               statusSource.floorId = floor.floor.id;
@@ -1328,11 +1378,11 @@ export async function openInteraction3dEditor({
             }
           });
           if (!boundModelStillExists) {
-            focusQueue.append(createEl("p", "i3d-note", "原模型已移除，请重新选择。已保存的实体绑定和按钮设置仍然保留。"));
+            baseSection.append(createEl("p", "i3d-note", "原模型已移除，请重新选择。已保存的实体绑定和按钮设置仍然保留。"));
           }
         }
         if (isCover) {
-          appendPositiveNumber(focusQueue, "开合方向", [["auto", "继承模型"], ["left", "单开 · 向左收拢"], ["right", "单开 · 向右收拢"], ["split", "双开 · 向两侧收拢"]], statusSource.coverDirection, coverDirectionChoice => {
+          appendPositiveNumber(baseSection, "开合方向", [["auto", "继承模型"], ["left", "单开 · 向左收拢"], ["right", "单开 · 向右收拢"], ["split", "双开 · 向两侧收拢"]], statusSource.coverDirection, coverDirectionChoice => {
             statusSource.coverDirection = ["left", "right", "split"].includes(coverDirectionChoice) ? coverDirectionChoice : "auto";
             mountRuntime();
           });
@@ -1347,7 +1397,7 @@ export async function openInteraction3dEditor({
             statusSource.iconStateReversed = addEventListener2.checked;
             mountRuntime();
           });
-          appendSetting(focusQueue, "图标状态反向", addEventListener2);
+          appendSetting(baseSection, "图标状态反向", addEventListener2);
         }
         const openItemPicker = async (itemPickerKind, trigger) => {
           const itemPickerSession = ++pickerSession;
@@ -1425,23 +1475,24 @@ export async function openInteraction3dEditor({
         if (isNas) {
           const className2 = accessAllowed(statusSource.statusSource?.name || "选择飞牛或群晖", () => void openItemPicker("nas", className2));
           className2.className = "i3d-picker-button";
-          appendSetting(focusQueue, "NAS 数据来源", className2);
+          appendSetting(baseSection, "NAS 数据来源", className2);
           if (statusSource.statusSource) {
             const nasVisibleMetricCount = statusSource.statusSource.visibleMetrics?.length ?? statusSource.statusSource.metrics.length;
             const className = accessAllowed("选择显示内容（" + nasVisibleMetricCount + " 项）", () => appendSelect(statusSource));
             className.className = "i3d-picker-button";
-            focusQueue.append(className);
+            baseSection.append(className);
           }
-          focusQueue.append(createEl("p", "i3d-note", statusSource.statusSource ? "已匹配 " + statusSource.statusSource.metrics.length + " 项状态。点击数据来源可重新匹配；弹窗只展示状态。" : "选择整台 NAS，自动匹配 CPU、内存、温度、存储和网络。无需逐个选择传感器。"));
+          baseSection.append(createEl("p", "i3d-note", statusSource.statusSource ? "已匹配 " + statusSource.statusSource.metrics.length + " 项状态。点击数据来源可重新匹配；弹窗只展示状态。" : "选择整台 NAS，自动匹配 CPU、内存、温度、存储和网络。无需逐个选择传感器。"));
         }
         const className8 = accessAllowed("", () => void openItemPicker("entity", className8));
         className8.className = "i3d-picker-button";
         className8.title = statusSource.entityId || (isNonLight ? "选择" + stageLabel + "实体" : "选择灯或开关");
         className8.append(createEl("span", "", name2?.name || statusSource.entityId || (isNonLight ? "选择" + stageLabel + "实体" : "选择灯或开关")));
         if (!isVacuum && (!isNas || !statusSource.statusSource)) {
-          appendSetting(focusQueue, isNas ? "原开启实体（未关联 NAS）" : "绑定实体", className8);
+          appendSetting(baseSection, isNas ? "原开启实体（未关联 NAS）" : "绑定实体", className8);
         }
         if (isVacuum) {
+          const mapSection = makeConfigSection("地图与移动");
           const followOffsetInput = createEl("input");
           Object.assign(followOffsetInput, {
             type: "number",
@@ -1465,7 +1516,7 @@ export async function openInteraction3dEditor({
             }
             followOffsetInput.value = String(effectRangeOpen.navigation?.followOffset ?? 16);
           });
-          appendSetting(focusQueue, "跟随标签上移（px）", followOffsetInput);
+          appendSetting(mapSection, "跟随标签上移（px）", followOffsetInput);
           for (const [vacuumToggleKey, vacuumToggleLabel] of [["motionEnabled", "跟随真实位置移动"], ["funMessages", "工作时显示趣味短句"]]) {
             const addEventListener = createEl("input");
             Object.assign(addEventListener, {
@@ -1476,25 +1527,25 @@ export async function openInteraction3dEditor({
               statusSource[vacuumToggleKey] = addEventListener.checked;
               mountRuntime();
             });
-            appendSetting(focusQueue, vacuumToggleLabel, addEventListener);
+            appendSetting(mapSection, vacuumToggleLabel, addEventListener);
           }
           const className3 = accessAllowed(statusSource.deviceName || "选择扫地机设备", () => void openItemPicker("vacuum", className3));
           className3.className = "i3d-picker-button";
-          appendSetting(focusQueue, "绑定设备", className3);
+          appendSetting(baseSection, "绑定设备", className3);
           const entities2 = get5.get(statusSource.deviceId) || {
             entities: entities.filter(entityId10 => /^vacuum\./.test(entityId10.entityId) && (entityId10.deviceId === statusSource.deviceId || entityId10.entityId === statusSource.deviceId)),
             maps: entities.filter(entityId11 => /^(camera|image)\./.test(entityId11.entityId) && entityId11.deviceId === statusSource.deviceId)
           };
           if (entities2?.entities.length > 1) {
-            appendPositiveNumber(focusQueue, "扫地机主实体", [["", "请选择主实体"], ...entities2.entities.map(entityId7 => [entityId7.entityId, entityId7.name || entityId7.entityId])], statusSource.entityId, entityId13 => {
+            appendPositiveNumber(baseSection, "扫地机主实体", [["", "请选择主实体"], ...entities2.entities.map(entityId7 => [entityId7.entityId, entityId7.name || entityId7.entityId])], statusSource.entityId, entityId13 => {
               statusSource.entityId = entityId13;
               mountRuntime();
             });
           } else if (statusSource.entityId) {
-            focusQueue.append(createEl("p", "i3d-note", "已识别：" + statusSource.entityId));
+            baseSection.append(createEl("p", "i3d-note", "已识别：" + statusSource.entityId));
           }
           if (entities2?.maps.length > 1) {
-            appendPositiveNumber(focusQueue, "已识别的地图", [["", "请选择地图"], ...entities2.maps.map(entityId8 => [entityId8.entityId, entityId8.name || entityId8.entityId])], statusSource.map?.entityId || "", entityId14 => {
+            appendPositiveNumber(mapSection, "已识别的地图", [["", "请选择地图"], ...entities2.maps.map(entityId8 => [entityId8.entityId, entityId8.name || entityId8.entityId])], statusSource.map?.entityId || "", entityId14 => {
               statusSource.map = {
                 ...statusSource.map,
                 entityId: entityId14
@@ -1526,7 +1577,7 @@ export async function openInteraction3dEditor({
             }
           });
           trigger2.className = "i3d-picker-button";
-          appendSetting(focusQueue, "地图来源", trigger2);
+          appendSetting(mapSection, "地图来源", trigger2);
           const openMapAlignButton = accessAllowed("底图对齐", () => {
             const mapEntityState = latestStatesByEntity === null ? states?.get?.(statusSource.map?.entityId) : latestStatesByEntity[statusSource.map?.entityId];
             const vacuumEntityState = latestStatesByEntity === null ? states?.get?.(statusSource.entityId) : latestStatesByEntity[statusSource.entityId];
@@ -1556,23 +1607,24 @@ export async function openInteraction3dEditor({
               }
             });
           });
-          focusQueue.append(openMapAlignButton);
+          mapSection.append(openMapAlignButton);
         }
         if (isTelevision) {
           const className4 = accessAllowed(statusSource.powerEntityId || "不单独绑定", () => void openItemPicker("powerEntity", className4));
           className4.className = "i3d-picker-button";
-          appendSetting(focusQueue, "电视电源状态（可选）", className4);
-          focusQueue.append(createEl("p", "i3d-note", "绑定 Apple TV 的 media_player 实体，同步封面、应用、节目和播放状态。电源状态可单独绑定电视；弹窗只读，不同步实际视频。"));
+          appendSetting(baseSection, "电视电源状态（可选）", className4);
+          baseSection.append(createEl("p", "i3d-note", "绑定 Apple TV 的 media_player 实体，同步封面、应用、节目和播放状态。电源状态可单独绑定电视；弹窗只读，不同步实际视频。"));
         }
         if (isNas) {
-          focusQueue.append(createEl("p", "i3d-note", statusSource.statusSource ? "已选择 NAS 自身状态数据作为呼吸灯依据。安全状态只用于告警。" : "请先选择 NAS 数据来源。原来的试绑实体不会自动作为 NAS 数据来源。"));
+          baseSection.append(createEl("p", "i3d-note", statusSource.statusSource ? "已选择 NAS 自身状态数据作为呼吸灯依据。安全状态只用于告警。" : "请先选择 NAS 数据来源。原来的试绑实体不会自动作为 NAS 数据来源。"));
         }
-        appendPositiveNumber(focusQueue, "点击" + stageLabel, isDeviceLike ? [["focus-panel", "聚焦并显示状态"], ["panel", "仅显示状态"], ["focus", "仅聚焦"]] : isCover ? [["focus", "聚焦并显示控制"], ["panel", "仅显示控制"]] : isClimate ? [["focus", "聚焦并显示控制"], ["turn-on-focus", "聚焦并开启"], ["turn-on", "仅开关空调"], ["turn-on-panel", "开启并显示控制"]] : [["focus", "仅聚焦"], ["turn-on-focus", "聚焦并开灯"], ["turn-on", "仅开关灯"], ["turn-on-panel", "开灯并弹窗"]], statusSource.clickAction, clickActionChoice => {
+        const interactionSection = makeConfigSection("交互行为");
+        appendPositiveNumber(interactionSection, "点击" + stageLabel, isDeviceLike ? [["focus-panel", "聚焦并显示状态"], ["panel", "仅显示状态"], ["focus", "仅聚焦"]] : isCover ? [["focus", "聚焦并显示控制"], ["panel", "仅显示控制"]] : isClimate ? [["focus", "聚焦并显示控制"], ["turn-on-focus", "聚焦并开启"], ["turn-on", "仅开关空调"], ["turn-on-panel", "开启并显示控制"]] : [["focus", "仅聚焦"], ["turn-on-focus", "聚焦并开灯"], ["turn-on", "仅开关灯"], ["turn-on-panel", "开灯并弹窗"]], statusSource.clickAction, clickActionChoice => {
           statusSource.clickAction = sceneMeta(clickActionChoice);
           mountRuntime();
         });
         const visibilityRow = createEl("div", "i3d-button-visibility-row");
-        focusQueue.append(visibilityRow);
+        interactionSection.append(visibilityRow);
         const checked7 = createEl("input");
         Object.assign(checked7, {
           type: "checkbox",
@@ -1601,6 +1653,8 @@ export async function openInteraction3dEditor({
           mountRuntime();
         });
         appendSetting(visibilityRow, "隐藏（不可点击）", checked8).parentElement.className += " i3d-hidden-clickable-setting";
+        const appearanceSection = makeConfigSection(isVacuum ? "状态标签" : "按钮外观");
+        const appearanceRow = makeConfigRow(appearanceSection);
         if (!isVacuum) {
           const className5 = accessAllowed("", () => void openItemPicker("icon", className5));
           className5.className = "i3d-picker-button i3d-icon-picker-button";
@@ -1610,12 +1664,14 @@ export async function openInteraction3dEditor({
           style.style.maskImage = "url(\"" + iconSvgUrl + "\")";
           style.style.webkitMaskImage = "url(\"" + iconSvgUrl + "\")";
           className5.append(style, createEl("span", "", statusSource.icon));
-          appendSetting(focusQueue, "图标", className5);
+          appendSetting(appearanceRow, "图标", className5);
         }
         const sizeGrid = createEl("div", "i3d-coordinate-grid i3d-size-grid");
-        focusQueue.append(sizeGrid);
+        const sizeDetails = createEl("details");
+        sizeDetails.append(createEl("summary", "", "更多尺寸设置"), sizeGrid);
+        appearanceSection.append(sizeDetails);
         const resolveHitSize = () => Number.isFinite(statusSource.hitSize) && statusSource.hitSize > 0 ? statusSource.hitSize : Math.max(44, statusSource.size);
-        appendPositiveInput(sizeGrid, isVacuum ? "状态框缩放（%）" : "按钮大小（px）", () => isVacuum ? Math.round(statusSource.size / 44 * 100) : statusSource.size, sizeInputValue => {
+        appendPositiveInput(appearanceRow, isVacuum ? "状态框缩放（%）" : "按钮大小（px）", () => isVacuum ? Math.round(statusSource.size / 44 * 100) : statusSource.size, sizeInputValue => {
           statusSource.size = isVacuum ? sizeInputValue / 100 * 44 : sizeInputValue;
           hitSizeInput.value = String(Number(resolveHitSize().toPrecision(12)));
           mountRuntime();
@@ -1629,9 +1685,10 @@ export async function openInteraction3dEditor({
           mountRuntime();
         });
         if (isNonLight) {
+          const positionSection = makeConfigSection(isVacuum ? "标签位置" : "按钮位置");
           const elevation = draftRevision.floors.find(id11 => id11.id === statusSource.floorId)?.[statusNote]?.find(id17 => id17.id === statusSource.modelId);
           const modelCoordGrid = createEl("div", "i3d-coordinate-grid");
-          focusQueue.append(modelCoordGrid);
+          positionSection.append(modelCoordGrid);
           const disabled4 = accessAllowed("恢复跟随模型", () => {
             delete statusSource.x;
             delete statusSource.y;
@@ -1648,7 +1705,7 @@ export async function openInteraction3dEditor({
               mountRuntime();
             });
           }
-          focusQueue.append(disabled4);
+          positionSection.append(disabled4);
           const append = createEl("section", "navigation-batch-section i3d-light-batch");
           const batchSectionTitle = createEl("h4");
           const textContent = createEl("span");
@@ -1661,10 +1718,11 @@ export async function openInteraction3dEditor({
           };
           updateBatchApplyState();
           append.append(batchSectionTitle, disabled5);
-          focusQueue.append(append);
+          positionSection.append(append);
         } else {
+          const positionSection = makeConfigSection("按钮位置");
           const lightCoordGrid = createEl("div", "i3d-coordinate-grid");
-          focusQueue.append(lightCoordGrid);
+          positionSection.append(lightCoordGrid);
           for (const toUpperCase of ["x", "y"]) {
             appendBoundedInput(lightCoordGrid, "位置 " + toUpperCase.toUpperCase(), statusSource[toUpperCase], -1000000, 1000000, 1, lightPositionValue => {
               statusSource[toUpperCase] = lightPositionValue;
@@ -1675,12 +1733,13 @@ export async function openInteraction3dEditor({
             statusSource.height = height;
             mountRuntime();
           });
-          appendBoundedInput(focusQueue, "缓开缓灭（秒）", statusSource.fadeDuration, 0, 10, 0.1, fadeDuration => {
+          appendBoundedInput(positionSection, "缓开缓灭（秒）", statusSource.fadeDuration, 0, 10, 0.1, fadeDuration => {
             statusSource.fadeDuration = fadeDuration;
             mountRuntime();
           });
+          const effectsSection = makeConfigSection("灯光效果");
           const contains = createEl("div");
-          focusQueue.append(contains);
+          effectsSection.append(contains);
           const capabilitySignature = known => JSON.stringify([known.known, known.brightnessSupported, known.temperatureSupported, known.minimum, known.maximum]);
           const itemLightCapability = resolveEntityLightState(statusSource);
           let lastCapabilitySignature = capabilitySignature(itemLightCapability);
@@ -1709,9 +1768,9 @@ export async function openInteraction3dEditor({
           };
           updateBatchApplyState();
           lightBatchSection.append(lightBatchTitle, disabled6);
-          focusQueue.append(lightBatchSection);
+          effectsSection.append(lightBatchSection);
         }
-        const focusSettingsSection = createEl("section", "i3d-focus-settings");
+        const focusSettingsSection = createEl("section", "i3d-focus-settings i3d-config-section");
         focusQueue.append(focusSettingsSection);
         const activeCameraKey = isVacuum && saveStatus === "follow" ? "followCamera" : "focusCamera";
         focusSettingsSection.append(createEl("h4", "", activeCameraKey === "followCamera" ? "跟随视角" : "聚焦视角"));
@@ -1815,9 +1874,10 @@ export async function openInteraction3dEditor({
             disabled3.disabled = true;
           }
         }
+        makeConfigSection("绑定管理").append(className7);
       } else {
         const emptyListHint = length5.length ? isVacuum ? "点击“添加扫地机”，选择模型后绑定扫地机设备。" : isTelevision || isNas ? "点击“添加设备”，选择" + (isTelevision ? "电视模型并绑定媒体播放器实体。" : "设备类型和模型，再绑定开启实体。") : isCover ? "点击“添加窗帘”，选择需要控制的窗帘模型。" : isClimate ? "点击“添加空调”，选择需要控制的空调模型。" : "点击“添加灯光”，选择需要控制的灯组。" : unavailableAddHint(length5, floorTargets);
-        focusQueue.append(createEl("p", "i3d-note", emptyListHint));
+        itemListSection.append(createEl("p", "i3d-note", emptyListHint));
       }
     }
     focusQueue.append(pickerGeneration);

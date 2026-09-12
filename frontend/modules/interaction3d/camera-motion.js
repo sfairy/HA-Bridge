@@ -32,22 +32,40 @@ function cameraFrame(THREE, camera) {
     rotation
   };
 }
+function cameraOrbit(THREE, camera, frame) {
+  if (camera.view === "top") {
+    return null;
+  }
+  const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(frame.rotation);
+  if (Math.hypot(forward.x, forward.z) < 0.00001) {
+    return null;
+  }
+  const lookAt = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(forward, new THREE.Vector3(), new THREE.Vector3(0, 1, 0)));
+  if (lookAt.angleTo(frame.rotation) > 0.00001) {
+    return null;
+  }
+  return {
+    theta: Math.atan2(forward.x, forward.z),
+    phi: Math.acos(clamp(forward.y, -1, 1))
+  };
+}
 function easeProgress(elapsed, duration, rate) {
   return -Math.expm1(-rate * elapsed / 1000) / -Math.expm1(-rate * duration / 1000);
 }
 export function sampleFocusCamera(THREE, from, to, elapsed, durationMs = 1100) {
   return createFocusCameraSampler(THREE, from, to, durationMs)(elapsed);
 }
-export function createFocusCameraSampler(THREE, fromCamera, toCamera, durationMs = 1100, mode = "focus", pivots = null) {
+export function createFocusCameraSampler(THREE, fromCamera, toCamera, durationMs = 1100, mode = "focus", pivots = null, progress = null) {
   fromCamera = cloneCameraState(fromCamera);
   toCamera = cloneCameraState(toCamera);
   const duration = Math.max(0, finite(durationMs, 1100));
   let fromFrame;
   let toFrame;
   let pivotLocals;
+  let orbit;
   return function (elapsed) {
     const time = Number.isNaN(elapsed) ? 0 : elapsed;
-    if (duration === 0 || time >= duration) {
+    if (progress ? progress.settled(time) : duration === 0 || time >= duration) {
       return cloneCameraState(toCamera);
     }
     if (!(time > 0)) {
@@ -55,11 +73,36 @@ export function createFocusCameraSampler(THREE, fromCamera, toCamera, durationMs
     }
     fromFrame ||= cameraFrame(THREE, fromCamera);
     toFrame ||= cameraFrame(THREE, toCamera);
-    const positionT = time / duration;
-    const rotationT = positionT * positionT * (3 - positionT * 2);
-    const lerpT = mode === "floor" ? rotationT : easeProgress(time, duration, 5);
-    const rotationLerp = mode === "floor" ? rotationT : easeProgress(time, duration, 4);
+    let lerpT;
+    let rotationLerp;
+    if (progress) {
+      lerpT = progress.move(time);
+      rotationLerp = progress.turn(time);
+    } else if (mode === "floor") {
+      lerpT = time / duration;
+      lerpT = lerpT * lerpT * (3 - lerpT * 2);
+      rotationLerp = lerpT;
+    } else {
+      lerpT = easeProgress(time, duration, 5);
+      rotationLerp = easeProgress(time, duration, 4);
+    }
     const rotation = fromFrame.rotation.clone().slerp(toFrame.rotation, rotationLerp).normalize();
+    if (mode === "focus-orbit") {
+      if (orbit === undefined) {
+        const start = cameraOrbit(THREE, fromCamera, fromFrame);
+        const end = cameraOrbit(THREE, toCamera, toFrame);
+        orbit = start && end ? {
+          start,
+          end,
+          deltaTheta: Math.atan2(Math.sin(end.theta - start.theta), Math.cos(end.theta - start.theta))
+        } : null;
+      }
+      if (orbit) {
+        const { start, end, deltaTheta } = orbit;
+        const direction = new THREE.Vector3().setFromSphericalCoords(1, start.phi + (end.phi - start.phi) * rotationLerp, start.theta + deltaTheta * rotationLerp);
+        rotation.setFromRotationMatrix(new THREE.Matrix4().lookAt(direction, new THREE.Vector3(), new THREE.Vector3(0, 1, 0)));
+      }
+    }
     let target = fromFrame.target.clone().lerp(toFrame.target, lerpT);
     const distance = Math.max(1e-8, fromFrame.distance + (toFrame.distance - fromFrame.distance) * lerpT);
     let position = new THREE.Vector3(0, 0, distance).applyQuaternion(rotation).add(target);
@@ -97,6 +140,62 @@ export function createFocusCameraSampler(THREE, fromCamera, toCamera, durationMs
       }
     }
     return result;
+  };
+}
+export function cameraMotionProgress(elapsed, duration) {
+  return duration <= 0 || elapsed >= duration ? 1 : 1 - (1 - clamp(Number.isNaN(elapsed) ? 0 : elapsed / duration, 0, 1)) ** 3;
+}
+export function createReleasedFocusMotion(THREE, fromCamera, toCamera, {
+  immediate = false
+} = {}) {
+  const duration = immediate ? 0 : 1100;
+  const settled = elapsed => duration === 0 || elapsed >= duration;
+  const damp = (elapsed, rate) => settled(elapsed) ? 1 : -Math.expm1(-rate * Math.max(0, Number.isNaN(elapsed) ? 0 : elapsed) / 1000) / -Math.expm1(-rate * duration / 1000);
+  const progress = {
+    settled,
+    move: elapsed => damp(elapsed, 5),
+    turn: elapsed => damp(elapsed, 4)
+  };
+  return {
+    settled,
+    progress: progress.move,
+    sample: createFocusCameraSampler(THREE, fromCamera, toCamera, duration, "focus", null, progress)
+  };
+}
+export function createDampedCameraMotion(THREE, fromCamera, toCamera, {
+  immediate = false,
+  owner = "focus",
+  floorFrame = null
+} = {}) {
+  const isFocus = owner === "focus";
+  const moveRate = owner === "floor" ? 8 : isFocus ? 5 : 6;
+  const turnRate = owner === "floor" ? 7 : isFocus ? 4 : 5;
+  const threshold = owner === "floor" ? 0.0005 : 0.0001;
+  const decay = (elapsed, rate) => Math.exp(-rate * Math.max(0, finite(elapsed, 0)) / 1000);
+  const settled = elapsed => immediate || decay(elapsed, turnRate) <= threshold;
+  const critical = -Math.log(threshold) * 1000 / turnRate - 500;
+  const progressFor = (elapsed, rate = moveRate) => {
+    if (settled(elapsed)) {
+      return 1;
+    }
+    if (!isFocus || elapsed <= critical) {
+      return 1 - decay(elapsed, rate);
+    }
+    const t = clamp((elapsed - critical) / 500, 0, 1);
+    const u = 1 - t;
+    const k = rate * 500 / 1000;
+    const shaped = u ** 3 * (1 + (3 - k) * t + (6 - 3 * k + 0.5 * k * k) * t * t);
+    return 1 - decay(critical, rate) * shaped;
+  };
+  const progress = {
+    settled,
+    move: elapsed => progressFor(elapsed),
+    turn: elapsed => progressFor(elapsed, turnRate)
+  };
+  return {
+    settled,
+    progress: progress.move,
+    sample: createFocusCameraSampler(THREE, fromCamera, toCamera, 0, isFocus ? "focus-orbit" : owner, floorFrame, progress)
   };
 }
 function projectAlongRay(THREE, origin, direction, maxDistance) {

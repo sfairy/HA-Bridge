@@ -366,17 +366,12 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     disabled9.disabled = true;
     try {
       await requestInteraction3dAccess();
-      const metadata = await focalInput();
-      if (!metadata) {
-        return;
-      }
       const {
-        openPresenceEditor: openPresenceEditorFn
-      } = await import("/api/v1/modules/interaction3d/presence-editor.js?v=20260910-presence-v9");
-      await openPresenceEditorFn({
+        openSecurityEditor
+      } = await import("/api/v1/modules/interaction3d/security-editor.js?v=20260911-security-focal-v1");
+      await openSecurityEditor({
         component,
         panelDocument: callbacks.document,
-        floors: metadata.metadata?.floors || [],
         entities: callbacks.entities,
         pickers: callbacks.pickers,
         onSave: async security => {

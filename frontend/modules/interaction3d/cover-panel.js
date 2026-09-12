@@ -104,6 +104,7 @@ export function createCoverPanel({
   async function sendControl(command) {
     const expectedGeneration = generation;
     const ticket = ++ticketSeq;
+    const hadPresentation = !!item.presentation;
     clearPendingTarget();
     draftPosition = null;
     sliderActive = false;
@@ -119,14 +120,16 @@ export function createCoverPanel({
       target: command.service === "set_cover_position" ? command.data.position : command.service === "open_cover" ? 100 : command.service === "close_cover" ? 0 : null,
       sending: true
     };
-    confirmTimeout = setTimeout(() => {
-      if (!disposed && generation === expectedGeneration && target?.ticket === ticket) {
-        confirmTimeout = null;
-        target = null;
-        localError = "尚未收到设备确认，请查看窗帘状态后重试。";
-        render();
-      }
-    }, 15000);
+    if (!hadPresentation) {
+      confirmTimeout = setTimeout(() => {
+        if (!disposed && generation === expectedGeneration && target?.ticket === ticket) {
+          confirmTimeout = null;
+          target = null;
+          localError = "尚未收到设备确认，请查看窗帘状态后重试。";
+          render();
+        }
+      }, 15000);
+    }
     render();
     try {
       await onControl(command);
@@ -138,7 +141,11 @@ export function createCoverPanel({
       }
     } finally {
       if (!disposed && generation === expectedGeneration && target?.ticket === ticket) {
-        target.sending = false;
+        if (hadPresentation) {
+          clearPendingTarget();
+        } else {
+          target.sending = false;
+        }
         render();
       }
     }
@@ -229,7 +236,7 @@ export function createCoverPanel({
       button.setAttribute("aria-busy", String(isBusy));
       button.classList.toggle("is-active", service === "open_cover" && view.opening || service === "close_cover" && view.closing);
     }
-    panel.setAttribute("aria-busy", String(!!target && !target.confirmed));
+    panel.setAttribute("aria-busy", String(!!(item.presentation ? item.presentation.preview : target && !target.confirmed)));
     syncSlider();
   }
   function update(state = {}) {
