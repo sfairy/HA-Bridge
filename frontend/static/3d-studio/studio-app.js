@@ -2,7 +2,7 @@ import { windowGeometryParts } from "./studio-window-geometry.js?v=20260911-wide
 import { addSecurityModel } from "./studio-security-models.js?v=20260911-reference-palette-v1";
 import { compactRuntimeFurniture } from "./studio-runtime-furniture.js?v=20260909-runtime-furniture-v1";
 import { createReflectionDetail } from "./studio-reflection-detail.js?v=20260909-reflection-scope-v1";
-import { createFloorTransition } from "./studio-floor-transition.js?v=20260909-floor-reuse-v2";
+import { createFloorTransition } from "./studio-floor-transition.js?v=20260909-floor-reuse-v2-20260911-floor-handoff-v1";
 import { floorOpeningPolygon } from "./studio-floor-openings.js?v=20260908-floor-openings-v1";
 import { createGroundReflections } from "./studio-ground-reflections.js?v=20260909-reflection-scope-v1";
 import { createMotionPresentation } from "./studio-motion-presentation.js?v=20260910-effects-settle-v6-focus-live-v1";
@@ -679,6 +679,24 @@ const furnitureCatalog = {
     height: 0.34,
     elevation: 0,
     color: "#626d7b"
+  },
+  camera: {
+    name: "摄像头",
+    glyph: "◉",
+    width: 0.12,
+    depth: 0.12,
+    height: 0.16,
+    elevation: 1.2,
+    color: "#5d6978"
+  },
+  presence: {
+    name: "人体传感器",
+    glyph: "◌",
+    width: 0.065,
+    depth: 0.065,
+    height: 0.14,
+    elevation: 1.2,
+    color: "#6d8994"
   },
   airpurifier: {
     name: "空气净化器",
@@ -2086,6 +2104,9 @@ function normalizeFloorScene(scene) {
       } : {}),
       ...(roundTableTypes.has(item?.type) ? {
         roundTableTurntable: item?.type === "rounddiningtableturntable" || item?.roundTableTurntable === true
+      } : {}),
+      ...(item?.type === "camera" || item?.type === "presence" ? {
+        verticalRotation: clamp(finite(item?.verticalRotation, 0), -180, 180)
       } : {}),
       ...(lightItemTypes2.has(item?.type) ? {
         lightGroupId,
@@ -4753,11 +4774,13 @@ function updateSelectionInspector() {
       const named = furnitureCatalog[lightGroup.type];
       const flag2 = lightGroup.type === "planlabel";
       const flag3 = lightItemTypes2.has(lightGroup.type);
+      const isSecurityDevice = lightGroup.type === "camera" || lightGroup.type === "presence";
       selectEl("#selection-title").textContent = named?.name || "物件";
       lightPreviewNote.hidden = !flag3;
       selectionHeadingEl.classList.toggle("light-selected", flag3);
       $f.hidden = !flag2;
-      Wf.hidden = !flag3;
+      Wf.hidden = !(flag3 || isSecurityDevice);
+      Wf.title = isSecurityDevice ? "0° 正装，±90° 侧装，180° 倒装；离地高度为底座安装点高度" : "";
       Kf.hidden = lightGroup.type !== "curtain";
       Vf.hidden = flag2 || flag3 || lightGroup.type === "flooropening";
       Hf.hidden = flag2 || lightGroup.type === "flooropening";
@@ -4775,9 +4798,9 @@ function updateSelectionInspector() {
       selectEl("#item-rotation-label").textContent = lightGroup.type === "striplight" ? "平面旋转（°）" : flag3 ? "平面方向（°）" : "旋转角度（°）";
       selectEl("#item-rotation").min = lightGroup.type === "striplight" ? "0" : "-360";
       selectEl("#item-rotation").max = "360";
-      _f.textContent = lightGroup.type === "striplight" ? "安装倾斜（°）" : "出光角度（°）";
-      selectEl("#item-vertical-rotation").min = lightGroup.type === "striplight" ? "0" : "-90";
-      selectEl("#item-vertical-rotation").max = lightGroup.type === "striplight" ? "360" : "90";
+      _f.textContent = lightGroup.type === "striplight" ? "安装倾斜（°）" : isSecurityDevice ? "安装翻转／侧装（°）" : "出光角度（°）";
+      selectEl("#item-vertical-rotation").min = lightGroup.type === "striplight" ? "0" : isSecurityDevice ? "-180" : "-90";
+      selectEl("#item-vertical-rotation").max = lightGroup.type === "striplight" ? "360" : isSecurityDevice ? "180" : "90";
       for (const hidden of applyLightPropertyEls2) {
         hidden.hidden = !flag3;
       }
@@ -4804,6 +4827,9 @@ function updateSelectionInspector() {
         syncControlValue(selectEl("#item-vertical-rotation"), Math.round(value * 100) / 100);
         syncControlValue(itemStripRoll, Math.round(clamp(finite(lightGroup.stripRollRotation, 0), 0, 360) * 100) / 100);
         zl.checked = lightGroup.lightSourceVisible !== false;
+      }
+      if (isSecurityDevice) {
+        syncControlValue(selectEl("#item-vertical-rotation"), Math.round(clamp(finite(lightGroup.verticalRotation, 0), -180, 180) * 100) / 100);
       }
       if (lightGroup.type === "curtain") {
         selectEl("#curtain-position").value = ["left", "right", "split"].includes(lightGroup.curtainPosition) ? lightGroup.curtainPosition : "split";
@@ -12181,6 +12207,11 @@ function instanceMergeIdenticalItems(object3d, argSecondary) {
   if (argSecondary.type === "shoecabinet" && argSecondary.shoeCabinetMirrored === true) {
     object3d.scale.x = -1;
   }
+  if (argSecondary.type === "camera" || argSecondary.type === "presence") {
+    object3d.rotation.order = "YXZ";
+    object3d.rotation.x = THREE.MathUtils.degToRad(clamp(finite(argSecondary.verticalRotation, 0), -180, 180));
+    return;
+  }
   if (lightItemTypes2.has(argSecondary.type)) {
     if (argSecondary.type === "striplight") {
       object3d.rotation.order = "YXZ";
@@ -15202,6 +15233,8 @@ function applyInspectorFields2(argPrimary) {
       value.lightRange = clamp(finite(selectEl("#light-range").value, temperature.range), 0.5, 10);
       value.lightAngle = clamp(finite(selectEl("#light-angle").value, temperature.angle), 15, defaultItemDepth(value.type));
       value.height = furnitureCatalog[value.type].height;
+    } else if (value.type === "camera" || value.type === "presence") {
+      value.verticalRotation = clamp(finite(selectEl("#item-vertical-rotation").value, value.verticalRotation || 0), -180, 180);
     }
   }
   refreshViews(activeSelectionLightGroupFilterResult);
@@ -18340,10 +18373,27 @@ function bootstrapStudioFromLoadedProject() {
       return finish.active;
     },
     advanceFloorTransition(argPrimary, argSecondary) {
-      profileFrameWork("motion-and-settle", () => finish.sample(argPrimary, argSecondary));
+      const projections = argSecondary ? {
+        height: height10 ? height10.fromHeight + (height10.toHeight - height10.fromHeight) * argPrimary : computeCameraViewHeight(argSecondary),
+        weight: height10 ? height10.fromWeight + (height10.toWeight - height10.fromWeight) * argPrimary : argSecondary.mode === "perspective" ? 1 : 0,
+        distance: new THREE.Vector3().fromArray(argSecondary.position).distanceTo(new THREE.Vector3().fromArray(argSecondary.target))
+      } : null;
+      profileFrameWork("motion-and-settle", () => finish.sample(argPrimary, argSecondary, projections));
     },
     setFloorSlideCameras(argPrimary, argSecondary) {
-      finish.setSlideCameras(argPrimary, argSecondary);
+      const viewDistance = view => new THREE.Vector3().fromArray(view.position).distanceTo(new THREE.Vector3().fromArray(view.target));
+      finish.setSlideCameras(argPrimary, argSecondary, {
+        from: {
+          height: height10?.fromHeight ?? computeCameraViewHeight(argPrimary),
+          weight: height10?.fromWeight ?? (argPrimary.mode === "perspective" ? 1 : 0),
+          distance: viewDistance(argPrimary)
+        },
+        to: {
+          height: computeCameraViewHeight(argSecondary),
+          weight: argSecondary.mode === "perspective" ? 1 : 0,
+          distance: viewDistance(argSecondary)
+        }
+      });
     },
     finishFloorTransition() {
       finish.finish();
@@ -18389,22 +18439,50 @@ function bootstrapStudioFromLoadedProject() {
         cacheKey.cacheKey ||= cacheKey3;
         cacheKey.cacheEpoch ??= cacheEpoch;
       }
-      const expandByObject = new THREE.Box3();
-      for (const node2 of findVar) {
-        expandByObject.expandByObject(node2.node);
+      const bounds = new THREE.Box3();
+      for (const record of findVar) {
+        record.node.traverseVisible(mesh => {
+          if (!mesh.isMesh || !mesh.geometry || ["background", "grid", "contact-shadow"].includes(mesh.userData?.exportRole)) {
+            return;
+          }
+          mesh.geometry.boundingBox || mesh.geometry.computeBoundingBox();
+          if (mesh.geometry.boundingBox) {
+            bounds.union(mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrixWorld));
+          }
+        });
       }
-      const x32 = expandByObject.getSize(new THREE.Vector3());
+      const x32 = bounds.getSize(new THREE.Vector3());
       const comparisonFlag4 = !comparisonFlag && target2 !== "all";
       const conditionalValue = comparisonFlag4 ? new THREE.Vector3(0, 1, 0).applyQuaternion(camera2.quaternion).normalize() : null;
       const conditionalValue2 = comparisonFlag4 ? resetOrbitTarget(camera2, orbitControls.target) * 1.2 : Math.max(20, x32.x, x32.z) * 1.5;
-      const map5 = target2 === "all" ? localValue12 : [target2];
+      const scrollFrom = findVar.find(record => Number.isFinite(record.scrollPosition))?.scrollPosition ?? localValue12.indexOf(cacheKey3);
+      const targetIndex = localValue12.indexOf(target2);
+      const handoffRange = comparisonFlag4 ? localValue12.slice(Math.min(Math.floor(scrollFrom), targetIndex), Math.max(Math.ceil(scrollFrom), targetIndex) + 1) : [];
+      const map5 = target2 === "all" ? localValue12 : [target2, ...handoffRange.filter(id2 => id2 !== target2)];
       const everyVar = map5.map(argPrimary => findVar.find(id2 => id2.id === argPrimary && id2.cacheEpoch === cacheEpoch) || entryMap.get(argPrimary));
+      const reusedCount = everyVar.filter(Boolean).length;
+      if (comparisonFlag4) {
+        for (let index = 0; index < map5.length; index++) {
+          if (everyVar[index]) {
+            continue;
+          }
+          this.setFloor(map5[index]);
+          const captured = finish.capture([map5[index]], helperFn3, false)[0];
+          captured.frame = captured.baseFrame.clone();
+          captured.cacheKey = map5[index];
+          captured.cacheEpoch = cacheEpoch;
+          captured.node.removeFromParent();
+          everyVar[index] = captured;
+        }
+      }
       const length10 = everyVar.every(Boolean) ? everyVar : null;
-      if (length10) {
+      if (length10 && reusedCount === map5.length) {
         reusedTransitions.reusedTransitions++;
-        reusedTransitions.reusedFloors += length10.length;
       } else {
         reusedTransitions.rebuiltTransitions++;
+      }
+      if (length10) {
+        reusedTransitions.reusedFloors += reusedCount;
       }
       renderer.domElement.dataset.floorReuseStats = JSON.stringify(reusedTransitions);
       if (length10) {
@@ -18418,12 +18496,12 @@ function bootstrapStudioFromLoadedProject() {
       }
       profileFrameWork("set-destination", () => this.setFloor(target2, length10, helperFn3));
       const localValue13 = this.getOrbitCenter();
-      const localValue20 = profileFrameWork("capture-destination", () => finish.capture(map5, helperFn3, target2 === "all"));
+      const localValue20 = profileFrameWork("capture-destination", () => finish.capture(map5, helperFn3, target2 === "all" || map5.length > 1));
       for (const cacheKey2 of localValue20) {
         cacheKey2.cacheKey = target2;
         cacheKey2.cacheEpoch = cacheEpoch;
       }
-      profileFrameWork("begin-motion", () => finish.begin(findVar, localValue20, localValue12, conditionalValue2, comparisonFlag4, conditionalValue));
+      profileFrameWork("begin-motion", () => finish.begin(findVar, localValue20, localValue12, conditionalValue2, comparisonFlag4, conditionalValue, target2));
       localValue2?.();
       return localValue13;
     },
