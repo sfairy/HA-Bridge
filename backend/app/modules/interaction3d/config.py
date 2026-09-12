@@ -79,6 +79,36 @@ CLICK_ACTIONS = frozenset(
 )
 ICON_PATTERN = re.compile(r'^mdi:[a-z0-9][a-z0-9-]{0,119}$')
 ENTITY_PATTERN = re.compile(r'(light|switch)\.[a-z0-9_]+')
+CAMERA_ENTITY_PATTERN = re.compile(r'camera\.[a-z0-9_]+')
+CAMERA_KEYS = frozenset(
+    {
+        'x',
+        'y',
+        'id',
+        'icon',
+        'size',
+        'label',
+        'height',
+        'floorId',
+        'hitSize',
+        'modelId',
+        'visible',
+        'entityId',
+        'fontSize',
+        'iconSize',
+        'focusCamera',
+        'buttonHidden',
+    }
+)
+CAMERA_NUMBER_BOUNDS = (
+    ('x', -1000000, 1000000),
+    ('y', -1000000, 1000000),
+    ('height', -1000, 1000),
+    ('size', 1, 1000),
+    ('iconSize', 1, 1000),
+    ('fontSize', 1, 1000),
+    ('hitSize', 1, 1000),
+)
 LIGHTING_BOUNDS = {
     'exposure': (0.5, 2),
     'hemisphereIntensity': (0, 3),
@@ -295,8 +325,39 @@ def validate_config(properties) -> None:
     # Extended 0.5.0 surfaces with nested contract checks.
     security = properties.get('security', {})
     if security not in (None, {}):
-        if not isinstance(security, dict) or set(security) - {'presenceSensors'}:
+        if not isinstance(security, dict) or set(security) - {'presenceSensors', 'cameras'}:
             fail()
+        cameras = security.get('cameras', [])
+        if not isinstance(cameras, list) or len(cameras) > 128:
+            fail()
+        camera_ids: set[str] = set()
+        camera_models: set[tuple] = set()
+        for camera in cameras:
+            if not isinstance(camera, dict) or set(camera) - CAMERA_KEYS:
+                fail()
+            if any(not text(camera.get(key)) for key in ('id', 'floorId', 'modelId')):
+                fail()
+            if camera['id'] in camera_ids or (camera['floorId'], camera['modelId']) in camera_models:
+                fail()
+            camera_ids.add(camera['id'])
+            camera_models.add((camera['floorId'], camera['modelId']))
+            if camera['floorId'] == 'all':
+                fail()
+            camera_entity_id = camera.get('entityId', '')
+            if not isinstance(camera_entity_id, str):
+                fail()
+            if camera_entity_id and not CAMERA_ENTITY_PATTERN.fullmatch(camera_entity_id):
+                fail()
+            if not text(camera.get('label', '')) or not text(camera.get('icon', '')):
+                fail()
+            for key, low, high in CAMERA_NUMBER_BOUNDS:
+                if key not in camera:
+                    continue
+                if not number(camera[key], low, high):
+                    fail()
+            if any(key in camera and not isinstance(camera[key], bool) for key in ('visible', 'buttonHidden')):
+                fail()
+            validate_camera(camera.get('focusCamera'))
         people = security.get('presenceSensors', [])
         if not isinstance(people, list) or len(people) > 128:
             fail()

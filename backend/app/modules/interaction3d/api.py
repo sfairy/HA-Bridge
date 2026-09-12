@@ -31,6 +31,7 @@ RESOURCE_TYPES = {
     **{
         name: 'text/javascript'
         for name in (
+            'security-editor.js',
             'presence-focus-editor.js',
             'presence-character.js',
             'presence-motion.js',
@@ -46,6 +47,7 @@ RESOURCE_TYPES = {
             'television-panel.js',
             'television-screen.js',
             'nas-status.js',
+            'camera-status.js',
             'nas-panel.js',
             'config-editor.js',
             'range-dialog.js',
