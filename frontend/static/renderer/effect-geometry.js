@@ -185,5 +185,5 @@ export function effectReferenceImageTransform(page, component, naturalWidth, nat
     }
   };
   visit(page?.components);
-  return exactMatches[0] || sizeMatches.sort((zIndex, zIndex2) => zIndex2.zIndex - zIndex.zIndex)[0] || null;
+  return exactMatches[0] || sizeMatches.sort((zIndex, zIndexRight) => zIndexRight.zIndex - zIndex.zIndex)[0] || null;
 }

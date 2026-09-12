@@ -27,6 +27,7 @@ export { runtimeDialogUsesStableMotion };
 export { HistoryRefreshCoordinator, RuntimeEffectImageLoader, RuntimeStaticImageCache, RuntimeVacuumMapImagePreloader, historyRequestStillRelevant };
 export { lineChartRuntimeStateNeedsHydration, syncedLineChartProperties };
 const MAX_REALTIME_SUBSCRIBED_ENTITIES = 1000;
+const COVER_CLOSED_POSITION_EPSILON = 1;
 const DEFAULT_TARGET_OCCUPANCY = 0.76;
 const COMPACT_TARGET_OCCUPANCY = 0.7;
 const as = 1.6;
@@ -42,15 +43,15 @@ export function runtimeDialogLayout({
   targetOccupancy = DEFAULT_TARGET_OCCUPANCY
 }) {
   const count = Math.max(1, Number(layerWidth) || 1);
-  const count2 = Math.max(1, Number(layerHeight) || 1);
-  const count3 = Math.max(1, Number(layoutWidth) || 1);
-  const count4 = Math.max(1, Number(layoutHeight) || 1);
-  const safeInset = tightFill ? Math.min(40, Math.max(24, Math.min(count, count2) * 0.03)) : fillAvailable ? Math.min(80, Math.max(32, Math.min(count, count2) * 0.075)) : Math.min(64, Math.max(24, Math.min(count, count2) * 0.05));
+  const max = Math.max(1, Number(layerHeight) || 1);
+  const countCurrent = Math.max(1, Number(layoutWidth) || 1);
+  const countNext = Math.max(1, Number(layoutHeight) || 1);
+  const safeInset = tightFill ? Math.min(40, Math.max(24, Math.min(count, max) * 0.03)) : fillAvailable ? Math.min(80, Math.max(32, Math.min(count, max) * 0.075)) : Math.min(64, Math.max(24, Math.min(count, max) * 0.05));
   const availableWidth = Math.max(1, count - safeInset * 2);
-  const availableHeight = Math.max(1, count2 - safeInset * 2);
-  const fitScale = Math.min(availableWidth / count3, availableHeight / count4);
-  const count5 = Math.max(0.2, Math.min(1, Number(targetOccupancy) || DEFAULT_TARGET_OCCUPANCY));
-  const state = Math.min(count * count5 / count3, count2 * count5 / count4);
+  const availableHeight = Math.max(1, max - safeInset * 2);
+  const fitScale = Math.min(availableWidth / countCurrent, availableHeight / countNext);
+  const countPrevious = Math.max(0.2, Math.min(1, Number(targetOccupancy) || DEFAULT_TARGET_OCCUPANCY));
+  const state = Math.min(count * countPrevious / countCurrent, max * countPrevious / countNext);
   const preferredScale = Math.min(as, state);
   const scale = Math.min(fillAvailable ? tightFill ? FILL_TIGHT_FILL_SCALE : FILL_AVAILABLE_SCALE : preferredScale, fitScale);
   return {
@@ -73,26 +74,26 @@ export function runtimeDialogViewport({
   dashboardHeight
 }) {
   const asNumber = Number(layerLeft) || 0;
-  const asNumber1 = Number(layerTop) || 0;
+  const number = Number(layerTop) || 0;
   const count = Math.max(1, Number(layerWidth) || 1);
-  const count2 = Math.max(1, Number(layerHeight) || 1);
+  const max = Math.max(1, Number(layerHeight) || 1);
   const state = asNumber + count;
-  const state1 = asNumber1 + count2;
+  const value = number + max;
   const finiteNumber = Number.isFinite(Number(dashboardLeft)) ? Number(dashboardLeft) : asNumber;
-  const finiteNumber1 = Number.isFinite(Number(dashboardTop)) ? Number(dashboardTop) : asNumber1;
-  const count3 = Math.max(1, Number(dashboardWidth) || count);
-  const count4 = Math.max(1, Number(dashboardHeight) || count2);
-  const count5 = Math.max(asNumber, finiteNumber);
-  const count6 = Math.max(asNumber1, finiteNumber1);
-  const size = Math.min(state, finiteNumber + count3);
-  const size1 = Math.min(state1, finiteNumber1 + count4);
-  const width = Math.max(1, size - count5);
-  const height = Math.max(1, size1 - count6);
+  const finiteNumberCurrent = Number.isFinite(Number(dashboardTop)) ? Number(dashboardTop) : number;
+  const countCurrent = Math.max(1, Number(dashboardWidth) || count);
+  const countNext = Math.max(1, Number(dashboardHeight) || max);
+  const countPrevious = Math.max(asNumber, finiteNumber);
+  const countLocal = Math.max(number, finiteNumberCurrent);
+  const size = Math.min(state, finiteNumber + countCurrent);
+  const min = Math.min(value, finiteNumberCurrent + countNext);
+  const width = Math.max(1, size - countPrevious);
+  const height = Math.max(1, min - countLocal);
   return {
     width,
     height,
-    centerX: count5 - asNumber + width / 2,
-    centerY: count6 - asNumber1 + height / 2
+    centerX: countPrevious - asNumber + width / 2,
+    centerY: countLocal - number + height / 2
   };
 }
 function assignComponentIds(component) {
@@ -171,21 +172,21 @@ function buildSwitchVisual({
   const element = document.createElement("i");
   element.className = "hb-switch-visual-mark off";
   element.textContent = "○";
-  const element2 = document.createElement("i");
-  element2.className = "hb-switch-visual-mark on";
-  element2.textContent = "┃";
-  switchVisualRockerEl.append(element, element2);
+  const elementCurrent = document.createElement("i");
+  elementCurrent.className = "hb-switch-visual-mark on";
+  elementCurrent.textContent = "┃";
+  switchVisualRockerEl.append(element, elementCurrent);
   switchVisualPlateEl.append(switchVisualIndicatorEl, switchVisualRockerEl);
   visual.append(switchVisualAuraEl, switchVisualPlateEl);
   const switchVisualCopyEl = compact ? document.createElement("span") : null;
-  const element3 = compact ? document.createElement("strong") : null;
-  const element4 = compact ? document.createElement("output") : null;
+  const elementNext = compact ? document.createElement("strong") : null;
+  const elementPrevious = compact ? document.createElement("output") : null;
   if (compact) {
     switchVisualCopyEl.className = "hb-switch-visual-copy";
-    element3.className = "hb-switch-visual-copy-label";
-    element4.className = "hb-switch-visual-copy-state";
-    element3.textContent = label;
-    switchVisualCopyEl.append(element3, element4);
+    elementNext.className = "hb-switch-visual-copy-label";
+    elementPrevious.className = "hb-switch-visual-copy-state";
+    elementNext.textContent = label;
+    switchVisualCopyEl.append(elementNext, elementPrevious);
     visual.append(switchVisualCopyEl);
     visual.classList.add("is-compact");
   }
@@ -202,8 +203,8 @@ function buildSwitchVisual({
     visual.setAttribute("aria-pressed", String(state));
     visual.setAttribute("aria-busy", String(pending));
     visual.setAttribute("aria-label", unavailable ? label + "当前不可用" : momentary ? "" + label + (success ? "执行成功" : pending ? "正在执行" : "，点击执行") : "" + label + (state ? "已开启，点击关闭" : "已关闭，点击开启"));
-    if (element4) {
-      element4.textContent = unavailable ? "当前不可用" : momentary ? success ? "执行成功" : pending ? "执行中" : "点击执行" : state ? "运行中" : "已关闭";
+    if (elementPrevious) {
+      elementPrevious.textContent = unavailable ? "当前不可用" : momentary ? success ? "执行成功" : pending ? "执行中" : "点击执行" : state ? "运行中" : "已关闭";
     }
   };
   visual.addEventListener("click", () => {
@@ -447,12 +448,12 @@ export class PanelRenderer {
     if (![...this.componentRecords.values()].some(arg => arg.type === "icon-button-effect")) {
       throw new Error("当前页面没有图标按钮（效果）。");
     }
-    const state1 = this.iconVisibilityPageKey();
-    const state2 = !this.iconVisibilityState();
-    this.virtualEntityStates.set(state1, state2);
+    const key = this.iconVisibilityPageKey();
+    const stateCurrent = !this.iconVisibilityState();
+    this.virtualEntityStates.set(key, stateCurrent);
     this.states.set(entityId, {
       entityId,
-      state: state2 ? "on" : "off",
+      state: stateCurrent ? "on" : "off",
       attributes: {}
     });
     this.renderComponents(true);
@@ -462,11 +463,11 @@ export class PanelRenderer {
       return false;
     }
     const state = this.states.get(entityId);
-    const numeric1 = (state?.newState || state)?.attributes || {};
-    const numeric = Number(numeric1.temperature);
-    const numeric2 = Number(numeric1.min_temp);
-    const numeric3 = Number(numeric1.max_temp);
-    return Number.isFinite(numeric) && Number.isFinite(numeric2) && Number.isFinite(numeric3) && numeric3 > numeric2;
+    const options = (state?.newState || state)?.attributes || {};
+    const numeric = Number(options.temperature);
+    const number = Number(options.min_temp);
+    const numericCurrent = Number(options.max_temp);
+    return Number.isFinite(numeric) && Number.isFinite(number) && Number.isFinite(numericCurrent) && numericCurrent > number;
   }
   deferEntityDetailsUntilReady(entityId, preview, reason = "water-heater") {
     window.clearTimeout(this.pendingEntityDetails?.timer);
@@ -480,13 +481,13 @@ export class PanelRenderer {
     };
     const state = reason === "catalog" || reason === "electric-bed-catalog";
     if (state) {
-      const state1 = () => {
+      const state = () => {
         if (this.pendingEntityDetails !== pendingEntityDetails) {
           return;
         }
-        const state2 = this.runtimeEntityId(pendingEntityDetails.component?.bindings?.entity?.entityId);
-        if (!this.entityCatalogReady || reason === "electric-bed-catalog" && this.deviceProfile(state2)?.deviceType !== "electric-bed") {
-          pendingEntityDetails.retryTimer = window.setTimeout(state1, 260);
+        const id = this.runtimeEntityId(pendingEntityDetails.component?.bindings?.entity?.entityId);
+        if (!this.entityCatalogReady || reason === "electric-bed-catalog" && this.deviceProfile(id)?.deviceType !== "electric-bed") {
+          pendingEntityDetails.retryTimer = window.setTimeout(state, 260);
           return;
         }
         window.clearTimeout(pendingEntityDetails.timer);
@@ -495,7 +496,7 @@ export class PanelRenderer {
           preview: pendingEntityDetails.preview
         });
       };
-      pendingEntityDetails.retryTimer = window.setTimeout(state1, 260);
+      pendingEntityDetails.retryTimer = window.setTimeout(state, 260);
     }
     pendingEntityDetails.timer = window.setTimeout(() => {
       if (this.pendingEntityDetails === pendingEntityDetails) {
@@ -529,42 +530,42 @@ export class PanelRenderer {
       return true;
     }
   }
-  profiledComponent(component, component1 = component?.bindings?.entity?.entityId || "") {
-    return applyXiaomiDeviceProfile(component, this.deviceProfile(this.runtimeEntityId(component1)) || this.deviceProfile(component1));
+  profiledComponent(component, componentCurrent = component?.bindings?.entity?.entityId || "") {
+    return applyXiaomiDeviceProfile(component, this.deviceProfile(this.runtimeEntityId(componentCurrent)) || this.deviceProfile(componentCurrent));
   }
-  powerEntityId(component, component1 = component?.bindings?.entity?.entityId || "") {
-    const state = this.runtimeEntityId(component1);
-    const state1 = this.deviceProfile(state) || this.deviceProfile(component1);
-    const state2 = entityPowerTarget(state, component, state1);
-    if (state2 !== state) {
-      return this.runtimeEntityId(state2);
+  powerEntityId(component, componentCurrent = component?.bindings?.entity?.entityId || "") {
+    const state = this.runtimeEntityId(componentCurrent);
+    const profile = this.deviceProfile(state) || this.deviceProfile(componentCurrent);
+    const target = entityPowerTarget(state, component, profile);
+    if (target !== state) {
+      return this.runtimeEntityId(target);
     }
-    const state3 = relatedPopupContext(component, this.entityMetadata, this.deviceMetadata, this.states);
-    if (component?.type !== "air-conditioner" && state3?.deviceType === "bath-heater") {
-      const found = state3.siblings?.find(arg => arg.domain === "light" && entityMetadataIsAvailable(arg));
+    const context = relatedPopupContext(component, this.entityMetadata, this.deviceMetadata, this.states);
+    if (component?.type !== "air-conditioner" && context?.deviceType === "bath-heater") {
+      const found = context.siblings?.find(arg => arg.domain === "light" && entityMetadataIsAvailable(arg));
       if (found?.entityId) {
         return this.runtimeEntityId(found.entityId);
       }
     }
     return state;
   }
-  runtimePowerComponent(component, component1 = component?.bindings?.entity?.entityId || "") {
-    const component2 = this.profiledComponent(component, component1);
-    const state = this.runtimeEntityId(component1);
-    const entityId = this.powerEntityId(component2, component1);
-    if (!entityId || entityId === state && state === component1) {
-      return component2;
+  runtimePowerComponent(component, componentCurrent = component?.bindings?.entity?.entityId || "") {
+    const componentNext = this.profiledComponent(component, componentCurrent);
+    const state = this.runtimeEntityId(componentCurrent);
+    const entityId = this.powerEntityId(componentNext, componentCurrent);
+    if (!entityId || entityId === state && state === componentCurrent) {
+      return componentNext;
     } else {
       return {
-        ...component2,
+        ...componentNext,
         bindings: {
-          ...(component2.bindings || {}),
+          ...(componentNext.bindings || {}),
           entity: {
             entityId
           }
         },
         properties: {
-          ...(component2.properties || {}),
+          ...(componentNext.properties || {}),
           runtimePowerEntityId: entityId
         }
       };
@@ -667,8 +668,8 @@ export class PanelRenderer {
   }
   previewComponentProperties(componentId, fallback = {}) {
     const component = this.componentRecords.get(componentId);
-    const component1 = this.componentHosts.get(componentId);
-    if (!component || !component1) {
+    const entry = this.componentHosts.get(componentId);
+    if (!component || !entry) {
       return;
     }
     component.properties = {
@@ -682,11 +683,11 @@ export class PanelRenderer {
       }
     }
     if (Number.isFinite(fallback.opacity)) {
-      const hbImageComponent = component1.querySelector(".hb-image-component");
+      const hbImageComponent = entry.querySelector(".hb-image-component");
       if (hbImageComponent) {
         hbImageComponent.style.opacity = String(Math.max(0, Math.min(1, fallback.opacity)));
       }
-      const hbVacuumMapComponent = component1.querySelector(".hb-vacuum-map-component");
+      const hbVacuumMapComponent = entry.querySelector(".hb-vacuum-map-component");
       if (hbVacuumMapComponent) {
         hbVacuumMapComponent.style.opacity = String(Math.max(0, Math.min(1, fallback.opacity)));
       }
@@ -705,8 +706,8 @@ export class PanelRenderer {
       return;
     }
     if (component.type === "navigation-button") {
-      const found = [...component1.children].find(element => !element.classList.contains("hb-selection-bounds"));
-      const state1 = {
+      const found = [...entry.children].find(element => !element.classList.contains("hb-selection-bounds"));
+      const state = {
         document: this.document,
         page: this.page,
         states: this.states,
@@ -722,18 +723,18 @@ export class PanelRenderer {
         navigate: navigate => this.navigate(navigate),
         cleanup: cleanup => this.cleanups.push(cleanup)
       };
-      const state2 = renderRegisteredComponent(this.profiledComponent(component), state1);
+      const stateCurrent = renderRegisteredComponent(this.profiledComponent(component), state);
       const numeric = Number(this.document.canvas.componentScale || 1);
       if (numeric !== 1) {
-        state2.style.width = 100 / numeric + "%";
-        state2.style.height = 100 / numeric + "%";
-        state2.style.transform = "scale(" + numeric + ")";
-        state2.style.transformOrigin = "top left";
+        stateCurrent.style.width = 100 / numeric + "%";
+        stateCurrent.style.height = 100 / numeric + "%";
+        stateCurrent.style.transform = "scale(" + numeric + ")";
+        stateCurrent.style.transformOrigin = "top left";
       }
       if (found) {
-        found.replaceWith(state2);
+        found.replaceWith(stateCurrent);
       } else {
-        component1.prepend(state2);
+        entry.prepend(stateCurrent);
       }
     }
   }
@@ -747,8 +748,8 @@ export class PanelRenderer {
     for (const [item, element] of this.componentHosts) {
       const state = this.options.editable && this.selectedComponentIds.has(item);
       const component = this.componentRecords.get(item);
-      const state1 = component?.type === "floorplan-auto-diagram" && component.properties?.generated !== true;
-      element.hidden = state1 ? !state : component?.style?.visible === false;
+      const value = component?.type === "floorplan-auto-diagram" && component.properties?.generated !== true;
+      element.hidden = value ? !state : component?.style?.visible === false;
       element.classList.toggle("selected", state);
       element.classList.toggle("selection-primary", state && item === this.selectedComponentId);
       element.classList.toggle("hb-light-statistics-selection-host", state && this.selectedComponentIds.size === 1 && component?.type === "light-statistics");
@@ -756,20 +757,20 @@ export class PanelRenderer {
       if (!state) {
         continue;
       }
-      const state2 = this.selectedComponentIds.size === 1 && item === this.selectedComponentId && component?.type === "air-conditioner" && this.componentSelectionLayers.get(item) === "airflow";
-      const state3 = this.selectedComponentIds.size === 1 && item === this.selectedComponentId && component?.type === "icon-button-effect" && this.componentSelectionLayers.get(item) === "effect";
-      const state4 = this.selectedComponentIds.size === 1 && item === this.selectedComponentId && component?.type === "presence-sensor" && component?.properties?.sensorKind === "door-window" && this.componentSelectionLayers.get(item) === "perspective";
-      if (state2) {
+      const stateCurrent = this.selectedComponentIds.size === 1 && item === this.selectedComponentId && component?.type === "air-conditioner" && this.componentSelectionLayers.get(item) === "airflow";
+      const stateNext = this.selectedComponentIds.size === 1 && item === this.selectedComponentId && component?.type === "icon-button-effect" && this.componentSelectionLayers.get(item) === "effect";
+      const statePrevious = this.selectedComponentIds.size === 1 && item === this.selectedComponentId && component?.type === "presence-sensor" && component?.properties?.sensorKind === "door-window" && this.componentSelectionLayers.get(item) === "perspective";
+      if (stateCurrent) {
         this.appendAirflowTransformHandles(this.componentAirflowLayers.get(item), component);
-      } else if (state3 && this.componentEffectLayers.get(item) && !this.componentEffectLayers.get(item).hidden) {
+      } else if (stateNext && this.componentEffectLayers.get(item) && !this.componentEffectLayers.get(item).hidden) {
         this.appendEffectSelectionBounds(this.componentEffectLayers.get(item), component);
-      } else if (state4) {
-        const state5 = this.createComponentSelectionOverlay(element, component) || element;
-        this.appendDoorWindowPerspectiveHandles(element, component, state5);
+      } else if (statePrevious) {
+        const state = this.createComponentSelectionOverlay(element, component) || element;
+        this.appendDoorWindowPerspectiveHandles(element, component, state);
       } else {
-        const state5 = this.selectedComponentIds.size === 1;
-        const state6 = state5 ? this.createComponentSelectionOverlay(element, component) : element;
-        this.appendTransformHandles(element, component, state5, state6 || element);
+        const state = this.selectedComponentIds.size === 1;
+        const overlay = state ? this.createComponentSelectionOverlay(element, component) : element;
+        this.appendTransformHandles(element, component, state, overlay || element);
       }
     }
     if (this.selectedComponentIds.size > 1) {
@@ -789,19 +790,19 @@ export class PanelRenderer {
     }
   }
   componentParentTransform(componentId) {
-    let scale1 = this.componentParentIds?.get(componentId) || null;
+    let scaleCurrent = this.componentParentIds?.get(componentId) || null;
     let rotation = 0;
     let scale = 1;
     const allowed = new Set();
-    while (scale1 && !allowed.has(scale1)) {
-      allowed.add(scale1);
-      const numeric = this.componentRecords.get(scale1);
+    while (scaleCurrent && !allowed.has(scaleCurrent)) {
+      allowed.add(scaleCurrent);
+      const numeric = this.componentRecords.get(scaleCurrent);
       if (!numeric) {
         break;
       }
       rotation += Number(numeric.position?.rotation || 0);
       scale *= Math.max(0.01, Math.min(5, Number(numeric.style?.scale || 1)));
-      scale1 = this.componentParentIds?.get(scale1) || null;
+      scaleCurrent = this.componentParentIds?.get(scaleCurrent) || null;
     }
     return {
       rotation,
@@ -810,16 +811,16 @@ export class PanelRenderer {
   }
   componentTransformChain(componentId) {
     const state = [];
-    let state1 = componentId;
+    let stateCurrent = componentId;
     const allowed = new Set();
-    while (state1 && !allowed.has(state1)) {
-      allowed.add(state1);
-      const state2 = this.componentRecords.get(state1);
-      if (!state2) {
+    while (stateCurrent && !allowed.has(stateCurrent)) {
+      allowed.add(stateCurrent);
+      const entry = this.componentRecords.get(stateCurrent);
+      if (!entry) {
         break;
       }
-      state.push(state2);
-      state1 = this.componentParentIds?.get(state1) || null;
+      state.push(entry);
+      stateCurrent = this.componentParentIds?.get(stateCurrent) || null;
     }
     return state;
   }
@@ -837,22 +838,22 @@ export class PanelRenderer {
       x: Number(point || 0),
       y: Number(outLocalPoint || 0)
     };
-    const state1 = this.componentTransformChain(componentId).reverse();
-    for (const item of state1) {
-      const numeric1 = item.position || {};
-      const numeric = Number(numeric1.width || 100);
-      const numeric2 = Number(numeric1.height || 100);
+    const reversed = this.componentTransformChain(componentId).reverse();
+    for (const item of reversed) {
+      const rect = item.position || {};
+      const numeric = Number(rect.width || 100);
+      const number = Number(rect.height || 100);
       const count = Math.max(0.01, Math.min(5, Number(item.style?.scale || 1)));
-      const scale = Number(numeric1.rotation || 0) * Math.PI / 180;
-      const state2 = Math.cos(scale);
-      const state3 = Math.sin(scale);
-      const asNumber = Number(numeric1.x || 0) + numeric / 2;
-      const asNumber1 = Number(numeric1.y || 0) + numeric2 / 2;
-      const state4 = (state.x - asNumber) / count;
-      const state5 = (state.y - asNumber1) / count;
+      const scale = Number(rect.rotation || 0) * Math.PI / 180;
+      const cos = Math.cos(scale);
+      const sin = Math.sin(scale);
+      const asNumber = Number(rect.x || 0) + numeric / 2;
+      const value = Number(rect.y || 0) + number / 2;
+      const stateCurrent = (state.x - asNumber) / count;
+      const stateNext = (state.y - value) / count;
       state = {
-        x: numeric / 2 + state4 * state2 + state5 * state3,
-        y: numeric2 / 2 - state4 * state3 + state5 * state2
+        x: numeric / 2 + stateCurrent * cos + stateNext * sin,
+        y: number / 2 - stateCurrent * sin + stateNext * cos
       };
     }
     return state;
@@ -860,37 +861,37 @@ export class PanelRenderer {
   componentVisualBounds(componentId, transformOverride = null) {
     const numeric = componentId.position || {};
     const count = Math.max(0.01, Number(numeric.width || 100));
-    const count2 = Math.max(0.01, Number(numeric.height || 100));
+    const max = Math.max(0.01, Number(numeric.height || 100));
     let size = count;
-    let state = count2;
-    let state1 = 0;
-    let state2 = 0;
+    let state = max;
+    let stateCurrent = 0;
+    let stateNext = 0;
     if (componentId.type === "light-statistics" && transformOverride) {
       const element = transformOverride.querySelector(":scope > .hb-selection-bounds");
-      const size2 = element ? [Number.parseFloat(element.style.left), Number.parseFloat(element.style.top), Number.parseFloat(element.style.width), Number.parseFloat(element.style.height)] : [];
-      if (size2.every(Number.isFinite) && size2[2] > 0 && size2[3] > 0) {
-        [state1, state2, size, state] = size2;
+      const list = element ? [Number.parseFloat(element.style.left), Number.parseFloat(element.style.top), Number.parseFloat(element.style.width), Number.parseFloat(element.style.height)] : [];
+      if (list.every(Number.isFinite) && list[2] > 0 && list[3] > 0) {
+        [stateCurrent, stateNext, size, state] = list;
       }
     }
-    const count3 = Math.max(0.01, Math.min(5, Number(componentId.style?.scale || 1)));
+    const countCurrent = Math.max(0.01, Math.min(5, Number(componentId.style?.scale || 1)));
     const scale = Number(numeric.rotation || 0) * Math.PI / 180;
-    const state3 = size * count3;
-    const state4 = state * count3;
-    const state5 = (Math.abs(Math.cos(scale)) * state3 + Math.abs(Math.sin(scale)) * state4) / 2;
-    const state6 = (Math.abs(Math.sin(scale)) * state3 + Math.abs(Math.cos(scale)) * state4) / 2;
+    const value = size * countCurrent;
+    const statePrevious = state * countCurrent;
+    const stateLocal = (Math.abs(Math.cos(scale)) * value + Math.abs(Math.sin(scale)) * statePrevious) / 2;
+    const stateItem = (Math.abs(Math.sin(scale)) * value + Math.abs(Math.cos(scale)) * statePrevious) / 2;
     const asNumber = Number(numeric.x || 0) + count / 2;
-    const asNumber1 = Number(numeric.y || 0) + count2 / 2;
-    const asNumber2 = Number(numeric.x || 0) + state1 + size / 2;
-    const asNumber3 = Number(numeric.y || 0) + state2 + state / 2;
-    const state7 = (asNumber2 - asNumber) * count3;
-    const state8 = (asNumber3 - asNumber1) * count3;
-    const state9 = asNumber + state7 * Math.cos(scale) - state8 * Math.sin(scale);
-    const size1 = asNumber1 + state7 * Math.sin(scale) + state8 * Math.cos(scale);
+    const asNumberCurrent = Number(numeric.y || 0) + max / 2;
+    const asNumberNext = Number(numeric.x || 0) + stateCurrent + size / 2;
+    const asNumberPrevious = Number(numeric.y || 0) + stateNext + state / 2;
+    const stateEntry = (asNumberNext - asNumber) * countCurrent;
+    const stateList = (asNumberPrevious - asNumberCurrent) * countCurrent;
+    const stateText = asNumber + stateEntry * Math.cos(scale) - stateList * Math.sin(scale);
+    const sizeCurrent = asNumberCurrent + stateEntry * Math.sin(scale) + stateList * Math.cos(scale);
     return {
-      left: state9 - state5,
-      top: size1 - state6,
-      right: state9 + state5,
-      bottom: size1 + state6
+      left: stateText - stateLocal,
+      top: sizeCurrent - stateItem,
+      right: stateText + stateLocal,
+      bottom: sizeCurrent + stateItem
     };
   }
   scaleRecordsBounds(records) {
@@ -926,11 +927,11 @@ export class PanelRenderer {
       return;
     }
     const state = Math.min(this.appliedScaleX || 1, this.appliedScaleY || 1);
-    const state1 = element.parentElement?.dataset?.componentId || null;
-    const scale = state1 ? this.componentWorldTransform(state1).scale : 1;
-    const scale1 = 1 / Math.max(0.001, state * scale);
-    element.style.setProperty("--hb-ui-scale", String(scale1));
-    element.style.setProperty("--hb-handle-outset", scale1 * 30 + "px");
+    const stateCurrent = element.parentElement?.dataset?.componentId || null;
+    const scale = stateCurrent ? this.componentWorldTransform(stateCurrent).scale : 1;
+    const value = 1 / Math.max(0.001, state * scale);
+    element.style.setProperty("--hb-ui-scale", String(value));
+    element.style.setProperty("--hb-handle-outset", value * 30 + "px");
     const domRect = element.getBoundingClientRect();
     element.classList.toggle("handles-outside", domRect.width < 132 || domRect.height < 112);
   }
@@ -939,34 +940,34 @@ export class PanelRenderer {
     if (!selectionBoundsEl.length) {
       return;
     }
-    const selectionBoundsEl1 = this.scaleRecordsBounds(selectionBoundsEl);
-    const selectionBoundsEl2 = document.createElement("div");
-    selectionBoundsEl2.className = "hb-selection-bounds hb-multi-selection-bounds";
-    Object.assign(selectionBoundsEl2.style, {
-      left: selectionBoundsEl1.left + "px",
-      top: selectionBoundsEl1.top + "px",
-      width: Math.max(1, selectionBoundsEl1.right - selectionBoundsEl1.left) + "px",
-      height: Math.max(1, selectionBoundsEl1.bottom - selectionBoundsEl1.top) + "px"
+    const rect = this.scaleRecordsBounds(selectionBoundsEl);
+    const element = document.createElement("div");
+    element.className = "hb-selection-bounds hb-multi-selection-bounds";
+    Object.assign(element.style, {
+      left: rect.left + "px",
+      top: rect.top + "px",
+      width: Math.max(1, rect.right - rect.left) + "px",
+      height: Math.max(1, rect.bottom - rect.top) + "px"
     });
     for (const cornerMarkerEl of ["top-left", "top-right", "bottom-left", "bottom-right"]) {
-      const cornerMarkerEl1 = document.createElement("i");
-      cornerMarkerEl1.className = "hb-corner-marker hb-corner-" + cornerMarkerEl;
-      cornerMarkerEl1.setAttribute("aria-hidden", "true");
-      selectionBoundsEl2.append(cornerMarkerEl1);
+      const cornerMarkerElCurrent = document.createElement("i");
+      cornerMarkerElCurrent.className = "hb-corner-marker hb-corner-" + cornerMarkerEl;
+      cornerMarkerElCurrent.setAttribute("aria-hidden", "true");
+      element.append(cornerMarkerElCurrent);
     }
     const transformHandleEl = document.createElement("button");
     transformHandleEl.type = "button";
     transformHandleEl.className = "hb-transform-handle hb-resize-handle";
     transformHandleEl.title = "拖动整体缩放";
-    transformHandleEl.addEventListener("pointerdown", transformHandleEl2 => this.startComponentsScale(transformHandleEl2, selectionBoundsEl, selectionBoundsEl1, selectionBoundsEl2));
-    const transformHandleEl1 = document.createElement("button");
-    transformHandleEl1.type = "button";
-    transformHandleEl1.className = "hb-transform-handle hb-rotate-handle";
-    transformHandleEl1.title = "拖动整体旋转";
-    transformHandleEl1.addEventListener("pointerdown", arg => this.startComponentsRotate(arg, selectionBoundsEl, selectionBoundsEl1, selectionBoundsEl2));
-    selectionBoundsEl2.append(transformHandleEl, transformHandleEl1);
-    (selectionBoundsEl[0]?.host?.parentElement || this.canvas).append(selectionBoundsEl2);
-    this.updateMultiSelectionHandleScale(selectionBoundsEl2);
+    transformHandleEl.addEventListener("pointerdown", transformHandleEl => this.startComponentsScale(transformHandleEl, selectionBoundsEl, rect, element));
+    const transformHandleElCurrent = document.createElement("button");
+    transformHandleElCurrent.type = "button";
+    transformHandleElCurrent.className = "hb-transform-handle hb-rotate-handle";
+    transformHandleElCurrent.title = "拖动整体旋转";
+    transformHandleElCurrent.addEventListener("pointerdown", arg => this.startComponentsRotate(arg, selectionBoundsEl, rect, element));
+    element.append(transformHandleEl, transformHandleElCurrent);
+    (selectionBoundsEl[0]?.host?.parentElement || this.canvas).append(element);
+    this.updateMultiSelectionHandleScale(element);
   }
   previewComponentsTransform(componentIds, transform = this.selectedComponentId) {
     for (const item of componentIds || []) {
@@ -1010,10 +1011,10 @@ export class PanelRenderer {
     event.stopPropagation();
     const domRect = element.getBoundingClientRect();
     const size = domRect.left + domRect.width / 2;
-    const size1 = domRect.top + domRect.height / 2;
-    const count = Math.max(1, Math.hypot(event.clientX - size, event.clientY - size1));
-    const size2 = (pointerEvent.left + pointerEvent.right) / 2;
-    const size3 = (pointerEvent.top + pointerEvent.bottom) / 2;
+    const value = domRect.top + domRect.height / 2;
+    const count = Math.max(1, Math.hypot(event.clientX - size, event.clientY - value));
+    const sizeCurrent = (pointerEvent.left + pointerEvent.right) / 2;
+    const sizeNext = (pointerEvent.top + pointerEvent.bottom) / 2;
     const mapped = handle.map(arg => {
       const numeric = arg.component.position || {};
       const width = Number(numeric.width || 100);
@@ -1027,66 +1028,66 @@ export class PanelRenderer {
         scale: Math.max(0.01, Math.min(5, Number(arg.component.style?.scale || 1)))
       };
     });
-    const count2 = Math.max(...mapped.map(arg => 0.01 / arg.scale));
-    const mapped1 = Math.min(...mapped.map(arg => 5 / arg.scale));
+    const max = Math.max(...mapped.map(arg => 0.01 / arg.scale));
+    const min = Math.min(...mapped.map(arg => 5 / arg.scale));
     let scale = 1;
-    let scale1 = [];
-    let event1 = false;
+    let list = [];
+    let flag = false;
     const pointerId = event.pointerId;
     event.currentTarget.setPointerCapture(pointerId);
-    const event2 = event3 => {
-      if (event3.pointerId !== pointerId) {
+    const callback = event => {
+      if (event.pointerId !== pointerId) {
         return;
       }
-      const event4 = Math.hypot(event3.clientX - size, event3.clientY - size1);
-      scale = Math.max(count2, Math.min(mapped1, event4 / count));
-      scale1 = mapped.map(arg => {
-        const state1 = size2 + (arg.centerX - size2) * scale;
-        const scale2 = size3 + (arg.centerY - size3) * scale;
-        const scale = arg.scale * scale;
-        const position = state1 - arg.width / 2;
-        const position1 = scale2 - arg.height / 2;
+      const hypot = Math.hypot(event.clientX - size, event.clientY - value);
+      scale = Math.max(max, Math.min(min, hypot / count));
+      list = mapped.map(arg => {
+        const state = sizeCurrent + (arg.centerX - sizeCurrent) * scale;
+        const value = sizeNext + (arg.centerY - sizeNext) * scale;
+        const nextScale = arg.scale * scale;
+        const position = state - arg.width / 2;
+        const positionCurrent = value - arg.height / 2;
         arg.component.position = {
           ...(arg.component.position || {}),
           x: position,
-          y: position1
+          y: positionCurrent
         };
         arg.component.style = {
           ...(arg.component.style || {}),
-          scale
+          scale: nextScale
         };
         arg.host.style.left = position + "px";
-        arg.host.style.top = position1 + "px";
-        arg.host.style.transform = "rotate(" + Number(arg.component.position?.rotation || 0) + "deg) scale(" + scale + ")";
+        arg.host.style.top = positionCurrent + "px";
+        arg.host.style.transform = "rotate(" + Number(arg.component.position?.rotation || 0) + "deg) scale(" + nextScale + ")";
         return {
           componentId: arg.component.id,
           x: position,
-          y: position1,
-          scale
+          y: positionCurrent,
+          scale: nextScale
         };
       });
       Object.assign(element.style, {
-        left: size2 + (pointerEvent.left - size2) * scale + "px",
-        top: size3 + (pointerEvent.top - size3) * scale + "px",
+        left: sizeCurrent + (pointerEvent.left - sizeCurrent) * scale + "px",
+        top: sizeNext + (pointerEvent.top - sizeNext) * scale + "px",
         width: Math.max(1, (pointerEvent.right - pointerEvent.left) * scale) + "px",
         height: Math.max(1, (pointerEvent.bottom - pointerEvent.top) * scale) + "px"
       });
       this.updateMultiSelectionHandleScale(element);
-      this.options.onComponentsTransformPreview?.(scale1, this.selectedComponentId);
+      this.options.onComponentsTransformPreview?.(list, this.selectedComponentId);
     };
-    const state = (event3 = null) => {
-      if (!event1 && (event3?.pointerId == null || event3.pointerId === pointerId)) {
-        event1 = true;
-        window.removeEventListener("pointermove", event2, true);
+    const state = (event = null) => {
+      if (!flag && (event?.pointerId == null || event.pointerId === pointerId)) {
+        flag = true;
+        window.removeEventListener("pointermove", callback, true);
         window.removeEventListener("pointerup", state, true);
         window.removeEventListener("pointercancel", state, true);
         window.removeEventListener("blur", state);
-        if (scale !== 1 && scale1.length) {
-          this.options.onComponentsTransform?.(scale1, this.selectedComponentId);
+        if (scale !== 1 && list.length) {
+          this.options.onComponentsTransform?.(list, this.selectedComponentId);
         }
       }
     };
-    window.addEventListener("pointermove", event2, true);
+    window.addEventListener("pointermove", callback, true);
     window.addEventListener("pointerup", state, true);
     window.addEventListener("pointercancel", state, true);
     window.addEventListener("blur", state);
@@ -1096,9 +1097,9 @@ export class PanelRenderer {
     event.stopPropagation();
     const domRect = element.getBoundingClientRect();
     const size = domRect.left + domRect.width / 2;
-    const event1 = domRect.top + domRect.height / 2;
-    const size1 = (handleEl.left + handleEl.right) / 2;
-    const size2 = (handleEl.top + handleEl.bottom) / 2;
+    const value = domRect.top + domRect.height / 2;
+    const sizeCurrent = (handleEl.left + handleEl.right) / 2;
+    const sizeNext = (handleEl.top + handleEl.bottom) / 2;
     const mapped = pointerEvent.map(arg => {
       const numeric = arg.component.position || {};
       const width = Number(numeric.width || 100);
@@ -1113,27 +1114,27 @@ export class PanelRenderer {
         rotation: Number(numeric.rotation || 0)
       };
     });
-    let state = Math.atan2(event.clientY - event1, event.clientX - size);
-    let state1 = 0;
-    let state2 = [];
-    let event2 = false;
+    let state = Math.atan2(event.clientY - value, event.clientX - size);
+    let count = 0;
+    let list = [];
+    let flag = false;
     const pointerId = event.pointerId;
     event.currentTarget.setPointerCapture(pointerId);
-    const event3 = event4 => {
-      if (event4.pointerId !== pointerId) {
+    const callback = event => {
+      if (event.pointerId !== pointerId) {
         return;
       }
-      const state4 = Math.atan2(event4.clientY - event1, event4.clientX - size);
-      let amount = state4 - state;
+      const atan = Math.atan2(event.clientY - value, event.clientX - size);
+      let amount = atan - state;
       if (amount > Math.PI) {
         amount -= Math.PI * 2;
       } else if (amount < -Math.PI) {
         amount += Math.PI * 2;
       }
-      state1 += amount * 180 / Math.PI;
-      state = state4;
-      state2 = rotateMultiSelectionTransforms(mapped, size1, size2, state1);
-      for (const item of state2) {
+      count += amount * 180 / Math.PI;
+      state = atan;
+      list = rotateMultiSelectionTransforms(mapped, sizeCurrent, sizeNext, count);
+      for (const item of list) {
         const found = mapped.find(arg => arg.componentId === item.componentId);
         if (found) {
           found.component.position = {
@@ -1147,26 +1148,26 @@ export class PanelRenderer {
           found.host.style.transform = "rotate(" + item.rotation + "deg) scale(" + Number(found.component.style?.scale || 1) + ")";
         }
       }
-      element.style.transform = "rotate(" + state1 + "deg)";
+      element.style.transform = "rotate(" + count + "deg)";
       element.style.transformOrigin = "center center";
-      this.options.onComponentsTransformPreview?.(state2, this.selectedComponentId);
+      this.options.onComponentsTransformPreview?.(list, this.selectedComponentId);
     };
-    const state3 = (event4 = null) => {
-      if (!event2 && (event4?.pointerId == null || event4.pointerId === pointerId)) {
-        event2 = true;
-        window.removeEventListener("pointermove", event3, true);
-        window.removeEventListener("pointerup", state3, true);
-        window.removeEventListener("pointercancel", state3, true);
-        window.removeEventListener("blur", state3);
-        if (state1 !== 0 && state2.length) {
-          this.options.onComponentsTransform?.(state2, this.selectedComponentId);
+    const stateCurrent = (event = null) => {
+      if (!flag && (event?.pointerId == null || event.pointerId === pointerId)) {
+        flag = true;
+        window.removeEventListener("pointermove", callback, true);
+        window.removeEventListener("pointerup", stateCurrent, true);
+        window.removeEventListener("pointercancel", stateCurrent, true);
+        window.removeEventListener("blur", stateCurrent);
+        if (count !== 0 && list.length) {
+          this.options.onComponentsTransform?.(list, this.selectedComponentId);
         }
       }
     };
-    window.addEventListener("pointermove", event3, true);
-    window.addEventListener("pointerup", state3, true);
-    window.addEventListener("pointercancel", state3, true);
-    window.addEventListener("blur", state3);
+    window.addEventListener("pointermove", callback, true);
+    window.addEventListener("pointerup", stateCurrent, true);
+    window.addEventListener("pointercancel", stateCurrent, true);
+    window.addEventListener("blur", stateCurrent);
   }
   cleanupComponents(component = false, preserveIds = new Set()) {
     if (this.retainedInteraction3d && !preserveIds.has(this.retainedInteraction3d.component.id)) {
@@ -1225,10 +1226,10 @@ export class PanelRenderer {
       this.container.style.removeProperty(item);
     }
     this.themeVariableNames.clear();
-    for (const [entry, entry1] of Object.entries(this.document?.theme?.variables || {})) {
+    for (const [entry, entryCurrent] of Object.entries(this.document?.theme?.variables || {})) {
       const asString = String(entry).startsWith("--") ? String(entry) : "--" + entry;
       if (/^--[a-zA-Z0-9_-]+$/.test(asString)) {
-        this.container.style.setProperty(asString, String(entry1));
+        this.container.style.setProperty(asString, String(entryCurrent));
         this.themeVariableNames.add(asString);
       }
     }
@@ -1315,12 +1316,12 @@ export class PanelRenderer {
         }
       }
     }
-    const componentById1 = new Map([...this.canvas.querySelectorAll(".hb-icon-button-effect-layer[data-effect-for]")].map(arg => [arg.dataset.effectFor, arg]));
+    const map = new Map([...this.canvas.querySelectorAll(".hb-icon-button-effect-layer[data-effect-for]")].map(arg => [arg.dataset.effectFor, arg]));
     this.cleanupComponents(preserveSelection, add);
-    const allowed2 = new Set([...componentById.values()].filter(arg => arg.parentElement === this.canvas && (allowed.has(arg.dataset.componentId) || arg === retained?.host) && (arg.querySelector(".hb-floorplan-auto-diagram-preview") || add.has(arg.dataset.componentId))));
-    if (allowed2.size) {
+    const set = new Set([...componentById.values()].filter(arg => arg.parentElement === this.canvas && (allowed.has(arg.dataset.componentId) || arg === retained?.host) && (arg.querySelector(".hb-floorplan-auto-diagram-preview") || add.has(arg.dataset.componentId))));
+    if (set.size) {
       for (const child of [...this.canvas.children]) {
-        if (!allowed2.has(child)) {
+        if (!set.has(child)) {
           child.remove();
         }
       }
@@ -1335,10 +1336,10 @@ export class PanelRenderer {
     this.runtimeEntityComponentIndex.clear();
     this.componentParentIds.clear();
     for (const item of this.page.components || []) {
-      this.renderComponent(item, this.canvas, 0, componentById, componentById1);
+      this.renderComponent(item, this.canvas, 0, componentById, map);
     }
     for (const preservedSelectionIds of filtered) {
-      this.renderComponent(preservedSelectionIds, this.canvas, 100000, componentById, componentById1);
+      this.renderComponent(preservedSelectionIds, this.canvas, 100000, componentById, map);
     }
     if (retained && currentById.has(retained.component.id)) {
       clearTimeout(retained.timer);
@@ -1359,9 +1360,9 @@ export class PanelRenderer {
     }
     this.runtimeStateHandlers.get(text).add(handler);
     const state = () => {
-      const state1 = this.runtimeStateHandlers.get(text);
-      state1?.delete(handler);
-      if (state1?.size === 0) {
+      const state = this.runtimeStateHandlers.get(text);
+      state?.delete(handler);
+      if (state?.size === 0) {
         this.runtimeStateHandlers.delete(text);
       }
     };
@@ -1393,15 +1394,15 @@ export class PanelRenderer {
       ...component,
       children: []
     }]);
-    const component1 = component?.bindings?.entity?.entityId || "";
-    if (component1) {
-      entityIds.add(component1);
-      const state = this.powerEntityId(component, component1);
+    const text = component?.bindings?.entity?.entityId || "";
+    if (text) {
+      entityIds.add(text);
+      const state = this.powerEntityId(component, text);
       if (state) {
         entityIds.add(state);
       }
-      const state1 = this.deviceProfile(component1);
-      for (const valueEntry of Object.values(state1?.roles || {})) {
+      const profile = this.deviceProfile(text);
+      for (const valueEntry of Object.values(profile?.roles || {})) {
         if (valueEntry) {
           entityIds.add(valueEntry);
         }
@@ -1418,9 +1419,9 @@ export class PanelRenderer {
     }
   }
   unindexRuntimeComponent(component) {
-    for (const [entity, entity1] of this.runtimeEntityComponentIndex) {
-      entity1.delete(component);
-      if (!entity1.size) {
+    for (const [entity, entityCurrent] of this.runtimeEntityComponentIndex) {
+      entityCurrent.delete(component);
+      if (!entityCurrent.size) {
         this.runtimeEntityComponentIndex.delete(entity);
       }
     }
@@ -1430,16 +1431,16 @@ export class PanelRenderer {
   }
   refreshRuntimeComponent(componentId) {
     const state = this.componentRecords.get(componentId);
-    const state1 = this.componentHosts.get(componentId);
-    if (!state || !state1 || !state1.isConnected) {
+    const entry = this.componentHosts.get(componentId);
+    if (!state || !entry || !entry.isConnected) {
       return;
     }
     if (state.type === "interaction3d") {
-      state1.querySelector(".hb-interaction3d-host")?.updateInteraction3d?.(state, this.document);
+      entry.querySelector(".hb-interaction3d-host")?.updateInteraction3d?.(state, this.document);
       return;
     }
     this.cleanupRenderedComponent(componentId);
-    const state2 = {
+    const options = {
       document: this.document,
       page: this.page,
       states: this.states,
@@ -1476,31 +1477,31 @@ export class PanelRenderer {
       invalidate: () => this.refreshRuntimeComponent(componentId),
       cleanup: cleanupFn => this.registerComponentCleanup(componentId, cleanupFn)
     };
-    const state3 = renderRegisteredComponent(this.runtimePowerComponent(state), state2);
+    const component = renderRegisteredComponent(this.runtimePowerComponent(state), options);
     const numeric = Number(this.document.canvas.componentScale || 1);
     if (numeric !== 1) {
-      state3.style.width = 100 / numeric + "%";
-      state3.style.height = 100 / numeric + "%";
-      state3.style.transform = "scale(" + numeric + ")";
-      state3.style.transformOrigin = "top left";
+      component.style.width = 100 / numeric + "%";
+      component.style.height = 100 / numeric + "%";
+      component.style.transform = "scale(" + numeric + ")";
+      component.style.transformOrigin = "top left";
     }
-    const size = this.runtimeComponentContent(state1);
+    const size = this.runtimeComponentContent(entry);
     if (size) {
-      size.replaceWith(state3);
+      size.replaceWith(component);
     } else {
-      state1.prepend(state3);
+      entry.prepend(component);
     }
     if (state.type === "title-button" || state.type === "light-statistics") {
-      const element = state1.querySelector(":scope > .hb-runtime-action-hitbox");
+      const element = entry.querySelector(":scope > .hb-runtime-action-hitbox");
       if (element) {
-        const state4 = state.type === "light-statistics" ? this.updateLightStatisticsSelectionBounds(state1, state, element) : this.updateTitleButtonSelectionBounds(state1, state, element);
-        element.hidden = !state4;
+        const bounds = state.type === "light-statistics" ? this.updateLightStatisticsSelectionBounds(entry, state, element) : this.updateTitleButtonSelectionBounds(entry, state, element);
+        element.hidden = !bounds;
       }
     }
     if (state.type === "light-statistics") {
-      const matchedEl = this.componentSelectionOverlays.get(componentId)?.querySelector(":scope > .hb-selection-bounds") || state1.querySelector(":scope > .hb-selection-bounds");
+      const matchedEl = this.componentSelectionOverlays.get(componentId)?.querySelector(":scope > .hb-selection-bounds") || entry.querySelector(":scope > .hb-selection-bounds");
       if (matchedEl) {
-        if (!this.updateLightStatisticsSelectionBounds(state1, state, matchedEl)) {
+        if (!this.updateLightStatisticsSelectionBounds(entry, state, matchedEl)) {
           Object.assign(matchedEl.style, {
             left: "0",
             top: "0",
@@ -1508,17 +1509,17 @@ export class PanelRenderer {
             height: "100%"
           });
         }
-        this.updateTransformHandleScale(state1, state, matchedEl);
+        this.updateTransformHandleScale(entry, state, matchedEl);
       }
       this.refreshMultiSelectionBounds();
     }
   }
-  refreshEditorComponent(component1) {
+  refreshEditorComponent(componentCurrent) {
     if (!this.options.editable) {
       return false;
     }
-    const component = this.componentRecords.get(component1);
-    const element = this.componentHosts.get(component1);
+    const component = this.componentRecords.get(componentCurrent);
+    const element = this.componentHosts.get(componentCurrent);
     if (!component || !element?.isConnected || component.type === "group") {
       return false;
     }
@@ -1533,8 +1534,8 @@ export class PanelRenderer {
     }
     if (component.type === "floorplan-auto-diagram") {
       const position = component.properties?.previewReady === true && (component.properties?.generated !== true || component.properties?.previewing === true);
-      const position1 = element.querySelector(".hb-floorplan-auto-diagram-preview");
-      if (!!position1 === position) {
+      const selector = element.querySelector(".hb-floorplan-auto-diagram-preview");
+      if (!!selector === position) {
         const componentPosition = component.position || {};
         const isFillLayout = hostParentEl === this.canvas && component.properties?.layoutMode === "fill";
         const zIndex = isFillLayout ? {
@@ -1560,8 +1561,8 @@ export class PanelRenderer {
         element.classList.toggle("layout-fill", isFillLayout);
         const hintEl = element.querySelector(".hb-floorplan-auto-diagram-preview-hint");
         const isViewMode = component.properties?.interactionMode === "view";
-        position1?.classList.toggle("is-view-mode", isViewMode);
-        position1?.classList.toggle("is-position-mode", !isViewMode);
+        selector?.classList.toggle("is-view-mode", isViewMode);
+        selector?.classList.toggle("is-position-mode", !isViewMode);
         if (hintEl) {
           hintEl.textContent = isViewMode ? "拖动旋转 · 右键平移 · 滚轮缩放" : "拖动控件调整位置，右下角调整大小";
         }
@@ -1571,18 +1572,18 @@ export class PanelRenderer {
       }
     }
     const nextSibling = element.nextSibling;
-    this.cleanupRenderedComponent(component1);
-    for (const runHelper of this.cameraCleanups.get(component1)?.splice(0) || []) {
+    this.cleanupRenderedComponent(componentCurrent);
+    for (const runHelper of this.cameraCleanups.get(componentCurrent)?.splice(0) || []) {
       runHelper();
     }
-    this.cameraCleanups.delete(component1);
-    this.componentEffectLayers.get(component1)?.remove();
-    this.componentEffectLayers.delete(component1);
-    this.componentAirflowLayers.get(component1)?.remove();
-    this.componentAirflowLayers.delete(component1);
+    this.cameraCleanups.delete(componentCurrent);
+    this.componentEffectLayers.get(componentCurrent)?.remove();
+    this.componentEffectLayers.delete(componentCurrent);
+    this.componentAirflowLayers.get(componentCurrent)?.remove();
+    this.componentAirflowLayers.delete(componentCurrent);
     element.remove();
     this.renderComponent(component, hostParentEl);
-    const state = this.componentHosts.get(component1);
+    const state = this.componentHosts.get(componentCurrent);
     if (state && nextSibling?.parentElement === hostParentEl) {
       hostParentEl.insertBefore(state, nextSibling);
     }
@@ -1599,14 +1600,14 @@ export class PanelRenderer {
     if (!allowed.size) {
       return;
     }
-    const allowed2 = new Set(["icon-button-effect", "icon-button", "device-button", "navigation-button", "air-conditioner"]);
-    const allowed3 = new Set([...allowed].filter(arg => allowed2.has(this.componentRecords.get(arg)?.type)));
-    if (allowed3.size) {
-      this.updateOptimisticToggleVisuals("", allowed3);
+    const set = new Set(["icon-button-effect", "icon-button", "device-button", "navigation-button", "air-conditioner"]);
+    const allowedCurrent = new Set([...allowed].filter(arg => set.has(this.componentRecords.get(arg)?.type)));
+    if (allowedCurrent.size) {
+      this.updateOptimisticToggleVisuals("", allowedCurrent);
     }
     for (const item of allowed) {
       const state = this.componentRecords.get(item);
-      if (!!state && !allowed2.has(state.type) && !["line-chart", "camera", "vacuum-map"].includes(state.type)) {
+      if (!!state && !set.has(state.type) && !["line-chart", "camera", "vacuum-map"].includes(state.type)) {
         this.refreshRuntimeComponent(item);
       }
     }
@@ -1638,7 +1639,7 @@ export class PanelRenderer {
       }
     }
     this.document = updates;
-    this.page = this.document.pages?.find(documentModel1 => documentModel1.path === documentModel) || this.document.pages?.find(arg => arg.path === this.document.defaultPagePath) || this.document.pages?.[0] || null;
+    this.page = this.document.pages?.find(item => item.path === documentModel) || this.document.pages?.find(arg => arg.path === this.document.defaultPagePath) || this.document.pages?.[0] || null;
     for (const {
       componentId,
       component
@@ -1657,15 +1658,15 @@ export class PanelRenderer {
       this.refreshEditorComponent(componentId);
     }
     this.syncSelection();
-    const allowed2 = new Set();
+    const set = new Set();
     for (const {
       componentId
     } of filtered) {
       for (const entity of this.runtimeEntityIdsForComponent(this.componentRecords.get(componentId))) {
-        allowed2.add(entity);
+        set.add(entity);
       }
     }
-    if (allowed.size !== allowed2.size || [...allowed].some(arg => !allowed2.has(arg))) {
+    if (allowed.size !== set.size || [...allowed].some(arg => !set.has(arg))) {
       this.connectRuntime();
     }
     return true;
@@ -1710,7 +1711,7 @@ export class PanelRenderer {
     if (!element || component?.type !== "icon-button-effect") {
       return;
     }
-    const numeric1 = component.properties || {};
+    const properties = component.properties || {};
     const text = String(component?.bindings?.entity?.entityId || "");
     element.classList.toggle("awaiting-light-visual", iconButtonEffectLightVisualAwaiting(component, {
       editable: this.options.editable,
@@ -1720,16 +1721,16 @@ export class PanelRenderer {
     const state = iconButtonEffectLightVisualState(component, {
       states: this.states
     });
-    const numeric = Number(numeric1.effectOpacity ?? 1);
+    const numeric = Number(properties.effectOpacity ?? 1);
     const finiteNumber = Number.isFinite(numeric) ? Math.max(0, Math.min(1, numeric)) : 1;
     element.style.setProperty("--hb-effect-image-opacity", String(finiteNumber * state.opacity));
-    const element2 = element.querySelector(":scope > img");
-    if (element2) {
-      element2.style.filter = state.filter;
+    const selector = element.querySelector(":scope > img");
+    if (selector) {
+      selector.style.filter = state.filter;
     }
   }
-  cachedLightVisualState(entityId1) {
-    const entityId = String(entityId1 || "");
+  cachedLightVisualState(entityIdCurrent) {
+    const entityId = String(entityIdCurrent || "");
     if (!entityId.startsWith("light.")) {
       return null;
     }
@@ -1742,46 +1743,46 @@ export class PanelRenderer {
       if (!parsedJson?.attributes || Date.now() - Number(parsedJson.at || 0) > 2592000000) {
         return null;
       }
-      const state1 = {
+      const state = {
         entityId,
         state: "on",
         attributes: parsedJson.attributes
       };
-      this.confirmedLightVisualStates.set(entityId, state1);
-      return state1;
+      this.confirmedLightVisualStates.set(entityId, state);
+      return state;
     } catch {
       return null;
     }
   }
-  rememberLightVisualState(entityId1, visual) {
-    const entityId = String(entityId1 || "");
-    const entityId2 = visual?.newState || visual;
-    if (!entityId.startsWith("light.") || !entityId2?.attributes) {
+  rememberLightVisualState(entityIdCurrent, visual) {
+    const entityId = String(entityIdCurrent || "");
+    const entityIdNext = visual?.newState || visual;
+    if (!entityId.startsWith("light.") || !entityIdNext?.attributes) {
       return;
     }
-    const attributes = entityId2.attributes;
+    const attributes = entityIdNext.attributes;
     const runHelper = arg => attributes[arg] !== null && attributes[arg] !== undefined && attributes[arg] !== "" && Number.isFinite(Number(attributes[arg]));
     if (!runHelper("brightness") && !runHelper("color_temp_kelvin") && !runHelper("color_temp")) {
       return;
     }
-    const attributes2 = {
+    const options = {
       ...(this.cachedLightVisualState(entityId)?.attributes || {})
     };
     for (const item of ["brightness", "color_temp_kelvin", "color_temp", "color_mode", "supported_color_modes"]) {
       if (attributes[item] !== null && attributes[item] !== undefined && attributes[item] !== "") {
-        attributes2[item] = Array.isArray(attributes[item]) ? [...attributes[item]] : attributes[item];
+        options[item] = Array.isArray(attributes[item]) ? [...attributes[item]] : attributes[item];
       }
     }
     const state = {
       entityId,
       state: "on",
-      attributes: attributes2
+      attributes: options
     };
     this.confirmedLightVisualStates.set(entityId, state);
     try {
       window.localStorage?.setItem("ha-bridge:light-visual:" + entityId, JSON.stringify({
         at: Date.now(),
-        attributes: attributes2
+        attributes: options
       }));
     } catch {}
   }
@@ -1934,29 +1935,29 @@ export class PanelRenderer {
         }
         this.componentAirflowLayers.get(record)?.remove();
         this.componentAirflowLayers.delete(record);
-        const state10 = renderAirConditionerAirflowLayer(powerComponent, renderContext);
-        if (state10) {
+        const state = renderAirConditionerAirflowLayer(powerComponent, renderContext);
+        if (state) {
           const grouped = host.parentElement !== this.canvas;
           const airflowGeometry = airflowLayerGeometry(component, {
             grouped
           });
-          const numeric2 = Number(host.style.getPropertyValue("--hb-component-z") || component.position?.zIndex || 1);
-          state10.dataset.airflowFor = record;
-          state10.hidden = component.style?.visible === false;
-          Object.assign(state10.style, {
+          const numeric = Number(host.style.getPropertyValue("--hb-component-z") || component.position?.zIndex || 1);
+          state.dataset.airflowFor = record;
+          state.hidden = component.style?.visible === false;
+          Object.assign(state.style, {
             left: airflowGeometry.left + "px",
             top: airflowGeometry.top + "px",
             width: airflowGeometry.width + "px",
             height: airflowGeometry.height + "px",
-            zIndex: String(numeric2),
+            zIndex: String(numeric),
             transform: "rotate(" + airflowGeometry.rotation + "deg) scale(" + airflowGeometry.scale + ")"
           });
           if (grouped) {
-            host.append(state10);
+            host.append(state);
           } else {
-            this.canvas.insertBefore(state10, host);
+            this.canvas.insertBefore(state, host);
           }
-          this.componentAirflowLayers.set(record, state10);
+          this.componentAirflowLayers.set(record, state);
           if (this.options.editable && this.selectedComponentIds.size === 1 && this.selectedComponentId === record && this.componentSelectionLayers.get(record) === "airflow") {
             this.syncSelection();
           }
@@ -1965,9 +1966,9 @@ export class PanelRenderer {
       if (component.type !== "icon-button-effect") {
         continue;
       }
-      const state7 = this.componentEffectLayers.get(record);
-      this.syncEffectLayerLightVisual(component, state7);
-      this.setEffectLayerActive(state7, displayedOn, effectFadeDuration(component));
+      const state = this.componentEffectLayers.get(record);
+      this.syncEffectLayerLightVisual(component, state);
+      this.setEffectLayerActive(state, displayedOn, effectFadeDuration(component));
     }
   }
   refreshVacuumMapEntity(entityId) {
@@ -1975,60 +1976,60 @@ export class PanelRenderer {
       return;
     }
     const state = this.states.get(entityId);
-    const state1 = vacuumMapImageSource(entityId, state);
-    let state2 = false;
+    const source = vacuumMapImageSource(entityId, state);
+    let flag = false;
     for (const [record, component] of this.componentRecords) {
       if (component.type !== "vacuum-map" || component.bindings?.entity?.entityId !== entityId) {
         continue;
       }
       const matchedEl = this.componentHosts.get(record)?.querySelector(".hb-vacuum-map-image");
       if (matchedEl) {
-        state2 = true;
-        if (matchedEl.dataset.vacuumMapSource !== state1) {
-          matchedEl.dataset.vacuumMapSource = state1;
+        flag = true;
+        if (matchedEl.dataset.vacuumMapSource !== source) {
+          matchedEl.dataset.vacuumMapSource = source;
         }
-        if (matchedEl.dataset.vacuumMapSuspended !== "true" && matchedEl.getAttribute("src") !== state1) {
-          matchedEl.src = state1;
+        if (matchedEl.dataset.vacuumMapSuspended !== "true" && matchedEl.getAttribute("src") !== source) {
+          matchedEl.src = source;
         }
       }
     }
-    if (!state2 && this.options.liveMedia !== false && this.vacuumMapEntityIds.has(entityId)) {
-      this.runtimeVacuumMapImagePreloader.enqueue(state1);
+    if (!flag && this.options.liveMedia !== false && this.vacuumMapEntityIds.has(entityId)) {
+      this.runtimeVacuumMapImagePreloader.enqueue(source);
     }
   }
-  applyOptimisticToggle(entityId1, nextState = null) {
-    const state = entityId1;
+  applyOptimisticToggle(entityIdCurrent, nextState = null) {
+    const state = entityIdCurrent;
     const entityId = this.powerEntityId(nextState, state);
-    const state1 = this.states.get(entityId);
-    const state2 = state1?.newState || state1 || {
+    const entry = this.states.get(entityId);
+    const stateCurrent = entry?.newState || entry || {
       entityId,
       attributes: {}
     };
     const asString = String(entityId || "").startsWith("cover.");
-    const state3 = asString && coverComponentIsDream(nextState, entityId, state1, this.entityMetadata);
-    const state4 = this.runtimePowerComponent(nextState, state);
-    const desiredActive = !(asString ? state3 ? runtimeEntityStateIsActive(state1) : runtimeCoverStateIsActive(state1) : entityPowerIsOn(entityId, state1, state4));
+    const stateNext = asString && coverComponentIsDream(nextState, entityId, entry, this.entityMetadata);
+    const component = this.runtimePowerComponent(nextState, state);
+    const desiredActive = !(asString ? stateNext ? runtimeEntityStateIsActive(entry) : runtimeCoverStateIsActive(entry) : entityPowerIsOn(entityId, entry, component));
     const newState = asString ? {
-      ...state2,
+      ...stateCurrent,
       state: desiredActive ? "open" : "closed",
-      ...(state3 ? {} : {
+      ...(stateNext ? {} : {
         attributes: {
-          ...(state2.attributes || {}),
+          ...(stateCurrent.attributes || {}),
           current_position: desiredActive ? 100 : 0
         }
       })
-    } : optimisticToggleState(entityId, state2, state4);
+    } : optimisticToggleState(entityId, stateCurrent, component);
     if (desiredActive && String(entityId || "").startsWith("light.")) {
-      const state7 = this.cachedLightVisualState(entityId);
-      if (state7?.attributes) {
+      const state = this.cachedLightVisualState(entityId);
+      if (state?.attributes) {
         newState.attributes = {
           ...(newState.attributes || {}),
-          ...state7.attributes
+          ...state.attributes
         };
       }
     }
-    const state5 = state1?.newState ? {
-      ...state1,
+    const options = entry?.newState ? {
+      ...entry,
       newState
     } : newState;
     const text = String(entityId || "");
@@ -2037,31 +2038,31 @@ export class PanelRenderer {
       expiresAt: Date.now() + 8000
     };
     this.pendingOptimisticStates.set(text, nowMs);
-    const state6 = window.setTimeout(() => {
+    const timeout = window.setTimeout(() => {
       if (this.pendingOptimisticStates.get(text) === nowMs) {
         this.pendingOptimisticStates.delete(text);
-        if (this.states.get(entityId) === state5) {
-          if (state1 === undefined) {
+        if (this.states.get(entityId) === options) {
+          if (entry === undefined) {
             this.states.delete(entityId);
           } else {
-            this.states.set(entityId, state1);
+            this.states.set(entityId, entry);
           }
           this.updateOptimisticToggleVisuals(entityId);
         }
       }
     }, 8000);
-    this.states.set(entityId, state5);
+    this.states.set(entityId, options);
     this.updateOptimisticToggleVisuals(entityId);
     return () => {
-      window.clearTimeout(state6);
+      window.clearTimeout(timeout);
       if (this.pendingOptimisticStates.get(text) === nowMs) {
         this.pendingOptimisticStates.delete(text);
       }
-      if (this.states.get(entityId) === state5) {
-        if (state1 === undefined) {
+      if (this.states.get(entityId) === options) {
+        if (entry === undefined) {
           this.states.delete(entityId);
         } else {
-          this.states.set(entityId, state1);
+          this.states.set(entityId, entry);
         }
         this.updateOptimisticToggleVisuals(entityId);
       }
@@ -2069,50 +2070,50 @@ export class PanelRenderer {
   }
   renderComponent(component, parentHost = this.canvas, renderOptions = 0, renderContext = null, parentComponent = null) {
     const iconButtonEffectComponent = normalizeIconButtonEffectComponent(component);
-    const component2 = this.runtimePowerComponent(iconButtonEffectComponent);
+    const componentCurrent = this.runtimePowerComponent(iconButtonEffectComponent);
     const element = ["camera", "vacuum-map", "floorplan-auto-diagram", "interaction3d"].includes(component.type) ? renderContext?.get(component.id) : null;
     if (element) {
-      const position2 = component.position || {};
-      const position3 = parentHost === this.canvas && ["floorplan-auto-diagram", "interaction3d"].includes(component.type) && component.properties?.layoutMode === "fill";
-      const numeric2 = position3 ? {
-        ...position2,
+      const position = component.position || {};
+      const value = parentHost === this.canvas && ["floorplan-auto-diagram", "interaction3d"].includes(component.type) && component.properties?.layoutMode === "fill";
+      const numeric = value ? {
+        ...position,
         x: 0,
         y: 0,
         width: Number(this.document.canvas?.width || 2778),
         height: Number(this.document.canvas?.height || 1940),
         rotation: 0
-      } : position2;
-      const count2 = Math.max(0.01, Math.min(5, Number(component.style?.scale || 1)));
-      const scale1 = renderOptions + Number(numeric2.zIndex || 1);
+      } : position;
+      const count = Math.max(0.01, Math.min(5, Number(component.style?.scale || 1)));
+      const scale = renderOptions + Number(numeric.zIndex || 1);
       Object.assign(element.style, {
-        left: (numeric2.x || 0) + "px",
-        top: (numeric2.y || 0) + "px",
-        width: (numeric2.width || 100) + "px",
-        height: (numeric2.height || 100) + "px",
-        zIndex: String(scale1),
-        transform: "rotate(" + (numeric2.rotation || 0) + "deg) scale(" + (position3 ? 1 : count2) + ")"
+        left: (numeric.x || 0) + "px",
+        top: (numeric.y || 0) + "px",
+        width: (numeric.width || 100) + "px",
+        height: (numeric.height || 100) + "px",
+        zIndex: String(scale),
+        transform: "rotate(" + (numeric.rotation || 0) + "deg) scale(" + (value ? 1 : count) + ")"
       });
-      element.style.setProperty("--hb-component-z", String(scale1));
+      element.style.setProperty("--hb-component-z", String(scale));
       element.hidden = component.style?.visible === false;
-      element.classList.toggle("layout-fill", position3);
+      element.classList.toggle("layout-fill", value);
       if (component.type === "interaction3d") {
         element.querySelector(".hb-interaction3d-host")?.updateInteraction3d?.(component, this.document);
       }
       if (component.type === "floorplan-auto-diagram") {
-        const state2 = component.properties?.interactionMode === "view";
+        const state = component.properties?.interactionMode === "view";
         const hbFloorplanAutoDiagramPreview = element.querySelector(".hb-floorplan-auto-diagram-preview");
         const hbFloorplanAutoDiagramPreviewHint = element.querySelector(".hb-floorplan-auto-diagram-preview-hint");
-        hbFloorplanAutoDiagramPreview?.classList.toggle("is-view-mode", state2);
-        hbFloorplanAutoDiagramPreview?.classList.toggle("is-position-mode", !state2);
+        hbFloorplanAutoDiagramPreview?.classList.toggle("is-view-mode", state);
+        hbFloorplanAutoDiagramPreview?.classList.toggle("is-position-mode", !state);
         if (hbFloorplanAutoDiagramPreviewHint) {
-          hbFloorplanAutoDiagramPreviewHint.textContent = state2 ? "拖动旋转 · 右键平移 · 滚轮缩放" : "拖动控件调整位置，右下角调整大小";
+          hbFloorplanAutoDiagramPreviewHint.textContent = state ? "拖动旋转 · 右键平移 · 滚轮缩放" : "拖动控件调整位置，右下角调整大小";
         }
       }
       this.componentHosts.set(component.id, element);
       this.componentRecords.set(component.id, component);
-      const componentId2 = parentHost?.dataset?.componentId;
-      if (componentId2) {
-        this.componentParentIds.set(component.id, componentId2);
+      const componentId = parentHost?.dataset?.componentId;
+      if (componentId) {
+        this.componentParentIds.set(component.id, componentId);
       }
       this.indexRuntimeComponent(component);
       if (element.parentElement !== parentHost) {
@@ -2120,12 +2121,12 @@ export class PanelRenderer {
       }
       return;
     }
-    const element2 = document.createElement("div");
-    element2.className = "hb-component hb-component-" + component.type.replace(/[^a-z0-9_-]/gi, "-");
-    element2.dataset.componentId = component.id;
+    const elementCurrent = document.createElement("div");
+    elementCurrent.className = "hb-component hb-component-" + component.type.replace(/[^a-z0-9_-]/gi, "-");
+    elementCurrent.dataset.componentId = component.id;
     const position = component.position || {};
-    const position1 = parentHost === this.canvas && ["image", "floorplan-auto-diagram", "interaction3d"].includes(component.type) && component.properties?.layoutMode === "fill";
-    const numeric1 = position1 ? {
+    const value = parentHost === this.canvas && ["image", "floorplan-auto-diagram", "interaction3d"].includes(component.type) && component.properties?.layoutMode === "fill";
+    const rect = value ? {
       ...position,
       x: 0,
       y: 0,
@@ -2134,30 +2135,30 @@ export class PanelRenderer {
       rotation: 0
     } : position;
     const count = Math.max(0.01, Math.min(5, Number(component.style?.scale || 1)));
-    const scale = renderOptions + Number(numeric1.zIndex || 1);
+    const scale = renderOptions + Number(rect.zIndex || 1);
     const state = componentHostZIndex(component, scale, parentHost === this.canvas);
-    Object.assign(element2.style, {
-      left: (numeric1.x || 0) + "px",
-      top: (numeric1.y || 0) + "px",
-      width: (numeric1.width || 100) + "px",
-      height: (numeric1.height || 100) + "px",
+    Object.assign(elementCurrent.style, {
+      left: (rect.x || 0) + "px",
+      top: (rect.y || 0) + "px",
+      width: (rect.width || 100) + "px",
+      height: (rect.height || 100) + "px",
       zIndex: String(state),
-      transform: "rotate(" + (numeric1.rotation || 0) + "deg) scale(" + (position1 ? 1 : count) + ")"
+      transform: "rotate(" + (rect.rotation || 0) + "deg) scale(" + (value ? 1 : count) + ")"
     });
-    element2.style.setProperty("--hb-component-z", String(state));
-    element2.hidden = component.style?.visible === false;
+    elementCurrent.style.setProperty("--hb-component-z", String(state));
+    elementCurrent.hidden = component.style?.visible === false;
     if (component.type === "icon-button-effect" && component.properties?.buttonVisible === false && component.properties?.hiddenContentClickable !== true && !this.options.editable) {
-      element2.style.pointerEvents = "none";
+      elementCurrent.style.pointerEvents = "none";
     }
-    element2.classList.toggle("layout-fill", position1);
-    this.componentHosts.set(component.id, element2);
+    elementCurrent.classList.toggle("layout-fill", value);
+    this.componentHosts.set(component.id, elementCurrent);
     this.componentRecords.set(component.id, component);
     const componentId = parentHost?.dataset?.componentId;
     if (componentId) {
       this.componentParentIds.set(component.id, componentId);
     }
     this.indexRuntimeComponent(component);
-    const state1 = {
+    const options = {
       document: this.document,
       page: this.page,
       states: this.states,
@@ -2204,61 +2205,61 @@ export class PanelRenderer {
       }
     };
     if (component.type === "icon-button-effect") {
-      const element4 = renderIconButtonEffectLayer(component2, state1);
-      if (element4) {
-        const state2 = parentComponent?.get(component.id) || null;
-        const element5 = state2 || element4;
-        const element6 = element4.querySelector("img");
-        const element7 = element5.querySelector("img");
-        const active = element4.classList.contains("active");
-        if (state2 && element7 && element6) {
-          element5.classList.toggle("awaiting-light-visual", element4.classList.contains("awaiting-light-visual"));
-          const state5 = element6.dataset.effectSource || "";
-          if (state5) {
-            element7.dataset.effectSource = state5;
+      const element = renderIconButtonEffectLayer(componentCurrent, options);
+      if (element) {
+        const state = parentComponent?.get(component.id) || null;
+        const elementCurrent = state || element;
+        const selector = element.querySelector("img");
+        const elementNext = elementCurrent.querySelector("img");
+        const active = element.classList.contains("active");
+        if (state && elementNext && selector) {
+          elementCurrent.classList.toggle("awaiting-light-visual", element.classList.contains("awaiting-light-visual"));
+          const state = selector.dataset.effectSource || "";
+          if (state) {
+            elementNext.dataset.effectSource = state;
           } else {
-            delete element7.dataset.effectSource;
-            const state6 = element6.getAttribute("src");
-            if (state6) {
-              element7.src = state6;
+            delete elementNext.dataset.effectSource;
+            const state = selector.getAttribute("src");
+            if (state) {
+              elementNext.src = state;
             }
           }
-          element7.alt = element6.alt;
-          element7.draggable = false;
-          element7.decoding = "async";
-          element7.style.objectFit = element6.style.objectFit;
-          element7.style.mixBlendMode = element6.style.mixBlendMode;
+          elementNext.alt = selector.alt;
+          elementNext.draggable = false;
+          elementNext.decoding = "async";
+          elementNext.style.objectFit = selector.style.objectFit;
+          elementNext.style.mixBlendMode = selector.style.mixBlendMode;
           for (const item of ["effectOriginalWidth", "effectOriginalHeight", "effectCropX", "effectCropY", "effectCropWidth", "effectCropHeight"]) {
-            if (element6.dataset[item] !== undefined) {
-              element7.dataset[item] = element6.dataset[item];
+            if (selector.dataset[item] !== undefined) {
+              elementNext.dataset[item] = selector.dataset[item];
             } else {
-              delete element7.dataset[item];
+              delete elementNext.dataset[item];
             }
           }
         }
-        const numeric4 = component2.properties || {};
-        const numeric2 = Number(this.document.canvas?.width || 2778);
-        const numeric3 = Number(this.document.canvas?.height || 1940);
-        const size = numeric4.effectLayoutMode === "fill";
-        const state3 = parentHost !== this.canvas;
-        element5.dataset.effectFor = component.id;
-        element5.hidden = component.style?.visible === false;
+        const numeric = componentCurrent.properties || {};
+        const number = Number(this.document.canvas?.width || 2778);
+        const numericCurrent = Number(this.document.canvas?.height || 1940);
+        const size = numeric.effectLayoutMode === "fill";
+        const value = parentHost !== this.canvas;
+        elementCurrent.dataset.effectFor = component.id;
+        elementCurrent.hidden = component.style?.visible === false;
         const clampNumber = () => {
-          const state5 = effectSourceDimensions(numeric4, element7, numeric2, numeric3);
-          const angle = effectCropRectangle(element7, state5);
-          const state6 = !size && !state5.pendingNaturalSize ? effectReferenceImageTransform(this.page, component, state5.width, state5.height, numeric2, numeric3) : null;
-          const count2 = Math.max(0.01, Math.min(5, Number(numeric4.effectScale || 1)));
-          const scale = size ? Math.min(numeric2 / state5.width, numeric3 / state5.height) : (state6?.scale || 1) * count2;
-          const rotation = size ? 0 : Number(numeric4.effectRotation || 0);
-          const asNumber = Number(numeric4.effectLeft ?? 50) / 100;
-          const asNumber1 = Number(numeric4.effectTop ?? 50) / 100;
-          const centerX = size ? numeric2 / 2 : numeric2 * asNumber;
-          const centerY = size ? numeric3 / 2 : numeric3 * asNumber1;
-          const state7 = effectCroppedLayerGeometry({
+          const state = effectSourceDimensions(numeric, elementNext, number, numericCurrent);
+          const angle = effectCropRectangle(elementNext, state);
+          const transform = !size && !state.pendingNaturalSize ? effectReferenceImageTransform(this.page, component, state.width, state.height, number, numericCurrent) : null;
+          const count = Math.max(0.01, Math.min(5, Number(numeric.effectScale || 1)));
+          const scale = size ? Math.min(number / state.width, numericCurrent / state.height) : (transform?.scale || 1) * count;
+          const rotation = size ? 0 : Number(numeric.effectRotation || 0);
+          const asNumber = Number(numeric.effectLeft ?? 50) / 100;
+          const asNumberCurrent = Number(numeric.effectTop ?? 50) / 100;
+          const centerX = size ? number / 2 : number * asNumber;
+          const centerY = size ? numericCurrent / 2 : numericCurrent * asNumberCurrent;
+          const rect = effectCroppedLayerGeometry({
             centerX,
             centerY,
-            originalWidth: state5.width,
-            originalHeight: state5.height,
+            originalWidth: state.width,
+            originalHeight: state.height,
             cropX: angle.x,
             cropY: angle.y,
             cropWidth: angle.width,
@@ -2266,85 +2267,85 @@ export class PanelRenderer {
             scale,
             rotation
           });
-          let size1 = state7;
-          if (state3) {
-            const size2 = state7.left + state7.width / 2;
-            const size3 = state7.top + state7.height / 2;
-            const componentId2 = parentHost?.dataset?.componentId;
-            const state8 = componentId2 ? this.worldPointToComponentLocal(componentId2, size2, size3) : {
-              x: size2,
-              y: size3
+          let sizeCurrent = rect;
+          if (value) {
+            const size = rect.left + rect.width / 2;
+            const value = rect.top + rect.height / 2;
+            const componentId = parentHost?.dataset?.componentId;
+            const state = componentId ? this.worldPointToComponentLocal(componentId, size, value) : {
+              x: size,
+              y: value
             };
-            const scale1 = componentId2 ? this.componentWorldTransform(componentId2) : {
+            const scale = componentId ? this.componentWorldTransform(componentId) : {
               scale: 1,
               rotation: 0
             };
-            size1 = {
-              ...state7,
-              left: state8.x - state7.width / 2,
-              top: state8.y - state7.height / 2,
-              scale: state7.scale / Math.max(0.0001, scale1.scale),
-              rotation: state7.rotation - scale1.rotation
+            sizeCurrent = {
+              ...rect,
+              left: state.x - rect.width / 2,
+              top: state.y - rect.height / 2,
+              scale: rect.scale / Math.max(0.0001, scale.scale),
+              rotation: rect.rotation - scale.rotation
             };
           }
-          Object.assign(element5.style, {
-            left: size1.left + "px",
-            top: size1.top + "px",
-            width: state7.width + "px",
-            height: state7.height + "px",
-            visibility: state5.pendingNaturalSize ? "hidden" : "",
-            zIndex: String(state3 ? scale - 0.1 : scale),
-            transform: "rotate(" + size1.rotation + "deg) scale(" + size1.scale + ")"
+          Object.assign(elementCurrent.style, {
+            left: sizeCurrent.left + "px",
+            top: sizeCurrent.top + "px",
+            width: rect.width + "px",
+            height: rect.height + "px",
+            visibility: state.pendingNaturalSize ? "hidden" : "",
+            zIndex: String(value ? scale - 0.1 : scale),
+            transform: "rotate(" + sizeCurrent.rotation + "deg) scale(" + sizeCurrent.scale + ")"
           });
-          return state5;
+          return state;
         };
-        if (clampNumber().pendingNaturalSize && element7) {
-          element7.addEventListener("load", () => {
-            if (element5.isConnected) {
+        if (clampNumber().pendingNaturalSize && elementNext) {
+          elementNext.addEventListener("load", () => {
+            if (elementCurrent.isConnected) {
               clampNumber();
             }
           }, {
             once: true
           });
         }
-        (state3 ? parentHost : size ? this.canvas : parentHost).append(element5);
-        this.componentEffectLayers.set(component.id, element5);
-        const state4 = element7?.dataset.effectSource || "";
-        if (state4) {
-          this.runtimeEffectImageLoader.enqueue(element7, state4, {
+        (value ? parentHost : size ? this.canvas : parentHost).append(elementCurrent);
+        this.componentEffectLayers.set(component.id, elementCurrent);
+        const text = elementNext?.dataset.effectSource || "";
+        if (text) {
+          this.runtimeEffectImageLoader.enqueue(elementNext, text, {
             active
           });
         }
-        if (state2) {
-          const state5 = element6?.style.filter || "none";
-          const state6 = element4.style.getPropertyValue("--hb-effect-image-opacity");
-          const state7 = element4.style.getPropertyValue("--hb-effect-fade-duration");
-          const state8 = element4.style.getPropertyValue("--hb-effect-visual-transition-duration");
-          const opacity = element4.style.opacity;
-          const transition = element4.style.transition;
-          element7?.offsetWidth;
-          if (element7) {
-            element7.style.filter = state5;
+        if (state) {
+          const state = selector?.style.filter || "none";
+          const value = element.style.getPropertyValue("--hb-effect-image-opacity");
+          const stateCurrent = element.style.getPropertyValue("--hb-effect-fade-duration");
+          const stateNext = element.style.getPropertyValue("--hb-effect-visual-transition-duration");
+          const opacity = element.style.opacity;
+          const transition = element.style.transition;
+          elementNext?.offsetWidth;
+          if (elementNext) {
+            elementNext.style.filter = state;
           }
-          element5.style.opacity = opacity;
-          element5.style.transition = transition;
-          element5.style.setProperty("--hb-effect-image-opacity", state6);
-          element5.style.setProperty("--hb-effect-fade-duration", state7);
-          element5.style.setProperty("--hb-effect-visual-transition-duration", state8);
-          this.setEffectLayerActive(element5, active, effectFadeDuration(component));
+          elementCurrent.style.opacity = opacity;
+          elementCurrent.style.transition = transition;
+          elementCurrent.style.setProperty("--hb-effect-image-opacity", value);
+          elementCurrent.style.setProperty("--hb-effect-fade-duration", stateCurrent);
+          elementCurrent.style.setProperty("--hb-effect-visual-transition-duration", stateNext);
+          this.setEffectLayerActive(elementCurrent, active, effectFadeDuration(component));
         }
       }
     }
     if (component.type === "air-conditioner") {
-      const state2 = renderAirConditionerAirflowLayer(component2, state1);
-      if (state2) {
-        state2.dataset.airflowFor = component.id;
-        state2.hidden = component.style?.visible === false;
+      const state = renderAirConditionerAirflowLayer(componentCurrent, options);
+      if (state) {
+        state.dataset.airflowFor = component.id;
+        state.hidden = component.style?.visible === false;
         const grouped = parentHost !== this.canvas;
         const airflowGeometry = airflowLayerGeometry(component, {
           grouped
         });
-        Object.assign(state2.style, {
+        Object.assign(state.style, {
           left: airflowGeometry.left + "px",
           top: airflowGeometry.top + "px",
           width: airflowGeometry.width + "px",
@@ -2352,15 +2353,15 @@ export class PanelRenderer {
           zIndex: String(scale),
           transform: "rotate(" + airflowGeometry.rotation + "deg) scale(" + airflowGeometry.scale + ")"
         });
-        (grouped ? element2 : parentHost).append(state2);
-        this.componentAirflowLayers.set(component.id, state2);
+        (grouped ? elementCurrent : parentHost).append(state);
+        this.componentAirflowLayers.set(component.id, state);
       }
     }
     const groupContainerEl = component.type === "group" ? (() => {
-      const groupContainerEl1 = document.createElement("div");
-      groupContainerEl1.className = "hb-group-container";
-      return groupContainerEl1;
-    })() : renderRegisteredComponent(component2, state1);
+      const groupContainerEl = document.createElement("div");
+      groupContainerEl.className = "hb-group-container";
+      return groupContainerEl;
+    })() : renderRegisteredComponent(componentCurrent, options);
     const numeric = Number(this.document.canvas.componentScale || 1);
     if (numeric !== 1) {
       groupContainerEl.style.width = 100 / numeric + "%";
@@ -2368,38 +2369,38 @@ export class PanelRenderer {
       groupContainerEl.style.transform = "scale(" + numeric + ")";
       groupContainerEl.style.transformOrigin = "top left";
     }
-    element2.append(groupContainerEl);
+    elementCurrent.append(groupContainerEl);
     if (component.type === "line-chart") {
-      let element4 = groupContainerEl;
+      let element = groupContainerEl;
       const applyElementStyle = () => {
-        if (!element4?.isConnected) {
+        if (!element?.isConnected) {
           return;
         }
-        const size = renderRegisteredComponent(component2, state1);
+        const size = renderRegisteredComponent(componentCurrent, options);
         if (numeric !== 1) {
           size.style.width = 100 / numeric + "%";
           size.style.height = 100 / numeric + "%";
           size.style.transform = "scale(" + numeric + ")";
           size.style.transformOrigin = "top left";
         }
-        element4.cleanupLineChartHover?.();
-        element4.replaceWith(size);
-        element4 = size;
+        element.cleanupLineChartHover?.();
+        element.replaceWith(size);
+        element = size;
       };
       this.registerRuntimeStateHandler(component.bindings?.entity?.entityId, arg => {
-        element4.syncLineChartState?.(arg);
-        if (element4.classList.contains("history-loading")) {
+        element.syncLineChartState?.(arg);
+        if (element.classList.contains("history-loading")) {
           applyElementStyle();
         }
       }, component.id);
       this.registerHistoryChartRefresher(applyElementStyle, component.id);
     }
     if (this.options.editable) {
-      element2.classList.add("editable");
-      element2.addEventListener("pointerdown", arg => this.startComponentMove(arg, component, element2));
+      elementCurrent.classList.add("editable");
+      elementCurrent.addEventListener("pointerdown", arg => this.startComponentMove(arg, component, elementCurrent));
     } else {
-      const state2 = Object.prototype.hasOwnProperty.call(component.actions || {}, "tap");
-      const state3 = component.type === "camera" && component.bindings?.entity?.entityId && !state2 ? {
+      const state = Object.prototype.hasOwnProperty.call(component.actions || {}, "tap");
+      const options = component.type === "camera" && component.bindings?.entity?.entityId && !state ? {
         ...component,
         actions: {
           tap: {
@@ -2412,29 +2413,29 @@ export class PanelRenderer {
         }
       } : component;
       if (component.type === "light-statistics") {
-        element2.classList.add("hb-runtime-fitted-hit-area");
+        elementCurrent.classList.add("hb-runtime-fitted-hit-area");
       }
-      if (Object.values(state3.actions || {}).some(arg => isComponentActionSupported(state3, arg))) {
-        element2.classList.add("interactive");
-        let runtimeActionHitboxEl = element2;
+      if (Object.values(options.actions || {}).some(arg => isComponentActionSupported(options, arg))) {
+        elementCurrent.classList.add("interactive");
+        let runtimeActionHitboxEl = elementCurrent;
         if (["title-button", "device-button", "light-statistics"].includes(component.type)) {
           runtimeActionHitboxEl = document.createElement("span");
           runtimeActionHitboxEl.className = "hb-runtime-action-hitbox";
           runtimeActionHitboxEl.setAttribute("aria-hidden", "true");
-          element2.classList.add("hb-runtime-fitted-hit-area");
-          element2.append(runtimeActionHitboxEl);
+          elementCurrent.classList.add("hb-runtime-fitted-hit-area");
+          elementCurrent.append(runtimeActionHitboxEl);
         }
-        this.bindRuntimeActions(runtimeActionHitboxEl, state3);
+        this.bindRuntimeActions(runtimeActionHitboxEl, options);
       }
     }
-    parentHost.append(element2);
-    const element3 = element2.querySelector(":scope > .hb-runtime-action-hitbox");
-    if (element3) {
-      const state2 = component.type === "title-button" ? this.updateTitleButtonSelectionBounds(element2, component, element3) : component.type === "light-statistics" ? this.updateLightStatisticsSelectionBounds(element2, component, element3) : this.updateDeviceButtonSelectionBounds(element2, component, element3);
-      element3.hidden = !state2;
+    parentHost.append(elementCurrent);
+    const selector = elementCurrent.querySelector(":scope > .hb-runtime-action-hitbox");
+    if (selector) {
+      const state = component.type === "title-button" ? this.updateTitleButtonSelectionBounds(elementCurrent, component, selector) : component.type === "light-statistics" ? this.updateLightStatisticsSelectionBounds(elementCurrent, component, selector) : this.updateDeviceButtonSelectionBounds(elementCurrent, component, selector);
+      selector.hidden = !state;
     }
     for (const child of component.children || []) {
-      this.renderComponent(child, element2, 0, renderContext, parentComponent);
+      this.renderComponent(child, elementCurrent, 0, renderContext, parentComponent);
     }
   }
   startComponentMove(event, component, pointerEvent, originEvent = pointerEvent) {
@@ -2461,52 +2462,52 @@ export class PanelRenderer {
       return;
     }
     let state = eventHasCommandModifier(event);
-    let state1 = !state && filtered.length === 1 && component.type === "air-conditioner" && this.componentSelectionLayers.get(component.id) !== "airflow";
+    let stateCurrent = !state && filtered.length === 1 && component.type === "air-conditioner" && this.componentSelectionLayers.get(component.id) !== "airflow";
     const numeric = Number(component.properties?.airflowOffsetX ?? -75);
-    const numeric2 = Number(component.properties?.airflowOffsetY ?? 34);
+    const number = Number(component.properties?.airflowOffsetY ?? 34);
     let airflowOffsetX = numeric;
-    let airflowOffsetY = numeric2;
-    const numeric3 = Number(this.document?.canvas?.width || 2778);
-    const numeric4 = Number(this.document?.canvas?.height || 1940);
+    let airflowOffsetY = number;
+    const numericCurrent = Number(this.document?.canvas?.width || 2778);
+    const numericNext = Number(this.document?.canvas?.height || 1940);
     const runHelper = arg => {
-      const numeric1 = arg.parentId ? this.componentRecords.get(arg.parentId) : null;
-      const numeric7 = Number(numeric1?.position?.width || numeric3);
-      const numeric8 = Number(numeric1?.position?.height || numeric4);
+      const numeric = arg.parentId ? this.componentRecords.get(arg.parentId) : null;
+      const number = Number(numeric?.position?.width || numericCurrent);
+      const numericPrevious = Number(numeric?.position?.height || numericNext);
       return {
         minX: -arg.width / 2 - arg.initialX,
-        maxX: numeric7 - arg.width / 2 - arg.initialX,
+        maxX: number - arg.width / 2 - arg.initialX,
         minY: -arg.height / 2 - arg.initialY,
-        maxY: numeric8 - arg.height / 2 - arg.initialY
+        maxY: numericPrevious - arg.height / 2 - arg.initialY
       };
     };
     const clampNumber = (arg, second, pointerEvent) => {
-      const state8 = groupedComponentLocalDelta(second, pointerEvent, arg.parentTransform);
-      const state9 = runHelper(arg);
+      const state = groupedComponentLocalDelta(second, pointerEvent, arg.parentTransform);
+      const helper = runHelper(arg);
       return {
-        x: Math.max(state9.minX, Math.min(state9.maxX, state8.x)),
-        y: Math.max(state9.minY, Math.min(state9.maxY, state8.y))
+        x: Math.max(helper.minX, Math.min(helper.maxX, state.x)),
+        y: Math.max(helper.minY, Math.min(helper.maxY, state.y))
       };
     };
-    const numeric5 = Number(component.position?.x || 0);
-    const numeric6 = Number(component.position?.y || 0);
-    let position = numeric5;
-    let state2 = numeric6;
-    let state3 = filtered;
-    let state4 = [];
+    const numericPrevious = Number(component.position?.x || 0);
+    const numericLocal = Number(component.position?.y || 0);
+    let position = numericPrevious;
+    let stateNext = numericLocal;
+    let list = filtered;
+    let statePrevious = [];
     let mapped = filtered.map(arg => ({
       componentId: arg.component.id,
       x: arg.initialX,
       y: arg.initialY
     }));
     let id = component.id;
-    let state5 = false;
-    let state6 = "";
-    let event1 = false;
+    let flag = false;
+    let text = "";
+    let eventCurrent = false;
     const pointerId = event.pointerId;
     originEvent.setPointerCapture(pointerId);
     filtered.forEach(arg => arg.host.classList.add("moving"));
-    const event2 = event3 => {
-      if (event3.pointerId !== pointerId) {
+    const callback = event => {
+      if (event.pointerId !== pointerId) {
         return;
       }
       if (!originEvent.hasPointerCapture?.(pointerId) && originEvent.isConnected) {
@@ -2514,17 +2515,17 @@ export class PanelRenderer {
           originEvent.setPointerCapture(pointerId);
         } catch {}
       }
-      if (!state && eventHasCommandModifier(event3)) {
+      if (!state && eventHasCommandModifier(event)) {
         state = true;
-        state1 = false;
+        stateCurrent = false;
       }
-      let event4 = event3.clientX - clientX;
-      let amount = event3.clientY - clientY;
-      if (state && !state5) {
-        if (Math.hypot(event4, amount) < 3) {
+      let value = event.clientX - clientX;
+      let amount = event.clientY - clientY;
+      if (state && !flag) {
+        if (Math.hypot(value, amount) < 3) {
           return;
         }
-        state4 = filtered.map(arg => {
+        statePrevious = filtered.map(arg => {
           const copiedComponent = assignComponentIds(structuredClone(arg.component));
           copiedComponent.position = {
             ...(copiedComponent.position || {}),
@@ -2536,7 +2537,7 @@ export class PanelRenderer {
             copiedComponent
           };
         });
-        state3 = state4.map((arg, index) => ({
+        list = statePrevious.map((arg, index) => ({
           component: arg.copiedComponent,
           host: this.componentHosts.get(arg.copiedComponent.id),
           initialX: filtered[index].initialX,
@@ -2546,34 +2547,34 @@ export class PanelRenderer {
           parentId: filtered[index].parentId,
           parentTransform: filtered[index].parentTransform
         }));
-        id = state4.find(arg => arg.sourceComponentId === component.id)?.copiedComponent.id || state4[0]?.copiedComponent.id;
-        state5 = true;
+        id = statePrevious.find(arg => arg.sourceComponentId === component.id)?.copiedComponent.id || statePrevious[0]?.copiedComponent.id;
+        flag = true;
         filtered.forEach(arg => arg.host.classList.remove("moving"));
-        state3.forEach(arg => arg.host?.classList.add("moving"));
+        list.forEach(arg => arg.host?.classList.add("moving"));
         this.selectedComponentId = id;
-        this.selectedComponentIds = new Set(state3.map(arg => arg.component.id));
+        this.selectedComponentIds = new Set(list.map(arg => arg.component.id));
       }
-      if (event3.shiftKey) {
-        if (!state6 && Math.hypot(event4, amount) >= 1) {
-          state6 = Math.abs(event4) >= Math.abs(amount) ? "horizontal" : "vertical";
+      if (event.shiftKey) {
+        if (!text && Math.hypot(value, amount) >= 1) {
+          text = Math.abs(value) >= Math.abs(amount) ? "horizontal" : "vertical";
         }
-        if (state6 === "horizontal") {
+        if (text === "horizontal") {
           amount = 0;
         }
-        if (state6 === "vertical") {
-          event4 = 0;
+        if (text === "vertical") {
+          value = 0;
         }
       } else {
-        state6 = "";
+        text = "";
       }
-      const state8 = event4 / (this.appliedScaleX || 1);
-      const state9 = amount / (this.appliedScaleY || 1);
-      const found = clampNumber(filtered.find(arg => arg.component.id === component.id) || filtered[0], state8, state9);
-      position = numeric5 + found.x;
-      state2 = numeric6 + found.y;
-      if (state1) {
+      const stateLocal = value / (this.appliedScaleX || 1);
+      const stateItem = amount / (this.appliedScaleY || 1);
+      const found = clampNumber(filtered.find(arg => arg.component.id === component.id) || filtered[0], stateLocal, stateItem);
+      position = numericPrevious + found.x;
+      stateNext = numericLocal + found.y;
+      if (stateCurrent) {
         airflowOffsetX = numeric - found.x / Math.max(1, Number(component.position?.width || 100)) * 100;
-        airflowOffsetY = numeric2 - found.y / Math.max(1, Number(component.position?.height || 100)) * 100;
+        airflowOffsetY = number - found.y / Math.max(1, Number(component.position?.height || 100)) * 100;
         component.properties = {
           ...(component.properties || {}),
           airflowOffsetX,
@@ -2584,42 +2585,42 @@ export class PanelRenderer {
           airflowOffsetY
         });
       }
-      const mapped1 = state3.map(arg => {
-        const state10 = clampNumber(arg, state8, state9);
+      const mappedCurrent = list.map(arg => {
+        const state = clampNumber(arg, stateLocal, stateItem);
         return {
           componentId: arg.component.id,
-          x: arg.initialX + state10.x,
-          y: arg.initialY + state10.y
+          x: arg.initialX + state.x,
+          y: arg.initialY + state.y
         };
       });
-      mapped = mapped1;
-      for (const item of mapped1) {
+      mapped = mappedCurrent;
+      for (const item of mappedCurrent) {
         const size = this.componentHosts.get(item.componentId);
         if (size) {
           size.style.left = item.x + "px";
           size.style.top = item.y + "px";
         }
-        const state10 = this.componentSelectionOverlays.get(item.componentId);
-        if (state10) {
-          state10.style.left = item.x + "px";
-          state10.style.top = item.y + "px";
+        const state = this.componentSelectionOverlays.get(item.componentId);
+        if (state) {
+          state.style.left = item.x + "px";
+          state.style.top = item.y + "px";
         }
       }
-      if (!state5) {
-        if (mapped1.length > 1) {
-          this.options.onComponentsTransformPreview?.(mapped1, component.id);
+      if (!flag) {
+        if (mappedCurrent.length > 1) {
+          this.options.onComponentsTransformPreview?.(mappedCurrent, component.id);
         } else {
           this.options.onComponentTransformPreview?.(component.id, {
             x: position,
-            y: state2
+            y: stateNext
           });
         }
       }
     };
-    const state7 = (event3 = null) => {
-      if (!event1 && (event3?.pointerId == null || event3.pointerId === pointerId) && (event1 = true, state3.forEach(arg => arg.host?.classList.remove("moving")), filtered.forEach(arg => arg.host.classList.remove("moving")), window.removeEventListener("pointermove", event2, true), window.removeEventListener("pointerup", state7, true), window.removeEventListener("pointercancel", state7, true), window.removeEventListener("blur", state7), position !== numeric5 || state2 !== numeric6)) {
-        if (state5) {
-          state3.forEach(arg => {
+    const stateLocal = (event = null) => {
+      if (!eventCurrent && (event?.pointerId == null || event.pointerId === pointerId) && (eventCurrent = true, list.forEach(arg => arg.host?.classList.remove("moving")), filtered.forEach(arg => arg.host.classList.remove("moving")), window.removeEventListener("pointermove", callback, true), window.removeEventListener("pointerup", stateLocal, true), window.removeEventListener("pointercancel", stateLocal, true), window.removeEventListener("blur", stateLocal), position !== numericPrevious || stateNext !== numericLocal)) {
+        if (flag) {
+          list.forEach(arg => {
             const found = mapped.find(entry => entry.componentId === arg.component.id);
             arg.component.position = {
               ...(arg.component.position || {}),
@@ -2627,13 +2628,13 @@ export class PanelRenderer {
               y: found?.y ?? arg.initialY
             };
           });
-          this.options.onComponentsDuplicate?.(state4, component.id, id);
+          this.options.onComponentsDuplicate?.(statePrevious, component.id, id);
         } else if (filtered.length > 1) {
           const found = mapped.map(arg => {
-            const found1 = filtered.find(entry => entry.component.id === arg.componentId);
-            if (found1) {
-              found1.component.position = {
-                ...(found1.component.position || {}),
+            const found = filtered.find(entry => entry.component.id === arg.componentId);
+            if (found) {
+              found.component.position = {
+                ...(found.component.position || {}),
                 x: arg.x,
                 y: arg.y
               };
@@ -2645,12 +2646,12 @@ export class PanelRenderer {
           component.position = {
             ...(component.position || {}),
             x: position,
-            y: state2
+            y: stateNext
           };
           this.options.onComponentTransform?.(component.id, {
             x: position,
-            y: state2,
-            ...(state1 ? {
+            y: stateNext,
+            ...(stateCurrent ? {
               airflowOffsetX,
               airflowOffsetY
             } : {})
@@ -2658,16 +2659,16 @@ export class PanelRenderer {
         }
       }
     };
-    window.addEventListener("pointermove", event2, true);
-    window.addEventListener("pointerup", state7, true);
-    window.addEventListener("pointercancel", state7, true);
-    window.addEventListener("blur", state7);
+    window.addEventListener("pointermove", callback, true);
+    window.addEventListener("pointerup", stateLocal, true);
+    window.addEventListener("pointercancel", stateLocal, true);
+    window.addEventListener("blur", stateLocal);
   }
   createComponentSelectionOverlay(host, component) {
     if (!host || !component || !host.parentElement || host.parentElement !== this.canvas && !host.hidden) {
       return null;
     }
-    const hostParentEl2 = host.parentElement;
+    const hostParentEl = host.parentElement;
     const element = document.createElement("div");
     element.className = "hb-component-selection-overlay";
     if (component.type === "light-statistics") {
@@ -2687,7 +2688,7 @@ export class PanelRenderer {
     if (component.type !== "light-statistics") {
       element.addEventListener("pointerdown", arg => this.startComponentMove(arg, component, host, element));
     }
-    hostParentEl2.append(element);
+    hostParentEl.append(element);
     this.componentSelectionOverlays.set(component.id, element);
     return element;
   }
@@ -2746,10 +2747,10 @@ export class PanelRenderer {
     const selectionBoundsEl = document.createElement("div");
     selectionBoundsEl.className = "hb-selection-bounds hb-effect-selection-bounds";
     for (const cornerMarkerEl of ["top-left", "top-right", "bottom-left", "bottom-right"]) {
-      const cornerMarkerEl1 = document.createElement("i");
-      cornerMarkerEl1.className = "hb-corner-marker hb-corner-" + cornerMarkerEl;
-      cornerMarkerEl1.setAttribute("aria-hidden", "true");
-      selectionBoundsEl.append(cornerMarkerEl1);
+      const element = document.createElement("i");
+      element.className = "hb-corner-marker hb-corner-" + cornerMarkerEl;
+      element.setAttribute("aria-hidden", "true");
+      selectionBoundsEl.append(element);
     }
     componentSelectionOverlayEl.append(selectionBoundsEl);
     host.parentElement.append(componentSelectionOverlayEl);
@@ -2773,56 +2774,56 @@ export class PanelRenderer {
     if (!host || !component) {
       return;
     }
-    const selectionBoundsEl1 = document.createElement("div");
-    selectionBoundsEl1.className = "hb-selection-bounds";
+    const selectionBoundsElCurrent = document.createElement("div");
+    selectionBoundsElCurrent.className = "hb-selection-bounds";
     for (const cornerMarkerEl of ["top-left", "top-right", "bottom-left", "bottom-right"]) {
-      const cornerMarkerEl1 = document.createElement("i");
-      cornerMarkerEl1.className = "hb-corner-marker hb-corner-" + cornerMarkerEl;
-      cornerMarkerEl1.setAttribute("aria-hidden", "true");
-      selectionBoundsEl1.append(cornerMarkerEl1);
+      const element = document.createElement("i");
+      element.className = "hb-corner-marker hb-corner-" + cornerMarkerEl;
+      element.setAttribute("aria-hidden", "true");
+      selectionBoundsElCurrent.append(element);
     }
     if (selectionBoundsEl && component.properties?.layoutMode !== "fill") {
       const transformHandleEl = document.createElement("button");
       transformHandleEl.type = "button";
       transformHandleEl.className = "hb-transform-handle hb-resize-handle";
       transformHandleEl.title = "拖动缩放";
-      transformHandleEl.addEventListener("pointerdown", transformHandleEl2 => this.startComponentScale(transformHandleEl2, component, host, selectionBoundsEl1));
-      const transformHandleEl1 = document.createElement("button");
-      transformHandleEl1.type = "button";
-      transformHandleEl1.className = "hb-transform-handle hb-rotate-handle";
-      transformHandleEl1.title = "拖动旋转";
-      transformHandleEl1.addEventListener("pointerdown", arg => this.startComponentRotate(arg, component, host, selectionBoundsEl1));
-      selectionBoundsEl1.append(transformHandleEl, transformHandleEl1);
+      transformHandleEl.addEventListener("pointerdown", transformHandleEl => this.startComponentScale(transformHandleEl, component, host, selectionBoundsElCurrent));
+      const element = document.createElement("button");
+      element.type = "button";
+      element.className = "hb-transform-handle hb-rotate-handle";
+      element.title = "拖动旋转";
+      element.addEventListener("pointerdown", arg => this.startComponentRotate(arg, component, host, selectionBoundsElCurrent));
+      selectionBoundsElCurrent.append(transformHandleEl, element);
     }
-    element.append(selectionBoundsEl1);
+    element.append(selectionBoundsElCurrent);
     if (component.type === "light-statistics" && element.classList?.contains("hb-light-statistics-selection-overlay")) {
-      selectionBoundsEl1.addEventListener("pointerdown", arg => this.startComponentMove(arg, component, host, selectionBoundsEl1));
+      selectionBoundsElCurrent.addEventListener("pointerdown", arg => this.startComponentMove(arg, component, host, selectionBoundsElCurrent));
     }
-    this.updateImageSelectionBounds(host, component, selectionBoundsEl1);
-    this.updateTextSelectionBounds(host, component, selectionBoundsEl1);
-    this.updateTitleButtonSelectionBounds(host, component, selectionBoundsEl1);
-    this.updateDeviceButtonSelectionBounds(host, component, selectionBoundsEl1);
-    const state = this.updateLightStatisticsSelectionBounds(host, component, selectionBoundsEl1);
+    this.updateImageSelectionBounds(host, component, selectionBoundsElCurrent);
+    this.updateTextSelectionBounds(host, component, selectionBoundsElCurrent);
+    this.updateTitleButtonSelectionBounds(host, component, selectionBoundsElCurrent);
+    this.updateDeviceButtonSelectionBounds(host, component, selectionBoundsElCurrent);
+    const state = this.updateLightStatisticsSelectionBounds(host, component, selectionBoundsElCurrent);
     if (component.type === "light-statistics" && !state) {
-      Object.assign(selectionBoundsEl1.style, {
+      Object.assign(selectionBoundsElCurrent.style, {
         left: "0",
         top: "0",
         width: "100%",
         height: "100%"
       });
     }
-    this.updateAirConditionerButtonSelectionBounds(host, component, selectionBoundsEl1);
-    this.updateTransformHandleScale(host, component, selectionBoundsEl1);
+    this.updateAirConditionerButtonSelectionBounds(host, component, selectionBoundsElCurrent);
+    this.updateTransformHandleScale(host, component, selectionBoundsElCurrent);
   }
   withSelectionMeasurementHost(host, runHelper) {
     const state = [];
-    let state1 = host;
-    while (state1 && state1 !== this.canvas) {
-      if (state1.hidden) {
-        state.push(state1);
-        state1.hidden = false;
+    let stateCurrent = host;
+    while (stateCurrent && stateCurrent !== this.canvas) {
+      if (stateCurrent.hidden) {
+        state.push(stateCurrent);
+        stateCurrent.hidden = false;
       }
-      state1 = state1.parentElement;
+      stateCurrent = stateCurrent.parentElement;
     }
     try {
       return runHelper();
@@ -2864,15 +2865,15 @@ export class PanelRenderer {
       height
     };
   }
-  applyDoorWindowPerspective(element, corners, corners2) {
+  applyDoorWindowPerspective(element, corners, cornersCurrent) {
     const matchedEl = element?.querySelector(".hb-door-window-visual");
     if (!matchedEl || !corners) {
       return;
     }
     const count = Math.max(0.01, Number(this.document?.canvas?.componentScale || 1));
-    const count2 = Math.max(1, Number(corners.position?.width || 100) / count);
-    const count3 = Math.max(1, Number(corners.position?.height || 100) / count);
-    matchedEl.style.transform = doorWindowPerspectiveMatrix(count2, count3, corners2);
+    const max = Math.max(1, Number(corners.position?.width || 100) / count);
+    const countCurrent = Math.max(1, Number(corners.position?.height || 100) / count);
+    matchedEl.style.transform = doorWindowPerspectiveMatrix(max, countCurrent, cornersCurrent);
   }
   updateDoorWindowPerspectiveHandles(componentId, handleHost) {
     if (!componentId) {
@@ -2891,30 +2892,30 @@ export class PanelRenderer {
       return;
     }
     const selectionBoundsEl = doorWindowPerspectiveCorners(component.properties?.perspectiveCorners);
-    const selectionBoundsEl1 = document.createElement("div");
-    selectionBoundsEl1.className = "hb-selection-bounds hb-door-window-perspective-bounds";
+    const selectionBoundsElCurrent = document.createElement("div");
+    selectionBoundsElCurrent.className = "hb-selection-bounds hb-door-window-perspective-bounds";
     const element = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     element.classList.add("hb-door-window-perspective-guide");
     element.setAttribute("viewBox", "0 0 1 1");
     element.setAttribute("preserveAspectRatio", "none");
     element.append(document.createElementNS("http://www.w3.org/2000/svg", "polygon"));
-    selectionBoundsEl1.append(element);
+    selectionBoundsElCurrent.append(element);
     const doorWindowPerspectiveHandleEl = ["左上角", "右上角", "右下角", "左下角"];
-    for (let doorWindowPerspectiveHandleEl1 = 0; doorWindowPerspectiveHandleEl1 < 4; doorWindowPerspectiveHandleEl1 += 1) {
-      const doorWindowPerspectiveHandleEl2 = document.createElement("button");
-      doorWindowPerspectiveHandleEl2.type = "button";
-      doorWindowPerspectiveHandleEl2.className = "hb-door-window-perspective-handle";
-      doorWindowPerspectiveHandleEl2.dataset.perspectiveCornerIndex = String(doorWindowPerspectiveHandleEl1);
-      doorWindowPerspectiveHandleEl2.title = "拖动" + doorWindowPerspectiveHandleEl[doorWindowPerspectiveHandleEl1] + "调整透视";
-      doorWindowPerspectiveHandleEl2.setAttribute("aria-label", doorWindowPerspectiveHandleEl2.title);
-      doorWindowPerspectiveHandleEl2.addEventListener("pointerdown", arg => this.startDoorWindowPerspective(arg, component, host, selectionBoundsEl1, doorWindowPerspectiveHandleEl1));
-      selectionBoundsEl1.append(doorWindowPerspectiveHandleEl2);
+    for (let count = 0; count < 4; count += 1) {
+      const element = document.createElement("button");
+      element.type = "button";
+      element.className = "hb-door-window-perspective-handle";
+      element.dataset.perspectiveCornerIndex = String(count);
+      element.title = "拖动" + doorWindowPerspectiveHandleEl[count] + "调整透视";
+      element.setAttribute("aria-label", element.title);
+      element.addEventListener("pointerdown", arg => this.startDoorWindowPerspective(arg, component, host, selectionBoundsElCurrent, count));
+      selectionBoundsElCurrent.append(element);
     }
-    handleLayer.append(selectionBoundsEl1);
-    this.updateDoorWindowPerspectiveHandles(selectionBoundsEl1, selectionBoundsEl);
-    this.updateTransformHandleScale(host, component, selectionBoundsEl1);
+    handleLayer.append(selectionBoundsElCurrent);
+    this.updateDoorWindowPerspectiveHandles(selectionBoundsElCurrent, selectionBoundsEl);
+    this.updateTransformHandleScale(host, component, selectionBoundsElCurrent);
   }
-  startDoorWindowPerspective(event, component, cornerIndex, event1, event2) {
+  startDoorWindowPerspective(event, component, cornerIndex, eventCurrent, eventNext) {
     if (event.button !== 0) {
       return;
     }
@@ -2924,46 +2925,46 @@ export class PanelRenderer {
     const clientX = event.clientX;
     const clientY = event.clientY;
     const state = doorWindowPerspectiveCorners(component.properties?.perspectiveCorners);
-    const state1 = state[event2 * 2];
-    const position = state[event2 * 2 + 1];
+    const stateCurrent = state[eventNext * 2];
+    const position = state[eventNext * 2 + 1];
     const count = Math.max(1, Number(component.position?.width || 100));
-    const count2 = Math.max(1, Number(component.position?.height || 100));
-    const position1 = this.componentWorldTransform(component.id);
-    const scale = position1.scale;
-    const scale1 = position1.rotation * Math.PI / 180;
-    const angle = Math.cos(scale1);
-    const state2 = Math.sin(scale1);
+    const max = Math.max(1, Number(component.position?.height || 100));
+    const transform = this.componentWorldTransform(component.id);
+    const scale = transform.scale;
+    const value = transform.rotation * Math.PI / 180;
+    const angle = Math.cos(value);
+    const sin = Math.sin(value);
     let perspectiveCorners = state;
-    let event3 = false;
-    const event4 = event5 => {
-      if (event5.pointerId !== pointerId) {
+    let flag = false;
+    const callback = event => {
+      if (event.pointerId !== pointerId) {
         return;
       }
-      const event6 = (event5.clientX - clientX) / Math.max(0.001, this.appliedScaleX || 1);
-      const state4 = (event5.clientY - clientY) / Math.max(0.001, this.appliedScaleY || 1);
-      const scale2 = (angle * event6 + state2 * state4) / scale;
-      const scale3 = (-state2 * event6 + angle * state4) / scale;
-      const scale4 = state.slice();
-      scale4[event2 * 2] = state1 + scale2 / count;
-      scale4[event2 * 2 + 1] = position + scale3 / count2;
-      perspectiveCorners = doorWindowPerspectiveCorners(scale4);
+      const value = (event.clientX - clientX) / Math.max(0.001, this.appliedScaleX || 1);
+      const stateNext = (event.clientY - clientY) / Math.max(0.001, this.appliedScaleY || 1);
+      const scaleCurrent = (angle * value + sin * stateNext) / scale;
+      const scaleNext = (-sin * value + angle * stateNext) / scale;
+      const slice = state.slice();
+      slice[eventNext * 2] = stateCurrent + scaleCurrent / count;
+      slice[eventNext * 2 + 1] = position + scaleNext / max;
+      perspectiveCorners = doorWindowPerspectiveCorners(slice);
       component.properties = {
         ...(component.properties || {}),
         perspectiveCorners
       };
       this.applyDoorWindowPerspective(cornerIndex, component, perspectiveCorners);
-      this.updateDoorWindowPerspectiveHandles(event1, perspectiveCorners);
+      this.updateDoorWindowPerspectiveHandles(eventCurrent, perspectiveCorners);
       this.options.onComponentPropertiesPreview?.(component.id, {
         perspectiveCorners
       });
     };
-    const state3 = (event5 = null) => {
-      if (!event3 && (event5?.pointerId == null || event5.pointerId === pointerId)) {
-        event3 = true;
-        window.removeEventListener("pointermove", event4, true);
-        window.removeEventListener("pointerup", state3, true);
-        window.removeEventListener("pointercancel", state3, true);
-        window.removeEventListener("blur", state3);
+    const stateNext = (event = null) => {
+      if (!flag && (event?.pointerId == null || event.pointerId === pointerId)) {
+        flag = true;
+        window.removeEventListener("pointermove", callback, true);
+        window.removeEventListener("pointerup", stateNext, true);
+        window.removeEventListener("pointercancel", stateNext, true);
+        window.removeEventListener("blur", stateNext);
         if (JSON.stringify(perspectiveCorners) !== JSON.stringify(state)) {
           this.options.onComponentProperties?.(component.id, {
             perspectiveCorners
@@ -2971,10 +2972,10 @@ export class PanelRenderer {
         }
       }
     };
-    window.addEventListener("pointermove", event4, true);
-    window.addEventListener("pointerup", state3, true);
-    window.addEventListener("pointercancel", state3, true);
-    window.addEventListener("blur", state3);
+    window.addEventListener("pointermove", callback, true);
+    window.addEventListener("pointerup", stateNext, true);
+    window.addEventListener("pointercancel", stateNext, true);
+    window.addEventListener("blur", stateNext);
   }
   appendAirflowTransformHandles(host, component) {
     if (!host || !component) {
@@ -2984,30 +2985,30 @@ export class PanelRenderer {
     if (!selectionBoundsEl) {
       return;
     }
-    const selectionBoundsEl1 = document.createElement("div");
-    selectionBoundsEl1.className = "hb-selection-bounds hb-airflow-selection-bounds";
+    const element = document.createElement("div");
+    element.className = "hb-selection-bounds hb-airflow-selection-bounds";
     for (const cornerMarkerEl of ["top-left", "top-right", "bottom-left", "bottom-right"]) {
-      const cornerMarkerEl1 = document.createElement("i");
-      cornerMarkerEl1.className = "hb-corner-marker hb-corner-" + cornerMarkerEl;
-      cornerMarkerEl1.setAttribute("aria-hidden", "true");
-      selectionBoundsEl1.append(cornerMarkerEl1);
+      const cornerMarkerElCurrent = document.createElement("i");
+      cornerMarkerElCurrent.className = "hb-corner-marker hb-corner-" + cornerMarkerEl;
+      cornerMarkerElCurrent.setAttribute("aria-hidden", "true");
+      element.append(cornerMarkerElCurrent);
     }
     const transformHandleEl = document.createElement("button");
     transformHandleEl.type = "button";
     transformHandleEl.className = "hb-transform-handle hb-resize-handle";
     transformHandleEl.title = "拖动缩放出风效果";
-    transformHandleEl.addEventListener("pointerdown", transformHandleEl2 => this.startAirflowScale(transformHandleEl2, component, host, selectionBoundsEl1, selectionBoundsEl));
-    const transformHandleEl1 = document.createElement("button");
-    transformHandleEl1.type = "button";
-    transformHandleEl1.className = "hb-transform-handle hb-rotate-handle";
-    transformHandleEl1.title = "拖动旋转出风效果";
-    transformHandleEl1.addEventListener("pointerdown", arg => this.startAirflowRotate(arg, component, host, selectionBoundsEl1, selectionBoundsEl));
-    selectionBoundsEl1.append(transformHandleEl, transformHandleEl1);
-    selectionBoundsEl1.addEventListener("pointerdown", arg => this.startAirflowMove(arg, component, host, selectionBoundsEl1, selectionBoundsEl));
-    selectionBoundsEl.append(selectionBoundsEl1);
-    this.updateAirflowHandleScale(component, selectionBoundsEl1);
+    transformHandleEl.addEventListener("pointerdown", transformHandleEl => this.startAirflowScale(transformHandleEl, component, host, element, selectionBoundsEl));
+    const transformHandleElCurrent = document.createElement("button");
+    transformHandleElCurrent.type = "button";
+    transformHandleElCurrent.className = "hb-transform-handle hb-rotate-handle";
+    transformHandleElCurrent.title = "拖动旋转出风效果";
+    transformHandleElCurrent.addEventListener("pointerdown", arg => this.startAirflowRotate(arg, component, host, element, selectionBoundsEl));
+    element.append(transformHandleEl, transformHandleElCurrent);
+    element.addEventListener("pointerdown", arg => this.startAirflowMove(arg, component, host, element, selectionBoundsEl));
+    selectionBoundsEl.append(element);
+    this.updateAirflowHandleScale(component, element);
   }
-  startAirflowMove(event, component, event1, event2, event3) {
+  startAirflowMove(event, component, eventCurrent, eventNext, eventPrevious) {
     if (event.button !== 0 || event.target.closest(".hb-transform-handle")) {
       return;
     }
@@ -3016,64 +3017,64 @@ export class PanelRenderer {
     const clientX = event.clientX;
     const clientY = event.clientY;
     const count = Math.max(1, Number(component.position?.width || 100));
-    const count2 = Math.max(1, Number(component.position?.height || 100));
+    const max = Math.max(1, Number(component.position?.height || 100));
     const numeric = Number(component.properties?.airflowOffsetX ?? -75);
-    const numeric2 = Number(component.properties?.airflowOffsetY ?? 34);
+    const number = Number(component.properties?.airflowOffsetY ?? 34);
     const state = airflowCanvasOffsetBounds(component, this.document?.canvas);
     let airflowOffsetX = numeric;
-    let airflowOffsetY = numeric2;
-    let state1 = "";
-    let event4 = false;
+    let airflowOffsetY = number;
+    let text = "";
+    let flag = false;
     const pointerId = event.pointerId;
-    event2.setPointerCapture(pointerId);
-    const event5 = event6 => {
-      if (event6.pointerId !== pointerId) {
+    eventNext.setPointerCapture(pointerId);
+    const callback = event => {
+      if (event.pointerId !== pointerId) {
         return;
       }
-      if (!event2.hasPointerCapture?.(pointerId) && event2.isConnected) {
+      if (!eventNext.hasPointerCapture?.(pointerId) && eventNext.isConnected) {
         try {
-          event2.setPointerCapture(pointerId);
+          eventNext.setPointerCapture(pointerId);
         } catch {}
       }
-      let event7 = event6.clientX - clientX;
-      let amount = event6.clientY - clientY;
-      if (event6.shiftKey) {
-        if (!state1 && Math.hypot(event7, amount) >= 1) {
-          state1 = Math.abs(event7) >= Math.abs(amount) ? "horizontal" : "vertical";
+      let value = event.clientX - clientX;
+      let amount = event.clientY - clientY;
+      if (event.shiftKey) {
+        if (!text && Math.hypot(value, amount) >= 1) {
+          text = Math.abs(value) >= Math.abs(amount) ? "horizontal" : "vertical";
         }
-        if (state1 === "horizontal") {
+        if (text === "horizontal") {
           amount = 0;
         }
-        if (state1 === "vertical") {
-          event7 = 0;
+        if (text === "vertical") {
+          value = 0;
         }
       } else {
-        state1 = "";
+        text = "";
       }
-      const state3 = event7 / Math.max(0.001, this.appliedScaleX || 1);
-      const state4 = amount / Math.max(0.001, this.appliedScaleY || 1);
-      const state5 = groupedComponentLocalDelta(state3, state4, this.componentParentTransform(component.id));
-      airflowOffsetX = Math.max(state.minX, Math.min(state.maxX, numeric + state5.x / count * 100));
-      airflowOffsetY = Math.max(state.minY, Math.min(state.maxY, numeric2 + state5.y / count2 * 100));
+      const stateCurrent = value / Math.max(0.001, this.appliedScaleX || 1);
+      const stateNext = amount / Math.max(0.001, this.appliedScaleY || 1);
+      const point = groupedComponentLocalDelta(stateCurrent, stateNext, this.componentParentTransform(component.id));
+      airflowOffsetX = Math.max(state.minX, Math.min(state.maxX, numeric + point.x / count * 100));
+      airflowOffsetY = Math.max(state.minY, Math.min(state.maxY, number + point.y / max * 100));
       component.properties = {
         ...(component.properties || {}),
         airflowOffsetX,
         airflowOffsetY
       };
-      this.syncAirflowLayerGeometry(event1, component, event3);
+      this.syncAirflowLayerGeometry(eventCurrent, component, eventPrevious);
       this.options.onComponentPropertiesPreview?.(component.id, {
         airflowOffsetX,
         airflowOffsetY
       });
     };
-    const state2 = (event6 = null) => {
-      if (!event4 && (event6?.pointerId == null || event6.pointerId === pointerId)) {
-        event4 = true;
-        window.removeEventListener("pointermove", event5, true);
-        window.removeEventListener("pointerup", state2, true);
-        window.removeEventListener("pointercancel", state2, true);
-        window.removeEventListener("blur", state2);
-        if (airflowOffsetX !== numeric || airflowOffsetY !== numeric2) {
+    const stateCurrent = (event = null) => {
+      if (!flag && (event?.pointerId == null || event.pointerId === pointerId)) {
+        flag = true;
+        window.removeEventListener("pointermove", callback, true);
+        window.removeEventListener("pointerup", stateCurrent, true);
+        window.removeEventListener("pointercancel", stateCurrent, true);
+        window.removeEventListener("blur", stateCurrent);
+        if (airflowOffsetX !== numeric || airflowOffsetY !== number) {
           this.options.onComponentProperties?.(component.id, {
             airflowOffsetX,
             airflowOffsetY
@@ -3081,10 +3082,10 @@ export class PanelRenderer {
         }
       }
     };
-    window.addEventListener("pointermove", event5, true);
-    window.addEventListener("pointerup", state2, true);
-    window.addEventListener("pointercancel", state2, true);
-    window.addEventListener("blur", state2);
+    window.addEventListener("pointermove", callback, true);
+    window.addEventListener("pointerup", stateCurrent, true);
+    window.addEventListener("pointercancel", stateCurrent, true);
+    window.addEventListener("blur", stateCurrent);
   }
   updateAirflowHandleScale(component, element) {
     if (!component || !element) {
@@ -3093,9 +3094,9 @@ export class PanelRenderer {
     const state = Math.min(this.appliedScaleX || 1, this.appliedScaleY || 1);
     const count = Math.max(0.01, Math.min(5, Number(component.properties?.airflowScale || 1)));
     const scale = this.componentParentTransform(component.id).scale;
-    const scale1 = 1 / Math.max(0.001, state * count * scale);
-    element.style.setProperty("--hb-ui-scale", String(scale1));
-    element.style.setProperty("--hb-handle-outset", scale1 * 30 + "px");
+    const value = 1 / Math.max(0.001, state * count * scale);
+    element.style.setProperty("--hb-ui-scale", String(value));
+    element.style.setProperty("--hb-handle-outset", value * 30 + "px");
     const domRect = element.getBoundingClientRect();
     element.classList.toggle("handles-outside", domRect.width < 132 || domRect.height < 112);
   }
@@ -3104,10 +3105,10 @@ export class PanelRenderer {
     event.stopPropagation();
     const domRect = element.getBoundingClientRect();
     const size = domRect.left + domRect.width / 2;
-    const size1 = domRect.top + domRect.height / 2;
-    const count = Math.max(1, Math.hypot(event.clientX - size, event.clientY - size1));
-    const count2 = Math.max(0.01, Math.min(5, Number(component.properties?.airflowScale || 1)));
-    let airflowScale = count2;
+    const value = domRect.top + domRect.height / 2;
+    const count = Math.max(1, Math.hypot(event.clientX - size, event.clientY - value));
+    const max = Math.max(0.01, Math.min(5, Number(component.properties?.airflowScale || 1)));
+    let airflowScale = max;
     let state = false;
     const currentTarget = event.currentTarget;
     currentTarget.setPointerCapture(event.pointerId);
@@ -3115,9 +3116,9 @@ export class PanelRenderer {
       this.syncAirflowLayerGeometry(handle, component, pointerEvent);
       this.updateAirflowHandleScale(component, element);
     };
-    const clamped = event1 => {
-      const event2 = Math.hypot(event1.clientX - size, event1.clientY - size1);
-      airflowScale = Math.max(0.01, Math.min(5, count2 * event2 / count));
+    const clamped = event => {
+      const hypot = Math.hypot(event.clientX - size, event.clientY - value);
+      airflowScale = Math.max(0.01, Math.min(5, max * hypot / count));
       component.properties = {
         ...(component.properties || {}),
         airflowScale
@@ -3127,14 +3128,14 @@ export class PanelRenderer {
         airflowScale
       });
     };
-    const state1 = () => {
+    const callback = () => {
       if (!state) {
         state = true;
         currentTarget.removeEventListener("pointermove", clamped);
-        currentTarget.removeEventListener("pointerup", state1);
-        currentTarget.removeEventListener("pointercancel", state1);
-        currentTarget.removeEventListener("lostpointercapture", state1);
-        if (airflowScale !== count2) {
+        currentTarget.removeEventListener("pointerup", callback);
+        currentTarget.removeEventListener("pointercancel", callback);
+        currentTarget.removeEventListener("lostpointercapture", callback);
+        if (airflowScale !== max) {
           this.options.onComponentProperties?.(component.id, {
             airflowScale
           });
@@ -3142,25 +3143,25 @@ export class PanelRenderer {
       }
     };
     currentTarget.addEventListener("pointermove", clamped);
-    currentTarget.addEventListener("pointerup", state1);
-    currentTarget.addEventListener("pointercancel", state1);
-    currentTarget.addEventListener("lostpointercapture", state1);
+    currentTarget.addEventListener("pointerup", callback);
+    currentTarget.addEventListener("pointercancel", callback);
+    currentTarget.addEventListener("lostpointercapture", callback);
   }
   startAirflowRotate(event, component, pointerEvent, element, handleEl) {
     event.preventDefault();
     event.stopPropagation();
     const domRect = element.getBoundingClientRect();
     const size = domRect.left + domRect.width / 2;
-    const event1 = domRect.top + domRect.height / 2;
-    const size1 = Math.atan2(event.clientY - event1, event.clientX - size);
+    const value = domRect.top + domRect.height / 2;
+    const atan = Math.atan2(event.clientY - value, event.clientX - size);
     const numeric = Number(component.properties?.airflowRotation || 0);
     let airflowRotation = numeric;
     let state = false;
     const currentTarget = event.currentTarget;
     currentTarget.setPointerCapture(event.pointerId);
-    const state1 = event2 => {
-      const state3 = Math.atan2(event2.clientY - event1, event2.clientX - size);
-      airflowRotation = numeric + (state3 - size1) * 180 / Math.PI;
+    const callback = event => {
+      const state = Math.atan2(event.clientY - value, event.clientX - size);
+      airflowRotation = numeric + (state - atan) * 180 / Math.PI;
       component.properties = {
         ...(component.properties || {}),
         airflowRotation
@@ -3170,13 +3171,13 @@ export class PanelRenderer {
         airflowRotation
       });
     };
-    const state2 = () => {
+    const stateCurrent = () => {
       if (!state) {
         state = true;
-        currentTarget.removeEventListener("pointermove", state1);
-        currentTarget.removeEventListener("pointerup", state2);
-        currentTarget.removeEventListener("pointercancel", state2);
-        currentTarget.removeEventListener("lostpointercapture", state2);
+        currentTarget.removeEventListener("pointermove", callback);
+        currentTarget.removeEventListener("pointerup", stateCurrent);
+        currentTarget.removeEventListener("pointercancel", stateCurrent);
+        currentTarget.removeEventListener("lostpointercapture", stateCurrent);
         if (airflowRotation !== numeric) {
           this.options.onComponentProperties?.(component.id, {
             airflowRotation
@@ -3184,10 +3185,10 @@ export class PanelRenderer {
         }
       }
     };
-    currentTarget.addEventListener("pointermove", state1);
-    currentTarget.addEventListener("pointerup", state2);
-    currentTarget.addEventListener("pointercancel", state2);
-    currentTarget.addEventListener("lostpointercapture", state2);
+    currentTarget.addEventListener("pointermove", callback);
+    currentTarget.addEventListener("pointerup", stateCurrent);
+    currentTarget.addEventListener("pointercancel", stateCurrent);
+    currentTarget.addEventListener("lostpointercapture", stateCurrent);
   }
   updateAirConditionerButtonSelectionBounds(componentId, component, selectionBounds) {
     if (!componentId || component?.type !== "air-conditioner" || !selectionBounds) {
@@ -3195,8 +3196,8 @@ export class PanelRenderer {
     }
     const position = component.properties || {};
     const count = Math.max(1, Number(component.position?.width || 100));
-    const count2 = Math.max(1, Number(component.position?.height || 100));
-    const count3 = Math.max(0.01, Number(this.document?.canvas?.componentScale || 1));
+    const max = Math.max(1, Number(component.position?.height || 100));
+    const countCurrent = Math.max(0.01, Number(this.document?.canvas?.componentScale || 1));
     const state = [];
     const clampNumber = (arg, second, selectionBounds, fourth) => {
       const numeric = Number(arg);
@@ -3210,47 +3211,47 @@ export class PanelRenderer {
         bottom: second + fourth / 2
       });
     };
-    const runHelper1 = (arg, second, selectionBounds, element) => {
-      const count4 = Math.max(element, Number(arg?.offsetWidth || 0) * count3);
-      const count5 = Math.max(element, Number(arg?.offsetHeight || 0) * count3);
+    const callback = (arg, second, selectionBounds, element) => {
+      const countNext = Math.max(element, Number(arg?.offsetWidth || 0) * countCurrent);
+      const countPrevious = Math.max(element, Number(arg?.offsetHeight || 0) * countCurrent);
       const left = count * clampNumber(second, -100, 200, 0) / 100;
-      const size1 = count2 * clampNumber(selectionBounds, -100, 200, 50) / 100;
+      const size = max * clampNumber(selectionBounds, -100, 200, 50) / 100;
       state.push({
         left,
-        top: size1 - count5 / 2,
-        right: left + count4,
-        bottom: size1 + count5 / 2
+        top: size - countPrevious / 2,
+        right: left + countNext,
+        bottom: size + countPrevious / 2
       });
     };
-    const state1 = count2 * clampNumber(position.badgeSize, 1, 100, 28) / 100;
+    const value = max * clampNumber(position.badgeSize, 1, 100, 28) / 100;
     if (position.iconVisible !== false) {
-      runHelper(count * clampNumber(position.iconLeft, -100, 200, 20) / 100, count2 * clampNumber(position.iconTop, -100, 200, 50) / 100, state1, state1);
+      runHelper(count * clampNumber(position.iconLeft, -100, 200, 20) / 100, max * clampNumber(position.iconTop, -100, 200, 50) / 100, value, value);
     }
     if (position.mainTextVisible !== false) {
-      runHelper1(componentId.querySelector(":scope > .hb-air-conditioner .hb-air-conditioner-text strong"), position.mainTextLeft, position.mainTextTop, count2 * clampNumber(position.mainSize, 6, 120, 21) / 100);
+      callback(componentId.querySelector(":scope > .hb-air-conditioner .hb-air-conditioner-text strong"), position.mainTextLeft, position.mainTextTop, max * clampNumber(position.mainSize, 6, 120, 21) / 100);
     }
     if (position.secondaryTextVisible !== false) {
-      runHelper1(componentId.querySelector(":scope > .hb-air-conditioner .hb-air-conditioner-text small"), position.secondaryTextLeft, position.secondaryTextTop, count2 * clampNumber(position.secondarySize, 5, 80, 12) / 100);
+      callback(componentId.querySelector(":scope > .hb-air-conditioner .hb-air-conditioner-text small"), position.secondaryTextLeft, position.secondaryTextTop, max * clampNumber(position.secondarySize, 5, 80, 12) / 100);
     }
     if (!state.length) {
       Object.assign(selectionBounds.style, {
         left: "0px",
         top: "0px",
         width: count + "px",
-        height: count2 + "px"
+        height: max + "px"
       });
       return;
     }
     const size = 4;
     const mapped = Math.min(...state.map(arg => arg.left)) - size;
-    const mapped1 = Math.min(...state.map(arg => arg.top)) - size;
-    const mapped2 = Math.max(...state.map(arg => arg.right)) + size;
-    const mapped3 = Math.max(...state.map(arg => arg.bottom)) + size;
+    const mappedCurrent = Math.min(...state.map(arg => arg.top)) - size;
+    const mappedNext = Math.max(...state.map(arg => arg.right)) + size;
+    const mappedPrevious = Math.max(...state.map(arg => arg.bottom)) + size;
     Object.assign(selectionBounds.style, {
       left: mapped + "px",
-      top: mapped1 + "px",
-      width: Math.max(1, mapped2 - mapped) + "px",
-      height: Math.max(1, mapped3 - mapped1) + "px"
+      top: mappedCurrent + "px",
+      width: Math.max(1, mappedNext - mapped) + "px",
+      height: Math.max(1, mappedPrevious - mappedCurrent) + "px"
     });
   }
   updateDeviceButtonSelectionBounds(componentId, component, selectionBounds) {
@@ -3260,16 +3261,16 @@ export class PanelRenderer {
     const state = component.properties || {};
     const position = state.hiddenContentClickable === true;
     const count = Math.max(1, Number(component.position?.width || 100));
-    const count2 = Math.max(1, Number(component.position?.height || 100));
-    const count3 = Math.max(0.01, Number(this.document?.canvas?.componentScale || 1));
-    const state1 = [];
+    const max = Math.max(1, Number(component.position?.height || 100));
+    const countCurrent = Math.max(0.01, Number(this.document?.canvas?.componentScale || 1));
+    const list = [];
     const clampNumber = (arg, second, selectionBounds, fourth) => {
       const numeric = Number(arg);
       return Math.max(second, Math.min(selectionBounds, Number.isFinite(numeric) ? numeric : fourth));
     };
     const runHelper = (arg, top, selectionBounds, height) => {
       if (!![arg, top, selectionBounds, height].every(Number.isFinite) && !(selectionBounds <= 0) && !(height <= 0)) {
-        state1.push({
+        list.push({
           left: arg - selectionBounds / 2,
           top: top - height / 2,
           right: arg + selectionBounds / 2,
@@ -3277,41 +3278,41 @@ export class PanelRenderer {
         });
       }
     };
-    const runHelper1 = (arg, second, selectionBounds, element) => {
-      const count4 = Math.max(element, Number(arg?.offsetWidth || 0) * count3);
-      const count5 = Math.max(element, Number(arg?.offsetHeight || 0) * count3);
+    const callback = (arg, second, selectionBounds, element) => {
+      const countNext = Math.max(element, Number(arg?.offsetWidth || 0) * countCurrent);
+      const countPrevious = Math.max(element, Number(arg?.offsetHeight || 0) * countCurrent);
       const left = count * clampNumber(second, -100, 200, 0) / 100;
-      const size1 = count2 * clampNumber(selectionBounds, -100, 200, 50) / 100;
-      state1.push({
+      const size = max * clampNumber(selectionBounds, -100, 200, 50) / 100;
+      list.push({
         left,
-        top: size1 - count5 / 2,
-        right: left + count4,
-        bottom: size1 + count5 / 2
+        top: size - countPrevious / 2,
+        right: left + countNext,
+        bottom: size + countPrevious / 2
       });
     };
-    const state2 = count2 * clampNumber(state.badgeSize ?? state.iconSize, 1, 100, 28) / 100;
+    const value = max * clampNumber(state.badgeSize ?? state.iconSize, 1, 100, 28) / 100;
     if (state.iconVisible !== false || position) {
-      runHelper(count * clampNumber(state.iconLeft, -100, 200, 20) / 100, count2 * clampNumber(state.iconTop, -100, 200, 50) / 100, state2, state2);
+      runHelper(count * clampNumber(state.iconLeft, -100, 200, 20) / 100, max * clampNumber(state.iconTop, -100, 200, 50) / 100, value, value);
     }
     if (state.mainTextVisible !== false || position) {
-      runHelper1(componentId.querySelector(":scope > .hb-icon-button .hb-icon-button-text strong"), state.mainTextLeft, state.mainTextTop, count2 * clampNumber(state.mainSize, 6, 120, 21) / 100);
+      callback(componentId.querySelector(":scope > .hb-icon-button .hb-icon-button-text strong"), state.mainTextLeft, state.mainTextTop, max * clampNumber(state.mainSize, 6, 120, 21) / 100);
     }
     if (state.secondaryTextVisible !== false || position) {
-      runHelper1(componentId.querySelector(":scope > .hb-icon-button .hb-icon-button-text small"), state.secondaryTextLeft, state.secondaryTextTop, count2 * clampNumber(state.secondarySize, 5, 80, 12) / 100);
+      callback(componentId.querySelector(":scope > .hb-icon-button .hb-icon-button-text small"), state.secondaryTextLeft, state.secondaryTextTop, max * clampNumber(state.secondarySize, 5, 80, 12) / 100);
     }
-    if (!state1.length) {
+    if (!list.length) {
       return false;
     }
     const size = 4;
-    const mapped = Math.min(...state1.map(arg => arg.left)) - size;
-    const mapped1 = Math.min(...state1.map(arg => arg.top)) - size;
-    const mapped2 = Math.max(...state1.map(arg => arg.right)) + size;
-    const mapped3 = Math.max(...state1.map(arg => arg.bottom)) + size;
+    const mapped = Math.min(...list.map(arg => arg.left)) - size;
+    const mappedCurrent = Math.min(...list.map(arg => arg.top)) - size;
+    const mappedNext = Math.max(...list.map(arg => arg.right)) + size;
+    const mappedPrevious = Math.max(...list.map(arg => arg.bottom)) + size;
     Object.assign(selectionBounds.style, {
       left: mapped + "px",
-      top: mapped1 + "px",
-      width: Math.max(1, mapped2 - mapped) + "px",
-      height: Math.max(1, mapped3 - mapped1) + "px"
+      top: mappedCurrent + "px",
+      width: Math.max(1, mappedNext - mapped) + "px",
+      height: Math.max(1, mappedPrevious - mappedCurrent) + "px"
     });
     return true;
   }
@@ -3322,8 +3323,8 @@ export class PanelRenderer {
     const state = component.properties || {};
     const position = state.hiddenContentClickable === true;
     const count = Math.max(1, Number(component.position?.width || 100));
-    const count2 = Math.max(1, Number(component.position?.height || 100));
-    const count3 = Math.max(0.01, Number(this.document?.canvas?.componentScale || 1));
+    const max = Math.max(1, Number(component.position?.height || 100));
+    const countCurrent = Math.max(0.01, Number(this.document?.canvas?.componentScale || 1));
     const size = [];
     const runHelper = (left, top, selectionBounds, height) => {
       if (!![left, top, selectionBounds, height].every(Number.isFinite) && !(selectionBounds <= 0) && !(height <= 0)) {
@@ -3340,50 +3341,50 @@ export class PanelRenderer {
       return Math.max(second, Math.min(selectionBounds, Number.isFinite(numeric) ? numeric : fourth));
     };
     if (state.frameVisible !== false || position) {
-      const state1 = clampNumber(state.frameSize, 10, 300, 100) / 100;
-      const state2 = count2 * 0.45 * state1;
-      const state3 = count / 2 + count * clampNumber(state.frameOffsetX, -100, 100, 0) / 100;
-      const state4 = count2 / 2 + count2 * clampNumber(state.frameOffsetY, -100, 100, 0) / 100;
-      const state5 = count * clampNumber(state.frameSpacing, 0, 300, 100) / 200;
-      const state6 = count2 * 0.12;
-      const state7 = clampNumber(state.frameWidth, 0, 12, 1.5);
-      runHelper(state3 - state5 - state7 / 2, state4 - state2 / 2 - state7 / 2, state6 + state7, state2 + state7);
-      runHelper(state3 + state5 - state6 - state7 / 2, state4 - state2 / 2 - state7 / 2, state6 + state7, state2 + state7);
+      const value = clampNumber(state.frameSize, 10, 300, 100) / 100;
+      const stateCurrent = max * 0.45 * value;
+      const stateNext = count / 2 + count * clampNumber(state.frameOffsetX, -100, 100, 0) / 100;
+      const statePrevious = max / 2 + max * clampNumber(state.frameOffsetY, -100, 100, 0) / 100;
+      const stateLocal = count * clampNumber(state.frameSpacing, 0, 300, 100) / 200;
+      const stateItem = max * 0.12;
+      const number = clampNumber(state.frameWidth, 0, 12, 1.5);
+      runHelper(stateNext - stateLocal - number / 2, statePrevious - stateCurrent / 2 - number / 2, stateItem + number, stateCurrent + number);
+      runHelper(stateNext + stateLocal - stateItem - number / 2, statePrevious - stateCurrent / 2 - number / 2, stateItem + number, stateCurrent + number);
     }
     if (state.mainTextVisible !== false || position) {
       const element = componentId.querySelector(":scope > .hb-title-button .hb-title-button-main");
-      const state1 = count2 * clampNumber(state.mainSize, 8, 200, 34) / 100;
-      runHelper(count * clampNumber(state.mainTextLeft, -100, 200, 5.5) / 100, count2 * clampNumber(state.mainTextTop, -100, 200, 45) / 100 - state1 / 2, Math.max(state1, Number(element?.offsetWidth || 0) * count3), Math.max(state1, Number(element?.offsetHeight || 0) * count3));
+      const value = max * clampNumber(state.mainSize, 8, 200, 34) / 100;
+      runHelper(count * clampNumber(state.mainTextLeft, -100, 200, 5.5) / 100, max * clampNumber(state.mainTextTop, -100, 200, 45) / 100 - value / 2, Math.max(value, Number(element?.offsetWidth || 0) * countCurrent), Math.max(value, Number(element?.offsetHeight || 0) * countCurrent));
     }
     if (state.secondaryTextVisible !== false || position) {
       const element = componentId.querySelector(":scope > .hb-title-button .hb-title-button-secondary");
-      const state1 = count2 * clampNumber(state.secondarySize, 6, 100, 12) / 100;
-      const count4 = Math.max(state1, Number(element?.offsetHeight || 0) * count3);
-      runHelper(count * clampNumber(state.secondaryTextLeft, -100, 200, 54) / 100, count2 * clampNumber(state.secondaryTextTop, -100, 200, 43) / 100 - count4 / 2, Math.max(state1, Number(element?.offsetWidth || 0) * count3), count4);
+      const value = max * clampNumber(state.secondarySize, 6, 100, 12) / 100;
+      const countNext = Math.max(value, Number(element?.offsetHeight || 0) * countCurrent);
+      runHelper(count * clampNumber(state.secondaryTextLeft, -100, 200, 54) / 100, max * clampNumber(state.secondaryTextTop, -100, 200, 43) / 100 - countNext / 2, Math.max(value, Number(element?.offsetWidth || 0) * countCurrent), countNext);
     }
     if ((state.iconVisible !== false || position) && state.icon) {
-      const state1 = count2 * clampNumber(state.iconSize, 1, 100, 30) / 100;
-      runHelper(count * clampNumber(state.iconLeft, -100, 200, 50) / 100 - state1 / 2, count2 * clampNumber(state.iconTop, -100, 200, 45) / 100 - state1 / 2, state1, state1);
+      const value = max * clampNumber(state.iconSize, 1, 100, 30) / 100;
+      runHelper(count * clampNumber(state.iconLeft, -100, 200, 50) / 100 - value / 2, max * clampNumber(state.iconTop, -100, 200, 45) / 100 - value / 2, value, value);
     }
     if (state.markerVisible !== false || position) {
-      const state1 = count2 * clampNumber(state.markerSize, 2, 60, 10) / 100;
-      const state2 = count * clampNumber(state.markerLeft, -100, 200, 1.8) / 100;
-      const state3 = count2 * clampNumber(state.markerTop, -100, 200, 84) / 100;
-      runHelper(state2 - state1 * 0.58, state3, state1 * 1.16, state1);
+      const value = max * clampNumber(state.markerSize, 2, 60, 10) / 100;
+      const stateCurrent = count * clampNumber(state.markerLeft, -100, 200, 1.8) / 100;
+      const stateNext = max * clampNumber(state.markerTop, -100, 200, 84) / 100;
+      runHelper(stateCurrent - value * 0.58, stateNext, value * 1.16, value);
     }
     if (!size.length) {
       return false;
     }
-    const size1 = 4;
-    const mapped = Math.min(...size.map(arg => arg.left)) - size1;
-    const mapped1 = Math.min(...size.map(arg => arg.top)) - size1;
-    const mapped2 = Math.max(...size.map(arg => arg.right)) + size1;
-    const mapped3 = Math.max(...size.map(arg => arg.bottom)) + size1;
+    const sizeCurrent = 4;
+    const mapped = Math.min(...size.map(arg => arg.left)) - sizeCurrent;
+    const value = Math.min(...size.map(arg => arg.top)) - sizeCurrent;
+    const mappedCurrent = Math.max(...size.map(arg => arg.right)) + sizeCurrent;
+    const mappedNext = Math.max(...size.map(arg => arg.bottom)) + sizeCurrent;
     Object.assign(selectionBounds.style, {
       left: mapped + "px",
-      top: mapped1 + "px",
-      width: Math.max(1, mapped2 - mapped) + "px",
-      height: Math.max(1, mapped3 - mapped1) + "px"
+      top: value + "px",
+      width: Math.max(1, mappedCurrent - mapped) + "px",
+      height: Math.max(1, mappedNext - value) + "px"
     });
     return true;
   }
@@ -3402,14 +3403,14 @@ export class PanelRenderer {
     const count = Math.max(0.01, Number(this.document?.canvas?.componentScale || 1));
     const state = 4;
     const mapped = (Math.min(...filtered.map(arg => arg.offsetLeft)) - state) * count;
-    const mapped1 = (Math.min(...filtered.map(arg => arg.offsetTop)) - state) * count;
-    const mapped2 = (Math.max(...filtered.map(arg => arg.offsetLeft + arg.offsetWidth)) + state) * count;
-    const mapped3 = (Math.max(...filtered.map(arg => arg.offsetTop + arg.offsetHeight)) + state) * count;
+    const value = (Math.min(...filtered.map(arg => arg.offsetTop)) - state) * count;
+    const mappedCurrent = (Math.max(...filtered.map(arg => arg.offsetLeft + arg.offsetWidth)) + state) * count;
+    const mappedNext = (Math.max(...filtered.map(arg => arg.offsetTop + arg.offsetHeight)) + state) * count;
     Object.assign(selectionBounds.style, {
       left: mapped + "px",
-      top: mapped1 + "px",
-      width: Math.max(1, mapped2 - mapped) + "px",
-      height: Math.max(1, mapped3 - mapped1) + "px"
+      top: value + "px",
+      width: Math.max(1, mappedCurrent - mapped) + "px",
+      height: Math.max(1, mappedNext - value) + "px"
     });
     return true;
   }
@@ -3424,13 +3425,13 @@ export class PanelRenderer {
         }
         const matchedEl = (hostEl.type === "time" ? [...element.querySelectorAll(":scope > .hb-time-value, :scope > .hb-time-period")] : hostEl.type === "date" ? [...element.querySelectorAll(":scope > .hb-date-primary, :scope > .hb-date-lunar")] : [...element.querySelectorAll(":scope > .hb-weather-icon, :scope > .hb-weather-content > strong, :scope > .hb-weather-content > small")]).filter(arg => this.selectionElementIsVisible(arg));
         const count = Math.max(0.01, Number(this.document?.canvas?.componentScale || 1));
-        const count2 = Math.max(1, Number(hostEl.position?.width || 100));
-        const count3 = Math.max(1, Number(hostEl.position?.height || 100));
+        const max = Math.max(1, Number(hostEl.position?.width || 100));
+        const countCurrent = Math.max(1, Number(hostEl.position?.height || 100));
         if (!matchedEl.length) {
-          const clamped = Math.min(32, Math.max(20, Math.min(count2, count3) * 0.2));
+          const clamped = Math.min(32, Math.max(20, Math.min(max, countCurrent) * 0.2));
           Object.assign(selectionBounds.style, {
-            left: (count2 - clamped) / 2 + "px",
-            top: (count3 - clamped) / 2 + "px",
+            left: (max - clamped) / 2 + "px",
+            top: (countCurrent - clamped) / 2 + "px",
             width: clamped + "px",
             height: clamped + "px"
           });
@@ -3438,15 +3439,15 @@ export class PanelRenderer {
         }
         const mapped = matchedEl.map(arg => this.selectionElementBox(arg, componentId));
         const size = 3;
-        const mapped1 = (Math.min(...mapped.map(arg => arg.left)) - size) * count;
-        const mapped2 = (Math.min(...mapped.map(arg => arg.top)) - size) * count;
-        const mapped3 = (Math.max(...mapped.map(arg => arg.left + arg.width)) + size) * count;
-        const mapped4 = (Math.max(...mapped.map(arg => arg.top + arg.height)) + size) * count;
+        const value = (Math.min(...mapped.map(arg => arg.left)) - size) * count;
+        const mappedCurrent = (Math.min(...mapped.map(arg => arg.top)) - size) * count;
+        const mappedNext = (Math.max(...mapped.map(arg => arg.left + arg.width)) + size) * count;
+        const mappedPrevious = (Math.max(...mapped.map(arg => arg.top + arg.height)) + size) * count;
         Object.assign(selectionBounds.style, {
-          left: mapped1 + "px",
-          top: mapped2 + "px",
-          width: Math.max(1, mapped3 - mapped1) + "px",
-          height: Math.max(1, mapped4 - mapped2) + "px"
+          left: value + "px",
+          top: mappedCurrent + "px",
+          width: Math.max(1, mappedNext - value) + "px",
+          height: Math.max(1, mappedPrevious - mappedCurrent) + "px"
         });
         return true;
       });
@@ -3465,18 +3466,18 @@ export class PanelRenderer {
       return;
     }
     const numeric = Number(hostEl.position?.width || 100);
-    const numeric2 = Number(hostEl.position?.height || 100);
+    const number = Number(hostEl.position?.height || 100);
     const position = element.naturalWidth / element.naturalHeight;
-    const state = numeric / numeric2;
-    const state1 = position >= state ? numeric : numeric2 * position;
-    const state2 = position >= state ? numeric / position : numeric2;
-    const size = (numeric - state1) / 2;
-    const size1 = (numeric2 - state2) / 2;
+    const state = numeric / number;
+    const stateCurrent = position >= state ? numeric : number * position;
+    const value = position >= state ? numeric / position : number;
+    const size = (numeric - stateCurrent) / 2;
+    const sizeCurrent = (number - value) / 2;
     Object.assign(selectionBounds.style, {
       left: size / numeric * 100 + "%",
-      top: size1 / numeric2 * 100 + "%",
-      width: state1 / numeric * 100 + "%",
-      height: state2 / numeric2 * 100 + "%"
+      top: sizeCurrent / number * 100 + "%",
+      width: stateCurrent / numeric * 100 + "%",
+      height: value / number * 100 + "%"
     });
   }
   updateTransformHandleScale(componentId, handleRoot, scaleOverride = null) {
@@ -3486,89 +3487,89 @@ export class PanelRenderer {
     const state = Math.min(this.appliedScaleX || 1, this.appliedScaleY || 1);
     const count = Math.max(0.01, Math.min(5, Number(handleRoot.style?.scale || 1)));
     const scale = this.componentParentTransform(handleRoot.id).scale;
-    const scale1 = 1 / Math.max(0.001, state * count * scale);
+    const value = 1 / Math.max(0.001, state * count * scale);
     const element = scaleOverride || this.componentSelectionOverlays.get(handleRoot.id)?.querySelector(":scope > .hb-selection-bounds") || componentId.querySelector(":scope > .hb-selection-bounds");
     if (!element) {
       return;
     }
-    element.style.setProperty("--hb-ui-scale", String(scale1));
-    element.style.setProperty("--hb-handle-outset", scale1 * 30 + "px");
+    element.style.setProperty("--hb-ui-scale", String(value));
+    element.style.setProperty("--hb-handle-outset", value * 30 + "px");
     const domRect = element.getBoundingClientRect();
     element.classList.toggle("handles-outside", domRect.width < 132 || domRect.height < 112);
   }
-  startComponentScale(event, componentId, element, element2) {
+  startComponentScale(event, componentId, element, elementCurrent) {
     event.preventDefault();
     event.stopPropagation();
-    const domRect = element2?.getBoundingClientRect() || element.getBoundingClientRect();
+    const domRect = elementCurrent?.getBoundingClientRect() || element.getBoundingClientRect();
     const size = domRect.left + domRect.width / 2;
-    const size1 = domRect.top + domRect.height / 2;
-    const count = Math.max(1, Math.hypot(event.clientX - size, event.clientY - size1));
-    const count2 = Math.max(0.01, Math.min(5, Number(componentId.style?.scale || 1)));
-    let scale = count2;
-    let event1 = false;
+    const value = domRect.top + domRect.height / 2;
+    const count = Math.max(1, Math.hypot(event.clientX - size, event.clientY - value));
+    const max = Math.max(0.01, Math.min(5, Number(componentId.style?.scale || 1)));
+    let scale = max;
+    let flag = false;
     const pointerId = event.pointerId;
     event.currentTarget.setPointerCapture(pointerId);
-    const event2 = event3 => {
-      if (event3.pointerId !== pointerId) {
+    const callback = event => {
+      if (event.pointerId !== pointerId) {
         return;
       }
-      const event4 = Math.hypot(event3.clientX - size, event3.clientY - size1);
-      scale = Math.max(0.01, Math.min(5, count2 * event4 / count));
+      const hypot = Math.hypot(event.clientX - size, event.clientY - value);
+      scale = Math.max(0.01, Math.min(5, max * hypot / count));
       componentId.style = {
         ...(componentId.style || {}),
         scale
       };
       element.style.transform = "rotate(" + Number(componentId.position?.rotation || 0) + "deg) scale(" + scale + ")";
-      const scale2 = this.componentSelectionOverlays.get(componentId.id);
-      if (scale2) {
-        scale2.style.transform = element.style.transform;
+      const entry = this.componentSelectionOverlays.get(componentId.id);
+      if (entry) {
+        entry.style.transform = element.style.transform;
       }
-      this.updateTransformHandleScale(element, componentId, element2);
+      this.updateTransformHandleScale(element, componentId, elementCurrent);
       this.options.onComponentTransformPreview?.(componentId.id, {
         scale
       });
     };
-    const scale1 = (event3 = null) => {
-      if (!event1 && (event3?.pointerId == null || event3.pointerId === pointerId)) {
-        event1 = true;
-        window.removeEventListener("pointermove", event2, true);
-        window.removeEventListener("pointerup", scale1, true);
-        window.removeEventListener("pointercancel", scale1, true);
-        window.removeEventListener("blur", scale1);
+    const scaleCurrent = (event = null) => {
+      if (!flag && (event?.pointerId == null || event.pointerId === pointerId)) {
+        flag = true;
+        window.removeEventListener("pointermove", callback, true);
+        window.removeEventListener("pointerup", scaleCurrent, true);
+        window.removeEventListener("pointercancel", scaleCurrent, true);
+        window.removeEventListener("blur", scaleCurrent);
         componentId.style = {
           ...(componentId.style || {}),
           scale
         };
-        if (scale !== count2) {
+        if (scale !== max) {
           this.options.onComponentTransform?.(componentId.id, {
             scale
           });
         }
       }
     };
-    window.addEventListener("pointermove", event2, true);
-    window.addEventListener("pointerup", scale1, true);
-    window.addEventListener("pointercancel", scale1, true);
-    window.addEventListener("blur", scale1);
+    window.addEventListener("pointermove", callback, true);
+    window.addEventListener("pointerup", scaleCurrent, true);
+    window.addEventListener("pointercancel", scaleCurrent, true);
+    window.addEventListener("blur", scaleCurrent);
   }
-  startComponentRotate(event, componentId, element, element2) {
+  startComponentRotate(event, componentId, element, elementCurrent) {
     event.preventDefault();
     event.stopPropagation();
-    const domRect = element2?.getBoundingClientRect() || element.getBoundingClientRect();
+    const domRect = elementCurrent?.getBoundingClientRect() || element.getBoundingClientRect();
     const size = domRect.left + domRect.width / 2;
-    const event1 = domRect.top + domRect.height / 2;
-    const position = Math.atan2(event.clientY - event1, event.clientX - size);
+    const value = domRect.top + domRect.height / 2;
+    const position = Math.atan2(event.clientY - value, event.clientX - size);
     const numeric = Number(componentId.position?.rotation || 0);
     let rotation = numeric;
-    let event2 = false;
+    let flag = false;
     const pointerId = event.pointerId;
     event.currentTarget.setPointerCapture(pointerId);
-    const event3 = event4 => {
-      if (event4.pointerId !== pointerId) {
+    const callback = event => {
+      if (event.pointerId !== pointerId) {
         return;
       }
-      const angle1 = Math.atan2(event4.clientY - event1, event4.clientX - size);
-      rotation = numeric + (angle1 - position) * 180 / Math.PI;
+      const angle = Math.atan2(event.clientY - value, event.clientX - size);
+      rotation = numeric + (angle - position) * 180 / Math.PI;
       element.style.transform = "rotate(" + rotation + "deg) scale(" + Number(componentId.style?.scale || 1) + ")";
       const scale = this.componentSelectionOverlays.get(componentId.id);
       if (scale) {
@@ -3578,10 +3579,10 @@ export class PanelRenderer {
         rotation
       });
     };
-    const angle = (event4 = null) => {
-      if (!event2 && (event4?.pointerId == null || event4.pointerId === pointerId)) {
-        event2 = true;
-        window.removeEventListener("pointermove", event3, true);
+    const angle = (event = null) => {
+      if (!flag && (event?.pointerId == null || event.pointerId === pointerId)) {
+        flag = true;
+        window.removeEventListener("pointermove", callback, true);
         window.removeEventListener("pointerup", angle, true);
         window.removeEventListener("pointercancel", angle, true);
         window.removeEventListener("blur", angle);
@@ -3596,52 +3597,52 @@ export class PanelRenderer {
         }
       }
     };
-    window.addEventListener("pointermove", event3, true);
+    window.addEventListener("pointermove", callback, true);
     window.addEventListener("pointerup", angle, true);
     window.addEventListener("pointercancel", angle, true);
     window.addEventListener("blur", angle);
   }
   bindRuntimeActions(host, component) {
     let state = null;
-    let state1 = null;
+    let stateCurrent = null;
     let bindRuntimeActionsValue = null;
-    let bindRuntimeActionsValue1 = false;
+    let flag = false;
     let event = null;
-    let event1 = null;
-    let state2 = 0;
-    let state3 = null;
-    let state4;
-    const state5 = isComponentActionSupported(component, component.actions?.tap) ? component.actions.tap : null;
-    const state6 = isComponentActionSupported(component, component.actions?.doubleTap) ? component.actions.doubleTap : null;
-    const state7 = isComponentActionSupported(component, component.actions?.hold) ? component.actions.hold : null;
-    const state8 = !!state5?.type && state5.type !== "none";
-    const state9 = !!state6?.type && state6.type !== "none";
-    const state10 = !!state7?.type && state7.type !== "none";
+    let point = null;
+    let count = 0;
+    let stateNext = null;
+    let statePrevious;
+    const tap = isComponentActionSupported(component, component.actions?.tap) ? component.actions.tap : null;
+    const doubleTap = isComponentActionSupported(component, component.actions?.doubleTap) ? component.actions.doubleTap : null;
+    const hold = isComponentActionSupported(component, component.actions?.hold) ? component.actions.hold : null;
+    const value = !!tap?.type && tap.type !== "none";
+    const stateLocal = !!doubleTap?.type && doubleTap.type !== "none";
+    const stateItem = !!hold?.type && hold.type !== "none";
     const runHelper = () => {
       this.options.onRuntimeButtonPress?.(host);
     };
-    const runHelper1 = () => {
-      if (state3 || state5?.type !== "toggle") {
+    const callback = () => {
+      if (stateNext || tap?.type !== "toggle") {
         return;
       }
       const entityId = component.bindings?.entity?.entityId;
       if (entityId && !isVirtualEntityId(entityId)) {
-        state4 = this.states.get(this.powerEntityId(component, entityId));
-        state3 = this.applyOptimisticToggle(entityId, component);
+        statePrevious = this.states.get(this.powerEntityId(component, entityId));
+        stateNext = this.applyOptimisticToggle(entityId, component);
       }
     };
-    const runHelper2 = () => {
-      state3?.();
-      state3 = null;
-      state4 = undefined;
+    const runHelperCurrent = () => {
+      stateNext?.();
+      stateNext = null;
+      statePrevious = undefined;
     };
-    const runHelper3 = () => {
-      const optimisticRollback = state3;
-      const optimisticPreviousState = state4;
-      state3 = null;
-      state4 = undefined;
-      if (state8) {
-        this.runAction(component, state5, {
+    const runHelperNext = () => {
+      const optimisticRollback = stateNext;
+      const optimisticPreviousState = statePrevious;
+      stateNext = null;
+      statePrevious = undefined;
+      if (value) {
+        this.runAction(component, tap, {
           optimisticAlreadyApplied: !!optimisticRollback,
           optimisticRollback,
           optimisticPreviousState
@@ -3652,69 +3653,69 @@ export class PanelRenderer {
     host.addEventListener("contextmenu", event => event.preventDefault());
     host.addEventListener("selectstart", event => event.preventDefault());
     host.addEventListener("dragstart", event => event.preventDefault());
-    host.addEventListener("pointerdown", event2 => {
-      bindRuntimeActionsValue1 = false;
+    host.addEventListener("pointerdown", eventCurrent => {
+      flag = false;
       event = {
-        pointerId: event2.pointerId,
-        pointerType: event2.pointerType || "mouse",
-        x: event2.clientX,
-        y: event2.clientY,
+        pointerId: eventCurrent.pointerId,
+        pointerType: eventCurrent.pointerType || "mouse",
+        x: eventCurrent.clientX,
+        y: eventCurrent.clientY,
         moved: false
       };
-      if (state10) {
+      if (stateItem) {
         bindRuntimeActionsValue = window.setTimeout(() => {
-          bindRuntimeActionsValue1 = true;
-          event1 = null;
-          window.clearTimeout(state1);
+          flag = true;
+          point = null;
+          window.clearTimeout(stateCurrent);
           runHelper();
-          this.runAction(component, state7);
+          this.runAction(component, hold);
         }, 400);
       }
     });
     const scheduleTimeout = () => window.clearTimeout(bindRuntimeActionsValue);
-    host.addEventListener("pointermove", event2 => {
-      if (!!event && event.pointerId === event2.pointerId && !(Math.hypot(event2.clientX - event.x, event2.clientY - event.y) <= 18)) {
+    host.addEventListener("pointermove", eventCurrent => {
+      if (!!event && event.pointerId === eventCurrent.pointerId && !(Math.hypot(eventCurrent.clientX - event.x, eventCurrent.clientY - event.y) <= 18)) {
         event.moved = true;
         scheduleTimeout();
       }
     });
     host.addEventListener("pointerup", event => {
       scheduleTimeout();
-      const event2 = event?.pointerId === event.pointerId ? event : null;
+      const eventCurrent = event?.pointerId === event.pointerId ? event : null;
       event = null;
-      if (!event2 || event2.pointerType === "mouse" || event2.moved || bindRuntimeActionsValue1) {
+      if (!eventCurrent || eventCurrent.pointerType === "mouse" || eventCurrent.moved || flag) {
         return;
       }
       event.preventDefault();
-      state2 = performance.now() + 700;
-      if (state8 || state9) {
+      count = performance.now() + 700;
+      if (value || stateLocal) {
         runHelper();
       }
       const time = performance.now();
-      if (state9 && event1 && time - event1.time <= 180 && Math.hypot(event.clientX - event1.x, event.clientY - event1.y) <= 34) {
-        window.clearTimeout(state1);
-        runHelper2();
-        event1 = null;
-        this.runAction(component, state6);
+      if (stateLocal && point && time - point.time <= 180 && Math.hypot(event.clientX - point.x, event.clientY - point.y) <= 34) {
+        window.clearTimeout(stateCurrent);
+        runHelperCurrent();
+        point = null;
+        this.runAction(component, doubleTap);
         return;
       }
-      event1 = {
+      point = {
         time,
         x: event.clientX,
         y: event.clientY
       };
-      if (state9) {
-        runHelper1();
-        window.clearTimeout(state1);
-        state1 = window.setTimeout(() => {
-          runHelper3();
-          event1 = null;
+      if (stateLocal) {
+        callback();
+        window.clearTimeout(stateCurrent);
+        stateCurrent = window.setTimeout(() => {
+          runHelperNext();
+          point = null;
         }, 180);
       } else {
-        if (state8) {
-          this.runAction(component, state5);
+        if (value) {
+          this.runAction(component, tap);
         }
-        event1 = null;
+        point = null;
       }
     });
     host.addEventListener("pointercancel", () => {
@@ -3722,38 +3723,38 @@ export class PanelRenderer {
       event = null;
     });
     host.addEventListener("click", () => {
-      if (!(performance.now() < state2) && !bindRuntimeActionsValue1) {
-        if (state8 || state9) {
+      if (!(performance.now() < count) && !flag) {
+        if (value || stateLocal) {
           runHelper();
         }
-        if (state9) {
-          runHelper1();
+        if (stateLocal) {
+          callback();
           window.clearTimeout(state);
           state = window.setTimeout(() => {
-            runHelper3();
+            runHelperNext();
           }, 180);
-        } else if (state8) {
-          this.runAction(component, state5);
+        } else if (value) {
+          this.runAction(component, tap);
         }
       }
     });
     host.addEventListener("dblclick", () => {
       window.clearTimeout(state);
-      runHelper2();
-      if (state9) {
-        this.runAction(component, state6);
+      runHelperCurrent();
+      if (stateLocal) {
+        this.runAction(component, doubleTap);
       }
     });
     this.cleanups.push(() => {
       window.clearTimeout(state);
-      window.clearTimeout(state1);
+      window.clearTimeout(stateCurrent);
       window.clearTimeout(bindRuntimeActionsValue);
-      runHelper2();
+      runHelperCurrent();
     });
   }
-  runAction(component, component1, actionOptions = {}) {
-    if (!!component1?.type && component1.type !== "none") {
-      this.dispatchAction(component, component1, actionOptions).catch(arg => {
+  runAction(component, componentCurrent, actionOptions = {}) {
+    if (!!componentCurrent?.type && componentCurrent.type !== "none") {
+      this.dispatchAction(component, componentCurrent, actionOptions).catch(arg => {
         window.HABridgeLog?.error(arg, {
           componentId: component.id,
           entityId: component.bindings?.entity?.entityId || "",
@@ -3770,28 +3771,28 @@ export class PanelRenderer {
       });
     }
   }
-  popupComponentForEntity(entityId1, preferredType = "") {
-    let entityId = String(entityId1 || "");
-    let entityId2 = entityId.split(".")[0];
+  popupComponentForEntity(entityIdCurrent, preferredType = "") {
+    let entityId = String(entityIdCurrent || "");
+    let entityIdNext = entityId.split(".")[0];
     const state = this.deviceProfile(entityId);
-    if (state?.deviceType === "air-purifier" && state.roles?.fan && entityId2 !== "fan") {
+    if (state?.deviceType === "air-purifier" && state.roles?.fan && entityIdNext !== "fan") {
       entityId = state.roles.fan;
-      entityId2 = "fan";
+      entityIdNext = "fan";
     }
-    const state1 = state?.roles?.climate || state?.roles?.fan || "";
-    if (["air-conditioner", "bath-heater"].includes(state?.deviceType) && state1 && !["climate", "light"].includes(entityId2)) {
-      entityId = state1;
-      entityId2 = entityId.split(".")[0];
+    const text = state?.roles?.climate || state?.roles?.fan || "";
+    if (["air-conditioner", "bath-heater"].includes(state?.deviceType) && text && !["climate", "light"].includes(entityIdNext)) {
+      entityId = text;
+      entityIdNext = entityId.split(".")[0];
     }
-    const state2 = this.entityMetadata.get(entityId);
-    if (entityId2 === "sensor" && state2?.deviceId && ["state", "status", "task_status"].includes(state2.translationKey)) {
-      const found = [...this.entityMetadata.values()].find(arg => arg.deviceId === state2.deviceId && arg.domain === "vacuum" && entityMetadataIsAvailable(arg));
+    const entry = this.entityMetadata.get(entityId);
+    if (entityIdNext === "sensor" && entry?.deviceId && ["state", "status", "task_status"].includes(entry.translationKey)) {
+      const found = [...this.entityMetadata.values()].find(arg => arg.deviceId === entry.deviceId && arg.domain === "vacuum" && entityMetadataIsAvailable(arg));
       if (found?.entityId) {
         entityId = found.entityId;
-        entityId2 = "vacuum";
+        entityIdNext = "vacuum";
       }
     }
-    const type = state?.deviceType === "electric-bed" ? "electric-bed" : state?.deviceType === "air-purifier" && entityId2 === "fan" ? "air-purifier" : ["air-conditioner", "bath-heater"].includes(state?.deviceType) && ["climate", "fan"].includes(entityId2) || entityId2 === "climate" ? "air-conditioner" : entityId2 === "water_heater" ? "water-heater" : entityId2 === "camera" ? "camera" : entityId2 === "media_player" ? "media-player" : ["fan", "select", "number", "input_number"].includes(entityId2) ? "device-button" : ["light", "switch", "input_boolean"].includes(entityId2) ? "icon-button" : entityId2 === "sensor" ? "line-chart" : entityId2 === "vacuum" ? "vacuum-control" : "device-button";
+    const type = state?.deviceType === "electric-bed" ? "electric-bed" : state?.deviceType === "air-purifier" && entityIdNext === "fan" ? "air-purifier" : ["air-conditioner", "bath-heater"].includes(state?.deviceType) && ["climate", "fan"].includes(entityIdNext) || entityIdNext === "climate" ? "air-conditioner" : entityIdNext === "water_heater" ? "water-heater" : entityIdNext === "camera" ? "camera" : entityIdNext === "media_player" ? "media-player" : ["fan", "select", "number", "input_number"].includes(entityIdNext) ? "device-button" : ["light", "switch", "input_boolean"].includes(entityIdNext) ? "icon-button" : entityIdNext === "sensor" ? "line-chart" : entityIdNext === "vacuum" ? "vacuum-control" : "device-button";
     return {
       id: "popup-" + entityId,
       type,
@@ -3818,12 +3819,12 @@ export class PanelRenderer {
       actions: {}
     };
   }
-  showActionPopup(component, component1, {
+  showActionPopup(component, componentCurrent, {
     preview = false
   } = {}) {
-    const state = component1?.data?.popupSource || "current";
+    const state = componentCurrent?.data?.popupSource || "current";
     if (state === "custom") {
-      const found = (this.document?.customPopups || []).find(arg => arg.id === component1.data?.popupId);
+      const found = (this.document?.customPopups || []).find(arg => arg.id === componentCurrent.data?.popupId);
       if (!found) {
         throw new Error("选择的组合弹窗不存在。");
       }
@@ -3834,35 +3835,35 @@ export class PanelRenderer {
     }
     const entityId = component?.bindings?.entity?.entityId;
     const asString = String(entityId || "").split(".", 1)[0] === "cover" || ["camera", "line-chart", "air-conditioner", "icon-button"].includes(component?.type);
-    let component2 = state === "entity" ? this.popupComponentForEntity(component1.data?.entityId, componentDialogTitle(component, component1.data?.title || component1.data?.entityId)) : asString ? component : this.popupComponentForEntity(entityId, componentDialogTitle(component, ""));
-    if (state !== "entity" && component2 !== component && component?.properties?.relatedEntities) {
-      component2 = {
-        ...component2,
+    let entity = state === "entity" ? this.popupComponentForEntity(componentCurrent.data?.entityId, componentDialogTitle(component, componentCurrent.data?.title || componentCurrent.data?.entityId)) : asString ? component : this.popupComponentForEntity(entityId, componentDialogTitle(component, ""));
+    if (state !== "entity" && entity !== component && component?.properties?.relatedEntities) {
+      entity = {
+        ...entity,
         properties: {
-          ...(component2.properties || {}),
+          ...(entity.properties || {}),
           relatedEntities: structuredClone(component.properties.relatedEntities)
         }
       };
     }
-    if (!component2?.bindings?.entity?.entityId) {
+    if (!entity?.bindings?.entity?.entityId) {
       throw new Error("该弹窗没有可用实体。");
     }
-    if (component2.type === "camera") {
-      this.showCameraPreview(component2, {
+    if (entity.type === "camera") {
+      this.showCameraPreview(entity, {
         preview
       });
     } else {
-      this.showEntityDetails(component2, {
+      this.showEntityDetails(entity, {
         preview
       });
     }
   }
-  async dispatchAction(component, component1, {
+  async dispatchAction(component, componentCurrent, {
     optimisticAlreadyApplied = false,
     optimisticRollback = null,
     optimisticPreviousState
   } = {}) {
-    if (component1.type === "toggle") {
+    if (componentCurrent.type === "toggle") {
       const entityId = component.bindings?.entity?.entityId;
       if (!entityId) {
         throw new Error("该控件没有关联实体。");
@@ -3872,27 +3873,27 @@ export class PanelRenderer {
         return;
       }
       const state = typeof this.powerEntityId == "function" ? this.powerEntityId(component, entityId) : entityId;
-      const state1 = state.split(".", 1)[0];
-      if (["button", "script"].includes(state1)) {
-        const state3 = entityToggleCommand(state, this.states.get(state), component);
-        await this.callEntityService(state3.domain, state3.service, state, state3.data);
+      const stateCurrent = state.split(".", 1)[0];
+      if (["button", "script"].includes(stateCurrent)) {
+        const command = entityToggleCommand(state, this.states.get(state), component);
+        await this.callEntityService(command.domain, command.service, state, command.data);
         return;
       }
-      const state2 = optimisticAlreadyApplied ? optimisticPreviousState : this.states.get(state);
+      const stateNext = optimisticAlreadyApplied ? optimisticPreviousState : this.states.get(state);
       const runHelper = optimisticAlreadyApplied ? optimisticRollback || (() => {}) : this.applyOptimisticToggle(state, component);
       try {
-        if (state1 === "cover") {
+        if (stateCurrent === "cover") {
           const index = new Map(this.states);
-          if (state2 === undefined) {
+          if (stateNext === undefined) {
             index.delete(state);
           } else {
-            index.set(state, state2);
+            index.set(state, stateNext);
           }
           await this.callEntityService("cover", coverToggleServiceForComponent(component, this.entityMetadata, index, state), state);
-        } else if (["climate", "fan", "water_heater", "media_player"].includes(state1)) {
-          const state3 = typeof this.runtimePowerComponent == "function" ? this.runtimePowerComponent(component, entityId) : component;
-          const state4 = entityToggleCommand(state, state2, state3);
-          await this.callEntityService(state4.domain, state4.service, state, state4.data);
+        } else if (["climate", "fan", "water_heater", "media_player"].includes(stateCurrent)) {
+          const stateCurrent = typeof this.runtimePowerComponent == "function" ? this.runtimePowerComponent(component, entityId) : component;
+          const command = entityToggleCommand(state, stateNext, stateCurrent);
+          await this.callEntityService(command.domain, command.service, state, command.data);
         } else {
           await this.callEntityService("homeassistant", "toggle", state);
         }
@@ -3902,15 +3903,15 @@ export class PanelRenderer {
       }
       return;
     }
-    if (component1.type === "more-info") {
-      this.showActionPopup(component, component1);
+    if (componentCurrent.type === "more-info") {
+      this.showActionPopup(component, componentCurrent);
       return;
     }
-    if (component1.type === "navigate") {
-      if (!component1.target || !this.document?.pages?.some(event => event.path === component1.target)) {
+    if (componentCurrent.type === "navigate") {
+      if (!componentCurrent.target || !this.document?.pages?.some(event => event.path === componentCurrent.target)) {
         throw new Error("跳转的页面不存在。");
       }
-      this.navigate(component1.target);
+      this.navigate(componentCurrent.target);
     }
   }
   async callEntityService(domain, service, entityId, data = {}) {
@@ -3933,8 +3934,8 @@ export class PanelRenderer {
     });
     if (!response.ok) {
       const state = await response.json().catch(() => ({}));
-      const state1 = new Error(typeof state.detail == "string" ? state.detail : state.detail?.message || "实体操作失败。");
-      throw window.HABridgeLog?.linkError(state1, response) || state1;
+      const error = new Error(typeof state.detail == "string" ? state.detail : state.detail?.message || "实体操作失败。");
+      throw window.HABridgeLog?.linkError(error, response) || error;
     }
   }
   async browseMedia(entityId, mediaContentId = "media-source://", mediaContentType = "") {
@@ -3973,22 +3974,22 @@ export class PanelRenderer {
     panel.hidden = true;
     const mediaBrowserToolbarEl = document.createElement("div");
     mediaBrowserToolbarEl.className = "hb-media-browser-toolbar";
-    const element2 = document.createElement("button");
-    element2.type = "button";
-    element2.className = "hb-media-browser-back";
-    element2.textContent = "返回";
-    element2.hidden = true;
-    const element3 = document.createElement("strong");
-    element3.className = "hb-media-browser-location";
-    element3.textContent = "媒体库";
-    const element4 = document.createElement("span");
-    element4.className = "hb-media-browser-status";
-    const element5 = document.createElement("button");
-    element5.type = "button";
-    element5.className = "hb-media-browser-close";
-    element5.textContent = "×";
-    element5.setAttribute("aria-label", "关闭媒体选择");
-    mediaBrowserToolbarEl.append(element2, element3, element4, element5);
+    const elementCurrent = document.createElement("button");
+    elementCurrent.type = "button";
+    elementCurrent.className = "hb-media-browser-back";
+    elementCurrent.textContent = "返回";
+    elementCurrent.hidden = true;
+    const elementNext = document.createElement("strong");
+    elementNext.className = "hb-media-browser-location";
+    elementNext.textContent = "媒体库";
+    const elementPrevious = document.createElement("span");
+    elementPrevious.className = "hb-media-browser-status";
+    const elementLocal = document.createElement("button");
+    elementLocal.type = "button";
+    elementLocal.className = "hb-media-browser-close";
+    elementLocal.textContent = "×";
+    elementLocal.setAttribute("aria-label", "关闭媒体选择");
+    mediaBrowserToolbarEl.append(elementCurrent, elementNext, elementPrevious, elementLocal);
     const mediaBrowserListEl = document.createElement("div");
     mediaBrowserListEl.className = "hb-media-browser-list";
     panel.append(mediaBrowserToolbarEl, mediaBrowserListEl);
@@ -3996,71 +3997,71 @@ export class PanelRenderer {
     let id = "media-source://";
     let type = "";
     let state = [];
-    let state1 = false;
-    let state2 = false;
+    let flag = false;
+    let stateCurrent = false;
     const runHelper = (arg = "") => {
-      element4.textContent = arg;
+      elementPrevious.textContent = arg;
     };
     const syncAriaState = () => {
       panel.hidden = true;
       element.setAttribute("aria-expanded", "false");
     };
     const queryChildElement = arg => {
-      state1 = !!arg;
-      element.disabled = preview || state1 || !state2;
-      element2.disabled = state1;
+      flag = !!arg;
+      element.disabled = preview || flag || !stateCurrent;
+      elementCurrent.disabled = flag;
       mediaBrowserListEl.querySelectorAll("button").forEach(buttonEl => {
-        buttonEl.disabled = state1;
+        buttonEl.disabled = flag;
       });
     };
-    const runHelper1 = arg => String(arg?.title || arg?.name || arg?.media_content_id || "未命名媒体");
-    const runHelper2 = async (arg, labelText = "", {
+    const callback = arg => String(arg?.title || arg?.name || arg?.media_content_id || "未命名媒体");
+    const runHelperCurrent = async (arg, labelText = "", {
       pushHistory = true
     } = {}) => {
-      if (!state1 && !preview && !!state2) {
+      if (!flag && !preview && !!stateCurrent) {
         queryChildElement(true);
         runHelper("读取中…");
         try {
-          const state3 = await this.browseMedia(entityId, arg, labelText);
+          const media = await this.browseMedia(entityId, arg, labelText);
           if (pushHistory && id !== arg) {
             state.push({
               id,
               type,
-              title: element3.textContent
+              title: elementNext.textContent
             });
           }
           id = arg;
           type = labelText || "";
-          element3.textContent = runHelper1(state3) || "媒体库";
-          element2.hidden = state.length === 0;
+          elementNext.textContent = callback(media) || "媒体库";
+          elementCurrent.hidden = state.length === 0;
           mediaBrowserListEl.replaceChildren();
-          const list = Array.isArray(state3?.children) ? state3.children : [];
+          const list = Array.isArray(media?.children) ? media.children : [];
           if (!list.length) {
-            const element6 = document.createElement("p");
-            element6.className = "hb-media-browser-empty";
-            element6.textContent = "此处没有可播放的媒体。";
-            mediaBrowserListEl.append(element6);
+            const element = document.createElement("p");
+            element.className = "hb-media-browser-empty";
+            element.textContent = "此处没有可播放的媒体。";
+            mediaBrowserListEl.append(element);
           }
           list.forEach(mediaBrowserItemEl => {
-            const mediaBrowserItemEl1 = document.createElement("div");
-            mediaBrowserItemEl1.className = "hb-media-browser-item";
-            const element6 = document.createElement("span");
-            element6.className = "hb-media-browser-item-title";
-            element6.textContent = runHelper1(mediaBrowserItemEl);
-            const element7 = document.createElement("button");
-            element7.type = "button";
-            const state4 = !!mediaBrowserItemEl?.can_expand || !!mediaBrowserItemEl?.children;
-            const state5 = !!mediaBrowserItemEl?.can_play;
-            element7.textContent = state4 ? "打开" : "播放";
-            element7.disabled = !state4 && !state5;
-            element7.addEventListener("click", async () => {
-              if (state4) {
-                await runHelper2(mediaBrowserItemEl.media_content_id, mediaBrowserItemEl.media_content_type || "", {
+            const element = document.createElement("div");
+            element.className = "hb-media-browser-item";
+            const elementCurrent = document.createElement("span");
+            elementCurrent.className = "hb-media-browser-item-title";
+            elementCurrent.textContent = callback(mediaBrowserItemEl);
+            const elementNext = document.createElement("button");
+            elementNext.type = "button";
+            const state = !!mediaBrowserItemEl?.can_expand || !!mediaBrowserItemEl?.children;
+            const stateCurrent = !!mediaBrowserItemEl?.can_play;
+            elementNext.textContent = state ? "打开" : "播放";
+            elementNext.disabled = !state && !stateCurrent;
+            elementNext.addEventListener("click", async () => {
+              if (state) {
+                await runHelperCurrent(mediaBrowserItemEl.media_content_id, mediaBrowserItemEl.media_content_type || "", {
                   pushHistory: true
                 });
                 return;
               }
-              if (!!state5 && !state1) {
+              if (!!stateCurrent && !flag) {
                 queryChildElement(true);
                 runHelper("发送播放…");
                 try {
@@ -4068,7 +4069,7 @@ export class PanelRenderer {
                     media_content_id: mediaBrowserItemEl.media_content_id,
                     media_content_type: mediaBrowserItemEl.media_content_type || "music"
                   });
-                  runHelper("已发送播放");
+                  runHelper("");
                 } catch (error) {
                   runHelper(error.message || "播放失败");
                   this.options.onError?.(error);
@@ -4077,8 +4078,8 @@ export class PanelRenderer {
                 }
               }
             });
-            mediaBrowserItemEl1.append(element6, element7);
-            mediaBrowserListEl.append(mediaBrowserItemEl1);
+            element.append(elementCurrent, elementNext);
+            mediaBrowserListEl.append(element);
           });
           panel.hidden = false;
           element.setAttribute("aria-expanded", "true");
@@ -4087,10 +4088,10 @@ export class PanelRenderer {
           const text = String(error?.message || "媒体目录读取失败");
           runHelper(text.includes("Media directory does not exist") ? "此目录暂无媒体" : text);
           mediaBrowserListEl.replaceChildren();
-          const element6 = document.createElement("p");
-          element6.className = "hb-media-browser-empty";
-          element6.textContent = text.includes("Media directory does not exist") ? "此目录暂无可用媒体。" : text;
-          mediaBrowserListEl.append(element6);
+          const elementCurrent = document.createElement("p");
+          elementCurrent.className = "hb-media-browser-empty";
+          elementCurrent.textContent = text.includes("Media directory does not exist") ? "此目录暂无可用媒体。" : text;
+          mediaBrowserListEl.append(elementCurrent);
           panel.hidden = false;
           element.setAttribute("aria-expanded", "true");
         } finally {
@@ -4103,31 +4104,31 @@ export class PanelRenderer {
         syncAriaState();
         return;
       }
-      runHelper2(id, type, {
+      runHelperCurrent(id, type, {
         pushHistory: false
       });
     });
-    element5.addEventListener("click", syncAriaState);
-    element2.addEventListener("click", async () => {
-      const state3 = state.pop();
-      if (state3) {
-        await runHelper2(state3.id, state3.type, {
+    elementLocal.addEventListener("click", syncAriaState);
+    elementCurrent.addEventListener("click", async () => {
+      const last = state.pop();
+      if (last) {
+        await runHelperCurrent(last.id, last.type, {
           pushHistory: false
         });
-        element3.textContent = state3.title || "媒体库";
-        element2.hidden = state.length === 0;
+        elementNext.textContent = last.title || "媒体库";
+        elementCurrent.hidden = state.length === 0;
       }
     });
     return {
       root,
       panel,
       sync: sync => {
-        state2 = !!(Number(sync?.attributes?.supported_features || 0) & 512);
-        root.hidden = !state2;
-        if (!state2) {
+        stateCurrent = !!(Number(sync?.attributes?.supported_features || 0) & 512);
+        root.hidden = !stateCurrent;
+        if (!stateCurrent) {
           syncAriaState();
         }
-        element.disabled = preview || state1 || !state2;
+        element.disabled = preview || flag || !stateCurrent;
       },
       cleanup: () => {
         root.remove();
@@ -4198,23 +4199,23 @@ export class PanelRenderer {
       return;
     }
     const domRect = runtimeDialogScaleContext.dialogLayer.getBoundingClientRect();
-    const domRect1 = this.viewport?.getBoundingClientRect();
+    const rect = this.viewport?.getBoundingClientRect();
     const dialogViewport = runtimeDialogViewport({
       layerLeft: domRect.left,
       layerTop: domRect.top,
       layerWidth: domRect.width || runtimeDialogScaleContext.dialogLayer.clientWidth || this.container.clientWidth,
       layerHeight: domRect.height || runtimeDialogScaleContext.dialogLayer.clientHeight || this.container.clientHeight,
-      dashboardLeft: domRect1?.left,
-      dashboardTop: domRect1?.top,
-      dashboardWidth: domRect1?.width,
-      dashboardHeight: domRect1?.height
+      dashboardLeft: rect?.left,
+      dashboardTop: rect?.top,
+      dashboardWidth: rect?.width,
+      dashboardHeight: rect?.height
     });
     const layerWidth = dialogViewport.width;
     const layerHeight = dialogViewport.height;
     const count = Math.max(Number(runtimeDialogScaleContext.dialog.offsetWidth || 0), Number(runtimeDialogScaleContext.dialog.scrollWidth || 0));
-    const count2 = Math.max(Number(runtimeDialogScaleContext.dialog.offsetHeight || 0), Number(runtimeDialogScaleContext.dialog.scrollHeight || 0));
+    const max = Math.max(Number(runtimeDialogScaleContext.dialog.offsetHeight || 0), Number(runtimeDialogScaleContext.dialog.scrollHeight || 0));
     const layoutWidth = count > 1 ? count : runtimeDialogScaleContext.designWidth;
-    const layoutHeight = count2 > 1 ? count2 : runtimeDialogScaleContext.designHeight;
+    const layoutHeight = max > 1 ? max : runtimeDialogScaleContext.designHeight;
     const dialogLayout = runtimeDialogLayout({
       layerWidth,
       layerHeight,
@@ -4328,19 +4329,19 @@ export class PanelRenderer {
     const cameraPreviewStatusEl = document.createElement("div");
     const element = document.createElement("strong");
     element.textContent = componentDialogTitle(component, "摄像头实时预览");
-    const element2 = document.createElement("span");
-    element2.className = "hb-camera-preview-status";
-    element2.textContent = interaction3d ? "正在加载画面" : "正在连接";
-    element2.classList.add("is-connecting");
-    cameraPreviewStatusEl.append(element, element2);
-    const element3 = document.createElement("button");
-    element3.type = "button";
-    element3.setAttribute("aria-label", "关闭摄像头预览");
-    element3.textContent = "×";
-    cameraPreviewHeadingEl.append(cameraPreviewStatusEl, element3);
-    const element4 = document.createElement("section");
-    element4.className = "hb-camera-device-visual";
-    element4.setAttribute("aria-hidden", "true");
+    const elementCurrent = document.createElement("span");
+    elementCurrent.className = "hb-camera-preview-status";
+    elementCurrent.textContent = interaction3d ? "正在加载画面" : "正在连接";
+    elementCurrent.classList.add("is-connecting");
+    cameraPreviewStatusEl.append(element, elementCurrent);
+    const elementNext = document.createElement("button");
+    elementNext.type = "button";
+    elementNext.setAttribute("aria-label", "关闭摄像头预览");
+    elementNext.textContent = "×";
+    cameraPreviewHeadingEl.append(cameraPreviewStatusEl, elementNext);
+    const elementPrevious = document.createElement("section");
+    elementPrevious.className = "hb-camera-device-visual";
+    elementPrevious.setAttribute("aria-hidden", "true");
     const cameraDeviceMountEl = document.createElement("i");
     cameraDeviceMountEl.className = "hb-camera-device-mount";
     const cameraDeviceArmEl = document.createElement("i");
@@ -4352,45 +4353,45 @@ export class PanelRenderer {
     const cameraDeviceLedEl = document.createElement("i");
     cameraDeviceLedEl.className = "hb-camera-device-led";
     cameraDeviceBodyEl.append(cameraDeviceLensEl, cameraDeviceLedEl);
-    element4.append(cameraDeviceMountEl, cameraDeviceArmEl, cameraDeviceBodyEl);
+    elementPrevious.append(cameraDeviceMountEl, cameraDeviceArmEl, cameraDeviceBodyEl);
     let state = 0;
-    let state1 = null;
-    let state2 = 0;
+    let stateCurrent = null;
+    let count = 0;
     const runHelper = (arg, delayOrNumber = 0) => "translateX(-50%) perspective(260px) rotateY(" + arg + "deg) rotateZ(" + arg * 0.035 + "deg) translateY(" + delayOrNumber + "px)";
     const filtered = () => {
       if (!cameraDeviceBodyEl.isConnected) {
         return;
       }
-      const filtered1 = [-22, -16, -9, -4, 0, 6, 12, 18, 23].filter(arg => Math.abs(arg - state2) >= 7);
-      const state8 = filtered1[Math.floor(Math.random() * filtered1.length)] ?? 0;
-      const state9 = Math.sign(state8 - state2) || 1;
-      const state10 = Math.abs(state8 - state2);
-      const duration = Math.round(430 + state10 * 18 + Math.random() * 320);
-      const state11 = state8 + state9 * (1.4 + Math.random() * 2.2);
-      const state12 = Math.random() * 1.4 - 0.7;
-      cameraDeviceLensEl.style.setProperty("--hb-camera-lens-shift", state8 / 23 * 2.5 + "px");
-      state1?.cancel();
-      state1 = cameraDeviceBodyEl.animate([{
-        transform: runHelper(state2, 0),
+      const filteredCurrent = [-22, -16, -9, -4, 0, 6, 12, 18, 23].filter(arg => Math.abs(arg - count) >= 7);
+      const stateNext = filteredCurrent[Math.floor(Math.random() * filteredCurrent.length)] ?? 0;
+      const sign = Math.sign(stateNext - count) || 1;
+      const abs = Math.abs(stateNext - count);
+      const duration = Math.round(430 + abs * 18 + Math.random() * 320);
+      const value = stateNext + sign * (1.4 + Math.random() * 2.2);
+      const statePrevious = Math.random() * 1.4 - 0.7;
+      cameraDeviceLensEl.style.setProperty("--hb-camera-lens-shift", stateNext / 23 * 2.5 + "px");
+      stateCurrent?.cancel();
+      stateCurrent = cameraDeviceBodyEl.animate([{
+        transform: runHelper(count, 0),
         offset: 0
       }, {
-        transform: runHelper(state11, state12),
+        transform: runHelper(value, statePrevious),
         offset: 0.78
       }, {
-        transform: runHelper(state8, state12 * 0.35),
+        transform: runHelper(stateNext, statePrevious * 0.35),
         offset: 1
       }], {
         duration,
         easing: "cubic-bezier(.2,.72,.22,1)",
         fill: "forwards"
       });
-      state1.addEventListener("finish", () => {
-        state2 = state8;
-        cameraDeviceBodyEl.style.transform = runHelper(state2, state12 * 0.35);
-        state1?.cancel();
-        state1 = null;
-        const state13 = Math.random() < 0.22 ? 180 + Math.random() * 260 : 680 + Math.random() * 1500;
-        state = window.setTimeout(filtered, state13);
+      stateCurrent.addEventListener("finish", () => {
+        count = stateNext;
+        cameraDeviceBodyEl.style.transform = runHelper(count, statePrevious * 0.35);
+        stateCurrent?.cancel();
+        stateCurrent = null;
+        const value = Math.random() < 0.22 ? 180 + Math.random() * 260 : 680 + Math.random() * 1500;
+        state = window.setTimeout(filtered, value);
       }, {
         once: true
       });
@@ -4408,53 +4409,53 @@ export class PanelRenderer {
     cameraPreviewScanLineEl.className = "hb-camera-preview-scan-line";
     cameraPreviewScanLineEl.setAttribute("aria-hidden", "true");
     container.append(cameraPreviewRevealVeilEl, cameraPreviewScanLineEl);
-    const state3 = !!interaction3d;
-    const state4 = component.properties?.mediaVisible !== false;
-    container.classList.toggle("is-16-9", !state3);
-    container.classList.toggle("media-hidden", !state4);
-    const state5 = [];
-    let state6 = false;
+    const stateNext = !!interaction3d;
+    const value = component.properties?.mediaVisible !== false;
+    container.classList.toggle("is-16-9", !stateNext);
+    container.classList.toggle("media-hidden", !value);
+    const list = [];
+    let flag = false;
     const onReady = () => {
-      if (!state6) {
-        state6 = true;
-        element2.textContent = "实时画面";
-        element2.classList.remove("is-connecting", "is-unavailable");
-        element2.classList.add("is-live");
-        element4.classList.remove("is-unavailable");
-        element4.classList.add("is-live");
+      if (!flag) {
+        flag = true;
+        elementCurrent.textContent = "实时画面";
+        elementCurrent.classList.remove("is-connecting", "is-unavailable");
+        elementCurrent.classList.add("is-live");
+        elementPrevious.classList.remove("is-unavailable");
+        elementPrevious.classList.add("is-live");
         container.classList.remove("is-connecting", "is-unavailable", "is-revealing");
         container.classList.add("is-ready");
       }
     };
     const onUnavailable = () => {
-      element2.textContent = "画面不可用";
-      element2.classList.remove("is-connecting", "is-live");
-      element2.classList.add("is-unavailable");
-      element4.classList.remove("is-live");
-      element4.classList.add("is-unavailable");
+      elementCurrent.textContent = "画面不可用";
+      elementCurrent.classList.remove("is-connecting", "is-live");
+      elementCurrent.classList.add("is-unavailable");
+      elementPrevious.classList.remove("is-live");
+      elementPrevious.classList.add("is-unavailable");
       container.classList.remove("is-connecting", "is-revealing");
       container.classList.add("is-unavailable");
     };
-    let state7 = interaction3d ? cameraPreviewRatio(entityId) : 16 / 9;
+    let ratio = interaction3d ? cameraPreviewRatio(entityId) : 16 / 9;
     const applyElementStyle = () => {
       if (interaction3d) {
-        container.style.aspectRatio = String(state7);
+        container.style.aspectRatio = String(ratio);
         detailsDialog.resizeInteraction3d?.();
         return;
       }
       const count = Math.max(280, this.container.clientWidth - 32);
-      const count2 = Math.max(180, Math.min(625, this.container.clientHeight - 88));
-      const size = Math.min(760, count, count2 * state7);
-      const size1 = size / state7;
+      const max = Math.max(180, Math.min(625, this.container.clientHeight - 88));
+      const size = Math.min(760, count, max * ratio);
+      const value = size / ratio;
       detailsDialog.style.width = Math.max(280, size) + "px";
-      container.style.aspectRatio = String(state7);
+      container.style.aspectRatio = String(ratio);
       container.style.borderRadius = "16px";
     };
-    if (state4 && !preview) {
+    if (value && !preview) {
       const placeholder = document.createElement("span");
       placeholder.textContent = "正在载入摄像头实时预览";
       container.append(placeholder);
-      const state8 = mountCameraMedia({
+      const state = mountCameraMedia({
         container,
         entityId,
         label: element.textContent,
@@ -4462,44 +4463,44 @@ export class PanelRenderer {
         placeholder,
         onReady,
         onUnavailable,
-        cleanup: cleanup => state5.push(cleanup)
+        cleanup: cleanup => list.push(cleanup)
       });
-      const runHelper1 = (width, height) => {
-        if (state3 && Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
-          state7 = width / height;
-          cameraPreviewRatio(entityId, state7);
+      const runHelper = (width, height) => {
+        if (stateNext && Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+          ratio = width / height;
+          cameraPreviewRatio(entityId, ratio);
           applyElementStyle();
         }
       };
-      const state9 = () => runHelper1(state8.video.videoWidth, state8.video.videoHeight);
-      const state10 = () => runHelper1(state8.image.naturalWidth, state8.image.naturalHeight);
-      state8.video.addEventListener("loadedmetadata", state9);
-      state8.video.addEventListener("resize", state9);
-      state8.image.addEventListener("load", state10);
-      state5.push(() => state8.video.removeEventListener("loadedmetadata", state9));
-      state5.push(() => state8.video.removeEventListener("resize", state9));
-      state5.push(() => state8.image.removeEventListener("load", state10));
+      const callback = () => runHelper(state.video.videoWidth, state.video.videoHeight);
+      const stateCurrent = () => runHelper(state.image.naturalWidth, state.image.naturalHeight);
+      state.video.addEventListener("loadedmetadata", callback);
+      state.video.addEventListener("resize", callback);
+      state.image.addEventListener("load", stateCurrent);
+      list.push(() => state.video.removeEventListener("loadedmetadata", callback));
+      list.push(() => state.video.removeEventListener("resize", callback));
+      list.push(() => state.image.removeEventListener("load", stateCurrent));
     } else if (preview) {
-      element2.textContent = "预览模式";
-      element2.classList.remove("is-connecting");
+      elementCurrent.textContent = "预览模式";
+      elementCurrent.classList.remove("is-connecting");
       container.classList.remove("is-connecting");
       container.classList.add("is-ready");
-      const element5 = document.createElement("span");
-      element5.textContent = "预览模式不获取摄像头实时画面";
-      container.append(element5);
+      const element = document.createElement("span");
+      element.textContent = "预览模式不获取摄像头实时画面";
+      container.append(element);
     } else {
-      element2.textContent = "画面已隐藏";
-      element2.classList.remove("is-connecting");
+      elementCurrent.textContent = "画面已隐藏";
+      elementCurrent.classList.remove("is-connecting");
       container.classList.remove("is-connecting");
       container.classList.add("is-ready");
-      const element5 = document.createElement("span");
-      element5.textContent = "摄像头画面已隐藏";
-      container.append(element5);
+      const element = document.createElement("span");
+      element.textContent = "摄像头画面已隐藏";
+      container.append(element);
     }
     window.addEventListener("resize", applyElementStyle);
-    state5.push(() => window.removeEventListener("resize", applyElementStyle));
+    list.push(() => window.removeEventListener("resize", applyElementStyle));
     applyElementStyle();
-    cameraPreviewCardEl.append(cameraPreviewHeadingEl, ...(interaction3d ? [] : [element4]), container);
+    cameraPreviewCardEl.append(cameraPreviewHeadingEl, ...(interaction3d ? [] : [elementPrevious]), container);
     detailsDialog.append(cameraPreviewCardEl);
     const rendererRuntimeDialogLayerEl = document.createElement("div");
     rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
@@ -4523,7 +4524,7 @@ export class PanelRenderer {
           panelWidth,
           mediaHeight,
           top
-        } = cameraPopupLayout(layoutWidth, layoutHeight, state7, cameraPreviewHeadingEl.offsetHeight || 58);
+        } = cameraPopupLayout(layoutWidth, layoutHeight, ratio, cameraPreviewHeadingEl.offsetHeight || 58);
         const scaledTop = top * scaleY;
         detailsDialog.style.width = panelWidth + "px";
         container.style.height = mediaHeight + "px";
@@ -4535,12 +4536,12 @@ export class PanelRenderer {
       detailsDialog.resizeInteraction3d = resizeInteraction3d;
       const resizeObserver = new ResizeObserver(resizeInteraction3d);
       resizeObserver.observe(root);
-      state5.push(() => resizeObserver.disconnect());
+      list.push(() => resizeObserver.disconnect());
       resizeInteraction3d();
     } else {
       this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, detailsDialog, 760, 680);
     }
-    element3.addEventListener("click", () => detailsDialog.close());
+    elementNext.addEventListener("click", () => detailsDialog.close());
     this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, detailsDialog, cameraPreviewCardEl);
     rendererRuntimeDialogLayerEl.addEventListener("keydown", arg => {
       if (arg.key === "Escape") {
@@ -4549,9 +4550,9 @@ export class PanelRenderer {
     });
     detailsDialog.addEventListener("close", () => {
       window.clearTimeout(state);
-      state1?.cancel();
-      for (const runHelper1 of state5.splice(0)) {
-        runHelper1();
+      stateCurrent?.cancel();
+      for (const runHelper of list.splice(0)) {
+        runHelper();
       }
       this.clearRuntimeDialogScale(detailsDialog);
       if (this.detailsDialog === detailsDialog) {
@@ -4580,44 +4581,44 @@ export class PanelRenderer {
     const state = asString === "fan" ? resolveClimateDeviceType({
       properties: {}
     }, entityState, entityId) : "generic";
-    const state1 = {
+    const options = {
       entityId,
       entityMetadata: this.entityMetadata,
       entityTranslations: this.entityTranslations
     };
     const runHelper = () => entityState?.attributes || {};
-    const runHelper1 = () => ["unknown", "unavailable"].includes(String(entityState?.state || "").toLowerCase());
-    const state2 = [];
-    const state3 = ["fan", "switch", "input_boolean"].includes(asString);
+    const callback = () => ["unknown", "unavailable"].includes(String(entityState?.state || "").toLowerCase());
+    const list = [];
+    const present = ["fan", "switch", "input_boolean"].includes(asString);
     const lowered = buildSwitchVisual({
       label: "电源",
       interactive,
       compact: variant === "air-purifier",
       onToggle: async () => {
-        if (!interactive || runHelper1()) {
+        if (!interactive || callback()) {
           return;
         }
         const onToggle = String(entityState?.state || "").toLowerCase() === "off";
-        const onToggle2 = entityState;
+        const onToggleCurrent = entityState;
         entityState = {
           ...entityState,
           state: onToggle ? "on" : "off"
         };
-        runHelper2(entityState);
+        runHelperCurrent(entityState);
         try {
           await this.callEntityService(asString === "fan" ? "fan" : "homeassistant", asString === "fan" ? onToggle ? "turn_on" : "turn_off" : "toggle", entityId);
         } catch (error) {
-          entityState = onToggle2;
-          runHelper2(onToggle2);
+          entityState = onToggleCurrent;
+          runHelperCurrent(onToggleCurrent);
           this.options.onError?.(error);
         }
       }
     });
     lowered.visual.classList.add("hb-capability-power");
-    if (state3) {
+    if (present) {
       capabilityDetailsControlsEl.append(lowered.visual);
     }
-    const createChildElement = (arg, second, third, service, dataKey, param6 = asString) => {
+    const createChildElement = (arg, second, third, service, dataKey, value = asString) => {
       const set = [...new Set((second || []).map(item => String(item ?? "").trim()).filter(Boolean))];
       if (!set.length && (!["electric-bed", "electric-bed-memory"].includes(variant) || asString !== "select")) {
         return;
@@ -4637,71 +4638,71 @@ export class PanelRenderer {
         trigger.setAttribute("aria-label", arg);
         trigger.setAttribute("aria-haspopup", "listbox");
         trigger.setAttribute("aria-expanded", "false");
-        const element2 = document.createElement("span");
+        const elementCurrent = document.createElement("span");
         const electricBedSelectMenuEl = document.createElement("i");
         electricBedSelectMenuEl.setAttribute("aria-hidden", "true");
-        trigger.append(element2, electricBedSelectMenuEl);
-        const electricBedSelectMenuEl2 = document.createElement("div");
-        electricBedSelectMenuEl2.className = "hb-electric-bed-select-menu";
-        electricBedSelectMenuEl2.id = "hb-bed-select-" + String(this.renderNamespace || "runtime").replace(/[^a-z0-9_-]/gi, "-") + "-" + entityId.replace(/[^a-z0-9_-]/gi, "-");
-        electricBedSelectMenuEl2.setAttribute("role", "listbox");
-        electricBedSelectMenuEl2.setAttribute("popover", "auto");
-        electricBedSelectMenuEl2.hidden = true;
-        trigger.setAttribute("aria-controls", electricBedSelectMenuEl2.id);
-        let state4 = false;
+        trigger.append(elementCurrent, electricBedSelectMenuEl);
+        const electricBedSelectMenuElCurrent = document.createElement("div");
+        electricBedSelectMenuElCurrent.className = "hb-electric-bed-select-menu";
+        electricBedSelectMenuElCurrent.id = "hb-bed-select-" + String(this.renderNamespace || "runtime").replace(/[^a-z0-9_-]/gi, "-") + "-" + entityId.replace(/[^a-z0-9_-]/gi, "-");
+        electricBedSelectMenuElCurrent.setAttribute("role", "listbox");
+        electricBedSelectMenuElCurrent.setAttribute("popover", "auto");
+        electricBedSelectMenuElCurrent.hidden = true;
+        trigger.setAttribute("aria-controls", electricBedSelectMenuElCurrent.id);
+        let state = false;
         const computeResult = () => {
           try {
-            return electricBedSelectMenuEl2.matches(":popover-open");
+            return electricBedSelectMenuElCurrent.matches(":popover-open");
           } catch {
-            return electricBedSelectMenuEl2.dataset.open === "true";
+            return electricBedSelectMenuElCurrent.dataset.open === "true";
           }
         };
         const applyElementStyle = () => {
-          if (!computeResult() && electricBedSelectMenuEl2.hidden) {
+          if (!computeResult() && electricBedSelectMenuElCurrent.hidden) {
             return;
           }
           const domRect = trigger.getBoundingClientRect();
           const innerWidth = window.innerWidth;
           const innerHeight = window.innerHeight;
           const clamped = Math.min(Math.max(domRect.width, 150), Math.max(150, innerWidth - 20));
-          electricBedSelectMenuEl2.style.width = clamped + "px";
-          electricBedSelectMenuEl2.style.maxHeight = Math.min(306, Math.max(96, innerHeight - 20)) + "px";
-          const size = Math.min(electricBedSelectMenuEl2.scrollHeight || 0, 306);
-          const size1 = innerHeight - domRect.bottom - 10;
-          const size2 = domRect.top - 10;
-          const clamped1 = size1 < Math.min(size, 160) && size2 > size1 ? Math.max(10, domRect.top - size - 5) : Math.min(innerHeight - size - 10, domRect.bottom + 5);
-          electricBedSelectMenuEl2.style.left = Math.max(10, Math.min(domRect.left, innerWidth - clamped - 10)) + "px";
-          electricBedSelectMenuEl2.style.top = Math.max(10, clamped1) + "px";
+          electricBedSelectMenuElCurrent.style.width = clamped + "px";
+          electricBedSelectMenuElCurrent.style.maxHeight = Math.min(306, Math.max(96, innerHeight - 20)) + "px";
+          const size = Math.min(electricBedSelectMenuElCurrent.scrollHeight || 0, 306);
+          const value = innerHeight - domRect.bottom - 10;
+          const sizeCurrent = domRect.top - 10;
+          const max = value < Math.min(size, 160) && sizeCurrent > value ? Math.max(10, domRect.top - size - 5) : Math.min(innerHeight - size - 10, domRect.bottom + 5);
+          electricBedSelectMenuElCurrent.style.left = Math.max(10, Math.min(domRect.left, innerWidth - clamped - 10)) + "px";
+          electricBedSelectMenuElCurrent.style.top = Math.max(10, max) + "px";
         };
         const closeMenu = () => {
-          if (computeResult() && typeof electricBedSelectMenuEl2.hidePopover == "function") {
-            electricBedSelectMenuEl2.hidePopover();
+          if (computeResult() && typeof electricBedSelectMenuElCurrent.hidePopover == "function") {
+            electricBedSelectMenuElCurrent.hidePopover();
           }
-          electricBedSelectMenuEl2.hidden = true;
-          electricBedSelectMenuEl2.dataset.open = "false";
+          electricBedSelectMenuElCurrent.hidden = true;
+          electricBedSelectMenuElCurrent.dataset.open = "false";
           trigger.setAttribute("aria-expanded", "false");
         };
         const syncAriaState = (flag = false) => {
           if (!trigger.disabled) {
-            electricBedSelectMenuEl2.hidden = false;
-            if (typeof electricBedSelectMenuEl2.showPopover == "function") {
-              electricBedSelectMenuEl2.showPopover();
+            electricBedSelectMenuElCurrent.hidden = false;
+            if (typeof electricBedSelectMenuElCurrent.showPopover == "function") {
+              electricBedSelectMenuElCurrent.showPopover();
             } else {
-              electricBedSelectMenuEl2.dataset.open = "true";
+              electricBedSelectMenuElCurrent.dataset.open = "true";
             }
             trigger.setAttribute("aria-expanded", "true");
             applyElementStyle();
             if (flag) {
-              (electricBedSelectMenuEl2.querySelector("[aria-selected=\"true\"]") || electricBedSelectMenuEl2.querySelector("[role=\"option\"]"))?.focus();
+              (electricBedSelectMenuElCurrent.querySelector("[aria-selected=\"true\"]") || electricBedSelectMenuElCurrent.querySelector("[role=\"option\"]"))?.focus();
             }
           }
         };
         const invokeEntityService = async item => {
-          if (!interactive || state4 || !item || runHelper1()) {
+          if (!interactive || state || !item || callback()) {
             return;
           }
-          const state5 = entityState;
-          state4 = true;
+          const stateCurrent = entityState;
+          state = true;
           closeMenu();
           entityState = {
             ...entityState,
@@ -4711,40 +4712,40 @@ export class PanelRenderer {
               [dataKey]: item
             }
           };
-          runHelper2(entityState);
+          runHelperCurrent(entityState);
           try {
-            await this.callEntityService(param6, service, entityId, {
+            await this.callEntityService(value, service, entityId, {
               [dataKey]: item
             });
           } catch (error) {
-            entityState = state5;
-            runHelper2(state5);
+            entityState = stateCurrent;
+            runHelperCurrent(stateCurrent);
             this.options.onError?.(error);
           } finally {
-            state4 = false;
-            runHelper2(entityState);
+            state = false;
+            runHelperCurrent(entityState);
           }
         };
-        const renderOptions = (electricBedSelectOptionEl, electricBedSelectOptionEl1) => {
-          electricBedSelectMenuEl2.replaceChildren(...electricBedSelectOptionEl.map(electricBedSelectOptionEl2 => {
-            const element3 = document.createElement("button");
-            element3.type = "button";
-            element3.className = "hb-electric-bed-select-option";
-            element3.setAttribute("role", "option");
-            element3.dataset.value = electricBedSelectOptionEl2;
-            element3.textContent = electricBedSelectOptionEl2;
-            const state6 = electricBedSelectOptionEl2 === String(electricBedSelectOptionEl1 ?? "");
-            element3.classList.toggle("active", state6);
-            element3.setAttribute("aria-selected", String(state6));
-            element3.addEventListener("click", () => invokeEntityService(electricBedSelectOptionEl2));
-            return element3;
+        const renderOptions = (electricBedSelectOptionEl, electricBedSelectOptionElCurrent) => {
+          electricBedSelectMenuElCurrent.replaceChildren(...electricBedSelectOptionEl.map(electricBedSelectOptionEl => {
+            const element = document.createElement("button");
+            element.type = "button";
+            element.className = "hb-electric-bed-select-option";
+            element.setAttribute("role", "option");
+            element.dataset.value = electricBedSelectOptionEl;
+            element.textContent = electricBedSelectOptionEl;
+            const state = electricBedSelectOptionEl === String(electricBedSelectOptionElCurrent ?? "");
+            element.classList.toggle("active", state);
+            element.setAttribute("aria-selected", String(state));
+            element.addEventListener("click", () => invokeEntityService(electricBedSelectOptionEl));
+            return element;
           }));
-          const state5 = electricBedSelectOptionEl.includes(String(electricBedSelectOptionEl1 ?? "")) ? String(electricBedSelectOptionEl1) : electricBedSelectOptionEl[0] || "读取中…";
-          element2.textContent = state5;
-          element2.title = state5;
+          const state = electricBedSelectOptionEl.includes(String(electricBedSelectOptionElCurrent ?? "")) ? String(electricBedSelectOptionElCurrent) : electricBedSelectOptionEl[0] || "读取中…";
+          elementCurrent.textContent = state;
+          elementCurrent.title = state;
         };
         trigger.addEventListener("click", () => {
-          if (computeResult() || electricBedSelectMenuEl2.dataset.open === "true") {
+          if (computeResult() || electricBedSelectMenuElCurrent.dataset.open === "true") {
             closeMenu();
           } else {
             syncAriaState();
@@ -4756,51 +4757,51 @@ export class PanelRenderer {
             syncAriaState(true);
           }
         });
-        electricBedSelectMenuEl2.addEventListener("keydown", event => {
-          const matchedEl = [...electricBedSelectMenuEl2.querySelectorAll("[role=\"option\"]")];
-          const state5 = matchedEl.indexOf(document.activeElement);
+        electricBedSelectMenuElCurrent.addEventListener("keydown", event => {
+          const matchedEl = [...electricBedSelectMenuElCurrent.querySelectorAll("[role=\"option\"]")];
+          const state = matchedEl.indexOf(document.activeElement);
           if (event.key === "Escape") {
             event.preventDefault();
             closeMenu();
             trigger.focus();
           } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
-            const state6 = event.key === "ArrowDown" ? 1 : -1;
-            matchedEl[(state5 + state6 + matchedEl.length) % matchedEl.length]?.focus();
+            const count = event.key === "ArrowDown" ? 1 : -1;
+            matchedEl[(state + count + matchedEl.length) % matchedEl.length]?.focus();
           } else if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             document.activeElement?.click();
           }
         });
-        electricBedSelectMenuEl2.addEventListener("toggle", toggleEvent => {
-          const state5 = toggleEvent.newState === "open";
-          electricBedSelectMenuEl2.hidden = !state5;
-          electricBedSelectMenuEl2.dataset.open = String(state5);
-          trigger.setAttribute("aria-expanded", String(state5));
-          if (state5) {
+        electricBedSelectMenuElCurrent.addEventListener("toggle", toggleEvent => {
+          const state = toggleEvent.newState === "open";
+          electricBedSelectMenuElCurrent.hidden = !state;
+          electricBedSelectMenuElCurrent.dataset.open = String(state);
+          trigger.setAttribute("aria-expanded", String(state));
+          if (state) {
             applyElementStyle();
           }
         });
-        electricBedSelectEl.append(trigger, electricBedSelectMenuEl2);
+        electricBedSelectEl.append(trigger, electricBedSelectMenuElCurrent);
         capabilityOptionGroupEl.append(element, electricBedSelectEl);
         capabilityDetailsControlsEl.append(capabilityOptionGroupEl);
-        state2.push({
+        list.push({
           type: "bed-select",
           service,
           dataKey,
           trigger,
-          electricBedSelectMenuEl2,
+          electricBedSelectMenuElCurrent,
           renderOptions,
           closeMenu,
-          isPending: () => state4
+          isPending: () => state
         });
         return;
       }
       const buttons = [];
       for (const item of set) {
-        const element2 = document.createElement("button");
-        element2.type = "button";
-        const state4 = {
+        const element = document.createElement("button");
+        element.type = "button";
+        const stateCurrent = {
           auto: "自动",
           sleep: "睡眠",
           favorite: "喜爱",
@@ -4808,17 +4809,17 @@ export class PanelRenderer {
           manual: "手动",
           silent: "静音"
         };
-        element2.textContent = variant === "air-purifier" && arg === "运行模式" ? state4[item.toLowerCase()] || item : asString === "fan" && state === "bath-heater" && arg === "运行模式" ? climateModeLabel(item, "bath-heater", state1) : item;
-        element2.dataset.value = item;
-        element2.classList.toggle("active", item === String(third ?? ""));
-        element2.addEventListener("click", async () => {
+        element.textContent = variant === "air-purifier" && arg === "运行模式" ? stateCurrent[item.toLowerCase()] || item : asString === "fan" && state === "bath-heater" && arg === "运行模式" ? climateModeLabel(item, "bath-heater", options) : item;
+        element.dataset.value = item;
+        element.classList.toggle("active", item === String(third ?? ""));
+        element.addEventListener("click", async () => {
           if (!interactive) {
             return;
           }
           buttons.forEach(buttonEl => {
             buttonEl.disabled = true;
           });
-          const state5 = entityState;
+          const state = entityState;
           entityState = {
             ...entityState,
             state: service === "select_option" ? item : entityState.state,
@@ -4827,14 +4828,14 @@ export class PanelRenderer {
               [dataKey]: item
             }
           };
-          runHelper2(entityState);
+          runHelperCurrent(entityState);
           try {
-            await this.callEntityService(param6, service, entityId, {
+            await this.callEntityService(value, service, entityId, {
               [dataKey]: item
             });
           } catch (error) {
-            entityState = state5;
-            runHelper2(state5);
+            entityState = state;
+            runHelperCurrent(state);
             this.options.onError?.(error);
           } finally {
             buttons.forEach(buttonEl => {
@@ -4842,12 +4843,12 @@ export class PanelRenderer {
             });
           }
         });
-        buttons.push(element2);
-        capabilityOptionsEl.append(element2);
+        buttons.push(element);
+        capabilityOptionsEl.append(element);
       }
       capabilityOptionGroupEl.append(element, capabilityOptionsEl);
       capabilityDetailsControlsEl.append(capabilityOptionGroupEl);
-      state2.push({
+      list.push({
         type: "options",
         service,
         dataKey,
@@ -4872,34 +4873,34 @@ export class PanelRenderer {
         }, {
           label: "高",
           value: 100
-        }].map(element2 => {
-          const element3 = document.createElement("button");
-          element3.type = "button";
-          element3.textContent = element2.label;
-          element3.dataset.percentage = String(element2.value);
-          element3.addEventListener("click", async () => {
-            if (!interactive || runHelper1()) {
+        }].map(element => {
+          const elementCurrent = document.createElement("button");
+          elementCurrent.type = "button";
+          elementCurrent.textContent = element.label;
+          elementCurrent.dataset.percentage = String(element.value);
+          elementCurrent.addEventListener("click", async () => {
+            if (!interactive || callback()) {
               return;
             }
             buttons.forEach(arg => {
               arg.disabled = true;
             });
-            const state4 = entityState;
+            const state = entityState;
             entityState = {
               ...entityState,
               attributes: {
                 ...runHelper(),
-                percentage: element2.value
+                percentage: element.value
               }
             };
-            runHelper2(entityState);
+            runHelperCurrent(entityState);
             try {
               await this.callEntityService("fan", "set_percentage", entityId, {
-                percentage: element2.value
+                percentage: element.value
               });
             } catch (error) {
-              entityState = state4;
-              runHelper2(state4);
+              entityState = state;
+              runHelperCurrent(state);
               this.options.onError?.(error);
             } finally {
               buttons.forEach(arg => {
@@ -4907,12 +4908,12 @@ export class PanelRenderer {
               });
             }
           });
-          capabilityOptionsEl.append(element3);
-          return element3;
+          capabilityOptionsEl.append(elementCurrent);
+          return elementCurrent;
         });
         capabilityOptionGroupEl.append(element, capabilityOptionsEl);
         capabilityDetailsControlsEl.append(capabilityOptionGroupEl);
-        state2.push({
+        list.push({
           type: "percentage-options",
           buttons
         });
@@ -4932,11 +4933,11 @@ export class PanelRenderer {
         controlInputEl.step = "1";
         controlInputEl.value = String(numeric);
         controlInputEl.addEventListener("change", async () => {
-          if (!interactive || runHelper1()) {
+          if (!interactive || callback()) {
             return;
           }
           controlInputEl.disabled = true;
-          const state4 = entityState;
+          const state = entityState;
           const percentage = Number(controlInputEl.value);
           entityState = {
             ...entityState,
@@ -4945,14 +4946,14 @@ export class PanelRenderer {
               percentage
             }
           };
-          runHelper2(entityState);
+          runHelperCurrent(entityState);
           try {
             await this.callEntityService("fan", "set_percentage", entityId, {
               percentage
             });
           } catch (error) {
-            entityState = state4;
-            runHelper2(state4);
+            entityState = state;
+            runHelperCurrent(state);
             this.options.onError?.(error);
           } finally {
             controlInputEl.disabled = false;
@@ -4960,7 +4961,7 @@ export class PanelRenderer {
         });
         capabilityRangeGroupEl.append(capabilityRangeHeadingEl, controlInputEl);
         capabilityDetailsControlsEl.append(capabilityRangeGroupEl);
-        state2.push({
+        list.push({
           type: "range",
           controlInputEl,
           controlOutputEl,
@@ -4977,122 +4978,122 @@ export class PanelRenderer {
     if (["number", "input_number"].includes(asString)) {
       const finiteNumber = Number.isFinite(Number(runHelper().min)) ? Number(runHelper().min) : 0;
       const capabilityRangeGroupEl = Number.isFinite(Number(runHelper().max)) ? Number(runHelper().max) : 100;
-      const capabilityRangeGroupEl1 = Number.isFinite(Number(runHelper().step)) && Number(runHelper().step) > 0 ? Number(runHelper().step) : 1;
-      const capabilityRangeGroupEl2 = document.createElement("section");
-      capabilityRangeGroupEl2.className = "hb-capability-range-group";
+      const number = Number.isFinite(Number(runHelper().step)) && Number(runHelper().step) > 0 ? Number(runHelper().step) : 1;
+      const capabilityRangeGroupElCurrent = document.createElement("section");
+      capabilityRangeGroupElCurrent.className = "hb-capability-range-group";
       const capabilityRangeHeadingEl = document.createElement("div");
       capabilityRangeHeadingEl.className = "hb-capability-range-heading";
       const element = document.createElement("strong");
       element.textContent = runHelper().unit_of_measurement ? "数值（" + runHelper().unit_of_measurement + "）" : "数值";
-      const controlOutputEl2 = document.createElement("output");
-      capabilityRangeHeadingEl.append(element, controlOutputEl2);
-      const controlInputEl2 = document.createElement("input");
-      controlInputEl2.type = "range";
-      controlInputEl2.min = String(finiteNumber);
-      controlInputEl2.max = String(capabilityRangeGroupEl);
-      controlInputEl2.step = String(capabilityRangeGroupEl1);
-      controlInputEl2.value = String(Number(entityState?.state) || finiteNumber);
-      controlInputEl2.addEventListener("change", async () => {
-        if (!interactive || runHelper1()) {
+      const controlOutputEl = document.createElement("output");
+      capabilityRangeHeadingEl.append(element, controlOutputEl);
+      const controlInputEl = document.createElement("input");
+      controlInputEl.type = "range";
+      controlInputEl.min = String(finiteNumber);
+      controlInputEl.max = String(capabilityRangeGroupEl);
+      controlInputEl.step = String(number);
+      controlInputEl.value = String(Number(entityState?.state) || finiteNumber);
+      controlInputEl.addEventListener("change", async () => {
+        if (!interactive || callback()) {
           return;
         }
-        controlInputEl2.disabled = true;
-        const state4 = entityState;
-        const asNumber = Number(controlInputEl2.value);
+        controlInputEl.disabled = true;
+        const state = entityState;
+        const asNumber = Number(controlInputEl.value);
         entityState = {
           ...entityState,
           state: String(asNumber)
         };
-        runHelper2(entityState);
+        runHelperCurrent(entityState);
         try {
           await this.callEntityService(asString, "set_value", entityId, {
             value: asNumber
           });
         } catch (error) {
-          entityState = state4;
-          runHelper2(state4);
+          entityState = state;
+          runHelperCurrent(state);
           this.options.onError?.(error);
         } finally {
-          controlInputEl2.disabled = false;
+          controlInputEl.disabled = false;
         }
       });
-      capabilityRangeGroupEl2.append(capabilityRangeHeadingEl, controlInputEl2);
-      capabilityDetailsControlsEl.append(capabilityRangeGroupEl2);
-      state2.push({
+      capabilityRangeGroupElCurrent.append(capabilityRangeHeadingEl, controlInputEl);
+      capabilityDetailsControlsEl.append(capabilityRangeGroupElCurrent);
+      list.push({
         type: "range",
-        controlInputEl2,
-        controlOutputEl2,
+        controlInputEl,
+        controlOutputEl,
         dataKey: "state"
       });
     }
-    function runHelper2(arg) {
+    function runHelperCurrent(arg) {
       entityState = arg || entityState;
-      const asString1 = String(entityState?.state || "").toLowerCase();
-      const state4 = asString === "fan" ? !["off", "unknown", "unavailable"].includes(asString1) : asString1 === "on";
-      const state5 = variant !== "air-purifier" || state4;
-      if (state3) {
-        lowered.sync(state4, {
-          unavailable: runHelper1()
+      const asStringCurrent = String(entityState?.state || "").toLowerCase();
+      const state = asString === "fan" ? !["off", "unknown", "unavailable"].includes(asStringCurrent) : asStringCurrent === "on";
+      const value = variant !== "air-purifier" || state;
+      if (present) {
+        lowered.sync(state, {
+          unavailable: callback()
         });
       }
-      for (const item of state2) {
+      for (const item of list) {
         if (item.type === "options") {
-          const state6 = item.service === "select_option" ? entityState?.state : runHelper()[item.dataKey];
-          item.buttons.forEach(element => element.classList.toggle("active", state5 && element.dataset.value === String(state6 ?? "")));
+          const state = item.service === "select_option" ? entityState?.state : runHelper()[item.dataKey];
+          item.buttons.forEach(element => element.classList.toggle("active", value && element.dataset.value === String(state ?? "")));
         } else if (item.type === "bed-select") {
-          const set = [...new Set((runHelper().options || []).map(item2 => String(item2 ?? "").trim()).filter(Boolean))];
-          const state6 = item.service === "select_option" ? entityState?.state : runHelper()[item.dataKey];
-          item.renderOptions(set, state6);
-          item.trigger.disabled = !interactive || item.isPending() || !set.length || runHelper1();
+          const set = [...new Set((runHelper().options || []).map(item => String(item ?? "").trim()).filter(Boolean))];
+          const state = item.service === "select_option" ? entityState?.state : runHelper()[item.dataKey];
+          item.renderOptions(set, state);
+          item.trigger.disabled = !interactive || item.isPending() || !set.length || callback();
           if (item.trigger.disabled) {
             item.closeMenu();
           }
         } else if (item.type === "select") {
-          const set = [...new Set((runHelper().options || []).map(item2 => String(item2 ?? "").trim()).filter(Boolean))];
+          const set = [...new Set((runHelper().options || []).map(item => String(item ?? "").trim()).filter(Boolean))];
           if (set.length) {
             const mapped = [...item.input.options].map(element => element.value);
-            if (mapped.length !== set.length || mapped.some((item2, second) => item2 !== set[second])) {
-              item.input.replaceChildren(...set.map(item2 => {
+            if (mapped.length !== set.length || mapped.some((item, second) => item !== set[second])) {
+              item.input.replaceChildren(...set.map(item => {
                 const element = document.createElement("option");
-                element.value = item2;
-                element.textContent = item2;
+                element.value = item;
+                element.textContent = item;
                 return element;
               }));
             }
           }
-          const state6 = item.service === "select_option" ? entityState?.state : runHelper()[item.dataKey];
-          if (state6 != null && [...item.input.options].some(element => element.value === String(state6))) {
-            item.input.value = String(state6);
+          const state = item.service === "select_option" ? entityState?.state : runHelper()[item.dataKey];
+          if (state != null && [...item.input.options].some(element => element.value === String(state))) {
+            item.input.value = String(state);
           }
-          item.input.disabled = !interactive || !set.length || runHelper1();
+          item.input.disabled = !interactive || !set.length || callback();
         } else if (item.type === "percentage-options") {
-          const numeric2 = Number(runHelper().percentage);
-          const finiteNumber = numeric2 <= 0 || !Number.isFinite(numeric2) ? 0 : numeric2 <= 49 ? 33 : numeric2 <= 82 ? 66 : 100;
-          item.buttons.forEach(element => element.classList.toggle("active", state5 && Number(element.dataset.percentage) === finiteNumber));
+          const numeric = Number(runHelper().percentage);
+          const finiteNumber = numeric <= 0 || !Number.isFinite(numeric) ? 0 : numeric <= 49 ? 33 : numeric <= 82 ? 66 : 100;
+          item.buttons.forEach(element => element.classList.toggle("active", value && Number(element.dataset.percentage) === finiteNumber));
         } else {
           if (["number", "input_number"].includes(asString)) {
             const finiteNumber = Number.isFinite(Number(runHelper().min)) ? Number(runHelper().min) : 0;
-            const finiteNumber1 = Number.isFinite(Number(runHelper().max)) ? Number(runHelper().max) : 100;
-            const finiteNumber2 = Number.isFinite(Number(runHelper().step)) && Number(runHelper().step) > 0 ? Number(runHelper().step) : 1;
+            const number = Number.isFinite(Number(runHelper().max)) ? Number(runHelper().max) : 100;
+            const finiteNumberCurrent = Number.isFinite(Number(runHelper().step)) && Number(runHelper().step) > 0 ? Number(runHelper().step) : 1;
             item.input.min = String(finiteNumber);
-            item.input.max = String(finiteNumber1);
-            item.input.step = String(finiteNumber2);
+            item.input.max = String(number);
+            item.input.step = String(finiteNumberCurrent);
           }
-          const state6 = item.dataKey === "state" ? Number(entityState?.state) : Number(runHelper()[item.dataKey]);
-          if (Number.isFinite(state6)) {
-            item.input.value = String(state6);
+          const state = item.dataKey === "state" ? Number(entityState?.state) : Number(runHelper()[item.dataKey]);
+          if (Number.isFinite(state)) {
+            item.input.value = String(state);
           }
-          item.output.textContent = Number.isFinite(state6) ? "" + state6 + (runHelper().unit_of_measurement || "%") : "--";
+          item.output.textContent = Number.isFinite(state) ? "" + state + (runHelper().unit_of_measurement || "%") : "--";
         }
       }
     }
-    capabilityDetailsControlsEl.syncCapabilityState = runHelper2;
+    capabilityDetailsControlsEl.syncCapabilityState = runHelperCurrent;
     capabilityDetailsControlsEl.cleanupCapabilityDetails = () => {
-      for (const item of state2) {
+      for (const item of list) {
         item.closeMenu?.();
       }
     };
-    runHelper2(entityState);
+    runHelperCurrent(entityState);
     return capabilityDetailsControlsEl;
   }
   showCapabilityDetails(component, {
@@ -5110,9 +5111,9 @@ export class PanelRenderer {
       attributes: {}
     };
     const entityDetailsDialogEl = this.deviceProfile(entityId);
-    const entityDetailsDialogEl1 = entityDetailsDialogEl?.deviceType === "air-purifier";
-    const entityDetailsDialogEl2 = document.createElement("dialog");
-    entityDetailsDialogEl2.className = "hb-entity-details-dialog capability-details" + (entityDetailsDialogEl1 ? " air-purifier-details" : "");
+    const value = entityDetailsDialogEl?.deviceType === "air-purifier";
+    const entityDetailsDialogElCurrent = document.createElement("dialog");
+    entityDetailsDialogElCurrent.className = "hb-entity-details-dialog capability-details" + (value ? " air-purifier-details" : "");
     const entityDetailsCardEl = document.createElement("div");
     entityDetailsCardEl.className = "hb-entity-details-card";
     const entityDetailsHeadingEl = document.createElement("div");
@@ -5120,23 +5121,23 @@ export class PanelRenderer {
     const divEl = document.createElement("div");
     const element = document.createElement("strong");
     element.textContent = title || component.properties?.label || entityState.attributes?.friendly_name || entityId;
-    const element2 = document.createElement("span");
-    element2.textContent = entityState.state === "unavailable" ? "当前不可用" : "设备控制";
-    divEl.append(element, element2);
-    const element3 = document.createElement("button");
-    element3.type = "button";
-    element3.textContent = "×";
-    element3.setAttribute("aria-label", "关闭弹窗");
-    entityDetailsHeadingEl.append(divEl, element3);
+    const elementCurrent = document.createElement("span");
+    elementCurrent.textContent = entityState.state === "unavailable" ? "当前不可用" : "设备控制";
+    divEl.append(element, elementCurrent);
+    const elementNext = document.createElement("button");
+    elementNext.type = "button";
+    elementNext.textContent = "×";
+    elementNext.setAttribute("aria-label", "关闭弹窗");
+    entityDetailsHeadingEl.append(divEl, elementNext);
     const capabilityDetailsBodyEl = document.createElement("div");
     capabilityDetailsBodyEl.className = "hb-capability-details-body";
     const state = this.createCapabilityDetailsControls(entityId, entityState, {
       interactive: !preview,
-      variant: entityDetailsDialogEl1 ? "air-purifier" : ""
+      variant: value ? "air-purifier" : ""
     });
     capabilityDetailsBodyEl.append(state);
     entityDetailsCardEl.append(entityDetailsHeadingEl, capabilityDetailsBodyEl);
-    entityDetailsDialogEl2.append(entityDetailsCardEl);
+    entityDetailsDialogElCurrent.append(entityDetailsCardEl);
     const temperature = {
       pm25: "PM2.5",
       airQuality: "空气质量",
@@ -5144,7 +5145,7 @@ export class PanelRenderer {
       humidity: "湿度",
       filterLife: "滤芯寿命"
     };
-    const filtered = entityDetailsDialogEl1 ? ["pm25", "airQuality", "temperature", "humidity", "filterLife"].map(role => ({
+    const filtered = value ? ["pm25", "airQuality", "temperature", "humidity", "filterLife"].map(role => ({
       role,
       id: entityDetailsDialogEl.roles?.[role]
     })).filter(({
@@ -5168,64 +5169,64 @@ export class PanelRenderer {
       } of filtered) {
         const capabilityMetricEl = document.createElement("div");
         capabilityMetricEl.className = "hb-capability-metric hb-capability-metric--" + role;
-        const element4 = document.createElement("small");
-        element4.textContent = temperature[role] || item.name || item.originalName || item.entityId;
-        const rendererRuntimeDialogLayerEl1 = document.createElement("strong");
-        capabilityMetricEl.append(element4, rendererRuntimeDialogLayerEl1);
+        const element = document.createElement("small");
+        element.textContent = temperature[role] || item.name || item.originalName || item.entityId;
+        const rendererRuntimeDialogLayerEl = document.createElement("strong");
+        capabilityMetricEl.append(element, rendererRuntimeDialogLayerEl);
         capabilityMetricsEl.append(capabilityMetricEl);
-        index.set(item.entityId, rendererRuntimeDialogLayerEl1);
+        index.set(item.entityId, rendererRuntimeDialogLayerEl);
       }
       capabilityDetailsBodyEl.prepend(capabilityMetricsEl);
     }
     const rendererRuntimeDialogLayerEl = document.createElement("div");
     rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
     rendererRuntimeDialogLayerEl.tabIndex = -1;
-    rendererRuntimeDialogLayerEl.append(entityDetailsDialogEl2);
+    rendererRuntimeDialogLayerEl.append(entityDetailsDialogElCurrent);
     this.container.append(rendererRuntimeDialogLayerEl);
-    this.detailsDialog = entityDetailsDialogEl2;
-    const lowered = entityState1 => {
-      state.syncCapabilityState?.(entityState1);
-      element2.textContent = ["unknown", "unavailable"].includes(String(entityState1?.state || "").toLowerCase()) ? "当前不可用" : "设备控制";
+    this.detailsDialog = entityDetailsDialogElCurrent;
+    const lowered = entityState => {
+      state.syncCapabilityState?.(entityState);
+      elementCurrent.textContent = ["unknown", "unavailable"].includes(String(entityState?.state || "").toLowerCase()) ? "当前不可用" : "设备控制";
     };
     const handlers = new Map([[entityId, [lowered]]]);
     for (const {
       item
     } of filtered) {
-      const runHelper = entityState1 => {
-        const element4 = index.get(item.entityId);
-        if (element4) {
-          element4.textContent = entityState1?.state === "unknown" || entityState1?.state === "unavailable" ? "--" : ((entityState1?.state ?? "--") + " " + (entityState1?.attributes?.unit_of_measurement || "")).trim();
+      const runHelper = entityState => {
+        const element = index.get(item.entityId);
+        if (element) {
+          element.textContent = entityState?.state === "unknown" || entityState?.state === "unavailable" ? "--" : ((entityState?.state ?? "--") + " " + (entityState?.attributes?.unit_of_measurement || "")).trim();
         }
       };
       runHelper(this.states.get(item.entityId)?.newState || this.states.get(item.entityId));
       handlers.set(item.entityId, [runHelper]);
     }
     this.detailsStateSync = {
-      entityDetailsDialogEl2,
+      entityDetailsDialogElCurrent,
       handlers
     };
-    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogEl2, entityDetailsDialogEl1 ? 620 : 560, entityDetailsDialogEl1 ? 560 : 500);
-    element3.addEventListener("click", () => entityDetailsDialogEl2.close());
-    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogEl2, entityDetailsCardEl);
+    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogElCurrent, value ? 620 : 560, value ? 560 : 500);
+    elementNext.addEventListener("click", () => entityDetailsDialogElCurrent.close());
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogElCurrent, entityDetailsCardEl);
     rendererRuntimeDialogLayerEl.addEventListener("keydown", arg => {
       if (arg.key === "Escape") {
-        entityDetailsDialogEl2.close();
+        entityDetailsDialogElCurrent.close();
       }
     });
-    entityDetailsDialogEl2.addEventListener("close", () => {
+    entityDetailsDialogElCurrent.addEventListener("close", () => {
       state.cleanupCapabilityDetails?.();
-      this.clearRuntimeDialogScale(entityDetailsDialogEl2);
-      if (this.detailsDialog === entityDetailsDialogEl2) {
+      this.clearRuntimeDialogScale(entityDetailsDialogElCurrent);
+      if (this.detailsDialog === entityDetailsDialogElCurrent) {
         this.detailsDialog = null;
       }
-      if (this.detailsStateSync?.dialog === entityDetailsDialogEl2) {
+      if (this.detailsStateSync?.dialog === entityDetailsDialogElCurrent) {
         this.detailsStateSync = null;
       }
       rendererRuntimeDialogLayerEl.remove();
     }, {
       once: true
     });
-    entityDetailsDialogEl2.show();
+    entityDetailsDialogElCurrent.show();
   }
   showAirPurifierDetails(component, {
     preview = false,
@@ -5237,14 +5238,14 @@ export class PanelRenderer {
     }
     this.closeRuntimeDialog();
     const state = this.deviceProfile(entityId);
-    const state1 = selectedRelatedEntityIds(component);
+    const ids = selectedRelatedEntityIds(component);
     let entityDetailsDialogEl = this.states.get(entityId)?.newState || this.states.get(entityId) || {
       entityId,
       state: "unknown",
       attributes: {}
     };
-    const entityDetailsDialogEl3 = document.createElement("dialog");
-    entityDetailsDialogEl3.className = "hb-entity-details-dialog air-purifier-details capability-details";
+    const entityDetailsDialogElCurrent = document.createElement("dialog");
+    entityDetailsDialogElCurrent.className = "hb-entity-details-dialog air-purifier-details capability-details";
     const entityDetailsCardEl = document.createElement("div");
     entityDetailsCardEl.className = "hb-entity-details-card";
     const entityDetailsHeadingEl = document.createElement("div");
@@ -5252,18 +5253,18 @@ export class PanelRenderer {
     const divEl = document.createElement("div");
     const element = document.createElement("strong");
     element.textContent = title || componentDialogTitle(component, entityDetailsDialogEl.attributes?.friendly_name || "空气净化器");
-    const element2 = document.createElement("span");
-    divEl.append(element, element2);
-    const element3 = document.createElement("button");
-    element3.type = "button";
-    element3.className = "hb-air-purifier-visual";
-    element3.inert = preview;
-    element3.setAttribute("aria-label", "切换空气净化器电源");
+    const elementCurrent = document.createElement("span");
+    divEl.append(element, elementCurrent);
+    const elementNext = document.createElement("button");
+    elementNext.type = "button";
+    elementNext.className = "hb-air-purifier-visual";
+    elementNext.inert = preview;
+    elementNext.setAttribute("aria-label", "切换空气净化器电源");
     const airPurifierVisualAuraEl = document.createElement("i");
     airPurifierVisualAuraEl.className = "hb-air-purifier-visual-aura";
     const airPurifierVisualAirflowEl = document.createElement("span");
     airPurifierVisualAirflowEl.className = "hb-air-purifier-visual-airflow";
-    for (let airPurifierVisualBodyEl1 = 0; airPurifierVisualBodyEl1 < 4; airPurifierVisualBodyEl1 += 1) {
+    for (let airPurifierVisualBodyEl = 0; airPurifierVisualBodyEl < 4; airPurifierVisualBodyEl += 1) {
       airPurifierVisualAirflowEl.append(document.createElement("i"));
     }
     const airPurifierVisualBodyEl = document.createElement("span");
@@ -5274,43 +5275,43 @@ export class PanelRenderer {
     airPurifierVisualVentEl.className = "hb-air-purifier-visual-vent";
     const airPurifierVisualDisplayEl = document.createElement("span");
     airPurifierVisualDisplayEl.className = "hb-air-purifier-visual-display";
-    const element4 = document.createElement("strong");
-    airPurifierVisualDisplayEl.append(element4);
+    const elementPrevious = document.createElement("strong");
+    airPurifierVisualDisplayEl.append(elementPrevious);
     airPurifierVisualBodyEl.append(airPurifierVisualTopEl, airPurifierVisualVentEl, airPurifierVisualDisplayEl);
-    element3.append(airPurifierVisualAuraEl, airPurifierVisualAirflowEl, airPurifierVisualBodyEl);
-    const element5 = document.createElement("button");
-    element5.type = "button";
-    element5.textContent = "×";
-    element5.setAttribute("aria-label", "关闭弹窗");
-    entityDetailsHeadingEl.append(divEl, element3, element5);
+    elementNext.append(airPurifierVisualAuraEl, airPurifierVisualAirflowEl, airPurifierVisualBodyEl);
+    const elementLocal = document.createElement("button");
+    elementLocal.type = "button";
+    elementLocal.textContent = "×";
+    elementLocal.setAttribute("aria-label", "关闭弹窗");
+    entityDetailsHeadingEl.append(divEl, elementNext, elementLocal);
     const airPurifierLayoutEl = document.createElement("div");
     airPurifierLayoutEl.className = "hb-air-purifier-layout";
     const airPurifierSummaryEl = document.createElement("section");
     airPurifierSummaryEl.className = "hb-air-purifier-summary";
     const airPurifierGaugeWrapEl = document.createElement("div");
     airPurifierGaugeWrapEl.className = "hb-air-purifier-gauge-wrap";
-    const element6 = document.createElement("div");
-    element6.className = "hb-air-purifier-gauge is-quality";
-    const element7 = document.createElement("i");
-    element7.className = "hb-air-purifier-gauge-orbit";
+    const elementItem = document.createElement("div");
+    elementItem.className = "hb-air-purifier-gauge is-quality";
+    const elementEntry = document.createElement("i");
+    elementEntry.className = "hb-air-purifier-gauge-orbit";
     const airPurifierArcCapEl = document.createElement("i");
     airPurifierArcCapEl.className = "hb-air-purifier-arc-cap start";
-    const airPurifierArcCapEl1 = document.createElement("i");
-    airPurifierArcCapEl1.className = "hb-air-purifier-arc-cap end";
+    const airPurifierArcCapElCurrent = document.createElement("i");
+    airPurifierArcCapElCurrent.className = "hb-air-purifier-arc-cap end";
     const airPurifierGaugeContentEl = document.createElement("div");
     airPurifierGaugeContentEl.className = "hb-air-purifier-gauge-content";
-    const element8 = document.createElement("small");
-    element8.textContent = "室内空气质量";
+    const elementList = document.createElement("small");
+    elementList.textContent = "室内空气质量";
     const strongEl = document.createElement("strong");
-    const element9 = document.createElement("span");
-    const element10 = document.createElement("small");
-    element10.textContent = "";
-    const element11 = document.createElement("span");
-    element11.textContent = "设备状态 --";
-    strongEl.append(element9, element10);
-    airPurifierGaugeContentEl.append(element8, strongEl, element11);
-    element6.append(airPurifierArcCapEl, airPurifierArcCapEl1, airPurifierGaugeContentEl);
-    airPurifierGaugeWrapEl.append(element7, element6);
+    const elementText = document.createElement("span");
+    const elementValue = document.createElement("small");
+    elementValue.textContent = "";
+    const elementSource = document.createElement("span");
+    elementSource.textContent = "设备状态 --";
+    strongEl.append(elementText, elementValue);
+    airPurifierGaugeContentEl.append(elementList, strongEl, elementSource);
+    elementItem.append(airPurifierArcCapEl, airPurifierArcCapElCurrent, airPurifierGaugeContentEl);
+    airPurifierGaugeWrapEl.append(elementEntry, elementItem);
     const airPurifierSecondaryMetricsEl = document.createElement("div");
     airPurifierSecondaryMetricsEl.className = "hb-air-purifier-secondary-metrics";
     airPurifierSummaryEl.append(airPurifierGaugeWrapEl, airPurifierSecondaryMetricsEl);
@@ -5318,13 +5319,13 @@ export class PanelRenderer {
       interactive: !preview,
       variant: "air-purifier"
     });
-    const airPurifierControlsPaneEl1 = document.createElement("section");
-    airPurifierControlsPaneEl1.className = "hb-air-purifier-controls-pane";
-    airPurifierControlsPaneEl1.append(airPurifierControlsPaneEl);
-    airPurifierLayoutEl.append(airPurifierSummaryEl, airPurifierControlsPaneEl1);
+    const airPurifierControlsPaneElCurrent = document.createElement("section");
+    airPurifierControlsPaneElCurrent.className = "hb-air-purifier-controls-pane";
+    airPurifierControlsPaneElCurrent.append(airPurifierControlsPaneEl);
+    airPurifierLayoutEl.append(airPurifierSummaryEl, airPurifierControlsPaneElCurrent);
     entityDetailsCardEl.append(entityDetailsHeadingEl, airPurifierLayoutEl);
-    entityDetailsDialogEl3.append(entityDetailsCardEl);
-    const state2 = [{
+    entityDetailsDialogElCurrent.append(entityDetailsCardEl);
+    const list = [{
       key: "pm25",
       label: "PM2.5",
       roles: ["pm25"]
@@ -5355,7 +5356,7 @@ export class PanelRenderer {
         id: state?.roles?.[role]
       })).filter(({
         id
-      }, candidate, candidate2) => id && candidate2.findIndex(candidate => candidate.id === id) === candidate).map(candidates => ({
+      }, candidate, item) => id && item.findIndex(candidate => candidate.id === id) === candidate).map(candidates => ({
         ...candidates,
         item: this.entityMetadata.get(candidates.id)
       })).filter(({
@@ -5372,25 +5373,25 @@ export class PanelRenderer {
         return numeric;
       }
     };
-    const runHelper1 = entityId1 => this.states.get(entityId1?.id)?.newState || this.states.get(entityId1?.id) || null;
-    const runHelper2 = airPurifierSecondaryMetricEl1 => airPurifierSecondaryMetricEl1.candidates.find(airPurifierSecondaryMetricEl2 => runHelper(runHelper1(airPurifierSecondaryMetricEl2)) != null) || airPurifierSecondaryMetricEl1.candidates[0] || null;
+    const callback = entityId => this.states.get(entityId?.id)?.newState || this.states.get(entityId?.id) || null;
+    const runHelperCurrent = airPurifierSecondaryMetricEl => airPurifierSecondaryMetricEl.candidates.find(airPurifierSecondaryMetricEl => runHelper(callback(airPurifierSecondaryMetricEl)) != null) || airPurifierSecondaryMetricEl.candidates[0] || null;
     const airPurifierSecondaryMetricEl = Array.from({
       length: 3
     }, () => {
       const item = document.createElement("div");
       item.className = "hb-air-purifier-secondary-metric";
       const airPurifierDetailsSmallEl = document.createElement("small");
-      const strongEl1 = document.createElement("strong");
-      item.append(airPurifierDetailsSmallEl, strongEl1);
+      const strongEl = document.createElement("strong");
+      item.append(airPurifierDetailsSmallEl, strongEl);
       airPurifierSecondaryMetricsEl.append(item);
       return {
         item,
         airPurifierDetailsSmallEl,
-        value: strongEl1
+        value: strongEl
       };
     });
     airPurifierSecondaryMetricsEl.hidden = true;
-    const state3 = {
+    const options = {
       pm25: "μg/m³",
       pm10: "μg/m³",
       hcho: "mg/m³",
@@ -5399,22 +5400,22 @@ export class PanelRenderer {
       temperature: "°C",
       humidity: "%"
     };
-    const runHelper3 = (entityState, second) => {
+    const runHelperNext = (entityState, second) => {
       if (["unknown", "unavailable"].includes(String(entityState?.state || "").toLowerCase())) {
         return "--";
       }
-      const state9 = {
+      const state = {
         hours: "小时",
         hour: "小时",
         days: "天",
         day: "天"
       };
-      const entityState1 = entityState?.attributes?.unit_of_measurement || state3[second] || "";
-      const lowered = state9[String(entityState1).toLowerCase()] || entityState1;
+      const text = entityState?.attributes?.unit_of_measurement || options[second] || "";
+      const lowered = state[String(text).toLowerCase()] || text;
       return "" + (entityState?.state ?? "--") + (lowered ? " " + lowered : "");
     };
     const handlers = new Map();
-    const runHelper4 = (arg, handler) => {
+    const runHelperPrevious = (arg, handler) => {
       if (arg) {
         if (!handlers.has(arg)) {
           handlers.set(arg, []);
@@ -5422,21 +5423,21 @@ export class PanelRenderer {
         handlers.get(arg).push(handler);
       }
     };
-    const mapped = state2.flatMap(arg => arg.candidates.map(candidate => candidate.id));
-    const state4 = state?.roles?.airQuality || "";
-    const state5 = state1 !== null ? this.createWaterHeaterExtensionControls(entityId, {
+    const mapped = list.flatMap(arg => arg.candidates.map(candidate => candidate.id));
+    const text = state?.roles?.airQuality || "";
+    const controls = ids !== null ? this.createWaterHeaterExtensionControls(entityId, {
       component,
       interactive: !preview,
-      excludedEntityIds: [...mapped, ...(state4 ? [state4] : [])]
+      excludedEntityIds: [...mapped, ...(text ? [text] : [])]
     }) : null;
-    if (state5) {
-      entityDetailsCardEl.append(state5);
-      entityDetailsDialogEl3.classList.add("has-related-extensions");
-      for (const [item, item1] of state5.stateHandlers || []) {
-        handlers.set(item, item1);
+    if (controls) {
+      entityDetailsCardEl.append(controls);
+      entityDetailsDialogElCurrent.classList.add("has-related-extensions");
+      for (const [item, value] of controls.stateHandlers || []) {
+        handlers.set(item, value);
       }
     }
-    const state6 = {
+    const stateCurrent = {
       excellent: "空气优",
       good: "空气良",
       moderate: "一般",
@@ -5445,28 +5446,28 @@ export class PanelRenderer {
       unhealthy: "较差",
       very_poor: "很差"
     };
-    let state7 = state4 ? this.states.get(state4)?.newState || this.states.get(state4) : null;
-    let state8 = false;
-    const found = state2.find(arg => arg.key === "pm25");
-    const runHelper5 = () => {
-      const state9 = found ? runHelper2(found) : null;
-      const state10 = runHelper(runHelper1(state9));
-      if (state10 == null) {
+    let entry = text ? this.states.get(text)?.newState || this.states.get(text) : null;
+    let flag = false;
+    const found = list.find(arg => arg.key === "pm25");
+    const runHelperLocal = () => {
+      const state = found ? runHelperCurrent(found) : null;
+      const helper = runHelper(callback(state));
+      if (helper == null) {
         return {
           text: "--",
           level: "unknown"
         };
-      } else if (state10 <= 35) {
+      } else if (helper <= 35) {
         return {
           text: "空气优",
           level: "excellent"
         };
-      } else if (state10 <= 75) {
+      } else if (helper <= 75) {
         return {
           text: "空气良",
           level: "good"
         };
-      } else if (state10 <= 115) {
+      } else if (helper <= 115) {
         return {
           text: "轻度污染",
           level: "warning"
@@ -5479,144 +5480,144 @@ export class PanelRenderer {
       }
     };
     const applyElementStyle = () => {
-      const asString = String(state7?.state || "").trim();
+      const asString = String(entry?.state || "").trim();
       const lowered = asString.toLowerCase();
-      let localValue = ["unknown", "unavailable", ""].includes(lowered) ? "" : state6[lowered] || asString;
-      let localValue1 = "good";
+      let localValue = ["unknown", "unavailable", ""].includes(lowered) ? "" : stateCurrent[lowered] || asString;
+      let text = "good";
       if (localValue) {
         if (/very.?poor|severe|很差|重度|严重/.test(lowered) || /poor|unhealthy|较差|中度/.test(lowered)) {
-          localValue1 = "poor";
+          text = "poor";
         } else if (/moderate|fair|一般|轻度|污染/.test(lowered)) {
-          localValue1 = "warning";
+          text = "warning";
         } else if (/excellent|优/.test(lowered)) {
-          localValue1 = "excellent";
+          text = "excellent";
         }
       } else {
         ({
           text: localValue,
-          level: localValue1
-        } = runHelper5());
+          level: text
+        } = runHelperLocal());
       }
-      element9.textContent = localValue || "--";
-      element10.textContent = "";
-      element6.style.setProperty("--hb-air-purifier-progress", {
+      elementText.textContent = localValue || "--";
+      elementValue.textContent = "";
+      elementItem.style.setProperty("--hb-air-purifier-progress", {
         excellent: 72,
         good: 58,
         warning: 42,
         poor: 26,
         unknown: 0
-      }[localValue1] + "%");
-      element6.classList.toggle("is-warning", localValue1 === "warning");
-      element6.classList.toggle("is-poor", localValue1 === "poor");
-      const state9 = {
+      }[text] + "%");
+      elementItem.classList.toggle("is-warning", text === "warning");
+      elementItem.classList.toggle("is-poor", text === "poor");
+      const state = {
         excellent: "#76cfa1",
         good: "#76cfa1",
         warning: "#e4b15f",
         poor: "#db7770",
         unknown: "#7d8990"
-      }[localValue1] || "#76cfa1";
+      }[text] || "#76cfa1";
       const color = {
         excellent: "rgba(118,207,161,.13)",
         good: "rgba(118,207,161,.13)",
         warning: "rgba(228,177,95,.15)",
         poor: "rgba(219,119,112,.15)",
         unknown: "rgba(125,137,144,.13)"
-      }[localValue1] || "rgba(118,207,161,.13)";
-      entityDetailsDialogEl3.style.setProperty("--hb-air-purifier-accent", state9);
-      entityDetailsDialogEl3.style.setProperty("--hb-air-purifier-accent-soft", color);
+      }[text] || "rgba(118,207,161,.13)";
+      entityDetailsDialogElCurrent.style.setProperty("--hb-air-purifier-accent", state);
+      entityDetailsDialogElCurrent.style.setProperty("--hb-air-purifier-accent-soft", color);
     };
-    const runHelper6 = entityId2 => {
-      state7 = entityId2;
+    const runHelperItem = entityId => {
+      entry = entityId;
       applyElementStyle();
     };
     const syncVisualState = arg => {
       entityDetailsDialogEl = arg || entityDetailsDialogEl;
       const asString = String(entityDetailsDialogEl?.state || "").toLowerCase();
-      const state9 = ["unknown", "unavailable"].includes(asString);
-      const state10 = !state9 && asString !== "off";
-      state8 = state10;
-      element4.textContent = state10 ? "ON" : "OFF";
-      element2.textContent = state9 ? "当前不可用" : state10 ? "已开启" : "已关闭";
-      element11.textContent = state9 ? "设备不可用" : state10 ? "净化中" : "已关闭";
-      element2.classList.toggle("is-on", state10);
-      element3.classList.toggle("is-on", state10);
-      element3.classList.toggle("is-unavailable", state9);
-      element6.classList.toggle("is-running", state10);
-      element7.classList.toggle("is-running", state10);
-      element3.setAttribute("aria-pressed", String(state10));
+      const state = ["unknown", "unavailable"].includes(asString);
+      const stateCurrent = !state && asString !== "off";
+      flag = stateCurrent;
+      elementPrevious.textContent = stateCurrent ? "ON" : "OFF";
+      elementCurrent.textContent = state ? "当前不可用" : stateCurrent ? "已开启" : "已关闭";
+      elementSource.textContent = state ? "设备不可用" : stateCurrent ? "净化中" : "已关闭";
+      elementCurrent.classList.toggle("is-on", stateCurrent);
+      elementNext.classList.toggle("is-on", stateCurrent);
+      elementNext.classList.toggle("is-unavailable", state);
+      elementItem.classList.toggle("is-running", stateCurrent);
+      elementEntry.classList.toggle("is-running", stateCurrent);
+      elementNext.setAttribute("aria-pressed", String(stateCurrent));
       airPurifierControlsPaneEl.syncCapabilityState?.(entityDetailsDialogEl);
     };
-    const runHelper7 = () => {
-      const filtered = state2.map(metric => ({
+    const runHelperEntry = () => {
+      const filtered = list.map(metric => ({
         metric,
-        selected: runHelper2(metric)
+        selected: runHelperCurrent(metric)
       })).filter(({
         selected
-      }) => runHelper(runHelper1(selected)) != null).slice(0, airPurifierSecondaryMetricEl.length);
-      airPurifierSecondaryMetricEl.forEach((element12, index) => {
-        const state9 = filtered[index];
-        element12.item.hidden = !state9;
-        element12.item.className = "hb-air-purifier-secondary-metric" + (state9 ? " hb-air-purifier-secondary-metric--" + state9.metric.key : "");
-        if (!state9) {
-          element12.label.textContent = "";
-          element12.value.textContent = "";
+      }) => runHelper(callback(selected)) != null).slice(0, airPurifierSecondaryMetricEl.length);
+      airPurifierSecondaryMetricEl.forEach((element, index) => {
+        const state = filtered[index];
+        element.item.hidden = !state;
+        element.item.className = "hb-air-purifier-secondary-metric" + (state ? " hb-air-purifier-secondary-metric--" + state.metric.key : "");
+        if (!state) {
+          element.label.textContent = "";
+          element.value.textContent = "";
           return;
         }
-        const state10 = state9.selected?.role || state9.metric.key;
-        element12.label.textContent = state9.metric.key === "filter" && state10 === "filterLeftTime" ? "滤芯剩余时间" : state9.metric.label;
-        element12.value.textContent = runHelper3(runHelper1(state9.selected), state10);
+        const key = state.selected?.role || state.metric.key;
+        element.label.textContent = state.metric.key === "filter" && key === "filterLeftTime" ? "滤芯剩余时间" : state.metric.label;
+        element.value.textContent = runHelperNext(callback(state.selected), key);
       });
       airPurifierSecondaryMetricsEl.hidden = filtered.length === 0;
     };
     syncVisualState(entityDetailsDialogEl);
-    runHelper4(entityId, syncVisualState);
-    for (const item of state2) {
-      const runHelper8 = () => {
-        runHelper7();
+    runHelperPrevious(entityId, syncVisualState);
+    for (const item of list) {
+      const runHelper = () => {
+        runHelperEntry();
         if (item.key === "pm25") {
           applyElementStyle();
         }
       };
-      runHelper8();
-      for (const rendererRuntimeDialogLayerEl1 of item.candidates) {
-        runHelper4(rendererRuntimeDialogLayerEl1.id, runHelper8);
+      runHelper();
+      for (const rendererRuntimeDialogLayerEl of item.candidates) {
+        runHelperPrevious(rendererRuntimeDialogLayerEl.id, runHelper);
       }
     }
-    runHelper6(state7);
-    runHelper4(state4, runHelper6);
-    element3.addEventListener("click", () => airPurifierControlsPaneEl.querySelector(".hb-capability-power")?.click());
+    runHelperItem(entry);
+    runHelperPrevious(text, runHelperItem);
+    elementNext.addEventListener("click", () => airPurifierControlsPaneEl.querySelector(".hb-capability-power")?.click());
     const rendererRuntimeDialogLayerEl = document.createElement("div");
     rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
     rendererRuntimeDialogLayerEl.tabIndex = -1;
-    rendererRuntimeDialogLayerEl.append(entityDetailsDialogEl3);
+    rendererRuntimeDialogLayerEl.append(entityDetailsDialogElCurrent);
     this.container.append(rendererRuntimeDialogLayerEl);
-    this.detailsDialog = entityDetailsDialogEl3;
+    this.detailsDialog = entityDetailsDialogElCurrent;
     this.detailsStateSync = {
-      entityDetailsDialogEl3,
+      entityDetailsDialogElCurrent,
       handlers
     };
-    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogEl3, 920, state5 ? 620 : 540);
-    element5.addEventListener("click", () => entityDetailsDialogEl3.close());
-    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogEl3, entityDetailsCardEl);
+    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogElCurrent, 920, controls ? 620 : 540);
+    elementLocal.addEventListener("click", () => entityDetailsDialogElCurrent.close());
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogElCurrent, entityDetailsCardEl);
     rendererRuntimeDialogLayerEl.addEventListener("keydown", arg => {
       if (arg.key === "Escape") {
-        entityDetailsDialogEl3.close();
+        entityDetailsDialogElCurrent.close();
       }
     });
-    entityDetailsDialogEl3.addEventListener("close", () => {
+    entityDetailsDialogElCurrent.addEventListener("close", () => {
       airPurifierControlsPaneEl.cleanupCapabilityDetails?.();
-      this.clearRuntimeDialogScale(entityDetailsDialogEl3);
-      if (this.detailsDialog === entityDetailsDialogEl3) {
+      this.clearRuntimeDialogScale(entityDetailsDialogElCurrent);
+      if (this.detailsDialog === entityDetailsDialogElCurrent) {
         this.detailsDialog = null;
       }
-      if (this.detailsStateSync?.dialog === entityDetailsDialogEl3) {
+      if (this.detailsStateSync?.dialog === entityDetailsDialogElCurrent) {
         this.detailsStateSync = null;
       }
       rendererRuntimeDialogLayerEl.remove();
     }, {
       once: true
     });
-    entityDetailsDialogEl3.show();
+    entityDetailsDialogElCurrent.show();
   }
   showMediaPlayerDetails(component, {
     preview = false
@@ -5631,8 +5632,8 @@ export class PanelRenderer {
       state: "unknown",
       attributes: {}
     };
-    const entityDetailsDialogEl4 = document.createElement("dialog");
-    entityDetailsDialogEl4.className = "hb-entity-details-dialog media-player-details capability-details";
+    const entityDetailsDialogElCurrent = document.createElement("dialog");
+    entityDetailsDialogElCurrent.className = "hb-entity-details-dialog media-player-details capability-details";
     const entityDetailsCardEl = document.createElement("div");
     entityDetailsCardEl.className = "hb-entity-details-card";
     const entityDetailsHeadingEl = document.createElement("div");
@@ -5640,11 +5641,11 @@ export class PanelRenderer {
     const divEl = document.createElement("div");
     const element = document.createElement("strong");
     element.textContent = componentDialogTitle(component, entityDetailsDialogEl.attributes?.friendly_name || "媒体");
-    const element2 = document.createElement("span");
-    divEl.append(element, element2);
-    const element3 = document.createElement("div");
-    element3.className = "hb-media-speaker-visual";
-    element3.setAttribute("aria-hidden", "true");
+    const elementCurrent = document.createElement("span");
+    divEl.append(element, elementCurrent);
+    const elementNext = document.createElement("div");
+    elementNext.className = "hb-media-speaker-visual";
+    elementNext.setAttribute("aria-hidden", "true");
     const mediaSpeakerBodyEl = document.createElement("i");
     mediaSpeakerBodyEl.className = "hb-media-speaker-body";
     const mediaSpeakerArtworkEl = document.createElement("img");
@@ -5653,178 +5654,178 @@ export class PanelRenderer {
     mediaSpeakerArtworkEl.hidden = true;
     const mediaSpeakerLightEl = document.createElement("i");
     mediaSpeakerLightEl.className = "hb-media-speaker-light";
-    element3.append(mediaSpeakerBodyEl, mediaSpeakerArtworkEl, mediaSpeakerLightEl);
-    entityDetailsHeadingEl.append(divEl, element3);
+    elementNext.append(mediaSpeakerBodyEl, mediaSpeakerArtworkEl, mediaSpeakerLightEl);
+    entityDetailsHeadingEl.append(divEl, elementNext);
     const mediaPlayerDetailsBodyEl = document.createElement("div");
     mediaPlayerDetailsBodyEl.className = "hb-media-player-details-body";
-    const element4 = document.createElement("section");
-    element4.className = "hb-media-player-now-playing";
+    const elementPrevious = document.createElement("section");
+    elementPrevious.className = "hb-media-player-now-playing";
     const mediaPlayerArtworkEl = document.createElement("img");
     mediaPlayerArtworkEl.className = "hb-media-player-artwork";
     mediaPlayerArtworkEl.alt = "";
     mediaPlayerArtworkEl.hidden = true;
     const mediaPlayerCopyEl = document.createElement("div");
     mediaPlayerCopyEl.className = "hb-media-player-copy";
-    const element5 = document.createElement("strong");
-    const element6 = document.createElement("span");
+    const elementLocal = document.createElement("strong");
+    const elementItem = document.createElement("span");
     const mediaPlayerProgressEl = document.createElement("div");
     mediaPlayerProgressEl.className = "hb-media-player-progress";
     mediaPlayerProgressEl.hidden = true;
-    const element7 = document.createElement("progress");
-    element7.max = 1;
-    element7.value = 0;
+    const elementEntry = document.createElement("progress");
+    elementEntry.max = 1;
+    elementEntry.value = 0;
     const spanEl = document.createElement("span");
-    const element8 = document.createElement("time");
-    const element9 = document.createElement("time");
-    spanEl.append(element8, element9);
-    mediaPlayerProgressEl.append(element7, spanEl);
-    mediaPlayerCopyEl.append(element5, element6, mediaPlayerProgressEl);
-    element4.append(mediaPlayerArtworkEl, mediaPlayerCopyEl);
+    const elementList = document.createElement("time");
+    const elementText = document.createElement("time");
+    spanEl.append(elementList, elementText);
+    mediaPlayerProgressEl.append(elementEntry, spanEl);
+    mediaPlayerCopyEl.append(elementLocal, elementItem, mediaPlayerProgressEl);
+    elementPrevious.append(mediaPlayerArtworkEl, mediaPlayerCopyEl);
     const mediaPlayerActionsEl = document.createElement("div");
     mediaPlayerActionsEl.className = "hb-media-player-actions";
     const buildElementTree = (arg, serviceName, options = {}) => {
-      const element14 = document.createElement("button");
-      element14.type = "button";
-      element14.textContent = arg;
-      element14.addEventListener("click", async () => {
+      const element = document.createElement("button");
+      element.type = "button";
+      element.textContent = arg;
+      element.addEventListener("click", async () => {
         if (!preview) {
-          element14.disabled = true;
+          element.disabled = true;
           try {
             await this.callEntityService("media_player", serviceName, entityId, options);
           } catch (error) {
             this.options.onError?.(error);
           } finally {
-            element14.disabled = false;
+            element.disabled = false;
           }
         }
       });
-      mediaPlayerActionsEl.append(element14);
-      return element14;
+      mediaPlayerActionsEl.append(element);
+      return element;
     };
     const capabilityRangeGroupEl = buildElementTree("上一曲", "media_previous_track");
-    const element10 = buildElementTree("播放", "media_play_pause");
-    const capabilityRangeGroupEl1 = buildElementTree("下一曲", "media_next_track");
-    const capabilityRangeGroupEl2 = this.createMediaBrowserControl(entityId, {
+    const tree = buildElementTree("播放", "media_play_pause");
+    const capabilityRangeGroupElCurrent = buildElementTree("下一曲", "media_next_track");
+    const control = this.createMediaBrowserControl(entityId, {
       preview
     });
-    const capabilityRangeGroupEl3 = document.createElement("section");
-    capabilityRangeGroupEl3.className = "hb-capability-range-group";
+    const capabilityRangeGroupElNext = document.createElement("section");
+    capabilityRangeGroupElNext.className = "hb-capability-range-group";
     const capabilityRangeHeadingEl = document.createElement("div");
     capabilityRangeHeadingEl.className = "hb-capability-range-heading";
-    const element11 = document.createElement("strong");
-    element11.textContent = "音量";
-    const element12 = document.createElement("output");
-    capabilityRangeHeadingEl.append(element11, element12);
-    const element13 = document.createElement("input");
-    element13.type = "range";
-    element13.min = "0";
-    element13.max = "1";
-    element13.step = ".01";
-    element13.disabled = preview;
-    capabilityRangeGroupEl3.append(capabilityRangeHeadingEl, element13);
-    element4.append(capabilityRangeGroupEl2.root);
-    mediaPlayerDetailsBodyEl.append(element4, mediaPlayerActionsEl, capabilityRangeGroupEl3);
+    const elementValue = document.createElement("strong");
+    elementValue.textContent = "音量";
+    const elementSource = document.createElement("output");
+    capabilityRangeHeadingEl.append(elementValue, elementSource);
+    const elementTarget = document.createElement("input");
+    elementTarget.type = "range";
+    elementTarget.min = "0";
+    elementTarget.max = "1";
+    elementTarget.step = ".01";
+    elementTarget.disabled = preview;
+    capabilityRangeGroupElNext.append(capabilityRangeHeadingEl, elementTarget);
+    elementPrevious.append(control.root);
+    mediaPlayerDetailsBodyEl.append(elementPrevious, mediaPlayerActionsEl, capabilityRangeGroupElNext);
     let showMediaPlayerDetailsValue = "";
-    let showMediaPlayerDetailsValue1 = null;
-    let showMediaPlayerDetailsValue2 = null;
-    let showMediaPlayerDetailsValue3 = null;
-    let showMediaPlayerDetailsValue4 = null;
-    let showMediaPlayerDetailsValue5 = false;
-    let showMediaPlayerDetailsValue6 = null;
+    let showMediaPlayerDetailsValueCurrent = null;
+    let showMediaPlayerDetailsValueNext = null;
+    let showMediaPlayerDetailsValuePrevious = null;
+    let showMediaPlayerDetailsValueLocal = null;
+    let flag = false;
+    let showMediaPlayerDetailsValueItem = null;
     let state = null;
-    let state1 = null;
-    let state2 = 0;
-    let state3 = null;
-    let state4 = false;
+    let stateCurrent = null;
+    let count = 0;
+    let stateNext = null;
+    let statePrevious = false;
     const runHelper = arg => {
       const count = Math.max(0, Math.floor(Number(arg) || 0));
-      const state7 = Math.floor(count / 60);
+      const state = Math.floor(count / 60);
       const asString = String(count % 60).padStart(2, "0");
-      return state7 + ":" + asString;
+      return state + ":" + asString;
     };
     const clampNumber = () => {
-      if (!Number.isFinite(state1) || state1 <= 0) {
+      if (!Number.isFinite(stateCurrent) || stateCurrent <= 0) {
         mediaPlayerProgressEl.hidden = true;
         return;
       }
-      let finiteNumber = Number.isFinite(state2) ? state2 : 0;
-      if (state4 && Number.isFinite(state3)) {
-        finiteNumber += Math.max(0, (Date.now() - state3) / 1000);
+      let finiteNumber = Number.isFinite(count) ? count : 0;
+      if (statePrevious && Number.isFinite(stateNext)) {
+        finiteNumber += Math.max(0, (Date.now() - stateNext) / 1000);
       }
-      finiteNumber = Math.max(0, Math.min(state1, finiteNumber));
+      finiteNumber = Math.max(0, Math.min(stateCurrent, finiteNumber));
       mediaPlayerProgressEl.hidden = false;
-      element7.max = state1;
-      element7.value = finiteNumber;
-      element8.textContent = runHelper(finiteNumber);
-      element9.textContent = runHelper(state1);
+      elementEntry.max = stateCurrent;
+      elementEntry.value = finiteNumber;
+      elementList.textContent = runHelper(finiteNumber);
+      elementText.textContent = runHelper(stateCurrent);
     };
-    const state5 = window.setInterval(clampNumber, 1000);
-    const runHelper1 = (arg, right) => Number.isFinite(arg) && Number.isFinite(right) && Math.abs(arg - right) <= 0.005;
-    const clampNumber1 = arg => {
-      showMediaPlayerDetailsValue1 = Math.max(0, Math.min(1, Number(arg) || 0));
-      element13.value = String(showMediaPlayerDetailsValue1);
-      element12.textContent = Math.round(showMediaPlayerDetailsValue1 * 100) + "%";
+    const interval = window.setInterval(clampNumber, 1000);
+    const callback = (arg, right) => Number.isFinite(arg) && Number.isFinite(right) && Math.abs(arg - right) <= 0.005;
+    const clampNumberCurrent = arg => {
+      showMediaPlayerDetailsValueCurrent = Math.max(0, Math.min(1, Number(arg) || 0));
+      elementTarget.value = String(showMediaPlayerDetailsValueCurrent);
+      elementSource.textContent = Math.round(showMediaPlayerDetailsValueCurrent * 100) + "%";
     };
-    const state6 = async () => {
-      window.clearTimeout(showMediaPlayerDetailsValue6);
-      showMediaPlayerDetailsValue6 = null;
-      if (showMediaPlayerDetailsValue5 || showMediaPlayerDetailsValue4 === null) {
+    const stateLocal = async () => {
+      window.clearTimeout(showMediaPlayerDetailsValueItem);
+      showMediaPlayerDetailsValueItem = null;
+      if (flag || showMediaPlayerDetailsValueLocal === null) {
         return;
       }
-      const volume_level = showMediaPlayerDetailsValue4;
-      showMediaPlayerDetailsValue4 = null;
-      showMediaPlayerDetailsValue5 = true;
+      const volume_level = showMediaPlayerDetailsValueLocal;
+      showMediaPlayerDetailsValueLocal = null;
+      flag = true;
       try {
         await this.callEntityService("media_player", "volume_set", entityId, {
           volume_level
         });
       } catch (error) {
-        showMediaPlayerDetailsValue4 = null;
-        showMediaPlayerDetailsValue3 = null;
+        showMediaPlayerDetailsValueLocal = null;
+        showMediaPlayerDetailsValuePrevious = null;
         window.clearTimeout(state);
-        if (showMediaPlayerDetailsValue2 !== null) {
-          clampNumber1(showMediaPlayerDetailsValue2);
+        if (showMediaPlayerDetailsValueNext !== null) {
+          clampNumberCurrent(showMediaPlayerDetailsValueNext);
         }
         this.options.onError?.(error);
       } finally {
-        showMediaPlayerDetailsValue5 = false;
-        if (showMediaPlayerDetailsValue4 !== null && !runHelper1(showMediaPlayerDetailsValue4, volume_level)) {
-          showMediaPlayerDetailsValue6 = window.setTimeout(state6, 140);
+        flag = false;
+        if (showMediaPlayerDetailsValueLocal !== null && !callback(showMediaPlayerDetailsValueLocal, volume_level)) {
+          showMediaPlayerDetailsValueItem = window.setTimeout(stateLocal, 140);
         }
       }
     };
     const clamped = () => {
-      const count = Math.max(0, Math.min(1, Number(element13.value) || 0));
-      showMediaPlayerDetailsValue3 = count;
-      showMediaPlayerDetailsValue4 = count;
+      const count = Math.max(0, Math.min(1, Number(elementTarget.value) || 0));
+      showMediaPlayerDetailsValuePrevious = count;
+      showMediaPlayerDetailsValueLocal = count;
       window.clearTimeout(state);
-      if (!showMediaPlayerDetailsValue5) {
-        window.clearTimeout(showMediaPlayerDetailsValue6);
-        showMediaPlayerDetailsValue6 = window.setTimeout(state6, 120);
+      if (!flag) {
+        window.clearTimeout(showMediaPlayerDetailsValueItem);
+        showMediaPlayerDetailsValueItem = window.setTimeout(stateLocal, 120);
       }
     };
     mediaPlayerArtworkEl.addEventListener("error", () => {
       mediaPlayerArtworkEl.hidden = true;
-      element4.classList.remove("has-artwork");
+      elementPrevious.classList.remove("has-artwork");
     });
     mediaPlayerArtworkEl.addEventListener("load", () => {
       mediaPlayerArtworkEl.hidden = false;
-      element4.classList.add("has-artwork");
+      elementPrevious.classList.add("has-artwork");
     });
     mediaSpeakerArtworkEl.addEventListener("error", () => {
       mediaSpeakerArtworkEl.hidden = true;
-      element3.classList.remove("has-artwork");
+      elementNext.classList.remove("has-artwork");
     });
     mediaSpeakerArtworkEl.addEventListener("load", () => {
       mediaSpeakerArtworkEl.hidden = false;
-      element3.classList.add("has-artwork");
+      elementNext.classList.add("has-artwork");
     });
-    element13.addEventListener("input", () => clampNumber1(element13.value));
-    element13.addEventListener("change", clamped);
+    elementTarget.addEventListener("input", () => clampNumberCurrent(elementTarget.value));
+    elementTarget.addEventListener("change", clamped);
     const syncVisualState = arg => {
       entityDetailsDialogEl = arg || entityDetailsDialogEl;
-      const numeric1 = entityDetailsDialogEl.attributes || {};
-      const state7 = {
+      const attributes = entityDetailsDialogEl.attributes || {};
+      const options = {
         off: "已关闭",
         on: "已开启",
         idle: "空闲",
@@ -5836,48 +5837,48 @@ export class PanelRenderer {
         unknown: "未知状态"
       };
       const asString = String(entityDetailsDialogEl.state || "unknown").toLowerCase();
-      const numeric = Number(numeric1.supported_features || 0);
-      capabilityRangeGroupEl2.sync(entityDetailsDialogEl);
-      element2.textContent = state7[asString] || entityDetailsDialogEl.state || "未知状态";
-      element3.classList.toggle("is-playing", asString === "playing");
-      element3.classList.toggle("is-paused", asString === "paused");
-      element3.classList.toggle("is-off", ["off", "unavailable", "unknown"].includes(asString));
-      element5.textContent = numeric1.media_title || numeric1.media_series_title || numeric1.app_name || numeric1.source || "暂无播放内容";
-      element6.textContent = [numeric1.media_artist, numeric1.media_album_name].filter(Boolean).join(" · ") || numeric1.media_content_type || "媒体播放器";
-      element10.textContent = asString === "playing" ? "暂停" : "播放";
-      element10.disabled = preview || ["off", "unavailable", "unknown"].includes(asString);
+      const numeric = Number(attributes.supported_features || 0);
+      control.sync(entityDetailsDialogEl);
+      elementCurrent.textContent = options[asString] || entityDetailsDialogEl.state || "未知状态";
+      elementNext.classList.toggle("is-playing", asString === "playing");
+      elementNext.classList.toggle("is-paused", asString === "paused");
+      elementNext.classList.toggle("is-off", ["off", "unavailable", "unknown"].includes(asString));
+      elementLocal.textContent = attributes.media_title || attributes.media_series_title || attributes.app_name || attributes.source || "暂无播放内容";
+      elementItem.textContent = [attributes.media_artist, attributes.media_album_name].filter(Boolean).join(" · ") || attributes.media_content_type || "媒体播放器";
+      tree.textContent = asString === "playing" ? "暂停" : "播放";
+      tree.disabled = preview || ["off", "unavailable", "unknown"].includes(asString);
       capabilityRangeGroupEl.disabled = preview || !(numeric & 16);
-      capabilityRangeGroupEl1.disabled = preview || !(numeric & 32);
-      state1 = Number.isFinite(Number(numeric1.media_duration)) ? Number(numeric1.media_duration) : null;
-      state2 = Number.isFinite(Number(numeric1.media_position)) ? Number(numeric1.media_position) : 0;
-      const position = Date.parse(String(numeric1.media_position_updated_at || ""));
-      state3 = Number.isFinite(position) ? position : null;
-      state4 = asString === "playing";
+      capabilityRangeGroupElCurrent.disabled = preview || !(numeric & 32);
+      stateCurrent = Number.isFinite(Number(attributes.media_duration)) ? Number(attributes.media_duration) : null;
+      count = Number.isFinite(Number(attributes.media_position)) ? Number(attributes.media_position) : 0;
+      const position = Date.parse(String(attributes.media_position_updated_at || ""));
+      stateNext = Number.isFinite(position) ? position : null;
+      statePrevious = asString === "playing";
       clampNumber();
-      const numeric2 = Number(numeric1.volume_level);
-      capabilityRangeGroupEl3.hidden = !Number.isFinite(numeric2);
-      if (Number.isFinite(numeric2)) {
-        if (showMediaPlayerDetailsValue3 === null) {
-          showMediaPlayerDetailsValue2 = numeric2;
-          clampNumber1(numeric2);
-        } else if (runHelper1(numeric2, showMediaPlayerDetailsValue3)) {
-          showMediaPlayerDetailsValue2 = numeric2;
-          clampNumber1(showMediaPlayerDetailsValue3);
+      const number = Number(attributes.volume_level);
+      capabilityRangeGroupElNext.hidden = !Number.isFinite(number);
+      if (Number.isFinite(number)) {
+        if (showMediaPlayerDetailsValuePrevious === null) {
+          showMediaPlayerDetailsValueNext = number;
+          clampNumberCurrent(number);
+        } else if (callback(number, showMediaPlayerDetailsValuePrevious)) {
+          showMediaPlayerDetailsValueNext = number;
+          clampNumberCurrent(showMediaPlayerDetailsValuePrevious);
           window.clearTimeout(state);
           state = window.setTimeout(() => {
-            showMediaPlayerDetailsValue3 = null;
+            showMediaPlayerDetailsValuePrevious = null;
           }, 1800);
         } else {
           window.clearTimeout(state);
         }
       }
-      const trimmed = [numeric1.entity_picture_local, numeric1.entity_picture, numeric1.media_image_url].map(item => String(item || "").trim()).find(urlCandidate => urlCandidate.startsWith("/api/media_player_proxy/") || urlCandidate.startsWith("/api/image_proxy/")) || "";
+      const trimmed = [attributes.entity_picture_local, attributes.entity_picture, attributes.media_image_url].map(item => String(item || "").trim()).find(urlCandidate => urlCandidate.startsWith("/api/media_player_proxy/") || urlCandidate.startsWith("/api/image_proxy/")) || "";
       if (trimmed !== showMediaPlayerDetailsValue) {
         showMediaPlayerDetailsValue = trimmed;
         mediaPlayerArtworkEl.hidden = !showMediaPlayerDetailsValue;
-        element4.classList.toggle("has-artwork", !!showMediaPlayerDetailsValue);
+        elementPrevious.classList.toggle("has-artwork", !!showMediaPlayerDetailsValue);
         mediaSpeakerArtworkEl.hidden = !showMediaPlayerDetailsValue;
-        element3.classList.toggle("has-artwork", !!showMediaPlayerDetailsValue);
+        elementNext.classList.toggle("has-artwork", !!showMediaPlayerDetailsValue);
         if (showMediaPlayerDetailsValue) {
           mediaPlayerArtworkEl.src = showMediaPlayerDetailsValue;
           mediaSpeakerArtworkEl.src = showMediaPlayerDetailsValue;
@@ -5888,45 +5889,45 @@ export class PanelRenderer {
       }
     };
     syncVisualState(entityDetailsDialogEl);
-    entityDetailsCardEl.append(entityDetailsHeadingEl, mediaPlayerDetailsBodyEl, capabilityRangeGroupEl2.panel);
-    entityDetailsDialogEl4.append(entityDetailsCardEl);
+    entityDetailsCardEl.append(entityDetailsHeadingEl, mediaPlayerDetailsBodyEl, control.panel);
+    entityDetailsDialogElCurrent.append(entityDetailsCardEl);
     const rendererRuntimeDialogLayerEl = document.createElement("div");
     rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
     rendererRuntimeDialogLayerEl.tabIndex = -1;
-    rendererRuntimeDialogLayerEl.append(entityDetailsDialogEl4);
+    rendererRuntimeDialogLayerEl.append(entityDetailsDialogElCurrent);
     this.container.append(rendererRuntimeDialogLayerEl);
-    this.detailsDialog = entityDetailsDialogEl4;
+    this.detailsDialog = entityDetailsDialogElCurrent;
     this.detailsStateSync = {
-      entityDetailsDialogEl4,
+      entityDetailsDialogElCurrent,
       handlers: new Map([[entityId, [syncVisualState]]])
     };
-    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogEl4, 540, 368);
-    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogEl4, entityDetailsCardEl);
+    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogElCurrent, 540, 368);
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogElCurrent, entityDetailsCardEl);
     rendererRuntimeDialogLayerEl.addEventListener("keydown", arg => {
       if (arg.key === "Escape") {
-        entityDetailsDialogEl4.close();
+        entityDetailsDialogElCurrent.close();
       }
     });
     let pendingRef = null;
-    entityDetailsDialogEl4.addEventListener("close", () => {
+    entityDetailsDialogElCurrent.addEventListener("close", () => {
       pendingRef?.cancel();
-      capabilityRangeGroupEl2.cleanup?.();
-      window.clearInterval(state5);
-      window.clearTimeout(showMediaPlayerDetailsValue6);
+      control.cleanup?.();
+      window.clearInterval(interval);
+      window.clearTimeout(showMediaPlayerDetailsValueItem);
       window.clearTimeout(state);
-      this.clearRuntimeDialogScale(entityDetailsDialogEl4);
-      if (this.detailsDialog === entityDetailsDialogEl4) {
+      this.clearRuntimeDialogScale(entityDetailsDialogElCurrent);
+      if (this.detailsDialog === entityDetailsDialogElCurrent) {
         this.detailsDialog = null;
       }
-      if (this.detailsStateSync?.dialog === entityDetailsDialogEl4) {
+      if (this.detailsStateSync?.dialog === entityDetailsDialogElCurrent) {
         this.detailsStateSync = null;
       }
       rendererRuntimeDialogLayerEl.remove();
     }, {
       once: true
     });
-    entityDetailsDialogEl4.show();
-    pendingRef = playMediaSpeakerEntrance(element3);
+    entityDetailsDialogElCurrent.show();
+    pendingRef = playMediaSpeakerEntrance(elementNext);
   }
   showCustomPopup(popupId, {
     preview = false
@@ -5953,20 +5954,20 @@ export class PanelRenderer {
     const element = document.createElement("strong");
     element.textContent = popupId.name || "组合弹窗";
     divEl.append(element);
-    const element2 = document.createElement("button");
-    element2.type = "button";
-    element2.textContent = "×";
-    element2.setAttribute("aria-label", "关闭组合弹窗");
-    customPopupHeadingEl.append(divEl, element2);
+    const elementCurrent = document.createElement("button");
+    elementCurrent.type = "button";
+    elementCurrent.textContent = "×";
+    elementCurrent.setAttribute("aria-label", "关闭组合弹窗");
+    customPopupHeadingEl.append(divEl, elementCurrent);
     const customPopupGridEl = document.createElement("div");
     customPopupGridEl.className = "hb-custom-popup-grid";
     customPopupGridEl.style.gridTemplateColumns = "repeat(" + popupMetrics.columns + ", minmax(0, 1fr))";
     customPopupGridEl.style.gridTemplateRows = "repeat(" + popupMetrics.rows + ", minmax(0, 1fr))";
-    const state1 = [];
-    const state2 = [];
-    const state3 = [];
-    const state4 = [];
-    const state5 = [];
+    const list = [];
+    const stateCurrent = [];
+    const stateNext = [];
+    const statePrevious = [];
+    const stateLocal = [];
     const handlers = new Map();
     const runHelper = (arg, handler) => {
       if (!handlers.has(arg)) {
@@ -5974,14 +5975,14 @@ export class PanelRenderer {
       }
       handlers.get(arg).push(handler);
     };
-    for (const [entry, entry1] of state.entries()) {
-      const component = entry1.type === "capability-device" ? {
-        ...entry1,
+    for (const [entry, entryCurrent] of state.entries()) {
+      const component = entryCurrent.type === "capability-device" ? {
+        ...entryCurrent,
         type: "generic"
-      } : entry1;
+      } : entryCurrent;
       const text = String(component.entityId || "");
-      const state7 = this.deviceProfile(text);
-      const component2 = applyXiaomiDeviceProfile({
+      const state = this.deviceProfile(text);
+      const profile = applyXiaomiDeviceProfile({
         bindings: {
           entity: {
             entityId: component.entityId
@@ -5991,11 +5992,11 @@ export class PanelRenderer {
           ...(component.properties || {}),
           deviceType: component.deviceType || component.properties?.deviceType || "auto"
         }
-      }, state7);
-      const component3 = state7 ? {
+      }, state);
+      const options = state ? {
         ...component,
-        properties: component2.properties,
-        deviceType: component2.properties?.deviceType || component.deviceType
+        properties: profile.properties,
+        deviceType: profile.properties?.deviceType || component.deviceType
       } : component;
       const size = popupMetrics.placements[entry] || {
         x: 0,
@@ -6003,21 +6004,21 @@ export class PanelRenderer {
         width: 1,
         height: 1
       };
-      const size1 = ["climate", "air-purifier", "water-heater", "media-player", "camera", "line-chart"].includes(component3.type) ? 2 : size.width;
-      const entityId = text || component3.entityId;
+      const count = ["climate", "air-purifier", "water-heater", "media-player", "camera", "line-chart"].includes(options.type) ? 2 : size.width;
+      const entityId = text || options.entityId;
       const customPopupModuleEl = this.states.get(entityId);
-      const customPopupModuleEl1 = customPopupModuleEl?.newState || customPopupModuleEl;
-      const element3 = document.createElement("section");
-      element3.className = "hb-custom-popup-module hb-custom-popup-module--" + (component3.type || "generic");
-      element3.style.gridColumn = size.x + 1 + " / span " + size1;
-      element3.style.gridRow = size.y + 1 + " / span " + size.height;
-      const element4 = document.createElement("div");
-      element4.className = "hb-custom-popup-module-heading";
-      const element5 = document.createElement("strong");
-      element5.textContent = popupModuleDialogTitle(component3, customPopupModuleEl1);
-      const element6 = document.createElement("span");
-      element6.className = "hb-custom-popup-module-status type-" + (component3.type || "generic");
-      const state8 = {
+      const stateEntry = customPopupModuleEl?.newState || customPopupModuleEl;
+      const element = document.createElement("section");
+      element.className = "hb-custom-popup-module hb-custom-popup-module--" + (options.type || "generic");
+      element.style.gridColumn = size.x + 1 + " / span " + count;
+      element.style.gridRow = size.y + 1 + " / span " + size.height;
+      const elementCurrent = document.createElement("div");
+      elementCurrent.className = "hb-custom-popup-module-heading";
+      const elementNext = document.createElement("strong");
+      elementNext.textContent = popupModuleDialogTitle(options, stateEntry);
+      const elementPrevious = document.createElement("span");
+      elementPrevious.className = "hb-custom-popup-module-status type-" + (options.type || "generic");
+      const stateItem = {
         light: "灯光",
         climate: "空调 / 浴霸",
         "air-purifier": "空气净化器",
@@ -6030,26 +6031,26 @@ export class PanelRenderer {
         "line-chart": "实时数据",
         generic: "设备"
       };
-      element6.textContent = state8[component3.type] || state8.generic;
-      element4.append(element5, element6);
-      element3.append(element4);
-      if (component3.type === "electric-bed" && state7?.deviceType !== "electric-bed") {
-        element3.classList.add("hb-custom-popup-module--electric-bed");
+      elementPrevious.textContent = stateItem[options.type] || stateItem.generic;
+      elementCurrent.append(elementNext, elementPrevious);
+      element.append(elementCurrent);
+      if (options.type === "electric-bed" && state?.deviceType !== "electric-bed") {
+        element.classList.add("hb-custom-popup-module--electric-bed");
         const customElectricBedLoadingEl = document.createElement("section");
         customElectricBedLoadingEl.className = "hb-custom-electric-bed-loading hb-climate-details-loading is-loading";
         const iconEl = document.createElement("i");
         iconEl.setAttribute("aria-hidden", "true");
-        const element7 = document.createElement("strong");
-        element7.textContent = "正在加载设备状态…";
-        customElectricBedLoadingEl.append(iconEl, element7);
-        element3.append(customElectricBedLoadingEl);
-      } else if (component3.type === "electric-bed") {
-        element3.classList.add("hb-custom-popup-module--electric-bed");
-        const state9 = (state7 || this.deviceProfile(entityId))?.roles || {};
-        const resolveEntityId = entityId2 => {
-          const state10 = this.states.get(entityId2);
-          return state10?.newState || state10 || {
-            entityId: entityId2,
+        const elementCurrent = document.createElement("strong");
+        elementCurrent.textContent = "正在加载设备状态…";
+        customElectricBedLoadingEl.append(iconEl, elementCurrent);
+        element.append(customElectricBedLoadingEl);
+      } else if (options.type === "electric-bed") {
+        element.classList.add("hb-custom-popup-module--electric-bed");
+        const options = (state || this.deviceProfile(entityId))?.roles || {};
+        const resolveEntityId = entityId => {
+          const state = this.states.get(entityId);
+          return state?.newState || state || {
+            entityId: entityId,
             state: "unknown",
             attributes: {}
           };
@@ -6061,109 +6062,109 @@ export class PanelRenderer {
         const electricBedModelEl = document.createElement("div");
         electricBedModelEl.className = "hb-electric-bed-model";
         for (const electricBedEl of ["mattress", "back", "waist", "legs", "base"]) {
-          const electricBedEl1 = document.createElement("i");
-          electricBedEl1.className = "hb-electric-bed-" + electricBedEl;
-          electricBedModelEl.append(electricBedEl1);
+          const element = document.createElement("i");
+          element.className = "hb-electric-bed-" + electricBedEl;
+          electricBedModelEl.append(element);
         }
-        const buildElementTree = (electricBedAngleReadoutEl, electricBedAngleReadoutEl1) => {
+        const buildElementTree = (electricBedAngleReadoutEl, electricBedAngleReadoutElCurrent) => {
           const item = document.createElement("span");
           item.className = "hb-electric-bed-angle-readout " + electricBedAngleReadoutEl;
           const strongEl = document.createElement("strong");
-          const element11 = document.createElement("small");
-          element11.textContent = electricBedAngleReadoutEl1;
-          item.append(strongEl, element11);
+          const element = document.createElement("small");
+          element.textContent = electricBedAngleReadoutElCurrent;
+          item.append(strongEl, element);
           return {
             item,
             value: strongEl
           };
         };
-        const element7 = buildElementTree("back", "靠背");
-        const element8 = buildElementTree("waist", "腰部");
-        const element9 = buildElementTree("legs", "腿部");
-        electricBedVisualEl.append(electricBedModelEl, element7.item, element8.item, element9.item);
+        const tree = buildElementTree("back", "靠背");
+        const elementCurrent = buildElementTree("waist", "腰部");
+        const elementNext = buildElementTree("legs", "腿部");
+        electricBedVisualEl.append(electricBedModelEl, tree.item, elementCurrent.item, elementNext.item);
         const electricBedControlEl = document.createElement("section");
         electricBedControlEl.className = "hb-electric-bed-control hb-electric-bed-mode";
         const electricBedMemoryEl = document.createElement("section");
         electricBedMemoryEl.className = "hb-electric-bed-memory";
         const electricBedAngleControlsEl = document.createElement("section");
         electricBedAngleControlsEl.className = "hb-electric-bed-angle-controls";
-        const text2 = String(state9.mode || "");
-        const filtered = [state9.memory1, state9.memory2].filter(Boolean).slice(0, 2);
+        const text = String(options.mode || "");
+        const filtered = [options.memory1, options.memory2].filter(Boolean).slice(0, 2);
         const mapped = [["backrest", "靠背角度", "back"], ["leg", "腿部角度", "legs"], ["waist", "腰部角度", "waist"]].map(([role, label, visualClass]) => ({
           role,
           label,
           visualClass,
-          entityId: String(state9[role] || "")
-        })).filter(electricBedControlEl1 => electricBedControlEl1.entityId);
-        const syncVisualState = (electricBedControlEl1, electricBedControlEl2, electricBedControlEl3, variant = "") => {
-          const electricBedControlEl4 = document.createElement("section");
-          electricBedControlEl4.className = "hb-electric-bed-control";
-          const element11 = document.createElement("strong");
-          element11.textContent = electricBedControlEl2;
-          const element12 = this.createCapabilityDetailsControls(electricBedControlEl3, resolveEntityId(electricBedControlEl3), {
+          entityId: String(options[role] || "")
+        })).filter(electricBedControlEl => electricBedControlEl.entityId);
+        const syncVisualState = (electricBedControlEl, electricBedControlElCurrent, electricBedControlElNext, variant = "") => {
+          const element = document.createElement("section");
+          element.className = "hb-electric-bed-control";
+          const elementCurrent = document.createElement("strong");
+          elementCurrent.textContent = electricBedControlElCurrent;
+          const controls = this.createCapabilityDetailsControls(electricBedControlElNext, resolveEntityId(electricBedControlElNext), {
             interactive: !preview,
             variant
           });
-          element12.classList.add("hb-electric-bed-capability");
-          electricBedControlEl4.append(element11, element12);
-          electricBedControlEl1.append(electricBedControlEl4);
-          state1.push(() => element12.cleanupCapabilityDetails?.());
-          runHelper(electricBedControlEl3, arg => element12.syncCapabilityState?.(arg));
+          controls.classList.add("hb-electric-bed-capability");
+          element.append(elementCurrent, controls);
+          electricBedControlEl.append(element);
+          list.push(() => controls.cleanupCapabilityDetails?.());
+          runHelper(electricBedControlElNext, arg => controls.syncCapabilityState?.(arg));
         };
-        if (text2) {
-          syncVisualState(electricBedControlEl, "模式", text2, "electric-bed");
+        if (text) {
+          syncVisualState(electricBedControlEl, "模式", text, "electric-bed");
         } else {
-          const element11 = document.createElement("strong");
-          element11.textContent = "模式";
+          const element = document.createElement("strong");
+          element.textContent = "模式";
           const capabilitySelectEl = document.createElement("select");
           capabilitySelectEl.className = "hb-capability-select";
           capabilitySelectEl.disabled = true;
           capabilitySelectEl.append(new Option("未识别到模式实体"));
-          electricBedControlEl.append(element11, capabilitySelectEl);
+          electricBedControlEl.append(element, capabilitySelectEl);
         }
-        const element10 = document.createElement("strong");
-        element10.textContent = "记忆姿势";
+        const elementLocal = document.createElement("strong");
+        elementLocal.textContent = "记忆姿势";
         const electricBedMemoryListEl = document.createElement("div");
         electricBedMemoryListEl.className = "hb-electric-bed-memory-list";
-        for (let state10 = 0; state10 < 2; state10 += 1) {
-          const text3 = String(filtered[state10] || "");
-          const state11 = text3 ? this.entityMetadata.get(text3) : null;
-          if (text3.split(".", 1)[0] === "select") {
-            syncVisualState(electricBedMemoryListEl, "记忆姿势 " + (state10 + 1), text3, "electric-bed-memory");
+        for (let state = 0; state < 2; state += 1) {
+          const text = String(filtered[state] || "");
+          const state11 = text ? this.entityMetadata.get(text) : null;
+          if (text.split(".", 1)[0] === "select") {
+            syncVisualState(electricBedMemoryListEl, "记忆姿势 " + (state + 1), text, "electric-bed-memory");
             continue;
           }
-          const element11 = document.createElement("button");
-          element11.type = "button";
-          element11.className = "hb-electric-bed-memory-button";
-          element11.textContent = state11?.name || state11?.originalName || "记忆姿势 " + (state10 + 1);
-          element11.disabled = preview || !text3;
-          element11.addEventListener("click", async () => {
-            if (!preview && !!text3 && !element11.disabled) {
-              element11.disabled = true;
+          const element = document.createElement("button");
+          element.type = "button";
+          element.className = "hb-electric-bed-memory-button";
+          element.textContent = state11?.name || state11?.originalName || "记忆姿势 " + (state + 1);
+          element.disabled = preview || !text;
+          element.addEventListener("click", async () => {
+            if (!preview && !!text && !element.disabled) {
+              element.disabled = true;
               try {
-                await this.callEntityService("button", "press", text3);
-                element11.classList.add("is-success");
-                window.setTimeout(() => element11.classList.remove("is-success"), 900);
+                await this.callEntityService("button", "press", text);
+                element.classList.add("is-success");
+                window.setTimeout(() => element.classList.remove("is-success"), 900);
               } catch (error) {
                 this.options.onError?.(error);
               } finally {
-                element11.disabled = preview || !text3;
+                element.disabled = preview || !text;
               }
             }
           });
-          electricBedMemoryListEl.append(element11);
+          electricBedMemoryListEl.append(element);
         }
-        electricBedMemoryEl.append(element10, electricBedMemoryListEl);
+        electricBedMemoryEl.append(elementLocal, electricBedMemoryListEl);
         for (const item of mapped) {
           syncVisualState(electricBedAngleControlsEl, item.label, item.entityId);
         }
         const applyElementStyle = () => {
-          const state10 = {
-            backrest: resolveEntityId(state9.backrest),
-            leg: resolveEntityId(state9.leg),
-            waist: resolveEntityId(state9.waist)
+          const state = {
+            backrest: resolveEntityId(options.backrest),
+            leg: resolveEntityId(options.leg),
+            waist: resolveEntityId(options.waist)
           };
-          const runHelper2 = arg => {
+          const runHelper = arg => {
             const numeric = Number(arg?.state);
             if (Number.isFinite(numeric)) {
               return numeric;
@@ -6171,28 +6172,28 @@ export class PanelRenderer {
               return null;
             }
           };
-          const applyElementStyle1 = (arg, second, element11) => {
-            const state11 = runHelper2(state10[arg]);
-            element11.textContent = state11 === null ? "--" : Math.round(state11) + "°";
-            if (state11 !== null) {
-              electricBedModelEl.style.setProperty("--hb-bed-" + (arg === "backrest" ? "backrest" : arg) + "-angle", state11 + "deg");
+          const applyElementStyle = (arg, second, element) => {
+            const helper = runHelper(state[arg]);
+            element.textContent = helper === null ? "--" : Math.round(helper) + "°";
+            if (helper !== null) {
+              electricBedModelEl.style.setProperty("--hb-bed-" + (arg === "backrest" ? "backrest" : arg) + "-angle", helper + "deg");
             }
           };
-          applyElementStyle1("backrest", electricBedModelEl, element7.value);
-          applyElementStyle1("waist", electricBedModelEl, element8.value);
-          applyElementStyle1("leg", electricBedModelEl, element9.value);
-          element6.textContent = "已连接";
+          applyElementStyle("backrest", electricBedModelEl, tree.value);
+          applyElementStyle("waist", electricBedModelEl, elementCurrent.value);
+          applyElementStyle("leg", electricBedModelEl, elementNext.value);
+          elementPrevious.textContent = "已连接";
         };
-        for (const item of [state9.backrest, state9.leg, state9.waist].filter(Boolean)) {
+        for (const item of [options.backrest, options.leg, options.waist].filter(Boolean)) {
           runHelper(item, applyElementStyle);
         }
         applyElementStyle();
         customElectricBedBodyEl.append(electricBedControlEl, electricBedVisualEl, electricBedMemoryEl, electricBedAngleControlsEl);
-        element3.append(customElectricBedBodyEl);
-      } else if (component3.type === "camera") {
-        const element7 = document.createElement("section");
-        element7.className = "hb-camera-device-visual hb-custom-camera-device-visual";
-        element7.setAttribute("aria-hidden", "true");
+        element.append(customElectricBedBodyEl);
+      } else if (options.type === "camera") {
+        const elementLocal = document.createElement("section");
+        elementLocal.className = "hb-camera-device-visual hb-custom-camera-device-visual";
+        elementLocal.setAttribute("aria-hidden", "true");
         const cameraDeviceMountEl = document.createElement("i");
         cameraDeviceMountEl.className = "hb-camera-device-mount";
         const cameraDeviceArmEl = document.createElement("i");
@@ -6204,61 +6205,61 @@ export class PanelRenderer {
         const cameraDeviceLedEl = document.createElement("i");
         cameraDeviceLedEl.className = "hb-camera-device-led";
         cameraDeviceBodyEl.append(cameraDeviceLensEl, cameraDeviceLedEl);
-        element7.append(cameraDeviceMountEl, cameraDeviceArmEl, cameraDeviceBodyEl);
-        element4.append(element7);
-        let state9 = 0;
-        let state10 = null;
-        let state11 = 0;
-        const runHelper2 = (arg, delayOrNumber = 0) => "translateX(-50%) perspective(260px) rotateY(" + arg + "deg) rotateZ(" + arg * 0.035 + "deg) translateY(" + delayOrNumber + "px)";
+        elementLocal.append(cameraDeviceMountEl, cameraDeviceArmEl, cameraDeviceBodyEl);
+        elementCurrent.append(elementLocal);
+        let state = 0;
+        let stateCurrent = null;
+        let count = 0;
+        const runHelper = (arg, delayOrNumber = 0) => "translateX(-50%) perspective(260px) rotateY(" + arg + "deg) rotateZ(" + arg * 0.035 + "deg) translateY(" + delayOrNumber + "px)";
         const filtered = () => {
           if (!cameraDeviceBodyEl.isConnected) {
             return;
           }
-          const filtered1 = [-22, -16, -9, -4, 0, 6, 12, 18, 23].filter(arg => Math.abs(arg - state11) >= 7);
-          const state12 = filtered1[Math.floor(Math.random() * filtered1.length)] ?? 0;
-          const state13 = Math.sign(state12 - state11) || 1;
-          const state14 = Math.abs(state12 - state11);
-          const duration = Math.round(430 + state14 * 18 + Math.random() * 320);
-          const state15 = state12 + state13 * (1.4 + Math.random() * 2.2);
-          const state16 = Math.random() * 1.4 - 0.7;
-          cameraDeviceLensEl.style.setProperty("--hb-camera-lens-shift", state12 / 23 * 2.5 + "px");
-          state10?.cancel();
-          state10 = cameraDeviceBodyEl.animate([{
-            transform: runHelper2(state11, 0),
+          const filteredCurrent = [-22, -16, -9, -4, 0, 6, 12, 18, 23].filter(arg => Math.abs(arg - count) >= 7);
+          const stateNext = filteredCurrent[Math.floor(Math.random() * filteredCurrent.length)] ?? 0;
+          const sign = Math.sign(stateNext - count) || 1;
+          const abs = Math.abs(stateNext - count);
+          const duration = Math.round(430 + abs * 18 + Math.random() * 320);
+          const value = stateNext + sign * (1.4 + Math.random() * 2.2);
+          const statePrevious = Math.random() * 1.4 - 0.7;
+          cameraDeviceLensEl.style.setProperty("--hb-camera-lens-shift", stateNext / 23 * 2.5 + "px");
+          stateCurrent?.cancel();
+          stateCurrent = cameraDeviceBodyEl.animate([{
+            transform: runHelper(count, 0),
             offset: 0
           }, {
-            transform: runHelper2(state15, state16),
+            transform: runHelper(value, statePrevious),
             offset: 0.78
           }, {
-            transform: runHelper2(state12, state16 * 0.35),
+            transform: runHelper(stateNext, statePrevious * 0.35),
             offset: 1
           }], {
             duration,
             easing: "cubic-bezier(.2,.72,.22,1)",
             fill: "forwards"
           });
-          state10.addEventListener("finish", () => {
-            state11 = state12;
-            cameraDeviceBodyEl.style.transform = runHelper2(state11, state16 * 0.35);
-            state10?.cancel();
-            state10 = null;
-            const state17 = Math.random() < 0.22 ? 180 + Math.random() * 260 : 680 + Math.random() * 1500;
-            state9 = window.setTimeout(filtered, state17);
+          stateCurrent.addEventListener("finish", () => {
+            count = stateNext;
+            cameraDeviceBodyEl.style.transform = runHelper(count, statePrevious * 0.35);
+            stateCurrent?.cancel();
+            stateCurrent = null;
+            const value = Math.random() < 0.22 ? 180 + Math.random() * 260 : 680 + Math.random() * 1500;
+            state = window.setTimeout(filtered, value);
           }, {
             once: true
           });
         };
         if (!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-          state9 = window.setTimeout(filtered, 620);
+          state = window.setTimeout(filtered, 620);
         }
-        state1.push(() => {
-          window.clearTimeout(state9);
-          state10?.cancel();
+        list.push(() => {
+          window.clearTimeout(state);
+          stateCurrent?.cancel();
         });
         const container = document.createElement("div");
         container.className = "hb-custom-popup-camera-stage is-connecting";
-        element6.textContent = preview ? "预览模式" : "正在连接";
-        element6.classList.add("is-connecting");
+        elementPrevious.textContent = preview ? "预览模式" : "正在连接";
+        elementPrevious.classList.add("is-connecting");
         const cameraPreviewRevealVeilEl = document.createElement("i");
         cameraPreviewRevealVeilEl.className = "hb-camera-preview-reveal-veil";
         const cameraPreviewScanLineEl = document.createElement("i");
@@ -6268,40 +6269,40 @@ export class PanelRenderer {
         placeholder.textContent = preview ? "预览模式不获取实时画面" : "正在载入摄像头实时预览";
         container.append(placeholder);
         if (preview) {
-          element6.classList.remove("is-connecting");
+          elementPrevious.classList.remove("is-connecting");
           container.classList.remove("is-connecting");
           container.classList.add("is-ready");
         } else {
           mountCameraMedia({
             container,
             entityId,
-            label: element5.textContent,
+            label: elementNext.textContent,
             objectFit: "fill",
             placeholder,
             onReady: () => {
-              element6.textContent = "实时画面";
-              element6.classList.remove("is-connecting", "is-unavailable");
-              element6.classList.add("is-live");
-              element7.classList.remove("is-unavailable");
-              element7.classList.add("is-live");
+              elementPrevious.textContent = "实时画面";
+              elementPrevious.classList.remove("is-connecting", "is-unavailable");
+              elementPrevious.classList.add("is-live");
+              elementLocal.classList.remove("is-unavailable");
+              elementLocal.classList.add("is-live");
               container.classList.remove("is-connecting", "is-unavailable", "is-revealing");
               container.classList.add("is-ready");
             },
             onUnavailable: () => {
-              element6.textContent = "画面不可用";
-              element6.classList.remove("is-connecting", "is-live");
-              element6.classList.add("is-unavailable");
-              element7.classList.remove("is-live");
-              element7.classList.add("is-unavailable");
+              elementPrevious.textContent = "画面不可用";
+              elementPrevious.classList.remove("is-connecting", "is-live");
+              elementPrevious.classList.add("is-unavailable");
+              elementLocal.classList.remove("is-live");
+              elementLocal.classList.add("is-unavailable");
               container.classList.remove("is-connecting", "is-revealing");
               container.classList.add("is-unavailable");
             },
-            cleanup: cleanup => state1.push(cleanup)
+            cleanup: cleanup => list.push(cleanup)
           });
         }
-        element3.append(container);
-      } else if (component3.type === "line-chart") {
-        const component4 = {
+        element.append(container);
+      } else if (options.type === "line-chart") {
+        const component = {
           type: "line-chart",
           bindings: {
             entity: {
@@ -6309,203 +6310,203 @@ export class PanelRenderer {
             }
           },
           properties: {
-            ...syncedLineChartProperties(this.document, this.page, entityId, component3.properties),
+            ...syncedLineChartProperties(this.document, this.page, entityId, options.properties),
             compactDetailsHorizontal: true
           }
         };
         const customLineChartCurrentEl = document.createElement("output");
         customLineChartCurrentEl.className = "hb-custom-line-chart-current";
-        const element7 = document.createElement("strong");
-        const element8 = document.createElement("small");
-        const text2 = String(component4.properties?.valueColor || "#dce1e5");
-        element7.style.color = text2;
-        element8.style.color = text2;
-        customLineChartCurrentEl.append(element7, element8);
-        element4.append(customLineChartCurrentEl);
+        const elementNext = document.createElement("strong");
+        const elementPrevious = document.createElement("small");
+        const text = String(component.properties?.valueColor || "#dce1e5");
+        elementNext.style.color = text;
+        elementPrevious.style.color = text;
+        customLineChartCurrentEl.append(elementNext, elementPrevious);
+        elementCurrent.append(customLineChartCurrentEl);
         const syncAriaState = entityState => {
-          const state13 = Number.parseFloat(entityState?.state);
-          element7.textContent = Number.isFinite(state13) ? formatLineChartValue(state13, component4.properties?.statePrecision) : entityState?.state || "--";
-          element8.textContent = String(entityState?.attributes?.unit_of_measurement || "");
-          customLineChartCurrentEl.setAttribute("aria-label", "当前数值 " + element7.textContent + element8.textContent);
+          const state = Number.parseFloat(entityState?.state);
+          elementNext.textContent = Number.isFinite(state) ? formatLineChartValue(state, component.properties?.statePrecision) : entityState?.state || "--";
+          elementPrevious.textContent = String(entityState?.attributes?.unit_of_measurement || "");
+          customLineChartCurrentEl.setAttribute("aria-label", "当前数值 " + elementNext.textContent + elementPrevious.textContent);
         };
-        const state9 = {
+        const state = {
           states: this.states,
           history: this.historySeries,
-          renderNamespace: this.renderNamespace + "-" + component3.id,
+          renderNamespace: this.renderNamespace + "-" + options.id,
           interactive: true,
           animate: false
         };
-        let state10 = renderLineChartDetails(component4, state9);
-        let state11 = 0;
-        const state12 = () => {
-          state11 = 0;
-          if (!state10?.isConnected || this.detailsStateSync?.dialog !== customPopupDialogEl) {
+        let details = renderLineChartDetails(component, state);
+        let count = 0;
+        const callback = () => {
+          count = 0;
+          if (!details?.isConnected || this.detailsStateSync?.dialog !== customPopupDialogEl) {
             return;
           }
-          const state13 = renderLineChartDetails(component4, state9);
-          state10.cleanupLineChartHover?.();
-          state10.replaceWith(state13);
-          state10 = state13;
+          const stateCurrent = renderLineChartDetails(component, state);
+          details.cleanupLineChartHover?.();
+          details.replaceWith(stateCurrent);
+          details = stateCurrent;
           applyElementStyle();
         };
         const scheduleTimeout = (arg = 700) => {
-          state11 ||= window.setTimeout(state12, Math.max(0, Number(arg) || 0));
+          count ||= window.setTimeout(callback, Math.max(0, Number(arg) || 0));
         };
-        state5.push(() => scheduleTimeout(0));
+        stateLocal.push(() => scheduleTimeout(0));
         const applyElementStyle = () => {
-          customLineChartCurrentEl.style.setProperty("--hb-custom-chart-accent", state10.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
+          customLineChartCurrentEl.style.setProperty("--hb-custom-chart-accent", details.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
         };
-        syncAriaState(customPopupModuleEl1);
+        syncAriaState(stateEntry);
         applyElementStyle();
         runHelper(entityId, arg => {
           syncAriaState(arg);
-          state10.syncLineChartState?.(arg);
+          details.syncLineChartState?.(arg);
           applyElementStyle();
         });
-        state1.push(() => {
-          window.clearTimeout(state11);
-          state10.cleanupLineChartHover?.();
+        list.push(() => {
+          window.clearTimeout(count);
+          details.cleanupLineChartHover?.();
         });
-        element3.append(state10);
-      } else if (component3.type === "switch") {
-        let state9 = customPopupModuleEl1;
-        let state10 = false;
-        let state11 = "idle";
-        let state12 = null;
+        element.append(details);
+      } else if (options.type === "switch") {
+        let state = stateEntry;
+        let flag = false;
+        let text = "idle";
+        let stateCurrent = null;
         const momentary = entityId.split(".")[0] === "button";
         const switchVisual = buildSwitchVisual({
-          label: element5.textContent,
+          label: elementNext.textContent,
           interactive: !preview,
           momentary,
-          onToggle: () => state12?.()
+          onToggle: () => stateCurrent?.()
         });
         switchVisual.visual.classList.add("hb-custom-switch-visual");
         const syncVisualState = arg => {
-          state9 = arg;
+          state = arg;
           const unavailable = !arg?.state || ["unknown", "unavailable"].includes(arg.state);
-          const state13 = !momentary && arg?.state === "on";
-          switchVisual.sync(state13, {
+          const stateCurrent = !momentary && arg?.state === "on";
+          switchVisual.sync(stateCurrent, {
             unavailable,
-            pending: state10 && state11 !== "success",
-            success: state11 === "success"
+            pending: flag && text !== "success",
+            success: text === "success"
           });
-          element6.textContent = unavailable ? "当前不可用" : momentary ? state11 === "success" ? "执行成功" : state10 ? "正在执行" : "按下执行" : state13 ? "已开启" : "已关闭";
-          element6.classList.toggle("is-live", (momentary ? state10 || state11 === "success" : state13) && !unavailable);
+          elementPrevious.textContent = unavailable ? "当前不可用" : momentary ? text === "success" ? "执行成功" : flag ? "正在执行" : "按下执行" : stateCurrent ? "已开启" : "已关闭";
+          elementPrevious.classList.toggle("is-live", (momentary ? flag || text === "success" : stateCurrent) && !unavailable);
         };
-        state12 = async () => {
-          if (preview || state10 || ["unknown", "unavailable"].includes(state9?.state)) {
+        stateCurrent = async () => {
+          if (preview || flag || ["unknown", "unavailable"].includes(state?.state)) {
             return;
           }
-          const state13 = state9;
-          state10 = true;
-          state11 = "idle";
-          syncVisualState(momentary ? state13 : {
-            ...state13,
-            state: state13?.state === "on" ? "off" : "on"
+          const stateCurrent = state;
+          flag = true;
+          text = "idle";
+          syncVisualState(momentary ? stateCurrent : {
+            ...stateCurrent,
+            state: stateCurrent?.state === "on" ? "off" : "on"
           });
           try {
             if (momentary) {
               await this.callEntityService("button", "press", entityId);
-              state11 = "success";
-              syncVisualState(state9);
+              text = "success";
+              syncVisualState(state);
               await new Promise(arg => window.setTimeout(arg, 900));
             } else {
               await this.callEntityService("homeassistant", "toggle", entityId);
             }
           } catch (error) {
-            state11 = "idle";
-            syncVisualState(state13);
+            text = "idle";
+            syncVisualState(stateCurrent);
             this.options.onError?.(error);
           } finally {
-            state10 = false;
-            state11 = "idle";
-            syncVisualState(state9);
+            flag = false;
+            text = "idle";
+            syncVisualState(state);
           }
         };
-        syncVisualState(customPopupModuleEl1);
+        syncVisualState(stateEntry);
         runHelper(entityId, syncVisualState);
-        element3.append(switchVisual.visual);
-      } else if (component3.type === "light") {
+        element.append(switchVisual.visual);
+      } else if (options.type === "light") {
         let lightVisualEl = null;
-        element4.classList.add("has-light-visual");
-        const element7 = document.createElement("button");
-        element7.type = "button";
-        element7.className = "hb-light-visual hb-custom-light-visual";
-        element7.style.animationDelay = 0.08 + entry * 0.07 + "s";
-        element7.inert = preview;
-        element7.setAttribute("aria-disabled", String(preview));
+        elementCurrent.classList.add("has-light-visual");
+        const elementLocal = document.createElement("button");
+        elementLocal.type = "button";
+        elementLocal.className = "hb-light-visual hb-custom-light-visual";
+        elementLocal.style.animationDelay = 0.08 + entry * 0.07 + "s";
+        elementLocal.inert = preview;
+        elementLocal.setAttribute("aria-disabled", String(preview));
         const lightVisualAuraEl = document.createElement("div");
         lightVisualAuraEl.className = "hb-light-visual-aura";
         const lightVisualLampEl = document.createElement("div");
         lightVisualLampEl.className = "hb-light-visual-lamp";
-        for (const lightVisualEl1 of ["cord", "shade", "bulb", "filament"]) {
-          const lightVisualEl2 = document.createElement("i");
-          lightVisualEl2.className = "hb-light-visual-" + lightVisualEl1;
-          lightVisualLampEl.append(lightVisualEl2);
+        for (const lightVisualEl of ["cord", "shade", "bulb", "filament"]) {
+          const element = document.createElement("i");
+          element.className = "hb-light-visual-" + lightVisualEl;
+          lightVisualLampEl.append(element);
         }
-        element7.append(lightVisualAuraEl, lightVisualLampEl);
-        element4.append(element7);
-        const numeric = customPopupModuleEl1?.attributes || {};
+        elementLocal.append(lightVisualAuraEl, lightVisualLampEl);
+        elementCurrent.append(elementLocal);
+        const numeric = stateEntry?.attributes || {};
         const temperature = lightSupportsColor(numeric);
         const finiteNumber = Number(numeric.min_color_temp_kelvin) || (Number.isFinite(Number(numeric.max_mireds)) ? 1000000 / Number(numeric.max_mireds) : 2000);
-        const finiteNumber1 = Number(numeric.max_color_temp_kelvin) || (Number.isFinite(Number(numeric.min_mireds)) ? 1000000 / Number(numeric.min_mireds) : 6500);
-        const finiteNumber2 = Number(numeric.color_temp_kelvin) || (Number.isFinite(Number(numeric.color_temp)) ? 1000000 / Number(numeric.color_temp) : NaN);
-        const finiteNumber3 = {
-          isOn: customPopupModuleEl1?.state === "on",
+        const number = Number(numeric.max_color_temp_kelvin) || (Number.isFinite(Number(numeric.min_mireds)) ? 1000000 / Number(numeric.min_mireds) : 6500);
+        const finiteNumberCurrent = Number(numeric.color_temp_kelvin) || (Number.isFinite(Number(numeric.color_temp)) ? 1000000 / Number(numeric.color_temp) : NaN);
+        const options = {
+          isOn: stateEntry?.state === "on",
           brightnessPercent: Number.isFinite(Number(numeric.brightness)) ? Number(numeric.brightness) / 255 * 100 : 100,
-          colorTemperatureKelvin: Number.isFinite(finiteNumber2) ? finiteNumber2 : (finiteNumber + finiteNumber1) / 2,
+          colorTemperatureKelvin: Number.isFinite(finiteNumberCurrent) ? finiteNumberCurrent : (finiteNumber + number) / 2,
           colorRgb: temperature && Array.isArray(numeric.rgb_color) ? numeric.rgb_color.slice(0, 3).map(colorRgb => Number(colorRgb) || 0) : temperature && Array.isArray(numeric.hs_color) ? hsToRgbColor(numeric.hs_color) : null
         };
         const onVisualChange = (entityState = {}) => {
-          const numeric1 = entityState.attributes || {};
+          const numeric = entityState.attributes || {};
           if (typeof entityState.isOn == "boolean") {
-            finiteNumber3.isOn = entityState.isOn;
+            options.isOn = entityState.isOn;
           } else if (typeof entityState.state == "string") {
-            finiteNumber3.isOn = entityState.state === "on";
+            options.isOn = entityState.state === "on";
           }
           if (Number.isFinite(Number(entityState.brightnessPercent))) {
-            finiteNumber3.brightnessPercent = Number(entityState.brightnessPercent);
-          } else if (Number.isFinite(Number(numeric1.brightness))) {
-            finiteNumber3.brightnessPercent = Number(numeric1.brightness) / 255 * 100;
+            options.brightnessPercent = Number(entityState.brightnessPercent);
+          } else if (Number.isFinite(Number(numeric.brightness))) {
+            options.brightnessPercent = Number(numeric.brightness) / 255 * 100;
           }
           if (Number.isFinite(Number(entityState.colorTemperatureKelvin))) {
-            finiteNumber3.colorTemperatureKelvin = Number(entityState.colorTemperatureKelvin);
-          } else if (Number.isFinite(Number(numeric1.color_temp_kelvin))) {
-            finiteNumber3.colorTemperatureKelvin = Number(numeric1.color_temp_kelvin);
-          } else if (Number.isFinite(Number(numeric1.color_temp))) {
-            finiteNumber3.colorTemperatureKelvin = 1000000 / Number(numeric1.color_temp);
+            options.colorTemperatureKelvin = Number(entityState.colorTemperatureKelvin);
+          } else if (Number.isFinite(Number(numeric.color_temp_kelvin))) {
+            options.colorTemperatureKelvin = Number(numeric.color_temp_kelvin);
+          } else if (Number.isFinite(Number(numeric.color_temp))) {
+            options.colorTemperatureKelvin = 1000000 / Number(numeric.color_temp);
           }
           if (temperature && Array.isArray(entityState.colorRgb)) {
-            finiteNumber3.colorRgb = entityState.colorRgb.slice(0, 3).map(arg => Number(arg) || 0);
-          } else if (temperature && Array.isArray(numeric1.rgb_color)) {
-            finiteNumber3.colorRgb = numeric1.rgb_color.slice(0, 3).map(arg => Number(arg) || 0);
-          } else if (temperature && Array.isArray(numeric1.hs_color)) {
-            finiteNumber3.colorRgb = hsToRgbColor(numeric1.hs_color);
+            options.colorRgb = entityState.colorRgb.slice(0, 3).map(arg => Number(arg) || 0);
+          } else if (temperature && Array.isArray(numeric.rgb_color)) {
+            options.colorRgb = numeric.rgb_color.slice(0, 3).map(arg => Number(arg) || 0);
+          } else if (temperature && Array.isArray(numeric.hs_color)) {
+            options.colorRgb = hsToRgbColor(numeric.hs_color);
           }
-          const count = Math.max(1, Math.min(100, Number(finiteNumber3.brightnessPercent) || 1));
-          const clamped = (Math.max(2000, Math.min(6500, Number(finiteNumber3.colorTemperatureKelvin) || 4250)) - 2000) / 4500;
+          const count = Math.max(1, Math.min(100, Number(options.brightnessPercent) || 1));
+          const clamped = (Math.max(2000, Math.min(6500, Number(options.colorTemperatureKelvin) || 4250)) - 2000) / 4500;
           const color = [255, 132, 42];
-          const color1 = [172, 225, 255];
-          const mapped = finiteNumber3.colorRgb || color.map((arg, second) => Math.round(arg + (color1[second] - arg) * clamped));
-          element7.classList.toggle("is-on", finiteNumber3.isOn);
-          element7.style.setProperty("--hb-light-visual-color", "rgb(" + mapped.join(",") + ")");
-          element7.style.setProperty("--hb-light-visual-opacity", finiteNumber3.isOn ? String(0.08 + count / 100 * 0.92) : "0");
-          element7.style.setProperty("--hb-light-visual-blur", Math.round(15 + count * 1.14) + "px");
-          element7.style.setProperty("--hb-light-visual-scale", String(0.62 + count / 100 * 1.05));
-          element7.setAttribute("aria-pressed", String(finiteNumber3.isOn));
-          element7.setAttribute("aria-label", "" + element5.textContent + (finiteNumber3.isOn ? "已开启，点击关闭" : "已关闭，点击开启"));
-          element6.textContent = finiteNumber3.isOn ? "已开启" : "已关闭";
-          element6.classList.toggle("is-live", finiteNumber3.isOn);
+          const list = [172, 225, 255];
+          const mapped = options.colorRgb || color.map((arg, second) => Math.round(arg + (list[second] - arg) * clamped));
+          elementLocal.classList.toggle("is-on", options.isOn);
+          elementLocal.style.setProperty("--hb-light-visual-color", "rgb(" + mapped.join(",") + ")");
+          elementLocal.style.setProperty("--hb-light-visual-opacity", options.isOn ? String(0.08 + count / 100 * 0.92) : "0");
+          elementLocal.style.setProperty("--hb-light-visual-blur", Math.round(15 + count * 1.14) + "px");
+          elementLocal.style.setProperty("--hb-light-visual-scale", String(0.62 + count / 100 * 1.05));
+          elementLocal.setAttribute("aria-pressed", String(options.isOn));
+          elementLocal.setAttribute("aria-label", "" + elementNext.textContent + (options.isOn ? "已开启，点击关闭" : "已关闭，点击开启"));
+          elementPrevious.textContent = options.isOn ? "已开启" : "已关闭";
+          elementPrevious.classList.toggle("is-live", options.isOn);
         };
         onVisualChange();
-        let state9 = false;
-        element7.addEventListener("click", async () => {
-          if (preview || state9) {
+        let state = false;
+        elementLocal.addEventListener("click", async () => {
+          if (preview || state) {
             return;
           }
-          state9 = true;
-          element7.setAttribute("aria-busy", "true");
-          const isOn = finiteNumber3.isOn;
+          state = true;
+          elementLocal.setAttribute("aria-busy", "true");
+          const isOn = options.isOn;
           onVisualChange({
             isOn: !isOn
           });
@@ -6517,11 +6518,11 @@ export class PanelRenderer {
             });
             this.options.onError?.(error);
           } finally {
-            state9 = false;
-            element7.removeAttribute("aria-busy");
+            state = false;
+            elementLocal.removeAttribute("aria-busy");
           }
         });
-        lightVisualEl = this.createLightDetailsControls(entityId, customPopupModuleEl1, {
+        lightVisualEl = this.createLightDetailsControls(entityId, stateEntry, {
           interactive: !preview,
           onTurnOn: () => {
             onVisualChange({
@@ -6530,22 +6531,22 @@ export class PanelRenderer {
           },
           onVisualChange
         });
-        state1.push(() => lightVisualEl?.cleanupLightDetails?.());
+        list.push(() => lightVisualEl?.cleanupLightDetails?.());
         runHelper(entityId, arg => {
           onVisualChange(arg);
           lightVisualEl?.syncLightState?.(arg);
         });
-        element3.append(lightVisualEl);
-      } else if (component3.type === "climate" || component3.type === "water-heater") {
-        element3.classList.add("hb-custom-popup-module--climate");
-        const deviceType = component3.type === "water-heater" ? "water-heater" : resolveClimateDeviceType({
+        element.append(lightVisualEl);
+      } else if (options.type === "climate" || options.type === "water-heater") {
+        element.classList.add("hb-custom-popup-module--climate");
+        const deviceType = options.type === "water-heater" ? "water-heater" : resolveClimateDeviceType({
           properties: {
-            deviceType: component3.deviceType || component3.properties?.deviceType || "auto",
-            label: component3.title || ""
+            deviceType: options.deviceType || options.properties?.deviceType || "auto",
+            label: options.title || ""
           }
-        }, customPopupModuleEl1, entityId);
-        let climateVisualEl = customPopupModuleEl1;
-        const climateVisualEl1 = {
+        }, stateEntry, entityId);
+        let climateVisualEl = stateEntry;
+        const climateVisualElCurrent = {
           entityId,
           entityMetadata: this.entityMetadata,
           entityTranslations: this.entityTranslations
@@ -6556,7 +6557,7 @@ export class PanelRenderer {
         visual.classList.toggle("is-bath-heater", deviceType === "bath-heater");
         visual.classList.toggle("is-water-heater", deviceType === "water-heater");
         if (deviceType === "water-heater") {
-          state4.push({
+          statePrevious.push({
             visual,
             distance: 168,
             delay: 100 + entry * 45
@@ -6566,20 +6567,20 @@ export class PanelRenderer {
         visual.setAttribute("aria-disabled", String(preview));
         const climateVisualUnitEl = document.createElement("div");
         climateVisualUnitEl.className = "hb-climate-visual-unit";
-        const element7 = document.createElement("span");
-        element7.className = "hb-climate-visual-brand";
-        element7.textContent = deviceType === "bath-heater" ? "BATH HEATER" : deviceType === "water-heater" ? "SMART WATER" : "SMART AIR";
-        const element8 = document.createElement("strong");
-        element8.className = "hb-climate-visual-display";
+        const elementCurrent = document.createElement("span");
+        elementCurrent.className = "hb-climate-visual-brand";
+        elementCurrent.textContent = deviceType === "bath-heater" ? "BATH HEATER" : deviceType === "water-heater" ? "SMART WATER" : "SMART AIR";
+        const elementLocal = document.createElement("strong");
+        elementLocal.className = "hb-climate-visual-display";
         const climateVisualVentEl = document.createElement("div");
         climateVisualVentEl.className = "hb-climate-visual-vent";
-        for (let climateVisualAirflowEl1 = 0; climateVisualAirflowEl1 < 5; climateVisualAirflowEl1 += 1) {
+        for (let climateVisualAirflowEl = 0; climateVisualAirflowEl < 5; climateVisualAirflowEl += 1) {
           climateVisualVentEl.append(document.createElement("i"));
         }
-        climateVisualUnitEl.append(element7, element8, climateVisualVentEl);
+        climateVisualUnitEl.append(elementCurrent, elementLocal, climateVisualVentEl);
         const climateVisualAirflowEl = document.createElement("div");
         climateVisualAirflowEl.className = "hb-climate-visual-airflow";
-        for (let showCustomPopupValue1 = 0; showCustomPopupValue1 < 3; showCustomPopupValue1 += 1) {
+        for (let showCustomPopupValue = 0; showCustomPopupValue < 3; showCustomPopupValue += 1) {
           climateVisualAirflowEl.append(document.createElement("i"));
         }
         visual.append(climateVisualUnitEl, climateVisualAirflowEl);
@@ -6590,91 +6591,91 @@ export class PanelRenderer {
           accentColor = "#65717a",
           targetTemperature
         } = {}) => {
-          const state14 = visualMode !== "off";
-          visual.classList.toggle("is-on", state14);
+          const state = visualMode !== "off";
+          visual.classList.toggle("is-on", state);
           visual.classList.toggle("is-running", running);
-          visual.classList.toggle("is-airflow-mode", deviceType === "bath-heater" && state14 && bathHeaterModeUsesAirflow(mode));
+          visual.classList.toggle("is-airflow-mode", deviceType === "bath-heater" && state && bathHeaterModeUsesAirflow(mode));
           visual.dataset.visualMode = visualMode;
           visual.style.setProperty("--hb-climate-visual-accent", accentColor);
           const finiteNumber = targetTemperature != null && targetTemperature !== "" && Number.isFinite(Number(targetTemperature));
-          element8.textContent = state14 ? finiteNumber ? Number(targetTemperature) + "°" : climateModeLabel(mode, deviceType, climateVisualEl1) : "OFF";
+          elementLocal.textContent = state ? finiteNumber ? Number(targetTemperature) + "°" : climateModeLabel(mode, deviceType, climateVisualElCurrent) : "OFF";
           if (deviceType === "bath-heater") {
-            visual.setAttribute("aria-label", element5.textContent + "，点击切换浴霸灯");
+            visual.setAttribute("aria-label", elementNext.textContent + "，点击切换浴霸灯");
           } else {
-            visual.setAttribute("aria-pressed", String(state14));
-            visual.setAttribute("aria-label", "" + element5.textContent + (state14 ? "已开启，点击关闭" : "已关闭，点击开启"));
+            visual.setAttribute("aria-pressed", String(state));
+            visual.setAttribute("aria-label", "" + elementNext.textContent + (state ? "已开启，点击关闭" : "已关闭，点击开启"));
           }
         };
-        const element9 = this.createClimateDetailsControls(entityId, customPopupModuleEl1, {
+        const controls = this.createClimateDetailsControls(entityId, stateEntry, {
           interactive: !preview,
           deviceType,
           onVisualChange: ({
             mode: onVisualChange,
-            visualMode: onVisualChange2,
-            running: onVisualChange3,
-            accentColor: onVisualChange4,
-            accentSoft: onVisualChange5,
-            targetTemperature: onVisualChange6
+            visualMode: onVisualChangeCurrent,
+            running: onVisualChangeNext,
+            accentColor: onVisualChangePrevious,
+            accentSoft: onVisualChangeLocal,
+            targetTemperature: onVisualChangeItem
           }) => {
-            element6.textContent = climateModeLabel(onVisualChange, deviceType, climateVisualEl1);
-            element6.classList.toggle("is-live", onVisualChange2 !== "off");
-            element6.classList.toggle("is-running", onVisualChange3);
-            element6.style.setProperty("--hb-climate-accent", onVisualChange4);
-            element6.style.setProperty("--hb-climate-accent-soft", onVisualChange5);
+            elementPrevious.textContent = climateModeLabel(onVisualChange, deviceType, climateVisualElCurrent);
+            elementPrevious.classList.toggle("is-live", onVisualChangeCurrent !== "off");
+            elementPrevious.classList.toggle("is-running", onVisualChangeNext);
+            elementPrevious.style.setProperty("--hb-climate-accent", onVisualChangePrevious);
+            elementPrevious.style.setProperty("--hb-climate-accent-soft", onVisualChangeLocal);
             syncVisualState({
               mode: onVisualChange,
-              visualMode: onVisualChange2,
-              running: onVisualChange3,
-              accentColor: onVisualChange4,
-              targetTemperature: onVisualChange6
+              visualMode: onVisualChangeCurrent,
+              running: onVisualChangeNext,
+              accentColor: onVisualChangePrevious,
+              targetTemperature: onVisualChangeItem
             });
           }
         });
-        state1.push(() => element9.cleanupClimateDetails?.());
-        const state9 = deviceType === "bath-heater" ? state7?.roles?.light : "";
-        const state10 = state9 ? this.entityMetadata.get(state9) : deviceType === "bath-heater" ? relatedDeviceDomainEntity(this.entityMetadata, entityId, "light") : null;
-        let state11 = null;
-        if (state10?.entityId) {
-          const state14 = this.states.get(state10.entityId);
-          const state15 = state14?.newState || state14 || {
+        list.push(() => controls.cleanupClimateDetails?.());
+        const text = deviceType === "bath-heater" ? state?.roles?.light : "";
+        const stateCurrent = text ? this.entityMetadata.get(text) : deviceType === "bath-heater" ? relatedDeviceDomainEntity(this.entityMetadata, entityId, "light") : null;
+        let stateNext = null;
+        if (stateCurrent?.entityId) {
+          const state = this.states.get(stateCurrent.entityId);
+          const statePrevious = state?.newState || state || {
             state: "unknown",
             attributes: {}
           };
-          state11 = this.createBathHeaterLightControl(state10.entityId, state15, {
+          stateNext = this.createBathHeaterLightControl(stateCurrent.entityId, statePrevious, {
             interactive: !preview,
             onStateChange: ({
               isOn: onStateChange,
-              unavailable: onStateChange2
+              unavailable: onStateChangeCurrent
             }) => {
-              visual.classList.toggle("is-light-on", onStateChange && !onStateChange2);
-              visual.setAttribute("aria-pressed", String(onStateChange && !onStateChange2));
+              visual.classList.toggle("is-light-on", onStateChange && !onStateChangeCurrent);
+              visual.setAttribute("aria-pressed", String(onStateChange && !onStateChangeCurrent));
             }
           });
-          element9.append(state11);
-          runHelper(state10.entityId, arg => state11.syncBathLightState?.(arg));
+          controls.append(stateNext);
+          runHelper(stateCurrent.entityId, arg => stateNext.syncBathLightState?.(arg));
         }
-        const state12 = Array.from(element9.children);
-        const customClimateLeftEl = state12.find(element10 => element10.classList.contains("hb-climate-thermostat"));
-        const customClimateLeftEl1 = state12.find(element10 => element10.classList.contains("hb-climate-fan-slider"));
-        const customClimateLeftEl2 = document.createElement("div");
-        customClimateLeftEl2.className = "hb-custom-climate-left";
+        const stateLocal = Array.from(controls.children);
+        const customClimateLeftEl = stateLocal.find(element => element.classList.contains("hb-climate-thermostat"));
+        const found = stateLocal.find(element => element.classList.contains("hb-climate-fan-slider"));
+        const customClimateLeftElCurrent = document.createElement("div");
+        customClimateLeftElCurrent.className = "hb-custom-climate-left";
         const customClimateRightEl = document.createElement("div");
         customClimateRightEl.className = "hb-custom-climate-right";
         if (customClimateLeftEl) {
-          customClimateLeftEl2.append(customClimateLeftEl);
+          customClimateLeftElCurrent.append(customClimateLeftEl);
         }
-        if (customClimateLeftEl1) {
-          customClimateLeftEl2.append(customClimateLeftEl1);
+        if (found) {
+          customClimateLeftElCurrent.append(found);
         }
-        customClimateRightEl.append(visual, ...state12.filter(arg => arg !== customClimateLeftEl && arg !== customClimateLeftEl1));
-        const state13 = !!customClimateLeftEl || !!customClimateLeftEl1;
-        element9.classList.toggle("without-primary-controls", !state13);
-        element9.replaceChildren(...(state13 ? [customClimateLeftEl2, customClimateRightEl] : [customClimateRightEl]));
+        customClimateRightEl.append(visual, ...stateLocal.filter(arg => arg !== customClimateLeftEl && arg !== found));
+        const stateItem = !!customClimateLeftEl || !!found;
+        controls.classList.toggle("without-primary-controls", !stateItem);
+        controls.replaceChildren(...(stateItem ? [customClimateLeftElCurrent, customClimateRightEl] : [customClimateRightEl]));
         let showCustomPopupValue = false;
         visual.addEventListener("click", async () => {
           if (deviceType === "bath-heater") {
-            if (state11?.toggleBathLight) {
-              await state11.toggleBathLight();
+            if (stateNext?.toggleBathLight) {
+              await stateNext.toggleBathLight();
             } else {
               this.options.onError?.(new Error("未找到与浴霸同设备的灯光实体。"));
             }
@@ -6686,23 +6687,23 @@ export class PanelRenderer {
           showCustomPopupValue = true;
           visual.setAttribute("aria-busy", "true");
           const entityState = climateVisualEl;
-          const state14 = climateIsPoweredOn(entityState, deviceType);
-          const state15 = element9.dataset.lastClimateMode || (state14 ? entityState.state : "auto");
-          const state16 = {
-            state: state14 ? "off" : state15,
+          const state = climateIsPoweredOn(entityState, deviceType);
+          const lastClimateMode = controls.dataset.lastClimateMode || (state ? entityState.state : "auto");
+          const options = {
+            state: state ? "off" : lastClimateMode,
             attributes: {
               ...(entityState?.attributes || {}),
-              hvac_action: state14 ? "off" : state15
+              hvac_action: state ? "off" : lastClimateMode
             }
           };
-          climateVisualEl = state16;
-          element9.syncClimateState?.(state16);
+          climateVisualEl = options;
+          controls.syncClimateState?.(options);
           try {
-            const state17 = climatePowerCommand(entityId, entityState, !state14, deviceType, element9.dataset.lastClimateMode || "");
-            await this.callEntityService(state17.domain, state17.service, entityId, state17.data);
+            const command = climatePowerCommand(entityId, entityState, !state, deviceType, controls.dataset.lastClimateMode || "");
+            await this.callEntityService(command.domain, command.service, entityId, command.data);
           } catch (error) {
             climateVisualEl = entityState;
-            element9.syncClimateState?.(entityState);
+            controls.syncClimateState?.(entityState);
             this.options.onError?.(error);
           } finally {
             showCustomPopupValue = false;
@@ -6711,133 +6712,133 @@ export class PanelRenderer {
         });
         runHelper(entityId, arg => {
           climateVisualEl = arg;
-          element9.syncClimateState?.(arg);
+          controls.syncClimateState?.(arg);
         });
-        element3.append(element9);
-      } else if (component3.type === "cover") {
-        let state9 = customPopupModuleEl1;
-        const entityState = customPopupModuleEl1?.attributes || {};
-        const airer = coverComponentIsAirer(component3, entityId, customPopupModuleEl1, this.entityMetadata, this.deviceMetadata);
+        element.append(controls);
+      } else if (options.type === "cover") {
+        let stateCurrent = stateEntry;
+        const entityState = stateEntry?.attributes || {};
+        const airer = coverComponentIsAirer(options, entityId, stateEntry, this.entityMetadata, this.deviceMetadata);
         const numeric = Number(entityState.supported_features || 0);
-        const state10 = entityId + " " + (entityState.friendly_name || "") + " " + (component3.title || "");
+        const state = entityId + " " + (entityState.friendly_name || "") + " " + (options.title || "");
         const finiteNumber = Number.isFinite(Number(entityState.current_tilt_position)) || !!(numeric & 240);
-        const state11 = /梦幻|竖帘|垂直帘|百叶|(^|[._-])novo([._-]|$)/i.test(state10);
-        const state12 = ["standard", "dream", "airer"].includes(component3.properties?.coverKind) ? component3.properties.coverKind : "auto";
-        const dream = !airer && (state12 === "dream" || state12 === "auto" && (finiteNumber || state11));
-        const state13 = (airer ? relatedAirerLightEntity(this.entityMetadata, entityId) : null)?.entityId || "";
-        const state14 = state13 ? this.states.get(state13) : null;
-        let position = state14?.newState || state14 || null;
+        const test = /梦幻|竖帘|垂直帘|百叶|(^|[._-])novo([._-]|$)/i.test(state);
+        const coverKind = ["standard", "dream", "airer"].includes(options.properties?.coverKind) ? options.properties.coverKind : "auto";
+        const dream = !airer && (coverKind === "dream" || coverKind === "auto" && (finiteNumber || test));
+        const text = (airer ? relatedAirerLightEntity(this.entityMetadata, entityId) : null)?.entityId || "";
+        const entry = text ? this.states.get(text) : null;
+        let position = entry?.newState || entry || null;
         const positionCommandEntityId = (airer ? relatedAirerPositionNumberEntity(this.entityMetadata, entityId) : null)?.entityId || "";
-        const position1 = this.states.get(positionCommandEntityId);
-        const positionCommandState = position1?.newState || position1 || null;
-        const state15 = (airer ? relatedAirerCurrentPositionSensor(this.entityMetadata, entityId) : null)?.entityId || "";
-        const state16 = (airer ? relatedAirerMotorSpeedSensor(this.entityMetadata, entityId) : null)?.entityId || "";
-        const state17 = this.states.get(state16);
-        const motorState = state17?.newState || state17 || null;
-        const state18 = airer ? relatedAirerMotorActionEntities(this.entityMetadata, entityId) : {};
-        const airerActionEntityIds = Object.fromEntries(Object.entries(state18).map(([arg, item]) => [arg, item?.entityId || ""]));
-        const position2 = this.states.get(state15 || positionCommandEntityId);
-        const positionState = position2?.newState || position2 || null;
+        const positionCurrent = this.states.get(positionCommandEntityId);
+        const positionCommandState = positionCurrent?.newState || positionCurrent || null;
+        const stateNext = (airer ? relatedAirerCurrentPositionSensor(this.entityMetadata, entityId) : null)?.entityId || "";
+        const statePrevious = (airer ? relatedAirerMotorSpeedSensor(this.entityMetadata, entityId) : null)?.entityId || "";
+        const stateLocal = this.states.get(statePrevious);
+        const motorState = stateLocal?.newState || stateLocal || null;
+        const entities = airer ? relatedAirerMotorActionEntities(this.entityMetadata, entityId) : {};
+        const airerActionEntityIds = Object.fromEntries(Object.entries(entities).map(([arg, item]) => [arg, item?.entityId || ""]));
+        const positionNext = this.states.get(stateNext || positionCommandEntityId);
+        const positionState = positionNext?.newState || positionNext || null;
         const tilt = dream && finiteNumber;
-        const motorReversed = coverMotorIsReversedForComponent(component3, this.entityMetadata, this.states, entityId);
-        const state19 = motorReversed ? "open_cover" : "close_cover";
+        const motorReversed = coverMotorIsReversedForComponent(options, this.entityMetadata, this.states, entityId);
+        const stateItem = motorReversed ? "open_cover" : "close_cover";
         const customCoverLayoutEl = motorReversed ? "close_cover" : "open_cover";
-        const customCoverLayoutEl1 = ["left", "right"].includes(component3.properties?.coverDirection) ? component3.properties.coverDirection : "split";
-        const customCoverLayoutEl2 = document.createElement("div");
-        customCoverLayoutEl2.className = "hb-custom-cover-layout";
-        const element7 = document.createElement("button");
-        element7.type = "button";
-        element7.className = "hb-cover-visual hb-custom-cover-visual";
-        element7.inert = preview;
-        element7.setAttribute("aria-disabled", String(preview));
+        const coverDirection = ["left", "right"].includes(options.properties?.coverDirection) ? options.properties.coverDirection : "split";
+        const customCoverLayoutElCurrent = document.createElement("div");
+        customCoverLayoutElCurrent.className = "hb-custom-cover-layout";
+        const elementCurrent = document.createElement("button");
+        elementCurrent.type = "button";
+        elementCurrent.className = "hb-cover-visual hb-custom-cover-visual";
+        elementCurrent.inert = preview;
+        elementCurrent.setAttribute("aria-disabled", String(preview));
         const coverVisualRailEl = document.createElement("i");
         coverVisualRailEl.className = "hb-cover-visual-rail";
         const coverVisualPanelEl = document.createElement("i");
         coverVisualPanelEl.className = "hb-cover-visual-panel left";
-        const coverVisualPanelEl1 = document.createElement("i");
-        coverVisualPanelEl1.className = "hb-cover-visual-panel right";
+        const coverVisualPanelElCurrent = document.createElement("i");
+        coverVisualPanelElCurrent.className = "hb-cover-visual-panel right";
         const coverVisualSlatsEl = document.createElement("span");
         coverVisualSlatsEl.className = "hb-cover-visual-slats";
         const coverVisualSlatEl = 13;
-        for (let coverVisualSlatEl1 = 0; coverVisualSlatEl1 < coverVisualSlatEl; coverVisualSlatEl1 += 1) {
-          const coverVisualSlatEl2 = document.createElement("span");
-          coverVisualSlatEl2.className = "hb-cover-visual-slat";
+        for (let count = 0; count < coverVisualSlatEl; count += 1) {
+          const element = document.createElement("span");
+          element.className = "hb-cover-visual-slat";
           const iconEl = document.createElement("i");
-          coverVisualSlatEl2.style.setProperty("--hb-cover-slat-index", String(coverVisualSlatEl1));
-          const size2 = customCoverLayoutEl1 === "right" ? coverVisualSlatEl - 1 - coverVisualSlatEl1 : customCoverLayoutEl1 === "split" ? Math.abs((coverVisualSlatEl - 1) / 2 - coverVisualSlatEl1) : coverVisualSlatEl1;
-          coverVisualSlatEl2.style.setProperty("--hb-cover-slat-delay-index", String(size2));
-          const size3 = customCoverLayoutEl1 === "left" ? -coverVisualSlatEl1 * 14.5 : customCoverLayoutEl1 === "right" ? (coverVisualSlatEl - 1 - coverVisualSlatEl1) * 14.5 : coverVisualSlatEl1 <= (coverVisualSlatEl - 1) / 2 ? -coverVisualSlatEl1 * 14.5 : (coverVisualSlatEl - 1 - coverVisualSlatEl1) * 14.5;
-          coverVisualSlatEl2.style.setProperty("--hb-cover-retracted-shift", size3 + "px");
-          coverVisualSlatEl2.append(iconEl);
-          coverVisualSlatsEl.append(coverVisualSlatEl2);
+          element.style.setProperty("--hb-cover-slat-index", String(count));
+          const size = coverDirection === "right" ? coverVisualSlatEl - 1 - count : coverDirection === "split" ? Math.abs((coverVisualSlatEl - 1) / 2 - count) : count;
+          element.style.setProperty("--hb-cover-slat-delay-index", String(size));
+          const value = coverDirection === "left" ? -count * 14.5 : coverDirection === "right" ? (coverVisualSlatEl - 1 - count) * 14.5 : count <= (coverVisualSlatEl - 1) / 2 ? -count * 14.5 : (coverVisualSlatEl - 1 - count) * 14.5;
+          element.style.setProperty("--hb-cover-retracted-shift", value + "px");
+          element.append(iconEl);
+          coverVisualSlatsEl.append(element);
         }
         const coverVisualWindowEl = document.createElement("i");
         coverVisualWindowEl.className = "hb-cover-visual-window";
-        element7.classList.toggle("is-dream", dream);
-        element7.classList.toggle("is-airer", airer);
-        element7.classList.add("direction-" + customCoverLayoutEl1);
-        element7.append(coverVisualWindowEl, coverVisualRailEl, coverVisualPanelEl, coverVisualPanelEl1, coverVisualSlatsEl);
+        elementCurrent.classList.toggle("is-dream", dream);
+        elementCurrent.classList.toggle("is-airer", airer);
+        elementCurrent.classList.add("direction-" + coverDirection);
+        elementCurrent.append(coverVisualWindowEl, coverVisualRailEl, coverVisualPanelEl, coverVisualPanelElCurrent, coverVisualSlatsEl);
         if (airer) {
-          appendAirerVisual(element7);
+          appendAirerVisual(elementCurrent);
         }
         const syncVisualState = (arg = position) => {
           if (!airer) {
             return;
           }
           position = arg || position;
-          const state21 = !state13 || ["unknown", "unavailable"].includes(String(position?.state || "unknown"));
-          const state22 = position?.state === "on";
-          element7.classList.toggle("is-light-on", state22 && !state21);
-          element7.classList.toggle("is-light-unavailable", state21);
-          element7.disabled = preview || state21;
-          element7.setAttribute("aria-pressed", String(state22 && !state21));
-          element7.setAttribute("aria-label", state21 ? "晾衣机灯光实体不可用" : "晾衣机灯光" + (state22 ? "已开启，点击关闭" : "已关闭，点击开启"));
+          const state = !text || ["unknown", "unavailable"].includes(String(position?.state || "unknown"));
+          const value = position?.state === "on";
+          elementCurrent.classList.toggle("is-light-on", value && !state);
+          elementCurrent.classList.toggle("is-light-unavailable", state);
+          elementCurrent.disabled = preview || state;
+          elementCurrent.setAttribute("aria-pressed", String(value && !state));
+          elementCurrent.setAttribute("aria-label", state ? "晾衣机灯光实体不可用" : "晾衣机灯光" + (value ? "已开启，点击关闭" : "已关闭，点击开启"));
         };
         syncVisualState();
-        let position3 = 0;
+        let count = 0;
         const positionCalibration = airerPositionCalibration(this.entityMetadata, this.deviceMetadata, entityId);
         const onVisualChange = ({
-          position: position4 = 0,
+          position: position = 0,
           state = ""
         } = {}) => {
-          const current_position = Math.max(0, Math.min(100, Number(position4) || 0));
+          const current_position = Math.max(0, Math.min(100, Number(position) || 0));
           const coverState = coverPresentationState({
             state,
             attributes: {
               current_position
             }
           }, motorReversed);
-          const physicalState = physicalCoverState(state || state9?.state, motorReversed);
-          const position5 = physicalState === "open" || physicalState === "opening";
-          position3 = current_position;
-          element7.style.setProperty("--hb-cover-open-position", current_position + "%");
-          element7.style.setProperty("--hb-airer-drop", airerVisualDrop(current_position) + "px");
-          element7.style.setProperty("--hb-cover-panel-width", 45.9 - current_position * 0.331 + "%");
-          element7.style.setProperty("--hb-cover-single-panel-width", 91.8 - current_position * 0.79 + "%");
-          element7.style.setProperty("--hb-cover-slat-angle", current_position * 1.8 + "deg");
-          element7.classList.toggle("is-tilt-reversed", current_position > 50);
-          element7.classList.toggle("is-tilt-center", Math.abs(current_position - 50) <= 2);
-          element7.classList.toggle("is-open", dream ? position5 : coverState === "open" || coverState === "opening");
-          element7.classList.toggle("is-moving", state === "opening" || state === "closing");
-          element7.setAttribute("aria-pressed", String(dream ? position5 : coverState === "open" || coverState === "opening"));
+          const physicalState = physicalCoverState(state || stateCurrent?.state, motorReversed);
+          const value = physicalState === "open" || physicalState === "opening";
+          count = current_position;
+          elementCurrent.style.setProperty("--hb-cover-open-position", current_position + "%");
+          elementCurrent.style.setProperty("--hb-airer-drop", airerVisualDrop(current_position) + "px");
+          elementCurrent.style.setProperty("--hb-cover-panel-width", 45.9 - current_position * 0.331 + "%");
+          elementCurrent.style.setProperty("--hb-cover-single-panel-width", 91.8 - current_position * 0.79 + "%");
+          elementCurrent.style.setProperty("--hb-cover-slat-angle", current_position * 1.8 + "deg");
+          elementCurrent.classList.toggle("is-tilt-reversed", current_position > 50);
+          elementCurrent.classList.toggle("is-tilt-center", Math.abs(current_position - 50) <= 2);
+          elementCurrent.classList.toggle("is-open", dream ? value : coverState === "open" || coverState === "opening");
+          elementCurrent.classList.toggle("is-moving", state === "opening" || state === "closing");
+          elementCurrent.setAttribute("aria-pressed", String(dream ? value : coverState === "open" || coverState === "opening"));
           if (airer) {
-            element6.textContent = coverLiftStateLabel(coverState) || Math.round(current_position) + "%";
+            elementPrevious.textContent = coverLiftStateLabel(coverState) || Math.round(current_position) + "%";
           } else if (dream) {
-            element6.textContent = dreamCurtainStatusText(state || state9?.state, current_position, motorReversed);
+            elementPrevious.textContent = dreamCurtainStatusText(state || stateCurrent?.state, current_position, motorReversed);
           } else {
-            element6.textContent = {
+            elementPrevious.textContent = {
               open: "已打开",
               closed: "已关闭",
               opening: "正在打开",
               closing: "正在关闭"
             }[coverState] || Math.round(current_position) + "%";
           }
-          element6.classList.toggle("is-live", dream ? position5 : coverState === "open" || coverState === "opening");
+          elementPrevious.classList.toggle("is-live", dream ? value : coverState === "open" || coverState === "opening");
           if (!airer) {
-            element7.setAttribute("aria-label", dream ? "" + element5.textContent + dreamCurtainStatusText(state || state9?.state, current_position, motorReversed) : "" + element5.textContent + (coverState === "open" || coverState === "opening" ? "已打开，点击关闭" : "已关闭，点击打开"));
+            elementCurrent.setAttribute("aria-label", dream ? "" + elementNext.textContent + dreamCurtainStatusText(state || stateCurrent?.state, current_position, motorReversed) : "" + elementNext.textContent + (coverState === "open" || coverState === "opening" ? "已打开，点击关闭" : "已关闭，点击打开"));
           }
         };
-        const state20 = this.createCoverDetailsControls(entityId, customPopupModuleEl1, {
+        const controls = this.createCoverDetailsControls(entityId, stateEntry, {
           interactive: !preview,
           dream,
           airer,
@@ -6852,105 +6853,105 @@ export class PanelRenderer {
           onVisualChange,
           onCurtainPositionChange: ({
             retracted: onCurtainPositionChange,
-            moving: onCurtainPositionChange2
+            moving: onCurtainPositionChangeCurrent
           }) => {
-            element7.classList.toggle("is-curtain-retracted", onCurtainPositionChange);
-            element7.classList.toggle("is-curtain-moving", onCurtainPositionChange2);
-            element7.dataset.curtainRetracted = String(onCurtainPositionChange);
+            elementCurrent.classList.toggle("is-curtain-retracted", onCurtainPositionChange);
+            elementCurrent.classList.toggle("is-curtain-moving", onCurtainPositionChangeCurrent);
+            elementCurrent.dataset.curtainRetracted = String(onCurtainPositionChange);
             if (dream) {
-              element6.textContent = dreamCurtainStatusFromRetraction(onCurtainPositionChange, onCurtainPositionChange2, position3);
-              element6.classList.toggle("is-live", onCurtainPositionChange);
+              elementPrevious.textContent = dreamCurtainStatusFromRetraction(onCurtainPositionChange, onCurtainPositionChangeCurrent, count);
+              elementPrevious.classList.toggle("is-live", onCurtainPositionChange);
             }
           }
         });
         let showCustomPopupValue = false;
-        element7.addEventListener("click", async () => {
+        elementCurrent.addEventListener("click", async () => {
           if (preview || showCustomPopupValue) {
             return;
           }
           showCustomPopupValue = true;
-          element7.setAttribute("aria-busy", "true");
+          elementCurrent.setAttribute("aria-busy", "true");
           if (airer) {
-            const state24 = position;
+            const state = position;
             syncVisualState({
               ...(position || {}),
               state: position?.state === "on" ? "off" : "on"
             });
             try {
-              await this.callEntityService("homeassistant", "toggle", state13);
+              await this.callEntityService("homeassistant", "toggle", text);
             } catch (error) {
-              syncVisualState(state24);
+              syncVisualState(state);
               this.options.onError?.(error);
             } finally {
               showCustomPopupValue = false;
-              element7.removeAttribute("aria-busy");
+              elementCurrent.removeAttribute("aria-busy");
             }
             return;
           }
-          const state21 = position3;
-          const state22 = state20.isDreamCurtainRetracted?.() ?? element7.dataset.curtainRetracted === "true";
-          const state23 = state21 > COVER_CLOSED_POSITION_EPSILON;
+          const state = count;
+          const value = controls.isDreamCurtainRetracted?.() ?? elementCurrent.dataset.curtainRetracted === "true";
+          const stateNext = state > COVER_CLOSED_POSITION_EPSILON;
           if (dream) {
-            state20.beginDreamCurtainMotion?.(!state22);
+            controls.beginDreamCurtainMotion?.(!value);
           } else {
-            state20.beginCoverMotion?.(state23 ? 0 : 100, state23 ? "closing" : "opening");
+            controls.beginCoverMotion?.(stateNext ? 0 : 100, stateNext ? "closing" : "opening");
           }
           try {
-            await this.callEntityService("cover", dream ? dreamCurtainToggleService(state22, customCoverLayoutEl, state19) : state23 ? state19 : customCoverLayoutEl, entityId);
+            await this.callEntityService("cover", dream ? dreamCurtainToggleService(value, customCoverLayoutEl, stateItem) : stateNext ? stateItem : customCoverLayoutEl, entityId);
           } catch (error) {
             if (dream) {
-              state20.cancelDreamCurtainMotion?.();
-              state20.setDreamCurtainRetracted?.(state22, false);
+              controls.cancelDreamCurtainMotion?.();
+              controls.setDreamCurtainRetracted?.(value, false);
             } else {
-              state20.cancelCoverMotion?.();
+              controls.cancelCoverMotion?.();
             }
-            state20.syncCoverState?.(state9);
+            controls.syncCoverState?.(stateCurrent);
             this.options.onError?.(error);
           } finally {
             showCustomPopupValue = false;
-            element7.removeAttribute("aria-busy");
+            elementCurrent.removeAttribute("aria-busy");
           }
         });
         runHelper(entityId, arg => {
-          state9 = arg;
-          state20.syncCoverState?.(arg);
+          stateCurrent = arg;
+          controls.syncCoverState?.(arg);
         });
-        if (state13) {
-          runHelper(state13, syncVisualState);
+        if (text) {
+          runHelper(text, syncVisualState);
         }
-        if (state15) {
-          runHelper(state15, arg => state20.syncCoverPositionState?.(arg));
+        if (stateNext) {
+          runHelper(stateNext, arg => controls.syncCoverPositionState?.(arg));
         }
         if (positionCommandEntityId) {
-          runHelper(positionCommandEntityId, entityId1 => {
-            state20.syncCoverPositionCommandState?.(entityId1);
-            if (!state15) {
-              state20.syncCoverPositionState?.(entityId1);
+          runHelper(positionCommandEntityId, entityId => {
+            controls.syncCoverPositionCommandState?.(entityId);
+            if (!stateNext) {
+              controls.syncCoverPositionState?.(entityId);
             }
           });
         }
-        if (state16) {
-          runHelper(state16, arg => state20.syncAirerMotorState?.(arg));
+        if (statePrevious) {
+          runHelper(statePrevious, arg => controls.syncAirerMotorState?.(arg));
         }
-        state1.push(() => state20.cleanupCoverDetails?.());
-        customCoverLayoutEl2.append(element7, state20);
-        element3.append(customCoverLayoutEl2);
-      } else if (component3.type === "air-purifier") {
-        let airPurifierVisualEl = customPopupModuleEl1 || {
+        list.push(() => controls.cleanupCoverDetails?.());
+        customCoverLayoutElCurrent.append(elementCurrent, controls);
+        element.append(customCoverLayoutElCurrent);
+      } else if (options.type === "air-purifier") {
+        let airPurifierVisualEl = stateEntry || {
           entityId,
           state: "unknown",
           attributes: {}
         };
-        const element7 = document.createElement("button");
-        element7.type = "button";
-        element7.className = "hb-air-purifier-visual hb-custom-air-purifier-visual";
-        element7.inert = preview;
-        element7.setAttribute("aria-disabled", String(preview));
+        const elementLocal = document.createElement("button");
+        elementLocal.type = "button";
+        elementLocal.className = "hb-air-purifier-visual hb-custom-air-purifier-visual";
+        elementLocal.inert = preview;
+        elementLocal.setAttribute("aria-disabled", String(preview));
         const airPurifierVisualAuraEl = document.createElement("i");
         airPurifierVisualAuraEl.className = "hb-air-purifier-visual-aura";
         const airPurifierVisualAirflowEl = document.createElement("span");
         airPurifierVisualAirflowEl.className = "hb-air-purifier-visual-airflow";
-        for (let airPurifierVisualBodyEl1 = 0; airPurifierVisualBodyEl1 < 4; airPurifierVisualBodyEl1 += 1) {
+        for (let airPurifierVisualBodyEl = 0; airPurifierVisualBodyEl < 4; airPurifierVisualBodyEl += 1) {
           airPurifierVisualAirflowEl.append(document.createElement("i"));
         }
         const airPurifierVisualBodyEl = document.createElement("span");
@@ -6961,44 +6962,44 @@ export class PanelRenderer {
         airPurifierVisualVentEl.className = "hb-air-purifier-visual-vent";
         const airPurifierVisualDisplayEl = document.createElement("span");
         airPurifierVisualDisplayEl.className = "hb-air-purifier-visual-display";
-        const element8 = document.createElement("strong");
-        airPurifierVisualDisplayEl.append(element8);
+        const elementItem = document.createElement("strong");
+        airPurifierVisualDisplayEl.append(elementItem);
         airPurifierVisualBodyEl.append(airPurifierVisualTopEl, airPurifierVisualVentEl, airPurifierVisualDisplayEl);
-        element7.append(airPurifierVisualAuraEl, airPurifierVisualAirflowEl, airPurifierVisualBodyEl);
+        elementLocal.append(airPurifierVisualAuraEl, airPurifierVisualAirflowEl, airPurifierVisualBodyEl);
         const airPurifierLayoutEl = this.createCapabilityDetailsControls(entityId, airPurifierVisualEl, {
           interactive: !preview,
           variant: "air-purifier"
         });
-        const airPurifierLayoutEl1 = document.createElement("div");
-        airPurifierLayoutEl1.className = "hb-air-purifier-layout hb-custom-air-purifier-layout";
+        const airPurifierLayoutElCurrent = document.createElement("div");
+        airPurifierLayoutElCurrent.className = "hb-air-purifier-layout hb-custom-air-purifier-layout";
         const airPurifierSummaryEl = document.createElement("section");
         airPurifierSummaryEl.className = "hb-air-purifier-summary";
         const airPurifierGaugeWrapEl = document.createElement("div");
         airPurifierGaugeWrapEl.className = "hb-air-purifier-gauge-wrap";
-        const element9 = document.createElement("div");
-        element9.className = "hb-air-purifier-gauge is-quality";
-        const element10 = document.createElement("i");
-        element10.className = "hb-air-purifier-gauge-orbit";
+        const elementEntry = document.createElement("div");
+        elementEntry.className = "hb-air-purifier-gauge is-quality";
+        const elementList = document.createElement("i");
+        elementList.className = "hb-air-purifier-gauge-orbit";
         const airPurifierArcCapEl = document.createElement("i");
         airPurifierArcCapEl.className = "hb-air-purifier-arc-cap start";
-        const airPurifierArcCapEl1 = document.createElement("i");
-        airPurifierArcCapEl1.className = "hb-air-purifier-arc-cap end";
+        const airPurifierArcCapElCurrent = document.createElement("i");
+        airPurifierArcCapElCurrent.className = "hb-air-purifier-arc-cap end";
         const airPurifierGaugeContentEl = document.createElement("div");
         airPurifierGaugeContentEl.className = "hb-air-purifier-gauge-content";
-        const element11 = document.createElement("small");
-        element11.textContent = "室内空气质量";
+        const elementText = document.createElement("small");
+        elementText.textContent = "室内空气质量";
         const strongEl = document.createElement("strong");
-        const element12 = document.createElement("span");
-        const element13 = document.createElement("span");
-        element13.textContent = "设备状态 --";
-        strongEl.append(element12);
-        airPurifierGaugeContentEl.append(element11, strongEl, element13);
-        element9.append(airPurifierArcCapEl, airPurifierArcCapEl1, airPurifierGaugeContentEl);
-        airPurifierGaugeWrapEl.append(element10, element9);
+        const elementValue = document.createElement("span");
+        const elementSource = document.createElement("span");
+        elementSource.textContent = "设备状态 --";
+        strongEl.append(elementValue);
+        airPurifierGaugeContentEl.append(elementText, strongEl, elementSource);
+        elementEntry.append(airPurifierArcCapEl, airPurifierArcCapElCurrent, airPurifierGaugeContentEl);
+        airPurifierGaugeWrapEl.append(elementList, elementEntry);
         const airPurifierControlsPaneEl = document.createElement("section");
         airPurifierControlsPaneEl.className = "hb-air-purifier-controls-pane";
         airPurifierControlsPaneEl.append(airPurifierLayoutEl);
-        const state9 = {
+        const options = {
           pm25: "PM2.5",
           pm10: "PM10",
           filterLife: "滤芯寿命",
@@ -7007,171 +7008,171 @@ export class PanelRenderer {
           temperature: "温度",
           humidity: "湿度"
         };
-        const state10 = [{
+        const list = [{
           role: "pm25",
-          ids: [state7?.roles?.pm25]
+          ids: [state?.roles?.pm25]
         }, {
           role: "pm10",
-          ids: [state7?.roles?.pm10]
+          ids: [state?.roles?.pm10]
         }, {
           role: "filterLife",
-          ids: [state7?.roles?.filterLife, state7?.roles?.filterLeftTime]
+          ids: [state?.roles?.filterLife, state?.roles?.filterLeftTime]
         }, {
           role: "hcho",
-          ids: [state7?.roles?.hcho]
+          ids: [state?.roles?.hcho]
         }, {
           role: "temperature",
-          ids: [state7?.roles?.temperature]
+          ids: [state?.roles?.temperature]
         }, {
           role: "humidity",
-          ids: [state7?.roles?.humidity]
+          ids: [state?.roles?.humidity]
         }].map(arg => ({
           ...arg,
           ids: arg.ids.filter(Boolean)
         }));
-        const computeResult = entityId1 => {
-          const state11 = this.states.get(entityId1);
-          return state11?.newState || state11 || null;
+        const computeResult = entityId => {
+          const state = this.states.get(entityId);
+          return state?.newState || state || null;
         };
-        const runHelper2 = arg => {
+        const callback = arg => {
           const numeric = computeResult(arg);
           return numeric && !["unknown", "unavailable"].includes(String(numeric.state || "").toLowerCase()) && Number.isFinite(Number(numeric.state));
         };
-        const found = state10.map(arg => ({
+        const found = list.map(arg => ({
           ...arg,
-          id: arg.ids.find(id => runHelper2(id)) || arg.ids.find(id => this.entityMetadata.has(id))
-        })).filter(airPurifierSecondaryMetricsEl1 => airPurifierSecondaryMetricsEl1.id).slice(0, 3);
+          id: arg.ids.find(id => callback(id)) || arg.ids.find(id => this.entityMetadata.has(id))
+        })).filter(airPurifierSecondaryMetricsEl => airPurifierSecondaryMetricsEl.id).slice(0, 3);
         const airPurifierSecondaryMetricsEl = document.createElement("div");
         airPurifierSecondaryMetricsEl.className = "hb-air-purifier-secondary-metrics hb-custom-air-purifier-metrics";
         for (const airPurifierSecondaryMetricEl of found) {
-          const airPurifierSecondaryMetricEl1 = this.entityMetadata.get(airPurifierSecondaryMetricEl.id);
-          const airPurifierSecondaryMetricEl2 = document.createElement("div");
-          airPurifierSecondaryMetricEl2.className = "hb-air-purifier-secondary-metric hb-air-purifier-secondary-metric--" + airPurifierSecondaryMetricEl.role;
-          const element14 = document.createElement("small");
-          element14.textContent = state9[airPurifierSecondaryMetricEl.role] || airPurifierSecondaryMetricEl.role;
-          const element15 = document.createElement("strong");
-          airPurifierSecondaryMetricEl2.append(element14, element15);
-          airPurifierSecondaryMetricsEl.append(airPurifierSecondaryMetricEl2);
-          const runHelper4 = entityState => {
-            element15.textContent = ["unknown", "unavailable"].includes(String(entityState?.state || "").toLowerCase()) ? "--" : ((entityState?.state ?? "--") + " " + (entityState?.attributes?.unit_of_measurement || airPurifierSecondaryMetricEl1?.unitOfMeasurement || "")).trim();
+          const entry = this.entityMetadata.get(airPurifierSecondaryMetricEl.id);
+          const element = document.createElement("div");
+          element.className = "hb-air-purifier-secondary-metric hb-air-purifier-secondary-metric--" + airPurifierSecondaryMetricEl.role;
+          const elementCurrent = document.createElement("small");
+          elementCurrent.textContent = options[airPurifierSecondaryMetricEl.role] || airPurifierSecondaryMetricEl.role;
+          const elementNext = document.createElement("strong");
+          element.append(elementCurrent, elementNext);
+          airPurifierSecondaryMetricsEl.append(element);
+          const callback = entityState => {
+            elementNext.textContent = ["unknown", "unavailable"].includes(String(entityState?.state || "").toLowerCase()) ? "--" : ((entityState?.state ?? "--") + " " + (entityState?.attributes?.unit_of_measurement || entry?.unitOfMeasurement || "")).trim();
           };
-          runHelper4(computeResult(airPurifierSecondaryMetricEl.id));
-          runHelper(airPurifierSecondaryMetricEl.id, runHelper4);
+          callback(computeResult(airPurifierSecondaryMetricEl.id));
+          runHelper(airPurifierSecondaryMetricEl.id, callback);
         }
-        const airQuality = state7?.roles?.airQuality;
-        const pm25 = state7?.roles?.pm25;
-        const runHelper3 = () => {
-          const state11 = computeResult(airQuality);
-          const numeric1 = computeResult(pm25);
-          const trimmed = ["unknown", "unavailable"].includes(String(state11?.state || "").toLowerCase()) ? "" : String(state11?.state || "").trim();
-          const numeric = Number(numeric1?.state);
+        const airQuality = state?.roles?.airQuality;
+        const pm = state?.roles?.pm25;
+        const runHelperCurrent = () => {
+          const state = computeResult(airQuality);
+          const result = computeResult(pm);
+          const trimmed = ["unknown", "unavailable"].includes(String(state?.state || "").toLowerCase()) ? "" : String(state?.state || "").trim();
+          const numeric = Number(result?.state);
           const lowered = trimmed.toLowerCase();
           let localValue = trimmed;
-          let localValue1 = "unknown";
+          let text = "unknown";
           if (/excellent|优/.test(lowered)) {
-            localValue1 = "excellent";
+            text = "excellent";
           } else if (/good|良/.test(lowered)) {
-            localValue1 = "good";
+            text = "good";
           } else if (/moderate|fair|一般|轻度|污染/.test(lowered)) {
-            localValue1 = "warning";
+            text = "warning";
           } else if (/poor|unhealthy|较差|中度|重度|严重/.test(lowered)) {
-            localValue1 = "poor";
+            text = "poor";
           } else if (Number.isFinite(numeric)) {
-            localValue1 = numeric <= 15 ? "excellent" : numeric <= 35 ? "good" : numeric <= 75 ? "warning" : "poor";
+            text = numeric <= 15 ? "excellent" : numeric <= 35 ? "good" : numeric <= 75 ? "warning" : "poor";
             localValue = {
               excellent: "空气优",
               good: "空气良",
               warning: "轻度污染",
               poor: "空气较差"
-            }[localValue1];
+            }[text];
           }
-          element12.textContent = localValue || "--";
-          element9.style.setProperty("--hb-air-purifier-progress", {
+          elementValue.textContent = localValue || "--";
+          elementEntry.style.setProperty("--hb-air-purifier-progress", {
             excellent: 72,
             good: 58,
             warning: 42,
             poor: 26,
             unknown: 0
-          }[localValue1] + "%");
-          element9.classList.toggle("is-warning", localValue1 === "warning");
-          element9.classList.toggle("is-poor", localValue1 === "poor");
-          const state12 = {
+          }[text] + "%");
+          elementEntry.classList.toggle("is-warning", text === "warning");
+          elementEntry.classList.toggle("is-poor", text === "poor");
+          const stateCurrent = {
             excellent: "#76cfa1",
             good: "#76cfa1",
             warning: "#e4b15f",
             poor: "#db7770",
             unknown: "#7d8990"
-          }[localValue1];
+          }[text];
           const color = {
             excellent: "rgba(118,207,161,.13)",
             good: "rgba(118,207,161,.13)",
             warning: "rgba(228,177,95,.15)",
             poor: "rgba(219,119,112,.15)",
             unknown: "rgba(125,137,144,.13)"
-          }[localValue1];
-          element3.style.setProperty("--hb-air-purifier-accent", state12);
-          element3.style.setProperty("--hb-air-purifier-accent-soft", color);
+          }[text];
+          element.style.setProperty("--hb-air-purifier-accent", stateCurrent);
+          element.style.setProperty("--hb-air-purifier-accent-soft", color);
         };
         if (airQuality) {
-          runHelper(airQuality, runHelper3);
+          runHelper(airQuality, runHelperCurrent);
         }
-        if (pm25 && pm25 !== airQuality) {
-          runHelper(pm25, runHelper3);
+        if (pm && pm !== airQuality) {
+          runHelper(pm, runHelperCurrent);
         }
-        runHelper3();
+        runHelperCurrent();
         const syncVisualState = (arg = airPurifierVisualEl) => {
           airPurifierVisualEl = arg || airPurifierVisualEl;
           const asString = String(airPurifierVisualEl?.state || "").toLowerCase();
-          const state11 = ["unknown", "unavailable"].includes(asString);
-          const state12 = !state11 && asString !== "off";
-          element8.textContent = state12 ? "ON" : "OFF";
-          element7.classList.toggle("is-on", state12);
-          element7.classList.toggle("is-unavailable", state11);
-          element7.setAttribute("aria-pressed", String(state12));
-          element7.setAttribute("aria-label", "" + element5.textContent + (state12 ? "已开启，点击关闭" : "已关闭，点击开启"));
-          element6.textContent = state11 ? "当前不可用" : state12 ? "已开启" : "已关闭";
-          element6.classList.toggle("is-live", state12);
-          element13.textContent = state11 ? "设备不可用" : state12 ? "净化中" : "已关闭";
-          element9.classList.toggle("is-running", state12);
-          element10.classList.toggle("is-running", state12);
+          const state = ["unknown", "unavailable"].includes(asString);
+          const stateCurrent = !state && asString !== "off";
+          elementItem.textContent = stateCurrent ? "ON" : "OFF";
+          elementLocal.classList.toggle("is-on", stateCurrent);
+          elementLocal.classList.toggle("is-unavailable", state);
+          elementLocal.setAttribute("aria-pressed", String(stateCurrent));
+          elementLocal.setAttribute("aria-label", "" + elementNext.textContent + (stateCurrent ? "已开启，点击关闭" : "已关闭，点击开启"));
+          elementPrevious.textContent = state ? "当前不可用" : stateCurrent ? "已开启" : "已关闭";
+          elementPrevious.classList.toggle("is-live", stateCurrent);
+          elementSource.textContent = state ? "设备不可用" : stateCurrent ? "净化中" : "已关闭";
+          elementEntry.classList.toggle("is-running", stateCurrent);
+          elementList.classList.toggle("is-running", stateCurrent);
           airPurifierLayoutEl.syncCapabilityState?.(airPurifierVisualEl);
         };
         syncVisualState();
         let showCustomPopupValue = false;
-        element7.addEventListener("click", async () => {
+        elementLocal.addEventListener("click", async () => {
           if (preview || showCustomPopupValue || ["unknown", "unavailable"].includes(String(airPurifierVisualEl?.state || "").toLowerCase())) {
             return;
           }
           showCustomPopupValue = true;
-          element7.setAttribute("aria-busy", "true");
-          const state11 = airPurifierVisualEl;
-          const asString = String(state11?.state || "").toLowerCase() === "off";
+          elementLocal.setAttribute("aria-busy", "true");
+          const state = airPurifierVisualEl;
+          const asString = String(state?.state || "").toLowerCase() === "off";
           syncVisualState({
-            ...state11,
+            ...state,
             state: asString ? "on" : "off"
           });
           try {
             await this.callEntityService("fan", asString ? "turn_on" : "turn_off", entityId);
           } catch (error) {
-            syncVisualState(state11);
+            syncVisualState(state);
             this.options.onError?.(error);
           } finally {
             showCustomPopupValue = false;
-            element7.removeAttribute("aria-busy");
+            elementLocal.removeAttribute("aria-busy");
           }
         });
         runHelper(entityId, syncVisualState);
-        element4.append(element7);
+        elementCurrent.append(elementLocal);
         airPurifierSummaryEl.append(airPurifierGaugeWrapEl, airPurifierSecondaryMetricsEl);
-        airPurifierLayoutEl1.append(airPurifierSummaryEl, airPurifierControlsPaneEl);
-        element3.append(airPurifierLayoutEl1);
-      } else if (component3.type === "media-player") {
-        element5.textContent = popupModuleDialogTitle(component3, customPopupModuleEl1, "媒体");
-        element3.classList.add("hb-media-player-details");
-        const element7 = document.createElement("div");
-        element7.className = "hb-media-speaker-visual";
-        element7.setAttribute("aria-hidden", "true");
-        state2.push(element7);
+        airPurifierLayoutElCurrent.append(airPurifierSummaryEl, airPurifierControlsPaneEl);
+        element.append(airPurifierLayoutElCurrent);
+      } else if (options.type === "media-player") {
+        elementNext.textContent = popupModuleDialogTitle(options, stateEntry, "媒体");
+        element.classList.add("hb-media-player-details");
+        const elementLocal = document.createElement("div");
+        elementLocal.className = "hb-media-speaker-visual";
+        elementLocal.setAttribute("aria-hidden", "true");
+        stateCurrent.push(elementLocal);
         const mediaSpeakerBodyEl = document.createElement("i");
         mediaSpeakerBodyEl.className = "hb-media-speaker-body";
         const mediaSpeakerArtworkEl = document.createElement("img");
@@ -7180,182 +7181,182 @@ export class PanelRenderer {
         mediaSpeakerArtworkEl.hidden = true;
         const mediaSpeakerLightEl = document.createElement("i");
         mediaSpeakerLightEl.className = "hb-media-speaker-light";
-        element7.append(mediaSpeakerBodyEl, mediaSpeakerArtworkEl, mediaSpeakerLightEl);
-        element4.append(element7);
+        elementLocal.append(mediaSpeakerBodyEl, mediaSpeakerArtworkEl, mediaSpeakerLightEl);
+        elementCurrent.append(elementLocal);
         const mediaPlayerDetailsBodyEl = document.createElement("div");
         mediaPlayerDetailsBodyEl.className = "hb-media-player-details-body hb-custom-media-player-body";
-        const element8 = document.createElement("section");
-        element8.className = "hb-media-player-now-playing";
+        const elementItem = document.createElement("section");
+        elementItem.className = "hb-media-player-now-playing";
         const mediaPlayerArtworkEl = document.createElement("img");
         mediaPlayerArtworkEl.className = "hb-media-player-artwork";
         mediaPlayerArtworkEl.alt = "";
         mediaPlayerArtworkEl.hidden = true;
         const mediaPlayerCopyEl = document.createElement("div");
         mediaPlayerCopyEl.className = "hb-media-player-copy";
-        const element9 = document.createElement("strong");
-        const element10 = document.createElement("span");
+        const elementEntry = document.createElement("strong");
+        const elementList = document.createElement("span");
         const mediaPlayerProgressEl = document.createElement("div");
         mediaPlayerProgressEl.className = "hb-media-player-progress";
         mediaPlayerProgressEl.hidden = true;
-        const element11 = document.createElement("progress");
-        element11.max = 1;
-        element11.value = 0;
+        const elementText = document.createElement("progress");
+        elementText.max = 1;
+        elementText.value = 0;
         const spanEl = document.createElement("span");
-        const element12 = document.createElement("time");
-        const element13 = document.createElement("time");
-        spanEl.append(element12, element13);
-        mediaPlayerProgressEl.append(element11, spanEl);
-        mediaPlayerCopyEl.append(element9, element10, mediaPlayerProgressEl);
-        element8.append(mediaPlayerArtworkEl, mediaPlayerCopyEl);
+        const elementValue = document.createElement("time");
+        const elementSource = document.createElement("time");
+        spanEl.append(elementValue, elementSource);
+        mediaPlayerProgressEl.append(elementText, spanEl);
+        mediaPlayerCopyEl.append(elementEntry, elementList, mediaPlayerProgressEl);
+        elementItem.append(mediaPlayerArtworkEl, mediaPlayerCopyEl);
         const mediaPlayerActionsEl = document.createElement("div");
         mediaPlayerActionsEl.className = "hb-media-player-actions";
         const buildElementTree = (arg, serviceName) => {
-          const element18 = document.createElement("button");
-          element18.type = "button";
-          element18.textContent = arg;
-          element18.addEventListener("click", async () => {
+          const element = document.createElement("button");
+          element.type = "button";
+          element.textContent = arg;
+          element.addEventListener("click", async () => {
             if (!preview) {
-              element18.disabled = true;
+              element.disabled = true;
               try {
                 await this.callEntityService("media_player", serviceName, entityId);
               } catch (error) {
                 this.options.onError?.(error);
               } finally {
-                element18.disabled = false;
+                element.disabled = false;
               }
             }
           });
-          mediaPlayerActionsEl.append(element18);
-          return element18;
+          mediaPlayerActionsEl.append(element);
+          return element;
         };
-        const state9 = buildElementTree("上一曲", "media_previous_track");
-        const element14 = buildElementTree("播放", "media_play_pause");
+        const state = buildElementTree("上一曲", "media_previous_track");
+        const tree = buildElementTree("播放", "media_play_pause");
         const capabilityRangeGroupEl = buildElementTree("下一曲", "media_next_track");
-        const capabilityRangeGroupEl1 = this.createMediaBrowserControl(entityId, {
+        const control = this.createMediaBrowserControl(entityId, {
           preview
         });
-        state1.push(() => capabilityRangeGroupEl1.cleanup?.());
-        const capabilityRangeGroupEl2 = document.createElement("section");
-        capabilityRangeGroupEl2.className = "hb-capability-range-group";
+        list.push(() => control.cleanup?.());
+        const capabilityRangeGroupElCurrent = document.createElement("section");
+        capabilityRangeGroupElCurrent.className = "hb-capability-range-group";
         const capabilityRangeHeadingEl = document.createElement("div");
         capabilityRangeHeadingEl.className = "hb-capability-range-heading";
-        const element15 = document.createElement("strong");
-        element15.textContent = "音量";
-        const element16 = document.createElement("output");
-        capabilityRangeHeadingEl.append(element15, element16);
-        const element17 = document.createElement("input");
-        element17.type = "range";
-        element17.min = "0";
-        element17.max = "1";
-        element17.step = ".01";
-        element17.disabled = preview;
-        capabilityRangeGroupEl2.append(capabilityRangeHeadingEl, element17);
+        const elementTarget = document.createElement("strong");
+        elementTarget.textContent = "音量";
+        const elementDefault = document.createElement("output");
+        capabilityRangeHeadingEl.append(elementTarget, elementDefault);
+        const elementFallback = document.createElement("input");
+        elementFallback.type = "range";
+        elementFallback.min = "0";
+        elementFallback.max = "1";
+        elementFallback.step = ".01";
+        elementFallback.disabled = preview;
+        capabilityRangeGroupElCurrent.append(capabilityRangeHeadingEl, elementFallback);
         let showCustomPopupValue = "";
-        let showCustomPopupValue1 = null;
-        let showCustomPopupValue2 = 0;
-        let showCustomPopupValue3 = null;
-        let showCustomPopupValue4 = false;
-        let showCustomPopupValue5 = null;
-        let showCustomPopupValue6 = null;
-        let showCustomPopupValue7 = null;
-        let state10 = null;
-        let state11 = false;
-        let state12 = null;
-        let state13 = null;
-        const runHelper2 = arg => {
+        let showCustomPopupValueCurrent = null;
+        let count = 0;
+        let showCustomPopupValueNext = null;
+        let flag = false;
+        let showCustomPopupValuePrevious = null;
+        let showCustomPopupValueLocal = null;
+        let showCustomPopupValueItem = null;
+        let statePrevious = null;
+        let stateLocal = false;
+        let stateItem = null;
+        let stateList = null;
+        const callback = arg => {
           const count = Math.max(0, Math.floor(Number(arg) || 0));
           return Math.floor(count / 60) + ":" + String(count % 60).padStart(2, "0");
         };
         const clampNumber = () => {
-          if (!Number.isFinite(showCustomPopupValue1) || showCustomPopupValue1 <= 0) {
+          if (!Number.isFinite(showCustomPopupValueCurrent) || showCustomPopupValueCurrent <= 0) {
             mediaPlayerProgressEl.hidden = true;
             return;
           }
-          let finiteNumber = Number.isFinite(showCustomPopupValue2) ? showCustomPopupValue2 : 0;
-          if (showCustomPopupValue4 && Number.isFinite(showCustomPopupValue3)) {
-            finiteNumber += Math.max(0, (Date.now() - showCustomPopupValue3) / 1000);
+          let finiteNumber = Number.isFinite(count) ? count : 0;
+          if (flag && Number.isFinite(showCustomPopupValueNext)) {
+            finiteNumber += Math.max(0, (Date.now() - showCustomPopupValueNext) / 1000);
           }
-          finiteNumber = Math.max(0, Math.min(showCustomPopupValue1, finiteNumber));
+          finiteNumber = Math.max(0, Math.min(showCustomPopupValueCurrent, finiteNumber));
           mediaPlayerProgressEl.hidden = false;
-          element11.max = showCustomPopupValue1;
-          element11.value = finiteNumber;
-          element12.textContent = runHelper2(finiteNumber);
-          element13.textContent = runHelper2(showCustomPopupValue1);
+          elementText.max = showCustomPopupValueCurrent;
+          elementText.value = finiteNumber;
+          elementValue.textContent = callback(finiteNumber);
+          elementSource.textContent = callback(showCustomPopupValueCurrent);
         };
-        const state14 = window.setInterval(clampNumber, 1000);
-        state1.push(() => {
-          window.clearInterval(state14);
-          window.clearTimeout(state12);
-          window.clearTimeout(state13);
+        const interval = window.setInterval(clampNumber, 1000);
+        list.push(() => {
+          window.clearInterval(interval);
+          window.clearTimeout(stateItem);
+          window.clearTimeout(stateList);
         });
         mediaPlayerArtworkEl.addEventListener("error", () => {
           mediaPlayerArtworkEl.hidden = true;
-          element8.classList.remove("has-artwork");
+          elementItem.classList.remove("has-artwork");
         });
         mediaPlayerArtworkEl.addEventListener("load", () => {
           mediaPlayerArtworkEl.hidden = false;
-          element8.classList.add("has-artwork");
+          elementItem.classList.add("has-artwork");
         });
         mediaSpeakerArtworkEl.addEventListener("error", () => {
           mediaSpeakerArtworkEl.hidden = true;
-          element7.classList.remove("has-artwork");
+          elementLocal.classList.remove("has-artwork");
         });
         mediaSpeakerArtworkEl.addEventListener("load", () => {
           mediaSpeakerArtworkEl.hidden = false;
-          element7.classList.add("has-artwork");
+          elementLocal.classList.add("has-artwork");
         });
-        const runHelper3 = (arg, right) => Number.isFinite(arg) && Number.isFinite(right) && Math.abs(arg - right) <= 0.005;
-        const clampNumber1 = arg => {
-          showCustomPopupValue5 = Math.max(0, Math.min(1, Number(arg) || 0));
-          element17.value = String(showCustomPopupValue5);
-          element16.textContent = Math.round(showCustomPopupValue5 * 100) + "%";
+        const runHelperCurrent = (arg, right) => Number.isFinite(arg) && Number.isFinite(right) && Math.abs(arg - right) <= 0.005;
+        const clampNumberCurrent = arg => {
+          showCustomPopupValuePrevious = Math.max(0, Math.min(1, Number(arg) || 0));
+          elementFallback.value = String(showCustomPopupValuePrevious);
+          elementDefault.textContent = Math.round(showCustomPopupValuePrevious * 100) + "%";
         };
-        const state15 = async () => {
-          window.clearTimeout(state12);
-          state12 = null;
-          if (state11 || state10 === null) {
+        const stateText = async () => {
+          window.clearTimeout(stateItem);
+          stateItem = null;
+          if (stateLocal || statePrevious === null) {
             return;
           }
-          const volume_level = state10;
-          state10 = null;
-          state11 = true;
+          const volume_level = statePrevious;
+          statePrevious = null;
+          stateLocal = true;
           try {
             await this.callEntityService("media_player", "volume_set", entityId, {
               volume_level
             });
           } catch (error) {
-            state10 = null;
-            showCustomPopupValue7 = null;
-            window.clearTimeout(state13);
-            if (showCustomPopupValue6 !== null) {
-              clampNumber1(showCustomPopupValue6);
+            statePrevious = null;
+            showCustomPopupValueItem = null;
+            window.clearTimeout(stateList);
+            if (showCustomPopupValueLocal !== null) {
+              clampNumberCurrent(showCustomPopupValueLocal);
             }
             this.options.onError?.(error);
           } finally {
-            state11 = false;
-            if (state10 !== null && !runHelper3(state10, volume_level)) {
-              state12 = window.setTimeout(state15, 140);
+            stateLocal = false;
+            if (statePrevious !== null && !runHelperCurrent(statePrevious, volume_level)) {
+              stateItem = window.setTimeout(stateText, 140);
             }
           }
         };
         const clamped = () => {
-          const count = Math.max(0, Math.min(1, Number(element17.value) || 0));
-          showCustomPopupValue7 = count;
-          state10 = count;
-          window.clearTimeout(state13);
-          if (!state11) {
-            window.clearTimeout(state12);
-            state12 = window.setTimeout(state15, 120);
+          const count = Math.max(0, Math.min(1, Number(elementFallback.value) || 0));
+          showCustomPopupValueItem = count;
+          statePrevious = count;
+          window.clearTimeout(stateList);
+          if (!stateLocal) {
+            window.clearTimeout(stateItem);
+            stateItem = window.setTimeout(stateText, 120);
           }
         };
-        element17.addEventListener("input", () => clampNumber1(element17.value));
-        element17.addEventListener("change", clamped);
+        elementFallback.addEventListener("input", () => clampNumberCurrent(elementFallback.value));
+        elementFallback.addEventListener("change", clamped);
         const syncVisualState = entityState => {
-          const numeric1 = entityState?.attributes || {};
+          const options = entityState?.attributes || {};
           const asString = String(entityState?.state || "unknown").toLowerCase();
-          const numeric = Number(numeric1.supported_features || 0);
-          capabilityRangeGroupEl1.sync(entityState);
-          const state16 = {
+          const numeric = Number(options.supported_features || 0);
+          control.sync(entityState);
+          const stateCurrent = {
             off: "已关闭",
             on: "已开启",
             idle: "空闲",
@@ -7366,47 +7367,47 @@ export class PanelRenderer {
             unavailable: "不可用",
             unknown: "未知状态"
           };
-          element6.textContent = state16[asString] || entityState?.state || "未知状态";
-          element6.classList.toggle("is-live", ["playing", "paused"].includes(asString));
-          element9.textContent = numeric1.media_title || numeric1.media_series_title || numeric1.app_name || numeric1.source || "暂无播放内容";
-          element10.textContent = [numeric1.media_artist, numeric1.media_album_name].filter(Boolean).join(" · ") || numeric1.media_content_type || "媒体播放器";
-          element14.textContent = asString === "playing" ? "暂停" : "播放";
-          element14.disabled = preview || ["off", "unavailable", "unknown"].includes(asString);
-          state9.disabled = preview || !(numeric & 16);
+          elementPrevious.textContent = stateCurrent[asString] || entityState?.state || "未知状态";
+          elementPrevious.classList.toggle("is-live", ["playing", "paused"].includes(asString));
+          elementEntry.textContent = options.media_title || options.media_series_title || options.app_name || options.source || "暂无播放内容";
+          elementList.textContent = [options.media_artist, options.media_album_name].filter(Boolean).join(" · ") || options.media_content_type || "媒体播放器";
+          tree.textContent = asString === "playing" ? "暂停" : "播放";
+          tree.disabled = preview || ["off", "unavailable", "unknown"].includes(asString);
+          state.disabled = preview || !(numeric & 16);
           capabilityRangeGroupEl.disabled = preview || !(numeric & 32);
-          element7.classList.toggle("is-playing", asString === "playing");
-          element7.classList.toggle("is-paused", asString === "paused");
-          element7.classList.toggle("is-off", ["off", "unavailable", "unknown"].includes(asString));
-          showCustomPopupValue1 = Number.isFinite(Number(numeric1.media_duration)) ? Number(numeric1.media_duration) : null;
-          showCustomPopupValue2 = Number.isFinite(Number(numeric1.media_position)) ? Number(numeric1.media_position) : 0;
-          const position = Date.parse(String(numeric1.media_position_updated_at || ""));
-          showCustomPopupValue3 = Number.isFinite(position) ? position : null;
-          showCustomPopupValue4 = asString === "playing";
+          elementLocal.classList.toggle("is-playing", asString === "playing");
+          elementLocal.classList.toggle("is-paused", asString === "paused");
+          elementLocal.classList.toggle("is-off", ["off", "unavailable", "unknown"].includes(asString));
+          showCustomPopupValueCurrent = Number.isFinite(Number(options.media_duration)) ? Number(options.media_duration) : null;
+          count = Number.isFinite(Number(options.media_position)) ? Number(options.media_position) : 0;
+          const position = Date.parse(String(options.media_position_updated_at || ""));
+          showCustomPopupValueNext = Number.isFinite(position) ? position : null;
+          flag = asString === "playing";
           clampNumber();
-          const numeric2 = Number(numeric1.volume_level);
-          capabilityRangeGroupEl2.hidden = !Number.isFinite(numeric2);
-          if (Number.isFinite(numeric2)) {
-            if (showCustomPopupValue7 === null) {
-              showCustomPopupValue6 = numeric2;
-              clampNumber1(numeric2);
-            } else if (runHelper3(numeric2, showCustomPopupValue7)) {
-              showCustomPopupValue6 = numeric2;
-              clampNumber1(showCustomPopupValue7);
-              window.clearTimeout(state13);
-              state13 = window.setTimeout(() => {
-                showCustomPopupValue7 = null;
+          const number = Number(options.volume_level);
+          capabilityRangeGroupElCurrent.hidden = !Number.isFinite(number);
+          if (Number.isFinite(number)) {
+            if (showCustomPopupValueItem === null) {
+              showCustomPopupValueLocal = number;
+              clampNumberCurrent(number);
+            } else if (runHelperCurrent(number, showCustomPopupValueItem)) {
+              showCustomPopupValueLocal = number;
+              clampNumberCurrent(showCustomPopupValueItem);
+              window.clearTimeout(stateList);
+              stateList = window.setTimeout(() => {
+                showCustomPopupValueItem = null;
               }, 1800);
             } else {
-              window.clearTimeout(state13);
+              window.clearTimeout(stateList);
             }
           }
-          const trimmed = [numeric1.entity_picture_local, numeric1.entity_picture, numeric1.media_image_url].map(arg => String(arg || "").trim()).find(climateFanAutoEl => climateFanAutoEl.startsWith("/api/media_player_proxy/") || climateFanAutoEl.startsWith("/api/image_proxy/")) || "";
+          const trimmed = [options.entity_picture_local, options.entity_picture, options.media_image_url].map(arg => String(arg || "").trim()).find(climateFanAutoEl => climateFanAutoEl.startsWith("/api/media_player_proxy/") || climateFanAutoEl.startsWith("/api/image_proxy/")) || "";
           if (trimmed !== showCustomPopupValue) {
             showCustomPopupValue = trimmed;
             mediaPlayerArtworkEl.hidden = !showCustomPopupValue;
             mediaSpeakerArtworkEl.hidden = !showCustomPopupValue;
-            element8.classList.toggle("has-artwork", !!showCustomPopupValue);
-            element7.classList.toggle("has-artwork", !!showCustomPopupValue);
+            elementItem.classList.toggle("has-artwork", !!showCustomPopupValue);
+            elementLocal.classList.toggle("has-artwork", !!showCustomPopupValue);
             if (showCustomPopupValue) {
               mediaPlayerArtworkEl.src = showCustomPopupValue;
               mediaSpeakerArtworkEl.src = showCustomPopupValue;
@@ -7416,31 +7417,31 @@ export class PanelRenderer {
             }
           }
         };
-        element8.append(capabilityRangeGroupEl1.root);
-        syncVisualState(customPopupModuleEl1);
+        elementItem.append(control.root);
+        syncVisualState(stateEntry);
         runHelper(entityId, syncVisualState);
-        mediaPlayerDetailsBodyEl.append(element8, mediaPlayerActionsEl, capabilityRangeGroupEl2);
-        state3.push(capabilityRangeGroupEl1.panel);
-        element3.append(mediaPlayerDetailsBodyEl);
+        mediaPlayerDetailsBodyEl.append(elementItem, mediaPlayerActionsEl, capabilityRangeGroupElCurrent);
+        stateNext.push(control.panel);
+        element.append(mediaPlayerDetailsBodyEl);
       } else {
-        const element7 = document.createElement("p");
-        element7.className = "hb-custom-popup-generic";
-        const runHelper2 = arg => {
-          element7.textContent = "当前状态：" + (arg?.state ?? "暂无状态");
+        const elementCurrent = document.createElement("p");
+        elementCurrent.className = "hb-custom-popup-generic";
+        const callback = arg => {
+          elementCurrent.textContent = "当前状态：" + (arg?.state ?? "暂无状态");
         };
-        runHelper2(customPopupModuleEl1);
-        runHelper(entityId, runHelper2);
-        element3.append(element7);
+        callback(stateEntry);
+        runHelper(entityId, callback);
+        element.append(elementCurrent);
       }
-      customPopupGridEl.append(element3);
+      customPopupGridEl.append(element);
     }
     if (!(popupId.modules || []).length) {
-      const element3 = document.createElement("p");
-      element3.className = "hb-custom-popup-generic";
-      element3.textContent = "这个组合弹窗还没有添加模块。";
-      customPopupGridEl.append(element3);
+      const element = document.createElement("p");
+      element.className = "hb-custom-popup-generic";
+      element.textContent = "这个组合弹窗还没有添加模块。";
+      customPopupGridEl.append(element);
     }
-    customPopupCardEl.append(customPopupHeadingEl, customPopupGridEl, ...state3);
+    customPopupCardEl.append(customPopupHeadingEl, customPopupGridEl, ...stateNext);
     customPopupDialogEl.append(customPopupCardEl);
     const rendererRuntimeDialogLayerEl = document.createElement("div");
     rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
@@ -7448,19 +7449,19 @@ export class PanelRenderer {
     rendererRuntimeDialogLayerEl.append(customPopupDialogEl);
     this.container.append(rendererRuntimeDialogLayerEl);
     this.detailsDialog = customPopupDialogEl;
-    const runHelper1 = arg => arg.map(candidate => {
-      const state7 = candidate.type === "electric-bed" ? this.deviceProfile(this.runtimeEntityId(candidate.entityId)) : null;
-      const state8 = state7?.deviceType === "electric-bed" ? state7.roles || {} : {};
-      return [candidate.id, state7?.deviceType || candidate.type || "generic", "backrest", "leg", "waist", "mode", "memory1", "memory2"].map(candidate => String(candidate === candidate.id ? candidate.id : state8[candidate] || "")).join(":");
+    const callback = arg => arg.map(candidate => {
+      const state = candidate.type === "electric-bed" ? this.deviceProfile(this.runtimeEntityId(candidate.entityId)) : null;
+      const roles = state?.deviceType === "electric-bed" ? state.roles || {} : {};
+      return [candidate.id, state?.deviceType || candidate.type || "generic", "backrest", "leg", "waist", "mode", "memory1", "memory2"].map(candidate => String(candidate === candidate.id ? candidate.id : roles[candidate] || "")).join(":");
     }).join("|");
-    const state6 = runHelper1(state);
+    const helper = callback(state);
     this.detailsStateSync = {
       customPopupDialogEl,
       handlers,
-      refreshHistory: () => state5.forEach(refreshHistory => refreshHistory()),
+      refreshHistory: () => stateLocal.forEach(refreshHistory => refreshHistory()),
       refreshEntityCatalog: () => {
         if (this.detailsDialog === customPopupDialogEl && !!customPopupDialogEl.open) {
-          if (runHelper1(state) !== state6) {
+          if (callback(state) !== helper) {
             this.showCustomPopup(popupId, {
               preview
             });
@@ -7469,7 +7470,7 @@ export class PanelRenderer {
       }
     };
     this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, customPopupDialogEl, popupWidth, popupHeight);
-    element2.addEventListener("click", () => customPopupDialogEl.close());
+    elementCurrent.addEventListener("click", () => customPopupDialogEl.close());
     this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, customPopupDialogEl, customPopupCardEl);
     rendererRuntimeDialogLayerEl.addEventListener("keydown", arg => {
       if (arg.key === "Escape") {
@@ -7477,8 +7478,8 @@ export class PanelRenderer {
       }
     });
     customPopupDialogEl.addEventListener("close", () => {
-      for (const runHelper2 of state1.splice(0)) {
-        runHelper2();
+      for (const runHelper of list.splice(0)) {
+        runHelper();
       }
       this.clearRuntimeDialogScale(customPopupDialogEl);
       if (this.detailsDialog === customPopupDialogEl) {
@@ -7499,16 +7500,16 @@ export class PanelRenderer {
     });
     customPopupDialogEl.show();
     this.refreshHistorySeries();
-    for (const item of state2) {
-      const state7 = playMediaSpeakerEntrance(item);
-      if (state7) {
-        state1.push(() => state7.cancel());
+    for (const item of stateCurrent) {
+      const state = playMediaSpeakerEntrance(item);
+      if (state) {
+        list.push(() => state.cancel());
       }
     }
-    for (const item of state4) {
-      const state7 = playFixedDeviceDropEntrance(item.visual, item);
-      if (state7) {
-        state1.push(() => state7.cancel());
+    for (const item of statePrevious) {
+      const state = playFixedDeviceDropEntrance(item.visual, item);
+      if (state) {
+        list.push(() => state.cancel());
       }
     }
   }
@@ -7522,9 +7523,9 @@ export class PanelRenderer {
     const lightDetailsControlsEl = brightness && lightSupportsColor(numeric);
     const {
       brightness: supported,
-      colorTemperature: supported2
+      colorTemperature: capabilities
     } = lightRealtimeCapabilities(entityId, component);
-    const lightDetailsControlsEl1 = supported2 && !lightDetailsControlsEl;
+    const lightDetailsControlsElCurrent = capabilities && !lightDetailsControlsEl;
     const element = document.createElement("section");
     element.className = "hb-light-details-controls";
     element.classList.toggle("has-color-picker", lightDetailsControlsEl);
@@ -7542,38 +7543,38 @@ export class PanelRenderer {
       icon,
       minimumLabel,
       maximumLabel,
-      supported: supported3 = true
+      supported: supported = true
     }) => {
-      const element3 = document.createElement("label");
-      element3.className = ("hb-light-details-slider " + className).trim();
-      element3.classList.toggle("is-unavailable", !supported3);
+      const elementCurrent = document.createElement("label");
+      elementCurrent.className = ("hb-light-details-slider " + className).trim();
+      elementCurrent.classList.toggle("is-unavailable", !supported);
       const lightDetailsSliderHeadingEl = document.createElement("span");
       lightDetailsSliderHeadingEl.className = "hb-light-details-slider-heading";
-      const element4 = document.createElement("i");
-      element4.className = "hb-light-details-slider-icon";
-      element4.setAttribute("aria-hidden", "true");
-      element4.textContent = icon;
-      const element5 = document.createElement("strong");
-      element5.textContent = label;
-      const element6 = document.createElement("output");
+      const elementNext = document.createElement("i");
+      elementNext.className = "hb-light-details-slider-icon";
+      elementNext.setAttribute("aria-hidden", "true");
+      elementNext.textContent = icon;
+      const elementPrevious = document.createElement("strong");
+      elementPrevious.textContent = label;
+      const elementLocal = document.createElement("output");
       const count = Math.max(minimum, Math.min(maximum, value));
-      element6.textContent = "" + Math.round(count) + suffix;
-      lightDetailsSliderHeadingEl.append(element4, element5, element6);
-      const controlInputEl3 = document.createElement("input");
-      controlInputEl3.type = "range";
-      controlInputEl3.min = String(minimum);
-      controlInputEl3.max = String(maximum);
-      controlInputEl3.step = String(step);
-      controlInputEl3.value = String(count);
-      controlInputEl3.disabled = !supported3;
+      elementLocal.textContent = "" + Math.round(count) + suffix;
+      lightDetailsSliderHeadingEl.append(elementNext, elementPrevious, elementLocal);
+      const controlInputEl = document.createElement("input");
+      controlInputEl.type = "range";
+      controlInputEl.min = String(minimum);
+      controlInputEl.max = String(maximum);
+      controlInputEl.step = String(step);
+      controlInputEl.value = String(count);
+      controlInputEl.disabled = !supported;
       const updateSliderValue = ({
         notify = false
       } = {}) => {
-        const brightnessPercent = Number(controlInputEl3.value);
-        const brightness1 = (brightnessPercent - minimum) / Math.max(1, maximum - minimum) * 100;
-        element6.textContent = supported3 ? "" + Math.round(brightnessPercent) + suffix : "不支持";
-        controlInputEl3.style.setProperty("--hb-light-slider-progress", Math.max(0, Math.min(100, brightness1)) + "%");
-        if (notify && supported3) {
+        const brightnessPercent = Number(controlInputEl.value);
+        const brightness = (brightnessPercent - minimum) / Math.max(1, maximum - minimum) * 100;
+        elementLocal.textContent = supported ? "" + Math.round(brightnessPercent) + suffix : "不支持";
+        controlInputEl.style.setProperty("--hb-light-slider-progress", Math.max(0, Math.min(100, brightness)) + "%");
+        if (notify && supported) {
           onVisualChange?.(dataKey === "brightness_pct" ? {
             brightnessPercent
           } : {
@@ -7582,147 +7583,147 @@ export class PanelRenderer {
         }
       };
       updateSliderValue();
-      controlInputEl3.addEventListener("input", () => {
+      controlInputEl.addEventListener("input", () => {
         scheduleTimeout();
         updateSliderValue({
           notify: true
         });
       });
-      controlInputEl3.addEventListener("change", async () => {
-        if (!!interactive && !!supported3) {
+      controlInputEl.addEventListener("change", async () => {
+        if (!!interactive && !!supported) {
           try {
             await this.callEntityService("light", "turn_on", entityId, {
-              [dataKey]: Number(controlInputEl3.value)
+              [dataKey]: Number(controlInputEl.value)
             });
             onTurnOn?.();
           } catch (error) {
             this.options.onError?.(error);
-            element6.textContent = "设置失败";
+            elementLocal.textContent = "设置失败";
           }
         }
       });
       const lightDetailsSliderLegendEl = document.createElement("span");
       lightDetailsSliderLegendEl.className = "hb-light-details-slider-legend";
-      const element7 = document.createElement("small");
-      element7.textContent = minimumLabel;
-      const element8 = document.createElement("small");
-      element8.textContent = maximumLabel;
-      lightDetailsSliderLegendEl.append(element7, element8);
-      element3.append(lightDetailsSliderHeadingEl, controlInputEl3, lightDetailsSliderLegendEl);
-      element.append(element3);
+      const elementItem = document.createElement("small");
+      elementItem.textContent = minimumLabel;
+      const elementEntry = document.createElement("small");
+      elementEntry.textContent = maximumLabel;
+      lightDetailsSliderLegendEl.append(elementItem, elementEntry);
+      elementCurrent.append(lightDetailsSliderHeadingEl, controlInputEl, lightDetailsSliderLegendEl);
+      element.append(elementCurrent);
       index.set(dataKey, {
-        controlInputEl3,
+        controlInputEl,
         updateSliderValue,
-        supported: supported3
+        supported: supported
       });
     };
-    let element2 = null;
+    let elementCurrent = null;
     let color = null;
-    let color1 = false;
+    let flag = false;
     if (lightDetailsControlsEl) {
       const list = Array.isArray(numeric.hs_color) ? numeric.hs_color : rgbToHsColor(numeric.rgb_color) || [0, 100];
       color = {
         hue: Number(list[0]) || 0,
         saturation: Number(list[1]) || 0
       };
-      element2 = document.createElement("div");
-      element2.className = "hb-light-color-picker";
-      element2.setAttribute("role", "slider");
-      element2.setAttribute("tabindex", interactive ? "0" : "-1");
-      element2.setAttribute("aria-label", "选择灯光颜色");
+      elementCurrent = document.createElement("div");
+      elementCurrent.className = "hb-light-color-picker";
+      elementCurrent.setAttribute("role", "slider");
+      elementCurrent.setAttribute("tabindex", interactive ? "0" : "-1");
+      elementCurrent.setAttribute("aria-label", "选择灯光颜色");
       const lightColorPickerGlowEl = document.createElement("i");
       lightColorPickerGlowEl.className = "hb-light-color-picker-glow";
       const lightColorPickerHandleEl = document.createElement("i");
       lightColorPickerHandleEl.className = "hb-light-color-picker-handle";
-      element2.append(lightColorPickerGlowEl, lightColorPickerHandleEl);
-      const runHelper1 = () => lightColorPickerPointFromHs([color.hue, color.saturation]);
+      elementCurrent.append(lightColorPickerGlowEl, lightColorPickerHandleEl);
+      const runHelper = () => lightColorPickerPointFromHs([color.hue, color.saturation]);
       const syncAriaState = ({
         hue = color.hue,
         saturation = color.saturation
       } = {}) => {
         color.hue = ((Number(hue) || 0) % 360 + 360) % 360;
         color.saturation = Math.max(0, Math.min(100, Number(saturation) || 0));
-        const color2 = runHelper1();
+        const point = runHelper();
         const colorRgb = hsToRgbColor([color.hue, color.saturation]);
-        const color3 = "rgb(" + colorRgb.join(",") + ")";
-        element2.style.setProperty("--hb-light-color-picker-x", color2.x * 100 + "%");
-        element2.style.setProperty("--hb-light-color-picker-y", color2.y * 100 + "%");
-        element2.style.setProperty("--hb-light-color-picker-color", color3);
-        element2.setAttribute("aria-valuetext", "色相 " + Math.round(color.hue) + " 度，饱和度 " + Math.round(color.saturation) + "%");
+        const value = "rgb(" + colorRgb.join(",") + ")";
+        elementCurrent.style.setProperty("--hb-light-color-picker-x", point.x * 100 + "%");
+        elementCurrent.style.setProperty("--hb-light-color-picker-y", point.y * 100 + "%");
+        elementCurrent.style.setProperty("--hb-light-color-picker-color", value);
+        elementCurrent.setAttribute("aria-valuetext", "色相 " + Math.round(color.hue) + " 度，饱和度 " + Math.round(color.saturation) + "%");
         onVisualChange?.({
           colorHs: [color.hue, color.saturation],
           colorRgb
         });
       };
-      const measureElementBox = event1 => {
-        const domRect = element2.getBoundingClientRect();
+      const measureElementBox = event => {
+        const domRect = elementCurrent.getBoundingClientRect();
         if (!domRect.width || !domRect.height) {
           return;
         }
-        const count = Math.max(0, Math.min(1, (event1.clientX - domRect.left) / domRect.width));
-        const count2 = Math.max(0, Math.min(1, (event1.clientY - domRect.top) / domRect.height));
-        const [hue, saturation] = lightColorPickerHsFromPoint(count, count2);
+        const count = Math.max(0, Math.min(1, (event.clientX - domRect.left) / domRect.width));
+        const max = Math.max(0, Math.min(1, (event.clientY - domRect.top) / domRect.height));
+        const [hue, saturation] = lightColorPickerHsFromPoint(count, max);
         syncAriaState({
           hue,
           saturation
         });
       };
-      const syncAriaState1 = async () => {
-        if (!!interactive && !color1) {
-          color1 = true;
-          element2.setAttribute("aria-busy", "true");
+      const callback = async () => {
+        if (!!interactive && !flag) {
+          flag = true;
+          elementCurrent.setAttribute("aria-busy", "true");
           try {
             await this.callEntityService("light", "turn_on", entityId, lightColorServiceData(numeric, [color.hue, color.saturation]));
             onTurnOn?.();
           } catch (error) {
             this.options.onError?.(error);
           } finally {
-            color1 = false;
-            element2.removeAttribute("aria-busy");
+            flag = false;
+            elementCurrent.removeAttribute("aria-busy");
           }
         }
       };
-      element2.addEventListener("pointerdown", event => {
+      elementCurrent.addEventListener("pointerdown", event => {
         if (interactive) {
-          element2.setPointerCapture?.(event.pointerId);
-          element2.dataset.dragging = "true";
+          elementCurrent.setPointerCapture?.(event.pointerId);
+          elementCurrent.dataset.dragging = "true";
           measureElementBox(event);
           event.preventDefault();
         }
       });
-      element2.addEventListener("pointermove", arg => {
-        if (element2.dataset.dragging === "true") {
+      elementCurrent.addEventListener("pointermove", arg => {
+        if (elementCurrent.dataset.dragging === "true") {
           measureElementBox(arg);
         }
       });
-      const state3 = async event1 => {
-        if (element2.dataset.dragging === "true") {
-          element2.dataset.dragging = "false";
-          element2.releasePointerCapture?.(event1.pointerId);
-          await syncAriaState1();
+      const state = async event => {
+        if (elementCurrent.dataset.dragging === "true") {
+          elementCurrent.dataset.dragging = "false";
+          elementCurrent.releasePointerCapture?.(event.pointerId);
+          await callback();
         }
       };
-      element2.addEventListener("pointerup", state3);
-      element2.addEventListener("pointercancel", state3);
-      element2.addEventListener("keydown", async event => {
+      elementCurrent.addEventListener("pointerup", state);
+      elementCurrent.addEventListener("pointercancel", state);
+      elementCurrent.addEventListener("keydown", async event => {
         if (!interactive) {
           return;
         }
-        const event1 = event.shiftKey ? 10 : 3;
+        const count = event.shiftKey ? 10 : 3;
         let {
           hue,
           saturation
         } = color;
         if (event.key === "ArrowLeft") {
-          hue -= event1;
+          hue -= count;
         } else if (event.key === "ArrowRight") {
-          hue += event1;
+          hue += count;
         } else if (event.key === "ArrowUp") {
-          saturation -= event1;
+          saturation -= count;
         } else if (event.key === "ArrowDown") {
-          saturation += event1;
+          saturation += count;
         } else if (event.key === "Enter" || event.key === " ") {
-          await syncAriaState1();
+          await callback();
           event.preventDefault();
           return;
         } else {
@@ -7734,25 +7735,25 @@ export class PanelRenderer {
         });
         event.preventDefault();
       });
-      element2.syncColorPicker = syncAriaState;
-      element2.cleanupColorPicker = () => {
-        element2.dataset.dragging = "false";
+      elementCurrent.syncColorPicker = syncAriaState;
+      elementCurrent.cleanupColorPicker = () => {
+        elementCurrent.dataset.dragging = "false";
       };
       syncAriaState();
-      element.append(element2);
+      element.append(elementCurrent);
     }
     const finiteNumber = Number.isFinite(Number(numeric.max_mireds)) ? 1000000 / Number(numeric.max_mireds) : 2000;
-    const finiteNumber1 = Number.isFinite(Number(numeric.min_mireds)) ? 1000000 / Number(numeric.min_mireds) : 6500;
+    const value = Number.isFinite(Number(numeric.min_mireds)) ? 1000000 / Number(numeric.min_mireds) : 6500;
     const asNumber = Number(numeric.min_color_temp_kelvin) || finiteNumber;
-    const asNumber1 = Number(numeric.max_color_temp_kelvin) || finiteNumber1;
-    const finiteNumber2 = Number.isFinite(Number(numeric.color_temp)) ? 1000000 / Number(numeric.color_temp) : asNumber;
-    const asNumber2 = Number(numeric.color_temp_kelvin) || finiteNumber2;
+    const number = Number(numeric.max_color_temp_kelvin) || value;
+    const finiteNumberCurrent = Number.isFinite(Number(numeric.color_temp)) ? 1000000 / Number(numeric.color_temp) : asNumber;
+    const asNumberCurrent = Number(numeric.color_temp_kelvin) || finiteNumberCurrent;
     if (!lightDetailsControlsEl) {
       syncVisualState({
         label: "色温",
-        value: asNumber2,
+        value: asNumberCurrent,
         minimum: Math.round(asNumber),
-        maximum: Math.round(asNumber1),
+        maximum: Math.round(number),
         step: 50,
         suffix: "K",
         dataKey: "color_temp_kelvin",
@@ -7760,13 +7761,13 @@ export class PanelRenderer {
         icon: "♨",
         minimumLabel: "暖色",
         maximumLabel: "冷色",
-        supported: supported2
+        supported: capabilities
       });
     }
-    const finiteNumber3 = Number.isFinite(Number(numeric.brightness)) ? Number(numeric.brightness) / 255 * 100 : 100;
+    const finiteNumberNext = Number.isFinite(Number(numeric.brightness)) ? Number(numeric.brightness) / 255 * 100 : 100;
     syncVisualState({
       label: "亮度",
-      value: finiteNumber3,
+      value: finiteNumberNext,
       minimum: 1,
       maximum: 100,
       step: 1,
@@ -7779,49 +7780,49 @@ export class PanelRenderer {
       supported
     });
     let state = null;
-    let state1 = 0;
-    let state2 = component;
+    let count = 0;
+    let stateCurrent = component;
     const scheduleTimeout = ({
       resync = false
     } = {}) => {
-      window.clearTimeout(state1);
-      state1 = 0;
+      window.clearTimeout(count);
+      count = 0;
       state = null;
       if (resync) {
-        element.syncLightState?.(state2);
+        element.syncLightState?.(stateCurrent);
       }
     };
-    const scheduleTimeout1 = () => {
-      window.clearTimeout(state1);
-      state1 = 0;
+    const callback = () => {
+      window.clearTimeout(count);
+      count = 0;
       if (!state) {
         return;
       }
       const nowMs = Date.now();
-      const state3 = lightPresetPendingDecision(state, nowMs);
-      if (state3 === "confirmed" || state3 === "timeout") {
+      const decision = lightPresetPendingDecision(state, nowMs);
+      if (decision === "confirmed" || decision === "timeout") {
         scheduleTimeout({
           resync: true
         });
         return;
       }
       const clamped = state.latestMatches ? Math.min(state.expiresAt, Math.max(state.minimumHoldUntil, state.matchStartedAt + LIGHT_PRESET_STABLE_CONFIRMATION_MS)) : state.expiresAt;
-      state1 = window.setTimeout(scheduleTimeout1, Math.max(50, clamped - nowMs));
+      count = window.setTimeout(callback, Math.max(50, clamped - nowMs));
     };
     const lightDetailsPresetsEl = LIGHT_DETAIL_PRESET_DEFINITIONS;
-    const runHelper = lightDetailsPresetsEl2 => relativeLightColorTemperature(asNumber, asNumber1, lightDetailsPresetsEl2.colorTemperaturePercent);
-    const lightDetailsPresetsEl1 = document.createElement("div");
-    lightDetailsPresetsEl1.className = "hb-light-details-presets";
-    lightDetailsPresetsEl1.hidden = lightDetailsControlsEl || !supported && !lightDetailsControlsEl1;
+    const runHelper = lightDetailsPresetsEl => relativeLightColorTemperature(asNumber, number, lightDetailsPresetsEl.colorTemperaturePercent);
+    const lightDetailsPresetsElCurrent = document.createElement("div");
+    lightDetailsPresetsElCurrent.className = "hb-light-details-presets";
+    lightDetailsPresetsElCurrent.hidden = lightDetailsControlsEl || !supported && !lightDetailsControlsElCurrent;
     const event = lightDetailsPresetsEl.map(arg => {
       const actionButtonEl = document.createElement("button");
       actionButtonEl.type = "button";
       actionButtonEl.disabled = !brightness;
-      const element3 = document.createElement("strong");
-      element3.textContent = arg.label;
-      const element4 = document.createElement("small");
-      element4.textContent = supported ? arg.detail : "开启";
-      actionButtonEl.append(element3, element4);
+      const element = document.createElement("strong");
+      element.textContent = arg.label;
+      const elementCurrent = document.createElement("small");
+      elementCurrent.textContent = supported ? arg.detail : "开启";
+      actionButtonEl.append(element, elementCurrent);
       actionButtonEl.addEventListener("click", async () => {
         if (!interactive || !brightness) {
           return;
@@ -7831,10 +7832,10 @@ export class PanelRenderer {
         if (supported) {
           Object.assign(size, lightPresetBrightnessServiceData(arg.brightnessPercent));
         }
-        if (lightDetailsControlsEl1) {
+        if (lightDetailsControlsElCurrent) {
           size.color_temp_kelvin = Math.round(colorTemperatureKelvin);
         }
-        window.clearTimeout(state1);
+        window.clearTimeout(count);
         const nowMs = Date.now();
         state = {
           brightnessPercent: arg.brightnessPercent,
@@ -7844,11 +7845,11 @@ export class PanelRenderer {
           latestMatches: false,
           matchStartedAt: null
         };
-        scheduleTimeout1();
-        const brightness1 = index.get("brightness_pct");
-        if (brightness1?.supported) {
-          brightness1.input.value = String(arg.brightnessPercent);
-          brightness1.updateSliderValue({
+        callback();
+        const entry = index.get("brightness_pct");
+        if (entry?.supported) {
+          entry.input.value = String(arg.brightnessPercent);
+          entry.updateSliderValue({
             notify: true
           });
         }
@@ -7859,15 +7860,15 @@ export class PanelRenderer {
             notify: true
           });
         }
-        for (const event1 of event) {
-          event1.button.classList.toggle("is-active", event1.button === actionButtonEl);
+        for (const eventCurrent of event) {
+          eventCurrent.button.classList.toggle("is-active", eventCurrent.button === actionButtonEl);
         }
         onVisualChange?.({
           isOn: true,
           ...(supported ? {
             brightnessPercent: arg.brightnessPercent
           } : {}),
-          ...(lightDetailsControlsEl1 ? {
+          ...(lightDetailsControlsElCurrent ? {
             colorTemperatureKelvin
           } : {})
         });
@@ -7882,25 +7883,25 @@ export class PanelRenderer {
           this.options.onError?.(error);
         }
       });
-      lightDetailsPresetsEl1.append(actionButtonEl);
+      lightDetailsPresetsElCurrent.append(actionButtonEl);
       return {
         actionButtonEl,
         ...arg
       };
     });
-    element.append(lightDetailsPresetsEl1);
+    element.append(lightDetailsPresetsElCurrent);
     const syncLightControl = entityState => {
-      const numeric1 = entityState?.attributes || {};
-      const brightness1 = entityState?.state === "on";
-      const finiteNumber4 = Number.isFinite(Number(numeric1.brightness)) ? Number(numeric1.brightness) / 255 * 100 : NaN;
-      const finiteNumber5 = Number.isFinite(Number(numeric1.color_temp)) ? 1000000 / Number(numeric1.color_temp) : NaN;
-      const event1 = Number(numeric1.color_temp_kelvin) || finiteNumber5;
-      for (const event2 of event) {
-        const event3 = runHelper(event2);
-        const count = Math.max(50, (asNumber1 - asNumber) * 0.06);
-        const finiteNumber6 = !supported || Number.isFinite(finiteNumber4) && Math.abs(finiteNumber4 - event2.brightnessPercent) <= 4;
-        const finiteNumber7 = !lightDetailsControlsEl1 || Number.isFinite(event1) && Math.abs(event1 - event3) <= count;
-        event2.button.classList.toggle("is-active", brightness1 && finiteNumber6 && finiteNumber7);
+      const numeric = entityState?.attributes || {};
+      const brightness = entityState?.state === "on";
+      const finiteNumber = Number.isFinite(Number(numeric.brightness)) ? Number(numeric.brightness) / 255 * 100 : NaN;
+      const value = Number.isFinite(Number(numeric.color_temp)) ? 1000000 / Number(numeric.color_temp) : NaN;
+      const eventCurrent = Number(numeric.color_temp_kelvin) || value;
+      for (const eventNext of event) {
+        const event = runHelper(eventNext);
+        const count = Math.max(50, (number - asNumber) * 0.06);
+        const finiteNumberCurrent = !supported || Number.isFinite(finiteNumber) && Math.abs(finiteNumber - eventNext.brightnessPercent) <= 4;
+        const finiteNumberNext = !lightDetailsControlsElCurrent || Number.isFinite(eventCurrent) && Math.abs(eventCurrent - event) <= count;
+        eventNext.button.classList.toggle("is-active", brightness && finiteNumberCurrent && finiteNumberNext);
       }
     };
     syncLightControl(component);
@@ -7908,40 +7909,40 @@ export class PanelRenderer {
       if (!entityState) {
         return;
       }
-      state2 = entityState;
-      const numeric1 = entityState.attributes || {};
+      stateCurrent = entityState;
+      const numeric = entityState.attributes || {};
       const temperature = index.get("color_temp_kelvin");
-      const finiteNumber4 = Number.isFinite(Number(numeric1.color_temp)) ? 1000000 / Number(numeric1.color_temp) : NaN;
-      const asNumber3 = Number(numeric1.color_temp_kelvin) || finiteNumber4;
-      const brightness1 = index.get("brightness_pct");
-      const finiteNumber5 = Number.isFinite(Number(numeric1.brightness)) ? Number(numeric1.brightness) / 255 * 100 : NaN;
+      const finiteNumber = Number.isFinite(Number(numeric.color_temp)) ? 1000000 / Number(numeric.color_temp) : NaN;
+      const asNumber = Number(numeric.color_temp_kelvin) || finiteNumber;
+      const brightness = index.get("brightness_pct");
+      const value = Number.isFinite(Number(numeric.brightness)) ? Number(numeric.brightness) / 255 * 100 : NaN;
       if (state) {
-        const finiteNumber6 = !supported || Number.isFinite(finiteNumber5) && Math.abs(finiteNumber5 - state.brightnessPercent) <= 4;
-        const finiteNumber7 = !lightDetailsControlsEl1 || Number.isFinite(asNumber3) && Math.abs(asNumber3 - state.colorTemperatureKelvin) <= 220;
-        const state3 = finiteNumber6 && finiteNumber7;
-        if (state3 && !state.latestMatches) {
+        const finiteNumber = !supported || Number.isFinite(value) && Math.abs(value - state.brightnessPercent) <= 4;
+        const finiteNumberCurrent = !lightDetailsControlsElCurrent || Number.isFinite(asNumber) && Math.abs(asNumber - state.colorTemperatureKelvin) <= 220;
+        const stateCurrent = finiteNumber && finiteNumberCurrent;
+        if (stateCurrent && !state.latestMatches) {
           state.matchStartedAt = Date.now();
         }
-        if (!state3) {
+        if (!stateCurrent) {
           state.matchStartedAt = null;
         }
-        state.latestMatches = state3;
-        scheduleTimeout1();
+        state.latestMatches = stateCurrent;
+        callback();
       }
-      const brightness2 = state?.colorTemperatureKelvin ?? asNumber3;
-      const brightness3 = state?.brightnessPercent ?? finiteNumber5;
-      if (temperature?.supported && Number.isFinite(brightness2)) {
-        temperature.input.value = String(brightness2);
+      const brightnessCurrent = state?.colorTemperatureKelvin ?? asNumber;
+      const brightnessNext = state?.brightnessPercent ?? value;
+      if (temperature?.supported && Number.isFinite(brightnessCurrent)) {
+        temperature.input.value = String(brightnessCurrent);
         temperature.updateSliderValue();
       }
-      if (brightness1?.supported && Number.isFinite(brightness3)) {
-        brightness1.input.value = String(brightness3);
-        brightness1.updateSliderValue();
+      if (brightness?.supported && Number.isFinite(brightnessNext)) {
+        brightness.input.value = String(brightnessNext);
+        brightness.updateSliderValue();
       }
-      if (element2) {
-        const list = Array.isArray(numeric1.hs_color) ? numeric1.hs_color : rgbToHsColor(numeric1.rgb_color);
+      if (elementCurrent) {
+        const list = Array.isArray(numeric.hs_color) ? numeric.hs_color : rgbToHsColor(numeric.rgb_color);
         if (list) {
-          element2.syncColorPicker({
+          elementCurrent.syncColorPicker({
             hue: list[0],
             saturation: list[1]
           });
@@ -7950,17 +7951,17 @@ export class PanelRenderer {
       syncLightControl(state ? {
         state: "on",
         attributes: {
-          ...numeric1,
+          ...numeric,
           ...(supported ? {
             brightness: state.brightnessPercent / 100 * 255
           } : {}),
-          ...(lightDetailsControlsEl1 ? {
+          ...(lightDetailsControlsElCurrent ? {
             color_temp_kelvin: state.colorTemperatureKelvin
           } : {})
         }
       } : entityState);
-      const colorTemperatureKelvin = lightVisualValueForCapability(lightDetailsControlsEl1, brightness2, UNSUPPORTED_LIGHT_VISUAL_TEMPERATURE_KELVIN);
-      const brightnessPercent = lightVisualValueForCapability(supported, brightness3, UNSUPPORTED_LIGHT_VISUAL_BRIGHTNESS_PERCENT);
+      const colorTemperatureKelvin = lightVisualValueForCapability(lightDetailsControlsElCurrent, brightnessCurrent, UNSUPPORTED_LIGHT_VISUAL_TEMPERATURE_KELVIN);
+      const brightnessPercent = lightVisualValueForCapability(supported, brightnessNext, UNSUPPORTED_LIGHT_VISUAL_BRIGHTNESS_PERCENT);
       onVisualChange?.({
         isOn: entityState.state === "on",
         colorTemperatureKelvin,
@@ -7970,7 +7971,7 @@ export class PanelRenderer {
     element.syncLightState(component);
     element.cleanupLightDetails = () => {
       scheduleTimeout();
-      element2?.cleanupColorPicker?.();
+      elementCurrent?.cleanupColorPicker?.();
     };
     return element;
   }
@@ -7998,13 +7999,13 @@ export class PanelRenderer {
     coverDetailsPositionHeadingEl.className = "hb-cover-details-position-heading";
     const element = document.createElement("strong");
     element.textContent = dream ? "叶片角度" : airer ? "晾杆高度" : "开合位置";
-    const element2 = document.createElement("output");
-    coverDetailsPositionHeadingEl.append(element, element2);
-    const element3 = document.createElement("input");
-    element3.type = "range";
-    element3.min = "0";
-    element3.max = "100";
-    element3.step = "1";
+    const elementCurrent = document.createElement("output");
+    coverDetailsPositionHeadingEl.append(element, elementCurrent);
+    const elementNext = document.createElement("input");
+    elementNext.type = "range";
+    elementNext.min = "0";
+    elementNext.max = "100";
+    elementNext.step = "1";
     const coverDetailsPositionLegendEl = document.createElement("span");
     coverDetailsPositionLegendEl.className = "hb-cover-details-position-legend";
     if (dream) {
@@ -8028,19 +8029,19 @@ export class PanelRenderer {
         textContent: "打开"
       }));
     }
-    coverDetailsPositionEl.append(coverDetailsPositionHeadingEl, element3, coverDetailsPositionLegendEl);
+    coverDetailsPositionEl.append(coverDetailsPositionHeadingEl, elementNext, coverDetailsPositionLegendEl);
     const coverDetailsActionsEl = document.createElement("div");
     coverDetailsActionsEl.className = "hb-cover-details-actions";
     const size = "open_cover";
     const service = "stop_cover";
-    const size1 = "close_cover";
-    const service2 = motorReversed ? size : size1;
-    const service3 = motorReversed ? size1 : size;
+    const sizeCurrent = "close_cover";
+    const serviceCurrent = motorReversed ? size : sizeCurrent;
+    const serviceNext = motorReversed ? sizeCurrent : size;
     let retracted = dreamCurtainIsRetracted(component?.state, motorReversed);
     const state = (dream ? [{
       label: "关闭",
       icon: "←",
-      service: service2,
+      service: serviceCurrent,
       curtainRetracted: false
     }, {
       label: "暂停",
@@ -8049,12 +8050,12 @@ export class PanelRenderer {
     }, {
       label: "开启",
       icon: "→",
-      service: service3,
+      service: serviceNext,
       curtainRetracted: true
     }] : airer ? [{
       label: "下降",
       icon: "↓",
-      service: service2,
+      service: serviceCurrent,
       action: "down"
     }, {
       label: "暂停",
@@ -8064,12 +8065,12 @@ export class PanelRenderer {
     }, {
       label: "升起",
       icon: "↑",
-      service: service3,
+      service: serviceNext,
       action: "up"
     }] : [{
       label: "关闭",
       icon: "←",
-      service: service2
+      service: serviceCurrent
     }, {
       label: "暂停",
       icon: "Ⅱ",
@@ -8077,42 +8078,42 @@ export class PanelRenderer {
     }, {
       label: "打开",
       icon: "→",
-      service: service3
+      service: serviceNext
     }]).map(arg => {
-      const element4 = document.createElement("button");
-      element4.type = "button";
-      element4.dataset.coverAction = arg.service;
-      const element5 = document.createElement("i");
-      element5.textContent = arg.icon;
-      element5.setAttribute("aria-hidden", "true");
-      const element6 = document.createElement("strong");
-      element6.textContent = arg.label;
-      element4.append(element5, element6);
-      element4.addEventListener("click", async () => {
+      const element = document.createElement("button");
+      element.type = "button";
+      element.dataset.coverAction = arg.service;
+      const elementCurrent = document.createElement("i");
+      elementCurrent.textContent = arg.icon;
+      elementCurrent.setAttribute("aria-hidden", "true");
+      const elementNext = document.createElement("strong");
+      elementNext.textContent = arg.label;
+      element.append(elementCurrent, elementNext);
+      element.addEventListener("click", async () => {
         if (interactive) {
           if (dream && typeof arg.curtainRetracted == "boolean") {
             coverDetailsControlsEl.beginDreamCurtainMotion?.(arg.curtainRetracted);
           }
-          if (!dream && arg.service === service3) {
+          if (!dream && arg.service === serviceNext) {
             coverDetailsControlsEl.beginCoverMotion?.(100, "opening");
-          } else if (!dream && arg.service === service2) {
+          } else if (!dream && arg.service === serviceCurrent) {
             coverDetailsControlsEl.beginCoverMotion?.(0, "closing");
           } else {
             coverDetailsControlsEl.stopCoverMotion?.();
           }
-          element4.classList.add("is-pending");
+          element.classList.add("is-pending");
           try {
-            const state7 = airer && arg.action ? airerActionEntityIds[arg.action] : "";
+            const state = airer && arg.action ? airerActionEntityIds[arg.action] : "";
             if (airer && positionCommandEntityId && ["up", "down"].includes(arg.action)) {
-              const state8 = arg.action === "up" ? 100 : 0;
-              const state9 = airerDevicePosition(state8, positionCalibration);
+              const state = arg.action === "up" ? 100 : 0;
+              const position = airerDevicePosition(state, positionCalibration);
               await this.callEntityService("number", "set_value", positionCommandEntityId, {
-                value: state9
+                value: position
               });
             } else if (airer && arg.action === "pause") {
               await this.callEntityService("cover", service, entityId);
-            } else if (state7) {
-              await this.callEntityService("button", "press", state7);
+            } else if (state) {
+              await this.callEntityService("button", "press", state);
             } else {
               await this.callEntityService("cover", arg.service, entityId);
             }
@@ -8122,27 +8123,27 @@ export class PanelRenderer {
             coverDetailsControlsEl.syncCoverState?.(component);
             this.options.onError?.(error);
           } finally {
-            element4.classList.remove("is-pending");
+            element.classList.remove("is-pending");
           }
         }
       });
-      coverDetailsActionsEl.append(element4);
-      return element4;
+      coverDetailsActionsEl.append(element);
+      return element;
     });
-    let state1 = positionState;
-    let state2 = positionCommandState;
+    let stateCurrent = positionState;
+    let stateNext = positionCommandState;
     let numeric = motorState;
     const runHelper = () => {
       if (airer) {
-        learnAirerPositionCalibration(positionCalibration, state1?.state, state2?.state, numeric?.state);
+        learnAirerPositionCalibration(positionCalibration, stateCurrent?.state, stateNext?.state, numeric?.state);
       }
     };
     runHelper();
     let text = String(component?.state || "");
     const resolveCoverPosition = entityState => {
-      const state7 = airer ? airerReportedPosition(state1, entityState, positionCalibration) : Number(entityState?.attributes?.[tilt ? "current_tilt_position" : "current_position"]);
-      if (Number.isFinite(state7)) {
-        const count = Math.max(0, Math.min(100, state7));
+      const state = airer ? airerReportedPosition(stateCurrent, entityState, positionCalibration) : Number(entityState?.attributes?.[tilt ? "current_tilt_position" : "current_position"]);
+      if (Number.isFinite(state)) {
+        const count = Math.max(0, Math.min(100, state));
         if (airer) {
           return airerPresentationPositionForState(count, text || entityState?.state, positionCalibration, motorReversed);
         } else {
@@ -8155,26 +8156,26 @@ export class PanelRenderer {
         return 0;
       }
     };
-    let position1 = component;
-    let position2 = resolveCoverPosition(component);
-    let position = position2;
-    let position3 = false;
-    let state3 = 0;
-    let state4 = null;
-    let state5 = null;
-    let state6 = 0;
+    let positionCurrent = component;
+    let positionNext = resolveCoverPosition(component);
+    let position = positionNext;
+    let flag = false;
+    let statePrevious = 0;
+    let stateLocal = null;
+    let stateItem = null;
+    let stateEntry = 0;
     let event = null;
-    const runHelper1 = () => {
-      window.cancelAnimationFrame(state3);
-      state3 = 0;
+    const callback = () => {
+      window.cancelAnimationFrame(statePrevious);
+      statePrevious = 0;
     };
     const syncVisualState = (arg, state = "") => {
       position = Math.max(0, Math.min(100, Number(arg) || 0));
-      element3.value = String(position);
-      element3.style.setProperty("--hb-cover-position-progress", position + "%");
-      element2.textContent = Math.round(position) + "%";
-      for (const element4 of state) {
-        element4.classList.toggle("is-active", element4.dataset.coverAction === (state === "opening" ? size : state === "closing" ? size1 : ""));
+      elementNext.value = String(position);
+      elementNext.style.setProperty("--hb-cover-position-progress", position + "%");
+      elementCurrent.textContent = Math.round(position) + "%";
+      for (const element of state) {
+        element.classList.toggle("is-active", element.dataset.coverAction === (state === "opening" ? size : state === "closing" ? sizeCurrent : ""));
       }
       onVisualChange?.({
         position,
@@ -8184,7 +8185,7 @@ export class PanelRenderer {
     coverDetailsControlsEl.setDreamCurtainRetracted = (arg, flag = false) => {
       if (dream) {
         retracted = !!arg;
-        element3.disabled = !interactive;
+        elementNext.disabled = !interactive;
         onCurtainPositionChange?.({
           retracted,
           moving: !!flag
@@ -8205,12 +8206,12 @@ export class PanelRenderer {
       event = null;
     };
     coverDetailsControlsEl.beginCoverMotion = (arg, state) => {
-      runHelper1();
-      state5 = null;
-      state6 = 0;
+      callback();
+      stateItem = null;
+      stateEntry = 0;
       const initialPosition = position;
       const target = Math.max(0, Math.min(100, Number(arg) || 0));
-      state4 = {
+      stateLocal = {
         direction: target >= initialPosition ? 1 : -1,
         target,
         state,
@@ -8220,39 +8221,39 @@ export class PanelRenderer {
         ignoreStaleUntil: Date.now() + 4000,
         expiresAt: Date.now() + (airer ? 120000 : 10000)
       };
-      const state7 = performance.now();
+      const now = performance.now();
       const count = Math.max(900, Math.abs(target - initialPosition) * 28);
-      const state8 = item => {
-        const state9 = Math.min(1, (item - state7) / count);
-        const state10 = 1 - (1 - state9) ** 3;
-        syncVisualState(initialPosition + (target - initialPosition) * state10, state);
-        if (state9 < 1) {
-          state3 = window.requestAnimationFrame(state8);
+      const stateCurrent = item => {
+        const min = Math.min(1, (item - now) / count);
+        const value = 1 - (1 - min) ** 3;
+        syncVisualState(initialPosition + (target - initialPosition) * value, state);
+        if (min < 1) {
+          statePrevious = window.requestAnimationFrame(stateCurrent);
         } else {
-          state3 = 0;
+          statePrevious = 0;
         }
       };
       syncVisualState(initialPosition, state);
-      state3 = window.requestAnimationFrame(state8);
+      statePrevious = window.requestAnimationFrame(stateCurrent);
     };
     coverDetailsControlsEl.stopCoverMotion = () => {
-      runHelper1();
-      state4 = null;
+      callback();
+      stateLocal = null;
       syncVisualState(position, "");
     };
     coverDetailsControlsEl.cancelCoverMotion = () => {
-      runHelper1();
-      state4 = null;
+      callback();
+      stateLocal = null;
     };
     coverDetailsControlsEl.holdCoverPosition = arg => {
-      runHelper1();
-      state5 = null;
-      state6 = 0;
+      callback();
+      stateItem = null;
+      stateEntry = 0;
       const target = Math.max(0, Math.min(100, Number(arg) || 0));
-      const initialPosition = position2;
+      const initialPosition = positionNext;
       const direction = target >= initialPosition ? 1 : -1;
       const state = dream || Math.abs(target - initialPosition) < 0.5 ? "" : direction > 0 ? "opening" : "closing";
-      state4 = {
+      stateLocal = {
         direction,
         target,
         state,
@@ -8264,24 +8265,24 @@ export class PanelRenderer {
       };
       syncVisualState(target, state);
     };
-    const runHelper2 = (arg, {
+    const runHelperCurrent = (arg, {
       primary = false
     } = {}) => {
       if (primary) {
-        position1 = arg || position1;
+        positionCurrent = arg || positionCurrent;
         text = String(arg?.state || text);
       }
-      if (state5 !== null && Date.now() >= state6) {
-        state5 = null;
-        state6 = 0;
+      if (stateItem !== null && Date.now() >= stateEntry) {
+        stateItem = null;
+        stateEntry = 0;
       }
-      const state7 = airer && state5 !== null ? state5 : resolveCoverPosition(arg);
-      position2 = state7;
-      const text2 = String(arg?.state || "");
+      const state = airer && stateItem !== null ? stateItem : resolveCoverPosition(arg);
+      positionNext = state;
+      const string = String(arg?.state || "");
       if (dream) {
-        const physicalState = physicalCoverState(text2, motorReversed);
-        const event1 = dreamCurtainIsRetracted(text2, motorReversed);
-        if (event && event1 === event.target) {
+        const physicalState = physicalCoverState(string, motorReversed);
+        const retracted = dreamCurtainIsRetracted(string, motorReversed);
+        if (event && retracted === event.target) {
           const target = event.target;
           event = null;
           coverDetailsControlsEl.setDreamCurtainRetracted?.(target, false);
@@ -8289,72 +8290,72 @@ export class PanelRenderer {
           coverDetailsControlsEl.setDreamCurtainRetracted?.(event.target, true);
         } else {
           event = null;
-          coverDetailsControlsEl.setDreamCurtainRetracted?.(event1, physicalState === "opening" || physicalState === "closing");
+          coverDetailsControlsEl.setDreamCurtainRetracted?.(retracted, physicalState === "opening" || physicalState === "closing");
         }
       }
-      if (!position3) {
-        if (state4) {
+      if (!flag) {
+        if (stateLocal) {
           const nowMs = Date.now();
           const {
             direction,
             target,
-            state: state8
-          } = state4;
-          const state9 = coverPositionReachedTarget(state7, target, direction);
-          const state10 = target <= 0.5 && text2 === "closed" || target >= 99.5 && text2 === "open";
-          const numeric = Number(numeric?.state);
-          const finiteNumber = airer && state4.sawMotorRunning && Number.isFinite(numeric) && Math.abs(numeric) < 0.5;
-          if (airer ? state10 || finiteNumber && state9 : state9 || state10 || target >= 99.5 && state7 >= 99.5) {
-            runHelper1();
+            state: stateCurrent
+          } = stateLocal;
+          const stateNext = coverPositionReachedTarget(state, target, direction);
+          const value = target <= 0.5 && string === "closed" || target >= 99.5 && string === "open";
+          const numericState = Number(numeric?.state);
+          const finiteNumber = airer && stateLocal.sawMotorRunning && Number.isFinite(numericState) && Math.abs(numericState) < 0.5;
+          if (airer ? value || finiteNumber && stateNext : stateNext || value || target >= 99.5 && state >= 99.5) {
+            callback();
             if (airer) {
-              state5 = target;
-              state6 = Date.now() + 120000;
+              stateItem = target;
+              stateEntry = Date.now() + 120000;
             }
-            state4 = null;
-            syncVisualState(target, text2 || (direction < 0 ? "closed" : "open"));
+            stateLocal = null;
+            syncVisualState(target, string || (direction < 0 ? "closed" : "open"));
             return;
           }
-          if (direction < 0 ? state7 < state4.lastServerPosition - 0.5 || text2 === "closing" : state7 > state4.lastServerPosition + 0.5 || text2 === "opening") {
-            state4.lastServerPosition = direction < 0 ? Math.min(state4.lastServerPosition, state7) : Math.max(state4.lastServerPosition, state7);
-            const position4 = coverPendingDisplayPosition(position, state7, direction);
-            syncVisualState(position4, state8);
+          if (direction < 0 ? state < stateLocal.lastServerPosition - 0.5 || string === "closing" : state > stateLocal.lastServerPosition + 0.5 || string === "opening") {
+            stateLocal.lastServerPosition = direction < 0 ? Math.min(stateLocal.lastServerPosition, state) : Math.max(stateLocal.lastServerPosition, state);
+            const positionCurrent = coverPendingDisplayPosition(position, state, direction);
+            syncVisualState(positionCurrent, stateCurrent);
             return;
           }
-          if (nowMs < state4.ignoreStaleUntil || airer && nowMs < state4.expiresAt || nowMs < state4.expiresAt && Math.abs(state7 - state4.initialPosition) < 0.5) {
+          if (nowMs < stateLocal.ignoreStaleUntil || airer && nowMs < stateLocal.expiresAt || nowMs < stateLocal.expiresAt && Math.abs(state - stateLocal.initialPosition) < 0.5) {
             return;
           }
-          runHelper1();
-          state4 = null;
+          callback();
+          stateLocal = null;
         } else {
-          runHelper1();
+          callback();
         }
-        syncVisualState(state7, text2);
+        syncVisualState(state, string);
       }
     };
-    element3.addEventListener("pointerdown", () => {
-      position3 = true;
-      runHelper1();
-      state4 = null;
+    elementNext.addEventListener("pointerdown", () => {
+      flag = true;
+      callback();
+      stateLocal = null;
     });
-    element3.addEventListener("input", () => {
-      position3 = true;
-      runHelper1();
-      state4 = null;
-      const numeric = Number(element3.value);
+    elementNext.addEventListener("input", () => {
+      flag = true;
+      callback();
+      stateLocal = null;
+      const numeric = Number(elementNext.value);
       syncVisualState(numeric, dream ? "" : numeric > 0 ? "open" : "closed");
     });
-    element3.addEventListener("change", async () => {
-      position3 = false;
+    elementNext.addEventListener("change", async () => {
+      flag = false;
       if (!interactive) {
         return;
       }
-      const numeric = Number(element3.value);
-      const state7 = airerDevicePosition(numeric, positionCalibration);
+      const numeric = Number(elementNext.value);
+      const state = airerDevicePosition(numeric, positionCalibration);
       coverDetailsControlsEl.holdCoverPosition(numeric);
       try {
         if (airer && positionCommandEntityId) {
           await this.callEntityService("number", "set_value", positionCommandEntityId, {
-            value: state7
+            value: state
           });
         } else {
           await this.callEntityService("cover", tilt ? "set_cover_tilt_position" : "set_cover_position", entityId, {
@@ -8363,44 +8364,44 @@ export class PanelRenderer {
         }
       } catch (error) {
         coverDetailsControlsEl.cancelCoverMotion();
-        runHelper2(position1);
+        runHelperCurrent(positionCurrent);
         this.options.onError?.(error);
       }
     });
-    element3.addEventListener("pointercancel", () => {
-      position3 = false;
-      runHelper2(position1);
+    elementNext.addEventListener("pointercancel", () => {
+      flag = false;
+      runHelperCurrent(positionCurrent);
     });
     coverDetailsControlsEl.append(coverDetailsPositionEl, coverDetailsActionsEl);
-    coverDetailsControlsEl.syncCoverState = arg => runHelper2(arg, {
+    coverDetailsControlsEl.syncCoverState = arg => runHelperCurrent(arg, {
       primary: true
     });
     coverDetailsControlsEl.syncCoverPositionState = arg => {
-      state1 = arg || state1;
+      stateCurrent = arg || stateCurrent;
       runHelper();
-      runHelper2(position1);
+      runHelperCurrent(positionCurrent);
     };
     coverDetailsControlsEl.syncCoverPositionCommandState = arg => {
-      state2 = arg || state2;
+      stateNext = arg || stateNext;
       runHelper();
-      runHelper2(position1);
+      runHelperCurrent(positionCurrent);
     };
     coverDetailsControlsEl.syncAirerMotorState = arg => {
       numeric = arg || numeric;
       const motorState = Number(numeric?.state);
-      if (state4 && Number.isFinite(motorState) && Math.abs(motorState) >= 0.5) {
-        state4.sawMotorRunning = true;
+      if (stateLocal && Number.isFinite(motorState) && Math.abs(motorState) >= 0.5) {
+        stateLocal.sawMotorRunning = true;
       }
       runHelper();
-      runHelper2(position1);
+      runHelperCurrent(positionCurrent);
     };
     coverDetailsControlsEl.cleanupCoverDetails = () => {
-      runHelper1();
-      state4 = null;
+      callback();
+      stateLocal = null;
       event = null;
-      position3 = false;
+      flag = false;
     };
-    runHelper2(component, {
+    runHelperCurrent(component, {
       primary: true
     });
     return coverDetailsControlsEl;
@@ -8415,7 +8416,7 @@ export class PanelRenderer {
     const climateCapabilities = normalizeClimateCapabilities(component);
     const attributes = climateCapabilities.attributes;
     const climateDetailsControlsEl = String(entityId || "").split(".", 1)[0];
-    const climateDetailsControlsEl1 = {
+    const options = {
       entityId,
       entityMetadata: this.entityMetadata,
       entityTranslations: this.entityTranslations
@@ -8431,74 +8432,74 @@ export class PanelRenderer {
     const maximumTemperature = climateCapabilities.maximumTemperature;
     const temperatureStep = climateCapabilities.temperatureStep;
     const temperature = ["climate", "water_heater"].includes(climateDetailsControlsEl) && climateCapabilities.supportsTargetTemperature;
-    const temperature1 = climateDetailsControlsEl === "water_heater";
+    const value = climateDetailsControlsEl === "water_heater";
     element.classList.toggle("without-temperature", !temperature);
     let previous = temperature ? targetTemperature : minimumTemperature;
     let state = null;
-    let state1 = null;
-    let state2 = null;
+    let stateCurrent = null;
+    let stateNext = null;
     const scheduleTimeout = () => {
       state = null;
-      window.clearTimeout(state1);
-      window.clearTimeout(state2);
-      state1 = null;
-      state2 = null;
+      window.clearTimeout(stateCurrent);
+      window.clearTimeout(stateNext);
+      stateCurrent = null;
+      stateNext = null;
     };
-    const scheduleTimeout1 = arg => {
+    const callback = arg => {
       state = arg;
-      window.clearTimeout(state1);
-      window.clearTimeout(state2);
-      state2 = null;
-      state1 = window.setTimeout(() => {
+      window.clearTimeout(stateCurrent);
+      window.clearTimeout(stateNext);
+      stateNext = null;
+      stateCurrent = window.setTimeout(() => {
         state = null;
-        state1 = null;
+        stateCurrent = null;
       }, 8000);
     };
-    const scheduleTimeout2 = () => {
-      window.clearTimeout(state2);
-      state2 = window.setTimeout(scheduleTimeout, 2500);
+    const scheduleTimeoutCurrent = () => {
+      window.clearTimeout(stateNext);
+      stateNext = window.setTimeout(scheduleTimeout, 2500);
     };
     const climateThermostatEl = document.createElement("section");
     climateThermostatEl.className = "hb-climate-thermostat";
-    const element2 = document.createElement("button");
-    element2.type = "button";
-    element2.className = "hb-climate-temperature-step";
-    element2.textContent = "−";
-    element2.setAttribute("aria-label", "降低设定温度");
-    const element3 = document.createElement("div");
-    element3.className = "hb-climate-temperature-dial";
+    const elementCurrent = document.createElement("button");
+    elementCurrent.type = "button";
+    elementCurrent.className = "hb-climate-temperature-step";
+    elementCurrent.textContent = "−";
+    elementCurrent.setAttribute("aria-label", "降低设定温度");
+    const elementNext = document.createElement("div");
+    elementNext.className = "hb-climate-temperature-dial";
     const climateArcCapEl = document.createElement("i");
     climateArcCapEl.className = "hb-climate-arc-cap start";
     climateArcCapEl.setAttribute("aria-hidden", "true");
-    const climateArcCapEl1 = document.createElement("i");
-    climateArcCapEl1.className = "hb-climate-arc-cap end";
-    climateArcCapEl1.setAttribute("aria-hidden", "true");
+    const climateArcCapElCurrent = document.createElement("i");
+    climateArcCapElCurrent.className = "hb-climate-arc-cap end";
+    climateArcCapElCurrent.setAttribute("aria-hidden", "true");
     const climateTemperatureThumbEl = document.createElement("button");
     climateTemperatureThumbEl.type = "button";
     climateTemperatureThumbEl.className = "hb-climate-temperature-thumb";
     climateTemperatureThumbEl.setAttribute("aria-label", "拖动调节设定温度");
     const climateTemperatureContentEl = document.createElement("div");
     climateTemperatureContentEl.className = "hb-climate-temperature-content";
-    const element4 = document.createElement("small");
-    element4.textContent = "设定温度";
-    const element5 = document.createElement("strong");
-    const element6 = document.createElement("span");
-    element6.textContent = Number.isFinite(currentTemperature) ? "当前温度 " + currentTemperature + "°C" : "当前温度 --";
-    climateTemperatureContentEl.append(element4, element5, element6);
-    element3.append(climateArcCapEl, climateArcCapEl1, climateTemperatureThumbEl, climateTemperatureContentEl);
-    const element7 = document.createElement("button");
-    element7.type = "button";
-    element7.className = "hb-climate-temperature-step";
-    element7.textContent = "+";
-    element7.setAttribute("aria-label", "提高设定温度");
+    const elementPrevious = document.createElement("small");
+    elementPrevious.textContent = "设定温度";
+    const elementLocal = document.createElement("strong");
+    const elementItem = document.createElement("span");
+    elementItem.textContent = Number.isFinite(currentTemperature) ? "当前温度 " + currentTemperature + "°C" : "当前温度 --";
+    climateTemperatureContentEl.append(elementPrevious, elementLocal, elementItem);
+    elementNext.append(climateArcCapEl, climateArcCapElCurrent, climateTemperatureThumbEl, climateTemperatureContentEl);
+    const elementEntry = document.createElement("button");
+    elementEntry.type = "button";
+    elementEntry.className = "hb-climate-temperature-step";
+    elementEntry.textContent = "+";
+    elementEntry.setAttribute("aria-label", "提高设定温度");
     let entityState = component;
     const syncClimateControl = arg => climateEffectMode(arg, deviceType);
-    const syncClimateControl1 = (arg = entityState) => {
+    const syncClimateControlCurrent = (arg = entityState) => {
       entityState = arg || entityState;
       const visualMode = syncClimateControl(entityState);
       const count = Math.max(0, Math.min(1, (previous - minimumTemperature) / Math.max(temperatureStep, maximumTemperature - minimumTemperature)));
-      const state12 = visualMode === "cool" ? modeColors.cool || "#73c8ff" : visualMode === "heat" ? modeColors.heat || "#ff8a65" : modeColors.other || "#dce2e6";
-      const accentColor = visualMode === "off" ? "#65717a" : visualMode === "cool" ? lerpHexColor(state12, "#ffffff", count * 0.32) : visualMode === "heat" ? lerpHexColor(state12, "#ffffff", (1 - count) * 0.3) : state12;
+      const state = visualMode === "cool" ? modeColors.cool || "#73c8ff" : visualMode === "heat" ? modeColors.heat || "#ff8a65" : modeColors.other || "#dce2e6";
+      const accentColor = visualMode === "off" ? "#65717a" : visualMode === "cool" ? lerpHexColor(state, "#ffffff", count * 0.32) : visualMode === "heat" ? lerpHexColor(state, "#ffffff", (1 - count) * 0.3) : state;
       element.dataset.climateVisualMode = visualMode;
       if (visualMode !== "off") {
         element.dataset.lastClimateMode = String(entityState?.state || "auto");
@@ -8516,214 +8517,214 @@ export class PanelRenderer {
         accentSoft,
         targetTemperature: temperature ? previous : null
       });
-      const currentTemperature2 = normalizeClimateCapabilities(entityState).currentTemperature;
-      element6.textContent = currentTemperature2 !== null ? "当前温度 " + currentTemperature2 + "°C" : "当前温度 --";
-      const syncClimateControl3 = climateService => climateService === "set_hvac_mode" ? entityState?.state : climateService === "set_fan_mode" ? entityState?.attributes?.fan_mode : climateService === "set_swing_mode" ? entityState?.attributes?.swing_mode : climateService === "set_swing_horizontal_mode" ? entityState?.attributes?.swing_horizontal_mode : climateService === "set_preset_mode" ? entityState?.attributes?.preset_mode : climateService === "set_operation_mode" ? entityState?.attributes?.operation_mode : null;
-      for (const element8 of element.querySelectorAll("button[data-climate-service]")) {
-        const climateService = element8.dataset.climateService;
-        const state13 = syncClimateControl3(climateService);
-        element8.classList.toggle("active", element8.dataset.climateValue === String(state13 ?? ""));
+      const currentTemperature = normalizeClimateCapabilities(entityState).currentTemperature;
+      elementItem.textContent = currentTemperature !== null ? "当前温度 " + currentTemperature + "°C" : "当前温度 --";
+      const callback = climateService => climateService === "set_hvac_mode" ? entityState?.state : climateService === "set_fan_mode" ? entityState?.attributes?.fan_mode : climateService === "set_swing_mode" ? entityState?.attributes?.swing_mode : climateService === "set_swing_horizontal_mode" ? entityState?.attributes?.swing_horizontal_mode : climateService === "set_preset_mode" ? entityState?.attributes?.preset_mode : climateService === "set_operation_mode" ? entityState?.attributes?.operation_mode : null;
+      for (const elementCurrent of element.querySelectorAll("button[data-climate-service]")) {
+        const climateService = elementCurrent.dataset.climateService;
+        const state = callback(climateService);
+        elementCurrent.classList.toggle("active", elementCurrent.dataset.climateValue === String(state ?? ""));
       }
       for (const item of element.querySelectorAll(".hb-climate-select[data-climate-service]")) {
-        const text = String(syncClimateControl3(item.dataset.climateService) ?? "");
+        const text = String(callback(item.dataset.climateService) ?? "");
         item.dataset.currentValue = text;
-        const element8 = Array.from(item.querySelectorAll("[role=\"option\"]")).find(optionEl => optionEl.dataset.value === text);
-        const element9 = item.querySelector(".hb-climate-select-trigger > span");
-        if (element9) {
-          element9.textContent = element8?.textContent || text || "请选择";
-          element9.title = element9.textContent;
+        const element = Array.from(item.querySelectorAll("[role=\"option\"]")).find(optionEl => optionEl.dataset.value === text);
+        const selector = item.querySelector(".hb-climate-select-trigger > span");
+        if (selector) {
+          selector.textContent = element?.textContent || text || "请选择";
+          selector.title = selector.textContent;
         }
-        item.querySelectorAll("[role=\"option\"]").forEach(element10 => {
-          const state13 = element10.dataset.value === text;
-          element10.classList.toggle("active", state13);
-          element10.setAttribute("aria-selected", String(state13));
+        item.querySelectorAll("[role=\"option\"]").forEach(element => {
+          const state = element.dataset.value === text;
+          element.classList.toggle("active", state);
+          element.setAttribute("aria-selected", String(state));
         });
       }
     };
     const syncAriaState = (arg = false) => {
-      element5.innerHTML = temperature ? previous + "<small>°C</small>" : "--";
-      const temperature2 = (previous - minimumTemperature) / Math.max(temperatureStep, maximumTemperature - minimumTemperature) * 75;
-      const count = Math.max(0, Math.min(75, temperature2));
-      element3.style.setProperty("--hb-climate-temperature-progress", count + "%");
-      element3.style.setProperty("--hb-climate-thumb-angle", 225 + count / 75 * 270 + "deg");
+      elementLocal.innerHTML = temperature ? previous + "<small>°C</small>" : "--";
+      const value = (previous - minimumTemperature) / Math.max(temperatureStep, maximumTemperature - minimumTemperature) * 75;
+      const count = Math.max(0, Math.min(75, value));
+      elementNext.style.setProperty("--hb-climate-temperature-progress", count + "%");
+      elementNext.style.setProperty("--hb-climate-thumb-angle", 225 + count / 75 * 270 + "deg");
       climateTemperatureThumbEl.setAttribute("aria-valuemin", String(minimumTemperature));
       climateTemperatureThumbEl.setAttribute("aria-valuemax", String(maximumTemperature));
       climateTemperatureThumbEl.setAttribute("aria-valuenow", String(previous));
       climateTemperatureThumbEl.setAttribute("aria-valuetext", previous + "°C");
-      const count2 = Math.max(0.001, temperatureStep / 2);
-      element2.disabled = !temperature || previous <= minimumTemperature + count2;
-      element7.disabled = !temperature || previous >= maximumTemperature - count2;
-      element2.title = "最低 " + minimumTemperature + "°C";
-      element7.title = "最高 " + maximumTemperature + "°C";
-      syncClimateControl1();
+      const max = Math.max(0.001, temperatureStep / 2);
+      elementCurrent.disabled = !temperature || previous <= minimumTemperature + max;
+      elementEntry.disabled = !temperature || previous >= maximumTemperature - max;
+      elementCurrent.title = "最低 " + minimumTemperature + "°C";
+      elementEntry.title = "最高 " + maximumTemperature + "°C";
+      syncClimateControlCurrent();
       if (arg) {
-        element5.classList.remove("is-changing");
-        window.requestAnimationFrame(() => element5.classList.add("is-changing"));
+        elementLocal.classList.remove("is-changing");
+        window.requestAnimationFrame(() => elementLocal.classList.add("is-changing"));
       }
     };
-    let state3 = previous;
-    const state4 = [];
-    let state5 = null;
-    let state6 = previous;
-    let state7 = false;
-    let state8 = null;
+    let statePrevious = previous;
+    const list = [];
+    let stateLocal = null;
+    let stateItem = previous;
+    let flag = false;
+    let stateEntry = null;
     const runHelper = (arg, second) => arg !== null && second !== null && Math.abs(arg - second) < 1e-8;
-    const runHelper1 = () => state4.at(-1) ?? state5;
-    const runHelper2 = () => {
-      const state12 = runHelper1();
-      if (state12 !== null) {
-        scheduleTimeout1(state12);
+    const runHelperCurrent = () => list.at(-1) ?? stateLocal;
+    const runHelperNext = () => {
+      const state = runHelperCurrent();
+      if (state !== null) {
+        callback(state);
       }
     };
-    const state9 = async () => {
-      window.clearTimeout(state8);
-      state8 = null;
-      if (state7 || !state4.length) {
+    const stateList = async () => {
+      window.clearTimeout(stateEntry);
+      stateEntry = null;
+      if (flag || !list.length) {
         return;
       }
-      const temperature = state4.shift();
-      state5 = temperature;
-      if (runHelper(temperature, state3)) {
-        state5 = null;
-        runHelper2();
-        if (state4.length) {
-          state8 = window.setTimeout(state9, 220);
+      const temperature = list.shift();
+      stateLocal = temperature;
+      if (runHelper(temperature, statePrevious)) {
+        stateLocal = null;
+        runHelperNext();
+        if (list.length) {
+          stateEntry = window.setTimeout(stateList, 220);
         }
         return;
       }
-      state7 = true;
+      flag = true;
       try {
         await this.callEntityService(climateDetailsControlsEl === "climate" ? "climate" : climateDetailsControlsEl, "set_temperature", entityId, {
           temperature
         });
-        state3 = temperature;
+        statePrevious = temperature;
         if (climateDetailsControlsEl !== "water_heater") {
           onPowerChange?.(true);
         }
       } catch (error) {
-        state4.length = 0;
+        list.length = 0;
         scheduleTimeout();
-        state6 = state3;
-        previous = state3;
+        stateItem = statePrevious;
+        previous = statePrevious;
         syncAriaState(true);
         this.options.onError?.(error);
       } finally {
-        state7 = false;
-        state5 = null;
-        runHelper2();
-        if (state4.length) {
-          state8 = window.setTimeout(state9, 220);
+        flag = false;
+        stateLocal = null;
+        runHelperNext();
+        if (list.length) {
+          stateEntry = window.setTimeout(stateList, 220);
         }
       }
     };
-    const scheduleTimeout3 = ({
+    const scheduleTimeoutNext = ({
       preserveIntermediateSteps = true
     } = {}) => {
-      const state12 = previous;
-      state6 = state12;
-      const state13 = state4.at(-1) ?? state5 ?? state3;
-      if (runHelper(state12, state13)) {
-        runHelper2();
+      const state = previous;
+      stateItem = state;
+      const entry = list.at(-1) ?? stateLocal ?? statePrevious;
+      if (runHelper(state, entry)) {
+        runHelperNext();
         return;
       }
-      if (preserveIntermediateSteps && temperature1) {
-        const state14 = state4.at(-2) ?? state5 ?? state3;
-        if (state4.length && runHelper(state12, state14)) {
-          state4.pop();
+      if (preserveIntermediateSteps && value) {
+        const entry = list.at(-2) ?? stateLocal ?? statePrevious;
+        if (list.length && runHelper(state, entry)) {
+          list.pop();
         } else {
-          state4.push(state12);
+          list.push(state);
         }
       } else {
-        state4.length = 0;
-        state4.push(state12);
+        list.length = 0;
+        list.push(state);
       }
-      runHelper2();
-      if (!state7) {
-        window.clearTimeout(state8);
-        state8 = window.setTimeout(state9, 160);
+      runHelperNext();
+      if (!flag) {
+        window.clearTimeout(stateEntry);
+        stateEntry = window.setTimeout(stateList, 160);
       }
     };
-    const syncClimateControl2 = arg => {
+    const syncClimateControlNext = arg => {
       if (!interactive || !temperature) {
         return;
       }
-      const temperature2 = previous;
+      const temperatureCurrent = previous;
       const asString = String(temperatureStep).split(".")[1]?.length || 0;
       previous = Number(Math.max(minimumTemperature, Math.min(maximumTemperature, previous + arg * temperatureStep)).toFixed(asString));
-      if (previous !== temperature2) {
+      if (previous !== temperatureCurrent) {
         syncAriaState(true);
-        scheduleTimeout3();
+        scheduleTimeoutNext();
       }
     };
-    const measureElementBox = event1 => {
-      const domRect = element3.getBoundingClientRect();
+    const measureElementBox = event => {
+      const domRect = elementNext.getBoundingClientRect();
       const size = domRect.left + domRect.width / 2;
-      const size1 = domRect.top + domRect.height / 2;
-      const event2 = event1.clientX - size;
-      const state12 = event1.clientY - size1;
-      const state13 = (Math.atan2(event2, -state12) * 180 / Math.PI + 360) % 360;
+      const value = domRect.top + domRect.height / 2;
+      const eventCurrent = event.clientX - size;
+      const state = event.clientY - value;
+      const stateCurrent = (Math.atan2(eventCurrent, -state) * 180 / Math.PI + 360) % 360;
       let amount;
-      if (state13 >= 225) {
-        amount = state13;
-      } else if (state13 <= 135) {
-        amount = state13 + 360;
+      if (stateCurrent >= 225) {
+        amount = stateCurrent;
+      } else if (stateCurrent <= 135) {
+        amount = stateCurrent + 360;
       } else {
-        amount = state13 <= 180 ? 495 : 225;
+        amount = stateCurrent <= 180 ? 495 : 225;
       }
       const count = Math.max(0, Math.min(1, (amount - 225) / 270));
       const asString = String(temperatureStep).split(".")[1]?.length || 0;
       return Number((minimumTemperature + Math.round((maximumTemperature - minimumTemperature) * count / temperatureStep) * temperatureStep).toFixed(asString));
     };
     let event = null;
-    element3.addEventListener("pointerdown", event => {
+    elementNext.addEventListener("pointerdown", event => {
       if (!interactive || !temperature) {
         return;
       }
-      const event1 = element3.getBoundingClientRect();
-      const size = Math.min(event1.width, event1.height) / 2;
-      const event2 = Math.hypot(event.clientX - (event1.left + event1.width / 2), event.clientY - (event1.top + event1.height / 2));
-      if (event.target === climateTemperatureThumbEl || !(Math.abs(event2 - size) > 34)) {
+      const rect = elementNext.getBoundingClientRect();
+      const size = Math.min(rect.width, rect.height) / 2;
+      const hypot = Math.hypot(event.clientX - (rect.left + rect.width / 2), event.clientY - (rect.top + rect.height / 2));
+      if (event.target === climateTemperatureThumbEl || !(Math.abs(hypot - size) > 34)) {
         event.preventDefault();
         event = {
           pointerId: event.pointerId,
           previous
         };
-        element3.setPointerCapture(event.pointerId);
-        element3.classList.add("is-dragging");
+        elementNext.setPointerCapture(event.pointerId);
+        elementNext.classList.add("is-dragging");
         previous = measureElementBox(event);
         syncAriaState();
       }
     });
-    element3.addEventListener("pointermove", event1 => {
-      if (!!event && event1.pointerId === event.pointerId) {
-        previous = measureElementBox(event1);
+    elementNext.addEventListener("pointermove", eventCurrent => {
+      if (!!event && eventCurrent.pointerId === event.pointerId) {
+        previous = measureElementBox(eventCurrent);
         syncAriaState();
       }
     });
-    const state10 = event1 => {
-      if (!event || event1.pointerId !== event.pointerId) {
+    const stateText = eventCurrent => {
+      if (!event || eventCurrent.pointerId !== event.pointerId) {
         return;
       }
-      const previous2 = event.previous;
+      const previousCurrent = event.previous;
       event = null;
-      element3.classList.remove("is-dragging");
-      if (element3.hasPointerCapture(event1.pointerId)) {
-        element3.releasePointerCapture(event1.pointerId);
+      elementNext.classList.remove("is-dragging");
+      if (elementNext.hasPointerCapture(eventCurrent.pointerId)) {
+        elementNext.releasePointerCapture(eventCurrent.pointerId);
       }
       syncAriaState(true);
-      if (previous !== previous2) {
-        scheduleTimeout3({
+      if (previous !== previousCurrent) {
+        scheduleTimeoutNext({
           preserveIntermediateSteps: false
         });
       }
     };
-    element3.addEventListener("pointerup", state10);
-    element3.addEventListener("pointercancel", state10);
+    elementNext.addEventListener("pointerup", stateText);
+    elementNext.addEventListener("pointercancel", stateText);
     climateTemperatureThumbEl.disabled = !temperature;
-    element2.addEventListener("click", () => syncClimateControl2(-1));
-    element7.addEventListener("click", () => syncClimateControl2(1));
+    elementCurrent.addEventListener("click", () => syncClimateControlNext(-1));
+    elementEntry.addEventListener("click", () => syncClimateControlNext(1));
     syncAriaState();
-    climateThermostatEl.append(element2, element3, element7);
+    climateThermostatEl.append(elementCurrent, elementNext, elementEntry);
     if (temperature) {
       element.append(climateThermostatEl);
     }
@@ -8736,127 +8737,127 @@ export class PanelRenderer {
     }
     const createChildElement = ({
       label,
-      values: values1,
+      values: values,
       current,
       service,
       dataKey,
-      labels: labels1 = {},
-      icons: icons1 = {},
+      labels: labels = {},
+      icons: icons = {},
       className = "",
       domain = "climate",
       presentation = "auto"
     }) => {
-      const set = [...new Set((Array.isArray(values1) ? values1 : []).map(arg => String(arg ?? "").trim()).filter(Boolean))];
+      const set = [...new Set((Array.isArray(values) ? values : []).map(arg => String(arg ?? "").trim()).filter(Boolean))];
       if (!set.length) {
         return;
       }
-      const state12 = presentation === "auto" ? climateOptionPresentation(set, labels1) : presentation;
-      const element8 = document.createElement("div");
-      element8.className = ("hb-climate-details-group " + className).trim();
+      const state = presentation === "auto" ? climateOptionPresentation(set, labels) : presentation;
+      const elementCurrent = document.createElement("div");
+      elementCurrent.className = ("hb-climate-details-group " + className).trim();
       if (waterHeaterControlPanelEl) {
-        element8.dataset.controlSource = "primary-entity";
+        elementCurrent.dataset.controlSource = "primary-entity";
       }
-      const element9 = document.createElement("strong");
-      element9.textContent = label;
-      if (state12 === "select") {
-        element8.classList.add("select-options");
+      const elementNext = document.createElement("strong");
+      elementNext.textContent = label;
+      if (state === "select") {
+        elementCurrent.classList.add("select-options");
         const climateSelectEl = document.createElement("div");
         climateSelectEl.className = "hb-climate-select";
         climateSelectEl.dataset.climateService = service;
         climateSelectEl.dataset.currentValue = String(current ?? "");
-        const element10 = document.createElement("button");
-        element10.type = "button";
-        element10.className = "hb-climate-select-trigger";
-        element10.setAttribute("aria-label", label);
-        element10.setAttribute("aria-haspopup", "listbox");
-        element10.setAttribute("aria-expanded", "false");
-        element10.disabled = !interactive;
-        const element11 = document.createElement("span");
+        const elementPrevious = document.createElement("button");
+        elementPrevious.type = "button";
+        elementPrevious.className = "hb-climate-select-trigger";
+        elementPrevious.setAttribute("aria-label", label);
+        elementPrevious.setAttribute("aria-haspopup", "listbox");
+        elementPrevious.setAttribute("aria-expanded", "false");
+        elementPrevious.disabled = !interactive;
+        const elementLocal = document.createElement("span");
         const climateSelectMenuEl = document.createElement("i");
         climateSelectMenuEl.setAttribute("aria-hidden", "true");
-        element10.append(element11, climateSelectMenuEl);
-        const climateSelectMenuEl1 = document.createElement("div");
-        climateSelectMenuEl1.className = "hb-climate-select-menu";
-        climateSelectMenuEl1.id = "hb-climate-select-" + randomUuid();
-        climateSelectMenuEl1.setAttribute("role", "listbox");
-        climateSelectMenuEl1.setAttribute("aria-label", label);
-        climateSelectMenuEl1.setAttribute("popover", "auto");
-        climateSelectMenuEl1.hidden = true;
-        element10.setAttribute("aria-controls", climateSelectMenuEl1.id);
-        let state13 = false;
+        elementPrevious.append(elementLocal, climateSelectMenuEl);
+        const climateSelectMenuElCurrent = document.createElement("div");
+        climateSelectMenuElCurrent.className = "hb-climate-select-menu";
+        climateSelectMenuElCurrent.id = "hb-climate-select-" + randomUuid();
+        climateSelectMenuElCurrent.setAttribute("role", "listbox");
+        climateSelectMenuElCurrent.setAttribute("aria-label", label);
+        climateSelectMenuElCurrent.setAttribute("popover", "auto");
+        climateSelectMenuElCurrent.hidden = true;
+        elementPrevious.setAttribute("aria-controls", climateSelectMenuElCurrent.id);
+        let flag = false;
         const computeResult = () => {
           try {
-            return climateSelectMenuEl1.matches(":popover-open");
+            return climateSelectMenuElCurrent.matches(":popover-open");
           } catch {
-            return climateSelectMenuEl1.dataset.open === "true";
+            return climateSelectMenuElCurrent.dataset.open === "true";
           }
         };
         const syncVisualState = arg => {
           const text = String(arg ?? "");
           climateSelectEl.dataset.currentValue = text;
-          const element12 = Array.from(climateSelectMenuEl1.querySelectorAll("[role=\"option\"]")).find(optionEl => optionEl.dataset.value === text);
-          element11.textContent = element12?.textContent || text || "请选择";
-          element11.title = element11.textContent;
-          climateSelectMenuEl1.querySelectorAll("[role=\"option\"]").forEach(element13 => {
-            const state14 = element13.dataset.value === text;
-            element13.classList.toggle("active", state14);
-            element13.setAttribute("aria-selected", String(state14));
+          const element = Array.from(climateSelectMenuElCurrent.querySelectorAll("[role=\"option\"]")).find(optionEl => optionEl.dataset.value === text);
+          elementLocal.textContent = element?.textContent || text || "请选择";
+          elementLocal.title = elementLocal.textContent;
+          climateSelectMenuElCurrent.querySelectorAll("[role=\"option\"]").forEach(element => {
+            const state = element.dataset.value === text;
+            element.classList.toggle("active", state);
+            element.setAttribute("aria-selected", String(state));
           });
         };
         const applyElementStyle = () => {
-          if (!computeResult() && climateSelectMenuEl1.hidden) {
+          if (!computeResult() && climateSelectMenuElCurrent.hidden) {
             return;
           }
-          const domRect = element10.getBoundingClientRect();
+          const domRect = elementPrevious.getBoundingClientRect();
           const innerWidth = window.innerWidth;
           const innerHeight = window.innerHeight;
           const clamped = Math.min(Math.max(domRect.width, 190), Math.max(190, innerWidth - 20));
-          climateSelectMenuEl1.style.width = clamped + "px";
-          climateSelectMenuEl1.style.maxHeight = Math.min(360, Math.max(120, innerHeight - 20)) + "px";
-          const size = Math.min(climateSelectMenuEl1.scrollHeight || 0, 360);
-          const size1 = innerHeight - domRect.bottom - 10;
-          const size2 = domRect.top - 10;
-          const clamped1 = size1 < Math.min(size, 180) && size2 > size1 ? Math.max(10, domRect.top - size - 5) : Math.min(innerHeight - size - 10, domRect.bottom + 5);
-          climateSelectMenuEl1.style.left = Math.max(10, Math.min(domRect.left, innerWidth - clamped - 10)) + "px";
-          climateSelectMenuEl1.style.top = Math.max(10, clamped1) + "px";
+          climateSelectMenuElCurrent.style.width = clamped + "px";
+          climateSelectMenuElCurrent.style.maxHeight = Math.min(360, Math.max(120, innerHeight - 20)) + "px";
+          const size = Math.min(climateSelectMenuElCurrent.scrollHeight || 0, 360);
+          const value = innerHeight - domRect.bottom - 10;
+          const sizeCurrent = domRect.top - 10;
+          const max = value < Math.min(size, 180) && sizeCurrent > value ? Math.max(10, domRect.top - size - 5) : Math.min(innerHeight - size - 10, domRect.bottom + 5);
+          climateSelectMenuElCurrent.style.left = Math.max(10, Math.min(domRect.left, innerWidth - clamped - 10)) + "px";
+          climateSelectMenuElCurrent.style.top = Math.max(10, max) + "px";
         };
-        const syncAriaState1 = () => {
-          if (computeResult() && typeof climateSelectMenuEl1.hidePopover == "function") {
-            climateSelectMenuEl1.hidePopover();
+        const syncAriaState = () => {
+          if (computeResult() && typeof climateSelectMenuElCurrent.hidePopover == "function") {
+            climateSelectMenuElCurrent.hidePopover();
           }
-          climateSelectMenuEl1.hidden = true;
-          climateSelectMenuEl1.dataset.open = "false";
-          element10.setAttribute("aria-expanded", "false");
+          climateSelectMenuElCurrent.hidden = true;
+          climateSelectMenuElCurrent.dataset.open = "false";
+          elementPrevious.setAttribute("aria-expanded", "false");
         };
-        const syncAriaState2 = (arg = false) => {
-          if (!element10.disabled && !state13) {
-            climateSelectMenuEl1.hidden = false;
-            if (typeof climateSelectMenuEl1.showPopover == "function") {
-              climateSelectMenuEl1.showPopover();
+        const callback = (arg = false) => {
+          if (!elementPrevious.disabled && !flag) {
+            climateSelectMenuElCurrent.hidden = false;
+            if (typeof climateSelectMenuElCurrent.showPopover == "function") {
+              climateSelectMenuElCurrent.showPopover();
             } else {
-              climateSelectMenuEl1.dataset.open = "true";
+              climateSelectMenuElCurrent.dataset.open = "true";
             }
-            element10.setAttribute("aria-expanded", "true");
+            elementPrevious.setAttribute("aria-expanded", "true");
             applyElementStyle();
             if (arg) {
-              (climateSelectMenuEl1.querySelector("[aria-selected=\"true\"]") || climateSelectMenuEl1.querySelector("[role=\"option\"]"))?.focus();
+              (climateSelectMenuElCurrent.querySelector("[aria-selected=\"true\"]") || climateSelectMenuElCurrent.querySelector("[role=\"option\"]"))?.focus();
             }
           }
         };
         const invokeEntityService = async state => {
-          if (!interactive || state13) {
+          if (!interactive || flag) {
             return;
           }
           const currentValue = climateSelectEl.dataset.currentValue;
-          state13 = true;
-          element10.disabled = true;
-          syncAriaState1();
+          flag = true;
+          elementPrevious.disabled = true;
+          syncAriaState();
           syncVisualState(state);
           try {
             await this.callEntityService(domain, service, entityId, {
               [dataKey]: state
             });
-            const attributes2 = {
+            const attributes = {
               ...(entityState?.attributes || {}),
               [dataKey]: state
             };
@@ -8865,7 +8866,7 @@ export class PanelRenderer {
                 ...(entityState || {}),
                 state,
                 attributes: {
-                  ...attributes2,
+                  ...attributes,
                   hvac_action: state === "cool" ? "cooling" : state === "heat" ? "heating" : state === "off" ? "off" : state
                 }
               };
@@ -8873,24 +8874,24 @@ export class PanelRenderer {
             } else if (service === "set_preset_mode") {
               const trimmed = deviceType === "bath-heater" && ["idle", "standby", "待机", "关闭"].includes(String(state).trim().toLowerCase());
               const found = element.dataset.lastClimateMode || climateCapabilities.hvacModes.find(arg => arg !== "off") || (climateDetailsControlsEl === "fan" ? "on" : "auto");
-              const state14 = {
+              const options = {
                 ...(entityState || {}),
                 state: trimmed ? "off" : climateIsPoweredOn(entityState, deviceType) ? entityState?.state : found,
                 attributes: {
-                  ...attributes2,
+                  ...attributes,
                   preset_mode: state
                 }
               };
-              const state15 = climateEffectMode(state14, deviceType);
-              state14.attributes.hvac_action = trimmed ? "idle" : state15 === "cool" ? "cooling" : state15 === "heat" ? "heating" : "fan";
-              entityState = state14;
+              const mode = climateEffectMode(options, deviceType);
+              options.attributes.hvac_action = trimmed ? "idle" : mode === "cool" ? "cooling" : mode === "heat" ? "heating" : "fan";
+              entityState = options;
               onPowerChange?.(!trimmed);
             } else if (service === "set_operation_mode") {
               entityState = {
                 ...(entityState || {}),
                 state: state === "off" ? "off" : "on",
                 attributes: {
-                  ...attributes2,
+                  ...attributes,
                   operation_mode: state
                 }
               };
@@ -8898,88 +8899,88 @@ export class PanelRenderer {
             } else {
               entityState = {
                 ...(entityState || {}),
-                attributes: attributes2
+                attributes: attributes
               };
             }
-            syncClimateControl1();
+            syncClimateControlCurrent();
           } catch (error) {
             syncVisualState(currentValue);
             this.options.onError?.(error);
           } finally {
-            state13 = false;
-            element10.disabled = !interactive;
+            flag = false;
+            elementPrevious.disabled = !interactive;
           }
         };
         for (const climateSelectOptionEl of set) {
-          const element12 = document.createElement("button");
-          element12.type = "button";
-          element12.className = "hb-climate-select-option";
-          element12.setAttribute("role", "option");
-          element12.dataset.value = climateSelectOptionEl;
-          element12.textContent = labels1[climateSelectOptionEl] || climateSelectOptionEl;
-          element12.title = element12.textContent;
-          element12.addEventListener("click", () => invokeEntityService(climateSelectOptionEl));
-          climateSelectMenuEl1.append(element12);
+          const element = document.createElement("button");
+          element.type = "button";
+          element.className = "hb-climate-select-option";
+          element.setAttribute("role", "option");
+          element.dataset.value = climateSelectOptionEl;
+          element.textContent = labels[climateSelectOptionEl] || climateSelectOptionEl;
+          element.title = element.textContent;
+          element.addEventListener("click", () => invokeEntityService(climateSelectOptionEl));
+          climateSelectMenuElCurrent.append(element);
         }
         syncVisualState(String(current ?? ""));
-        element10.addEventListener("click", () => {
-          if (computeResult() || climateSelectMenuEl1.dataset.open === "true") {
-            syncAriaState1();
+        elementPrevious.addEventListener("click", () => {
+          if (computeResult() || climateSelectMenuElCurrent.dataset.open === "true") {
+            syncAriaState();
           } else {
-            syncAriaState2();
+            callback();
           }
         });
-        element10.addEventListener("keydown", event => {
+        elementPrevious.addEventListener("keydown", event => {
           if (["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) {
             event.preventDefault();
-            syncAriaState2(true);
+            callback(true);
           }
         });
-        climateSelectMenuEl1.addEventListener("keydown", event => {
-          const matchedEl = [...climateSelectMenuEl1.querySelectorAll("[role=\"option\"]")];
-          const state14 = matchedEl.indexOf(document.activeElement);
+        climateSelectMenuElCurrent.addEventListener("keydown", event => {
+          const matchedEl = [...climateSelectMenuElCurrent.querySelectorAll("[role=\"option\"]")];
+          const state = matchedEl.indexOf(document.activeElement);
           if (event.key === "Escape") {
             event.preventDefault();
-            syncAriaState1();
-            element10.focus();
+            syncAriaState();
+            elementPrevious.focus();
           } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
-            const state15 = event.key === "ArrowDown" ? 1 : -1;
-            matchedEl[(state14 + state15 + matchedEl.length) % matchedEl.length]?.focus();
+            const count = event.key === "ArrowDown" ? 1 : -1;
+            matchedEl[(state + count + matchedEl.length) % matchedEl.length]?.focus();
           } else if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             document.activeElement?.click();
           }
         });
-        climateSelectMenuEl1.addEventListener("toggle", arg => {
-          const state14 = arg.newState === "open";
-          climateSelectMenuEl1.hidden = !state14;
-          climateSelectMenuEl1.dataset.open = String(state14);
-          element10.setAttribute("aria-expanded", String(state14));
-          if (state14) {
+        climateSelectMenuElCurrent.addEventListener("toggle", arg => {
+          const state = arg.newState === "open";
+          climateSelectMenuElCurrent.hidden = !state;
+          climateSelectMenuElCurrent.dataset.open = String(state);
+          elementPrevious.setAttribute("aria-expanded", String(state));
+          if (state) {
             applyElementStyle();
           }
         });
-        climateSelectEl.append(element10, climateSelectMenuEl1);
-        element8.append(element9, climateSelectEl);
-        (waterHeaterControlPanelEl || element).append(element8);
+        climateSelectEl.append(elementPrevious, climateSelectMenuElCurrent);
+        elementCurrent.append(elementNext, climateSelectEl);
+        (waterHeaterControlPanelEl || element).append(elementCurrent);
         return;
       }
       const climateDetailsOptionsEl = document.createElement("div");
       climateDetailsOptionsEl.className = "hb-climate-details-options";
       for (const state of set) {
-        const element10 = document.createElement("button");
-        element10.type = "button";
-        element10.dataset.climateService = service;
-        element10.dataset.climateValue = state;
-        const element11 = document.createElement("i");
-        element11.setAttribute("aria-hidden", "true");
-        element11.textContent = icons1[state] || "";
-        const element12 = document.createElement("span");
-        element12.textContent = labels1[state] || state;
-        element10.append(element11, element12);
-        element10.classList.toggle("active", state === current);
-        element10.addEventListener("click", async () => {
+        const elementCurrent = document.createElement("button");
+        elementCurrent.type = "button";
+        elementCurrent.dataset.climateService = service;
+        elementCurrent.dataset.climateValue = state;
+        const elementNext = document.createElement("i");
+        elementNext.setAttribute("aria-hidden", "true");
+        elementNext.textContent = icons[state] || "";
+        const elementPrevious = document.createElement("span");
+        elementPrevious.textContent = labels[state] || state;
+        elementCurrent.append(elementNext, elementPrevious);
+        elementCurrent.classList.toggle("active", state === current);
+        elementCurrent.addEventListener("click", async () => {
           if (!interactive) {
             return;
           }
@@ -8992,10 +8993,10 @@ export class PanelRenderer {
               [dataKey]: state
             });
             if (trimmed) {
-              const state13 = climatePowerCommand(entityId, entityState, false, "bath-heater");
-              await this.callEntityService(state13.domain, state13.service, entityId, state13.data);
+              const state = climatePowerCommand(entityId, entityState, false, "bath-heater");
+              await this.callEntityService(state.domain, state.service, entityId, state.data);
             }
-            climateDetailsOptionsEl.querySelectorAll("button").forEach(element13 => element13.classList.toggle("active", element13 === element10));
+            climateDetailsOptionsEl.querySelectorAll("button").forEach(element => element.classList.toggle("active", element === elementCurrent));
             if (service === "set_hvac_mode") {
               const hvac_action = state === "cool" ? "cooling" : state === "heat" ? "heating" : state === "off" ? "off" : state;
               entityState = {
@@ -9006,24 +9007,24 @@ export class PanelRenderer {
                   hvac_action
                 }
               };
-              syncClimateControl1();
+              syncClimateControlCurrent();
               onPowerChange?.(state !== "off");
             } else if (service === "set_preset_mode") {
-              const state13 = trimmed;
+              const stateCurrent = trimmed;
               const found = element.dataset.lastClimateMode || climateCapabilities.hvacModes.find(arg => arg !== "off") || (climateDetailsControlsEl === "fan" ? "on" : "auto");
-              const state14 = {
+              const options = {
                 ...(entityState || {}),
-                state: state13 ? "off" : climateIsPoweredOn(entityState, deviceType) ? entityState?.state : found,
+                state: stateCurrent ? "off" : climateIsPoweredOn(entityState, deviceType) ? entityState?.state : found,
                 attributes: {
                   ...(entityState?.attributes || {}),
                   preset_mode: state
                 }
               };
-              const state15 = climateEffectMode(state14, deviceType);
-              state14.attributes.hvac_action = state13 ? "idle" : state15 === "cool" ? "cooling" : state15 === "heat" ? "heating" : "fan";
-              entityState = state14;
-              syncClimateControl1();
-              onPowerChange?.(!state13);
+              const mode = climateEffectMode(options, deviceType);
+              options.attributes.hvac_action = stateCurrent ? "idle" : mode === "cool" ? "cooling" : mode === "heat" ? "heating" : "fan";
+              entityState = options;
+              syncClimateControlCurrent();
+              onPowerChange?.(!stateCurrent);
             } else if (service === "set_operation_mode") {
               entityState = {
                 ...(entityState || {}),
@@ -9033,7 +9034,7 @@ export class PanelRenderer {
                   operation_mode: state
                 }
               };
-              syncClimateControl1();
+              syncClimateControlCurrent();
               onPowerChange?.(state !== "off");
             }
           } catch (error) {
@@ -9044,13 +9045,13 @@ export class PanelRenderer {
             });
           }
         });
-        climateDetailsOptionsEl.append(element10);
+        climateDetailsOptionsEl.append(elementCurrent);
       }
-      element8.append(element9, climateDetailsOptionsEl);
-      (waterHeaterControlPanelEl || element).append(element8);
+      elementCurrent.append(elementNext, climateDetailsOptionsEl);
+      (waterHeaterControlPanelEl || element).append(elementCurrent);
     };
     const values = climateOperationModeValues(component, deviceType);
-    const labels = Object.fromEntries(values.map(arg => [arg, climateModeLabel(arg, deviceType, climateDetailsControlsEl1)]));
+    const labels = Object.fromEntries(values.map(arg => [arg, climateModeLabel(arg, deviceType, options)]));
     const icons = Object.fromEntries(values.map(arg => [arg, climateModeIcon(arg, deviceType)]));
     createChildElement({
       label: "运行模式",
@@ -9064,9 +9065,9 @@ export class PanelRenderer {
       domain: deviceType === "water-heater" ? "water_heater" : "climate",
       presentation: climateOptionPresentation(values, labels)
     });
-    const state11 = climateDetailsControlsEl === "climate" ? climateCapabilities.fanModes : [];
-    if (state11.length) {
-      const state12 = {
+    const fanModes = climateDetailsControlsEl === "climate" ? climateCapabilities.fanModes : [];
+    if (fanModes.length) {
+      const state = {
         silent: "静音",
         low: "低",
         medium: "中",
@@ -9082,146 +9083,146 @@ export class PanelRenderer {
         7: "七档",
         max: "Max档"
       };
-      const fan_mode = state11.find(climateFanSliderEl3 => ["auto", "自动"].includes(String(climateFanSliderEl3).toLowerCase()));
-      const climateFanSliderEl1 = state11.filter(climateFanSliderEl3 => climateFanSliderEl3 !== fan_mode);
-      const climateFanSliderEl2 = document.createElement("section");
-      climateFanSliderEl2.className = "hb-climate-fan-slider";
+      const fan_mode = fanModes.find(climateFanSliderEl => ["auto", "自动"].includes(String(climateFanSliderEl).toLowerCase()));
+      const climateFanSliderEl = fanModes.filter(climateFanSliderEl => climateFanSliderEl !== fan_mode);
+      const climateFanSliderElCurrent = document.createElement("section");
+      climateFanSliderElCurrent.className = "hb-climate-fan-slider";
       const climateFanSliderHeadingEl = document.createElement("span");
       climateFanSliderHeadingEl.className = "hb-climate-fan-slider-heading";
-      const element8 = document.createElement("i");
-      element8.setAttribute("aria-hidden", "true");
-      element8.textContent = "✾";
-      const element9 = document.createElement("strong");
-      element9.textContent = "风速";
-      const element10 = document.createElement("output");
-      const count = Math.max(0, climateFanSliderEl1.indexOf(attributes.fan_mode));
+      const elementCurrent = document.createElement("i");
+      elementCurrent.setAttribute("aria-hidden", "true");
+      elementCurrent.textContent = "✾";
+      const elementNext = document.createElement("strong");
+      elementNext.textContent = "风速";
+      const elementPrevious = document.createElement("output");
+      const count = Math.max(0, climateFanSliderEl.indexOf(attributes.fan_mode));
       let amount = count;
-      let state13 = !!fan_mode && attributes.fan_mode === fan_mode;
-      let fan_mode2 = attributes.fan_mode;
-      const element11 = document.createElement("input");
-      element11.type = "range";
-      element11.min = "0";
-      element11.max = String(Math.max(0, climateFanSliderEl1.length - 1));
-      element11.step = "1";
-      element11.value = String(count);
-      element11.disabled = climateFanSliderEl1.length === 0;
-      const runHelper4 = climateFanAutoEl => state12[String(climateFanSliderEl1[climateFanAutoEl]).toLowerCase()] || climateFanSliderEl1[climateFanAutoEl] || "--";
-      const element12 = document.createElement("button");
-      element12.type = "button";
-      element12.className = "hb-climate-fan-auto";
-      element12.textContent = "自动";
-      element12.hidden = !fan_mode;
-      element12.classList.toggle("active", state13);
+      let stateCurrent = !!fan_mode && attributes.fan_mode === fan_mode;
+      let fan_modeCurrent = attributes.fan_mode;
+      const elementLocal = document.createElement("input");
+      elementLocal.type = "range";
+      elementLocal.min = "0";
+      elementLocal.max = String(Math.max(0, climateFanSliderEl.length - 1));
+      elementLocal.step = "1";
+      elementLocal.value = String(count);
+      elementLocal.disabled = climateFanSliderEl.length === 0;
+      const runHelper = climateFanAutoEl => state[String(climateFanSliderEl[climateFanAutoEl]).toLowerCase()] || climateFanSliderEl[climateFanAutoEl] || "--";
+      const elementItem = document.createElement("button");
+      elementItem.type = "button";
+      elementItem.className = "hb-climate-fan-auto";
+      elementItem.textContent = "自动";
+      elementItem.hidden = !fan_mode;
+      elementItem.classList.toggle("active", stateCurrent);
       const applyElementStyle = () => {
-        const numeric = Number(element11.value);
-        const state14 = climateFanSliderEl1.length > 1 ? numeric / (climateFanSliderEl1.length - 1) * 100 : 100;
-        element10.textContent = state13 ? "自动" : runHelper4(numeric);
-        element11.style.setProperty("--hb-climate-fan-progress", state14 + "%");
+        const numeric = Number(elementLocal.value);
+        const state = climateFanSliderEl.length > 1 ? numeric / (climateFanSliderEl.length - 1) * 100 : 100;
+        elementPrevious.textContent = stateCurrent ? "自动" : runHelper(numeric);
+        elementLocal.style.setProperty("--hb-climate-fan-progress", state + "%");
       };
-      climateFanSliderHeadingEl.append(element8, element9, element10, element12);
-      element11.addEventListener("input", () => {
-        state13 = false;
-        element12.classList.remove("active");
+      climateFanSliderHeadingEl.append(elementCurrent, elementNext, elementPrevious, elementItem);
+      elementLocal.addEventListener("input", () => {
+        stateCurrent = false;
+        elementItem.classList.remove("active");
         applyElementStyle();
       });
-      element11.addEventListener("change", async () => {
-        if (!interactive || !climateFanSliderEl1.length) {
+      elementLocal.addEventListener("change", async () => {
+        if (!interactive || !climateFanSliderEl.length) {
           return;
         }
-        const numeric = Number(element11.value);
-        const fan_mode3 = climateFanSliderEl1[numeric];
-        element11.disabled = true;
-        element12.disabled = true;
+        const numeric = Number(elementLocal.value);
+        const fan_modeNext = climateFanSliderEl[numeric];
+        elementLocal.disabled = true;
+        elementItem.disabled = true;
         try {
           await this.callEntityService("climate", "set_fan_mode", entityId, {
-            fan_mode: fan_mode3
+            fan_mode: fan_modeNext
           });
           amount = numeric;
-          fan_mode2 = fan_mode3;
-          state13 = false;
+          fan_modeCurrent = fan_modeNext;
+          stateCurrent = false;
         } catch (error) {
-          state13 = !!fan_mode && fan_mode2 === fan_mode;
-          if (!state13) {
-            element11.value = String(amount);
+          stateCurrent = !!fan_mode && fan_modeCurrent === fan_mode;
+          if (!stateCurrent) {
+            elementLocal.value = String(amount);
           }
-          element12.classList.toggle("active", state13);
+          elementItem.classList.toggle("active", stateCurrent);
           applyElementStyle();
           this.options.onError?.(error);
         } finally {
-          element11.disabled = false;
-          element12.disabled = false;
+          elementLocal.disabled = false;
+          elementItem.disabled = false;
         }
       });
-      element12.addEventListener("click", async () => {
-        if (!!interactive && !!fan_mode && !element12.disabled) {
-          element11.disabled = true;
-          element12.disabled = true;
+      elementItem.addEventListener("click", async () => {
+        if (!!interactive && !!fan_mode && !elementItem.disabled) {
+          elementLocal.disabled = true;
+          elementItem.disabled = true;
           try {
             await this.callEntityService("climate", "set_fan_mode", entityId, {
               fan_mode
             });
-            state13 = true;
-            fan_mode2 = fan_mode;
-            element12.classList.add("active");
+            stateCurrent = true;
+            fan_modeCurrent = fan_mode;
+            elementItem.classList.add("active");
             applyElementStyle();
           } catch (error) {
             this.options.onError?.(error);
           } finally {
-            element11.disabled = climateFanSliderEl1.length === 0;
-            element12.disabled = false;
+            elementLocal.disabled = climateFanSliderEl.length === 0;
+            elementItem.disabled = false;
           }
         }
       });
       const climateFanSliderLegendEl = document.createElement("span");
       climateFanSliderLegendEl.className = "hb-climate-fan-slider-legend";
-      const element13 = document.createElement("small");
-      element13.textContent = runHelper4(0);
-      const element14 = document.createElement("small");
-      element14.textContent = runHelper4(climateFanSliderEl1.length - 1);
-      climateFanSliderLegendEl.append(element13, element14);
+      const elementEntry = document.createElement("small");
+      elementEntry.textContent = runHelper(0);
+      const elementList = document.createElement("small");
+      elementList.textContent = runHelper(climateFanSliderEl.length - 1);
+      climateFanSliderLegendEl.append(elementEntry, elementList);
       applyElementStyle();
-      climateFanSliderEl2.append(climateFanSliderHeadingEl, element11, climateFanSliderLegendEl);
-      element.append(climateFanSliderEl2);
+      climateFanSliderElCurrent.append(climateFanSliderHeadingEl, elementLocal, climateFanSliderLegendEl);
+      element.append(climateFanSliderElCurrent);
     }
     let climateFanSliderEl = null;
     if (climateDetailsControlsEl === "fan" && climateCapabilities.supportsFanPercentage) {
-      const climateFanSliderEl1 = document.createElement("section");
-      climateFanSliderEl1.className = "hb-climate-fan-slider";
+      const climateFanSliderElCurrent = document.createElement("section");
+      climateFanSliderElCurrent.className = "hb-climate-fan-slider";
       const climateFanSliderHeadingEl = document.createElement("span");
       climateFanSliderHeadingEl.className = "hb-climate-fan-slider-heading";
-      const element8 = document.createElement("i");
-      element8.setAttribute("aria-hidden", "true");
-      element8.textContent = "✾";
-      const element9 = document.createElement("strong");
-      element9.textContent = "风速";
-      const element10 = document.createElement("output");
+      const elementCurrent = document.createElement("i");
+      elementCurrent.setAttribute("aria-hidden", "true");
+      elementCurrent.textContent = "✾";
+      const elementNext = document.createElement("strong");
+      elementNext.textContent = "风速";
+      const elementPrevious = document.createElement("output");
       let count = Math.max(0, Math.min(100, climateCapabilities.fanPercentage));
-      const element11 = document.createElement("input");
-      element11.type = "range";
-      element11.min = "0";
-      element11.max = "100";
-      element11.step = String(climateCapabilities.fanPercentageStep);
-      element11.value = String(count);
+      const elementLocal = document.createElement("input");
+      elementLocal.type = "range";
+      elementLocal.min = "0";
+      elementLocal.max = "100";
+      elementLocal.step = String(climateCapabilities.fanPercentageStep);
+      elementLocal.value = String(count);
       const applyElementStyle = () => {
-        const count2 = Math.max(0, Math.min(100, Number(element11.value) || 0));
-        element10.textContent = Math.round(count2) + "%";
-        element11.style.setProperty("--hb-climate-fan-progress", count2 + "%");
+        const count = Math.max(0, Math.min(100, Number(elementLocal.value) || 0));
+        elementPrevious.textContent = Math.round(count) + "%";
+        elementLocal.style.setProperty("--hb-climate-fan-progress", count + "%");
       };
       climateFanSliderEl = entityId => {
         const fanPercentage = normalizeClimateCapabilities(entityId).fanPercentage;
         if (fanPercentage !== null) {
           count = Math.max(0, Math.min(100, fanPercentage));
-          element11.value = String(count);
+          elementLocal.value = String(count);
           applyElementStyle();
         }
       };
-      element11.addEventListener("input", applyElementStyle);
-      element11.addEventListener("change", async () => {
-        if (!interactive || element11.disabled) {
+      elementLocal.addEventListener("input", applyElementStyle);
+      elementLocal.addEventListener("change", async () => {
+        if (!interactive || elementLocal.disabled) {
           return;
         }
-        const percentage = Math.max(0, Math.min(100, Number(element11.value) || 0));
-        element11.disabled = true;
+        const percentage = Math.max(0, Math.min(100, Number(elementLocal.value) || 0));
+        elementLocal.disabled = true;
         try {
           await this.callEntityService("fan", "set_percentage", entityId, {
             percentage
@@ -9235,36 +9236,36 @@ export class PanelRenderer {
               percentage
             }
           };
-          syncClimateControl1();
+          syncClimateControlCurrent();
           onPowerChange?.(percentage > 0);
         } catch (error) {
-          element11.value = String(count);
+          elementLocal.value = String(count);
           applyElementStyle();
           this.options.onError?.(error);
         } finally {
-          element11.disabled = false;
+          elementLocal.disabled = false;
         }
       });
       const climateFanSliderLegendEl = document.createElement("span");
       climateFanSliderLegendEl.className = "hb-climate-fan-slider-legend";
-      const element12 = document.createElement("small");
-      element12.textContent = "关闭";
-      const element13 = document.createElement("small");
-      element13.textContent = "最大";
-      climateFanSliderLegendEl.append(element12, element13);
-      climateFanSliderHeadingEl.append(element8, element9, element10);
+      const elementItem = document.createElement("small");
+      elementItem.textContent = "关闭";
+      const elementEntry = document.createElement("small");
+      elementEntry.textContent = "最大";
+      climateFanSliderLegendEl.append(elementItem, elementEntry);
+      climateFanSliderHeadingEl.append(elementCurrent, elementNext, elementPrevious);
       applyElementStyle();
-      climateFanSliderEl1.append(climateFanSliderHeadingEl, element11, climateFanSliderLegendEl);
-      element.append(climateFanSliderEl1);
+      climateFanSliderElCurrent.append(climateFanSliderHeadingEl, elementLocal, climateFanSliderLegendEl);
+      element.append(climateFanSliderElCurrent);
     }
-    const labels2 = Object.fromEntries(climateCapabilities.swingModes.map(arg => [arg, climateSwingModeLabel(arg, "vertical", climateDetailsControlsEl1)]));
+    const entries = Object.fromEntries(climateCapabilities.swingModes.map(arg => [arg, climateSwingModeLabel(arg, "vertical", options)]));
     createChildElement({
       label: climateCapabilities.horizontalSwingModes.length ? "纵向摆风" : "摆风",
       values: climateCapabilities.swingModes,
       current: attributes.swing_mode,
       service: "set_swing_mode",
       dataKey: "swing_mode",
-      labels: labels2,
+      labels: entries,
       icons: {
         off: "—",
         vertical: "↕",
@@ -9272,71 +9273,71 @@ export class PanelRenderer {
         both: "✣"
       },
       className: "compact-options",
-      presentation: climateOptionPresentation(climateCapabilities.swingModes, labels2, {
+      presentation: climateOptionPresentation(climateCapabilities.swingModes, entries, {
         inlineIcon: true
       })
     });
-    const labels3 = Object.fromEntries(climateCapabilities.horizontalSwingModes.map(arg => [arg, climateSwingModeLabel(arg, "horizontal", climateDetailsControlsEl1)]));
+    const labelsCurrent = Object.fromEntries(climateCapabilities.horizontalSwingModes.map(arg => [arg, climateSwingModeLabel(arg, "horizontal", options)]));
     createChildElement({
       label: "水平摆风",
       values: climateCapabilities.horizontalSwingModes,
       current: attributes.swing_horizontal_mode,
       service: "set_swing_horizontal_mode",
       dataKey: "swing_horizontal_mode",
-      labels: labels3,
+      labels: labelsCurrent,
       className: "compact-options",
-      presentation: climateOptionPresentation(climateCapabilities.horizontalSwingModes, labels3, {
+      presentation: climateOptionPresentation(climateCapabilities.horizontalSwingModes, labelsCurrent, {
         inlineIcon: true
       })
     });
-    const labels4 = Object.fromEntries(climateCapabilities.presetModes.map(arg => [arg, climateModeLabel(arg, deviceType, climateDetailsControlsEl1)]));
-    const icons2 = Object.fromEntries(climateCapabilities.presetModes.map(arg => [arg, climateModeIcon(arg, deviceType)]));
+    const labelsNext = Object.fromEntries(climateCapabilities.presetModes.map(arg => [arg, climateModeLabel(arg, deviceType, options)]));
+    const iconsCurrent = Object.fromEntries(climateCapabilities.presetModes.map(arg => [arg, climateModeIcon(arg, deviceType)]));
     createChildElement({
       label: "预设模式",
       values: climateCapabilities.presetModes,
       current: attributes.preset_mode,
       service: "set_preset_mode",
       dataKey: "preset_mode",
-      labels: labels4,
-      icons: icons2,
+      labels: labelsNext,
+      icons: iconsCurrent,
       className: "compact-options",
       domain: climateDetailsControlsEl === "fan" ? "fan" : "climate",
-      presentation: climateOptionPresentation(climateCapabilities.presetModes, labels4, {
+      presentation: climateOptionPresentation(climateCapabilities.presetModes, labelsNext, {
         inlineIcon: true
       })
     });
-    let runHelper3 = null;
+    let runHelperPrevious = null;
     if (!element.childElementCount) {
-      const element8 = document.createElement("section");
-      element8.className = "hb-climate-details-loading";
+      const elementCurrent = document.createElement("section");
+      elementCurrent.className = "hb-climate-details-loading";
       const iconEl = document.createElement("i");
       iconEl.setAttribute("aria-hidden", "true");
-      const element9 = document.createElement("strong");
-      const element10 = document.createElement("span");
-      runHelper3 = arg => {
+      const elementNext = document.createElement("strong");
+      const elementPrevious = document.createElement("span");
+      runHelperPrevious = arg => {
         const asString = String(arg?.state || "").trim().toLowerCase();
-        const state12 = !arg || !asString || asString === "unknown";
-        const state13 = asString === "unavailable";
-        element8.classList.toggle("is-loading", state12);
-        element8.classList.toggle("is-unavailable", state13);
-        element9.textContent = state12 ? "正在加载设备状态…" : state13 ? "设备当前不可用" : "暂无可用控制数据";
-        element10.textContent = state12 ? "状态到达后会自动显示，无需重新打开弹窗" : state13 ? "连接恢复后会自动更新" : "请检查该实体在 Home Assistant 中提供的控制能力";
+        const state = !arg || !asString || asString === "unknown";
+        const value = asString === "unavailable";
+        elementCurrent.classList.toggle("is-loading", state);
+        elementCurrent.classList.toggle("is-unavailable", value);
+        elementNext.textContent = state ? "正在加载设备状态…" : value ? "设备当前不可用" : "暂无可用控制数据";
+        elementPrevious.textContent = state ? "状态到达后会自动显示，无需重新打开弹窗" : value ? "连接恢复后会自动更新" : "请检查该实体在 Home Assistant 中提供的控制能力";
       };
-      runHelper3(component);
-      element8.append(iconEl, element9, element10);
-      element.append(element8);
+      runHelperPrevious(component);
+      elementCurrent.append(iconEl, elementNext, elementPrevious);
+      element.append(elementCurrent);
     }
     element.syncClimateGrid = () => {
-      const state12 = Array.from(element.children);
-      const found = state12.find(element8 => element8.classList.contains("hb-climate-thermostat"));
+      const state = Array.from(element.children);
+      const found = state.find(element => element.classList.contains("hb-climate-thermostat"));
       if (!found) {
         return;
       }
-      const found1 = state12.find(element8 => element8.classList.contains("is-water-heater"));
-      const length = state12.filter(metadata => metadata !== found && metadata !== found1).length;
+      const foundCurrent = state.find(element => element.classList.contains("is-water-heater"));
+      const length = state.filter(metadata => metadata !== found && metadata !== foundCurrent).length;
       found.style.gridRow = "1 / span " + Math.max(1, length);
-      if (found1) {
-        found1.style.gridRow = "1 / span " + Math.max(1, length);
+      if (foundCurrent) {
+        foundCurrent.style.gridRow = "1 / span " + Math.max(1, length);
       }
     };
     element.syncClimateGrid();
@@ -9345,20 +9346,20 @@ export class PanelRenderer {
         return;
       }
       entityState = arg;
-      runHelper3?.(arg);
+      runHelperPrevious?.(arg);
       climateFanSliderEl?.(arg);
-      const targetTemperature2 = normalizeClimateCapabilities(arg).targetTemperature;
-      const temperature2 = reconcileClimateTargetTemperature(state6, targetTemperature2, state, temperatureStep);
-      if (state === null || temperature2.confirmed) {
-        state6 = temperature2.temperature;
+      const targetTemperature = normalizeClimateCapabilities(arg).targetTemperature;
+      const temperature = reconcileClimateTargetTemperature(stateItem, targetTemperature, state, temperatureStep);
+      if (state === null || temperature.confirmed) {
+        stateItem = temperature.temperature;
       }
-      previous = state6;
-      if (targetTemperature2 !== null && (state === null || temperature2.confirmed)) {
-        state3 = targetTemperature2;
+      previous = stateItem;
+      if (targetTemperature !== null && (state === null || temperature.confirmed)) {
+        statePrevious = targetTemperature;
       }
-      if (state !== null && temperature2.confirmed) {
-        if (temperature1) {
-          scheduleTimeout2();
+      if (state !== null && temperature.confirmed) {
+        if (value) {
+          scheduleTimeoutCurrent();
         } else {
           scheduleTimeout();
         }
@@ -9366,45 +9367,45 @@ export class PanelRenderer {
       syncAriaState();
     };
     element.cleanupClimateDetails = () => {
-      window.clearTimeout(state8);
-      state8 = null;
-      state4.length = 0;
-      state5 = null;
+      window.clearTimeout(stateEntry);
+      stateEntry = null;
+      list.length = 0;
+      stateLocal = null;
       scheduleTimeout();
     };
-    syncClimateControl1();
+    syncClimateControlCurrent();
     return element;
   }
-  createWaterHeaterExtensionControls(entityId1, {
+  createWaterHeaterExtensionControls(entityId, {
     component = null,
     interactive = true,
     excludedEntityIds = []
   } = {}) {
     const state = component ? relatedPopupContext(component, this.entityMetadata, this.deviceMetadata, this.states) : null;
-    const state1 = component ? selectedRelatedEntities(component, this.entityMetadata, this.deviceMetadata, this.states) : null;
+    const entities = component ? selectedRelatedEntities(component, this.entityMetadata, this.deviceMetadata, this.states) : null;
     const allowed = new Set(excludedEntityIds);
-    const filtered = (state1 === null ? relatedWaterHeaterEntities(this.entityMetadata, entityId1) : state1).filter(relatedEntityExtensionsEl2 => !allowed.has(relatedEntityExtensionsEl2.entityId));
-    const relatedEntityExtensionsEl = state?.primary || this.entityMetadata.get(entityId1);
+    const filtered = (entities === null ? relatedWaterHeaterEntities(this.entityMetadata, entityId) : entities).filter(relatedEntityExtensionsEl => !allowed.has(relatedEntityExtensionsEl.entityId));
+    const relatedEntityExtensionsEl = state?.primary || this.entityMetadata.get(entityId);
     if (!filtered.length) {
       return null;
     }
-    const relatedEntityExtensionsEl1 = document.createElement("section");
-    relatedEntityExtensionsEl1.className = "hb-related-entity-extensions hb-water-heater-extensions" + (state?.deviceType ? " is-" + state.deviceType : "");
-    relatedEntityExtensionsEl1.dataset.controlSource = state1 === null ? "automatic-device" : "user-selected";
+    const relatedEntityExtensionsElCurrent = document.createElement("section");
+    relatedEntityExtensionsElCurrent.className = "hb-related-entity-extensions hb-water-heater-extensions" + (state?.deviceType ? " is-" + state.deviceType : "");
+    relatedEntityExtensionsElCurrent.dataset.controlSource = entities === null ? "automatic-device" : "user-selected";
     const index = new Map();
     const resolveEntityId = entityId => {
-      const state2 = this.states.get(entityId);
-      return state2?.newState || state2 || {
+      const state = this.states.get(entityId);
+      return state?.newState || state || {
         entityId,
         state: "unknown",
         attributes: {}
       };
     };
-    const runHelper = (waterHeaterExtensionGridEl1, waterHeaterExtensionGridEl2) => {
-      if (!index.has(waterHeaterExtensionGridEl1)) {
-        index.set(waterHeaterExtensionGridEl1, []);
+    const runHelper = (waterHeaterExtensionGridEl, waterHeaterExtensionGridElCurrent) => {
+      if (!index.has(waterHeaterExtensionGridEl)) {
+        index.set(waterHeaterExtensionGridEl, []);
       }
-      index.get(waterHeaterExtensionGridEl1).push(waterHeaterExtensionGridEl2);
+      index.get(waterHeaterExtensionGridEl).push(waterHeaterExtensionGridElCurrent);
     };
     const waterHeaterExtensionGridEl = document.createElement("div");
     waterHeaterExtensionGridEl.className = "hb-water-heater-extension-grid";
@@ -9419,47 +9420,47 @@ export class PanelRenderer {
         const iconEl = document.createElement("i");
         iconEl.setAttribute("aria-hidden", "true");
         const spanEl = document.createElement("span");
-        const element2 = document.createElement("strong");
-        element2.textContent = waterHeaterExtensionToggleEl;
-        const element3 = document.createElement("small");
-        spanEl.append(element2, element3);
+        const elementCurrent = document.createElement("strong");
+        elementCurrent.textContent = waterHeaterExtensionToggleEl;
+        const elementNext = document.createElement("small");
+        spanEl.append(elementCurrent, elementNext);
         element.append(iconEl, spanEl);
-        let state2 = resolveEntityId(entityId);
-        let state3 = false;
-        const syncVisualState = (arg = state2) => {
-          state2 = arg || state2;
-          const asString = String(state2?.state || "").toLowerCase();
-          const state4 = ["unknown", "unavailable"].includes(asString);
-          const state5 = asString === "on";
-          element.classList.toggle("is-on", state5 && !state4);
-          element.classList.toggle("is-unavailable", state4);
-          element.disabled = !interactive || state3 || state4;
-          element.setAttribute("aria-pressed", String(state5));
-          element.setAttribute("aria-busy", String(state3));
-          element3.textContent = state4 ? "不可用" : state5 ? "已开启" : "已关闭";
+        let state = resolveEntityId(entityId);
+        let flag = false;
+        const syncVisualState = (arg = state) => {
+          state = arg || state;
+          const asString = String(state?.state || "").toLowerCase();
+          const present = ["unknown", "unavailable"].includes(asString);
+          const value = asString === "on";
+          element.classList.toggle("is-on", value && !present);
+          element.classList.toggle("is-unavailable", present);
+          element.disabled = !interactive || flag || present;
+          element.setAttribute("aria-pressed", String(value));
+          element.setAttribute("aria-busy", String(flag));
+          elementNext.textContent = present ? "不可用" : value ? "已开启" : "已关闭";
         };
         element.addEventListener("click", async () => {
-          if (!interactive || state3 || element.classList.contains("is-unavailable")) {
+          if (!interactive || flag || element.classList.contains("is-unavailable")) {
             return;
           }
-          const state4 = state2;
-          const asString = String(state2?.state || "").toLowerCase() !== "on";
-          state3 = true;
+          const stateCurrent = state;
+          const asString = String(state?.state || "").toLowerCase() !== "on";
+          flag = true;
           syncVisualState({
-            ...(state2 || {}),
+            ...(state || {}),
             state: asString ? "on" : "off"
           });
           try {
             await this.callEntityService("homeassistant", "toggle", entityId);
           } catch (error) {
-            syncVisualState(state4);
+            syncVisualState(stateCurrent);
             this.options.onError?.(error);
           } finally {
-            state3 = false;
-            syncVisualState(state2);
+            flag = false;
+            syncVisualState(state);
           }
         });
-        syncVisualState(state2);
+        syncVisualState(state);
         runHelper(entityId, syncVisualState);
         waterHeaterExtensionGridEl.append(element);
       } else if (["select", "input_select"].includes(text)) {
@@ -9468,90 +9469,90 @@ export class PanelRenderer {
         const element = document.createElement("span");
         element.textContent = waterHeaterExtensionToggleEl;
         element.title = waterHeaterExtensionToggleEl;
-        const element2 = document.createElement("button");
-        element2.type = "button";
-        element2.className = "hb-related-select-trigger";
-        element2.setAttribute("aria-label", waterHeaterExtensionToggleEl);
-        element2.setAttribute("aria-haspopup", "listbox");
-        element2.setAttribute("aria-expanded", "false");
-        const element3 = document.createElement("span");
+        const elementCurrent = document.createElement("button");
+        elementCurrent.type = "button";
+        elementCurrent.className = "hb-related-select-trigger";
+        elementCurrent.setAttribute("aria-label", waterHeaterExtensionToggleEl);
+        elementCurrent.setAttribute("aria-haspopup", "listbox");
+        elementCurrent.setAttribute("aria-expanded", "false");
+        const elementNext = document.createElement("span");
         const relatedSelectMenuEl = document.createElement("i");
         relatedSelectMenuEl.setAttribute("aria-hidden", "true");
-        element2.append(element3, relatedSelectMenuEl);
-        const relatedSelectMenuEl1 = document.createElement("div");
-        relatedSelectMenuEl1.className = "hb-related-select-menu";
-        relatedSelectMenuEl1.id = "hb-related-select-" + String(this.renderNamespace || "runtime").replace(/[^a-z0-9_-]/gi, "-") + "-" + entityId.replace(/[^a-z0-9_-]/gi, "-");
-        relatedSelectMenuEl1.setAttribute("role", "listbox");
-        relatedSelectMenuEl1.setAttribute("popover", "auto");
-        relatedSelectMenuEl1.hidden = true;
-        element2.setAttribute("aria-controls", relatedSelectMenuEl1.id);
+        elementCurrent.append(elementNext, relatedSelectMenuEl);
+        const relatedSelectMenuElCurrent = document.createElement("div");
+        relatedSelectMenuElCurrent.className = "hb-related-select-menu";
+        relatedSelectMenuElCurrent.id = "hb-related-select-" + String(this.renderNamespace || "runtime").replace(/[^a-z0-9_-]/gi, "-") + "-" + entityId.replace(/[^a-z0-9_-]/gi, "-");
+        relatedSelectMenuElCurrent.setAttribute("role", "listbox");
+        relatedSelectMenuElCurrent.setAttribute("popover", "auto");
+        relatedSelectMenuElCurrent.hidden = true;
+        elementCurrent.setAttribute("aria-controls", relatedSelectMenuElCurrent.id);
         let entityState = resolveEntityId(entityId);
-        let text2 = String(entityState?.state || "");
-        let state2 = false;
-        let state3 = "";
+        let string = String(entityState?.state || "");
+        let flag = false;
+        let stateCurrent = "";
         let options = [];
-        const state4 = {
+        const stateNext = {
           entityId,
           entityMetadata: this.entityMetadata,
           entityTranslations: this.entityTranslations,
           attributes: ["options", "option"]
         };
-        const syncClimateControl = arg => state?.deviceType === "bath-heater" ? climateModeLabel(arg, "bath-heater", state4) : String(arg || "");
+        const syncClimateControl = arg => state?.deviceType === "bath-heater" ? climateModeLabel(arg, "bath-heater", stateNext) : String(arg || "");
         const computeResult = () => {
           try {
-            return relatedSelectMenuEl1.matches(":popover-open");
+            return relatedSelectMenuElCurrent.matches(":popover-open");
           } catch {
-            return relatedSelectMenuEl1.dataset.open === "true";
+            return relatedSelectMenuElCurrent.dataset.open === "true";
           }
         };
         const applyElementStyle = () => {
-          if (!computeResult() && relatedSelectMenuEl1.hidden) {
+          if (!computeResult() && relatedSelectMenuElCurrent.hidden) {
             return;
           }
-          const domRect = element2.getBoundingClientRect();
+          const domRect = elementCurrent.getBoundingClientRect();
           const innerWidth = window.innerWidth;
           const innerHeight = window.innerHeight;
           const clamped = Math.min(Math.max(domRect.width, 132), Math.max(132, innerWidth - 16));
-          relatedSelectMenuEl1.style.width = clamped + "px";
-          relatedSelectMenuEl1.style.maxHeight = Math.min(216, Math.max(88, innerHeight - 16)) + "px";
-          const size = Math.min(relatedSelectMenuEl1.scrollHeight || 0, 216);
-          const size1 = innerHeight - domRect.bottom - 8;
-          const size2 = domRect.top - 8;
-          const clamped1 = size1 < Math.min(size, 140) && size2 > size1 ? Math.max(8, domRect.top - size - 4) : Math.min(innerHeight - size - 8, domRect.bottom + 4);
-          relatedSelectMenuEl1.style.left = Math.max(8, Math.min(domRect.left, innerWidth - clamped - 8)) + "px";
-          relatedSelectMenuEl1.style.top = Math.max(8, clamped1) + "px";
+          relatedSelectMenuElCurrent.style.width = clamped + "px";
+          relatedSelectMenuElCurrent.style.maxHeight = Math.min(216, Math.max(88, innerHeight - 16)) + "px";
+          const size = Math.min(relatedSelectMenuElCurrent.scrollHeight || 0, 216);
+          const value = innerHeight - domRect.bottom - 8;
+          const sizeCurrent = domRect.top - 8;
+          const max = value < Math.min(size, 140) && sizeCurrent > value ? Math.max(8, domRect.top - size - 4) : Math.min(innerHeight - size - 8, domRect.bottom + 4);
+          relatedSelectMenuElCurrent.style.left = Math.max(8, Math.min(domRect.left, innerWidth - clamped - 8)) + "px";
+          relatedSelectMenuElCurrent.style.top = Math.max(8, max) + "px";
         };
         const syncAriaState = () => {
-          if (computeResult() && typeof relatedSelectMenuEl1.hidePopover == "function") {
-            relatedSelectMenuEl1.hidePopover();
+          if (computeResult() && typeof relatedSelectMenuElCurrent.hidePopover == "function") {
+            relatedSelectMenuElCurrent.hidePopover();
           }
-          relatedSelectMenuEl1.hidden = true;
-          relatedSelectMenuEl1.dataset.open = "false";
-          element2.setAttribute("aria-expanded", "false");
+          relatedSelectMenuElCurrent.hidden = true;
+          relatedSelectMenuElCurrent.dataset.open = "false";
+          elementCurrent.setAttribute("aria-expanded", "false");
         };
-        const syncAriaState1 = (arg = false) => {
-          if (!element2.disabled) {
-            relatedSelectMenuEl1.hidden = false;
-            if (typeof relatedSelectMenuEl1.showPopover == "function") {
-              relatedSelectMenuEl1.showPopover();
+        const callback = (arg = false) => {
+          if (!elementCurrent.disabled) {
+            relatedSelectMenuElCurrent.hidden = false;
+            if (typeof relatedSelectMenuElCurrent.showPopover == "function") {
+              relatedSelectMenuElCurrent.showPopover();
             } else {
-              relatedSelectMenuEl1.dataset.open = "true";
+              relatedSelectMenuElCurrent.dataset.open = "true";
             }
-            element2.setAttribute("aria-expanded", "true");
+            elementCurrent.setAttribute("aria-expanded", "true");
             applyElementStyle();
             if (arg) {
-              (relatedSelectMenuEl1.querySelector("[aria-selected=\"true\"]") || relatedSelectMenuEl1.querySelector("[role=\"option\"]"))?.focus();
+              (relatedSelectMenuElCurrent.querySelector("[aria-selected=\"true\"]") || relatedSelectMenuElCurrent.querySelector("[role=\"option\"]"))?.focus();
             }
           }
         };
         const invokeEntityService = async state => {
-          if (!interactive || state2 || !state) {
+          if (!interactive || flag || !state) {
             return;
           }
-          const state5 = entityState;
-          state2 = true;
+          const stateCurrent = entityState;
+          flag = true;
           syncAriaState();
-          syncVisualState1({
+          syncVisualStateCurrent({
             ...(entityState || {}),
             state,
             attributes: {
@@ -9560,102 +9561,102 @@ export class PanelRenderer {
             }
           });
           try {
-            const state6 = relatedEntitySelectService(text);
-            if (!state6) {
+            const service = relatedEntitySelectService(text);
+            if (!service) {
               throw new Error("实体 " + entityId + " 不支持选项服务。");
             }
-            await this.callEntityService(state6.domain, state6.service, entityId, {
+            await this.callEntityService(service.domain, service.service, entityId, {
               option: state
             });
-            text2 = state;
+            string = state;
           } catch (error) {
-            syncVisualState1(state5);
+            syncVisualStateCurrent(stateCurrent);
             this.options.onError?.(error);
           } finally {
-            state2 = false;
-            syncVisualState1(entityState);
+            flag = false;
+            syncVisualStateCurrent(entityState);
           }
         };
-        const syncVisualState = (relatedSelectOptionEl, relatedSelectOptionEl1) => {
-          relatedSelectMenuEl1.replaceChildren(...relatedSelectOptionEl.map(relatedSelectOptionEl2 => {
-            const element4 = document.createElement("button");
-            element4.type = "button";
-            element4.className = "hb-related-select-option";
-            element4.setAttribute("role", "option");
-            element4.dataset.value = relatedSelectOptionEl2;
-            element4.textContent = syncClimateControl(relatedSelectOptionEl2);
-            element4.title = element4.textContent;
-            const state5 = relatedSelectOptionEl2 === relatedSelectOptionEl1;
-            element4.classList.toggle("active", state5);
-            element4.setAttribute("aria-selected", String(state5));
-            element4.addEventListener("click", () => invokeEntityService(relatedSelectOptionEl2));
-            return element4;
+        const syncVisualState = (relatedSelectOptionEl, relatedSelectOptionElCurrent) => {
+          relatedSelectMenuElCurrent.replaceChildren(...relatedSelectOptionEl.map(relatedSelectOptionEl => {
+            const element = document.createElement("button");
+            element.type = "button";
+            element.className = "hb-related-select-option";
+            element.setAttribute("role", "option");
+            element.dataset.value = relatedSelectOptionEl;
+            element.textContent = syncClimateControl(relatedSelectOptionEl);
+            element.title = element.textContent;
+            const state = relatedSelectOptionEl === relatedSelectOptionElCurrent;
+            element.classList.toggle("active", state);
+            element.setAttribute("aria-selected", String(state));
+            element.addEventListener("click", () => invokeEntityService(relatedSelectOptionEl));
+            return element;
           }));
         };
-        const syncVisualState1 = (arg = entityState) => {
+        const syncVisualStateCurrent = (arg = entityState) => {
           entityState = arg || entityState;
-          const text3 = String(entityState?.state || "");
-          const state5 = relatedEntityOptions(metadata, entityState);
-          options = state5;
-          const jsonText = JSON.stringify(state5);
-          if (jsonText !== state3) {
-            state3 = jsonText;
-            syncVisualState(state5, text3);
+          const text = String(entityState?.state || "");
+          const state = relatedEntityOptions(metadata, entityState);
+          options = state;
+          const jsonText = JSON.stringify(state);
+          if (jsonText !== stateCurrent) {
+            stateCurrent = jsonText;
+            syncVisualState(state, text);
           } else {
-            for (const element4 of relatedSelectMenuEl1.querySelectorAll("[role=\"option\"]")) {
-              const state6 = element4.dataset.value === text3;
-              element4.classList.toggle("active", state6);
-              element4.setAttribute("aria-selected", String(state6));
+            for (const element of relatedSelectMenuElCurrent.querySelectorAll("[role=\"option\"]")) {
+              const state = element.dataset.value === text;
+              element.classList.toggle("active", state);
+              element.setAttribute("aria-selected", String(state));
             }
           }
-          if (text3 && !["unknown", "unavailable"].includes(text3.toLowerCase())) {
-            text2 = text3;
+          if (text && !["unknown", "unavailable"].includes(text.toLowerCase())) {
+            string = text;
           }
-          element3.textContent = text2 ? syncClimateControl(text2) : state5.length ? syncClimateControl(state5[0]) : "无选项";
-          element3.title = element3.textContent;
-          element2.disabled = !interactive || state2 || !state5.length || text3.toLowerCase() === "unavailable";
+          elementNext.textContent = string ? syncClimateControl(string) : state.length ? syncClimateControl(state[0]) : "无选项";
+          elementNext.title = elementNext.textContent;
+          elementCurrent.disabled = !interactive || flag || !state.length || text.toLowerCase() === "unavailable";
         };
-        element2.addEventListener("click", () => {
-          if (computeResult() || relatedSelectMenuEl1.dataset.open === "true") {
+        elementCurrent.addEventListener("click", () => {
+          if (computeResult() || relatedSelectMenuElCurrent.dataset.open === "true") {
             syncAriaState();
           } else {
-            syncAriaState1();
+            callback();
           }
         });
-        element2.addEventListener("keydown", event => {
+        elementCurrent.addEventListener("keydown", event => {
           if (["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) {
             event.preventDefault();
-            syncAriaState1(true);
+            callback(true);
           }
         });
-        relatedSelectMenuEl1.addEventListener("keydown", event => {
-          const matchedEl = [...relatedSelectMenuEl1.querySelectorAll("[role=\"option\"]")];
-          const state5 = matchedEl.indexOf(document.activeElement);
+        relatedSelectMenuElCurrent.addEventListener("keydown", event => {
+          const matchedEl = [...relatedSelectMenuElCurrent.querySelectorAll("[role=\"option\"]")];
+          const state = matchedEl.indexOf(document.activeElement);
           if (event.key === "Escape") {
             event.preventDefault();
             syncAriaState();
-            element2.focus();
+            elementCurrent.focus();
           } else if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
-            const state6 = event.key === "ArrowDown" ? 1 : -1;
-            matchedEl[(state5 + state6 + matchedEl.length) % matchedEl.length]?.focus();
+            const count = event.key === "ArrowDown" ? 1 : -1;
+            matchedEl[(state + count + matchedEl.length) % matchedEl.length]?.focus();
           } else if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
             document.activeElement?.click();
           }
         });
-        relatedSelectMenuEl1.addEventListener("toggle", arg => {
-          const state5 = arg.newState === "open";
-          relatedSelectMenuEl1.hidden = !state5;
-          relatedSelectMenuEl1.dataset.open = String(state5);
-          element2.setAttribute("aria-expanded", String(state5));
-          if (state5) {
+        relatedSelectMenuElCurrent.addEventListener("toggle", arg => {
+          const state = arg.newState === "open";
+          relatedSelectMenuElCurrent.hidden = !state;
+          relatedSelectMenuElCurrent.dataset.open = String(state);
+          elementCurrent.setAttribute("aria-expanded", String(state));
+          if (state) {
             applyElementStyle();
           }
         });
-        waterHeaterExtensionSelectEl.append(element, element2, relatedSelectMenuEl1);
-        syncVisualState1(entityState);
-        runHelper(entityId, syncVisualState1);
+        waterHeaterExtensionSelectEl.append(element, elementCurrent, relatedSelectMenuElCurrent);
+        syncVisualStateCurrent(entityState);
+        runHelper(entityId, syncVisualStateCurrent);
         waterHeaterExtensionGridEl.append(waterHeaterExtensionSelectEl);
       } else if (["number", "input_number"].includes(text)) {
         const waterHeaterExtensionNumberEl = document.createElement("div");
@@ -9663,58 +9664,58 @@ export class PanelRenderer {
         const element = document.createElement("span");
         element.textContent = waterHeaterExtensionToggleEl;
         const spanEl = document.createElement("span");
-        const element2 = document.createElement("button");
-        element2.type = "button";
-        element2.textContent = "−";
-        const element3 = document.createElement("output");
-        const element4 = document.createElement("button");
-        element4.type = "button";
-        element4.textContent = "+";
-        spanEl.append(element2, element3, element4);
+        const elementCurrent = document.createElement("button");
+        elementCurrent.type = "button";
+        elementCurrent.textContent = "−";
+        const elementNext = document.createElement("output");
+        const elementPrevious = document.createElement("button");
+        elementPrevious.type = "button";
+        elementPrevious.textContent = "+";
+        spanEl.append(elementCurrent, elementNext, elementPrevious);
         waterHeaterExtensionNumberEl.append(element, spanEl);
         let entityState = resolveEntityId(entityId);
         let numeric = Number(entityState?.state);
-        let state2 = false;
-        const runHelper1 = () => {
-          const numeric1 = entityState?.attributes || {};
-          const numeric2 = Number(numeric1.min);
-          const numeric3 = Number(numeric1.max);
-          const step = Math.max(0.001, Number(numeric1.step) || 1);
+        let state = false;
+        const callback = () => {
+          const numeric = entityState?.attributes || {};
+          const number = Number(numeric.min);
+          const numericCurrent = Number(numeric.max);
+          const step = Math.max(0.001, Number(numeric.step) || 1);
           return {
-            minimum: Number.isFinite(numeric2) ? numeric2 : 0,
-            maximum: Number.isFinite(numeric3) ? numeric3 : 100,
+            minimum: Number.isFinite(number) ? number : 0,
+            maximum: Number.isFinite(numericCurrent) ? numericCurrent : 100,
             step
           };
         };
-        const runHelper2 = (arg = entityState) => {
+        const runHelperCurrent = (arg = entityState) => {
           entityState = arg || entityState;
-          const numeric2 = Number(entityState?.state);
-          const finiteNumber = !Number.isFinite(numeric2) || ["unknown", "unavailable"].includes(String(entityState?.state || "").toLowerCase());
+          const number = Number(entityState?.state);
+          const finiteNumber = !Number.isFinite(number) || ["unknown", "unavailable"].includes(String(entityState?.state || "").toLowerCase());
           if (!finiteNumber) {
-            numeric = numeric2;
+            numeric = number;
           }
-          const text2 = String(entityState?.attributes?.unit_of_measurement || "");
-          element3.textContent = finiteNumber ? "--" : "" + numeric2 + text2;
-          element2.disabled = !interactive || state2 || finiteNumber;
-          element4.disabled = !interactive || state2 || finiteNumber;
+          const text = String(entityState?.attributes?.unit_of_measurement || "");
+          elementNext.textContent = finiteNumber ? "--" : "" + number + text;
+          elementCurrent.disabled = !interactive || state || finiteNumber;
+          elementPrevious.disabled = !interactive || state || finiteNumber;
         };
         const invokeEntityService = async arg => {
-          if (!interactive || state2 || !Number.isFinite(numeric)) {
+          if (!interactive || state || !Number.isFinite(numeric)) {
             return;
           }
           const {
             minimum,
             maximum,
             step
-          } = runHelper1();
+          } = callback();
           const asString = String(step).split(".")[1]?.length || 0;
           const asNumber = Number(Math.max(minimum, Math.min(maximum, numeric + arg * step)).toFixed(asString));
           if (asNumber === numeric) {
             return;
           }
-          const state3 = entityState;
-          state2 = true;
-          runHelper2({
+          const stateCurrent = entityState;
+          state = true;
+          runHelperCurrent({
             ...(entityState || {}),
             state: String(asNumber)
           });
@@ -9724,65 +9725,65 @@ export class PanelRenderer {
             });
             numeric = asNumber;
           } catch (error) {
-            runHelper2(state3);
+            runHelperCurrent(stateCurrent);
             this.options.onError?.(error);
           } finally {
-            state2 = false;
-            runHelper2(entityState);
+            state = false;
+            runHelperCurrent(entityState);
           }
         };
-        element2.addEventListener("click", () => invokeEntityService(-1));
-        element4.addEventListener("click", () => invokeEntityService(1));
-        runHelper2(entityState);
-        runHelper(entityId, runHelper2);
+        elementCurrent.addEventListener("click", () => invokeEntityService(-1));
+        elementPrevious.addEventListener("click", () => invokeEntityService(1));
+        runHelperCurrent(entityState);
+        runHelper(entityId, runHelperCurrent);
         waterHeaterExtensionGridEl.append(waterHeaterExtensionNumberEl);
       } else if (text === "button") {
         const element = document.createElement("button");
         element.type = "button";
         element.className = "hb-water-heater-extension-action";
         element.textContent = waterHeaterExtensionToggleEl;
-        let state2 = false;
-        const runHelper1 = entityId2 => {
-          const asString = String(entityId2?.state || "").toLowerCase() === "unavailable";
-          element.disabled = !interactive || state2 || asString;
+        let state = false;
+        const callback = entityId => {
+          const asString = String(entityId?.state || "").toLowerCase() === "unavailable";
+          element.disabled = !interactive || state || asString;
         };
         element.addEventListener("click", async () => {
-          if (!!interactive && !state2 && !element.disabled && (!relatedEntityNeedsConfirmation(metadata) || !!window.confirm("确认执行“" + waterHeaterExtensionToggleEl + "”吗？"))) {
-            state2 = true;
-            runHelper1(resolveEntityId(entityId));
+          if (!!interactive && !state && !element.disabled && (!relatedEntityNeedsConfirmation(metadata) || !!window.confirm("确认执行“" + waterHeaterExtensionToggleEl + "”吗？"))) {
+            state = true;
+            callback(resolveEntityId(entityId));
             try {
               await this.callEntityService("button", "press", entityId);
             } catch (error) {
               this.options.onError?.(error);
             } finally {
-              state2 = false;
-              runHelper1(resolveEntityId(entityId));
+              state = false;
+              callback(resolveEntityId(entityId));
             }
           }
         });
-        runHelper1(resolveEntityId(entityId));
-        runHelper(entityId, runHelper1);
+        callback(resolveEntityId(entityId));
+        runHelper(entityId, callback);
         waterHeaterExtensionGridEl.append(element);
       } else if (["sensor", "binary_sensor"].includes(text)) {
         const element = document.createElement("div");
         element.className = "hb-water-heater-extension-readonly";
-        const element2 = document.createElement("strong");
-        element2.textContent = waterHeaterExtensionToggleEl;
-        const element3 = document.createElement("small");
+        const elementCurrent = document.createElement("strong");
+        elementCurrent.textContent = waterHeaterExtensionToggleEl;
+        const elementNext = document.createElement("small");
         const syncVisualState = entityState => {
-          const text2 = String(entityState?.state || "unknown");
-          const lowered = ["unknown", "unavailable"].includes(text2.toLowerCase());
-          const text3 = String(entityState?.attributes?.unit_of_measurement || "");
+          const string = String(entityState?.state || "unknown");
+          const lowered = ["unknown", "unavailable"].includes(string.toLowerCase());
+          const textCurrent = String(entityState?.attributes?.unit_of_measurement || "");
           if (lowered) {
-            element3.textContent = "不可用";
+            elementNext.textContent = "不可用";
           } else if (text === "binary_sensor") {
-            element3.textContent = text2 === "on" ? "已触发" : "正常";
+            elementNext.textContent = string === "on" ? "已触发" : "正常";
           } else {
-            element3.textContent = "" + text2 + (text3 ? " " + text3 : "");
+            elementNext.textContent = "" + string + (textCurrent ? " " + textCurrent : "");
           }
           element.classList.toggle("is-unavailable", lowered);
         };
-        element.append(element2, element3);
+        element.append(elementCurrent, elementNext);
         syncVisualState(resolveEntityId(entityId));
         runHelper(entityId, syncVisualState);
         waterHeaterExtensionGridEl.append(element);
@@ -9792,13 +9793,13 @@ export class PanelRenderer {
       const element = document.createElement("strong");
       element.className = "hb-water-heater-extension-title";
       element.textContent = "扩展功能";
-      relatedEntityExtensionsEl1.dataset.controlCount = String(waterHeaterExtensionGridEl.childElementCount);
+      relatedEntityExtensionsElCurrent.dataset.controlCount = String(waterHeaterExtensionGridEl.childElementCount);
       waterHeaterExtensionGridEl.dataset.controlCount = String(waterHeaterExtensionGridEl.childElementCount);
-      relatedEntityExtensionsEl1.append(element, waterHeaterExtensionGridEl);
+      relatedEntityExtensionsElCurrent.append(element, waterHeaterExtensionGridEl);
     }
-    relatedEntityExtensionsEl1.stateHandlers = index;
-    relatedEntityExtensionsEl1.relatedEntityIds = filtered.map(bathHeaterLightControlEl => bathHeaterLightControlEl.entityId);
-    return relatedEntityExtensionsEl1;
+    relatedEntityExtensionsElCurrent.stateHandlers = index;
+    relatedEntityExtensionsElCurrent.relatedEntityIds = filtered.map(bathHeaterLightControlEl => bathHeaterLightControlEl.entityId);
+    return relatedEntityExtensionsElCurrent;
   }
   createBathHeaterLightControl(entityId, component, {
     interactive = true,
@@ -9807,39 +9808,39 @@ export class PanelRenderer {
     const element = document.createElement("section");
     element.className = "hb-bath-heater-light-control";
     const spanEl = document.createElement("span");
-    const element2 = document.createElement("i");
-    element2.setAttribute("aria-hidden", "true");
-    element2.textContent = "☀";
-    const element3 = document.createElement("strong");
-    element3.textContent = String(component?.attributes?.friendly_name || "浴霸灯");
-    const element4 = document.createElement("output");
-    spanEl.append(element2, element3, element4);
-    const element5 = document.createElement("button");
-    element5.type = "button";
-    element5.disabled = !interactive;
+    const elementCurrent = document.createElement("i");
+    elementCurrent.setAttribute("aria-hidden", "true");
+    elementCurrent.textContent = "☀";
+    const elementNext = document.createElement("strong");
+    elementNext.textContent = String(component?.attributes?.friendly_name || "浴霸灯");
+    const elementPrevious = document.createElement("output");
+    spanEl.append(elementCurrent, elementNext, elementPrevious);
+    const elementLocal = document.createElement("button");
+    elementLocal.type = "button";
+    elementLocal.disabled = !interactive;
     let state = component;
-    let state1 = false;
+    let flag = false;
     const syncVisualState = (arg = state) => {
       state = arg || state;
       const unavailable = ["unknown", "unavailable"].includes(String(state?.state || ""));
       const isOn = state?.state === "on";
       element.classList.toggle("is-on", isOn && !unavailable);
       element.classList.toggle("is-unavailable", unavailable);
-      element4.textContent = unavailable ? "不可用" : isOn ? "已开启" : "已关闭";
-      element5.textContent = isOn ? "关闭灯光" : "开启灯光";
-      element5.disabled = !interactive || state1 || unavailable;
-      element5.setAttribute("aria-pressed", String(isOn));
+      elementPrevious.textContent = unavailable ? "不可用" : isOn ? "已开启" : "已关闭";
+      elementLocal.textContent = isOn ? "关闭灯光" : "开启灯光";
+      elementLocal.disabled = !interactive || flag || unavailable;
+      elementLocal.setAttribute("aria-pressed", String(isOn));
       onStateChange?.({
         isOn,
         unavailable
       });
     };
-    const state2 = async () => {
-      if (!interactive || state1) {
+    const callback = async () => {
+      if (!interactive || flag) {
         return;
       }
-      state1 = true;
-      const state3 = state;
+      flag = true;
+      const stateCurrent = state;
       syncVisualState({
         ...(state || {}),
         state: state?.state === "on" ? "off" : "on"
@@ -9847,17 +9848,17 @@ export class PanelRenderer {
       try {
         await this.callEntityService("homeassistant", "toggle", entityId);
       } catch (error) {
-        syncVisualState(state3);
+        syncVisualState(stateCurrent);
         this.options.onError?.(error);
       } finally {
-        state1 = false;
+        flag = false;
         syncVisualState(state);
       }
     };
-    element5.addEventListener("click", state2);
-    element.append(spanEl, element5);
+    elementLocal.addEventListener("click", callback);
+    element.append(spanEl, elementLocal);
     element.syncBathLightState = syncVisualState;
-    element.toggleBathLight = state2;
+    element.toggleBathLight = callback;
     syncVisualState(component);
     return element;
   }
@@ -9884,11 +9885,11 @@ export class PanelRenderer {
     climateDetailsLoadingEl.className = "hb-climate-details-loading is-loading";
     const iconEl = document.createElement("i");
     iconEl.setAttribute("aria-hidden", "true");
-    const element2 = document.createElement("strong");
-    element2.textContent = "正在加载设备状态…";
-    const element3 = document.createElement("span");
-    element3.textContent = "状态到达后会自动显示，无需重新打开弹窗";
-    climateDetailsLoadingEl.append(iconEl, element2, element3);
+    const elementCurrent = document.createElement("strong");
+    elementCurrent.textContent = "正在加载设备状态…";
+    const elementNext = document.createElement("span");
+    elementNext.textContent = "状态到达后会自动显示，无需重新打开弹窗";
+    climateDetailsLoadingEl.append(iconEl, elementCurrent, elementNext);
     electricBedLoadingBodyEl.append(climateDetailsLoadingEl);
     entityDetailsCardEl.append(entityDetailsHeadingEl, electricBedLoadingBodyEl);
     detailsDialog.append(entityDetailsCardEl);
@@ -9927,19 +9928,19 @@ export class PanelRenderer {
       throw new Error("该电动床控件没有关联实体。");
     }
     const state = this.deviceProfile(entityId);
-    const state1 = state?.roles || {};
+    const options = state?.roles || {};
     const filtered = [["backrest", "靠背角度"], ["leg", "腿部角度"], ["waist", "腰部角度"]].map(([role, label]) => ({
       role,
       label,
-      entityId: String(state1[role] || "")
+      entityId: String(options[role] || "")
     })).filter(arg => arg.entityId);
-    const text = String(state1.mode || "");
-    const entityId1 = this.entityMetadata.get(entityId);
-    const filtered1 = entityId1?.deviceId ? [...this.entityMetadata.values()].filter(metadata => metadata.deviceId === entityId1.deviceId && ["button", "select"].includes(String(metadata.domain || metadata.entityId || "").split(".", 1)[0]) && metadata.entityId !== state1.mode && entityMetadataIsAvailable(metadata)).sort((arg, second) => String(arg.entityId || "").localeCompare(String(second.entityId || ""))).map(arg => arg.entityId) : [];
-    const entityDetailsDialogEl = [...new Set([String(state1.memory1 || ""), String(state1.memory2 || ""), ...filtered1].filter(Boolean))].slice(0, 2);
+    const text = String(options.mode || "");
+    const entry = this.entityMetadata.get(entityId);
+    const mapped = entry?.deviceId ? [...this.entityMetadata.values()].filter(metadata => metadata.deviceId === entry.deviceId && ["button", "select"].includes(String(metadata.domain || metadata.entityId || "").split(".", 1)[0]) && metadata.entityId !== options.mode && entityMetadataIsAvailable(metadata)).sort((arg, second) => String(arg.entityId || "").localeCompare(String(second.entityId || ""))).map(arg => arg.entityId) : [];
+    const entityDetailsDialogEl = [...new Set([String(options.memory1 || ""), String(options.memory2 || ""), ...mapped].filter(Boolean))].slice(0, 2);
     this.closeRuntimeDialog();
-    const entityDetailsDialogEl5 = document.createElement("dialog");
-    entityDetailsDialogEl5.className = "hb-entity-details-dialog electric-bed-details";
+    const entityDetailsDialogElCurrent = document.createElement("dialog");
+    entityDetailsDialogElCurrent.className = "hb-entity-details-dialog electric-bed-details";
     const entityDetailsCardEl = document.createElement("div");
     entityDetailsCardEl.className = "hb-entity-details-card";
     const entityDetailsHeadingEl = document.createElement("div");
@@ -9947,13 +9948,13 @@ export class PanelRenderer {
     const divEl = document.createElement("div");
     const element = document.createElement("strong");
     element.textContent = componentDialogTitle(component, state?.deviceName || "电动床");
-    const element2 = document.createElement("span");
-    divEl.append(element, element2);
-    const element3 = document.createElement("button");
-    element3.type = "button";
-    element3.textContent = "×";
-    element3.setAttribute("aria-label", "关闭电动床详情");
-    entityDetailsHeadingEl.append(divEl, element3);
+    const elementCurrent = document.createElement("span");
+    divEl.append(element, elementCurrent);
+    const elementNext = document.createElement("button");
+    elementNext.type = "button";
+    elementNext.textContent = "×";
+    elementNext.setAttribute("aria-label", "关闭电动床详情");
+    entityDetailsHeadingEl.append(divEl, elementNext);
     const electricBedDetailsBodyEl = document.createElement("div");
     electricBedDetailsBodyEl.className = "hb-electric-bed-details-body";
     const electricBedVisualEl = document.createElement("section");
@@ -9971,24 +9972,24 @@ export class PanelRenderer {
     const electricBedBaseEl = document.createElement("i");
     electricBedBaseEl.className = "hb-electric-bed-base";
     electricBedModelEl.append(electricBedMattressEl, electricBedBackEl, electricBedWaistEl, electricBedLegsEl, electricBedBaseEl);
-    const buildElementTree = (electricBedAngleReadoutEl, electricBedAngleReadoutEl1) => {
+    const buildElementTree = (electricBedAngleReadoutEl, electricBedAngleReadoutElCurrent) => {
       const readout = document.createElement("span");
       readout.className = "hb-electric-bed-angle-readout " + electricBedAngleReadoutEl;
       const strongEl = document.createElement("strong");
-      const element10 = document.createElement("small");
-      element10.textContent = electricBedAngleReadoutEl1;
-      readout.append(strongEl, element10);
+      const element = document.createElement("small");
+      element.textContent = electricBedAngleReadoutElCurrent;
+      readout.append(strongEl, element);
       return {
         readout,
         value: strongEl
       };
     };
-    const element4 = buildElementTree("back", "靠背");
-    const element5 = buildElementTree("waist", "腰部");
-    const element6 = buildElementTree("legs", "腿部");
-    const element7 = document.createElement("strong");
-    const element8 = document.createElement("small");
-    electricBedVisualEl.append(electricBedModelEl, element4.readout, element5.readout, element6.readout, element7, element8);
+    const tree = buildElementTree("back", "靠背");
+    const elementPrevious = buildElementTree("waist", "腰部");
+    const elementLocal = buildElementTree("legs", "腿部");
+    const elementItem = document.createElement("strong");
+    const elementEntry = document.createElement("small");
+    electricBedVisualEl.append(electricBedModelEl, tree.readout, elementPrevious.readout, elementLocal.readout, elementItem, elementEntry);
     const electricBedUtilitiesEl = document.createElement("section");
     electricBedUtilitiesEl.className = "hb-electric-bed-utilities";
     const electricBedMainEl = document.createElement("section");
@@ -9996,38 +9997,38 @@ export class PanelRenderer {
     const electricBedAngleControlsEl = document.createElement("section");
     electricBedAngleControlsEl.className = "hb-electric-bed-angle-controls";
     const handlers = new Map();
-    const state2 = [];
-    const resolveEntityId = entityId2 => {
-      const state3 = this.states.get(entityId2);
-      return state3?.newState || state3 || {
-        entityId: entityId2,
+    const list = [];
+    const resolveEntityId = entityId => {
+      const state = this.states.get(entityId);
+      return state?.newState || state || {
+        entityId: entityId,
         state: "unknown",
         attributes: {}
       };
     };
-    const syncVisualState = (role, entityId2, variant = "", electricBedControlEl = electricBedAngleControlsEl) => {
-      const electricBedControlEl1 = resolveEntityId(entityId2);
-      const element10 = document.createElement("section");
-      element10.className = "hb-electric-bed-control";
+    const syncVisualState = (role, entityId, variant = "", electricBedControlEl = electricBedAngleControlsEl) => {
+      const id = resolveEntityId(entityId);
+      const element = document.createElement("section");
+      element.className = "hb-electric-bed-control";
       if (role === "模式") {
-        element10.classList.add("hb-electric-bed-mode");
+        element.classList.add("hb-electric-bed-mode");
       }
-      const element11 = document.createElement("strong");
-      element11.textContent = role;
-      const element12 = this.createCapabilityDetailsControls(entityId2, electricBedControlEl1, {
+      const elementCurrent = document.createElement("strong");
+      elementCurrent.textContent = role;
+      const controls = this.createCapabilityDetailsControls(entityId, id, {
         interactive: !preview,
         variant
       });
-      element12.classList.add("hb-electric-bed-capability");
-      element10.append(element11, element12);
-      electricBedControlEl.append(element10);
-      const sync = arg => element12.syncCapabilityState?.(arg);
-      handlers.set(entityId2, [sync]);
-      state2.push({
+      controls.classList.add("hb-electric-bed-capability");
+      element.append(elementCurrent, controls);
+      electricBedControlEl.append(element);
+      const sync = arg => controls.syncCapabilityState?.(arg);
+      handlers.set(entityId, [sync]);
+      list.push({
         role,
-        entityId: entityId2,
+        entityId: entityId,
         sync,
-        cleanup: () => element12.cleanupCapabilityDetails?.()
+        cleanup: () => controls.cleanupCapabilityDetails?.()
       });
     };
     for (const electricBedControlEl of filtered) {
@@ -10038,124 +10039,124 @@ export class PanelRenderer {
     } else {
       const electricBedControlEl = document.createElement("section");
       electricBedControlEl.className = "hb-electric-bed-control hb-electric-bed-mode is-unavailable";
-      const element10 = document.createElement("strong");
-      element10.textContent = "模式";
+      const element = document.createElement("strong");
+      element.textContent = "模式";
       const capabilitySelectEl = document.createElement("select");
       capabilitySelectEl.className = "hb-capability-select";
       capabilitySelectEl.disabled = true;
       capabilitySelectEl.setAttribute("aria-label", "模式");
-      const element11 = document.createElement("option");
-      element11.textContent = "未识别到模式实体";
-      capabilitySelectEl.append(element11);
-      electricBedControlEl.append(element10, capabilitySelectEl);
+      const elementCurrent = document.createElement("option");
+      elementCurrent.textContent = "未识别到模式实体";
+      capabilitySelectEl.append(elementCurrent);
+      electricBedControlEl.append(element, capabilitySelectEl);
       electricBedUtilitiesEl.append(electricBedControlEl);
     }
     const electricBedMemoryEl = document.createElement("section");
     electricBedMemoryEl.className = "hb-electric-bed-memory";
-    const element9 = document.createElement("strong");
-    element9.textContent = "记忆姿势";
+    const elementList = document.createElement("strong");
+    elementList.textContent = "记忆姿势";
     const electricBedMemoryListEl = document.createElement("div");
     electricBedMemoryListEl.className = "hb-electric-bed-memory-list";
-    for (let state3 = 0; state3 < 2; state3 += 1) {
-      const entityId2 = entityDetailsDialogEl[state3] || "";
-      const electricBedMemoryControlEl = entityId2 ? this.entityMetadata.get(entityId2) : null;
-      if (String(entityId2).split(".", 1)[0] === "select") {
-        const electricBedMemoryControlEl1 = document.createElement("section");
-        electricBedMemoryControlEl1.className = "hb-electric-bed-memory-control hb-electric-bed-control";
-        const element11 = document.createElement("strong");
-        element11.textContent = "记忆姿势 " + (state3 + 1);
-        const element12 = this.createCapabilityDetailsControls(entityId2, resolveEntityId(entityId2), {
+    for (let state = 0; state < 2; state += 1) {
+      const entityId = entityDetailsDialogEl[state] || "";
+      const electricBedMemoryControlEl = entityId ? this.entityMetadata.get(entityId) : null;
+      if (String(entityId).split(".", 1)[0] === "select") {
+        const electricBedMemoryControlEl = document.createElement("section");
+        electricBedMemoryControlEl.className = "hb-electric-bed-memory-control hb-electric-bed-control";
+        const element = document.createElement("strong");
+        element.textContent = "记忆姿势 " + (state + 1);
+        const controls = this.createCapabilityDetailsControls(entityId, resolveEntityId(entityId), {
           interactive: !preview,
           variant: "electric-bed-memory",
           selectLabel: "姿势"
         });
-        element12.classList.add("hb-electric-bed-capability");
-        electricBedMemoryControlEl1.append(element11, element12);
-        electricBedMemoryListEl.append(electricBedMemoryControlEl1);
-        const sync = arg => element12.syncCapabilityState?.(arg);
-        handlers.set(entityId2, [sync]);
-        state2.push({
-          role: "memory" + (state3 + 1),
-          entityId: entityId2,
+        controls.classList.add("hb-electric-bed-capability");
+        electricBedMemoryControlEl.append(element, controls);
+        electricBedMemoryListEl.append(electricBedMemoryControlEl);
+        const sync = arg => controls.syncCapabilityState?.(arg);
+        handlers.set(entityId, [sync]);
+        list.push({
+          role: "memory" + (state + 1),
+          entityId: entityId,
           sync,
-          cleanup: () => element12.cleanupCapabilityDetails?.()
+          cleanup: () => controls.cleanupCapabilityDetails?.()
         });
         continue;
       }
-      const element10 = document.createElement("button");
-      element10.type = "button";
-      element10.className = "hb-electric-bed-memory-button";
-      element10.textContent = electricBedMemoryControlEl?.name || electricBedMemoryControlEl?.originalName || "记忆姿势 " + (state3 + 1);
-      element10.disabled = preview || !entityId2;
-      element10.classList.toggle("is-unavailable", !entityId2);
-      element10.addEventListener("click", async () => {
-        if (!preview && !!entityId2 && !element10.disabled) {
-          element10.disabled = true;
-          element10.classList.add("is-pending");
+      const element = document.createElement("button");
+      element.type = "button";
+      element.className = "hb-electric-bed-memory-button";
+      element.textContent = electricBedMemoryControlEl?.name || electricBedMemoryControlEl?.originalName || "记忆姿势 " + (state + 1);
+      element.disabled = preview || !entityId;
+      element.classList.toggle("is-unavailable", !entityId);
+      element.addEventListener("click", async () => {
+        if (!preview && !!entityId && !element.disabled) {
+          element.disabled = true;
+          element.classList.add("is-pending");
           try {
-            await this.callEntityService("button", "press", entityId2);
-            element10.classList.add("is-success");
-            window.setTimeout(() => element10.classList.remove("is-success"), 900);
+            await this.callEntityService("button", "press", entityId);
+            element.classList.add("is-success");
+            window.setTimeout(() => element.classList.remove("is-success"), 900);
           } catch (error) {
             this.options.onError?.(error);
           } finally {
-            element10.classList.remove("is-pending");
-            element10.disabled = preview || !entityId2;
+            element.classList.remove("is-pending");
+            element.disabled = preview || !entityId;
           }
         }
       });
-      electricBedMemoryListEl.append(element10);
+      electricBedMemoryListEl.append(element);
     }
-    electricBedMemoryEl.append(element9, electricBedMemoryListEl);
+    electricBedMemoryEl.append(elementList, electricBedMemoryListEl);
     electricBedUtilitiesEl.append(electricBedMemoryEl);
     if (!filtered.length) {
-      const element10 = document.createElement("p");
-      element10.className = "hb-electric-bed-empty";
-      element10.textContent = "暂未识别到角度实体";
-      electricBedAngleControlsEl.append(element10);
+      const element = document.createElement("p");
+      element.className = "hb-electric-bed-empty";
+      element.textContent = "暂未识别到角度实体";
+      electricBedAngleControlsEl.append(element);
     }
     electricBedMainEl.append(electricBedVisualEl, electricBedAngleControlsEl);
     electricBedDetailsBodyEl.append(electricBedUtilitiesEl, electricBedMainEl);
     entityDetailsCardEl.append(entityDetailsHeadingEl, electricBedDetailsBodyEl);
-    entityDetailsDialogEl5.append(entityDetailsCardEl);
+    entityDetailsDialogElCurrent.append(entityDetailsCardEl);
     const clampNumber = (detailsEntityId, fallback) => {
       const numeric = Number(fallback?.state);
-      const numeric2 = Number(fallback?.attributes?.min);
-      const numeric3 = Number(fallback?.attributes?.max);
+      const number = Number(fallback?.attributes?.min);
+      const numericCurrent = Number(fallback?.attributes?.max);
       if (Number.isFinite(numeric)) {
-        if (!Number.isFinite(numeric2) || !Number.isFinite(numeric3) || numeric3 <= numeric2) {
+        if (!Number.isFinite(number) || !Number.isFinite(numericCurrent) || numericCurrent <= number) {
           return Math.max(0, Math.min(100, numeric));
         } else {
-          return Math.max(0, Math.min(100, (numeric - numeric2) / (numeric3 - numeric2) * 100));
+          return Math.max(0, Math.min(100, (numeric - number) / (numericCurrent - number) * 100));
         }
       } else {
         return 0;
       }
     };
     const applyElementStyle = () => {
-      const state3 = resolveEntityId(state1.backrest);
-      const state4 = resolveEntityId(state1.leg);
-      const state5 = resolveEntityId(state1.waist);
+      const state = resolveEntityId(options.backrest);
+      const id = resolveEntityId(options.leg);
+      const stateCurrent = resolveEntityId(options.waist);
       const runHelper = entityState => {
         const numeric = Number(entityState?.state);
         if (!Number.isFinite(numeric)) {
           return "--";
         }
-        const text2 = String(entityState?.attributes?.unit_of_measurement || "°");
-        return "" + numeric + text2;
+        const text = String(entityState?.attributes?.unit_of_measurement || "°");
+        return "" + numeric + text;
       };
-      element4.value.textContent = runHelper(state3);
-      element5.value.textContent = runHelper(state5);
-      element6.value.textContent = runHelper(state4);
-      electricBedVisualEl.style.setProperty("--hb-bed-backrest-angle", clampNumber(state1.backrest, state3) * -0.42 + "deg");
-      electricBedVisualEl.style.setProperty("--hb-bed-leg-angle", clampNumber(state1.leg, state4) * -0.28 + "deg");
-      electricBedVisualEl.style.setProperty("--hb-bed-waist-angle", clampNumber(state1.waist, state5) * -0.1 + "deg");
-      const lowered = [state3, state4, state5].map(arg => String(arg?.state || "").toLowerCase());
-      const state6 = lowered.some(arg => arg === "unavailable");
-      const state7 = !state6 && lowered.some(arg => arg === "unknown" || !arg);
-      element7.textContent = state6 ? "部分实体不可用" : state7 ? "正在读取实体" : "设备在线";
-      element8.textContent = filtered.length === 3 ? "三个角度独立控制" : "正在读取电动床实体";
-      element2.textContent = state6 ? "部分功能不可用" : "";
+      tree.value.textContent = runHelper(state);
+      elementPrevious.value.textContent = runHelper(stateCurrent);
+      elementLocal.value.textContent = runHelper(id);
+      electricBedVisualEl.style.setProperty("--hb-bed-backrest-angle", clampNumber(options.backrest, state) * -0.42 + "deg");
+      electricBedVisualEl.style.setProperty("--hb-bed-leg-angle", clampNumber(options.leg, id) * -0.28 + "deg");
+      electricBedVisualEl.style.setProperty("--hb-bed-waist-angle", clampNumber(options.waist, stateCurrent) * -0.1 + "deg");
+      const lowered = [state, id, stateCurrent].map(arg => String(arg?.state || "").toLowerCase());
+      const matched = lowered.some(arg => arg === "unavailable");
+      const stateNext = !matched && lowered.some(arg => arg === "unknown" || !arg);
+      elementItem.textContent = matched ? "部分实体不可用" : stateNext ? "正在读取实体" : "设备在线";
+      elementEntry.textContent = filtered.length === 3 ? "三个角度独立控制" : "正在读取电动床实体";
+      elementCurrent.textContent = matched ? "部分功能不可用" : "";
     };
     applyElementStyle();
     for (const item of filtered) {
@@ -10167,39 +10168,39 @@ export class PanelRenderer {
       handlers.get(text)?.push(() => applyElementStyle());
     }
     this.detailsStateSync = {
-      entityDetailsDialogEl5,
+      entityDetailsDialogElCurrent,
       handlers
     };
     const rendererRuntimeDialogLayerEl = document.createElement("div");
     rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
     rendererRuntimeDialogLayerEl.tabIndex = -1;
-    rendererRuntimeDialogLayerEl.append(entityDetailsDialogEl5);
+    rendererRuntimeDialogLayerEl.append(entityDetailsDialogElCurrent);
     this.container.append(rendererRuntimeDialogLayerEl);
-    this.detailsDialog = entityDetailsDialogEl5;
-    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogEl5, 760, 560);
-    element3.addEventListener("click", () => entityDetailsDialogEl5.close());
-    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogEl5, entityDetailsCardEl);
+    this.detailsDialog = entityDetailsDialogElCurrent;
+    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogElCurrent, 760, 560);
+    elementNext.addEventListener("click", () => entityDetailsDialogElCurrent.close());
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogElCurrent, entityDetailsCardEl);
     rendererRuntimeDialogLayerEl.addEventListener("keydown", arg => {
       if (arg.key === "Escape") {
-        entityDetailsDialogEl5.close();
+        entityDetailsDialogElCurrent.close();
       }
     });
-    entityDetailsDialogEl5.addEventListener("close", () => {
-      for (const item of state2) {
+    entityDetailsDialogElCurrent.addEventListener("close", () => {
+      for (const item of list) {
         item.cleanup?.();
       }
-      this.clearRuntimeDialogScale(entityDetailsDialogEl5);
-      if (this.detailsDialog === entityDetailsDialogEl5) {
+      this.clearRuntimeDialogScale(entityDetailsDialogElCurrent);
+      if (this.detailsDialog === entityDetailsDialogElCurrent) {
         this.detailsDialog = null;
       }
-      if (this.detailsStateSync?.dialog === entityDetailsDialogEl5) {
+      if (this.detailsStateSync?.dialog === entityDetailsDialogElCurrent) {
         this.detailsStateSync = null;
       }
       rendererRuntimeDialogLayerEl.remove();
     }, {
       once: true
     });
-    entityDetailsDialogEl5.show();
+    entityDetailsDialogElCurrent.show();
   }
   openInteraction3dVacuumDetails(component, detailsOptions, {
     states: states = {},
@@ -10211,36 +10212,36 @@ export class PanelRenderer {
     const entityId = new Set([component.entityId, ...(component.relatedEntityIds || [])]);
     let state = null;
     let entityDetailsDialogEl = "";
-    const entityDetailsDialogEl1 = () => JSON.stringify([...entityId].filter(toggleEvent => /^(vacuum|select)\./.test(toggleEvent)).map(toggleEvent => {
-      const newState5 = this.states.get(toggleEvent);
-      const fan_speed_list = (newState5?.newState || newState5)?.attributes || {};
+    const callback = () => JSON.stringify([...entityId].filter(toggleEvent => /^(vacuum|select)\./.test(toggleEvent)).map(toggleEvent => {
+      const newState = this.states.get(toggleEvent);
+      const fan_speed_list = (newState?.newState || newState)?.attributes || {};
       return [toggleEvent, fan_speed_list.fan_speed_list, fan_speed_list.suction_level_list, fan_speed_list.cleaning_mode_list, fan_speed_list.options];
     }));
     const buildEntityStateMap = statesByEntityId => {
-      for (const entityId6 of entityId) {
-        const entityStateEntry = statesByEntityId[entityId6] || {
-          entityId: entityId6,
+      for (const entityIdCurrent of entityId) {
+        const entityStateEntry = statesByEntityId[entityIdCurrent] || {
+          entityId: entityIdCurrent,
           state: "unavailable",
           attributes: {}
         };
-        this.states.set(entityId6, entityStateEntry);
+        this.states.set(entityIdCurrent, entityStateEntry);
         if (this.detailsStateSync?.dialog === state) {
-          for (const childStates of this.detailsStateSync.handlers.get(entityId6) || []) {
+          for (const childStates of this.detailsStateSync.handlers.get(entityIdCurrent) || []) {
             childStates(entityStateEntry);
           }
         }
       }
-      if (state && entityDetailsDialogEl1() !== entityDetailsDialogEl) {
+      if (state && callback() !== entityDetailsDialogEl) {
         vacuumDetailsSubtitleEl();
       }
     };
     buildEntityStateMap(states);
     const element = componentNode => {
-      for (const type6 of componentNode || []) {
-        if (type6.type === "vacuum-control" && type6.bindings?.entity?.entityId === component.entityId) {
-          return type6;
+      for (const type of componentNode || []) {
+        if (type.type === "vacuum-control" && type.bindings?.entity?.entityId === component.entityId) {
+          return type;
         }
-        const childStateMap = element(type6.children);
+        const childStateMap = element(type.children);
         if (childStateMap) {
           return childStateMap;
         }
@@ -10249,7 +10250,7 @@ export class PanelRenderer {
     };
     const entityDetailsHeadingEl = (this.document?.pages || []).map(components => element(components.components)).find(Boolean);
     const divEl = entityDetailsHeadingEl?.properties?.relatedEntities?.mode === "selected" ? (entityDetailsHeadingEl.properties.relatedEntities.entityIds || []).filter(item => entityId.has(item)) : [];
-    const element2 = {
+    const options = {
       id: "vacuum:" + component.id,
       type: "vacuum-control",
       properties: {
@@ -10267,7 +10268,7 @@ export class PanelRenderer {
     };
     const vacuumDetailsSubtitleEl = () => {
       state?.removeEventListener("close", detailsOptions);
-      this.showVacuumDetails(element2, {
+      this.showVacuumDetails(options, {
         preview: !!this.options.editable,
         interaction3d: {
           root,
@@ -10277,7 +10278,7 @@ export class PanelRenderer {
         }
       });
       state = this.detailsDialog;
-      entityDetailsDialogEl = entityDetailsDialogEl1();
+      entityDetailsDialogEl = callback();
       state?.addEventListener("close", detailsOptions, {
         once: true
       });
@@ -10294,8 +10295,8 @@ export class PanelRenderer {
     };
   }
   showVacuumDetails(component, {
-    preview: element12 = false,
-    interaction3d: root2 = null
+    preview: element = false,
+    interaction3d: root = null
   } = {}) {
     const entityId = component.bindings?.entity?.entityId;
     if (!entityId) {
@@ -10303,22 +10304,22 @@ export class PanelRenderer {
     }
     const state = selectedRelatedEntityIds(component);
     this.closeRuntimeDialog();
-    const state1 = this.states.get(entityId);
-    let entityState = state1?.newState || state1 || {
+    const entry = this.states.get(entityId);
+    let entityState = entry?.newState || entry || {
       state: "unknown",
       attributes: {}
     };
     const entityDetailsDialogEl = document.createElement("dialog");
     entityDetailsDialogEl.className = "hb-entity-details-dialog vacuum-details";
-    if (root2) {
+    if (root) {
       entityDetailsDialogEl.classList.add("i3d-vacuum-details");
     }
-    const append5 = document.createElement("div");
-    append5.className = "hb-entity-details-card";
-    append5.classList.add("hb-vacuum-details-card");
-    const append6 = document.createElement("div");
-    append6.className = "hb-entity-details-heading";
-    const state4 = document.createElement("div");
+    const append = document.createElement("div");
+    append.className = "hb-entity-details-card";
+    append.classList.add("hb-vacuum-details-card");
+    const appendCurrent = document.createElement("div");
+    appendCurrent.className = "hb-entity-details-heading";
+    const stateCurrent = document.createElement("div");
     const vacuumDetailsStrongEl = document.createElement("strong");
     const vacuumFriendlyTitle = String(entityState.attributes?.friendly_name || "扫地机器人").replace(/^\d+/, "") || "扫地机器人";
     vacuumDetailsStrongEl.textContent = componentDialogTitle(component, vacuumFriendlyTitle);
@@ -10328,12 +10329,12 @@ export class PanelRenderer {
     vacuumDetailsButtonEl.type = "button";
     vacuumDetailsButtonEl.setAttribute("aria-label", "关闭扫地机器人详情");
     vacuumDetailsButtonEl.textContent = "×";
-    state4.append(vacuumDetailsStrongEl, vacuumDetailsSubtitleEl);
-    append6.append(state4, vacuumDetailsButtonEl);
+    stateCurrent.append(vacuumDetailsStrongEl, vacuumDetailsSubtitleEl);
+    appendCurrent.append(stateCurrent, vacuumDetailsButtonEl);
     const divEl = document.createElement("div");
     divEl.className = "hb-vacuum-details-layout";
-    const append7 = document.createElement("section");
-    append7.className = "hb-vacuum-details-overview";
+    const appendNext = document.createElement("section");
+    appendNext.className = "hb-vacuum-details-overview";
     const vacuumVisualEl = document.createElement("div");
     vacuumVisualEl.className = "hb-vacuum-visual";
     const vacuumBatteryRingEl = document.createElement("div");
@@ -10346,82 +10347,82 @@ export class PanelRenderer {
     vacuumRobotSensorEl.className = "hb-vacuum-robot-sensor";
     const vacuumRobotBumperEl = document.createElement("i");
     vacuumRobotBumperEl.className = "hb-vacuum-robot-bumper";
-    const element6 = document.createElement("i");
-    element6.className = "hb-vacuum-robot-brush";
+    const elementCurrent = document.createElement("i");
+    elementCurrent.className = "hb-vacuum-robot-brush";
     const vacuumRobotMopEl = document.createElement("i");
     vacuumRobotMopEl.className = "hb-vacuum-robot-mop left";
     const buildElementTree = document.createElement("i");
     buildElementTree.className = "hb-vacuum-robot-mop right";
-    vacuumRobotEl.append(vacuumRobotLidarEl, vacuumRobotSensorEl, vacuumRobotBumperEl, element6, vacuumRobotMopEl, buildElementTree);
-    const element7 = document.createElement("div");
-    element7.className = "hb-vacuum-battery";
-    const vacuumDetailsStrongEl2 = document.createElement("strong");
-    const element9 = document.createElement("small");
-    element9.textContent = "电量";
-    element7.append(vacuumDetailsStrongEl2, element9);
+    vacuumRobotEl.append(vacuumRobotLidarEl, vacuumRobotSensorEl, vacuumRobotBumperEl, elementCurrent, vacuumRobotMopEl, buildElementTree);
+    const elementNext = document.createElement("div");
+    elementNext.className = "hb-vacuum-battery";
+    const vacuumDetailsStrongElCurrent = document.createElement("strong");
+    const elementPrevious = document.createElement("small");
+    elementPrevious.textContent = "电量";
+    elementNext.append(vacuumDetailsStrongElCurrent, elementPrevious);
     vacuumBatteryRingEl.append(vacuumRobotEl);
-    append6.append(element7);
+    appendCurrent.append(elementNext);
     const presenceDetailsTimelineEl = document.createElement("span");
     presenceDetailsTimelineEl.className = "hb-vacuum-visual-status";
     vacuumVisualEl.append(vacuumBatteryRingEl, presenceDetailsTimelineEl);
-    const divEl1 = document.createElement("div");
-    divEl1.className = "hb-vacuum-details-stats";
-    const element10 = (element, element2) => {
+    const divElCurrent = document.createElement("div");
+    divElCurrent.className = "hb-vacuum-details-stats";
+    const callback = (element, elementCurrent) => {
       const append = document.createElement("div");
       const vacuumDetailsStatValueEl = document.createElement("span");
       vacuumDetailsStatValueEl.className = "hb-vacuum-details-stat-value";
       const vacuumDetailsIEl = document.createElement("i");
-      vacuumDetailsIEl.textContent = element2;
+      vacuumDetailsIEl.textContent = elementCurrent;
       vacuumDetailsIEl.setAttribute("aria-hidden", "true");
       const statusEmphasisEl = document.createElement("strong");
       const vacuumDetailsSmallEl = document.createElement("small");
       vacuumDetailsSmallEl.textContent = element;
       vacuumDetailsStatValueEl.append(vacuumDetailsIEl, statusEmphasisEl);
       append.append(vacuumDetailsStatValueEl, vacuumDetailsSmallEl);
-      divEl1.append(append);
+      divElCurrent.append(append);
       return statusEmphasisEl;
     };
-    const element11 = element10("本次面积", "◇");
-    const divEl2 = element10("清扫时长", "◷");
-    if (!root2) {
-      append7.append(vacuumVisualEl);
+    const elementLocal = callback("本次面积", "◇");
+    const divElNext = callback("清扫时长", "◷");
+    if (!root) {
+      appendNext.append(vacuumVisualEl);
     }
-    append7.append(divEl1);
-    const append8 = document.createElement("section");
-    append8.className = "hb-vacuum-details-controls";
+    appendNext.append(divElCurrent);
+    const appendPrevious = document.createElement("section");
+    appendPrevious.className = "hb-vacuum-details-controls";
     const vacuumDetailsActionsEl = document.createElement("div");
     vacuumDetailsActionsEl.className = "hb-vacuum-details-actions";
-    const createChildElement = (element3, element4, element5, service) => {
+    const createChildElement = (elementCurrent, elementNext, elementPrevious, service) => {
       const nowMs = document.createElement("button");
       nowMs.type = "button";
       nowMs.dataset.service = service;
-      nowMs.disabled = element12;
+      nowMs.disabled = element;
       const length = document.createElement("i");
-      length.textContent = element5;
+      length.textContent = elementPrevious;
       length.setAttribute("aria-hidden", "true");
       const rounded = document.createElement("span");
-      const vacuumDetailsStrongEl3 = document.createElement("strong");
-      vacuumDetailsStrongEl3.textContent = element3;
-      const vacuumDetailsSmallEl2 = document.createElement("small");
-      vacuumDetailsSmallEl2.textContent = element4;
-      rounded.append(vacuumDetailsStrongEl3, vacuumDetailsSmallEl2);
+      const vacuumDetailsStrongEl = document.createElement("strong");
+      vacuumDetailsStrongEl.textContent = elementCurrent;
+      const vacuumDetailsSmallEl = document.createElement("small");
+      vacuumDetailsSmallEl.textContent = elementNext;
+      rounded.append(vacuumDetailsStrongEl, vacuumDetailsSmallEl);
       nowMs.append(length, rounded);
       vacuumDetailsActionsEl.append(nowMs);
       return {
         button: nowMs,
-        name: vacuumDetailsStrongEl3,
-        description: vacuumDetailsSmallEl2
+        name: vacuumDetailsStrongEl,
+        description: vacuumDetailsSmallEl
       };
     };
-    const runHelper2 = [["start", "开始清扫", "启动全屋任务", "▶"], ["pause", "暂停", "保留当前进度", "Ⅱ"], ["stop", "停止", "结束当前任务", "■"], ["return_to_base", "回充", "返回充电座", "⌂"], ["locate", "定位", "让设备发出声音", "◎"], ["clean_spot", "局部清扫", "清扫当前位置", "⌖"]];
-    const items = new Map(runHelper2.map(([item, item2, item3, item4]) => [item, createChildElement(item2, item3, item4, item)]));
+    const runHelper = [["start", "开始清扫", "启动全屋任务", "▶"], ["pause", "暂停", "保留当前进度", "Ⅱ"], ["stop", "停止", "结束当前任务", "■"], ["return_to_base", "回充", "返回充电座", "⌂"], ["locate", "定位", "让设备发出声音", "◎"], ["clean_spot", "局部清扫", "清扫当前位置", "⌖"]];
+    const items = new Map(runHelper.map(([item, value, entry, current]) => [item, createChildElement(value, entry, current, item)]));
     const state5 = items.get("start");
     const handlers = items.get("pause");
     const rendererRuntimeDialogLayerEl = items.get("stop");
-    const rendererRuntimeDialogLayerEl1 = items.get("return_to_base");
+    const rendererRuntimeDialogLayerElCurrent = items.get("return_to_base");
     const actionEntry = items.get("locate");
-    const actionEntry2 = items.get("clean_spot");
-    append8.append(vacuumDetailsActionsEl);
+    const actionEntryCurrent = items.get("clean_spot");
+    appendPrevious.append(vacuumDetailsActionsEl);
     const normalizeModeKey = modeValue => String(modeValue || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
     const labels = {
       sweeping: "扫地",
@@ -10429,46 +10430,46 @@ export class PanelRenderer {
       sweeping_and_mopping: "扫拖同步",
       mopping_after_sweeping: "先扫后拖"
     };
-    const labels2 = {
+    const labelsCurrent = {
       silent: "静音",
       quiet: "静音",
       standard: "标准",
       strong: "强力",
       turbo: "超强"
     };
-    const push3 = [];
+    const push = [];
     const buildOptionControl = ({
-      label: element62,
-      detail: element63,
+      label: elementCurrent,
+      detail: elementNext,
       options: length,
       current: currentValue,
       labels: optionLabels,
       onSelect: onSelect,
-      enabled: enabled2 = true
+      enabled: enabled = true
     }) => {
       if (!length.length) {
         return null;
       }
       const group = document.createElement("section");
       group.className = "hb-vacuum-details-option-group";
-      const append2 = document.createElement("div");
-      const vacuumDetailsStrongEl4 = document.createElement("strong");
-      vacuumDetailsStrongEl4.textContent = element62;
-      const vacuumDetailsSmallEl3 = document.createElement("small");
-      vacuumDetailsSmallEl3.textContent = element63;
-      append2.append(vacuumDetailsStrongEl4, vacuumDetailsSmallEl3);
+      const append = document.createElement("div");
+      const vacuumDetailsStrongEl = document.createElement("strong");
+      vacuumDetailsStrongEl.textContent = elementCurrent;
+      const vacuumDetailsSmallEl = document.createElement("small");
+      vacuumDetailsSmallEl.textContent = elementNext;
+      append.append(vacuumDetailsStrongEl, vacuumDetailsSmallEl);
       const vacuumDetailsOptionsEl = document.createElement("div");
       vacuumDetailsOptionsEl.className = "hb-vacuum-details-options";
       const entries = length.map(optionValue => {
         const key = normalizeModeKey(optionValue);
-        const vacuumDetailsButtonEl2 = document.createElement("button");
-        vacuumDetailsButtonEl2.type = "button";
-        vacuumDetailsButtonEl2.textContent = optionLabels[key] || String(optionValue);
-        vacuumDetailsButtonEl2.disabled = element12 || !enabled2;
-        vacuumDetailsButtonEl2.addEventListener("click", () => onSelect(optionValue, vacuumDetailsButtonEl2));
-        vacuumDetailsOptionsEl.append(vacuumDetailsButtonEl2);
+        const vacuumDetailsButtonEl = document.createElement("button");
+        vacuumDetailsButtonEl.type = "button";
+        vacuumDetailsButtonEl.textContent = optionLabels[key] || String(optionValue);
+        vacuumDetailsButtonEl.disabled = element || !enabled;
+        vacuumDetailsButtonEl.addEventListener("click", () => onSelect(optionValue, vacuumDetailsButtonEl));
+        vacuumDetailsOptionsEl.append(vacuumDetailsButtonEl);
         return {
-          button: vacuumDetailsButtonEl2,
+          button: vacuumDetailsButtonEl,
           key
         };
       });
@@ -10479,45 +10480,45 @@ export class PanelRenderer {
         }
       };
       sync(currentValue);
-      push3.push({
+      push.push({
         group,
         sync
       });
-      group.append(append2, vacuumDetailsOptionsEl);
-      append8.append(group);
+      group.append(append, vacuumDetailsOptionsEl);
+      appendPrevious.append(group);
       return {
         group,
         sync,
         entries
       };
     };
-    const fan_speed_list2 = entityState.attributes || {};
+    const fan_speed_list = entityState.attributes || {};
     const cleaningModeEntityId = "select." + entityId.slice(entityId.indexOf(".") + 1) + "_cleaning_mode";
-    const entityId22 = relatedDeviceEntity(this.entityMetadata, entityId, "select", "cleaning_mode", cleaningModeEntityId);
-    const cleaningModeSelectEntityId = String(entityId22?.entityId || "");
-    const newState7 = cleaningModeSelectEntityId ? this.states.get(cleaningModeSelectEntityId) : null;
-    let attributes5 = newState7?.newState || newState7 || null;
-    const entityId23 = relatedVacuumBatteryEntity(this.entityMetadata, this.states, entityId);
-    const fanSpeedSelectEntityId = String(entityId23?.entityId || "");
-    const newState8 = fanSpeedSelectEntityId ? this.states.get(fanSpeedSelectEntityId) : null;
-    let batteryEntityState = newState8?.newState || newState8 || null;
-    let sync2 = null;
-    const syncCleaningModeFromState = state6 => {
-      if (state6) {
-        attributes5 = state6;
-        sync2?.sync(state6.state);
+    const entity = relatedDeviceEntity(this.entityMetadata, entityId, "select", "cleaning_mode", cleaningModeEntityId);
+    const cleaningModeSelectEntityId = String(entity?.entityId || "");
+    const newState = cleaningModeSelectEntityId ? this.states.get(cleaningModeSelectEntityId) : null;
+    let stateEntry = newState?.newState || newState || null;
+    const entityIdCurrent = relatedVacuumBatteryEntity(this.entityMetadata, this.states, entityId);
+    const fanSpeedSelectEntityId = String(entityIdCurrent?.entityId || "");
+    const newStateCurrent = fanSpeedSelectEntityId ? this.states.get(fanSpeedSelectEntityId) : null;
+    let batteryEntityState = newStateCurrent?.newState || newStateCurrent || null;
+    let sync = null;
+    const syncCleaningModeFromState = state => {
+      if (state) {
+        stateEntry = state;
+        sync?.sync(state.state);
       }
     };
     let vacuumServicePending = false;
     const setVacuumServicePending = pending => {
       vacuumServicePending = pending;
-      append8.classList.toggle("is-pending", pending);
-      for (const disabled of append8.querySelectorAll(":scope > .hb-vacuum-details-actions button, :scope > .hb-vacuum-details-option-group button")) {
-        disabled.disabled = element12 || pending || disabled.dataset.unsupported === "true";
+      appendPrevious.classList.toggle("is-pending", pending);
+      for (const disabled of appendPrevious.querySelectorAll(":scope > .hb-vacuum-details-actions button, :scope > .hb-vacuum-details-option-group button")) {
+        disabled.disabled = element || pending || disabled.dataset.unsupported === "true";
       }
     };
     const invokeVacuumService = async (domain, service, targetEntityId, serviceData, optimisticState = null, onSuccess = syncVacuumDetailsState, baseState = entityState) => {
-      if (element12 || vacuumServicePending) {
+      if (element || vacuumServicePending) {
         return false;
       }
       if (optimisticState) {
@@ -10535,53 +10536,53 @@ export class PanelRenderer {
         setVacuumServicePending(false);
       }
     };
-    const options = Array.isArray(attributes5?.attributes?.options) ? attributes5.attributes.options : Array.isArray(fan_speed_list2.cleaning_mode_list) ? fan_speed_list2.cleaning_mode_list : [];
+    const options = Array.isArray(stateEntry?.attributes?.options) ? stateEntry.attributes.options : Array.isArray(fan_speed_list.cleaning_mode_list) ? fan_speed_list.cleaning_mode_list : [];
     const enabled = !!cleaningModeSelectEntityId;
-    sync2 = buildOptionControl({
+    sync = buildOptionControl({
       label: "清洁模式",
       detail: enabled ? "选择本次任务方式" : "当前设备未提供模式切换实体",
       options,
-      current: attributes5?.state || fan_speed_list2.cleaning_mode,
+      current: stateEntry?.state || fan_speed_list.cleaning_mode,
       labels,
       enabled,
-      onSelect: async state3 => {
-        const attributes = attributes5 || {
-          state: fan_speed_list2.cleaning_mode || "unknown",
+      onSelect: async state => {
+        const attributes = stateEntry || {
+          state: fan_speed_list.cleaning_mode || "unknown",
           attributes: {
             options
           }
         };
         const optimisticCleaningModeState = {
           ...attributes,
-          state: state3,
+          state: state,
           attributes: {
             ...(attributes.attributes || {}),
             options
           }
         };
         await invokeVacuumService("select", "select_option", cleaningModeSelectEntityId, {
-          option: state3
+          option: state
         }, optimisticCleaningModeState, syncCleaningModeFromState, attributes);
       }
     });
-    if (sync2 && !enabled) {
-      for (const actionEntry3 of sync2.entries) {
-        actionEntry3.button.dataset.unsupported = "true";
+    if (sync && !enabled) {
+      for (const actionEntry of sync.entries) {
+        actionEntry.button.dataset.unsupported = "true";
       }
     }
-    const options2 = Array.isArray(fan_speed_list2.fan_speed_list) && fan_speed_list2.fan_speed_list.length ? fan_speed_list2.fan_speed_list : Array.isArray(fan_speed_list2.suction_level_list) ? fan_speed_list2.suction_level_list : [];
-    const sync3 = buildOptionControl({
+    const optionsCurrent = Array.isArray(fan_speed_list.fan_speed_list) && fan_speed_list.fan_speed_list.length ? fan_speed_list.fan_speed_list : Array.isArray(fan_speed_list.suction_level_list) ? fan_speed_list.suction_level_list : [];
+    const control = buildOptionControl({
       label: "吸力",
       detail: "按地面情况调节",
-      options: options2,
-      current: fan_speed_list2.fan_speed || fan_speed_list2.suction_level,
-      labels: labels2,
+      options: optionsCurrent,
+      current: fan_speed_list.fan_speed || fan_speed_list.suction_level,
+      labels: labelsCurrent,
       onSelect: async fan_speed => {
-        const attributes2 = entityState;
+        const attributes = entityState;
         const optimisticFanSpeedState = {
-          ...attributes2,
+          ...attributes,
           attributes: {
-            ...(attributes2.attributes || {}),
+            ...(attributes.attributes || {}),
             fan_speed,
             suction_level: fan_speed
           }
@@ -10593,21 +10594,21 @@ export class PanelRenderer {
     });
     const stateHandlers = state !== null ? this.createWaterHeaterExtensionControls(entityId, {
       component,
-      interactive: !element12,
+      interactive: !element,
       excludedEntityIds: [cleaningModeSelectEntityId, fanSpeedSelectEntityId].filter(Boolean)
     }) : null;
     const vacuumDetailsWarningEl = document.createElement("p");
     vacuumDetailsWarningEl.className = "hb-vacuum-details-warning";
-    append8.append(vacuumDetailsWarningEl);
-    divEl.append(append7, append8);
-    append5.append(append6, divEl);
+    appendPrevious.append(vacuumDetailsWarningEl);
+    divEl.append(appendNext, appendPrevious);
+    append.append(appendCurrent, divEl);
     if (stateHandlers) {
-      append5.append(stateHandlers);
+      append.append(stateHandlers);
       entityDetailsDialogEl.classList.add("has-related-extensions");
     }
-    entityDetailsDialogEl.append(append5);
-    const vacuumStatusLabel = state7 => {
-      const washing = state7?.attributes || {};
+    entityDetailsDialogEl.append(append);
+    const vacuumStatusLabel = state => {
+      const washing = state?.attributes || {};
       if (washing.washing) {
         if (washing.washing_paused) {
           return "拖布清洗已暂停";
@@ -10627,7 +10628,7 @@ export class PanelRenderer {
       if (washing.mapping) {
         return "正在绘制地图";
       }
-      const vacuumStateKey = String(washing.vacuum_state || state7?.state || "").toLowerCase();
+      const vacuumStateKey = String(washing.vacuum_state || state?.state || "").toLowerCase();
       return {
         cleaning: "正在清扫",
         sweeping: "正在扫地",
@@ -10644,86 +10645,86 @@ export class PanelRenderer {
         washing: "正在清洗拖布",
         drying: "正在烘干拖布",
         mapping: "正在绘制地图"
-      }[vacuumStateKey] || String(state7?.state || "状态未知");
+      }[vacuumStateKey] || String(state?.state || "状态未知");
     };
     const finiteOrFallback = (rawNumber, fallback = "--") => Number.isFinite(Number(rawNumber)) ? Number(rawNumber) : fallback;
-    const isVacuumWorking = attributes3 => {
-      const running2 = attributes3?.attributes || {};
-      return !!running2.running || !!running2.returning || !!running2.washing || !!running2.drying || !!running2.mapping || ["cleaning", "returning"].includes(String(attributes3?.state || "").toLowerCase());
+    const isVacuumWorking = attributes => {
+      const running = attributes?.attributes || {};
+      return !!running.running || !!running.returning || !!running.washing || !!running.drying || !!running.mapping || ["cleaning", "returning"].includes(String(attributes?.state || "").toLowerCase());
     };
     const refreshBatteryDisplay = () => {
       const batteryPercent = vacuumBatteryPercent(entityState, batteryEntityState);
-      vacuumDetailsStrongEl2.textContent = batteryPercent === null ? "--" : Math.round(batteryPercent) + "%";
+      vacuumDetailsStrongElCurrent.textContent = batteryPercent === null ? "--" : Math.round(batteryPercent) + "%";
     };
     const updateBatteryEntityState = nextBatteryState => {
       batteryEntityState = nextBatteryState || batteryEntityState;
       refreshBatteryDisplay();
     };
-    function syncVacuumDetailsState(state9) {
-      if (!state9) {
+    function syncVacuumDetailsState(state) {
+      if (!state) {
         return;
       }
-      entityState = state9;
-      const cleaning_mode = state9.attributes || {};
-      const element8 = vacuumStatusLabel(state9);
-      const isWorking = isVacuumWorking(state9);
-      const isPaused = !!cleaning_mode.paused || !!cleaning_mode.washing_paused || state9.state === "paused";
-      const isReturning = !!cleaning_mode.returning || state9.state === "returning";
+      entityState = state;
+      const cleaning_mode = state.attributes || {};
+      const element = vacuumStatusLabel(state);
+      const isWorking = isVacuumWorking(state);
+      const isPaused = !!cleaning_mode.paused || !!cleaning_mode.washing_paused || state.state === "paused";
+      const isReturning = !!cleaning_mode.returning || state.state === "returning";
       const normalizedCleaningMode = normalizeModeKey(cleaning_mode.cleaning_mode);
       const isSweeping = ["sweeping", "sweeping_and_mopping", "mopping_after_sweeping"].includes(normalizedCleaningMode);
       const isMopping = ["mopping", "sweeping_and_mopping", "mopping_after_sweeping"].includes(normalizedCleaningMode);
-      const has3 = new Set(vacuumSupportedActions(state9));
-      for (const [actionKey, actionEntry4] of items) {
-        actionEntry4.button.hidden = !has3.has(actionKey) || !!root2 && actionKey === "clean_spot";
+      const has = new Set(vacuumSupportedActions(state));
+      for (const [actionKey, actionEntry] of items) {
+        actionEntry.button.hidden = !has.has(actionKey) || !!root && actionKey === "clean_spot";
       }
-      const length3 = [...items.values()].filter(button2 => !button2.button.hidden);
-      const visibleActionCount = length3.length;
+      const length = [...items.values()].filter(button => !button.button.hidden);
+      const visibleActionCount = length.length;
       vacuumDetailsActionsEl.hidden = visibleActionCount === 0;
       vacuumDetailsActionsEl.classList.toggle("has-many-actions", visibleActionCount > 3);
-      for (const actionEntry5 of items.values()) {
-        actionEntry5.button.classList.remove("is-last-row-pair", "is-last-row-single");
+      for (const actionEntry of items.values()) {
+        actionEntry.button.classList.remove("is-last-row-pair", "is-last-row-single");
       }
       const lastRowCount = visibleActionCount % 3 || Math.min(visibleActionCount, 3);
       if (lastRowCount === 2) {
-        for (const actionEntry6 of length3.slice(-2)) {
-          actionEntry6.button.classList.add("is-last-row-pair");
+        for (const actionEntry of length.slice(-2)) {
+          actionEntry.button.classList.add("is-last-row-pair");
         }
       } else if (lastRowCount === 1) {
-        length3.at(-1)?.button.classList.add("is-last-row-single");
+        length.at(-1)?.button.classList.add("is-last-row-single");
       }
-      vacuumDetailsSubtitleEl.textContent = element8;
+      vacuumDetailsSubtitleEl.textContent = element;
       vacuumDetailsSubtitleEl.classList.toggle("is-active", isWorking && !isPaused);
-      presenceDetailsTimelineEl.textContent = element8;
+      presenceDetailsTimelineEl.textContent = element;
       refreshBatteryDisplay();
       vacuumVisualEl.classList.toggle("is-working", isWorking && !isPaused);
       vacuumVisualEl.classList.toggle("is-paused", isPaused);
       vacuumVisualEl.classList.toggle("is-returning", isReturning);
       vacuumVisualEl.classList.toggle("is-sweeping", isSweeping);
       vacuumVisualEl.classList.toggle("is-mopping", isMopping);
-      element11.textContent = finiteOrFallback(cleaning_mode.cleaned_area) + " m²";
-      divEl2.textContent = finiteOrFallback(cleaning_mode.cleaning_time) + " min";
+      elementLocal.textContent = finiteOrFallback(cleaning_mode.cleaned_area) + " m²";
+      divElNext.textContent = finiteOrFallback(cleaning_mode.cleaning_time) + " min";
       state5.button.classList.toggle("active", isWorking && !isPaused && !isReturning);
       handlers.button.classList.toggle("active", isPaused);
       rendererRuntimeDialogLayerEl.button.classList.toggle("active", false);
-      rendererRuntimeDialogLayerEl1.button.classList.toggle("active", isReturning);
+      rendererRuntimeDialogLayerElCurrent.button.classList.toggle("active", isReturning);
       actionEntry.button.classList.toggle("active", false);
-      actionEntry2.button.classList.toggle("active", isWorking && !isPaused && !isReturning && state9.state === "cleaning");
+      actionEntryCurrent.button.classList.toggle("active", isWorking && !isPaused && !isReturning && state.state === "cleaning");
       state5.name.textContent = isPaused ? "继续清扫" : "开始清扫";
       if (!cleaningModeSelectEntityId) {
-        sync2?.sync(cleaning_mode.cleaning_mode);
+        sync?.sync(cleaning_mode.cleaning_mode);
       }
-      sync3?.sync(cleaning_mode.fan_speed || cleaning_mode.suction_level);
+      control?.sync(cleaning_mode.fan_speed || cleaning_mode.suction_level);
       const errorText = String(cleaning_mode.error || "").trim();
       const lowWaterWarningText = String(cleaning_mode.low_water_warning || "").trim();
-      const push2 = [];
+      const push = [];
       if (errorText && !/^no error$/i.test(errorText)) {
-        push2.push(errorText);
+        push.push(errorText);
       }
       if (lowWaterWarningText && !/^no warning$/i.test(lowWaterWarningText)) {
-        push2.push(lowWaterWarningText);
+        push.push(lowWaterWarningText);
       }
-      vacuumDetailsWarningEl.textContent = push2.length ? "注意：" + push2.join(" · ") : "";
-      vacuumDetailsWarningEl.hidden = !push2.length;
+      vacuumDetailsWarningEl.textContent = push.length ? "注意：" + push.join(" · ") : "";
+      vacuumDetailsWarningEl.hidden = !push.length;
     }
     state5.button.addEventListener("click", () => invokeVacuumService("vacuum", vacuumActionService(entityState, "start"), entityId, {}, {
       ...entityState,
@@ -10744,7 +10745,7 @@ export class PanelRenderer {
         paused: true
       }
     }));
-    rendererRuntimeDialogLayerEl1.button.addEventListener("click", () => invokeVacuumService("vacuum", "return_to_base", entityId, {}, {
+    rendererRuntimeDialogLayerElCurrent.button.addEventListener("click", () => invokeVacuumService("vacuum", "return_to_base", entityId, {}, {
       ...entityState,
       state: "returning",
       attributes: {
@@ -10765,7 +10766,7 @@ export class PanelRenderer {
       }
     }));
     actionEntry.button.addEventListener("click", () => invokeVacuumService("vacuum", "locate", entityId, {}));
-    actionEntry2.button.addEventListener("click", () => invokeVacuumService("vacuum", "clean_spot", entityId, {}, {
+    actionEntryCurrent.button.addEventListener("click", () => invokeVacuumService("vacuum", "clean_spot", entityId, {}, {
       ...entityState,
       state: "cleaning",
       attributes: {
@@ -10776,36 +10777,36 @@ export class PanelRenderer {
       }
     }));
     syncVacuumDetailsState(entityState);
-    const rendererRuntimeDialogLayerEl3 = document.createElement("div");
-    rendererRuntimeDialogLayerEl3.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
-    rendererRuntimeDialogLayerEl3.tabIndex = -1;
-    rendererRuntimeDialogLayerEl3.append(entityDetailsDialogEl);
-    this.container.append(rendererRuntimeDialogLayerEl3);
+    const rendererRuntimeDialogLayerElNext = document.createElement("div");
+    rendererRuntimeDialogLayerElNext.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
+    rendererRuntimeDialogLayerElNext.tabIndex = -1;
+    rendererRuntimeDialogLayerElNext.append(entityDetailsDialogEl);
+    this.container.append(rendererRuntimeDialogLayerElNext);
     this.detailsDialog = entityDetailsDialogEl;
-    const handlers2 = new Map([[entityId, [syncVacuumDetailsState]]]);
+    const map = new Map([[entityId, [syncVacuumDetailsState]]]);
     if (cleaningModeSelectEntityId) {
-      handlers2.set(cleaningModeSelectEntityId, [syncCleaningModeFromState]);
+      map.set(cleaningModeSelectEntityId, [syncCleaningModeFromState]);
     }
     if (fanSpeedSelectEntityId) {
-      handlers2.set(fanSpeedSelectEntityId, [updateBatteryEntityState]);
+      map.set(fanSpeedSelectEntityId, [updateBatteryEntityState]);
     }
-    for (const [rendererRuntimeDialogLayerEl2, presenceTimelineItem] of stateHandlers?.stateHandlers || []) {
-      handlers2.set(rendererRuntimeDialogLayerEl2, presenceTimelineItem);
+    for (const [rendererRuntimeDialogLayerEl, presenceTimelineItem] of stateHandlers?.stateHandlers || []) {
+      map.set(rendererRuntimeDialogLayerEl, presenceTimelineItem);
     }
     this.detailsStateSync = {
       dialog: entityDetailsDialogEl,
-      handlers: handlers2
+      handlers: map
     };
     let observe = null;
-    if (root2) {
-      rendererRuntimeDialogLayerEl3.classList.add("i3d-vacuum-dialog-layer");
-      (root2.root || this.container).append(rendererRuntimeDialogLayerEl3);
-      entityDetailsDialogEl.style.setProperty("--i3d-panel-opacity", String(Math.max(0, Math.min(100, Number.isFinite(root2.popupOpacity) ? root2.popupOpacity : 74)) / 100));
+    if (root) {
+      rendererRuntimeDialogLayerElNext.classList.add("i3d-vacuum-dialog-layer");
+      (root.root || this.container).append(rendererRuntimeDialogLayerElNext);
+      entityDetailsDialogEl.style.setProperty("--i3d-panel-opacity", String(Math.max(0, Math.min(100, Number.isFinite(root.popupOpacity) ? root.popupOpacity : 74)) / 100));
       const resizeInteraction3d = () => {
-        const viewportRootEl = root2.root || this.container;
+        const viewportRootEl = root.root || this.container;
         const viewportWidth = viewportRootEl.clientWidth;
         const viewportHeight = viewportRootEl.clientHeight;
-        const width = root2.getPresentationLayout?.();
+        const width = root.getPresentationLayout?.();
         const contentWidth = width?.width > 0 ? width.width : viewportWidth;
         const contentHeight = width?.height > 0 ? width.height : viewportHeight;
         const scaleX = viewportWidth / Math.max(1, contentWidth);
@@ -10820,18 +10821,18 @@ export class PanelRenderer {
       };
       entityDetailsDialogEl.resizeInteraction3d = resizeInteraction3d;
       observe = new ResizeObserver(resizeInteraction3d);
-      observe.observe(root2.root || this.container);
-      if (root2.frame) {
-        observe.observe(root2.frame);
+      observe.observe(root.root || this.container);
+      if (root.frame) {
+        observe.observe(root.frame);
       }
       resizeInteraction3d();
     } else {
-      this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl3, entityDetailsDialogEl, 840, stateHandlers ? 560 : 458);
+      this.registerRuntimeDialogScale(rendererRuntimeDialogLayerElNext, entityDetailsDialogEl, 840, stateHandlers ? 560 : 458);
     }
     vacuumDetailsButtonEl.addEventListener("click", () => entityDetailsDialogEl.close());
-    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl3, entityDetailsDialogEl, append5);
-    rendererRuntimeDialogLayerEl3.addEventListener("keydown", key2 => {
-      if (key2.key === "Escape") {
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerElNext, entityDetailsDialogEl, append);
+    rendererRuntimeDialogLayerElNext.addEventListener("keydown", key => {
+      if (key.key === "Escape") {
         entityDetailsDialogEl.close();
       }
     });
@@ -10844,7 +10845,7 @@ export class PanelRenderer {
       if (this.detailsStateSync?.dialog === entityDetailsDialogEl) {
         this.detailsStateSync = null;
       }
-      rendererRuntimeDialogLayerEl3.remove();
+      rendererRuntimeDialogLayerElNext.remove();
     }, {
       once: true
     });
@@ -10858,8 +10859,8 @@ export class PanelRenderer {
       throw new Error("该控件没有关联实体。");
     }
     this.closeRuntimeDialog();
-    const entityId2 = ["presence", "door-window", "water-leak", "smoke", "natural-gas"].includes(component.properties?.sensorKind) ? component.properties.sensorKind : "presence";
-    const entityId1 = {
+    const sensorKind = ["presence", "door-window", "water-leak", "smoke", "natural-gas"].includes(component.properties?.sensorKind) ? component.properties.sensorKind : "presence";
+    const entityIdCurrent = {
       presence: {
         title: "人在检测",
         occupied: "有人",
@@ -10905,45 +10906,45 @@ export class PanelRenderer {
         hintOccupied: "传感器检测到天然气",
         hintClear: "当前未检测到天然气"
       }
-    }[entityId2];
-    let component1 = this.states.get(entityId)?.newState || this.states.get(entityId) || {
+    }[sensorKind];
+    let entry = this.states.get(entityId)?.newState || this.states.get(entityId) || {
       entityId,
       state: "unknown",
       attributes: {}
     };
     const state = Math.max(1, Math.min(168, Number(component.properties?.historyHours || 24)));
     const set = this.historySeries.get(entityId)?.points || [];
-    const state1 = component.properties?.iconOnColor || component.properties?.occupiedColor || "#ffffff";
+    const text = component.properties?.iconOnColor || component.properties?.occupiedColor || "#ffffff";
     const entityState = component.properties?.iconColor || component.properties?.clearColor || "#758189";
-    const entityState1 = (presenceEntityId, now = Date.now()) => presenceSensorPresentation(presenceEntityId, "auto", {
+    const callback = (presenceEntityId, now = Date.now()) => presenceSensorPresentation(presenceEntityId, "auto", {
       ...presenceMotionEventConfig(entityId, presenceEntityId, this.entityMetadata, this.states, component.properties),
       now
     });
-    const entityDetailsDialogEl6 = document.createElement("dialog");
-    entityDetailsDialogEl6.className = "hb-entity-details-dialog presence-details";
-    entityDetailsDialogEl6.dataset.sensorKind = entityId2;
-    entityDetailsDialogEl6.style.setProperty("--hb-presence-occupied", state1);
-    entityDetailsDialogEl6.style.setProperty("--hb-presence-clear", entityState);
+    const entityDetailsDialogEl = document.createElement("dialog");
+    entityDetailsDialogEl.className = "hb-entity-details-dialog presence-details";
+    entityDetailsDialogEl.dataset.sensorKind = sensorKind;
+    entityDetailsDialogEl.style.setProperty("--hb-presence-occupied", text);
+    entityDetailsDialogEl.style.setProperty("--hb-presence-clear", entityState);
     const entityDetailsCardEl = document.createElement("div");
     entityDetailsCardEl.className = "hb-entity-details-card";
-    const state4 = document.createElement("div");
-    state4.className = "hb-entity-details-heading";
+    const element = document.createElement("div");
+    element.className = "hb-entity-details-heading";
     const airer = document.createElement("div");
     const presenceDetailsStrongEl = document.createElement("strong");
-    presenceDetailsStrongEl.textContent = componentDialogTitle(component, component1.attributes?.friendly_name || entityId1.title);
-    const state5 = document.createElement("span");
-    airer.append(presenceDetailsStrongEl, state5);
+    presenceDetailsStrongEl.textContent = componentDialogTitle(component, entry.attributes?.friendly_name || entityIdCurrent.title);
+    const stateCurrent = document.createElement("span");
+    airer.append(presenceDetailsStrongEl, stateCurrent);
     const finiteNumber = document.createElement("button");
     finiteNumber.type = "button";
     finiteNumber.textContent = "×";
     finiteNumber.setAttribute("aria-label", "关闭弹窗");
-    state4.append(airer, finiteNumber);
+    element.append(airer, finiteNumber);
     const presenceDetailsBodyEl = document.createElement("div");
     presenceDetailsBodyEl.className = "hb-presence-details-body";
-    const append9 = document.createElement("section");
-    append9.className = "hb-presence-details-visual";
+    const append = document.createElement("section");
+    append.className = "hb-presence-details-visual";
     let tilt = null;
-    if (entityId2 === "presence") {
+    if (sensorKind === "presence") {
       const presenceSensorSpaceEl = document.createElement("span");
       presenceSensorSpaceEl.className = "hb-presence-sensor-space";
       for (let bucketIndex = 0; bucketIndex < 3; bucketIndex += 1) {
@@ -10957,14 +10958,14 @@ export class PanelRenderer {
       const timelineBoldEl = document.createElement("b");
       const presenceDetailsSpanEl = document.createElement("span");
       presenceDetailsSpanEl.className = "arm left";
-      const presenceDetailsSpanEl2 = document.createElement("span");
-      presenceDetailsSpanEl2.className = "arm right";
-      const presenceDetailsSpanEl3 = document.createElement("span");
-      presenceDetailsSpanEl3.className = "leg left";
-      const presenceDetailsSpanEl4 = document.createElement("span");
-      presenceDetailsSpanEl4.className = "leg right";
-      presenceSensorPersonEl.append(timelineIconEl, timelineBoldEl, presenceDetailsSpanEl, presenceDetailsSpanEl2, presenceDetailsSpanEl3, presenceDetailsSpanEl4);
-      append9.append(presenceSensorSpaceEl, presenceSensorFloorEl, presenceSensorPersonEl);
+      const element = document.createElement("span");
+      element.className = "arm right";
+      const presenceDetailsSpanElCurrent = document.createElement("span");
+      presenceDetailsSpanElCurrent.className = "leg left";
+      const presenceDetailsSpanElNext = document.createElement("span");
+      presenceDetailsSpanElNext.className = "leg right";
+      presenceSensorPersonEl.append(timelineIconEl, timelineBoldEl, presenceDetailsSpanEl, element, presenceDetailsSpanElCurrent, presenceDetailsSpanElNext);
+      append.append(presenceSensorSpaceEl, presenceSensorFloorEl, presenceSensorPersonEl);
     } else {
       tilt = renderRegisteredComponent({
         ...component,
@@ -10974,54 +10975,54 @@ export class PanelRenderer {
           height: 100
         }
       }, {
-        states: new Map([[entityId, component1]]),
+        states: new Map([[entityId, entry]]),
         entityMetadata: this.entityMetadata,
         editable: false,
         previewState: "auto",
         document: this.document
       });
       tilt.classList.add("hb-presence-details-sensor");
-      append9.append(tilt);
+      append.append(tilt);
     }
-    const presenceDetailsStrongEl2 = document.createElement("strong");
+    const presenceDetailsStrongElCurrent = document.createElement("strong");
     const position = document.createElement("small");
-    append9.append(presenceDetailsStrongEl2, position);
+    append.append(presenceDetailsStrongElCurrent, position);
     const presenceDetailsMetricsEl = document.createElement("section");
     presenceDetailsMetricsEl.className = "hb-presence-details-metrics";
-    const positionCommandEntityId = element6 => {
-      const append3 = document.createElement("div");
+    const positionCommandEntityId = element => {
+      const append = document.createElement("div");
       const presenceDetailsSmallEl = document.createElement("small");
-      presenceDetailsSmallEl.textContent = element6;
+      presenceDetailsSmallEl.textContent = element;
       const sensorNameEmphasisEl = document.createElement("strong");
-      append3.append(presenceDetailsSmallEl, sensorNameEmphasisEl);
-      presenceDetailsMetricsEl.append(append3);
+      append.append(presenceDetailsSmallEl, sensorNameEmphasisEl);
+      presenceDetailsMetricsEl.append(append);
       return sensorNameEmphasisEl;
     };
-    const position2 = positionCommandEntityId("当前状态持续");
+    const id = positionCommandEntityId("当前状态持续");
     const positionCommandState = positionCommandEntityId("最近检测到人");
-    const state8 = positionCommandEntityId(state + " 小时有人时长");
+    const stateNext = positionCommandEntityId(state + " 小时有人时长");
     const presenceDetailsTimelineEl = document.createElement("section");
     presenceDetailsTimelineEl.className = "hb-presence-details-timeline";
-    const state10 = document.createElement("div");
-    const presenceDetailsStrongEl3 = document.createElement("strong");
-    presenceDetailsStrongEl3.textContent = state + " 小时在家时间轴";
-    const state11 = document.createElement("span");
-    state11.textContent = "亮色为有人";
-    state10.append(presenceDetailsStrongEl3, state11);
+    const statePrevious = document.createElement("div");
+    const presenceDetailsStrongElNext = document.createElement("strong");
+    presenceDetailsStrongElNext.textContent = state + " 小时在家时间轴";
+    const stateLocal = document.createElement("span");
+    stateLocal.textContent = "亮色为有人";
+    statePrevious.append(presenceDetailsStrongElNext, stateLocal);
     const airerActionEntityIds = document.createElement("div");
-    const position3 = document.createElement("div");
-    position3.innerHTML = "<span>" + state + " 小时前</span><span>现在</span>";
-    presenceDetailsTimelineEl.append(state10, airerActionEntityIds, position3);
-    presenceDetailsBodyEl.append(append9, presenceDetailsMetricsEl, presenceDetailsTimelineEl);
-    entityDetailsCardEl.append(state4, presenceDetailsBodyEl);
-    entityDetailsDialogEl6.append(entityDetailsCardEl);
+    const positionCurrent = document.createElement("div");
+    positionCurrent.innerHTML = "<span>" + state + " 小时前</span><span>现在</span>";
+    presenceDetailsTimelineEl.append(statePrevious, airerActionEntityIds, positionCurrent);
+    presenceDetailsBodyEl.append(append, presenceDetailsMetricsEl, presenceDetailsTimelineEl);
+    entityDetailsCardEl.append(element, presenceDetailsBodyEl);
+    entityDetailsDialogEl.append(entityDetailsCardEl);
     const positionState = presenceState => {
       if (!Number.isFinite(presenceState)) {
         return "--";
       }
       const getFullYear = new Date(presenceState);
-      const getFullYear2 = new Date();
-      const isSameDay = getFullYear.getFullYear() === getFullYear2.getFullYear() && getFullYear.getMonth() === getFullYear2.getMonth() && getFullYear.getDate() === getFullYear2.getDate();
+      const date = new Date();
+      const isSameDay = getFullYear.getFullYear() === date.getFullYear() && getFullYear.getMonth() === date.getMonth() && getFullYear.getDate() === date.getDate();
       const formatClockTime = new Intl.DateTimeFormat("zh-CN", {
         hour: "2-digit",
         minute: "2-digit",
@@ -11040,11 +11041,11 @@ export class PanelRenderer {
       }
     };
     const motorReversed = () => {
-      const length2 = presenceHistoryBuckets(set, component1, Date.now(), state, 48, presenceMotionEventConfig(entityId, component1, this.entityMetadata, this.states, component.properties));
-      airerActionEntityIds.replaceChildren(...length2.map((presenceKey, bucketOffset) => {
+      const length = presenceHistoryBuckets(set, entry, Date.now(), state, 48, presenceMotionEventConfig(entityId, entry, this.entityMetadata, this.states, component.properties));
+      airerActionEntityIds.replaceChildren(...length.map((presenceKey, bucketOffset) => {
         const presenceBucketMarkEl = document.createElement("i");
         presenceBucketMarkEl.className = "is-" + presenceKey;
-        const minutesAgo = Math.round(state * 60 * (length2.length - bucketOffset - 1) / length2.length);
+        const minutesAgo = Math.round(state * 60 * (length.length - bucketOffset - 1) / length.length);
         presenceBucketMarkEl.title = (minutesAgo ? minutesAgo + " 分钟前" : "现在") + "：" + {
           occupied: "有人",
           clear: "无人",
@@ -11053,30 +11054,30 @@ export class PanelRenderer {
         }[presenceKey];
         return presenceBucketMarkEl;
       }));
-      const occupiedBucketCount = length2.filter(bucketState => bucketState === "occupied").length;
-      const occupiedMinutes = Math.round(state * 60 * occupiedBucketCount / Math.max(1, length2.length));
-      state8.textContent = occupiedMinutes >= 60 ? Math.floor(occupiedMinutes / 60) + " 小时 " + occupiedMinutes % 60 + " 分钟" : occupiedMinutes + " 分钟";
+      const occupiedBucketCount = length.filter(bucketState => bucketState === "occupied").length;
+      const occupiedMinutes = Math.round(state * 60 * occupiedBucketCount / Math.max(1, length.length));
+      stateNext.textContent = occupiedMinutes >= 60 ? Math.floor(occupiedMinutes / 60) + " 小时 " + occupiedMinutes % 60 + " 分钟" : occupiedMinutes + " 分钟";
     };
-    const state12 = () => {
-      const motionEventConfig = presenceMotionEventConfig(entityId, component1, this.entityMetadata, this.states, component.properties);
-      const push = set.map(timestamp2 => ({
-        timestamp: Date.parse(timestamp2?.timestamp),
+    const stateItem = () => {
+      const motionEventConfig = presenceMotionEventConfig(entityId, entry, this.entityMetadata, this.states, component.properties);
+      const push = set.map(timestamp => ({
+        timestamp: Date.parse(timestamp?.timestamp),
         state: {
-          state: timestamp2?.value
+          state: timestamp?.value
         }
-      })).filter(timestamp3 => Number.isFinite(timestamp3.timestamp) && presenceSensorPresentation({
-        state: timestamp3?.state?.state,
-        lastChanged: new Date(timestamp3.timestamp).toISOString()
+      })).filter(timestamp => Number.isFinite(timestamp.timestamp) && presenceSensorPresentation({
+        state: timestamp?.state?.state,
+        lastChanged: new Date(timestamp.timestamp).toISOString()
       }, "auto", {
         ...motionEventConfig,
-        now: timestamp3.timestamp,
+        now: timestamp.timestamp,
         noMotionSeconds: null,
         noMotionStateTimestamp: null
       }).key === "occupied");
-      const timestamp4 = presenceStateTimestamp(component1);
-      if (entityState1(component1).key === "occupied" && Number.isFinite(timestamp4)) {
+      const timestamp = presenceStateTimestamp(entry);
+      if (callback(entry).key === "occupied" && Number.isFinite(timestamp)) {
         push.push({
-          timestamp: timestamp4
+          timestamp: timestamp
         });
       }
       if (push.length) {
@@ -11086,164 +11087,164 @@ export class PanelRenderer {
       }
     };
     const size = sensorConfig => {
-      component1 = sensorConfig || component1;
-      const key3 = entityState1(component1);
-      const stateTimestamp = presenceStateTimestamp(component1);
-      entityDetailsDialogEl6.dataset.presenceState = key3.key;
-      append9.className = "hb-presence-details-visual is-" + key3.key;
-      const element7 = entityId1[key3.key] || entityId1.unknown;
-      state5.textContent = element7;
-      state5.classList.toggle("is-on", key3.key === "occupied");
-      presenceDetailsStrongEl2.textContent = element7;
-      position.textContent = key3.key === "occupied" ? entityId1.hintOccupied : key3.key === "clear" ? entityId1.hintClear : key3.key === "unavailable" ? "设备当前不可用" : "正在等待状态";
+      entry = sensorConfig || entry;
+      const key = callback(entry);
+      const stateTimestamp = presenceStateTimestamp(entry);
+      entityDetailsDialogEl.dataset.presenceState = key.key;
+      append.className = "hb-presence-details-visual is-" + key.key;
+      const element = entityIdCurrent[key.key] || entityIdCurrent.unknown;
+      stateCurrent.textContent = element;
+      stateCurrent.classList.toggle("is-on", key.key === "occupied");
+      presenceDetailsStrongElCurrent.textContent = element;
+      position.textContent = key.key === "occupied" ? entityIdCurrent.hintOccupied : key.key === "clear" ? entityIdCurrent.hintClear : key.key === "unavailable" ? "设备当前不可用" : "正在等待状态";
       if (tilt) {
         const presenceSensorClassMap = {
-          "door-window": "hb-door-window-sensor is-" + (key3.key === "occupied" ? "open" : key3.key),
-          "water-leak": "hb-water-leak-sensor is-" + (key3.key === "occupied" ? "wet" : key3.key),
-          smoke: "hb-smoke-sensor is-" + (key3.key === "occupied" ? "alert" : key3.key),
-          "natural-gas": "hb-natural-gas-sensor is-" + (key3.key === "occupied" ? "alert" : key3.key)
-        }[entityId2];
+          "door-window": "hb-door-window-sensor is-" + (key.key === "occupied" ? "open" : key.key),
+          "water-leak": "hb-water-leak-sensor is-" + (key.key === "occupied" ? "wet" : key.key),
+          smoke: "hb-smoke-sensor is-" + (key.key === "occupied" ? "alert" : key.key),
+          "natural-gas": "hb-natural-gas-sensor is-" + (key.key === "occupied" ? "alert" : key.key)
+        }[sensorKind];
         tilt.className = presenceSensorClassMap + " hb-presence-details-sensor";
-        tilt.dataset.sensorState = key3.key;
-        tilt.setAttribute("aria-label", entityId1.title + "：" + element7);
+        tilt.dataset.sensorState = key.key;
+        tilt.setAttribute("aria-label", entityIdCurrent.title + "：" + element);
       }
-      position2.textContent = ["unknown", "unavailable"].includes(key3.key) ? "--" : formatPresenceDuration(stateTimestamp);
-      positionCommandState.textContent = positionState(state12());
+      id.textContent = ["unknown", "unavailable"].includes(key.key) ? "--" : formatPresenceDuration(stateTimestamp);
+      positionCommandState.textContent = positionState(stateItem());
       motorReversed();
     };
-    size(component1);
-    const size1 = presenceMotionEventConfig(entityId, component1, this.entityMetadata, this.states, component.properties);
+    size(entry);
+    const config = presenceMotionEventConfig(entityId, entry, this.entityMetadata, this.states, component.properties);
     const momentary = new Map([[entityId, [size]]]);
-    for (const presenceDetailsApi of size1.companionEntityIds) {
-      momentary.set(presenceDetailsApi, [() => size(component1)]);
+    for (const presenceDetailsApi of config.companionEntityIds) {
+      momentary.set(presenceDetailsApi, [() => size(entry)]);
     }
-    const state13 = size1.motionEvent ? window.setInterval(() => size(component1), 1000) : null;
+    const interval = config.motionEvent ? window.setInterval(() => size(entry), 1000) : null;
     const rendererRuntimeDialogLayerEl = document.createElement("div");
     rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
     rendererRuntimeDialogLayerEl.tabIndex = -1;
-    rendererRuntimeDialogLayerEl.append(entityDetailsDialogEl6);
+    rendererRuntimeDialogLayerEl.append(entityDetailsDialogEl);
     this.container.append(rendererRuntimeDialogLayerEl);
-    this.detailsDialog = entityDetailsDialogEl6;
+    this.detailsDialog = entityDetailsDialogEl;
     this.detailsStateSync = {
-      dialog: entityDetailsDialogEl6,
+      dialog: entityDetailsDialogEl,
       handlers: momentary
     };
-    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogEl6, 760, 560);
-    finiteNumber.addEventListener("click", () => entityDetailsDialogEl6.close());
-    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogEl6, entityDetailsCardEl);
-    rendererRuntimeDialogLayerEl.addEventListener("keydown", key4 => {
-      if (key4.key === "Escape") {
-        entityDetailsDialogEl6.close();
+    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogEl, 760, 560);
+    finiteNumber.addEventListener("click", () => entityDetailsDialogEl.close());
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogEl, entityDetailsCardEl);
+    rendererRuntimeDialogLayerEl.addEventListener("keydown", key => {
+      if (key.key === "Escape") {
+        entityDetailsDialogEl.close();
       }
     });
-    entityDetailsDialogEl6.addEventListener("close", () => {
-      if (state13) {
-        window.clearInterval(state13);
+    entityDetailsDialogEl.addEventListener("close", () => {
+      if (interval) {
+        window.clearInterval(interval);
       }
-      this.clearRuntimeDialogScale(entityDetailsDialogEl6);
-      if (this.detailsDialog === entityDetailsDialogEl6) {
+      this.clearRuntimeDialogScale(entityDetailsDialogEl);
+      if (this.detailsDialog === entityDetailsDialogEl) {
         this.detailsDialog = null;
       }
-      if (this.detailsStateSync?.dialog === entityDetailsDialogEl6) {
+      if (this.detailsStateSync?.dialog === entityDetailsDialogEl) {
         this.detailsStateSync = null;
       }
       rendererRuntimeDialogLayerEl.remove();
     }, {
       once: true
     });
-    entityDetailsDialogEl6.show();
+    entityDetailsDialogEl.show();
   }
-  showEntityDetails(type8, {
+  showEntityDetails(type, {
     preview = false
   } = {}) {
-    const detailsBoundEntityId = type8.bindings?.entity?.entityId;
+    const detailsBoundEntityId = type.bindings?.entity?.entityId;
     if (!detailsBoundEntityId) {
       throw new Error("该控件没有关联实体。");
     }
     const detailsBoundEntityIdText = String(detailsBoundEntityId);
     const size = this.deviceProfile(detailsBoundEntityIdText);
-    type8 = applyXiaomiDeviceProfile(type8, size);
+    type = applyXiaomiDeviceProfile(type, size);
     const scale = detailsBoundEntityIdText.split(".", 1)[0];
-    const scale1 = type8.properties?.deviceType === "electric-bed" || size?.deviceType === "electric-bed";
+    const value = type.properties?.deviceType === "electric-bed" || size?.deviceType === "electric-bed";
     if (!this.entityCatalogReady) {
       this.deferEntityDetailsUntilReady({
-        ...type8,
+        ...type,
         properties: {
-          ...(type8.properties || {}),
+          ...(type.properties || {}),
           __catalogRetry: true
         }
-      }, preview, scale1 ? "electric-bed-catalog" : "catalog");
-      if (scale1) {
-        this.showElectricBedLoadingDetails(type8, {
+      }, preview, value ? "electric-bed-catalog" : "catalog");
+      if (value) {
+        this.showElectricBedLoadingDetails(type, {
           preview
         });
       }
       return;
     }
-    if (!size && scale === "number" && !type8.properties?.__catalogRetry) {
+    if (!size && scale === "number" && !type.properties?.__catalogRetry) {
       this.deferEntityDetailsUntilReady({
-        ...type8,
+        ...type,
         properties: {
-          ...(type8.properties || {}),
+          ...(type.properties || {}),
           __catalogRetry: true
         }
-      }, preview, scale1 ? "electric-bed-catalog" : "catalog");
-      if (scale1) {
-        this.showElectricBedLoadingDetails(type8, {
+      }, preview, value ? "electric-bed-catalog" : "catalog");
+      if (value) {
+        this.showElectricBedLoadingDetails(type, {
           preview
         });
       }
       return;
     }
     if (scale === "water_heater" && !this.waterHeaterDetailsReady(detailsBoundEntityIdText)) {
-      this.deferEntityDetailsUntilReady(type8, preview);
+      this.deferEntityDetailsUntilReady(type, preview);
       return;
     }
     window.clearTimeout(this.pendingEntityDetails?.timer);
     this.pendingEntityDetails = null;
-    if (type8.type === "presence-sensor") {
-      this.showPresenceDetails(type8, {
+    if (type.type === "presence-sensor") {
+      this.showPresenceDetails(type, {
         preview
       });
       return;
     }
     if (size?.deviceType === "electric-bed") {
-      this.showElectricBedDetails(type8, {
+      this.showElectricBedDetails(type, {
         preview
       });
       return;
     }
-    if (size?.deviceType === "air-purifier" && scale === "fan" && ["icon-button", "device-button", "icon-button-effect"].includes(type8.type)) {
-      type8 = {
-        ...type8,
+    if (size?.deviceType === "air-purifier" && scale === "fan" && ["icon-button", "device-button", "icon-button-effect"].includes(type.type)) {
+      type = {
+        ...type,
         type: "air-purifier",
         properties: {
-          ...(type8.properties || {}),
+          ...(type.properties || {}),
           deviceType: "air-purifier"
         }
       };
     }
-    const clamped = new Set(["line-chart", "media-player", "air-purifier", "air-conditioner", "water-heater", "vacuum-control", "electric-bed"]).has(type8.type);
-    if (type8.type === "media-player" || !clamped && scale === "media_player") {
-      this.showMediaPlayerDetails(type8, {
+    const clamped = new Set(["line-chart", "media-player", "air-purifier", "air-conditioner", "water-heater", "vacuum-control", "electric-bed"]).has(type.type);
+    if (type.type === "media-player" || !clamped && scale === "media_player") {
+      this.showMediaPlayerDetails(type, {
         preview
       });
       return;
     }
-    if (type8.type === "air-purifier") {
-      this.showAirPurifierDetails(type8, {
+    if (type.type === "air-purifier") {
+      this.showAirPurifierDetails(type, {
         preview
       });
       return;
     }
-    if (["air-conditioner", "bath-heater"].includes(size?.deviceType) && ["climate", "fan"].includes(scale) && !clamped && type8.type !== "air-conditioner") {
-      type8 = {
-        ...type8,
+    if (["air-conditioner", "bath-heater"].includes(size?.deviceType) && ["climate", "fan"].includes(scale) && !clamped && type.type !== "air-conditioner") {
+      type = {
+        ...type,
         type: "air-conditioner"
       };
     }
-    if (type8.type === "vacuum-control" || !clamped && detailsBoundEntityIdText.startsWith("vacuum.")) {
-      this.showVacuumDetails(type8, {
+    if (type.type === "vacuum-control" || !clamped && detailsBoundEntityIdText.startsWith("vacuum.")) {
+      this.showVacuumDetails(type, {
         preview
       });
       return;
@@ -11251,83 +11252,83 @@ export class PanelRenderer {
     const appliedScaleX = this.states.get(detailsBoundEntityIdText);
     const appliedScaleY = appliedScaleX?.newState || appliedScaleX;
     const friendly_name = appliedScaleY?.attributes || {};
-    const isLineChart = type8.type === "line-chart";
+    const isLineChart = type.type === "line-chart";
     const isCoverEntity = !isLineChart && scale === "cover";
-    const coverKind = ["standard", "dream", "airer"].includes(type8.properties?.coverKind) ? type8.properties.coverKind : "auto";
-    const airer = isCoverEntity && coverComponentIsAirer(type8, detailsBoundEntityIdText, appliedScaleY, this.entityMetadata, this.deviceMetadata);
+    const coverKind = ["standard", "dream", "airer"].includes(type.properties?.coverKind) ? type.properties.coverKind : "auto";
+    const airer = isCoverEntity && coverComponentIsAirer(type, detailsBoundEntityIdText, appliedScaleY, this.entityMetadata, this.deviceMetadata);
     const supportedFeatures = Number(friendly_name.supported_features || 0);
-    const coverIdentityText = detailsBoundEntityIdText + " " + (friendly_name.friendly_name || "") + " " + (type8.properties?.label || "");
+    const coverIdentityText = detailsBoundEntityIdText + " " + (friendly_name.friendly_name || "") + " " + (type.properties?.label || "");
     const supportsTilt = Number.isFinite(Number(friendly_name.current_tilt_position)) || !!(supportedFeatures & 240);
     const looksLikeDreamCurtain = /梦幻|竖帘|垂直帘|百叶|(^|[._-])novo([._-]|$)/i.test(coverIdentityText);
     const dream = isCoverEntity && !airer && (coverKind === "dream" || coverKind === "auto" && (supportsTilt || looksLikeDreamCurtain));
     const tilt = dream && supportsTilt;
     const airerLightEntityId = (airer ? relatedAirerLightEntity(this.entityMetadata, detailsBoundEntityIdText) : null)?.entityId || "";
-    const newState9 = airerLightEntityId ? this.states.get(airerLightEntityId) : null;
-    let state10 = newState9?.newState || newState9 || null;
+    const newState = airerLightEntityId ? this.states.get(airerLightEntityId) : null;
+    let state = newState?.newState || newState || null;
     const positionCommandEntityId = (airer ? relatedAirerPositionNumberEntity(this.entityMetadata, detailsBoundEntityIdText) : null)?.entityId || "";
-    const newState10 = this.states.get(positionCommandEntityId);
-    const positionCommandState = newState10?.newState || newState10 || null;
+    const entry = this.states.get(positionCommandEntityId);
+    const positionCommandState = entry?.newState || entry || null;
     const airerPositionSensorId = (airer ? relatedAirerCurrentPositionSensor(this.entityMetadata, detailsBoundEntityIdText) : null)?.entityId || "";
     const airerMotorSpeedSensorId = (airer ? relatedAirerMotorSpeedSensor(this.entityMetadata, detailsBoundEntityIdText) : null)?.entityId || "";
-    const newState11 = this.states.get(airerMotorSpeedSensorId);
-    const motorState = newState11?.newState || newState11 || null;
+    const newStateCurrent = this.states.get(airerMotorSpeedSensorId);
+    const motorState = newStateCurrent?.newState || newStateCurrent || null;
     const airerMotorActions = airer ? relatedAirerMotorActionEntities(this.entityMetadata, detailsBoundEntityIdText) : {};
-    const airerActionEntityIds = Object.fromEntries(Object.entries(airerMotorActions).map(([item, entityId7]) => [item, entityId7?.entityId || ""]));
-    const newState12 = this.states.get(airerPositionSensorId || positionCommandEntityId);
-    const positionState = newState12?.newState || newState12 || null;
-    const motorReversed = isCoverEntity && coverMotorIsReversedForComponent(type8, this.entityMetadata, this.states, detailsBoundEntityIdText);
+    const airerActionEntityIds = Object.fromEntries(Object.entries(airerMotorActions).map(([item, entityId]) => [item, entityId?.entityId || ""]));
+    const newStateNext = this.states.get(airerPositionSensorId || positionCommandEntityId);
+    const positionState = newStateNext?.newState || newStateNext || null;
+    const motorReversed = isCoverEntity && coverMotorIsReversedForComponent(type, this.entityMetadata, this.states, detailsBoundEntityIdText);
     const openCoverService = motorReversed ? "open_cover" : "close_cover";
     const closeCoverService = motorReversed ? "close_cover" : "open_cover";
-    const coverDirection = ["left", "right"].includes(type8.properties?.coverDirection) ? type8.properties.coverDirection : "split";
+    const coverDirection = ["left", "right"].includes(type.properties?.coverDirection) ? type.properties.coverDirection : "split";
     const momentary = !isLineChart && scale === "button";
     const isSwitchEntity = !isLineChart && (momentary || ["switch", "input_boolean"].includes(scale));
-    const isLightControl = type8.type === "icon-button" && scale === "light";
-    const isClimateEntity = !isLineChart && (type8.type === "air-conditioner" || type8.type === "water-heater" || ["climate", "water_heater"].includes(scale));
-    const deviceType = isClimateEntity ? scale === "water_heater" || type8.type === "water-heater" ? "water-heater" : resolveClimateDeviceType(type8, appliedScaleY, detailsBoundEntityIdText) : "air-conditioner";
+    const isLightControl = type.type === "icon-button" && scale === "light";
+    const isClimateEntity = !isLineChart && (type.type === "air-conditioner" || type.type === "water-heater" || ["climate", "water_heater"].includes(scale));
+    const deviceType = isClimateEntity ? scale === "water_heater" || type.type === "water-heater" ? "water-heater" : resolveClimateDeviceType(type, appliedScaleY, detailsBoundEntityIdText) : "air-conditioner";
     const climateDeviceLabelText = climateDeviceLabel(deviceType);
-    const detailsDialogTitle = componentDialogTitle(type8, String(friendly_name.friendly_name || "").trim() || climateDeviceLabelText).replace(/(浴霸)(?:\s+浴霸)+$/i, "$1");
-    const label = componentDialogTitle(type8, String(friendly_name.friendly_name || "").trim() || (momentary ? "按钮" : "开关"));
+    const detailsDialogTitle = componentDialogTitle(type, String(friendly_name.friendly_name || "").trim() || climateDeviceLabelText).replace(/(浴霸)(?:\s+浴霸)+$/i, "$1");
+    const label = componentDialogTitle(type, String(friendly_name.friendly_name || "").trim() || (momentary ? "按钮" : "开关"));
     const usesRichDetailsChrome = isLightControl || isClimateEntity || isSwitchEntity;
     this.closeRuntimeDialog();
-    const entityIsActive = (state8, attributes4 = friendly_name) => momentary ? false : isLightControl || isSwitchEntity ? state8 === "on" : climateIsPoweredOn({
-      state: state8,
-      attributes: attributes4
+    const entityIsActive = (state, attributes = friendly_name) => momentary ? false : isLightControl || isSwitchEntity ? state === "on" : climateIsPoweredOn({
+      state: state,
+      attributes: attributes
     }, deviceType);
-    const entityDetailsDialogEl7 = document.createElement("dialog");
-    entityDetailsDialogEl7.className = "hb-entity-details-dialog";
-    entityDetailsDialogEl7.tabIndex = -1;
-    entityDetailsDialogEl7.classList.toggle("line-chart-details", isLineChart);
-    entityDetailsDialogEl7.classList.toggle("light-details", isLightControl);
-    entityDetailsDialogEl7.classList.toggle("cover-details", isCoverEntity);
-    entityDetailsDialogEl7.classList.toggle("dream-cover-details", dream);
-    entityDetailsDialogEl7.classList.toggle("airer-cover-details", airer);
-    entityDetailsDialogEl7.classList.toggle("climate-details", isClimateEntity);
-    entityDetailsDialogEl7.classList.toggle("bath-heater-details", deviceType === "bath-heater");
-    entityDetailsDialogEl7.classList.toggle("water-heater-details", deviceType === "water-heater");
-    entityDetailsDialogEl7.classList.toggle("switch-details", isSwitchEntity);
-    entityDetailsDialogEl7.classList.toggle("momentary-button-details", momentary);
-    const append10 = document.createElement("div");
-    append10.className = "hb-entity-details-card";
+    const entityDetailsDialogEl = document.createElement("dialog");
+    entityDetailsDialogEl.className = "hb-entity-details-dialog";
+    entityDetailsDialogEl.tabIndex = -1;
+    entityDetailsDialogEl.classList.toggle("line-chart-details", isLineChart);
+    entityDetailsDialogEl.classList.toggle("light-details", isLightControl);
+    entityDetailsDialogEl.classList.toggle("cover-details", isCoverEntity);
+    entityDetailsDialogEl.classList.toggle("dream-cover-details", dream);
+    entityDetailsDialogEl.classList.toggle("airer-cover-details", airer);
+    entityDetailsDialogEl.classList.toggle("climate-details", isClimateEntity);
+    entityDetailsDialogEl.classList.toggle("bath-heater-details", deviceType === "bath-heater");
+    entityDetailsDialogEl.classList.toggle("water-heater-details", deviceType === "water-heater");
+    entityDetailsDialogEl.classList.toggle("switch-details", isSwitchEntity);
+    entityDetailsDialogEl.classList.toggle("momentary-button-details", momentary);
+    const append = document.createElement("div");
+    append.className = "hb-entity-details-card";
     const entityDetailsHeadingEl = document.createElement("div");
     entityDetailsHeadingEl.className = "hb-entity-details-heading";
-    const append11 = document.createElement("div");
+    const element = document.createElement("div");
     const entityDetailsStrongEl = document.createElement("strong");
-    entityDetailsStrongEl.textContent = isLightControl ? componentDialogTitle(type8, "灯光") : isCoverEntity ? componentDialogTitle(type8, airer ? "晾衣机" : "窗帘") : isClimateEntity ? detailsDialogTitle : isSwitchEntity ? label : componentDialogTitle(type8, "设备详情");
-    append11.append(entityDetailsStrongEl);
-    let pendingRef2 = null;
-    let pendingRef3 = null;
+    entityDetailsStrongEl.textContent = isLightControl ? componentDialogTitle(type, "灯光") : isCoverEntity ? componentDialogTitle(type, airer ? "晾衣机" : "窗帘") : isClimateEntity ? detailsDialogTitle : isSwitchEntity ? label : componentDialogTitle(type, "设备详情");
+    element.append(entityDetailsStrongEl);
+    let pendingRef = null;
+    let pendingRefCurrent = null;
     let rawEntityState = String(appliedScaleY?.state || "");
-    let pendingRef4 = null;
-    let pendingRef5 = null;
-    let pendingRef6 = null;
+    let pendingRefNext = null;
+    let pendingRefPrevious = null;
+    let pendingRefLocal = null;
     if (isLightControl) {
       const entityDetailsSpanEl = document.createElement("span");
       entityDetailsSpanEl.textContent = appliedScaleY?.state === "on" ? "已开启" : "已关闭";
       entityDetailsSpanEl.classList.toggle("is-on", appliedScaleY?.state === "on");
-      pendingRef2 = entityDetailsSpanEl;
-      append11.append(entityDetailsSpanEl);
+      pendingRef = entityDetailsSpanEl;
+      element.append(entityDetailsSpanEl);
     } else if (isCoverEntity) {
-      const entityDetailsSpanEl2 = document.createElement("span");
+      const entityDetailsSpanEl = document.createElement("span");
       const physicalCoverStateValue = physicalCoverState(appliedScaleY?.state, motorReversed);
       const currentCoverPosition = Number(friendly_name[tilt ? "current_tilt_position" : "current_position"]);
       const coverStateLabels = {
@@ -11336,44 +11337,44 @@ export class PanelRenderer {
         opening: "正在打开",
         closing: "正在关闭"
       };
-      entityDetailsSpanEl2.textContent = airer ? coverLiftStateLabel(physicalCoverStateValue) || physicalCoverStateValue || "状态未知" : dream ? dreamCurtainStatusText(appliedScaleY?.state, currentCoverPosition, motorReversed) : coverStateLabels[physicalCoverStateValue] || physicalCoverStateValue || "状态未知";
-      entityDetailsSpanEl2.classList.toggle("is-on", physicalCoverStateValue === "open" || physicalCoverStateValue === "opening");
-      pendingRef3 = entityDetailsSpanEl2;
-      append11.append(entityDetailsSpanEl2);
+      entityDetailsSpanEl.textContent = airer ? coverLiftStateLabel(physicalCoverStateValue) || physicalCoverStateValue || "状态未知" : dream ? dreamCurtainStatusText(appliedScaleY?.state, currentCoverPosition, motorReversed) : coverStateLabels[physicalCoverStateValue] || physicalCoverStateValue || "状态未知";
+      entityDetailsSpanEl.classList.toggle("is-on", physicalCoverStateValue === "open" || physicalCoverStateValue === "opening");
+      pendingRefCurrent = entityDetailsSpanEl;
+      element.append(entityDetailsSpanEl);
     } else if (isClimateEntity || isSwitchEntity) {
-      const entityDetailsSpanEl3 = document.createElement("span");
+      const entityDetailsSpanEl = document.createElement("span");
       const isEntityActive = entityIsActive(appliedScaleY?.state);
-      entityDetailsSpanEl3.textContent = momentary ? ["unknown", "unavailable"].includes(appliedScaleY?.state) ? "当前不可用" : "按下执行" : deviceType === "water-heater" ? waterHeaterStatusLabel(appliedScaleY) : ["unknown", "unavailable"].includes(appliedScaleY?.state) ? "当前不可用" : isEntityActive ? "已开启" : "已关闭";
-      entityDetailsSpanEl3.classList.toggle("is-on", isEntityActive);
+      entityDetailsSpanEl.textContent = momentary ? ["unknown", "unavailable"].includes(appliedScaleY?.state) ? "当前不可用" : "按下执行" : deviceType === "water-heater" ? waterHeaterStatusLabel(appliedScaleY) : ["unknown", "unavailable"].includes(appliedScaleY?.state) ? "当前不可用" : isEntityActive ? "已开启" : "已关闭";
+      entityDetailsSpanEl.classList.toggle("is-on", isEntityActive);
       if (isClimateEntity) {
-        pendingRef4 = entityDetailsSpanEl3;
+        pendingRefNext = entityDetailsSpanEl;
       } else {
-        pendingRef5 = entityDetailsSpanEl3;
+        pendingRefPrevious = entityDetailsSpanEl;
       }
-      append11.append(entityDetailsSpanEl3);
-    } else if (type8.type === "line-chart") {
+      element.append(entityDetailsSpanEl);
+    } else if (type.type === "line-chart") {
       const statusTextEl = document.createElement("span");
       statusTextEl.textContent = appliedScaleY?.state == null || ["unknown", "unavailable"].includes(appliedScaleY.state) ? "暂无数据" : "实时数据";
-      pendingRef6 = statusTextEl;
-      append11.append(statusTextEl);
+      pendingRefLocal = statusTextEl;
+      element.append(statusTextEl);
     }
     const entityDetailsButtonEl = document.createElement("button");
     entityDetailsButtonEl.type = "button";
     entityDetailsButtonEl.setAttribute("aria-label", "关闭实体详情");
     entityDetailsButtonEl.textContent = "×";
-    entityDetailsHeadingEl.append(append11, entityDetailsButtonEl);
-    let attributes6 = appliedScaleY;
+    entityDetailsHeadingEl.append(element, entityDetailsButtonEl);
+    let attributes = appliedScaleY;
     let syncClimateState = null;
     let coverDetailsControls = null;
-    let setAttribute2 = null;
+    let setAttributeCurrent = null;
     let lightDetailsControls = null;
-    let pendingRef7 = null;
+    let pendingRefItem = null;
     let climateDetailsControls = null;
     let switchDetailsControls = null;
     let detailsSyncToken = 0;
     const positionCalibration = airerPositionCalibration(this.entityMetadata, this.deviceMetadata, detailsBoundEntityIdText);
     let detailsDisposed = false;
-    let pendingRef8 = null;
+    let pendingRefEntry = null;
     let pendingCoverPosition = null;
     let pendingCoverState = null;
     let pendingLightBrightness = null;
@@ -11383,16 +11384,16 @@ export class PanelRenderer {
     let coverInteractionPhase = "idle";
     let statusMessageText = "";
     let toggleBathLight = null;
-    let stateHandlers2 = null;
+    let stateHandlers = null;
     let subscribedEntityIds = new Set();
-    const relatedEntityIds2 = selectedRelatedEntityIds(type8);
-    const relatedEntityIdSet = new Set(relatedEntityIds2 || []);
+    const relatedEntityIds = selectedRelatedEntityIds(type);
+    const relatedEntityIdSet = new Set(relatedEntityIds || []);
     if (isLightControl) {
-      setAttribute2 = document.createElement("button");
-      setAttribute2.type = "button";
-      setAttribute2.className = "hb-light-visual";
-      setAttribute2.inert = preview;
-      setAttribute2.setAttribute("aria-disabled", String(preview));
+      setAttributeCurrent = document.createElement("button");
+      setAttributeCurrent.type = "button";
+      setAttributeCurrent.className = "hb-light-visual";
+      setAttributeCurrent.inert = preview;
+      setAttributeCurrent.setAttribute("aria-disabled", String(preview));
       const lightVisualAuraEl = document.createElement("div");
       lightVisualAuraEl.className = "hb-light-visual-aura";
       const lightVisualLampEl = document.createElement("div");
@@ -11405,75 +11406,75 @@ export class PanelRenderer {
       }
       const lightVisualStatusEl = document.createElement("span");
       lightVisualStatusEl.className = "hb-light-visual-status";
-      setAttribute2.append(lightVisualAuraEl, lightVisualLampEl, lightVisualStatusEl);
+      setAttributeCurrent.append(lightVisualAuraEl, lightVisualLampEl, lightVisualStatusEl);
       const minColorTempKelvin = Number(friendly_name.min_color_temp_kelvin) || (Number.isFinite(Number(friendly_name.max_mireds)) ? 1000000 / Number(friendly_name.max_mireds) : 2000);
       const maxColorTempKelvin = Number(friendly_name.max_color_temp_kelvin) || (Number.isFinite(Number(friendly_name.min_mireds)) ? 1000000 / Number(friendly_name.min_mireds) : 6500);
       const colorTempKelvin = Number(friendly_name.color_temp_kelvin) || (Number.isFinite(Number(friendly_name.color_temp)) ? 1000000 / Number(friendly_name.color_temp) : NaN);
       const colorTemperatureKelvin = Number.isFinite(colorTempKelvin) ? colorTempKelvin : (minColorTempKelvin + maxColorTempKelvin) / 2;
       const supportsColor = lightSupportsColor(friendly_name);
-      const isOn3 = {
+      const options = {
         isOn: appliedScaleY?.state === "on",
         brightnessPercent: Number.isFinite(Number(friendly_name.brightness)) ? Number(friendly_name.brightness) / 255 * 100 : 100,
         colorTemperatureKelvin,
         colorRgb: supportsColor && Array.isArray(friendly_name.rgb_color) ? friendly_name.rgb_color.slice(0, 3).map(item => Number(item) || 0) : supportsColor && Array.isArray(friendly_name.hs_color) ? hsToRgbColor(friendly_name.hs_color) : null
       };
       const applyLightVisual = () => {
-        const brightnessPercent = Math.max(1, Math.min(100, Number(isOn3.brightnessPercent) || 1));
-        const visualColorTempKelvin = Math.max(2000, Math.min(6500, Number(isOn3.colorTemperatureKelvin) || 3000));
+        const brightnessPercent = Math.max(1, Math.min(100, Number(options.brightnessPercent) || 1));
+        const visualColorTempKelvin = Math.max(2000, Math.min(6500, Number(options.colorTemperatureKelvin) || 3000));
         const colorTempT = (visualColorTempKelvin - 2000) / 4500;
-        const map2 = [255, 132, 42];
+        const map = [255, 132, 42];
         const coolRgb = [172, 225, 255];
-        const mixedRgbCss = "rgb(" + (isOn3.colorRgb || map2.map((item, second) => Math.round(item + (coolRgb[second] - item) * colorTempT))).join(",") + ")";
-        setAttribute2.classList.toggle("is-on", isOn3.isOn);
-        setAttribute2.style.setProperty("--hb-light-visual-color", mixedRgbCss);
-        setAttribute2.style.setProperty("--hb-light-visual-opacity", isOn3.isOn ? String(0.08 + brightnessPercent / 100 * 0.92) : "0");
-        setAttribute2.style.setProperty("--hb-light-visual-blur", Math.round(15 + brightnessPercent * 1.14) + "px");
-        setAttribute2.style.setProperty("--hb-light-visual-scale", String(0.62 + brightnessPercent / 100 * 1.05));
-        lightVisualStatusEl.textContent = isOn3.isOn ? Math.round(brightnessPercent) + "%  ·  " + Math.round(visualColorTempKelvin) + "K" : "灯光已关闭";
-        setAttribute2.setAttribute("aria-label", lightVisualStatusEl.textContent);
+        const mixedRgbCss = "rgb(" + (options.colorRgb || map.map((item, second) => Math.round(item + (coolRgb[second] - item) * colorTempT))).join(",") + ")";
+        setAttributeCurrent.classList.toggle("is-on", options.isOn);
+        setAttributeCurrent.style.setProperty("--hb-light-visual-color", mixedRgbCss);
+        setAttributeCurrent.style.setProperty("--hb-light-visual-opacity", options.isOn ? String(0.08 + brightnessPercent / 100 * 0.92) : "0");
+        setAttributeCurrent.style.setProperty("--hb-light-visual-blur", Math.round(15 + brightnessPercent * 1.14) + "px");
+        setAttributeCurrent.style.setProperty("--hb-light-visual-scale", String(0.62 + brightnessPercent / 100 * 1.05));
+        lightVisualStatusEl.textContent = options.isOn ? Math.round(brightnessPercent) + "%  ·  " + Math.round(visualColorTempKelvin) + "K" : "灯光已关闭";
+        setAttributeCurrent.setAttribute("aria-label", lightVisualStatusEl.textContent);
       };
       lightDetailsControls = (isOn = {}) => {
         const brightness = isOn.attributes || {};
         if (typeof isOn.isOn == "boolean") {
-          isOn3.isOn = isOn.isOn;
+          options.isOn = isOn.isOn;
         } else if (typeof isOn.state == "string") {
-          isOn3.isOn = isOn.state === "on";
+          options.isOn = isOn.state === "on";
         }
         if (Number.isFinite(Number(isOn.brightnessPercent))) {
-          isOn3.brightnessPercent = Number(isOn.brightnessPercent);
+          options.brightnessPercent = Number(isOn.brightnessPercent);
         } else if (Number.isFinite(Number(brightness.brightness))) {
-          isOn3.brightnessPercent = Number(brightness.brightness) / 255 * 100;
+          options.brightnessPercent = Number(brightness.brightness) / 255 * 100;
         }
         if (Number.isFinite(Number(isOn.colorTemperatureKelvin))) {
-          isOn3.colorTemperatureKelvin = Number(isOn.colorTemperatureKelvin);
+          options.colorTemperatureKelvin = Number(isOn.colorTemperatureKelvin);
         } else if (Number.isFinite(Number(brightness.color_temp_kelvin))) {
-          isOn3.colorTemperatureKelvin = Number(brightness.color_temp_kelvin);
+          options.colorTemperatureKelvin = Number(brightness.color_temp_kelvin);
         } else if (Number.isFinite(Number(brightness.color_temp))) {
-          isOn3.colorTemperatureKelvin = 1000000 / Number(brightness.color_temp);
+          options.colorTemperatureKelvin = 1000000 / Number(brightness.color_temp);
         }
         if (supportsColor && Array.isArray(isOn.colorRgb)) {
-          isOn3.colorRgb = isOn.colorRgb.slice(0, 3).map(item => Number(item) || 0);
+          options.colorRgb = isOn.colorRgb.slice(0, 3).map(item => Number(item) || 0);
         } else if (supportsColor && Array.isArray(brightness.rgb_color)) {
-          isOn3.colorRgb = brightness.rgb_color.slice(0, 3).map(item => Number(item) || 0);
+          options.colorRgb = brightness.rgb_color.slice(0, 3).map(item => Number(item) || 0);
         } else if (supportsColor && Array.isArray(brightness.hs_color)) {
-          isOn3.colorRgb = hsToRgbColor(brightness.hs_color);
+          options.colorRgb = hsToRgbColor(brightness.hs_color);
         }
         applyLightVisual();
       };
       applyLightVisual();
     }
     if (isCoverEntity) {
-      pendingRef7 = document.createElement("button");
-      pendingRef7.type = "button";
-      pendingRef7.className = "hb-cover-visual";
-      pendingRef7.inert = preview;
-      pendingRef7.setAttribute("aria-disabled", String(preview));
+      pendingRefItem = document.createElement("button");
+      pendingRefItem.type = "button";
+      pendingRefItem.className = "hb-cover-visual";
+      pendingRefItem.inert = preview;
+      pendingRefItem.setAttribute("aria-disabled", String(preview));
       const coverVisualRailEl = document.createElement("i");
       coverVisualRailEl.className = "hb-cover-visual-rail";
       const coverVisualPanelEl = document.createElement("i");
       coverVisualPanelEl.className = "hb-cover-visual-panel left";
-      const coverVisualPanelEl2 = document.createElement("i");
-      coverVisualPanelEl2.className = "hb-cover-visual-panel right";
+      const element = document.createElement("i");
+      element.className = "hb-cover-visual-panel right";
       const coverVisualSlatsEl = document.createElement("span");
       coverVisualSlatsEl.className = "hb-cover-visual-slats";
       const bladeCount = 13;
@@ -11491,70 +11492,70 @@ export class PanelRenderer {
       }
       const coverVisualWindowEl = document.createElement("i");
       coverVisualWindowEl.className = "hb-cover-visual-window";
-      pendingRef7.classList.toggle("is-dream", dream);
-      pendingRef7.classList.toggle("is-airer", airer);
-      pendingRef7.classList.add("direction-" + coverDirection);
-      pendingRef7.append(coverVisualWindowEl, coverVisualRailEl, coverVisualPanelEl, coverVisualPanelEl2, coverVisualSlatsEl);
+      pendingRefItem.classList.toggle("is-dream", dream);
+      pendingRefItem.classList.toggle("is-airer", airer);
+      pendingRefItem.classList.add("direction-" + coverDirection);
+      pendingRefItem.append(coverVisualWindowEl, coverVisualRailEl, coverVisualPanelEl, element, coverVisualSlatsEl);
       if (airer) {
-        appendAirerVisual(pendingRef7);
+        appendAirerVisual(pendingRefItem);
       }
-      switchDetailsControls = (lightState = state10) => {
+      switchDetailsControls = (lightState = state) => {
         if (!airer) {
           return;
         }
-        state10 = lightState || state10;
-        const isAirerLightUnavailable = !airerLightEntityId || ["unknown", "unavailable"].includes(String(state10?.state || "unknown"));
-        const isAirerLightOn = state10?.state === "on";
-        pendingRef7.classList.toggle("is-light-on", isAirerLightOn && !isAirerLightUnavailable);
-        pendingRef7.classList.toggle("is-light-unavailable", isAirerLightUnavailable);
-        pendingRef7.disabled = preview || isAirerLightUnavailable;
-        pendingRef7.setAttribute("aria-pressed", String(isAirerLightOn && !isAirerLightUnavailable));
-        pendingRef7.setAttribute("aria-label", isAirerLightUnavailable ? "晾衣机灯光实体不可用" : "晾衣机灯光" + (isAirerLightOn ? "已开启，点击关闭" : "已关闭，点击开启"));
+        state = lightState || state;
+        const isAirerLightUnavailable = !airerLightEntityId || ["unknown", "unavailable"].includes(String(state?.state || "unknown"));
+        const isAirerLightOn = state?.state === "on";
+        pendingRefItem.classList.toggle("is-light-on", isAirerLightOn && !isAirerLightUnavailable);
+        pendingRefItem.classList.toggle("is-light-unavailable", isAirerLightUnavailable);
+        pendingRefItem.disabled = preview || isAirerLightUnavailable;
+        pendingRefItem.setAttribute("aria-pressed", String(isAirerLightOn && !isAirerLightUnavailable));
+        pendingRefItem.setAttribute("aria-label", isAirerLightUnavailable ? "晾衣机灯光实体不可用" : "晾衣机灯光" + (isAirerLightOn ? "已开启，点击关闭" : "已关闭，点击开启"));
       };
       switchDetailsControls();
       climateDetailsControls = ({
         position: options = 0,
-        state: state5 = ""
+        state: state = ""
       } = {}) => {
         const current_position = Math.max(0, Math.min(100, Number(options) || 0));
         const coverPresentation = coverPresentationState({
-          state: state5,
+          state: state,
           attributes: {
             current_position
           }
         }, motorReversed);
-        const resolvedPhysicalCoverState = physicalCoverState(state5 || rawEntityState, motorReversed);
+        const resolvedPhysicalCoverState = physicalCoverState(state || rawEntityState, motorReversed);
         const isCoverOpenOrOpening = resolvedPhysicalCoverState === "open" || resolvedPhysicalCoverState === "opening";
         detailsSyncToken = current_position;
-        pendingRef7.style.setProperty("--hb-cover-open-position", current_position + "%");
-        pendingRef7.style.setProperty("--hb-airer-drop", airerVisualDrop(current_position) + "px");
-        pendingRef7.style.setProperty("--hb-cover-panel-width", 45.9 - current_position * 0.331 + "%");
-        pendingRef7.style.setProperty("--hb-cover-single-panel-width", 91.8 - current_position * 0.79 + "%");
-        pendingRef7.style.setProperty("--hb-cover-slat-angle", current_position * 1.8 + "deg");
-        pendingRef7.classList.toggle("is-tilt-reversed", current_position > 50);
-        pendingRef7.classList.toggle("is-tilt-center", Math.abs(current_position - 50) <= 2);
-        pendingRef7.classList.toggle("is-open", dream ? isCoverOpenOrOpening : coverPresentation === "open" || coverPresentation === "opening");
-        pendingRef7.classList.toggle("is-moving", state5 === "opening" || state5 === "closing");
-        pendingRef7.setAttribute("aria-pressed", String(dream ? isCoverOpenOrOpening : coverPresentation === "open" || coverPresentation === "opening"));
+        pendingRefItem.style.setProperty("--hb-cover-open-position", current_position + "%");
+        pendingRefItem.style.setProperty("--hb-airer-drop", airerVisualDrop(current_position) + "px");
+        pendingRefItem.style.setProperty("--hb-cover-panel-width", 45.9 - current_position * 0.331 + "%");
+        pendingRefItem.style.setProperty("--hb-cover-single-panel-width", 91.8 - current_position * 0.79 + "%");
+        pendingRefItem.style.setProperty("--hb-cover-slat-angle", current_position * 1.8 + "deg");
+        pendingRefItem.classList.toggle("is-tilt-reversed", current_position > 50);
+        pendingRefItem.classList.toggle("is-tilt-center", Math.abs(current_position - 50) <= 2);
+        pendingRefItem.classList.toggle("is-open", dream ? isCoverOpenOrOpening : coverPresentation === "open" || coverPresentation === "opening");
+        pendingRefItem.classList.toggle("is-moving", state === "opening" || state === "closing");
+        pendingRefItem.setAttribute("aria-pressed", String(dream ? isCoverOpenOrOpening : coverPresentation === "open" || coverPresentation === "opening"));
         if (!airer) {
-          pendingRef7.setAttribute("aria-label", dream ? "" + componentDialogTitle(type8, "梦幻帘") + dreamCurtainStatusText(state5 || rawEntityState, current_position, motorReversed) : "" + componentDialogTitle(type8, "窗帘") + (coverPresentation === "open" || coverPresentation === "opening" ? "已打开，点击关闭" : "已关闭，点击打开"));
+          pendingRefItem.setAttribute("aria-label", dream ? "" + componentDialogTitle(type, "梦幻帘") + dreamCurtainStatusText(state || rawEntityState, current_position, motorReversed) : "" + componentDialogTitle(type, "窗帘") + (coverPresentation === "open" || coverPresentation === "opening" ? "已打开，点击关闭" : "已关闭，点击打开"));
         }
       };
       climateDetailsControls({
         position: Number.isFinite(Number(friendly_name[tilt ? "current_tilt_position" : "current_position"])) ? Number(friendly_name[tilt ? "current_tilt_position" : "current_position"]) : appliedScaleY?.state === "open" ? 100 : 0,
         state: appliedScaleY?.state
       });
-      pendingRef7.addEventListener("click", async () => {
+      pendingRefItem.addEventListener("click", async () => {
         if (preview || detailsDisposed) {
           return;
         }
         detailsDisposed = true;
-        pendingRef7.setAttribute("aria-busy", "true");
+        pendingRefItem.setAttribute("aria-busy", "true");
         if (airer) {
-          const airerLightState = state10;
+          const airerLightState = state;
           switchDetailsControls({
-            ...(state10 || {}),
-            state: state10?.state === "on" ? "off" : "on"
+            ...(state || {}),
+            state: state?.state === "on" ? "off" : "on"
           });
           try {
             await this.callEntityService("homeassistant", "toggle", airerLightEntityId);
@@ -11563,13 +11564,13 @@ export class PanelRenderer {
             this.options.onError?.(socketPayload);
           } finally {
             detailsDisposed = false;
-            pendingRef7.removeAttribute("aria-busy");
+            pendingRefItem.removeAttribute("aria-busy");
           }
           return;
         }
-        const position2 = detailsSyncToken;
-        const isDreamRetracted = syncClimateState?.isDreamCurtainRetracted?.() ?? pendingRef7.dataset.curtainRetracted === "true";
-        const isCoverOpenPosition = position2 > COVER_CLOSED_POSITION_EPSILON;
+        const position = detailsSyncToken;
+        const isDreamRetracted = syncClimateState?.isDreamCurtainRetracted?.() ?? pendingRefItem.dataset.curtainRetracted === "true";
+        const isCoverOpenPosition = position > COVER_CLOSED_POSITION_EPSILON;
         if (dream) {
           syncClimateState?.beginDreamCurtainMotion?.(!isDreamRetracted);
         }
@@ -11587,13 +11588,13 @@ export class PanelRenderer {
           }
           syncClimateState?.syncCoverState?.(appliedScaleY);
           climateDetailsControls({
-            position: position2,
+            position: position,
             state: appliedScaleY?.state
           });
           this.options.onError?.(presenceBucket);
         } finally {
           detailsDisposed = false;
-          pendingRef7.removeAttribute("aria-busy");
+          pendingRefItem.removeAttribute("aria-busy");
         }
       });
     }
@@ -11603,13 +11604,13 @@ export class PanelRenderer {
         entityMetadata: this.entityMetadata,
         entityTranslations: this.entityTranslations
       };
-      pendingRef8 = document.createElement("button");
-      pendingRef8.type = "button";
-      pendingRef8.className = "hb-climate-visual";
-      pendingRef8.classList.toggle("is-bath-heater", deviceType === "bath-heater");
-      pendingRef8.classList.toggle("is-water-heater", deviceType === "water-heater");
-      pendingRef8.inert = preview;
-      pendingRef8.setAttribute("aria-disabled", String(preview));
+      pendingRefEntry = document.createElement("button");
+      pendingRefEntry.type = "button";
+      pendingRefEntry.className = "hb-climate-visual";
+      pendingRefEntry.classList.toggle("is-bath-heater", deviceType === "bath-heater");
+      pendingRefEntry.classList.toggle("is-water-heater", deviceType === "water-heater");
+      pendingRefEntry.inert = preview;
+      pendingRefEntry.setAttribute("aria-disabled", String(preview));
       const climateVisualUnitEl = document.createElement("div");
       climateVisualUnitEl.className = "hb-climate-visual-unit";
       const climateVisualBrandEl = document.createElement("span");
@@ -11628,20 +11629,20 @@ export class PanelRenderer {
       for (let dragStartY = 0; dragStartY < 3; dragStartY += 1) {
         climateVisualAirflowEl.append(document.createElement("i"));
       }
-      pendingRef8.append(climateVisualUnitEl, climateVisualAirflowEl);
+      pendingRefEntry.append(climateVisualUnitEl, climateVisualAirflowEl);
       pendingCoverPosition = ({
         mode: options = "off",
-        visualMode: visualMode2 = "off",
-        running: options2 = false,
-        accentColor: options3 = "#65717a",
+        visualMode: visualMode = "off",
+        running: optionsCurrent = false,
+        accentColor: optionsNext = "#65717a",
         targetTemperature: temperature
       } = {}) => {
-        const isClimateModeOn = visualMode2 !== "off";
-        pendingRef8.classList.toggle("is-on", isClimateModeOn);
-        pendingRef8.classList.toggle("is-running", options2);
-        pendingRef8.classList.toggle("is-airflow-mode", deviceType === "bath-heater" && isClimateModeOn && bathHeaterModeUsesAirflow(options));
-        pendingRef8.dataset.visualMode = visualMode2;
-        pendingRef8.style.setProperty("--hb-climate-visual-accent", options3);
+        const isClimateModeOn = visualMode !== "off";
+        pendingRefEntry.classList.toggle("is-on", isClimateModeOn);
+        pendingRefEntry.classList.toggle("is-running", optionsCurrent);
+        pendingRefEntry.classList.toggle("is-airflow-mode", deviceType === "bath-heater" && isClimateModeOn && bathHeaterModeUsesAirflow(options));
+        pendingRefEntry.dataset.visualMode = visualMode;
+        pendingRefEntry.style.setProperty("--hb-climate-visual-accent", optionsNext);
         const hasFiniteTemperature = temperature != null && temperature !== "" && Number.isFinite(Number(temperature));
         climateVisualDisplayEl.textContent = isClimateModeOn ? hasFiniteTemperature ? Number(temperature) + "°" : climateModeLabel(options, deviceType, relatedPopupOptions) : "OFF";
       };
@@ -11664,9 +11665,9 @@ export class PanelRenderer {
     if (usesRichDetailsChrome) {
       entityDetailsStateEl.type = "button";
     }
-    const entityDetailsSpanEl4 = document.createElement("span");
-    entityDetailsSpanEl4.textContent = usesRichDetailsChrome ? "⏻" : "当前状态";
-    const entityDetailsStrongEl2 = document.createElement("strong");
+    const entityDetailsSpanEl = document.createElement("span");
+    entityDetailsSpanEl.textContent = usesRichDetailsChrome ? "⏻" : "当前状态";
+    const entityDetailsStrongElCurrent = document.createElement("strong");
     const hvacModeLabels = {
       off: "关闭",
       auto: "自动",
@@ -11676,71 +11677,71 @@ export class PanelRenderer {
       fan_only: "送风",
       heat_cool: "冷暖自动"
     };
-    entityDetailsStrongEl2.textContent = usesRichDetailsChrome ? appliedScaleY?.state ? entityIsActive(appliedScaleY.state) ? "已开启" : "已关闭" : "状态未知" : scale === "climate" ? hvacModeLabels[appliedScaleY?.state] || appliedScaleY?.state || "暂无状态" : appliedScaleY?.state ?? "暂无状态";
+    entityDetailsStrongElCurrent.textContent = usesRichDetailsChrome ? appliedScaleY?.state ? entityIsActive(appliedScaleY.state) ? "已开启" : "已关闭" : "状态未知" : scale === "climate" ? hvacModeLabels[appliedScaleY?.state] || appliedScaleY?.state || "暂无状态" : appliedScaleY?.state ?? "暂无状态";
     entityDetailsStateEl.classList.toggle("hb-light-details-power", isLightControl);
     entityDetailsStateEl.classList.toggle("hb-climate-details-power", isClimateEntity);
     entityDetailsStateEl.classList.toggle("hb-switch-details-power", isSwitchEntity);
     entityDetailsStateEl.classList.toggle("is-on", usesRichDetailsChrome && entityIsActive(appliedScaleY?.state));
-    entityDetailsStateEl.append(entityDetailsSpanEl4, entityDetailsStrongEl2);
+    entityDetailsStateEl.append(entityDetailsSpanEl, entityDetailsStrongElCurrent);
     if (usesRichDetailsChrome) {
       entityDetailsStateEl.inert = preview;
       entityDetailsStateEl.setAttribute("aria-disabled", String(preview));
-      coverDetailsControls = (isOn2, {
+      coverDetailsControls = (isOn, {
         unavailable = false,
         syncClimate: options = true
       } = {}) => {
-        entityDetailsStateEl.classList.toggle("is-on", isOn2);
+        entityDetailsStateEl.classList.toggle("is-on", isOn);
         entityDetailsStateEl.classList.toggle("is-unavailable", unavailable);
-        entityDetailsStateEl.setAttribute("aria-pressed", String(isOn2));
+        entityDetailsStateEl.setAttribute("aria-pressed", String(isOn));
         entityDetailsStateEl.disabled = unavailable || preview;
-        entityDetailsStrongEl2.textContent = unavailable ? "当前不可用" : momentary ? coverInteractionPhase === "success" ? "执行成功" : lightInteractionActive ? "执行中" : "等待执行" : isOn2 ? "已开启" : "已关闭";
-        entityDetailsStateEl.setAttribute("aria-label", unavailable ? (isLightControl ? componentDialogTitle(type8, "灯光") : isClimateEntity ? detailsDialogTitle : label) + "当前不可用" : momentary ? "" + label + (coverInteractionPhase === "success" ? "执行成功" : lightInteractionActive ? "正在执行" : "，点击执行") : "" + componentDialogTitle(type8, isLightControl ? "灯光" : isClimateEntity ? climateDeviceLabelText : "开关") + (isOn2 ? "已开启，点击关闭" : "已关闭，点击开启"));
+        entityDetailsStrongElCurrent.textContent = unavailable ? "当前不可用" : momentary ? coverInteractionPhase === "success" ? "执行成功" : lightInteractionActive ? "执行中" : "等待执行" : isOn ? "已开启" : "已关闭";
+        entityDetailsStateEl.setAttribute("aria-label", unavailable ? (isLightControl ? componentDialogTitle(type, "灯光") : isClimateEntity ? detailsDialogTitle : label) + "当前不可用" : momentary ? "" + label + (coverInteractionPhase === "success" ? "执行成功" : lightInteractionActive ? "正在执行" : "，点击执行") : "" + componentDialogTitle(type, isLightControl ? "灯光" : isClimateEntity ? climateDeviceLabelText : "开关") + (isOn ? "已开启，点击关闭" : "已关闭，点击开启"));
         if (isLightControl) {
           lightDetailsControls?.({
-            isOn: isOn2
+            isOn: isOn
           });
-          pendingRef2.textContent = isOn2 ? "已开启" : "已关闭";
-          pendingRef2.classList.toggle("is-on", isOn2);
-          setAttribute2.setAttribute("aria-pressed", String(isOn2));
-          setAttribute2.setAttribute("aria-label", "" + componentDialogTitle(type8, "灯光") + (isOn2 ? "已开启，点击关闭" : "已关闭，点击开启"));
+          pendingRef.textContent = isOn ? "已开启" : "已关闭";
+          pendingRef.classList.toggle("is-on", isOn);
+          setAttributeCurrent.setAttribute("aria-pressed", String(isOn));
+          setAttributeCurrent.setAttribute("aria-label", "" + componentDialogTitle(type, "灯光") + (isOn ? "已开启，点击关闭" : "已关闭，点击开启"));
         }
         if (isClimateEntity && syncClimateState?.syncClimateState && options) {
-          const operationModes = normalizeClimateCapabilities(attributes6 || appliedScaleY);
+          const operationModes = normalizeClimateCapabilities(attributes || appliedScaleY);
           const preferredOperationMode = deviceType === "water-heater" ? operationModes.operationModes.find(item => !["off", "空"].includes(String(item).trim().toLowerCase())) || "普通" : operationModes.hvacModes.find(item => item !== "off") || (deviceType === "bath-heater" ? "heat" : "auto");
           const lastClimateMode = syncClimateState.dataset.lastClimateMode || (appliedScaleY?.state && appliedScaleY.state !== "off" ? appliedScaleY.state : preferredOperationMode);
           syncClimateState.syncClimateState({
-            state: isOn2 ? deviceType === "water-heater" ? "on" : lastClimateMode : "off",
+            state: isOn ? deviceType === "water-heater" ? "on" : lastClimateMode : "off",
             attributes: {
-              ...(attributes6?.attributes || appliedScaleY?.attributes || {}),
-              operation_mode: deviceType === "water-heater" ? isOn2 ? attributes6?.attributes?.operation_mode || preferredOperationMode : "off" : undefined,
-              hvac_action: deviceType === "water-heater" ? undefined : isOn2 ? appliedScaleY?.attributes?.hvac_action || lastClimateMode : "off"
+              ...(attributes?.attributes || appliedScaleY?.attributes || {}),
+              operation_mode: deviceType === "water-heater" ? isOn ? attributes?.attributes?.operation_mode || preferredOperationMode : "off" : undefined,
+              hvac_action: deviceType === "water-heater" ? undefined : isOn ? appliedScaleY?.attributes?.hvac_action || lastClimateMode : "off"
             }
           });
         }
         if (isClimateEntity) {
-          pendingRef4.textContent = deviceType === "water-heater" ? waterHeaterStatusLabel({
-            ...(attributes6 || appliedScaleY || {}),
-            state: isOn2 ? "on" : "off"
-          }) : isOn2 ? "已开启" : "已关闭";
-          pendingRef4.classList.toggle("is-on", isOn2);
+          pendingRefNext.textContent = deviceType === "water-heater" ? waterHeaterStatusLabel({
+            ...(attributes || appliedScaleY || {}),
+            state: isOn ? "on" : "off"
+          }) : isOn ? "已开启" : "已关闭";
+          pendingRefNext.classList.toggle("is-on", isOn);
           if (deviceType === "bath-heater") {
             if (!toggleBathLight) {
-              pendingRef8.setAttribute("aria-pressed", "false");
+              pendingRefEntry.setAttribute("aria-pressed", "false");
             }
-            pendingRef8.setAttribute("aria-label", detailsDialogTitle + "，点击切换浴霸灯");
+            pendingRefEntry.setAttribute("aria-label", detailsDialogTitle + "，点击切换浴霸灯");
           } else {
-            pendingRef8.setAttribute("aria-pressed", String(isOn2));
-            pendingRef8.setAttribute("aria-label", "" + detailsDialogTitle + (isOn2 ? "已开启，点击关闭" : "已关闭，点击开启"));
+            pendingRefEntry.setAttribute("aria-pressed", String(isOn));
+            pendingRefEntry.setAttribute("aria-label", "" + detailsDialogTitle + (isOn ? "已开启，点击关闭" : "已关闭，点击开启"));
           }
         }
         if (isSwitchEntity) {
-          pendingLightBrightness?.(isOn2, {
+          pendingLightBrightness?.(isOn, {
             pending: lightInteractionActive && coverInteractionPhase !== "success",
             success: coverInteractionPhase === "success",
             unavailable
           });
-          pendingRef5.textContent = unavailable ? "当前不可用" : momentary ? coverInteractionPhase === "success" ? "执行成功" : lightInteractionActive ? "正在执行" : "按下执行" : isOn2 ? "已开启" : "已关闭";
-          pendingRef5.classList.toggle("is-on", (momentary ? lightInteractionActive || coverInteractionPhase === "success" : isOn2) && !unavailable);
+          pendingRefPrevious.textContent = unavailable ? "当前不可用" : momentary ? coverInteractionPhase === "success" ? "执行成功" : lightInteractionActive ? "正在执行" : "按下执行" : isOn ? "已开启" : "已关闭";
+          pendingRefPrevious.classList.toggle("is-on", (momentary ? lightInteractionActive || coverInteractionPhase === "success" : isOn) && !unavailable);
         }
       };
       if (appliedScaleY?.state) {
@@ -11749,11 +11750,11 @@ export class PanelRenderer {
         });
       }
       pendingLightColorTemp = async () => {
-        if (preview || lightInteractionActive || !attributes6?.state) {
+        if (preview || lightInteractionActive || !attributes?.state) {
           return;
         }
         lightInteractionActive = true;
-        const setAttribute = isLightControl ? setAttribute2 : isClimateEntity ? pendingRef8 : pendingCoverState;
+        const setAttribute = isLightControl ? setAttributeCurrent : isClimateEntity ? pendingRefEntry : pendingCoverState;
         setAttribute?.setAttribute("aria-busy", "true");
         const isSwitchOn = entityDetailsStateEl.classList.contains("is-on");
         const nextSwitchPowerOn = momentary || !isSwitchOn;
@@ -11766,14 +11767,14 @@ export class PanelRenderer {
             await new Promise(item => window.setTimeout(item, 900));
           } else if (isClimateEntity) {
             if (!nextSwitchPowerOn && deviceType === "bath-heater") {
-              const preset_mode = normalizeClimateCapabilities(attributes6).presetModes.find(onPowerChange => ["idle", "standby", "待机", "关闭"].includes(String(onPowerChange).trim().toLowerCase()));
+              const preset_mode = normalizeClimateCapabilities(attributes).presetModes.find(onPowerChange => ["idle", "standby", "待机", "关闭"].includes(String(onPowerChange).trim().toLowerCase()));
               if (preset_mode) {
                 await this.callEntityService(scale === "fan" ? "fan" : "climate", "set_preset_mode", detailsBoundEntityIdText, {
                   preset_mode
                 });
               }
             }
-            const domain = climatePowerCommand(detailsBoundEntityIdText, attributes6, nextSwitchPowerOn, deviceType, syncClimateState?.dataset.lastClimateMode || "");
+            const domain = climatePowerCommand(detailsBoundEntityIdText, attributes, nextSwitchPowerOn, deviceType, syncClimateState?.dataset.lastClimateMode || "");
             await this.callEntityService(domain.domain, domain.service, detailsBoundEntityIdText, domain.data);
           } else {
             await this.callEntityService("homeassistant", "toggle", detailsBoundEntityIdText);
@@ -11795,10 +11796,10 @@ export class PanelRenderer {
       };
       entityDetailsStateEl.addEventListener("click", pendingLightColorTemp);
       if (isLightControl) {
-        setAttribute2.addEventListener("click", pendingLightColorTemp);
+        setAttributeCurrent.addEventListener("click", pendingLightColorTemp);
       }
       if (isClimateEntity) {
-        pendingRef8.addEventListener("click", () => {
+        pendingRefEntry.addEventListener("click", () => {
           if (deviceType === "bath-heater") {
             if (toggleBathLight?.toggleBathLight) {
               toggleBathLight.toggleBathLight();
@@ -11828,9 +11829,9 @@ export class PanelRenderer {
         entityDetailsStateEl.classList.toggle("is-running", running);
         entityDetailsStateEl.style.setProperty("--hb-climate-accent", accentColor);
         entityDetailsStateEl.style.setProperty("--hb-climate-accent-soft", item);
-        pendingRef4.style.setProperty("--hb-climate-accent", accentColor);
+        pendingRefNext.style.setProperty("--hb-climate-accent", accentColor);
         if (deviceType === "water-heater") {
-          pendingRef4.textContent = visualMode === "off" ? "已关闭" : running ? "正在加热" : "保温中";
+          pendingRefNext.textContent = visualMode === "off" ? "已关闭" : running ? "正在加热" : "保温中";
         }
         pendingCoverPosition?.({
           mode,
@@ -11841,9 +11842,9 @@ export class PanelRenderer {
         });
       },
       modeColors: {
-        cool: type8.properties?.airflowCoolColor || "#73c8ff",
-        heat: type8.properties?.airflowHeatColor || "#ff8a65",
-        other: type8.properties?.airflowOtherColor || "#dce2e6"
+        cool: type.properties?.airflowCoolColor || "#73c8ff",
+        heat: type.properties?.airflowHeatColor || "#ff8a65",
+        other: type.properties?.airflowOtherColor || "#dce2e6"
       }
     }) : null;
     syncClimateState = isLightControl ? this.createLightDetailsControls(detailsBoundEntityIdText, appliedScaleY, {
@@ -11886,34 +11887,34 @@ export class PanelRenderer {
           closing: "正在关闭"
         };
         const baselinePhysicalCoverState = physicalCoverState(rawEntityState, motorReversed);
-        pendingRef3.textContent = airer ? coverLiftStateLabel(updatedCoverPresentation) || Math.round(position) + "%" : dream ? dreamCurtainStatusText(rawEntityState, position, motorReversed) : coverStatusLabels[updatedCoverPresentation] || Math.round(position) + "%";
-        pendingRef3.classList.toggle("is-on", dream ? baselinePhysicalCoverState === "open" || baselinePhysicalCoverState === "opening" : updatedCoverPresentation === "open" || updatedCoverPresentation === "opening");
+        pendingRefCurrent.textContent = airer ? coverLiftStateLabel(updatedCoverPresentation) || Math.round(position) + "%" : dream ? dreamCurtainStatusText(rawEntityState, position, motorReversed) : coverStatusLabels[updatedCoverPresentation] || Math.round(position) + "%";
+        pendingRefCurrent.classList.toggle("is-on", dream ? baselinePhysicalCoverState === "open" || baselinePhysicalCoverState === "opening" : updatedCoverPresentation === "open" || updatedCoverPresentation === "opening");
       },
       onCurtainPositionChange: ({
         retracted: item,
-        moving: item2
+        moving: value
       }) => {
-        pendingRef7.classList.toggle("is-curtain-retracted", item);
-        pendingRef7.classList.toggle("is-curtain-moving", item2);
-        pendingRef7.dataset.curtainRetracted = String(item);
+        pendingRefItem.classList.toggle("is-curtain-retracted", item);
+        pendingRefItem.classList.toggle("is-curtain-moving", value);
+        pendingRefItem.dataset.curtainRetracted = String(item);
         if (dream) {
-          pendingRef3.textContent = dreamCurtainStatusFromRetraction(item, item2, detailsSyncToken);
-          pendingRef3.classList.toggle("is-on", item);
+          pendingRefCurrent.textContent = dreamCurtainStatusFromRetraction(item, value, detailsSyncToken);
+          pendingRefCurrent.classList.toggle("is-on", item);
         }
       }
     }) : null;
     if (isLightControl && syncClimateState?.classList.contains("has-color-picker")) {
-      entityDetailsDialogEl7.classList.add("color-picker-details");
+      entityDetailsDialogEl.classList.add("color-picker-details");
     }
-    if (isClimateEntity && deviceType === "water-heater" && syncClimateState && pendingRef8) {
-      syncClimateState.prepend(pendingRef8);
+    if (isClimateEntity && deviceType === "water-heater" && syncClimateState && pendingRefEntry) {
+      syncClimateState.prepend(pendingRefEntry);
       syncClimateState.syncClimateGrid?.();
     }
     const bathHeaterLightEntityId = isClimateEntity && deviceType === "bath-heater" && size?.roles?.light || "";
     statusMessageText = (bathHeaterLightEntityId ? this.entityMetadata.get(bathHeaterLightEntityId) : isClimateEntity && deviceType === "bath-heater" ? relatedDeviceDomainEntity(this.entityMetadata, detailsBoundEntityIdText, "light") : null)?.entityId || "";
     if (statusMessageText && syncClimateState) {
-      const newState6 = this.states.get(statusMessageText);
-      const relatedEntityState = newState6?.newState || newState6 || {
+      const newState = this.states.get(statusMessageText);
+      const relatedEntityState = newState?.newState || newState || {
         state: "unknown",
         attributes: {}
       };
@@ -11921,36 +11922,36 @@ export class PanelRenderer {
         interactive: !preview,
         onStateChange: ({
           isOn: item,
-          unavailable: item2
+          unavailable: value
         }) => {
-          pendingRef8?.classList.toggle("is-light-on", item && !item2);
-          pendingRef8?.setAttribute("aria-pressed", String(item && !item2));
+          pendingRefEntry?.classList.toggle("is-light-on", item && !value);
+          pendingRefEntry?.setAttribute("aria-pressed", String(item && !value));
         }
       });
       syncClimateState.append(toggleBathLight);
       syncClimateState.syncClimateGrid?.();
     }
-    const refreshEntityCatalog = isClimateEntity && (deviceType === "water-heater" || relatedEntityIds2 !== null) ? () => {
+    const refreshEntityCatalog = isClimateEntity && (deviceType === "water-heater" || relatedEntityIds !== null) ? () => {
       const activeEntityIdSet = subscribedEntityIds;
       const relatedEntityIds = this.createWaterHeaterExtensionControls(detailsBoundEntityIdText, {
-        component: type8,
+        component: type,
         interactive: !preview,
         excludedEntityIds: statusMessageText ? [statusMessageText] : []
       });
-      stateHandlers2?.remove();
-      stateHandlers2 = relatedEntityIds;
+      stateHandlers?.remove();
+      stateHandlers = relatedEntityIds;
       subscribedEntityIds = new Set(relatedEntityIds?.relatedEntityIds || []);
       syncClimateState?.classList.toggle("has-multiline-water-heater-extensions", deviceType === "water-heater" && Number(relatedEntityIds?.dataset?.controlCount || 0) > 2);
-      if (deviceType !== "water-heater" && append10.isConnected) {
-        entityDetailsDialogEl7.classList.toggle("has-related-extensions", !!relatedEntityIds);
+      if (deviceType !== "water-heater" && append.isConnected) {
+        entityDetailsDialogEl.classList.toggle("has-related-extensions", !!relatedEntityIds);
       }
       if (relatedEntityIds && syncClimateState) {
         if (deviceType === "water-heater") {
           (syncClimateState.waterHeaterControlPanel || syncClimateState).append(relatedEntityIds);
           syncClimateState.syncClimateGrid?.();
-        } else if (append10.isConnected) {
-          append10.append(relatedEntityIds);
-          entityDetailsDialogEl7.classList.add("has-related-extensions");
+        } else if (append.isConnected) {
+          append.append(relatedEntityIds);
+          entityDetailsDialogEl.classList.add("has-related-extensions");
         }
       }
       const entryMap = this.detailsStateSync?.handlers;
@@ -11960,100 +11961,100 @@ export class PanelRenderer {
         }
         for (const [relatedEntityRef, entityIdCandidate] of relatedEntityIds?.stateHandlers || []) {
           entryMap.set(relatedEntityRef, entityIdCandidate);
-          const newState2 = this.states.get(relatedEntityRef);
-          if (newState2) {
+          const newState = this.states.get(relatedEntityRef);
+          if (newState) {
             for (const detailsCleanup of entityIdCandidate) {
-              detailsCleanup(newState2.newState || newState2);
+              detailsCleanup(newState.newState || newState);
             }
           }
         }
       }
     } : null;
     refreshEntityCatalog?.();
-    let lineChartDetailsView = type8.type === "line-chart" ? renderLineChartDetails(type8, {
+    let lineChartDetailsView = type.type === "line-chart" ? renderLineChartDetails(type, {
       states: this.states,
       history: this.historySeries,
       renderNamespace: this.renderNamespace
     }) : null;
-    let lineChartDetailsView2 = null;
-    let pendingRef9 = null;
-    let pendingRef10 = null;
+    let lineChartDetailsViewCurrent = null;
+    let pendingRefList = null;
+    let pendingRefText = null;
     const entityDetailsAttributesEl = document.createElement("dl");
     entityDetailsAttributesEl.className = "hb-entity-details-attributes";
-    for (const [item, item1] of Object.entries(friendly_name).filter(([item]) => item !== "friendly_name")) {
-      const append4 = document.createElement("div");
+    for (const [item, value] of Object.entries(friendly_name).filter(([item]) => item !== "friendly_name")) {
+      const append = document.createElement("div");
       const entityDetailsDtEl = document.createElement("dt");
       entityDetailsDtEl.textContent = item;
       const entityDetailsDdEl = document.createElement("dd");
-      entityDetailsDdEl.textContent = typeof item1 == "string" ? item1 : JSON.stringify(item1);
-      append4.append(entityDetailsDtEl, entityDetailsDdEl);
-      entityDetailsAttributesEl.append(append4);
+      entityDetailsDdEl.textContent = typeof value == "string" ? value : JSON.stringify(value);
+      append.append(entityDetailsDtEl, entityDetailsDdEl);
+      entityDetailsAttributesEl.append(append);
     }
     if (lineChartDetailsView) {
-      lineChartDetailsView2 = document.createElement("section");
-      lineChartDetailsView2.className = "hb-line-chart-current-visual";
-      lineChartDetailsView2.style.setProperty("--hb-chart-current-color", lineChartDetailsView.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
-      pendingRef9 = document.createElement("strong");
+      lineChartDetailsViewCurrent = document.createElement("section");
+      lineChartDetailsViewCurrent.className = "hb-line-chart-current-visual";
+      lineChartDetailsViewCurrent.style.setProperty("--hb-chart-current-color", lineChartDetailsView.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
+      pendingRefList = document.createElement("strong");
       const numericSensorValue = Number.parseFloat(appliedScaleY?.state);
-      pendingRef9.textContent = Number.isFinite(numericSensorValue) ? formatLineChartValue(numericSensorValue, type8.properties?.statePrecision) : appliedScaleY?.state || "--";
-      pendingRef10 = document.createElement("small");
-      pendingRef10.textContent = String(friendly_name.unit_of_measurement || "实时数值");
-      lineChartDetailsView2.append(pendingRef9, pendingRef10);
+      pendingRefList.textContent = Number.isFinite(numericSensorValue) ? formatLineChartValue(numericSensorValue, type.properties?.statePrecision) : appliedScaleY?.state || "--";
+      pendingRefText = document.createElement("small");
+      pendingRefText.textContent = String(friendly_name.unit_of_measurement || "实时数值");
+      lineChartDetailsViewCurrent.append(pendingRefList, pendingRefText);
       entityDetailsStateEl.style.setProperty("--hb-chart-current-color", lineChartDetailsView.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
-      entityDetailsSpanEl4.textContent = "●";
-      entityDetailsStrongEl2.textContent = "实时数据";
-      append10.append(entityDetailsHeadingEl, lineChartDetailsView2, lineChartDetailsView);
+      entityDetailsSpanEl.textContent = "●";
+      entityDetailsStrongElCurrent.textContent = "实时数据";
+      append.append(entityDetailsHeadingEl, lineChartDetailsViewCurrent, lineChartDetailsView);
     } else if (isClimateEntity) {
-      append10.append(entityDetailsHeadingEl, ...(deviceType === "water-heater" ? [syncClimateState] : [pendingRef8, syncClimateState]), ...(deviceType !== "water-heater" && stateHandlers2 ? [stateHandlers2] : []));
-      entityDetailsDialogEl7.classList.toggle("has-related-extensions", deviceType !== "water-heater" && !!stateHandlers2);
+      append.append(entityDetailsHeadingEl, ...(deviceType === "water-heater" ? [syncClimateState] : [pendingRefEntry, syncClimateState]), ...(deviceType !== "water-heater" && stateHandlers ? [stateHandlers] : []));
+      entityDetailsDialogEl.classList.toggle("has-related-extensions", deviceType !== "water-heater" && !!stateHandlers);
     } else if (isLightControl) {
       const lightDetailsLayoutEl = document.createElement("div");
       lightDetailsLayoutEl.className = "hb-light-details-layout";
       const lightDetailsPanelEl = document.createElement("section");
       lightDetailsPanelEl.className = "hb-light-details-panel";
       lightDetailsPanelEl.append(...(syncClimateState ? [syncClimateState] : []));
-      lightDetailsLayoutEl.append(lightDetailsPanelEl, setAttribute2);
-      append10.append(entityDetailsHeadingEl, lightDetailsLayoutEl);
+      lightDetailsLayoutEl.append(lightDetailsPanelEl, setAttributeCurrent);
+      append.append(entityDetailsHeadingEl, lightDetailsLayoutEl);
     } else if (isSwitchEntity) {
       const switchDetailsLayoutEl = document.createElement("div");
       switchDetailsLayoutEl.className = "hb-switch-details-layout";
       switchDetailsLayoutEl.append(pendingCoverState);
-      append10.append(entityDetailsHeadingEl, switchDetailsLayoutEl);
+      append.append(entityDetailsHeadingEl, switchDetailsLayoutEl);
     } else if (isCoverEntity) {
       const coverDetailsLayoutEl = document.createElement("div");
       coverDetailsLayoutEl.className = "hb-cover-details-layout";
       const coverDetailsPanelEl = document.createElement("section");
       coverDetailsPanelEl.className = "hb-cover-details-panel";
       coverDetailsPanelEl.append(...(syncClimateState ? [syncClimateState] : []));
-      coverDetailsLayoutEl.append(coverDetailsPanelEl, pendingRef7);
-      append10.append(entityDetailsHeadingEl, coverDetailsLayoutEl);
+      coverDetailsLayoutEl.append(coverDetailsPanelEl, pendingRefItem);
+      append.append(entityDetailsHeadingEl, coverDetailsLayoutEl);
     } else if (entityDetailsAttributesEl.childElementCount) {
-      append10.append(entityDetailsHeadingEl, entityDetailsStateEl, ...(syncClimateState ? [syncClimateState] : []), entityDetailsAttributesEl);
+      append.append(entityDetailsHeadingEl, entityDetailsStateEl, ...(syncClimateState ? [syncClimateState] : []), entityDetailsAttributesEl);
     } else {
       const entityDetailsEmptyEl = document.createElement("p");
       entityDetailsEmptyEl.className = "hb-entity-details-empty";
       entityDetailsEmptyEl.textContent = "该实体暂无附加属性。";
       entityDetailsAttributesEl.replaceWith(entityDetailsEmptyEl);
-      append10.append(entityDetailsHeadingEl, entityDetailsStateEl, ...(syncClimateState ? [syncClimateState] : []), entityDetailsEmptyEl);
+      append.append(entityDetailsHeadingEl, entityDetailsStateEl, ...(syncClimateState ? [syncClimateState] : []), entityDetailsEmptyEl);
     }
-    entityDetailsDialogEl7.append(append10);
-    const rendererRuntimeDialogLayerEl2 = document.createElement("div");
-    rendererRuntimeDialogLayerEl2.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
-    rendererRuntimeDialogLayerEl2.tabIndex = -1;
-    rendererRuntimeDialogLayerEl2.append(entityDetailsDialogEl7);
-    this.container.append(rendererRuntimeDialogLayerEl2);
-    this.detailsDialog = entityDetailsDialogEl7;
-    const detailsDialogWidth = isClimateEntity ? 840 : type8.type === "line-chart" ? 780 : isLightControl || isCoverEntity ? 760 : isSwitchEntity ? 620 : 460;
-    const detailsDialogHeight = isClimateEntity ? deviceType !== "water-heater" && stateHandlers2 ? 620 : 540 : isLightControl || isCoverEntity ? 620 : isSwitchEntity ? 500 : 680;
-    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl2, entityDetailsDialogEl7, detailsDialogWidth, detailsDialogHeight);
+    entityDetailsDialogEl.append(append);
+    const rendererRuntimeDialogLayerEl = document.createElement("div");
+    rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
+    rendererRuntimeDialogLayerEl.tabIndex = -1;
+    rendererRuntimeDialogLayerEl.append(entityDetailsDialogEl);
+    this.container.append(rendererRuntimeDialogLayerEl);
+    this.detailsDialog = entityDetailsDialogEl;
+    const detailsDialogWidth = isClimateEntity ? 840 : type.type === "line-chart" ? 780 : isLightControl || isCoverEntity ? 760 : isSwitchEntity ? 620 : 460;
+    const detailsDialogHeight = isClimateEntity ? deviceType !== "water-heater" && stateHandlers ? 620 : 540 : isLightControl || isCoverEntity ? 620 : isSwitchEntity ? 500 : 680;
+    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, entityDetailsDialogEl, detailsDialogWidth, detailsDialogHeight);
     let detailsSyncTimer = 0;
-    if (type8.type === "line-chart" && lineChartDetailsView) {
+    if (type.type === "line-chart" && lineChartDetailsView) {
       const runDetailsStateSync = () => {
         detailsSyncTimer = 0;
-        if (!lineChartDetailsView?.isConnected || this.detailsStateSync?.dialog !== entityDetailsDialogEl7) {
+        if (!lineChartDetailsView?.isConnected || this.detailsStateSync?.dialog !== entityDetailsDialogEl) {
           return;
         }
-        const lineChartDetailsHandle = renderLineChartDetails(type8, {
+        const lineChartDetailsHandle = renderLineChartDetails(type, {
           states: this.states,
           history: this.historySeries,
           renderNamespace: this.renderNamespace
@@ -12061,75 +12062,75 @@ export class PanelRenderer {
         lineChartDetailsView.cleanupLineChartHover?.();
         lineChartDetailsView.replaceWith(lineChartDetailsHandle);
         lineChartDetailsView = lineChartDetailsHandle;
-        lineChartDetailsView2.style.setProperty("--hb-chart-current-color", lineChartDetailsView.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
+        lineChartDetailsViewCurrent.style.setProperty("--hb-chart-current-color", lineChartDetailsView.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
       };
       const scheduleDetailsStateSync = (delayMs = 700) => {
         detailsSyncTimer ||= window.setTimeout(runDetailsStateSync, Math.max(0, Number(delayMs) || 0));
       };
       this.detailsStateSync = {
-        dialog: entityDetailsDialogEl7,
+        dialog: entityDetailsDialogEl,
         entityId: detailsBoundEntityIdText,
         refreshHistory: () => scheduleDetailsStateSync(0),
-        apply: state2 => {
-          const parsedSensorNumber = Number.parseFloat(state2?.state);
-          pendingRef9.textContent = Number.isFinite(parsedSensorNumber) ? formatLineChartValue(parsedSensorNumber, type8.properties?.statePrecision) : state2?.state || "--";
-          pendingRef10.textContent = String(state2?.attributes?.unit_of_measurement || "实时数值");
-          pendingRef6.textContent = state2?.state == null || ["unknown", "unavailable"].includes(state2.state) ? "暂无数据" : "实时数据";
-          lineChartDetailsView.syncLineChartState?.(state2);
-          lineChartDetailsView2.style.setProperty("--hb-chart-current-color", lineChartDetailsView.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
+        apply: state => {
+          const parsedSensorNumber = Number.parseFloat(state?.state);
+          pendingRefList.textContent = Number.isFinite(parsedSensorNumber) ? formatLineChartValue(parsedSensorNumber, type.properties?.statePrecision) : state?.state || "--";
+          pendingRefText.textContent = String(state?.attributes?.unit_of_measurement || "实时数值");
+          pendingRefLocal.textContent = state?.state == null || ["unknown", "unavailable"].includes(state.state) ? "暂无数据" : "实时数据";
+          lineChartDetailsView.syncLineChartState?.(state);
+          lineChartDetailsViewCurrent.style.setProperty("--hb-chart-current-color", lineChartDetailsView.style.getPropertyValue("--hb-chart-current-color") || "#68cc3e");
         }
       };
     } else if (usesRichDetailsChrome && coverDetailsControls) {
-      const applyEntityDetailsState = state4 => {
-        attributes6 = state4;
+      const applyEntityDetailsState = state => {
+        attributes = state;
         if (isClimateEntity && buildClimateControls && syncClimateState) {
-          const climateStructureKey = climateControlStructureKey(detailsBoundEntityIdText, state4, deviceType);
+          const climateStructureKey = climateControlStructureKey(detailsBoundEntityIdText, state, deviceType);
           if (syncClimateState.dataset.climateStructureKey !== climateStructureKey) {
-            const climateControlsRoot = buildClimateControls(state4);
+            const climateControlsRoot = buildClimateControls(state);
             climateControlsRoot.classList.toggle("has-multiline-water-heater-extensions", syncClimateState.classList.contains("has-multiline-water-heater-extensions"));
             climateControlsRoot.classList.add("is-runtime-hydrated");
-            if (deviceType === "water-heater" && pendingRef8) {
-              climateControlsRoot.prepend(pendingRef8);
+            if (deviceType === "water-heater" && pendingRefEntry) {
+              climateControlsRoot.prepend(pendingRefEntry);
             }
             if (toggleBathLight) {
               climateControlsRoot.append(toggleBathLight);
               climateControlsRoot.syncClimateGrid?.();
             }
-            if (stateHandlers2 && deviceType === "water-heater") {
-              (climateControlsRoot.waterHeaterControlPanel || climateControlsRoot).append(stateHandlers2);
+            if (stateHandlers && deviceType === "water-heater") {
+              (climateControlsRoot.waterHeaterControlPanel || climateControlsRoot).append(stateHandlers);
               climateControlsRoot.syncClimateGrid?.();
             }
             syncClimateState.replaceWith(climateControlsRoot);
             syncClimateState = climateControlsRoot;
           }
         }
-        if (state4?.state) {
-          coverDetailsControls(entityIsActive(state4.state, state4.attributes), {
-            unavailable: ["unknown", "unavailable"].includes(state4.state)
+        if (state?.state) {
+          coverDetailsControls(entityIsActive(state.state, state.attributes), {
+            unavailable: ["unknown", "unavailable"].includes(state.state)
           });
         }
-        syncClimateState?.syncLightState?.(state4);
-        syncClimateState?.syncClimateState?.(state4);
+        syncClimateState?.syncLightState?.(state);
+        syncClimateState?.syncClimateState?.(state);
       };
-      const set2 = new Map([[detailsBoundEntityIdText, [applyEntityDetailsState]]]);
+      const set = new Map([[detailsBoundEntityIdText, [applyEntityDetailsState]]]);
       if (statusMessageText && toggleBathLight) {
-        set2.set(statusMessageText, [stateHandler => toggleBathLight.syncBathLightState?.(stateHandler)]);
+        set.set(statusMessageText, [stateHandler => toggleBathLight.syncBathLightState?.(stateHandler)]);
       }
-      if (stateHandlers2?.stateHandlers) {
-        for (const [runtimeHandlerRef, runtimeCleanupRef] of stateHandlers2.stateHandlers) {
-          set2.set(runtimeHandlerRef, runtimeCleanupRef);
+      if (stateHandlers?.stateHandlers) {
+        for (const [runtimeHandlerRef, runtimeCleanupRef] of stateHandlers.stateHandlers) {
+          set.set(runtimeHandlerRef, runtimeCleanupRef);
         }
       }
       this.detailsStateSync = {
-        dialog: entityDetailsDialogEl7,
-        handlers: set2,
+        dialog: entityDetailsDialogEl,
+        handlers: set,
         refreshEntityCatalog
       };
       if (isClimateEntity && syncClimateState?.querySelector(".hb-climate-details-loading")) {
         const openedAtMs = Date.now();
         climateTargetTemperature = window.setInterval(() => {
-          const newState3 = this.states.get(detailsBoundEntityIdText);
-          const incomingEntityState = newState3?.newState || newState3;
+          const newState = this.states.get(detailsBoundEntityIdText);
+          const incomingEntityState = newState?.newState || newState;
           if (incomingEntityState) {
             applyEntityDetailsState(incomingEntityState);
           }
@@ -12159,18 +12160,18 @@ export class PanelRenderer {
         map.set(airerMotorSpeedSensorId, [item => syncClimateState?.syncAirerMotorState?.(item)]);
       }
       this.detailsStateSync = {
-        dialog: entityDetailsDialogEl7,
+        dialog: entityDetailsDialogEl,
         handlers: map
       };
     }
-    entityDetailsButtonEl.addEventListener("click", () => entityDetailsDialogEl7.close());
-    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl2, entityDetailsDialogEl7, append10);
-    rendererRuntimeDialogLayerEl2.addEventListener("keydown", key5 => {
-      if (key5.key === "Escape") {
-        entityDetailsDialogEl7.close();
+    entityDetailsButtonEl.addEventListener("click", () => entityDetailsDialogEl.close());
+    this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, entityDetailsDialogEl, append);
+    rendererRuntimeDialogLayerEl.addEventListener("keydown", key => {
+      if (key.key === "Escape") {
+        entityDetailsDialogEl.close();
       }
     });
-    entityDetailsDialogEl7.addEventListener("close", () => {
+    entityDetailsDialogEl.addEventListener("close", () => {
       window.clearTimeout(detailsSyncTimer);
       window.clearInterval(climateTargetTemperature);
       climateTargetTemperature = null;
@@ -12178,19 +12179,19 @@ export class PanelRenderer {
       syncClimateState?.cleanupClimateDetails?.();
       syncClimateState?.cleanupCoverDetails?.();
       lineChartDetailsView?.cleanupLineChartHover?.();
-      this.clearRuntimeDialogScale(entityDetailsDialogEl7);
-      if (this.detailsDialog === entityDetailsDialogEl7) {
+      this.clearRuntimeDialogScale(entityDetailsDialogEl);
+      if (this.detailsDialog === entityDetailsDialogEl) {
         this.detailsDialog = null;
       }
-      if (this.detailsStateSync?.dialog === entityDetailsDialogEl7) {
+      if (this.detailsStateSync?.dialog === entityDetailsDialogEl) {
         this.detailsStateSync = null;
       }
-      rendererRuntimeDialogLayerEl2.remove();
+      rendererRuntimeDialogLayerEl.remove();
     }, {
       once: true
     });
-    entityDetailsDialogEl7.show();
-    entityDetailsDialogEl7.focus({
+    entityDetailsDialogEl.show();
+    entityDetailsDialogEl.focus({
       preventScroll: true
     });
   }
@@ -12205,10 +12206,10 @@ export class PanelRenderer {
     }
     const index = socketGeneration / this.document.canvas.width;
     const filtered = documentModel / this.document.canvas.height;
-    const entityIds1 = this.options.scaleMode || this.document.canvas.scaleMode || "contain";
-    const found = entityIds1 === "cover" ? Math.max(index, filtered) : Math.min(index, filtered);
-    const entityIds = entityIds1 === "stretch" ? index : found;
-    const state = entityIds1 === "stretch" ? filtered : found;
+    const scaleMode = this.options.scaleMode || this.document.canvas.scaleMode || "contain";
+    const found = scaleMode === "cover" ? Math.max(index, filtered) : Math.min(index, filtered);
+    const entityIds = scaleMode === "stretch" ? index : found;
+    const state = scaleMode === "stretch" ? filtered : found;
     this.appliedScaleX = entityIds;
     this.appliedScaleY = state;
     this.canvas.style.transform = "scale(" + entityIds + ", " + state + ")";
@@ -12259,7 +12260,7 @@ export class PanelRenderer {
     socketCloseTimer = window.setTimeout(forceCloseSocket, 12000);
   }
   connectRuntime({
-    force: entityId5 = false
+    force: entityId = false
   } = {}) {
     if (!this.document || this.destroyed) {
       this.disconnectRuntime();
@@ -12268,145 +12269,145 @@ export class PanelRenderer {
     const historyRetryAttempt = this.page || this.document.pages?.[0];
     const state = new Map((this.document.sharedComponents || []).map(id => [id.id, id]));
     const runtimeComponents = [...(historyRetryAttempt?.sharedComponentIds || []).map(socketEvent => state.get(socketEvent)).filter(Boolean), ...(historyRetryAttempt?.components || [])];
-    const add2 = collectEntityIds(runtimeComponents);
-    const modules = this.activePopupId ? (this.document.customPopups || []).find(id2 => String(id2.id || "") === this.activePopupId) : null;
-    for (const entityId20 of modules?.modules || []) {
-      if (entityId20.entityId && !isVirtualEntityId(entityId20.entityId)) {
-        add2.add(entityId20.entityId);
+    const add = collectEntityIds(runtimeComponents);
+    const modules = this.activePopupId ? (this.document.customPopups || []).find(id => String(id.id || "") === this.activePopupId) : null;
+    for (const entityId of modules?.modules || []) {
+      if (entityId.entityId && !isVirtualEntityId(entityId.entityId)) {
+        add.add(entityId.entityId);
       }
     }
-    for (const subscribedEntityList of [...add2]) {
+    for (const subscribedEntityList of [...add]) {
       if (this.entityMetadata.get(subscribedEntityList)?.domain !== "event") {
         continue;
       }
-      const properties2 = collectComponents(runtimeComponents, type5 => type5.type === "presence-sensor" && type5.bindings?.entity?.entityId === subscribedEntityList)[0];
-      if (!properties2) {
+      const properties = collectComponents(runtimeComponents, type => type.type === "presence-sensor" && type.bindings?.entity?.entityId === subscribedEntityList)[0];
+      if (!properties) {
         continue;
       }
-      const companionEntityIds = presenceMotionEventConfig(subscribedEntityList, this.states.get(subscribedEntityList), this.entityMetadata, this.states, properties2.properties);
+      const companionEntityIds = presenceMotionEventConfig(subscribedEntityList, this.states.get(subscribedEntityList), this.entityMetadata, this.states, properties.properties);
       for (const runtimeEntityIds of companionEntityIds.companionEntityIds) {
-        add2.add(runtimeEntityIds);
+        add.add(runtimeEntityIds);
       }
     }
-    for (const pageEntityIds of [...add2]) {
-      const deviceId2 = this.entityMetadata.get(pageEntityIds);
-      if (deviceId2?.domain !== "sensor" || !deviceId2.deviceId || !["state", "status", "task_status"].includes(deviceId2.translationKey)) {
+    for (const pageEntityIds of [...add]) {
+      const entry = this.entityMetadata.get(pageEntityIds);
+      if (entry?.domain !== "sensor" || !entry.deviceId || !["state", "status", "task_status"].includes(entry.translationKey)) {
         continue;
       }
-      const entityId11 = [...this.entityMetadata.values()].find(deviceId => deviceId.deviceId === deviceId2.deviceId && deviceId.domain === "vacuum" && entityMetadataIsAvailable(deviceId));
-      if (entityId11?.entityId) {
-        add2.add(entityId11.entityId);
+      const entityId = [...this.entityMetadata.values()].find(deviceId => deviceId.deviceId === entry.deviceId && deviceId.domain === "vacuum" && entityMetadataIsAvailable(deviceId));
+      if (entityId?.entityId) {
+        add.add(entityId.entityId);
       }
     }
-    for (const slice of [...add2]) {
+    for (const slice of [...add]) {
       if (this.entityMetadata.get(slice)?.domain !== "vacuum") {
         continue;
       }
       const entityLocalId = slice.slice(slice.indexOf(".") + 1);
-      const entityId12 = relatedDeviceEntity(this.entityMetadata, slice, "select", "cleaning_mode", "select." + entityLocalId + "_cleaning_mode");
-      if (entityId12?.entityId) {
-        add2.add(entityId12.entityId);
+      const entityId = relatedDeviceEntity(this.entityMetadata, slice, "select", "cleaning_mode", "select." + entityLocalId + "_cleaning_mode");
+      if (entityId?.entityId) {
+        add.add(entityId.entityId);
       }
-      const entityId13 = relatedVacuumBatteryEntity(this.entityMetadata, this.states, slice);
-      if (entityId13?.entityId) {
-        add2.add(entityId13.entityId);
+      const entity = relatedVacuumBatteryEntity(this.entityMetadata, this.states, slice);
+      if (entity?.entityId) {
+        add.add(entity.entityId);
       }
     }
-    for (const coverEntityId of [...add2]) {
+    for (const coverEntityId of [...add]) {
       if ((this.entityMetadata.get(coverEntityId)?.domain || String(coverEntityId || "").split(".", 1)[0]) !== "cover") {
         continue;
       }
-      const entityId14 = relatedCoverMotorReverseEntity(this.entityMetadata, coverEntityId);
-      if (entityId14?.entityId) {
-        add2.add(entityId14.entityId);
+      const entityId = relatedCoverMotorReverseEntity(this.entityMetadata, coverEntityId);
+      if (entityId?.entityId) {
+        add.add(entityId.entityId);
       }
-      const entityId15 = relatedAirerLightEntity(this.entityMetadata, coverEntityId);
-      if (entityId15?.entityId) {
-        add2.add(entityId15.entityId);
+      const entity = relatedAirerLightEntity(this.entityMetadata, coverEntityId);
+      if (entity?.entityId) {
+        add.add(entity.entityId);
       }
-      const entityId16 = relatedAirerPositionNumberEntity(this.entityMetadata, coverEntityId);
-      if (entityId16?.entityId) {
-        add2.add(entityId16.entityId);
+      const entityIdCurrent = relatedAirerPositionNumberEntity(this.entityMetadata, coverEntityId);
+      if (entityIdCurrent?.entityId) {
+        add.add(entityIdCurrent.entityId);
       }
-      const entityId17 = relatedAirerCurrentPositionSensor(this.entityMetadata, coverEntityId);
-      if (entityId17?.entityId) {
-        add2.add(entityId17.entityId);
+      const sensor = relatedAirerCurrentPositionSensor(this.entityMetadata, coverEntityId);
+      if (sensor?.entityId) {
+        add.add(sensor.entityId);
       }
-      const entityId18 = relatedAirerMotorSpeedSensor(this.entityMetadata, coverEntityId);
-      if (entityId18?.entityId) {
-        add2.add(entityId18.entityId);
+      const entityIdNext = relatedAirerMotorSpeedSensor(this.entityMetadata, coverEntityId);
+      if (entityIdNext?.entityId) {
+        add.add(entityIdNext.entityId);
       }
       const coverMotorActions = relatedAirerMotorActionEntities(this.entityMetadata, coverEntityId);
-      for (const entityId9 of Object.values(coverMotorActions)) {
-        if (entityId9?.entityId) {
-          add2.add(entityId9.entityId);
+      for (const entityId of Object.values(coverMotorActions)) {
+        if (entityId?.entityId) {
+          add.add(entityId.entityId);
         }
       }
     }
-    for (const popupEntityIds of [...add2]) {
-      const domain2 = this.entityMetadata.get(popupEntityIds);
-      if (!["climate", "fan"].includes(String(domain2?.domain || ""))) {
+    for (const popupEntityIds of [...add]) {
+      const domain = this.entityMetadata.get(popupEntityIds);
+      if (!["climate", "fan"].includes(String(domain?.domain || ""))) {
         continue;
       }
-      const entityId19 = relatedDeviceDomainEntity(this.entityMetadata, popupEntityIds, "light");
-      if (entityId19?.entityId) {
-        add2.add(entityId19.entityId);
+      const entityId = relatedDeviceDomainEntity(this.entityMetadata, popupEntityIds, "light");
+      if (entityId?.entityId) {
+        add.add(entityId.entityId);
       }
     }
-    for (const effectEntityIds of [...add2]) {
+    for (const effectEntityIds of [...add]) {
       if (this.entityMetadata.get(effectEntityIds)?.domain === "water_heater") {
-        for (const entityId8 of relatedWaterHeaterEntities(this.entityMetadata, effectEntityIds)) {
-          add2.add(entityId8.entityId);
+        for (const entityId of relatedWaterHeaterEntities(this.entityMetadata, effectEntityIds)) {
+          add.add(entityId.entityId);
         }
       }
     }
-    for (const allRuntimeEntityIds of [...add2]) {
+    for (const allRuntimeEntityIds of [...add]) {
       const roles = this.deviceProfile(allRuntimeEntityIds);
       if (roles) {
         for (const roleKey of ["climate", "cover", "fan", "light", "power", "mode", "temperature", "humidity", "pm25", "hcho", "pm10", "filterLife", "filterLeftTime", "airQuality", "backrest", "leg", "waist", "memory1", "memory2"]) {
           const roleBoundEntityId = roles.roles?.[roleKey];
           if (roleBoundEntityId) {
-            add2.add(roleBoundEntityId);
+            add.add(roleBoundEntityId);
           }
         }
       }
     }
-    const length4 = [...add2];
-    if (!length4.length) {
+    const length = [...add];
+    if (!length.length) {
       this.disconnectRuntime();
       this.runtimeHydrationRetryAttempt = 0;
       return;
     }
-    if (length4.length > MAX_REALTIME_SUBSCRIBED_ENTITIES) {
+    if (length.length > MAX_REALTIME_SUBSCRIBED_ENTITIES) {
       this.disconnectRuntime();
-      const runtimeEntityLimitSignature = String(length4.length);
+      const runtimeEntityLimitSignature = String(length.length);
       if (this.runtimeEntityLimitSignature !== runtimeEntityLimitSignature) {
         this.runtimeEntityLimitSignature = runtimeEntityLimitSignature;
-        this.options.onError?.(new Error("当前项目需要实时订阅 " + length4.length + " 个实体，已超过 " + MAX_REALTIME_SUBSCRIBED_ENTITIES + " 个上限。请减少统计或控件中绑定的实体。"));
+        this.options.onError?.(new Error("当前项目需要实时订阅 " + length.length + " 个实体，已超过 " + MAX_REALTIME_SUBSCRIBED_ENTITIES + " 个上限。请减少统计或控件中绑定的实体。"));
       }
       return;
     }
     this.runtimeEntityLimitSignature = "";
-    const signature = JSON.stringify([...length4].sort());
-    const signature2 = this.runtimeSubscription;
+    const signature = JSON.stringify([...length].sort());
+    const runtimeSubscription = this.runtimeSubscription;
     const isSocketConnecting = this.socket?.readyState === WebSocket.CONNECTING;
     const isSocketOpen = this.socket?.readyState === WebSocket.OPEN;
-    if (!entityId5 && signature2 && (isSocketConnecting || isSocketOpen && signature2.signature === signature)) {
-      signature2.entityIds = length4;
-      signature2.runtimeComponents = runtimeComponents;
-      signature2.signature = signature;
+    if (!entityId && runtimeSubscription && (isSocketConnecting || isSocketOpen && runtimeSubscription.signature === signature)) {
+      runtimeSubscription.entityIds = length;
+      runtimeSubscription.runtimeComponents = runtimeComponents;
+      runtimeSubscription.signature = signature;
       if (isSocketOpen) {
-        this.scheduleRuntimeHydrationRetry(signature2, this.socketGeneration);
+        this.scheduleRuntimeHydrationRetry(runtimeSubscription, this.socketGeneration);
       }
       return;
     }
-    if (signature2?.signature !== signature) {
+    if (runtimeSubscription?.signature !== signature) {
       this.runtimeHydrationRetryAttempt = 0;
     }
     this.disconnectRuntime();
     const socketGeneration = this.socketGeneration;
     const entityIds = {
-      entityIds: length4,
+      entityIds: length,
       runtimeComponents,
       signature
     };
@@ -12436,9 +12437,9 @@ export class PanelRenderer {
       const {
         entityIds: wsUrl
       } = entityIds;
-      let entityId10;
+      let entityId;
       try {
-        entityId10 = JSON.parse(data.data);
+        entityId = JSON.parse(data.data);
       } catch (reconnectTimerRef) {
         window.HABridgeLog?.error(reconnectTimerRef, {
           phase: "websocket-message",
@@ -12446,8 +12447,8 @@ export class PanelRenderer {
         }, "实时状态消息格式异常");
         return;
       }
-      if (entityId10.type === "snapshot") {
-        const map = entityId10.states || [];
+      if (entityId.type === "snapshot") {
+        const map = entityId.states || [];
         const has = new Set(map.map(entityId => String(entityId?.entityId || "")).filter(Boolean));
         for (const socketMessageHandler of wsUrl) {
           if (!has.has(socketMessageHandler)) {
@@ -12457,18 +12458,18 @@ export class PanelRenderer {
             this.states.delete(socketMessageHandler);
           }
         }
-        for (const entityId2 of map) {
-          if (this.optimisticStateIsConfirmed(entityId2.entityId, entityId2)) {
-            this.rememberLightVisualState(entityId2.entityId, entityId2);
-            this.removedRuntimeEntityIds.delete(entityId2.entityId);
-            this.states.set(entityId2.entityId, entityId2);
-            this.applyRuntimeStateHandlers(entityId2.entityId, entityId2.newState || entityId2);
+        for (const entityId of map) {
+          if (this.optimisticStateIsConfirmed(entityId.entityId, entityId)) {
+            this.rememberLightVisualState(entityId.entityId, entityId);
+            this.removedRuntimeEntityIds.delete(entityId.entityId);
+            this.states.set(entityId.entityId, entityId);
+            this.applyRuntimeStateHandlers(entityId.entityId, entityId.newState || entityId);
           }
         }
         this.options.onRuntimeStateChange?.(map);
         this.tryOpenPendingEntityDetails();
-        for (const entityId3 of map) {
-          this.refreshVacuumMapEntity(entityId3.entityId);
+        for (const entityId of map) {
+          this.refreshVacuumMapEntity(entityId.entityId);
         }
         if (this.detailsStateSync?.handlers) {
           for (const [historyEntityRef, historyHoursRef] of this.detailsStateSync.handlers) {
@@ -12480,71 +12481,71 @@ export class PanelRenderer {
             }
           }
         } else {
-          const newState4 = this.detailsStateSync ? this.states.get(this.detailsStateSync.entityId) : null;
-          if (this.detailsStateSync && newState4) {
-            this.detailsStateSync.apply(newState4.newState || newState4);
+          const newState = this.detailsStateSync ? this.states.get(this.detailsStateSync.entityId) : null;
+          if (this.detailsStateSync && newState) {
+            this.detailsStateSync.apply(newState.newState || newState);
           }
         }
         this.refreshRuntimeComponents([...has, ...this.removedRuntimeEntityIds]);
         this.scheduleRuntimeHydrationRetry(entityIds, socketGeneration);
-      } else if (entityId10.type === "state_removed") {
-        const entityId4 = String(entityId10.entityId || "");
-        if (!entityId4) {
+      } else if (entityId.type === "state_removed") {
+        const string = String(entityId.entityId || "");
+        if (!string) {
           return;
         }
         const unavailableStateEvent = {
           type: "state_changed",
-          entityId: entityId4,
-          domain: entityId4.split(".", 1)[0],
+          entityId: string,
+          domain: string.split(".", 1)[0],
           state: "unavailable",
           attributes: {},
           available: false
         };
-        this.removedRuntimeEntityIds.add(entityId4);
-        this.states.delete(entityId4);
+        this.removedRuntimeEntityIds.add(string);
+        this.states.delete(string);
         this.options.onRuntimeStateChange?.([]);
         this.tryOpenPendingEntityDetails();
-        if (this.detailsStateSync?.handlers?.has(entityId4)) {
-          for (const parsedSocketMessage of this.detailsStateSync.handlers.get(entityId4)) {
+        if (this.detailsStateSync?.handlers?.has(string)) {
+          for (const parsedSocketMessage of this.detailsStateSync.handlers.get(string)) {
             parsedSocketMessage(unavailableStateEvent);
           }
-        } else if (this.detailsStateSync?.entityId === entityId4) {
+        } else if (this.detailsStateSync?.entityId === string) {
           this.detailsStateSync.apply(unavailableStateEvent);
         }
-        this.applyRuntimeStateHandlers(entityId4, unavailableStateEvent);
-        this.refreshRuntimeComponents([entityId4]);
-        for (const stateChangedPayload of this.runtimeEntityComponentIndex.get(entityId4) || []) {
-          const type2 = this.componentRecords.get(stateChangedPayload);
-          if (["line-chart", "camera", "vacuum-map"].includes(type2?.type)) {
+        this.applyRuntimeStateHandlers(string, unavailableStateEvent);
+        this.refreshRuntimeComponents([string]);
+        for (const stateChangedPayload of this.runtimeEntityComponentIndex.get(string) || []) {
+          const type = this.componentRecords.get(stateChangedPayload);
+          if (["line-chart", "camera", "vacuum-map"].includes(type?.type)) {
             this.refreshRuntimeComponent(stateChangedPayload);
           }
         }
-        this.refreshVacuumMapEntity(entityId4);
-      } else if (entityId10.type === "resync_required") {
+        this.refreshVacuumMapEntity(string);
+      } else if (entityId.type === "resync_required") {
         if (socketGeneration === this.socketGeneration && !this.destroyed) {
           this.connectRuntime({
             force: true
           });
         }
-      } else if (entityId10.type === "state_changed") {
-        if (!this.optimisticStateIsConfirmed(entityId10.entityId, entityId10)) {
+      } else if (entityId.type === "state_changed") {
+        if (!this.optimisticStateIsConfirmed(entityId.entityId, entityId)) {
           return;
         }
-        this.rememberLightVisualState(entityId10.entityId, entityId10);
-        this.removedRuntimeEntityIds.delete(entityId10.entityId);
-        this.states.set(entityId10.entityId, entityId10);
-        this.options.onRuntimeStateChange?.([entityId10]);
+        this.rememberLightVisualState(entityId.entityId, entityId);
+        this.removedRuntimeEntityIds.delete(entityId.entityId);
+        this.states.set(entityId.entityId, entityId);
+        this.options.onRuntimeStateChange?.([entityId]);
         this.tryOpenPendingEntityDetails();
-        this.refreshVacuumMapEntity(entityId10.entityId);
-        if (this.detailsStateSync?.handlers?.has(entityId10.entityId)) {
-          for (const entityStateUpdate of this.detailsStateSync.handlers.get(entityId10.entityId)) {
-            entityStateUpdate(entityId10.newState || entityId10);
+        this.refreshVacuumMapEntity(entityId.entityId);
+        if (this.detailsStateSync?.handlers?.has(entityId.entityId)) {
+          for (const entityStateUpdate of this.detailsStateSync.handlers.get(entityId.entityId)) {
+            entityStateUpdate(entityId.newState || entityId);
           }
-        } else if (this.detailsStateSync?.entityId === entityId10.entityId) {
-          this.detailsStateSync.apply(entityId10.newState || entityId10);
+        } else if (this.detailsStateSync?.entityId === entityId.entityId) {
+          this.detailsStateSync.apply(entityId.newState || entityId);
         }
-        this.applyRuntimeStateHandlers(entityId10.entityId, entityId10.newState || entityId10);
-        this.scheduleRuntimeRender(entityId10.entityId);
+        this.applyRuntimeStateHandlers(entityId.entityId, entityId.newState || entityId);
+        this.scheduleRuntimeRender(entityId.entityId);
       }
     });
     addEventListener.addEventListener("close", code => {
@@ -12590,8 +12591,8 @@ export class PanelRenderer {
         entityIds: filter,
         runtimeComponents: historyTarget
       } = closeEvent;
-      const has2 = new Set(collectComponents(historyTarget, type => type.type === "line-chart").map(bindings => String(bindings.bindings?.entity?.entityId || "")).filter(Boolean));
-      return filter.filter(item => has2.has(item) && lineChartRuntimeStateNeedsHydration(this.states.get(item))).length > 0;
+      const has = new Set(collectComponents(historyTarget, type => type.type === "line-chart").map(bindings => String(bindings.bindings?.entity?.entityId || "")).filter(Boolean));
+      return filter.filter(item => has.has(item) && lineChartRuntimeStateNeedsHydration(this.states.get(item))).length > 0;
     };
     if (!documentGeneration()) {
       window.clearTimeout(this.runtimeHydrationRetryTimer);
@@ -12643,9 +12644,9 @@ export class PanelRenderer {
     const documentGeneration = this.historyDocumentGeneration;
     const popupGeneration = this.historyPopupGeneration;
     const pagePath = this.page?.path || "";
-    const get2 = new Map();
+    const get = new Map();
     const collectHistoryTargets = (documentModel, shared) => {
-      const historyCapableComponents = collectComponents(documentModel, type4 => type4.type === "line-chart" || type4.type === "presence-sensor");
+      const historyCapableComponents = collectComponents(documentModel, type => type.type === "line-chart" || type.type === "presence-sensor");
       for (const properties of historyCapableComponents) {
         const boundEntityId = properties.bindings?.entity?.entityId;
         if (!boundEntityId) {
@@ -12654,8 +12655,8 @@ export class PanelRenderer {
         const isPresenceSensor = properties.type === "presence-sensor";
         const updateIntervalSec = Math.max(30, Math.min(86400, Number(isPresenceSensor ? 300 : properties.properties?.updateInterval || 600)));
         const historyHours = Math.max(1, Math.min(168, Number(isPresenceSensor ? properties.properties?.historyHours || 24 : properties.properties?.hours || 24)));
-        const interval = get2.get(boundEntityId);
-        get2.set(boundEntityId, {
+        const interval = get.get(boundEntityId);
+        get.set(boundEntityId, {
           interval: Math.min(interval?.interval ?? updateIntervalSec, updateIntervalSec),
           hours: Math.max(interval?.hours ?? historyHours, historyHours),
           documentGeneration,
@@ -12672,28 +12673,28 @@ export class PanelRenderer {
     collectHistoryTargets(this.page?.components || [], {
       pagePath
     });
-    const modules2 = this.activePopupId ? (this.document.customPopups || []).find(id3 => String(id3.id || "") === this.activePopupId) : null;
-    const push4 = [];
-    for (const entityId21 of modules2?.modules || []) {
-      if (entityId21.type === "line-chart" && entityId21.entityId) {
-        push4.push({
+    const modules = this.activePopupId ? (this.document.customPopups || []).find(id => String(id.id || "") === this.activePopupId) : null;
+    const push = [];
+    for (const entityId of modules?.modules || []) {
+      if (entityId.type === "line-chart" && entityId.entityId) {
+        push.push({
           type: "line-chart",
           bindings: {
             entity: {
-              entityId: entityId21.entityId
+              entityId: entityId.entityId
             }
           },
-          properties: syncedLineChartProperties(this.document, this.page, entityId21.entityId, entityId21.properties)
+          properties: syncedLineChartProperties(this.document, this.page, entityId.entityId, entityId.properties)
         });
       }
     }
-    collectHistoryTargets(push4, {
+    collectHistoryTargets(push, {
       popupId: this.activePopupId || null
     });
     const passStartedAtMs = Date.now();
     let historyFetchFailed = false;
     let historyFetchAborted = false;
-    const length5 = [...get2];
+    const length = [...get];
     const historyRequestContext = () => ({
       documentGeneration: this.historyDocumentGeneration,
       pagePath: this.page?.path || "",
@@ -12701,29 +12702,29 @@ export class PanelRenderer {
       popupGeneration: this.historyPopupGeneration
     });
     const fetchNextHistorySeries = async () => {
-      while (length5.length) {
-        const [entityId5, hours] = length5.shift();
+      while (length.length) {
+        const [entityId, hours] = length.shift();
         if (this.destroyed || !historyRequestStillRelevant(hours, historyRequestContext())) {
           continue;
         }
-        const existingSeries = this.historySeries.get(entityId5);
-        const seriesCacheEntry = this.historySeriesCache.get(historySeriesCacheKey(entityId5, hours.hours));
-        const fetchedAt3 = [existingSeries, seriesCacheEntry].filter(points => points && points.hours === hours.hours && Array.isArray(points.points) && points.points.length > 0).sort((fetchedAt, fetchedAt2) => fetchedAt2.fetchedAt - fetchedAt.fetchedAt)[0];
-        if (fetchedAt3 && passStartedAtMs - fetchedAt3.fetchedAt < hours.interval * 1000) {
-          if (existingSeries !== fetchedAt3) {
-            this.historySeries.set(entityId5, fetchedAt3);
+        const existingSeries = this.historySeries.get(entityId);
+        const seriesCacheEntry = this.historySeriesCache.get(historySeriesCacheKey(entityId, hours.hours));
+        const fetchedAt = [existingSeries, seriesCacheEntry].filter(points => points && points.hours === hours.hours && Array.isArray(points.points) && points.points.length > 0).sort((fetchedAt, fetchedAtRight) => fetchedAtRight.fetchedAt - fetchedAt.fetchedAt)[0];
+        if (fetchedAt && passStartedAtMs - fetchedAt.fetchedAt < hours.interval * 1000) {
+          if (existingSeries !== fetchedAt) {
+            this.historySeries.set(entityId, fetchedAt);
             historyFetchFailed = true;
           }
           continue;
         }
-        if (this.historyFetches.has(entityId5)) {
+        if (this.historyFetches.has(entityId)) {
           continue;
         }
-        this.historyFetches.add(entityId5);
+        this.historyFetches.add(entityId);
         const abort = typeof AbortController == "function" ? new AbortController() : null;
         const historyFetchTimeoutId = window.setTimeout(() => abort?.abort(), HISTORY_FETCH_TIMEOUT_MS);
         try {
-          const ok = await fetch("/api/v1/ha/history?entityId=" + encodeURIComponent(entityId5) + "&hours=" + hours.hours, {
+          const ok = await fetch("/api/v1/ha/history?entityId=" + encodeURIComponent(entityId) + "&hours=" + hours.hours, {
             credentials: "same-origin",
             headers: {
               Accept: "application/json"
@@ -12736,25 +12737,25 @@ export class PanelRenderer {
             historyFetchAborted = true;
             continue;
           }
-          const points2 = await ok.json();
+          const points = await ok.json();
           if (!historyRequestStillRelevant(hours, historyRequestContext())) {
             continue;
           }
-          const points3 = {
-            points: Array.isArray(points2.points) ? points2.points : [],
+          const options = {
+            points: Array.isArray(points.points) ? points.points : [],
             hours: hours.hours,
             fetchedAt: Date.now()
           };
-          this.historySeries.set(entityId5, points3);
-          cacheHistorySeries(this.historySeriesCache, entityId5, points3);
+          this.historySeries.set(entityId, options);
+          cacheHistorySeries(this.historySeriesCache, entityId, options);
           historyFetchFailed = true;
-          if (!points3.points.length) {
+          if (!options.points.length) {
             historyFetchAborted = true;
           }
         } catch (name) {
           if (name?.name === "AbortError") {
             window.HABridgeLog?.report("warning", "网络请求", "历史曲线请求超时", {
-              entityId: entityId5,
+              entityId: entityId,
               phase: "history-timeout",
               path: "/api/v1/ha/history",
               durationMs: HISTORY_FETCH_TIMEOUT_MS
@@ -12763,12 +12764,12 @@ export class PanelRenderer {
           historyFetchAborted = true;
         } finally {
           window.clearTimeout(historyFetchTimeoutId);
-          this.historyFetches.delete(entityId5);
+          this.historyFetches.delete(entityId);
         }
       }
     };
     await Promise.all(Array.from({
-      length: Math.min(2, length5.length)
+      length: Math.min(2, length.length)
     }, () => fetchNextHistorySeries()));
     if (historyFetchAborted && !this.destroyed) {
       this.scheduleHistoryRetry();

@@ -905,6 +905,8 @@ export function createExternalModelManager({
       return false;
     }
     const clonedRoot = modelEntry.source.clone(true);
+    const curtainVariant = /^curtain_(left|right|split)$/.exec(resolvedType)?.[1];
+    curtainVariant && (clonedRoot.userData.curtainRigRoot = true);
     let laptopScreenRef = null;
     if (resolvedType === "laptop") {
       clonedRoot.traverse(node => {
@@ -923,6 +925,11 @@ export function createExternalModelManager({
     clonedRoot.traverse(mesh => {
       if (!mesh.isMesh) {
         return;
+      }
+      if (curtainVariant) {
+        const meshMaterials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        const curtainMatIndex = Number(/material-(\d+)$/.exec(meshMaterials[0]?.name || "")?.[1]);
+        mesh.userData.curtainPart = curtainMatIndex === 0 ? "rod" : curtainMatIndex === (curtainVariant === "split" ? 1 : 3) ? "cap" : (curtainVariant === "split" ? [2, 3] : [4, 5]).includes(curtainMatIndex) ? "cloth" : "band";
       }
       const originalGeometry = mesh.geometry;
       const screenSlotIndex = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).findIndex(slotMat => (slotMat?.name || "").toLowerCase().match(/material-(\d+)/)?.[1] === "2");

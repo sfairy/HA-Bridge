@@ -305,7 +305,7 @@ export function createEnvironmentHalos({
     entry.mesh.material.dispose();
   }
   function sync(nextRoot, bindings, revision, modelNodeMap) {
-    const nextBindingsSignature = JSON.stringify(bindings.map(binding => [binding.id, binding.floorId, binding.modelId, binding.visible]));
+    const nextBindingsSignature = JSON.stringify(bindings.map(binding => [binding.id, binding.floorId, binding.modelId, binding.visible, binding.deviceKind]));
     if (root === nextRoot && sceneRevision === revision && bindingsSignature === nextBindingsSignature) {
       return;
     }

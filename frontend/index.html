@@ -29,7 +29,7 @@
     <header class="editor-header">
         <div class="brand-lockup"><img class="brand-icon"
                 src="/bridge-static/assets/brand/ha-bridge-mark-white-orange.svg?v=20260726-h2" alt=""><strong>HA
-                Bridge</strong><span class="version">0.5.0</span></div>
+                Bridge</strong><span class="version">0.5.1</span></div>
         <a class="header-resource-link" href="/help" target="_blank" rel="noopener noreferrer">使用教程</a>
         <div class="header-actions"><button id="ha-open" class="ha-status" type="button"><i></i><span>HA
                     未配置</span></button><button id="license-open" class="ha-status"
@@ -46,7 +46,7 @@
             <div id="navigator-content">
                 <div class="dashboard-control"> <button id="ui-pack-open" class="ui-pack-summary" type="button"
                         disabled="disabled"> <span><small>UI 方案</small><strong
-                                id="ui-pack-current-name">默认</strong></span> <i id="ui-pack-current-version">DWELL LIGHT
+                                id="ui-pack-current-name">栖光</strong></span> <i id="ui-pack-current-version">DWELL LIGHT
                             · 1.0.0</i> </button>
                     <div class="dashboard-control-heading"><span>仪表盘</span><button id="project-new"
                             type="button">新建</button></div>
@@ -175,7 +175,7 @@
                             <div class="asset-picker-toolbar">
                                 <div class="asset-source-tabs" role="tablist" aria-label="图片来源"><button type="button"
                                         data-image-asset-source="user">我的图片</button><button type="button"
-                                        data-image-asset-source="builtin">默认素材</button></div><button
+                                        data-image-asset-source="builtin">栖光素材</button></div><button
                                     id="image-asset-upload" class="asset-upload-button" type="button">上传</button><input
                                     id="image-asset-upload-input" type="file"
                                     accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple="multiple" hidden>
@@ -397,7 +397,7 @@
                             <div class="asset-picker-toolbar">
                                 <div class="asset-source-tabs" role="tablist" aria-label="图片来源"><button type="button"
                                         data-ibe-asset-source="user">我的图片</button><button type="button"
-                                        data-ibe-asset-source="builtin">默认素材</button></div><button id="ibe-asset-upload"
+                                        data-ibe-asset-source="builtin">栖光素材</button></div><button id="ibe-asset-upload"
                                     class="asset-upload-button" type="button">上传</button><input
                                     id="ibe-asset-upload-input" type="file"
                                     accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple="multiple" hidden>
@@ -2151,7 +2151,7 @@
             <div id="ui-pack-list" class="ui-pack-list"></div>
             <div class="ui-pack-library-placeholder">
                 <div><span>MATERIAL LIBRARY</span><strong>完整素材库将在后续版本继续扩展</strong></div>
-                <small>当前已支持默认内置素材与用户图片上传。</small>
+                <small>当前已支持栖光内置素材与用户图片上传。</small>
             </div>
             <div id="ui-pack-message" class="settings-message" hidden></div>
         </div>
@@ -2385,10 +2385,10 @@
     <dialog id="project-preview-dialog" class="settings-dialog project-preview-dialog">
         <div class="project-preview-heading">
             <div><span>QI GUANG PREVIEW</span>
-                <h2 id="project-preview-title">默认预览</h2>
+                <h2 id="project-preview-title">栖光预览</h2>
             </div>
             <div class="project-preview-heading-actions"><span id="project-preview-count">1 / 9</span><button
-                    id="project-preview-close" class="icon-button" type="button" aria-label="关闭默认预览">×</button></div>
+                    id="project-preview-close" class="icon-button" type="button" aria-label="关闭栖光预览">×</button></div>
         </div>
         <div class="project-preview-stage"><button id="project-preview-previous" class="project-preview-arrow previous"
                 type="button" aria-label="上一张">‹</button><img id="project-preview-image" alt=""><button
@@ -2430,38 +2430,38 @@
             <section>
                 <h3>整体</h3>
                 <div class="floorplan-auto-lighting-grid"> <label><span>曝光</span><input
-                            data-floorplan-base-light="exposure" type="number" min="0.5" max="2" step="0.05"></label>
-                    <label><span>半球光</span><input data-floorplan-base-light="hemisphereIntensity" type="number" min="0"
+                            data-floorplan-base-light="exposure" name="floorplan-base-light-exposure" type="number" min="0.5" max="2" step="0.05"></label>
+                    <label><span>半球光</span><input data-floorplan-base-light="hemisphereIntensity" name="floorplan-base-light-hemisphereIntensity" type="number" min="0"
                             max="3" step="0.05"></label> <label><span>环境光</span><input
-                            data-floorplan-base-light="ambientIntensity" type="number" min="0" max="2"
+                            data-floorplan-base-light="ambientIntensity" name="floorplan-base-light-ambientIntensity" type="number" min="0" max="2"
                             step="0.05"></label> </div>
             </section>
             <section>
                 <h3>主光与阴影</h3>
                 <div class="floorplan-auto-lighting-grid"> <label><span>强度</span><input
-                            data-floorplan-base-light="mainIntensity" type="number" min="0" max="5" step="0.05"></label>
-                    <label><span>水平角</span><input data-floorplan-base-light="mainAzimuth" type="number" min="-180"
+                            data-floorplan-base-light="mainIntensity" name="floorplan-base-light-mainIntensity" type="number" min="0" max="5" step="0.05"></label>
+                    <label><span>水平角</span><input data-floorplan-base-light="mainAzimuth" name="floorplan-base-light-mainAzimuth" type="number" min="-180"
                             max="180" step="5"></label> <label><span>高度角</span><input
-                            data-floorplan-base-light="mainElevation" type="number" min="5" max="89" step="5"></label>
-                    <label><span>阴影浓度</span><input data-floorplan-base-light="mainShadowIntensity" type="number" min="0"
+                            data-floorplan-base-light="mainElevation" name="floorplan-base-light-mainElevation" type="number" min="5" max="89" step="5"></label>
+                    <label><span>阴影浓度</span><input data-floorplan-base-light="mainShadowIntensity" name="floorplan-base-light-mainShadowIntensity" type="number" min="0"
                             max="1" step="0.05"></label> </div>
             </section>
             <section>
                 <h3>侧面补光</h3>
                 <div class="floorplan-auto-lighting-grid"> <label><span>强度</span><input
-                            data-floorplan-base-light="fillIntensity" type="number" min="0" max="3" step="0.05"></label>
-                    <label><span>水平角</span><input data-floorplan-base-light="fillAzimuth" type="number" min="-180"
+                            data-floorplan-base-light="fillIntensity" name="floorplan-base-light-fillIntensity" type="number" min="0" max="3" step="0.05"></label>
+                    <label><span>水平角</span><input data-floorplan-base-light="fillAzimuth" name="floorplan-base-light-fillAzimuth" type="number" min="-180"
                             max="180" step="5"></label> <label><span>高度角</span><input
-                            data-floorplan-base-light="fillElevation" type="number" min="0" max="89" step="5"></label>
+                            data-floorplan-base-light="fillElevation" name="floorplan-base-light-fillElevation" type="number" min="0" max="89" step="5"></label>
                 </div>
             </section>
             <section>
                 <h3>顶部补光</h3>
                 <div class="floorplan-auto-lighting-grid"> <label><span>强度</span><input
-                            data-floorplan-base-light="topIntensity" type="number" min="0" max="3" step="0.05"></label>
-                    <label><span>水平角</span><input data-floorplan-base-light="topAzimuth" type="number" min="-180"
+                            data-floorplan-base-light="topIntensity" name="floorplan-base-light-topIntensity" type="number" min="0" max="3" step="0.05"></label>
+                    <label><span>水平角</span><input data-floorplan-base-light="topAzimuth" name="floorplan-base-light-topAzimuth" type="number" min="-180"
                             max="180" step="5"></label> <label><span>高度角</span><input
-                            data-floorplan-base-light="topElevation" type="number" min="0" max="89" step="5"></label>
+                            data-floorplan-base-light="topElevation" name="floorplan-base-light-topElevation" type="number" min="0" max="89" step="5"></label>
                 </div>
             </section>
             <p id="floorplan-auto-lighting-status" class="floorplan-auto-lighting-status">修改会实时同步到当前3D预览。</p>
@@ -2641,7 +2641,7 @@
     <script type="module" src="/bridge-static/js/shared/global-log-boot.js?v=20260905-global-log-v2"></script>
     <script src="/bridge-static/vendor/hls.js/1.7.2/hls.min.js"></script>
     <script type="module"
-        src="/bridge-static/js/editor/home.js?v=20260910-license-card-help-v1-20260911-security-focal-v1-focus-layout-anim-v1"></script>
+        src="/bridge-static/js/editor/home.js?v=20260910-license-card-help-v1-20260911-security-focal-v1-focus-layout-anim-v1-presence-pages-v2-hint-align-v1-copy-payload-fix-v1"></script>
 </body>
 
 </html>

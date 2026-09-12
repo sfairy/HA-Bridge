@@ -22,12 +22,12 @@ const I = {
 };
 const f = disabledBy => !disabledBy.disabledBy && !["disabled", "missing"].includes(disabledBy.status);
 const b = platform => ["fnos", "synology_dsm"].includes(platform) ? platform : null;
-export function nasProfiles(filter = [], filter2 = []) {
-  const filter3 = filter.filter(entityId4 => f(entityId4) && /^(sensor|binary_sensor)\./.test(entityId4.entityId) && b(entityId4.platform));
-  const items = new Map(filter2.filter(f).map(deviceId4 => [deviceId4.deviceId, deviceId4]));
-  const filter4 = filter3.filter(deviceId6 => deviceId6.translationKey === "cpu_total_load" && deviceId6.deviceId && items.has(deviceId6.deviceId));
+export function nasProfiles(filter = [], list = []) {
+  const filtered = filter.filter(entityId => f(entityId) && /^(sensor|binary_sensor)\./.test(entityId.entityId) && b(entityId.platform));
+  const items = new Map(list.filter(f).map(deviceId => [deviceId.deviceId, deviceId]));
+  const filterCurrent = filtered.filter(deviceId => deviceId.translationKey === "cpu_total_load" && deviceId.deviceId && items.has(deviceId.deviceId));
   const has = new Set();
-  return filter4.filter(deviceId2 => !has.has(deviceId2.deviceId) && has.add(deviceId2.deviceId)).map(entityId3 => {
+  return filterCurrent.filter(deviceId => !has.has(deviceId.deviceId) && has.add(deviceId.deviceId)).map(entityId3 => {
     const deviceId5 = items.get(entityId3.deviceId);
     const entityIdStem = entityId3.entityId.split(".")[1].replace(/_cpu_utilization_total$/, "");
     const metrics = {
@@ -37,28 +37,28 @@ export function nasProfiles(filter = [], filter2 = []) {
       primaryEntityId: entityId3.entityId,
       metrics: []
     };
-    for (const deviceId3 of filter3) {
-      if (deviceId3.platform !== entityId3.platform) {
+    for (const deviceIdCurrent of filtered) {
+      if (deviceIdCurrent.platform !== entityId3.platform) {
         continue;
       }
-      const name = items.get(deviceId3.deviceId);
-      const belongsToNas = deviceId3.deviceId === deviceId5.deviceId || name?.name?.startsWith(deviceId5.name + " (") || entityIdStem !== entityId3.entityId.split(".")[1] && deviceId3.entityId.split(".")[1].startsWith(entityIdStem + "_") && !filter4.some(deviceId => deviceId.deviceId !== deviceId5.deviceId && deviceId.deviceId === deviceId3.deviceId);
-      const metricMeta = I[deviceId3.translationKey];
-      if (!belongsToNas || !metricMeta || metricMeta[2] === "problem" && !deviceId3.entityId.startsWith("binary_sensor.")) {
+      const name = items.get(deviceIdCurrent.deviceId);
+      const belongsToNas = deviceIdCurrent.deviceId === deviceId5.deviceId || name?.name?.startsWith(deviceId5.name + " (") || entityIdStem !== entityId3.entityId.split(".")[1] && deviceIdCurrent.entityId.split(".")[1].startsWith(entityIdStem + "_") && !filterCurrent.some(deviceId => deviceId.deviceId !== deviceId5.deviceId && deviceId.deviceId === deviceIdCurrent.deviceId);
+      const metricMeta = I[deviceIdCurrent.translationKey];
+      if (!belongsToNas || !metricMeta || metricMeta[2] === "problem" && !deviceIdCurrent.entityId.startsWith("binary_sensor.")) {
         continue;
       }
       const volumeLabel = name?.name?.match(/\(([^)]+)\)$/)?.[1] || "";
       metrics.metrics.push({
-        entityId: deviceId3.entityId,
+        entityId: deviceIdCurrent.entityId,
         label: "" + (volumeLabel ? volumeLabel + " · " : "") + metricMeta[0],
         group: metricMeta[1],
         kind: metricMeta[2] || "number"
       });
     }
     const indexOf = Object.keys(I);
-    metrics.metrics.sort((label, label2) => {
-      const value = entityId2 => filter3.find(entityId => entityId.entityId === entityId2.entityId)?.translationKey;
-      return indexOf.indexOf(value(label)) - indexOf.indexOf(value(label2)) || label.label.localeCompare(label2.label);
+    metrics.metrics.sort((label, labelRight) => {
+      const value = entityIdCurrent => filtered.find(entityId => entityId.entityId === entityIdCurrent.entityId)?.translationKey;
+      return indexOf.indexOf(value(label)) - indexOf.indexOf(value(labelRight)) || label.label.localeCompare(labelRight.label);
     });
     metrics.metrics = metrics.metrics.slice(0, 48);
     return metrics;

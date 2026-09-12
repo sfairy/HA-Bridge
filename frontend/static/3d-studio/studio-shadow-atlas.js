@@ -203,7 +203,7 @@ export function createSpotShadowAtlasController({
   let orderedLightsScratch = [];
   let orderedEntriesScratch = [];
   const emptyMatrix = new THREE.Matrix4();
-  const emptyVector4 = new THREE.Vector4();
+  const emptyVector = new THREE.Vector4();
   const lightIndex = syncBeforeRender ? createRenderLightIndex() : null;
   let lightIndexStatsKey = "";
   function setAtlasEnabledUniform(enabled) {
@@ -315,8 +315,8 @@ export function createSpotShadowAtlasController({
     matrices.length = rects.length = params.length = 0;
     for (const entry of orderedEntries) {
       matrices.push(entry?.matrix || emptyMatrix);
-      rects.push(entry?.rect || emptyVector4);
-      params.push(entry ? entry.uniformParams ||= new THREE.Vector4(entry.bias, entry.intensity, 1, entry.normalBias) : emptyVector4);
+      rects.push(entry?.rect || emptyVector);
+      params.push(entry ? entry.uniformParams ||= new THREE.Vector4(entry.bias, entry.intensity, 1, entry.normalBias) : emptyVector);
     }
   }
   function createAtlasRenderTarget(size) {
@@ -380,7 +380,7 @@ export function createSpotShadowAtlasController({
     if (!packedAtlas) {
       throw new Error("当前设备最大阴影图集 " + maxTextureSize + "px 无法容纳 " + lights.length + " 盏灯。");
     }
-    let texture2 = null;
+    let texture = null;
     const nextEntries = new Map();
     const previousTarget = renderer.getRenderTarget();
     const previousCubeFace = renderer.getActiveCubeFace?.() ?? 0;
@@ -417,9 +417,9 @@ export function createSpotShadowAtlasController({
     building = true;
     try {
       prepareRoot(root);
-      texture2 = createAtlasRenderTarget(packedAtlas.size);
-      renderer.initRenderTarget(texture2);
-      clearAtlasTarget(texture2);
+      texture = createAtlasRenderTarget(packedAtlas.size);
+      renderer.initRenderTarget(texture);
+      clearAtlasTarget(texture);
       scratchTarget ||= new THREE.WebGLRenderTarget(1, 1, {
         depthBuffer: true,
         stencilBuffer: false
@@ -469,7 +469,7 @@ export function createSpotShadowAtlasController({
         if (!shadowTexture) {
           throw new Error("灯光 " + lightIdentityKey(light) + " 未生成阴影贴图。");
         }
-        renderer.copyTextureToTexture(shadowTexture, texture2.texture, new THREE.Box2(new THREE.Vector2(0, 0), new THREE.Vector2(tile.size, tile.size)), new THREE.Vector2(tile.x, tile.y));
+        renderer.copyTextureToTexture(shadowTexture, texture.texture, new THREE.Box2(new THREE.Vector2(0, 0), new THREE.Vector2(tile.size, tile.size)), new THREE.Vector2(tile.x, tile.y));
         const edgeInset = 0.5;
         const snapIntensity = Number(snapshot.shadowIntensity ?? 1);
         const liveIntensity = Number(light.shadow.intensity ?? 1);
@@ -500,7 +500,7 @@ export function createSpotShadowAtlasController({
         return;
       }
       atlasTarget?.dispose?.();
-      atlasTarget = texture2;
+      atlasTarget = texture;
       atlasEntries.clear();
       for (const [key, entry] of nextEntries) {
         atlasEntries.set(key, entry);
@@ -514,8 +514,8 @@ export function createSpotShadowAtlasController({
     } finally {
       renderer.setRenderTarget(previousTarget, previousCubeFace, previousMip);
       restoreLightSnapshots();
-      if (atlasTarget !== texture2) {
-        texture2?.dispose();
+      if (atlasTarget !== texture) {
+        texture?.dispose();
       }
       building = false;
       if (disposed) {
@@ -578,7 +578,7 @@ export function createSpotShadowAtlasController({
   let lastRefreshRoot = null;
   let lastRefreshGeneration = -1;
   let lastLightIndexBuilds = -1;
-  let push2 = [];
+  let list = [];
   function refreshGeometry(traverse = scheduledRoot, filter = null) {
     if (disposed) {
       return true;
@@ -594,32 +594,32 @@ export function createSpotShadowAtlasController({
       lastRefreshRoot = traverse;
       lastRefreshGeneration = buildGeneration;
       lastLightIndexBuilds = lightIndexBuilds;
-      push2 = [];
+      list = [];
       traverse?.traverse(isSpotLight => {
         if (isSpotLight.isSpotLight && isSpotLight.shadow && atlasEntries.has(lightIdentityKey(isSpotLight))) {
-          push2.push(isSpotLight);
+          list.push(isSpotLight);
         }
       });
     }
-    const some = filter === null ? null : filter.filter(isBox3 => isBox3?.isBox3 && !isBox3.isEmpty());
+    const some = filter === null ? null : filter.filter(isBox => isBox?.isBox3 && !isBox.isEmpty());
     const push = [];
     traverse?.updateWorldMatrix(true, true);
-    for (const shadow3 of push2) {
-      const tile2 = atlasEntries.get(lightIdentityKey(shadow3));
-      if (tile2?.tile) {
-        shadow3.target?.updateWorldMatrix(true, false);
-        shadow3.shadow.updateMatrices(shadow3);
-        if (!some || !!some.some(box => shadow3.shadow.getFrustum().intersectsBox(box))) {
+    for (const shadow of list) {
+      const tile = atlasEntries.get(lightIdentityKey(shadow));
+      if (tile?.tile) {
+        shadow.target?.updateWorldMatrix(true, false);
+        shadow.shadow.updateMatrices(shadow);
+        if (!some || !!some.some(box => shadow.shadow.getFrustum().intersectsBox(box))) {
           push.push({
-            light: shadow3,
-            entry: tile2,
-            matrix: shadow3.shadow.matrix.clone(),
-            cast: shadow3.castShadow,
-            visible: shadow3.visible,
-            autoUpdate: shadow3.shadow.autoUpdate,
-            needsUpdate: shadow3.shadow.needsUpdate,
-            map: shadow3.shadow.map,
-            mapPass: shadow3.shadow.mapPass
+            light: shadow,
+            entry: tile,
+            matrix: shadow.shadow.matrix.clone(),
+            cast: shadow.castShadow,
+            visible: shadow.visible,
+            autoUpdate: shadow.shadow.autoUpdate,
+            needsUpdate: shadow.shadow.needsUpdate,
+            map: shadow.shadow.map,
+            mapPass: shadow.shadow.mapPass
           });
         }
       }
@@ -678,20 +678,20 @@ export function createSpotShadowAtlasController({
     } finally {
       for (const map of push) {
         const {
-          light: shadow2
+          light: shadow
         } = map;
-        shadow2.castShadow = map.cast;
-        shadow2.visible = map.visible;
-        shadow2.shadow.autoUpdate = map.autoUpdate;
-        shadow2.shadow.needsUpdate = map.needsUpdate;
-        if (shadow2.shadow.map !== map.map) {
-          shadow2.shadow.map?.dispose();
+        shadow.castShadow = map.cast;
+        shadow.visible = map.visible;
+        shadow.shadow.autoUpdate = map.autoUpdate;
+        shadow.shadow.needsUpdate = map.needsUpdate;
+        if (shadow.shadow.map !== map.map) {
+          shadow.shadow.map?.dispose();
         }
-        if (shadow2.shadow.mapPass !== map.mapPass) {
-          shadow2.shadow.mapPass?.dispose();
+        if (shadow.shadow.mapPass !== map.mapPass) {
+          shadow.shadow.mapPass?.dispose();
         }
-        shadow2.shadow.map = map.map;
-        shadow2.shadow.mapPass = map.mapPass;
+        shadow.shadow.map = map.map;
+        shadow.shadow.mapPass = map.mapPass;
       }
       renderer.shadowMap.enabled = enabled.enabled;
       renderer.shadowMap.autoUpdate = enabled.autoUpdate;
@@ -731,7 +731,7 @@ export function createSpotShadowAtlasController({
       scheduledRoot = null;
       lightIndex?.dispose();
       lastRefreshRoot = null;
-      push2 = [];
+      list = [];
       previousOrderedLights = null;
       previousOrderedEntries = [];
       orderedLightsScratch = [];

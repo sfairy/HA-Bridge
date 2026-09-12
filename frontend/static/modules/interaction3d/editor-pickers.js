@@ -47,7 +47,7 @@ export function createInteraction3dEditorPickers({
   getState: getEntityState = () => null,
   ensureEntities: ensureEntitiesLoaded,
   entityPickerText: elements,
-  elements: elements2,
+  elements: elementsCurrent,
   deviceKind: defaultDeviceKind = "light",
   fetchAreas: fetchHaAreas = async () => {
     const response = await fetch("/api/v1/ha/areas");
@@ -92,7 +92,7 @@ export function createInteraction3dEditorPickers({
   }
   const roomIntegrationLabel = device => "房间：" + device.roomName + " · 集成：" + device.integrationName;
   function createEnrichedEntityPickerOption(device, currentEntityId, kindLabel = "设备") {
-    const option = elements2.createEditorEntityPickerOption(device, currentEntityId);
+    const option = elementsCurrent.createEditorEntityPickerOption(device, currentEntityId);
     const kindEl = option.querySelector?.(".inspector-entity-kind");
     const idEl = option.querySelector?.(".inspector-entity-id");
     if (kindEl) {
@@ -104,7 +104,7 @@ export function createInteraction3dEditorPickers({
     return option;
   }
   function createEnrichedCurrentEntity(device) {
-    const current = elements2.createEditorPickerCurrentEntity(device);
+    const current = elementsCurrent.createEditorPickerCurrentEntity(device);
     const idEl = current.querySelector?.(".editor-paged-picker-current-entity-id");
     if (idEl && device) {
       idEl.textContent = roomIntegrationLabel(device);
@@ -148,7 +148,7 @@ export function createInteraction3dEditorPickers({
           page: pageNumber
         }) => editorEntityPickerPage(options.filter(item => (item.name + " " + (item.roomName || "") + " " + (item.integrationName || "") + " " + item.entityId).toLowerCase().includes(String(searchQuery || "").toLowerCase())), pageNumber, null),
         renderSelectedContent: () => [createEnrichedCurrentEntity(options.find(item => item.entityId === current))],
-        renderSelectedActions: () => [elements2.editorPickerClearAction("不绑定设备", !current)],
+        renderSelectedActions: () => [elementsCurrent.editorPickerClearAction("不绑定设备", !current)],
         renderItem: item => createEnrichedEntityPickerOption(item, current),
         onSelect: selectedDeviceId => {
           const matched = profiles.find(profile => profile.deviceId === selectedDeviceId);
@@ -164,14 +164,16 @@ export function createInteraction3dEditorPickers({
       onSelect
     }) {
       await ensureEntitiesLoaded();
-      const devices = await fetchHaDevices();
+      const deviceCatalog = await loadDeviceCatalog();
       if (!trigger.isConnected) {
         return null;
       }
-      const map = vacuumProfiles(getEntities(), devices);
+      const map = vacuumProfiles(getEntities(), deviceCatalog);
       const filter = map.map(deviceId3 => ({
         entityId: deviceId3.deviceId,
         name: deviceId3.name,
+        roomName: deviceRoomName(deviceId3, deviceCatalog),
+        integrationName: deviceIntegrationName(deviceId3, deviceCatalog),
         domain: "vacuum",
         icon: "mdi:robot-vacuum"
       }));
@@ -179,7 +181,7 @@ export function createInteraction3dEditorPickers({
         kind: "entity",
         title: "选择扫地机设备",
         subtitle: "自动识别主实体、地图和相关状态；支持多台设备独立配置。",
-        searchPlaceholder: "搜索设备名称",
+        searchPlaceholder: "搜索设备名称、房间或集成",
         triggerButton: trigger,
         pageSize: EDITOR_PICKER_PAGE_SIZES.entity,
         itemClass: "entity-list",
@@ -187,10 +189,10 @@ export function createInteraction3dEditorPickers({
         getPage: ({
           query: searchQuery,
           page: iconId
-        }) => editorEntityPickerPage(filter.filter(name => (name.name + " " + name.entityId).toLowerCase().includes(String(searchQuery || "").toLowerCase())), iconId, null),
-        renderSelectedContent: () => [elements2.createEditorPickerCurrentEntity(filter.find(entityId3 => entityId3.entityId === current))],
-        renderSelectedActions: () => [elements2.editorPickerClearAction("不绑定设备", !current)],
-        renderItem: item => elements2.createEditorEntityPickerOption(item, current),
+        }) => editorEntityPickerPage(filter.filter(name => (name.name + " " + (name.roomName || "") + " " + (name.integrationName || "") + " " + name.entityId).toLowerCase().includes(String(searchQuery || "").toLowerCase())), iconId, null),
+        renderSelectedContent: () => [createEnrichedCurrentEntity(filter.find(entityId => entityId.entityId === current))],
+        renderSelectedActions: () => [elementsCurrent.editorPickerClearAction("不绑定设备", !current)],
+        renderItem: item => createEnrichedEntityPickerOption(item, current),
         onSelect: selectedDeviceId => {
           const matched = map.find(deviceId => deviceId.deviceId === selectedDeviceId);
           if (!selectedDeviceId || matched) {
@@ -205,14 +207,16 @@ export function createInteraction3dEditorPickers({
       onSelect
     }) {
       await ensureEntitiesLoaded();
-      const missingCurrentEntity = await fetchHaDevices();
+      const deviceCatalog = await loadDeviceCatalog();
       if (!trigger.isConnected) {
         return null;
       }
-      const matchedEntities = nasProfiles(getEntities(), missingCurrentEntity);
+      const matchedEntities = nasProfiles(getEntities(), deviceCatalog);
       const initialMatches = matchedEntities.map(deviceId4 => ({
         entityId: deviceId4.deviceId,
-        name: (deviceId4.platform === "fnos" ? "飞牛" : "群晖") + " · " + deviceId4.name + " · " + deviceId4.metrics.length + " 项状态",
+        name: deviceId4.name + " · " + deviceId4.metrics.length + " 项状态",
+        roomName: deviceRoomName(deviceId4, deviceCatalog),
+        integrationName: deviceIntegrationName(deviceId4, deviceCatalog),
         domain: "sensor",
         icon: "mdi:nas"
       }));
@@ -220,7 +224,7 @@ export function createInteraction3dEditorPickers({
         kind: "entity",
         title: "选择 NAS 数据来源",
         subtitle: "选择整台 NAS，自动匹配它的状态实体。",
-        searchPlaceholder: "搜索 NAS 名称、飞牛或群晖",
+        searchPlaceholder: "搜索 NAS 名称、房间或集成",
         triggerButton: trigger,
         pageSize: EDITOR_PICKER_PAGE_SIZES.entity,
         itemClass: "entity-list",
@@ -228,23 +232,12 @@ export function createInteraction3dEditorPickers({
         getPage: ({
           query: searchQuery,
           page: pageNumber
-        }) => editorEntityPickerPage(initialMatches.filter(name2 => (name2.name + " " + name2.entityId).toLowerCase().includes(String(searchQuery || "").toLowerCase())), pageNumber, null),
-        renderSelectedContent: () => [elements2.createEditorPickerCurrentEntity(initialMatches.find(entityId4 => entityId4.entityId === current))],
-        renderSelectedActions: () => [elements2.editorPickerClearAction("不使用数据来源", !current)],
-        renderItem: item => {
-          const querySelector = elements2.createEditorEntityPickerOption(item, current);
-          const textContent = querySelector.querySelector?.(".inspector-entity-kind");
-          const textContent2 = querySelector.querySelector?.(".inspector-entity-id");
-          if (textContent) {
-            textContent.textContent = "[NAS] ";
-          }
-          if (textContent2) {
-            textContent2.textContent = "自动匹配系统、存储、网络与健康状态";
-          }
-          return querySelector;
-        },
+        }) => editorEntityPickerPage(initialMatches.filter(name2 => (name2.name + " " + (name2.roomName || "") + " " + (name2.integrationName || "") + " " + name2.entityId).toLowerCase().includes(String(searchQuery || "").toLowerCase())), pageNumber, null),
+        renderSelectedContent: () => [createEnrichedCurrentEntity(initialMatches.find(entityId => entityId.entityId === current))],
+        renderSelectedActions: () => [elementsCurrent.editorPickerClearAction("不使用数据来源", !current)],
+        renderItem: item => createEnrichedEntityPickerOption(item, current, "NAS"),
         onSelect: entity => {
-          const matchedNas = matchedEntities.find(deviceId2 => deviceId2.deviceId === entity);
+          const matchedNas = matchedEntities.find(deviceId => deviceId.deviceId === entity);
           if (!entity || matchedNas) {
             onSelect(matchedNas ? structuredClone(matchedNas) : null);
           }
@@ -277,8 +270,8 @@ export function createInteraction3dEditorPickers({
             total: Number(items.total) || 0
           };
         },
-        renderSelectedActions: () => [elements2.createEditorPickerCurrentIcon(currentIcon || DEFAULT_LIGHT_ICON)],
-        renderItem: iconItem => elements2.createIconPickerOption(iconItem, currentIcon, "editorPickerValue"),
+        renderSelectedActions: () => [elementsCurrent.createEditorPickerCurrentIcon(currentIcon || DEFAULT_LIGHT_ICON)],
+        renderItem: iconItem => elementsCurrent.createIconPickerOption(iconItem, currentIcon, "editorPickerValue"),
         onSelect: selectedIcon => {
           if (isValidMdiIcon(selectedIcon)) {
             onIconSelect(selectedIcon);
@@ -288,7 +281,7 @@ export function createInteraction3dEditorPickers({
     },
     async entity({
       trigger: isConnected,
-      current: entityId11 = "",
+      current: entityId = "",
       onSelect: onEntitySelect,
       deviceKind: startsWith = defaultDeviceKind,
       domain: domainFilter
@@ -304,48 +297,48 @@ export function createInteraction3dEditorPickers({
         editorEntityMatches: matchEntities
       } = createEditorPickerQueries({
         entityPickerConfig: () => ({
-          recommended: entityId5 => startsWith === "presence" ? ["occupancy", "motion", "presence"].includes(entityId5.deviceClass || entityId5.device_class || entityId5.attributes?.device_class || getEntityState(entityId5.entityId)?.attributes?.device_class) : entityId5.entityId.startsWith(isTelevision || isTelevisionPower ? "media_player." : isNas || startsWith === "presence" ? "binary_sensor." : isCover ? "cover." : isClimate ? "climate." : isCamera ? "camera." : "light.")
+          recommended: entityId => startsWith === "presence" ? ["occupancy", "motion", "presence"].includes(entityId.deviceClass || entityId.device_class || entityId.attributes?.device_class || getEntityState(entityId.entityId)?.attributes?.device_class) : entityId.entityId.startsWith(isTelevision || isTelevisionPower ? "media_player." : isNas || startsWith === "presence" ? "binary_sensor." : isCover ? "cover." : isClimate ? "climate." : isCamera ? "camera." : "light.")
         }),
-        pickerEntitiesForComponentType: () => getEntities().filter(entityId6 => test.test(entityId6.entityId)),
+        pickerEntitiesForComponentType: () => getEntities().filter(entityId => test.test(entityId.entityId)),
         entityPickerText: elements,
-        entityDomain: entityId9 => entityId9.entityId.split(".")[0]
+        entityDomain: entityId => entityId.entityId.split(".")[0]
       });
       await ensureEntitiesLoaded();
       if (!isConnected.isConnected) {
         return null;
       }
-      const entityId12 = entityId11 && test.test(entityId11) && !getEntities().some(entityId7 => entityId7.entityId === entityId11) ? {
-        entityId: entityId11,
-        name: entityId11 + "（当前未找到）"
+      const options = entityId && test.test(entityId) && !getEntities().some(item => item.entityId === entityId) ? {
+        entityId: entityId,
+        name: entityId + "（当前未找到）"
       } : null;
       const entitiesForQuery = searchQuery => {
         const push = matchEntities("interaction3d", searchQuery);
-        if (entityId12 && (!searchQuery || elements(entityId12).toLocaleLowerCase("zh-CN").includes(String(searchQuery).trim().toLocaleLowerCase("zh-CN")))) {
-          push.push(entityId12);
+        if (options && (!searchQuery || elements(options).toLocaleLowerCase("zh-CN").includes(String(searchQuery).trim().toLocaleLowerCase("zh-CN")))) {
+          push.push(options);
         }
         return push;
       };
       const find = entitiesForQuery("");
-      const selectedEntity = find.find(entityId10 => entityId10.entityId === entityId11) || null;
+      const selectedEntity = find.find(item => item.entityId === entityId) || null;
       return openPicker({
         kind: "entity",
         title: startsWith === "camera" ? "选择摄像头实体" : startsWith === "presence" ? "选择人在传感器" : startsWith === "vacuum" ? "选择扫地机实体" : startsWith === "vacuum-map" ? "选择扫地机地图" : startsWith === "vacuum-room" ? "选择房间快捷指令" : isTelevision ? "选择电视媒体实体（Apple TV）" : isTelevisionPower ? "选择电视电源状态" : isNas ? "选择NAS开启实体" : isCover ? "选择窗帘实体" : isClimate ? "选择空调实体" : "选择灯光实体",
         searchPlaceholder: "搜索实体名称或 ID",
         triggerButton: isConnected,
         pageSize: EDITOR_PICKER_PAGE_SIZES.entity,
-        initialPage: editorEntityPickerInitialPage(find.findIndex(entityId8 => entityId8.entityId === entityId11), null),
-        selectedText: entityId11 || "不使用实体",
+        initialPage: editorEntityPickerInitialPage(find.findIndex(item => item.entityId === entityId), null),
+        selectedText: entityId || "不使用实体",
         emptyText: startsWith === "camera" ? "没有匹配的摄像头实体，请先在 Home Assistant 接入设备" : startsWith === "presence" ? "没有匹配的人在传感器或移动事件，请先在 Home Assistant 接入设备" : startsWith.startsWith("vacuum") ? "没有匹配的实体，请先在 Home Assistant 中接入" : isTelevision ? "没有匹配的媒体播放器，请先在 Home Assistant 接入 Apple TV" : isTelevisionPower ? "没有匹配的电源状态实体" : isNas ? "没有匹配的开关或二元传感器" : isCover ? "没有匹配的窗帘" : isClimate ? "没有匹配的空调" : "没有匹配的灯光或开关",
         itemClass: "entity-list",
         getPage: ({
           query: searchQuery,
           page: pageNumber
         }) => editorEntityPickerPage(entitiesForQuery(searchQuery), pageNumber, null),
-        renderSelectedContent: () => [elements2.createEditorPickerCurrentEntity(selectedEntity)],
-        renderSelectedActions: () => [elements2.editorPickerClearAction("不使用实体", !entityId11)],
-        renderItem: item => elements2.createEditorEntityPickerOption(item, entityId11),
+        renderSelectedContent: () => [elementsCurrent.createEditorPickerCurrentEntity(selectedEntity)],
+        renderSelectedActions: () => [elementsCurrent.editorPickerClearAction("不使用实体", !entityId)],
+        renderItem: item => elementsCurrent.createEditorEntityPickerOption(item, entityId),
         onSelect: selectedEntityId => {
-          if (!selectedEntityId || selectedEntityId === entityId12?.entityId || getEntities().some(entityId2 => entityId2.entityId === selectedEntityId && test.test(selectedEntityId))) {
+          if (!selectedEntityId || selectedEntityId === options?.entityId || getEntities().some(entityId => entityId.entityId === selectedEntityId && test.test(selectedEntityId))) {
             onEntitySelect(selectedEntityId, startsWith === "presence" ? getEntities().find(entityId => entityId.entityId === selectedEntityId) : undefined);
           }
         }

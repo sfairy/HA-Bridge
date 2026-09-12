@@ -8,7 +8,7 @@ function finite(value, fallback = 0) {
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
-function normalizePoint3(point, fallback = {}) {
+function normalizePoint(point, fallback = {}) {
   return {
     x: finite(point?.x, fallback.x),
     y: finite(point?.y, fallback.y),
@@ -28,12 +28,12 @@ function normalizeCamera(camera) {
     mode,
     view,
     topRotation: (Math.round(finite(camera?.topRotation, 0) / 90) * 90 % 360 + 360) % 360,
-    position: normalizePoint3(camera?.position, {
+    position: normalizePoint(camera?.position, {
       x: 7,
       y: 7,
       z: 7
     }),
-    target: normalizePoint3(camera?.target, {
+    target: normalizePoint(camera?.target, {
       x: 0,
       y: 0.6,
       z: 0

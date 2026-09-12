@@ -424,7 +424,7 @@ export function createCurtainMotion({
   }
   function poseKey() {
     if (poseDirty) {
-      cachedPoseKey = JSON.stringify([...entries.values()].map(entry => [entry.binding.id, entry.binding.floorId, entry.binding.modelId, entry.binding.entityId, entry.generation, entry.direction, entry.basis, entry.folds, entry.position === null ? "preview-open" : Math.round(entry.position * 100) / 100]).sort((a, b) => a[0].localeCompare(b[0])));
+      cachedPoseKey = JSON.stringify([...entries.values()].map(entry => [entry.binding.id, entry.binding.floorId, entry.binding.modelId, entry.binding.entityId, entry.generation, entry.direction, entry.basis, entry.folds, entry.position === null ? "preview-closed" : Math.round(entry.position * 100) / 100]).sort((a, b) => a[0].localeCompare(b[0])));
       poseDirty = false;
     }
     return cachedPoseKey;

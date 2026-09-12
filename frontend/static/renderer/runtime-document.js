@@ -17,7 +17,7 @@ export function collectEntityIds(components, entityIds = new Set()) {
     }
     if (component.type === "interaction3d") {
       for (const entityId of component.properties?.devices?.vacuums || []) {
-        for (const value of [entityId.entityId, entityId.map?.entityId, ...(entityId.relatedEntityIds || []), ...(entityId.shortcuts || []).map(entityId2 => entityId2.entityId)]) {
+        for (const value of [entityId.entityId, entityId.map?.entityId, ...(entityId.relatedEntityIds || []), ...(entityId.shortcuts || []).map(entityId => entityId.entityId)]) {
           if (value && !isVirtualEntityId(value)) {
             entityIds.add(value);
           }

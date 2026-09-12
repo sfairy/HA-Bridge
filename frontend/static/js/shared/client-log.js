@@ -213,7 +213,7 @@
       const response = await nativeFetch(input, f);
       const durationMs = Date.now() - v;
       if (!response.ok || durationMs >= 5000) {
-        report(response.ok ? "warning" : "error", "网络请求", `${response.ok ? "请求耗时较长" : "请求失败"}\uFF1A${requestContext.method} ${i}${response.ok ? "" : `\uFF08HTTP ${response.status}\uFF09`}`, {
+        report(response.ok ? "warning" : "error", "网络请求", `${response.ok ? "请求耗时较长" : "请求失败"}：${requestContext.method} ${i}${response.ok ? "" : `（HTTP ${response.status}）`}`, {
           ...requestContext,
           status: response.status,
           durationMs,
@@ -225,8 +225,9 @@
       }
       return response;
     } catch (s) {
-      if (s?.name !== "AbortError") {
-        report("error", "网络请求", `\u7F51\u7EDC\u8FDE\u63A5\u5931\u8D25\uFF1A${requestContext.method} ${i}`, {
+      const effectiveSignal = f.signal === undefined ? input?.signal : f.signal;
+      if (s?.name !== "AbortError" && !(effectiveSignal?.aborted && s === effectiveSignal.reason)) {
+        report("error", "网络请求", `网络连接失败：${requestContext.method} ${i}`, {
           ...requestContext,
           durationMs: Date.now() - v
         }, s?.stack || s?.message || "");
@@ -249,7 +250,7 @@
   global.addEventListener("error", event => {
     const e = event.target;
     if (e && e !== global && (e.src || e.href)) {
-      report("error", "资源加载", `\u8D44\u6E90\u52A0\u8F7D\u5931\u8D25\uFF1A${sanitizePath(e.src || e.href)}`, {
+      report("error", "资源加载", `资源加载失败：${sanitizePath(e.src || e.href)}`, {
         path: e.src || e.href,
         phase: String(e.tagName || "resource").toLowerCase()
       });

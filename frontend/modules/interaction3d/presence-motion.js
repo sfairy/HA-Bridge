@@ -1,6 +1,6 @@
-export const PRESENCE_PAGES = [["overview", "总览"], ["light", "灯光"], ["environment", "环境"], ["devices", "设备"], ["vacuum", "扫地机"], ["security", "安防"]];
+export const PRESENCE_PAGES = [["overview", "ALL（全部楼层）"], ["light", "灯光"], ["environment", "环境"], ["devices", "设备"], ["vacuum", "扫地机"], ["security", "安防"]];
 export function presenceVisibleOnPage(sensor, pageId) {
-  const includes = sensor.displayPages ?? ["overview", "security"];
+  const includes = sensor.displayPages ?? ["overview", "light", "security"];
   return PRESENCE_PAGES.some(([id]) => id === pageId) && (includes === "all" || Array.isArray(includes) && includes.includes(pageId));
 }
 export function validPresenceRoute(route) {

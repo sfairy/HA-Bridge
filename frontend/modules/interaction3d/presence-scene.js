@@ -1,5 +1,5 @@
 import { createWalker, animateWalker, disposeWalker } from "./presence-character.js";
-import { validPresenceRoute, createPresenceTriggers, closedPath, sampleClosedPath, presenceVisibleOnPage } from "./presence-motion.js";
+import { validPresenceRoute, createPresenceTriggers, closedPath, sampleClosedPath, presenceVisibleOnPage } from "./presence-motion.js?v=20260911-presence-pages-v2";
 export function createPresenceScene(api, wake = () => {}, getNow) {
   const walkers = new Map();
   const progressCache = new Map();
@@ -74,7 +74,7 @@ export function createPresenceScene(api, wake = () => {}, getNow) {
     return results;
   }
   return {
-    sync(sensors = [], states = {}, visible = false, floorId = "all", simulated = false, previewWalk = false, page = "overview") {
+    sync(sensors = [], states = {}, visible = false, floorId = "all", simulated = false, previewWalk = false, page = "light") {
       triggers.sync(sensors, states);
       const keepIds = new Set();
       let changed = false;

@@ -6,8 +6,8 @@ function findUserData(object, key) {
   }
 }
 function isVisibleInHierarchy(node) {
-  for (let parent2 = node; parent2; parent2 = parent2.parent) {
-    if (!parent2.visible) {
+  for (let parent = node; parent; parent = parent.parent) {
+    if (!parent.visible) {
       return false;
     }
   }
@@ -19,15 +19,15 @@ export function isContactCasterMaterial(material) {
 export function surfaceBakeLevels(THREE, meshes, floorY, maxLevels = 32) {
   const items = new Map();
   const fromBufferAttribute = new THREE.Vector3();
-  const fromBufferAttribute2 = new THREE.Vector3();
-  const fromBufferAttribute3 = new THREE.Vector3();
+  const vector = new THREE.Vector3();
+  const fromBufferAttributeCurrent = new THREE.Vector3();
   const subVectors = new THREE.Vector3();
-  const subVectors2 = new THREE.Vector3();
+  const subVectorsCurrent = new THREE.Vector3();
   const crossVectors = new THREE.Vector3();
   const copy = new THREE.Matrix4();
   const instanceMatrix = new THREE.Matrix4();
-  for (const isInstancedMesh2 of meshes) {
-    const drawRange = isInstancedMesh2.geometry;
+  for (const isInstancedMesh of meshes) {
+    const drawRange = isInstancedMesh.geometry;
     const count = drawRange?.attributes?.position;
     if (!count) {
       continue;
@@ -36,20 +36,20 @@ export function surfaceBakeLevels(THREE, meshes, floorY, maxLevels = 32) {
     const indexCount = getX?.count ?? count.count;
     const drawStart = drawRange.drawRange.start;
     const drawEnd = Math.min(indexCount, drawStart + drawRange.drawRange.count);
-    for (let instanceIndex = 0; instanceIndex < (isInstancedMesh2.isInstancedMesh ? isInstancedMesh2.count : 1); instanceIndex++) {
-      copy.copy(isInstancedMesh2.matrixWorld);
-      if (isInstancedMesh2.isInstancedMesh) {
-        isInstancedMesh2.getMatrixAt(instanceIndex, instanceMatrix);
+    for (let instanceIndex = 0; instanceIndex < (isInstancedMesh.isInstancedMesh ? isInstancedMesh.count : 1); instanceIndex++) {
+      copy.copy(isInstancedMesh.matrixWorld);
+      if (isInstancedMesh.isInstancedMesh) {
+        isInstancedMesh.getMatrixAt(instanceIndex, instanceMatrix);
         copy.multiply(instanceMatrix);
       }
       for (let triIndex = drawStart; triIndex + 2 < drawEnd; triIndex += 3) {
         fromBufferAttribute.fromBufferAttribute(count, getX ? getX.getX(triIndex) : triIndex).applyMatrix4(copy);
-        fromBufferAttribute2.fromBufferAttribute(count, getX ? getX.getX(triIndex + 1) : triIndex + 1).applyMatrix4(copy);
-        fromBufferAttribute3.fromBufferAttribute(count, getX ? getX.getX(triIndex + 2) : triIndex + 2).applyMatrix4(copy);
-        crossVectors.crossVectors(subVectors.subVectors(fromBufferAttribute2, fromBufferAttribute), subVectors2.subVectors(fromBufferAttribute3, fromBufferAttribute));
-        const area3 = crossVectors.length() * 0.5;
-        const heightAboveFloor = (fromBufferAttribute.y + fromBufferAttribute2.y + fromBufferAttribute3.y) / 3 - floorY;
-        if (area3 < 0.004 || crossVectors.y < area3 * 1.98 || heightAboveFloor <= 0.12) {
+        vector.fromBufferAttribute(count, getX ? getX.getX(triIndex + 1) : triIndex + 1).applyMatrix4(copy);
+        fromBufferAttributeCurrent.fromBufferAttribute(count, getX ? getX.getX(triIndex + 2) : triIndex + 2).applyMatrix4(copy);
+        crossVectors.crossVectors(subVectors.subVectors(vector, fromBufferAttribute), subVectorsCurrent.subVectors(fromBufferAttributeCurrent, fromBufferAttribute));
+        const area = crossVectors.length() * 0.5;
+        const heightAboveFloor = (fromBufferAttribute.y + vector.y + fromBufferAttributeCurrent.y) / 3 - floorY;
+        if (area < 0.004 || crossVectors.y < area * 1.98 || heightAboveFloor <= 0.12) {
           continue;
         }
         const heightBucket = Math.round(heightAboveFloor * 100);
@@ -57,13 +57,13 @@ export function surfaceBakeLevels(THREE, meshes, floorY, maxLevels = 32) {
           height: 0,
           area: 0
         };
-        height.height += heightAboveFloor * area3;
-        height.area += area3;
+        height.height += heightAboveFloor * area;
+        height.area += area;
         items.set(heightBucket, height);
       }
     }
   }
-  return [...items.values()].sort((area, area2) => area2.area - area.area).slice(0, maxLevels).map(height2 => height2.height / height2.area).sort((heightA, heightB) => heightA - heightB);
+  return [...items.values()].sort((area, areaRight) => areaRight.area - area.area).slice(0, maxLevels).map(height => height.height / height.area).sort((heightA, heightB) => heightA - heightB);
 }
 export function createContactShadowController({
   THREE,
@@ -83,7 +83,7 @@ export function createContactShadowController({
     offsetZ: -0.22,
     surfaceEnabled: true,
     surfaceOpacity: 0.28,
-    surfaceResolution: 512,
+    surfaceResolution: 256,
     maxSurfaceLevels: 32
   };
   const stats = {
@@ -139,10 +139,10 @@ export function createContactShadowController({
   blurQuad.frustumCulled = false;
   blurScene.add(blurQuad);
   function ensureFloor(floorId) {
-    const id4 = String(floorId);
-    if (!floorsById.has(id4)) {
-      floorsById.set(id4, {
-        id: id4,
+    const id = String(floorId);
+    if (!floorsById.has(id)) {
+      floorsById.set(id, {
+        id: id,
         target: null,
         ping: null,
         surface: null,
@@ -184,16 +184,16 @@ export function createContactShadowController({
         }
       });
     }
-    return floorsById.get(id4);
+    return floorsById.get(id);
   }
   function invalidate(floorIds, keepCache = false) {
     if (!disposed) {
       if (!keepCache) {
         preferCache = false;
         const has = floorIds == null ? null : new Set(typeof floorIds == "string" ? [floorIds] : floorIds);
-        for (const [cacheEntryKey, id2] of contentCache) {
-          if (!has || has.has(id2.id)) {
-            disposeFloorTargets(id2);
+        for (const [cacheEntryKey, id] of contentCache) {
+          if (!has || has.has(id.id)) {
+            disposeFloorTargets(id);
             contentCache.delete(cacheEntryKey);
           }
         }
@@ -216,10 +216,10 @@ export function createContactShadowController({
   }
   function setEnabled(nextEnabled) {
     settings.enabled = !!nextEnabled;
-    for (const uniforms3 of floorsById.values()) {
-      uniforms3.fade = null;
-      uniforms3.uniforms.plan2ContactOpacity.value = settings.enabled && !suspended && uniforms3.target ? settings.opacity : 0;
-      uniforms3.uniforms.plan2SurfaceOpacity.value = settings.enabled && !suspended && settings.surfaceEnabled && uniforms3.surface ? settings.surfaceOpacity : 0;
+    for (const uniforms of floorsById.values()) {
+      uniforms.fade = null;
+      uniforms.uniforms.plan2ContactOpacity.value = settings.enabled && !suspended && uniforms.target ? settings.opacity : 0;
+      uniforms.uniforms.plan2SurfaceOpacity.value = settings.enabled && !suspended && settings.surfaceEnabled && uniforms.surface ? settings.surfaceOpacity : 0;
     }
     requestFrame();
   }
@@ -245,33 +245,33 @@ export function createContactShadowController({
     }
   }
   function updateTransforms() {
-    for (const uniforms4 of floorsById.values()) {
-      if (!uniforms4.bakedFrame) {
+    for (const uniforms of floorsById.values()) {
+      if (!uniforms.bakedFrame) {
         continue;
       }
-      uniforms4.anchor?.updateWorldMatrix(true, false);
-      const providerFrame = frameProvider?.(uniforms4.id);
-      const frameMatrix = providerFrame || uniforms4.anchor?.matrixWorld;
+      uniforms.anchor?.updateWorldMatrix(true, false);
+      const providerFrame = frameProvider?.(uniforms.id);
+      const frameMatrix = providerFrame || uniforms.anchor?.matrixWorld;
       if (frameMatrix) {
-        uniforms4.uniforms.plan2ContactTransform.value.copy(frameMatrix).invert().premultiply(uniforms4.bakedFrame);
+        uniforms.uniforms.plan2ContactTransform.value.copy(frameMatrix).invert().premultiply(uniforms.bakedFrame);
       }
-      if (inMotion && uniforms4.target && frameMatrix && !uniforms4.fade && uniforms4.uniforms.plan2ContactOpacity.value === 0) {
+      if (inMotion && uniforms.target && frameMatrix && !uniforms.fade && uniforms.uniforms.plan2ContactOpacity.value === 0) {
         let anchorInRoot = false;
-        for (let parent = uniforms4.anchor; parent; parent = parent.parent) {
+        for (let parent = uniforms.anchor; parent; parent = parent.parent) {
           if (parent === getRoot()) {
             anchorInRoot = true;
             break;
           }
         }
         if (providerFrame || anchorInRoot) {
-          uniforms4.uniforms.plan2ContactOpacity.value = settings.enabled ? settings.opacity : 0;
-          uniforms4.uniforms.plan2SurfaceOpacity.value = settings.enabled && settings.surfaceEnabled && uniforms4.surface ? settings.surfaceOpacity : 0;
+          uniforms.uniforms.plan2ContactOpacity.value = settings.enabled ? settings.opacity : 0;
+          uniforms.uniforms.plan2SurfaceOpacity.value = settings.enabled && settings.surfaceEnabled && uniforms.surface ? settings.surfaceOpacity : 0;
         }
       }
     }
   }
-  function depthMaterialFor(map3, forSurface = false) {
-    const materialCacheKey = JSON.stringify([forSurface, map3.map?.uuid, map3.alphaMap?.uuid, map3.alphaTest, map3.displacementMap?.uuid, map3.displacementScale, map3.displacementBias, settings.maxHeight, settings.heightFalloff, settings.offsetX, settings.offsetZ]);
+  function depthMaterialFor(map, forSurface = false) {
+    const materialCacheKey = JSON.stringify([forSurface, map.map?.uuid, map.alphaMap?.uuid, map.alphaTest, map.displacementMap?.uuid, map.displacementScale, map.displacementBias, settings.maxHeight, settings.heightFalloff, settings.offsetX, settings.offsetZ]);
     if (depthMaterialCache.has(materialCacheKey)) {
       const cachedMaterial = depthMaterialCache.get(materialCacheKey);
       depthMaterialCache.delete(materialCacheKey);
@@ -281,12 +281,12 @@ export function createContactShadowController({
     const onBeforeCompile = new THREE.MeshDepthMaterial({
       depthPacking: THREE.BasicDepthPacking,
       side: THREE.DoubleSide,
-      map: map3.map ?? null,
-      alphaMap: map3.alphaMap ?? null,
-      alphaTest: map3.alphaTest ?? 0,
-      displacementMap: map3.displacementMap ?? null,
-      displacementScale: map3.displacementScale ?? 1,
-      displacementBias: map3.displacementBias ?? 0
+      map: map.map ?? null,
+      alphaMap: map.alphaMap ?? null,
+      alphaTest: map.alphaTest ?? 0,
+      displacementMap: map.displacementMap ?? null,
+      displacementScale: map.displacementScale ?? 1,
+      displacementBias: map.displacementBias ?? 0
     });
     onBeforeCompile.onBeforeCompile = vertexShader => {
       vertexShader.uniforms.contactNear = {
@@ -321,40 +321,40 @@ export function createContactShadowController({
       depthMaterialCache.delete(oldestMaterialKey);
     }
   }
-  function disposeFloorTargets(uniforms5) {
-    uniforms5.fade = null;
-    uniforms5.anchor = null;
-    uniforms5.bakedFrame = null;
-    uniforms5.target?.dispose();
-    uniforms5.ping?.dispose();
-    uniforms5.surface?.dispose();
-    uniforms5.lookup?.dispose();
-    uniforms5.target = null;
-    uniforms5.ping = null;
-    uniforms5.surface = null;
-    uniforms5.lookup = null;
-    uniforms5.uniforms.plan2ContactMap.value = blackTexture;
-    uniforms5.uniforms.plan2ContactOpacity.value = 0;
-    uniforms5.uniforms.plan2SurfaceMap.value = blackTexture;
-    uniforms5.uniforms.plan2SurfaceLookup.value = blackTexture;
-    uniforms5.uniforms.plan2SurfaceOpacity.value = 0;
+  function disposeFloorTargets(uniforms) {
+    uniforms.fade = null;
+    uniforms.anchor = null;
+    uniforms.bakedFrame = null;
+    uniforms.target?.dispose();
+    uniforms.ping?.dispose();
+    uniforms.surface?.dispose();
+    uniforms.lookup?.dispose();
+    uniforms.target = null;
+    uniforms.ping = null;
+    uniforms.surface = null;
+    uniforms.lookup = null;
+    uniforms.uniforms.plan2ContactMap.value = blackTexture;
+    uniforms.uniforms.plan2ContactOpacity.value = 0;
+    uniforms.uniforms.plan2SurfaceMap.value = blackTexture;
+    uniforms.uniforms.plan2SurfaceLookup.value = blackTexture;
+    uniforms.uniforms.plan2SurfaceOpacity.value = 0;
   }
-  function ensureContactTargets(target4, size) {
-    if (target4.target?.width !== size || target4.target?.height !== size) {
-      disposeFloorTargets(target4);
-      target4.target = new THREE.WebGLRenderTarget(size, size, {
+  function ensureContactTargets(target, size) {
+    if (target.target?.width !== size || target.target?.height !== size) {
+      disposeFloorTargets(target);
+      target.target = new THREE.WebGLRenderTarget(size, size, {
         format: THREE.RedFormat,
         generateMipmaps: false
       });
     }
-    target4.ping ||= new THREE.WebGLRenderTarget(size, size, {
+    target.ping ||= new THREE.WebGLRenderTarget(size, size, {
       format: THREE.RedFormat,
       depthBuffer: false,
       generateMipmaps: false
     });
     return {
-      target: target4.target,
-      ping: target4.ping
+      target: target.target,
+      ping: target.ping
     };
   }
   function bakeSurfaceShadows(surface, casterMeshes, forEach, captureScene, clone, floorHeight, hiddenMaterial) {
@@ -385,32 +385,32 @@ export function createContactShadowController({
     const surfaceDepth = min2.max.z - min2.min.z;
     const surfaceCenterX = (min2.min.x + min2.max.x) / 2;
     const surfaceCenterZ = (min2.min.z + min2.max.z) / 2;
-    const position2 = new THREE.OrthographicCamera(-surfaceWidth / 2, surfaceWidth / 2, surfaceDepth / 2, -surfaceDepth / 2, 0.001, 1.5);
-    position2.up.set(0, 0, 1);
-    const dispose3 = new THREE.WebGLRenderTarget(tileSize, tileSize, {
+    const position = new THREE.OrthographicCamera(-surfaceWidth / 2, surfaceWidth / 2, surfaceDepth / 2, -surfaceDepth / 2, 0.001, 1.5);
+    position.up.set(0, 0, 1);
+    const dispose = new THREE.WebGLRenderTarget(tileSize, tileSize, {
       format: THREE.RedFormat,
       generateMipmaps: false
     });
-    const dispose4 = new THREE.WebGLRenderTarget(tileSize, tileSize, {
+    const renderTarget = new THREE.WebGLRenderTarget(tileSize, tileSize, {
       format: THREE.RedFormat,
       depthBuffer: false,
       generateMipmaps: false
     });
-    const has2 = new Map();
-    const resolveSurfaceMaterial = material => isContactCasterMaterial(material) ? (has2.has(material) || has2.set(material, depthMaterialFor(material, true)), has2.get(material)) : hiddenMaterial;
+    const has = new Map();
+    const resolveSurfaceMaterial = material => isContactCasterMaterial(material) ? (has.has(material) || has.set(material, depthMaterialFor(material, true)), has.get(material)) : hiddenMaterial;
     try {
-      forEach.forEach((material2, index) => {
+      forEach.forEach((material, index) => {
         const map = casterMeshes[index].material;
-        material2.material = Array.isArray(map) ? map.map(resolveSurfaceMaterial) : resolveSurfaceMaterial(map);
+        material.material = Array.isArray(map) ? map.map(resolveSurfaceMaterial) : resolveSurfaceMaterial(map);
       });
       for (let levelIndex = 0; levelIndex < length.length; levelIndex++) {
-        position2.position.set(surfaceCenterX, floorHeight + length[levelIndex] + 0.025, surfaceCenterZ);
-        position2.lookAt(surfaceCenterX, position2.position.y + 1, surfaceCenterZ);
-        position2.updateMatrixWorld(true);
+        position.position.set(surfaceCenterX, floorHeight + length[levelIndex] + 0.025, surfaceCenterZ);
+        position.lookAt(surfaceCenterX, position.position.y + 1, surfaceCenterZ);
+        position.updateMatrixWorld(true);
         renderer.autoClear = true;
         renderer.setClearColor(0, 1);
-        renderer.setRenderTarget(dispose3);
-        renderer.render(captureScene, position2);
+        renderer.setRenderTarget(dispose);
+        renderer.render(captureScene, position);
         stats.surfacePasses++;
         const copyBlur = (texture, destination, stepX, stepY) => {
           blurMaterial.uniforms.source.value = texture.texture;
@@ -418,13 +418,13 @@ export function createContactShadowController({
           renderer.setRenderTarget(destination);
           renderer.render(blurScene, blurCamera);
         };
-        copyBlur(dispose3, dispose4, 0.045 / surfaceWidth, 0);
-        copyBlur(dispose4, dispose3, 0, 0.045 / surfaceDepth);
-        copyBlur(dispose3, dispose4, 0.02 / surfaceWidth, 0);
-        copyBlur(dispose4, dispose3, 0, 0.02 / surfaceDepth);
+        copyBlur(dispose, renderTarget, 0.045 / surfaceWidth, 0);
+        copyBlur(renderTarget, dispose, 0, 0.045 / surfaceDepth);
+        copyBlur(dispose, renderTarget, 0.02 / surfaceWidth, 0);
+        copyBlur(renderTarget, dispose, 0, 0.02 / surfaceDepth);
         surface.surface.viewport.set(levelIndex % gridSide * tileSize, Math.floor(levelIndex / gridSide) * tileSize, tileSize, tileSize);
         renderer.autoClear = false;
-        copyBlur(dispose3, surface.surface, 0, 0);
+        copyBlur(dispose, surface.surface, 0, 0);
       }
       surface.surface.viewport.set(0, 0, atlasSize, atlasSize);
       const lookupRange = length.at(-1) + 0.05;
@@ -458,22 +458,22 @@ export function createContactShadowController({
       surface.uniforms.plan2SurfaceOpacity.value = settings.enabled ? settings.surfaceOpacity : 0;
       stats.surfaceCaptures++;
     } finally {
-      dispose3.dispose();
-      dispose4.dispose();
+      dispose.dispose();
+      renderTarget.dispose();
       trimDepthMaterials();
       blurMaterial.uniforms.source.value = blackTexture;
     }
   }
-  function bakeFloorShadows(uniforms6, receiverMeshes, length2) {
+  function bakeFloorShadows(uniforms, receiverMeshes, length) {
     const min3 = new THREE.Box3();
     for (const receiver of receiverMeshes) {
       min3.union(new THREE.Box3().setFromObject(receiver));
     }
-    if (min3.isEmpty() || !length2.length) {
-      disposeFloorTargets(uniforms6);
+    if (min3.isEmpty() || !length.length) {
+      disposeFloorTargets(uniforms);
       return;
     }
-    const element3 = min3.max.y;
+    const element = min3.max.y;
     min3.min.x -= 0.25;
     min3.min.z -= 0.25;
     min3.max.x += 0.25;
@@ -482,35 +482,35 @@ export function createContactShadowController({
     const boundsDepth = Math.max(min3.max.z - min3.min.z, 0.1);
     const mapSize = Math.min(settings.resolution, renderer.capabilities.maxTextureSize);
     const {
-      target: texture2,
-      ping: texture3
-    } = ensureContactTargets(uniforms6, mapSize);
-    const position3 = new THREE.OrthographicCamera(-boundsWidth / 2, boundsWidth / 2, boundsDepth / 2, -boundsDepth / 2, 0.001, settings.maxHeight + 0.06);
+      target: texture,
+      ping: targets
+    } = ensureContactTargets(uniforms, mapSize);
+    const position = new THREE.OrthographicCamera(-boundsWidth / 2, boundsWidth / 2, boundsDepth / 2, -boundsDepth / 2, 0.001, settings.maxHeight + 0.06);
     const centerX = (min3.min.x + min3.max.x) / 2;
     const centerZ = (min3.min.z + min3.max.z) / 2;
-    position3.position.set(centerX, element3 - 0.06, centerZ);
-    position3.up.set(0, 0, 1);
-    position3.lookAt(centerX, element3 + 1, centerZ);
-    position3.updateMatrixWorld(true);
+    position.position.set(centerX, element - 0.06, centerZ);
+    position.up.set(0, 0, 1);
+    position.lookAt(centerX, element + 1, centerZ);
+    position.updateMatrixWorld(true);
     const add = new THREE.Scene();
-    const has3 = new Map();
-    const push2 = [];
+    const has = new Map();
+    const push = [];
     const visible = new THREE.MeshDepthMaterial();
     visible.visible = false;
-    const resolveDepthMaterial = material => isContactCasterMaterial(material) ? (has3.has(material) || has3.set(material, depthMaterialFor(material)), has3.get(material)) : visible;
-    for (const material5 of length2) {
-      const material4 = material5.clone(false);
-      material4.material = Array.isArray(material5.material) ? material5.material.map(resolveDepthMaterial) : resolveDepthMaterial(material5.material);
-      material4.matrix.copy(material5.matrixWorld);
-      material4.matrixWorld.copy(material5.matrixWorld);
-      material4.matrixAutoUpdate = false;
-      material4.matrixWorldAutoUpdate = true;
-      material4.castShadow = false;
-      material4.receiveShadow = false;
-      material4.layers.set(0);
-      material4.frustumCulled = false;
-      add.add(material4);
-      push2.push(material4);
+    const resolveDepthMaterial = material => isContactCasterMaterial(material) ? (has.has(material) || has.set(material, depthMaterialFor(material)), has.get(material)) : visible;
+    for (const material of length) {
+      const clone = material.clone(false);
+      clone.material = Array.isArray(material.material) ? material.material.map(resolveDepthMaterial) : resolveDepthMaterial(material.material);
+      clone.matrix.copy(material.matrixWorld);
+      clone.matrixWorld.copy(material.matrixWorld);
+      clone.matrixAutoUpdate = false;
+      clone.matrixWorldAutoUpdate = true;
+      clone.castShadow = false;
+      clone.receiveShadow = false;
+      clone.layers.set(0);
+      clone.frustumCulled = false;
+      add.add(clone);
+      push.push(clone);
     }
     const viewport = {
       target: renderer.getRenderTarget(),
@@ -531,32 +531,32 @@ export function createContactShadowController({
       renderer.autoClear = true;
       renderer.setScissorTest(false);
       renderer.setClearColor(0, 1);
-      renderer.setRenderTarget(texture2);
-      renderer.render(add, position3);
+      renderer.setRenderTarget(texture);
+      renderer.render(add, position);
       stats.capturePasses += 1;
       const blurPass = blurScale => {
-        blurMaterial.uniforms.source.value = texture2.texture;
+        blurMaterial.uniforms.source.value = texture.texture;
         blurMaterial.uniforms.stepSize.value.set(settings.blurMeters * blurScale / boundsWidth, 0);
-        renderer.setRenderTarget(texture3);
+        renderer.setRenderTarget(targets);
         renderer.render(blurScene, blurCamera);
-        blurMaterial.uniforms.source.value = texture3.texture;
+        blurMaterial.uniforms.source.value = targets.texture;
         blurMaterial.uniforms.stepSize.value.set(0, settings.blurMeters * blurScale / boundsDepth);
-        renderer.setRenderTarget(texture2);
+        renderer.setRenderTarget(texture);
         renderer.render(blurScene, blurCamera);
       };
       blurPass(1);
       blurPass(0.4);
       if (settings.surfaceEnabled) {
-        bakeSurfaceShadows(uniforms6, length2, push2, add, min3, element3, visible);
+        bakeSurfaceShadows(uniforms, length, push, add, min3, element, visible);
       } else {
-        uniforms6.uniforms.plan2SurfaceOpacity.value = 0;
+        uniforms.uniforms.plan2SurfaceOpacity.value = 0;
       }
-      uniforms6.uniforms.plan2ContactMap.value = texture2.texture;
-      uniforms6.uniforms.plan2ContactBounds.value.set(min3.min.x, min3.min.z, boundsWidth, boundsDepth);
-      uniforms6.uniforms.plan2ContactY.value = element3;
-      uniforms6.uniforms.plan2ContactOpacity.value = settings.enabled ? settings.opacity : 0;
+      uniforms.uniforms.plan2ContactMap.value = texture.texture;
+      uniforms.uniforms.plan2ContactBounds.value.set(min3.min.x, min3.min.z, boundsWidth, boundsDepth);
+      uniforms.uniforms.plan2ContactY.value = element;
+      uniforms.uniforms.plan2ContactOpacity.value = settings.enabled ? settings.opacity : 0;
     } catch (error) {
-      disposeFloorTargets(uniforms6);
+      disposeFloorTargets(uniforms);
       throw error;
     } finally {
       renderer.setViewport(viewport.viewport);
@@ -569,7 +569,7 @@ export function createContactShadowController({
       renderer.xr.enabled = viewport.webxrEnabled;
       visible.dispose();
       trimDepthMaterials();
-      for (const dispose of push2) {
+      for (const dispose of push) {
         if (dispose.isInstancedMesh) {
           dispose.dispose();
         }
@@ -581,16 +581,16 @@ export function createContactShadowController({
       blurMaterial.uniforms.source.value = blackTexture;
     }
   }
-  function geometryContentKey(attributes2) {
-    const version2 = attributes2.attributes.position?.version + ":" + attributes2.index?.version;
-    const version3 = geometryKeyCache.get(attributes2);
-    if (version3?.version === version2 && version3.position === attributes2.attributes.position && version3.index === attributes2.index) {
-      return version3.key;
+  function geometryContentKey(attributes) {
+    const version = attributes.attributes.position?.version + ":" + attributes.index?.version;
+    const entry = geometryKeyCache.get(attributes);
+    if (entry?.version === version && entry.position === attributes.attributes.position && entry.index === attributes.index) {
+      return entry.key;
     }
     let key;
-    if (attributes2.parameters && attributes2.attributes.position?.version === 0 && !(attributes2.index?.version > 0)) {
+    if (attributes.parameters && attributes.attributes.position?.version === 0 && !(attributes.index?.version > 0)) {
       try {
-        key = JSON.stringify([attributes2.type, attributes2.parameters], (jsonKey, jsonValue) => jsonKey === "uuid" ? undefined : jsonValue);
+        key = JSON.stringify([attributes.type, attributes.parameters], (jsonKey, jsonValue) => jsonKey === "uuid" ? undefined : jsonValue);
       } catch {}
     }
     if (!key) {
@@ -611,20 +611,20 @@ export function createContactShadowController({
         }
         return [data.itemSize, data.count, data.offset, data.data?.stride, hashA >>> 0, hashB >>> 0];
       };
-      key = JSON.stringify([hashAttribute(attributes2.attributes.position), hashAttribute(attributes2.index), (attributes2.morphAttributes.position || []).map(hashAttribute), attributes2.groups, attributes2.drawRange]);
+      key = JSON.stringify([hashAttribute(attributes.attributes.position), hashAttribute(attributes.index), (attributes.morphAttributes.position || []).map(hashAttribute), attributes.groups, attributes.drawRange]);
     }
-    geometryKeyCache.set(attributes2, {
-      version: version2,
+    geometryKeyCache.set(attributes, {
+      version: version,
       key,
-      position: attributes2.attributes.position,
-      index: attributes2.index
+      position: attributes.attributes.position,
+      index: attributes.index
     });
     return key;
   }
-  function floorContentKey(receivers3, clone2) {
-    const clone3 = clone2.clone().invert();
+  function floorContentKey(receivers, clone) {
+    const invert = clone.clone().invert();
     const relativeMatrices = matrixWorld => {
-      const localMatrix = clone3.clone().multiply(matrixWorld.matrixWorld);
+      const localMatrix = invert.clone().multiply(matrixWorld.matrixWorld);
       const roundElements = elements => elements.elements.map(element => Math.round(element * 10000));
       if (!matrixWorld.isInstancedMesh) {
         return roundElements(localMatrix);
@@ -637,8 +637,8 @@ export function createContactShadowController({
       }
       return push;
     };
-    const sortedJson = map2 => map2.map(item => JSON.stringify(item)).sort();
-    return JSON.stringify([enabled, sortedJson(receivers3.receivers.map(geometry => {
+    const sortedJson = map => map.map(item => JSON.stringify(item)).sort();
+    return JSON.stringify([settings, sortedJson(receivers.receivers.map(geometry => {
       const attributes = geometry.geometry;
       const version = attributes.attributes.position;
       const position = boundsCache.get(attributes);
@@ -650,13 +650,13 @@ export function createContactShadowController({
           box: attributes.boundingBox?.clone()
         });
       }
-      const min = boundsCache.get(attributes).box?.clone().applyMatrix4(clone3.clone().multiply(geometry.matrixWorld));
+      const min = boundsCache.get(attributes).box?.clone().applyMatrix4(invert.clone().multiply(geometry.matrixWorld));
       if (min) {
         return [...min.min.toArray(), ...min.max.toArray()].map(coord => Math.round(coord * 10000));
       } else {
         return null;
       }
-    })), sortedJson(receivers3.casters.map(material => {
+    })), sortedJson(receivers.casters.map(material => {
       const every = (Array.isArray(material.material) ? material.material : [material.material]).map(alphaTest => {
         const alphaTestValue = alphaTest.alphaTest || 0;
         const displacementMap = alphaTest.displacementMap;
@@ -667,55 +667,55 @@ export function createContactShadowController({
       return [geometryContentKey(material.geometry), material.isInstancedMesh ? material.count : null, material.morphTargetInfluences, relativeMatrices(material), uniformMaterials ? every.slice(0, 1) : every];
     }))]);
   }
-  const estimateTargetBytes = target3 => (target3.target ? target3.target.width * target3.target.height * (target3.target.texture.format === THREE.RedFormat ? 5 : 8) : 0) + (target3.ping ? target3.ping.width * target3.ping.height * (target3.ping.texture.format === THREE.RedFormat ? 1 : 4) : 0) + (target3.surface ? target3.surface.width * target3.surface.height * (target3.surface.texture.format === THREE.RedFormat ? 1 : 4) : 0) + (target3.lookup?.image?.data?.byteLength || 0);
-  function stashFloorCache(ping2) {
-    if (!ping2.target || !ping2.contentKey) {
+  const estimateTargetBytes = target => (target.target ? target.target.width * target.target.height * (target.target.texture.format === THREE.RedFormat ? 5 : 8) : 0) + (target.ping ? target.ping.width * target.ping.height * (target.ping.texture.format === THREE.RedFormat ? 1 : 4) : 0) + (target.surface ? target.surface.width * target.surface.height * (target.surface.texture.format === THREE.RedFormat ? 1 : 4) : 0) + (target.lookup?.image?.data?.byteLength || 0);
+  function stashFloorCache(ping) {
+    if (!ping.target || !ping.contentKey) {
       return;
     }
-    const cacheKey = JSON.stringify([ping2.id, ping2.contentKey]);
+    const cacheKey = JSON.stringify([ping.id, ping.contentKey]);
     const existingCache = contentCache.get(cacheKey);
     if (existingCache) {
       disposeFloorTargets(existingCache);
     }
-    ping2.ping?.dispose();
-    ping2.ping = null;
+    ping.ping?.dispose();
+    ping.ping = null;
     const cachedEntry = {
-      id: ping2.id,
-      contentKey: ping2.contentKey,
-      bakedFrame: ping2.bakedFrame,
-      target: ping2.target,
-      ping: ping2.ping,
-      surface: ping2.surface,
-      lookup: ping2.lookup,
-      uniforms: Object.fromEntries(Object.entries(ping2.uniforms).map(([uniformName, uniformState]) => [uniformName, {
+      id: ping.id,
+      contentKey: ping.contentKey,
+      bakedFrame: ping.bakedFrame,
+      target: ping.target,
+      ping: ping.ping,
+      surface: ping.surface,
+      lookup: ping.lookup,
+      uniforms: Object.fromEntries(Object.entries(ping.uniforms).map(([uniformName, uniformState]) => [uniformName, {
         value: uniformState.value?.clone && !uniformState.value.isTexture ? uniformState.value.clone() : uniformState.value
       }]))
     };
     contentCache.delete(cacheKey);
     contentCache.set(cacheKey, cachedEntry);
-    ping2.target = ping2.ping = ping2.surface = ping2.lookup = null;
-    ping2.uniforms.plan2ContactOpacity.value = ping2.uniforms.plan2SurfaceOpacity.value = 0;
-    ping2.fade = null;
+    ping.target = ping.ping = ping.surface = ping.lookup = null;
+    ping.uniforms.plan2ContactOpacity.value = ping.uniforms.plan2SurfaceOpacity.value = 0;
+    ping.fade = null;
   }
-  function restoreFloorCache(uniforms7, contentKey) {
-    const cacheKey = JSON.stringify([uniforms7.id, contentKey]);
-    const uniforms8 = contentCache.get(cacheKey);
-    if (!uniforms8) {
+  function restoreFloorCache(uniforms, contentKey) {
+    const cacheKey = JSON.stringify([uniforms.id, contentKey]);
+    const entry = contentCache.get(cacheKey);
+    if (!entry) {
       return false;
     }
     contentCache.delete(cacheKey);
-    stashFloorCache(uniforms7);
+    stashFloorCache(uniforms);
     for (const prop of ["target", "ping", "surface", "lookup", "contentKey", "bakedFrame"]) {
-      uniforms7[prop] = uniforms8[prop];
+      uniforms[prop] = entry[prop];
     }
-    for (const [uniformKey, uniformValue] of Object.entries(uniforms8.uniforms)) {
-      uniforms7.uniforms[uniformKey].value = uniformValue.value;
+    for (const [uniformKey, uniformValue] of Object.entries(entry.uniforms)) {
+      uniforms.uniforms[uniformKey].value = uniformValue.value;
     }
-    uniforms7.uniforms.plan2ContactOpacity.value = uniforms7.uniforms.plan2SurfaceOpacity.value = 0;
+    uniforms.uniforms.plan2ContactOpacity.value = uniforms.uniforms.plan2SurfaceOpacity.value = 0;
     return true;
   }
-  function pruneCache(has4) {
-    const idleFloors = [...floorsById.values()].filter(target => target.target && !has4.has(target.id)).sort((lastUsed, lastUsed2) => (lastUsed2.lastUsed || 0) - (lastUsed.lastUsed || 0));
+  function pruneCache(has) {
+    const idleFloors = [...floorsById.values()].filter(target => target.target && !has.has(target.id)).sort((lastUsed, lastUsedRight) => (lastUsedRight.lastUsed || 0) - (lastUsed.lastUsed || 0));
     let activeCacheBytes = 0;
     let cachedFloors = 0;
     for (const ping of idleFloors) {
@@ -750,7 +750,7 @@ export function createContactShadowController({
     }
     for (const fade of floorsById.values()) {
       if (fade.fade) {
-        const fadeT = Math.min(1, Math.max(0, (performance.now() - fade.fade.started) / 260));
+        const fadeT = Math.min(1, Math.max(0, (performance.now() - fade.fade.started) / 240));
         fade.uniforms.plan2ContactOpacity.value = fade.fade.from + (fade.fade.to - fade.fade.from) * fadeT;
         fade.uniforms.plan2SurfaceOpacity.value = fade.fade.fromSurface + (fade.fade.toSurface - fade.fade.fromSurface) * fadeT;
         if (fadeT === 1) {
@@ -776,115 +776,115 @@ export function createContactShadowController({
       return;
     }
     const rebuildAll = dirtyAll;
-    const has5 = new Set(dirtyFloors);
+    const has = new Set(dirtyFloors);
     updateWorldMatrix.updateWorldMatrix(true, true);
-    const has6 = new Map();
-    updateWorldMatrix.traverse(material3 => {
-      if (!material3.isMesh || !isVisibleInHierarchy(material3)) {
+    const map = new Map();
+    updateWorldMatrix.traverse(material => {
+      if (!material.isMesh || !isVisibleInHierarchy(material) || findUserData(material, "floorTransitionLeaving")) {
         return;
       }
-      const meshFloorId = String(findUserData(material3, "regionFloorId") ?? findUserData(material3, "floorId") ?? "default");
-      if (!rebuildAll && !has5.has(meshFloorId)) {
+      const meshFloorId = String(findUserData(material, "regionFloorId") ?? findUserData(material, "floorId") ?? "default");
+      if (!rebuildAll && !has.has(meshFloorId)) {
         return;
       }
-      const isReceiver = material3.userData?.regionReceiverKind === "floor";
-      const isCaster = material3.castShadow && findUserData(material3, "modelLayer") === "items" && (Array.isArray(material3.material) ? material3.material : [material3.material]).some(isContactCasterMaterial);
+      const isReceiver = material.userData?.regionReceiverKind === "floor";
+      const isCaster = material.castShadow && findUserData(material, "modelLayer") === "items" && (Array.isArray(material.material) ? material.material : [material.material]).some(isContactCasterMaterial);
       if (!!isReceiver || !!isCaster) {
-        if (!has6.has(meshFloorId)) {
-          has6.set(meshFloorId, {
+        if (!map.has(meshFloorId)) {
+          map.set(meshFloorId, {
             receivers: [],
             casters: []
           });
         }
         if (isReceiver) {
-          has6.get(meshFloorId).receivers.push(material3);
+          map.get(meshFloorId).receivers.push(material);
         }
         if (isCaster) {
-          has6.get(meshFloorId).casters.push(material3);
+          map.get(meshFloorId).casters.push(material);
         }
       }
     });
-    for (const id3 of floorsById.values()) {
-      if (!inMotion && (rebuildAll || has5.has(id3.id)) && !has6.has(id3.id)) {
+    for (const id of floorsById.values()) {
+      if (!inMotion && (rebuildAll || has.has(id.id)) && !map.has(id.id)) {
         if (preferCache) {
-          id3.uniforms.plan2ContactOpacity.value = 0;
-          id3.uniforms.plan2SurfaceOpacity.value = 0;
-          id3.fade = null;
+          id.uniforms.plan2ContactOpacity.value = 0;
+          id.uniforms.plan2SurfaceOpacity.value = 0;
+          id.fade = null;
         } else {
-          disposeFloorTargets(id3);
+          disposeFloorTargets(id);
         }
-        id3.casters = id3.instancedCasters = id3.receivers = 0;
+        id.casters = id.instancedCasters = id.receivers = 0;
       }
     }
-    const push3 = [];
+    const push = [];
     let buildsThisPass = 0;
-    for (const [floorKey, receivers2] of has6) {
-      const uniforms2 = ensureFloor(floorKey);
-      const matrixWorld2 = receivers2.receivers[0] || null;
-      const bakedFrame = frameProvider?.(floorKey)?.clone() || matrixWorld2?.matrixWorld.clone();
-      const contentKey = bakedFrame ? floorContentKey(receivers2, bakedFrame) : null;
-      if (preferCache && contentKey && uniforms2.contentKey !== contentKey) {
-        restoreFloorCache(uniforms2, contentKey);
+    for (const [floorKey, receivers] of map) {
+      const uniforms = ensureFloor(floorKey);
+      const matrixWorld = receivers.receivers[0] || null;
+      const bakedFrame = frameProvider?.(floorKey)?.clone() || matrixWorld?.matrixWorld.clone();
+      const contentKey = bakedFrame ? floorContentKey(receivers, bakedFrame) : null;
+      if (preferCache && contentKey && uniforms.contentKey !== contentKey) {
+        restoreFloorCache(uniforms, contentKey);
       }
-      const cacheHit = preferCache && contentKey && uniforms2.target && uniforms2.contentKey === contentKey && uniforms2.bakedFrame;
+      const cacheHit = preferCache && contentKey && uniforms.target && uniforms.contentKey === contentKey && uniforms.bakedFrame;
       if (!cacheHit && staggeredRebuild && buildsThisPass >= 1) {
-        push3.push(floorKey);
+        push.push(floorKey);
         continue;
       }
-      uniforms2.lastUsed = performance.now();
-      const element = uniforms2.uniforms.plan2ContactOpacity.value;
-      const element2 = uniforms2.uniforms.plan2SurfaceOpacity.value;
+      uniforms.lastUsed = performance.now();
+      const element = uniforms.uniforms.plan2ContactOpacity.value;
+      const value = uniforms.uniforms.plan2SurfaceOpacity.value;
       if (cacheHit) {
         stats.cacheHits++;
-        uniforms2.uniforms.plan2ContactOpacity.value = settings.enabled ? settings.opacity : 0;
-        uniforms2.uniforms.plan2SurfaceOpacity.value = settings.enabled && settings.surfaceEnabled && uniforms2.surface ? settings.surfaceOpacity : 0;
+        uniforms.uniforms.plan2ContactOpacity.value = settings.enabled ? settings.opacity : 0;
+        uniforms.uniforms.plan2SurfaceOpacity.value = settings.enabled && settings.surfaceEnabled && uniforms.surface ? settings.surfaceOpacity : 0;
       } else {
         buildsThisPass++;
         if (preferCache) {
-          stashFloorCache(uniforms2);
+          stashFloorCache(uniforms);
         }
-        bakeFloorShadows(uniforms2, receivers2.receivers, receivers2.casters);
-        uniforms2.contentKey = contentKey;
-        uniforms2.bakedFrame = bakedFrame;
-        uniforms2.uniforms.plan2ContactTransform.value.identity();
+        bakeFloorShadows(uniforms, receivers.receivers, receivers.casters);
+        uniforms.contentKey = contentKey;
+        uniforms.bakedFrame = bakedFrame;
+        uniforms.uniforms.plan2ContactTransform.value.identity();
       }
-      if (uniforms2.fade) {
-        uniforms2.fade.to = uniforms2.uniforms.plan2ContactOpacity.value;
-        uniforms2.fade.toSurface = uniforms2.uniforms.plan2SurfaceOpacity.value;
-        uniforms2.uniforms.plan2ContactOpacity.value = element;
-        uniforms2.uniforms.plan2SurfaceOpacity.value = element2;
+      if (uniforms.fade) {
+        uniforms.fade.to = uniforms.uniforms.plan2ContactOpacity.value;
+        uniforms.fade.toSurface = uniforms.uniforms.plan2SurfaceOpacity.value;
+        uniforms.uniforms.plan2ContactOpacity.value = element;
+        uniforms.uniforms.plan2SurfaceOpacity.value = value;
         requestFrame();
-      } else if (staggeredRebuild && element === 0 && uniforms2.uniforms.plan2ContactOpacity.value > 0) {
-        uniforms2.fade = {
+      } else if (staggeredRebuild && element === 0 && uniforms.uniforms.plan2ContactOpacity.value > 0) {
+        uniforms.fade = {
           started: performance.now(),
           from: element,
-          fromSurface: element2,
-          to: uniforms2.uniforms.plan2ContactOpacity.value,
-          toSurface: uniforms2.uniforms.plan2SurfaceOpacity.value
+          fromSurface: value,
+          to: uniforms.uniforms.plan2ContactOpacity.value,
+          toSurface: uniforms.uniforms.plan2SurfaceOpacity.value
         };
-        uniforms2.uniforms.plan2ContactOpacity.value = element;
-        uniforms2.uniforms.plan2SurfaceOpacity.value = element2;
+        uniforms.uniforms.plan2ContactOpacity.value = element;
+        uniforms.uniforms.plan2SurfaceOpacity.value = value;
         requestFrame();
       }
-      uniforms2.anchor = matrixWorld2;
-      uniforms2.casters = receivers2.casters.length;
-      uniforms2.receivers = receivers2.receivers.length;
-      uniforms2.instancedCasters = receivers2.casters.filter(isInstancedMesh => isInstancedMesh.isInstancedMesh).length;
+      uniforms.anchor = matrixWorld;
+      uniforms.casters = receivers.casters.length;
+      uniforms.receivers = receivers.receivers.length;
+      uniforms.instancedCasters = receivers.casters.filter(isInstancedMesh => isInstancedMesh.isInstancedMesh).length;
     }
     updateTransforms();
-    pruneCache(rebuildAll ? has6 : new Map([...floorsById.values()].filter(receivers => receivers.receivers > 0).map(id => [id.id, true])));
+    pruneCache(rebuildAll ? map : new Map([...floorsById.values()].filter(receivers => receivers.receivers > 0).map(id => [id.id, true])));
     stats.casters = stats.instancedCasters = stats.receivers = 0;
     for (const casters of floorsById.values()) {
       stats.casters += casters.casters;
       stats.instancedCasters += casters.instancedCasters;
       stats.receivers += casters.receivers;
     }
-    stats.floors = [...floorsById.values()].filter(target2 => target2.target && target2.uniforms.plan2ContactOpacity.value > 0).length;
+    stats.floors = [...floorsById.values()].filter(target => target.target && target.uniforms.plan2ContactOpacity.value > 0).length;
     stats.builds += 1;
     dirtyAll = false;
     dirtyFloors.clear();
-    push3.forEach(pendingFloorId => dirtyFloors.add(pendingFloorId));
-    staggeredRebuild = push3.length > 0;
+    push.forEach(pendingFloorId => dirtyFloors.add(pendingFloorId));
+    staggeredRebuild = push.length > 0;
     if (staggeredRebuild) {
       requestFrame();
     }
@@ -903,8 +903,8 @@ export function createContactShadowController({
       dirtyFloors.clear();
       lastRoot = null;
       floorsById.clear();
-      for (const dispose2 of depthMaterialCache.values()) {
-        dispose2.dispose();
+      for (const dispose of depthMaterialCache.values()) {
+        dispose.dispose();
       }
       depthMaterialCache.clear();
       blackTexture.dispose();

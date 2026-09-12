@@ -71,7 +71,9 @@ export function createNasStatus({
     revision,
     bindings = [],
     states = {},
-    enabled = false
+    enabled = false,
+    sizeScale = 1,
+    brightness = 1
   }) {
     if (disposed) {
       return;
@@ -122,10 +124,16 @@ export function createNasStatus({
               },
               viewportHeight: {
                 value: 900
+              },
+              sizeScale: {
+                value: 1
+              },
+              brightness: {
+                value: 1
               }
             },
-            vertexShader: "varying vec2 ledUv; uniform float viewportHeight; void main(){ledUv=uv;vec4 center=modelViewMatrix*vec4(0.0,0.0,0.0,1.0);vec4 clip=projectionMatrix*center;float physicalSize=length(modelMatrix[0].xyz);float minimumSize=24.0*clip.w/(max(viewportHeight,1.0)*projectionMatrix[1][1]);center.xy+=position.xy*max(physicalSize,minimumSize);gl_Position=projectionMatrix*center;}",
-            fragmentShader: "varying vec2 ledUv; uniform float pulse; void main(){float r=length(ledUv-0.5)*2.0;float core=1.0-smoothstep(0.28,0.50,r);float halo=pow(max(0.0,1.0-r),1.7)*0.8;float a=(core+halo)*pulse;if(a<0.005)discard;gl_FragColor=vec4(mix(vec3(0.06,1.0,0.20),vec3(0.48,1.0,0.60),core),min(a,1.0));}"
+            vertexShader: "varying vec2 ledUv; uniform float viewportHeight; uniform float sizeScale; void main(){ledUv=uv;vec4 center=modelViewMatrix*vec4(0.0,0.0,0.0,1.0);vec4 clip=projectionMatrix*center;float physicalSize=length(modelMatrix[0].xyz);float minimumSize=24.0*clip.w/(max(viewportHeight,1.0)*projectionMatrix[1][1]);center.xy+=position.xy*max(physicalSize,minimumSize)*sizeScale;gl_Position=projectionMatrix*center;}",
+            fragmentShader: "varying vec2 ledUv; uniform float pulse; uniform float brightness; void main(){float r=length(ledUv-0.5)*2.0;float core=1.0-smoothstep(0.28,0.50,r);float halo=pow(max(0.0,1.0-r),1.7)*0.8;float a=min((core+halo)*pulse,1.0)*brightness;if(a<0.005)discard;gl_FragColor=vec4(mix(vec3(0.06,1.0,0.20),vec3(0.48,1.0,0.60),core),a);}"
           });
           const mesh = new THREE.Mesh(sharedGeometry, material);
           mesh.name = "nas-status-" + binding.id;
@@ -177,6 +185,10 @@ export function createNasStatus({
       if (!entry) {
         continue;
       }
+      const uniforms = entry.mesh.material.uniforms;
+      visibilityChanged ||= uniforms.sizeScale.value !== sizeScale || uniforms.brightness.value !== brightness;
+      uniforms.sizeScale.value = sizeScale;
+      uniforms.brightness.value = brightness;
       const deviceState = nasDeviceState(binding, states);
       const visible = enabled && deviceState.on;
       visibilityChanged ||= entry.mesh.visible !== visible;

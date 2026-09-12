@@ -254,7 +254,7 @@ export function presenceHistoryBuckets(history = [], currentState = null, nowMs 
       state: element?.value,
       lastChanged: element?.timestamp
     }
-  })).filter(sample => Number.isFinite(sample.timestamp)).sort((timestamp2, timestamp3) => timestamp2.timestamp - timestamp3.timestamp);
+  })).filter(sample => Number.isFinite(sample.timestamp)).sort((timestamp, timestampRight) => timestamp.timestamp - timestampRight.timestamp);
   const timestamp = presenceStateTimestamp(currentState);
   if (currentState && Number.isFinite(timestamp)) {
     samples.push({
@@ -262,7 +262,7 @@ export function presenceHistoryBuckets(history = [], currentState = null, nowMs 
       state: readState(currentState)
     });
   }
-  samples.sort((timestamp2, timestamp3) => timestamp2.timestamp - timestamp3.timestamp);
+  samples.sort((timestamp, timestampRight) => timestamp.timestamp - timestampRight.timestamp);
   const buckets = [];
   const count = Math.max(1, Math.min(288, Math.round(Number(bucketCount) || 48)));
   let sampleIndex = 0;

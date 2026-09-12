@@ -573,9 +573,9 @@ export function registerComponentTemplate(template) {
 }
 export function listComponentTemplates(scope, uiPackId = "ui.base") {
   const typeOrder = COMPONENT_TYPE_GROUPS[scope] || [];
-  return [...templateRegistry.values()].filter(template => template.uiPackId === uiPackId && template.scopes?.includes(scope)).sort((id, id2) => {
+  return [...templateRegistry.values()].filter(template => template.uiPackId === uiPackId && template.scopes?.includes(scope)).sort((id, idRight) => {
     const orderA = typeOrder.indexOf(id.id);
-    const orderB = typeOrder.indexOf(id2.id);
+    const orderB = typeOrder.indexOf(idRight.id);
     return (orderA < 0 ? Number.MAX_SAFE_INTEGER : orderA) - (orderB < 0 ? Number.MAX_SAFE_INTEGER : orderB);
   });
 }

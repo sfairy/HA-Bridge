@@ -2,7 +2,7 @@ export const RENDER_CACHE_VERSION = "i3d-light-delta-20260907-v5";
 export function stableCacheJSON(value) {
   return JSON.stringify(value, (key, nested) => nested && typeof nested == "object" && !Array.isArray(nested) ? Object.fromEntries(Object.keys(nested).sort().map(sortedKey => [sortedKey, nested[sortedKey]])) : nested);
 }
-export function sha256(input) {
+export function sha(input) {
   const encoded = new TextEncoder().encode(input);
   const byteLength = encoded.length;
   const padded = new Uint8Array(Math.ceil((byteLength + 9) / 64) * 64);
@@ -37,16 +37,16 @@ export function sha256(input) {
     }
     let [a, b, c, d, e, f, g, h] = workingHash;
     for (let round = 0; round < 64; round++) {
-      const temp1 = h + (rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25)) + (e & f ^ ~e & g) + roundConstants[round] + schedule[round] >>> 0;
-      const temp2 = (rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22)) + (a & b ^ a & c ^ b & c) >>> 0;
+      const value = h + (rotateRight(e, 6) ^ rotateRight(e, 11) ^ rotateRight(e, 25)) + (e & f ^ ~e & g) + roundConstants[round] + schedule[round] >>> 0;
+      const item = (rotateRight(a, 2) ^ rotateRight(a, 13) ^ rotateRight(a, 22)) + (a & b ^ a & c ^ b & c) >>> 0;
       h = g;
       g = f;
       f = e;
-      e = d + temp1 >>> 0;
+      e = d + value >>> 0;
       d = c;
       c = b;
       b = a;
-      a = temp1 + temp2 >>> 0;
+      a = value + item >>> 0;
     }
     [a, b, c, d, e, f, g, h].forEach((lane, laneIndex) => {
       workingHash[laneIndex] = workingHash[laneIndex] + lane >>> 0;
@@ -55,7 +55,7 @@ export function sha256(input) {
   return workingHash.map(lane => lane.toString(16).padStart(8, "0")).join("");
 }
 export function lightLayerKey(baseDescriptor, lampEntry) {
-  return sha256(stableCacheJSON({
+  return sha(stableCacheJSON({
     version: RENDER_CACHE_VERSION,
     base: baseDescriptor,
     lamp: lampEntry.item,
@@ -256,7 +256,7 @@ export function createRenderCache({
           y,
           width: Math.min(1024, width - x),
           height: Math.min(1024, height - y),
-          key: sha256(cacheKey + ":tile-v1:" + width + ":" + height + ":" + x + ":" + y)
+          key: sha(cacheKey + ":tile-v1:" + width + ":" + height + ":" + x + ":" + y)
         });
       }
     }

@@ -278,20 +278,21 @@
                         <div id="snap-settings-panel" class="snap-settings-panel" hidden>
                             <header><strong>吸附设置</strong><small>按住 S 临时关闭</small></header>
                             <div class="snap-option-grid"> <label><input type="checkbox"
-                                        data-snap-setting="snapEndpoints" checked="checked"><span>端点</span></label>
-                                <label><input type="checkbox" data-snap-setting="snapIntersections"
+                                        data-snap-setting="snapEndpoints" name="snap-setting-snapEndpoints" checked="checked"><span>端点</span></label>
+                                <label><input type="checkbox" data-snap-setting="snapIntersections" name="snap-setting-snapIntersections"
                                         checked="checked"><span>交点</span></label> <label><input type="checkbox"
-                                        data-snap-setting="snapSegments" checked="checked"><span>墙线</span></label>
-                                <label><input type="checkbox" data-snap-setting="snapOrthogonal"
+                                        data-snap-setting="snapSegments" name="snap-setting-snapSegments" checked="checked"><span>墙线</span></label>
+                                <label><input type="checkbox" data-snap-setting="snapOrthogonal" name="snap-setting-snapOrthogonal"
                                         checked="checked"><span>垂直优先</span></label> <label><input type="checkbox"
-                                        data-snap-setting="snapAngles" checked="checked"><span>15° 角度</span></label>
-                                <label><input type="checkbox" data-snap-setting="snapGrid"
+                                        data-snap-setting="snapAngles" name="snap-setting-snapAngles" checked="checked"><span>15° 角度</span></label>
+                                <label><input type="checkbox" data-snap-setting="snapGrid" name="snap-setting-snapGrid"
                                         checked="checked"><span>网格</span></label> </div> <label
                                 class="snap-distance"><span>吸附距离</span><input id="snap-tolerance" type="range" min="6"
                                     max="24" step="1" value="13"><output id="snap-tolerance-value">13
                                     px</output></label>
                         </div>
-                    </div> <button id="finish-wall" type="button" title="未闭合的墙线不会生成地面" hidden>结束绘制</button> <button
+                    </div> <button type="button" data-tool="flooropening" title="拖出矩形，仅切除当前层楼板">楼板洞口</button> <button
+                        id="finish-wall" type="button" title="未闭合的墙线不会生成地面" hidden>结束绘制</button> <button
                         id="delete-selection" class="danger-action" type="button" disabled="disabled">删除</button>
                     <button id="rotate-plan-view" type="button" title="顺时针旋转画布 90°"
                         aria-label="顺时针旋转画布 90 度">旋转</button> <button id="fit-view" type="button">适应画布</button>
@@ -375,43 +376,43 @@
                             <section>
                                 <h3>整体</h3>
                                 <div class="base-light-control-grid"> <label><span>曝光</span><input
-                                            data-base-light-control="exposure" type="number" min="0.5" max="2"
+                                            data-base-light-control="exposure" name="base-light-control-exposure" type="number" min="0.5" max="2"
                                             step="0.05" value="1.05"></label> <label><span>半球光</span><input
-                                            data-base-light-control="hemisphereIntensity" type="number" min="0" max="3"
+                                            data-base-light-control="hemisphereIntensity" name="base-light-control-hemisphereIntensity" type="number" min="0" max="3"
                                             step="0.05" value="0.58"></label> <label><span>环境光</span><input
-                                            data-base-light-control="ambientIntensity" type="number" min="0" max="2"
+                                            data-base-light-control="ambientIntensity" name="base-light-control-ambientIntensity" type="number" min="0" max="2"
                                             step="0.05" value="0.16"></label> </div>
                             </section>
                             <section>
                                 <h3>主光与阴影</h3>
                                 <div class="base-light-control-grid"> <label><span>强度</span><input
-                                            data-base-light-control="mainIntensity" type="number" min="0" max="5"
+                                            data-base-light-control="mainIntensity" name="base-light-control-mainIntensity" type="number" min="0" max="5"
                                             step="0.05" value="2.05"></label> <label><span>水平角</span><input
-                                            data-base-light-control="mainAzimuth" type="number" min="-180" max="180"
+                                            data-base-light-control="mainAzimuth" name="base-light-control-mainAzimuth" type="number" min="-180" max="180"
                                             step="5" value="139"></label> <label><span>高度角</span><input
-                                            data-base-light-control="mainElevation" type="number" min="5" max="89"
+                                            data-base-light-control="mainElevation" name="base-light-control-mainElevation" type="number" min="5" max="89"
                                             step="5" value="55"></label> <label><span>阴影浓度</span><input
-                                            data-base-light-control="mainShadowIntensity" type="number" min="0" max="1"
+                                            data-base-light-control="mainShadowIntensity" name="base-light-control-mainShadowIntensity" type="number" min="0" max="1"
                                             step="0.05" value="0.18"></label> </div>
                             </section>
                             <section>
                                 <h3>侧面补光</h3>
                                 <div class="base-light-control-grid"> <label><span>强度</span><input
-                                            data-base-light-control="fillIntensity" type="number" min="0" max="3"
+                                            data-base-light-control="fillIntensity" name="base-light-control-fillIntensity" type="number" min="0" max="3"
                                             step="0.05" value="0.16"></label> <label><span>水平角</span><input
-                                            data-base-light-control="fillAzimuth" type="number" min="-180" max="180"
+                                            data-base-light-control="fillAzimuth" name="base-light-control-fillAzimuth" type="number" min="-180" max="180"
                                             step="5" value="-48"></label> <label><span>高度角</span><input
-                                            data-base-light-control="fillElevation" type="number" min="0" max="89"
+                                            data-base-light-control="fillElevation" name="base-light-control-fillElevation" type="number" min="0" max="89"
                                             step="5" value="28"></label> </div>
                             </section>
                             <section>
                                 <h3>顶部补光</h3>
                                 <div class="base-light-control-grid"> <label><span>强度</span><input
-                                            data-base-light-control="topIntensity" type="number" min="0" max="3"
+                                            data-base-light-control="topIntensity" name="base-light-control-topIntensity" type="number" min="0" max="3"
                                             step="0.05" value="0.12"></label> <label><span>水平角</span><input
-                                            data-base-light-control="topAzimuth" type="number" min="-180" max="180"
+                                            data-base-light-control="topAzimuth" name="base-light-control-topAzimuth" type="number" min="-180" max="180"
                                             step="5" value="90"></label> <label><span>高度角</span><input
-                                            data-base-light-control="topElevation" type="number" min="0" max="89"
+                                            data-base-light-control="topElevation" name="base-light-control-topElevation" type="number" min="0" max="89"
                                             step="5" value="86"></label> </div>
                             </section>
                             <div class="base-light-actions"><button id="reset-base-lighting" class="reset-base-lighting"
@@ -706,7 +707,7 @@
                 </section>
                 <section>
                     <div class="export-section-heading"><span>01</span>
-                        <div><strong>输出尺寸</strong><small>默认默认 · WebP · sRGB</small></div>
+                        <div><strong>输出尺寸</strong><small>栖光默认 · WebP · sRGB</small></div>
                     </div>
                     <div class="export-size-control-row">
                         <div class="export-size-fields"><label>宽度<input id="export-width" type="number" min="320"
@@ -763,16 +764,16 @@
                         <div><strong>导出内容</strong><small>勾选需要保存的图片、设备图层和数据</small></div>
                     </div>
                     <ul id="export-file-list" class="export-file-list">
-                        <li><label><input type="checkbox" data-export-file="background"
+                        <li><label><input type="checkbox" data-export-file="background" name="export-file-background"
                                     checked="checked"><span>00底图.webp</span></label><small>背景与网格</small></li>
-                        <li><label><input type="checkbox" data-export-file="backgroundWithPlan"
+                        <li><label><input type="checkbox" data-export-file="backgroundWithPlan" name="export-file-backgroundWithPlan"
                                     checked="checked"><span>00底图带户型.webp</span></label><small>背景与关灯户型合成图</small></li>
-                        <li><label><input type="checkbox" data-export-file="floorPlan"
+                        <li><label><input type="checkbox" data-export-file="floorPlan" name="export-file-floorPlan"
                                     checked="checked"><span>00户型图.webp</span></label><small>透明背景户型、铭牌与描边</small></li>
                         <div id="export-group-files"></div>
-                        <li><label><input type="checkbox" data-export-file="dataLights"
+                        <li><label><input type="checkbox" data-export-file="dataLights" name="export-file-dataLights"
                                     checked="checked"><span>lights.json</span></label><small>灯光配置</small></li>
-                        <li><label><input type="checkbox" data-export-file="dataScene"
+                        <li><label><input type="checkbox" data-export-file="dataScene" name="export-file-dataScene"
                                     checked="checked"><span>scene.json</span></label><small>完整户型数据</small></li>
                     </ul>
                 </section>
@@ -802,7 +803,7 @@
     <div id="floor-context-menu" class="light-group-context-menu" hidden><button type="button"
             data-floor-action="rename">重命名</button><button type="button" data-floor-action="delete">删除楼层</button></div>
     <script type="module"
-        src="/bridge-static/3d-studio/studio-app.js?v=20260910-three-0186-compat-v1-20260911-studio-security-v1-floor-handoff-v1-reflection-visible-floor-v1"></script>
+        src="/bridge-static/3d-studio/studio-app.js?v=20260910-three-0186-compat-v1-20260911-studio-security-v1-floor-handoff-v1-reflection-visible-floor-v1-module-tabs-v1-20260912-presence-camera-fields-v1-glasscabinet-tdz-fix-v1"></script>
 </body>
 
 </html>

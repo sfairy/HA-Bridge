@@ -3,16 +3,6 @@ export function createCoverFeedback({
   travelTime = 2000
 } = {}) {
   const items = new Map();
-  const displayPosition = (position, actual) => {
-    if (typeof position == "number" && Number.isFinite(position)) {
-      return Math.max(0, Math.min(100, position));
-    }
-    const state = String(actual?.state || "").trim().toLowerCase();
-    if (state === "closed" || state === "closing") {
-      return 0;
-    }
-    return 100;
-  };
   function advanceMotion(entry, nowMs) {
     if (!entry.motion) {
       return false;
@@ -119,12 +109,12 @@ export function createCoverFeedback({
     }
     const stop = service.service === "stop_cover";
     const target = stop ? entry.position : service.service === "open_cover" ? 100 : service.service === "close_cover" ? 0 : service.data.position;
-    const fromPosition = displayPosition(entry.position, entry.actual);
+    const fromPosition = entry.position ?? 0;
     entry.intent = {
       stop,
       target,
       confirmed: false,
-      direction: Math.sign((target ?? fromPosition) - (target === fromPosition ? displayPosition(entry.actual.position, entry.actual) : fromPosition)),
+      direction: Math.sign((target ?? fromPosition) - (target === fromPosition ? entry.actual.position ?? fromPosition : fromPosition)),
       initialPosition: entry.actual.position,
       expires: now() + 15000
     };
@@ -156,7 +146,6 @@ export function createCoverFeedback({
     const isOpening = intent ? !intent.stop && intent.direction > 0 && !!entry.motion : actual.opening;
     const closing = intent ? !intent.stop && intent.direction < 0 && !!entry.motion : actual.closing;
     const state = entry.draft !== null ? entry.draft === 0 ? "closed" : "open" : intent ? isOpening ? "opening" : closing ? "closing" : entry.position === 0 ? "closed" : "open" : actual.state;
-    const pose = displayPosition(entry.draft ?? entry.position, actual);
     return {
       ...actual,
       state,
@@ -164,7 +153,7 @@ export function createCoverFeedback({
       opening: isOpening,
       closing,
       moving: isOpening || closing,
-      on: actual.available && (isOpening || pose > 0),
+      on: actual.available && (isOpening || (entry.draft ?? entry.position ?? 0) > 0),
       preview: !!intent,
       error: entry.error
     };
@@ -173,7 +162,7 @@ export function createCoverFeedback({
     let changed = false;
     for (const [entityId, entry] of items) {
       if (entry.intent?.expires <= nowMs) {
-        changed = fail(entityId, entry.token, "窗帘未响应，请重试。") || changed;
+        changed = fail(entityId, entry.token, "") || changed;
       }
       changed = advanceMotion(entry, nowMs) || changed;
     }

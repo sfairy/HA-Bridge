@@ -16,6 +16,7 @@ export function cacheObjectTransforms(root, Object3D) {
     let sx;
     let sy;
     let sz;
+    let lastParent;
     object.updateMatrix = function () {
       const {
         position,
@@ -23,10 +24,14 @@ export function cacheObjectTransforms(root, Object3D) {
         scale
       } = this;
       if (position.x === px && position.y === py && position.z === pz && quaternion.x === qx && quaternion.y === qy && quaternion.z === qz && quaternion.w === qw && scale.x === sx && scale.y === sy && scale.z === sz) {
-        this.matrixWorldNeedsUpdate = true;
+        if (this.parent !== lastParent) {
+          this.matrixWorldNeedsUpdate = true;
+        }
+        lastParent = this.parent;
         return;
       }
       originalUpdateMatrix.call(this);
+      lastParent = this.parent;
       px = position.x;
       py = position.y;
       pz = position.z;

@@ -75,9 +75,9 @@ export function renderRegisteredComponent(component, context) {
   fallback.className = "hb-unknown-component";
   const element = document.createElement("strong");
   element.textContent = "控件尚未实现";
-  const element2 = document.createElement("span");
-  element2.textContent = component.type;
-  fallback.append(element, element2);
+  const elementCurrent = document.createElement("span");
+  elementCurrent.textContent = component.type;
+  fallback.append(element, elementCurrent);
   return fallback;
 }
 function resolveAssetUrl(assetId) {
@@ -438,13 +438,13 @@ function at(component, context) {
     return climateEffectMode(state, effectDeviceType);
   }
 }
-function rt(component, states2) {
+function rt(component, states) {
   const entityId = component.bindings?.entity?.entityId || "";
-  const state = readState(states2.states?.get(entityId));
-  const deviceType = st(component, states2);
+  const state = readState(states.states?.get(entityId));
+  const deviceType = st(component, states);
   const labelDeviceType = resolveClimateDeviceType(component, state, entityId);
   const climateModeText = climateModeLabel(deviceType, labelDeviceType);
-  if (!climateIsPoweredOnForComponent(component, states2)) {
+  if (!climateIsPoweredOnForComponent(component, states)) {
     return climateModeText;
   }
   const targetTemperature = normalizeClimateCapabilities(state);
@@ -471,16 +471,16 @@ function ct(airflowMotion = {}, effectMode = "other") {
   const airflowBlur = clampWithDefault(airflowMotion.airflowBlur, 0, 30, 6);
   const airflowSpeed = clampWithDefault(airflowMotion.airflowSpeed, 0.3, 12, 1);
   const pathStartY = 6;
-  const toFixed8 = pathStartY + (228 - pathStartY) * modeLabel;
-  const toFixed9 = pathStartY + (toFixed8 - pathStartY) * 0.63;
-  const toFixed10 = toFixed9 + (toFixed8 - toFixed9) * 0.56;
+  const toFixed = pathStartY + (228 - pathStartY) * modeLabel;
+  const value = pathStartY + (toFixed - pathStartY) * 0.63;
+  const toFixedCurrent = value + (toFixed - value) * 0.56;
   const spreadWidth = Math.min(70, Math.sqrt(climateCapabilities / 100) * 44);
   const hashNoise = noiseSeed => {
     const hashFract = Math.sin(noiseSeed * 12.9898) * 43758.5453;
     return hashFract - Math.floor(hashFract);
   };
   const length = Math.max(3, Math.min(12, Math.round(airflowDensity * 8)));
-  const length2 = Math.max(2, Math.min(4, Math.round(1.5 + airflowDensity * 1.2)));
+  const max = Math.max(2, Math.min(4, Math.round(1.5 + airflowDensity * 1.2)));
   const map = Array.from({
     length
   }, (_laneUnused, laneIndex) => {
@@ -492,25 +492,25 @@ function ct(airflowMotion = {}, effectMode = "other") {
   const maxLaneX = Math.max(...map);
   const curveRoom = airflowCurve >= 0 ? 168 - maxLaneX : minLaneX - 12;
   const curveOffset = airflowCurve * Math.max(0, curveRoom);
-  const flatMap = map.map(toFixed5 => {
-    const toFixed6 = toFixed5 + curveOffset;
-    const toFixed7 = toFixed5 + curveOffset * 0.42;
-    return "M" + toFixed5.toFixed(2) + " " + pathStartY + "L" + toFixed5.toFixed(2) + " " + toFixed9.toFixed(2) + "C" + toFixed5.toFixed(2) + " " + toFixed10.toFixed(2) + " " + toFixed7.toFixed(2) + " " + toFixed8.toFixed(2) + " " + toFixed6.toFixed(2) + " " + toFixed8.toFixed(2);
+  const flatMap = map.map(item => {
+    const toFixedNext = item + curveOffset;
+    const toFixedPrevious = item + curveOffset * 0.42;
+    return "M" + item.toFixed(2) + " " + pathStartY + "L" + item.toFixed(2) + " " + value.toFixed(2) + "C" + item.toFixed(2) + " " + toFixedCurrent.toFixed(2) + " " + toFixedPrevious.toFixed(2) + " " + toFixed.toFixed(2) + " " + toFixedNext.toFixed(2) + " " + toFixed.toFixed(2);
   });
   const join = flatMap.flatMap((motionPath, pathIndex) => Array.from({
-    length: length2
+    length: max
   }, (_wispUnused, wispIndex) => {
     const value = pathIndex * 41 + wispIndex * 67 + 11;
     const toFixed = Math.max(8, Math.min(112, (34 + hashNoise(value) * 42 * (0.7 + airflowIrregularity * 0.3)) * deviceType));
     const wispHeight = Math.max(0.2, Math.min(14, (1.5 + hashNoise(value + 7) * 2.9) * airflowThickness));
-    const toFixed2 = airflowSpeed * (0.8 + hashNoise(value + 13) * 0.42 * (0.55 + airflowIrregularity * 0.45));
-    const toFixed3 = (wispIndex / length2 + pathIndex * 0.067 + (hashNoise(value + 19) - 0.5) * 0.08 * airflowIrregularity + 1) % 1;
-    const toFixed4 = Math.min(1, airflowStrength * (0.62 + hashNoise(value + 29) * 0.5));
+    const toFixedCurrent = airflowSpeed * (0.8 + hashNoise(value + 13) * 0.42 * (0.55 + airflowIrregularity * 0.45));
+    const toFixedNext = (wispIndex / max + pathIndex * 0.067 + (hashNoise(value + 19) - 0.5) * 0.08 * airflowIrregularity + 1) % 1;
+    const min = Math.min(1, airflowStrength * (0.62 + hashNoise(value + 29) * 0.5));
     const wispRects = "<rect x=\"" + (-toFixed / 2).toFixed(2) + "\" y=\"" + (-wispHeight * 1.3).toFixed(2) + "\" width=\"" + toFixed.toFixed(2) + "\" height=\"" + (wispHeight * 2.6).toFixed(2) + "\" rx=\"" + (wispHeight * 1.3).toFixed(2) + "\" fill=\"url(#wisp)\" filter=\"url(#glow)\"/><rect x=\"" + (-toFixed * 0.42).toFixed(2) + "\" y=\"" + (-wispHeight * 0.22).toFixed(2) + "\" width=\"" + (toFixed * 0.82).toFixed(2) + "\" height=\"" + (wispHeight * 0.44).toFixed(2) + "\" rx=\"" + (wispHeight * 0.22).toFixed(2) + "\" fill=\"url(#core)\"/>";
     if (entityId === "static") {
-      return "<g opacity=\"" + toFixed4.toFixed(3) + "\">" + wispRects + "<animateMotion path=\"" + motionPath + "\" dur=\"0.001s\" keyPoints=\"" + toFixed3.toFixed(4) + ";" + toFixed3.toFixed(4) + "\" keyTimes=\"0;1\" fill=\"freeze\" rotate=\"auto\"/></g>";
+      return "<g opacity=\"" + min.toFixed(3) + "\">" + wispRects + "<animateMotion path=\"" + motionPath + "\" dur=\"0.001s\" keyPoints=\"" + toFixedNext.toFixed(4) + ";" + toFixedNext.toFixed(4) + "\" keyTimes=\"0;1\" fill=\"freeze\" rotate=\"auto\"/></g>";
     } else {
-      return "<g opacity=\"0\">" + wispRects + "<animate attributeName=\"opacity\" values=\"0;" + toFixed4.toFixed(3) + ";" + toFixed4.toFixed(3) + ";0\" keyTimes=\"0;.06;.78;1\" dur=\"" + toFixed2.toFixed(3) + "s\" begin=\"" + (-toFixed2 * toFixed3).toFixed(3) + "s\" repeatCount=\"indefinite\"/><animateMotion path=\"" + motionPath + "\" dur=\"" + toFixed2.toFixed(3) + "s\" begin=\"" + (-toFixed2 * toFixed3).toFixed(3) + "s\" rotate=\"auto\" repeatCount=\"indefinite\"/></g>";
+      return "<g opacity=\"0\">" + wispRects + "<animate attributeName=\"opacity\" values=\"0;" + min.toFixed(3) + ";" + min.toFixed(3) + ";0\" keyTimes=\"0;.06;.78;1\" dur=\"" + toFixedCurrent.toFixed(3) + "s\" begin=\"" + (-toFixedCurrent * toFixedNext).toFixed(3) + "s\" repeatCount=\"indefinite\"/><animateMotion path=\"" + motionPath + "\" dur=\"" + toFixedCurrent.toFixed(3) + "s\" begin=\"" + (-toFixedCurrent * toFixedNext).toFixed(3) + "s\" rotate=\"auto\" repeatCount=\"indefinite\"/></g>";
     }
   }));
   const svgMarkup = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 180 240\" preserveAspectRatio=\"none\"><defs><linearGradient id=\"bed\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"" + state + "\" stop-opacity=\"0\"/><stop offset=\".22\" stop-color=\"" + state + "\" stop-opacity=\".25\"/><stop offset=\".58\" stop-color=\"" + state + "\" stop-opacity=\".8\"/><stop offset=\"1\" stop-color=\"" + state + "\" stop-opacity=\"0\"/></linearGradient><linearGradient id=\"wisp\"><stop offset=\"0\" stop-color=\"" + state + "\" stop-opacity=\"0\"/><stop offset=\".2\" stop-color=\"" + state + "\" stop-opacity=\".18\"/><stop offset=\".52\" stop-color=\"" + state + "\"/><stop offset=\".78\" stop-color=\"" + state + "\" stop-opacity=\".52\"/><stop offset=\"1\" stop-color=\"" + state + "\" stop-opacity=\"0\"/></linearGradient><linearGradient id=\"core\"><stop offset=\"0\" stop-color=\"" + state + "\" stop-opacity=\"0\"/><stop offset=\".34\" stop-color=\"" + state + "\" stop-opacity=\".12\"/><stop offset=\".58\" stop-color=\"" + state + "\"/><stop offset=\".82\" stop-color=\"" + state + "\" stop-opacity=\".28\"/><stop offset=\"1\" stop-color=\"" + state + "\" stop-opacity=\"0\"/></linearGradient><filter id=\"glow\" x=\"-120%\" y=\"-240%\" width=\"340%\" height=\"580%\"><feGaussianBlur stdDeviation=\"" + Math.max(0.2, airflowBlur * 1.35) + "\"/><feComponentTransfer><feFuncA type=\"linear\" slope=\"" + (airflowStrength <= 1 ? 1 : 1 + (airflowStrength - 1) * 0.9).toFixed(3) + "\"/></feComponentTransfer></filter></defs><g transform=\"rotate(" + presentationMode + " 90 120)\">" + flatMap.map(strokePath => "<path d=\"" + strokePath + "\" fill=\"none\" stroke=\"url(#bed)\" stroke-width=\"1.2\" stroke-linecap=\"round\" opacity=\"" + Math.min(1, airflowStrength * 0.075).toFixed(3) + "\"/>").join("") + join.join("") + "</g></svg>";
@@ -542,7 +542,7 @@ function buildLineChartSeries(component, entityId, stateEntry, context = 24) {
   const text = (Array.isArray(component.history?.get(entityId)?.points) ? component.history.get(entityId).points : []).map(timestamp => ({
     timestamp: Date.parse(timestamp.timestamp),
     value: Number(timestamp.value)
-  })).filter(timestamp2 => Number.isFinite(timestamp2.timestamp) && Number.isFinite(timestamp2.value));
+  })).filter(timestamp => Number.isFinite(timestamp.timestamp) && Number.isFinite(timestamp.value));
   const powerStateEntry = Date.now();
   if (Number.isFinite(stateEntry)) {
     text.push({
@@ -550,9 +550,9 @@ function buildLineChartSeries(component, entityId, stateEntry, context = 24) {
       value: stateEntry
     });
   }
-  text.sort((timestamp4, timestamp5) => timestamp4.timestamp - timestamp5.timestamp);
-  const length3 = text.filter((timestamp3, sampleIndex) => sampleIndex === 0 || timestamp3.timestamp !== text[sampleIndex - 1].timestamp || timestamp3.value !== text[sampleIndex - 1].value);
-  if (!length3.length) {
+  text.sort((timestamp, timestampRight) => timestamp.timestamp - timestampRight.timestamp);
+  const length = text.filter((timestamp, sampleIndex) => sampleIndex === 0 || timestamp.timestamp !== text[sampleIndex - 1].timestamp || timestamp.value !== text[sampleIndex - 1].value);
+  if (!length.length) {
     return [];
   }
   const hours = Math.round(clampWithDefault(context, 1, 168, 24));
@@ -562,15 +562,15 @@ function buildLineChartSeries(component, entityId, stateEntry, context = 24) {
   let pointCursor = 0;
   let latestPoint = null;
   for (let hourStep = 0; hourStep <= hours; hourStep += 1) {
-    const timestamp6 = hourStep === hours ? powerStateEntry : windowStart + hourStep * msPerHour;
-    while (pointCursor < length3.length && length3[pointCursor].timestamp <= timestamp6) {
-      latestPoint = length3[pointCursor];
+    const timestamp = hourStep === hours ? powerStateEntry : windowStart + hourStep * msPerHour;
+    while (pointCursor < length.length && length[pointCursor].timestamp <= timestamp) {
+      latestPoint = length[pointCursor];
       pointCursor += 1;
     }
-    const samplePoint = latestPoint || length3[pointCursor] || length3[0];
+    const samplePoint = latestPoint || length[pointCursor] || length[0];
     if (samplePoint) {
       push.push({
-        timestamp: timestamp6,
+        timestamp: timestamp,
         value: samplePoint.value
       });
     }
@@ -728,11 +728,11 @@ registerComponent("image", {
     return image;
   }
 });
-function dt(timestamp, states3) {
+function dt(timestamp, states) {
   if (!timestamp) {
     return false;
   }
-  const options = states3?.states?.get?.(String(timestamp));
+  const options = states?.states?.get?.(String(timestamp));
   const normalizedState = String(options?.newState?.state ?? options?.state ?? "").toLowerCase();
   return ["on", "true", "1", "open", "opening", "active", "playing"].includes(normalizedState);
 }
@@ -768,10 +768,10 @@ registerComponent("floorplan-auto-diagram", {
       element.className = "hb-floorplan-auto-diagram-loading";
       element.innerHTML = "<i aria-hidden=\"true\"></i><strong>正在加载3D户型…</strong>";
       root.append(element);
-      const element2 = document.createElement("div");
-      element2.className = "hb-floorplan-auto-diagram-preview-hint";
-      element2.textContent = properties.interactionMode === "view" ? "拖动旋转 · 右键平移 · 滚轮缩放" : "拖动控件调整位置，右下角调整大小";
-      root.append(element2);
+      const elementCurrent = document.createElement("div");
+      elementCurrent.className = "hb-floorplan-auto-diagram-preview-hint";
+      elementCurrent.textContent = properties.interactionMode === "view" ? "拖动旋转 · 右键平移 · 滚轮缩放" : "拖动控件调整位置，右下角调整大小";
+      root.append(elementCurrent);
       return root;
     }
     const baseImage = document.createElement("img");
@@ -1096,23 +1096,23 @@ registerComponent("light-statistics", {
       element.append(iconOrCount);
     }
     if (showTitle) {
-      const element2 = document.createElement("strong");
-      element2.className = "hb-light-statistics-title";
-      element2.textContent = String(properties.title || "数量");
-      applyTextStroke(element2, properties.titleWeight, clampWithDefault(properties.titleSize, 8, 200, 32));
-      element.append(element2);
+      const elementCurrent = document.createElement("strong");
+      elementCurrent.className = "hb-light-statistics-title";
+      elementCurrent.textContent = String(properties.title || "数量");
+      applyTextStroke(elementCurrent, properties.titleWeight, clampWithDefault(properties.titleSize, 8, 200, 32));
+      element.append(elementCurrent);
     }
     if (showCount) {
       const spanEl = document.createElement("span");
       spanEl.className = "hb-light-statistics-count";
-      const element2 = document.createElement("b");
-      element2.textContent = summary.total ? String(summary.on) : "--";
-      applyTextStroke(element2, properties.countWeight, clampWithDefault(properties.countSize, 8, 200, 34));
-      spanEl.append(element2);
+      const elementCurrent = document.createElement("b");
+      elementCurrent.textContent = summary.total ? String(summary.on) : "--";
+      applyTextStroke(elementCurrent, properties.countWeight, clampWithDefault(properties.countSize, 8, 200, 34));
+      spanEl.append(elementCurrent);
       if (summary.total) {
-        const element3 = document.createElement("em");
-        element3.textContent = " / " + summary.total;
-        spanEl.append(element3);
+        const element = document.createElement("em");
+        element.textContent = " / " + summary.total;
+        spanEl.append(element);
       }
       element.append(spanEl);
     }
@@ -1309,18 +1309,18 @@ const iconButtonRenderer = {
       iconEl.style.webkitMaskImage = "url(\"" + iconUrl + "\")";
       if (isDeviceButton) {
         const clamped = clampWithDefault(properties.iconSize, 1, 100, 28);
-        const clamped2 = clampWithDefault(properties.badgeSize ?? clamped, 1, 100, clamped);
-        const clamped3 = clampWithDefault(properties.symbolSize ?? clamped * 0.5, 1, 100, clamped * 0.5);
-        const clamped4 = clampWithDefault(clamped3 / clamped2 * 100, 1, 100, 50);
-        iconEl.style.width = clamped4 + "%";
-        iconEl.style.height = clamped4 + "%";
+        const clampedCurrent = clampWithDefault(properties.badgeSize ?? clamped, 1, 100, clamped);
+        const clampedNext = clampWithDefault(properties.symbolSize ?? clamped * 0.5, 1, 100, clamped * 0.5);
+        const clampedPrevious = clampWithDefault(clampedNext / clampedCurrent * 100, 1, 100, 50);
+        iconEl.style.width = clampedPrevious + "%";
+        iconEl.style.height = clampedPrevious + "%";
         const spanEl = document.createElement("span");
         spanEl.className = "hb-device-button-icon-badge" + (isActive ? " active" : "");
         if (properties.iconVisible === false) {
           spanEl.style.visibility = "hidden";
         }
-        spanEl.style.width = clamped2 * unit + "px";
-        spanEl.style.height = clamped2 * unit + "px";
+        spanEl.style.width = clampedCurrent * unit + "px";
+        spanEl.style.height = clampedCurrent * unit + "px";
         spanEl.style.setProperty("--device-badge-color", safeCssColor(properties.badgeColor, "#5b5e66"));
         spanEl.style.setProperty("--device-badge-opacity", clampWithDefault(properties.badgeOpacity, 0, 1, 0.58) * 100 + "%");
         spanEl.append(iconEl);
@@ -1344,21 +1344,21 @@ const iconButtonRenderer = {
       element.style.visibility = "hidden";
     }
     const secondarySize = clampWithDefault(properties.secondarySize, 5, 80, 10);
-    const element2 = document.createElement("small");
-    element2.textContent = isDeviceButton ? String(properties.secondaryText || "").trim() || (entityId ? formatEntityState(stateEntry, entityId, {
+    const elementCurrent = document.createElement("small");
+    elementCurrent.textContent = isDeviceButton ? String(properties.secondaryText || "").trim() || (entityId ? formatEntityState(stateEntry, entityId, {
       ...context,
       component
     }) : "未选择实体") : String(properties.secondaryText || "MAIN LIGHT");
-    element2.style.color = safeCssColor(properties.secondaryColor || properties.secondaryOffColor || properties.secondaryOnColor, "#75777d");
-    element2.style.opacity = isDeviceButton ? "1" : String(clampWithDefault(isActive ? properties.secondaryOnOpacity : properties.secondaryOffOpacity, 0, 1, 1));
-    element2.style.fontSize = secondarySize * unit + "px";
-    element2.style.letterSpacing = clampWithDefault(properties.secondarySpacing, -20, 100, 0.7) * unit + "px";
-    applyTextStroke(element2, properties.secondaryWeight, secondarySize);
-    element2.hidden = isDeviceButton && properties.secondaryTextVisible === false && properties.hiddenContentClickable !== true;
+    elementCurrent.style.color = safeCssColor(properties.secondaryColor || properties.secondaryOffColor || properties.secondaryOnColor, "#75777d");
+    elementCurrent.style.opacity = isDeviceButton ? "1" : String(clampWithDefault(isActive ? properties.secondaryOnOpacity : properties.secondaryOffOpacity, 0, 1, 1));
+    elementCurrent.style.fontSize = secondarySize * unit + "px";
+    elementCurrent.style.letterSpacing = clampWithDefault(properties.secondarySpacing, -20, 100, 0.7) * unit + "px";
+    applyTextStroke(elementCurrent, properties.secondaryWeight, secondarySize);
+    elementCurrent.hidden = isDeviceButton && properties.secondaryTextVisible === false && properties.hiddenContentClickable !== true;
     if (isDeviceButton && properties.secondaryTextVisible === false && properties.hiddenContentClickable === true) {
-      element2.style.visibility = "hidden";
+      elementCurrent.style.visibility = "hidden";
     }
-    textWrap.append(element, element2);
+    textWrap.append(element, elementCurrent);
     root.append(textWrap);
     return root;
   }
@@ -1369,12 +1369,12 @@ function renderDoorWindowSensor(component, properties, presentation, context) {
   const rawPoints = safeCssColor(properties.iconOnColor || properties.occupiedColor, "#ffffff");
   const timestamp = presentation.key === "occupied";
   const dedupedPoints = timestamp ? "打开" : presentation.key === "clear" ? "关闭" : presentation.key === "unavailable" ? "离线" : "未知";
-  const setAttribute2 = document.createElement("div");
-  setAttribute2.className = "hb-door-window-sensor is-" + (timestamp ? "open" : presentation.key);
-  setAttribute2.dataset.sensorState = timestamp ? "open" : presentation.key;
-  setAttribute2.style.setProperty("--hb-door-window-accent", rawPoints);
-  setAttribute2.setAttribute("role", "img");
-  setAttribute2.setAttribute("aria-label", "门窗传感器：" + dedupedPoints);
+  const setAttribute = document.createElement("div");
+  setAttribute.className = "hb-door-window-sensor is-" + (timestamp ? "open" : presentation.key);
+  setAttribute.dataset.sensorState = timestamp ? "open" : presentation.key;
+  setAttribute.style.setProperty("--hb-door-window-accent", rawPoints);
+  setAttribute.setAttribute("role", "img");
+  setAttribute.setAttribute("aria-label", "门窗传感器：" + dedupedPoints);
   const msPerHour = document.createElement("div");
   msPerHour.className = "hb-door-window-visual";
   const windowStart = Math.max(0.01, Number(context.document?.canvas?.componentScale || 1));
@@ -1385,82 +1385,82 @@ function renderDoorWindowSensor(component, properties, presentation, context) {
   lastPoint.className = "hb-door-window-frame";
   const className = document.createElement("span");
   className.className = "hb-door-window-panel left";
-  const className2 = document.createElement("span");
-  className2.className = "hb-door-window-panel right";
+  const element = document.createElement("span");
+  element.className = "hb-door-window-panel right";
   className.append(document.createElement("i"));
-  className2.append(document.createElement("i"));
-  lastPoint.append(className, className2);
-  const className3 = document.createElement("span");
-  className3.className = "hb-door-window-airflow";
+  element.append(document.createElement("i"));
+  lastPoint.append(className, element);
+  const classNameCurrent = document.createElement("span");
+  classNameCurrent.className = "hb-door-window-airflow";
   for (let step = 0; step < 3; step += 1) {
-    className3.append(document.createElement("i"));
+    classNameCurrent.append(document.createElement("i"));
   }
-  msPerHour.append(lastPoint, className3);
-  setAttribute2.append(msPerHour);
-  return setAttribute2;
+  msPerHour.append(lastPoint, classNameCurrent);
+  setAttribute.append(msPerHour);
+  return setAttribute;
 }
 function mt(entityId, context) {
   const stateEntry = safeCssColor(entityId.waterLeakColor, "#42c8ff");
   const state = context.key === "occupied";
   const waterLeakLabel = state ? "检测到水浸" : context.key === "clear" ? "正常" : context.key === "unavailable" ? "离线" : "未知";
-  const setAttribute3 = document.createElement("div");
-  setAttribute3.className = "hb-water-leak-sensor is-" + (state ? "wet" : context.key);
-  setAttribute3.dataset.sensorState = state ? "wet" : context.key;
-  setAttribute3.style.setProperty("--hb-water-leak-accent", stateEntry);
-  setAttribute3.setAttribute("role", "img");
-  setAttribute3.setAttribute("aria-label", "水浸传感器：" + waterLeakLabel);
-  const className4 = document.createElement("div");
-  className4.className = "hb-water-leak-visual";
-  const className5 = document.createElement("span");
-  className5.className = "hb-water-leak-puddle";
-  const className6 = document.createElement("span");
-  className6.className = "hb-water-leak-ripples";
+  const setAttribute = document.createElement("div");
+  setAttribute.className = "hb-water-leak-sensor is-" + (state ? "wet" : context.key);
+  setAttribute.dataset.sensorState = state ? "wet" : context.key;
+  setAttribute.style.setProperty("--hb-water-leak-accent", stateEntry);
+  setAttribute.setAttribute("role", "img");
+  setAttribute.setAttribute("aria-label", "水浸传感器：" + waterLeakLabel);
+  const className = document.createElement("div");
+  className.className = "hb-water-leak-visual";
+  const element = document.createElement("span");
+  element.className = "hb-water-leak-puddle";
+  const classNameCurrent = document.createElement("span");
+  classNameCurrent.className = "hb-water-leak-ripples";
   for (let rippleIndex = 0; rippleIndex < 3; rippleIndex += 1) {
-    className6.append(document.createElement("i"));
+    classNameCurrent.append(document.createElement("i"));
   }
   const svgNs = "http://www.w3.org/2000/svg";
-  const setAttribute4 = document.createElementNS(svgNs, "svg");
-  setAttribute4.setAttribute("class", "hb-water-leak-droplet");
-  setAttribute4.setAttribute("viewBox", "0 0 48 64");
-  setAttribute4.setAttribute("aria-hidden", "true");
-  const setAttribute5 = document.createElementNS(svgNs, "path");
-  setAttribute5.setAttribute("class", "body");
-  setAttribute5.setAttribute("d", "M24 3C20 10 6 27 6 40c0 11 8 20 18 20s18-9 18-20C42 27 28 10 24 3Z");
-  const setAttribute6 = document.createElementNS(svgNs, "path");
-  setAttribute6.setAttribute("class", "highlight");
-  setAttribute6.setAttribute("d", "M15 40c0-6 3-12 8-18");
-  setAttribute4.append(setAttribute5, setAttribute6);
-  className4.append(className5, className6, setAttribute4);
-  setAttribute3.append(className4);
-  return setAttribute3;
+  const nS = document.createElementNS(svgNs, "svg");
+  nS.setAttribute("class", "hb-water-leak-droplet");
+  nS.setAttribute("viewBox", "0 0 48 64");
+  nS.setAttribute("aria-hidden", "true");
+  const setAttributeCurrent = document.createElementNS(svgNs, "path");
+  setAttributeCurrent.setAttribute("class", "body");
+  setAttributeCurrent.setAttribute("d", "M24 3C20 10 6 27 6 40c0 11 8 20 18 20s18-9 18-20C42 27 28 10 24 3Z");
+  const setAttributeNext = document.createElementNS(svgNs, "path");
+  setAttributeNext.setAttribute("class", "highlight");
+  setAttributeNext.setAttribute("d", "M15 40c0-6 3-12 8-18");
+  nS.append(setAttributeCurrent, setAttributeNext);
+  className.append(element, classNameCurrent, nS);
+  setAttribute.append(className);
+  return setAttribute;
 }
 function ut(properties, presentation) {
   const accent = safeCssColor(properties.smokeColor, "#ffffff");
   const isWet = presentation.key === "occupied";
   const label = isWet ? "检测到烟雾" : presentation.key === "clear" ? "正常" : presentation.key === "unavailable" ? "离线" : "未知";
-  const setAttribute7 = document.createElement("div");
-  setAttribute7.className = "hb-smoke-sensor is-" + (isWet ? "alert" : presentation.key);
-  setAttribute7.dataset.sensorState = isWet ? "alert" : presentation.key;
-  setAttribute7.style.setProperty("--hb-smoke-accent", accent);
-  setAttribute7.setAttribute("role", "img");
-  setAttribute7.setAttribute("aria-label", "烟雾传感器：" + label);
-  const className7 = document.createElement("span");
-  className7.className = "hb-smoke-visual";
+  const setAttribute = document.createElement("div");
+  setAttribute.className = "hb-smoke-sensor is-" + (isWet ? "alert" : presentation.key);
+  setAttribute.dataset.sensorState = isWet ? "alert" : presentation.key;
+  setAttribute.style.setProperty("--hb-smoke-accent", accent);
+  setAttribute.setAttribute("role", "img");
+  setAttribute.setAttribute("aria-label", "烟雾传感器：" + label);
+  const className = document.createElement("span");
+  className.className = "hb-smoke-visual";
   const puddle = document.createElement("span");
   puddle.className = "hb-smoke-ground";
   const ripples = "http://www.w3.org/2000/svg";
-  const setAttribute8 = document.createElementNS(ripples, "svg");
-  setAttribute8.setAttribute("class", "hb-smoke-wisps");
-  setAttribute8.setAttribute("viewBox", "0 0 100 100");
-  setAttribute8.setAttribute("aria-hidden", "true");
+  const nS = document.createElementNS(ripples, "svg");
+  nS.setAttribute("class", "hb-smoke-wisps");
+  nS.setAttribute("viewBox", "0 0 100 100");
+  nS.setAttribute("aria-hidden", "true");
   for (const smokePathD of ["M27 94C12 76 41 67 27 49C13 32 38 22 30 7", "M50 97C34 79 65 69 49 50C35 33 61 21 52 3", "M73 93C60 77 86 66 72 48C59 32 83 22 75 8"]) {
     const setAttribute = document.createElementNS(ripples, "path");
     setAttribute.setAttribute("d", smokePathD);
-    setAttribute8.append(setAttribute);
+    nS.append(setAttribute);
   }
-  className7.append(puddle, setAttribute8);
-  setAttribute7.append(className7);
-  return setAttribute7;
+  className.append(puddle, nS);
+  setAttribute.append(className);
+  return setAttribute;
 }
 function ft(properties, presentation) {
   const accent = safeCssColor(properties.naturalGasColor, "#ffb347");
@@ -1600,13 +1600,13 @@ registerComponent("presence-sensor", {
     const floor = document.createElement("span");
     floor.className = "hb-presence-sensor-floor";
     halo.append(space, floor);
-    const orbit2 = document.createElement("span");
-    orbit2.className = "hb-presence-sensor-orbit";
+    const orbitCurrent = document.createElement("span");
+    orbitCurrent.className = "hb-presence-sensor-orbit";
     const traveler = document.createElement("span");
     traveler.className = "hb-presence-sensor-traveler";
     traveler.append(person);
-    orbit2.append(traveler);
-    visual.append(halo, orbit2);
+    orbitCurrent.append(traveler);
+    visual.append(halo, orbitCurrent);
     element.append(visual);
     if (!context.editable && motionConfig.motionEvent && presentation.key === "occupied") {
       const stateTimestamp = presenceStateTimestamp(stateEntry);
@@ -1675,17 +1675,17 @@ registerComponent("air-conditioner", {
     element.style.letterSpacing = clampWithDefault(properties.mainSpacing, -20, 100, 0.5) * unit + "px";
     applyTextStroke(element, properties.mainWeight, mainSize);
     const secondarySize = clampWithDefault(properties.secondarySize, 5, 80, 12);
-    const element2 = document.createElement("small");
-    element2.textContent = entityId ? rt(component, context) : "未选择实体";
-    element2.style.color = safeCssColor(properties.secondaryColor, "#75777d");
-    element2.style.fontSize = secondarySize * unit + "px";
-    element2.style.letterSpacing = clampWithDefault(properties.secondarySpacing, -20, 100, 0.3) * unit + "px";
-    applyTextStroke(element2, properties.secondaryWeight, secondarySize);
+    const elementCurrent = document.createElement("small");
+    elementCurrent.textContent = entityId ? rt(component, context) : "未选择实体";
+    elementCurrent.style.color = safeCssColor(properties.secondaryColor, "#75777d");
+    elementCurrent.style.fontSize = secondarySize * unit + "px";
+    elementCurrent.style.letterSpacing = clampWithDefault(properties.secondarySpacing, -20, 100, 0.3) * unit + "px";
+    applyTextStroke(elementCurrent, properties.secondaryWeight, secondarySize);
     if (properties.mainTextVisible !== false) {
       textWrap.append(element);
     }
     if (properties.secondaryTextVisible !== false) {
-      textWrap.append(element2);
+      textWrap.append(elementCurrent);
     }
     if (textWrap.childElementCount) {
       root.append(textWrap);
@@ -2338,17 +2338,17 @@ registerComponent("time", {
     const element = document.createElement("span");
     element.className = "hb-time-value";
     applyTextStroke(element, properties.fontWeight, fontSize);
-    const element2 = document.createElement("small");
-    element2.className = "hb-time-period";
-    applyTextStroke(element2, properties.fontWeight, fontSize * 0.5);
-    root.append(element, element2);
+    const elementCurrent = document.createElement("small");
+    elementCurrent.className = "hb-time-period";
+    applyTextStroke(elementCurrent, properties.fontWeight, fontSize * 0.5);
+    root.append(element, elementCurrent);
     const tick = () => {
       const now = new Date();
-      const element3 = formatLocalTime(properties, now);
+      const time = formatLocalTime(properties, now);
       root.dateTime = now.toISOString();
-      element.textContent = element3.value;
-      element2.textContent = element3.suffix;
-      element2.hidden = !element3.suffix;
+      element.textContent = time.value;
+      elementCurrent.textContent = time.suffix;
+      elementCurrent.hidden = !time.suffix;
     };
     tick();
     const intervalId = window.setInterval(tick, properties.showSeconds === true ? 250 : 1000);
@@ -2371,22 +2371,22 @@ registerComponent("date", {
     applyTextStroke(element, properties.primaryWeight, primarySize);
     element.style.letterSpacing = clampWithDefault(properties.primarySpacing, -20, 100, 1) + "px";
     root.append(element);
-    let element2 = null;
+    let elementCurrent = null;
     if (properties.showLunar === true) {
-      element2 = document.createElement("small");
-      element2.className = "hb-date-lunar";
-      element2.style.color = safeCssColor(properties.lunarColor, "#7f878c");
+      elementCurrent = document.createElement("small");
+      elementCurrent.className = "hb-date-lunar";
+      elementCurrent.style.color = safeCssColor(properties.lunarColor, "#7f878c");
       const now = clampWithDefault(properties.lunarSize, 10, 500, 24);
-      element2.style.fontSize = now + "px";
-      applyTextStroke(element2, properties.lunarWeight, now);
-      element2.style.letterSpacing = clampWithDefault(properties.lunarSpacing, -20, 100, 1) + "px";
-      root.append(element2);
+      elementCurrent.style.fontSize = now + "px";
+      applyTextStroke(elementCurrent, properties.lunarWeight, now);
+      elementCurrent.style.letterSpacing = clampWithDefault(properties.lunarSpacing, -20, 100, 1) + "px";
+      root.append(elementCurrent);
     }
     const tick = () => {
       const now = new Date();
       element.textContent = formatLocalDate(properties, now);
-      if (element2) {
-        element2.textContent = formatLunarDate(now);
+      if (elementCurrent) {
+        elementCurrent.textContent = formatLunarDate(now);
       }
     };
     tick();
@@ -2476,24 +2476,24 @@ registerComponent("line-chart", {
     valueEl.style.fontSize = Math.max(10, Number(component.position?.height || 300) * 0.12 * clampWithDefault(properties.valueScale, 10, 500, 100) / 100) + "px";
     valueEl.style.left = 95 + clampWithDefault(properties.valueOffsetX, -100, 100, 0) + "%";
     valueEl.style.top = 8 + clampWithDefault(properties.valueOffsetY, -100, 100, 0) + "%";
-    const element2 = document.createElement("strong");
-    element2.textContent = formatLineChartValue(currentValue, properties.statePrecision);
-    const element3 = document.createElement("small");
-    element3.textContent = text;
-    valueEl.append(element2, element3);
+    const elementCurrent = document.createElement("strong");
+    elementCurrent.textContent = formatLineChartValue(currentValue, properties.statePrecision);
+    const elementNext = document.createElement("small");
+    elementNext.textContent = text;
+    valueEl.append(elementCurrent, elementNext);
     element.append(valueEl);
     element.syncLineChartState = geometryOrState => {
       const minimum = Number.parseFloat(geometryOrState?.state);
-      element2.textContent = formatLineChartValue(minimum, properties.statePrecision);
-      element3.textContent = String(geometryOrState?.attributes?.unit_of_measurement || "");
+      elementCurrent.textContent = formatLineChartValue(minimum, properties.statePrecision);
+      elementNext.textContent = String(geometryOrState?.attributes?.unit_of_measurement || "");
       element.style.setProperty("--hb-chart-current-color", Number.isFinite(minimum) ? thresholdColor(thresholds, minimum) : "#68cc3e");
     };
-    const element4 = appendSvgChild(element, "svg", {
+    const child = appendSvgChild(element, "svg", {
       viewBox: "0 0 100 70",
       preserveAspectRatio: "none",
       "aria-hidden": "true"
     });
-    element4.classList.add("hb-line-chart-graph");
+    child.classList.add("hb-line-chart-graph");
     if (series.length) {
       const geometry = lineChartGeometry(series);
       const {
@@ -2504,7 +2504,7 @@ registerComponent("line-chart", {
       } = geometry;
       const path = smoothChartPath(points);
       const gradientId = (context.renderNamespace || "renderer") + "-chart-" + String(component.id || "").replace(/[^a-z0-9_-]/gi, "");
-      const defs = appendSvgChild(element4, "defs");
+      const defs = appendSvgChild(child, "defs");
       const gradient = appendSvgChild(defs, "linearGradient", {
         id: gradientId + "-line",
         gradientUnits: "userSpaceOnUse",
@@ -2517,18 +2517,18 @@ registerComponent("line-chart", {
         value: chartMinimum,
         color: "#68cc3e"
       }];
-      for (const element5 of [...stops].sort((element6, element7) => element7.value - element6.value)) {
+      for (const element of [...stops].sort((element, elementRight) => elementRight.value - element.value)) {
         appendSvgChild(gradient, "stop", {
-          offset: clampWithDefault((maximum - element5.value) / span * 100, 0, 100, 0) + "%",
-          "stop-color": element5.color
+          offset: clampWithDefault((maximum - element.value) / span * 100, 0, 100, 0) + "%",
+          "stop-color": element.color
         });
       }
-      appendSvgChild(element4, "path", {
+      appendSvgChild(child, "path", {
         d: path + " L100 70 L0 70 Z",
         fill: "url(#" + gradientId + "-line)",
         opacity: 0.18
       });
-      appendSvgChild(element4, "path", {
+      appendSvgChild(child, "path", {
         d: path,
         fill: "none",
         stroke: "url(#" + gradientId + "-line)",
@@ -2567,9 +2567,9 @@ export function renderLineChartDetails(component, context) {
     section.style.setProperty("--hb-chart-current-color", Number.isFinite(parsedState) ? thresholdColor(thresholds, parsedState) : "#68cc3e");
   };
   if (!series.length) {
-    const element2 = document.createElement("p");
-    element2.textContent = "暂无历史数据。";
-    section.append(element2);
+    const element = document.createElement("p");
+    element.textContent = "暂无历史数据。";
+    section.append(element);
     return section;
   }
   const compactHorizontal = component.properties?.compactDetailsHorizontal === true;
@@ -2605,10 +2605,10 @@ export function renderLineChartDetails(component, context) {
     value: geometry.minimum,
     color: "#68cc3e"
   }];
-  for (const element2 of [...stops].sort((element3, element4) => element4.value - element3.value)) {
+  for (const element of [...stops].sort((element, elementRight) => elementRight.value - element.value)) {
     appendSvgChild(gradient, "stop", {
-      offset: clampWithDefault((geometry.maximum - element2.value) / geometry.span * 100, 0, 100, 0) + "%",
-      "stop-color": element2.color
+      offset: clampWithDefault((geometry.maximum - element.value) / geometry.span * 100, 0, 100, 0) + "%",
+      "stop-color": element.color
     });
   }
   for (let valueTickIndex = 0; valueTickIndex <= 4; valueTickIndex += 1) {
@@ -2622,13 +2622,13 @@ export function renderLineChartDetails(component, context) {
       y2: y1,
       class: "hb-line-chart-details-grid"
     });
-    const element2 = appendSvgChild(svg, "text", {
+    const element = appendSvgChild(svg, "text", {
       x: plot.left - (compactHorizontal ? 8 : 12),
       y: y1 + 4,
       "text-anchor": "end",
       class: "hb-line-chart-details-axis-label"
     });
-    element2.textContent = formatLineChartValue(tickValue, component.properties?.statePrecision);
+    element.textContent = formatLineChartValue(tickValue, component.properties?.statePrecision);
   }
   const includeDate = Number(component.properties?.hours || 24) > 24;
   for (let timeTickIndex = 0; timeTickIndex <= 5; timeTickIndex += 1) {
@@ -2642,13 +2642,13 @@ export function renderLineChartDetails(component, context) {
       y2: plot.top + plot.height,
       class: "hb-line-chart-details-grid vertical"
     });
-    const element2 = appendSvgChild(svg, "text", {
+    const element = appendSvgChild(svg, "text", {
       x: x1,
       y: plot.top + plot.height + 25,
       "text-anchor": "middle",
       class: "hb-line-chart-details-axis-label"
     });
-    element2.textContent = formatChartTime(tickTime, includeDate);
+    element.textContent = formatChartTime(tickTime, includeDate);
   }
   appendSvgChild(svg, "line", {
     x1: plot.left,

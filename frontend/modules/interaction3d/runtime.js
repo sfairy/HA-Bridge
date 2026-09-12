@@ -260,21 +260,21 @@ export function mountInteraction3d(host, {
       reloadGeneration = true;
     }
     let streamShouldBeActive = authorized && !pendingViewRequests && !!properties.sceneId && !pageHiddenPaused && document.hidden !== true && document.visibilityState !== "hidden" && (!reloadGeneration || host.isConnected !== false);
-    for (let parentElement2 = host; streamShouldBeActive && parentElement2; parentElement2 = parentElement2.parentElement) {
-      const display = window.getComputedStyle?.(parentElement2);
-      if (parentElement2.hidden || parentElement2.inert || parentElement2.getAttribute?.("aria-hidden") === "true" || display?.display === "none" || ["hidden", "collapse"].includes(display?.visibility)) {
+    for (let parentElement = host; streamShouldBeActive && parentElement; parentElement = parentElement.parentElement) {
+      const display = window.getComputedStyle?.(parentElement);
+      if (parentElement.hidden || parentElement.inert || parentElement.getAttribute?.("aria-hidden") === "true" || display?.display === "none" || ["hidden", "collapse"].includes(display?.visibility)) {
         streamShouldBeActive = false;
       }
     }
     intersectionObserver.setActive(streamShouldBeActive);
   }
-  const collectObservedEntities = () => [...(properties.security?.presenceSensors || []), ...(properties.devices?.vacuums || []), ...(properties.devices?.vacuums || []).flatMap(relatedEntityIds2 => [...(relatedEntityIds2.relatedEntityIds || []).map(entityId2 => ({
-    entityId: entityId2
-  })), relatedEntityIds2.map, ...(relatedEntityIds2.shortcuts || [])].filter(Boolean)), ...(properties.lights || []), ...(properties.environment?.airConditioners || []), ...(properties.environment?.curtains || []), ...(properties.devices?.nas || []), ...(properties.devices?.televisions || []), ...(properties.devices?.televisions || []).filter(powerEntityId2 => powerEntityId2.powerEntityId).map(powerEntityId3 => ({
-    entityId: powerEntityId3.powerEntityId
+  const collectObservedEntities = () => [...(properties.security?.presenceSensors || []), ...(properties.devices?.vacuums || []), ...(properties.devices?.vacuums || []).flatMap(relatedEntityIds => [...(relatedEntityIds.relatedEntityIds || []).map(entityId => ({
+    entityId: entityId
+  })), relatedEntityIds.map, ...(relatedEntityIds.shortcuts || [])].filter(Boolean)), ...(properties.lights || []), ...(properties.environment?.airConditioners || []), ...(properties.environment?.curtains || []), ...(properties.devices?.nas || []), ...(properties.devices?.televisions || []), ...(properties.devices?.televisions || []).filter(powerEntityId => powerEntityId.powerEntityId).map(powerEntityId => ({
+    entityId: powerEntityId.powerEntityId
   })), ...(properties.devices?.nas || []).flatMap(statusSource => {
     const visibleMetrics = statusSource.statusSource;
-    return (visibleMetrics?.metrics || []).filter(entityId3 => !visibleMetrics.visibleMetrics || visibleMetrics.visibleMetrics.includes(entityId3.entityId) || entityId3.entityId === visibleMetrics.primaryEntityId);
+    return (visibleMetrics?.metrics || []).filter(entityId => !visibleMetrics.visibleMetrics || visibleMetrics.visibleMetrics.includes(entityId.entityId) || entityId.entityId === visibleMetrics.primaryEntityId);
   })];
   function isFocusTargetId(focusId) {
     if (typeof focusId != "string" || !focusId) {
@@ -285,9 +285,9 @@ export function mountInteraction3d(host, {
       return [["climate", properties.environment?.airConditioners], ["cover", properties.environment?.curtains], ["nas", properties.devices?.nas], ["television", properties.devices?.televisions], ["vacuum", properties.devices?.vacuums]].some(([deviceKind, deviceList]) => (deviceList || []).some(id => typeof id.id == "string" && id.id && focusId === deviceKind + ":" + id.id));
     }
   }
-  const readStates = () => intersectionObserver ? streamedStateMap : Object.fromEntries(collectObservedEntities().map(entityId6 => [entityId6.entityId, context.states?.get(entityId6.entityId) || null]));
+  const readStates = () => intersectionObserver ? streamedStateMap : Object.fromEntries(collectObservedEntities().map(entityId => [entityId.entityId, context.states?.get(entityId.entityId) || null]));
   const pushStatesToFrame = (patchStates = null) => {
-    if (previewSuspended) {
+    if (previewSuspended || pageHiddenPaused) {
       return;
     }
     const statesSnapshot = readStates();
@@ -310,16 +310,16 @@ export function mountInteraction3d(host, {
   const registeredStateEntityIds = new Set();
   function syncBackgroundVisibilityClass() {
     if (intersectionObserver) {
-      intersectionObserver.configure(collectObservedEntities().map(entityId5 => entityId5.entityId), {
+      intersectionObserver.configure(collectObservedEntities().map(entityId => entityId.entityId), {
         additionalEntityIds: (properties.devices?.vacuums || []).flatMap(relatedEntityIds => [...(relatedEntityIds.relatedEntityIds || []), ...(relatedEntityIds.shortcuts || []).map(entityId => entityId.entityId)])
       });
       syncStreamActive();
       return;
     }
-    for (const entityId7 of collectObservedEntities()) {
-      if (entityId7.entityId && !registeredStateEntityIds.has(entityId7.entityId)) {
-        registeredStateEntityIds.add(entityId7.entityId);
-        context.registerRuntimeStateHandler?.(entityId7.entityId, pushStatesToFrame);
+    for (const entityId of collectObservedEntities()) {
+      if (entityId.entityId && !registeredStateEntityIds.has(entityId.entityId)) {
+        registeredStateEntityIds.add(entityId.entityId);
+        context.registerRuntimeStateHandler?.(entityId.entityId, pushStatesToFrame);
       }
     }
   }
@@ -371,16 +371,16 @@ export function mountInteraction3d(host, {
     }
   }
   function rejectViewRequests(event) {
-    for (const timeout8 of viewRequestWaiters.values()) {
-      clearTimeout(timeout8.timeout);
-      timeout8.reject(new Error(event));
+    for (const timeout of viewRequestWaiters.values()) {
+      clearTimeout(timeout.timeout);
+      timeout.reject(new Error(event));
     }
     viewRequestWaiters.clear();
   }
   function rejectRangeRequests(message) {
-    for (const timeout9 of rangeRequestWaiters.values()) {
-      clearTimeout(timeout9.timeout);
-      timeout9.reject(new Error(message));
+    for (const timeout of rangeRequestWaiters.values()) {
+      clearTimeout(timeout.timeout);
+      timeout.reject(new Error(message));
     }
     rangeRequestWaiters.clear();
   }
@@ -411,9 +411,9 @@ export function mountInteraction3d(host, {
     vacuumPopup = null;
     close?.close?.();
   };
-  function onOutsidePointerDownDismiss(target2) {
-    if (!vacuumPopup?.contains?.(target2.target)) {
-      if ((focusUiActive || focusPanelOpen) && !host.contains(target2.target)) {
+  function onOutsidePointerDownDismiss(target) {
+    if (!vacuumPopup?.contains?.(target.target)) {
+      if ((focusUiActive || focusPanelOpen) && !host.contains(target.target)) {
         dismissFocusUi();
       }
     }
@@ -435,7 +435,7 @@ export function mountInteraction3d(host, {
       open: false
     });
     setRangeEditingActive(false);
-    pendingControlAborts.forEach(abort3 => abort3.abort());
+    pendingControlAborts.forEach(abort => abort.abort());
     rejectViewRequests("户型加载失败，请重新载入后调整视角。");
     dismissFocusUi(true);
     clearTimeout(loadTimeoutId);
@@ -455,7 +455,7 @@ export function mountInteraction3d(host, {
       host.replaceChildren(frameEl, loadingEl);
     }
     setRangeEditingActive(false);
-    pendingControlAborts.forEach(abort4 => abort4.abort());
+    pendingControlAborts.forEach(abort => abort.abort());
     rejectViewRequests("户型已切换，请在新户型中重新调整视角。");
     rejectRangeRequests("户型已切换，请在新户型中重新调整照射范围。");
     focusPanelOpen = false;
@@ -529,7 +529,7 @@ export function mountInteraction3d(host, {
       closeCameraPopup();
     }
     if (type.type === "camera-popup" && authorized && framePresented && !editing && !context.editable && focusedId === type.id) {
-      const cameraBinding = (properties.security?.cameras || []).find(id2 => "camera:" + id2.id === type.id && id2.visible !== false && id2.entityId);
+      const cameraBinding = (properties.security?.cameras || []).find(id => "camera:" + id.id === type.id && id.visible !== false && id.entityId);
       if (cameraBinding && context.openCameraPreview && cameraPopupId !== type.id) {
         closeCameraPopup();
         closeVacuumPopup();
@@ -547,7 +547,7 @@ export function mountInteraction3d(host, {
       }
     }
     if (type.type === "vacuum-popup" && !vacuumFollowActive && authorized && framePresented && !editing && !context.editable) {
-      const vacuumBinding = (properties.devices?.vacuums || []).find(id2 => "vacuum:" + id2.id === type.id && id2.visible !== false && id2.entityId);
+      const vacuumBinding = (properties.devices?.vacuums || []).find(id => "vacuum:" + id.id === type.id && id.visible !== false && id.entityId);
       if (vacuumBinding && context.openVacuumDetails) {
         closeVacuumPopup();
         vacuumPopup = context.openVacuumDetails(vacuumBinding, () => {
@@ -563,16 +563,16 @@ export function mountInteraction3d(host, {
       }
     }
     if (type.type === "vacuum-room" && authorized && framePresented && !editing && !context.editable) {
-      const shortcuts = (properties.devices?.vacuums || []).find(id3 => id3.id === type.vacuumId && id3.visible !== false && id3.entityId);
-      const id7 = shortcuts?.shortcuts?.find(id4 => id4.id === type.shortcutId && id4.visible !== false && id4.entityId);
-      if (!id7 || type.id !== "vacuum-room:" + shortcuts.id + ":" + id7.id) {
+      const shortcuts = (properties.devices?.vacuums || []).find(id => id.id === type.vacuumId && id.visible !== false && id.entityId);
+      const id = shortcuts?.shortcuts?.find(id => id.id === type.shortcutId && id.visible !== false && id.entityId);
+      if (!id || type.id !== "vacuum-room:" + shortcuts.id + ":" + id.id) {
         return;
       }
       try {
         if (!context.runVacuumRoom) {
           throw new Error("清扫操作入口尚未准备好，请刷新页面。");
         }
-        await context.runVacuumRoom(id7);
+        await context.runVacuumRoom(id);
         postFrameMessage({
           type: "vacuum-room-result",
           id: type.id
@@ -633,17 +633,17 @@ export function mountInteraction3d(host, {
     }
     const canEditRange = authorized && framePresented && (editing || context.editable) && normalizeLightingMode(properties.lightingMode) === "region";
     if (type.type === "range-editor-state" && canEditRange) {
-      const timeout6 = rangeRequestWaiters.get(type.requestId);
-      if (type.requestId && !timeout6) {
+      const timeout = rangeRequestWaiters.get(type.requestId);
+      if (type.requestId && !timeout) {
         return;
       }
-      if (timeout6) {
-        clearTimeout(timeout6.timeout);
+      if (timeout) {
+        clearTimeout(timeout.timeout);
         rangeRequestWaiters.delete(type.requestId);
-        if (type.active === timeout6.open && !type.error) {
-          timeout6.resolve();
+        if (type.active === timeout.open && !type.error) {
+          timeout.resolve();
         } else {
-          timeout6.reject(new Error(type.error || "照射范围编辑未能打开。"));
+          timeout.reject(new Error(type.error || "照射范围编辑未能打开。"));
         }
       }
       setRangeEditingActive(type.active === true && !type.error, type.error || "");
@@ -656,27 +656,27 @@ export function mountInteraction3d(host, {
       });
     }
     if (type.type === "edit" && type.action === "camera" && context.editable && viewEditing) {
-      const timeout7 = viewRequestWaiters.get(type.requestId);
-      if (timeout7) {
+      const timeout = viewRequestWaiters.get(type.requestId);
+      if (timeout) {
         viewCamera = type.camera;
-        clearTimeout(timeout7.timeout);
+        clearTimeout(timeout.timeout);
         viewRequestWaiters.delete(type.requestId);
-        timeout7.resolve(type.camera);
+        timeout.resolve(type.camera);
       }
     }
     if (type.type === "edit" && editing && authorized && framePresented) {
       if (type.action === "focus-camera") {
-        const timeout3 = viewRequestWaiters.get(type.requestId);
-        if (!timeout3) {
+        const timeout = viewRequestWaiters.get(type.requestId);
+        if (!timeout) {
           return;
         }
-        if (timeout3) {
-          clearTimeout(timeout3.timeout);
+        if (timeout) {
+          clearTimeout(timeout.timeout);
           viewRequestWaiters.delete(type.requestId);
           if (type.error) {
-            timeout3.reject(new Error(type.error));
+            timeout.reject(new Error(type.error));
           } else {
-            timeout3.resolve(type);
+            timeout.resolve(type);
           }
         }
       }
@@ -689,7 +689,7 @@ export function mountInteraction3d(host, {
       }
       if (![...(properties.lights || []), ...(properties.environment?.airConditioners || []), ...(properties.environment?.curtains || []), ...(properties.devices?.televisions || []), ...(properties.devices?.televisions || []).map(powerEntityId => ({
         entityId: powerEntityId.powerEntityId || powerEntityId.entityId
-      }))].some(entityId4 => entityId4.entityId === controlEntityId)) {
+      }))].some(entityId => entityId.entityId === controlEntityId)) {
         postFrameMessage({
           type: "control-result",
           requestId: type.requestId,
@@ -703,9 +703,9 @@ export function mountInteraction3d(host, {
           postFrameMessage(resultMessage);
         }
       };
-      const abort5 = new AbortController();
-      pendingControlAborts.add(abort5);
-      const controlTimeoutId = setTimeout(() => abort5.abort(), 12000);
+      const abort = new AbortController();
+      pendingControlAborts.add(abort);
+      const controlTimeoutId = setTimeout(() => abort.abort(), 12000);
       try {
         const json = await fetch(INTERACTION3D_API + "/control", {
           method: "POST",
@@ -720,7 +720,7 @@ export function mountInteraction3d(host, {
               componentId: component.id
             } : {})
           }),
-          signal: abort5.signal
+          signal: abort.signal
         });
         const detail = await json.json().catch(() => ({}));
         if (!json.ok) {
@@ -739,7 +739,7 @@ export function mountInteraction3d(host, {
         });
       } finally {
         clearTimeout(controlTimeoutId);
-        pendingControlAborts.delete(abort5);
+        pendingControlAborts.delete(abort);
       }
     }
   }
@@ -779,8 +779,8 @@ export function mountInteraction3d(host, {
       return;
     }
     const push = [];
-    for (let parentElement3 = host; parentElement3; parentElement3 = parentElement3.parentElement) {
-      push.push(parentElement3);
+    for (let parentElement = host; parentElement; parentElement = parentElement.parentElement) {
+      push.push(parentElement);
     }
     if (push.length !== ancestorChain.length || !push.every((node, index) => node === ancestorChain[index])) {
       ancestorChain = push;
@@ -803,25 +803,25 @@ export function mountInteraction3d(host, {
   let presentationLayout = null;
   function updatePresentationLayout(forcePost = false) {
     syncActivityVisibility();
-    const width2 = host.getBoundingClientRect();
-    if (!width2.width || !host.clientWidth) {
+    const width = host.getBoundingClientRect();
+    if (!width.width || !host.clientWidth) {
       return;
     }
-    const scaleX = host.clientWidth / width2.width;
-    const scaleY = host.clientHeight > 0 && width2.height > 0 ? host.clientHeight / width2.height : scaleX;
-    frameEl.style.width = width2.width + "px";
-    frameEl.style.height = width2.height + "px";
+    const scaleX = host.clientWidth / width.width;
+    const scaleY = host.clientHeight > 0 && width.height > 0 ? host.clientHeight / width.height : scaleX;
+    frameEl.style.width = width.width + "px";
+    frameEl.style.height = width.height + "px";
     frameEl.style.transform = scaleX === scaleY ? "scale(" + scaleX + ")" : "scale(" + scaleX + "," + scaleY + ")";
     const clientWidth = host.closest?.(".hb-renderer-canvas");
-    const width3 = clientWidth?.getBoundingClientRect();
-    const width4 = properties.layoutMode === "fill" ? context.document?.canvas : component.position;
+    const rect = clientWidth?.getBoundingClientRect();
+    const position = properties.layoutMode === "fill" ? context.document?.canvas : component.position;
     const styleScale = properties.layoutMode === "fill" ? 1 : Math.max(0.01, Math.min(5, Number(component.style?.scale) || 1));
-    const layoutWidth = width3?.width > 0 && clientWidth.clientWidth > 0 ? width2.width * clientWidth.clientWidth / width3.width : Number(width4?.width) * styleScale;
-    const layoutHeight = width3?.height > 0 && clientWidth.clientHeight > 0 ? width2.height * clientWidth.clientHeight / width3.height : Number(width4?.height) * styleScale;
+    const layoutWidth = rect?.width > 0 && clientWidth.clientWidth > 0 ? width.width * clientWidth.clientWidth / rect.width : Number(position?.width) * styleScale;
+    const layoutHeight = rect?.height > 0 && clientWidth.clientHeight > 0 ? width.height * clientWidth.clientHeight / rect.height : Number(position?.height) * styleScale;
     const layoutPayload = {
       type: "presentation-layout",
-      width: layoutWidth > 0 ? layoutWidth : width2.width,
-      height: layoutHeight > 0 ? layoutHeight : width2.height
+      width: layoutWidth > 0 ? layoutWidth : width.width,
+      height: layoutHeight > 0 ? layoutHeight : width.height
     };
     presentationLayout = layoutPayload;
     vacuumPopup?.updateLayout?.();
@@ -881,12 +881,12 @@ export function mountInteraction3d(host, {
     const prevCameraJson = JSON.stringify(properties.camera);
     const prevLightingMode = normalizeLightingMode(properties.lightingMode);
     const prevFloorSelection = properties.floorSelection;
-    const prevCameraPopupJson = JSON.stringify((properties.security?.cameras || []).find(camera2 => "camera:" + camera2.id === cameraPopupId));
+    const prevCameraPopupJson = JSON.stringify((properties.security?.cameras || []).find(camera => "camera:" + camera.id === cameraPopupId));
     properties = structuredClone(nextProperties);
     selectedId = nextSelectedId;
     syncBackgroundVisibilityClass();
     applyBackgroundHiddenClass();
-    if (cameraPopup && (prevFloorSelection !== properties.floorSelection || prevCameraPopupJson !== JSON.stringify((properties.security?.cameras || []).find(camera3 => "camera:" + camera3.id === cameraPopupId)))) {
+    if (cameraPopup && (prevFloorSelection !== properties.floorSelection || prevCameraPopupJson !== JSON.stringify((properties.security?.cameras || []).find(camera => "camera:" + camera.id === cameraPopupId)))) {
       dismissFocusUi(true);
     }
     if (viewEditing && (prevSceneId !== properties.sceneId || prevLightingMode !== normalizeLightingMode(properties.lightingMode) || prevCameraJson !== JSON.stringify(properties.camera))) {
@@ -898,6 +898,39 @@ export function mountInteraction3d(host, {
     if (prevSceneId !== properties.sceneId || prevLightingMode !== normalizeLightingMode(properties.lightingMode)) {
       reloadFrame();
     } else {
+      pushConfigToFrame();
+    }
+  };
+  runtimeApi.setPageVisible = nextPageVisible => {
+    if (disposed || pageHiddenPaused === !nextPageVisible) {
+      return;
+    }
+    pageHiddenPaused = !nextPageVisible;
+    if (pageHiddenPaused) {
+      dismissFocusUi(true);
+    }
+    syncActivityVisibility(true);
+    if (!pageHiddenPaused) {
+      updatePresentationLayout();
+      if (!intersectionObserver) {
+        pushStatesToFrame();
+      }
+    }
+  };
+  runtimeApi.setEditingModule = (nextEditingModule, nextEditingVacuumId = "") => {
+    if (disposed) {
+      return;
+    }
+    let module = editingModule;
+    let vacuumId = editingVacuumId;
+    if (editing && nextEditingModule && ["light", "climate", "cover", "nas", "television", "vacuum", "vacuum-shortcut"].includes(nextEditingModule)) {
+      module = nextEditingModule;
+      vacuumId = module === "vacuum-shortcut" ? String(nextEditingVacuumId || "") : "";
+    }
+    const changed = editingModule !== module || editingVacuumId !== vacuumId;
+    editingModule = module;
+    editingVacuumId = vacuumId;
+    if (changed) {
       pushConfigToFrame();
     }
   };
@@ -926,47 +959,47 @@ export function mountInteraction3d(host, {
     if (viewEditing) {
       runtimeApi.setViewEditing(false);
     }
-    const requestId3 = "range-" + ++viewRequestSerial;
-    let resolve5;
-    let reject5;
-    const promise2 = new Promise((resolveOpen, rejectOpen) => {
-      resolve5 = resolveOpen;
-      reject5 = rejectOpen;
+    const requestId = "range-" + ++viewRequestSerial;
+    let resolve;
+    let reject;
+    const promiseCurrent = new Promise((resolveOpen, rejectOpen) => {
+      resolve = resolveOpen;
+      reject = rejectOpen;
     });
-    const timeout10 = setTimeout(() => {
-      rangeRequestWaiters.delete(requestId3);
+    const timeout = setTimeout(() => {
+      rangeRequestWaiters.delete(requestId);
       postFrameMessage({
         type: "range-editor",
         open: false
       });
       setRangeEditingActive(false);
-      reject5(new Error("打开照射范围编辑超时，请重试。"));
+      reject(new Error("打开照射范围编辑超时，请重试。"));
     }, 5000);
-    rangeRequestWaiters.set(requestId3, {
-      resolve: resolve5,
-      reject: reject5,
-      timeout: timeout10,
-      promise: promise2,
+    rangeRequestWaiters.set(requestId, {
+      resolve: resolve,
+      reject: reject,
+      timeout: timeout,
+      promise: promiseCurrent,
       open: true
     });
     postFrameMessage({
       type: "range-editor",
       open: true,
-      requestId: requestId3
+      requestId: requestId
     });
-    return promise2;
+    return promiseCurrent;
   };
   runtimeApi.flushRangeEditor = () => {
     if (disposed || !authorized || !framePresented || !rangeEditingActive) {
       return Promise.reject(new Error("请先打开照射范围编辑。"));
     }
-    const requestId4 = "range-" + ++viewRequestSerial;
+    const requestId = "range-" + ++viewRequestSerial;
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
-        rangeRequestWaiters.delete(requestId4);
+        rangeRequestWaiters.delete(requestId);
         reject(new Error("读取照射范围超时，请重试。"));
       }, 5000);
-      rangeRequestWaiters.set(requestId4, {
+      rangeRequestWaiters.set(requestId, {
         resolve,
         reject,
         timeout,
@@ -975,7 +1008,7 @@ export function mountInteraction3d(host, {
       postFrameMessage({
         type: "range-editor",
         flush: true,
-        requestId: requestId4
+        requestId: requestId
       });
     });
   };
@@ -994,22 +1027,22 @@ export function mountInteraction3d(host, {
     if (disposed || !authorized || !framePresented) {
       return Promise.reject(new Error("户型画面暂不可用，请重新打开照射范围。"));
     }
-    const requestId5 = "range-" + ++viewRequestSerial;
-    return new Promise((resolve2, reject2) => {
-      const timeout2 = setTimeout(() => {
-        rangeRequestWaiters.delete(requestId5);
-        reject2(new Error("读取照射范围超时，请重试。"));
+    const requestId = "range-" + ++viewRequestSerial;
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        rangeRequestWaiters.delete(requestId);
+        reject(new Error("读取照射范围超时，请重试。"));
       }, 5000);
-      rangeRequestWaiters.set(requestId5, {
-        resolve: resolve2,
-        reject: reject2,
-        timeout: timeout2,
+      rangeRequestWaiters.set(requestId, {
+        resolve: resolve,
+        reject: reject,
+        timeout: timeout,
         open: false
       });
       postFrameMessage({
         type: "range-editor",
         open: false,
-        requestId: requestId5
+        requestId: requestId
       });
     });
   };
@@ -1022,7 +1055,7 @@ export function mountInteraction3d(host, {
       runtimeApi.closeRangeEditor();
       rejectViewRequests("授权验证暂不可用，请恢复后重新调整。");
       dismissFocusUi(true);
-      pendingControlAborts.forEach(abort2 => abort2.abort());
+      pendingControlAborts.forEach(abort => abort.abort());
     }
     if (authorizedChanged && (editing || context.editable)) {
       pushConfigToFrame();
@@ -1061,20 +1094,20 @@ export function mountInteraction3d(host, {
     frameEl.style.pointerEvents = viewEditing || rangeEditingActive ? "auto" : "none";
     pushConfigToFrame();
   };
-  runtimeApi.viewCommand = (command, commandValue) => new Promise((resolve3, reject3) => {
+  runtimeApi.viewCommand = (command, commandValue) => new Promise((resolve, reject) => {
     if (!context.editable || !viewEditing || !framePresented || disposed) {
-      reject3(new Error("请先进入户型视角调整。"));
+      reject(new Error("请先进入户型视角调整。"));
       return;
     }
     const requestId = "view-" + ++viewRequestSerial;
-    const timeout4 = setTimeout(() => {
+    const timeout = setTimeout(() => {
       viewRequestWaiters.delete(requestId);
-      reject3(new Error("读取视角超时，请重试。"));
+      reject(new Error("读取视角超时，请重试。"));
     }, 5000);
     viewRequestWaiters.set(requestId, {
-      resolve: resolve3,
-      reject: reject3,
-      timeout: timeout4
+      resolve: resolve,
+      reject: reject,
+      timeout: timeout
     });
     postFrameMessage({
       type: "editor-command",
@@ -1084,27 +1117,27 @@ export function mountInteraction3d(host, {
     });
   });
   runtimeApi.captureView = () => runtimeApi.viewCommand("save-camera");
-  runtimeApi.focusCommand = (command2, id8 = selectedId, focusValue) => new Promise((resolve4, reject4) => {
+  runtimeApi.focusCommand = (command, id = selectedId, focusValue) => new Promise((resolve, reject) => {
     if (!editing || !framePresented || disposed || !authorized) {
-      reject4(new Error("户型还在加载，请稍候再设置聚焦视角。"));
+      reject(new Error("户型还在加载，请稍候再设置聚焦视角。"));
       return;
     }
-    const requestId2 = "focus-" + ++viewRequestSerial;
-    const timeout5 = setTimeout(() => {
-      viewRequestWaiters.delete(requestId2);
-      reject4(new Error("读取聚焦视角超时，请重试。"));
+    const requestId = "focus-" + ++viewRequestSerial;
+    const timeout = setTimeout(() => {
+      viewRequestWaiters.delete(requestId);
+      reject(new Error("读取聚焦视角超时，请重试。"));
     }, 5000);
-    viewRequestWaiters.set(requestId2, {
-      resolve: resolve4,
-      reject: reject4,
-      timeout: timeout5
+    viewRequestWaiters.set(requestId, {
+      resolve: resolve,
+      reject: reject,
+      timeout: timeout
     });
     postFrameMessage({
       type: "editor-command",
-      command: command2,
-      id: id8,
+      command: command,
+      id: id,
       value: focusValue,
-      requestId: requestId2
+      requestId: requestId
     });
   });
   return runtimeApi;

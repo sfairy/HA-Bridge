@@ -10,7 +10,7 @@ export function scaledExportResolution(width, height, scale = EXPORT_RENDER_SCAL
     height: Math.max(1, Math.round(Number(height) * safeScale))
   };
 }
-function crc32(bytes) {
+function crc(bytes) {
   let crc = 4294967295;
   for (const byte of bytes) {
     crc ^= byte;
@@ -20,10 +20,10 @@ function crc32(bytes) {
   }
   return (crc ^ -1) >>> 0;
 }
-function writeUint16(view, offset, value) {
+function writeUint(view, offset, value) {
   view.setUint16(offset, value, true);
 }
-function writeUint32(view, offset, value) {
+function writeUintCurrent(view, offset, value) {
   view.setUint32(offset, value >>> 0, true);
 }
 function concatBytes(chunks) {
@@ -43,41 +43,41 @@ export function buildStoredZip(entries) {
   for (const entry of entries) {
     const nameBytes = textEncoder.encode(String(entry.name));
     const data = entry.data instanceof Uint8Array ? entry.data : new Uint8Array(entry.data);
-    const checksum = crc32(data);
+    const checksum = crc(data);
     const localHeader = new Uint8Array(30 + nameBytes.length);
     const localView = new DataView(localHeader.buffer);
-    writeUint32(localView, 0, 67324752);
-    writeUint16(localView, 4, 20);
-    writeUint16(localView, 6, 2048);
-    writeUint16(localView, 8, 0);
-    writeUint16(localView, 10, 0);
-    writeUint16(localView, 12, 0);
-    writeUint32(localView, 14, checksum);
-    writeUint32(localView, 18, data.length);
-    writeUint32(localView, 22, data.length);
-    writeUint16(localView, 26, nameBytes.length);
-    writeUint16(localView, 28, 0);
+    writeUintCurrent(localView, 0, 67324752);
+    writeUint(localView, 4, 20);
+    writeUint(localView, 6, 2048);
+    writeUint(localView, 8, 0);
+    writeUint(localView, 10, 0);
+    writeUint(localView, 12, 0);
+    writeUintCurrent(localView, 14, checksum);
+    writeUintCurrent(localView, 18, data.length);
+    writeUintCurrent(localView, 22, data.length);
+    writeUint(localView, 26, nameBytes.length);
+    writeUint(localView, 28, 0);
     localHeader.set(nameBytes, 30);
     localParts.push(localHeader, data);
     const centralHeader = new Uint8Array(46 + nameBytes.length);
     const centralView = new DataView(centralHeader.buffer);
-    writeUint32(centralView, 0, 33639248);
-    writeUint16(centralView, 4, 20);
-    writeUint16(centralView, 6, 20);
-    writeUint16(centralView, 8, 2048);
-    writeUint16(centralView, 10, 0);
-    writeUint16(centralView, 12, 0);
-    writeUint16(centralView, 14, 0);
-    writeUint32(centralView, 16, checksum);
-    writeUint32(centralView, 20, data.length);
-    writeUint32(centralView, 24, data.length);
-    writeUint16(centralView, 28, nameBytes.length);
-    writeUint16(centralView, 30, 0);
-    writeUint16(centralView, 32, 0);
-    writeUint16(centralView, 34, 0);
-    writeUint16(centralView, 36, 0);
-    writeUint32(centralView, 38, 0);
-    writeUint32(centralView, 42, offset);
+    writeUintCurrent(centralView, 0, 33639248);
+    writeUint(centralView, 4, 20);
+    writeUint(centralView, 6, 20);
+    writeUint(centralView, 8, 2048);
+    writeUint(centralView, 10, 0);
+    writeUint(centralView, 12, 0);
+    writeUint(centralView, 14, 0);
+    writeUintCurrent(centralView, 16, checksum);
+    writeUintCurrent(centralView, 20, data.length);
+    writeUintCurrent(centralView, 24, data.length);
+    writeUint(centralView, 28, nameBytes.length);
+    writeUint(centralView, 30, 0);
+    writeUint(centralView, 32, 0);
+    writeUint(centralView, 34, 0);
+    writeUint(centralView, 36, 0);
+    writeUintCurrent(centralView, 38, 0);
+    writeUintCurrent(centralView, 42, offset);
     centralHeader.set(nameBytes, 46);
     centralParts.push(centralHeader);
     offset += localHeader.length + data.length;
@@ -85,14 +85,14 @@ export function buildStoredZip(entries) {
   const centralDirectory = concatBytes(centralParts);
   const endRecord = new Uint8Array(22);
   const endView = new DataView(endRecord.buffer);
-  writeUint32(endView, 0, 101010256);
-  writeUint16(endView, 4, 0);
-  writeUint16(endView, 6, 0);
-  writeUint16(endView, 8, entries.length);
-  writeUint16(endView, 10, entries.length);
-  writeUint32(endView, 12, centralDirectory.length);
-  writeUint32(endView, 16, offset);
-  writeUint16(endView, 20, 0);
+  writeUintCurrent(endView, 0, 101010256);
+  writeUint(endView, 4, 0);
+  writeUint(endView, 6, 0);
+  writeUint(endView, 8, entries.length);
+  writeUint(endView, 10, entries.length);
+  writeUintCurrent(endView, 12, centralDirectory.length);
+  writeUintCurrent(endView, 16, offset);
+  writeUint(endView, 20, 0);
   return concatBytes([...localParts, centralDirectory, endRecord]);
 }
 export function buildLightDeltaPixels(basePixels, litPixels) {

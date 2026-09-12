@@ -1,4 +1,4 @@
-import { coverState, coverControl, coverStateLabel, resolveCoverDisplayPosition } from "./cover-state.js?v=20260910-curtain-default-open-v2";
+import { coverState, coverControl, coverStateLabel } from "./cover-state.js?v=20260910-curtain-default-open-v2-20260912-align-v1";
 export function createCoverPanel({
   element: host,
   onControl = async () => {},
@@ -63,6 +63,8 @@ export function createCoverPanel({
   controlsSlot.append(controlsSection);
   const feedbackEl = createEl("p", "i3d-cover-feedback");
   feedbackEl.hidden = true;
+  feedbackEl.setAttribute("role", "status");
+  feedbackEl.setAttribute("aria-live", "polite");
   setChildren(panel, heading, controlsSlot, feedbackEl);
   let item = {};
   let cover = coverState("", null);
@@ -77,15 +79,12 @@ export function createCoverPanel({
   let revision = 0;
   let stateFingerprint = "";
   const canControl = () => !disposed && !item.editing && item.item?.modelAvailable !== false && cover.available;
-  const displayPosition = () => {
-    const raw = draftPosition ?? item.presentation?.position ?? (target?.confirmed ? cover.position : target?.target ?? cover.position);
-    return raw === null || raw === undefined ? resolveCoverDisplayPosition(cover.position, cover.state) : raw;
-  };
+  const displayPosition = () => draftPosition ?? item.presentation?.position ?? (target?.confirmed ? cover.position : target?.target ?? cover.position);
   const displayState = () => item.presentation || (target && !target.confirmed ? {
     ...cover,
-    opening: target.target !== null && target.target > resolveCoverDisplayPosition(cover.position, cover.state),
-    closing: target.target !== null && target.target < resolveCoverDisplayPosition(cover.position, cover.state),
-    state: target.service === "stop_cover" ? resolveCoverDisplayPosition(cover.position, cover.state) === 0 ? "closed" : "open" : target.target > resolveCoverDisplayPosition(cover.position, cover.state) ? "opening" : "closing"
+    opening: target.target !== null && target.target > (cover.position ?? 0),
+    closing: target.target !== null && target.target < (cover.position ?? 100),
+    state: target.service === "stop_cover" ? cover.position === 0 ? "closed" : "open" : target.target > (cover.position ?? 0) ? "opening" : "closing"
   } : cover);
   function clearPendingTarget() {
     if (confirmTimeout !== null) {
@@ -96,9 +95,9 @@ export function createCoverPanel({
   }
   function syncSlider() {
     const sliderValue = displayPosition();
-    positionSlider.value = String(sliderValue ?? 100);
-    positionSlider.style.setProperty("--hb-cover-position-progress", (sliderValue ?? 100) + "%");
-    positionSlider.setAttribute("aria-valuetext", cover.position === null ? "当前位置未知，滑动设置目标" : "目标 " + Math.round(sliderValue) + "%，当前位置" + Math.round(cover.position) + "%");
+    positionSlider.value = String(sliderValue ?? 0);
+    positionSlider.style.setProperty("--hb-cover-position-progress", (sliderValue ?? 0) + "%");
+    positionSlider.setAttribute("aria-valuetext", sliderValue === null ? "当前位置未知，滑动设置目标" : "目标 " + Math.round(sliderValue) + "%，当前位置" + (cover.position === null ? "未知" : Math.round(cover.position) + "%"));
     panel.setAttribute("aria-invalid", String(!!item.error || !!localError));
   }
   async function sendControl(command) {
@@ -125,7 +124,6 @@ export function createCoverPanel({
         if (!disposed && generation === expectedGeneration && target?.ticket === ticket) {
           confirmTimeout = null;
           target = null;
-          localError = "尚未收到设备确认，请查看窗帘状态后重试。";
           render();
         }
       }, 15000);
@@ -236,6 +234,10 @@ export function createCoverPanel({
       button.setAttribute("aria-busy", String(isBusy));
       button.classList.toggle("is-active", service === "open_cover" && view.opening || service === "close_cover" && view.closing);
     }
+    const feedback = item.error || localError || "";
+    feedbackEl.textContent = feedback;
+    feedbackEl.hidden = !feedback;
+    feedbackEl.classList.toggle("is-error", !!feedback);
     panel.setAttribute("aria-busy", String(!!(item.presentation ? item.presentation.preview : target && !target.confirmed)));
     syncSlider();
   }
@@ -269,25 +271,27 @@ export function createCoverPanel({
       clearPendingTarget();
     }
     if (target && revision > target.revision) {
-      const reachedTarget = target.target !== null && cover.position !== null && Math.abs(cover.position - target.target) <= 0.5;
-      const stopSettled = target.service === "stop_cover" && !cover.moving;
-      const openConfirmed = target.service === "open_cover" && cover.position === null && cover.state === "open" && target.initialState !== "open";
-      const finishedMoving = target.confirmed && target.wasMoving && !cover.moving;
-      if (reachedTarget || stopSettled || openConfirmed || finishedMoving) {
-        clearPendingTarget();
-      } else if (target.target !== null) {
-        const direction = target.initialPosition === null ? target.service === "open_cover" ? 1 : target.service === "close_cover" ? -1 : 0 : Math.sign(target.target - target.initialPosition);
-        const movedTowardTarget = direction !== 0 && cover.position !== null && target.initialPosition !== null && (cover.position - target.initialPosition) * direction > 0.5;
-        const stateChangedToward = cover.state !== target.initialState && (direction > 0 && cover.opening || direction < 0 && cover.closing);
-        if (movedTowardTarget || stateChangedToward) {
-          target.confirmed = true;
-          if (confirmTimeout !== null) {
-            clearTimeout(confirmTimeout);
+      if (!item.presentation) {
+        const reachedTarget = target.target !== null && cover.position !== null && Math.abs(cover.position - target.target) <= 0.5;
+        const stopSettled = target.service === "stop_cover" && !cover.moving;
+        const openConfirmed = target.service === "open_cover" && cover.position === null && cover.state === "open" && target.initialState !== "open";
+        const finishedMoving = target.confirmed && target.wasMoving && !cover.moving;
+        if (reachedTarget || stopSettled || openConfirmed || finishedMoving) {
+          clearPendingTarget();
+        } else if (target.target !== null) {
+          const direction = target.initialPosition === null ? target.service === "open_cover" ? 1 : target.service === "close_cover" ? -1 : 0 : Math.sign(target.target - target.initialPosition);
+          const movedTowardTarget = direction !== 0 && cover.position !== null && target.initialPosition !== null && (cover.position - target.initialPosition) * direction > 0.5;
+          const stateChangedToward = cover.state !== target.initialState && (direction > 0 && cover.opening || direction < 0 && cover.closing);
+          if (movedTowardTarget || stateChangedToward) {
+            target.confirmed = true;
+            if (confirmTimeout !== null) {
+              clearTimeout(confirmTimeout);
+            }
+            confirmTimeout = null;
           }
-          confirmTimeout = null;
-        }
-        if (target.confirmed && cover.moving) {
-          target.wasMoving = true;
+          if (target.confirmed && cover.moving) {
+            target.wasMoving = true;
+          }
         }
       }
     }

@@ -2,15 +2,15 @@ export const CAR_LAMP_LENSES = {
   'front': [[[208, 193], [238, 197], [257, 208], [215, 208]], [[376, 208], [404, 195], [421, 193], [416, 207]], [[90, 373], [117, 360], [141, 357], [123, 373]]],
   'rear': [[[461, 188], [470, 181], [482, 181], [482, 192]], [[630, 181], [655, 181], [675, 189], [654, 192]], [[626, 350], [639, 343], [657, 341], [655, 351]]]
 };
-const uvCoord = point => 'vec2(' + (point[0] / 700).toFixed(7) + ',\x20' + (point[1] / 700).toFixed(7) + ')';
+const uvCoord = point => 'vec2(' + (point[0] / 700).toFixed(7) + ', ' + (point[1] / 700).toFixed(7) + ')';
 const lensEdges = polygon => {
   const ordered = polygon.reduce((sum, point, index) => {
     const next = polygon[(index + 1) % polygon.length];
     return sum + point[0] * next[1] - next[0] * point[1];
   }, 0) > 0 ? polygon : [...polygon].reverse();
-  return ordered.map((point, index) => 'hbCarLensEdge(carUv, ' + uvCoord(point) + ',\x20' + uvCoord(ordered[(index + 1) % ordered.length]) + ')').join(' * ');
+  return ordered.map((point, index) => 'hbCarLensEdge(carUv, ' + uvCoord(point) + ', ' + uvCoord(ordered[(index + 1) % ordered.length]) + ')').join(' * ');
 };
-const lensCoverage = lamp => CAR_LAMP_LENSES[lamp].map(lensEdges).map(expression => '(' + expression + ')').join('\x20+\x20');
+const lensCoverage = lamp => CAR_LAMP_LENSES[lamp].map(lensEdges).map(expression => '(' + expression + ')').join(' + ');
 export function applyCarFinish(material) {
   if (!material?.isMeshStandardMaterial || material.userData.hbCarFinish) {
     return material;
@@ -19,10 +19,10 @@ export function applyCarFinish(material) {
   const previousCacheKey = material.customProgramCacheKey?.call(material) || '';
   material.onBeforeCompile = function (shader, renderer) {
     previousOnBeforeCompile?.call(this, shader, renderer);
-    shader.vertexShader = 'varying\x20float\x20vHbCarHeight;\x0avarying\x20float\x20vHbCarLength;\x0a' + shader.vertexShader;
-    shader.vertexShader = shader.vertexShader.replace('#include\x20<begin_vertex>', '#include\x20<begin_vertex>\x0avHbCarHeight\x20=\x20position.z;\x0avHbCarLength\x20=\x20position.y;');
-    shader.fragmentShader = 'varying\x20float\x20vHbCarHeight;\x0a\x20\x20\x20\x20\x20\x20varying\x20float\x20vHbCarLength;\x0a\x20\x20\x20\x20\x20\x20float\x20hbCarLensEdge(vec2\x20uv,\x20vec2\x20a,\x20vec2\x20b)\x20{\x0a\x20\x20\x20\x20\x20\x20\x20\x20vec2\x20edge\x20=\x20b\x20-\x20a,\x20offset\x20=\x20uv\x20-\x20a;\x0a\x20\x20\x20\x20\x20\x20\x20\x20float\x20distance\x20=\x20(edge.x\x20*\x20offset.y\x20-\x20edge.y\x20*\x20offset.x)\x20/\x20length(edge);\x0a\x20\x20\x20\x20\x20\x20\x20\x20return\x20smoothstep(-0.0005,\x200.001,\x20distance);\x0a\x20\x20\x20\x20\x20\x20}\x0a\x20\x20\x20\x20\x20\x20' + shader.fragmentShader;
-    shader.fragmentShader = shader.fragmentShader.replace('#include\x20<opaque_fragment>', '\x0a\x20\x20\x20\x20\x20\x20float\x20carDark\x20=\x201.0\x20-\x20smoothstep(0.035,\x200.16,\x20dot(diffuseColor.rgb,\x20vec3(0.2126,\x200.7152,\x200.0722)));\x0a\x20\x20\x20\x20\x20\x20float\x20carUpper\x20=\x20smoothstep(0.68,\x201.02,\x20vHbCarHeight);\x0a\x20\x20\x20\x20\x20\x20vec3\x20carView\x20=\x20normalize(vViewPosition);\x0a\x20\x20\x20\x20\x20\x20vec3\x20carReflection\x20=\x20inverseTransformDirection(reflect(-carView,\x20normal),\x20viewMatrix);\x0a\x20\x20\x20\x20\x20\x20float\x20carSky\x20=\x20smoothstep(-0.15,\x200.85,\x20carReflection.y);\x0a\x20\x20\x20\x20\x20\x20float\x20carSoftbox\x20=\x20pow(max(dot(carReflection,\x20normalize(vec3(-0.35,\x200.8,\x200.48))),\x200.0),\x2012.0);\x0a\x20\x20\x20\x20\x20\x20float\x20carFresnel\x20=\x20pow(1.0\x20-\x20max(dot(normal,\x20carView),\x200.0),\x204.0);\x0a\x20\x20\x20\x20\x20\x20outgoingLight\x20+=\x20carDark\x20*\x20carUpper\x20*\x20vec3(0.68,\x200.79,\x200.94)\x0a\x20\x20\x20\x20\x20\x20\x20\x20*\x20(0.012\x20+\x200.025\x20*\x20carSky\x20+\x200.07\x20*\x20carSoftbox\x20+\x200.035\x20*\x20carFresnel);\x0a\x20\x20\x20\x20\x20\x20#ifdef\x20USE_MAP\x0a\x20\x20\x20\x20\x20\x20\x20\x20vec2\x20carUv\x20=\x20fract(vMapUv);\x0a\x20\x20\x20\x20\x20\x20\x20\x20float\x20carFrontLamp\x20=\x20clamp(' + lensCoverage('front') + ',\x200.0,\x201.0)\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20*\x20(1.0\x20-\x20smoothstep(-1.95,\x20-1.85,\x20vHbCarLength));\x0a\x20\x20\x20\x20\x20\x20\x20\x20float\x20carRearLamp\x20=\x20clamp(' + lensCoverage('rear') + ', 0.0, 1.0)\n          * smoothstep(1.85, 1.95, vHbCarLength);\n        outgoingLight += carFrontLamp * vec3(2.0, 2.3, 2.6)\n          + carRearLamp * vec3(0.84, 0.036, 0.018);\n      #endif\n      #include <opaque_fragment>');
+    shader.vertexShader = 'varying float vHbCarHeight;\nvarying float vHbCarLength;\n' + shader.vertexShader;
+    shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvHbCarHeight = position.z;\nvHbCarLength = position.y;');
+    shader.fragmentShader = 'varying float vHbCarHeight;\n      varying float vHbCarLength;\n      float hbCarLensEdge(vec2 uv, vec2 a, vec2 b) {\n        vec2 edge = b - a, offset = uv - a;\n        float distance = (edge.x * offset.y - edge.y * offset.x) / length(edge);\n        return smoothstep(-0.0005, 0.001, distance);\n      }\n      ' + shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', '\n      float carDark = 1.0 - smoothstep(0.035, 0.16, dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)));\n      float carUpper = smoothstep(0.68, 1.02, vHbCarHeight);\n      vec3 carView = normalize(vViewPosition);\n      vec3 carReflection = inverseTransformDirection(reflect(-carView, normal), viewMatrix);\n      float carSky = smoothstep(-0.15, 0.85, carReflection.y);\n      float carSoftbox = pow(max(dot(carReflection, normalize(vec3(-0.35, 0.8, 0.48))), 0.0), 12.0);\n      float carFresnel = pow(1.0 - max(dot(normal, carView), 0.0), 4.0);\n      outgoingLight += carDark * carUpper * vec3(0.68, 0.79, 0.94)\n        * (0.012 + 0.025 * carSky + 0.07 * carSoftbox + 0.035 * carFresnel);\n      #ifdef USE_MAP\n        vec2 carUv = fract(vMapUv);\n        float carFrontLamp = clamp(' + lensCoverage('front') + ', 0.0, 1.0)\n          * (1.0 - smoothstep(-1.95, -1.85, vHbCarLength));\n        float carRearLamp = clamp(' + lensCoverage('rear') + ', 0.0, 1.0)\n          * smoothstep(1.85, 1.95, vHbCarLength);\n        outgoingLight += carFrontLamp * vec3(2.0, 2.3, 2.6)\n          + carRearLamp * vec3(0.84, 0.036, 0.018);\n      #endif\n      #include <opaque_fragment>');
   };
   material.customProgramCacheKey = () => previousCacheKey + '|hb-car-finish-v4-lamps';
   material.userData.hbCarFinish = true;

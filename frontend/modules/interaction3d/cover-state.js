@@ -5,17 +5,6 @@ const STATE_LABELS = {
   opening: "正在打开",
   closing: "正在关闭"
 };
-/** Unbound / unknown cover pose previews as open (100), matching curtain-motion. */
-export function resolveCoverDisplayPosition(position, state = "") {
-  if (typeof position == "number" && Number.isFinite(position)) {
-    return Math.max(0, Math.min(100, position));
-  }
-  const normalized = String(state || "").trim().toLowerCase();
-  if (normalized === "closed" || normalized === "closing") {
-    return 0;
-  }
-  return 100;
-}
 export function coverStateLabel(state) {
   if (Object.hasOwn(STATE_LABELS, state)) {
     return STATE_LABELS[state];
@@ -31,7 +20,7 @@ export function coverState(entityId, newState) {
   const current_position = attributes.attributes || {};
   const state = String(attributes.state || "").trim().toLowerCase();
   const reportedPosition = parseNumber(current_position.current_position);
-  const position = reportedPosition === null ? state === "closed" ? 0 : state === "open" ? 100 : null : Math.max(0, Math.min(100, reportedPosition));
+  const position = reportedPosition === null ? state === "closed" ? 0 : null : Math.max(0, Math.min(100, reportedPosition));
   const rawFeatures = parseNumber(current_position.supported_features);
   const features = Number.isSafeInteger(rawFeatures) && rawFeatures >= 0 ? rawFeatures : 0;
   const available = /^cover\.[a-z0-9_]+$/.test(entityId) && attributes.available !== false && Object.hasOwn(STATE_LABELS, state);

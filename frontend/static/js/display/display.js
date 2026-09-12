@@ -1,4 +1,4 @@
-import { PanelRenderer } from "../../renderer/renderer.js?v=20260909-curtain-action-v15-20260911-navigation-light-v14-20260911-security-camera-popup-v6-quiet-feedback-v1-stage-retain-v1-focus-layout-anim-v1";
+import { PanelRenderer } from "../../renderer/renderer.js?v=20260909-curtain-action-v15-20260911-navigation-light-v14-20260911-security-camera-popup-v6-quiet-feedback-v1-stage-retain-v1-focus-layout-anim-v1-20260912-align-v1";
 import { ensureUiPackRuntime } from "../ui-packs/loader.js?v=20260811-water-heater-popup-v44-20260824-light-statistics-v4-20260828-count-statistics-v1-20260824-load-optimization-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260908-environment-v1-20260908-lighting-mode-v1";
 import { createButtonSound } from "../shared/sound-effects.js?v=20260826-button-sound-v2";
 const displayRoot = document.querySelector("#display-root");
@@ -296,20 +296,20 @@ function S() {
     refreshIfVisible();
   }
 }
-function handleDisplayError(code3) {
-  window.HABridgeLog?.error(code3, {
+function handleDisplayError(code) {
+  window.HABridgeLog?.error(code, {
     phase: "display-refresh"
   });
-  if (code3?.code !== "UI_PACK_RESTRICTED") {
+  if (code?.code !== "UI_PACK_RESTRICTED") {
     return;
   }
   renderer?.destroy();
   renderer = null;
   documentRevision = null;
-  const className2 = document.createElement("p");
-  className2.className = "display-error";
-  className2.textContent = code3.message;
-  displayRoot.replaceChildren(className2);
+  const className = document.createElement("p");
+  className.className = "display-error";
+  className.textContent = code.message;
+  displayRoot.replaceChildren(className);
 }
 window.addEventListener("pageshow", S);
 document.addEventListener("visibilitychange", S);
@@ -318,13 +318,13 @@ window.addEventListener("resize", syncDisplaySize);
 window.visualViewport?.addEventListener("resize", syncDisplaySize);
 window.addEventListener("orientationchange", () => window.setTimeout(syncDisplaySize, 100));
 window.setInterval(refreshIfVisible, 10000);
-bootDisplay().catch(code2 => {
-  handleDisplayError(code2);
-  if (code2?.code === "UI_PACK_RESTRICTED") {
+bootDisplay().catch(code => {
+  handleDisplayError(code);
+  if (code?.code === "UI_PACK_RESTRICTED") {
     return;
   }
   const className = document.createElement("p");
   className.className = "display-error";
-  className.textContent = code2.message;
+  className.textContent = code.message;
   displayRoot.replaceChildren(className);
 });

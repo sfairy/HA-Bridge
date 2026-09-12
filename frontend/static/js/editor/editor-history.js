@@ -84,8 +84,8 @@ export function editorComponentStructure(document) {
 export function editorDocumentFrameSignature(document) {
   const normalizeAction = structuredClone(document || {});
   normalizeAction.sharedComponents = [];
-  for (const components2 of normalizeAction.pages || []) {
-    components2.components = [];
+  for (const components of normalizeAction.pages || []) {
+    components.components = [];
   }
   return documentSignature(normalizeAction);
 }

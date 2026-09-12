@@ -1,9 +1,9 @@
 export function formatLocalTime(component, now = new Date()) {
   const showSeconds = component.showSeconds === true;
-  const hour12 = component.hour12 === true;
+  const hour = component.hour12 === true;
   let hours = now.getHours();
   let suffix = "";
-  if (hour12) {
+  if (hour) {
     suffix = hours >= 12 ? "PM" : "AM";
     hours %= 12;
     hours ||= 12;

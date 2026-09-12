@@ -6,8 +6,8 @@ const alignCapacity = count => Math.max(16, Math.ceil(count / 16) * 16);
 export const regionLightKey = (floorId, lightId) => JSON.stringify([String(floorId), String(lightId)]);
 function isRegionLightKey(key) {
   try {
-    const length4 = JSON.parse(key);
-    return Array.isArray(length4) && length4.length === 2 && length4.every(part => typeof part == "string") && regionLightKey(...length4) === key;
+    const length = JSON.parse(key);
+    return Array.isArray(length) && length.length === 2 && length.every(part => typeof part == "string") && regionLightKey(...length) === key;
   } catch {
     return false;
   }
@@ -22,9 +22,9 @@ function normalizeOverrides(raw) {
       continue;
     }
     const rotation = override.rotation ?? 0;
-    const width2 = clamp(override.width, 0.5, 20);
+    const width = clamp(override.width, 0.5, 20);
     normalized[overrideKey] = {
-      width: width2,
+      width: width,
       depth: clamp(override.depth, 0.5, 20),
       rotation: (rotation % 360 + 540) % 360 - 180,
       softness: clamp(override.softness ?? 1, 0.05, 1),
@@ -43,14 +43,14 @@ function normalizeOverrides(raw) {
   return normalized;
 }
 function findUserData(object, key) {
-  for (let userData4 = object; userData4; userData4 = userData4.parent) {
-    if (userData4.userData?.[key] !== undefined) {
-      return userData4.userData[key];
+  for (let userData = object; userData; userData = userData.parent) {
+    if (userData.userData?.[key] !== undefined) {
+      return userData.userData[key];
     }
   }
 }
 function isLitMaterial(material) {
-  return material && (material.isMeshStandardMaterial || material.isMeshPhysicalMaterial || material.isMeshPhongMaterial || material.isMeshLambertMaterial);
+  return material && (material.userData?.hbDedicatedWall || material.isMeshStandardMaterial || material.isMeshPhysicalMaterial || material.isMeshPhongMaterial || material.isMeshLambertMaterial);
 }
 function isUnderRoot(object, root) {
   for (let parent = object; parent; parent = parent.parent) {
@@ -146,12 +146,12 @@ export function createRegionLightController({
   contactShadows: getUniforms = null,
   requestFrame = () => {}
 }) {
-  const values2 = new Map();
-  const delete2 = new Set();
+  const values = new Map();
+  const set = new Set();
   const map = new Map();
-  const map2 = new WeakMap();
-  const get2 = new Map();
-  const get3 = new Map();
+  const mapCurrent = new WeakMap();
+  const get = new Map();
+  const getCurrent = new Map();
   const clear = new Set();
   const y = new THREE.Vector3();
   const setFromMatrixPosition = new THREE.Vector3();
@@ -164,7 +164,7 @@ export function createRegionLightController({
   const floorBrightness = {
     value: 1
   };
-  const length6 = [];
+  const length = [];
   const rangeScale = {
     gain: 3,
     floorGain: 1,
@@ -191,13 +191,13 @@ export function createRegionLightController({
     textureFloors: 0,
     disposed: false
   };
-  let traverse2 = null;
+  let traverse = null;
   let dirty = true;
   let disposed = false;
-  let push3 = [];
-  let set2 = new Map();
+  let push = [];
+  let setCurrent = new Map();
   let overrides = Object.create(null);
-  let has2 = null;
+  let has = null;
   let inMotion = false;
   let motionKeepLit = false;
   let fadeStart = null;
@@ -205,13 +205,13 @@ export function createRegionLightController({
     dirty = true;
   };
   const apply = scene.onBeforeRender;
-  function ensureUniformGroup(floorId4, kind, lightCount) {
-    const key = floorId4 + "\0" + kind;
-    let texture3 = get3.get(key);
-    if (!texture3) {
-      texture3 = {
+  function ensureUniformGroup(floorId, kind, lightCount) {
+    const key = floorId + "\0" + kind;
+    let texture = getCurrent.get(key);
+    if (!texture) {
+      texture = {
         key,
-        floorId: floorId4,
+        floorId: floorId,
         kind,
         capacity: 0,
         textureMode: false,
@@ -249,19 +249,19 @@ export function createRegionLightController({
         }
       };
       if (kind !== "wall" && getUniforms) {
-        Object.assign(texture3.uniforms, getUniforms.getUniforms(floorId4));
+        Object.assign(texture.uniforms, getUniforms.getUniforms(floorId));
       }
-      get3.set(key, texture3);
+      getCurrent.set(key, texture);
     }
-    const length5 = alignCapacity(lightCount);
-    if (texture3.capacity !== length5) {
-      texture3.capacity = length5;
+    const length = alignCapacity(lightCount);
+    if (texture.capacity !== length) {
+      texture.capacity = length;
       const maxFragmentUniforms = finiteNumber(renderer?.capabilities?.maxFragmentUniforms, 1024);
-      texture3.textureMode = length5 * 4 + 128 > maxFragmentUniforms;
-      texture3.texture?.dispose();
-      texture3.texture = null;
-      texture3.slots = Array.from({
-        length: length5
+      texture.textureMode = length * 4 + 128 > maxFragmentUniforms;
+      texture.texture?.dispose();
+      texture.texture = null;
+      texture.slots = Array.from({
+        length: length
       }, () => ({
         center: new THREE.Vector4(),
         extent: new THREE.Vector4(),
@@ -269,65 +269,78 @@ export function createRegionLightController({
         axis: new THREE.Vector4()
       }));
       for (const [uniformName, slotProp] of [["plan2Centers", "center"], ["plan2Extents", "extent"], ["plan2Colors", "color"], ["plan2Axes", "axis"]]) {
-        texture3.uniforms[uniformName].value = texture3.slots.map(slot => slot[slotProp]);
+        texture.uniforms[uniformName].value = texture.slots.map(slot => slot[slotProp]);
       }
-      if (texture3.textureMode) {
+      if (texture.textureMode) {
         const maxTextureSize = finiteNumber(renderer?.capabilities?.maxTextureSize, 4096);
-        if (length5 > maxTextureSize) {
+        if (length > maxTextureSize) {
           throw new RangeError("区域灯数量 " + lightCount + " 超出本机数据纹理容量 " + maxTextureSize);
         }
-        texture3.texture = new THREE.DataTexture(new Float32Array(length5 * 16), 4, length5, THREE.RGBAFormat, THREE.FloatType);
-        texture3.texture.minFilter = texture3.texture.magFilter = THREE.NearestFilter;
-        texture3.texture.generateMipmaps = false;
-        texture3.texture.needsUpdate = true;
+        texture.texture = new THREE.DataTexture(new Float32Array(length * 16), 4, length, THREE.RGBAFormat, THREE.FloatType);
+        texture.texture.minFilter = texture.texture.magFilter = THREE.NearestFilter;
+        texture.texture.generateMipmaps = false;
+        texture.texture.needsUpdate = true;
       }
-      texture3.uniforms.plan2LightData.value = texture3.texture;
-      for (const needsUpdate of texture3.materials) {
+      texture.uniforms.plan2LightData.value = texture.texture;
+      for (const needsUpdate of texture.materials) {
         needsUpdate.needsUpdate = true;
       }
     }
-    texture3.uniforms.plan2LightCount.value = lightCount;
-    return texture3;
+    texture.uniforms.plan2LightCount.value = lightCount;
+    return texture;
   }
   function wrapRegionMaterial(transmission, floorId, kind, add, plan2DetailedSurface = false, floorTone = false) {
     const sourceMaterial = transmission?.environmentSourceMaterial;
-    if (sourceMaterial && map2.has(sourceMaterial)) {
+    if (sourceMaterial && mapCurrent.has(sourceMaterial)) {
       add.add(sourceMaterial);
       return transmission;
     }
-    transmission = map2.get(transmission) || transmission;
+    transmission = mapCurrent.get(transmission) || transmission;
     if (!isLitMaterial(transmission)) {
       return transmission;
     }
-    let items = get2.get(transmission);
+    let items = get.get(transmission);
     if (!items) {
       items = new Map();
-      get2.set(transmission, items);
+      get.set(transmission, items);
     }
     const groupKey = floorId + "\0" + kind;
     const variantKey = groupKey + "\0" + (plan2DetailedSurface ? "detailed" : "simple") + (floorTone ? "-floor-tone" : "");
     let userData3 = items.get(variantKey);
-    const uniforms3 = get3.get(groupKey);
+    const uniforms = getCurrent.get(groupKey);
     if (!userData3) {
       userData3 = transmission.clone();
+      transmission.userData.hbDedicatedWall && (userData3.color = transmission.color.clone());
       userData3.name = (transmission.name || transmission.type || "material") + " / region " + kind;
       const call = transmission.onBeforeCompile;
       userData3.onBeforeCompile = function (fragmentShader, rendererRef) {
         call?.call(this, fragmentShader, rendererRef);
-        Object.assign(fragmentShader.uniforms, uniforms3.uniforms);
+        Object.assign(fragmentShader.uniforms, uniforms.uniforms);
         if (floorTone) {
           fragmentShader.uniforms.plan2FloorBrightness = floorBrightness;
           fragmentShader.fragmentShader = "uniform float plan2FloorBrightness;\n" + fragmentShader.fragmentShader;
           fragmentShader.fragmentShader = fragmentShader.fragmentShader.replace("#include <color_fragment>", "#include <color_fragment>\ndiffuseColor.rgb *= plan2FloorBrightness;");
         }
-        fragmentShader.uniforms.plan2ContactViewToWorld = uniforms3.uniforms.plan2ViewToWorld;
+        fragmentShader.uniforms.plan2ContactViewToWorld = uniforms.uniforms.plan2ViewToWorld;
         fragmentShader.vertexShader = "uniform mat4 plan2ViewToWorld;\nvarying vec3 vPlan2WorldPosition;\n" + fragmentShader.vertexShader;
         const projectVertexInclude = "#include <project_vertex>";
         if (!fragmentShader.vertexShader.includes(projectVertexInclude)) {
           throw new Error("区域灯材质缺少 project_vertex");
         }
         fragmentShader.vertexShader = fragmentShader.vertexShader.replace(projectVertexInclude, projectVertexInclude + "\nvPlan2WorldPosition = (plan2ViewToWorld * mvPosition).xyz;");
-        fragmentShader.fragmentShader = regionLightShaderPrelude(uniforms3) + fragmentShader.fragmentShader;
+        fragmentShader.fragmentShader = regionLightShaderPrelude(uniforms) + fragmentShader.fragmentShader;
+        if (transmission.userData.hbDedicatedWall) {
+          fragmentShader.uniforms.diffuse = {
+            value: userData3.color
+          };
+          fragmentShader.uniforms.opacity = {
+            get value() {
+              return userData3.opacity;
+            }
+          };
+          structureScans.shaderCompiles += 1;
+          return;
+        }
         const lightsFragmentEnd = "#include <lights_fragment_end>";
         if (!fragmentShader.fragmentShader.includes(lightsFragmentEnd)) {
           throw new Error("区域灯材质缺少 lights_fragment_end");
@@ -338,185 +351,185 @@ export function createRegionLightController({
           fragmentShader.fragmentShader = "uniform sampler2D plan2ContactMap;\n            uniform mat4 plan2ContactTransform;\n            uniform vec4 plan2ContactBounds;\n            uniform float plan2ContactY, plan2ContactOpacity;\n            uniform sampler2D plan2SurfaceMap;\n            uniform vec4 plan2SurfaceBounds;\n            uniform sampler2D plan2SurfaceLookup;\n            uniform vec2 plan2SurfaceLayout;\n            uniform mat4 plan2ContactViewToWorld;\n            uniform float plan2SurfaceOpacity;\n" + fragmentShader.fragmentShader;
           fragmentShader.fragmentShader = fragmentShader.fragmentShader.replace("#include <opaque_fragment>", "\n            vec3 contactPosition = (plan2ContactTransform * vec4(vPlan2WorldPosition, 1.0)).xyz;\n            vec2 contactUv = (contactPosition.xz - plan2ContactBounds.xy) / plan2ContactBounds.zw;\n            float contactHeight = contactPosition.y - plan2ContactY;\n            if (contactHeight >= -0.015 && contactHeight < 0.12\n                && all(greaterThanEqual(contactUv, vec2(0.0))) && all(lessThanEqual(contactUv, vec2(1.0)))) {\n              // Rugs and the lowest furniture surfaces also receive contact\n              // shading. Fade it over the first 12cm; upper surfaces stay lit.\n              float contactWeight = 1.0 - smoothstep(0.035, 0.12, max(contactHeight, 0.0));\n              outgoingLight *= 1.0 - texture2D(plan2ContactMap, contactUv).r * plan2ContactOpacity * contactWeight;\n            }\n            if (contactHeight > 0.12 && plan2SurfaceOpacity > 0.0) {\n              // These are already baked shadow pixels, not an occluder depth\n              // map. No shadow comparison or light-space projection per frame.\n              vec4 tile = texture2D(plan2SurfaceLookup, vec2(clamp(contactHeight / plan2SurfaceLayout.y, 0.0, 1.0), 0.5));\n              vec2 localUv = (contactPosition.xz - plan2SurfaceBounds.xy) / plan2SurfaceBounds.zw;\n              if (tile.b > 0.5 && all(greaterThanEqual(localUv, vec2(0.0))) && all(lessThanEqual(localUv, vec2(1.0)))) {\n                float upward = smoothstep(0.8, 0.98, normalize(mat3(plan2ContactTransform) * mat3(plan2ContactViewToWorld) * normal).y);\n                vec2 tileOrigin = floor(tile.rg * 255.0 + 0.5);\n                vec2 surfaceUv = (tileOrigin + clamp(localUv, vec2(0.002), vec2(0.998))) / plan2SurfaceLayout.x;\n                outgoingLight *= 1.0 - texture2D(plan2SurfaceMap, surfaceUv).r * plan2SurfaceOpacity * upward;\n              }\n            }\n            #include <opaque_fragment>");
         }
-        if (!plan2DetailedSurface && (transmission.transmission == null || transmission.transmission === 0)) {
+        if (!plan2DetailedSurface && !transmission.userData.alphaWallBand && (transmission.transmission == null || transmission.transmission === 0)) {
           fragmentShader.fragmentShader = "uniform mat4 plan2ViewToWorld;\n" + fragmentShader.fragmentShader;
           fragmentShader.fragmentShader = fragmentShader.fragmentShader.replace("#include <lights_fragment_begin>", "\n              vec3 simpleNormal = normalize(mat3(plan2MotionToLayout) * mat3(plan2ViewToWorld) * normal);\n              float simpleUp = simpleNormal.y * 0.5 + 0.5;\n              float simpleKey = max(dot(simpleNormal, normalize(vec3(-0.4, 0.85, 0.32))), 0.0);\n              vec3 simpleTint = mix(vec3(0.82, 0.85, 0.91), vec3(1.0, 1.0, 1.0), simpleUp);\n              reflectedLight.indirectDiffuse = diffuseColor.rgb * simpleTint * (0.30 + 0.40 * simpleUp + 0.18 * simpleKey);\n            ").replace("#include <lights_fragment_maps>", "").replace("#include <lights_fragment_end>", "");
         }
         structureScans.shaderCompiles += 1;
       };
       const baseCacheKey = transmission.customProgramCacheKey?.call(transmission) || "";
-      userData3.customProgramCacheKey = () => baseCacheKey + "|plan2-baked-surface-v6-layout|" + Number(plan2DetailedSurface) + "|" + Number(floorTone) + "|" + kind + "|" + uniforms3.capacity + "|" + Number(uniforms3.textureMode) + "|" + !!getUniforms;
+      userData3.customProgramCacheKey = () => baseCacheKey + "|plan2-baked-surface-v7-wall-alpha|" + Number(!!transmission.userData.alphaWallBand) + "|" + Number(plan2DetailedSurface) + "|" + Number(floorTone) + "|" + kind + "|" + uniforms.capacity + "|" + Number(uniforms.textureMode) + "|" + !!getUniforms;
       userData3.userData.plan2RegionMaterial = true;
       userData3.userData.plan2DetailedSurface = plan2DetailedSurface;
-      map2.set(userData3, transmission);
+      mapCurrent.set(userData3, transmission);
       items.set(variantKey, userData3);
-      uniforms3.materials.add(userData3);
+      uniforms.materials.add(userData3);
     }
     add.add(userData3);
     return userData3;
   }
   function rebuildStructure() {
     structureScans.structureScans += 1;
-    const add2 = new Set();
-    const push2 = [];
-    const add3 = new Set();
-    traverse2?.traverse(isMesh => {
-      add2.add(isMesh);
-      if (values2.has(isMesh)) {
-        add3.add(isMesh);
+    const add = new Set();
+    const list = [];
+    const addCurrent = new Set();
+    traverse?.traverse(isMesh => {
+      add.add(isMesh);
+      if (values.has(isMesh)) {
+        addCurrent.add(isMesh);
       }
       if (isMesh.isMesh) {
-        push2.push(isMesh);
+        list.push(isMesh);
       }
     });
-    for (const removeEventListener2 of delete2) {
-      if (!add2.has(removeEventListener2)) {
-        removeEventListener2.removeEventListener("childadded", invalidate);
-        removeEventListener2.removeEventListener("childremoved", invalidate);
-        delete2.delete(removeEventListener2);
+    for (const removeEventListener of set) {
+      if (!add.has(removeEventListener)) {
+        removeEventListener.removeEventListener("childadded", invalidate);
+        removeEventListener.removeEventListener("childremoved", invalidate);
+        set.delete(removeEventListener);
       }
     }
-    for (const addEventListener of add2) {
-      if (!delete2.has(addEventListener)) {
+    for (const addEventListener of add) {
+      if (!set.has(addEventListener)) {
         addEventListener.addEventListener("childadded", invalidate);
         addEventListener.addEventListener("childremoved", invalidate);
-        delete2.add(addEventListener);
+        set.add(addEventListener);
       }
     }
-    for (const [layers2, originalLayers] of values2) {
-      if (!add3.has(layers2)) {
-        layers2.layers.mask = originalLayers.originalLayers;
-        values2.delete(layers2);
+    for (const [layers, originalLayers] of values) {
+      if (!addCurrent.has(layers)) {
+        layers.layers.mask = originalLayers.originalLayers;
+        values.delete(layers);
       }
     }
-    set2 = new Map();
-    for (const light3 of values2.values()) {
-      light3.floorId = String(light3.light.userData?.regionFloorId ?? light3.light.userData?.lightFloorId ?? findUserData(light3.light, "regionFloorId") ?? findUserData(light3.light, "floorId") ?? "default");
-      light3.id = String(light3.item.id ?? light3.light.uuid);
-      light3.key = regionLightKey(light3.floorId, light3.id);
-      let floorRoot2 = traverse2;
-      for (let userData2 = light3.light.parent; userData2 && userData2 !== traverse2; userData2 = userData2.parent) {
-        if (userData2.userData?.regionFloorId !== undefined || userData2.userData?.floorId !== undefined) {
-          floorRoot2 = userData2;
+    setCurrent = new Map();
+    for (const light of values.values()) {
+      light.floorId = String(light.light.userData?.regionFloorId ?? light.light.userData?.lightFloorId ?? findUserData(light.light, "regionFloorId") ?? findUserData(light.light, "floorId") ?? "default");
+      light.id = String(light.item.id ?? light.light.uuid);
+      light.key = regionLightKey(light.floorId, light.id);
+      let floorRoot = traverse;
+      for (let userData = light.light.parent; userData && userData !== traverse; userData = userData.parent) {
+        if (userData.userData?.regionFloorId !== undefined || userData.userData?.floorId !== undefined) {
+          floorRoot = userData;
           break;
         }
       }
-      light3.floorRoot = floorRoot2;
-      const push = set2.get(light3.floorId) || [];
-      push.push(light3);
-      set2.set(light3.floorId, push);
+      light.floorRoot = floorRoot;
+      const push = setCurrent.get(light.floorId) || [];
+      push.push(light);
+      setCurrent.set(light.floorId, push);
     }
-    const defaultFloorId = set2.size === 1 ? set2.keys().next().value : "default";
-    if (!set2.size) {
-      set2.set(defaultFloorId, []);
+    const defaultFloorId = setCurrent.size === 1 ? setCurrent.keys().next().value : "default";
+    if (!setCurrent.size) {
+      setCurrent.set(defaultFloorId, []);
     }
-    for (const [floorId, length3] of set2) {
+    for (const [floorId, length] of setCurrent) {
       for (const kind of RECEIVER_KINDS) {
-        ensureUniformGroup(floorId, kind, length3.length);
+        ensureUniformGroup(floorId, kind, length.length);
       }
     }
-    const add4 = new Set();
-    const add5 = new Set();
-    for (const material2 of push2) {
-      if (["background", "grid", "outline", "light-source-preview"].includes(findUserData(material2, "exportRole"))) {
+    const addNext = new Set();
+    const addPrevious = new Set();
+    for (const material of list) {
+      if (["background", "grid", "outline", "light-source-preview"].includes(findUserData(material, "exportRole"))) {
         continue;
       }
-      const meshFloorId = String(findUserData(material2, "regionFloorId") ?? findUserData(material2, "floorId") ?? defaultFloorId);
-      if (!set2.has(meshFloorId)) {
-        set2.set(meshFloorId, []);
+      const meshFloorId = String(findUserData(material, "regionFloorId") ?? findUserData(material, "floorId") ?? defaultFloorId);
+      if (!setCurrent.has(meshFloorId)) {
+        setCurrent.set(meshFloorId, []);
         for (const emptyKind of RECEIVER_KINDS) {
           ensureUniformGroup(meshFloorId, emptyKind, 0);
         }
       }
-      const receiverKind = inferReceiverKind(material2);
-      const map = material2.material;
-      const preserveDetailed = findUserData(material2, "preserveDetailedSurface") === true;
-      const isFloorReceiver = findUserData(material2, "regionReceiverKind") === "floor";
-      const some = Array.isArray(map) ? map.map(mat => wrapRegionMaterial(mat, meshFloorId, receiverKind, add4, preserveDetailed, isFloorReceiver)) : wrapRegionMaterial(map, meshFloorId, receiverKind, add4, preserveDetailed, isFloorReceiver);
+      const receiverKind = inferReceiverKind(material);
+      const map = material.material;
+      const preserveDetailed = findUserData(material, "preserveDetailedSurface") === true;
+      const isFloorReceiver = findUserData(material, "regionReceiverKind") === "floor";
+      const some = Array.isArray(map) ? map.map(mat => wrapRegionMaterial(mat, meshFloorId, receiverKind, addNext, preserveDetailed, isFloorReceiver)) : wrapRegionMaterial(map, meshFloorId, receiverKind, addNext, preserveDetailed, isFloorReceiver);
       if (Array.isArray(map) ? some.some((mat, index) => mat !== map[index]) : some !== map) {
-        material2.material = some;
+        material.material = some;
       }
-      if (Array.isArray(some) ? some.some(mat => map2.has(mat)) : map2.has(some)) {
-        add5.add(material2);
-        map.set(material2, {
-          assigned: material2.material
+      if (Array.isArray(some) ? some.some(mat => mapCurrent.has(mat)) : mapCurrent.has(some)) {
+        addPrevious.add(material);
+        map.set(material, {
+          assigned: material.material
         });
       }
     }
-    const add6 = new Set();
+    const addLocal = new Set();
     for (const traverse of clear) {
       traverse.traverse(material => {
         if (map.has(material)) {
-          add6.add(material);
+          addLocal.add(material);
           for (const environmentSourceMaterial of Array.isArray(material.material) ? material.material : [material.material]) {
             const resolved = environmentSourceMaterial?.environmentSourceMaterial || environmentSourceMaterial;
-            if (map2.has(resolved)) {
-              add4.add(resolved);
+            if (mapCurrent.has(resolved)) {
+              addNext.add(resolved);
             }
           }
         }
       });
     }
     for (const [mesh, assignment] of map) {
-      if (!add5.has(mesh) && !add6.has(mesh)) {
+      if (!addPrevious.has(mesh) && !addLocal.has(mesh)) {
         restoreOriginalMaterial(mesh, assignment);
         map.delete(mesh);
       }
     }
-    for (const [sourceMat, entryMap] of get2) {
-      for (const [slice, dispose2] of entryMap) {
-        if (!add4.has(dispose2)) {
-          get3.get(slice.slice(0, slice.lastIndexOf("\0")))?.materials.delete(dispose2);
-          dispose2.dispose();
+    for (const [sourceMat, entryMap] of get) {
+      for (const [slice, dispose] of entryMap) {
+        if (!addNext.has(dispose)) {
+          getCurrent.get(slice.slice(0, slice.lastIndexOf("\0")))?.materials.delete(dispose);
+          dispose.dispose();
           entryMap.delete(slice);
         }
       }
       if (!entryMap.size) {
-        get2.delete(sourceMat);
+        get.delete(sourceMat);
       }
     }
-    for (const [groupEntryKey, floorId2] of get3) {
-      if (!set2.has(floorId2.floorId) && !floorId2.materials.size) {
-        floorId2.texture?.dispose();
-        get3.delete(groupEntryKey);
+    for (const [groupEntryKey, floorId] of getCurrent) {
+      if (!setCurrent.has(floorId.floorId) && !floorId.materials.size) {
+        floorId.texture?.dispose();
+        getCurrent.delete(groupEntryKey);
       }
     }
-    push3 = [];
+    push = [];
     scene.traverse(isLight => {
-      if (isLight.isLight && !values2.has(isLight)) {
-        push3.push(isLight);
+      if (isLight.isLight && !values.has(isLight)) {
+        push.push(isLight);
       }
     });
-    structureScans.registered = structureScans.slotCount = values2.size;
-    structureScans.materials = add4.size;
-    structureScans.meshCount = add5.size;
-    structureScans.floorCount = set2.size;
-    structureScans.detailedMaterials = [...add4].filter(userData => userData.userData.plan2DetailedSurface || userData.transmission > 0).length;
-    structureScans.capacity = [...set2].reduce((total, [, length2]) => total + alignCapacity(length2.length), 0);
-    structureScans.textureFloors = [...set2.keys()].filter(floorId => get3.get(floorId + "\0floor")?.textureMode).length;
+    structureScans.registered = structureScans.slotCount = values.size;
+    structureScans.materials = addNext.size;
+    structureScans.meshCount = addPrevious.size;
+    structureScans.floorCount = setCurrent.size;
+    structureScans.detailedMaterials = [...addNext].filter(userData => userData.userData.plan2DetailedSurface || userData.userData.alphaWallBand || userData.transmission > 0).length;
+    structureScans.capacity = [...setCurrent].reduce((total, [, length]) => total + alignCapacity(length.length), 0);
+    structureScans.textureFloors = [...setCurrent.keys()].filter(floorId => getCurrent.get(floorId + "\0floor")?.textureMode).length;
     dirty = false;
   }
-  function restoreOriginalMaterial(material3, assigned) {
-    if (material3.material === assigned.assigned) {
-      material3.material = Array.isArray(material3.material) ? material3.material.map(mat => map2.get(mat) || mat) : map2.get(material3.material) || material3.material;
+  function restoreOriginalMaterial(material, assigned) {
+    if (material.material === assigned.assigned) {
+      material.material = Array.isArray(material.material) ? material.material.map(mat => mapCurrent.get(mat) || mat) : mapCurrent.get(material.material) || material.material;
     }
   }
-  function register(layers3, item = {}) {
-    if (disposed || !layers3?.isLight) {
+  function register(layers, item = {}) {
+    if (disposed || !layers?.isLight) {
       return;
     }
-    if (!values2.get(layers3)) {
-      values2.set(layers3, {
-        light: layers3,
+    if (!values.get(layers)) {
+      values.set(layers, {
+        light: layers,
         item: {
           ...item
         },
-        originalLayers: layers3.layers.mask,
-        fullIntensity: Math.max(0.00001, finiteNumber(layers3.userData?.regionFullIntensity, finiteNumber(layers3.userData?.lightOnIntensity, layers3.intensity) || 1))
+        originalLayers: layers.layers.mask,
+        fullIntensity: Math.max(0.00001, finiteNumber(layers.userData?.regionFullIntensity, finiteNumber(layers.userData?.lightOnIntensity, layers.intensity) || 1))
       });
     }
-    layers3.layers.set(REGION_LIGHT_LAYER);
-    layers3.castShadow = false;
+    layers.layers.set(REGION_LIGHT_LAYER);
+    layers.castShadow = false;
     dirty = true;
   }
   function syncCamera(matrixWorld) {
@@ -524,22 +537,22 @@ export function createRegionLightController({
       plan2ViewToWorld.value = matrixWorld.matrixWorld;
     }
   }
-  function sync(layers4, skipStructure = false) {
+  function sync(layersCurrent, skipStructure = false) {
     if (disposed) {
       return;
     }
     if (!skipStructure) {
       getUniforms?.sync();
       const nextRoot = getRoot?.() || null;
-      if (nextRoot !== traverse2) {
-        traverse2 = nextRoot;
+      if (nextRoot !== traverse) {
+        traverse = nextRoot;
         dirty = true;
       }
       if (dirty && (!inMotion || motionKeepLit)) {
         rebuildStructure();
       }
     }
-    syncCamera(layers4);
+    syncCamera(layersCurrent);
     if (inMotion && !motionKeepLit) {
       return;
     }
@@ -551,9 +564,9 @@ export function createRegionLightController({
     }
     structureScans.active = 0;
     let uniformsChanged = false;
-    for (const [floorId3, forEach] of set2) {
-      const uniformGroups = RECEIVER_KINDS.map(kind => get3.get(floorId3 + "\0" + kind));
-      const motionMatrix = inMotion && motionKeepLit ? motionTransformProvider?.(floorId3) : null;
+    for (const [floorId, forEach] of setCurrent) {
+      const uniformGroups = RECEIVER_KINDS.map(kind => getCurrent.get(floorId + "\0" + kind));
+      const motionMatrix = inMotion && motionKeepLit ? motionTransformProvider?.(floorId) : null;
       for (const uniforms of uniformGroups) {
         if (motionMatrix) {
           uniforms.uniforms.plan2MotionToLayout.value.copy(motionMatrix);
@@ -563,9 +576,9 @@ export function createRegionLightController({
         const element = rangeScale.gain * rangeScale[uniforms.kind + "Gain"] * fade;
         uniformsChanged ||= uniforms.uniforms.plan2Gain.value !== element;
         uniforms.uniforms.plan2Gain.value = element;
-        const element2 = uniforms.kind === "wall" ? 0 : clamp(finiteNumber(rangeScale.sunShadowStrength, 0.6), 0, 1) * fade;
-        uniformsChanged ||= uniforms.uniforms.plan2SunShadowStrength.value !== element2;
-        uniforms.uniforms.plan2SunShadowStrength.value = element2;
+        const count = uniforms.kind === "wall" ? 0 : clamp(finiteNumber(rangeScale.sunShadowStrength, 0.6), 0, 1) * fade;
+        uniformsChanged ||= uniforms.uniforms.plan2SunShadowStrength.value !== count;
+        uniforms.uniforms.plan2SunShadowStrength.value = count;
         uniforms.changed = false;
       }
       forEach.forEach((floorRoot, slotIndex) => {
@@ -587,18 +600,18 @@ export function createRegionLightController({
           setFromMatrixPosition.applyMatrix4(motionMatrix);
         }
         const floorY = floorRoot.floorRoot ? setFromMatrixPosition.y : 0;
-        const realAmount = isUnderRoot(color, traverse2) ? clamp(finiteNumber(color.intensity) / floorRoot.fullIntensity, 0, 1) : 0;
-        const amount = has2 === null ? realAmount : has2.has(floorRoot.key) ? Math.max(0.6, realAmount) : 0;
+        const realAmount = isUnderRoot(color, traverse) ? clamp(finiteNumber(color.intensity) / floorRoot.fullIntensity, 0, 1) : 0;
+        const amount = has === null ? realAmount : has.has(floorRoot.key) ? Math.max(0.6, realAmount) : 0;
         if (amount > 0.00001) {
           structureScans.active += 1;
         }
-        length6.length = 0;
-        length6.push(...elements.elements, floorY, amount, realAmount, rangeScale.rangeScale, type.type, type.lightRange, type.width, type.depth, color.width, color.height, color.color.r, color.color.g, color.color.b, overrides[floorRoot.key], structureScans.structureScans);
-        if (floorRoot.volumeInputs && length6.every((prev, index) => prev === floorRoot.volumeInputs[index])) {
+        length.length = 0;
+        length.push(...elements.elements, floorY, amount, realAmount, rangeScale.rangeScale, type.type, type.lightRange, type.width, type.depth, color.width, color.height, color.color.r, color.color.g, color.color.b, overrides[floorRoot.key], structureScans.structureScans);
+        if (floorRoot.volumeInputs && length.every((prev, index) => prev === floorRoot.volumeInputs[index])) {
           structureScans.volumeCacheHits++;
           return;
         }
-        floorRoot.volumeInputs = length6.slice();
+        floorRoot.volumeInputs = length.slice();
         const lightRange = clamp(finiteNumber(type.lightRange, 3.5), 0.5, 10) * clamp(finiteNumber(rangeScale.rangeScale, 1), 0.2, 3);
         const isStrip = type.type === "striplight" || color.isRectAreaLight;
         const ellipseRadius = lightRange * (type.type === "ceilinglight" ? 0.45 : 0.33);
@@ -614,7 +627,7 @@ export function createRegionLightController({
         const axisY = shapeRadians ? forwardX * Math.sin(shapeRadians) + forwardZ * Math.cos(shapeRadians) : forwardZ;
         const softPad = Math.max(0.3, lightRange * 0.23);
         const halfExtent = isStrip ? halfDepth + lightRange * 0.07 + softPad : ellipseRadius + softPad;
-        const center2 = floorRoot.region ||= {
+        const centerCurrent = floorRoot.region ||= {
           center: [0, 0, 0],
           lampCenter: [0, 0, 0],
           axis: [1, 0],
@@ -624,35 +637,35 @@ export function createRegionLightController({
             softness: 1
           }
         };
-        const width = center2.defaults;
+        const width = centerCurrent.defaults;
         width.width = (isStrip ? halfWidth + halfExtent : halfExtent) * 2;
         width.depth = halfExtent * 2;
         width.shape = isStrip ? "strip" : "ellipse";
         width.axis[0] = forwardX;
         width.axis[1] = forwardZ;
-        center2.floorId = floorId3;
-        center2.id = floorRoot.id;
-        center2.key = floorRoot.key;
-        center2.type = type.type;
-        center2.lampCenter[0] = y.x;
-        center2.lampCenter[1] = y.y;
-        center2.lampCenter[2] = y.z;
-        center2.offsetX = shape?.offsetX ?? 0;
-        center2.offsetZ = shape?.offsetZ ?? 0;
-        center2.moveCenterEnabled = shape?.moveCenterEnabled === true;
-        center2.center[0] = y.x + center2.offsetX;
-        center2.center[1] = y.y;
-        center2.center[2] = y.z + center2.offsetZ;
-        center2.axis[0] = axisX;
-        center2.axis[1] = axisY;
-        center2.width = shape?.width ?? width.width;
-        center2.depth = shape?.depth ?? width.depth;
-        center2.rotation = shape?.rotation ?? 0;
-        center2.softness = shape?.softness ?? 1;
-        center2.shape = shape?.shape ?? width.shape;
-        center2.overridden = !!shape;
-        center2.amount = amount;
-        center2.realAmount = realAmount;
+        centerCurrent.floorId = floorId;
+        centerCurrent.id = floorRoot.id;
+        centerCurrent.key = floorRoot.key;
+        centerCurrent.type = type.type;
+        centerCurrent.lampCenter[0] = y.x;
+        centerCurrent.lampCenter[1] = y.y;
+        centerCurrent.lampCenter[2] = y.z;
+        centerCurrent.offsetX = shape?.offsetX ?? 0;
+        centerCurrent.offsetZ = shape?.offsetZ ?? 0;
+        centerCurrent.moveCenterEnabled = shape?.moveCenterEnabled === true;
+        centerCurrent.center[0] = y.x + centerCurrent.offsetX;
+        centerCurrent.center[1] = y.y;
+        centerCurrent.center[2] = y.z + centerCurrent.offsetZ;
+        centerCurrent.axis[0] = axisX;
+        centerCurrent.axis[1] = axisY;
+        centerCurrent.width = shape?.width ?? width.width;
+        centerCurrent.depth = shape?.depth ?? width.depth;
+        centerCurrent.rotation = shape?.rotation ?? 0;
+        centerCurrent.softness = shape?.softness ?? 1;
+        centerCurrent.shape = shape?.shape ?? width.shape;
+        centerCurrent.overridden = !!shape;
+        centerCurrent.amount = amount;
+        centerCurrent.realAmount = realAmount;
         for (const texture of uniformGroups) {
           const center = texture.slots[slotIndex];
           const slotKind = texture.kind;
@@ -661,7 +674,7 @@ export function createRegionLightController({
           const verticalPad = Math.max(0.3, lightRange * (slotKind === "floor" ? 0.23 : slotKind === "wall" ? 0.18 : 0.2));
           const extentX = shape ? shape.width / 2 : isStrip ? halfWidth : ellipseRadius + verticalPad;
           const extentZ = shape ? shape.depth / 2 : isStrip ? halfDepth + lightRange * 0.07 + verticalPad : ellipseRadius + verticalPad;
-          let changed = setVector4Changed(center.center, center2.center[0], (bottomY + topY) / 2, center2.center[2], amount);
+          let changed = setVector4Changed(center.center, centerCurrent.center[0], (bottomY + topY) / 2, centerCurrent.center[2], amount);
           changed = setVector4Changed(center.extent, extentX, (topY - bottomY) / 2, extentZ, verticalPad) || changed;
           changed = setVector4Changed(center.color, color.color.r, color.color.g, color.color.b, 0) || changed;
           changed = setVector4Changed(center.axis, axisX, axisY, shape ? shape.shape === "square" ? 4 : shape.shape === "strip" ? 3 : 2 : isStrip ? 1 : 0, shape?.softness ?? 0) || changed;
@@ -676,17 +689,17 @@ export function createRegionLightController({
           }
         }
       });
-      for (const changed2 of uniformGroups) {
-        if (changed2.changed && changed2.texture) {
-          changed2.texture.needsUpdate = true;
+      for (const changed of uniformGroups) {
+        if (changed.changed && changed.texture) {
+          changed.texture.needsUpdate = true;
         }
-        uniformsChanged ||= changed2.changed;
+        uniformsChanged ||= changed.changed;
       }
     }
     if (uniformsChanged) {
       structureScans.uniformUpdates += 1;
     }
-    structureScans.nativeLights = push3.filter(layers => isUnderRoot(layers, scene) && (!layers4 || layers.layers.test(layers4.layers))).length;
+    structureScans.nativeLights = push.filter(layers => isUnderRoot(layers, scene) && (!layersCurrent || layers.layers.test(layersCurrent.layers))).length;
   }
   function inspect() {
     return {
@@ -695,12 +708,12 @@ export function createRegionLightController({
         ...rangeScale
       },
       overrides: getOverrides(),
-      previewKeys: has2 ? [...has2] : null,
+      previewKeys: has ? [...has] : null,
       regions: listRegions(),
-      floors: [...set2].map(([floorId, length]) => ({
+      floors: [...setCurrent].map(([floorId, length]) => ({
         floorId,
         slots: length.length,
-        capacity: get3.get(floorId + "\0floor")?.capacity,
+        capacity: getCurrent.get(floorId + "\0floor")?.capacity,
         lights: length.map(light => ({
           id: light.item.id || light.light.uuid,
           type: light.item.type,
@@ -709,7 +722,7 @@ export function createRegionLightController({
           amount: clamp(finiteNumber(light.light.intensity) / light.fullIntensity, 0, 1),
           effectiveAmount: light.region?.amount ?? 0,
           regionKey: light.key,
-          visible: isUnderRoot(light.light, traverse2)
+          visible: isUnderRoot(light.light, traverse)
         }))
       }))
     };
@@ -725,7 +738,7 @@ export function createRegionLightController({
     }]));
   }
   function listRegions() {
-    return [...values2.values()].filter(region => region.region).map(({
+    return [...values.values()].filter(region => region.region).map(({
       region: defaults
     }) => ({
       ...defaults,
@@ -739,13 +752,13 @@ export function createRegionLightController({
     }));
   }
   function setPreview(filter) {
-    has2 = Array.isArray(filter) ? new Set(filter.filter(key => typeof key == "string" && isRegionLightKey(key))) : null;
+    has = Array.isArray(filter) ? new Set(filter.filter(key => typeof key == "string" && isRegionLightKey(key))) : null;
     sync(undefined, true);
   }
-  function sample(point, floorId = set2.keys().next().value, kind = "floor") {
-    const uniforms4 = get3.get(floorId + "\0" + kind);
-    if (uniforms4) {
-      return sampleRegionVolumes(uniforms4.slots.slice(0, uniforms4.uniforms.plan2LightCount.value), copy.copy(point).applyMatrix4(uniforms4.uniforms.plan2MotionToLayout.value), uniforms4.uniforms.plan2Gain.value);
+  function sample(point, floorId = setCurrent.keys().next().value, kind = "floor") {
+    const uniforms = getCurrent.get(floorId + "\0" + kind);
+    if (uniforms) {
+      return sampleRegionVolumes(uniforms.slots.slice(0, uniforms.uniforms.plan2LightCount.value), copy.copy(point).applyMatrix4(uniforms.uniforms.plan2MotionToLayout.value), uniforms.uniforms.plan2Gain.value);
     } else {
       return [0, 0, 0];
     }
@@ -754,48 +767,48 @@ export function createRegionLightController({
     if (!disposed) {
       disposed = true;
       structureScans.disposed = true;
-      if (scene.onBeforeRender === onBeforeRender2) {
+      if (scene.onBeforeRender === onBeforeRender) {
         scene.onBeforeRender = apply;
       }
-      for (const removeEventListener of delete2) {
+      for (const removeEventListener of set) {
         removeEventListener.removeEventListener("childadded", invalidate);
         removeEventListener.removeEventListener("childremoved", invalidate);
       }
       for (const [assignedMesh, assignmentState] of map) {
         restoreOriginalMaterial(assignedMesh, assignmentState);
       }
-      for (const values of get2.values()) {
+      for (const values of get.values()) {
         for (const dispose of values.values()) {
           dispose.dispose();
         }
       }
-      for (const texture2 of get3.values()) {
-        texture2.texture?.dispose();
+      for (const texture of getCurrent.values()) {
+        texture.texture?.dispose();
       }
-      for (const light2 of values2.values()) {
-        light2.light.layers.mask = light2.originalLayers;
+      for (const light of values.values()) {
+        light.light.layers.mask = light.originalLayers;
       }
-      delete2.clear();
+      set.clear();
       map.clear();
-      get2.clear();
-      values2.clear();
-      get3.clear();
+      get.clear();
+      values.clear();
+      getCurrent.clear();
       clear.clear();
       if (typeof window !== "undefined" && window.__plan2Region === __plan2Region) {
         delete window.__plan2Region;
       }
     }
   }
-  function onBeforeRender2(...args) {
+  function onBeforeRender(...args) {
     apply?.apply(this, args);
     sync(args[2]);
   }
   const setFloorBrightness = percent => {
-    const element3 = clamp(finiteNumber(percent, 100), 50, 150) / 100;
-    if (element3 === floorBrightness.value) {
+    const element = clamp(finiteNumber(percent, 100), 50, 150) / 100;
+    if (element === floorBrightness.value) {
       return false;
     } else {
-      floorBrightness.value = element3;
+      floorBrightness.value = element;
       structureScans.uniformUpdates += 1;
       return true;
     }
@@ -809,9 +822,9 @@ export function createRegionLightController({
     inMotion = nextMotion === true;
     fadeStart = inMotion || keepLit || wasKeepLit ? null : performance.now();
     if (inMotion && !motionKeepLit) {
-      for (const uniforms2 of get3.values()) {
-        uniforms2.uniforms.plan2Gain.value = 0;
-        uniforms2.uniforms.plan2SunShadowStrength.value = 0;
+      for (const uniforms of getCurrent.values()) {
+        uniforms.uniforms.plan2Gain.value = 0;
+        uniforms.uniforms.plan2SunShadowStrength.value = 0;
       }
     }
     dirty = true;
@@ -845,7 +858,7 @@ export function createRegionLightController({
       invalidate();
     }
   };
-  scene.onBeforeRender = onBeforeRender2;
+  scene.onBeforeRender = onBeforeRender;
   if (typeof window !== "undefined") {
     window.__plan2Region = __plan2Region;
   }

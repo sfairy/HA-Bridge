@@ -1,4 +1,4 @@
-function round6(value) {
+function round(value) {
   return Math.round(Number(value) * 1e6) / 1e6;
 }
 function positiveNumber(value, fallback) {
@@ -18,19 +18,19 @@ function scaleComponent(component, widthRatio, heightRatio, contentScale, fromCe
   const nextHeight = height * contentScale;
   component.position = {
     ...position,
-    x: round6(fromCenter ? (x + width / 2) * widthRatio - nextWidth / 2 : x * contentScale),
-    y: round6(fromCenter ? (y + height / 2) * heightRatio - nextHeight / 2 : y * contentScale),
-    width: round6(nextWidth),
-    height: round6(nextHeight)
+    x: round(fromCenter ? (x + width / 2) * widthRatio - nextWidth / 2 : x * contentScale),
+    y: round(fromCenter ? (y + height / 2) * heightRatio - nextHeight / 2 : y * contentScale),
+    width: round(nextWidth),
+    height: round(nextHeight)
   };
   if (component.type === "icon-button-effect" && component.properties?.effectLayoutMode !== "fill") {
     const effectWidth = Number(component.properties?.effectWidth);
     const effectHeight = Number(component.properties?.effectHeight);
     if (Number.isFinite(effectWidth)) {
-      component.properties.effectWidth = round6(effectWidth * contentScale / widthRatio);
+      component.properties.effectWidth = round(effectWidth * contentScale / widthRatio);
     }
     if (Number.isFinite(effectHeight)) {
-      component.properties.effectHeight = round6(effectHeight * contentScale / heightRatio);
+      component.properties.effectHeight = round(effectHeight * contentScale / heightRatio);
     }
   }
   for (const child of component.children || []) {
@@ -82,9 +82,9 @@ export function resizeDashboardDocument(document, width, height, options = {}) {
       ...(next.canvas || {}),
       width: nextWidth,
       height: nextHeight,
-      resizeBaseWidth: round6(baseWidth),
-      resizeBaseHeight: round6(baseHeight),
-      resizeContentScale: round6(currentContentScale)
+      resizeBaseWidth: round(baseWidth),
+      resizeBaseHeight: round(baseHeight),
+      resizeContentScale: round(currentContentScale)
     };
     return next;
   }
@@ -99,11 +99,11 @@ export function resizeDashboardDocument(document, width, height, options = {}) {
     ...(next.canvas || {}),
     width: nextWidth,
     height: nextHeight,
-    componentScale: round6(positiveNumber(next.canvas?.componentScale, 1) * contentScale),
-    popupScale: round6(positiveNumber(next.canvas?.popupScale, 1) * contentScale),
-    resizeBaseWidth: round6(baseWidth),
-    resizeBaseHeight: round6(baseHeight),
-    resizeContentScale: round6(nextContentScale)
+    componentScale: round(positiveNumber(next.canvas?.componentScale, 1) * contentScale),
+    popupScale: round(positiveNumber(next.canvas?.popupScale, 1) * contentScale),
+    resizeBaseWidth: round(baseWidth),
+    resizeBaseHeight: round(baseHeight),
+    resizeContentScale: round(nextContentScale)
   };
   return next;
 }

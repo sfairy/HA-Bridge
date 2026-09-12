@@ -1,4 +1,4 @@
-export function resolvePageBehavior(config = {}, pageKey = "overview") {
+export function resolvePageBehavior(config = {}, pageKey = "light") {
   const behaviorKey = {
     climate: "environment",
     cover: "environment",

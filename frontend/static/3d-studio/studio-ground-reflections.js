@@ -38,9 +38,9 @@ export function createGroundReflections({
   const directionVector = new THREE.Vector3();
   const lookTargetVector = new THREE.Vector3();
   const scissorsPlane = new THREE.Plane();
-  const clipVector4 = new THREE.Vector4();
-  const clipQVector4 = new THREE.Vector4();
-  const scratchMatrix4 = new THREE.Matrix4();
+  const vector = new THREE.Vector4();
+  const clipQVector = new THREE.Vector4();
+  const scratchMatrix = new THREE.Matrix4();
   function withoutTransmission(material) {
     if (!material || (!(material.transmission > 0) && !material.userData?.alphaWallBand)) {
       return material;
@@ -403,9 +403,9 @@ export function createGroundReflections({
     mirrored.projectionMatrix.elements[12] *= -1;
     reflectionMatrix.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1).multiply(mirrored.projectionMatrix).multiply(mirrored.matrixWorldInverse);
     const clipPlane = scissorsPlane.copy(plane).applyMatrix4(mirrored.matrixWorldInverse);
-    const clipVector = clipVector4.set(clipPlane.normal.x, clipPlane.normal.y, clipPlane.normal.z, clipPlane.constant);
+    const clipVector = vector.set(clipPlane.normal.x, clipPlane.normal.y, clipPlane.normal.z, clipPlane.constant);
     const projection = mirrored.projectionMatrix.elements;
-    const q = clipQVector4.set(Math.sign(clipVector.x), Math.sign(clipVector.y), 1, 1).applyMatrix4(scratchMatrix4.copy(mirrored.projectionMatrix).invert());
+    const q = clipQVector.set(Math.sign(clipVector.x), Math.sign(clipVector.y), 1, 1).applyMatrix4(scratchMatrix.copy(mirrored.projectionMatrix).invert());
     clipVector.multiplyScalar(2 / clipVector.dot(q));
     projection[2] = clipVector.x - projection[3];
     projection[6] = clipVector.y - projection[7];

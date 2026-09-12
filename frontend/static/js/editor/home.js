@@ -1,4 +1,4 @@
-import { PanelRenderer, airflowCanvasOffsetBounds, setBuiltinAssetVersions, syncedLineChartProperties } from "../../renderer/renderer.js?v=20260909-curtain-action-v15-20260911-navigation-light-v14-20260911-security-camera-popup-v6-quiet-feedback-v1-stage-retain-v1-focus-layout-anim-v1";
+import { PanelRenderer, airflowCanvasOffsetBounds, setBuiltinAssetVersions, syncedLineChartProperties } from "../../renderer/renderer.js?v=20260909-curtain-action-v15-20260911-navigation-light-v14-20260911-security-camera-popup-v6-quiet-feedback-v1-stage-retain-v1-focus-layout-anim-v1-20260912-align-v1";
 import { lightStatisticsEntityStateStatus, lightStatisticsEntitySupport } from "../../renderer/registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-vacuum-map-background-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-v2-20260901-renderer-date-time-runtime-v1-20260901-camera-prewarm-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-light-effect-layering-v2-20260901-light-effect-color-cache-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260905-client-log-v1-20260906-i3d-complete-v6-20260827-runtime-hydration-retry-v1-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1-focus-layout-anim-v1";
 import { applyUiPackToDocument, createComponentFromTemplate, dateComponentDimensions, ensureUiPackRuntime, listComponentTemplates, timeComponentDimensions, weatherComponentDimensions } from "../ui-packs/loader.js?v=20260811-water-heater-popup-v44-20260815-component-thumbnails-v2-20260822-light-feedback-controls-v1-20260824-light-statistics-v6-20260828-count-statistics-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260908-environment-v1-20260908-lighting-mode-v1";
 import { clone as cloneValue, newId, normalizedHexColor, hexToRgb, rgbToHex, rgbToHsv, hsvToRgb, roundField, clampNumber, normalizedFontWeight } from "./editor-utils.js?v=20260831-editor-utils-v1";
@@ -14,7 +14,7 @@ import { EDITOR_PICKER_PAGE_SIZES, editorEntityPickerInitialPage, editorEntityPi
 import { createEditorPickerQueries } from "./editor-picker-queries.js?v=20260830-editor-picker-queries-v1";
 import { createEditorAssetMatcher } from "./editor-asset-queries.js?v=20260830-editor-asset-queries-v1";
 import { createEditorPickerLifecycle } from "./editor-picker-lifecycle.js?v=20260831-editor-picker-lifecycle-v1";
-import { createInteraction3dEditorPickers } from "../../modules/interaction3d/editor-pickers.js?v=20260910-presence-v9-20260906-i3d-buttons-v1-20260908-environment-v1-20260908-curtains-v1-20260908-nas-v1-20260908-devices-entry-v1-20260908-nas-status-panel-v1-television-v1-20260908-vacuum-v1-20260911-device-room-integration-v3";
+import { createInteraction3dEditorPickers } from "../../modules/interaction3d/editor-pickers.js?v=20260910-presence-v9-20260906-i3d-buttons-v1-20260908-environment-v1-20260908-curtains-v1-20260908-nas-v1-20260908-devices-entry-v1-20260908-nas-status-panel-v1-television-v1-20260908-vacuum-v1-20260911-device-room-integration-v3-device-entry-unify-v1";
 import { createEditorAssetToolbar } from "./editor-asset-toolbar.js?v=20260902-asset-folder-delete-v1";
 import { ACTION_TYPES, TOGGLE_ENTITY_DOMAINS, actionNeedsCurrentEntity, actionPopupData, componentActionIsSupported, entityIdSupportsToggle } from "./action-rules.js?v=20260831-action-rules-v1";
 import { componentDirectLocation, findComponent, findComponentInItems, findComponentLocation } from "./component-tree.js?v=20260831-component-tree-v1";
@@ -23,7 +23,7 @@ import { fitInspectorComponentToDimensions, iconButtonEffectInspectorLayer, insp
 import { clonePageWithFreshIds, findCustomPopup, greatestCommonDivisor, normalizedPopupClimateDeviceType, popupModuleDropPosition, popupModuleEntityRecommended, popupModuleTypeLabel, reorderedPopupModules, uniquePagePath } from "./editor-document-management.js?v=20260901-editor-document-management-v1";
 import { createRecoveryWriter, documentSignature, editorComponentEntries, editorComponentStructure, editorDocumentFrameSignature, recoveryStorageKey } from "./editor-history.js?v=20260909-preview-sleep-v1";
 import { DEFAULT_BASE_LIGHTING, normalizeBaseLighting } from "../../3d-studio/studio-normalization.js?v=20260903-studio-normalization-v2";
-import { guardInteraction3dChanges, renderInteraction3dThumbnail, updateInteraction3dCard, renderInteraction3dInspector } from "../../modules/interaction3d/editor.js?v=20260909-preview-sleep-v1-20260910-presence-security-v9-20260911-security-focal-v1-20260911-unified-device-settings-v3-navigation-scale-v1-stage-retain-v1-focus-layout-anim-v1";
+import { guardInteraction3dChanges, renderInteraction3dThumbnail, updateInteraction3dCard, renderInteraction3dInspector } from "../../modules/interaction3d/editor.js?v=20260909-preview-sleep-v1-20260910-presence-security-v9-20260911-security-focal-v1-20260911-unified-device-settings-v3-navigation-scale-v1-stage-retain-v1-focus-layout-anim-v1-presence-pages-v2-hint-align-v1";
 import { createLicenseCard } from "./license-card.js?v=20260910-local-store-v1";
 const qs = param => document.querySelector(param);
 installSettingsDialogBackdropGuard();
@@ -411,8 +411,8 @@ const titleButtonEntityOptions = qs("#title-button-entity-options");
 const titleButtonMainVisible = qs("#title-button-main-visible");
 const titleButtonSecondaryVisible = qs("#title-button-secondary-visible");
 const titleButtonMainText = qs("#title-button-main-text");
-const titleButtonSecondaryLine1 = qs("#title-button-secondary-line-1");
-const titleButtonSecondaryLine2 = qs("#title-button-secondary-line-2");
+const titleButtonSecondaryLine = qs("#title-button-secondary-line-1");
+const titleButtonSecondaryLineCurrent = qs("#title-button-secondary-line-2");
 const titleButtonMainColor = qs("#title-button-main-color");
 const titleButtonSecondaryColor = qs("#title-button-secondary-color");
 const titleButtonMainSize = qs("#title-button-main-size");
@@ -1182,10 +1182,10 @@ function positionMenuState(value) {
   value.menu.style.width = rect.width + "px";
   value.menu.style.maxHeight = count + "px";
   const minValue = Math.min(value.menu.scrollHeight, count);
-  const count2 = Math.max(8, Math.min(window.innerWidth - rect.width - 8, rect.left));
+  const max = Math.max(8, Math.min(window.innerWidth - rect.width - 8, rect.left));
   const number = rect.bottom + 4;
   const chosen = number + minValue <= window.innerHeight - 8 ? number : Math.max(8, rect.top - minValue - 4);
-  value.menu.style.left = count2 + "px";
+  value.menu.style.left = max + "px";
   value.menu.style.top = chosen + "px";
 }
 function syncCustomSelect(element) {
@@ -1193,44 +1193,44 @@ function syncCustomSelect(element) {
   if (!value) {
     return;
   }
-  const temp2 = element.selectedOptions[0];
-  const flag = element.id === "page-select" && temp2?.dataset.defaultPage === "true";
-  value.button.textContent = flag ? "★ " + temp2.textContent : temp2?.textContent || (element.id === "project-select" ? "暂无仪表盘" : element.id === "popup-select" ? "暂无组合弹窗" : element.id === "image-asset-folder" ? "暂无图片文件夹" : "暂无页面");
+  const node = element.selectedOptions[0];
+  const flag = element.id === "page-select" && node?.dataset.defaultPage === "true";
+  value.button.textContent = flag ? "★ " + node.textContent : node?.textContent || (element.id === "project-select" ? "暂无仪表盘" : element.id === "popup-select" ? "暂无组合弹窗" : element.id === "image-asset-folder" ? "暂无图片文件夹" : "暂无页面");
   value.button.disabled = element.disabled;
   const chosen = element === imageAssetFolder ? "image" : element === ibeAssetFolder ? "ibe" : "";
-  const chosen2 = chosen === "image" ? imageAssetSource : chosen === "ibe" ? ibeAssetSource : "";
-  value.menu.replaceChildren(...[...element.options].map(el3 => {
+  const chosenCurrent = chosen === "image" ? imageAssetSource : chosen === "ibe" ? ibeAssetSource : "";
+  value.menu.replaceChildren(...[...element.options].map(el => {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "custom-select-option";
-    button.dataset.value = el3.value;
-    if (element.id === "page-select" && el3.dataset.defaultPage === "true") {
+    button.dataset.value = el.value;
+    if (element.id === "page-select" && el.dataset.defaultPage === "true") {
       const span = document.createElement("span");
       span.className = "custom-select-default-marker";
       span.textContent = "★";
       span.setAttribute("aria-hidden", "true");
-      const span2 = document.createElement("span");
-      span2.textContent = el3.textContent;
-      button.append(span, span2);
+      const element = document.createElement("span");
+      element.textContent = el.textContent;
+      button.append(span, element);
     } else {
-      button.textContent = el3.textContent;
+      button.textContent = el.textContent;
     }
-    button.classList.toggle("active", el3.value === element.value);
-    button.disabled = el3.disabled;
-    if (!chosen || !isStudioExportFolder(chosen2, el3.value)) {
+    button.classList.toggle("active", el.value === element.value);
+    button.disabled = el.disabled;
+    if (!chosen || !isStudioExportFolder(chosenCurrent, el.value)) {
       return button;
     }
     const temp = document.createElement("div");
     temp.className = "custom-select-option-row";
-    const button2 = document.createElement("button");
-    button2.type = "button";
-    button2.className = "custom-select-option-delete";
-    button2.dataset.deleteStudio3dFolder = el3.value;
-    button2.dataset.assetFolderKind = chosen;
-    button2.title = "删除 " + el3.textContent;
-    button2.setAttribute("aria-label", "删除自动导图文件夹 " + el3.textContent);
-    button2.textContent = "×";
-    temp.append(button, button2);
+    const buttonCurrent = document.createElement("button");
+    buttonCurrent.type = "button";
+    buttonCurrent.className = "custom-select-option-delete";
+    buttonCurrent.dataset.deleteStudio3dFolder = el.value;
+    buttonCurrent.dataset.assetFolderKind = chosen;
+    buttonCurrent.title = "删除 " + el.textContent;
+    buttonCurrent.setAttribute("aria-label", "删除自动导图文件夹 " + el.textContent);
+    buttonCurrent.textContent = "×";
+    temp.append(button, buttonCurrent);
     return temp;
   }));
   if (element.disabled) {
@@ -1290,12 +1290,12 @@ function enhanceSelect(select) {
       confirmDeleteStudioExportFolder(ancestorEl.dataset.assetFolderKind, ancestorEl.dataset.deleteStudio3dFolder);
       return;
     }
-    const ancestorEl2 = event.target.closest(".custom-select-option");
-    if (!ancestorEl2 || ancestorEl2.disabled) {
+    const closest = event.target.closest(".custom-select-option");
+    if (!closest || closest.disabled) {
       return;
     }
     const inputValue = select.value;
-    select.value = ancestorEl2.dataset.value;
+    select.value = closest.dataset.value;
     syncCustomSelect(select);
     closeMenuState(value);
     if (select.value !== inputValue) {
@@ -1323,8 +1323,8 @@ function applyColorPickerHex(value, skipPreview = false) {
   if (!temp || !activeColorInput) {
     return;
   }
-  const rgb2 = hexToRgb(temp);
-  const hsv = rgbToHsv(rgb2);
+  const rgb = hexToRgb(temp);
+  const hsv = rgbToHsv(rgb);
   colorPickerHue = hsv.s > 0 ? hsv.h : colorPickerHue;
   colorPickerSaturation = hsv.s;
   colorPickerValue = hsv.v;
@@ -1336,9 +1336,9 @@ function applyColorPickerHex(value, skipPreview = false) {
   if (document.activeElement !== globalColorPickerHex) {
     globalColorPickerHex.value = temp.toUpperCase();
   }
-  globalColorPickerR.value = String(Math.round(rgb2.r));
-  globalColorPickerG.value = String(Math.round(rgb2.g));
-  globalColorPickerB.value = String(Math.round(rgb2.b));
+  globalColorPickerR.value = String(Math.round(rgb.r));
+  globalColorPickerG.value = String(Math.round(rgb.g));
+  globalColorPickerB.value = String(Math.round(rgb.b));
   globalColorPickerSwatch.style.background = temp;
   if (activeColorInput.value !== temp) {
     activeColorInput.value = temp;
@@ -1360,11 +1360,11 @@ function positionGlobalColorPicker() {
   const value = activeColorInput.getBoundingClientRect();
   const rect = globalColorPicker.getBoundingClientRect();
   const temp = 9;
-  const number2 = 8;
+  const count = 8;
   const number = value.left - rect.width - temp;
-  const chosen = number >= number2 ? number : Math.min(window.innerWidth - rect.width - number2, value.right + temp);
-  const clamped = clampNumber(value.top, number2, Math.max(number2, window.innerHeight - rect.height - number2));
-  globalColorPicker.style.left = Math.max(number2, chosen) + "px";
+  const chosen = number >= count ? number : Math.min(window.innerWidth - rect.width - count, value.right + temp);
+  const clamped = clampNumber(value.top, count, Math.max(count, window.innerHeight - rect.height - count));
+  globalColorPicker.style.left = Math.max(count, chosen) + "px";
   globalColorPicker.style.top = clamped + "px";
 }
 function openGlobalColorPicker(element) {
@@ -1398,7 +1398,7 @@ function closeGlobalColorPicker() {
       bubbles: true
     }));
   }
-  syncIconButtonIcon4(element);
+  syncIconButtonIconPrevious(element);
 }
 function refreshActiveColorPicker() {
   if (!globalColorPicker.hidden && activeColorInput?.isConnected) {
@@ -1406,19 +1406,19 @@ function refreshActiveColorPicker() {
   }
 }
 function bindColorInputsIn(value = document) {
-  (value instanceof HTMLInputElement && value.type === "color" ? [value] : [...(value.querySelectorAll?.("input[type=\"color\"]") || [])]).forEach(el2 => {
-    if (!boundColorInputs.has(el2)) {
-      boundColorInputs.set(el2, true);
-      el2.title = "打开颜色选择器";
-      el2.addEventListener("pointerdown", event => {
+  (value instanceof HTMLInputElement && value.type === "color" ? [value] : [...(value.querySelectorAll?.("input[type=\"color\"]") || [])]).forEach(el => {
+    if (!boundColorInputs.has(el)) {
+      boundColorInputs.set(el, true);
+      el.title = "打开颜色选择器";
+      el.addEventListener("pointerdown", event => {
         event.preventDefault();
-        openGlobalColorPicker(el2);
+        openGlobalColorPicker(el);
       });
-      el2.addEventListener("click", event => event.preventDefault());
-      el2.addEventListener("keydown", event => {
+      el.addEventListener("click", event => event.preventDefault());
+      el.addEventListener("keydown", event => {
         if (["Enter", " "].includes(event.key)) {
           event.preventDefault();
-          openGlobalColorPicker(el2);
+          openGlobalColorPicker(el);
         }
       });
     }
@@ -1439,8 +1439,8 @@ function stepNumberInput(element, value) {
     const flag = Number(element.dataset?.numberStep) || Number(element.step) || 1;
     const number = Number(element.value) || 0;
     const chosen = element.min === "" ? -Infinity : Number(element.min);
-    const chosen2 = element.max === "" ? Infinity : Number(element.max);
-    element.value = String(clampNumber(number + flag * value, chosen, chosen2));
+    const chosenCurrent = element.max === "" ? Infinity : Number(element.max);
+    element.value = String(clampNumber(number + flag * value, chosen, chosenCurrent));
   }
   if (element.value === inputValue) {
     return false;
@@ -1460,15 +1460,15 @@ function bindNumberInputsIn(value = document) {
     boundNumberInputs.add(temp);
     const span = document.createElement("span");
     span.className = "inspector-number-control";
-    const span2 = document.createElement("span");
-    span2.className = "inspector-number-steppers";
-    const createControl = (item, param, param2) => {
+    const element = document.createElement("span");
+    element.className = "inspector-number-steppers";
+    const createControl = (item, param, value) => {
       const element = document.createElement("button");
       element.type = "button";
       element.tabIndex = -1;
       element.className = "inspector-number-stepper";
       element.setAttribute("aria-label", param);
-      element.innerHTML = "<svg viewBox=\"0 0 10 6\" aria-hidden=\"true\"><path d=\"" + param2 + "\"></path></svg>";
+      element.innerHTML = "<svg viewBox=\"0 0 10 6\" aria-hidden=\"true\"><path d=\"" + value + "\"></path></svg>";
       element.addEventListener("click", event => event.preventDefault());
       element.addEventListener("pointerdown", event => {
         if (event.button !== 0 || temp.disabled || temp.readOnly) {
@@ -1478,22 +1478,22 @@ function bindNumberInputsIn(value = document) {
         temp.focus({
           preventScroll: true
         });
-        let temp5 = stepNumberInput(temp, item);
-        let flag3 = false;
+        let input = stepNumberInput(temp, item);
+        let flag = false;
         let timerId = window.setTimeout(() => {
           timerId = window.setInterval(() => {
-            temp5 = stepNumberInput(temp, item) || temp5;
+            input = stepNumberInput(temp, item) || input;
           }, 55);
         }, 320);
         const callback = () => {
-          if (!flag3) {
-            flag3 = true;
+          if (!flag) {
+            flag = true;
             window.clearTimeout(timerId);
             window.clearInterval(timerId);
             element.removeEventListener("pointerup", callback);
             element.removeEventListener("pointercancel", callback);
             element.removeEventListener("lostpointercapture", callback);
-            if (temp5) {
+            if (input) {
               temp.dispatchEvent(new Event("change", {
                 bubbles: true
               }));
@@ -1509,19 +1509,19 @@ function bindNumberInputsIn(value = document) {
       });
       return element;
     };
-    span2.append(createControl(1, "增加数值", "M1 5 5 1l4 4"), createControl(-1, "减少数值", "M1 1 5 5l4-4"));
+    element.append(createControl(1, "增加数值", "M1 5 5 1l4 4"), createControl(-1, "减少数值", "M1 1 5 5l4-4"));
     temp.before(span);
-    span.append(temp, span2);
-    let flag2 = false;
+    span.append(temp, element);
+    let flag = false;
     temp.addEventListener("keydown", event => {
       if (["ArrowUp", "ArrowDown"].includes(event.key)) {
         event.preventDefault();
-        flag2 = stepNumberInput(temp, event.key === "ArrowUp" ? 1 : -1) || flag2;
+        flag = stepNumberInput(temp, event.key === "ArrowUp" ? 1 : -1) || flag;
       }
     });
-    temp.addEventListener("keyup", event2 => {
-      if (!!["ArrowUp", "ArrowDown"].includes(event2.key) && !!flag2) {
-        flag2 = false;
+    temp.addEventListener("keyup", event => {
+      if (!!["ArrowUp", "ArrowDown"].includes(event.key) && !!flag) {
+        flag = false;
         temp.dispatchEvent(new Event("change", {
           bubbles: true
         }));
@@ -1595,20 +1595,20 @@ function renderUiPackDialog() {
       img.alt = component.name + " 仪表盘预览";
       element.append(img);
     }
-    const div2 = document.createElement("div");
-    div2.className = "ui-pack-card-copy";
+    const div = document.createElement("div");
+    div.className = "ui-pack-card-copy";
     const span = document.createElement("span");
     span.textContent = (component.englishName || component.id) + " · " + component.version;
-    const el3 = document.createElement("strong");
-    el3.textContent = component.name;
-    const el4 = document.createElement("p");
-    el4.textContent = component.description;
-    const div3 = document.createElement("div");
-    div3.className = "ui-pack-includes";
-    for (const temp4 of component.includes || []) {
+    const el = document.createElement("strong");
+    el.textContent = component.name;
+    const elCurrent = document.createElement("p");
+    elCurrent.textContent = component.description;
+    const divCurrent = document.createElement("div");
+    divCurrent.className = "ui-pack-includes";
+    for (const value of component.includes || []) {
       const iconEl = document.createElement("i");
-      iconEl.textContent = options[temp4] || temp4;
-      div3.append(iconEl);
+      iconEl.textContent = options[value] || value;
+      divCurrent.append(iconEl);
     }
     const button = document.createElement("button");
     button.type = "button";
@@ -1618,8 +1618,8 @@ function renderUiPackDialog() {
     if (!flag && component.allowed) {
       button.className = "primary";
     }
-    div2.append(span, el3, el4, div3, button);
-    temp.append(element, div2);
+    div.append(span, el, elCurrent, divCurrent, button);
+    temp.append(element, div);
     return temp;
   }));
 }
@@ -1706,20 +1706,20 @@ async function loadDisplayPairingCodes() {
     return;
   }
   for (const temp of value) {
-    const div2 = document.createElement("div");
-    div2.className = "display-device-item" + (temp.enabled ? "" : " is-disabled");
-    const div3 = document.createElement("div");
-    div3.className = "display-device-copy";
+    const div = document.createElement("div");
+    div.className = "display-device-item" + (temp.enabled ? "" : " is-disabled");
+    const divCurrent = document.createElement("div");
+    divCurrent.className = "display-device-copy";
     const element = document.createElement("strong");
     element.textContent = temp.name;
     const span = document.createElement("span");
     const chosen = temp.device ? "已绑定 · 最后在线 " + formatDisplayDate(temp.device.lastSeenAt) : "等待设备配对";
     span.textContent = (temp.enabled ? "已启用" : "已停用") + " · " + chosen;
-    const el3 = document.createElement("strong");
-    el3.className = "display-device-code";
-    el3.textContent = temp.code || "——";
-    const div4 = document.createElement("div");
-    div4.className = "display-device-actions";
+    const el = document.createElement("strong");
+    el.className = "display-device-code";
+    el.textContent = temp.code || "——";
+    const divNext = document.createElement("div");
+    divNext.className = "display-device-actions";
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = temp.enabled ? "停用" : "启用";
@@ -1738,13 +1738,13 @@ async function loadDisplayPairingCodes() {
         button.disabled = false;
       }
     });
-    const button2 = document.createElement("button");
-    button2.type = "button";
-    button2.className = "danger";
-    button2.textContent = "删除";
-    button2.addEventListener("click", async () => {
+    const buttonCurrent = document.createElement("button");
+    buttonCurrent.type = "button";
+    buttonCurrent.className = "danger";
+    buttonCurrent.textContent = "删除";
+    buttonCurrent.addEventListener("click", async () => {
       if (window.confirm("确认删除“" + temp.name + "”的固定配对码？绑定设备会立即失效。")) {
-        button2.disabled = true;
+        buttonCurrent.disabled = true;
         try {
           await apiFetch("/displays/pairing-codes/" + encodeURIComponent(temp.id), {
             method: "DELETE"
@@ -1752,14 +1752,14 @@ async function loadDisplayPairingCodes() {
           await loadDisplayPairingCodes();
         } catch (error) {
           setStatusMessage(displayDevicesMessage, error.message, "error");
-          button2.disabled = false;
+          buttonCurrent.disabled = false;
         }
       }
     });
-    div3.append(element, span);
-    div4.append(button, button2);
-    div2.append(div3, el3, div4);
-    displayDeviceList.append(div2);
+    divCurrent.append(element, span);
+    divNext.append(button, buttonCurrent);
+    div.append(divCurrent, el, divNext);
+    displayDeviceList.append(div);
   }
 }
 async function openDisplayDevicesDialog() {
@@ -1809,27 +1809,27 @@ function syncCanvasSizeFields() {
 function setEditorMode(value) {
   editorMode = ["edit", "dashboard", "popup"].includes(value) ? value : "edit";
   const flag = editorMode === "edit";
-  const flag2 = editorMode === "dashboard";
-  const flag3 = editorMode === "popup";
-  pageControl.hidden = flag3;
-  popupControl.hidden = !flag3;
-  navigatorContent.classList.toggle("popup-mode", flag3);
-  showPageEditor.classList.toggle("active", !flag3);
-  showPageEditor.setAttribute("aria-selected", String(!flag3));
-  showPopupEditor.classList.toggle("active", flag3);
-  showPopupEditor.setAttribute("aria-selected", String(flag3));
+  const flagCurrent = editorMode === "dashboard";
+  const flagNext = editorMode === "popup";
+  pageControl.hidden = flagNext;
+  popupControl.hidden = !flagNext;
+  navigatorContent.classList.toggle("popup-mode", flagNext);
+  showPageEditor.classList.toggle("active", !flagNext);
+  showPageEditor.setAttribute("aria-selected", String(!flagNext));
+  showPopupEditor.classList.toggle("active", flagNext);
+  showPopupEditor.setAttribute("aria-selected", String(flagNext));
   if (!flag) {
     clearPreviewStates();
   }
   editorCanvas.hidden = !flag;
-  dashboardPreview.hidden = !flag2;
-  customPopupEditor.hidden = !flag3;
+  dashboardPreview.hidden = !flagCurrent;
+  customPopupEditor.hidden = !flagNext;
   workspace.classList.toggle("empty", !currentProject);
-  workspaceTitle.textContent = flag2 ? "仪表盘" : flag3 ? "组合弹窗" : "页面画布";
+  workspaceTitle.textContent = flagCurrent ? "仪表盘" : flagNext ? "组合弹窗" : "页面画布";
   syncCanvasSizeFields();
   syncDashboardDisplayHint();
   syncDashboardSoundToggle();
-  for (const [element, temp] of [[showEditorPreview, flag], [showDashboardPreview, flag2]]) {
+  for (const [element, temp] of [[showEditorPreview, flag], [showDashboardPreview, flagCurrent]]) {
     element.classList.toggle("active", temp);
     element.setAttribute("aria-selected", String(temp));
   }
@@ -1840,12 +1840,12 @@ function setEditorMode(value) {
       editorRenderer.setSelectedComponents([...selectedComponentIds], componentId);
     }
     window.requestAnimationFrame(fitWorkspaceToCanvas);
-  } else if (flag2) {
+  } else if (flagCurrent) {
     editorRenderer?.destroy();
     editorRenderer = null;
     renderDashboardPreview();
     window.requestAnimationFrame(() => dashboardPreviewRenderer?.resize());
-  } else if (flag3) {
+  } else if (flagNext) {
     clearSelection();
     renderComponentTree();
     refreshInspector();
@@ -1897,11 +1897,11 @@ function fitWorkspaceToCanvas() {
   const number = canvasWidth / canvasHeight;
   const flag = contentWidth / contentHeight > number;
   const chosen = flag ? contentHeight * number : contentWidth;
-  const chosen2 = flag ? contentHeight : contentWidth / number;
+  const chosenCurrent = flag ? contentHeight : contentWidth / number;
   editorCanvas.style.width = Math.max(1, chosen) + "px";
-  editorCanvas.style.height = Math.max(1, chosen2) + "px";
+  editorCanvas.style.height = Math.max(1, chosenCurrent) + "px";
   dashboardPreview.style.width = Math.max(1, chosen) + "px";
-  dashboardPreview.style.height = Math.max(1, chosen2) + "px";
+  dashboardPreview.style.height = Math.max(1, chosenCurrent) + "px";
   window.requestAnimationFrame(() => {
     editorRenderer?.resize();
     dashboardPreviewRenderer?.resize();
@@ -1917,11 +1917,11 @@ function currentPage() {
   return currentProject?.document?.pages?.find(value => value.path === pageSelect.value) || currentProject?.document?.pages?.[0] || null;
 }
 function canGroupSelection(value, doc = currentProject?.document) {
-  const list2 = [...new Set(value || [])];
-  if (list2.length < 2 || !doc) {
+  const list = [...new Set(value || [])];
+  if (list.length < 2 || !doc) {
     return false;
   }
-  const mapped = list2.map(item => componentDirectLocation(doc, item));
+  const mapped = list.map(item => componentDirectLocation(doc, item));
   if (mapped.some(item => !item || item.component.type === "group")) {
     return false;
   }
@@ -1929,46 +1929,46 @@ function canGroupSelection(value, doc = currentProject?.document) {
   return mapped.every(item => item.scope === temp.scope && item.page?.path === temp.page?.path && item.collection === temp.collection && item.component.properties?.layoutMode !== "fill");
 }
 function groupSelectedComponents(value) {
-  const list2 = [...new Set(value || [])];
-  if (!canGroupSelection(list2)) {
+  const list = [...new Set(value || [])];
+  if (!canGroupSelection(list)) {
     onError(new Error("请选择同一页面或同一侧边栏中的两个或更多控件后再成组。"));
     return;
   }
-  const ibeEffectRotation2 = newId("group");
-  componentId = ibeEffectRotation2;
-  selectedComponentIds = new Set([ibeEffectRotation2]);
-  rangeSelectAnchorId = ibeEffectRotation2;
+  const ibeEffectRotation = newId("group");
+  componentId = ibeEffectRotation;
+  selectedComponentIds = new Set([ibeEffectRotation]);
+  rangeSelectAnchorId = ibeEffectRotation;
   activeGroupId = null;
   return mutateDocument(doc => {
-    const mapped = list2.map(item => componentDirectLocation(doc, item));
+    const mapped = list.map(item => componentDirectLocation(doc, item));
     if (mapped.some(item => !item)) {
       return;
     }
     const collection = mapped[0].collection;
     const temp = mapped.map(item => item.component).sort((left, right) => collection.indexOf(left) - collection.indexOf(right));
-    const mapped2 = temp.map(item => componentCenter(item));
-    const minValue = Math.min(...mapped2.map(item => item.left));
-    const minValue2 = Math.min(...mapped2.map(item => item.top));
-    const count = Math.max(...mapped2.map(item => item.right));
-    const count2 = Math.max(...mapped2.map(item => item.bottom));
-    const minValue3 = Math.min(...temp.map(item => collection.indexOf(item)));
+    const mappedCurrent = temp.map(item => componentCenter(item));
+    const minValue = Math.min(...mappedCurrent.map(item => item.left));
+    const min = Math.min(...mappedCurrent.map(item => item.top));
+    const count = Math.max(...mappedCurrent.map(item => item.right));
+    const max = Math.max(...mappedCurrent.map(item => item.bottom));
+    const minValueCurrent = Math.min(...temp.map(item => collection.indexOf(item)));
     const children = temp.map(component => ({
       ...component,
       position: {
         ...(component.position || {}),
         x: Number(component.position?.x || 0) - minValue,
-        y: Number(component.position?.y || 0) - minValue2
+        y: Number(component.position?.y || 0) - min
       }
     }));
     const options = {
-      id: ibeEffectRotation2,
+      id: ibeEffectRotation,
       type: "group",
       componentVersion: 1,
       position: {
         x: minValue,
-        y: minValue2,
+        y: min,
         width: Math.max(1, count - minValue),
-        height: Math.max(1, count2 - minValue2),
+        height: Math.max(1, max - min),
         rotation: 0,
         zIndex: 1
       },
@@ -1980,22 +1980,22 @@ function groupSelectedComponents(value) {
       style: {},
       children
     };
-    const allowed = new Set(list2);
+    const allowed = new Set(list);
     const filtered = collection.filter(component => !allowed.has(component.id));
-    filtered.splice(Math.min(minValue3, filtered.length), 0, options);
+    filtered.splice(Math.min(minValueCurrent, filtered.length), 0, options);
     collection.splice(0, collection.length, ...filtered);
     applyCollectionLayerOrder(collection);
     if (mapped[0].scope === "shared") {
-      for (const temp2 of doc.pages || []) {
-        const flag = temp2.sharedComponentIds || [];
-        const filtered2 = flag.map((item, index) => allowed.has(item) ? index : -1).filter(item => item >= 0);
-        if (!filtered2.length) {
+      for (const value of doc.pages || []) {
+        const flag = value.sharedComponentIds || [];
+        const filtered = flag.map((item, index) => allowed.has(item) ? index : -1).filter(item => item >= 0);
+        if (!filtered.length) {
           continue;
         }
-        const minValue4 = Math.min(...filtered2);
-        const filtered3 = flag.filter(item => !allowed.has(item));
-        filtered3.splice(Math.min(minValue4, filtered3.length), 0, ibeEffectRotation2);
-        temp2.sharedComponentIds = [...new Set(filtered3)];
+        const minValue = Math.min(...filtered);
+        const filteredCurrent = flag.filter(item => !allowed.has(item));
+        filteredCurrent.splice(Math.min(minValue, filteredCurrent.length), 0, ibeEffectRotation);
+        value.sharedComponentIds = [...new Set(filteredCurrent)];
       }
       syncSharedComponentReferenceOrder(doc);
     }
@@ -2017,54 +2017,54 @@ function ungroupComponent(value) {
       return;
     }
     const flag = locationValue.component.position || {};
-    const flag2 = locationValue.component.style || {};
+    const flagCurrent = locationValue.component.style || {};
     const numeric = Number(flag.rotation || 0);
-    const count = Math.max(0.01, Math.min(5, Number(flag2.scale || 1)));
+    const count = Math.max(0.01, Math.min(5, Number(flagCurrent.scale || 1)));
     const number = numeric * Math.PI / 180;
-    const temp3 = Math.cos(number);
-    const temp4 = Math.sin(number);
-    const number4 = Number(flag.width || 100);
-    const number5 = Number(flag.height || 100);
-    const number2 = Number(flag.x || 0) + number4 / 2;
-    const number3 = Number(flag.y || 0) + number5 / 2;
-    const mapped2 = (locationValue.component.children || []).map(component => {
-      const flag3 = component.position || {};
-      const number10 = Number(flag3.width || 100);
-      const number11 = Number(flag3.height || 100);
-      const number4 = Number(flag3.x || 0) + number10 / 2 - number4 / 2;
-      const number5 = Number(flag3.y || 0) + number11 / 2 - number5 / 2;
-      const number6 = number4 * count;
-      const number7 = number5 * count;
-      const number8 = number2 + number6 * temp3 - number7 * temp4;
-      const number9 = number3 + number6 * temp4 + number7 * temp3;
+    const cos = Math.cos(number);
+    const sin = Math.sin(number);
+    const groupWidth = Number(flag.width || 100);
+    const groupHeight = Number(flag.height || 100);
+    const numberCurrent = Number(flag.x || 0) + groupWidth / 2;
+    const numberNext = Number(flag.y || 0) + groupHeight / 2;
+    const mapped = (locationValue.component.children || []).map(component => {
+      const flag = component.position || {};
+      const number = Number(flag.width || 100);
+      const numberPrevious = Number(flag.height || 100);
+      const value = Number(flag.x || 0) + number / 2 - groupWidth / 2;
+      const numberLocal = Number(flag.y || 0) + numberPrevious / 2 - groupHeight / 2;
+      const numberItem = value * count;
+      const numberEntry = numberLocal * count;
+      const numberList = numberCurrent + numberItem * cos - numberEntry * sin;
+      const numberText = numberNext + numberItem * sin + numberEntry * cos;
       const style = {
         ...(component.style || {})
       };
-      const count2 = Math.max(0.01, Math.min(5, Number(style.scale || 1) * count));
-      if (flag2.visible === false) {
+      const max = Math.max(0.01, Math.min(5, Number(style.scale || 1) * count));
+      if (flagCurrent.visible === false) {
         style.visible = false;
       }
-      style.scale = count2;
+      style.scale = max;
       return {
         ...component,
         position: {
-          ...flag3,
-          x: number8 - number10 / 2,
-          y: number9 - number11 / 2,
-          rotation: Number(flag3.rotation || 0) + numeric
+          ...flag,
+          x: numberList - number / 2,
+          y: numberText - numberPrevious / 2,
+          rotation: Number(flag.rotation || 0) + numeric
         },
         style
       };
     });
-    locationValue.collection.splice(locationValue.index, 1, ...mapped2);
+    locationValue.collection.splice(locationValue.index, 1, ...mapped);
     applyCollectionLayerOrder(locationValue.collection);
     if (locationValue.scope === "shared" && locationValue.root) {
-      for (const temp5 of doc.pages || []) {
-        const flag3 = temp5.sharedComponentIds || [];
-        const foundIndex = flag3.indexOf(value);
+      for (const item of doc.pages || []) {
+        const flag = item.sharedComponentIds || [];
+        const foundIndex = flag.indexOf(value);
         if (!(foundIndex < 0)) {
-          flag3.splice(foundIndex, 1, ...mapped2.map(component => component.id));
-          temp5.sharedComponentIds = [...new Set(flag3)];
+          flag.splice(foundIndex, 1, ...mapped.map(component => component.id));
+          item.sharedComponentIds = [...new Set(flag)];
         }
       }
       syncSharedComponentReferenceOrder(doc);
@@ -2081,35 +2081,35 @@ function enterGroupEdit(value) {
     window.setTimeout(() => componentGroupRenameInput.focus(), 0);
   }
 }
-function removeComponentById(value, param, param2 = null, param3 = false) {
+function removeComponentById(value, param, item = null, entry = false) {
   const temp = findComponentLocation(value, param);
   if (!temp) {
     return null;
   }
-  const component = param2 ? cloneValue(param2) : refreshComponentIds(cloneValue(temp.component));
+  const component = item ? cloneValue(item) : refreshComponentIds(cloneValue(temp.component));
   component.properties = {
     ...(component.properties || {}),
     label: copiedComponentLabel(temp.component, temp.collection)
   };
   delete component.properties.previewState;
-  if (param3) {
+  if (entry) {
     const numeric = Number(value.canvas?.width || 2778);
     const canvasHeight = Number(value.canvas?.height || 1940);
     const number = Number(component.position?.width || 100);
-    const number2 = Number(component.position?.height || 100);
+    const numberCurrent = Number(component.position?.height || 100);
     component.position = {
       ...(component.position || {}),
       x: clampNumber(Number(component.position?.x || 0) + 24, -number / 2, numeric - number / 2),
-      y: clampNumber(Number(component.position?.y || 0) + 24, -number2 / 2, canvasHeight - number2 / 2)
+      y: clampNumber(Number(component.position?.y || 0) + 24, -numberCurrent / 2, canvasHeight - numberCurrent / 2)
     };
   }
   temp.collection.splice(temp.index, 0, component);
   applyCollectionLayerOrder(temp.collection);
   if (temp.scope === "shared" && temp.root) {
-    for (const temp2 of value.pages || []) {
-      const foundIndex = (temp2.sharedComponentIds || []).indexOf(param);
+    for (const item of value.pages || []) {
+      const foundIndex = (item.sharedComponentIds || []).indexOf(param);
       if (foundIndex >= 0) {
-        temp2.sharedComponentIds.splice(foundIndex, 0, component.id);
+        item.sharedComponentIds.splice(foundIndex, 0, component.id);
       }
     }
     syncSharedComponentReferenceOrder(value);
@@ -2121,15 +2121,15 @@ function detachComponentById(value, param) {
   if (!temp) {
     return null;
   }
-  const [temp2] = temp.collection.splice(temp.index, 1);
+  const [spliced] = temp.collection.splice(temp.index, 1);
   applyCollectionLayerOrder(temp.collection);
   if (temp.scope === "shared" && temp.root) {
-    for (const temp3 of value.pages || []) {
-      temp3.sharedComponentIds = (temp3.sharedComponentIds || []).filter(item => item !== param);
+    for (const item of value.pages || []) {
+      item.sharedComponentIds = (item.sharedComponentIds || []).filter(item => item !== param);
     }
     syncSharedComponentReferenceOrder(value);
   }
-  return temp2;
+  return spliced;
 }
 function normalizeHex(value) {
   const temp = String(value || "").trim().toLowerCase();
@@ -2155,14 +2155,14 @@ function componentsInScope(value) {
     return currentPage()?.components || [];
   }
 }
-function collectComponentsByType(value, param, param2 = []) {
+function collectComponentsByType(value, param, list = []) {
   for (const temp of value || []) {
     if (temp?.type === param) {
-      param2.push(temp);
+      list.push(temp);
     }
-    collectComponentsByType(temp?.children, param, param2);
+    collectComponentsByType(temp?.children, param, list);
   }
-  return param2;
+  return list;
 }
 function findComponentsByType(value) {
   return (currentProject?.document?.pages || []).flatMap(page => collectComponentsByType(page.components, value).map(component => ({
@@ -2191,7 +2191,7 @@ function clearPreviewStates() {
 function selectComponent(value, {
   toggle: item = false,
   range: param = false,
-  preserveGroup: param2 = false
+  preserveGroup: entry = false
 } = {}) {
   const temp = findComponent(currentProject?.document, value);
   if (!temp) {
@@ -2203,15 +2203,15 @@ function selectComponent(value, {
   }
   const componentLocation = findComponent(currentProject?.document, componentId);
   const flag = componentLocation?.scope === temp.scope && (temp.scope !== "page" || componentLocation.page?.path === temp.page?.path);
-  if (param2 && selectedComponentIds.has(value)) {
+  if (entry && selectedComponentIds.has(value)) {
     componentId = value;
   } else if (param && flag && rangeSelectAnchorId) {
-    const temp3 = componentsInScope(temp.scope);
-    const temp4 = temp3.findIndex(component => component.id === rangeSelectAnchorId);
-    const temp5 = temp3.findIndex(component => component.id === value);
-    if (temp4 >= 0 && temp5 >= 0) {
-      const [chosen, chosen2] = temp4 <= temp5 ? [temp4, temp5] : [temp5, temp4];
-      selectedComponentIds = new Set(temp3.slice(chosen, chosen2 + 1).map(component => component.id));
+    const list = componentsInScope(temp.scope);
+    const foundIndex = list.findIndex(component => component.id === rangeSelectAnchorId);
+    const item = list.findIndex(component => component.id === value);
+    if (foundIndex >= 0 && item >= 0) {
+      const [chosen, chosenCurrent] = foundIndex <= item ? [foundIndex, item] : [item, foundIndex];
+      selectedComponentIds = new Set(list.slice(chosen, chosenCurrent + 1).map(component => component.id));
       componentId = value;
     } else {
       selectedComponentIds = new Set([value]);
@@ -2272,52 +2272,52 @@ function nudgeSelectedComponents(value, param) {
   if (!!list.length && (!!value || !!param)) {
     mutateDocument(doc => {
       const filtered = list.map(item => findComponent(doc, item)?.component).filter(Boolean);
-      if (!filtered.length || filtered.some(component2 => component2.properties?.layoutMode === "fill")) {
+      if (!filtered.length || filtered.some(component => component.properties?.layoutMode === "fill")) {
         return;
       }
       const component = filtered.length === 1 && filtered[0].type === "air-conditioner" ? filtered[0] : null;
       if (component && airConditionerLayerById.get(component.id) === "airflow") {
-        const count3 = Math.max(1, Number(component.position?.width || 100));
-        const count4 = Math.max(1, Number(component.position?.height || 100));
+        const count = Math.max(1, Number(component.position?.width || 100));
+        const max = Math.max(1, Number(component.position?.height || 100));
         const temp = airflowCanvasOffsetBounds(component, doc.canvas);
         component.properties = {
           ...(component.properties || {}),
-          airflowOffsetX: clampNumber(Number(component.properties?.airflowOffsetX ?? -75) + value / count3 * 100, temp.minX, temp.maxX),
-          airflowOffsetY: clampNumber(Number(component.properties?.airflowOffsetY ?? 34) + param / count4 * 100, temp.minY, temp.maxY)
+          airflowOffsetX: clampNumber(Number(component.properties?.airflowOffsetX ?? -75) + value / count * 100, temp.minX, temp.maxX),
+          airflowOffsetY: clampNumber(Number(component.properties?.airflowOffsetY ?? 34) + param / max * 100, temp.minY, temp.maxY)
         };
         return;
       }
       const numeric = Number(doc.canvas?.width || 2778);
       const canvasHeight = Number(doc.canvas?.height || 1940);
-      const count = Math.max(...filtered.map(component2 => -Number(component2.position?.width || 100) / 2 - Number(component2.position?.x || 0)));
-      const minValue = Math.min(...filtered.map(component2 => numeric - Number(component2.position?.width || 100) / 2 - Number(component2.position?.x || 0)));
-      const count2 = Math.max(...filtered.map(component2 => -Number(component2.position?.height || 100) / 2 - Number(component2.position?.y || 0)));
-      const minValue2 = Math.min(...filtered.map(component2 => canvasHeight - Number(component2.position?.height || 100) / 2 - Number(component2.position?.y || 0)));
+      const count = Math.max(...filtered.map(component => -Number(component.position?.width || 100) / 2 - Number(component.position?.x || 0)));
+      const minValue = Math.min(...filtered.map(component => numeric - Number(component.position?.width || 100) / 2 - Number(component.position?.x || 0)));
+      const max = Math.max(...filtered.map(component => -Number(component.position?.height || 100) / 2 - Number(component.position?.y || 0)));
+      const min = Math.min(...filtered.map(component => canvasHeight - Number(component.position?.height || 100) / 2 - Number(component.position?.y || 0)));
       const clamped = clampNumber(value, count, minValue);
-      const clamped2 = clampNumber(param, count2, minValue2);
-      for (const temp2 of filtered) {
+      const number = clampNumber(param, max, min);
+      for (const value of filtered) {
         if (component) {
-          const count3 = Math.max(1, Number(temp2.position?.width || 100));
-          const count4 = Math.max(1, Number(temp2.position?.height || 100));
+          const count = Math.max(1, Number(value.position?.width || 100));
+          const max = Math.max(1, Number(value.position?.height || 100));
           const position = {
-            ...(temp2.position || {}),
-            x: Number(temp2.position?.x || 0) + clamped,
-            y: Number(temp2.position?.y || 0) + clamped2
+            ...(value.position || {}),
+            x: Number(value.position?.x || 0) + clamped,
+            y: Number(value.position?.y || 0) + number
           };
           const temp = airflowCanvasOffsetBounds({
-            ...temp2,
+            ...value,
             position
           }, doc.canvas);
-          temp2.properties = {
-            ...(temp2.properties || {}),
-            airflowOffsetX: clampNumber(Number(temp2.properties?.airflowOffsetX ?? -75) - clamped / count3 * 100, temp.minX, temp.maxX),
-            airflowOffsetY: clampNumber(Number(temp2.properties?.airflowOffsetY ?? 34) - clamped2 / count4 * 100, temp.minY, temp.maxY)
+          value.properties = {
+            ...(value.properties || {}),
+            airflowOffsetX: clampNumber(Number(value.properties?.airflowOffsetX ?? -75) - clamped / count * 100, temp.minX, temp.maxX),
+            airflowOffsetY: clampNumber(Number(value.properties?.airflowOffsetY ?? 34) - number / max * 100, temp.minY, temp.maxY)
           };
         }
-        temp2.position = {
-          ...(temp2.position || {}),
-          x: Number(temp2.position?.x || 0) + clamped,
-          y: Number(temp2.position?.y || 0) + clamped2
+        value.position = {
+          ...(value.position || {}),
+          x: Number(value.position?.x || 0) + clamped,
+          y: Number(value.position?.y || 0) + number
         };
       }
     });
@@ -2326,18 +2326,18 @@ function nudgeSelectedComponents(value, param) {
 function componentCenter(value) {
   const flag = value.position || {};
   const count = Math.max(0.01, Number(flag.width || 100));
-  const count2 = Math.max(0.01, Number(flag.height || 100));
-  const count3 = Math.max(0.01, Math.min(5, Number(value.style?.scale || 1)));
+  const max = Math.max(0.01, Number(flag.height || 100));
+  const countCurrent = Math.max(0.01, Math.min(5, Number(value.style?.scale || 1)));
   const number = Number(flag.rotation || 0) * Math.PI / 180;
-  const number2 = (Math.abs(Math.cos(number)) * count * count3 + Math.abs(Math.sin(number)) * count2 * count3) / 2;
-  const number3 = (Math.abs(Math.sin(number)) * count * count3 + Math.abs(Math.cos(number)) * count2 * count3) / 2;
-  const number4 = Number(flag.x || 0) + count / 2;
-  const number5 = Number(flag.y || 0) + count2 / 2;
+  const numberCurrent = (Math.abs(Math.cos(number)) * count * countCurrent + Math.abs(Math.sin(number)) * max * countCurrent) / 2;
+  const numberNext = (Math.abs(Math.sin(number)) * count * countCurrent + Math.abs(Math.cos(number)) * max * countCurrent) / 2;
+  const numberPrevious = Number(flag.x || 0) + count / 2;
+  const numberLocal = Number(flag.y || 0) + max / 2;
   return {
-    left: number4 - number2,
-    top: number5 - number3,
-    right: number4 + number2,
-    bottom: number5 + number3
+    left: numberPrevious - numberCurrent,
+    top: numberLocal - numberNext,
+    right: numberPrevious + numberCurrent,
+    bottom: numberLocal + numberNext
   };
 }
 function selectionRelativeOffsets(value) {
@@ -2351,36 +2351,36 @@ function selectionRelativeOffsets(value) {
   }
   const count = Math.max(0.01, Math.min(5, Number(found.style?.scale || 1)));
   const number = Math.max(0.01, Math.min(5, Number(value))) / count;
-  const count2 = Math.max(...list.map(el2 => 0.01 / Math.max(0.01, Number(el2.style?.scale || 1))));
-  const minValue = Math.min(...list.map(el2 => 5 / Math.max(0.01, Number(el2.style?.scale || 1))));
-  const clamped = clampNumber(number, count2, minValue);
+  const max = Math.max(...list.map(el => 0.01 / Math.max(0.01, Number(el.style?.scale || 1))));
+  const minValue = Math.min(...list.map(el => 5 / Math.max(0.01, Number(el.style?.scale || 1))));
+  const clamped = clampNumber(number, max, minValue);
   const mapped = list.map(componentCenter);
-  const number2 = (Math.min(...mapped.map(item => item.left)) + Math.max(...mapped.map(item => item.right))) / 2;
-  const number3 = (Math.min(...mapped.map(item => item.top)) + Math.max(...mapped.map(item => item.bottom))) / 2;
+  const numberCurrent = (Math.min(...mapped.map(item => item.left)) + Math.max(...mapped.map(item => item.right))) / 2;
+  const numberNext = (Math.min(...mapped.map(item => item.top)) + Math.max(...mapped.map(item => item.bottom))) / 2;
   return list.map(component => {
     const flag = component.position || {};
     const numeric = Number(flag.width || 100);
-    const number6 = Number(flag.height || 100);
-    const number4 = Number(flag.x || 0) + numeric / 2;
-    const number5 = Number(flag.y || 0) + number6 / 2;
+    const number = Number(flag.height || 100);
+    const value = Number(flag.x || 0) + numeric / 2;
+    const numberPrevious = Number(flag.y || 0) + number / 2;
     return {
       componentId: component.id,
-      x: number2 + (number4 - number2) * clamped - numeric / 2,
-      y: number3 + (number5 - number3) * clamped - number6 / 2,
+      x: numberCurrent + (value - numberCurrent) * clamped - numeric / 2,
+      y: numberNext + (numberPrevious - numberNext) * clamped - number / 2,
       scale: Math.max(0.01, Math.min(5, Number(component.style?.scale || 1) * clamped))
     };
   });
 }
 function selectedElementItemIds() {
-  const value = [...document.querySelectorAll(".element-item.selected[data-component-id]")].map(el2 => el2.dataset.componentId).filter(Boolean);
+  const value = [...document.querySelectorAll(".element-item.selected[data-component-id]")].map(el => el.dataset.componentId).filter(Boolean);
   if (selectedComponentIds.size > 1) {
     return [...selectedComponentIds];
   } else {
     return value;
   }
 }
-function setComponentsRotation(value, param, rotation, param2 = []) {
-  const chosen = param2.length > 1 ? param2 : [param];
+function setComponentsRotation(value, param, rotation, item = []) {
+  const chosen = item.length > 1 ? item : [param];
   for (const temp of chosen) {
     const component = findComponent(value, temp)?.component;
     if (component) {
@@ -2399,10 +2399,10 @@ function visibilityIconSvg(value) {
   }
 }
 function setComponentsVisible(value, visible) {
-  const list2 = [...new Set(value || [])];
-  if (list2.length) {
+  const list = [...new Set(value || [])];
+  if (list.length) {
     mutateDocument(item => {
-      for (const temp of list2) {
+      for (const temp of list) {
         const component = findComponent(item, temp)?.component;
         if (component) {
           component.style = {
@@ -2428,38 +2428,38 @@ function openComponentContextMenu(event, value) {
   const chosen = selectedComponentIds.has(value) ? [...selectedComponentIds] : [value];
   const length = chosen.length;
   const element = componentContextMenu.querySelector("[data-component-action=\"copy\"]");
-  const el3 = componentContextMenu.querySelector("[data-component-action=\"copy-to-page\"]");
-  const el4 = componentContextMenu.querySelector("[data-component-action=\"visibility\"]");
-  const el5 = componentContextMenu.querySelector("[data-component-action=\"delete\"]");
-  const el6 = componentContextMenu.querySelector("[data-component-action=\"group\"]");
-  const el7 = componentContextMenu.querySelector("[data-component-action=\"ungroup\"]");
-  const el8 = componentContextMenu.querySelector("[data-component-action=\"rename-group\"]");
-  const el9 = componentContextMenu.querySelector(":scope > strong");
+  const el = componentContextMenu.querySelector("[data-component-action=\"copy-to-page\"]");
+  const selector = componentContextMenu.querySelector("[data-component-action=\"visibility\"]");
+  const elCurrent = componentContextMenu.querySelector("[data-component-action=\"delete\"]");
+  const elNext = componentContextMenu.querySelector("[data-component-action=\"group\"]");
+  const elPrevious = componentContextMenu.querySelector("[data-component-action=\"ungroup\"]");
+  const elLocal = componentContextMenu.querySelector("[data-component-action=\"rename-group\"]");
+  const elItem = componentContextMenu.querySelector(":scope > strong");
   element.textContent = length > 1 ? "复制 " + length + " 个控件" : "复制控件";
   const component = findComponent(currentProject?.document, value)?.component;
-  const mapped = chosen.map(item => findComponent(currentProject?.document, item)?.component).filter(Boolean).map(el2 => el2.style?.visible !== false);
+  const mapped = chosen.map(item => findComponent(currentProject?.document, item)?.component).filter(Boolean).map(el => el.style?.visible !== false);
   const flag = mapped.length === chosen.length && mapped.every(item => item === mapped[0]);
-  el4.disabled = !flag;
-  el4.textContent = flag ? mapped[0] ? length > 1 ? "批量隐藏 " + length + " 个" : "隐藏控件" : length > 1 ? "批量显示 " + length + " 个" : "显示控件" : "批量隐藏/显示";
-  el4.title = flag ? "" : "选中的控件包含隐藏和显示状态，无法批量处理";
+  selector.disabled = !flag;
+  selector.textContent = flag ? mapped[0] ? length > 1 ? "批量隐藏 " + length + " 个" : "隐藏控件" : length > 1 ? "批量显示 " + length + " 个" : "显示控件" : "批量隐藏/显示";
+  selector.title = flag ? "" : "选中的控件包含隐藏和显示状态，无法批量处理";
   const temp = canGroupSelection(chosen);
-  el6.hidden = !temp;
-  el7.hidden = component?.type !== "group" || length !== 1;
-  el8.hidden = component?.type !== "group" || length !== 1;
-  el3.textContent = "复制到其他区域";
-  const hasMatch = projectList.some(component2 => component2.id !== currentProject?.projectId);
-  const temp2 = collectCopyPayload(currentProject?.document, chosen);
-  el3.disabled = temp2.length === 0 && !hasMatch;
-  el3.title = el3.disabled ? "当前没有可复制的目标区域" : length > 1 ? "完整复制选中的 " + length + " 个控件到其他页面、侧边栏或其他仪表盘" : "完整复制当前控件到其他页面、侧边栏或其他仪表盘";
-  el5.textContent = length > 1 ? "删除 " + length + " 个控件" : "删除控件";
-  el9.textContent = length > 1 ? "颜色标签（" + length + " 个控件）" : "颜色标签";
-  const mapped2 = chosen.map(item => {
-    const temp3 = findComponent(currentProject?.document, item)?.component;
-    return normalizeHex(temp3?.style?.editorLabelColor);
+  elNext.hidden = !temp;
+  elPrevious.hidden = component?.type !== "group" || length !== 1;
+  elLocal.hidden = component?.type !== "group" || length !== 1;
+  el.textContent = "复制到其他区域";
+  const hasMatch = projectList.some(component => component.id !== currentProject?.projectId);
+  const payload = collectCopyPayload(currentProject?.document, chosen);
+  el.disabled = payload.length === 0 && !hasMatch;
+  el.title = el.disabled ? "当前没有可复制的目标区域" : length > 1 ? "完整复制选中的 " + length + " 个控件到其他页面、侧边栏或其他仪表盘" : "完整复制当前控件到其他页面、侧边栏或其他仪表盘";
+  elCurrent.textContent = length > 1 ? "删除 " + length + " 个控件" : "删除控件";
+  elItem.textContent = length > 1 ? "颜色标签（" + length + " 个控件）" : "颜色标签";
+  const list = chosen.map(item => {
+    const value = findComponent(currentProject?.document, item)?.component;
+    return normalizeHex(value?.style?.editorLabelColor);
   });
-  const chosen2 = mapped2.every(item => item === mapped2[0]) ? mapped2[0] : null;
-  for (const temp3 of componentContextMenu.querySelectorAll("[data-label-color]")) {
-    temp3.classList.toggle("active", chosen2 !== null && temp3.dataset.labelColor === chosen2);
+  const chosenCurrent = list.every(item => item === list[0]) ? list[0] : null;
+  for (const element of componentContextMenu.querySelectorAll("[data-label-color]")) {
+    element.classList.toggle("active", chosenCurrent !== null && element.dataset.labelColor === chosenCurrent);
   }
   componentContextMenu.hidden = false;
   componentContextMenu.style.left = "0px";
@@ -2467,9 +2467,9 @@ function openComponentContextMenu(event, value) {
   window.requestAnimationFrame(() => {
     const rect = componentContextMenu.getBoundingClientRect();
     const clamped = clampNumber(event.clientX, 8, Math.max(8, window.innerWidth - rect.width - 8));
-    const clamped2 = clampNumber(event.clientY, 8, Math.max(8, window.innerHeight - rect.height - 8));
+    const number = clampNumber(event.clientY, 8, Math.max(8, window.innerHeight - rect.height - 8));
     componentContextMenu.style.left = clamped + "px";
-    componentContextMenu.style.top = clamped2 + "px";
+    componentContextMenu.style.top = number + "px";
   });
 }
 function collectCopyPayload(value, param) {
@@ -2477,10 +2477,10 @@ function collectCopyPayload(value, param) {
   if (!value || !filtered.length) {
     return [];
   }
-  const idSet2 = filtered.map(item => new Set(copyComponentTargets(value, item).map(event2 => event2.key)));
-  const list = [...(idSet2[0] || [])].filter(item => idSet2.every(item => item.has(item)));
+  const idSet = filtered.map(item => new Set(copyComponentTargets(value, item).map(event => event.key)));
+  const list = [...(idSet[0] || [])].filter(key => idSet.every(set => set.has(key)));
   const temp = copyComponentTargets(value, filtered[0]);
-  return list.map(item => temp.find(event2 => event2.key === item)).filter(Boolean);
+  return list.map(item => temp.find(event => event.key === item)).filter(Boolean);
 }
 function showCopySuccessDialog(value, param) {
   copySuccessPayload = param || null;
@@ -2506,26 +2506,26 @@ async function confirmCopySuccess() {
   }
 }
 function bringComponentsToFront(value, param = componentId) {
-  const list2 = [...new Set(value || [])];
-  if (list2.length) {
+  const listCurrent = [...new Set(value || [])];
+  if (listCurrent.length) {
     mutateDocument(item => {
-      const index = new Map(list2.map(item => [item, findComponentLocation(item, item)]));
-      const temp = list2.filter(item => index.get(item)).sort((left, right) => {
-        const temp2 = index.get(left);
-        const temp3 = index.get(right);
-        if (temp2.collection === temp3.collection) {
-          return temp2.index - temp3.index;
+      const index = new Map(listCurrent.map(item => [item, findComponentLocation(item, item)]));
+      const temp = listCurrent.filter(item => index.get(item)).sort((left, right) => {
+        const entry = index.get(left);
+        const value = index.get(right);
+        if (entry.collection === value.collection) {
+          return entry.index - value.index;
         } else {
           return 0;
         }
       });
       const list = [];
       const idByKey = new Map();
-      for (const temp2 of temp) {
-        const temp3 = removeComponentById(item, temp2);
-        if (temp3) {
-          list.push(temp3.id);
-          idByKey.set(temp2, temp3.id);
+      for (const value of temp) {
+        const id = removeComponentById(item, value);
+        if (id) {
+          list.push(id.id);
+          idByKey.set(value, id.id);
         }
       }
       if (list.length) {
@@ -2605,9 +2605,9 @@ async function loadCopyPageOptions() {
   copyComponentScaleOptions.hidden = true;
   setStatusMessage(copyComponentPageMessage, "");
   if (!value) {
-    const temp3 = collectCopyPayload(currentProject?.document, list);
-    fillCopyPageTargets(temp3);
-    copyComponentPageSubmitBtn.disabled = !temp3.length;
+    const payload = collectCopyPayload(currentProject?.document, list);
+    fillCopyPageTargets(payload);
+    copyComponentPageSubmitBtn.disabled = !payload.length;
     return;
   }
   const inputValue = copyComponentPageProject.value;
@@ -2617,23 +2617,23 @@ async function loadCopyPageOptions() {
     setStatusMessage(copyComponentPageMessage, "当前没有其他仪表盘可以复制。");
     return;
   }
-  const temp2 = ++copyScalePercent;
+  const item = ++copyScalePercent;
   fillCopyPageTargets([]);
   copyComponentPageSubmitBtn.disabled = true;
   setStatusMessage(copyComponentPageMessage, "正在读取目标仪表盘…");
   try {
     const asyncResult = await apiFetch("/projects/" + encodeURIComponent(inputValue) + "/draft");
-    if (temp2 !== copyScalePercent || copyComponentPageScope.value !== "other") {
+    if (item !== copyScalePercent || copyComponentPageScope.value !== "other") {
       return;
     }
     copyTargetProject = asyncResult;
-    const temp4 = pagesForCopy(asyncResult.document);
-    fillCopyPageTargets(temp4);
+    const copy = pagesForCopy(asyncResult.document);
+    fillCopyPageTargets(copy);
     syncCopyScaleOptions();
-    setStatusMessage(copyComponentPageMessage, temp4.length ? "" : "目标仪表盘还没有可复制到的区域。");
-    copyComponentPageSubmitBtn.disabled = !temp4.length;
+    setStatusMessage(copyComponentPageMessage, copy.length ? "" : "目标仪表盘还没有可复制到的区域。");
+    copyComponentPageSubmitBtn.disabled = !copy.length;
   } catch (error) {
-    if (temp2 !== copyScalePercent) {
+    if (item !== copyScalePercent) {
       return;
     }
     setStatusMessage(copyComponentPageMessage, error.message, "error");
@@ -2641,15 +2641,15 @@ async function loadCopyPageOptions() {
 }
 function copySelectedComponents(value) {
   const document = currentProject?.document;
-  const filtered2 = [...new Set(value || [])].filter(item => findComponent(document, item));
-  const temp = findComponent(document, filtered2[0]);
-  if (!temp || !filtered2.length) {
+  const filteredCurrent = [...new Set(value || [])].filter(item => findComponent(document, item));
+  const temp = findComponent(document, filteredCurrent[0]);
+  if (!temp || !filteredCurrent.length) {
     onError(new Error("没有找到要复制的控件。"));
     return;
   }
-  copyComponentPageDialog.dataset.componentIds = JSON.stringify(filtered2);
-  copyComponentPageName.textContent = filtered2.length > 1 ? "已选择 " + filtered2.length + " 个控件" : "“" + componentLabel(temp.component) + "”";
-  copyComponentPageDialog.querySelector("[data-copy-component-description]").textContent = filtered2.length > 1 ? "将选中的 " + filtered2.length + " 个控件完整复制到目标区域。" : temp.scope === "shared" ? "将侧边栏控件完整复制到指定主页面，复制后为该页面的独立控件。" : "将当前控件完整复制到侧边栏或其他主页面，保留位置、尺寸、样式、实体绑定和动作配置。";
+  copyComponentPageDialog.dataset.componentIds = JSON.stringify(filteredCurrent);
+  copyComponentPageName.textContent = filteredCurrent.length > 1 ? "已选择 " + filteredCurrent.length + " 个控件" : "“" + componentLabel(temp.component) + "”";
+  copyComponentPageDialog.querySelector("[data-copy-component-description]").textContent = filteredCurrent.length > 1 ? "将选中的 " + filteredCurrent.length + " 个控件完整复制到目标区域。" : temp.scope === "shared" ? "将侧边栏控件完整复制到指定主页面，复制后为该页面的独立控件。" : "将当前控件完整复制到侧边栏或其他主页面，保留位置、尺寸、样式、实体绑定和动作配置。";
   copyComponentPageScope.value = "current";
   syncCustomSelect(copyComponentPageScope);
   const filtered = projectList.filter(component => component.id !== currentProject.projectId);
@@ -2676,14 +2676,14 @@ function deleteSelectedComponents(value) {
   }
 }
 function setSelectedComponentsColor(value, param) {
-  const list2 = [...new Set(value || [])];
-  if (!list2.length) {
+  const list = [...new Set(value || [])];
+  if (!list.length) {
     return;
   }
   const temp = normalizeHex(param);
   mutateDocument(item => {
-    for (const temp2 of list2) {
-      const component = findComponent(item, temp2)?.component;
+    for (const value of list) {
+      const component = findComponent(item, value)?.component;
       if (component) {
         component.style = {
           ...(component.style || {})
@@ -2697,12 +2697,12 @@ function setSelectedComponentsColor(value, param) {
     }
   });
 }
-function renderComponentListSection(value, param, param2, scope) {
+function renderComponentListSection(value, param, item, scope) {
   value.replaceChildren();
   if (!param.length) {
     const element = document.createElement("div");
     element.className = "element-list-empty";
-    element.textContent = param2;
+    element.textContent = item;
     value.append(element);
     return;
   }
@@ -2715,10 +2715,10 @@ function renderComponentListSection(value, param, param2, scope) {
     element.classList.toggle("selected", selectedComponentIds.has(temp.id));
     element.classList.toggle("selection-primary", temp.id === componentId);
     element.classList.toggle("group-item", temp.type === "group");
-    const temp2 = normalizeHex(temp.style?.editorLabelColor);
-    element.classList.toggle("has-color-label", !!temp2);
-    if (temp2) {
-      element.style.setProperty("--element-label-color", temp2);
+    const hex = normalizeHex(temp.style?.editorLabelColor);
+    element.classList.toggle("has-color-label", !!hex);
+    if (hex) {
+      element.style.setProperty("--element-label-color", hex);
     }
     const iconEl = document.createElement("i");
     iconEl.className = temp.type === "group" ? "element-group-icon" : "element-label-color";
@@ -2755,10 +2755,10 @@ function renderComponentListSection(value, param, param2, scope) {
     });
     button.addEventListener("dblclick", callback);
     element.append(iconEl, span, button);
-    element.addEventListener("click", event2 => {
+    element.addEventListener("click", event => {
       selectComponent(temp.id, {
-        toggle: event2.metaKey || event2.ctrlKey,
-        range: event2.shiftKey
+        toggle: event.metaKey || event.ctrlKey,
+        range: event.shiftKey
       });
     });
     element.addEventListener("dblclick", event => {
@@ -2794,13 +2794,13 @@ function renderComponentListSection(value, param, param2, scope) {
         sourceId: temp.id,
         movingIds
       }));
-      value.querySelectorAll(".element-item").forEach(el3 => {
-        el3.classList.toggle("dragging", movingIds.includes(el3.dataset.componentId));
+      value.querySelectorAll(".element-item").forEach(el => {
+        el.classList.toggle("dragging", movingIds.includes(el.dataset.componentId));
       });
     });
     element.addEventListener("dragend", () => {
-      value.querySelectorAll(".dragging").forEach(el3 => el3.classList.remove("dragging"));
-      value.querySelectorAll(".drop-before, .drop-after").forEach(el3 => el3.classList.remove("drop-before", "drop-after"));
+      value.querySelectorAll(".dragging").forEach(el => el.classList.remove("dragging"));
+      value.querySelectorAll(".drop-before, .drop-after").forEach(el => el.classList.remove("drop-before", "drop-after"));
     });
     element.addEventListener("dragover", event => {
       if (!event.dataTransfer.types.includes("text/plain")) {
@@ -2815,21 +2815,21 @@ function renderComponentListSection(value, param, param2, scope) {
     element.addEventListener("dragleave", () => element.classList.remove("drop-before", "drop-after"));
     element.addEventListener("drop", event => {
       event.preventDefault();
-      let payload2;
+      let payload;
       try {
-        payload2 = JSON.parse(event.dataTransfer.getData("text/plain"));
+        payload = JSON.parse(event.dataTransfer.getData("text/plain"));
       } catch {
         return;
       }
       const {
         scope: alias,
-        sourceId: alias2
-      } = payload2;
-      const list = Array.isArray(payload2.movingIds) ? payload2.movingIds : [alias2];
-      const temp6 = element.classList.contains("drop-after");
+        sourceId: aliasCurrent
+      } = payload;
+      const list = Array.isArray(payload.movingIds) ? payload.movingIds : [aliasCurrent];
+      const contains = element.classList.contains("drop-after");
       element.classList.remove("drop-before", "drop-after");
-      if (alias === scope && !!alias2 && !list.includes(temp.id)) {
-        componentId = alias2;
+      if (alias === scope && !!aliasCurrent && !list.includes(temp.id)) {
+        componentId = aliasCurrent;
         selectedComponentIds = new Set(list);
         mutateDocument(document => {
           const chosen = scope === "shared" ? document.sharedComponents : document.pages.find(component => component.path === pageSelect.value)?.components;
@@ -2841,11 +2841,11 @@ function renderComponentListSection(value, param, param2, scope) {
           if (!filtered.length) {
             return;
           }
-          const filtered2 = chosen.filter(component => !allowed.has(component.id));
-          const temp7 = filtered2.findIndex(component => component.id === temp.id);
-          if (!(temp7 < 0)) {
-            filtered2.splice(temp7 + (temp6 ? 1 : 0), 0, ...filtered);
-            chosen.splice(0, chosen.length, ...filtered2);
+          const filteredCurrent = chosen.filter(component => !allowed.has(component.id));
+          const foundIndex = filteredCurrent.findIndex(component => component.id === temp.id);
+          if (!(foundIndex < 0)) {
+            filteredCurrent.splice(foundIndex + (contains ? 1 : 0), 0, ...filtered);
+            chosen.splice(0, chosen.length, ...filteredCurrent);
             applyCollectionLayerOrder(chosen);
             if (scope === "shared") {
               syncSharedComponentReferenceOrder(document);
@@ -2877,16 +2877,16 @@ function createComponentListItem(value, param) {
 function renderComponentTree() {
   const value = currentPage();
   const chosen = activeGroupId ? findComponent(currentProject?.document, activeGroupId) : null;
-  const chosen2 = chosen?.component?.type === "group" ? chosen.component : null;
-  if (activeGroupId && !chosen2) {
+  const component = chosen?.component?.type === "group" ? chosen.component : null;
+  if (activeGroupId && !component) {
     activeGroupId = null;
   }
-  const mode2 = chosen2 && chosen.scope === "shared" ? chosen2.children || [] : currentProject?.document?.sharedComponents || [];
-  const chosen4 = chosen2 && chosen.scope === "page" ? chosen2.children || [] : value?.components || [];
-  renderComponentListSection(sharedComponentList, mode2, "暂无侧边栏控件", "shared");
-  renderComponentListSection(pageComponentList, chosen4, "暂无主页面控件", "page");
-  if (chosen2) {
-    createComponentListItem(chosen.scope === "shared" ? sharedComponentList : pageComponentList, chosen2);
+  const mode = component && chosen.scope === "shared" ? component.children || [] : currentProject?.document?.sharedComponents || [];
+  const children = component && chosen.scope === "page" ? component.children || [] : value?.components || [];
+  renderComponentListSection(sharedComponentList, mode, "暂无侧边栏控件", "shared");
+  renderComponentListSection(pageComponentList, children, "暂无主页面控件", "page");
+  if (component) {
+    createComponentListItem(chosen.scope === "shared" ? sharedComponentList : pageComponentList, component);
   }
 }
 function setComponentTemplateScope(value) {
@@ -2907,7 +2907,7 @@ function pageHasComponentTemplates() {
 }
 function listAllComponentTemplates() {
   const value = currentUiPackId();
-  const list = [...listComponentTemplates("shared", value), ...listComponentTemplates("page", value)].filter((component, index, arr) => arr.findIndex(component2 => component2.id === component.id) === index);
+  const list = [...listComponentTemplates("shared", value), ...listComponentTemplates("page", value)].filter((component, index, arr) => arr.findIndex(item => item.id === component.id) === index);
   componentTemplateScope.textContent = componentAddScope === "shared" ? "当前添加到侧边栏，添加后会在所有页面显示。" : "当前添加到主页面，仅在“" + (currentPage()?.name || "当前页面") + "”显示。";
   if (!list.length) {
     const element = document.createElement("div");
@@ -2933,14 +2933,14 @@ function listAllComponentTemplates() {
       img.alt = "";
       span.append(img);
     }
-    const span2 = document.createElement("span");
-    span2.className = "component-template-copy";
+    const spanCurrent = document.createElement("span");
+    spanCurrent.className = "component-template-copy";
     const element = document.createElement("strong");
     element.textContent = component.name;
-    const span3 = document.createElement("span");
-    span3.textContent = component.description;
-    span2.append(element, span3);
-    temp.append(span, span2);
+    const spanNext = document.createElement("span");
+    spanNext.textContent = component.description;
+    spanCurrent.append(element, spanNext);
+    temp.append(span, spanCurrent);
     if (component.id === "interaction3d") {
       updateInteraction3dCard(temp);
     }
@@ -3000,15 +3000,15 @@ function deviceDisplayName(value) {
 }
 function entityPreferredName(value, param = deviceDisplayName(value)) {
   const temp = normalizeWhitespace(value?.name);
-  const temp2 = normalizeWhitespace(value?.originalName);
+  const whitespace = normalizeWhitespace(value?.originalName);
   if (!param) {
-    return temp || temp2 || value?.entityId || "";
+    return temp || whitespace || value?.entityId || "";
   }
   const chosen = temp === param ? "" : temp.startsWith(param + " ") ? temp.slice(param.length).trim() : temp.startsWith(param + "·") ? temp.slice(param.length + 1).trim() : temp;
   if (chosen && chosen !== param) {
     return chosen;
-  } else if (temp2 && temp2 !== param) {
-    return temp2;
+  } else if (whitespace && whitespace !== param) {
+    return whitespace;
   } else {
     return "";
   }
@@ -3046,31 +3046,31 @@ function lightStatisticsEntityStatus(value, param = null) {
   }
   const temp = editorRenderer?.states?.get?.(value);
   const flag = temp?.newState || temp;
-  const temp2 = String(flag?.state ?? "").trim().toLowerCase();
-  const temp3 = lightStatisticsEntityStateStatus(param, flag);
-  if (temp3 === "on") {
+  const item = String(flag?.state ?? "").trim().toLowerCase();
+  const status = lightStatisticsEntityStateStatus(param, flag);
+  if (status === "on") {
     return {
       label: "已开启/运行",
       tone: "on"
     };
-  } else if (temp3 === "off") {
+  } else if (status === "off") {
     return {
       label: "已关闭",
       tone: "off"
     };
-  } else if (temp2 === "unavailable") {
+  } else if (item === "unavailable") {
     return {
       label: "暂时不可用",
       tone: "abnormal"
     };
-  } else if (temp2 === "unknown") {
+  } else if (item === "unknown") {
     return {
       label: "状态未知",
       tone: "abnormal"
     };
-  } else if (temp2) {
+  } else if (item) {
     return {
-      label: "无法判断：" + temp2,
+      label: "无法判断：" + item,
       tone: "abnormal"
     };
   } else {
@@ -3122,21 +3122,21 @@ function filterLightStatisticsEntities(value = "") {
     const span = document.createElement("span");
     span.className = "inspector-entity-option-content";
     span.title = entityPickerText(item);
-    const span2 = document.createElement("span");
-    span2.className = "inspector-entity-option-line inspector-entity-name-line";
+    const spanCurrent = document.createElement("span");
+    spanCurrent.className = "inspector-entity-option-line inspector-entity-name-line";
     const element = document.createElement("span");
     element.className = "inspector-entity-kind";
     element.textContent = "[" + entityKindLabel(item) + "] ";
-    const span3 = document.createElement("span");
-    span3.className = "inspector-entity-name";
-    span3.textContent = entityPickerPrimaryName(item);
-    span2.append(element, span3);
-    const span4 = document.createElement("span");
-    span4.className = "inspector-entity-option-line inspector-entity-id";
-    span4.textContent = item.entityId;
-    span4.title = item.entityId;
-    span.append(span2, span4);
-    enableEntityTextHoverScroll(button, span2);
+    const spanNext = document.createElement("span");
+    spanNext.className = "inspector-entity-name";
+    spanNext.textContent = entityPickerPrimaryName(item);
+    spanCurrent.append(element, spanNext);
+    const spanPrevious = document.createElement("span");
+    spanPrevious.className = "inspector-entity-option-line inspector-entity-id";
+    spanPrevious.textContent = item.entityId;
+    spanPrevious.title = item.entityId;
+    span.append(spanCurrent, spanPrevious);
+    enableEntityTextHoverScroll(button, spanCurrent);
     button.append(span);
     return button;
   });
@@ -3172,8 +3172,8 @@ function confirmLightStatisticsEntityPick() {
   if (!value || !temp || !found) {
     return;
   }
-  const component2 = selectedComponent();
-  if (alias < 0 && lightStatisticsEntityIds(component2).length >= defaultIconSize) {
+  const component = selectedComponent();
+  if (alias < 0 && lightStatisticsEntityIds(component).length >= defaultIconSize) {
     setLightStatisticsEntityMessage("每个统计控件最多添加 " + defaultIconSize + " 个实体。", true);
     return;
   }
@@ -3229,12 +3229,12 @@ function removeLightStatisticsEntityAt(value) {
         return;
       }
       const entityIds = lightStatisticsEntityIds(component);
-      const [temp2] = entityIds.splice(value, 1);
+      const [spliced] = entityIds.splice(value, 1);
       const entityLabels = {
         ...(component.properties?.entityLabels || {})
       };
-      if (temp2) {
-        delete entityLabels[temp2];
+      if (spliced) {
+        delete entityLabels[spliced];
       }
       component.properties = {
         ...(component.properties || {}),
@@ -3253,29 +3253,29 @@ function syncLightStatisticsEntityButton(component = selectedComponent()) {
   const flag = component.properties?.entityLabels || {};
   lightStatisticsEntityCount.textContent = value.length + " 个";
   const mapped = value.map((item, index) => {
-    const flag2 = pickerEntitiesForComponentType("light-statistics").find(item => item.entityId === item) || null;
-    const temp = lightStatisticsEntityStatus(item, flag2);
-    const div2 = document.createElement("div");
-    div2.className = "light-statistics-entity-row " + temp.tone + (flag2 ? "" : " missing");
-    const div3 = document.createElement("div");
+    const found = pickerEntitiesForComponentType("light-statistics").find(item => item.entityId === item) || null;
+    const temp = lightStatisticsEntityStatus(item, found);
+    const div = document.createElement("div");
+    div.className = "light-statistics-entity-row " + temp.tone + (found ? "" : " missing");
+    const divCurrent = document.createElement("div");
     const element = document.createElement("strong");
-    element.textContent = flag2 ? entityPickerPrimaryName(flag2) : flag[item] || item;
-    const el3 = document.createElement("small");
-    el3.textContent = item + " · " + temp.label;
-    div3.append(element, el3);
+    element.textContent = found ? entityPickerPrimaryName(found) : flag[item] || item;
+    const el = document.createElement("small");
+    el.textContent = item + " · " + temp.label;
+    divCurrent.append(element, el);
     const span = document.createElement("span");
     span.className = "light-statistics-entity-actions";
     const button = document.createElement("button");
     button.type = "button";
     button.dataset.lightStatisticsReplaceIndex = String(index);
     button.textContent = "更换";
-    const button2 = document.createElement("button");
-    button2.type = "button";
-    button2.dataset.lightStatisticsRemoveIndex = String(index);
-    button2.textContent = "删除";
-    span.append(button, button2);
-    div2.append(div3, span);
-    return div2;
+    const buttonCurrent = document.createElement("button");
+    buttonCurrent.type = "button";
+    buttonCurrent.dataset.lightStatisticsRemoveIndex = String(index);
+    buttonCurrent.textContent = "删除";
+    span.append(button, buttonCurrent);
+    div.append(divCurrent, span);
+    return div;
   });
   lightStatisticsEntityList.replaceChildren(...mapped);
 }
@@ -3322,8 +3322,8 @@ function closestOverflowScrollEl(value) {
   if (temp) {
     return temp;
   }
-  const temp2 = value.closest?.("[data-overflow-scroll-preview-row]");
-  return overflowPreviewState.get(temp2)?.[0] || null;
+  const item = value.closest?.("[data-overflow-scroll-preview-row]");
+  return overflowPreviewState.get(item)?.[0] || null;
 }
 function overflowPreviewRow(value) {
   return value?.closest?.("[data-overflow-scroll-preview-row]") || value;
@@ -3352,12 +3352,12 @@ function pickerValueEl(element) {
   enableEntityTextHoverScroll(element, inspectorPickerValue);
   return inspectorPickerValue;
 }
-function setPickerButtonLabel(value, param, param2 = "") {
+function setPickerButtonLabel(value, param, item = "") {
   const element = pickerValueEl(value);
   if (element) {
     element.textContent = param;
-    element.title = param2 || param;
-    value.title = param2 || param;
+    element.title = item || param;
+    value.title = item || param;
   }
 }
 document.addEventListener("pointerover", value => {
@@ -3382,9 +3382,9 @@ document.addEventListener("pointerover", value => {
       return;
     }
     element.classList.add("hover-scrolling");
-    const temp2 = performance.now();
+    const now = performance.now();
     const callback = item => {
-      const number = (item - temp2) * 0.04;
+      const number = (item - now) * 0.04;
       element.scrollLeft = Math.min(count, number);
       if (number < count) {
         options.frame = window.requestAnimationFrame(callback);
@@ -3395,8 +3395,8 @@ document.addEventListener("pointerover", value => {
 });
 document.addEventListener("pointerout", value => {
   const temp = closestOverflowScrollEl(value.target);
-  const temp2 = overflowPreviewRow(temp);
-  const flag = value.relatedTarget instanceof Node && temp2?.contains(value.relatedTarget);
+  const row = overflowPreviewRow(temp);
+  const flag = value.relatedTarget instanceof Node && row?.contains(value.relatedTarget);
   if (!!temp && !flag) {
     stopOverflowScroll(temp);
   }
@@ -3487,24 +3487,24 @@ function mdiIconUrl(value) {
 function syncNavigationIconButton(value) {
   const text = String(value || "");
   const element = navigationIconButton.querySelector("i");
-  const el3 = navigationIconButton.querySelector("span");
+  const el = navigationIconButton.querySelector("span");
   const temp = mdiIconUrl(text);
   element.hidden = !temp;
   element.style.maskImage = temp ? "url(\"" + temp + "\")" : "";
   element.style.webkitMaskImage = temp ? "url(\"" + temp + "\")" : "";
-  el3.textContent = text || "不使用图标";
+  el.textContent = text || "不使用图标";
   navigationIconCopyBtn.disabled = !text;
   navigationIconCopyBtn.title = text ? "复制 " + text : "当前未使用图标";
 }
 function syncIbeIconButton(value) {
   const text = String(value || "");
   const element = ibeIconButton.querySelector("i");
-  const el3 = ibeIconButton.querySelector("span");
+  const el = ibeIconButton.querySelector("span");
   const temp = mdiIconUrl(text);
   element.hidden = !temp;
   element.style.maskImage = temp ? "url(\"" + temp + "\")" : "";
   element.style.webkitMaskImage = temp ? "url(\"" + temp + "\")" : "";
-  el3.textContent = text || "不使用图标";
+  el.textContent = text || "不使用图标";
   ibeIconCopyBtn.disabled = !text;
   ibeIconCopyBtn.title = text ? "复制 " + text : "当前未使用图标";
 }
@@ -3512,36 +3512,36 @@ function syncIconButtonIcon(value) {
   const text = String(value || "");
   const includesValue = ["device-button", "presence-sensor"].includes(selectedComponent()?.type);
   const element = iconButtonIconButton.querySelector("i");
-  const el3 = iconButtonIconButton.querySelector("span");
+  const el = iconButtonIconButton.querySelector("span");
   const temp = mdiIconUrl(text);
   element.hidden = !temp;
   element.style.maskImage = temp ? "url(\"" + temp + "\")" : "";
   element.style.webkitMaskImage = temp ? "url(\"" + temp + "\")" : "";
-  el3.textContent = text || (includesValue ? "跟随实体图标" : "不使用图标");
+  el.textContent = text || (includesValue ? "跟随实体图标" : "不使用图标");
   iconButtonIconCopyBtn.disabled = !text;
   iconButtonIconCopyBtn.title = text ? "复制 " + text : "当前未使用图标";
 }
 function syncTitleButtonIcon(value) {
   const text = String(value || "");
   const element = titleButtonIconButton.querySelector("i");
-  const el3 = titleButtonIconButton.querySelector("span");
+  const el = titleButtonIconButton.querySelector("span");
   const temp = mdiIconUrl(text);
   element.hidden = !temp;
   element.style.maskImage = temp ? "url(\"" + temp + "\")" : "";
   element.style.webkitMaskImage = temp ? "url(\"" + temp + "\")" : "";
-  el3.textContent = text || "不使用图标";
+  el.textContent = text || "不使用图标";
   titleButtonIconCopyBtn.disabled = !text;
   titleButtonIconCopyBtn.title = text ? "复制 " + text : "当前未使用图标";
 }
 function syncLightStatisticsIcon(value) {
   const text = String(value ?? "mdi:lightbulb-group-outline");
   const element = lightStatisticsIconButton.querySelector("i");
-  const el3 = lightStatisticsIconButton.querySelector("span");
+  const el = lightStatisticsIconButton.querySelector("span");
   const temp = mdiIconUrl(text);
   element.hidden = !temp;
   element.style.maskImage = temp ? "url(\"" + temp + "\")" : "";
   element.style.webkitMaskImage = temp ? "url(\"" + temp + "\")" : "";
-  el3.textContent = text || "不使用图标";
+  el.textContent = text || "不使用图标";
   lightStatisticsIconCopyBtn.disabled = !text;
   lightStatisticsIconCopyBtn.title = text ? "复制 " + text : "当前未使用图标";
 }
@@ -3641,20 +3641,20 @@ function showEntityNameHover(element, value) {
   if (!ancestorEl?.open || !value) {
     return;
   }
-  const div2 = document.createElement("div");
-  div2.className = "editor-icon-name-tooltip";
-  div2.textContent = value;
-  ancestorEl.append(div2);
+  const div = document.createElement("div");
+  div.className = "editor-icon-name-tooltip";
+  div.textContent = value;
+  ancestorEl.append(div);
   const rect = element.getBoundingClientRect();
-  const rect2 = div2.getBoundingClientRect();
-  const minValue = Math.min(window.innerWidth - rect2.width - 8, Math.max(8, rect.left + (rect.width - rect2.width) / 2));
-  let number = rect.top - rect2.height - 8;
+  const rectCurrent = div.getBoundingClientRect();
+  const minValue = Math.min(window.innerWidth - rectCurrent.width - 8, Math.max(8, rect.left + (rect.width - rectCurrent.width) / 2));
+  let number = rect.top - rectCurrent.height - 8;
   if (number < 8) {
     number = rect.bottom + 8;
   }
-  div2.style.left = minValue + "px";
-  div2.style.top = number + "px";
-  entityNameHoverTimer = div2;
+  div.style.left = minValue + "px";
+  div.style.top = number + "px";
+  entityNameHoverTimer = div;
 }
 function bindEditorIconNameTooltip(value, param) {
   value.addEventListener("pointerenter", () => showEntityNameHover(value, param));
@@ -3666,23 +3666,23 @@ async function loadIconPickerOptions({
   optionsElement: value,
   query: item = "",
   currentIcon: param = "",
-  clearLabel: param2 = "不使用图标",
-  datasetKey: param3 = "iconName",
-  append: param4 = false
+  clearLabel: entry = "不使用图标",
+  datasetKey: current = "iconName",
+  append: result = false
 }) {
   const trimmed = String(item || "").trim();
   const temp = entityNameHoverStateFor(value);
-  if (!param4 || temp.query !== trimmed) {
+  if (!result || temp.query !== trimmed) {
     temp.query = trimmed;
     temp.offset = 0;
     temp.total = 0;
     temp.loading = false;
     temp.complete = false;
     temp.generation += 1;
-    const div2 = document.createElement("div");
-    div2.className = "navigation-icon-load-state";
-    div2.textContent = "正在加载图标…";
-    value.replaceChildren(createIconPickerClearOption(param, param2, param3), div2);
+    const div = document.createElement("div");
+    div.className = "navigation-icon-load-state";
+    div.textContent = "正在加载图标…";
+    value.replaceChildren(createIconPickerClearOption(param, entry, current), div);
     value.scrollTop = 0;
   }
   if (temp.loading || temp.complete) {
@@ -3700,7 +3700,7 @@ async function loadIconPickerOptions({
       return;
     }
     const flag = asyncResult.items || [];
-    const mapped = flag.map(item => createIconPickerOption(item, param, param3));
+    const mapped = flag.map(item => createIconPickerOption(item, param, current));
     if (navigationIconLoadState && mapped.length) {
       navigationIconLoadState.before(...mapped);
     }
@@ -3728,7 +3728,7 @@ function bindIconPickerInfiniteScroll(value, param) {
     }
   });
 }
-async function loadIconPickerOptions2(query = "", {
+async function loadIconPickerOptionsCurrent(query = "", {
   append = false
 } = {}) {
   return loadIconPickerOptions({
@@ -3738,7 +3738,7 @@ async function loadIconPickerOptions2(query = "", {
     append
   });
 }
-async function loadIconPickerOptions3(query = "", {
+async function loadIconPickerOptionsNext(query = "", {
   append = false
 } = {}) {
   return loadIconPickerOptions({
@@ -3748,7 +3748,7 @@ async function loadIconPickerOptions3(query = "", {
     append
   });
 }
-async function loadIconPickerOptions4(query = "", {
+async function loadIconPickerOptionsPrevious(query = "", {
   append = false
 } = {}) {
   const component = selectedComponent();
@@ -3760,7 +3760,7 @@ async function loadIconPickerOptions4(query = "", {
     append
   });
 }
-async function loadIconPickerOptions5(query = "", {
+async function loadIconPickerOptionsLocal(query = "", {
   append = false
 } = {}) {
   return loadIconPickerOptions({
@@ -3770,7 +3770,7 @@ async function loadIconPickerOptions5(query = "", {
     append
   });
 }
-async function loadIconPickerOptions6(query = "", {
+async function loadIconPickerOptionsItem(query = "", {
   append = false
 } = {}) {
   const value = selectedComponent()?.properties || {};
@@ -3783,19 +3783,19 @@ async function loadIconPickerOptions6(query = "", {
     append
   });
 }
-bindIconPickerInfiniteScroll(navigationIconOptions, () => loadIconPickerOptions2(navigationIconSearch.value, {
+bindIconPickerInfiniteScroll(navigationIconOptions, () => loadIconPickerOptionsCurrent(navigationIconSearch.value, {
   append: true
 }));
-bindIconPickerInfiniteScroll(ibeIconOptions, () => loadIconPickerOptions3(ibeIconSearch.value, {
+bindIconPickerInfiniteScroll(ibeIconOptions, () => loadIconPickerOptionsNext(ibeIconSearch.value, {
   append: true
 }));
-bindIconPickerInfiniteScroll(iconButtonIconOptions, () => loadIconPickerOptions4(iconButtonIconSearch.value, {
+bindIconPickerInfiniteScroll(iconButtonIconOptions, () => loadIconPickerOptionsPrevious(iconButtonIconSearch.value, {
   append: true
 }));
-bindIconPickerInfiniteScroll(titleButtonIconOptions, () => loadIconPickerOptions5(titleButtonIconSearch.value, {
+bindIconPickerInfiniteScroll(titleButtonIconOptions, () => loadIconPickerOptionsLocal(titleButtonIconSearch.value, {
   append: true
 }));
-bindIconPickerInfiniteScroll(lightStatisticsIconOptions, () => loadIconPickerOptions6(lightStatisticsIconSearch.value, {
+bindIconPickerInfiniteScroll(lightStatisticsIconOptions, () => loadIconPickerOptionsItem(lightStatisticsIconSearch.value, {
   append: true
 }));
 function positionNavigationIconMenu() {
@@ -3804,13 +3804,13 @@ function positionNavigationIconMenu() {
   }
   const value = navigationIconButton.parentElement.getBoundingClientRect();
   const temp = 5;
-  const number3 = 8;
-  const number = window.innerHeight - value.bottom - temp - number3;
-  const number2 = value.top - temp - number3;
-  const flag = number >= 250 || number >= number2;
-  const count = Math.max(150, Math.min(390, flag ? number : number2));
-  navigationIconMenu.style.left = clampNumber(value.left, number3, Math.max(number3, window.innerWidth - value.width - number3)) + "px";
-  navigationIconMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(number3, value.top - count - temp) + "px";
+  const numberCurrent = 8;
+  const number = window.innerHeight - value.bottom - temp - numberCurrent;
+  const numberNext = value.top - temp - numberCurrent;
+  const flag = number >= 250 || number >= numberNext;
+  const count = Math.max(150, Math.min(390, flag ? number : numberNext));
+  navigationIconMenu.style.left = clampNumber(value.left, numberCurrent, Math.max(numberCurrent, window.innerWidth - value.width - numberCurrent)) + "px";
+  navigationIconMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(numberCurrent, value.top - count - temp) + "px";
   navigationIconMenu.style.width = value.width + "px";
   navigationIconMenu.style.maxHeight = count + "px";
   navigationIconOptions.style.maxHeight = Math.max(90, count - 57) + "px";
@@ -3821,64 +3821,64 @@ function positionIbeIconMenu() {
   }
   const value = ibeIconButton.parentElement.getBoundingClientRect();
   const temp = 5;
-  const number3 = 8;
-  const number = window.innerHeight - value.bottom - temp - number3;
-  const number2 = value.top - temp - number3;
-  const flag = number >= 250 || number >= number2;
-  const count = Math.max(150, Math.min(390, flag ? number : number2));
-  ibeIconMenu.style.left = clampNumber(value.left, number3, Math.max(number3, window.innerWidth - value.width - number3)) + "px";
-  ibeIconMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(number3, value.top - count - temp) + "px";
+  const numberCurrent = 8;
+  const number = window.innerHeight - value.bottom - temp - numberCurrent;
+  const numberNext = value.top - temp - numberCurrent;
+  const flag = number >= 250 || number >= numberNext;
+  const count = Math.max(150, Math.min(390, flag ? number : numberNext));
+  ibeIconMenu.style.left = clampNumber(value.left, numberCurrent, Math.max(numberCurrent, window.innerWidth - value.width - numberCurrent)) + "px";
+  ibeIconMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(numberCurrent, value.top - count - temp) + "px";
   ibeIconMenu.style.width = value.width + "px";
   ibeIconMenu.style.maxHeight = count + "px";
   ibeIconOptions.style.maxHeight = Math.max(90, count - 57) + "px";
 }
-function syncIconButtonIcon2() {
+function syncIconButtonIconCurrent() {
   if (iconButtonIconMenu.hidden) {
     return;
   }
   const value = iconButtonIconButton.parentElement.getBoundingClientRect();
   const temp = 5;
-  const number3 = 8;
-  const number = window.innerHeight - value.bottom - temp - number3;
-  const number2 = value.top - temp - number3;
-  const flag = number >= 250 || number >= number2;
-  const count = Math.max(150, Math.min(390, flag ? number : number2));
-  iconButtonIconMenu.style.left = clampNumber(value.left, number3, Math.max(number3, window.innerWidth - value.width - number3)) + "px";
-  iconButtonIconMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(number3, value.top - count - temp) + "px";
+  const numberCurrent = 8;
+  const number = window.innerHeight - value.bottom - temp - numberCurrent;
+  const numberNext = value.top - temp - numberCurrent;
+  const flag = number >= 250 || number >= numberNext;
+  const count = Math.max(150, Math.min(390, flag ? number : numberNext));
+  iconButtonIconMenu.style.left = clampNumber(value.left, numberCurrent, Math.max(numberCurrent, window.innerWidth - value.width - numberCurrent)) + "px";
+  iconButtonIconMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(numberCurrent, value.top - count - temp) + "px";
   iconButtonIconMenu.style.width = value.width + "px";
   iconButtonIconMenu.style.maxHeight = count + "px";
   iconButtonIconOptions.style.maxHeight = Math.max(90, count - 57) + "px";
 }
-function syncTitleButtonIcon2() {
+function syncTitleButtonIconCurrent() {
   if (titleButtonIconMenu.hidden) {
     return;
   }
   const value = titleButtonIconButton.parentElement.getBoundingClientRect();
   const temp = 5;
-  const number3 = 8;
-  const number = window.innerHeight - value.bottom - temp - number3;
-  const number2 = value.top - temp - number3;
-  const flag = number >= 250 || number >= number2;
-  const count = Math.max(150, Math.min(390, flag ? number : number2));
-  titleButtonIconMenu.style.left = clampNumber(value.left, number3, Math.max(number3, window.innerWidth - value.width - number3)) + "px";
-  titleButtonIconMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(number3, value.top - count - temp) + "px";
+  const numberCurrent = 8;
+  const number = window.innerHeight - value.bottom - temp - numberCurrent;
+  const numberNext = value.top - temp - numberCurrent;
+  const flag = number >= 250 || number >= numberNext;
+  const count = Math.max(150, Math.min(390, flag ? number : numberNext));
+  titleButtonIconMenu.style.left = clampNumber(value.left, numberCurrent, Math.max(numberCurrent, window.innerWidth - value.width - numberCurrent)) + "px";
+  titleButtonIconMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(numberCurrent, value.top - count - temp) + "px";
   titleButtonIconMenu.style.width = value.width + "px";
   titleButtonIconMenu.style.maxHeight = count + "px";
   titleButtonIconOptions.style.maxHeight = Math.max(90, count - 57) + "px";
 }
-function syncLightStatisticsIcon2() {
+function syncLightStatisticsIconCurrent() {
   if (lightStatisticsIconMenu.hidden) {
     return;
   }
   const value = lightStatisticsIconButton.parentElement.getBoundingClientRect();
   const temp = 5;
-  const number3 = 8;
-  const number = window.innerHeight - value.bottom - temp - number3;
-  const number2 = value.top - temp - number3;
-  const flag = number >= 250 || number >= number2;
-  const count = Math.max(150, Math.min(390, flag ? number : number2));
-  lightStatisticsIconMenu.style.left = clampNumber(value.left, number3, Math.max(number3, window.innerWidth - value.width - number3)) + "px";
-  lightStatisticsIconMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(number3, value.top - count - temp) + "px";
+  const numberCurrent = 8;
+  const number = window.innerHeight - value.bottom - temp - numberCurrent;
+  const numberNext = value.top - temp - numberCurrent;
+  const flag = number >= 250 || number >= numberNext;
+  const count = Math.max(150, Math.min(390, flag ? number : numberNext));
+  lightStatisticsIconMenu.style.left = clampNumber(value.left, numberCurrent, Math.max(numberCurrent, window.innerWidth - value.width - numberCurrent)) + "px";
+  lightStatisticsIconMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(numberCurrent, value.top - count - temp) + "px";
   lightStatisticsIconMenu.style.width = value.width + "px";
   lightStatisticsIconMenu.style.maxHeight = count + "px";
   lightStatisticsIconOptions.style.maxHeight = Math.max(90, count - 57) + "px";
@@ -3889,14 +3889,14 @@ function positionLightStatisticsEntityMenu() {
   }
   const value = lightStatisticsEntityButton.getBoundingClientRect();
   const temp = 5;
-  const number3 = 8;
-  const minValue = Math.min(value.width, window.innerWidth - number3 * 2);
-  const number = window.innerHeight - value.bottom - temp - number3;
-  const number2 = value.top - temp - number3;
-  const flag = number >= 250 || number >= number2;
-  const count = Math.max(150, Math.min(430, flag ? number : number2));
-  lightStatisticsEntityMenu.style.left = clampNumber(value.left, number3, Math.max(number3, window.innerWidth - minValue - number3)) + "px";
-  lightStatisticsEntityMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(number3, value.top - count - temp) + "px";
+  const numberCurrent = 8;
+  const minValue = Math.min(value.width, window.innerWidth - numberCurrent * 2);
+  const number = window.innerHeight - value.bottom - temp - numberCurrent;
+  const numberNext = value.top - temp - numberCurrent;
+  const flag = number >= 250 || number >= numberNext;
+  const count = Math.max(150, Math.min(430, flag ? number : numberNext));
+  lightStatisticsEntityMenu.style.left = clampNumber(value.left, numberCurrent, Math.max(numberCurrent, window.innerWidth - minValue - numberCurrent)) + "px";
+  lightStatisticsEntityMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(numberCurrent, value.top - count - temp) + "px";
   lightStatisticsEntityMenu.style.width = minValue + "px";
   lightStatisticsEntityMenu.style.maxHeight = count + "px";
   lightStatisticsEntityOptions.style.maxHeight = Math.max(90, count - 58) + "px";
@@ -3982,44 +3982,44 @@ function entityPickerConfig(componentType = "image") {
       options: iconButtonEntityOptions,
       except: "icon-button-entity",
       recommended: recommended => {
-        const recommended2 = (recommended.entityId || "") + " " + (recommended.name || "") + " " + (recommended.originalName || "") + " " + (recommended.translationKey || "");
-        const recommended3 = selectedComponent()?.properties?.sensorKind || "presence";
-        const recommended4 = entityDomain(recommended);
-        if (recommended4 === "event") {
-          if (recommended3 === "presence" && /motion|occupancy|presence|pir|moving|移动|运动|人体|有人/i.test(recommended2)) {
+        const value = (recommended.entityId || "") + " " + (recommended.name || "") + " " + (recommended.originalName || "") + " " + (recommended.translationKey || "");
+        const text = selectedComponent()?.properties?.sensorKind || "presence";
+        const domain = entityDomain(recommended);
+        if (domain === "event") {
+          if (text === "presence" && /motion|occupancy|presence|pir|moving|移动|运动|人体|有人/i.test(value)) {
             return 4;
           } else {
             return 0;
           }
-        } else if (recommended4 !== "binary_sensor") {
+        } else if (domain !== "binary_sensor") {
           return 0;
-        } else if (recommended3 === "water-leak") {
-          if (/moisture|water|leak|flood|wet|水浸|漏水|积水|湿/i.test(recommended2)) {
+        } else if (text === "water-leak") {
+          if (/moisture|water|leak|flood|wet|水浸|漏水|积水|湿/i.test(value)) {
             return 3;
           } else {
             return 1;
           }
-        } else if (recommended3 === "smoke") {
-          if (/smoke|fire|烟雾|烟感|火警/i.test(recommended2)) {
+        } else if (text === "smoke") {
+          if (/smoke|fire|烟雾|烟感|火警/i.test(value)) {
             return 3;
           } else {
             return 1;
           }
-        } else if (recommended3 === "natural-gas") {
-          if (/natural[_ -]?gas|combustible|gas|燃气|天然气|可燃气/i.test(recommended2)) {
+        } else if (text === "natural-gas") {
+          if (/natural[_ -]?gas|combustible|gas|燃气|天然气|可燃气/i.test(value)) {
             return 3;
           } else {
             return 1;
           }
-        } else if (recommended3 === "door-window") {
-          if (/door|window|contact|opening|门|窗|接触/i.test(recommended2)) {
+        } else if (text === "door-window") {
+          if (/door|window|contact|opening|门|窗|接触/i.test(value)) {
             return 3;
           } else {
             return 1;
           }
-        } else if (/presence|occupancy|人在|有人|存在|人体/i.test(recommended2)) {
+        } else if (/presence|occupancy|人在|有人|存在|人体/i.test(value)) {
           return 3;
-        } else if (/motion|移动|运动/i.test(recommended2)) {
+        } else if (/motion|移动|运动/i.test(value)) {
           return 1;
         } else {
           return 2;
@@ -4081,14 +4081,14 @@ function entityPickerConfig(componentType = "image") {
 function renderEntityPickerOptions(value = "", param = "image") {
   const temp = entityPickerConfig(param);
   const flag = selectedComponent()?.bindings?.entity?.entityId || "";
-  const temp2 = value.trim().toLocaleLowerCase("zh-CN");
+  const entry = value.trim().toLocaleLowerCase("zh-CN");
   const mapped = pickerEntitiesForComponentType(param).map((entity, index) => ({
     entity,
     index
   })).filter(({
     entity: item
-  }) => !temp2 || (entityPickerText(item) + " " + entityDomain(item)).toLocaleLowerCase("zh-CN").includes(temp2)).sort((left, right) => {
-    const callback = param2 => param2?.virtual ? 100 : Number(temp.recommended(param2));
+  }) => !entry || (entityPickerText(item) + " " + entityDomain(item)).toLocaleLowerCase("zh-CN").includes(entry)).sort((left, right) => {
+    const callback = value => value?.virtual ? 100 : Number(temp.recommended(value));
     return callback(right.entity) - callback(left.entity) || left.index - right.index;
   }).map(({
     entity: item
@@ -4101,42 +4101,42 @@ function renderEntityPickerOptions(value = "", param = "image") {
   element.setAttribute("aria-selected", String(!flag));
   element.textContent = "不使用实体";
   const button = mapped.map(item => {
-    const button2 = document.createElement("button");
-    button2.type = "button";
-    button2.className = "inspector-entity-option" + (item.entityId === flag ? " selected" : "");
-    button2.dataset.entityId = item.entityId;
-    button2.setAttribute("role", "option");
-    button2.setAttribute("aria-selected", String(item.entityId === flag));
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "inspector-entity-option" + (item.entityId === flag ? " selected" : "");
+    button.dataset.entityId = item.entityId;
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", String(item.entityId === flag));
     const span = document.createElement("span");
     span.className = "inspector-entity-option-content";
     span.title = entityPickerText(item);
-    const span2 = document.createElement("span");
-    span2.className = "inspector-entity-option-line inspector-entity-name-line";
-    const span3 = document.createElement("span");
-    span3.className = "inspector-entity-kind";
-    span3.textContent = "[" + entityKindLabel(item) + "] ";
-    const span4 = document.createElement("span");
-    span4.className = "inspector-entity-name";
-    span4.textContent = entityPickerPrimaryName(item);
-    span2.append(span3, span4);
-    const span5 = document.createElement("span");
-    span5.className = "inspector-entity-option-line inspector-entity-id";
-    span5.textContent = item.entityId;
-    span5.title = item.entityId;
-    span.append(span2, span5);
-    enableEntityTextHoverScroll(button2, span2);
-    button2.append(span);
-    return button2;
+    const element = document.createElement("span");
+    element.className = "inspector-entity-option-line inspector-entity-name-line";
+    const spanCurrent = document.createElement("span");
+    spanCurrent.className = "inspector-entity-kind";
+    spanCurrent.textContent = "[" + entityKindLabel(item) + "] ";
+    const spanNext = document.createElement("span");
+    spanNext.className = "inspector-entity-name";
+    spanNext.textContent = entityPickerPrimaryName(item);
+    element.append(spanCurrent, spanNext);
+    const spanPrevious = document.createElement("span");
+    spanPrevious.className = "inspector-entity-option-line inspector-entity-id";
+    spanPrevious.textContent = item.entityId;
+    spanPrevious.title = item.entityId;
+    span.append(element, spanPrevious);
+    enableEntityTextHoverScroll(button, element);
+    button.append(span);
+    return button;
   });
-  const div2 = document.createElement("div");
-  div2.className = "inspector-picker-empty";
+  const div = document.createElement("div");
+  div.className = "inspector-picker-empty";
   if (!mapped.length) {
-    div2.textContent = "没有匹配的实体";
+    div.textContent = "没有匹配的实体";
   }
-  temp.options.replaceChildren(element, ...button, ...(div2.textContent ? [div2] : []));
+  temp.options.replaceChildren(element, ...button, ...(div.textContent ? [div] : []));
   temp.options.scrollTop = 0;
 }
-function pickerValueEl2(component) {
+function pickerValueElCurrent(component) {
   const value = entityPickerConfig(component.type);
   const flag = component.bindings?.entity?.entityId || "";
   const found = pickerEntitiesForComponentType(component.type).find(item => item.entityId === flag);
@@ -4176,16 +4176,16 @@ function deviceCatalogById() {
 function countVisiblePopupEntityOptions() {
   const value = String(activePickerState?.value || "").trim().toLocaleLowerCase("zh-CN");
   let temp = 0;
-  for (const temp2 of popupEntityPickerPanel?.querySelectorAll("[data-related-entity-id]") || []) {
-    const flag = !value || String(temp2.dataset.relatedEntitySearch || "").includes(value);
-    temp2.hidden = !flag;
+  for (const item of popupEntityPickerPanel?.querySelectorAll("[data-related-entity-id]") || []) {
+    const flag = !value || String(item.dataset.relatedEntitySearch || "").includes(value);
+    item.hidden = !flag;
     if (flag) {
       temp += 1;
     }
   }
-  const el2 = popupEntityPickerPanel?.querySelector(".popup-related-entity-filter-empty");
-  if (el2) {
-    el2.hidden = temp > 0;
+  const el = popupEntityPickerPanel?.querySelector(".popup-related-entity-filter-empty");
+  if (el) {
+    el.hidden = temp > 0;
   }
 }
 function ensureRelatedEntityPickerPanel() {
@@ -4209,38 +4209,38 @@ function ensureRelatedEntityPickerPanel() {
   openPickerKind = document.createElement("dialog");
   openPickerKind.id = "popup-related-entity-dialog";
   openPickerKind.className = "popup-related-entity-dialog";
-  const className6 = document.createElement("div");
-  className6.className = "popup-related-entity-dialog-card";
-  const className7 = document.createElement("div");
-  className7.className = "popup-related-entity-dialog-heading";
-  const div2 = document.createElement("div");
+  const className = document.createElement("div");
+  className.className = "popup-related-entity-dialog-card";
+  const classNameCurrent = document.createElement("div");
+  classNameCurrent.className = "popup-related-entity-dialog-heading";
+  const div = document.createElement("div");
   pickerSearchInput = document.createElement("strong");
   const span = document.createElement("span");
   span.textContent = "选择要放进设备弹窗的功能";
-  div2.append(pickerSearchInput, span);
+  div.append(pickerSearchInput, span);
   const button = document.createElement("button");
   button.type = "button";
   button.setAttribute("aria-label", "关闭关联功能选择");
   button.textContent = "×";
-  className7.append(div2, button);
-  const el3 = document.createElement("label");
-  el3.className = "popup-related-entity-dialog-search";
+  classNameCurrent.append(div, button);
+  const el = document.createElement("label");
+  el.className = "popup-related-entity-dialog-search";
   activePickerState = document.createElement("input");
   activePickerState.type = "search";
   activePickerState.name = "popup-related-entity-search";
   activePickerState.placeholder = "搜索功能名称或实体 ID";
   activePickerState.autocomplete = "off";
-  el3.append(activePickerState);
+  el.append(activePickerState);
   popupEntityPickerPanel = document.createElement("div");
   popupEntityPickerPanel.className = "popup-related-entity-list";
-  const className8 = document.createElement("div");
-  className8.className = "popup-related-entity-dialog-footer";
-  const button2 = document.createElement("button");
-  button2.type = "button";
-  button2.textContent = "完成";
-  className8.append(button2);
-  className6.append(className7, el3, popupEntityPickerPanel, className8);
-  openPickerKind.append(className6);
+  const classNameNext = document.createElement("div");
+  classNameNext.className = "popup-related-entity-dialog-footer";
+  const buttonCurrent = document.createElement("button");
+  buttonCurrent.type = "button";
+  buttonCurrent.textContent = "完成";
+  classNameNext.append(buttonCurrent);
+  className.append(classNameCurrent, el, popupEntityPickerPanel, classNameNext);
+  openPickerKind.append(className);
   document.body.append(openPickerKind);
   floorplanPickerPanel.addEventListener("click", () => {
     if (!openPickerKind.open) {
@@ -4254,9 +4254,9 @@ function ensureRelatedEntityPickerPanel() {
   });
   activePickerState.addEventListener("input", countVisiblePopupEntityOptions);
   button.addEventListener("click", () => openPickerKind.close());
-  button2.addEventListener("click", () => openPickerKind.close());
-  openPickerKind.addEventListener("click", event2 => {
-    if (event2.target === openPickerKind) {
+  buttonCurrent.addEventListener("click", () => openPickerKind.close());
+  openPickerKind.addEventListener("click", event => {
+    if (event.target === openPickerKind) {
       openPickerKind.close();
     }
   });
@@ -4268,15 +4268,15 @@ function ensureRelatedEntityPickerPanel() {
     }
     const text = String(disabled.dataset.relatedEntityId || "");
     const temp = selectedComponent();
-    const temp4 = entityCatalogById();
-    const temp5 = deviceCatalogById();
-    if (!relatedPopupContext(temp, temp4, temp5)) {
+    const id = entityCatalogById();
+    const value = deviceCatalogById();
+    if (!relatedPopupContext(temp, id, value)) {
       return;
     }
-    const temp6 = selectedRelatedEntityIds(temp);
-    const idSet = new Set(temp6 === null ? legacyRelatedEntityIds(temp, temp4, temp5) : temp6);
-    const temp7 = relatedPopupContext(temp, temp4, temp5);
-    const selectionLimit = relatedPopupSelectionLimit(temp7);
+    const ids = selectedRelatedEntityIds(temp);
+    const idSet = new Set(ids === null ? legacyRelatedEntityIds(temp, id, value) : ids);
+    const context = relatedPopupContext(temp, id, value);
+    const selectionLimit = relatedPopupSelectionLimit(context);
     if (idSet.has(text)) {
       idSet.delete(text);
     } else if (!selectionLimit || idSet.size < selectionLimit) {
@@ -4285,10 +4285,10 @@ function ensureRelatedEntityPickerPanel() {
       return;
     }
     mutateDocument(param => {
-      const properties11 = findComponent(param, alias)?.component;
-      if (properties11) {
-        properties11.properties = {
-          ...(properties11.properties || {}),
+      const properties = findComponent(param, alias)?.component;
+      if (properties) {
+        properties.properties = {
+          ...(properties.properties || {}),
           relatedEntities: manualRelatedEntityConfig([...idSet])
         };
       }
@@ -4298,10 +4298,10 @@ function ensureRelatedEntityPickerPanel() {
 }
 function renderRelatedEntityPicker(value, param) {
   const temp = ensureRelatedEntityPickerPanel();
-  const temp2 = entityCatalogById();
-  const temp3 = deviceCatalogById();
-  const temp4 = relatedPopupContext(value, temp2, temp3);
-  if (!temp4 || !param) {
+  const id = entityCatalogById();
+  const item = deviceCatalogById();
+  const context = relatedPopupContext(value, id, item);
+  if (!context || !param) {
     temp.hidden = true;
     if (openPickerKind?.open) {
       openPickerKind.close();
@@ -4312,16 +4312,16 @@ function renderRelatedEntityPicker(value, param) {
     param.insertAdjacentElement("afterend", temp);
   }
   temp.hidden = false;
-  const temp5 = selectedRelatedEntityIds(value);
-  const flag = temp5 === null;
-  const allowed = new Set(flag ? legacyRelatedEntityIds(value, temp2, temp3) : temp5);
-  const selectionLimit = relatedPopupSelectionLimit(temp4);
-  const flag2 = selectionLimit > 0 && allowed.size >= selectionLimit;
-  const temp7 = relatedPopupCandidates(value, temp2, temp3);
-  const allowed2 = new Set(temp7.map(item => item.entityId));
+  const ids = selectedRelatedEntityIds(value);
+  const flag = ids === null;
+  const allowed = new Set(flag ? legacyRelatedEntityIds(value, id, item) : ids);
+  const selectionLimit = relatedPopupSelectionLimit(context);
+  const flagCurrent = selectionLimit > 0 && allowed.size >= selectionLimit;
+  const list = relatedPopupCandidates(value, id, item);
+  const set = new Set(list.map(item => item.entityId));
   for (const name of allowed) {
-    if (!allowed2.has(name)) {
-      temp7.push({
+    if (!set.has(name)) {
+      list.push({
         entityId: name,
         domain: String(name).split(".", 1)[0],
         name,
@@ -4329,31 +4329,31 @@ function renderRelatedEntityPicker(value, param) {
       });
     }
   }
-  iconPickerPanel.textContent = temp4.deviceLabel + "弹窗功能";
+  iconPickerPanel.textContent = context.deviceLabel + "弹窗功能";
   assetPickerPanel.textContent = flag ? "自动适配" : "已选 " + allowed.size + (selectionLimit ? " / " + selectionLimit : "") + " 项";
   assetPickerPanel.classList.toggle("is-automatic", flag);
   relatedPickerPanel.textContent = flag ? "当前沿用原来的自动适配，点击可改为手动选择。" : "只显示已勾选的关联功能" + (selectionLimit ? "，最多 " + selectionLimit + " 项" : "") + "。";
-  pickerSearchInput.textContent = temp4.deviceLabel + "弹窗功能 · " + (flag ? "自动适配" : "已选 " + allowed.size + (selectionLimit ? " / " + selectionLimit : "") + " 项");
-  const mapped = temp7.map(metadata => {
-    const temp8 = allowed.has(metadata.entityId);
+  pickerSearchInput.textContent = context.deviceLabel + "弹窗功能 · " + (flag ? "自动适配" : "已选 " + allowed.size + (selectionLimit ? " / " + selectionLimit : "") + " 项");
+  const mapped = list.map(metadata => {
+    const present = allowed.has(metadata.entityId);
     const entityAvailable = relatedEntityIsAvailable(metadata);
     const button = document.createElement("button");
     button.type = "button";
-    const flag3 = flag2 && !temp8;
-    button.className = "popup-related-entity-option" + (temp8 ? " selected" : "") + (entityAvailable ? "" : " unavailable") + (flag3 ? " limit-reached" : "");
+    const flag = flagCurrent && !present;
+    button.className = "popup-related-entity-option" + (present ? " selected" : "") + (entityAvailable ? "" : " unavailable") + (flag ? " limit-reached" : "");
     button.dataset.relatedEntityId = metadata.entityId;
-    button.setAttribute("aria-pressed", String(temp8));
-    button.disabled = !entityAvailable && !temp8 || flag3;
+    button.setAttribute("aria-pressed", String(present));
+    button.disabled = !entityAvailable && !present || flag;
     const iconEl = document.createElement("i");
     iconEl.setAttribute("aria-hidden", "true");
     const span = document.createElement("span");
     const element = document.createElement("strong");
-    const entityLabel = relatedEntityLabel(temp4, metadata);
+    const entityLabel = relatedEntityLabel(context, metadata);
     element.textContent = entityPickerPrimaryName(metadata, entityLabel);
-    const el3 = document.createElement("small");
+    const el = document.createElement("small");
     const list = [RELATED_ENTITY_DOMAIN_LABELS[String(metadata.domain || metadata.entityId || "").split(".", 1)[0]] || "实体", metadata.entityId];
     if (entityAvailable) {
-      if (flag3) {
+      if (flag) {
         list.push("最多选择 " + selectionLimit + " 项");
       } else if (relatedEntityNeedsConfirmation(metadata)) {
         list.push("点击时需确认");
@@ -4361,10 +4361,10 @@ function renderRelatedEntityPicker(value, param) {
     } else {
       list.push("暂时不可用");
     }
-    el3.textContent = list.join(" · ");
-    button.dataset.relatedEntitySearch = (element.textContent + " " + (metadata.name || "") + " " + (metadata.originalName || "") + " " + el3.textContent).toLocaleLowerCase("zh-CN");
+    el.textContent = list.join(" · ");
+    button.dataset.relatedEntitySearch = (element.textContent + " " + (metadata.name || "") + " " + (metadata.originalName || "") + " " + el.textContent).toLocaleLowerCase("zh-CN");
     enableEntityTextHoverScroll(button, element);
-    span.append(element, el3);
+    span.append(element, el);
     button.append(iconEl, span);
     return button;
   });
@@ -4389,19 +4389,19 @@ function positionEntityPickerMenu(value = "image") {
     return;
   }
   const rect = temp.button.getBoundingClientRect();
-  const number3 = 5;
-  const number4 = 8;
-  const minValue = Math.min(rect.width, window.innerWidth - number4 * 2);
-  const number = window.innerHeight - rect.bottom - number3 - number4;
-  const number2 = rect.top - number3 - number4;
-  const flag = number >= 250 || number >= number2;
-  const count = Math.max(150, Math.min(430, flag ? number : number2));
+  const numberCurrent = 5;
+  const numberNext = 8;
+  const minValue = Math.min(rect.width, window.innerWidth - numberNext * 2);
+  const number = window.innerHeight - rect.bottom - numberCurrent - numberNext;
+  const numberPrevious = rect.top - numberCurrent - numberNext;
+  const flag = number >= 250 || number >= numberPrevious;
+  const count = Math.max(150, Math.min(430, flag ? number : numberPrevious));
   const left = rect.left;
-  temp.menu.style.left = clampNumber(left, number4, Math.max(number4, window.innerWidth - minValue - number4)) + "px";
+  temp.menu.style.left = clampNumber(left, numberNext, Math.max(numberNext, window.innerWidth - minValue - numberNext)) + "px";
   temp.menu.style.width = minValue + "px";
   temp.menu.style.maxHeight = count + "px";
   temp.options.style.maxHeight = Math.max(90, count - 58) + "px";
-  temp.menu.style.top = flag ? rect.bottom + number3 + "px" : Math.max(number4, rect.top - count - number3) + "px";
+  temp.menu.style.top = flag ? rect.bottom + numberCurrent + "px" : Math.max(numberNext, rect.top - count - numberCurrent) + "px";
 }
 function positionImageEntityPickerMenu() {
   positionEntityPickerMenu("image");
@@ -4424,8 +4424,8 @@ function toText(value) {
   if (!joined) {
     return "";
   }
-  const text2 = String(value?.version || "");
-  return "/assets/builtin/" + joined + (text2 ? "?v=" + encodeURIComponent(text2) : "");
+  const string = String(value?.version || "");
+  return "/assets/builtin/" + joined + (string ? "?v=" + encodeURIComponent(string) : "");
 }
 function assetPreviewUrl(value) {
   const url = value?.effectVariant?.url;
@@ -4467,7 +4467,7 @@ const {
 const i3dEditorPickers = createInteraction3dEditorPickers({
   getState: param => editorRenderer?.states?.get(param),
   openPicker: getSource => openEditorPicker(getSource),
-  fetchIcons: (setSource, setSource2, param) => apiFetch("/icons?query=" + encodeURIComponent(setSource) + "&limit=" + setSource2 + "&offset=" + param),
+  fetchIcons: (setSource, setSourceCurrent, param) => apiFetch("/icons?query=" + encodeURIComponent(setSource) + "&limit=" + setSourceCurrent + "&offset=" + param),
   getEntities: () => entityCatalog,
   ensureEntities: () => entitiesLoaded ? Promise.resolve() : entityLoadPromise || ensureEntitiesLoaded(),
   entityPickerText: entityPickerText,
@@ -4490,25 +4490,25 @@ const editorAssetMatcher = createEditorAssetMatcher({
 const editorAssetToolbar = createEditorAssetToolbar({
   documentObject: document,
   getSource: param => param === "image" ? imageAssetSource : ibeAssetSource,
-  setSource: (param, param2) => {
+  setSource: (param, value) => {
     if (param === "image") {
-      imageAssetSource = param2;
+      imageAssetSource = value;
     } else {
-      ibeAssetSource = param2;
+      ibeAssetSource = value;
     }
   },
   getFolder: param => param === "image" ? imageAssetFolderFilter : ibeAssetFolderFilter,
-  setFolder: (param, param2) => {
+  setFolder: (param, value) => {
     if (param === "image") {
-      imageAssetFolderFilter = param2;
+      imageAssetFolderFilter = value;
     } else {
-      ibeAssetFolderFilter = param2;
+      ibeAssetFolderFilter = value;
     }
   },
   getAssets: param => param === "user" ? userAssets : builtinAssets,
   getUploadInput: param => param === "image" ? imageAssetUploadInput : ibeAssetUploadInput,
-  canDeleteFolder: (param, param2) => isStudioExportFolder(param, param2),
-  onDeleteFolder: (param, param2) => confirmDeleteStudioExportFolder(param, param2)
+  canDeleteFolder: (param, value) => isStudioExportFolder(param, value),
+  onDeleteFolder: (param, value) => confirmDeleteStudioExportFolder(param, value)
 });
 function assetMatchesId(value, param) {
   return value?.assetId === param || (value?.legacyAssetIds || []).includes(param);
@@ -4535,38 +4535,38 @@ function isStudioExportFolder(value, param) {
 function syncAssetSourceMenu(value) {
   const flag = value === "image";
   const chosen = flag ? imageAssetSource : ibeAssetSource;
-  const chosen2 = flag ? imageAssetMenu : ibeAssetMenu;
-  const chosen3 = flag ? imageAssetFolder : ibeAssetFolder;
-  const chosen4 = flag ? imageAssetUploadHint : ibeAssetUploadHint;
-  const chosen5 = flag ? "[data-image-asset-source]" : "[data-ibe-asset-source]";
-  for (const element of chosen2.querySelectorAll(chosen5)) {
+  const chosenCurrent = flag ? imageAssetMenu : ibeAssetMenu;
+  const chosenNext = flag ? imageAssetFolder : ibeAssetFolder;
+  const chosenPrevious = flag ? imageAssetUploadHint : ibeAssetUploadHint;
+  const text = flag ? "[data-image-asset-source]" : "[data-ibe-asset-source]";
+  for (const element of chosenCurrent.querySelectorAll(text)) {
     element.classList.toggle("active", element.dataset[flag ? "imageAssetSource" : "ibeAssetSource"] === chosen);
   }
-  const temp = customSelectStateByEl.get(chosen3);
+  const temp = customSelectStateByEl.get(chosenNext);
   if (temp) {
-    const chosen6 = chosen === "user" ? userAssets : builtinAssets;
-    temp.wrapper.hidden = !chosen6.some(item => item.folder);
+    const list = chosen === "user" ? userAssets : builtinAssets;
+    temp.wrapper.hidden = !list.some(item => item.folder);
     if (temp.wrapper.hidden) {
       closeMenuState(temp);
     }
   }
-  chosen4.hidden = chosen !== "user";
+  chosenPrevious.hidden = chosen !== "user";
 }
 function syncAssetFolderMenu(value) {
   const flag = value === "image";
   const chosen = flag ? imageAssetSource : ibeAssetSource;
   const element = flag ? imageAssetFolder : ibeAssetFolder;
-  const chosen2 = chosen === "user" ? userAssets : builtinAssets;
-  const sorted = [...new Set(chosen2.map(item => item.folder).filter(Boolean))].sort((left, right) => left.localeCompare(right, "zh-CN"));
-  const chosen3 = flag ? imageAssetFolderFilter : ibeAssetFolderFilter;
-  const chosen4 = sorted.includes(chosen3) ? chosen3 : sorted[0] || "";
+  const list = chosen === "user" ? userAssets : builtinAssets;
+  const sorted = [...new Set(list.map(item => item.folder).filter(Boolean))].sort((left, right) => left.localeCompare(right, "zh-CN"));
+  const chosenCurrent = flag ? imageAssetFolderFilter : ibeAssetFolderFilter;
+  const chosenNext = sorted.includes(chosenCurrent) ? chosenCurrent : sorted[0] || "";
   if (flag) {
-    imageAssetFolderFilter = chosen4;
+    imageAssetFolderFilter = chosenNext;
   } else {
-    ibeAssetFolderFilter = chosen4;
+    ibeAssetFolderFilter = chosenNext;
   }
   element.replaceChildren(...sorted.map(item => new Option(item === "." ? "根目录" : item, item)));
-  element.value = chosen4;
+  element.value = chosenNext;
   syncCustomSelect(element);
   syncAssetSourceMenu(value);
 }
@@ -4600,15 +4600,15 @@ function ensureAssetDimensions(value) {
 function applyAssetToComponent(component, assetId, value) {
   const callback = (item, fallback) => {
     const numeric = Number(item?.width || value.width);
-    const number3 = Number(item?.height || value.height);
+    const numberCurrent = Number(item?.height || value.height);
     const clamped = clampNumber(Number(fallback || 1), 0.01, 5);
     const number = Number(item?.x || 0) + numeric / 2;
-    const number2 = Number(item?.y || 0) + number3 / 2;
+    const numberNext = Number(item?.y || 0) + numberCurrent / 2;
     return {
       position: {
         ...(item || {}),
         x: number - value.width / 2,
-        y: number2 - value.height / 2,
+        y: numberNext - value.height / 2,
         width: value.width,
         height: value.height
       },
@@ -4662,10 +4662,10 @@ function warmupEffectSize(value, param) {
     ensureAssetDimensions(param).then(item => {
       const component = findComponent(currentProject?.document, value.id)?.component;
       if (!!component && component.properties?.assetId === param.assetId && (component.properties?.layoutMode !== "fill" && (Number(component.position?.width) !== item.width || Number(component.position?.height) !== item.height) || Number(component.properties?.naturalWidth) !== item.width || Number(component.properties?.naturalHeight) !== item.height)) {
-        mutateDocument(param2 => {
-          const temp2 = findComponent(param2, value.id)?.component;
-          if (!!temp2 && temp2.properties?.assetId === param.assetId) {
-            applyAssetToComponent(temp2, param.assetId, item);
+        mutateDocument(entry => {
+          const current = findComponent(entry, value.id)?.component;
+          if (!!current && current.properties?.assetId === param.assetId) {
+            applyAssetToComponent(current, param.assetId, item);
           }
         });
       }
@@ -4678,40 +4678,40 @@ function positionImageAssetMenu() {
   }
   const value = imageAssetButton.getBoundingClientRect();
   const temp = 5;
-  const number3 = 8;
-  const number = window.innerHeight - value.bottom - temp - number3;
-  const number2 = value.top - temp - number3;
-  const flag = number >= 260 || number >= number2;
-  const count = Math.max(150, Math.min(470, flag ? number : number2));
-  imageAssetMenu.style.left = clampNumber(value.left, number3, Math.max(number3, window.innerWidth - value.width - number3)) + "px";
+  const numberCurrent = 8;
+  const number = window.innerHeight - value.bottom - temp - numberCurrent;
+  const numberNext = value.top - temp - numberCurrent;
+  const flag = number >= 260 || number >= numberNext;
+  const count = Math.max(150, Math.min(470, flag ? number : numberNext));
+  imageAssetMenu.style.left = clampNumber(value.left, numberCurrent, Math.max(numberCurrent, window.innerWidth - value.width - numberCurrent)) + "px";
   imageAssetMenu.style.width = value.width + "px";
   imageAssetMenu.style.maxHeight = count + "px";
   imageAssetOptions.style.maxHeight = Math.max(80, count - 150) + "px";
-  imageAssetMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(number3, value.top - count - temp) + "px";
+  imageAssetMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(numberCurrent, value.top - count - temp) + "px";
 }
-function positionImageLargePreview(element, el3 = imageAssetMenu) {
+function positionImageLargePreview(element, el = imageAssetMenu) {
   if (imageAssetLargePreview.hidden || !element?.isConnected) {
     return;
   }
   const value = element.getBoundingClientRect();
-  const rect = el3.getBoundingClientRect();
-  const rect2 = imageAssetLargePreview.getBoundingClientRect();
+  const rect = el.getBoundingClientRect();
+  const rectCurrent = imageAssetLargePreview.getBoundingClientRect();
   const temp = 18;
-  const chosen = rect.left < window.innerWidth / 2 ? rect.right + temp : rect.left - rect2.width - temp;
-  imageAssetLargePreview.style.left = clampNumber(chosen, 12, Math.max(12, window.innerWidth - rect2.width - 12)) + "px";
-  imageAssetLargePreview.style.top = clampNumber(value.top, 12, Math.max(12, window.innerHeight - rect2.height - 12)) + "px";
+  const chosen = rect.left < window.innerWidth / 2 ? rect.right + temp : rect.left - rectCurrent.width - temp;
+  imageAssetLargePreview.style.left = clampNumber(chosen, 12, Math.max(12, window.innerWidth - rectCurrent.width - 12)) + "px";
+  imageAssetLargePreview.style.top = clampNumber(value.top, 12, Math.max(12, window.innerHeight - rectCurrent.height - 12)) + "px";
 }
-function scheduleImageLargePreview(value, param, el2 = imageAssetMenu) {
+function scheduleImageLargePreview(value, param, el = imageAssetMenu) {
   if (!!value && !!param) {
     clearTimeout(imagePreviewTimer);
     imagePreviewTimer = window.setTimeout(() => {
       const temp = assetPreviewUrl(value);
-      if (!!temp && !el2.hidden && !!param.isConnected) {
-        imageAssetLargePreviewImage.onload = () => positionImageLargePreview(param, el2);
+      if (!!temp && !el.hidden && !!param.isConnected) {
+        imageAssetLargePreviewImage.onload = () => positionImageLargePreview(param, el);
         imageAssetLargePreviewImage.src = temp;
         imageAssetLargePreviewName.textContent = value.name || value.relativePath;
         imageAssetLargePreview.hidden = false;
-        window.requestAnimationFrame(() => positionImageLargePreview(param, el2));
+        window.requestAnimationFrame(() => positionImageLargePreview(param, el));
       }
     }, 300);
   }
@@ -4741,8 +4741,8 @@ function createAssetOptionButton(value, param) {
   if (value.source === "studio3d-export" || value.source !== "user") {
     return element;
   }
-  const div2 = document.createElement("div");
-  div2.className = "user-asset-option-wrap";
+  const div = document.createElement("div");
+  div.className = "user-asset-option-wrap";
   const button = document.createElement("button");
   button.type = "button";
   button.className = "user-asset-delete";
@@ -4750,17 +4750,17 @@ function createAssetOptionButton(value, param) {
   button.title = "删除 " + value.name;
   button.setAttribute("aria-label", "删除 " + value.name);
   button.textContent = "×";
-  div2.append(element, button);
-  return div2;
+  div.append(element, button);
+  return div;
 }
 function renderImageAssetOptions(value = "") {
   hideImageLargePreview();
   const flag = selectedComponent()?.properties?.assetId || "";
   const temp = value.trim().toLocaleLowerCase("zh-CN");
   const filtered = (imageAssetSource === "user" ? userAssets : builtinAssets).filter(item => {
-    const flag2 = !temp || (item.name + " " + item.relativePath).toLocaleLowerCase("zh-CN").includes(temp);
-    const flag3 = !!temp || item.folder === imageAssetFolderFilter;
-    return flag2 && flag3;
+    const flag = !temp || (item.name + " " + item.relativePath).toLocaleLowerCase("zh-CN").includes(temp);
+    const flagCurrent = !!temp || item.folder === imageAssetFolderFilter;
+    return flag && flagCurrent;
   });
   const element = document.createElement("button");
   element.type = "button";
@@ -4770,10 +4770,10 @@ function renderImageAssetOptions(value = "") {
   element.setAttribute("aria-selected", String(!flag));
   element.textContent = "不使用图片";
   if (!filtered.length) {
-    const div2 = document.createElement("div");
-    div2.className = "inspector-picker-empty";
-    div2.textContent = "没有匹配的图片";
-    imageAssetOptions.replaceChildren(element, div2);
+    const div = document.createElement("div");
+    div.className = "inspector-picker-empty";
+    div.textContent = "没有匹配的图片";
+    imageAssetOptions.replaceChildren(element, div);
     return;
   }
   imageAssetOptions.replaceChildren(element, ...filtered.map(item => createAssetOptionButton(item, flag)));
@@ -4796,16 +4796,16 @@ function positionIbeAssetMenu() {
   }
   const value = ibeAssetButton.getBoundingClientRect();
   const temp = 5;
-  const number3 = 8;
-  const number = window.innerHeight - value.bottom - temp - number3;
-  const number2 = value.top - temp - number3;
-  const flag = number >= 260 || number >= number2;
-  const count = Math.max(150, Math.min(470, flag ? number : number2));
-  ibeAssetMenu.style.left = clampNumber(value.left, number3, Math.max(number3, window.innerWidth - value.width - number3)) + "px";
+  const numberCurrent = 8;
+  const number = window.innerHeight - value.bottom - temp - numberCurrent;
+  const numberNext = value.top - temp - numberCurrent;
+  const flag = number >= 260 || number >= numberNext;
+  const count = Math.max(150, Math.min(470, flag ? number : numberNext));
+  ibeAssetMenu.style.left = clampNumber(value.left, numberCurrent, Math.max(numberCurrent, window.innerWidth - value.width - numberCurrent)) + "px";
   ibeAssetMenu.style.width = value.width + "px";
   ibeAssetMenu.style.maxHeight = count + "px";
   ibeAssetOptions.style.maxHeight = Math.max(80, count - 150) + "px";
-  ibeAssetMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(number3, value.top - count - temp) + "px";
+  ibeAssetMenu.style.top = flag ? value.bottom + temp + "px" : Math.max(numberCurrent, value.top - count - temp) + "px";
 }
 function renderIbeAssetOptions(value = "") {
   hideImageLargePreview();
@@ -4820,12 +4820,12 @@ function renderIbeAssetOptions(value = "") {
   element.setAttribute("aria-selected", String(!flag));
   element.textContent = "不使用图片";
   const mapped = filtered.map(item => createAssetOptionButton(item, flag));
-  const div2 = document.createElement("div");
-  div2.className = "inspector-picker-empty";
+  const div = document.createElement("div");
+  div.className = "inspector-picker-empty";
   if (!mapped.length) {
-    div2.textContent = "没有匹配的图片";
+    div.textContent = "没有匹配的图片";
   }
-  ibeAssetOptions.replaceChildren(element, ...mapped, ...(div2.textContent ? [div2] : []));
+  ibeAssetOptions.replaceChildren(element, ...mapped, ...(div.textContent ? [div] : []));
 }
 function syncIbeAssetButton(component) {
   const value = component.properties?.effectAssetId || "";
@@ -4842,10 +4842,10 @@ function actionControlKey(value) {
   const flag = value.closest(".inspector-form[id]")?.id || "component-action";
   const temp = String(value.dataset.actionTrigger || "action").replace(/[^a-zA-Z0-9_-]/g, "-");
   const list = [["[data-action-target]", "target"], ["[data-popup-source]", "popup-source"], ["[data-popup-entity-search]", "popup-entity-search"], ["[data-popup-entity]", "popup-entity"], ["[data-popup-custom]", "popup-custom"]];
-  for (const [selector, temp2] of list) {
+  for (const [selector, item] of list) {
     const element = value.querySelector(selector);
     if (element && !element.id && !element.name) {
-      element.id = flag + "-" + temp + "-" + temp2;
+      element.id = flag + "-" + temp + "-" + item;
     }
   }
 }
@@ -4864,9 +4864,9 @@ function syncMoreInfoActionLabels() {
     element.innerHTML = "\n      <label class=\"component-popup-config-row\"><span>弹窗来源</span><select data-popup-source><option value=\"current\">当前实体</option><option value=\"entity\">其它实体</option><option value=\"custom\">组合弹窗</option></select></label>\n      <div class=\"component-popup-config-row\" data-popup-entity-row><span>选择实体</span><div class=\"component-popup-entity-picker\"><button class=\"inspector-picker-button\" type=\"button\" data-popup-entity-button aria-haspopup=\"listbox\" aria-expanded=\"false\">选择实体</button><div class=\"inspector-picker-menu component-popup-entity-menu\" data-popup-entity-menu hidden><input type=\"search\" data-popup-entity-search placeholder=\"搜索实体名称或 ID\" autocomplete=\"off\"><div class=\"inspector-entity-options\" data-popup-entity-options role=\"listbox\"></div></div><input type=\"hidden\" data-popup-entity></div></div>\n      <label class=\"component-popup-config-row\" data-popup-custom-row><span>选择弹窗</span><select data-popup-custom></select></label>\n      <button class=\"component-popup-preview\" type=\"button\" data-popup-preview>预览弹窗</button>";
     value.append(element);
     actionControlKey(value);
-    const el3 = element.querySelector("[data-popup-entity-button]");
-    const el4 = element.querySelector("[data-popup-entity]");
-    bindEntityCopyButton(el3, () => el4?.value || "");
+    const el = element.querySelector("[data-popup-entity-button]");
+    const selector = element.querySelector("[data-popup-entity]");
+    bindEntityCopyButton(el, () => selector?.value || "");
   }
 }
 function closePopupEntityMenus(value = null) {
@@ -4879,41 +4879,41 @@ function closePopupEntityMenus(value = null) {
   }
 }
 function popupEntityIdFromRow(value) {
-  const el2 = value?.querySelector("[data-popup-entity]")?.value || "";
-  const found = entityCatalog.find(item => item.entityId === el2);
-  const el3 = value?.querySelector("[data-popup-entity-button]");
-  if (!el3) {
+  const el = value?.querySelector("[data-popup-entity]")?.value || "";
+  const found = entityCatalog.find(item => item.entityId === el);
+  const elCurrent = value?.querySelector("[data-popup-entity-button]");
+  if (!elCurrent) {
     return;
   }
-  const chosen = found ? "[" + entityKindLabel(found) + "] " + entityPickerPrimaryName(found) : el2 || "选择实体";
-  setPickerButtonLabel(el3, chosen, el2 || chosen);
-  el3.dataset.entityId = el2;
-  el3._entityCopySync?.();
+  const chosen = found ? "[" + entityKindLabel(found) + "] " + entityPickerPrimaryName(found) : el || "选择实体";
+  setPickerButtonLabel(elCurrent, chosen, el || chosen);
+  elCurrent.dataset.entityId = el;
+  elCurrent._entityCopySync?.();
 }
 function renderPopupEntityOptions(value, param = "") {
-  const el2 = value?.querySelector("[data-popup-entity-options]");
-  const el3 = value?.querySelector("[data-popup-entity]")?.value || "";
-  if (!el2) {
+  const el = value?.querySelector("[data-popup-entity-options]");
+  const text = value?.querySelector("[data-popup-entity]")?.value || "";
+  if (!el) {
     return;
   }
   const temp = String(param || "").trim().toLocaleLowerCase("zh-CN");
   const filtered = entityCatalog.filter(item => !temp || (entityPickerText(item) + " " + item.entityId).toLocaleLowerCase("zh-CN").includes(temp));
-  el2.replaceChildren(...filtered.map(item => {
+  el.replaceChildren(...filtered.map(item => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = "inspector-entity-option" + (item.entityId === el3 ? " selected" : "");
+    button.className = "inspector-entity-option" + (item.entityId === text ? " selected" : "");
     button.dataset.popupActionEntityId = item.entityId;
     button.setAttribute("role", "option");
-    button.setAttribute("aria-selected", String(item.entityId === el3));
+    button.setAttribute("aria-selected", String(item.entityId === text));
     const span = document.createElement("span");
     span.className = "inspector-entity-option-content";
     const element = document.createElement("span");
     element.className = "inspector-entity-option-line inspector-entity-name-line";
     element.textContent = "[" + entityKindLabel(item) + "] " + entityPickerPrimaryName(item);
-    const span2 = document.createElement("span");
-    span2.className = "inspector-entity-option-line inspector-entity-id";
-    span2.textContent = item.entityId;
-    span.append(element, span2);
+    const spanCurrent = document.createElement("span");
+    spanCurrent.className = "inspector-entity-option-line inspector-entity-id";
+    spanCurrent.textContent = item.entityId;
+    span.append(element, spanCurrent);
     enableEntityTextHoverScroll(button, element);
     button.append(span);
     return button;
@@ -4922,101 +4922,101 @@ function renderPopupEntityOptions(value, param = "") {
     const element = document.createElement("div");
     element.className = "inspector-picker-empty";
     element.textContent = "没有匹配的实体";
-    el2.append(element);
+    el.append(element);
   }
 }
 function syncPopupEntityButton(value) {
   const element = value?.querySelector("[data-popup-entity-button]");
-  const el2 = value?.querySelector("[data-popup-entity-menu]");
-  if (!element || !el2 || el2.hidden) {
+  const el = value?.querySelector("[data-popup-entity-menu]");
+  if (!element || !el || el.hidden) {
     return;
   }
   const rect = element.getBoundingClientRect();
   const minValue = Math.min(rect.width, window.innerWidth - 16);
-  const minValue2 = Math.min(340, window.innerHeight - 16);
-  el2.style.width = minValue + "px";
-  el2.style.maxHeight = minValue2 + "px";
-  const el3 = el2.querySelector("[data-popup-entity-options]");
-  if (el3) {
-    el3.style.maxHeight = Math.max(120, minValue2 - 58) + "px";
+  const min = Math.min(340, window.innerHeight - 16);
+  el.style.width = minValue + "px";
+  el.style.maxHeight = min + "px";
+  const selector = el.querySelector("[data-popup-entity-options]");
+  if (selector) {
+    selector.style.maxHeight = Math.max(120, min - 58) + "px";
   }
   const clamped = clampNumber(rect.left, 8, window.innerWidth - minValue - 8);
-  const minValue3 = Math.min(el2.scrollHeight, minValue2);
+  const minValueCurrent = Math.min(el.scrollHeight, min);
   const number = rect.bottom + 5;
-  const chosen = number + minValue3 <= window.innerHeight - 8 ? number : Math.max(8, rect.top - minValue3 - 5);
-  el2.style.left = clamped + "px";
-  el2.style.top = chosen + "px";
+  const chosen = number + minValueCurrent <= window.innerHeight - 8 ? number : Math.max(8, rect.top - minValueCurrent - 5);
+  el.style.left = clamped + "px";
+  el.style.top = chosen + "px";
 }
 function syncComponentActionControls(component, value) {
   syncMoreInfoActionLabels();
   const flag = component.bindings?.entity?.entityId || "";
-  const flag2 = component.type === "light-statistics";
-  if (flag2) {
+  const flagCurrent = component.type === "light-statistics";
+  if (flagCurrent) {
     lightStatisticsActionNote.textContent = flag ? "切换和“当前实体”弹窗作用于绑定实体；其它实体弹窗、组合弹窗和跳转页面无需绑定动作实体。" : "未绑定动作实体时仍可使用其它实体弹窗、组合弹窗和跳转页面。";
     value.setAttribute("aria-disabled", "false");
   }
-  const flag3 = currentProject.document.pages || [];
-  const pagePaths = new Set(flag3.map(item2 => item2.path));
-  const popupIds = new Set((currentProject.document.customPopups || []).map(component2 => component2.id));
+  const list = currentProject.document.pages || [];
+  const pagePaths = new Set(list.map(item => item.path));
+  const popupIds = new Set((currentProject.document.customPopups || []).map(component => component.id));
   const element = value.querySelector("[data-hidden-content-clickable-control]");
   if (element) {
     const includesValue = ["title-button", "device-button", "icon-button-effect"].includes(component.type);
     element.hidden = !includesValue;
-    for (const temp2 of element.querySelectorAll("[data-hidden-content-clickable]")) {
-      const flag4 = temp2.dataset.hiddenContentClickable === (component.properties?.hiddenContentClickable === true ? "on" : "off");
-      temp2.classList.toggle("active", flag4);
-      temp2.setAttribute("aria-pressed", String(flag4));
+    for (const node of element.querySelectorAll("[data-hidden-content-clickable]")) {
+      const flag = node.dataset.hiddenContentClickable === (component.properties?.hiddenContentClickable === true ? "on" : "off");
+      node.classList.toggle("active", flag);
+      node.setAttribute("aria-pressed", String(flag));
     }
   }
   for (const temp of value.querySelectorAll("[data-action-trigger]")) {
     const actionTrigger = temp.dataset.actionTrigger;
-    const temp2 = component.actions?.[actionTrigger];
-    const chosen = componentActionIsSupported(component, temp2, {
+    const value = component.actions?.[actionTrigger];
+    const chosen = componentActionIsSupported(component, value, {
       pagePaths,
       popupIds
-    }) ? temp2.type : "none";
-    for (const temp4 of temp.querySelectorAll("[data-action-type]")) {
-      const flag5 = temp4.dataset.actionType === chosen;
-      temp4.classList.toggle("active", flag5);
-      temp4.setAttribute("aria-pressed", String(flag5));
-      temp4.disabled = temp4.dataset.actionType === "toggle" && (!flag || !entityIdSupportsToggle(flag)) || flag2 && !["none", "toggle", "more-info", "navigate"].includes(temp4.dataset.actionType);
+    }) ? value.type : "none";
+    for (const element of temp.querySelectorAll("[data-action-type]")) {
+      const value = element.dataset.actionType === chosen;
+      element.classList.toggle("active", value);
+      element.setAttribute("aria-pressed", String(value));
+      element.disabled = element.dataset.actionType === "toggle" && (!flag || !entityIdSupportsToggle(flag)) || flagCurrent && !["none", "toggle", "more-info", "navigate"].includes(element.dataset.actionType);
     }
     const componentActionTarget = temp.querySelector(".component-action-target");
-    const el3 = temp.querySelector("[data-action-target]");
+    const el = temp.querySelector("[data-action-target]");
     const target = component.actions?.[actionTrigger]?.target;
-    el3.replaceChildren(...flag3.map(item2 => new Option(item2.name, item2.path)));
-    el3.value = pagePaths.has(target) ? target : pageSelect.value || flag3[0]?.path || "";
-    syncCustomSelect(el3);
+    el.replaceChildren(...list.map(item2 => new Option(item2.name, item2.path)));
+    el.value = pagePaths.has(target) ? target : pageSelect.value || list[0]?.path || "";
+    syncCustomSelect(el);
     componentActionTarget.hidden = chosen !== "navigate";
     const componentPopupConfig = temp.querySelector(".component-popup-config");
-    const el4 = temp.querySelector("[data-popup-source]");
-    const el5 = temp.querySelector("[data-popup-entity]");
-    const el6 = temp.querySelector("[data-popup-custom]");
-    const el7 = temp.querySelector("[data-popup-entity-row]");
-    const el8 = temp.querySelector("[data-popup-custom-row]");
-    const el9 = temp.querySelector("[data-popup-preview]");
-    const temp3 = actionPopupData(component.actions?.[actionTrigger]);
-    el4.value = temp3.source;
-    const el10 = el4.querySelector("option[value=\"current\"]");
-    if (el10) {
-      el10.disabled = !flag;
+    const selector = temp.querySelector("[data-popup-source]");
+    const elCurrent = temp.querySelector("[data-popup-entity]");
+    const elNext = temp.querySelector("[data-popup-custom]");
+    const elPrevious = temp.querySelector("[data-popup-entity-row]");
+    const elLocal = temp.querySelector("[data-popup-custom-row]");
+    const elItem = temp.querySelector("[data-popup-preview]");
+    const data = actionPopupData(component.actions?.[actionTrigger]);
+    selector.value = data.source;
+    const elEntry = selector.querySelector("option[value=\"current\"]");
+    if (elEntry) {
+      elEntry.disabled = !flag;
     }
-    el5.value = temp3.entityId || entityCatalog[0]?.entityId || "";
-    const flag4 = currentProject.document.customPopups || [];
-    el6.replaceChildren(...flag4.map(component2 => new Option(component2.name, component2.id)));
-    el6.value = flag4.some(component2 => component2.id === temp3.popupId) ? temp3.popupId : flag4[0]?.id || "";
-    syncCustomSelect(el4);
-    syncCustomSelect(el6);
+    elCurrent.value = data.entityId || entityCatalog[0]?.entityId || "";
+    const customPopups = currentProject.document.customPopups || [];
+    elNext.replaceChildren(...customPopups.map(component2 => new Option(component2.name, component2.id)));
+    elNext.value = customPopups.some(component => component.id === data.popupId) ? data.popupId : customPopups[0]?.id || "";
+    syncCustomSelect(selector);
+    syncCustomSelect(elNext);
     popupEntityIdFromRow(temp);
-    const el11 = temp.querySelector("[data-popup-entity-menu]");
-    if (el11 && !el11.hidden) {
+    const elList = temp.querySelector("[data-popup-entity-menu]");
+    if (elList && !elList.hidden) {
       renderPopupEntityOptions(temp, temp.querySelector("[data-popup-entity-search]")?.value || "");
       window.requestAnimationFrame(() => syncPopupEntityButton(temp));
     }
     componentPopupConfig.hidden = chosen !== "more-info";
-    el7.hidden = temp3.source !== "entity";
-    el8.hidden = temp3.source !== "custom";
-    el9.disabled = temp3.source === "current" ? !flag : temp3.source === "entity" ? !el5.value : !el6.value;
+    elPrevious.hidden = data.source !== "entity";
+    elLocal.hidden = data.source !== "custom";
+    elItem.disabled = data.source === "current" ? !flag : data.source === "entity" ? !elCurrent.value : !elNext.value;
   }
 }
 function fitTimeComponent(component, value = component?.properties || {}) {
@@ -5026,9 +5026,9 @@ function syncTimeInspector(component) {
   const value = component.properties || {};
   const {
     left: temp,
-    top: temp2,
-    scale: temp3,
-    rotation: temp4
+    top: metrics,
+    scale: item,
+    rotation: entry
   } = inspectorComponentMetrics(component, currentProject.document);
   timeType.value = "时间";
   timeLabel.value = value.label || "";
@@ -5044,9 +5044,9 @@ function syncTimeInspector(component) {
   timeLetterSpacing.value = roundField(clampNumber(Number(value.letterSpacing ?? 2.2), -20, 100));
   timeOpacity.value = roundField(clampNumber(Number(value.opacity ?? 1) * 100, 0, 100));
   timeLeft.value = temp;
-  timeTop.value = temp2;
-  timeScale.value = temp3;
-  timeRotation.value = temp4;
+  timeTop.value = metrics;
+  timeScale.value = item;
+  timeRotation.value = entry;
   timeScale.disabled = false;
   timeRotation.disabled = false;
 }
@@ -5057,9 +5057,9 @@ function syncDateInspector(component) {
   const value = component.properties || {};
   const {
     left: temp,
-    top: temp2,
-    scale: temp3,
-    rotation: temp4
+    top: metrics,
+    scale: item,
+    rotation: entry
   } = inspectorComponentMetrics(component, currentProject.document);
   dateType.value = "日期";
   dateLabel.value = value.label || "";
@@ -5080,9 +5080,9 @@ function syncDateInspector(component) {
   dateLineGap.value = roundField(clampNumber(Number(value.lineGap ?? 8), 0, 200));
   dateOpacity.value = roundField(clampNumber(Number(value.opacity ?? 1) * 100, 0, 100));
   dateLeft.value = temp;
-  dateTop.value = temp2;
-  dateScale.value = temp3;
-  dateRotation.value = temp4;
+  dateTop.value = metrics;
+  dateScale.value = item;
+  dateRotation.value = entry;
   dateScale.disabled = false;
   dateRotation.disabled = false;
 }
@@ -5093,19 +5093,19 @@ function syncWeatherInspector(component) {
   const value = component.properties || {};
   const {
     left: temp,
-    top: temp2,
-    scale: temp3,
-    rotation: temp4
+    top: metrics,
+    scale: item,
+    rotation: entry
   } = inspectorComponentMetrics(component, currentProject.document);
-  pickerValueEl2(component);
+  pickerValueElCurrent(component);
   weatherType.value = "天气";
   weatherLabel.value = value.label || "";
   const list = [[weatherIconVisible, "weatherIconVisible", value.iconVisible !== false], [weatherTemperatureVisible, "weatherTemperatureVisible", value.temperatureVisible !== false], [weatherConditionVisible, "weatherConditionVisible", value.conditionVisible !== false], [weatherHumidityVisible, "weatherHumidityVisible", value.humidityVisible !== false]];
-  for (const [temp5, temp6, temp7] of list) {
-    for (const element of temp5.querySelectorAll("[data-" + temp6.replace(/[A-Z]/g, item => "-" + item.toLowerCase()) + "]")) {
-      const temp8 = element.dataset[temp6];
-      element.classList.toggle("active", temp8 === (temp7 ? "on" : "off"));
-      element.setAttribute("aria-pressed", String(temp8 === (temp7 ? "on" : "off")));
+  for (const [value, item, entry] of list) {
+    for (const element of value.querySelectorAll("[data-" + item.replace(/[A-Z]/g, item => "-" + item.toLowerCase()) + "]")) {
+      const value = element.dataset[item];
+      element.classList.toggle("active", value === (entry ? "on" : "off"));
+      element.setAttribute("aria-pressed", String(value === (entry ? "on" : "off")));
     }
   }
   weatherIconSize.value = roundField(clampNumber(Number(value.iconSize ?? 64), 12, 500));
@@ -5121,9 +5121,9 @@ function syncWeatherInspector(component) {
   weatherLineGap.value = roundField(clampNumber(Number(value.lineGap ?? 7), 0, 200));
   weatherOpacity.value = roundField(clampNumber(Number(value.opacity ?? 1) * 100, 0, 100));
   weatherLeft.value = temp;
-  weatherTop.value = temp2;
-  weatherScale.value = temp3;
-  weatherRotation.value = temp4;
+  weatherTop.value = metrics;
+  weatherScale.value = item;
+  weatherRotation.value = entry;
   weatherScale.disabled = false;
   weatherRotation.disabled = false;
 }
@@ -5133,14 +5133,14 @@ function syncLineChartInspector(component) {
   const numeric = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
   const number = Number(flag.width || 100);
-  const number2 = Number(flag.height || 100);
-  pickerValueEl2(component);
+  const numberCurrent = Number(flag.height || 100);
+  pickerValueElCurrent(component);
   lineChartType.value = "折线图";
   lineChartLabel.value = value.label || "";
   for (const element of lineChartValueVisible.querySelectorAll("[data-line-chart-value-visible]")) {
-    const flag3 = element.dataset.lineChartValueVisible === (value.valueVisible === false ? "off" : "on");
-    element.classList.toggle("active", flag3);
-    element.setAttribute("aria-pressed", String(flag3));
+    const flag = element.dataset.lineChartValueVisible === (value.valueVisible === false ? "off" : "on");
+    element.classList.toggle("active", flag);
+    element.setAttribute("aria-pressed", String(flag));
   }
   lineChartValueScale.value = roundField(clampNumber(Number(value.valueScale ?? 100), 10, 500));
   lineChartValueColor.value = value.valueColor || "#dce1e5";
@@ -5163,20 +5163,20 @@ function syncLineChartInspector(component) {
     value: 40,
     color: "#ff1a1a"
   }];
-  const flag2 = Array.isArray(value.thresholds) && value.thresholds.some(element => Number.isFinite(Number(element?.value)));
-  const chosen = value.thresholdMode === "auto" || !flag2 && value.thresholdMode !== "manual" ? "auto" : "manual";
+  const array = Array.isArray(value.thresholds) && value.thresholds.some(element => Number.isFinite(Number(element?.value)));
+  const chosen = value.thresholdMode === "auto" || !array && value.thresholdMode !== "manual" ? "auto" : "manual";
   lineChartThresholdMode.value = chosen;
-  const chosen2 = flag2 ? value.thresholds : list;
+  const thresholds = array ? value.thresholds : list;
   lineChartThresholdFields.forEach((element, index) => {
-    element.value.value = roundField(Number(chosen2[index]?.value ?? list[index].value));
-    element.color.value = chosen2[index]?.color || list[index].color;
+    element.value.value = roundField(Number(thresholds[index]?.value ?? list[index].value));
+    element.color.value = thresholds[index]?.color || list[index].color;
     element.value.disabled = chosen === "auto";
     element.color.disabled = chosen === "auto";
   });
   lineChartLeft.value = roundField(clampNumber((Number(flag.x || 0) + number / 2) / numeric * 100, 0, 100));
-  lineChartTop.value = roundField(clampNumber((Number(flag.y || 0) + number2 / 2) / canvasHeight * 100, 0, 100));
+  lineChartTop.value = roundField(clampNumber((Number(flag.y || 0) + numberCurrent / 2) / canvasHeight * 100, 0, 100));
   lineChartWidth.value = roundField(clampNumber(number / numeric * 100, 0.1, 100));
-  lineChartHeight.value = roundField(clampNumber(number2 / canvasHeight * 100, 0.1, 100));
+  lineChartHeight.value = roundField(clampNumber(numberCurrent / canvasHeight * 100, 0.1, 100));
   lineChartScale.value = roundField(clampNumber(Number(component.style?.scale || 1) * 100, 1, 500));
   lineChartRotation.value = roundField(clampNumber(Number(flag.rotation || 0), -360, 360));
   const isMultiSelect = selectedComponentIds.size > 1;
@@ -5185,9 +5185,9 @@ function syncLineChartInspector(component) {
   lineChartScale.disabled = false;
   lineChartRotation.disabled = false;
   const length = collectComponentsByType(currentProject.document.sharedComponents, "line-chart").length;
-  const length2 = collectList(component).length;
-  lineChartApplyStyle.disabled = length < 2 || !length2;
-  lineChartApplyCount.textContent = length2 + " 项修改";
+  const lengthCurrent = collectList(component).length;
+  lineChartApplyStyle.disabled = length < 2 || !lengthCurrent;
+  lineChartApplyCount.textContent = lengthCurrent + " 项修改";
   lineChartApplyStyle.textContent = "一键应用到同类型控件";
   syncComponentActionControls(component, lineChartActionControls);
 }
@@ -5197,7 +5197,7 @@ function syncPanelFrameInspector(component) {
   const numeric = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
   const number = Number(flag.width || 100);
-  const number2 = Number(flag.height || 100);
+  const numberCurrent = Number(flag.height || 100);
   panelFrameType.value = "底图框";
   panelFrameLabel.value = value.label || "";
   setInspectorToggle(panelFrameMainVisible, value.mainTextVisible !== false);
@@ -5207,10 +5207,10 @@ function syncPanelFrameInspector(component) {
   panelFrameMainWeight.value = roundField(clampNumber(Number(value.mainWeight ?? 0), 0, 3));
   panelFrameMainOpacity.value = roundField(clampNumber(Number(value.mainOpacity ?? 0.72) * 100, 0, 100));
   panelFrameMainSpacing.value = roundField(clampNumber(Number(value.mainSpacing ?? 2), -20, 100));
-  const number3 = Number(value.textLeft ?? 5.2);
-  const number4 = Number(value.textTop ?? 28);
-  panelFrameMainLeft.value = roundField(clampNumber(Number(value.mainTextLeft ?? number3), -100, 200));
-  panelFrameMainTop.value = roundField(clampNumber(Number(value.mainTextTop ?? number4 - Number(value.lineGap ?? 24) / number2 * 100), -100, 200));
+  const numberNext = Number(value.textLeft ?? 5.2);
+  const numberPrevious = Number(value.textTop ?? 28);
+  panelFrameMainLeft.value = roundField(clampNumber(Number(value.mainTextLeft ?? numberNext), -100, 200));
+  panelFrameMainTop.value = roundField(clampNumber(Number(value.mainTextTop ?? numberPrevious - Number(value.lineGap ?? 24) / numberCurrent * 100), -100, 200));
   setInspectorToggle(panelFrameSecondaryVisible, value.secondaryTextVisible !== false);
   panelFrameSecondaryText.value = value.secondaryText || "";
   panelFrameSecondaryColor.value = value.secondaryColor || "#ffffff";
@@ -5218,8 +5218,8 @@ function syncPanelFrameInspector(component) {
   panelFrameSecondaryWeight.value = roundField(clampNumber(Number(value.secondaryWeight ?? 0), 0, 3));
   panelFrameSecondaryOpacity.value = roundField(clampNumber(Number(value.secondaryOpacity ?? 0.36) * 100, 0, 100));
   panelFrameSecondarySpacing.value = roundField(clampNumber(Number(value.secondarySpacing ?? 2.1), -20, 100));
-  panelFrameSecondaryLeft.value = roundField(clampNumber(Number(value.secondaryTextLeft ?? number3), -100, 200));
-  panelFrameSecondaryTop.value = roundField(clampNumber(Number(value.secondaryTextTop ?? number4), -100, 200));
+  panelFrameSecondaryLeft.value = roundField(clampNumber(Number(value.secondaryTextLeft ?? numberNext), -100, 200));
+  panelFrameSecondaryTop.value = roundField(clampNumber(Number(value.secondaryTextTop ?? numberPrevious), -100, 200));
   setInspectorToggle(panelFrameEdgeVisible, value.edgeVisible !== false);
   panelFrameEdgeColor.value = value.edgeColor || "#d4d4d4";
   panelFrameEdgeWidth.value = roundField(clampNumber(Number(value.edgeWidth ?? 0.9), 0, 20));
@@ -5232,9 +5232,9 @@ function syncPanelFrameInspector(component) {
   panelFrameGlowSize.value = roundField(clampNumber(Number(value.glowSize ?? 1.5) * 100, 0, 300));
   panelFrameGlowAngle.value = roundField(clampNumber(Number(value.glowAngle ?? 242), 0, 360));
   panelFrameLeft.value = roundField(clampNumber((Number(flag.x || 0) + number / 2) / numeric * 100, 0, 100));
-  panelFrameTop.value = roundField(clampNumber((Number(flag.y || 0) + number2 / 2) / canvasHeight * 100, 0, 100));
+  panelFrameTop.value = roundField(clampNumber((Number(flag.y || 0) + numberCurrent / 2) / canvasHeight * 100, 0, 100));
   panelFrameWidth.value = roundField(clampNumber(number / numeric * 100, 0.1, 100));
-  panelFrameHeight.value = roundField(clampNumber(number2 / canvasHeight * 100, 0.1, 100));
+  panelFrameHeight.value = roundField(clampNumber(numberCurrent / canvasHeight * 100, 0.1, 100));
   panelFrameScale.value = roundField(clampNumber(Number(component.style?.scale || 1) * 100, 1, 500));
   panelFrameRotation.value = roundField(clampNumber(Number(flag.rotation || 0), -360, 360));
   const isMultiSelect = selectedComponentIds.size > 1;
@@ -5243,7 +5243,7 @@ function syncPanelFrameInspector(component) {
   panelFrameScale.disabled = false;
   panelFrameRotation.disabled = false;
   const chosen = findComponent(currentProject.document, component.id)?.scope === "page" ? findComponentsByType("panel-frame").length : collectComponentsByType(currentProject.document.sharedComponents, "panel-frame").length;
-  const length = collectList6(component).length;
+  const length = collectListItem(component).length;
   panelFrameApplyStyle.disabled = chosen < 2 || !length;
   panelFrameApplyCount.textContent = length + " 项修改";
   panelFrameApplyStyle.textContent = "一键应用到同类型控件";
@@ -5251,17 +5251,17 @@ function syncPanelFrameInspector(component) {
 function syncNavigationInspector(component) {
   const value = component.properties || {};
   const flag = component.position || {};
-  const flag2 = currentProject.document.pages || [];
+  const pages = currentProject.document.pages || [];
   const numeric = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
   const number = Number(flag.width || 100);
-  const number2 = Number(flag.height || 100);
+  const numberCurrent = Number(flag.height || 100);
   navigationType.value = "导航按钮";
   navigationLabel.value = value.label || "";
-  pickerValueEl2(component);
-  const text2 = imagePreviewStateById.get(component.id) || "auto";
+  pickerValueElCurrent(component);
+  const text = imagePreviewStateById.get(component.id) || "auto";
   for (const element of navigationPreviewState.querySelectorAll("[data-navigation-preview]")) {
-    element.classList.toggle("active", element.dataset.navigationPreview === text2);
+    element.classList.toggle("active", element.dataset.navigationPreview === text);
   }
   navigationMainText.value = value.mainText || "页面导航";
   navigationSecondaryText.value = value.secondaryText || "NAVIGATION";
@@ -5279,12 +5279,12 @@ function syncNavigationInspector(component) {
   navigationSecondaryWeight.value = roundField(Number(value.secondaryWeight ?? 0));
   navigationMainSpacing.value = roundField(Number(value.mainSpacing ?? 8));
   navigationSecondarySpacing.value = roundField(Number(value.secondarySpacing ?? 3));
-  const number3 = Number(value.textLeft ?? 27.5);
-  const number4 = Number(value.textTop ?? 81.5);
-  navigationMainTextLeft.value = roundField(Number(value.mainTextLeft ?? number3));
-  navigationMainTextTop.value = roundField(Number(value.mainTextTop ?? number4 - 1800 / 64.36));
-  navigationSecondaryTextLeft.value = roundField(Number(value.secondaryTextLeft ?? number3));
-  navigationSecondaryTextTop.value = roundField(Number(value.secondaryTextTop ?? number4));
+  const numberNext = Number(value.textLeft ?? 27.5);
+  const numberPrevious = Number(value.textTop ?? 81.5);
+  navigationMainTextLeft.value = roundField(Number(value.mainTextLeft ?? numberNext));
+  navigationMainTextTop.value = roundField(Number(value.mainTextTop ?? numberPrevious - 1800 / 64.36));
+  navigationSecondaryTextLeft.value = roundField(Number(value.secondaryTextLeft ?? numberNext));
+  navigationSecondaryTextTop.value = roundField(Number(value.secondaryTextTop ?? numberPrevious));
   navigationTextIdleOpacity.value = roundField(clampNumber(Number(value.textIdleOpacity ?? value.idleOpacity ?? 0.3) * 100, 0, 100));
   navigationTextActiveOpacity.value = roundField(clampNumber(Number(value.textActiveOpacity ?? value.activeOpacity ?? 0.96) * 100, 0, 100));
   navigationIconColor.value = value.iconColor || "#e9edf0";
@@ -5306,9 +5306,9 @@ function syncNavigationInspector(component) {
   navigationGlowActiveSize.value = roundField(clampNumber(Number(value.glowActiveSize ?? 3) * 100, 0, 300));
   navigationRadius.value = roundField(clampNumber(Number(value.radius ?? 0.5) * 100, 0, 50));
   navigationLeft.value = roundField(clampNumber((Number(flag.x || 0) + number / 2) / numeric * 100, 0, 100));
-  navigationTop.value = roundField(clampNumber((Number(flag.y || 0) + number2 / 2) / canvasHeight * 100, 0, 100));
+  navigationTop.value = roundField(clampNumber((Number(flag.y || 0) + numberCurrent / 2) / canvasHeight * 100, 0, 100));
   navigationWidth.value = roundField(clampNumber(number / numeric * 100, 0.1, 100));
-  navigationHeight.value = roundField(clampNumber(number2 / canvasHeight * 100, 0.1, 100));
+  navigationHeight.value = roundField(clampNumber(numberCurrent / canvasHeight * 100, 0.1, 100));
   navigationScale.value = roundField(clampNumber(Number(component.style?.scale || 1) * 100, 1, 500));
   navigationRotation.value = roundField(Number(flag.rotation || 0));
   const isMultiSelect = selectedComponentIds.size > 1;
@@ -5317,9 +5317,9 @@ function syncNavigationInspector(component) {
   navigationScale.disabled = false;
   navigationRotation.disabled = false;
   const length = collectComponentsByType(currentProject.document.sharedComponents, "navigation-button").length;
-  const length2 = collectList7(component).length;
-  navigationApplyStyle.disabled = length < 2 || !length2;
-  navigationApplyCount.textContent = length2 + " 项修改";
+  const lengthCurrent = collectListEntry(component).length;
+  navigationApplyStyle.disabled = length < 2 || !lengthCurrent;
+  navigationApplyCount.textContent = lengthCurrent + " 项修改";
   navigationApplyStyle.textContent = "一键应用到同类型控件";
   syncComponentActionControls(component, navigationActionControls);
 }
@@ -5329,17 +5329,17 @@ function syncVacuumMapInspector(component) {
   const numeric = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
   const number = Number(flag.width || 100);
-  const number2 = Number(flag.height || 100);
+  const numberCurrent = Number(flag.height || 100);
   titleButtonLabel.value = value.label || "";
-  pickerValueEl2(component);
+  pickerValueElCurrent(component);
   setInspectorToggle(titleButtonMainVisible, value.mainTextVisible !== false);
   setInspectorToggle(titleButtonSecondaryVisible, value.secondaryTextVisible !== false);
   setInspectorToggle(titleButtonFrameVisible, value.frameVisible !== false);
   setInspectorToggle(titleButtonIconVisible, value.iconVisible !== false);
   titleButtonMainText.value = value.mainText || "";
   const temp = String(value.secondaryText || "").split(/\r?\n/).slice(0, 2);
-  titleButtonSecondaryLine1.value = temp[0] || "";
-  titleButtonSecondaryLine2.value = temp[1] || "";
+  titleButtonSecondaryLine.value = temp[0] || "";
+  titleButtonSecondaryLineCurrent.value = temp[1] || "";
   titleButtonMainColor.value = value.mainColor || "#b9bbc0";
   titleButtonSecondaryColor.value = value.secondaryColor || "#70737b";
   titleButtonMainSize.value = roundField(Number(value.mainSize ?? 34));
@@ -5368,24 +5368,24 @@ function syncVacuumMapInspector(component) {
   titleButtonMarkerSize.value = roundField(Number(value.markerSize ?? 10));
   titleButtonMarkerLeft.value = roundField(Number(value.markerLeft ?? 1.8));
   titleButtonMarkerTop.value = roundField(Number(value.markerTop ?? 84));
-  const flag2 = value.markerVisible !== false;
-  setInspectorToggle(titleButtonMarkerVisible, flag2);
+  const flagCurrent = value.markerVisible !== false;
+  setInspectorToggle(titleButtonMarkerVisible, flagCurrent);
   titleButtonLeft.value = roundField(clampNumber((Number(flag.x || 0) + number / 2) / numeric * 100, 0, 100));
-  titleButtonTop.value = roundField(clampNumber((Number(flag.y || 0) + number2 / 2) / canvasHeight * 100, 0, 100));
+  titleButtonTop.value = roundField(clampNumber((Number(flag.y || 0) + numberCurrent / 2) / canvasHeight * 100, 0, 100));
   titleButtonWidth.value = roundField(number / numeric * 100);
-  titleButtonHeight.value = roundField(number2 / canvasHeight * 100);
+  titleButtonHeight.value = roundField(numberCurrent / canvasHeight * 100);
   titleButtonScale.value = roundField(Number(component.style?.scale || 1) * 100);
   titleButtonRotation.value = roundField(Number(flag.rotation || 0));
   const isMultiSelect = selectedComponentIds.size > 1;
-  for (const temp2 of [titleButtonWidth, titleButtonHeight]) {
-    temp2.disabled = isMultiSelect;
+  for (const value of [titleButtonWidth, titleButtonHeight]) {
+    value.disabled = isMultiSelect;
   }
   titleButtonRotation.disabled = false;
   titleButtonScale.disabled = false;
   const length = findComponentsByType("title-button").length;
-  const length2 = collectList2(component).length;
-  titleButtonApplyStyle.disabled = length < 2 || !length2;
-  titleButtonApplyCount.textContent = length2 + " 项修改";
+  const lengthCurrent = collectListCurrent(component).length;
+  titleButtonApplyStyle.disabled = length < 2 || !lengthCurrent;
+  titleButtonApplyCount.textContent = lengthCurrent + " 项修改";
   titleButtonApplyStyle.textContent = "一键应用到同类型控件";
   syncComponentActionControls(component, titleButtonActionControls);
 }
@@ -5395,13 +5395,13 @@ function syncCameraInspector(component) {
   const numeric = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
   const number = Number(flag.width || 100);
-  const number2 = Number(flag.height || 100);
+  const numberCurrent = Number(flag.height || 100);
   if (lightStatisticsEditingComponentId && lightStatisticsEditingComponentId !== component.id) {
     resetLightStatisticsEntityPicker();
   }
   lightStatisticsLabel.value = value.label || "";
   lightStatisticsTitle.value = value.title || "数量";
-  pickerValueEl2(component);
+  pickerValueElCurrent(component);
   setInspectorToggle(lightStatisticsIconVisible, value.iconVisible !== false);
   setInspectorToggle(lightStatisticsTitleVisible, value.titleVisible !== false);
   setInspectorToggle(lightStatisticsCountVisible, value.countVisible !== false);
@@ -5421,9 +5421,9 @@ function syncCameraInspector(component) {
   lightStatisticsIconGap.value = roundField(Number(value.iconGap ?? 4.5));
   lightStatisticsCountGap.value = roundField(Number(value.countGap ?? 4.5));
   lightStatisticsLeft.value = roundField(clampNumber((Number(flag.x || 0) + number / 2) / numeric * 100, 0, 100));
-  lightStatisticsTop.value = roundField(clampNumber((Number(flag.y || 0) + number2 / 2) / canvasHeight * 100, 0, 100));
+  lightStatisticsTop.value = roundField(clampNumber((Number(flag.y || 0) + numberCurrent / 2) / canvasHeight * 100, 0, 100));
   lightStatisticsWidth.value = roundField(number / numeric * 100);
-  lightStatisticsHeight.value = roundField(number2 / canvasHeight * 100);
+  lightStatisticsHeight.value = roundField(numberCurrent / canvasHeight * 100);
   lightStatisticsScale.value = roundField(Number(component.style?.scale || 1) * 100);
   lightStatisticsRotation.value = roundField(Number(flag.rotation || 0));
   const isMultiSelect = selectedComponentIds.size > 1;
@@ -5449,50 +5449,50 @@ function syncPresenceInspector(component) {
     smoke: "烟雾传感器",
     "natural-gas": "天然气传感器"
   }[chosen];
-  const flag2 = component.type === "device-button" || flag;
-  const flag3 = component.position || {};
+  const flagCurrent = component.type === "device-button" || flag;
+  const rect = component.position || {};
   const numeric = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
-  const number = Number(flag3.width || 100);
-  const number2 = Number(flag3.height || 100);
-  iconButtonType.value = flag ? temp : flag2 ? "设备按钮" : "图标按钮";
+  const number = Number(rect.width || 100);
+  const numberCurrent = Number(rect.height || 100);
+  iconButtonType.value = flag ? temp : flagCurrent ? "设备按钮" : "图标按钮";
   iconButtonTypeLabel.classList.remove("inspector-full-row");
   presenceSensorKindLabel.hidden = !flag;
   presenceSensorKindLabel.classList.toggle("inspector-full-row", flag);
   presenceSensorKind.value = chosen;
   syncCustomSelect(presenceSensorKind);
-  iconButtonMainHeading.textContent = flag2 ? "标题" : "中文标题";
-  iconButtonSecondaryHeading.textContent = flag2 ? "状态" : "英文标题";
-  iconButtonMainContentLabel.textContent = flag2 ? "自定义标题" : "内容";
-  iconButtonSecondaryContentLabel.textContent = flag2 ? "自定义状态" : "内容";
-  iconButtonMainText.placeholder = flag2 ? "留空跟随实体名称" : "";
-  iconButtonSecondaryText.placeholder = flag2 ? "留空跟随实体状态" : "";
-  iconButtonPreviewControl.hidden = flag2;
+  iconButtonMainHeading.textContent = flagCurrent ? "标题" : "中文标题";
+  iconButtonSecondaryHeading.textContent = flagCurrent ? "状态" : "英文标题";
+  iconButtonMainContentLabel.textContent = flagCurrent ? "自定义标题" : "内容";
+  iconButtonSecondaryContentLabel.textContent = flagCurrent ? "自定义状态" : "内容";
+  iconButtonMainText.placeholder = flagCurrent ? "留空跟随实体名称" : "";
+  iconButtonSecondaryText.placeholder = flagCurrent ? "留空跟随实体状态" : "";
+  iconButtonPreviewControl.hidden = flagCurrent;
   iconButtonActionSection.hidden = flag;
   iconButtonPreviewDetails.hidden = true;
   presenceMotionSection.hidden = !flag || chosen !== "presence";
   doorWindowPerspectiveSection.hidden = !flag || chosen !== "door-window";
-  const temp2 = presencePreviewExpandedIds.has(component.id);
-  doorWindowPerspectiveEditBtn.classList.toggle("active", temp2);
-  doorWindowPerspectiveEditBtn.setAttribute("aria-pressed", String(temp2));
+  const present = presencePreviewExpandedIds.has(component.id);
+  doorWindowPerspectiveEditBtn.classList.toggle("active", present);
+  doorWindowPerspectiveEditBtn.setAttribute("aria-pressed", String(present));
   doorWindowPerspectiveEditBtn.textContent = "编辑透视";
-  doorWindowPerspectiveSave.disabled = !temp2;
+  doorWindowPerspectiveSave.disabled = !present;
   iconButtonMainHeading.closest(".inspector-section").hidden = flag;
   const ancestorEl = iconButtonIconButton.closest(".inspector-section");
   ancestorEl.querySelector("h3").textContent = flag ? "显示颜色" : "图标";
-  const ancestorEl2 = iconButtonIconButton.closest(".inspector-picker");
-  ancestorEl2.hidden = flag;
-  ancestorEl2.style.display = flag ? "none" : "";
-  iconButtonFillSection.hidden = flag2;
-  iconButtonFrameSection.hidden = flag2;
-  iconButtonSoftLightSection.hidden = flag2;
-  iconButtonGlowSection.hidden = flag2;
+  const closest = iconButtonIconButton.closest(".inspector-picker");
+  closest.hidden = flag;
+  closest.style.display = flag ? "none" : "";
+  iconButtonFillSection.hidden = flagCurrent;
+  iconButtonFrameSection.hidden = flagCurrent;
+  iconButtonSoftLightSection.hidden = flagCurrent;
+  iconButtonGlowSection.hidden = flagCurrent;
   iconButtonIconColorLabel.hidden = flag;
-  iconButtonIconColorLabel.firstChild.textContent = flag2 ? "关闭颜色" : "颜色";
-  deviceButtonIconVisible.hidden = !flag2 || flag;
-  deviceButtonMainVisible.hidden = !flag2;
-  deviceButtonSecondaryVisible.hidden = !flag2;
-  deviceButtonIconOnColorLabel.hidden = !flag2;
+  iconButtonIconColorLabel.firstChild.textContent = flagCurrent ? "关闭颜色" : "颜色";
+  deviceButtonIconVisible.hidden = !flagCurrent || flag;
+  deviceButtonMainVisible.hidden = !flagCurrent;
+  deviceButtonSecondaryVisible.hidden = !flagCurrent;
+  deviceButtonIconOnColorLabel.hidden = !flagCurrent;
   deviceButtonIconOnColorLabel.firstChild.textContent = flag ? {
     presence: "有人颜色",
     "door-window": "打开颜色",
@@ -5500,22 +5500,22 @@ function syncPresenceInspector(component) {
     smoke: "烟雾颜色",
     "natural-gas": "天然气颜色"
   }[chosen] : "开启颜色";
-  deviceButtonBadgeColorLabel.hidden = !flag2 || flag;
-  deviceButtonBadgeOpacityLabel.hidden = !flag2 || flag;
-  iconButtonIconSizeLabel.hidden = flag2;
-  deviceButtonSymbolSizeLabel.hidden = !flag2 || flag;
-  deviceButtonBadgeSizeLabel.hidden = !flag2 || flag;
-  deviceButtonStatePrecisionLabel.hidden = !flag2 || flag;
+  deviceButtonBadgeColorLabel.hidden = !flagCurrent || flag;
+  deviceButtonBadgeOpacityLabel.hidden = !flagCurrent || flag;
+  iconButtonIconSizeLabel.hidden = flagCurrent;
+  deviceButtonSymbolSizeLabel.hidden = !flagCurrent || flag;
+  deviceButtonBadgeSizeLabel.hidden = !flagCurrent || flag;
+  deviceButtonStatePrecisionLabel.hidden = !flagCurrent || flag;
   iconButtonIconLeft.closest("label").hidden = flag;
   iconButtonIconTop.closest("label").hidden = flag;
-  iconButtonIconOffOpacityLabel.hidden = flag2;
-  iconButtonIconOnOpacityLabel.hidden = flag2;
-  iconButtonMainOffOpacityLabel.hidden = flag2;
-  iconButtonMainOnOpacityLabel.hidden = flag2;
-  iconButtonSecondaryOffOpacityLabel.hidden = flag2;
-  iconButtonSecondaryOnOpacityLabel.hidden = flag2;
+  iconButtonIconOffOpacityLabel.hidden = flagCurrent;
+  iconButtonIconOnOpacityLabel.hidden = flagCurrent;
+  iconButtonMainOffOpacityLabel.hidden = flagCurrent;
+  iconButtonMainOnOpacityLabel.hidden = flagCurrent;
+  iconButtonSecondaryOffOpacityLabel.hidden = flagCurrent;
+  iconButtonSecondaryOnOpacityLabel.hidden = flagCurrent;
   iconButtonLabel.value = value.label || "";
-  pickerValueEl2(component);
+  pickerValueElCurrent(component);
   syncIconButtonIcon(value.icon || "");
   iconButtonIconColor.value = value.iconColor || (flag ? value.clearColor : "") || value.iconOffColor || value.iconOnColor || "#d7d8da";
   setInspectorToggle(deviceButtonIconVisible, value.iconVisible !== false);
@@ -5580,33 +5580,33 @@ function syncPresenceInspector(component) {
   iconButtonGlowStrength.value = roundField(Number(value.glowStrength ?? 1) * 100);
   iconButtonGlowSize.value = roundField(Number(value.glowSize ?? 1) * 100);
   iconButtonGlowAngle.value = roundField(Number(value.glowAngle ?? 220));
-  iconButtonLeft.value = roundField(clampNumber((Number(flag3.x || 0) + number / 2) / numeric * 100, 0, 100));
-  iconButtonTop.value = roundField(clampNumber((Number(flag3.y || 0) + number2 / 2) / canvasHeight * 100, 0, 100));
+  iconButtonLeft.value = roundField(clampNumber((Number(rect.x || 0) + number / 2) / numeric * 100, 0, 100));
+  iconButtonTop.value = roundField(clampNumber((Number(rect.y || 0) + numberCurrent / 2) / canvasHeight * 100, 0, 100));
   iconButtonWidth.value = roundField(number / numeric * 100);
-  iconButtonHeight.value = roundField(number2 / canvasHeight * 100);
+  iconButtonHeight.value = roundField(numberCurrent / canvasHeight * 100);
   iconButtonScale.value = roundField(Number(component.style?.scale || 1) * 100);
-  iconButtonRotation.value = roundField(Number(flag3.rotation || 0));
+  iconButtonRotation.value = roundField(Number(rect.rotation || 0));
   if (flag && !presencePreviewStateById.has(component.id)) {
     presencePreviewStateById.set(component.id, "on");
     editorRenderer?.setComponentPreviewState(component.id, "on");
   }
-  const text2 = presencePreviewStateById.get(component.id) || "auto";
+  const text = presencePreviewStateById.get(component.id) || "auto";
   for (const element of iconButtonPreviewState.querySelectorAll("[data-icon-button-preview]")) {
-    const flag5 = element.dataset.iconButtonPreview === text2;
-    element.classList.toggle("active", flag5);
-    element.setAttribute("aria-pressed", String(flag5));
+    const flag = element.dataset.iconButtonPreview === text;
+    element.classList.toggle("active", flag);
+    element.setAttribute("aria-pressed", String(flag));
   }
   const isMultiSelect = selectedComponentIds.size > 1;
-  for (const temp3 of [iconButtonWidth, iconButtonHeight]) {
-    temp3.disabled = isMultiSelect;
+  for (const value of [iconButtonWidth, iconButtonHeight]) {
+    value.disabled = isMultiSelect;
   }
   iconButtonRotation.disabled = false;
   iconButtonScale.disabled = false;
-  const chosen2 = component.type === "presence-sensor" ? findComponentsByType(component.type).filter(({
+  const chosenCurrent = component.type === "presence-sensor" ? findComponentsByType(component.type).filter(({
     component: item
-  }) => presenceSensorKind2(item) === chosen).length : findComponentsByType(component.type).length;
-  const length = syncIconButtonIcon5(component).length;
-  iconButtonApplyStyle.disabled = chosen2 < 2 || !length;
+  }) => presenceSensorKindCurrent(item) === chosen).length : findComponentsByType(component.type).length;
+  const length = syncIconButtonIconLocal(component).length;
+  iconButtonApplyStyle.disabled = chosenCurrent < 2 || !length;
   iconButtonApplyCount.textContent = length + " 项修改";
   iconButtonApplyStyle.textContent = "一键应用到同类型控件";
   syncComponentActionControls(component, iconButtonActionControls);
@@ -5617,38 +5617,38 @@ function syncAirConditionerInspector(component) {
   const numeric = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
   const number = Number(flag.width || 100);
-  const number2 = Number(flag.height || 100);
+  const numberCurrent = Number(flag.height || 100);
   cameraLabel.value = value.label || "";
-  pickerValueEl2(component);
+  pickerValueElCurrent(component);
   setInspectorToggle(cameraMediaVisible, value.mediaVisible !== false);
   const chosen = value.displayMode === "snapshot" ? "snapshot" : "live";
   for (const element of cameraDisplayModeOptions.querySelectorAll("[data-camera-display-mode]")) {
-    const flag2 = element.dataset.cameraDisplayMode === chosen;
-    element.classList.toggle("active", flag2);
-    element.setAttribute("aria-pressed", String(flag2));
+    const flag = element.dataset.cameraDisplayMode === chosen;
+    element.classList.toggle("active", flag);
+    element.setAttribute("aria-pressed", String(flag));
   }
-  const number3 = Number(value.refreshInterval);
-  const chosen2 = Number.isFinite(number3) ? Math.max(6, Math.round(number3)) : 10;
-  cameraRefreshInterval.value = String(chosen2);
+  const numberNext = Number(value.refreshInterval);
+  const max = Number.isFinite(numberNext) ? Math.max(6, Math.round(numberNext)) : 10;
+  cameraRefreshInterval.value = String(max);
   cameraRefreshIntervalField.hidden = chosen !== "snapshot";
   cameraRefreshInterval.disabled = chosen !== "snapshot";
-  const chosen3 = value.fit === "contain" ? "contain" : "fill";
+  const text = value.fit === "contain" ? "contain" : "fill";
   for (const element of cameraFitOptions.querySelectorAll("[data-camera-fit]")) {
-    const flag2 = element.dataset.cameraFit === chosen3;
-    element.classList.toggle("active", flag2);
-    element.setAttribute("aria-pressed", String(flag2));
+    const flag = element.dataset.cameraFit === text;
+    element.classList.toggle("active", flag);
+    element.setAttribute("aria-pressed", String(flag));
   }
   setInspectorToggle(cameraFrameVisible, value.frameVisible !== false);
   cameraFrameColor.value = value.frameColor || "#d4d4d4";
   cameraFrameWidth.value = roundField(Number(value.frameWidth ?? 1));
-  const number4 = Number(value.radius ?? 0.04);
-  cameraRadius.value = roundField(clampNumber(number4 > 0.5 ? number4 : number4 * 100, 0, 50));
+  const numberPrevious = Number(value.radius ?? 0.04);
+  cameraRadius.value = roundField(clampNumber(numberPrevious > 0.5 ? numberPrevious : numberPrevious * 100, 0, 50));
   cameraFrameAngle.value = roundField(Number(value.frameAngle ?? 45));
   cameraFrameOpacity.value = roundField(Number(value.frameOpacity ?? 0.9) * 100);
   cameraLeft.value = roundField(clampNumber((Number(flag.x || 0) + number / 2) / numeric * 100, 0, 100));
-  cameraTop.value = roundField(clampNumber((Number(flag.y || 0) + number2 / 2) / canvasHeight * 100, 0, 100));
+  cameraTop.value = roundField(clampNumber((Number(flag.y || 0) + numberCurrent / 2) / canvasHeight * 100, 0, 100));
   cameraWidth.value = roundField(number / numeric * 100);
-  cameraHeight.value = roundField(number2 / canvasHeight * 100);
+  cameraHeight.value = roundField(numberCurrent / canvasHeight * 100);
   cameraScale.value = roundField(Number(component.style?.scale || 1) * 100);
   cameraRotation.value = roundField(Number(flag.rotation || 0));
   const isMultiSelect = selectedComponentIds.size > 1;
@@ -5657,11 +5657,11 @@ function syncAirConditionerInspector(component) {
   cameraRotation.disabled = false;
   cameraScale.disabled = false;
   const length = findComponentsByType("camera").length;
-  const length2 = collectList5(component).length;
-  cameraApplyStyle.disabled = length < 2 || !length2;
-  cameraApplyCount.textContent = length2 + " 项修改";
+  const lengthCurrent = collectListLocal(component).length;
+  cameraApplyStyle.disabled = length < 2 || !lengthCurrent;
+  cameraApplyCount.textContent = lengthCurrent + " 项修改";
   cameraApplyStyle.textContent = "一键应用到同类型控件";
-  const chosen4 = Object.prototype.hasOwnProperty.call(component.actions || {}, "tap") ? component : {
+  const chosenCurrent = Object.prototype.hasOwnProperty.call(component.actions || {}, "tap") ? component : {
     ...component,
     actions: {
       tap: {
@@ -5673,7 +5673,7 @@ function syncAirConditionerInspector(component) {
       ...(component.actions || {})
     }
   };
-  syncComponentActionControls(chosen4, cameraActionControls);
+  syncComponentActionControls(chosenCurrent, cameraActionControls);
 }
 function syncIconButtonInspector(component) {
   const value = component.properties || {};
@@ -5681,16 +5681,16 @@ function syncIconButtonInspector(component) {
   const numeric = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
   const number = Number(flag.width || 100);
-  const number2 = Number(flag.height || 100);
+  const numberCurrent = Number(flag.height || 100);
   airConditionerLabel.value = value.label || "";
   const chosen = ["air-conditioner", "bath-heater"].includes(value.deviceType) ? value.deviceType : "auto";
   for (const element of airConditionerDeviceType.querySelectorAll("[data-air-conditioner-device-type]")) {
-    const flag4 = element.dataset.airConditionerDeviceType === chosen;
-    element.classList.toggle("active", flag4);
-    element.setAttribute("aria-pressed", String(flag4));
+    const flag = element.dataset.airConditionerDeviceType === chosen;
+    element.classList.toggle("active", flag);
+    element.setAttribute("aria-pressed", String(flag));
   }
   airConditionerPreviewDetails.textContent = chosen === "bath-heater" ? "预览浴霸详情" : "预览空调 / 浴霸详情";
-  pickerValueEl2(component);
+  pickerValueElCurrent(component);
   airConditionerPreviewDetails.disabled = !component.bindings?.entity?.entityId;
   airConditionerIconOffColor.value = value.iconOffColor || "#9aa5ad";
   airConditionerIconOnColor.value = value.iconOnColor || "#73c8ff";
@@ -5718,11 +5718,11 @@ function syncIconButtonInspector(component) {
   airConditionerSecondaryTop.value = roundField(Number(value.secondaryTextTop ?? 67));
   setInspectorToggle(airConditionerSecondaryVisible, value.secondaryTextVisible !== false);
   setInspectorToggle(airConditionerAirflowVisible, value.airflowVisible !== false);
-  const chosen2 = value.airflowMotion === "static" ? "static" : "dynamic";
+  const text = value.airflowMotion === "static" ? "static" : "dynamic";
   for (const element of airConditionerAirflowMotion.querySelectorAll("[data-airflow-motion]")) {
-    const flag4 = element.dataset.airflowMotion === chosen2;
-    element.classList.toggle("active", flag4);
-    element.setAttribute("aria-pressed", String(flag4));
+    const flag = element.dataset.airflowMotion === text;
+    element.classList.toggle("active", flag);
+    element.setAttribute("aria-pressed", String(flag));
   }
   airConditionerAirflowCoolColor.value = value.airflowCoolColor || "#73c8ff";
   airConditionerAirflowHeatColor.value = value.airflowHeatColor || "#ff8a65";
@@ -5738,7 +5738,7 @@ function syncIconButtonInspector(component) {
   airConditionerAirflowStrength.value = roundField(Number(value.airflowStrength ?? 200));
   airConditionerAirflowBlur.value = roundField(Number(value.airflowBlur ?? 6));
   airConditionerAirflowSpeed.value = roundField(Number(value.airflowSpeed ?? 1));
-  airConditionerAirflowSpeed.disabled = chosen2 === "static";
+  airConditionerAirflowSpeed.disabled = text === "static";
   const temp = airflowCanvasOffsetBounds(component, currentProject.document.canvas);
   airConditionerAirflowOffsetX.min = String(roundField(temp.minX));
   airConditionerAirflowOffsetX.max = String(roundField(temp.maxX));
@@ -5751,44 +5751,44 @@ function syncIconButtonInspector(component) {
   airConditionerAirflowScale.value = roundField(Number(value.airflowScale ?? 1) * 100);
   airConditionerAirflowRotation.value = roundField(Number(value.airflowRotation ?? -3));
   airConditionerLeft.value = roundField(clampNumber((Number(flag.x || 0) + number / 2) / numeric * 100, 0, 100));
-  airConditionerTop.value = roundField(clampNumber((Number(flag.y || 0) + number2 / 2) / canvasHeight * 100, 0, 100));
+  airConditionerTop.value = roundField(clampNumber((Number(flag.y || 0) + numberCurrent / 2) / canvasHeight * 100, 0, 100));
   airConditionerWidth.value = roundField(number / numeric * 100);
-  airConditionerHeight.value = roundField(number2 / canvasHeight * 100);
+  airConditionerHeight.value = roundField(numberCurrent / canvasHeight * 100);
   airConditionerScale.value = roundField(Number(component.style?.scale || 1) * 100);
   airConditionerRotation.value = roundField(Number(flag.rotation || 0));
-  const chosen3 = airConditionerLayerById.get(component.id) === "airflow" ? "airflow" : "button";
+  const chosenCurrent = airConditionerLayerById.get(component.id) === "airflow" ? "airflow" : "button";
   if (!airConditionerPreviewStateById.has(component.id)) {
-    const chosen4 = chosen3 === "airflow" ? "on" : "off";
-    airConditionerPreviewStateById.set(component.id, chosen4);
-    editorRenderer?.setComponentPreviewState(component.id, chosen4);
+    const chosen = chosenCurrent === "airflow" ? "on" : "off";
+    airConditionerPreviewStateById.set(component.id, chosen);
+    editorRenderer?.setComponentPreviewState(component.id, chosen);
   }
-  const text2 = airConditionerPreviewStateById.get(component.id) || "auto";
+  const entry = airConditionerPreviewStateById.get(component.id) || "auto";
   for (const element of airConditionerPreviewState.querySelectorAll("[data-air-conditioner-preview]")) {
-    const flag4 = element.dataset.airConditionerPreview === text2;
-    element.classList.toggle("active", flag4);
-    element.setAttribute("aria-pressed", String(flag4));
+    const flag = element.dataset.airConditionerPreview === entry;
+    element.classList.toggle("active", flag);
+    element.setAttribute("aria-pressed", String(flag));
   }
-  editorRenderer?.setComponentSelectionLayer(component.id, chosen3);
+  editorRenderer?.setComponentSelectionLayer(component.id, chosenCurrent);
   for (const element of airConditionerLayerOptions.querySelectorAll("[data-air-conditioner-layer]")) {
-    const flag4 = element.dataset.airConditionerLayer === chosen3;
-    element.classList.toggle("active", flag4);
-    element.setAttribute("aria-pressed", String(flag4));
+    const flag = element.dataset.airConditionerLayer === chosenCurrent;
+    element.classList.toggle("active", flag);
+    element.setAttribute("aria-pressed", String(flag));
   }
-  const flag3 = chosen3 === "airflow";
-  airConditionerButtonSection.hidden = flag3;
-  airConditionerTransformSection.hidden = flag3;
-  airConditionerActionSection.hidden = flag3;
-  airConditionerAirflowSection.hidden = !flag3;
+  const flagCurrent = chosenCurrent === "airflow";
+  airConditionerButtonSection.hidden = flagCurrent;
+  airConditionerTransformSection.hidden = flagCurrent;
+  airConditionerActionSection.hidden = flagCurrent;
+  airConditionerAirflowSection.hidden = !flagCurrent;
   const isMultiSelect = selectedComponentIds.size > 1;
-  for (const temp2 of [airConditionerWidth, airConditionerHeight]) {
-    temp2.disabled = isMultiSelect;
+  for (const value of [airConditionerWidth, airConditionerHeight]) {
+    value.disabled = isMultiSelect;
   }
   airConditionerRotation.disabled = false;
   airConditionerScale.disabled = false;
   const length = findComponentsByType("air-conditioner").length;
-  const length2 = collectList3(component).length;
-  airConditionerApplyStyle.disabled = length < 2 || !length2;
-  airConditionerApplyCount.textContent = length2 + " 项修改";
+  const lengthCurrent = collectListNext(component).length;
+  airConditionerApplyStyle.disabled = length < 2 || !lengthCurrent;
+  airConditionerApplyCount.textContent = lengthCurrent + " 项修改";
   syncComponentActionControls(component, airConditionerActionControls);
 }
 function syncTitleButtonInspector(component) {
@@ -5797,47 +5797,47 @@ function syncTitleButtonInspector(component) {
   const numeric = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
   const number = Number(flag.width || 100);
-  const number2 = Number(flag.height || 100);
+  const numberCurrent = Number(flag.height || 100);
   vacuumMapLabel.value = value.label || "";
-  pickerValueEl2(component);
+  pickerValueElCurrent(component);
   vacuumMapOpacity.value = roundField(Number(value.opacity ?? 0.5) * 100);
   vacuumMapLeft.value = roundField(clampNumber((Number(flag.x || 0) + number / 2) / numeric * 100, 0, 100));
-  vacuumMapTop.value = roundField(clampNumber((Number(flag.y || 0) + number2 / 2) / canvasHeight * 100, 0, 100));
+  vacuumMapTop.value = roundField(clampNumber((Number(flag.y || 0) + numberCurrent / 2) / canvasHeight * 100, 0, 100));
   vacuumMapScale.value = roundField(Number(component.style?.scale || 1) * 100);
   vacuumMapRotation.value = roundField(Number(flag.rotation || 0));
   vacuumMapRotation.disabled = false;
   vacuumMapScale.disabled = false;
 }
 function hideAllInspectors(component) {
-  const value = [imageInspector, iconButtonEffectInspector, titleButtonInspector, iconButtonInspector, vacuumMapInspector, cameraInspector, airConditionerInspector, timeInspector, dateInspector, weatherInspector, lineChartInspector, panelFrameInspector, navigationInspector].find(el2 => el2 && !el2.hidden)?.querySelector(":scope > .inspector-section");
+  const value = [imageInspector, iconButtonEffectInspector, titleButtonInspector, iconButtonInspector, vacuumMapInspector, cameraInspector, airConditionerInspector, timeInspector, dateInspector, weatherInspector, lineChartInspector, panelFrameInspector, navigationInspector].find(el => el && !el.hidden)?.querySelector(":scope > .inspector-section");
   if (value && value.nextElementSibling !== coverSettingsInspector) {
     value.insertAdjacentElement("afterend", coverSettingsInspector);
   }
   const coverProps = component.properties || {};
   const coverKind = ["standard", "dream", "airer"].includes(coverProps.coverKind) ? coverProps.coverKind : "auto";
   for (const element of coverSettingsKind.querySelectorAll("[data-cover-kind]")) {
-    const coverKind2 = element.dataset.coverKind === coverKind;
-    element.classList.toggle("active", coverKind2);
-    element.setAttribute("aria-pressed", String(coverKind2));
+    const value = element.dataset.coverKind === coverKind;
+    element.classList.toggle("active", value);
+    element.setAttribute("aria-pressed", String(value));
   }
   const coverDirection = ["left", "right"].includes(coverProps.coverDirection) ? coverProps.coverDirection : "split";
   for (const element of coverSettingsDirection.querySelectorAll("[data-cover-direction]")) {
-    const coverDirection2 = element.dataset.coverDirection === coverDirection;
-    element.classList.toggle("active", coverDirection2);
-    element.setAttribute("aria-pressed", String(coverDirection2));
+    const value = element.dataset.coverDirection === coverDirection;
+    element.classList.toggle("active", value);
+    element.setAttribute("aria-pressed", String(value));
   }
   const motorDirection = ["normal", "reversed"].includes(coverProps.coverMotorDirection) ? coverProps.coverMotorDirection : "auto";
   for (const element of coverSettingsMotorDirection.querySelectorAll("[data-cover-motor-direction]")) {
-    const motorDirection2 = element.dataset.coverMotorDirection === motorDirection;
-    element.classList.toggle("active", motorDirection2);
-    element.setAttribute("aria-pressed", String(motorDirection2));
+    const value = element.dataset.coverMotorDirection === motorDirection;
+    element.classList.toggle("active", value);
+    element.setAttribute("aria-pressed", String(value));
   }
 }
 function refreshInspector() {
   window.requestAnimationFrame(refreshActiveColorPicker);
   const component = selectedComponent();
   const flag = component?.type === "image";
-  const flag2 = component?.type === "interaction3d";
+  const value = component?.type === "interaction3d";
   renderInteraction3dInspector(inspector, component, {
     document: currentProject?.document,
     entities: entityCatalog,
@@ -5849,15 +5849,15 @@ function refreshInspector() {
       bindNumberInputsIn(param);
     },
     prepareCanvas: () => {
-      const page2 = findComponent(currentProject?.document, component.id);
-      if (!page2) {
+      const page = findComponent(currentProject?.document, component.id);
+      if (!page) {
         throw new Error("3D 控件已不存在。");
       }
-      const flag22 = page2.page?.path || pageSelect.value;
-      const flag21 = editorMode !== "edit" || editorRenderer?.page?.path !== flag22;
-      pageSelect.value = flag22;
+      const flag = page.page?.path || pageSelect.value;
+      const value = editorMode !== "edit" || editorRenderer?.page?.path !== flag;
+      pageSelect.value = flag;
       syncCustomSelect(pageSelect);
-      if (flag21) {
+      if (value) {
         setEditorMode("edit");
       }
       renderComponentTree();
@@ -5865,14 +5865,14 @@ function refreshInspector() {
     },
     onError,
     onChange: (param, {
-      replaceProperties: param2 = false
-    } = {}) => mutateDocument(param3 => {
-      const target = findComponent(param3, component.id)?.component;
+      replaceProperties: item = false
+    } = {}) => mutateDocument(value => {
+      const target = findComponent(value, component.id)?.component;
       if (!target || target.type !== "interaction3d") {
         throw new Error("3D 控件已不存在。");
       }
       for (const [key, value] of Object.entries(param)) {
-        target[key] = key === "properties" && param2 ? value : {
+        target[key] = key === "properties" && item ? value : {
           ...target[key],
           ...value
         };
@@ -5881,68 +5881,68 @@ function refreshInspector() {
       throwOnError: true
     })
   });
-  const flag3 = component?.type === "floorplan-auto-diagram";
-  const flag4 = component?.type === "icon-button-effect";
-  const flag5 = component?.type === "title-button";
-  const flag6 = component?.type === "light-statistics";
+  const flagCurrent = component?.type === "floorplan-auto-diagram";
+  const flagNext = component?.type === "icon-button-effect";
+  const flagPrevious = component?.type === "title-button";
+  const flagLocal = component?.type === "light-statistics";
   const includesValue = ["icon-button", "device-button", "presence-sensor"].includes(component?.type);
-  const flag7 = component?.type === "vacuum-map";
-  const flag8 = component?.type === "camera";
-  const flag9 = component?.type === "air-conditioner";
-  const flag10 = component?.type === "time";
-  const flag11 = component?.type === "date";
-  const flag12 = component?.type === "weather";
-  const flag13 = component?.type === "line-chart";
-  const flag14 = component?.type === "panel-frame";
-  const flag19 = component?.type === "navigation-button";
-  const flag20 = component?.type === "group";
-  for (const temp2 of [...imagePreviewStateById.keys()]) {
-    if (!flag19 || temp2 !== component.id) {
-      imagePreviewStateById.delete(temp2);
-      editorRenderer?.setComponentPreviewState(temp2, "auto");
+  const flagItem = component?.type === "vacuum-map";
+  const flagEntry = component?.type === "camera";
+  const flagList = component?.type === "air-conditioner";
+  const flagText = component?.type === "time";
+  const flagValue = component?.type === "date";
+  const flagSource = component?.type === "weather";
+  const flagTarget = component?.type === "line-chart";
+  const flagDefault = component?.type === "panel-frame";
+  const flagFallback = component?.type === "navigation-button";
+  const flagPending = component?.type === "group";
+  for (const value of [...imagePreviewStateById.keys()]) {
+    if (!flagFallback || value !== component.id) {
+      imagePreviewStateById.delete(value);
+      editorRenderer?.setComponentPreviewState(value, "auto");
     }
   }
-  for (const temp2 of [...ibePreviewStateById.keys()]) {
-    if (!flag4 || temp2 !== component.id) {
-      ibePreviewStateById.delete(temp2);
-      editorRenderer?.setComponentPreviewState(temp2, "auto");
+  for (const value of [...ibePreviewStateById.keys()]) {
+    if (!flagNext || value !== component.id) {
+      ibePreviewStateById.delete(value);
+      editorRenderer?.setComponentPreviewState(value, "auto");
     }
   }
-  for (const temp2 of [...presencePreviewStateById.keys()]) {
-    if (!includesValue || temp2 !== component.id) {
-      presencePreviewStateById.delete(temp2);
-      editorRenderer?.setComponentPreviewState(temp2, "auto");
+  for (const value of [...presencePreviewStateById.keys()]) {
+    if (!includesValue || value !== component.id) {
+      presencePreviewStateById.delete(value);
+      editorRenderer?.setComponentPreviewState(value, "auto");
     }
   }
-  for (const temp2 of [...airConditionerPreviewStateById.keys()]) {
-    if (!flag9 || temp2 !== component.id) {
-      airConditionerPreviewStateById.delete(temp2);
-      editorRenderer?.setComponentPreviewState(temp2, "auto");
+  for (const value of [...airConditionerPreviewStateById.keys()]) {
+    if (!flagList || value !== component.id) {
+      airConditionerPreviewStateById.delete(value);
+      editorRenderer?.setComponentPreviewState(value, "auto");
     }
   }
-  const flag15 = flag2 || flag20 || flag || flag3 || flag4 || flag5 || flag6 || includesValue || flag7 || flag8 || flag9 || flag10 || flag11 || flag12 || flag13 || flag14 || flag19;
-  inspectorEmpty.hidden = flag15;
-  if (flag20) {
+  const flagRaw = value || flagPending || flag || flagCurrent || flagNext || flagPrevious || flagLocal || includesValue || flagItem || flagEntry || flagList || flagText || flagValue || flagSource || flagTarget || flagDefault || flagFallback;
+  inspectorEmpty.hidden = flagRaw;
+  if (flagPending) {
     inspectorEmpty.querySelector("p").textContent = "组合支持整体移动、复制、旋转和缩放；双击组合可进入组内编辑。";
   }
   imageInspector.hidden = !flag;
-  floorplanAutoDiagramInspector.hidden = !flag3;
-  iconButtonEffectInspector.hidden = !flag4;
-  titleButtonInspector.hidden = !flag5;
-  lightStatisticsInspector.hidden = !flag6;
+  floorplanAutoDiagramInspector.hidden = !flagCurrent;
+  iconButtonEffectInspector.hidden = !flagNext;
+  titleButtonInspector.hidden = !flagPrevious;
+  lightStatisticsInspector.hidden = !flagLocal;
   iconButtonInspector.hidden = !includesValue;
-  vacuumMapInspector.hidden = !flag7;
-  cameraInspector.hidden = !flag8;
-  airConditionerInspector.hidden = !flag9;
-  timeInspector.hidden = !flag10;
-  dateInspector.hidden = !flag11;
-  weatherInspector.hidden = !flag12;
-  lineChartInspector.hidden = !flag13;
-  panelFrameInspector.hidden = !flag14;
-  navigationInspector.hidden = !flag19;
+  vacuumMapInspector.hidden = !flagItem;
+  cameraInspector.hidden = !flagEntry;
+  airConditionerInspector.hidden = !flagList;
+  timeInspector.hidden = !flagText;
+  dateInspector.hidden = !flagValue;
+  weatherInspector.hidden = !flagSource;
+  lineChartInspector.hidden = !flagTarget;
+  panelFrameInspector.hidden = !flagDefault;
+  navigationInspector.hidden = !flagFallback;
   const temp = String(component?.bindings?.entity?.entityId || "").startsWith("cover.");
-  coverSettingsInspector.hidden = !flag15 || !temp;
-  if (!flag15) {
+  coverSettingsInspector.hidden = !flagRaw || !temp;
+  if (!flagRaw) {
     closeOtherPickerPanels();
     inspectorEmpty.querySelector("p").textContent = component ? "“" + componentLabel(component) + "”的专属属性尚未实现。" : "选择一个控件开始编辑。";
     return;
@@ -5950,293 +5950,293 @@ function refreshInspector() {
   if (temp) {
     hideAllInspectors(component);
   }
-  if (flag3) {
-    const flag19 = component.properties || {};
-    const flag20 = component.position || {};
+  if (flagCurrent) {
+    const flag = component.properties || {};
+    const rect = component.position || {};
     const canvasWidth = Number(currentProject.document.canvas.width || 2778);
-    const canvasHeight2 = Number(currentProject.document.canvas.height || 1940);
-    const number3 = Number(flag20.width || 100);
-    const number4 = Number(flag20.height || 100);
-    const list = Array.isArray(flag19.lightLayers) ? flag19.lightLayers.length : 0;
-    const flag21 = flag19.previewReady === true && (flag19.generated !== true || flag19.previewing === true);
-    floorplanAutoDiagramStatus.textContent = flag19.generating ? "正在后台生成底图和灯组效果，请稍候…" : flag19.generated && list ? "已生成导图，包含 " + list + " 个灯组。" : flag21 ? "3D画面已置入仪表盘，请先确定位置、大小和视角。" : "尚未载入3D画面。";
-    floorplanAutoDiagramViewToggle.hidden = !flag21;
-    const flag22 = flag19.interactionMode === "view";
-    floorplanAutoDiagramViewToggle.classList.toggle("active", flag22);
-    floorplanAutoDiagramViewToggle.setAttribute("aria-pressed", String(flag22));
-    floorplanAutoDiagramViewToggle.textContent = flag22 ? "完成3D视角调整" : "调整3D视角";
-    floorplanAutoDiagramLabel.value = flag19.label || flag19.instanceName || "";
-    floorplanAutoDiagramFolder.value = flag19.exportFolder || "";
-    const chosen2 = flag19.layoutMode === "fill" ? "fill" : "free";
+    const canvasHeight = Number(currentProject.document.canvas.height || 1940);
+    const number = Number(rect.width || 100);
+    const numberCurrent = Number(rect.height || 100);
+    const list = Array.isArray(flag.lightLayers) ? flag.lightLayers.length : 0;
+    const value = flag.previewReady === true && (flag.generated !== true || flag.previewing === true);
+    floorplanAutoDiagramStatus.textContent = flag.generating ? "正在后台生成底图和灯组效果，请稍候…" : flag.generated && list ? "已生成导图，包含 " + list + " 个灯组。" : value ? "3D画面已置入仪表盘，请先确定位置、大小和视角。" : "尚未载入3D画面。";
+    floorplanAutoDiagramViewToggle.hidden = !value;
+    const flagCurrent = flag.interactionMode === "view";
+    floorplanAutoDiagramViewToggle.classList.toggle("active", flagCurrent);
+    floorplanAutoDiagramViewToggle.setAttribute("aria-pressed", String(flagCurrent));
+    floorplanAutoDiagramViewToggle.textContent = flagCurrent ? "完成3D视角调整" : "调整3D视角";
+    floorplanAutoDiagramLabel.value = flag.label || flag.instanceName || "";
+    floorplanAutoDiagramFolder.value = flag.exportFolder || "";
+    const chosen = flag.layoutMode === "fill" ? "fill" : "free";
     for (const element of floorplanAutoDiagramLayout.querySelectorAll("[data-floorplan-layout]")) {
-      const flag24 = element.dataset.floorplanLayout === chosen2;
-      element.classList.toggle("active", flag24);
-      element.setAttribute("aria-pressed", String(flag24));
+      const flag = element.dataset.floorplanLayout === chosen;
+      element.classList.toggle("active", flag);
+      element.setAttribute("aria-pressed", String(flag));
     }
-    floorplanAutoDiagramLeft.value = roundField(clampNumber((Number(flag20.x || 0) + number3 / 2) / canvasWidth * 100, 0, 100));
-    floorplanAutoDiagramTop.value = roundField(clampNumber((Number(flag20.y || 0) + number4 / 2) / canvasHeight2 * 100, 0, 100));
-    floorplanAutoDiagramWidth.value = roundField(number3 / canvasWidth * 100);
-    floorplanAutoDiagramHeight.value = roundField(number4 / canvasHeight2 * 100);
+    floorplanAutoDiagramLeft.value = roundField(clampNumber((Number(rect.x || 0) + number / 2) / canvasWidth * 100, 0, 100));
+    floorplanAutoDiagramTop.value = roundField(clampNumber((Number(rect.y || 0) + numberCurrent / 2) / canvasHeight * 100, 0, 100));
+    floorplanAutoDiagramWidth.value = roundField(number / canvasWidth * 100);
+    floorplanAutoDiagramHeight.value = roundField(numberCurrent / canvasHeight * 100);
     floorplanAutoDiagramScale.value = roundField(Number(component.style?.scale || 1) * 100);
-    floorplanAutoDiagramRotation.value = roundField(Number(flag20.rotation || 0));
-    const temp2 = floorplanPreviewById.get(component.id);
-    const chosen5 = Array.isArray(temp2?.floors) ? temp2.floors : [];
-    const flag23 = String(flag19.floorSelection || "") || String(temp2?.selected || "");
-    if (chosen5.length) {
-      const option = chosen5.map(component2 => Object.assign(document.createElement("option"), {
+    floorplanAutoDiagramRotation.value = roundField(Number(rect.rotation || 0));
+    const entry = floorplanPreviewById.get(component.id);
+    const floors = Array.isArray(entry?.floors) ? entry.floors : [];
+    const string = String(flag.floorSelection || "") || String(entry?.selected || "");
+    if (floors.length) {
+      const option = floors.map(component2 => Object.assign(document.createElement("option"), {
         value: component2.id,
         textContent: component2.name
       }));
-      if (chosen5.length > 1) {
+      if (floors.length > 1) {
         option.unshift(Object.assign(document.createElement("option"), {
           value: "all",
           textContent: "全楼"
         }));
       }
       floorplanAutoDiagramFloor.replaceChildren(...option);
-      floorplanAutoDiagramFloor.value = option.some(element => element.value === flag23) ? flag23 : option[0].value;
+      floorplanAutoDiagramFloor.value = option.some(element => element.value === string) ? string : option[0].value;
     } else {
       floorplanAutoDiagramFloor.replaceChildren(Object.assign(document.createElement("option"), {
         value: "",
-        textContent: flag21 ? "正在读取楼层…" : "载入3D画面后选择"
+        textContent: value ? "正在读取楼层…" : "载入3D画面后选择"
       }));
     }
-    floorplanAutoDiagramFloor.disabled = !flag21 || chosen5.length === 0 || flag19.generating === true;
-    const chosen3 = flag19.cameraView === "top" ? "top" : "free";
-    const chosen4 = flag19.cameraMode === "perspective" ? "perspective" : "orthographic";
+    floorplanAutoDiagramFloor.disabled = !value || floors.length === 0 || flag.generating === true;
+    const text = flag.cameraView === "top" ? "top" : "free";
+    const chosenCurrent = flag.cameraMode === "perspective" ? "perspective" : "orthographic";
     for (const element of floorplanAutoDiagramCameraView.querySelectorAll("[data-floorplan-camera-view]")) {
-      const flag24 = element.dataset.floorplanCameraView === chosen3;
-      element.classList.toggle("active", flag24);
-      element.setAttribute("aria-pressed", String(flag24));
+      const flag = element.dataset.floorplanCameraView === text;
+      element.classList.toggle("active", flag);
+      element.setAttribute("aria-pressed", String(flag));
     }
     for (const element of floorplanAutoDiagramCameraMode.querySelectorAll("[data-floorplan-camera-mode]")) {
-      const flag24 = element.dataset.floorplanCameraMode === chosen4;
-      element.classList.toggle("active", flag24);
-      element.setAttribute("aria-pressed", String(flag24));
+      const flag = element.dataset.floorplanCameraMode === chosenCurrent;
+      element.classList.toggle("active", flag);
+      element.setAttribute("aria-pressed", String(flag));
     }
-    floorplanAutoDiagramFocalLength.value = roundField(clampNumber(Number(flag19.cameraFocalLength || 50), 18, 120));
-    floorplanAutoDiagramFocalLength.disabled = chosen4 !== "perspective" || !flag21;
-    floorplanAutoDiagramRotateTop.disabled = chosen3 !== "top" || !flag21;
-    floorplanAutoDiagramOpenBaseLighting.disabled = !flag21;
-    for (const temp3 of [floorplanAutoDiagramLeft, floorplanAutoDiagramTop, floorplanAutoDiagramWidth, floorplanAutoDiagramHeight, floorplanAutoDiagramScale, floorplanAutoDiagramRotation]) {
-      temp3.disabled = chosen2 === "fill";
+    floorplanAutoDiagramFocalLength.value = roundField(clampNumber(Number(flag.cameraFocalLength || 50), 18, 120));
+    floorplanAutoDiagramFocalLength.disabled = chosenCurrent !== "perspective" || !value;
+    floorplanAutoDiagramRotateTop.disabled = text !== "top" || !value;
+    floorplanAutoDiagramOpenBaseLighting.disabled = !value;
+    for (const value of [floorplanAutoDiagramLeft, floorplanAutoDiagramTop, floorplanAutoDiagramWidth, floorplanAutoDiagramHeight, floorplanAutoDiagramScale, floorplanAutoDiagramRotation]) {
+      value.disabled = chosen === "fill";
     }
-    floorplanAutoDiagramOpenStudio.disabled = flag19.generating === true;
-    floorplanAutoDiagramOpenStudio.textContent = flag19.generated && !flag19.previewing ? "重新调整位置和视角" : flag19.generating ? "正在后台生成…" : flag21 ? "确定位置大小并后台生成" : "载入3D画面";
+    floorplanAutoDiagramOpenStudio.disabled = flag.generating === true;
+    floorplanAutoDiagramOpenStudio.textContent = flag.generated && !flag.previewing ? "重新调整位置和视角" : flag.generating ? "正在后台生成…" : value ? "确定位置大小并后台生成" : "载入3D画面";
     floorplanAutoDiagramBindings.hidden = list === 0;
     const filtered = entityCatalog.filter(item => entityDomain(item) === "light");
-    const mapped = (flag19.lightLayers || []).map(component2 => {
+    const mapped = (flag.lightLayers || []).map(component2 => {
       const element = document.createElement("label");
       element.textContent = component2.note || component2.name || "灯组";
-      const el3 = document.createElement("select");
-      el3.dataset.floorplanLightGroupId = component2.id;
-      const text2 = component.bindings?.["lightGroup:" + component2.id]?.entityId || "";
+      const el = document.createElement("select");
+      el.dataset.floorplanLightGroupId = component2.id;
+      const text = component.bindings?.["lightGroup:" + component2.id]?.entityId || "";
       const option = document.createElement("option");
       option.value = "";
       option.textContent = "选择实体";
-      el3.append(option);
-      for (const temp3 of filtered) {
-        const option2 = document.createElement("option");
-        option2.value = temp3.entityId;
-        option2.textContent = entityPickerText(temp3);
-        el3.append(option2);
+      el.append(option);
+      for (const value of filtered) {
+        const option = document.createElement("option");
+        option.value = value.entityId;
+        option.textContent = entityPickerText(value);
+        el.append(option);
       }
-      if (text2 && !filtered.some(item => item.entityId === text2)) {
-        const option2 = document.createElement("option");
-        option2.value = text2;
-        option2.textContent = text2;
-        el3.append(option2);
+      if (text && !filtered.some(item => item.entityId === text)) {
+        const option = document.createElement("option");
+        option.value = text;
+        option.textContent = text;
+        el.append(option);
       }
-      el3.value = text2;
-      element.append(el3);
+      el.value = text;
+      element.append(el);
       return element;
     });
     floorplanAutoDiagramBindingList.replaceChildren(...mapped);
     return;
   }
-  if (flag4) {
-    const chosen2 = ibeEntityMenu.hidden ? ibeAssetMenu.hidden ? ibeIconMenu.hidden ? null : "ibe-icon" : "ibe-asset" : "ibe-entity";
-    closeOtherPickerPanels(chosen2);
-    const flag19 = component.properties || {};
-    const flag20 = component.position || {};
+  if (flagNext) {
+    const chosen = ibeEntityMenu.hidden ? ibeAssetMenu.hidden ? ibeIconMenu.hidden ? null : "ibe-icon" : "ibe-asset" : "ibe-entity";
+    closeOtherPickerPanels(chosen);
+    const flag = component.properties || {};
+    const rect = component.position || {};
     const canvasWidth = Number(currentProject.document.canvas.width || 2778);
-    const canvasHeight2 = Number(currentProject.document.canvas.height || 1940);
-    const number3 = Number(flag20.width || 100);
-    const number4 = Number(flag20.height || 100);
-    ibeLabel.value = flag19.label || "";
-    setInspectorToggle(ibeButtonVisible, flag19.buttonVisible !== false);
-    setInspectorToggle(ibeEffectVisible, flag19.effectVisible !== false);
-    ibeColorTemperatureRealtime.checked = flag19.effectColorTemperatureRealtime !== false;
-    ibeBrightnessRealtime.checked = flag19.effectBrightnessRealtime !== false;
-    for (const temp4 of [ibeColorTemperatureRealtime, ibeBrightnessRealtime]) {
-      temp4.disabled = false;
-      temp4.title = "";
-      temp4.closest(".check-row")?.classList.remove("is-disabled");
+    const canvasHeight = Number(currentProject.document.canvas.height || 1940);
+    const number = Number(rect.width || 100);
+    const numberCurrent = Number(rect.height || 100);
+    ibeLabel.value = flag.label || "";
+    setInspectorToggle(ibeButtonVisible, flag.buttonVisible !== false);
+    setInspectorToggle(ibeEffectVisible, flag.effectVisible !== false);
+    ibeColorTemperatureRealtime.checked = flag.effectColorTemperatureRealtime !== false;
+    ibeBrightnessRealtime.checked = flag.effectBrightnessRealtime !== false;
+    for (const value of [ibeColorTemperatureRealtime, ibeBrightnessRealtime]) {
+      value.disabled = false;
+      value.title = "";
+      value.closest(".check-row")?.classList.remove("is-disabled");
     }
-    pickerValueEl2(component);
+    pickerValueElCurrent(component);
     syncIbeAssetButton(component);
-    syncIbeIconButton(flag19.icon || "");
-    ibeIconOffColor.value = flag19.iconOffColor || "#9aa5ad";
-    ibeIconOnColor.value = flag19.iconOnColor || "#ffffff";
-    ibeIconSize.value = roundField(Number(flag19.iconSize ?? 44));
-    ibeButtonOffColor.value = flag19.buttonOffColor || "#17242d";
-    ibeButtonOnColor.value = flag19.buttonOnColor || "#1f91b8";
-    ibeButtonOpacity.value = roundField(Number(flag19.buttonOpacity ?? 0.92) * 100);
-    ibeFrameColor.value = flag19.frameColor || "#dcebf2";
-    ibeFrameWidth.value = roundField(Number(flag19.frameWidth ?? 1.5));
-    ibeFrameOpacity.value = roundField(Number(flag19.frameOpacity ?? 0.72) * 100);
-    ibeRadius.value = roundField(Number(flag19.radius ?? 50));
-    ibeGlowColor.value = flag19.glowColor || "#43c8f0";
-    ibeGlowOffStrength.value = roundField(Number(flag19.glowOffStrength ?? 0) * 100);
-    ibeGlowOnStrength.value = roundField(Number(flag19.glowOnStrength ?? 1) * 100);
-    ibeEffectOpacity.value = roundField(Number(flag19.effectOpacity ?? 1) * 100);
-    ibeEffectFadeDuration.value = roundField(Number(flag19.effectFadeDuration ?? 0.52));
-    ibeEffectLeft.value = roundField(Number(flag19.effectLeft ?? 50));
-    ibeEffectTop.value = roundField(Number(flag19.effectTop ?? 50));
-    ibeEffectScale.value = roundField(Number(flag19.effectScale ?? 1) * 100);
-    ibeEffectRotation.value = roundField(Number(flag19.effectRotation ?? 0));
-    ibeLeft.value = roundField(clampNumber((Number(flag20.x || 0) + number3 / 2) / canvasWidth * 100, 0, 100));
-    ibeTop.value = roundField(clampNumber((Number(flag20.y || 0) + number4 / 2) / canvasHeight2 * 100, 0, 100));
-    ibeWidth.value = roundField(number3 / canvasWidth * 100);
-    ibeHeight.value = roundField(number4 / canvasHeight2 * 100);
+    syncIbeIconButton(flag.icon || "");
+    ibeIconOffColor.value = flag.iconOffColor || "#9aa5ad";
+    ibeIconOnColor.value = flag.iconOnColor || "#ffffff";
+    ibeIconSize.value = roundField(Number(flag.iconSize ?? 44));
+    ibeButtonOffColor.value = flag.buttonOffColor || "#17242d";
+    ibeButtonOnColor.value = flag.buttonOnColor || "#1f91b8";
+    ibeButtonOpacity.value = roundField(Number(flag.buttonOpacity ?? 0.92) * 100);
+    ibeFrameColor.value = flag.frameColor || "#dcebf2";
+    ibeFrameWidth.value = roundField(Number(flag.frameWidth ?? 1.5));
+    ibeFrameOpacity.value = roundField(Number(flag.frameOpacity ?? 0.72) * 100);
+    ibeRadius.value = roundField(Number(flag.radius ?? 50));
+    ibeGlowColor.value = flag.glowColor || "#43c8f0";
+    ibeGlowOffStrength.value = roundField(Number(flag.glowOffStrength ?? 0) * 100);
+    ibeGlowOnStrength.value = roundField(Number(flag.glowOnStrength ?? 1) * 100);
+    ibeEffectOpacity.value = roundField(Number(flag.effectOpacity ?? 1) * 100);
+    ibeEffectFadeDuration.value = roundField(Number(flag.effectFadeDuration ?? 0.52));
+    ibeEffectLeft.value = roundField(Number(flag.effectLeft ?? 50));
+    ibeEffectTop.value = roundField(Number(flag.effectTop ?? 50));
+    ibeEffectScale.value = roundField(Number(flag.effectScale ?? 1) * 100);
+    ibeEffectRotation.value = roundField(Number(flag.effectRotation ?? 0));
+    ibeLeft.value = roundField(clampNumber((Number(rect.x || 0) + number / 2) / canvasWidth * 100, 0, 100));
+    ibeTop.value = roundField(clampNumber((Number(rect.y || 0) + numberCurrent / 2) / canvasHeight * 100, 0, 100));
+    ibeWidth.value = roundField(number / canvasWidth * 100);
+    ibeHeight.value = roundField(numberCurrent / canvasHeight * 100);
     ibeScale.value = roundField(Number(component.style?.scale || 1) * 100);
-    ibeRotation.value = roundField(Number(flag20.rotation || 0));
-    const isMultiSelect2 = selectedComponentIds.size > 1;
-    ibeWidth.disabled = isMultiSelect2;
-    ibeHeight.disabled = isMultiSelect2;
+    ibeRotation.value = roundField(Number(rect.rotation || 0));
+    const isMultiSelect = selectedComponentIds.size > 1;
+    ibeWidth.disabled = isMultiSelect;
+    ibeHeight.disabled = isMultiSelect;
     ibeScale.disabled = false;
     ibeRotation.disabled = false;
-    const chosen3 = flag19.effectLayoutMode === "fill" ? "fill" : "free";
+    const text = flag.effectLayoutMode === "fill" ? "fill" : "free";
     for (const element of ibeEffectLayoutOptions.querySelectorAll("[data-ibe-layout]")) {
-      const flag23 = element.dataset.ibeLayout === chosen3;
-      element.classList.toggle("active", flag23);
-      element.setAttribute("aria-pressed", String(flag23));
+      const flag = element.dataset.ibeLayout === text;
+      element.classList.toggle("active", flag);
+      element.setAttribute("aria-pressed", String(flag));
     }
-    for (const temp4 of [ibeEffectLeft, ibeEffectTop, ibeEffectScale, ibeEffectRotation]) {
-      temp4.disabled = chosen3 === "fill";
+    for (const value of [ibeEffectLeft, ibeEffectTop, ibeEffectScale, ibeEffectRotation]) {
+      value.disabled = text === "fill";
     }
-    const temp2 = effectNaturalSize(flag19);
-    ibeEffectSizeHint.textContent = temp2 ? "原始尺寸：" + roundField(temp2.width) + " × " + roundField(temp2.height) + "；仅支持等比缩放。" : "效果图片将按原始尺寸等比缩放。";
-    const temp3 = iconButtonEffectInspectorLayer(component, ibeLayerById.get(component.id));
-    editorRenderer?.setComponentSelectionLayer(component.id, temp3);
+    const size = effectNaturalSize(flag);
+    ibeEffectSizeHint.textContent = size ? "原始尺寸：" + roundField(size.width) + " × " + roundField(size.height) + "；仅支持等比缩放。" : "效果图片将按原始尺寸等比缩放。";
+    const layer = iconButtonEffectInspectorLayer(component, ibeLayerById.get(component.id));
+    editorRenderer?.setComponentSelectionLayer(component.id, layer);
     if (!ibePreviewStateById.has(component.id)) {
       ibePreviewStateById.set(component.id, "on");
       editorRenderer?.setComponentPreviewState(component.id, "on");
     }
-    const text2 = ibePreviewStateById.get(component.id) || "auto";
+    const entry = ibePreviewStateById.get(component.id) || "auto";
     for (const element of ibePreviewState.querySelectorAll("[data-ibe-preview]")) {
-      const flag23 = element.dataset.ibePreview === text2;
-      element.classList.toggle("active", flag23);
-      element.setAttribute("aria-pressed", String(flag23));
+      const flag = element.dataset.ibePreview === entry;
+      element.classList.toggle("active", flag);
+      element.setAttribute("aria-pressed", String(flag));
     }
     for (const element of ibeLayerOptions.querySelectorAll("[data-ibe-layer]")) {
-      const flag23 = element.dataset.ibeLayer === temp3;
-      element.classList.toggle("active", flag23);
-      element.setAttribute("aria-pressed", String(flag23));
+      const flag = element.dataset.ibeLayer === layer;
+      element.classList.toggle("active", flag);
+      element.setAttribute("aria-pressed", String(flag));
     }
-    const flag22 = temp3 === "effect";
-    ibeButtonSection.hidden = flag22;
-    ibeButtonTransformSection.hidden = flag22;
-    ibeActionSection.hidden = flag22;
-    ibeEffectSection.hidden = !flag22;
+    const value = layer === "effect";
+    ibeButtonSection.hidden = value;
+    ibeButtonTransformSection.hidden = value;
+    ibeActionSection.hidden = value;
+    ibeEffectSection.hidden = !value;
     const length = findComponentsByType("icon-button-effect").length;
-    const length2 = ibeTemplateOptions3(component).length;
-    ibeApplyStyle.disabled = length < 2 || !length2;
-    ibeApplyCount.textContent = length2 + " 项修改";
+    const lengthCurrent = ibeTemplateOptionsNext(component).length;
+    ibeApplyStyle.disabled = length < 2 || !lengthCurrent;
+    ibeApplyCount.textContent = lengthCurrent + " 项修改";
     ibeApplyStyle.textContent = "一键应用到同类型控件";
     syncComponentActionControls(component, ibeActionControls);
     return;
   }
-  if (flag9) {
+  if (flagList) {
     closeOtherPickerPanels(airConditionerEntityMenu.hidden ? null : "air-conditioner-entity");
     syncIconButtonInspector(component);
     return;
   }
-  if (flag5) {
-    const chosen2 = titleButtonEntityMenu.hidden ? titleButtonIconMenu.hidden ? null : "title-button-icon" : "title-button-entity";
-    closeOtherPickerPanels(chosen2);
+  if (flagPrevious) {
+    const chosen = titleButtonEntityMenu.hidden ? titleButtonIconMenu.hidden ? null : "title-button-icon" : "title-button-entity";
+    closeOtherPickerPanels(chosen);
     syncVacuumMapInspector(component);
     return;
   }
-  if (flag6) {
-    const chosen2 = lightStatisticsEntityMenu.hidden ? lightStatisticsActionEntityMenu.hidden ? lightStatisticsIconMenu.hidden ? null : "light-statistics-icon" : "light-statistics-action-entity" : "light-statistics-entity";
-    closeOtherPickerPanels(chosen2);
+  if (flagLocal) {
+    const chosen = lightStatisticsEntityMenu.hidden ? lightStatisticsActionEntityMenu.hidden ? lightStatisticsIconMenu.hidden ? null : "light-statistics-icon" : "light-statistics-action-entity" : "light-statistics-entity";
+    closeOtherPickerPanels(chosen);
     syncCameraInspector(component);
     return;
   }
   if (includesValue) {
-    const chosen2 = iconButtonEntityMenu.hidden ? iconButtonIconMenu.hidden ? null : "icon-button-icon" : "icon-button-entity";
-    closeOtherPickerPanels(chosen2);
+    const chosen = iconButtonEntityMenu.hidden ? iconButtonIconMenu.hidden ? null : "icon-button-icon" : "icon-button-entity";
+    closeOtherPickerPanels(chosen);
     syncPresenceInspector(component);
     return;
   }
-  if (flag8) {
+  if (flagEntry) {
     closeOtherPickerPanels(cameraEntityMenu.hidden ? null : "camera-entity");
     syncAirConditionerInspector(component);
     return;
   }
-  if (flag7) {
+  if (flagItem) {
     closeOtherPickerPanels(vacuumMapEntityMenu.hidden ? null : "vacuum-map-entity");
     syncTitleButtonInspector(component);
     return;
   }
-  if (flag19) {
+  if (flagFallback) {
     closeOtherPickerPanels(navigationIconMenu.hidden ? null : "navigation-icon");
     syncNavigationInspector(component);
     return;
   }
-  if (flag10) {
+  if (flagText) {
     closeOtherPickerPanels();
     syncTimeInspector(component);
     return;
   }
-  if (flag11) {
+  if (flagValue) {
     closeOtherPickerPanels();
     syncDateInspector(component);
     return;
   }
-  if (flag12) {
+  if (flagSource) {
     closeOtherPickerPanels();
     syncWeatherInspector(component);
     return;
   }
-  if (flag13) {
+  if (flagTarget) {
     closeOtherPickerPanels();
     syncLineChartInspector(component);
     return;
   }
-  if (flag14) {
+  if (flagDefault) {
     closeOtherPickerPanels();
     syncPanelFrameInspector(component);
     return;
   }
-  const flag16 = component.properties || {};
-  const flag17 = component.position || {};
+  const properties = component.properties || {};
+  const rect = component.position || {};
   const numeric = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
-  const number = Number(flag17.width || 100);
-  const number2 = Number(flag17.height || 100);
+  const number = Number(rect.width || 100);
+  const numberCurrent = Number(rect.height || 100);
   imageType.value = "图片";
-  imageLabel.value = flag16.label || "";
-  pickerValueEl2(component);
+  imageLabel.value = properties.label || "";
+  pickerValueElCurrent(component);
   syncImageAssetButton(component);
-  imageOpacity.value = roundField(Number(flag16.opacity ?? 1) * 100);
-  imageLeft.value = roundField(clampNumber((Number(flag17.x || 0) + number / 2) / numeric * 100, 0, 100));
-  imageTop.value = roundField(clampNumber((Number(flag17.y || 0) + number2 / 2) / canvasHeight * 100, 0, 100));
+  imageOpacity.value = roundField(Number(properties.opacity ?? 1) * 100);
+  imageLeft.value = roundField(clampNumber((Number(rect.x || 0) + number / 2) / numeric * 100, 0, 100));
+  imageTop.value = roundField(clampNumber((Number(rect.y || 0) + numberCurrent / 2) / canvasHeight * 100, 0, 100));
   imageScale.value = roundField(clampNumber(Number(component.style?.scale || 1) * 100, 1, 500));
-  imageRotation.value = roundField(Number(flag17.rotation || 0));
-  const chosen = flag16.layoutMode === "fill" ? "fill" : "free";
+  imageRotation.value = roundField(Number(rect.rotation || 0));
+  const chosen = properties.layoutMode === "fill" ? "fill" : "free";
   for (const element of imageLayoutOptions.querySelectorAll("[data-image-layout]")) {
-    const flag19 = element.dataset.imageLayout === chosen;
-    element.classList.toggle("active", flag19);
-    element.setAttribute("aria-pressed", String(flag19));
+    const flag = element.dataset.imageLayout === chosen;
+    element.classList.toggle("active", flag);
+    element.setAttribute("aria-pressed", String(flag));
   }
-  const flag18 = chosen === "fill";
+  const flagFinal = chosen === "fill";
   const isMultiSelect = selectedComponentIds.size > 1;
-  imageLeft.disabled = flag18;
-  imageTop.disabled = flag18;
-  imageScale.disabled = flag18;
-  imageRotation.disabled = flag18;
+  imageLeft.disabled = flagFinal;
+  imageTop.disabled = flagFinal;
+  imageScale.disabled = flagFinal;
+  imageRotation.disabled = flagFinal;
   syncComponentActionControls(component, componentActionControls);
 }
 async function loadAssets({
@@ -6246,15 +6246,15 @@ async function loadAssets({
   builtinAssets = temp.items || [];
   userAssets = asyncResult.items || [];
   assetsVersionToken = (temp.catalogVersion || "") + ":" + (asyncResult.catalogVersion || "");
-  const temp3 = setBuiltinAssetVersions(allAssets());
-  if (temp3) {
+  const versions = setBuiltinAssetVersions(allAssets());
+  if (versions) {
     editorRenderer?.renderComponents(true);
     dashboardPreviewRenderer?.renderComponents(true);
   }
   if (value) {
     refreshInspector();
   }
-  return temp3;
+  return versions;
 }
 async function refreshAssetsIfChanged() {
   const value = await apiFetch("/assets/version");
@@ -6281,20 +6281,20 @@ async function ensureEntitiesLoaded({
       let temp = 0;
       let number = 0;
       do {
-        const asyncResult3 = await apiFetch("/ha/entities?limit=500&offset=" + temp);
-        list.push(...(asyncResult3.items || []));
-        number = Number(asyncResult3.total || 0);
-        temp += Number(asyncResult3.limit || 500);
+        const asyncResult = await apiFetch("/ha/entities?limit=500&offset=" + temp);
+        list.push(...(asyncResult.items || []));
+        number = Number(asyncResult.total || 0);
+        temp += Number(asyncResult.limit || 500);
       } while (list.length < number);
       entityCatalog = list.filter(item => item.status !== "missing");
-      const [asyncResult, asyncResult2] = await Promise.all([apiFetch("/ha/devices").catch(() => ({
+      const [asyncResult, all] = await Promise.all([apiFetch("/ha/devices").catch(() => ({
         items: []
       })), apiFetch("/ha/translations").catch(() => ({
         resources: {}
       }))]);
       deviceCatalog = asyncResult?.items || [];
       entityById = new Map(deviceCatalog.map(item => [String(item.deviceId || ""), normalizeWhitespace(item.name)]).filter(([item, param]) => item && param));
-      entityStateById = asyncResult2?.resources || {};
+      entityStateById = all?.resources || {};
       entitiesLoaded = true;
       editorRenderer?.setEntityCatalog(entityCatalog, entityStateById, deviceCatalog);
       dashboardPreviewRenderer?.setEntityCatalog(entityCatalog, entityStateById, deviceCatalog);
@@ -6341,9 +6341,9 @@ function renderPopupList(value, param = selectedPopupId) {
     button.setAttribute("aria-selected", String(temp.id === selectedPopupId));
     const element = document.createElement("span");
     element.textContent = temp.name;
-    const el3 = document.createElement("small");
-    el3.textContent = (temp.modules || []).length + " 个模块";
-    button.append(element, el3);
+    const el = document.createElement("small");
+    el.textContent = (temp.modules || []).length + " 个模块";
+    button.append(element, el);
     popupList.append(button);
   }
 }
@@ -6354,8 +6354,8 @@ function syncPopupEntityFields() {
       element.value = entityCatalog[0].entityId;
     }
     popupEntityIdFromRow(value);
-    const el2 = value?.querySelector("[data-popup-entity-menu]");
-    if (el2 && !el2.hidden) {
+    const el = value?.querySelector("[data-popup-entity-menu]");
+    if (el && !el.hidden) {
       renderPopupEntityOptions(value, value.querySelector("[data-popup-entity-search]")?.value || "");
     }
   }
@@ -6366,9 +6366,9 @@ function syncPopupModuleClimateFields(value = popupModuleForm.elements.deviceTyp
   popupModuleClimateDeviceType.hidden = !flag;
   popupModuleForm.elements.deviceType.value = temp;
   for (const element of popupModuleClimateDeviceType.querySelectorAll("[data-popup-module-device-type]")) {
-    const flag2 = element.dataset.popupModuleDeviceType === temp;
-    element.classList.toggle("active", flag2);
-    element.setAttribute("aria-pressed", String(flag2));
+    const flag = element.dataset.popupModuleDeviceType === temp;
+    element.classList.toggle("active", flag);
+    element.setAttribute("aria-pressed", String(flag));
   }
 }
 function entityDisplayName(value) {
@@ -6405,10 +6405,10 @@ function filterPopupModuleEntities(value = popupModuleEntitySearch.value) {
     const element = document.createElement("span");
     element.className = "inspector-entity-option-line inspector-entity-name-line";
     element.textContent = "[" + entityKindLabel(item) + "] " + entityPickerPrimaryName(item);
-    const span2 = document.createElement("span");
-    span2.className = "inspector-entity-option-line inspector-entity-id";
-    span2.textContent = item.entityId;
-    span.append(element, span2);
+    const spanCurrent = document.createElement("span");
+    spanCurrent.className = "inspector-entity-option-line inspector-entity-id";
+    spanCurrent.textContent = item.entityId;
+    span.append(element, spanCurrent);
     enableEntityTextHoverScroll(button, element);
     button.append(span);
     return button;
@@ -6440,30 +6440,30 @@ function syncCustomPopupStage() {
   const gridWidth = temp.gridWidth;
   const gridHeight = temp.gridHeight;
   const count = Math.max(0.2, Math.min(customPopupStageWrap.clientWidth / gridWidth, customPopupStageWrap.clientHeight / gridHeight));
-  const count2 = Math.max(1, gridWidth * count);
-  const count3 = Math.max(1, gridHeight * count);
-  customPopupViewport.style.width = count2 + "px";
-  customPopupViewport.style.height = count3 + "px";
+  const max = Math.max(1, gridWidth * count);
+  const countCurrent = Math.max(1, gridHeight * count);
+  customPopupViewport.style.width = max + "px";
+  customPopupViewport.style.height = countCurrent + "px";
   customPopupStage.style.width = gridWidth + "px";
   customPopupStage.style.height = gridHeight + "px";
   customPopupStage.style.transform = "scale(" + count + ")";
   customPopupEditorToolbar.style.width = customPopupStageWrap.clientWidth + "px";
 }
-function updateCustomPopupModule(value, param, param2 = null, param3 = false) {
+function updateCustomPopupModule(value, param, item = null, entry = false) {
   const found = (currentProject?.document?.customPopups || []).find(component => component.id === value);
   if (!found) {
     return;
   }
-  const temp = reorderedPopupModules(found.modules, param, param2, param3);
+  const temp = reorderedPopupModules(found.modules, param, item, entry);
   if (temp.length !== (found.modules || []).length || !temp.every((component, index) => component.id === found.modules[index]?.id)) {
     if (!packPopupModules(temp, found.layout).fits) {
       onError(new Error("这个排序会使当前布局超过 3 行。"));
       return;
     }
     mutateDocument(doc => {
-      const found2 = (doc.customPopups || []).find(component => component.id === value);
-      if (found2) {
-        found2.modules = reorderedPopupModules(found2.modules, param, param2, param3);
+      const found = (doc.customPopups || []).find(component => component.id === value);
+      if (found) {
+        found.modules = reorderedPopupModules(found.modules, param, item, entry);
       }
     });
   }
@@ -6490,82 +6490,82 @@ function buildPopupCoverSettings(value, component) {
     allowed: ["auto", "normal", "reversed"],
     options: [["auto", "跟随 HA"], ["normal", "正常"], ["reversed", "反向"]]
   }];
-  for (const temp2 of coverDirection) {
-    const div2 = document.createElement("div");
-    div2.className = "popup-cover-setting-row";
+  for (const item of coverDirection) {
+    const div = document.createElement("div");
+    div.className = "popup-cover-setting-row";
     const element = document.createElement("span");
-    element.textContent = temp2.label;
-    const div3 = document.createElement("div");
-    div3.className = "popup-cover-setting-options";
-    div3.setAttribute("role", "group");
-    div3.setAttribute("aria-label", temp2.label);
-    const temp5 = component.properties?.[temp2.property];
-    const chosen = temp2.allowed.includes(temp5) ? temp5 : temp2.fallback;
-    for (const [temp6, temp7] of temp2.options) {
+    element.textContent = item.label;
+    const divCurrent = document.createElement("div");
+    divCurrent.className = "popup-cover-setting-options";
+    divCurrent.setAttribute("role", "group");
+    divCurrent.setAttribute("aria-label", item.label);
+    const entry = component.properties?.[item.property];
+    const chosen = item.allowed.includes(entry) ? entry : item.fallback;
+    for (const [entry, current] of item.options) {
       const button = document.createElement("button");
       button.type = "button";
-      button.textContent = temp7;
-      button.classList.toggle("active", temp6 === chosen);
-      button.setAttribute("aria-pressed", String(temp6 === chosen));
+      button.textContent = current;
+      button.classList.toggle("active", entry === chosen);
+      button.setAttribute("aria-pressed", String(entry === chosen));
       button.addEventListener("click", event => {
         event.stopPropagation();
-        if (temp6 !== chosen) {
+        if (entry !== chosen) {
           mutateDocument(doc => {
-            const temp8 = (doc.customPopups || []).find(component3 => component3.id === value)?.modules?.find(component3 => component3.id === component.id);
-            if (!!temp8 && temp8.type === "cover") {
-              temp8.properties = {
-                ...(temp8.properties || {}),
-                [temp2.property]: temp6
+            const current = (doc.customPopups || []).find(component => component.id === value)?.modules?.find(item => item.id === component.id);
+            if (!!current && current.type === "cover") {
+              current.properties = {
+                ...(current.properties || {}),
+                [item.property]: entry
               };
             }
           });
         }
       });
-      div3.append(button);
+      divCurrent.append(button);
     }
-    div2.append(element, div3);
-    temp.append(div2);
+    div.append(element, divCurrent);
+    temp.append(div);
   }
   return temp;
 }
 function buildPopupClimateSettings(value, component) {
   const temp = document.createElement("div");
   temp.className = "popup-climate-settings";
-  const div2 = document.createElement("div");
-  div2.className = "popup-cover-setting-row";
+  const div = document.createElement("div");
+  div.className = "popup-cover-setting-row";
   const element = document.createElement("span");
   element.textContent = "设备类型";
-  const div3 = document.createElement("div");
-  div3.className = "popup-cover-setting-options";
-  div3.setAttribute("role", "group");
-  div3.setAttribute("aria-label", "设备类型");
+  const divCurrent = document.createElement("div");
+  divCurrent.className = "popup-cover-setting-options";
+  divCurrent.setAttribute("role", "group");
+  divCurrent.setAttribute("aria-label", "设备类型");
   const flag = component.properties?.deviceType || component.deviceType;
-  const temp4 = normalizedPopupClimateDeviceType(flag);
-  for (const [deviceType, temp5] of [["auto", "自动识别"], ["air-conditioner", "空调"], ["bath-heater", "浴霸"]]) {
+  const type = normalizedPopupClimateDeviceType(flag);
+  for (const [deviceType, item] of [["auto", "自动识别"], ["air-conditioner", "空调"], ["bath-heater", "浴霸"]]) {
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = temp5;
-    button.classList.toggle("active", deviceType === temp4);
-    button.setAttribute("aria-pressed", String(deviceType === temp4));
+    button.textContent = item;
+    button.classList.toggle("active", deviceType === type);
+    button.setAttribute("aria-pressed", String(deviceType === type));
     button.addEventListener("click", event => {
       event.stopPropagation();
-      if (deviceType !== temp4) {
+      if (deviceType !== type) {
         mutateDocument(doc => {
-          const temp6 = (doc.customPopups || []).find(component3 => component3.id === value)?.modules?.find(component3 => component3.id === component.id);
-          if (!!temp6 && temp6.type === "climate") {
-            temp6.properties = {
-              ...(temp6.properties || {}),
+          const item = (doc.customPopups || []).find(component => component.id === value)?.modules?.find(item => item.id === component.id);
+          if (!!item && item.type === "climate") {
+            item.properties = {
+              ...(item.properties || {}),
               deviceType
             };
-            delete temp6.deviceType;
+            delete item.deviceType;
           }
         });
       }
     });
-    div3.append(button);
+    divCurrent.append(button);
   }
-  div2.append(element, div3);
-  temp.append(div2);
+  div.append(element, divCurrent);
+  temp.append(div);
   return temp;
 }
 function defaultLineChartThresholds(component) {
@@ -6591,161 +6591,161 @@ function defaultLineChartThresholds(component) {
 function buildPopupLineChartSettings(value, component) {
   const temp = document.createElement("div");
   temp.className = "popup-line-chart-settings";
-  const div2 = document.createElement("div");
-  div2.className = "popup-line-chart-setting-row";
+  const div = document.createElement("div");
+  div.className = "popup-line-chart-setting-row";
   const element = document.createElement("span");
   element.textContent = "数值小数位";
-  const el3 = document.createElement("select");
-  el3.setAttribute("aria-label", "组合弹窗折线图数值小数位");
-  for (const [temp8, temp9] of [["auto", "自动"], ["0", "0 位"], ["1", "1 位"], ["2", "2 位"], ["3", "3 位"], ["4", "4 位"]]) {
-    el3.append(new Option(temp9, temp8));
+  const el = document.createElement("select");
+  el.setAttribute("aria-label", "组合弹窗折线图数值小数位");
+  for (const [value, item] of [["auto", "自动"], ["0", "0 位"], ["1", "1 位"], ["2", "2 位"], ["3", "3 位"], ["4", "4 位"]]) {
+    el.append(new Option(item, value));
   }
-  const temp3 = syncedLineChartProperties(currentProject?.document, currentPage(), component.entityId, component.properties);
-  el3.value = ["0", "1", "2", "3", "4"].includes(String(temp3.statePrecision)) ? String(temp3.statePrecision) : "auto";
-  el3.addEventListener("pointerdown", event => event.stopPropagation());
-  el3.addEventListener("click", event => event.stopPropagation());
-  el3.addEventListener("change", event => {
+  const properties = syncedLineChartProperties(currentProject?.document, currentPage(), component.entityId, component.properties);
+  el.value = ["0", "1", "2", "3", "4"].includes(String(properties.statePrecision)) ? String(properties.statePrecision) : "auto";
+  el.addEventListener("pointerdown", event => event.stopPropagation());
+  el.addEventListener("click", event => event.stopPropagation());
+  el.addEventListener("change", event => {
     event.stopPropagation();
-    const statePrecision = ["0", "1", "2", "3", "4"].includes(el3.value) ? el3.value : "auto";
+    const statePrecision = ["0", "1", "2", "3", "4"].includes(el.value) ? el.value : "auto";
     mutateDocument(doc => {
-      const temp8 = (doc.customPopups || []).find(component3 => component3.id === value)?.modules?.find(component3 => component3.id === component.id);
-      if (!!temp8 && temp8.type === "line-chart") {
-        temp8.properties = {
-          ...(temp8.properties || {}),
+      const item = (doc.customPopups || []).find(component => component.id === value)?.modules?.find(item => item.id === component.id);
+      if (!!item && item.type === "line-chart") {
+        item.properties = {
+          ...(item.properties || {}),
           statePrecision
         };
       }
     });
   });
-  div2.append(element, el3);
-  temp.append(div2);
-  const createControl = (item, param, param2, param3 = false) => {
-    const div6 = document.createElement("div");
-    div6.className = "popup-line-chart-setting-row";
-    const span3 = document.createElement("span");
-    span3.textContent = item;
-    const div7 = document.createElement("div");
-    div7.className = "popup-line-chart-colors";
+  div.append(element, el);
+  temp.append(div);
+  const createControl = (item, param, value, entry = false) => {
+    const div = document.createElement("div");
+    div.className = "popup-line-chart-setting-row";
+    const span = document.createElement("span");
+    span.textContent = item;
+    const element = document.createElement("div");
+    element.className = "popup-line-chart-colors";
     param.forEach((item, index) => {
-      const el5 = document.createElement("input");
-      el5.type = "color";
-      el5.value = item;
-      el5.disabled = param3;
-      el5.setAttribute("aria-label", "" + item + (param.length > 1 ? " " + (index + 1) : ""));
-      el5.addEventListener("pointerdown", event => event.stopPropagation());
-      el5.addEventListener("click", event => event.stopPropagation());
-      el5.addEventListener("change", event => {
+      const el = document.createElement("input");
+      el.type = "color";
+      el.value = item;
+      el.disabled = entry;
+      el.setAttribute("aria-label", "" + item + (param.length > 1 ? " " + (index + 1) : ""));
+      el.addEventListener("pointerdown", event => event.stopPropagation());
+      el.addEventListener("click", event => event.stopPropagation());
+      el.addEventListener("change", event => {
         event.stopPropagation();
-        param2(el5.value, index);
+        value(el.value, index);
       });
-      div7.append(el5);
+      element.append(el);
     });
-    div6.append(span3, div7);
-    temp.append(div6);
+    div.append(span, element);
+    temp.append(div);
   };
   createControl("数值颜色", [String(component.properties?.valueColor || "#dce1e5")], valueColor => {
     mutateDocument(doc => {
-      const temp8 = (doc.customPopups || []).find(component3 => component3.id === value)?.modules?.find(component3 => component3.id === component.id);
-      if (!!temp8 && temp8.type === "line-chart") {
-        temp8.properties = {
-          ...(temp8.properties || {}),
+      const item = (doc.customPopups || []).find(component => component.id === value)?.modules?.find(item => item.id === component.id);
+      if (!!item && item.type === "line-chart") {
+        item.properties = {
+          ...(item.properties || {}),
           valueColor
         };
       }
     });
   });
-  const div3 = document.createElement("div");
-  div3.className = "popup-line-chart-setting-row";
+  const divCurrent = document.createElement("div");
+  divCurrent.className = "popup-line-chart-setting-row";
   const span = document.createElement("span");
   span.textContent = "阈值模式";
-  const el4 = document.createElement("select");
-  el4.setAttribute("aria-label", "组合弹窗折线图阈值模式");
-  el4.append(new Option("自动（按历史范围）", "auto"), new Option("手动设置", "manual"));
-  const flag = Array.isArray(component.properties?.thresholds) && component.properties.thresholds.some(item2 => Number.isFinite(Number(item2?.value)));
-  el4.value = component.properties?.thresholdMode === "auto" || !flag && component.properties?.thresholdMode !== "manual" ? "auto" : "manual";
-  el4.addEventListener("pointerdown", event => event.stopPropagation());
-  el4.addEventListener("click", event => event.stopPropagation());
-  el4.addEventListener("change", event => {
+  const elCurrent = document.createElement("select");
+  elCurrent.setAttribute("aria-label", "组合弹窗折线图阈值模式");
+  elCurrent.append(new Option("自动（按历史范围）", "auto"), new Option("手动设置", "manual"));
+  const flag = Array.isArray(component.properties?.thresholds) && component.properties.thresholds.some(item => Number.isFinite(Number(item?.value)));
+  elCurrent.value = component.properties?.thresholdMode === "auto" || !flag && component.properties?.thresholdMode !== "manual" ? "auto" : "manual";
+  elCurrent.addEventListener("pointerdown", event => event.stopPropagation());
+  elCurrent.addEventListener("click", event => event.stopPropagation());
+  elCurrent.addEventListener("change", event => {
     event.stopPropagation();
-    const thresholdMode = el4.value === "manual" ? "manual" : "auto";
+    const thresholdMode = elCurrent.value === "manual" ? "manual" : "auto";
     mutateDocument(doc => {
-      const temp8 = (doc.customPopups || []).find(component3 => component3.id === value)?.modules?.find(component3 => component3.id === component.id);
-      if (!temp8 || temp8.type !== "line-chart") {
+      const item = (doc.customPopups || []).find(component => component.id === value)?.modules?.find(item => item.id === component.id);
+      if (!item || item.type !== "line-chart") {
         return;
       }
       const options = {
-        ...(temp8.properties || {}),
+        ...(item.properties || {}),
         thresholdMode
       };
       if (thresholdMode === "manual" && !Array.isArray(options.thresholds)) {
-        options.thresholds = defaultLineChartThresholds(temp8);
+        options.thresholds = defaultLineChartThresholds(item);
       }
-      temp8.properties = options;
+      item.properties = options;
     });
   });
-  div3.append(span, el4);
-  temp.append(div3);
-  const temp5 = defaultLineChartThresholds(component);
-  const div4 = document.createElement("div");
-  div4.className = "popup-line-chart-setting-row";
-  const span2 = document.createElement("span");
-  span2.textContent = "阈值";
-  const div5 = document.createElement("div");
-  div5.className = "popup-line-chart-threshold-values";
-  temp5.forEach((el5, index) => {
-    const el6 = document.createElement("input");
-    el6.type = "number";
-    el6.step = "any";
-    el6.value = roundField(el5.value);
-    el6.disabled = el4.value === "auto";
-    el6.setAttribute("aria-label", "折线阈值 " + (index + 1));
-    el6.addEventListener("pointerdown", event => event.stopPropagation());
-    el6.addEventListener("click", event => event.stopPropagation());
-    el6.addEventListener("change", event => {
+  divCurrent.append(span, elCurrent);
+  temp.append(divCurrent);
+  const list = defaultLineChartThresholds(component);
+  const divNext = document.createElement("div");
+  divNext.className = "popup-line-chart-setting-row";
+  const spanCurrent = document.createElement("span");
+  spanCurrent.textContent = "阈值";
+  const divPrevious = document.createElement("div");
+  divPrevious.className = "popup-line-chart-threshold-values";
+  list.forEach((el, index) => {
+    const element = document.createElement("input");
+    element.type = "number";
+    element.step = "any";
+    element.value = roundField(el.value);
+    element.disabled = elCurrent.value === "auto";
+    element.setAttribute("aria-label", "折线阈值 " + (index + 1));
+    element.addEventListener("pointerdown", event => event.stopPropagation());
+    element.addEventListener("click", event => event.stopPropagation());
+    element.addEventListener("change", event => {
       event.stopPropagation();
-      const number = Number(el6.value);
+      const number = Number(element.value);
       if (Number.isFinite(number)) {
-        el6.value = roundField(number);
+        element.value = roundField(number);
         mutateDocument(doc => {
-          const temp8 = (doc.customPopups || []).find(component3 => component3.id === value)?.modules?.find(component3 => component3.id === component.id);
-          if (!temp8 || temp8.type !== "line-chart") {
+          const item = (doc.customPopups || []).find(component => component.id === value)?.modules?.find(item => item.id === component.id);
+          if (!item || item.type !== "line-chart") {
             return;
           }
-          const thresholds = defaultLineChartThresholds(temp8);
+          const thresholds = defaultLineChartThresholds(item);
           thresholds[index] = {
             ...thresholds[index],
             value: number
           };
-          temp8.properties = {
-            ...(temp8.properties || {}),
+          item.properties = {
+            ...(item.properties || {}),
             thresholdMode: "manual",
             thresholds
           };
         });
       }
     });
-    div5.append(el6);
+    divPrevious.append(element);
   });
-  div4.append(span2, div5);
-  temp.append(div4);
-  createControl("折线颜色", temp5.map(item => item.color), (color, param) => {
+  divNext.append(spanCurrent, divPrevious);
+  temp.append(divNext);
+  createControl("折线颜色", list.map(item => item.color), (color, param) => {
     mutateDocument(doc => {
-      const temp8 = (doc.customPopups || []).find(component3 => component3.id === value)?.modules?.find(component3 => component3.id === component.id);
-      if (!temp8 || temp8.type !== "line-chart") {
+      const item = (doc.customPopups || []).find(component => component.id === value)?.modules?.find(item => item.id === component.id);
+      if (!item || item.type !== "line-chart") {
         return;
       }
-      const thresholds = defaultLineChartThresholds(temp8);
+      const thresholds = defaultLineChartThresholds(item);
       thresholds[param] = {
         ...thresholds[param],
         color
       };
-      temp8.properties = {
-        ...(temp8.properties || {}),
+      item.properties = {
+        ...(item.properties || {}),
         thresholdMode: "manual",
         thresholds
       };
     });
-  }, el4.value === "auto");
+  }, elCurrent.value === "auto");
   return temp;
 }
 function renderList() {
@@ -6755,33 +6755,33 @@ function renderList() {
   const value = findCustomPopup(currentProject?.document, selectedPopupId);
   customPopupEditor.replaceChildren();
   if (!value) {
-    const div8 = document.createElement("div");
-    div8.className = "custom-popup-empty";
-    div8.innerHTML = "<div><strong>还没有组合弹窗</strong><p>从左侧新建后，可以混合添加灯光、空调、空气净化器、窗帘、摄像头和折线图。</p></div>";
-    customPopupEditor.append(div8);
+    const div = document.createElement("div");
+    div.className = "custom-popup-empty";
+    div.innerHTML = "<div><strong>还没有组合弹窗</strong><p>从左侧新建后，可以混合添加灯光、空调、空气净化器、窗帘、摄像头和折线图。</p></div>";
+    customPopupEditor.append(div);
     return;
   }
   const temp = document.createElement("div");
   temp.className = "custom-popup-editor-shell";
-  const div2 = document.createElement("div");
-  div2.className = "custom-popup-editor-toolbar";
-  const div3 = document.createElement("div");
+  const div = document.createElement("div");
+  div.className = "custom-popup-editor-toolbar";
+  const divCurrent = document.createElement("div");
   const element = document.createElement("strong");
   element.textContent = value.name;
   const span = document.createElement("span");
-  const temp4 = popupLayoutMetrics(value.modules || [], value.layout);
-  span.textContent = temp4.columns + " 列 × " + temp4.rows + " 行·行数自适应";
-  div3.append(element, span);
-  const div4 = document.createElement("div");
-  div4.className = "custom-popup-toolbar-actions";
-  const span2 = document.createElement("span");
-  span2.className = "custom-popup-layout-toggle";
+  const metrics = popupLayoutMetrics(value.modules || [], value.layout);
+  span.textContent = metrics.columns + " 列 × " + metrics.rows + " 行·行数自适应";
+  divCurrent.append(element, span);
+  const divNext = document.createElement("div");
+  divNext.className = "custom-popup-toolbar-actions";
+  const spanCurrent = document.createElement("span");
+  spanCurrent.className = "custom-popup-layout-toggle";
   for (const columns of [2, 3, 4]) {
-    const button2 = document.createElement("button");
-    button2.type = "button";
-    button2.textContent = columns + " 列";
-    button2.classList.toggle("active", popupLayoutColumns(value.layout) === columns);
-    button2.addEventListener("click", () => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = columns + " 列";
+    button.classList.toggle("active", popupLayoutColumns(value.layout) === columns);
+    button.addEventListener("click", () => {
       if (popupLayoutColumns(value.layout) === columns) {
         return;
       }
@@ -6803,87 +6803,87 @@ function renderList() {
         }
       });
     });
-    span2.append(button2);
+    spanCurrent.append(button);
   }
   const button = document.createElement("button");
   button.type = "button";
   button.textContent = "＋ 添加模块";
   button.addEventListener("click", () => openPopupModuleDialog());
-  div4.append(span2, button);
-  div2.append(div3, div4);
-  const div5 = document.createElement("div");
-  div5.className = "custom-popup-stage-wrap";
-  const div6 = document.createElement("div");
-  div6.className = "custom-popup-viewport";
-  const div7 = document.createElement("div");
-  div7.className = "custom-popup-stage";
-  div7.style.width = temp4.gridWidth + "px";
-  div7.style.height = temp4.gridHeight + "px";
-  div7.style.setProperty("--popup-columns", temp4.columns);
-  div7.style.setProperty("--popup-rows", temp4.rows);
-  div7.style.gridTemplateColumns = "repeat(" + temp4.columns + ", minmax(0, 1fr))";
-  div7.style.gridTemplateRows = "repeat(" + temp4.rows + ", minmax(0, 1fr))";
-  let id2 = null;
+  divNext.append(spanCurrent, button);
+  div.append(divCurrent, divNext);
+  const divPrevious = document.createElement("div");
+  divPrevious.className = "custom-popup-stage-wrap";
+  const divLocal = document.createElement("div");
+  divLocal.className = "custom-popup-viewport";
+  const divItem = document.createElement("div");
+  divItem.className = "custom-popup-stage";
+  divItem.style.width = metrics.gridWidth + "px";
+  divItem.style.height = metrics.gridHeight + "px";
+  divItem.style.setProperty("--popup-columns", metrics.columns);
+  divItem.style.setProperty("--popup-rows", metrics.rows);
+  divItem.style.gridTemplateColumns = "repeat(" + metrics.columns + ", minmax(0, 1fr))";
+  divItem.style.gridTemplateRows = "repeat(" + metrics.rows + ", minmax(0, 1fr))";
+  let id = null;
   const elements = () => {
-    div7.classList.remove("popup-module-append-target");
-    for (const temp10 of div7.querySelectorAll(".popup-module-drop-top,.popup-module-drop-right,.popup-module-drop-bottom,.popup-module-drop-left")) {
-      temp10.classList.remove("popup-module-drop-top", "popup-module-drop-right", "popup-module-drop-bottom", "popup-module-drop-left");
+    divItem.classList.remove("popup-module-append-target");
+    for (const value of divItem.querySelectorAll(".popup-module-drop-top,.popup-module-drop-right,.popup-module-drop-bottom,.popup-module-drop-left")) {
+      value.classList.remove("popup-module-drop-top", "popup-module-drop-right", "popup-module-drop-bottom", "popup-module-drop-left");
     }
   };
-  div7.addEventListener("dragover", event => {
-    if (!!id2 && !event.target.closest(".popup-module-card")) {
+  divItem.addEventListener("dragover", event => {
+    if (!!id && !event.target.closest(".popup-module-card")) {
       event.preventDefault();
       elements();
-      div7.classList.add("popup-module-append-target");
+      divItem.classList.add("popup-module-append-target");
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = "move";
       }
     }
   });
-  div7.addEventListener("drop", event => {
-    if (!id2 || event.target.closest(".popup-module-card")) {
+  divItem.addEventListener("drop", event => {
+    if (!id || event.target.closest(".popup-module-card")) {
       return;
     }
     event.preventDefault();
-    const alias = id2;
+    const alias = id;
     elements();
     updateCustomPopupModule(value.id, alias);
   });
-  for (const [temp10, temp11] of (value.modules || []).entries()) {
-    const flag = temp4.placements[temp10] || {
+  for (const [item, entry] of (value.modules || []).entries()) {
+    const flag = metrics.placements[item] || {
       x: 0,
-      y: temp10,
+      y: item,
       width: 1,
       height: 1
     };
-    const chosen = ["climate", "air-purifier", "water-heater", "media-player", "camera", "line-chart"].includes(temp11.type) ? 2 : flag.width;
-    const el3 = document.createElement("article");
-    el3.className = "popup-module-card";
-    el3.dataset.popupModuleId = temp11.id;
-    el3.draggable = true;
-    el3.setAttribute("aria-label", (temp11.title || entityDisplayName(temp11.entityId)) + "，可拖动排序");
-    el3.style.gridColumn = flag.x + 1 + " / span " + chosen;
-    el3.style.gridRow = flag.y + 1 + " / span " + flag.height;
-    const div8 = document.createElement("div");
-    div8.className = "popup-module-card-heading";
-    const div9 = document.createElement("div");
-    const el4 = document.createElement("strong");
-    el4.textContent = temp11.title || entityDisplayName(temp11.entityId);
-    div9.append(el4);
-    const span3 = document.createElement("span");
-    span3.className = "popup-module-card-actions";
-    const button2 = document.createElement("button");
-    button2.type = "button";
-    button2.textContent = "✎";
-    button2.title = "编辑模块";
-    button2.addEventListener("click", () => openPopupModuleDialog(temp11));
-    const button3 = document.createElement("button");
-    button3.type = "button";
-    button3.textContent = "⎘";
-    button3.title = "复制模块";
-    button3.addEventListener("click", () => {
+    const chosen = ["climate", "air-purifier", "water-heater", "media-player", "camera", "line-chart"].includes(entry.type) ? 2 : flag.width;
+    const el = document.createElement("article");
+    el.className = "popup-module-card";
+    el.dataset.popupModuleId = entry.id;
+    el.draggable = true;
+    el.setAttribute("aria-label", (entry.title || entityDisplayName(entry.entityId)) + "，可拖动排序");
+    el.style.gridColumn = flag.x + 1 + " / span " + chosen;
+    el.style.gridRow = flag.y + 1 + " / span " + flag.height;
+    const div = document.createElement("div");
+    div.className = "popup-module-card-heading";
+    const element = document.createElement("div");
+    const elCurrent = document.createElement("strong");
+    elCurrent.textContent = entry.title || entityDisplayName(entry.entityId);
+    element.append(elCurrent);
+    const span = document.createElement("span");
+    span.className = "popup-module-card-actions";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "✎";
+    button.title = "编辑模块";
+    button.addEventListener("click", () => openPopupModuleDialog(entry));
+    const buttonCurrent = document.createElement("button");
+    buttonCurrent.type = "button";
+    buttonCurrent.textContent = "⎘";
+    buttonCurrent.title = "复制模块";
+    buttonCurrent.addEventListener("click", () => {
       const list = [...(value.modules || []), {
-        ...cloneValue(temp11),
+        ...cloneValue(entry),
         id: "candidate"
       }];
       if (!packPopupModules(list, value.layout).fits) {
@@ -6892,117 +6892,117 @@ function renderList() {
       }
       mutateDocument(event => {
         const found = (event.customPopups || []).find(component => component.id === value.id);
-        const temp16 = found?.modules?.find(component => component.id === temp11.id);
-        if (temp16) {
+        const item = found?.modules?.find(component => component.id === entry.id);
+        if (item) {
           found.modules.push({
-            ...cloneValue(temp16),
+            ...cloneValue(item),
             id: newId("popup-module")
           });
         }
       });
     });
-    const button4 = document.createElement("button");
-    button4.type = "button";
-    button4.textContent = "×";
-    button4.title = "删除模块";
-    button4.addEventListener("click", () => mutateDocument(doc => {
+    const buttonNext = document.createElement("button");
+    buttonNext.type = "button";
+    buttonNext.textContent = "×";
+    buttonNext.title = "删除模块";
+    buttonNext.addEventListener("click", () => mutateDocument(doc => {
       const found = (doc.customPopups || []).find(component => component.id === value.id);
       if (found) {
-        found.modules = found.modules.filter(component => component.id !== temp11.id);
+        found.modules = found.modules.filter(component => component.id !== entry.id);
       }
     }));
-    span3.append(button2, button3, button4);
-    el3.addEventListener("pointerdown", event2 => {
-      el3.dataset.dragBlocked = String(!!event2.target.closest(".popup-module-card-actions,.popup-cover-settings,.popup-climate-settings,.popup-line-chart-settings"));
+    span.append(button, buttonCurrent, buttonNext);
+    el.addEventListener("pointerdown", event => {
+      el.dataset.dragBlocked = String(!!event.target.closest(".popup-module-card-actions,.popup-cover-settings,.popup-climate-settings,.popup-line-chart-settings"));
     });
-    el3.addEventListener("pointerup", () => {
-      delete el3.dataset.dragBlocked;
+    el.addEventListener("pointerup", () => {
+      delete el.dataset.dragBlocked;
     });
-    el3.addEventListener("pointercancel", () => {
-      delete el3.dataset.dragBlocked;
+    el.addEventListener("pointercancel", () => {
+      delete el.dataset.dragBlocked;
     });
-    el3.addEventListener("dragstart", event => {
-      if (el3.dataset.dragBlocked === "true") {
+    el.addEventListener("dragstart", event => {
+      if (el.dataset.dragBlocked === "true") {
         event.preventDefault();
-        delete el3.dataset.dragBlocked;
+        delete el.dataset.dragBlocked;
         return;
       }
-      id2 = temp11.id;
-      el3.classList.add("popup-module-dragging");
-      el3.setAttribute("aria-grabbed", "true");
+      id = entry.id;
+      el.classList.add("popup-module-dragging");
+      el.setAttribute("aria-grabbed", "true");
       if (event.dataTransfer) {
         event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("text/plain", temp11.id);
+        event.dataTransfer.setData("text/plain", entry.id);
       }
     });
-    el3.addEventListener("dragover", event => {
-      if (!id2 || id2 === temp11.id) {
+    el.addEventListener("dragover", event => {
+      if (!id || id === entry.id) {
         return;
       }
       event.preventDefault();
       event.stopPropagation();
       elements();
       const {
-        edge: temp16
-      } = popupModuleDropPosition(el3, event);
-      el3.classList.add("popup-module-drop-" + temp16);
+        edge: position
+      } = popupModuleDropPosition(el, event);
+      el.classList.add("popup-module-drop-" + position);
       if (event.dataTransfer) {
         event.dataTransfer.dropEffect = "move";
       }
     });
-    el3.addEventListener("drop", event => {
-      if (!id2 || id2 === temp11.id) {
+    el.addEventListener("drop", event => {
+      if (!id || id === entry.id) {
         return;
       }
       event.preventDefault();
       event.stopPropagation();
-      const alias = id2;
+      const alias = id;
       const {
-        placeAfter: temp17
-      } = popupModuleDropPosition(el3, event);
+        placeAfter: position
+      } = popupModuleDropPosition(el, event);
       elements();
-      updateCustomPopupModule(value.id, alias, temp11.id, temp17);
+      updateCustomPopupModule(value.id, alias, entry.id, position);
     });
-    el3.addEventListener("dragend", () => {
-      id2 = null;
-      delete el3.dataset.dragBlocked;
-      el3.classList.remove("popup-module-dragging");
-      el3.removeAttribute("aria-grabbed");
+    el.addEventListener("dragend", () => {
+      id = null;
+      delete el.dataset.dragBlocked;
+      el.classList.remove("popup-module-dragging");
+      el.removeAttribute("aria-grabbed");
       elements();
     });
-    div8.append(div9, span3);
-    const div10 = document.createElement("div");
-    div10.className = "popup-module-placeholder";
-    const el5 = document.createElement("strong");
-    el5.textContent = popupModuleTypeLabel(temp11.type) + "交互模块";
-    const span4 = document.createElement("span");
-    span4.textContent = entityDisplayName(temp11.entityId);
-    const el6 = document.createElement("small");
-    el6.textContent = temp11.entityId;
-    div10.append(el5, span4, el6);
-    if (temp11.type === "cover") {
-      div10.append(buildPopupCoverSettings(value.id, temp11));
+    div.append(element, span);
+    const divCurrent = document.createElement("div");
+    divCurrent.className = "popup-module-placeholder";
+    const elNext = document.createElement("strong");
+    elNext.textContent = popupModuleTypeLabel(entry.type) + "交互模块";
+    const spanCurrent = document.createElement("span");
+    spanCurrent.textContent = entityDisplayName(entry.entityId);
+    const elPrevious = document.createElement("small");
+    elPrevious.textContent = entry.entityId;
+    divCurrent.append(elNext, spanCurrent, elPrevious);
+    if (entry.type === "cover") {
+      divCurrent.append(buildPopupCoverSettings(value.id, entry));
     }
-    if (temp11.type === "climate") {
-      div10.append(buildPopupClimateSettings(value.id, temp11));
+    if (entry.type === "climate") {
+      divCurrent.append(buildPopupClimateSettings(value.id, entry));
     }
-    if (temp11.type === "line-chart") {
-      div10.append(buildPopupLineChartSettings(value.id, temp11));
+    if (entry.type === "line-chart") {
+      divCurrent.append(buildPopupLineChartSettings(value.id, entry));
     }
-    el3.append(div8, div10);
-    div7.append(el3);
+    el.append(div, divCurrent);
+    divItem.append(el);
   }
   if (!(value.modules || []).length) {
-    const div8 = document.createElement("div");
-    div8.className = "custom-popup-empty";
-    div8.style.gridColumn = "1 / -1";
-    div8.style.gridRow = "1 / -1";
-    div8.textContent = "点击“添加模块”开始组合弹窗";
-    div7.append(div8);
+    const div = document.createElement("div");
+    div.className = "custom-popup-empty";
+    div.style.gridColumn = "1 / -1";
+    div.style.gridRow = "1 / -1";
+    div.textContent = "点击“添加模块”开始组合弹窗";
+    divItem.append(div);
   }
-  div6.append(div7);
-  div5.append(div6);
-  temp.append(div2, div5);
+  divLocal.append(divItem);
+  divPrevious.append(divLocal);
+  temp.append(div, divPrevious);
   customPopupEditor.append(temp);
   window.requestAnimationFrame(syncCustomPopupStage);
 }
@@ -7025,7 +7025,7 @@ function openPopupModuleDialog(component = null) {
   closePopupModuleEntityMenu();
   popupModuleDialog.showModal();
 }
-function renderList2(value, param = null) {
+function renderListCurrent(value, param = null) {
   pageSelect.replaceChildren();
   if (!value.pages.length) {
     pageSelect.append(new Option("暂无页面", ""));
@@ -7035,9 +7035,9 @@ function renderList2(value, param = null) {
   }
   const chosen = value.pages.some(component => component.path === value.defaultPagePath) ? value.defaultPagePath : null;
   for (const temp of value.pages) {
-    const temp2 = new Option(temp.name, temp.path);
-    temp2.dataset.defaultPage = String(temp.path === chosen);
-    pageSelect.append(temp2);
+    const option = new Option(temp.name, temp.path);
+    option.dataset.defaultPage = String(temp.path === chosen);
+    pageSelect.append(option);
   }
   pageSelect.disabled = false;
   pageSelect.value = param && value.pages.some(component => component.path === param) ? param : chosen || value.pages[0].path;
@@ -7058,28 +7058,28 @@ function applyRendererSelection(value, param) {
   }
 }
 const pendingAssetFolderDeletes = new Set();
-function onRendererDocumentChange(value, param, param2) {
-  if (editorMode !== "edit" || !editorRenderer || editorRenderer.page?.path !== param2 || editorDocumentFrameSignature(value) !== editorDocumentFrameSignature(param)) {
+function onRendererDocumentChange(value, param, item) {
+  if (editorMode !== "edit" || !editorRenderer || editorRenderer.page?.path !== item || editorDocumentFrameSignature(value) !== editorDocumentFrameSignature(param)) {
     return null;
   }
   const temp = editorComponentEntries(value);
-  const temp2 = editorComponentEntries(param);
-  if (temp.order.length !== temp2.order.length || temp.order.some((item, index) => item !== temp2.order[index]) || temp.entries.size !== temp2.entries.size) {
+  const entries = editorComponentEntries(param);
+  if (temp.order.length !== entries.order.length || temp.order.some((item, index) => item !== entries.order[index]) || temp.entries.size !== entries.entries.size) {
     return null;
   }
   const list = [];
-  for (const [componentId, temp3] of temp.entries) {
-    const temp4 = temp2.entries.get(componentId);
-    if (!temp4 || temp3.scope !== temp4.scope || temp3.pagePath !== temp4.pagePath || temp3.parentId !== temp4.parentId || pendingAssetFolderDeletes.has(temp3.component.type) || editorComponentStructure(temp3.component) !== editorComponentStructure(temp4.component)) {
+  for (const [componentId, value] of temp.entries) {
+    const entry = entries.entries.get(componentId);
+    if (!entry || value.scope !== entry.scope || value.pagePath !== entry.pagePath || value.parentId !== entry.parentId || pendingAssetFolderDeletes.has(value.component.type) || editorComponentStructure(value.component) !== editorComponentStructure(entry.component)) {
       return null;
     }
-    if (JSON.stringify(temp3.component) !== JSON.stringify(temp4.component)) {
+    if (JSON.stringify(value.component) !== JSON.stringify(entry.component)) {
       if (!editorRenderer.componentHosts.has(componentId)) {
         return null;
       }
       list.push({
         componentId,
-        component: temp4.component
+        component: entry.component
       });
     }
   }
@@ -7089,7 +7089,7 @@ function onRendererDocumentChange(value, param, param2) {
     return null;
   }
 }
-function selectedComponent2(value, fallback) {
+function selectedComponentCurrent(value, fallback) {
   const component = findComponent(currentProject?.document, value)?.component;
   if (!component || value !== componentId) {
     return;
@@ -7097,19 +7097,19 @@ function selectedComponent2(value, fallback) {
   const numeric = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
   const number = Number(component.position?.width || 100);
-  const number2 = Number(component.position?.height || 100);
+  const numberCurrent = Number(component.position?.height || 100);
   const chosen = Number.isFinite(fallback.width) ? fallback.width : number;
-  const chosen2 = Number.isFinite(fallback.height) ? fallback.height : number2;
+  const height = Number.isFinite(fallback.height) ? fallback.height : numberCurrent;
   const includesValue = ["icon-button", "device-button", "presence-sensor"].includes(component.type);
   const element = component.type === "title-button" ? titleButtonLeft : component.type === "light-statistics" ? lightStatisticsLeft : includesValue ? iconButtonLeft : component.type === "air-conditioner" ? airConditionerLeft : component.type === "vacuum-map" ? vacuumMapLeft : component.type === "camera" ? cameraLeft : component.type === "icon-button-effect" ? ibeLeft : component.type === "navigation-button" ? navigationLeft : component.type === "time" ? timeLeft : component.type === "date" ? dateLeft : component.type === "weather" ? weatherLeft : component.type === "line-chart" ? lineChartLeft : component.type === "panel-frame" ? panelFrameLeft : imageLeft;
-  const chosen3 = component.type === "title-button" ? titleButtonTop : component.type === "light-statistics" ? lightStatisticsTop : includesValue ? iconButtonTop : component.type === "air-conditioner" ? airConditionerTop : component.type === "vacuum-map" ? vacuumMapTop : component.type === "camera" ? cameraTop : component.type === "icon-button-effect" ? ibeTop : component.type === "navigation-button" ? navigationTop : component.type === "time" ? timeTop : component.type === "date" ? dateTop : component.type === "weather" ? weatherTop : component.type === "line-chart" ? lineChartTop : component.type === "panel-frame" ? panelFrameTop : imageTop;
-  const chosen4 = component.type === "title-button" ? titleButtonScale : component.type === "light-statistics" ? lightStatisticsScale : includesValue ? iconButtonScale : component.type === "air-conditioner" ? airConditionerScale : component.type === "vacuum-map" ? vacuumMapScale : component.type === "camera" ? cameraScale : component.type === "icon-button-effect" ? ibeScale : component.type === "navigation-button" ? navigationScale : component.type === "time" ? timeScale : component.type === "date" ? dateScale : component.type === "weather" ? weatherScale : component.type === "line-chart" ? lineChartScale : component.type === "panel-frame" ? panelFrameScale : imageScale;
-  const chosen5 = component.type === "title-button" ? titleButtonRotation : component.type === "light-statistics" ? lightStatisticsRotation : includesValue ? iconButtonRotation : component.type === "air-conditioner" ? airConditionerRotation : component.type === "vacuum-map" ? vacuumMapRotation : component.type === "camera" ? cameraRotation : component.type === "icon-button-effect" ? ibeRotation : component.type === "navigation-button" ? navigationRotation : component.type === "time" ? timeRotation : component.type === "date" ? dateRotation : component.type === "weather" ? weatherRotation : component.type === "line-chart" ? lineChartRotation : component.type === "panel-frame" ? panelFrameRotation : imageRotation;
+  const chosenCurrent = component.type === "title-button" ? titleButtonTop : component.type === "light-statistics" ? lightStatisticsTop : includesValue ? iconButtonTop : component.type === "air-conditioner" ? airConditionerTop : component.type === "vacuum-map" ? vacuumMapTop : component.type === "camera" ? cameraTop : component.type === "icon-button-effect" ? ibeTop : component.type === "navigation-button" ? navigationTop : component.type === "time" ? timeTop : component.type === "date" ? dateTop : component.type === "weather" ? weatherTop : component.type === "line-chart" ? lineChartTop : component.type === "panel-frame" ? panelFrameTop : imageTop;
+  const chosenNext = component.type === "title-button" ? titleButtonScale : component.type === "light-statistics" ? lightStatisticsScale : includesValue ? iconButtonScale : component.type === "air-conditioner" ? airConditionerScale : component.type === "vacuum-map" ? vacuumMapScale : component.type === "camera" ? cameraScale : component.type === "icon-button-effect" ? ibeScale : component.type === "navigation-button" ? navigationScale : component.type === "time" ? timeScale : component.type === "date" ? dateScale : component.type === "weather" ? weatherScale : component.type === "line-chart" ? lineChartScale : component.type === "panel-frame" ? panelFrameScale : imageScale;
+  const chosenPrevious = component.type === "title-button" ? titleButtonRotation : component.type === "light-statistics" ? lightStatisticsRotation : includesValue ? iconButtonRotation : component.type === "air-conditioner" ? airConditionerRotation : component.type === "vacuum-map" ? vacuumMapRotation : component.type === "camera" ? cameraRotation : component.type === "icon-button-effect" ? ibeRotation : component.type === "navigation-button" ? navigationRotation : component.type === "time" ? timeRotation : component.type === "date" ? dateRotation : component.type === "weather" ? weatherRotation : component.type === "line-chart" ? lineChartRotation : component.type === "panel-frame" ? panelFrameRotation : imageRotation;
   if (Number.isFinite(fallback.x)) {
     element.value = roundField(clampNumber((fallback.x + chosen / 2) / numeric * 100, 0, 100));
   }
   if (Number.isFinite(fallback.y)) {
-    chosen3.value = roundField(clampNumber((fallback.y + chosen2 / 2) / canvasHeight * 100, 0, 100));
+    chosenCurrent.value = roundField(clampNumber((fallback.y + height / 2) / canvasHeight * 100, 0, 100));
   }
   if (component.type === "navigation-button" && Number.isFinite(fallback.width)) {
     navigationWidth.value = roundField(clampNumber(fallback.width / numeric * 100, 0.1, 100));
@@ -7166,10 +7166,10 @@ function selectedComponent2(value, fallback) {
     panelFrameHeight.value = roundField(clampNumber(fallback.height / canvasHeight * 100, 0.1, 100));
   }
   if (Number.isFinite(fallback.scale)) {
-    chosen4.value = roundField(fallback.scale * 100);
+    chosenNext.value = roundField(fallback.scale * 100);
   }
   if (Number.isFinite(fallback.rotation)) {
-    chosen5.value = roundField(fallback.rotation);
+    chosenPrevious.value = roundField(fallback.rotation);
   }
 }
 function createPanelRenderer() {
@@ -7187,9 +7187,9 @@ function createPanelRenderer() {
           return;
         }
         const temp = readAirConditionerProperty(component, "width");
-        const temp2 = readAirConditionerProperty(component, "height");
-        const temp3 = readAirConditionerProperty(component, "scale");
-        const temp4 = readAirConditionerProperty(component, "rotation");
+        const property = readAirConditionerProperty(component, "height");
+        const entry = readAirConditionerProperty(component, "scale");
+        const current = readAirConditionerProperty(component, "rotation");
         const {
           scale,
           airflowOffsetX,
@@ -7218,16 +7218,16 @@ function createPanelRenderer() {
           };
         }
         if (component.type === "navigation-button" && Number.isFinite(param.width)) {
-          buildIdMap2(value, "width", temp, readAirConditionerProperty(component, "width"));
+          buildIdMapCurrent(value, "width", temp, readAirConditionerProperty(component, "width"));
         }
         if (component.type === "navigation-button" && Number.isFinite(param.height)) {
-          buildIdMap2(value, "height", temp2, readAirConditionerProperty(component, "height"));
+          buildIdMapCurrent(value, "height", property, readAirConditionerProperty(component, "height"));
         }
         if (component.type === "navigation-button" && Number.isFinite(param.scale)) {
-          buildIdMap2(value, "scale", temp3, readAirConditionerProperty(component, "scale"));
+          buildIdMapCurrent(value, "scale", entry, readAirConditionerProperty(component, "scale"));
         }
         if (component.type === "navigation-button" && Number.isFinite(param.rotation)) {
-          buildIdMap2(value, "rotation", temp4, readAirConditionerProperty(component, "rotation"));
+          buildIdMapCurrent(value, "rotation", current, readAirConditionerProperty(component, "rotation"));
         }
       });
     },
@@ -7267,9 +7267,9 @@ function createPanelRenderer() {
         removeComponentById(item, value, component, false);
       });
     },
-    onComponentsDuplicate(value, param, param2) {
+    onComponentsDuplicate(value, param, item) {
       const mapped = value.map(item => item.copiedComponent.id);
-      componentId = param2 || mapped[0] || null;
+      componentId = item || mapped[0] || null;
       selectedComponentIds = new Set(mapped);
       rangeSelectAnchorId = componentId;
       mutateDocument(item => {
@@ -7279,7 +7279,7 @@ function createPanelRenderer() {
       });
     },
     onComponentTransformPreview(value, param) {
-      selectedComponent2(value, param);
+      selectedComponentCurrent(value, param);
     },
     onComponentProperties(value, param) {
       mutateDocument(item => {
@@ -7312,7 +7312,7 @@ function createPanelRenderer() {
       componentId = param;
       const found = value.find(item => item.componentId === param);
       if (found) {
-        selectedComponent2(param, found);
+        selectedComponentCurrent(param, found);
       }
     },
     onError,
@@ -7337,7 +7337,7 @@ function refreshEditorChrome(value = null) {
   syncDashboardSoundToggle();
   syncCanvasSizeFields();
   renderPopupList(currentProject.document, selectedPopupId);
-  const temp = renderList2(currentProject.document, value);
+  const temp = renderListCurrent(currentProject.document, value);
   setPageControlsEnabled(temp);
   fitWorkspaceToCanvas();
   if (!temp) {
@@ -7384,7 +7384,7 @@ function readRecoveredDraft(value = currentProject?.projectId) {
     } catch {}
   }
 }
-function readRecoveredDraft2(value) {
+function readRecoveredDraftCurrent(value) {
   try {
     const temp = sessionStorage.getItem(recoveryStorageKey(unsavedStoragePrefix, value));
     if (!temp) {
@@ -7400,7 +7400,7 @@ function readRecoveredDraft2(value) {
     return null;
   }
 }
-const recoveryWriter = createRecoveryWriter(readRecoveredDraft3);
+const recoveryWriter = createRecoveryWriter(readRecoveredDraftNext);
 window.addEventListener("pagehide", recoveryWriter.flush);
 window.addEventListener("beforeunload", recoveryWriter.flush);
 document.addEventListener("visibilitychange", () => {
@@ -7425,21 +7425,21 @@ function persistUnsavedDraft() {
   };
   recoveryWriter.schedule(value);
 }
-function readRecoveredDraft3(projectId2) {
+function readRecoveredDraftNext(projectId) {
   try {
-    sessionStorage.setItem(recoveryStorageKey(unsavedStoragePrefix, projectId2.projectId), JSON.stringify(projectId2));
+    sessionStorage.setItem(recoveryStorageKey(unsavedStoragePrefix, projectId.projectId), JSON.stringify(projectId));
   } catch {
     try {
-      sessionStorage.setItem(recoveryStorageKey(unsavedStoragePrefix, projectId2.projectId), JSON.stringify({
-        projectId: projectId2.projectId,
-        revision: projectId2.revision,
-        document: projectId2.document,
-        selectedPath: projectId2.selectedPath,
-        selectedComponentId: projectId2.selectedComponentId,
-        selectedComponentIds: projectId2.selectedComponentIds,
+      sessionStorage.setItem(recoveryStorageKey(unsavedStoragePrefix, projectId.projectId), JSON.stringify({
+        projectId: projectId.projectId,
+        revision: projectId.revision,
+        document: projectId.document,
+        selectedPath: projectId.selectedPath,
+        selectedComponentId: projectId.selectedComponentId,
+        selectedComponentIds: projectId.selectedComponentIds,
         undo: [],
         redo: [],
-        savedAt: projectId2.savedAt
+        savedAt: projectId.savedAt
       }));
     } catch {}
   }
@@ -7506,7 +7506,7 @@ async function loadProjectDraft(projectId, value = null) {
   relatedEntityOptionCache.clear();
   autosaveTimer = cloneValue(currentProject.document);
   lastSavedSignature = documentSignature(currentProject.document);
-  recoveredDraft = readRecoveredDraft2(projectId);
+  recoveredDraft = readRecoveredDraftCurrent(projectId);
   if (recoveredDraft && (recoveredDraft.revision !== currentProject.revision || documentSignature(recoveredDraft.document) === lastSavedSignature)) {
     readRecoveredDraft(projectId);
     recoveredDraft = null;
@@ -7579,8 +7579,8 @@ async function commitDocumentEdit(value, param = pageSelect.value, {
   const document = currentProject.document;
   await guardInteraction3dChanges(document, value);
   const temp = onRendererDocumentChange(document, value, param);
-  const temp2 = captureHistorySnapshot();
-  if (documentSignature(temp2.document) === documentSignature(value)) {
+  const snapshot = captureHistorySnapshot();
+  if (documentSignature(snapshot.document) === documentSignature(value)) {
     return currentProject;
   }
   currentProject = {
@@ -7588,7 +7588,7 @@ async function commitDocumentEdit(value, param = pageSelect.value, {
     document: cloneValue(value)
   };
   if (item) {
-    pushHistoryEntry(historyState.undo, temp2);
+    pushHistoryEntry(historyState.undo, snapshot);
     historyState.redo = [];
   }
   const found = projectList.find(component => component.id === currentProject.projectId);
@@ -7671,7 +7671,7 @@ async function autosaveDocument() {
 async function fetchHelper(value, param) {
   const document = param === "undo" ? value.beforeSavedDocument : value.afterSavedDocument;
   const globalPopupsDirty = documentSignature(document.customPopups || []) !== documentSignature(autosaveTimer.customPopups || []);
-  const document2 = cloneValue(currentProject.document);
+  const documentCurrent = cloneValue(currentProject.document);
   const inputValue = pageSelect.value;
   const temp = await apiFetch("/projects/" + currentProject.projectId + "/draft", {
     method: "PUT",
@@ -7685,24 +7685,24 @@ async function fetchHelper(value, param) {
   autosaveTimer = cloneValue(temp.document);
   lastSavedSignature = documentSignature(temp.document);
   if (!globalPopupsDirty) {
-    document2.customPopups = cloneValue(temp.document.customPopups || []);
+    documentCurrent.customPopups = cloneValue(temp.document.customPopups || []);
   }
   currentProject = {
     ...temp,
-    document: document2
+    document: documentCurrent
   };
   refreshEditorChrome(inputValue);
   syncDocumentDirtyState();
 }
-async function mutateDocument2(param) {
+async function mutateDocumentCurrent(param) {
   await documentMutationQueue.catch(() => {});
   if (historyState.busy || !currentProject) {
     return;
   }
   const flag = param === "undo" ? historyState.undo : historyState.redo;
   const chosen = param === "undo" ? historyState.redo : historyState.undo;
-  const document2 = flag.pop();
-  if (document2) {
+  const document = flag.pop();
+  if (document) {
     historyState.busy = true;
     syncHistoryButtons();
     entityOptionCache.clear();
@@ -7711,22 +7711,22 @@ async function mutateDocument2(param) {
     popupEntityOptionCache.clear();
     relatedEntityOptionCache.clear();
     try {
-      if (document2.kind === "save") {
-        await fetchHelper(document2, param);
-        pushHistoryEntry(chosen, document2);
+      if (document.kind === "save") {
+        await fetchHelper(document, param);
+        pushHistoryEntry(chosen, document);
       } else {
         const temp = captureHistorySnapshot();
-        const length3 = Array.isArray(document2.selectedComponentIds) ? document2.selectedComponentIds.filter(item => findComponent(document2.document, item)) : [];
-        componentId = findComponent(document2.document, document2.selectedComponentId) ? document2.selectedComponentId : length3[0] || null;
-        selectedComponentIds = new Set(length3.length ? length3 : componentId ? [componentId] : []);
+        const length = Array.isArray(document.selectedComponentIds) ? document.selectedComponentIds.filter(item => findComponent(document.document, item)) : [];
+        componentId = findComponent(document.document, document.selectedComponentId) ? document.selectedComponentId : length[0] || null;
+        selectedComponentIds = new Set(length.length ? length : componentId ? [componentId] : []);
         rangeSelectAnchorId = componentId;
-        await commitDocumentEdit(document2.document, document2.selectedPath, {
+        await commitDocumentEdit(document.document, document.selectedPath, {
           recordHistory: false
         });
         pushHistoryEntry(chosen, temp);
       }
     } catch (temp) {
-      pushHistoryEntry(flag, document2);
+      pushHistoryEntry(flag, document);
       onError(temp);
     } finally {
       historyState.busy = false;
@@ -7752,9 +7752,9 @@ async function loadHaConnection({
     haForm.elements.accessToken.placeholder = haConnection.hasToken ? "已加密保存，留空则保留原 Token" : "输入 Long-Lived Access Token";
     haForm.elements.verifyTls.checked = haConnection.verifyTls !== false;
   }
-  const flag2 = !haConnection.connected && !!haConnection.lastError;
+  const connected = !haConnection.connected && !!haConnection.lastError;
   haOpenBtn.classList.toggle("connected", haConnection.connected);
-  haOpenBtn.classList.toggle("error", flag2);
+  haOpenBtn.classList.toggle("error", connected);
   haOpenBtn.querySelector("span").textContent = haConnection.connected ? ("HA 已连接 · " + (haConnection.version || "")).trim() : haConnection.lastError ? "HA 连接异常" : haConnection.configured ? "HA 重连中" : "HA 未配置";
   openHomeAssistant.disabled = !haConnection.configured || !haConnection.baseUrl;
   syncHaConnectionPanels();
@@ -7817,18 +7817,18 @@ function syncHaConnectionPanels() {
     devices: 0,
     areas: 0
   };
-  const flag2 = !!haConnection.connected || !!haSyncStatus?.connected;
-  const flag3 = !flag2 && (!!haConnection.lastError || !!haSyncStatus?.lastError);
-  haDetailIndicator.classList.toggle("connected", flag2);
-  haDetailIndicator.classList.toggle("error", flag3);
+  const connected = !!haConnection.connected || !!haSyncStatus?.connected;
+  const flagCurrent = !connected && (!!haConnection.lastError || !!haSyncStatus?.lastError);
+  haDetailIndicator.classList.toggle("connected", connected);
+  haDetailIndicator.classList.toggle("error", flagCurrent);
   haDetailName.textContent = haConnection.name || "Home Assistant";
-  haDetailStatus.textContent = flag2 ? "已连接并实时同步" : flag3 ? "连接异常" : "正在重连";
+  haDetailStatus.textContent = connected ? "已连接并实时同步" : flagCurrent ? "连接异常" : "正在重连";
   haDetailUrl.textContent = haConnection.baseUrl || "—";
   haDetailUrl.title = haConnection.baseUrl || "";
   haDetailVersion.textContent = haConnection.version || "未知";
   haDetailCounts.textContent = "实体 " + flag.entities + " · 设备 " + flag.devices + " · 区域 " + flag.areas;
-  haDetailError.hidden = !flag3;
-  haDetailError.textContent = flag3 && (haConnection.lastError || haSyncStatus?.lastError) || "";
+  haDetailError.hidden = !flagCurrent;
+  haDetailError.textContent = flagCurrent && (haConnection.lastError || haSyncStatus?.lastError) || "";
 }
 function startHaFormEdit() {
   haFormEditing = true;
@@ -7840,7 +7840,7 @@ function cancelHaFormEdit() {
   syncHaConnectionPanels();
 }
 function delay(param) {
-  return new Promise(param2 => window.setTimeout(param2, param));
+  return new Promise(value => window.setTimeout(value, param));
 }
 async function ensureHaBootstrap({
   preserveForm = true
@@ -7881,9 +7881,9 @@ function readHaFormPayload(value = false) {
   };
 }
 function selectProjectTemplate(param = selectedProjectTemplateId) {
-  const some2 = uiPacks.find(component => component.id === "ui.base")?.dashboardTemplates || [];
-  selectedProjectTemplateId = param === "" || some2.some(component => component.id === param) ? param : some2[0]?.id || "";
-  const list2 = [{
+  const some = uiPacks.find(component => component.id === "ui.base")?.dashboardTemplates || [];
+  selectedProjectTemplateId = param === "" || some.some(component => component.id === param) ? param : some[0]?.id || "";
+  const list = [{
     id: "",
     name: "空白仪表盘",
     description: "使用栖光 UI 创建空白画布，不预置页面、控件或弹窗。",
@@ -7891,7 +7891,7 @@ function selectProjectTemplate(param = selectedProjectTemplateId) {
     previewLabels: [],
     canvasWidth: null,
     canvasHeight: null
-  }, ...some2.map(component => ({
+  }, ...some.map(component => ({
     id: component.id,
     name: component.name,
     description: component.description + " · v" + component.version,
@@ -7900,18 +7900,18 @@ function selectProjectTemplate(param = selectedProjectTemplateId) {
     canvasWidth: Number(component.canvasWidth || 2778),
     canvasHeight: Number(component.canvasHeight || 1940)
   }))];
-  projectTemplateOptions.replaceChildren(...list2.map(previewUrls => {
-    const dataset4 = document.createElement("div");
-    dataset4.className = "project-template-option" + (previewUrls.id === selectedProjectTemplateId ? " active" : "");
-    dataset4.dataset.projectTemplateId = previewUrls.id;
-    dataset4.dataset.previewUrls = JSON.stringify(previewUrls.previewUrls);
-    dataset4.dataset.previewLabels = JSON.stringify(previewUrls.previewLabels);
-    dataset4.dataset.previewIndex = "0";
-    dataset4.setAttribute("role", "radio");
-    dataset4.setAttribute("aria-checked", String(previewUrls.id === selectedProjectTemplateId));
-    dataset4.tabIndex = 0;
-    const className3 = document.createElement("div");
-    className3.className = "project-template-carousel" + (previewUrls.previewUrls.length ? "" : " blank");
+  projectTemplateOptions.replaceChildren(...list.map(previewUrls => {
+    const dataset = document.createElement("div");
+    dataset.className = "project-template-option" + (previewUrls.id === selectedProjectTemplateId ? " active" : "");
+    dataset.dataset.projectTemplateId = previewUrls.id;
+    dataset.dataset.previewUrls = JSON.stringify(previewUrls.previewUrls);
+    dataset.dataset.previewLabels = JSON.stringify(previewUrls.previewLabels);
+    dataset.dataset.previewIndex = "0";
+    dataset.setAttribute("role", "radio");
+    dataset.setAttribute("aria-checked", String(previewUrls.id === selectedProjectTemplateId));
+    dataset.tabIndex = 0;
+    const element = document.createElement("div");
+    element.className = "project-template-carousel" + (previewUrls.previewUrls.length ? "" : " blank");
     if (previewUrls.previewUrls.length) {
       const button = document.createElement("button");
       button.type = "button";
@@ -7923,41 +7923,41 @@ function selectProjectTemplate(param = selectedProjectTemplateId) {
       src.alt = previewUrls.previewLabels[0] || previewUrls.name + "预览 1";
       src.loading = "eager";
       button.append(src);
-      const button2 = document.createElement("button");
-      button2.type = "button";
-      button2.className = "project-template-carousel-arrow previous";
-      button2.dataset.projectPreviewAction = "previous";
-      button2.setAttribute("aria-label", "上一张预览");
-      button2.textContent = "‹";
-      const button3 = document.createElement("button");
-      button3.type = "button";
-      button3.className = "project-template-carousel-arrow next";
-      button3.dataset.projectPreviewAction = "next";
-      button3.setAttribute("aria-label", "下一张预览");
-      button3.textContent = "›";
+      const buttonCurrent = document.createElement("button");
+      buttonCurrent.type = "button";
+      buttonCurrent.className = "project-template-carousel-arrow previous";
+      buttonCurrent.dataset.projectPreviewAction = "previous";
+      buttonCurrent.setAttribute("aria-label", "上一张预览");
+      buttonCurrent.textContent = "‹";
+      const buttonNext = document.createElement("button");
+      buttonNext.type = "button";
+      buttonNext.className = "project-template-carousel-arrow next";
+      buttonNext.dataset.projectPreviewAction = "next";
+      buttonNext.setAttribute("aria-label", "下一张预览");
+      buttonNext.textContent = "›";
       const className = document.createElement("div");
       className.className = "project-template-carousel-meta";
       const textContent = document.createElement("strong");
       textContent.textContent = previewUrls.previewLabels[0] || "栖光预览";
-      const textContent2 = document.createElement("span");
-      textContent2.textContent = "1 / " + previewUrls.previewUrls.length;
-      className.append(textContent, textContent2);
-      className3.append(button, button2, button3, className);
+      const textContentCurrent = document.createElement("span");
+      textContentCurrent.textContent = "1 / " + previewUrls.previewUrls.length;
+      className.append(textContent, textContentCurrent);
+      element.append(button, buttonCurrent, buttonNext, className);
     } else {
-      className3.replaceChildren(...Array.from({
+      element.replaceChildren(...Array.from({
         length: 4
       }, () => document.createElement("i")));
     }
-    const textContent3 = document.createElement("strong");
-    textContent3.textContent = previewUrls.name;
-    const textContent4 = document.createElement("span");
-    textContent4.textContent = previewUrls.description;
-    dataset4.append(className3, textContent3, textContent4);
-    return dataset4;
+    const textContent = document.createElement("strong");
+    textContent.textContent = previewUrls.name;
+    const textContentCurrent = document.createElement("span");
+    textContentCurrent.textContent = previewUrls.description;
+    dataset.append(element, textContent, textContentCurrent);
+    return dataset;
   }));
   projectCanvasFields.hidden = false;
   if (projectDialogMode === "create") {
-    const found = list2.find(component => component.id === selectedProjectTemplateId);
+    const found = list.find(component => component.id === selectedProjectTemplateId);
     projectForm.elements.name.value = found?.id ? found.name : "我的仪表盘";
     const readOnly = !!found?.id;
     projectCanvasWidth.readOnly = readOnly;
@@ -7987,7 +7987,7 @@ function parseTemplatePreviewMeta(value) {
 function showTemplatePreviewAt(value, param) {
   const {
     urls: temp,
-    labels: temp2
+    labels: meta
   } = parseTemplatePreviewMeta(value);
   if (!temp.length) {
     return;
@@ -7995,17 +7995,17 @@ function showTemplatePreviewAt(value, param) {
   const number = (Number(param) % temp.length + temp.length) % temp.length;
   value.dataset.previewIndex = String(number);
   const element = value.querySelector(".project-template-preview-open img");
-  const el3 = value.querySelector(".project-template-carousel-meta strong");
-  const el4 = value.querySelector(".project-template-carousel-meta span");
+  const el = value.querySelector(".project-template-carousel-meta strong");
+  const selector = value.querySelector(".project-template-carousel-meta span");
   if (element) {
     element.src = temp[number];
-    element.alt = temp2[number] || "栖光预览 " + (number + 1);
+    element.alt = meta[number] || "栖光预览 " + (number + 1);
   }
-  if (el3) {
-    el3.textContent = temp2[number] || "栖光预览";
+  if (el) {
+    el.textContent = meta[number] || "栖光预览";
   }
-  if (el4) {
-    el4.textContent = number + 1 + " / " + temp.length;
+  if (selector) {
+    selector.textContent = number + 1 + " / " + temp.length;
   }
 }
 function syncProjectPreviewCarousel() {
@@ -8017,15 +8017,15 @@ function syncProjectPreviewCarousel() {
     projectPreviewCount.textContent = projectPreviewIndex + 1 + " / " + projectPreviewUrls.length;
   }
 }
-function openDialog(dataset29) {
+function openDialog(dataset) {
   const {
-    urls: length14,
+    urls: length,
     labels: temp
-  } = parseTemplatePreviewMeta(dataset29);
-  if (length14.length) {
-    projectPreviewUrls = length14;
+  } = parseTemplatePreviewMeta(dataset);
+  if (length.length) {
+    projectPreviewUrls = length;
     projectPreviewTitles = temp;
-    projectPreviewIndex = Number(dataset29.dataset.previewIndex || 0);
+    projectPreviewIndex = Number(dataset.dataset.previewIndex || 0);
     syncProjectPreviewCarousel();
     projectPreviewDialog.showModal();
   }
@@ -8033,19 +8033,19 @@ function openDialog(dataset29) {
 function openProjectDialog(value = "create") {
   projectDialogMode = value;
   const flag = value === "edit";
-  const flag2 = value === "resize";
+  const flagCurrent = value === "resize";
   projectForm.reset();
-  projectDialogKicker.textContent = flag2 ? "RESIZE DASHBOARD" : flag ? "EDIT PROJECT" : "NEW PROJECT";
-  projectDialogTitle.textContent = flag2 ? "修改仪表盘分辨率" : flag ? "修改仪表盘" : "创建仪表盘项目";
-  projectSubmitBtn.textContent = flag2 ? "应用修改" : flag ? "保存修改" : "创建项目";
-  projectForm.elements.name.value = flag || flag2 ? currentProject?.document?.name || "" : "我的仪表盘";
-  projectTemplateFields.hidden = flag || flag2;
+  projectDialogKicker.textContent = flagCurrent ? "RESIZE DASHBOARD" : flag ? "EDIT PROJECT" : "NEW PROJECT";
+  projectDialogTitle.textContent = flagCurrent ? "修改仪表盘分辨率" : flag ? "修改仪表盘" : "创建仪表盘项目";
+  projectSubmitBtn.textContent = flagCurrent ? "应用修改" : flag ? "保存修改" : "创建项目";
+  projectForm.elements.name.value = flag || flagCurrent ? currentProject?.document?.name || "" : "我的仪表盘";
+  projectTemplateFields.hidden = flag || flagCurrent;
   projectCanvasWidth.readOnly = false;
   projectCanvasHeight.readOnly = false;
   projectContentLock.checked = false;
-  projectContentLockFields.hidden = !flag2;
+  projectContentLockFields.hidden = !flagCurrent;
   projectCanvasFields.classList.remove("fixed", "name-only");
-  if (!flag && !flag2) {
+  if (!flag && !flagCurrent) {
     defaultCanvasWidth = 2778;
     defaultCanvasHeight = 1940;
     projectAspectLocked = false;
@@ -8105,34 +8105,34 @@ function applyLockedAspectRatio(value) {
   const number = Number(lockedAspectHeight);
   if (!!temp && !!number) {
     if (value === "width") {
-      let number2 = Number(projectCanvasWidth.value);
-      if (!Number.isInteger(number2) || number2 < 320 || number2 > 7680) {
+      let numberCurrent = Number(projectCanvasWidth.value);
+      if (!Number.isInteger(numberCurrent) || numberCurrent < 320 || numberCurrent > 7680) {
         return;
       }
-      let temp2 = Math.round(number2 * number / temp);
-      if (temp2 < 240 || temp2 > 4320) {
-        temp2 = Math.max(240, Math.min(4320, temp2));
-        number2 = Math.max(320, Math.min(7680, Math.round(temp2 * temp / number)));
-        projectCanvasWidth.value = String(number2);
+      let round = Math.round(numberCurrent * number / temp);
+      if (round < 240 || round > 4320) {
+        round = Math.max(240, Math.min(4320, round));
+        numberCurrent = Math.max(320, Math.min(7680, Math.round(round * temp / number)));
+        projectCanvasWidth.value = String(numberCurrent);
       }
-      projectCanvasHeight.value = String(temp2);
+      projectCanvasHeight.value = String(round);
     } else {
-      let number2 = Number(projectCanvasHeight.value);
-      if (!Number.isInteger(number2) || number2 < 240 || number2 > 4320) {
+      let numberCurrent = Number(projectCanvasHeight.value);
+      if (!Number.isInteger(numberCurrent) || numberCurrent < 240 || numberCurrent > 4320) {
         return;
       }
-      let temp2 = Math.round(number2 * temp / number);
-      if (temp2 < 320 || temp2 > 7680) {
-        temp2 = Math.max(320, Math.min(7680, temp2));
-        number2 = Math.max(240, Math.min(4320, Math.round(temp2 * number / temp)));
-        projectCanvasHeight.value = String(number2);
+      let round = Math.round(numberCurrent * temp / number);
+      if (round < 320 || round > 7680) {
+        round = Math.max(320, Math.min(7680, round));
+        numberCurrent = Math.max(240, Math.min(4320, Math.round(round * number / temp)));
+        projectCanvasHeight.value = String(numberCurrent);
       }
-      projectCanvasWidth.value = String(temp2);
+      projectCanvasWidth.value = String(round);
     }
   }
 }
-function openDialog2(value, param, param2) {
-  projectResizeWarningText.textContent = "当前分辨率为 " + param + " × " + param2 + "，预计有 " + value + " 个控件会部分或全部位于画布范围之外。";
+function openDialogCurrent(value, param, item) {
+  projectResizeWarningText.textContent = "当前分辨率为 " + param + " × " + item + "，预计有 " + value + " 个控件会部分或全部位于画布范围之外。";
   return new Promise(item => {
     projectResizeWarningResolve = item;
     projectResizeWarningDialog.showModal();
@@ -8184,12 +8184,12 @@ function licenseStatusLabel(element) {
   const hbFloorplanAutoDiagramLoading = element?.status || "UNACTIVATED";
   const temp = hbFloorplanAutoDiagramLoading === "ACTIVE";
   const includesValue = ["CONNECTION_WARNING", "STARTUP_VALIDATION_REQUIRED"].includes(hbFloorplanAutoDiagramLoading);
-  const includesValue2 = ["LEASE_EXPIRED", "INSTANCE_MISMATCH", "INVALID", "REVOKED", "CLOCK_ROLLBACK"].includes(hbFloorplanAutoDiagramLoading);
+  const present = ["LEASE_EXPIRED", "INSTANCE_MISMATCH", "INVALID", "REVOKED", "CLOCK_ROLLBACK"].includes(hbFloorplanAutoDiagramLoading);
   licenseOpenBtn.classList.toggle("connected", temp);
   licenseOpenBtn.classList.toggle("warning", includesValue);
-  licenseOpenBtn.classList.toggle("error", includesValue2);
+  licenseOpenBtn.classList.toggle("error", present);
   licenseOpenBtn.querySelector("span").textContent = !element?.required && hbFloorplanAutoDiagramLoading === "UNACTIVATED" ? "授权 · 开发模式" : value[hbFloorplanAutoDiagramLoading] || "授权状态";
-  licenseDetailIndicator.className = temp ? "connected" : includesValue ? "warning" : includesValue2 ? "error" : "";
+  licenseDetailIndicator.className = temp ? "connected" : includesValue ? "warning" : present ? "error" : "";
   licenseDetailStatus.textContent = value[hbFloorplanAutoDiagramLoading] || hbFloorplanAutoDiagramLoading;
   licenseDetailEdition.textContent = element?.activationCodeId ? "当前编辑器的授权与附加包" : element?.required ? "尚未激活" : "开发模式";
   licenseCard.render(element);
@@ -8216,12 +8216,12 @@ async function loadLicenseStatus() {
     currentProject = null;
     clearSelection();
     setWorkspaceEmpty(false);
-    const div2 = document.createElement("div");
-    div2.className = "canvas-message";
+    const div = document.createElement("div");
+    div.className = "canvas-message";
     const element = document.createElement("strong");
     element.textContent = number;
-    div2.append(element);
-    editorCanvas.replaceChildren(div2);
+    div.append(element);
+    editorCanvas.replaceChildren(div);
     if (colorPickerDraftHex !== chosen.id) {
       colorPickerDraftHex = chosen.id;
       onError(new Error(number));
@@ -8247,17 +8247,17 @@ licenseOpenBtn.addEventListener("click", async () => {
   }
 });
 licenseCloseBtn.addEventListener("click", () => licenseDialog.close());
-licenseDialog.addEventListener("click", target6 => {
-  if (target6.target === licenseDialog) {
+licenseDialog.addEventListener("click", target => {
+  if (target.target === licenseDialog) {
     licenseDialog.close();
   }
 });
 licenseForm.addEventListener("submit", async value => {
   value.preventDefault();
-  const disabled2 = licenseForm.querySelector("button[type=\"submit\"]");
+  const disabled = licenseForm.querySelector("button[type=\"submit\"]");
   const activationCode = String(new FormData(licenseForm).get("activationCode") || "").trim();
   const email = String(new FormData(licenseForm).get("email") || "").trim();
-  disabled2.disabled = true;
+  disabled.disabled = true;
   setStatusMessage(licenseMessage, "正在绑定实例并获取签名租约…");
   try {
     const asyncResult = await apiFetch("/license/activate", {
@@ -8270,10 +8270,10 @@ licenseForm.addEventListener("submit", async value => {
     licenseForm.reset();
     licenseStatusLabel(asyncResult);
     setStatusMessage(licenseMessage, "当前实例已成功激活。", "success");
-  } catch (message2) {
-    setStatusMessage(licenseMessage, message2.message, "error");
+  } catch (error) {
+    setStatusMessage(licenseMessage, error.message, "error");
   } finally {
-    disabled2.disabled = false;
+    disabled.disabled = false;
   }
 });
 haOpenBtn.addEventListener("click", async () => {
@@ -8308,16 +8308,16 @@ haTestBtn.addEventListener("click", async () => {
       body: JSON.stringify(readHaFormPayload(true))
     });
     setStatusMessage(haMessage, "连接成功：" + (locationName.locationName || "Home Assistant") + " · " + (locationName.version || "未知版本"), "success");
-  } catch (message3) {
-    setStatusMessage(haMessage, message3.message, "error");
+  } catch (error) {
+    setStatusMessage(haMessage, error.message, "error");
   } finally {
     haTestBtn.disabled = false;
   }
 });
 haForm.addEventListener("submit", async event => {
   event.preventDefault();
-  const disabled3 = haForm.querySelector("button[type=\"submit\"]");
-  disabled3.disabled = true;
+  const disabled = haForm.querySelector("button[type=\"submit\"]");
+  disabled.disabled = true;
   setStatusMessage(haMessage, "正在验证并加密保存连接…");
   try {
     haConnection = await apiFetch("/ha/connection", {
@@ -8329,12 +8329,12 @@ haForm.addEventListener("submit", async event => {
     if (!(await waitForHaConnection()) && !haConnection?.lastError && haSyncStatus?.status !== "error") {
       haDetailStatus.textContent = "后台仍在建立实时连接";
     }
-  } catch (message4) {
+  } catch (error) {
     haFormEditing = true;
     syncHaConnectionPanels();
-    setStatusMessage(haMessage, message4.message, "error");
+    setStatusMessage(haMessage, error.message, "error");
   } finally {
-    disabled3.disabled = false;
+    disabled.disabled = false;
   }
 });
 haEditBtn.addEventListener("click", startHaFormEdit);
@@ -8347,19 +8347,19 @@ haDeleteBtn.addEventListener("click", () => {
 });
 deleteHaCloseBtn.addEventListener("click", () => deleteHaDialog.close());
 deleteHaCancelBtn.addEventListener("click", () => deleteHaDialog.close());
-deleteHaDialog.addEventListener("click", target7 => {
-  if (target7.target === deleteHaDialog) {
+deleteHaDialog.addEventListener("click", target => {
+  if (target.target === deleteHaDialog) {
     deleteHaDialog.close();
   }
 });
-deleteHaForm.addEventListener("submit", async preventDefault2 => {
-  preventDefault2.preventDefault();
+deleteHaForm.addEventListener("submit", async preventDefault => {
+  preventDefault.preventDefault();
   if (String(new FormData(deleteHaForm).get("confirmation") || "").trim() !== "删除连接") {
     setStatusMessage(deleteHaMessage, "请输入“删除连接”确认。", "error");
     return;
   }
-  const disabled4 = deleteHaForm.querySelector("button[type=\"submit\"]");
-  disabled4.disabled = true;
+  const disabled = deleteHaForm.querySelector("button[type=\"submit\"]");
+  disabled.disabled = true;
   setStatusMessage(deleteHaMessage, "正在断开连接并清除同步目录…");
   try {
     await apiFetch("/ha/connection", {
@@ -8372,10 +8372,10 @@ deleteHaForm.addEventListener("submit", async preventDefault2 => {
     await ensureHaBootstrap({
       preserveForm: false
     });
-  } catch (message5) {
-    setStatusMessage(deleteHaMessage, message5.message, "error");
+  } catch (error) {
+    setStatusMessage(deleteHaMessage, error.message, "error");
   } finally {
-    disabled4.disabled = false;
+    disabled.disabled = false;
   }
 });
 projectNewBtn.addEventListener("click", async () => {
@@ -8403,68 +8403,68 @@ uiPackOpenBtn.addEventListener("click", async () => {
   }
 });
 uiPackCloseBtn.addEventListener("click", () => uiPackDialog.close());
-uiPackDialog.addEventListener("click", target8 => {
-  if (target8.target === uiPackDialog) {
+uiPackDialog.addEventListener("click", target => {
+  if (target.target === uiPackDialog) {
     uiPackDialog.close();
   }
 });
 uiPackList.addEventListener("click", async value => {
-  const disabled5 = value.target.closest("[data-ui-pack-id]");
-  if (!disabled5 || disabled5.disabled || !currentProject) {
+  const disabled = value.target.closest("[data-ui-pack-id]");
+  if (!disabled || disabled.disabled || !currentProject) {
     return;
   }
-  const allowed = uiPacks.find(component => component.id === disabled5.dataset.uiPackId);
+  const allowed = uiPacks.find(component => component.id === disabled.dataset.uiPackId);
   if (!allowed?.allowed) {
     setStatusMessage(uiPackMessage, "当前授权尚未解锁该 UI 方案。", "error");
     return;
   }
-  disabled5.disabled = true;
+  disabled.disabled = true;
   setStatusMessage(uiPackMessage, "正在加载并应用整套 UI…");
   try {
     await ensureUiPackRuntime(allowed);
     await mutateDocument(param => applyUiPackToDocument(param, allowed));
     uiPackDialog.close();
-  } catch (message6) {
-    setStatusMessage(uiPackMessage, message6.message, "error");
-    disabled5.disabled = false;
+  } catch (error) {
+    setStatusMessage(uiPackMessage, error.message, "error");
+    disabled.disabled = false;
   }
 });
 projectCloseBtn.addEventListener("click", () => projectDialog.close());
 projectCancelBtn.addEventListener("click", () => projectDialog.close());
-projectDialog.addEventListener("click", target9 => {
-  if (target9.target === projectDialog) {
+projectDialog.addEventListener("click", target => {
+  if (target.target === projectDialog) {
     projectDialog.close();
   }
 });
-projectTemplateOptions.addEventListener("click", target10 => {
-  const dataset10 = target10.target.closest("[data-project-template-id]");
-  if (!dataset10 || projectDialogMode !== "create") {
+projectTemplateOptions.addEventListener("click", target => {
+  const dataset = target.target.closest("[data-project-template-id]");
+  if (!dataset || projectDialogMode !== "create") {
     return;
   }
-  const temp = target10.target.closest("[data-project-preview-action]")?.dataset.projectPreviewAction;
+  const temp = target.target.closest("[data-project-preview-action]")?.dataset.projectPreviewAction;
   if (temp) {
-    target10.stopPropagation();
-    if (temp === "open" && (dataset10.dataset.projectTemplateId || "") !== selectedProjectTemplateId) {
-      selectedProjectTemplateId = dataset10.dataset.projectTemplateId || "";
+    target.stopPropagation();
+    if (temp === "open" && (dataset.dataset.projectTemplateId || "") !== selectedProjectTemplateId) {
+      selectedProjectTemplateId = dataset.dataset.projectTemplateId || "";
       selectProjectTemplate(selectedProjectTemplateId);
     } else if (temp === "open") {
-      openDialog(dataset10);
+      openDialog(dataset);
     } else {
-      showTemplatePreviewAt(dataset10, Number(dataset10.dataset.previewIndex || 0) + (temp === "next" ? 1 : -1));
+      showTemplatePreviewAt(dataset, Number(dataset.dataset.previewIndex || 0) + (temp === "next" ? 1 : -1));
     }
     return;
   }
-  selectedProjectTemplateId = dataset10.dataset.projectTemplateId || "";
+  selectedProjectTemplateId = dataset.dataset.projectTemplateId || "";
   selectProjectTemplate(selectedProjectTemplateId);
 });
-projectTemplateOptions.addEventListener("keydown", target11 => {
-  if (!["Enter", " "].includes(target11.key) || target11.target.closest("button")) {
+projectTemplateOptions.addEventListener("keydown", target => {
+  if (!["Enter", " "].includes(target.key) || target.target.closest("button")) {
     return;
   }
-  const dataset11 = target11.target.closest("[data-project-template-id]");
-  if (!!dataset11 && projectDialogMode === "create") {
-    target11.preventDefault();
-    selectedProjectTemplateId = dataset11.dataset.projectTemplateId || "";
+  const dataset = target.target.closest("[data-project-template-id]");
+  if (!!dataset && projectDialogMode === "create") {
+    target.preventDefault();
+    selectedProjectTemplateId = dataset.dataset.projectTemplateId || "";
     selectProjectTemplate(selectedProjectTemplateId);
   }
 });
@@ -8477,8 +8477,8 @@ projectPreviewNextBtn.addEventListener("click", () => {
   projectPreviewIndex += 1;
   syncProjectPreviewCarousel();
 });
-projectPreviewDialog.addEventListener("click", target12 => {
-  if (target12.target === projectPreviewDialog) {
+projectPreviewDialog.addEventListener("click", target => {
+  if (target.target === projectPreviewDialog) {
     projectPreviewDialog.close();
   }
 });
@@ -8513,15 +8513,15 @@ projectAspectLock.addEventListener("click", () => {
     return;
   }
   const number = Number(projectCanvasWidth.value);
-  const number2 = Number(projectCanvasHeight.value);
-  if (!Number.isInteger(number) || !Number.isInteger(number2) || number < 320 || number > 7680 || number2 < 240 || number2 > 4320) {
+  const numberCurrent = Number(projectCanvasHeight.value);
+  if (!Number.isInteger(number) || !Number.isInteger(numberCurrent) || number < 320 || number > 7680 || numberCurrent < 240 || numberCurrent > 4320) {
     setStatusMessage(projectMessage, "请先输入有效的宽度和高度后再锁定比例。", "error");
     return;
   }
   projectAspectLocked = !projectAspectLocked;
   if (projectAspectLocked) {
     lockedAspectWidth = number;
-    lockedAspectHeight = number2;
+    lockedAspectHeight = numberCurrent;
   }
   setStatusMessage(projectMessage, "");
   syncProjectAspectLockUi(false);
@@ -8529,22 +8529,22 @@ projectAspectLock.addEventListener("click", () => {
 projectResizeWarningCloseBtn.addEventListener("click", () => resolveProjectResizeWarning(false));
 projectResizeWarningCancelBtn.addEventListener("click", () => resolveProjectResizeWarning(false));
 projectResizeWarningConfirmBtn.addEventListener("click", () => resolveProjectResizeWarning(true));
-projectResizeWarningDialog.addEventListener("cancel", preventDefault3 => {
-  preventDefault3.preventDefault();
+projectResizeWarningDialog.addEventListener("cancel", preventDefault => {
+  preventDefault.preventDefault();
   resolveProjectResizeWarning(false);
 });
 projectForm.addEventListener("submit", async value => {
   value.preventDefault();
   const projectAction = new FormData(projectForm);
-  const name15 = String(projectAction.get("name") || "").trim();
+  const name = String(projectAction.get("name") || "").trim();
   const canvasWidth = Number(projectAction.get("canvasWidth"));
   const canvasHeight = Number(projectAction.get("canvasHeight"));
   const lockContent = projectDialogMode === "resize" && projectContentLock.checked;
   if (projectDialogMode === "resize" && lockContent) {
     const number = Number(currentProject?.document?.canvas?.width || 2778);
-    const canvasHeight2 = Number(currentProject?.document?.canvas?.height || 1940);
-    const chosen = canvasWidth !== number || canvasHeight !== canvasHeight2 ? countComponentsOutsideCanvas(currentProject.document, canvasWidth, canvasHeight) : 0;
-    if (chosen > 0 && !(await openDialog2(chosen, canvasWidth, canvasHeight))) {
+    const canvasHeightCurrent = Number(currentProject?.document?.canvas?.height || 1940);
+    const chosen = canvasWidth !== number || canvasHeight !== canvasHeightCurrent ? countComponentsOutsideCanvas(currentProject.document, canvasWidth, canvasHeight) : 0;
+    if (chosen > 0 && !(await openDialogCurrent(chosen, canvasWidth, canvasHeight))) {
       return;
     }
   }
@@ -8555,17 +8555,17 @@ projectForm.addEventListener("submit", async value => {
       const name8 = resizeDashboardDocument(currentProject.document, canvasWidth, canvasHeight, {
         lockContent
       });
-      name8.name = name15;
+      name8.name = name;
       await commitDocumentEdit(name8);
       projectDialog.close();
     } else if (projectDialogMode === "edit") {
       const name7 = cloneValue(currentProject.document);
-      name7.name = name15;
+      name7.name = name;
       await commitDocumentEdit(name7);
       projectDialog.close();
     } else {
       const templateId = {
-        name: name15,
+        name: name,
         canvasWidth,
         canvasHeight,
         uiPackId: "ui.base"
@@ -8580,8 +8580,8 @@ projectForm.addEventListener("submit", async value => {
       projectDialog.close();
       await loadProjectList(asyncResult.id);
     }
-  } catch (message7) {
-    setStatusMessage(projectMessage, message7.message, "error");
+  } catch (error) {
+    setStatusMessage(projectMessage, error.message, "error");
   } finally {
     projectSubmitBtn.disabled = false;
   }
@@ -8613,21 +8613,21 @@ projectActionsMenu.addEventListener("click", async value => {
     if (temp === "duplicate") {
       const name = currentProject.document.name;
       const idSet = new Set(projectList.map(name4 => name4.name));
-      let name9 = name + " 副本";
+      let value = name + " 副本";
       let number = 2;
-      while (idSet.has(name9)) {
-        name9 = name + " 副本 " + number++;
+      while (idSet.has(value)) {
+        value = name + " 副本 " + number++;
       }
       try {
         const asyncResult = await apiFetch("/projects/" + currentProject.projectId + "/duplicate", {
           method: "POST",
           body: JSON.stringify({
-            name: name9
+            name: value
           })
         });
         await loadProjectList(asyncResult.id);
-      } catch (temp2) {
-        onError(temp2);
+      } catch (error) {
+        onError(error);
       }
       return;
     }
@@ -8647,22 +8647,22 @@ projectActionsMenu.addEventListener("click", async value => {
 });
 deleteProjectCloseBtn.addEventListener("click", () => deleteProjectDialog.close());
 deleteProjectCancelBtn.addEventListener("click", () => deleteProjectDialog.close());
-deleteProjectDialog.addEventListener("click", target13 => {
-  if (target13.target === deleteProjectDialog) {
+deleteProjectDialog.addEventListener("click", target => {
+  if (target.target === deleteProjectDialog) {
     deleteProjectDialog.close();
   }
 });
-deleteProjectForm.addEventListener("submit", async preventDefault4 => {
-  preventDefault4.preventDefault();
-  const disabled6 = deleteProjectForm.querySelector("button[type=\"submit\"]");
+deleteProjectForm.addEventListener("submit", async preventDefault => {
+  preventDefault.preventDefault();
+  const disabled = deleteProjectForm.querySelector("button[type=\"submit\"]");
   const confirmation = String(new FormData(deleteProjectForm).get("confirmation") || "");
   const temp = deleteProjectDialog.dataset.projectId;
-  const temp2 = deleteProjectDialog.dataset.projectName;
-  if (confirmation !== temp2) {
+  const projectName = deleteProjectDialog.dataset.projectName;
+  if (confirmation !== projectName) {
     setStatusMessage(deleteProjectMessage, "请输入与项目名称完全一致的确认文字。", "error");
     return;
   }
-  disabled6.disabled = true;
+  disabled.disabled = true;
   setStatusMessage(deleteProjectMessage, "正在删除项目和草稿…");
   try {
     await apiFetch("/projects/" + temp, {
@@ -8678,47 +8678,47 @@ deleteProjectForm.addEventListener("submit", async preventDefault4 => {
     currentProject = null;
     clearSelection();
     await loadProjectList();
-  } catch (message8) {
-    setStatusMessage(deleteProjectMessage, message8.message, "error");
+  } catch (error) {
+    setStatusMessage(deleteProjectMessage, error.message, "error");
   } finally {
-    disabled6.disabled = false;
+    disabled.disabled = false;
   }
 });
 pageNewBtn.addEventListener("click", () => openPageDialog("create"));
 pageCloseBtn.addEventListener("click", () => pageDialog.close());
 pageCancelBtn.addEventListener("click", () => pageDialog.close());
-pageDialog.addEventListener("click", target14 => {
-  if (target14.target === pageDialog) {
+pageDialog.addEventListener("click", target => {
+  if (target.target === pageDialog) {
     pageDialog.close();
   }
 });
 pageForm.addEventListener("submit", async value => {
   value.preventDefault();
-  const name16 = String(new FormData(pageForm).get("name") || "").trim();
-  const pages3 = cloneValue(currentProject.document);
+  const name = String(new FormData(pageForm).get("name") || "").trim();
+  const pages = cloneValue(currentProject.document);
   const inputValue = pageSelect.value;
   pageSubmitBtn.disabled = true;
   setStatusMessage(pageMessage, pageDialogMode === "rename" ? "正在保存页面名称…" : "正在创建页面…");
   try {
     if (pageDialogMode === "rename") {
-      const name11 = pages3.pages.find(path4 => path4.path === inputValue);
-      name11.name = name16;
-      await commitDocumentEdit(pages3, inputValue);
+      const name11 = pages.pages.find(path => path.path === inputValue);
+      name11.name = name;
+      await commitDocumentEdit(pages, inputValue);
     } else {
-      const path5 = {
+      const path = {
         id: newId("page"),
-        name: name16,
-        path: uniquePagePath(currentProject?.document?.pages, name16),
-        sharedComponentIds: pages3.sharedComponents.map(component2 => component2.id),
+        name: name,
+        path: uniquePagePath(currentProject?.document?.pages, name),
+        sharedComponentIds: pages.sharedComponents.map(component => component.id),
         components: []
       };
-      const maxValue = Math.max(0, pages3.pages.findIndex(path => path.path === inputValue));
-      pages3.pages.splice(maxValue + 1, 0, path5);
-      await commitDocumentEdit(pages3, path5.path);
+      const maxValue = Math.max(0, pages.pages.findIndex(path => path.path === inputValue));
+      pages.pages.splice(maxValue + 1, 0, path);
+      await commitDocumentEdit(pages, path.path);
     }
     pageDialog.close();
-  } catch (message9) {
-    setStatusMessage(pageMessage, message9.message, "error");
+  } catch (error) {
+    setStatusMessage(pageMessage, error.message, "error");
   } finally {
     pageSubmitBtn.disabled = false;
   }
@@ -8730,30 +8730,30 @@ componentGroupRenameDialog.addEventListener("click", value => {
     componentGroupRenameDialog.close();
   }
 });
-componentGroupRenameForm.addEventListener("submit", preventDefault5 => {
-  preventDefault5.preventDefault();
+componentGroupRenameForm.addEventListener("submit", preventDefault => {
+  preventDefault.preventDefault();
   const flag = componentGroupRenameDialog.dataset.groupId || "";
-  const temp2 = findComponent(currentProject?.document, flag)?.component;
-  if (!temp2 || temp2.type !== "group") {
+  const value = findComponent(currentProject?.document, flag)?.component;
+  if (!value || value.type !== "group") {
     componentGroupRenameDialog.close();
     return;
   }
-  const temp = componentLabel(temp2);
-  const label2 = String(new FormData(componentGroupRenameForm).get("name") || "").trim().slice(0, 128);
-  if (!label2) {
+  const temp = componentLabel(value);
+  const label = String(new FormData(componentGroupRenameForm).get("name") || "").trim().slice(0, 128);
+  if (!label) {
     setStatusMessage(componentGroupRenameMessage, "请输入组合名称。", "error");
     return;
   }
-  if (label2 === temp) {
+  if (label === temp) {
     componentGroupRenameDialog.close();
     return;
   }
   mutateDocument(param => {
-    const properties30 = findComponent(param, flag)?.component;
-    if (properties30?.type === "group") {
-      properties30.properties = {
-        ...(properties30.properties || {}),
-        label: label2
+    const properties = findComponent(param, flag)?.component;
+    if (properties?.type === "group") {
+      properties.properties = {
+        ...(properties.properties || {}),
+        label: label
       };
     }
   });
@@ -8778,28 +8778,28 @@ pageActionsMenu.addEventListener("click", async value => {
     openPageDialog("rename");
     return;
   }
-  const pages4 = cloneValue(currentProject.document);
-  const temp2 = pages4.pages.findIndex(path6 => path6.path === path10.path);
+  const pages = cloneValue(currentProject.document);
+  const foundIndex = pages.pages.findIndex(path => path.path === path10.path);
   if (temp === "default") {
-    if (pages4.defaultPagePath === path10.path) {
+    if (pages.defaultPagePath === path10.path) {
       return;
     }
-    pages4.defaultPagePath = path10.path;
+    pages.defaultPagePath = path10.path;
     try {
-      await commitDocumentEdit(pages4, path10.path);
+      await commitDocumentEdit(pages, path10.path);
       await autosaveDocument();
-    } catch (temp3) {
-      onError(temp3);
+    } catch (error) {
+      onError(error);
     }
     return;
   }
   if (temp === "duplicate") {
-    const path9 = clonePageWithFreshIds(path10, path10.name + " 副本", currentProject.document.pages);
-    pages4.pages.splice(temp2 + 1, 0, path9);
+    const path = clonePageWithFreshIds(path10, path10.name + " 副本", currentProject.document.pages);
+    pages.pages.splice(foundIndex + 1, 0, path);
     try {
-      await commitDocumentEdit(pages4, path9.path);
-    } catch (temp3) {
-      onError(temp3);
+      await commitDocumentEdit(pages, path.path);
+    } catch (error) {
+      onError(error);
     }
     return;
   }
@@ -8812,74 +8812,74 @@ pageActionsMenu.addEventListener("click", async value => {
 });
 deletePageCloseBtn.addEventListener("click", () => deletePageDialog.close());
 deletePageCancelBtn.addEventListener("click", () => deletePageDialog.close());
-deletePageDialog.addEventListener("click", target15 => {
-  if (target15.target === deletePageDialog) {
+deletePageDialog.addEventListener("click", target => {
+  if (target.target === deletePageDialog) {
     deletePageDialog.close();
   }
 });
 deletePageConfirmBtn.addEventListener("click", async () => {
   const temp = deletePageDialog.dataset.pagePath;
-  const pages5 = cloneValue(currentProject.document);
-  const temp2 = pages5.pages.findIndex(path7 => path7.path === temp);
-  if (temp2 < 0) {
+  const pages = cloneValue(currentProject.document);
+  const foundIndex = pages.pages.findIndex(path => path.path === temp);
+  if (foundIndex < 0) {
     setStatusMessage(deletePageMessage, "页面已经不存在，请刷新后重试。", "error");
     return;
   }
-  const name17 = pages5.pages[temp2];
-  pages5.pages.splice(temp2, 1);
-  const target16 = pages5.pages[Math.max(0, temp2 - 1)]?.path || pages5.pages[0]?.path || null;
-  const name18 = pages5.pages.find(path8 => path8.path === target16);
-  if (pages5.defaultPagePath === temp) {
-    pages5.defaultPagePath = target16;
+  const name17 = pages.pages[foundIndex];
+  pages.pages.splice(foundIndex, 1);
+  const target = pages.pages[Math.max(0, foundIndex - 1)]?.path || pages.pages[0]?.path || null;
+  const name18 = pages.pages.find(path => path.path === target);
+  if (pages.defaultPagePath === temp) {
+    pages.defaultPagePath = target;
   }
   const callback = param => {
-    for (const properties12 of param || []) {
-      properties12.properties = {
-        ...(properties12.properties || {})
+    for (const properties of param || []) {
+      properties.properties = {
+        ...(properties.properties || {})
       };
-      if (properties12.type === "navigation-button" && properties12.properties.targetPage === temp) {
-        if (!properties12.properties.mainText || properties12.properties.mainText === "页面导航" || properties12.properties.mainText === name17?.name) {
-          properties12.properties.mainText = name18?.name || "页面导航";
+      if (properties.type === "navigation-button" && properties.properties.targetPage === temp) {
+        if (!properties.properties.mainText || properties.properties.mainText === "页面导航" || properties.properties.mainText === name17?.name) {
+          properties.properties.mainText = name18?.name || "页面导航";
         }
-        const temp3 = String(temp).replace(/[-_]+/g, " ").toUpperCase();
-        if (!properties12.properties.secondaryText || properties12.properties.secondaryText === "NAVIGATION" || properties12.properties.secondaryText === temp3) {
-          properties12.properties.secondaryText = target16 ? String(target16).replace(/[-_]+/g, " ").toUpperCase() : "NAVIGATION";
+        const value = String(temp).replace(/[-_]+/g, " ").toUpperCase();
+        if (!properties.properties.secondaryText || properties.properties.secondaryText === "NAVIGATION" || properties.properties.secondaryText === value) {
+          properties.properties.secondaryText = target ? String(target).replace(/[-_]+/g, " ").toUpperCase() : "NAVIGATION";
         }
-        if (target16) {
-          properties12.properties.targetPage = target16;
+        if (target) {
+          properties.properties.targetPage = target;
         } else {
-          delete properties12.properties.targetPage;
+          delete properties.properties.targetPage;
         }
       }
-      properties12.actions = {
-        ...(properties12.actions || {})
+      properties.actions = {
+        ...(properties.actions || {})
       };
-      for (const temp3 of ["tap", "doubleTap", "hold"]) {
-        if (properties12.actions[temp3]?.type === "navigate" && properties12.actions[temp3]?.target === temp) {
-          if (properties12.type === "navigation-button" && target16) {
-            properties12.actions[temp3] = {
+      for (const value of ["tap", "doubleTap", "hold"]) {
+        if (properties.actions[value]?.type === "navigate" && properties.actions[value]?.target === temp) {
+          if (properties.type === "navigation-button" && target) {
+            properties.actions[value] = {
               type: "navigate",
-              target: target16
+              target: target
             };
           } else {
-            delete properties12.actions[temp3];
+            delete properties.actions[value];
           }
         }
       }
-      callback(properties12.children);
+      callback(properties.children);
     }
   };
-  callback(pages5.sharedComponents);
-  for (const components5 of pages5.pages) {
-    callback(components5.components);
+  callback(pages.sharedComponents);
+  for (const components of pages.pages) {
+    callback(components.components);
   }
   deletePageConfirmBtn.disabled = true;
   setStatusMessage(deletePageMessage, "正在删除页面…");
   try {
-    await commitDocumentEdit(pages5, target16);
+    await commitDocumentEdit(pages, target);
     deletePageDialog.close();
-  } catch (message10) {
-    setStatusMessage(deletePageMessage, message10.message, "error");
+  } catch (error) {
+    setStatusMessage(deletePageMessage, error.message, "error");
   } finally {
     deletePageConfirmBtn.disabled = false;
   }
@@ -8887,8 +8887,8 @@ deletePageConfirmBtn.addEventListener("click", async () => {
 componentContextMenu.addEventListener("click", value => {
   const alias = contextMenuComponentId;
   const temp = value.target.closest("[data-component-action]")?.dataset.componentAction;
-  const dataset12 = value.target.closest("[data-label-color]");
-  if (!alias || !temp && !dataset12) {
+  const dataset = value.target.closest("[data-label-color]");
+  if (!alias || !temp && !dataset) {
     return;
   }
   const map = selectedComponentIds.has(alias) ? [...selectedComponentIds] : [alias];
@@ -8914,19 +8914,19 @@ componentContextMenu.addEventListener("click", value => {
     return;
   }
   if (temp === "visibility") {
-    const length5 = map.map(item => findComponent(currentProject?.document, item)?.component).filter(Boolean).map(style2 => style2.style?.visible !== false);
-    if (length5.length !== map.length || !length5.length || !length5.every(item => item === length5[0])) {
+    const length = map.map(item => findComponent(currentProject?.document, item)?.component).filter(Boolean).map(style => style.style?.visible !== false);
+    if (length.length !== map.length || !length.length || !length.every(item => item === length[0])) {
       return;
     }
-    setComponentsVisible(map, !length5[0]);
+    setComponentsVisible(map, !length[0]);
     return;
   }
   if (temp === "delete") {
     deleteSelectedComponents(map);
     return;
   }
-  if (dataset12) {
-    setSelectedComponentsColor(map, dataset12.dataset.labelColor);
+  if (dataset) {
+    setSelectedComponentsColor(map, dataset.dataset.labelColor);
   }
 });
 deleteComponentCloseBtn.addEventListener("click", () => deleteComponentDialog.close());
@@ -8966,15 +8966,15 @@ copyComponentPageProject.addEventListener("change", () => {
 });
 copyComponentPageForm.addEventListener("submit", async event => {
   event.preventDefault();
-  let length7 = [];
+  let length = [];
   try {
-    length7 = JSON.parse(copyComponentPageDialog.dataset.componentIds || "[]");
+    length = JSON.parse(copyComponentPageDialog.dataset.componentIds || "[]");
   } catch {
-    length7 = [];
+    length = [];
   }
   const replace = copyComponentPageTarget.value;
   const flag = copyComponentPageScope.value === "other";
-  if (!!currentProject && !!length7.length && !!replace) {
+  if (!!currentProject && !!length.length && !!replace) {
     copyComponentPageSubmitBtn.disabled = true;
     setStatusMessage(copyComponentPageMessage, "正在复制控件…");
     try {
@@ -8986,7 +8986,7 @@ copyComponentPageForm.addEventListener("submit", async event => {
         const document = cloneValue(copyTargetProject.document);
         const scaleMode = copyComponentScaleOptions.hidden ? "none" : copyComponentPageForm.elements.copyScaleMode.value;
         let number = 0;
-        const length2 = copyComponentsAcrossDocuments(currentProject.document, document, length7, replace, {
+        const documents = copyComponentsAcrossDocuments(currentProject.document, document, length, replace, {
           cloneValue,
           createId: () => newId("component"),
           componentLabel,
@@ -8995,7 +8995,7 @@ copyComponentPageForm.addEventListener("submit", async event => {
             number += 1;
           }
         });
-        if (!length2.length) {
+        if (!documents.length) {
           throw new Error("目标页面或源控件已发生变化，请重新操作。");
         }
         const revision = await apiFetch("/projects/" + encodeURIComponent(projectId) + "/draft", {
@@ -9012,11 +9012,11 @@ copyComponentPageForm.addEventListener("submit", async event => {
         if (draftRevision) {
           draftRevision.draftRevision = revision.revision;
         }
-        const text3 = draftRevision?.name || "目标仪表盘";
-        const text4 = copyComponentPageTarget.selectedOptions[0]?.textContent || "目标区域";
+        const text = draftRevision?.name || "目标仪表盘";
+        const textCurrent = copyComponentPageTarget.selectedOptions[0]?.textContent || "目标区域";
         const chosen = number ? "（已清理 " + number + " 个目标仪表盘不存在的跳转或弹窗动作）" : "";
         copyComponentPageDialog.close();
-        showCopySuccessDialog("已复制 " + length2.length + " 个控件到“" + text3 + "”的“" + text4 + "”，并已保存" + chosen + "。", {
+        showCopySuccessDialog("已复制 " + documents.length + " 个控件到“" + text + "”的“" + textCurrent + "”，并已保存" + chosen + "。", {
           projectId,
           pagePath: replace === "shared" ? copyTargetProject.document.pages?.[0]?.path : replace.replace(/^page:/, ""),
           scope: replace === "shared" ? "shared" : "page"
@@ -9024,22 +9024,22 @@ copyComponentPageForm.addEventListener("submit", async event => {
         return;
       }
       const cloned = cloneValue(currentProject.document);
-      const length4 = copyComponentsToTarget(cloned, length7, replace, {
+      const list = copyComponentsToTarget(cloned, length, replace, {
         cloneValue,
         createId: () => newId("component"),
         componentLabel
       });
-      if (!length4.length) {
+      if (!list.length) {
         throw new Error("目标页面或源控件已发生变化，请重新操作。");
       }
-      componentId = length4[0].id;
-      selectedComponentIds = new Set(length4.map(sharedComponentIds => sharedComponentIds.id));
-      rangeSelectAnchorId = length4[0].id;
+      componentId = list[0].id;
+      selectedComponentIds = new Set(list.map(sharedComponentIds => sharedComponentIds.id));
+      rangeSelectAnchorId = list[0].id;
       const pagePath = replace === "shared" ? pageSelect.value : replace.replace(/^page:/, "");
-      const text2 = copyComponentPageTarget.selectedOptions[0]?.textContent || "目标区域";
+      const text = copyComponentPageTarget.selectedOptions[0]?.textContent || "目标区域";
       await commitDocumentEdit(cloned, pagePath);
       copyComponentPageDialog.close();
-      showCopySuccessDialog("已复制 " + length4.length + " 个控件到“" + text2 + "”，并已保存。", {
+      showCopySuccessDialog("已复制 " + list.length + " 个控件到“" + text + "”，并已保存。", {
         projectId: currentProject.projectId,
         pagePath,
         scope: replace === "shared" ? "shared" : "page"
@@ -9054,17 +9054,17 @@ copyComponentPageForm.addEventListener("submit", async event => {
   }
 });
 deleteComponentConfirmBtn.addEventListener("click", () => {
-  let length8 = [];
+  let length = [];
   try {
-    length8 = JSON.parse(deleteComponentDialog.dataset.componentIds || "[]");
+    length = JSON.parse(deleteComponentDialog.dataset.componentIds || "[]");
   } catch {
-    length8 = [];
+    length = [];
   }
-  if (!length8.length) {
+  if (!length.length) {
     return;
   }
   deleteComponentDialog.close();
-  const idSet = new Set(length8);
+  const idSet = new Set(length);
   selectedComponentIds = new Set([...selectedComponentIds].filter(item => !idSet.has(item)));
   if (idSet.has(componentId)) {
     componentId = selectedComponentIds.values().next().value || null;
@@ -9073,7 +9073,7 @@ deleteComponentConfirmBtn.addEventListener("click", () => {
     rangeSelectAnchorId = componentId;
   }
   mutateDocument(param => {
-    for (const temp of length8) {
+    for (const temp of length) {
       detachComponentById(param, temp);
     }
   });
@@ -9089,7 +9089,7 @@ airConditionerInspector.addEventListener("submit", event => event.preventDefault
 timeInspector.addEventListener("submit", event => event.preventDefault());
 dateInspector.addEventListener("submit", event => event.preventDefault());
 weatherInspector.addEventListener("submit", event => event.preventDefault());
-lineChartInspector.addEventListener("submit", preventDefault6 => preventDefault6.preventDefault());
+lineChartInspector.addEventListener("submit", preventDefault => preventDefault.preventDefault());
 panelFrameInspector.addEventListener("submit", value => value.preventDefault());
 navigationInspector.addEventListener("submit", value => value.preventDefault());
 const labelFieldBindings = new Map([[imageLabel, {
@@ -9108,16 +9108,16 @@ const labelFieldBindings = new Map([[imageLabel, {
   componentType: "title-button",
   property: "mainText",
   trim: false
-}], [titleButtonSecondaryLine1, {
+}], [titleButtonSecondaryLine, {
   componentType: "title-button",
   property: "secondaryText",
   trim: false,
-  getValue: () => titleButtonSecondaryLine1.value + "\n" + titleButtonSecondaryLine2.value
-}], [titleButtonSecondaryLine2, {
+  getValue: () => titleButtonSecondaryLine.value + "\n" + titleButtonSecondaryLineCurrent.value
+}], [titleButtonSecondaryLineCurrent, {
   componentType: "title-button",
   property: "secondaryText",
   trim: false,
-  getValue: () => titleButtonSecondaryLine1.value + "\n" + titleButtonSecondaryLine2.value
+  getValue: () => titleButtonSecondaryLine.value + "\n" + titleButtonSecondaryLineCurrent.value
 }], [lightStatisticsLabel, {
   componentType: "light-statistics",
   property: "label",
@@ -9203,38 +9203,38 @@ const labelFieldBindings = new Map([[imageLabel, {
   trim: false
 }]]);
 const pointerSessionByEl = new WeakMap();
-for (const [temp2, temp3] of labelFieldBindings) {
-  temp2.addEventListener("focus", () => {
+for (const [item, entry] of labelFieldBindings) {
+  item.addEventListener("focus", () => {
     if (!!currentProject && !!componentId) {
-      pointerSessionByEl.set(temp2, {
+      pointerSessionByEl.set(item, {
         componentId,
         before: captureHistorySnapshot(),
         historyRecorded: false
       });
     }
   });
-  temp2.addEventListener("input", () => {
+  item.addEventListener("input", () => {
     if (!currentProject || !componentId) {
       return;
     }
     const value = findComponent(currentProject.document, componentId);
-    const flag = temp3.componentTypes || [temp3.componentType];
+    const flag = entry.componentTypes || [entry.componentType];
     if (!value?.component || !flag.includes(value.component.type)) {
       return;
     }
-    const chosen = temp3.getValue ? temp3.getValue() : temp2.value;
-    const label = temp3.trim ? chosen.trim() : chosen;
-    if (String(value.component.properties?.[temp3.property] || "") === label) {
+    const chosen = entry.getValue ? entry.getValue() : item.value;
+    const label = entry.trim ? chosen.trim() : chosen;
+    if (String(value.component.properties?.[entry.property] || "") === label) {
       return;
     }
-    let temp = pointerSessionByEl.get(temp2);
+    let temp = pointerSessionByEl.get(item);
     if (!temp || temp.componentId !== componentId) {
       temp = {
         componentId,
         before: captureHistorySnapshot(),
         historyRecorded: false
       };
-      pointerSessionByEl.set(temp2, temp);
+      pointerSessionByEl.set(item, temp);
     }
     if (!temp.historyRecorded) {
       pushHistoryEntry(historyState.undo, temp.before);
@@ -9243,9 +9243,9 @@ for (const [temp2, temp3] of labelFieldBindings) {
     }
     value.component.properties = {
       ...(value.component.properties || {}),
-      [temp3.property]: label
+      [entry.property]: label
     };
-    if (temp3.property === "label") {
+    if (entry.property === "label") {
       renderComponentTree();
       editorRenderer?.previewComponentProperties(value.component.id, {
         label
@@ -9254,34 +9254,34 @@ for (const [temp2, temp3] of labelFieldBindings) {
         label
       });
     }
-    if (temp3.componentType === "navigation-button" && temp3.property !== "label") {
+    if (entry.componentType === "navigation-button" && entry.property !== "label") {
       editorRenderer?.previewComponentProperties(value.component.id, {
-        [temp3.property]: label
+        [entry.property]: label
       });
     }
-    if (temp3.componentType === "panel-frame" && temp3.property !== "label") {
+    if (entry.componentType === "panel-frame" && entry.property !== "label") {
       editorRenderer?.previewComponentProperties(value.component.id, {
-        [temp3.property]: label
+        [entry.property]: label
       });
     }
-    if (temp3.componentType === "icon-button-effect" && temp3.property !== "label") {
+    if (entry.componentType === "icon-button-effect" && entry.property !== "label") {
       editorRenderer?.previewComponentProperties(value.component.id, {
-        [temp3.property]: label
+        [entry.property]: label
       });
     }
-    if (["title-button", "light-statistics", "icon-button", "air-conditioner"].includes(temp3.componentType) && temp3.property !== "label") {
+    if (["title-button", "light-statistics", "icon-button", "air-conditioner"].includes(entry.componentType) && entry.property !== "label") {
       editorRenderer?.previewComponentProperties(value.component.id, {
-        [temp3.property]: label
+        [entry.property]: label
       });
     }
     syncDocumentDirtyState();
     syncHistoryButtons();
   });
-  temp2.addEventListener("blur", () => pointerSessionByEl.delete(temp2));
+  item.addEventListener("blur", () => pointerSessionByEl.delete(item));
 }
 syncMoreInfoActionLabels();
-for (const temp2 of document.querySelectorAll(".component-action-controls")) {
-  temp2.addEventListener("click", value => {
+for (const value of document.querySelectorAll(".component-action-controls")) {
+  value.addEventListener("click", value => {
     const ancestorEl = value.target.closest("[data-hidden-content-clickable]");
     if (ancestorEl && componentId) {
       mutateDocument(item => {
@@ -9295,13 +9295,13 @@ for (const temp2 of document.querySelectorAll(".component-action-controls")) {
       });
       return;
     }
-    const ancestorEl2 = value.target.closest("[data-action-type]");
-    const temp = ancestorEl2?.closest("[data-action-trigger]");
+    const closest = value.target.closest("[data-action-type]");
+    const temp = closest?.closest("[data-action-trigger]");
     const alias = componentId;
-    if (!ancestorEl2 || !temp || !alias || ancestorEl2.disabled) {
+    if (!closest || !temp || !alias || closest.disabled) {
       return;
     }
-    const type = ACTION_TYPES.includes(ancestorEl2.dataset.actionType) ? ancestorEl2.dataset.actionType : "none";
+    const type = ACTION_TYPES.includes(closest.dataset.actionType) ? closest.dataset.actionType : "none";
     const actionTrigger = temp.dataset.actionTrigger;
     if (["tap", "doubleTap", "hold"].includes(actionTrigger)) {
       mutateDocument(doc => {
@@ -9311,25 +9311,25 @@ for (const temp2 of document.querySelectorAll(".component-action-controls")) {
         }
         const entityId = component.bindings?.entity?.entityId;
         const flag = component.type === "light-statistics";
-        const temp3 = actionPopupData(component.actions?.[actionTrigger]);
-        const popupSource = type === "more-info" && !entityId && temp3.source === "current" ? (doc.customPopups || []).length ? "custom" : "entity" : temp3.source;
+        const value = actionPopupData(component.actions?.[actionTrigger]);
+        const popupSource = type === "more-info" && !entityId && value.source === "current" ? (doc.customPopups || []).length ? "custom" : "entity" : value.source;
         const data = type === "more-info" ? {
           popupSource,
           ...(popupSource === "entity" ? {
-            entityId: temp3.entityId || entityCatalog[0]?.entityId || ""
+            entityId: value.entityId || entityCatalog[0]?.entityId || ""
           } : {}),
           ...(popupSource === "custom" ? {
-            popupId: temp3.popupId || doc.customPopups?.[0]?.id || ""
+            popupId: value.popupId || doc.customPopups?.[0]?.id || ""
           } : {})
         } : {};
-        const flag2 = component.actions?.[actionTrigger]?.type === "more-info";
+        const flagCurrent = component.actions?.[actionTrigger]?.type === "more-info";
         const target = component.actions?.[actionTrigger]?.target;
         const chosen = component.type === "navigation-button" ? component.properties?.targetPage : "";
-        const pagePaths = new Set(doc.pages.map(item2 => item2.path));
-        const target2 = pagePaths.has(target) ? target : pagePaths.has(chosen) ? chosen : pageSelect.value || doc.pages[0]?.path;
-        const chosen2 = type === "none" || componentActionIsSupported(component, type === "navigate" ? {
+        const pagePaths = new Set(doc.pages.map(item => item.path));
+        const targetCurrent = pagePaths.has(target) ? target : pagePaths.has(chosen) ? chosen : pageSelect.value || doc.pages[0]?.path;
+        const chosenCurrent = type === "none" || componentActionIsSupported(component, type === "navigate" ? {
           type: "navigate",
-          target: target2
+          target: targetCurrent
         } : type === "more-info" ? {
           type: "more-info",
           data
@@ -9342,7 +9342,7 @@ for (const temp2 of document.querySelectorAll(".component-action-controls")) {
         component.actions = {
           ...(component.actions || {})
         };
-        if (chosen2 === "none") {
+        if (chosenCurrent === "none") {
           if (component.type === "camera" && actionTrigger === "tap") {
             component.actions[actionTrigger] = {
               type: "none"
@@ -9350,12 +9350,12 @@ for (const temp2 of document.querySelectorAll(".component-action-controls")) {
           } else {
             delete component.actions[actionTrigger];
           }
-        } else if (chosen2 === "navigate") {
+        } else if (chosenCurrent === "navigate") {
           component.actions[actionTrigger] = {
             type: "navigate",
-            target: target2
+            target: targetCurrent
           };
-        } else if (chosen2 === "more-info") {
+        } else if (chosenCurrent === "more-info") {
           component.actions[actionTrigger] = {
             type: "more-info",
             data: component.actions?.[actionTrigger]?.type === "more-info" ? {
@@ -9365,10 +9365,10 @@ for (const temp2 of document.querySelectorAll(".component-action-controls")) {
           };
         } else {
           component.actions[actionTrigger] = {
-            type: chosen2
+            type: chosenCurrent
           };
         }
-        if (!flag && chosen2 === "more-info" && !flag2 && !component.properties?.relatedEntities && relatedPopupContext(component, entityCatalogById(), deviceCatalogById())) {
+        if (!flag && chosenCurrent === "more-info" && !flagCurrent && !component.properties?.relatedEntities && relatedPopupContext(component, entityCatalogById(), deviceCatalogById())) {
           component.properties = {
             ...(component.properties || {}),
             relatedEntities: manualRelatedEntityConfig([])
@@ -9377,14 +9377,14 @@ for (const temp2 of document.querySelectorAll(".component-action-controls")) {
       });
     }
   });
-  temp2.addEventListener("change", value => {
+  value.addEventListener("change", value => {
     const ancestorEl = value.target.closest("[data-popup-source], [data-popup-entity], [data-popup-custom]");
     const temp = ancestorEl?.closest("[data-action-trigger]");
     if (ancestorEl && temp && componentId) {
-      const actionTrigger2 = temp.dataset.actionTrigger;
+      const actionTrigger = temp.dataset.actionTrigger;
       mutateDocument(item => {
         const component = findComponent(item, componentId)?.component;
-        if (!component || !["tap", "doubleTap", "hold"].includes(actionTrigger2)) {
+        if (!component || !["tap", "doubleTap", "hold"].includes(actionTrigger)) {
           return;
         }
         const popupSource = temp.querySelector("[data-popup-source]").value;
@@ -9399,7 +9399,7 @@ for (const temp2 of document.querySelectorAll(".component-action-controls")) {
         }
         component.actions = {
           ...(component.actions || {}),
-          [actionTrigger2]: {
+          [actionTrigger]: {
             type: "more-info",
             data
           }
@@ -9408,16 +9408,16 @@ for (const temp2 of document.querySelectorAll(".component-action-controls")) {
       return;
     }
     const element = value.target.closest("[data-action-target]");
-    const temp2 = element?.closest("[data-action-trigger]");
+    const item = element?.closest("[data-action-trigger]");
     const alias = componentId;
-    if (!element || !temp2 || !alias) {
+    if (!element || !item || !alias) {
       return;
     }
-    const actionTrigger = temp2.dataset.actionTrigger;
+    const actionTrigger = item.dataset.actionTrigger;
     if (["tap", "doubleTap", "hold"].includes(actionTrigger)) {
       mutateDocument(doc => {
         const component = findComponent(doc, alias)?.component;
-        if (!!component && !!doc.pages.some(item2 => item2.path === element.value)) {
+        if (!!component && !!doc.pages.some(item => item.path === element.value)) {
           component.actions = {
             ...(component.actions || {}),
             [actionTrigger]: {
@@ -9435,11 +9435,11 @@ for (const temp2 of document.querySelectorAll(".component-action-controls")) {
       });
     }
   });
-  temp2.addEventListener("click", value => {
+  value.addEventListener("click", value => {
     const ancestorEl = value.target.closest("[data-popup-preview]");
     const temp = ancestorEl?.closest("[data-action-trigger]");
-    const component2 = selectedComponent();
-    if (!ancestorEl || !temp || !component2 || ancestorEl.disabled) {
+    const component = selectedComponent();
+    if (!ancestorEl || !temp || !component || ancestorEl.disabled) {
       return;
     }
     if (editorMode !== "edit") {
@@ -9457,7 +9457,7 @@ for (const temp2 of document.querySelectorAll(".component-action-controls")) {
       data.popupId = temp.querySelector("[data-popup-custom]").value;
     }
     try {
-      createPanelRenderer().previewAction(component2, {
+      createPanelRenderer().previewAction(component, {
         type: "more-info",
         data
       });
@@ -9466,40 +9466,40 @@ for (const temp2 of document.querySelectorAll(".component-action-controls")) {
     }
   });
 }
-document.addEventListener("click", target17 => {
-  const component = target17.target.closest("[data-popup-entity-button]");
+document.addEventListener("click", target => {
+  const component = target.target.closest("[data-popup-entity-button]");
   if (component) {
     const querySelector = component.closest("[data-action-trigger]");
     const hidden = querySelector?.querySelector("[data-popup-entity-menu]");
     if (!querySelector || !hidden) {
       return;
     }
-    const hidden2 = hidden.hidden;
-    closePopupEntityMenus(hidden2 ? querySelector : null);
-    hidden.hidden = !hidden2;
-    component.setAttribute("aria-expanded", String(hidden2));
-    if (hidden2) {
-      const el4 = querySelector.querySelector("[data-popup-entity-search]");
-      el4.value = "";
+    const hiddenCurrent = hidden.hidden;
+    closePopupEntityMenus(hiddenCurrent ? querySelector : null);
+    hidden.hidden = !hiddenCurrent;
+    component.setAttribute("aria-expanded", String(hiddenCurrent));
+    if (hiddenCurrent) {
+      const el = querySelector.querySelector("[data-popup-entity-search]");
+      el.value = "";
       renderPopupEntityOptions(querySelector, "");
       syncPopupEntityButton(querySelector);
-      window.requestAnimationFrame(() => el4.focus({
+      window.requestAnimationFrame(() => el.focus({
         preventScroll: true
       }));
     }
     return;
   }
-  const value = target17.target.closest("[data-popup-action-entity-id]");
+  const value = target.target.closest("[data-popup-action-entity-id]");
   if (!value) {
     return;
   }
-  const querySelector2 = value.closest("[data-action-trigger]");
-  const el3 = querySelector2?.querySelector("[data-popup-entity]");
-  if (!!querySelector2 && !!el3) {
-    el3.value = value.dataset.popupActionEntityId;
-    popupEntityIdFromRow(querySelector2);
+  const querySelector = value.closest("[data-action-trigger]");
+  const el = querySelector?.querySelector("[data-popup-entity]");
+  if (!!querySelector && !!el) {
+    el.value = value.dataset.popupActionEntityId;
+    popupEntityIdFromRow(querySelector);
     closePopupEntityMenus();
-    el3.dispatchEvent(new Event("change", {
+    el.dispatchEvent(new Event("change", {
       bubbles: true
     }));
   }
@@ -9520,8 +9520,8 @@ iconButtonPreviewDetails.addEventListener("click", () => {
       createPanelRenderer().showEntityDetails(temp, {
         preview: true
       });
-    } catch (temp2) {
-      onError(temp2);
+    } catch (error) {
+      onError(error);
     }
   }
 });
@@ -9533,8 +9533,8 @@ airConditionerPreviewDetails.addEventListener("click", () => {
       createPanelRenderer().showEntityDetails(target, {
         preview: true
       });
-    } catch (temp2) {
-      onError(temp2);
+    } catch (error) {
+      onError(error);
     }
   }
 });
@@ -9545,59 +9545,59 @@ imageLayoutOptions.addEventListener("click", value => {
     return;
   }
   const numeric = temp.dataset.imageLayout === "fill" ? "fill" : "free";
-  const component2 = selectedComponent();
-  const chosen = component2?.properties?.layoutMode === "fill" ? "fill" : "free";
-  if (!!component2 && component2.type === "image" && chosen !== numeric) {
-    mutateDocument(canvas2 => {
-      const properties13 = findComponent(canvas2, target)?.component;
-      if (!properties13 || properties13.type !== "image") {
+  const component = selectedComponent();
+  const chosen = component?.properties?.layoutMode === "fill" ? "fill" : "free";
+  if (!!component && component.type === "image" && chosen !== numeric) {
+    mutateDocument(canvas => {
+      const properties = findComponent(canvas, target)?.component;
+      if (!properties || properties.type !== "image") {
         return;
       }
-      properties13.properties = {
-        ...(properties13.properties || {}),
+      properties.properties = {
+        ...(properties.properties || {}),
         fit: "contain"
       };
-      properties13.style = {
-        ...(properties13.style || {})
+      properties.style = {
+        ...(properties.style || {})
       };
       if (numeric === "fill") {
-        properties13.properties.freeLayout = {
-          position: cloneValue(properties13.position || {}),
-          scale: clampNumber(Number(properties13.style.scale || 1), 0.01, 5)
+        properties.properties.freeLayout = {
+          position: cloneValue(properties.position || {}),
+          scale: clampNumber(Number(properties.style.scale || 1), 0.01, 5)
         };
-        properties13.properties.layoutMode = "fill";
-        properties13.position = {
-          ...(properties13.position || {}),
+        properties.properties.layoutMode = "fill";
+        properties.position = {
+          ...(properties.position || {}),
           x: 0,
           y: 0,
-          width: Number(canvas2.canvas?.width || 2778),
-          height: Number(canvas2.canvas?.height || 1940),
+          width: Number(canvas.canvas?.width || 2778),
+          height: Number(canvas.canvas?.height || 1940),
           rotation: 0
         };
-        properties13.style.scale = 1;
+        properties.style.scale = 1;
         return;
       }
-      const position5 = properties13.properties.freeLayout;
-      properties13.properties.layoutMode = "free";
-      if (position5?.position) {
-        properties13.position = cloneValue(position5.position);
-        properties13.style.scale = clampNumber(Number(position5.scale || 1), 0.01, 5);
+      const position = properties.properties.freeLayout;
+      properties.properties.layoutMode = "free";
+      if (position?.position) {
+        properties.position = cloneValue(position.position);
+        properties.style.scale = clampNumber(Number(position.scale || 1), 0.01, 5);
       } else {
-        const width2 = Number(properties13.properties.naturalWidth || properties13.position?.width || 100);
-        const height2 = Number(properties13.properties.naturalHeight || properties13.position?.height || 100);
-        const number = Number(canvas2.canvas?.width || 2778);
-        const canvasHeight = Number(canvas2.canvas?.height || 1940);
-        properties13.position = {
-          ...(properties13.position || {}),
-          x: (number - width2) / 2,
-          y: (canvasHeight - height2) / 2,
-          width: width2,
-          height: height2,
+        const width = Number(properties.properties.naturalWidth || properties.position?.width || 100);
+        const height = Number(properties.properties.naturalHeight || properties.position?.height || 100);
+        const number = Number(canvas.canvas?.width || 2778);
+        const canvasHeight = Number(canvas.canvas?.height || 1940);
+        properties.position = {
+          ...(properties.position || {}),
+          x: (number - width) / 2,
+          y: (canvasHeight - height) / 2,
+          width: width,
+          height: height,
           rotation: 0
         };
-        properties13.style.scale = 1;
+        properties.style.scale = 1;
       }
-      delete properties13.properties.freeLayout;
+      delete properties.properties.freeLayout;
     });
   }
 });
@@ -9616,8 +9616,8 @@ imageInspector.addEventListener("input", value => {
   }
   const canvasWidth = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
-  const number4 = Number(target.position?.width || 100);
-  const number5 = Number(target.position?.height || 100);
+  const numberCurrent = Number(target.position?.width || 100);
+  const numberNext = Number(target.position?.height || 100);
   if (temp === imageOpacity) {
     const clamped = clampNumber(number, 0, 100);
     editorRenderer?.previewComponentProperties(target.id, {
@@ -9626,12 +9626,12 @@ imageInspector.addEventListener("input", value => {
   } else if (temp === imageLeft) {
     const clamped = clampNumber(number, 0, 100);
     editorRenderer?.previewComponentTransform(target.id, {
-      x: canvasWidth * clamped / 100 - number4 / 2
+      x: canvasWidth * clamped / 100 - numberCurrent / 2
     });
   } else if (temp === imageTop) {
     const clamped = clampNumber(number, 0, 100);
     editorRenderer?.previewComponentTransform(target.id, {
-      y: canvasHeight * clamped / 100 - number5 / 2
+      y: canvasHeight * clamped / 100 - numberNext / 2
     });
   } else if (temp === imageScale) {
     const clamped = clampNumber(number, 1, 500);
@@ -9639,9 +9639,9 @@ imageInspector.addEventListener("input", value => {
       scale: clamped / 100
     });
   } else if (temp === imageRotation) {
-    const rotation3 = clampNumber(number, -360, 360);
+    const rotation = clampNumber(number, -360, 360);
     editorRenderer?.previewComponentTransform(target.id, {
-      rotation: rotation3
+      rotation: rotation
     });
   }
 });
@@ -9676,28 +9676,28 @@ imageInspector.addEventListener("change", value => {
       component.properties.fit = "contain";
       const number = Number(item.canvas.width || 2778);
       const canvasHeight = Number(item.canvas.height || 1940);
-      const number3 = Number(ancestorEl.value);
+      const numberCurrent = Number(ancestorEl.value);
       if (ancestorEl === imageLabel) {
         component.properties.label = ancestorEl.value.trim();
       } else if (ancestorEl === imageOpacity) {
-        component.properties.opacity = clampNumber(number3, 0, 100) / 100;
+        component.properties.opacity = clampNumber(numberCurrent, 0, 100) / 100;
       } else if (ancestorEl === imageLeft) {
-        component.position.x = number * clampNumber(number3, 0, 100) / 100 - Number(component.position.width || 100) / 2;
+        component.position.x = number * clampNumber(numberCurrent, 0, 100) / 100 - Number(component.position.width || 100) / 2;
       } else if (ancestorEl === imageTop) {
-        component.position.y = canvasHeight * clampNumber(number3, 0, 100) / 100 - Number(component.position.height || 100) / 2;
+        component.position.y = canvasHeight * clampNumber(numberCurrent, 0, 100) / 100 - Number(component.position.height || 100) / 2;
       } else if (ancestorEl === imageScale) {
-        component.style.scale = clampNumber(number3, 1, 500) / 100;
+        component.style.scale = clampNumber(numberCurrent, 1, 500) / 100;
       } else if (ancestorEl === imageRotation) {
-        setComponentsRotation(item, alias, clampNumber(number3, -360, 360));
+        setComponentsRotation(item, alias, clampNumber(numberCurrent, -360, 360));
       }
     });
   }
 });
 const floorplanAutoDiagramFields = new Set([floorplanAutoDiagramLeft, floorplanAutoDiagramTop, floorplanAutoDiagramWidth, floorplanAutoDiagramHeight, floorplanAutoDiagramScale, floorplanAutoDiagramRotation]);
 floorplanAutoDiagramInspector.addEventListener("input", value => {
-  const component2 = selectedComponent();
+  const component = selectedComponent();
   const eventTarget = value.target;
-  if (!component2 || component2.type !== "floorplan-auto-diagram" || !floorplanAutoDiagramFields.has(eventTarget)) {
+  if (!component || component.type !== "floorplan-auto-diagram" || !floorplanAutoDiagramFields.has(eventTarget)) {
     return;
   }
   const number = Number(eventTarget.value);
@@ -9706,30 +9706,30 @@ floorplanAutoDiagramInspector.addEventListener("input", value => {
   }
   const canvasWidth = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
-  const number4 = Number(component2.position?.width || 100);
-  const number5 = Number(component2.position?.height || 100);
+  const numberCurrent = Number(component.position?.width || 100);
+  const numberNext = Number(component.position?.height || 100);
   if (eventTarget === floorplanAutoDiagramLeft) {
-    editorRenderer?.previewComponentTransform(component2.id, {
-      x: canvasWidth * clampNumber(number, 0, 100) / 100 - number4 / 2
+    editorRenderer?.previewComponentTransform(component.id, {
+      x: canvasWidth * clampNumber(number, 0, 100) / 100 - numberCurrent / 2
     });
   } else if (eventTarget === floorplanAutoDiagramTop) {
-    editorRenderer?.previewComponentTransform(component2.id, {
-      y: canvasHeight * clampNumber(number, 0, 100) / 100 - number5 / 2
+    editorRenderer?.previewComponentTransform(component.id, {
+      y: canvasHeight * clampNumber(number, 0, 100) / 100 - numberNext / 2
     });
   } else if (eventTarget === floorplanAutoDiagramWidth) {
-    editorRenderer?.previewComponentTransform(component2.id, {
+    editorRenderer?.previewComponentTransform(component.id, {
       width: canvasWidth * clampNumber(number, 0.1, 100) / 100
     });
   } else if (eventTarget === floorplanAutoDiagramHeight) {
-    editorRenderer?.previewComponentTransform(component2.id, {
+    editorRenderer?.previewComponentTransform(component.id, {
       height: canvasHeight * clampNumber(number, 0.1, 100) / 100
     });
   } else if (eventTarget === floorplanAutoDiagramScale) {
-    editorRenderer?.previewComponentTransform(component2.id, {
+    editorRenderer?.previewComponentTransform(component.id, {
       scale: clampNumber(number, 1, 500) / 100
     });
   } else if (eventTarget === floorplanAutoDiagramRotation) {
-    editorRenderer?.previewComponentTransform(component2.id, {
+    editorRenderer?.previewComponentTransform(component.id, {
       rotation: clampNumber(number, -360, 360)
     });
   }
@@ -9742,53 +9742,53 @@ floorplanAutoDiagramInspector.addEventListener("change", value => {
       refreshInspector();
       return;
     }
-    mutateDocument(canvas3 => {
-      const position6 = findComponent(canvas3, temp)?.component;
-      if (!!position6 && position6.type === "floorplan-auto-diagram") {
-        position6.properties = {
-          ...(position6.properties || {})
+    mutateDocument(canvas => {
+      const position = findComponent(canvas, temp)?.component;
+      if (!!position && position.type === "floorplan-auto-diagram") {
+        position.properties = {
+          ...(position.properties || {})
         };
-        position6.position = {
-          ...(position6.position || {})
+        position.position = {
+          ...(position.position || {})
         };
-        position6.style = {
-          ...(position6.style || {})
+        position.style = {
+          ...(position.style || {})
         };
         if (ancestorEl === floorplanAutoDiagramLabel) {
-          position6.properties.label = ancestorEl.value.trim();
+          position.properties.label = ancestorEl.value.trim();
         } else if (ancestorEl === floorplanAutoDiagramFolder) {
-          position6.properties.exportFolder = ancestorEl.value.trim();
+          position.properties.exportFolder = ancestorEl.value.trim();
         } else {
-          const number = Number(canvas3.canvas.width || 2778);
-          const canvasHeight = Number(canvas3.canvas.height || 1940);
-          const number3 = Number(ancestorEl.value);
+          const number = Number(canvas.canvas.width || 2778);
+          const canvasHeight = Number(canvas.canvas.height || 1940);
+          const numberCurrent = Number(ancestorEl.value);
           if (ancestorEl === floorplanAutoDiagramLeft) {
-            position6.position.x = number * clampNumber(number3, 0, 100) / 100 - Number(position6.position.width || 100) / 2;
+            position.position.x = number * clampNumber(numberCurrent, 0, 100) / 100 - Number(position.position.width || 100) / 2;
           } else if (ancestorEl === floorplanAutoDiagramTop) {
-            position6.position.y = canvasHeight * clampNumber(number3, 0, 100) / 100 - Number(position6.position.height || 100) / 2;
+            position.position.y = canvasHeight * clampNumber(numberCurrent, 0, 100) / 100 - Number(position.position.height || 100) / 2;
           } else if (ancestorEl === floorplanAutoDiagramWidth) {
-            position6.position.width = number * clampNumber(number3, 0.1, 100) / 100;
+            position.position.width = number * clampNumber(numberCurrent, 0.1, 100) / 100;
           } else if (ancestorEl === floorplanAutoDiagramHeight) {
-            position6.position.height = canvasHeight * clampNumber(number3, 0.1, 100) / 100;
+            position.position.height = canvasHeight * clampNumber(numberCurrent, 0.1, 100) / 100;
           } else if (ancestorEl === floorplanAutoDiagramScale) {
-            position6.style.scale = clampNumber(number3, 1, 500) / 100;
+            position.style.scale = clampNumber(numberCurrent, 1, 500) / 100;
           } else if (ancestorEl === floorplanAutoDiagramRotation) {
-            setComponentsRotation(canvas3, temp, clampNumber(number3, -360, 360));
+            setComponentsRotation(canvas, temp, clampNumber(numberCurrent, -360, 360));
           }
         }
       }
     });
   }
 });
-floorplanAutoDiagramLayout.addEventListener("click", target18 => {
-  const value = target18.target.closest("[data-floorplan-layout]");
+floorplanAutoDiagramLayout.addEventListener("click", target => {
+  const value = target.target.closest("[data-floorplan-layout]");
   const alias = componentId;
   if (!!value && !!alias) {
     mutateDocument(item => {
-      const temp2 = findComponent(item, alias)?.component;
-      if (temp2?.type === "floorplan-auto-diagram") {
-        temp2.properties = {
-          ...(temp2.properties || {}),
+      const entry = findComponent(item, alias)?.component;
+      if (entry?.type === "floorplan-auto-diagram") {
+        entry.properties = {
+          ...(entry.properties || {}),
           layoutMode: value.dataset.floorplanLayout === "fill" ? "fill" : "free"
         };
       }
@@ -9823,25 +9823,25 @@ function setFloorplanAutoDiagramStatus(componentId, value) {
     return false;
   }
 }
-function refreshFloorplanAutoDiagramFrame(el3) {
-  if (!el3?.isConnected) {
+function refreshFloorplanAutoDiagramFrame(el) {
+  if (!el?.isConnected) {
     return;
   }
-  const querySelector3 = el3.closest(".hb-floorplan-auto-diagram");
-  if (!querySelector3) {
+  const querySelector = el.closest(".hb-floorplan-auto-diagram");
+  if (!querySelector) {
     return;
   }
-  el3.classList.remove("is-ready");
-  let className9 = querySelector3.querySelector(".hb-floorplan-auto-diagram-loading");
-  if (!className9) {
-    className9 = document.createElement("div");
-    className9.className = "hb-floorplan-auto-diagram-loading";
-    className9.innerHTML = "<i aria-hidden=\"true\"></i><strong>正在重新载入3D户型…</strong>";
-    querySelector3.append(className9);
+  el.classList.remove("is-ready");
+  let className = querySelector.querySelector(".hb-floorplan-auto-diagram-loading");
+  if (!className) {
+    className = document.createElement("div");
+    className.className = "hb-floorplan-auto-diagram-loading";
+    className.innerHTML = "<i aria-hidden=\"true\"></i><strong>正在重新载入3D户型…</strong>";
+    querySelector.append(className);
   }
-  const searchParams = new URL(el3.src, window.location.origin);
+  const searchParams = new URL(el.src, window.location.origin);
   searchParams.searchParams.set("auto-diagram-refresh", String(Date.now()));
-  el3.src = searchParams.toString();
+  el.src = searchParams.toString();
 }
 window.addEventListener("pageshow", value => {
   if (value.persisted) {
@@ -9850,8 +9850,8 @@ window.addEventListener("pageshow", value => {
     }
   }
 });
-floorplanAutoDiagramCameraView.addEventListener("click", target19 => {
-  const value = target19.target.closest("[data-floorplan-camera-view]");
+floorplanAutoDiagramCameraView.addEventListener("click", target => {
+  const value = target.target.closest("[data-floorplan-camera-view]");
   const alias = componentId;
   if (!value || !alias) {
     return;
@@ -9870,39 +9870,39 @@ floorplanAutoDiagramCameraView.addEventListener("click", target19 => {
 });
 floorplanAutoDiagramFloor.addEventListener("change", () => {
   const value = componentId;
-  const floorSelection2 = String(floorplanAutoDiagramFloor.value || "");
-  const properties50 = selectedComponent();
-  if (!!value && !!floorSelection2 && properties50?.type === "floorplan-auto-diagram") {
+  const floorSelection = String(floorplanAutoDiagramFloor.value || "");
+  const properties = selectedComponent();
+  if (!!value && !!floorSelection && properties?.type === "floorplan-auto-diagram") {
     mutateDocument(item => {
       const component = findComponent(item, value)?.component;
       if (component?.type === "floorplan-auto-diagram") {
         component.properties = {
           ...(component.properties || {}),
-          floorSelection: floorSelection2
+          floorSelection: floorSelection
         };
       }
     });
-    setFloorplanAutoDiagramStatus(value, floorSelection2);
+    setFloorplanAutoDiagramStatus(value, floorSelection);
     postMessageToFloorplanComponent(value, "restore", {
-      view: properties50.properties?.cameraView || "free",
-      mode: properties50.properties?.cameraMode || "orthographic",
-      topRotation: Number(properties50.properties?.cameraTopRotation || 0),
-      focalLength: Number(properties50.properties?.cameraFocalLength || 50)
+      view: properties.properties?.cameraView || "free",
+      mode: properties.properties?.cameraMode || "orthographic",
+      topRotation: Number(properties.properties?.cameraTopRotation || 0),
+      focalLength: Number(properties.properties?.cameraFocalLength || 50)
     });
   }
 });
-floorplanAutoDiagramCameraMode.addEventListener("click", target20 => {
-  const dataset13 = target20.target.closest("[data-floorplan-camera-mode]");
+floorplanAutoDiagramCameraMode.addEventListener("click", target => {
+  const dataset = target.target.closest("[data-floorplan-camera-mode]");
   const alias = componentId;
-  if (!dataset13 || !alias) {
+  if (!dataset || !alias) {
     return;
   }
-  const cameraMode = dataset13.dataset.floorplanCameraMode === "perspective" ? "perspective" : "orthographic";
+  const cameraMode = dataset.dataset.floorplanCameraMode === "perspective" ? "perspective" : "orthographic";
   mutateDocument(param => {
-    const properties31 = findComponent(param, alias)?.component;
-    if (properties31?.type === "floorplan-auto-diagram") {
-      properties31.properties = {
-        ...(properties31.properties || {}),
+    const properties = findComponent(param, alias)?.component;
+    if (properties?.type === "floorplan-auto-diagram") {
+      properties.properties = {
+        ...(properties.properties || {}),
         cameraMode
       };
     }
@@ -9916,10 +9916,10 @@ floorplanAutoDiagramFocalLength.addEventListener("change", () => {
   }
   const cameraFocalLength = clampNumber(Number(floorplanAutoDiagramFocalLength.value), 18, 120);
   mutateDocument(param => {
-    const properties32 = findComponent(param, alias)?.component;
-    if (properties32?.type === "floorplan-auto-diagram") {
-      properties32.properties = {
-        ...(properties32.properties || {}),
+    const properties = findComponent(param, alias)?.component;
+    if (properties?.type === "floorplan-auto-diagram") {
+      properties.properties = {
+        ...(properties.properties || {}),
         cameraFocalLength
       };
     }
@@ -9930,12 +9930,12 @@ floorplanAutoDiagramRotateTop.addEventListener("click", () => {
   const alias = componentId;
   if (alias) {
     mutateDocument(param => {
-      const properties14 = findComponent(param, alias)?.component;
-      if (properties14?.type === "floorplan-auto-diagram") {
-        properties14.properties = {
-          ...(properties14.properties || {}),
+      const properties = findComponent(param, alias)?.component;
+      if (properties?.type === "floorplan-auto-diagram") {
+        properties.properties = {
+          ...(properties.properties || {}),
           cameraView: "top",
-          cameraTopRotation: (Number(properties14.properties?.cameraTopRotation || 0) + 90) % 360
+          cameraTopRotation: (Number(properties.properties?.cameraTopRotation || 0) + 90) % 360
         };
       }
     });
@@ -9967,9 +9967,9 @@ function postFloorplanAutoLightingCommand(command, lighting = null) {
 }
 function applyBaseLightingFields(param) {
   const temp = normalizeBaseLighting(param);
-  for (const dataset14 of floorplanBaseLightFields) {
-    const toFixed = temp[dataset14.dataset.floorplanBaseLight];
-    dataset14.value = dataset14.step === "5" ? String(Math.round(toFixed)) : String(Number(toFixed.toFixed(2)));
+  for (const dataset of floorplanBaseLightFields) {
+    const toFixed = temp[dataset.dataset.floorplanBaseLight];
+    dataset.value = dataset.step === "5" ? String(Math.round(toFixed)) : String(Number(toFixed.toFixed(2)));
   }
   return temp;
 }
@@ -10002,10 +10002,10 @@ function mutateSelection(value) {
   temp.classList.remove("is-position-mode");
   temp.classList.add("is-view-mode");
   mutateDocument(param => {
-    const properties49 = findComponent(param, value)?.component;
-    if (properties49?.type === "floorplan-auto-diagram") {
-      properties49.properties = {
-        ...(properties49.properties || {}),
+    const properties = findComponent(param, value)?.component;
+    if (properties?.type === "floorplan-auto-diagram") {
+      properties.properties = {
+        ...(properties.properties || {}),
         interactionMode: "view"
       };
     }
@@ -10014,19 +10014,19 @@ function mutateSelection(value) {
   floorplanAutoLightingStatus.textContent = "正在读取当前光照设置…";
   floorplanAutoLightingPanel.hidden = false;
   floorplanAutoLightingPanel.setAttribute("aria-busy", "true");
-  const rect2 = floorplanAutoLightingPanel.getBoundingClientRect();
-  if (rect2.right > window.innerWidth - 8 || rect2.bottom > window.innerHeight - 8 || rect2.left < 8 || rect2.top < 8) {
+  const rect = floorplanAutoLightingPanel.getBoundingClientRect();
+  if (rect.right > window.innerWidth - 8 || rect.bottom > window.innerHeight - 8 || rect.left < 8 || rect.top < 8) {
     floorplanAutoLightingPanel.style.right = "auto";
-    floorplanAutoLightingPanel.style.left = clampNumber(rect2.left, 8, Math.max(8, window.innerWidth - rect2.width - 8)) + "px";
-    floorplanAutoLightingPanel.style.top = clampNumber(rect2.top, 8, Math.max(8, window.innerHeight - rect2.height - 8)) + "px";
+    floorplanAutoLightingPanel.style.left = clampNumber(rect.left, 8, Math.max(8, window.innerWidth - rect.width - 8)) + "px";
+    floorplanAutoLightingPanel.style.top = clampNumber(rect.top, 8, Math.max(8, window.innerHeight - rect.height - 8)) + "px";
   }
   postFloorplanAutoLightingCommand("request-state");
 }
 floorplanAutoDiagramOpenBaseLighting.addEventListener("click", () => {
   mutateSelection(componentId);
 });
-for (const temp2 of floorplanBaseLightFields) {
-  temp2.addEventListener("input", () => {
+for (const value of floorplanBaseLightFields) {
+  value.addEventListener("input", () => {
     if (!floorplanAutoLightingPanel.hidden) {
       floorplanAutoLightingStatus.textContent = "修改已实时预览，保存后同步到全部3D入口。";
       postFloorplanAutoLightingCommand("preview", readBaseLightingFields());
@@ -10060,20 +10060,20 @@ floorplanAutoLightingHandle.addEventListener("pointerdown", pointerId => {
     floorplanAutoLightingHandle.setPointerCapture(pointerId.pointerId);
   } catch {}
 });
-floorplanAutoLightingHandle.addEventListener("pointermove", pointerId2 => {
-  if (!autoLightingDragState || pointerId2.pointerId !== autoLightingDragState.pointerId) {
+floorplanAutoLightingHandle.addEventListener("pointermove", pointerId => {
+  if (!autoLightingDragState || pointerId.pointerId !== autoLightingDragState.pointerId) {
     return;
   }
-  pointerId2.preventDefault();
+  pointerId.preventDefault();
   const component = floorplanAutoLightingPanel.getBoundingClientRect();
   const element = Math.max(8, window.innerWidth - component.width - 8);
   const folderName = Math.max(8, window.innerHeight - component.height - 8);
   floorplanAutoLightingPanel.style.right = "auto";
-  floorplanAutoLightingPanel.style.left = clampNumber(autoLightingDragState.startLeft + pointerId2.clientX - autoLightingDragState.startX, 8, element) + "px";
-  floorplanAutoLightingPanel.style.top = clampNumber(autoLightingDragState.startTop + pointerId2.clientY - autoLightingDragState.startY, 8, folderName) + "px";
+  floorplanAutoLightingPanel.style.left = clampNumber(autoLightingDragState.startLeft + pointerId.clientX - autoLightingDragState.startX, 8, element) + "px";
+  floorplanAutoLightingPanel.style.top = clampNumber(autoLightingDragState.startTop + pointerId.clientY - autoLightingDragState.startY, 8, folderName) + "px";
 });
-const onAutoLightingPointerUp = pointerId3 => {
-  if (!!autoLightingDragState && pointerId3.pointerId === autoLightingDragState.pointerId) {
+const onAutoLightingPointerUp = pointerId => {
+  if (!!autoLightingDragState && pointerId.pointerId === autoLightingDragState.pointerId) {
     autoLightingDragState = null;
   }
 };
@@ -10117,16 +10117,16 @@ function closeFloorplanAutoDiagramDialog() {
   }
 }
 floorplanAutoDiagramOpenStudio.addEventListener("click", () => {
-  const component2 = selectedComponent();
-  if (component2?.type !== "floorplan-auto-diagram") {
+  const component = selectedComponent();
+  if (component?.type !== "floorplan-auto-diagram") {
     return;
   }
-  if (component2.properties?.generated === true && component2.properties?.previewing !== true) {
+  if (component.properties?.generated === true && component.properties?.previewing !== true) {
     mutateDocument(param => {
-      const properties15 = findComponent(param, component2.id)?.component;
-      if (properties15?.type === "floorplan-auto-diagram") {
-        properties15.properties = {
-          ...(properties15.properties || {}),
+      const properties = findComponent(param, component.id)?.component;
+      if (properties?.type === "floorplan-auto-diagram") {
+        properties.properties = {
+          ...(properties.properties || {}),
           previewReady: true,
           previewing: true,
           interactionMode: "position"
@@ -10135,28 +10135,28 @@ floorplanAutoDiagramOpenStudio.addEventListener("click", () => {
     });
     return;
   }
-  const contentWindow6 = document.querySelector(".hb-component[data-component-id=\"" + CSS.escape(component2.id) + "\"] .hb-floorplan-auto-diagram-preview");
-  if (!contentWindow6?.contentWindow) {
-    openFloorplanAutoDiagramDialog(component2.id);
+  const contentWindow = document.querySelector(".hb-component[data-component-id=\"" + CSS.escape(component.id) + "\"] .hb-floorplan-auto-diagram-preview");
+  if (!contentWindow?.contentWindow) {
+    openFloorplanAutoDiagramDialog(component.id);
     return;
   }
-  const startsWith = String(component2.properties?.exportFolder || "").trim();
+  const startsWith = String(component.properties?.exportFolder || "").trim();
   if (!startsWith || /[<>:"/\\|?*\x00-\x1f\x7f]/.test(startsWith) || startsWith.startsWith(".") || /[. ]$/.test(startsWith)) {
     floorplanAutoDiagramStatus.textContent = "请先填写有效的导图文件夹名称。";
     floorplanAutoDiagramFolder.focus();
     return;
   }
-  const width9 = component2.position || {};
-  const width10 = currentProject.document.canvas || {};
+  const width = component.position || {};
+  const rect = currentProject.document.canvas || {};
   floorplanAutoDiagramStatus.textContent = "正在后台生成底图和灯组效果，请稍候…";
   floorplanAutoDiagramOpenStudio.disabled = true;
   floorplanAutoDiagramFloor.disabled = true;
   floorplanAutoDiagramOpenStudio.textContent = "正在后台生成…";
-  contentWindow6.contentWindow.postMessage({
+  contentWindow.contentWindow.postMessage({
     type: "ha-bridge-floorplan-auto-diagram-generate",
-    componentId: component2.id,
-    width: Math.max(320, Math.round(Number(width10.width || width9.width || 2778))),
-    height: Math.max(320, Math.round(Number(width10.height || width9.height || 1940))),
+    componentId: component.id,
+    width: Math.max(320, Math.round(Number(rect.width || width.width || 2778))),
+    height: Math.max(320, Math.round(Number(rect.height || width.height || 1940))),
     folderName: startsWith
   }, window.location.origin);
 });
@@ -10164,11 +10164,11 @@ floorplanAutoDiagramViewToggle.addEventListener("click", () => {
   const alias = componentId;
   if (alias) {
     mutateDocument(param => {
-      const properties16 = findComponent(param, alias)?.component;
-      if (properties16?.type === "floorplan-auto-diagram") {
-        properties16.properties = {
-          ...(properties16.properties || {}),
-          interactionMode: properties16.properties?.interactionMode === "view" ? "position" : "view"
+      const properties = findComponent(param, alias)?.component;
+      if (properties?.type === "floorplan-auto-diagram") {
+        properties.properties = {
+          ...(properties.properties || {}),
+          interactionMode: properties.properties?.interactionMode === "view" ? "position" : "view"
         };
       }
     });
@@ -10184,10 +10184,10 @@ floorplanAutoDiagramContinue.addEventListener("click", () => {
   const temp = floorplanAutoDiagramDialog.dataset.componentId;
   if (temp) {
     mutateDocument(param => {
-      const properties17 = findComponent(param, temp)?.component;
-      if (properties17?.type === "floorplan-auto-diagram") {
-        properties17.properties = {
-          ...(properties17.properties || {}),
+      const properties = findComponent(param, temp)?.component;
+      if (properties?.type === "floorplan-auto-diagram") {
+        properties.properties = {
+          ...(properties.properties || {}),
           previewReady: true,
           previewing: true,
           interactionMode: "position"
@@ -10203,7 +10203,7 @@ floorplanAutoDiagramBindingList.addEventListener("change", value => {
   if (!ancestorEl || !alias) {
     return;
   }
-  const temp2 = ancestorEl.dataset.floorplanLightGroupId;
+  const floorplanLightGroupId = ancestorEl.dataset.floorplanLightGroupId;
   mutateDocument(doc => {
     const component = findComponent(doc, alias)?.component;
     if (!component || component.type !== "floorplan-auto-diagram") {
@@ -10212,7 +10212,7 @@ floorplanAutoDiagramBindingList.addEventListener("change", value => {
     component.bindings = {
       ...(component.bindings || {})
     };
-    const numeric = "lightGroup:" + temp2;
+    const numeric = "lightGroup:" + floorplanLightGroupId;
     if (ancestorEl.value) {
       component.bindings[numeric] = {
         entityId: ancestorEl.value
@@ -10246,46 +10246,46 @@ window.addEventListener("message", value => {
     return;
   }
   if (ancestorEl?.type === "ha-bridge-floorplan-auto-diagram-ready") {
-    const componentId2 = String(ancestorEl.componentId || "");
-    const contentWindow2 = document.querySelector(".hb-component[data-component-id=\"" + CSS.escape(componentId2) + "\"] .hb-floorplan-auto-diagram-preview");
-    if (!contentWindow2 || value.source !== contentWindow2.contentWindow) {
+    const componentId = String(ancestorEl.componentId || "");
+    const contentWindow = document.querySelector(".hb-component[data-component-id=\"" + CSS.escape(componentId) + "\"] .hb-floorplan-auto-diagram-preview");
+    if (!contentWindow || value.source !== contentWindow.contentWindow) {
       return;
     }
-    contentWindow2.classList.add("is-ready");
-    contentWindow2.parentElement?.querySelector(".hb-floorplan-auto-diagram-loading")?.remove();
-    const properties48 = findComponent(currentProject?.document, componentId2)?.component;
-    if (properties48?.type === "floorplan-auto-diagram") {
+    contentWindow.classList.add("is-ready");
+    contentWindow.parentElement?.querySelector(".hb-floorplan-auto-diagram-loading")?.remove();
+    const properties = findComponent(currentProject?.document, componentId)?.component;
+    if (properties?.type === "floorplan-auto-diagram") {
       const floors = (Array.isArray(ancestorEl.floors) ? ancestorEl.floors : []).map(item2 => ({
         id: String(item2?.id || ""),
         name: String(item2?.name || "")
       })).filter(event => event.id);
       const selected = String(ancestorEl.floorSelection || "");
-      floorplanPreviewById.set(componentId2, {
+      floorplanPreviewById.set(componentId, {
         floors,
         selected
       });
-      const floorSelection = properties48.properties || {};
+      const floorSelection = properties.properties || {};
       if (Object.prototype.hasOwnProperty.call(floorSelection, "floorSelection") && selected && floorSelection.floorSelection !== selected) {
         mutateDocument(param => {
-          const properties8 = findComponent(param, componentId2)?.component;
-          if (properties8?.type === "floorplan-auto-diagram") {
-            properties8.properties = {
-              ...(properties8.properties || {}),
+          const properties = findComponent(param, componentId)?.component;
+          if (properties?.type === "floorplan-auto-diagram") {
+            properties.properties = {
+              ...(properties.properties || {}),
               floorSelection: selected
             };
           }
         });
       }
       refreshInspector();
-      contentWindow2.contentWindow.postMessage({
+      contentWindow.contentWindow.postMessage({
         type: "ha-bridge-floorplan-auto-diagram-camera",
-        componentId: componentId2,
+        componentId: componentId,
         command: "restore",
         value: {
-          view: properties48.properties?.cameraView || "free",
-          mode: properties48.properties?.cameraMode || "orthographic",
-          topRotation: Number(properties48.properties?.cameraTopRotation || 0),
-          focalLength: Number(properties48.properties?.cameraFocalLength || 50)
+          view: properties.properties?.cameraView || "free",
+          mode: properties.properties?.cameraMode || "orthographic",
+          topRotation: Number(properties.properties?.cameraTopRotation || 0),
+          focalLength: Number(properties.properties?.cameraFocalLength || 50)
         }
       }, window.location.origin);
     }
@@ -10293,27 +10293,27 @@ window.addEventListener("message", value => {
   }
   if (ancestorEl?.type === "ha-bridge-floorplan-auto-diagram-floor-state") {
     const text = String(ancestorEl.componentId || "");
-    const contentWindow3 = document.querySelector(".hb-component[data-component-id=\"" + CSS.escape(text) + "\"] .hb-floorplan-auto-diagram-preview");
-    if (!contentWindow3 || value.source !== contentWindow3.contentWindow) {
+    const contentWindow = document.querySelector(".hb-component[data-component-id=\"" + CSS.escape(text) + "\"] .hb-floorplan-auto-diagram-preview");
+    if (!contentWindow || value.source !== contentWindow.contentWindow) {
       return;
     }
-    const floors2 = (Array.isArray(ancestorEl.floors) ? ancestorEl.floors : []).map(item2 => ({
+    const floors = (Array.isArray(ancestorEl.floors) ? ancestorEl.floors : []).map(item2 => ({
       id: String(item2?.id || ""),
       name: String(item2?.name || "")
-    })).filter(component2 => component2.id);
-    const selected2 = String(ancestorEl.floorSelection || "");
+    })).filter(component => component.id);
+    const selected = String(ancestorEl.floorSelection || "");
     floorplanPreviewById.set(text, {
-      floors: floors2,
-      selected: selected2
+      floors: floors,
+      selected: selected
     });
-    const temp2 = findComponent(currentProject?.document, text)?.component;
-    if (temp2?.type === "floorplan-auto-diagram" && selected2 && temp2.properties?.floorSelection !== selected2) {
+    const item = findComponent(currentProject?.document, text)?.component;
+    if (item?.type === "floorplan-auto-diagram" && selected && item.properties?.floorSelection !== selected) {
       mutateDocument(param => {
-        const properties10 = findComponent(param, text)?.component;
-        if (properties10?.type === "floorplan-auto-diagram") {
-          properties10.properties = {
-            ...(properties10.properties || {}),
-            floorSelection: selected2
+        const properties = findComponent(param, text)?.component;
+        if (properties?.type === "floorplan-auto-diagram") {
+          properties.properties = {
+            ...(properties.properties || {}),
+            floorSelection: selected
           };
         }
       });
@@ -10325,8 +10325,8 @@ window.addEventListener("message", value => {
   }
   if (ancestorEl?.type === "ha-bridge-floorplan-auto-diagram-stopped") {
     const text = String(ancestorEl.componentId || "");
-    const contentWindow4 = document.querySelector(".hb-component[data-component-id=\"" + CSS.escape(text) + "\"] .hb-floorplan-auto-diagram-preview");
-    if (!contentWindow4 || value.source !== contentWindow4.contentWindow) {
+    const contentWindow = document.querySelector(".hb-component[data-component-id=\"" + CSS.escape(text) + "\"] .hb-floorplan-auto-diagram-preview");
+    if (!contentWindow || value.source !== contentWindow.contentWindow) {
       return;
     }
     floorplanAutoDiagramOpenStudio.disabled = false;
@@ -10342,8 +10342,8 @@ window.addEventListener("message", value => {
   }
   if (ancestorEl?.type === "ha-bridge-floorplan-auto-diagram-error") {
     const text = String(ancestorEl.componentId || "");
-    const contentWindow5 = document.querySelector(".hb-component[data-component-id=\"" + CSS.escape(text) + "\"] .hb-floorplan-auto-diagram-preview");
-    if (!contentWindow5 || value.source !== contentWindow5.contentWindow) {
+    const contentWindow = document.querySelector(".hb-component[data-component-id=\"" + CSS.escape(text) + "\"] .hb-floorplan-auto-diagram-preview");
+    if (!contentWindow || value.source !== contentWindow.contentWindow) {
       return;
     }
     floorplanAutoDiagramOpenStudio.disabled = false;
@@ -10358,8 +10358,8 @@ window.addEventListener("message", value => {
     return;
   }
   const temp = String(ancestorEl.componentId || "");
-  const contentWindow7 = document.querySelector(".hb-component[data-component-id=\"" + CSS.escape(temp) + "\"] .hb-floorplan-auto-diagram-preview");
-  if (!contentWindow7 || value.source !== contentWindow7.contentWindow) {
+  const contentWindow = document.querySelector(".hb-component[data-component-id=\"" + CSS.escape(temp) + "\"] .hb-floorplan-auto-diagram-preview");
+  if (!contentWindow || value.source !== contentWindow.contentWindow) {
     return;
   }
   const resolution = ancestorEl.manifest;
@@ -10370,17 +10370,17 @@ window.addEventListener("message", value => {
   floorplanAutoDiagramOpenStudio.disabled = false;
   floorplanAutoDiagramOpenStudio.textContent = "确定位置大小并后台生成";
   floorplanAutoDiagramStatus.textContent = "已生成，正在置换到仪表盘…";
-  const hidden2 = contentWindow7.closest(".hb-component");
-  if (hidden2) {
-    hidden2.hidden = true;
+  const hidden = contentWindow.closest(".hb-component");
+  if (hidden) {
+    hidden.hidden = true;
   }
   mutateDocument(canvas => {
     let page = findComponentLocation(canvas, temp);
-    const position4 = page?.component;
-    if (!position4 || position4.type !== "floorplan-auto-diagram" || !page.page) {
+    const position = page?.component;
+    if (!position || position.type !== "floorplan-auto-diagram" || !page.page) {
       return null;
     }
-    const components2 = page.page;
+    const components = page.page;
     const filter = [];
     const callback = param => {
       for (const properties of param || []) {
@@ -10390,15 +10390,15 @@ window.addEventListener("message", value => {
         callback(properties?.children);
       }
     };
-    callback(components2.components);
-    const imageAutoDiagramRoleById = new Map(filter.filter(type => type.type === "image").map(properties2 => [properties2.properties?.autoDiagramRole === "base" ? "background-with-plan" : String(properties2.properties?.autoDiagramRole || ""), properties2]));
-    const idMap = new Map(filter.filter(component2 => component2.type === "icon-button-effect").map(properties3 => {
-      const text = String(properties3.properties?.autoDiagramRole || "light-group");
-      const text2 = String(properties3.properties?.autoDiagramLayerId || properties3.properties?.autoDiagramGroupId || "");
-      return [text + ":" + text2, properties3];
+    callback(components.components);
+    const imageAutoDiagramRoleById = new Map(filter.filter(type => type.type === "image").map(properties => [properties.properties?.autoDiagramRole === "base" ? "background-with-plan" : String(properties.properties?.autoDiagramRole || ""), properties]));
+    const idMap = new Map(filter.filter(component => component.type === "icon-button-effect").map(properties => {
+      const text = String(properties.properties?.autoDiagramRole || "light-group");
+      const string = String(properties.properties?.autoDiagramLayerId || properties.properties?.autoDiagramGroupId || "");
+      return [text + ":" + string, properties];
     }));
-    for (const temp3 of filter) {
-      detachComponentById(canvas, temp3.id);
+    for (const value of filter) {
+      detachComponentById(canvas, value.id);
     }
     page = findComponentLocation(canvas, temp);
     if (!page) {
@@ -10406,18 +10406,18 @@ window.addEventListener("message", value => {
     }
     const number = Number(canvas.canvas?.width || 2778);
     const canvasHeight = Number(canvas.canvas?.height || 1940);
-    const naturalWidth = Math.max(1, Number(resolution.resolution?.width || position4.position?.width || 1));
-    const naturalHeight = Math.max(1, Number(resolution.resolution?.height || position4.position?.height || 1));
-    const layoutMode = position4.properties?.layoutMode === "fill" ? "fill" : "free";
-    const width3 = position4.position || {};
-    const chosen = layoutMode === "fill" ? 1 : Math.max(0.01, Math.min(5, Number(position4.style?.scale || 1)));
-    const chosen2 = layoutMode === "fill" ? number : Number(width3.width || 100);
-    const chosen3 = layoutMode === "fill" ? canvasHeight : Number(width3.height || 100);
-    const width4 = chosen2 * chosen;
-    const height3 = chosen3 * chosen;
-    const chosen4 = layoutMode === "fill" ? 0 : Number(width3.x || 0) - (width4 - chosen2) / 2;
-    const chosen5 = layoutMode === "fill" ? 0 : Number(width3.y || 0) - (height3 - chosen3) / 2;
-    const rotation = layoutMode === "fill" ? 0 : Number(width3.rotation || 0);
+    const naturalWidth = Math.max(1, Number(resolution.resolution?.width || position.position?.width || 1));
+    const naturalHeight = Math.max(1, Number(resolution.resolution?.height || position.position?.height || 1));
+    const layoutMode = position.properties?.layoutMode === "fill" ? "fill" : "free";
+    const width = position.position || {};
+    const chosen = layoutMode === "fill" ? 1 : Math.max(0.01, Math.min(5, Number(position.style?.scale || 1)));
+    const chosenCurrent = layoutMode === "fill" ? number : Number(width.width || 100);
+    const chosenNext = layoutMode === "fill" ? canvasHeight : Number(width.height || 100);
+    const value = chosenCurrent * chosen;
+    const height = chosenNext * chosen;
+    const count = layoutMode === "fill" ? 0 : Number(width.x || 0) - (value - chosenCurrent) / 2;
+    const chosenPrevious = layoutMode === "fill" ? 0 : Number(width.y || 0) - (height - chosenNext) / 2;
+    const rotation = layoutMode === "fill" ? 0 : Number(width.rotation || 0);
     const find = [{
       role: "background",
       file: resolution.backgroundImage,
@@ -10442,10 +10442,10 @@ window.addEventListener("message", value => {
       });
       position.position = {
         ...(position.position || {}),
-        x: chosen4,
-        y: chosen5,
-        width: width4,
-        height: height3,
+        x: count,
+        y: chosenPrevious,
+        width: value,
+        height: height,
         rotation
       };
       position.style = {
@@ -10471,11 +10471,11 @@ window.addEventListener("message", value => {
       };
       return position;
     });
-    const found = find.find(properties4 => properties4.properties?.autoDiagramRole === "background");
-    const found2 = find.find(properties5 => properties5.properties?.autoDiagramRole === "floor-plan");
-    const found3 = find.find(properties6 => properties6.properties?.autoDiagramRole === "background-with-plan");
-    const flag2 = found3 || found2 || found;
-    const mapped = (Array.isArray(resolution.groups) ? resolution.groups : []).filter(item2 => String(item2?.id || item2?.groupId || "") && item2?.file).map(name => ({
+    const found = find.find(properties => properties.properties?.autoDiagramRole === "background");
+    const foundCurrent = find.find(properties => properties.properties?.autoDiagramRole === "floor-plan");
+    const foundNext = find.find(properties => properties.properties?.autoDiagramRole === "background-with-plan");
+    const flag = foundNext || foundCurrent || found;
+    const mapped = (Array.isArray(resolution.groups) ? resolution.groups : []).filter(item => String(item?.id || item?.groupId || "") && item?.file).map(name => ({
       role: "light-group",
       id: String(name.id || name.groupId || ""),
       name: String(name.name || name.note || "灯组"),
@@ -10484,7 +10484,7 @@ window.addEventListener("message", value => {
       icon: "mdi:lightbulb-outline",
       anchor: name.anchor
     }));
-    const mapped2 = (Array.isArray(resolution.screens) ? resolution.screens : []).filter(item2 => String(item2?.id || item2?.itemId || "") && item2?.file).map(name2 => ({
+    const mappedCurrent = (Array.isArray(resolution.screens) ? resolution.screens : []).filter(item => String(item?.id || item?.itemId || "") && item?.file).map(name2 => ({
       role: "television",
       id: String(name2.id || name2.itemId || ""),
       name: String(name2.name || "电视画面"),
@@ -10493,7 +10493,7 @@ window.addEventListener("message", value => {
       icon: "mdi:television",
       anchor: name2.anchor
     }));
-    const mapped3 = (Array.isArray(resolution.vehicles) ? resolution.vehicles : []).filter(item2 => String(item2?.id || item2?.itemId || "") && item2?.file).map(name3 => ({
+    const mappedNext = (Array.isArray(resolution.vehicles) ? resolution.vehicles : []).filter(item => String(item?.id || item?.itemId || "") && item?.file).map(name3 => ({
       role: "vehicle",
       id: String(name3.id || name3.itemId || ""),
       name: String(name3.name || "汽车充电"),
@@ -10502,47 +10502,47 @@ window.addEventListener("message", value => {
       icon: "mdi:car-electric",
       anchor: name3.anchor
     }));
-    const length = [...mapped2, ...mapped3, ...mapped];
-    const number3 = chosen4 + width4 / 2;
-    const number4 = chosen5 + height3 / 2;
-    const number5 = rotation * Math.PI / 180;
-    const minValue = Math.min(width4 / naturalWidth, height3 / naturalHeight);
-    const number6 = naturalWidth * minValue;
-    const number7 = naturalHeight * minValue;
-    const push2 = [];
-    const callback2 = (anchor, param, param2, param3) => {
-      const number8 = Number(anchor.anchor?.x);
-      const number9 = Number(anchor.anchor?.y);
-      const options2 = {
+    const length = [...mappedCurrent, ...mappedNext, ...mapped];
+    const numberCurrent = count + value / 2;
+    const numberNext = chosenPrevious + height / 2;
+    const numberPrevious = rotation * Math.PI / 180;
+    const minValue = Math.min(value / naturalWidth, height / naturalHeight);
+    const numberLocal = naturalWidth * minValue;
+    const numberItem = naturalHeight * minValue;
+    const list = [];
+    const callbackCurrent = (anchor, param, value, item) => {
+      const number = Number(anchor.anchor?.x);
+      const numberCurrent = Number(anchor.anchor?.y);
+      const options = {
         x: length.length > 1 ? (param + 1) / (length.length + 1) : 0.5,
         y: 0.9
       };
-      const chosen6 = Number.isFinite(number8) && Number.isFinite(number9) ? {
-        x: number8,
-        number9
-      } : options2;
-      const spacingX = Math.max(0.035, param2 / Math.max(number6, 1) * 1.08);
-      const spacingY = Math.max(0.045, param3 / Math.max(number7, 1) * 1.08);
+      const chosen = Number.isFinite(number) && Number.isFinite(numberCurrent) ? {
+        x: number,
+        numberCurrent
+      } : options;
+      const spacingX = Math.max(0.035, value / Math.max(numberLocal, 1) * 1.08);
+      const spacingY = Math.max(0.045, item / Math.max(numberItem, 1) * 1.08);
       const push = [[0, 0]];
-      for (let number8 = 1; number8 <= 4; number8 += 1) {
-        push.push([0, -spacingY * number8], [spacingX * number8, 0], [0, spacingY * number8], [-spacingX * number8, 0], [spacingX * number8, -spacingY * number8], [spacingX * number8, spacingY * number8], [-spacingX * number8, spacingY * number8], [-spacingX * number8, -spacingY * number8]);
+      for (let number = 1; number <= 4; number += 1) {
+        push.push([0, -spacingY * number], [spacingX * number, 0], [0, spacingY * number], [-spacingX * number, 0], [spacingX * number, -spacingY * number], [spacingX * number, spacingY * number], [-spacingX * number, spacingY * number], [-spacingX * number, -spacingY * number]);
       }
       let alias = null;
-      for (const [temp3, temp4] of push) {
+      for (const [value, item] of push) {
         const clamped = {
-          x: clampNumber(chosen6.x + temp3, spacingX / 2, 1 - spacingX / 2),
-          y: clampNumber(chosen6.y + temp4, spacingY / 2, 1 - spacingY / 2)
+          x: clampNumber(chosen.x + value, spacingX / 2, 1 - spacingX / 2),
+          y: clampNumber(chosen.y + item, spacingY / 2, 1 - spacingY / 2)
         };
-        if (!push2.some(item => Math.abs(clamped.x - item.x) < (spacingX + item.spacingX) / 2 && Math.abs(clamped.y - item.y) < (spacingY + item.spacingY) / 2)) {
+        if (!list.some(item => Math.abs(clamped.x - item.x) < (spacingX + item.spacingX) / 2 && Math.abs(clamped.y - item.y) < (spacingY + item.spacingY) / 2)) {
           alias = clamped;
           break;
         }
       }
       alias ||= {
-        x: clampNumber(options2.x, spacingX / 2, 1 - spacingX / 2),
-        y: clampNumber(options2.y, spacingY / 2, 1 - spacingY / 2)
+        x: clampNumber(options.x, spacingX / 2, 1 - spacingX / 2),
+        y: clampNumber(options.y, spacingY / 2, 1 - spacingY / 2)
       };
-      push2.push({
+      list.push({
         ...alias,
         spacingX,
         spacingY
@@ -10550,113 +10550,113 @@ window.addEventListener("message", value => {
       return alias;
     };
     const cloned = length.map((role, index) => {
-      const properties7 = idMap.get(role.role + ":" + role.id);
-      const position2 = properties7 ? cloneValue(properties7) : createComponentFromTemplate("icon-button-effect", {
+      const properties = idMap.get(role.role + ":" + role.id);
+      const value = properties ? cloneValue(properties) : createComponentFromTemplate("icon-button-effect", {
         id: newId("component"),
         instanceName: role.name,
         canvas: canvas.canvas
       });
-      const temp3 = properties7?.properties?.autoDiagramSceneAnchor;
-      const flag = !temp3 || Math.abs(Number(temp3.x) - Number(role.anchor?.x)) > 0.002 || Math.abs(Number(temp3.y) - Number(role.anchor?.y)) > 0.002;
-      const flag2 = !!properties7 && Number(properties7.properties?.autoDiagramLayoutVersion || 0) < EDITOR_LAYOUT_GAP;
-      const flag3 = !properties7 || flag2 || role.role === "light-group" && flag;
-      let flag4 = properties7?.properties?.autoDiagramButtonAnchor || null;
-      if (flag3) {
-        const number8 = Number(position2.position?.width || number * 0.075);
-        const number9 = Number(position2.position?.height || number8);
-        const maxValue = Math.max(0.01, Math.min(5, Number(position2.style?.scale || 1)));
-        flag4 = callback2(role, index, number8 * maxValue, number9 * maxValue);
-        const number10 = -number6 / 2 + flag4.x * number6;
-        const number11 = -number7 / 2 + flag4.y * number7;
-        const number12 = number10 * Math.cos(number5) - number11 * Math.sin(number5);
-        const number13 = number10 * Math.sin(number5) + number11 * Math.cos(number5);
-        position2.position = {
-          ...(position2.position || {}),
-          x: number3 + number12 - number8 / 2,
-          y: number4 + number13 - number9 / 2,
+      const point = properties?.properties?.autoDiagramSceneAnchor;
+      const flag = !point || Math.abs(Number(point.x) - Number(role.anchor?.x)) > 0.002 || Math.abs(Number(point.y) - Number(role.anchor?.y)) > 0.002;
+      const flagCurrent = !!properties && Number(properties.properties?.autoDiagramLayoutVersion || 0) < EDITOR_LAYOUT_GAP;
+      const flagNext = !properties || flagCurrent || role.role === "light-group" && flag;
+      let flagPrevious = properties?.properties?.autoDiagramButtonAnchor || null;
+      if (flagNext) {
+        const numberEntry = Number(value.position?.width || number * 0.075);
+        const numberList = Number(value.position?.height || numberEntry);
+        const maxValue = Math.max(0.01, Math.min(5, Number(value.style?.scale || 1)));
+        flagPrevious = callbackCurrent(role, index, numberEntry * maxValue, numberList * maxValue);
+        const numberText = -numberLocal / 2 + flagPrevious.x * numberLocal;
+        const numberValue = -numberItem / 2 + flagPrevious.y * numberItem;
+        const numberSource = numberText * Math.cos(numberPrevious) - numberValue * Math.sin(numberPrevious);
+        const numberTarget = numberText * Math.sin(numberPrevious) + numberValue * Math.cos(numberPrevious);
+        value.position = {
+          ...(value.position || {}),
+          x: numberCurrent + numberSource - numberEntry / 2,
+          y: numberNext + numberTarget - numberList / 2,
           rotation
         };
-      } else if (Number.isFinite(Number(flag4?.x)) && Number.isFinite(Number(flag4?.y))) {
-        const number8 = Number(position2.position?.width || number * 0.075);
-        const number9 = Number(position2.position?.height || number8);
-        const maxValue = Math.max(0.01, Math.min(5, Number(position2.style?.scale || 1)));
-        push2.push({
-          x: Number(flag4.x),
-          y: Number(flag4.y),
-          spacingX: Math.max(0.035, number8 * maxValue / Math.max(number6, 1) * 1.08),
-          spacingY: Math.max(0.045, number9 * maxValue / Math.max(number7, 1) * 1.08)
+      } else if (Number.isFinite(Number(flagPrevious?.x)) && Number.isFinite(Number(flagPrevious?.y))) {
+        const numberCurrent = Number(value.position?.width || number * 0.075);
+        const numberNext = Number(value.position?.height || numberCurrent);
+        const maxValue = Math.max(0.01, Math.min(5, Number(value.style?.scale || 1)));
+        list.push({
+          x: Number(flagPrevious.x),
+          y: Number(flagPrevious.y),
+          spacingX: Math.max(0.035, numberCurrent * maxValue / Math.max(numberLocal, 1) * 1.08),
+          spacingY: Math.max(0.045, numberNext * maxValue / Math.max(numberItem, 1) * 1.08)
         });
       }
-      position2.style = {
-        ...(position2.style || {}),
+      value.style = {
+        ...(value.style || {}),
         visible: true
       };
-      position2.bindings = {
-        ...(position2.bindings || {})
+      value.bindings = {
+        ...(value.bindings || {})
       };
-      if (!properties7 && role.role === "light-group") {
-        const entityId = position4.bindings?.["lightGroup:" + role.id];
+      if (!properties && role.role === "light-group") {
+        const entityId = position.bindings?.["lightGroup:" + role.id];
         if (entityId?.entityId) {
-          position2.bindings.entity = {
+          value.bindings.entity = {
             entityId: entityId.entityId
           };
         }
       }
-      position2.actions = Object.keys(position2.actions || {}).length ? {
-        ...(position2.actions || {})
+      value.actions = Object.keys(value.actions || {}).length ? {
+        ...(value.actions || {})
       } : {
         tap: {
           type: "toggle"
         }
       };
-      position2.properties = {
-        ...(position2.properties || {}),
+      value.properties = {
+        ...(value.properties || {}),
         instanceName: role.name,
         label: role.name,
         note: role.note,
-        icon: properties7?.properties?.icon || role.icon,
+        icon: properties?.properties?.icon || role.icon,
         effectAssetId: "studio3d:" + autoDiagramFolder + "/" + role.file,
         effectNaturalWidth: naturalWidth,
         effectNaturalHeight: naturalHeight,
-        effectReferenceImageId: flag2?.id || "",
+        effectReferenceImageId: flagCurrent?.id || "",
         effectLayoutMode: layoutMode,
-        effectLeft: number3 / number * 100,
-        effectTop: number4 / canvasHeight * 100,
+        effectLeft: numberCurrent / number * 100,
+        effectTop: numberNext / canvasHeight * 100,
         effectScale: 1,
         effectRotation: rotation,
         autoDiagramFolder,
         autoDiagramRole: role.role,
         autoDiagramLayerId: role.id,
         autoDiagramSceneAnchor: role.anchor || null,
-        autoDiagramButtonAnchor: flag4,
+        autoDiagramButtonAnchor: flagPrevious,
         autoDiagramLayoutVersion: EDITOR_LAYOUT_GAP,
         ...(role.role === "light-group" ? {
           autoDiagramGroupId: role.id
         } : {})
       };
-      return position2;
+      return value;
     });
-    const filtered = [found2, found, found3].filter(Boolean);
-    const temp2 = page.index;
+    const filtered = [foundCurrent, found, foundNext].filter(Boolean);
+    const index = page.index;
     detachComponentById(canvas, temp);
-    page.collection.splice(temp2, 0, ...cloned, ...filtered);
+    page.collection.splice(index, 0, ...cloned, ...filtered);
     applyCollectionLayerOrder(page.collection);
     return {
       removed: true,
-      selectedId: (found || found2 || found3 || cloned[0])?.id || null
+      selectedId: (found || foundCurrent || foundNext || cloned[0])?.id || null
     };
   }).then(removed => {
     if (!removed?.removed) {
-      if (hidden2?.isConnected) {
-        hidden2.hidden = false;
+      if (hidden?.isConnected) {
+        hidden.hidden = false;
       }
       return;
     }
-    const temp2 = removed.selectedId;
-    componentId = temp2;
-    selectedComponentIds = temp2 ? new Set([temp2]) : new Set();
-    rangeSelectAnchorId = temp2;
-    editorRenderer?.setSelectedComponents(temp2 ? [temp2] : [], temp2);
+    const selectedId = removed.selectedId;
+    componentId = selectedId;
+    selectedComponentIds = selectedId ? new Set([selectedId]) : new Set();
+    rangeSelectAnchorId = selectedId;
+    editorRenderer?.setSelectedComponents(selectedId ? [selectedId] : [], selectedId);
     renderComponentTree();
     refreshInspector();
   }).catch(onError);
@@ -10740,78 +10740,78 @@ const ibeRealtimeFieldMap = new Map([[ibeColorTemperatureRealtime, {
 }]]);
 const ibeOffPropertyMap = new Map([[ibeIconOffColor, "off"], [ibeButtonOffColor, "off"], [ibeGlowOffStrength, "off"], [ibeIconOnColor, "on"], [ibeButtonOnColor, "on"], [ibeGlowOnStrength, "on"]]);
 const ibeTransformFields = new Set([ibeLeft, ibeTop, ibeWidth, ibeHeight, ibeScale, ibeRotation]);
-function ibeTemplateOptions2(value) {
+function ibeTemplateOptionsCurrent(value) {
   const list = ibeOffPropertyMap.get(value);
   const callback = selectedComponent();
   if (!!list && callback?.type === "icon-button-effect") {
     ibePreviewStateById.set(callback.id, list);
     editorRenderer?.setComponentPreviewState(callback.id, list);
-    for (const dataset6 of ibePreviewState.querySelectorAll("[data-ibe-preview]")) {
-      const flag = dataset6.dataset.ibePreview === list;
-      dataset6.classList.toggle("active", flag);
-      dataset6.setAttribute("aria-pressed", String(flag));
+    for (const dataset of ibePreviewState.querySelectorAll("[data-ibe-preview]")) {
+      const flag = dataset.dataset.ibePreview === list;
+      dataset.classList.toggle("active", flag);
+      dataset.setAttribute("aria-pressed", String(flag));
     }
   }
 }
-for (const temp2 of ["focusin", "pointerdown"]) {
-  iconButtonEffectInspector.addEventListener(temp2, value => ibeTemplateOptions2(value.target));
+for (const value of ["focusin", "pointerdown"]) {
+  iconButtonEffectInspector.addEventListener(value, value => ibeTemplateOptionsCurrent(value.target));
 }
-iconButtonEffectInspector.addEventListener("input", target21 => {
-  const component2 = selectedComponent();
-  if (!component2 || component2.type !== "icon-button-effect") {
+iconButtonEffectInspector.addEventListener("input", target => {
+  const component = selectedComponent();
+  if (!component || component.type !== "icon-button-effect") {
     return;
   }
-  ibeTemplateOptions2(target21.target);
-  const temp2 = ibeRealtimeFieldMap.get(target21.target);
-  if (temp2) {
-    let chosen = temp2.type === "boolean" ? target21.target.checked : target21.target.type === "color" ? target21.target.value : Number(target21.target.value);
-    if (temp2.type !== "boolean" && target21.target.type !== "color") {
+  ibeTemplateOptionsCurrent(target.target);
+  const entry = ibeRealtimeFieldMap.get(target.target);
+  if (entry) {
+    let chosen = entry.type === "boolean" ? target.target.checked : target.target.type === "color" ? target.target.value : Number(target.target.value);
+    if (entry.type !== "boolean" && target.target.type !== "color") {
       if (!Number.isFinite(chosen)) {
         return;
       }
-      chosen = clampNumber(chosen, temp2.min, temp2.max) / (temp2.divisor || 1);
+      chosen = clampNumber(chosen, entry.min, entry.max) / (entry.divisor || 1);
     }
-    editorRenderer?.previewComponentProperties(component2.id, {
-      [temp2.property]: chosen
+    editorRenderer?.previewComponentProperties(component.id, {
+      [entry.property]: chosen
     });
     return;
   }
-  if (!ibeTransformFields.has(target21.target) || !Number.isFinite(Number(target21.target.value))) {
+  if (!ibeTransformFields.has(target.target) || !Number.isFinite(Number(target.target.value))) {
     return;
   }
-  const number = Number(target21.target.value);
+  const number = Number(target.target.value);
   const canvasWidth = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
-  const number4 = Number(component2.position?.width || 100);
-  const number5 = Number(component2.position?.height || 100);
-  if (target21.target === ibeLeft) {
-    editorRenderer?.previewComponentTransform(component2.id, {
-      x: canvasWidth * clampNumber(number, 0, 100) / 100 - number4 / 2
+  const numberCurrent = Number(component.position?.width || 100);
+  const numberNext = Number(component.position?.height || 100);
+  if (target.target === ibeLeft) {
+    editorRenderer?.previewComponentTransform(component.id, {
+      x: canvasWidth * clampNumber(number, 0, 100) / 100 - numberCurrent / 2
     });
-  } else if (target21.target === ibeTop) {
-    editorRenderer?.previewComponentTransform(component2.id, {
-      y: canvasHeight * clampNumber(number, 0, 100) / 100 - number5 / 2
+  } else if (target.target === ibeTop) {
+    editorRenderer?.previewComponentTransform(component.id, {
+      y: canvasHeight * clampNumber(number, 0, 100) / 100 - numberNext / 2
     });
-  } else if (target21.target === ibeWidth) {
-    editorRenderer?.previewComponentTransform(component2.id, {
+  } else if (target.target === ibeWidth) {
+    editorRenderer?.previewComponentTransform(component.id, {
       width: canvasWidth * clampNumber(number, 0.1, 100) / 100
     });
-  } else if (target21.target === ibeHeight) {
-    editorRenderer?.previewComponentTransform(component2.id, {
+  } else if (target.target === ibeHeight) {
+    editorRenderer?.previewComponentTransform(component.id, {
       height: canvasHeight * clampNumber(number, 0.1, 100) / 100
     });
-  } else if (target21.target === ibeScale) {
-    editorRenderer?.previewComponentTransform(component2.id, {
+  } else if (target.target === ibeScale) {
+    editorRenderer?.previewComponentTransform(component.id, {
       scale: clampNumber(number, 1, 500) / 100
     });
-  } else if (target21.target === ibeRotation) {
-    editorRenderer?.previewComponentTransform(component2.id, {
+  } else if (target.target === ibeRotation) {
+    editorRenderer?.previewComponentTransform(component.id, {
       rotation: clampNumber(number, -360, 360)
     });
   }
 });
-iconButtonEffectInspector.addEventListener("change", target22 => {
-  const eventTarget = target22.target;
+iconButtonEffectInspector.addEventListener("change", target => {
+  const eventTarget = target.target;
   const property = ibeRealtimeFieldMap.get(eventTarget);
   if (!property && !ibeTransformFields.has(eventTarget)) {
     return;
@@ -10821,69 +10821,69 @@ iconButtonEffectInspector.addEventListener("change", target22 => {
     return;
   }
   const alias = componentId;
-  mutateDocument(canvas10 => {
-    const position14 = findComponent(canvas10, alias)?.component;
-    if (!position14 || position14.type !== "icon-button-effect") {
+  mutateDocument(canvas => {
+    const position = findComponent(canvas, alias)?.component;
+    if (!position || position.type !== "icon-button-effect") {
       return;
     }
-    position14.properties = {
-      ...(position14.properties || {})
+    position.properties = {
+      ...(position.properties || {})
     };
-    position14.position = {
-      ...(position14.position || {})
+    position.position = {
+      ...(position.position || {})
     };
-    position14.style = {
-      ...(position14.style || {})
+    position.style = {
+      ...(position.style || {})
     };
     if (property) {
-      position14.properties[property.property] = property.type === "boolean" ? eventTarget.checked : eventTarget.type === "color" ? eventTarget.value : clampNumber(Number(eventTarget.value), property.min, property.max) / (property.divisor || 1);
+      position.properties[property.property] = property.type === "boolean" ? eventTarget.checked : eventTarget.type === "color" ? eventTarget.value : clampNumber(Number(eventTarget.value), property.min, property.max) / (property.divisor || 1);
       return;
     }
-    const number = Number(canvas10.canvas.width || 2778);
-    const canvasHeight = Number(canvas10.canvas.height || 1940);
-    const number3 = Number(eventTarget.value);
+    const number = Number(canvas.canvas.width || 2778);
+    const canvasHeight = Number(canvas.canvas.height || 1940);
+    const numberCurrent = Number(eventTarget.value);
     if (eventTarget === ibeLeft) {
-      position14.position.x = number * clampNumber(number3, 0, 100) / 100 - Number(position14.position.width || 100) / 2;
+      position.position.x = number * clampNumber(numberCurrent, 0, 100) / 100 - Number(position.position.width || 100) / 2;
     } else if (eventTarget === ibeTop) {
-      position14.position.y = canvasHeight * clampNumber(number3, 0, 100) / 100 - Number(position14.position.height || 100) / 2;
+      position.position.y = canvasHeight * clampNumber(numberCurrent, 0, 100) / 100 - Number(position.position.height || 100) / 2;
     } else if (eventTarget === ibeWidth) {
-      position14.position.width = number * clampNumber(number3, 0.1, 100) / 100;
+      position.position.width = number * clampNumber(numberCurrent, 0.1, 100) / 100;
     } else if (eventTarget === ibeHeight) {
-      position14.position.height = canvasHeight * clampNumber(number3, 0.1, 100) / 100;
+      position.position.height = canvasHeight * clampNumber(numberCurrent, 0.1, 100) / 100;
     } else if (eventTarget === ibeScale) {
-      position14.style.scale = clampNumber(number3, 1, 500) / 100;
+      position.style.scale = clampNumber(numberCurrent, 1, 500) / 100;
     } else if (eventTarget === ibeRotation) {
-      setComponentsRotation(canvas10, alias, clampNumber(number3, -360, 360));
+      setComponentsRotation(canvas, alias, clampNumber(numberCurrent, -360, 360));
     }
   });
 });
-ibeEffectLayoutOptions.addEventListener("click", target23 => {
-  const dataset15 = target23.target.closest("[data-ibe-layout]");
+ibeEffectLayoutOptions.addEventListener("click", target => {
+  const dataset = target.target.closest("[data-ibe-layout]");
   const alias = componentId;
-  if (!!dataset15 && !!alias) {
+  if (!!dataset && !!alias) {
     mutateDocument(param => {
-      const properties18 = findComponent(param, alias)?.component;
-      if (!!properties18 && properties18.type === "icon-button-effect") {
-        properties18.properties = {
-          ...(properties18.properties || {}),
-          effectLayoutMode: dataset15.dataset.ibeLayout === "fill" ? "fill" : "free"
+      const properties = findComponent(param, alias)?.component;
+      if (!!properties && properties.type === "icon-button-effect") {
+        properties.properties = {
+          ...(properties.properties || {}),
+          effectLayoutMode: dataset.dataset.ibeLayout === "fill" ? "fill" : "free"
         };
       }
     });
   }
 });
 function collectImageComponents(value) {
-  const push4 = [];
+  const push = [];
   const callback = param => {
-    for (const temp2 of param || []) {
-      if (temp2.type === "image") {
-        push4.push(temp2);
+    for (const value of param || []) {
+      if (value.type === "image") {
+        push.push(value);
       }
-      callback(temp2.children);
+      callback(value.children);
     }
   };
   callback(value?.components);
-  return push4;
+  return push;
 }
 function createEffectImageAlignOption(component, value) {
   const temp = document.createElement("label");
@@ -10895,40 +10895,40 @@ function createEffectImageAlignOption(component, value) {
   element.checked = value;
   const span = document.createElement("span");
   span.className = "effect-image-align-option-preview";
-  const temp2 = findAssetById(component.properties?.assetId || "");
-  const temp3 = toText(temp2);
-  if (temp3) {
+  const id = findAssetById(component.properties?.assetId || "");
+  const text = toText(id);
+  if (text) {
     const img = document.createElement("img");
-    img.src = temp3;
+    img.src = text;
     img.alt = "";
     span.append(img);
   } else {
     span.textContent = "无预览";
   }
-  const span2 = document.createElement("span");
-  span2.className = "effect-image-align-option-copy";
-  const el3 = document.createElement("strong");
-  el3.textContent = componentLabel(component);
-  const el4 = document.createElement("small");
+  const spanCurrent = document.createElement("span");
+  spanCurrent.className = "effect-image-align-option-copy";
+  const el = document.createElement("strong");
+  el.textContent = componentLabel(component);
+  const elCurrent = document.createElement("small");
   const flag = component.properties?.layoutMode === "fill";
   const chosen = component.style?.visible === false ? "隐藏" : "显示";
   const numeric = Number(currentProject?.document?.canvas?.width || 2778);
   const canvasHeight = Number(currentProject?.document?.canvas?.height || 1940);
-  const flag2 = component.position || {};
-  const number = Number(flag2.width || 100);
-  const number2 = Number(flag2.height || 100);
-  const temp5 = roundField((Number(flag2.x || 0) + number / 2) / numeric * 100);
-  const temp6 = roundField((Number(flag2.y || 0) + number2 / 2) / canvasHeight * 100);
-  const temp7 = roundField(Number(component.style?.scale || 1) * 100);
-  const temp8 = roundField(Number(flag2.rotation || 0));
-  el4.textContent = flag ? "铺满 · 覆盖整个画布" : "自由 · 左 " + temp5 + "% · 上 " + temp6 + "%";
-  const el5 = document.createElement("small");
-  el5.textContent = flag ? chosen : "缩放 " + temp7 + "% · 旋转 " + temp8 + "° · " + chosen;
-  span2.append(el3, el4, el5);
-  temp.append(element, span, span2);
+  const rect = component.position || {};
+  const number = Number(rect.width || 100);
+  const numberCurrent = Number(rect.height || 100);
+  const field = roundField((Number(rect.x || 0) + number / 2) / numeric * 100);
+  const item = roundField((Number(rect.y || 0) + numberCurrent / 2) / canvasHeight * 100);
+  const entry = roundField(Number(component.style?.scale || 1) * 100);
+  const current = roundField(Number(rect.rotation || 0));
+  elCurrent.textContent = flag ? "铺满 · 覆盖整个画布" : "自由 · 左 " + field + "% · 上 " + item + "%";
+  const elNext = document.createElement("small");
+  elNext.textContent = flag ? chosen : "缩放 " + entry + "% · 旋转 " + current + "° · " + chosen;
+  spanCurrent.append(el, elCurrent, elNext);
+  temp.append(element, span, spanCurrent);
   return temp;
 }
-function renderList3() {
+function renderListNext() {
   const component = selectedComponent();
   const value = currentPage();
   if (!component || component.type !== "icon-button-effect" || !value) {
@@ -10936,14 +10936,14 @@ function renderList3() {
   }
   const temp = collectImageComponents(value);
   const text = String(component.properties?.effectReferenceImageId || "");
-  effectImageAlignOptions.replaceChildren(...temp.map((component2, index) => createEffectImageAlignOption(component2, component2.id === text || !text && index === 0)));
+  effectImageAlignOptions.replaceChildren(...temp.map((component, index) => createEffectImageAlignOption(component, component.id === text || !text && index === 0)));
   effectImageAlignSourceId = component.id;
   effectImageAlignMessage.hidden = temp.length > 0;
   effectImageAlignMessage.textContent = temp.length ? "" : "本页面没有可以对齐的普通图片。";
   effectImageAlignConfirmBtn.disabled = temp.length === 0;
   effectImageAlignDialog.showModal();
 }
-ibeEffectAlignImage.addEventListener("click", renderList3);
+ibeEffectAlignImage.addEventListener("click", renderListNext);
 effectImageAlignCloseBtn.addEventListener("click", () => effectImageAlignDialog.close());
 effectImageAlignCancelBtn.addEventListener("click", () => effectImageAlignDialog.close());
 effectImageAlignDialog.addEventListener("click", value => {
@@ -10963,34 +10963,34 @@ effectImageAlignConfirmBtn.addEventListener("click", () => {
     return;
   }
   effectImageAlignDialog.close();
-  mutateDocument(pages2 => {
-    const properties33 = findComponent(pages2, alias)?.component;
-    const components4 = pages2.pages?.find(path2 => path2.path === pageSelect.value) || pages2.pages?.[0];
-    const temp2 = findComponentInItems(components4?.components, value);
-    if (!properties33 || properties33.type !== "icon-button-effect" || !temp2 || temp2.type !== "image") {
+  mutateDocument(pages => {
+    const properties = findComponent(pages, alias)?.component;
+    const components = pages.pages?.find(path => path.path === pageSelect.value) || pages.pages?.[0];
+    const items = findComponentInItems(components?.components, value);
+    if (!properties || properties.type !== "icon-button-effect" || !items || items.type !== "image") {
       return;
     }
-    const number = Number(pages2.canvas?.width || 2778);
-    const canvasHeight = Number(pages2.canvas?.height || 1940);
-    const width8 = temp2.position || {};
-    const number3 = Number(width8.width || 100);
-    const number4 = Number(width8.height || 100);
-    const flag = temp2.properties?.layoutMode === "fill";
-    properties33.properties = {
-      ...(properties33.properties || {}),
-      effectReferenceImageId: temp2.id,
+    const number = Number(pages.canvas?.width || 2778);
+    const canvasHeight = Number(pages.canvas?.height || 1940);
+    const width = items.position || {};
+    const numberCurrent = Number(width.width || 100);
+    const numberNext = Number(width.height || 100);
+    const flag = items.properties?.layoutMode === "fill";
+    properties.properties = {
+      ...(properties.properties || {}),
+      effectReferenceImageId: items.id,
       effectLayoutMode: flag ? "fill" : "free",
       ...(flag ? {} : {
-        effectLeft: (Number(width8.x || 0) + number3 / 2) / number * 100,
-        effectTop: (Number(width8.y || 0) + number4 / 2) / canvasHeight * 100,
-        effectScale: clampNumber(Number(temp2.style?.scale || 1), 0.01, 5),
-        effectRotation: Number(width8.rotation || 0)
+        effectLeft: (Number(width.x || 0) + numberCurrent / 2) / number * 100,
+        effectTop: (Number(width.y || 0) + numberNext / 2) / canvasHeight * 100,
+        effectScale: clampNumber(Number(items.style?.scale || 1), 0.01, 5),
+        effectRotation: Number(width.rotation || 0)
       })
     };
   });
 });
-ibePreviewState.addEventListener("click", target24 => {
-  const value = target24.target.closest("[data-ibe-preview]");
+ibePreviewState.addEventListener("click", target => {
+  const value = target.target.closest("[data-ibe-preview]");
   const alias = componentId;
   if (!value || !alias) {
     return;
@@ -11000,17 +11000,17 @@ ibePreviewState.addEventListener("click", target24 => {
   editorRenderer?.setComponentPreviewState(alias, chosen);
   refreshInspector();
 });
-ibeLayerOptions.addEventListener("click", target25 => {
-  const dataset16 = target25.target.closest("[data-ibe-layer]");
+ibeLayerOptions.addEventListener("click", target => {
+  const dataset = target.target.closest("[data-ibe-layer]");
   const alias = componentId;
-  if (!dataset16 || !alias) {
+  if (!dataset || !alias) {
     return;
   }
-  const chosen = dataset16.dataset.ibeLayer === "effect" ? "effect" : "button";
-  const chosen2 = chosen === "effect" ? "on" : "off";
+  const chosen = dataset.dataset.ibeLayer === "effect" ? "effect" : "button";
+  const text = chosen === "effect" ? "on" : "off";
   ibeLayerById.set(alias, chosen);
-  ibePreviewStateById.set(alias, chosen2);
-  editorRenderer?.setComponentPreviewState(alias, chosen2);
+  ibePreviewStateById.set(alias, text);
+  editorRenderer?.setComponentPreviewState(alias, text);
   editorRenderer?.setComponentSelectionLayer(alias, chosen);
   closeOtherPickerPanels();
   refreshInspector();
@@ -11019,11 +11019,11 @@ ibeButtonVisible.addEventListener("click", () => {
   const alias = componentId;
   if (alias) {
     mutateDocument(param => {
-      const properties19 = findComponent(param, alias)?.component;
-      if (!!properties19 && properties19.type === "icon-button-effect") {
-        properties19.properties = {
-          ...(properties19.properties || {}),
-          buttonVisible: properties19.properties?.buttonVisible === false
+      const properties = findComponent(param, alias)?.component;
+      if (!!properties && properties.type === "icon-button-effect") {
+        properties.properties = {
+          ...(properties.properties || {}),
+          buttonVisible: properties.properties?.buttonVisible === false
         };
       }
     });
@@ -11033,11 +11033,11 @@ ibeEffectVisible.addEventListener("click", () => {
   const alias = componentId;
   if (alias) {
     mutateDocument(param => {
-      const properties20 = findComponent(param, alias)?.component;
-      if (!!properties20 && properties20.type === "icon-button-effect") {
-        properties20.properties = {
-          ...(properties20.properties || {}),
-          effectVisible: properties20.properties?.effectVisible === false
+      const properties = findComponent(param, alias)?.component;
+      if (!!properties && properties.type === "icon-button-effect") {
+        properties.properties = {
+          ...(properties.properties || {}),
+          effectVisible: properties.properties?.effectVisible === false
         };
       }
     });
@@ -11231,7 +11231,7 @@ const presenceHaloFieldMap = new Map([[presenceHaloScaleX, {
 }], [iconButtonIconColor, {
   property: "iconColor"
 }], [deviceButtonIconOnColor, {
-  property: properties29 => properties29.type !== "presence-sensor" ? "iconOnColor" : properties29.properties?.sensorKind === "water-leak" ? "waterLeakColor" : properties29.properties?.sensorKind === "smoke" ? "smokeColor" : properties29.properties?.sensorKind === "natural-gas" ? "naturalGasColor" : "iconOnColor"
+  property: properties => properties.type !== "presence-sensor" ? "iconOnColor" : properties.properties?.sensorKind === "water-leak" ? "waterLeakColor" : properties.properties?.sensorKind === "smoke" ? "smokeColor" : properties.properties?.sensorKind === "natural-gas" ? "naturalGasColor" : "iconOnColor"
 }], [deviceButtonBadgeColor, {
   property: "badgeColor"
 }], [deviceButtonBadgeOpacity, {
@@ -11523,8 +11523,8 @@ const airConditionerColorFieldMap = new Map([[airConditionerIconOffColor, {
   max: 12
 }], [airConditionerAirflowOffsetX, {
   property: "airflowOffsetX",
-  limits: (param, canvas8) => {
-    const minX = airflowCanvasOffsetBounds(param, canvas8.canvas);
+  limits: (param, canvas) => {
+    const minX = airflowCanvasOffsetBounds(param, canvas.canvas);
     return {
       min: minX.minX,
       max: minX.maxX
@@ -11532,8 +11532,8 @@ const airConditionerColorFieldMap = new Map([[airConditionerIconOffColor, {
   }
 }], [airConditionerAirflowOffsetY, {
   property: "airflowOffsetY",
-  limits: (param, canvas9) => {
-    const minY = airflowCanvasOffsetBounds(param, canvas9.canvas);
+  limits: (param, canvas) => {
+    const minY = airflowCanvasOffsetBounds(param, canvas.canvas);
     return {
       min: minY.minY,
       max: minY.maxY
@@ -11587,76 +11587,76 @@ const vacuumMapFieldMap = new Map([[vacuumMapOpacity, {
 }]]);
 const vacuumMapTransformMap = new Map([[vacuumMapLeft, "left"], [vacuumMapTop, "top"], [vacuumMapScale, "scale"], [vacuumMapRotation, "rotation"]]);
 const cameraTransformMap = new Map([[cameraLeft, "left"], [cameraTop, "top"], [cameraWidth, "width"], [cameraHeight, "height"], [cameraScale, "scale"], [cameraRotation, "rotation"]]);
-function withSelectedComponent2(value, param, param2, param3) {
+function withSelectedComponent(value, param, item, entry) {
   const list = Array.isArray(param) ? param : [param];
-  value.addEventListener("input", event2 => {
+  value.addEventListener("input", event => {
     const temp = selectedComponent();
     if (!temp || !list.includes(temp.type)) {
       return;
     }
-    const temp2 = param2.get(event2.target);
-    if (temp2) {
-      const chosen = typeof temp2.property == "function" ? temp2.property(temp) : temp2.property;
-      let chosen2 = event2.target.type === "color" ? event2.target.value : Number(event2.target.value);
-      if (event2.target.type !== "color") {
-        if (!Number.isFinite(chosen2)) {
+    const value = item.get(event.target);
+    if (value) {
+      const chosen = typeof value.property == "function" ? value.property(temp) : value.property;
+      let chosenCurrent = event.target.type === "color" ? event.target.value : Number(event.target.value);
+      if (event.target.type !== "color") {
+        if (!Number.isFinite(chosenCurrent)) {
           return;
         }
-        const flag = temp2.limits?.(temp, currentProject.document) || temp2;
-        chosen2 = clampNumber(chosen2, flag.min, flag.max) / (temp2.divisor || 1);
+        const flag = value.limits?.(temp, currentProject.document) || value;
+        chosenCurrent = clampNumber(chosenCurrent, flag.min, flag.max) / (value.divisor || 1);
       }
       editorRenderer?.previewComponentProperties(temp.id, {
-        [chosen]: chosen2
+        [chosen]: chosenCurrent
       });
       return;
     }
-    const temp3 = param3.get(event2.target);
-    const numeric = Number(event2.target.value);
-    if (!temp3 || !Number.isFinite(numeric)) {
+    const current = entry.get(event.target);
+    const numeric = Number(event.target.value);
+    if (!current || !Number.isFinite(numeric)) {
       return;
     }
     const canvasWidth = Number(currentProject.document.canvas.width || 2778);
     const canvasHeight = Number(currentProject.document.canvas.height || 1940);
     const number = Number(temp.position?.width || 100);
-    const number2 = Number(temp.position?.height || 100);
-    if (temp3 === "left") {
+    const numberCurrent = Number(temp.position?.height || 100);
+    if (current === "left") {
       editorRenderer?.previewComponentTransform(temp.id, {
         x: canvasWidth * clampNumber(numeric, 0, 100) / 100 - number / 2
       });
-    } else if (temp3 === "top") {
+    } else if (current === "top") {
       editorRenderer?.previewComponentTransform(temp.id, {
-        y: canvasHeight * clampNumber(numeric, 0, 100) / 100 - number2 / 2
+        y: canvasHeight * clampNumber(numeric, 0, 100) / 100 - numberCurrent / 2
       });
-    } else if (temp3 === "width") {
+    } else if (current === "width") {
       editorRenderer?.previewComponentTransform(temp.id, {
         width: canvasWidth * clampNumber(numeric, 0.1, 100) / 100
       });
-    } else if (temp3 === "height") {
+    } else if (current === "height") {
       editorRenderer?.previewComponentTransform(temp.id, {
         height: canvasHeight * clampNumber(numeric, 0.1, 100) / 100
       });
-    } else if (temp3 === "scale") {
+    } else if (current === "scale") {
       editorRenderer?.previewComponentTransform(temp.id, {
         scale: clampNumber(numeric, 1, 500) / 100
       });
-    } else if (temp3 === "rotation" && selectedElementItemIds().length < 2) {
+    } else if (current === "rotation" && selectedElementItemIds().length < 2) {
       editorRenderer?.previewComponentTransform(temp.id, {
         rotation: clampNumber(numeric, -360, 360)
       });
     }
   });
-  value.addEventListener("change", event2 => {
-    const temp = param2.get(event2.target);
-    const temp2 = param3.get(event2.target);
-    if (!temp && !temp2) {
+  value.addEventListener("change", event => {
+    const temp = item.get(event.target);
+    const value = entry.get(event.target);
+    if (!temp && !value) {
       return;
     }
-    if (event2.target.type === "number" && !Number.isFinite(Number(event2.target.value))) {
+    if (event.target.type === "number" && !Number.isFinite(Number(event.target.value))) {
       refreshInspector();
       return;
     }
     const alias = componentId;
-    const chosen = temp2 === "rotation" ? selectedElementItemIds() : [];
+    const chosen = value === "rotation" ? selectedElementItemIds() : [];
     mutateDocument(doc => {
       const component = findComponent(doc, alias)?.component;
       if (!component || !list.includes(component.type)) {
@@ -11672,47 +11672,47 @@ function withSelectedComponent2(value, param, param2, param3) {
         ...(component.style || {})
       };
       if (temp) {
-        const chosen2 = typeof temp.property == "function" ? temp.property(component) : temp.property;
+        const chosen = typeof temp.property == "function" ? temp.property(component) : temp.property;
         const flag = temp.limits?.(component, doc) || temp;
-        component.properties[chosen2] = event2.target.type === "color" ? event2.target.value : clampNumber(Number(event2.target.value), flag.min, flag.max) / (temp.divisor || 1);
+        component.properties[chosen] = event.target.type === "color" ? event.target.value : clampNumber(Number(event.target.value), flag.min, flag.max) / (temp.divisor || 1);
         return;
       }
       const numeric = Number(doc.canvas.width || 2778);
       const canvasHeight = Number(doc.canvas.height || 1940);
-      const number = Number(event2.target.value);
-      if (temp2 === "left") {
+      const number = Number(event.target.value);
+      if (value === "left") {
         component.position.x = numeric * clampNumber(number, 0, 100) / 100 - Number(component.position.width || 100) / 2;
-      } else if (temp2 === "top") {
+      } else if (value === "top") {
         component.position.y = canvasHeight * clampNumber(number, 0, 100) / 100 - Number(component.position.height || 100) / 2;
-      } else if (temp2 === "width") {
+      } else if (value === "width") {
         component.position.width = numeric * clampNumber(number, 0.1, 100) / 100;
-      } else if (temp2 === "height") {
+      } else if (value === "height") {
         component.position.height = canvasHeight * clampNumber(number, 0.1, 100) / 100;
-      } else if (temp2 === "scale") {
+      } else if (value === "scale") {
         component.style.scale = clampNumber(number, 1, 500) / 100;
-      } else if (temp2 === "rotation") {
+      } else if (value === "rotation") {
         setComponentsRotation(doc, alias, clampNumber(number, -360, 360), chosen);
       }
     });
   });
 }
-withSelectedComponent2(titleButtonInspector, "title-button", titleButtonColorFieldMap, titleButtonTransformMap);
-withSelectedComponent2(lightStatisticsInspector, "light-statistics", lightStatisticsColorFieldMap, lightStatisticsTransformMap);
-withSelectedComponent2(iconButtonInspector, ["icon-button", "device-button", "presence-sensor"], presenceHaloFieldMap, iconButtonTransformMap);
-withSelectedComponent2(airConditionerInspector, "air-conditioner", airConditionerColorFieldMap, airConditionerTransformMap);
-withSelectedComponent2(vacuumMapInspector, "vacuum-map", vacuumMapFieldMap, vacuumMapTransformMap);
-withSelectedComponent2(cameraInspector, "camera", cameraFrameFieldMap, cameraTransformMap);
+withSelectedComponent(titleButtonInspector, "title-button", titleButtonColorFieldMap, titleButtonTransformMap);
+withSelectedComponent(lightStatisticsInspector, "light-statistics", lightStatisticsColorFieldMap, lightStatisticsTransformMap);
+withSelectedComponent(iconButtonInspector, ["icon-button", "device-button", "presence-sensor"], presenceHaloFieldMap, iconButtonTransformMap);
+withSelectedComponent(airConditionerInspector, "air-conditioner", airConditionerColorFieldMap, airConditionerTransformMap);
+withSelectedComponent(vacuumMapInspector, "vacuum-map", vacuumMapFieldMap, vacuumMapTransformMap);
+withSelectedComponent(cameraInspector, "camera", cameraFrameFieldMap, cameraTransformMap);
 deviceButtonStatePrecision.addEventListener("change", () => {
   const component = componentId;
   if (component) {
     mutateDocument(param => {
-      const properties21 = findComponent(param, component)?.component;
-      if (!properties21 || properties21.type !== "device-button") {
+      const properties = findComponent(param, component)?.component;
+      if (!properties || properties.type !== "device-button") {
         return;
       }
       const statePrecision = ["0", "1", "2", "3", "4"].includes(deviceButtonStatePrecision.value) ? Number(deviceButtonStatePrecision.value) : "auto";
-      properties21.properties = {
-        ...(properties21.properties || {}),
+      properties.properties = {
+        ...(properties.properties || {}),
         statePrecision
       };
     });
@@ -11762,45 +11762,45 @@ doorWindowPerspectiveReset.addEventListener("click", () => {
   const value = componentId;
   if (value) {
     mutateDocument(param => {
-      const properties22 = findComponent(param, value)?.component;
-      if (!!properties22 && properties22.type === "presence-sensor" && properties22.properties?.sensorKind === "door-window") {
-        properties22.properties = {
-          ...(properties22.properties || {}),
+      const properties = findComponent(param, value)?.component;
+      if (!!properties && properties.type === "presence-sensor" && properties.properties?.sensorKind === "door-window") {
+        properties.properties = {
+          ...(properties.properties || {}),
           perspectiveCorners: [...unitQuadUv]
         };
       }
     });
   }
 });
-cameraFitOptions.addEventListener("click", target26 => {
-  const value = target26.target.closest("[data-camera-fit]");
+cameraFitOptions.addEventListener("click", target => {
+  const value = target.target.closest("[data-camera-fit]");
   const alias = componentId;
   if (!value || !alias) {
     return;
   }
   const fit = value.dataset.cameraFit === "contain" ? "contain" : "fill";
   mutateDocument(param => {
-    const properties34 = findComponent(param, alias)?.component;
-    if (!!properties34 && properties34.type === "camera") {
-      properties34.properties = {
-        ...(properties34.properties || {}),
+    const properties = findComponent(param, alias)?.component;
+    if (!!properties && properties.type === "camera") {
+      properties.properties = {
+        ...(properties.properties || {}),
         fit
       };
     }
   });
 });
-cameraDisplayModeOptions.addEventListener("click", target27 => {
-  const value = target27.target.closest("[data-camera-display-mode]");
+cameraDisplayModeOptions.addEventListener("click", target => {
+  const value = target.target.closest("[data-camera-display-mode]");
   const alias = componentId;
   if (!value || !alias) {
     return;
   }
   const displayMode = value.dataset.cameraDisplayMode === "snapshot" ? "snapshot" : "live";
   mutateDocument(param => {
-    const properties35 = findComponent(param, alias)?.component;
-    if (!!properties35 && properties35.type === "camera") {
-      properties35.properties = {
-        ...(properties35.properties || {}),
+    const properties = findComponent(param, alias)?.component;
+    if (!!properties && properties.type === "camera") {
+      properties.properties = {
+        ...(properties.properties || {}),
         displayMode
       };
     }
@@ -11815,10 +11815,10 @@ cameraRefreshInterval.addEventListener("change", () => {
   const refreshInterval = Number.isFinite(number) ? Math.max(6, Math.round(number)) : 10;
   cameraRefreshInterval.value = String(refreshInterval);
   mutateDocument(param => {
-    const properties36 = findComponent(param, ancestorEl)?.component;
-    if (!!properties36 && properties36.type === "camera") {
-      properties36.properties = {
-        ...(properties36.properties || {}),
+    const properties = findComponent(param, ancestorEl)?.component;
+    if (!!properties && properties.type === "camera") {
+      properties.properties = {
+        ...(properties.properties || {}),
         refreshInterval
       };
     }
@@ -11828,11 +11828,11 @@ cameraMediaVisible.addEventListener("click", () => {
   const ancestorEl = componentId;
   if (ancestorEl) {
     mutateDocument(param => {
-      const properties23 = findComponent(param, ancestorEl)?.component;
-      if (!!properties23 && properties23.type === "camera") {
-        properties23.properties = {
-          ...(properties23.properties || {}),
-          mediaVisible: properties23.properties?.mediaVisible === false
+      const properties = findComponent(param, ancestorEl)?.component;
+      if (!!properties && properties.type === "camera") {
+        properties.properties = {
+          ...(properties.properties || {}),
+          mediaVisible: properties.properties?.mediaVisible === false
         };
       }
     });
@@ -11842,11 +11842,11 @@ cameraFrameVisible.addEventListener("click", () => {
   const ancestorEl = componentId;
   if (ancestorEl) {
     mutateDocument(param => {
-      const properties24 = findComponent(param, ancestorEl)?.component;
-      if (!!properties24 && properties24.type === "camera") {
-        properties24.properties = {
-          ...(properties24.properties || {}),
-          frameVisible: properties24.properties?.frameVisible === false
+      const properties = findComponent(param, ancestorEl)?.component;
+      if (!!properties && properties.type === "camera") {
+        properties.properties = {
+          ...(properties.properties || {}),
+          frameVisible: properties.properties?.frameVisible === false
         };
       }
     });
@@ -11860,8 +11860,8 @@ function setAirConditionerPreviewState(value, param = "auto") {
   airConditionerPreviewStateById.set(value, chosen);
   editorRenderer?.setComponentPreviewState(value, chosen);
 }
-airConditionerPreviewState.addEventListener("click", target28 => {
-  const value = target28.target.closest("[data-air-conditioner-preview]");
+airConditionerPreviewState.addEventListener("click", target => {
+  const value = target.target.closest("[data-air-conditioner-preview]");
   if (!!value && !!componentId) {
     setAirConditionerPreviewState(componentId, value.dataset.airConditionerPreview);
     refreshInspector();
@@ -11875,10 +11875,10 @@ airConditionerDeviceType.addEventListener("click", value => {
   }
   const deviceType = ["air-conditioner", "bath-heater"].includes(ancestorEl.dataset.airConditionerDeviceType) ? ancestorEl.dataset.airConditionerDeviceType : "auto";
   mutateDocument(param => {
-    const properties37 = findComponent(param, temp)?.component;
-    if (!!properties37 && properties37.type === "air-conditioner") {
-      properties37.properties = {
-        ...(properties37.properties || {}),
+    const properties = findComponent(param, temp)?.component;
+    if (!!properties && properties.type === "air-conditioner") {
+      properties.properties = {
+        ...(properties.properties || {}),
         deviceType
       };
     }
@@ -11901,18 +11901,18 @@ airConditionerAirflowVisible.addEventListener("click", () => {
   if (ancestorEl) {
     setAirConditionerPreviewState(ancestorEl, "on");
     mutateDocument(param => {
-      const properties25 = findComponent(param, ancestorEl)?.component;
-      if (!!properties25 && properties25.type === "air-conditioner") {
-        properties25.properties = {
-          ...(properties25.properties || {}),
-          airflowVisible: properties25.properties?.airflowVisible === false
+      const properties = findComponent(param, ancestorEl)?.component;
+      if (!!properties && properties.type === "air-conditioner") {
+        properties.properties = {
+          ...(properties.properties || {}),
+          airflowVisible: properties.properties?.airflowVisible === false
         };
       }
     });
   }
 });
-for (const [temp2, temp3] of [[airConditionerIconVisible, "iconVisible"], [airConditionerMainVisible, "mainTextVisible"], [airConditionerSecondaryVisible, "secondaryTextVisible"]]) {
-  temp2.addEventListener("click", () => {
+for (const [value, entry] of [[airConditionerIconVisible, "iconVisible"], [airConditionerMainVisible, "mainTextVisible"], [airConditionerSecondaryVisible, "secondaryTextVisible"]]) {
+  value.addEventListener("click", () => {
     const value = componentId;
     if (value) {
       mutateDocument(item => {
@@ -11920,7 +11920,7 @@ for (const [temp2, temp3] of [[airConditionerIconVisible, "iconVisible"], [airCo
         if (!!component && component.type === "air-conditioner") {
           component.properties = {
             ...(component.properties || {}),
-            [temp3]: component.properties?.[temp3] === false
+            [entry]: component.properties?.[entry] === false
           };
         }
       });
@@ -11933,18 +11933,18 @@ airConditionerAirflowMotion.addEventListener("click", value => {
   if (!!ancestorEl && !!temp) {
     setAirConditionerPreviewState(temp, "on");
     mutateDocument(param => {
-      const properties26 = findComponent(param, temp)?.component;
-      if (!!properties26 && properties26.type === "air-conditioner") {
-        properties26.properties = {
-          ...(properties26.properties || {}),
+      const properties = findComponent(param, temp)?.component;
+      if (!!properties && properties.type === "air-conditioner") {
+        properties.properties = {
+          ...(properties.properties || {}),
           airflowMotion: ancestorEl.dataset.airflowMotion === "static" ? "static" : "dynamic"
         };
       }
     });
   }
 });
-for (const temp2 of ["focusin", "pointerdown", "input"]) {
-  airConditionerAirflowSection.addEventListener(temp2, value => {
+for (const value of ["focusin", "pointerdown", "input"]) {
+  airConditionerAirflowSection.addEventListener(value, value => {
     if (airConditionerColorFieldMap.has(value.target) && selectedComponent()?.type === "air-conditioner") {
       setAirConditionerPreviewState(componentId, "on");
     }
@@ -11952,10 +11952,10 @@ for (const temp2 of ["focusin", "pointerdown", "input"]) {
 }
 const iconButtonOpacityModeMap = new Map([[iconButtonIconOffOpacity, "off"], [iconButtonMainOffOpacity, "off"], [iconButtonSecondaryOffOpacity, "off"], [iconButtonFrameOffOpacity, "off"], [iconButtonOnFillVisible, "on"], [iconButtonIconOnOpacity, "on"], [iconButtonMainOnOpacity, "on"], [iconButtonSecondaryOnOpacity, "on"], [iconButtonOnFillColor, "on"], [iconButtonOnFillStrength, "on"], [iconButtonFrameOnOpacity, "on"], [deviceButtonIconOnColor, "on"]]);
 function syncIconButtonPreviewButtons(value) {
-  for (const dataset17 of iconButtonPreviewState.querySelectorAll("[data-icon-button-preview]")) {
-    const flag = dataset17.dataset.iconButtonPreview === value;
-    dataset17.classList.toggle("active", flag);
-    dataset17.setAttribute("aria-pressed", String(flag));
+  for (const dataset of iconButtonPreviewState.querySelectorAll("[data-icon-button-preview]")) {
+    const flag = dataset.dataset.iconButtonPreview === value;
+    dataset.classList.toggle("active", flag);
+    dataset.setAttribute("aria-pressed", String(flag));
   }
 }
 function setPresencePreviewState(value, param = "auto") {
@@ -11973,23 +11973,23 @@ function setPresencePreviewState(value, param = "auto") {
     syncIconButtonPreviewButtons(chosen);
   }
 }
-function syncIconButtonIcon3(value) {
+function syncIconButtonIconNext(value) {
   const temp = selectedComponent();
   const flag = iconButtonOpacityModeMap.get(value) || (temp?.type === "device-button" && value === iconButtonIconColor ? "off" : null);
   if (!!flag && !!["icon-button", "device-button", "presence-sensor"].includes(temp?.type)) {
     setPresencePreviewState(temp.id, flag);
   }
 }
-function syncIconButtonIcon4(value) {
-  const component2 = selectedComponent();
-  if (!!iconButtonOpacityModeMap.has(value) || component2?.type === "device-button" && value === iconButtonIconColor) {
-    if (["icon-button", "device-button", "presence-sensor"].includes(component2?.type)) {
-      setPresencePreviewState(component2.id, "auto");
+function syncIconButtonIconPrevious(value) {
+  const component = selectedComponent();
+  if (!!iconButtonOpacityModeMap.has(value) || component?.type === "device-button" && value === iconButtonIconColor) {
+    if (["icon-button", "device-button", "presence-sensor"].includes(component?.type)) {
+      setPresencePreviewState(component.id, "auto");
     }
   }
 }
-for (const temp2 of ["focusin", "pointerdown", "input"]) {
-  iconButtonInspector.addEventListener(temp2, value => syncIconButtonIcon3(value.target));
+for (const value of ["focusin", "pointerdown", "input"]) {
+  iconButtonInspector.addEventListener(value, value => syncIconButtonIconNext(value.target));
 }
 coverSettingsKind.addEventListener("click", value => {
   const temp = value.target.closest("[data-cover-kind]");
@@ -11999,10 +11999,10 @@ coverSettingsKind.addEventListener("click", value => {
   }
   const coverKind = ["standard", "dream", "airer"].includes(temp.dataset.coverKind) ? temp.dataset.coverKind : "auto";
   mutateDocument(param => {
-    const properties38 = findComponent(param, alias)?.component;
-    if (properties38 && String(properties38.bindings?.entity?.entityId || "").startsWith("cover.")) {
-      properties38.properties = {
-        ...(properties38.properties || {}),
+    const properties = findComponent(param, alias)?.component;
+    if (properties && String(properties.bindings?.entity?.entityId || "").startsWith("cover.")) {
+      properties.properties = {
+        ...(properties.properties || {}),
         coverKind
       };
     }
@@ -12016,10 +12016,10 @@ coverSettingsDirection.addEventListener("click", value => {
   }
   const chosen = ["left", "right"].includes(ancestorEl.dataset.coverDirection) ? ancestorEl.dataset.coverDirection : "split";
   mutateDocument(param => {
-    const properties39 = findComponent(param, temp)?.component;
-    if (properties39 && String(properties39.bindings?.entity?.entityId || "").startsWith("cover.")) {
-      properties39.properties = {
-        ...(properties39.properties || {}),
+    const properties = findComponent(param, temp)?.component;
+    if (properties && String(properties.bindings?.entity?.entityId || "").startsWith("cover.")) {
+      properties.properties = {
+        ...(properties.properties || {}),
         coverDirection: chosen
       };
     }
@@ -12033,10 +12033,10 @@ coverSettingsMotorDirection.addEventListener("click", value => {
   }
   const temp = ["normal", "reversed"].includes(component.dataset.coverMotorDirection) ? component.dataset.coverMotorDirection : "auto";
   mutateDocument(param => {
-    const properties40 = findComponent(param, target)?.component;
-    if (properties40 && String(properties40.bindings?.entity?.entityId || "").startsWith("cover.")) {
-      properties40.properties = {
-        ...(properties40.properties || {}),
+    const properties = findComponent(param, target)?.component;
+    if (properties && String(properties.bindings?.entity?.entityId || "").startsWith("cover.")) {
+      properties.properties = {
+        ...(properties.properties || {}),
         coverMotorDirection: temp
       };
     }
@@ -12050,29 +12050,29 @@ iconButtonInspector.addEventListener("focusout", value => {
         return;
       }
       if (iconButtonOpacityModeMap.get(document.activeElement) || (selectedComponent()?.type === "device-button" && document.activeElement === iconButtonIconColor ? "off" : null)) {
-        syncIconButtonIcon3(document.activeElement);
+        syncIconButtonIconNext(document.activeElement);
       } else {
-        syncIconButtonIcon4(value.target);
+        syncIconButtonIconPrevious(value.target);
       }
     });
   }
 });
-for (const [temp2, temp3] of [[titleButtonMainVisible, "mainTextVisible"], [titleButtonSecondaryVisible, "secondaryTextVisible"], [titleButtonIconVisible, "iconVisible"], [titleButtonFrameVisible, "frameVisible"], [titleButtonMarkerVisible, "markerVisible"]]) {
-  temp2.addEventListener("click", () => {
+for (const [value, entry] of [[titleButtonMainVisible, "mainTextVisible"], [titleButtonSecondaryVisible, "secondaryTextVisible"], [titleButtonIconVisible, "iconVisible"], [titleButtonFrameVisible, "frameVisible"], [titleButtonMarkerVisible, "markerVisible"]]) {
+  value.addEventListener("click", () => {
     const value = componentId;
     mutateDocument(item => {
       const component = findComponent(item, value)?.component;
       if (!!component && component.type === "title-button") {
         component.properties = {
           ...(component.properties || {}),
-          [temp3]: component.properties?.[temp3] === false
+          [entry]: component.properties?.[entry] === false
         };
       }
     });
   });
 }
-for (const [temp2, temp3] of [[lightStatisticsIconVisible, "iconVisible"], [lightStatisticsTitleVisible, "titleVisible"], [lightStatisticsCountVisible, "countVisible"]]) {
-  temp2.addEventListener("click", () => {
+for (const [value, entry] of [[lightStatisticsIconVisible, "iconVisible"], [lightStatisticsTitleVisible, "titleVisible"], [lightStatisticsCountVisible, "countVisible"]]) {
+  value.addEventListener("click", () => {
     const value = componentId;
     if (value) {
       mutateDocument(item => {
@@ -12080,22 +12080,22 @@ for (const [temp2, temp3] of [[lightStatisticsIconVisible, "iconVisible"], [ligh
         if (!!component && component.type === "light-statistics") {
           component.properties = {
             ...(component.properties || {}),
-            [temp3]: component.properties?.[temp3] === false
+            [entry]: component.properties?.[entry] === false
           };
         }
       });
     }
   });
 }
-for (const [temp2, temp3] of [[deviceButtonIconVisible, "iconVisible"], [deviceButtonMainVisible, "mainTextVisible"], [deviceButtonSecondaryVisible, "secondaryTextVisible"], [iconButtonOnFillVisible, "onFillVisible"], [iconButtonFrameVisible, "frameVisible"], [iconButtonSoftLightVisible, "softLightVisible"], [iconButtonGlowVisible, "glowVisible"], [presenceHaloVisible, "haloVisible"], [presencePersonVisible, "personVisible"]]) {
-  temp2.addEventListener("click", () => {
+for (const [value, entry] of [[deviceButtonIconVisible, "iconVisible"], [deviceButtonMainVisible, "mainTextVisible"], [deviceButtonSecondaryVisible, "secondaryTextVisible"], [iconButtonOnFillVisible, "onFillVisible"], [iconButtonFrameVisible, "frameVisible"], [iconButtonSoftLightVisible, "softLightVisible"], [iconButtonGlowVisible, "glowVisible"], [presenceHaloVisible, "haloVisible"], [presencePersonVisible, "personVisible"]]) {
+  value.addEventListener("click", () => {
     const value = componentId;
     mutateDocument(item => {
       const component = findComponent(item, value)?.component;
-      if (!!component && !!["icon-button", "device-button", "presence-sensor"].includes(component.type) && (!temp3.endsWith("Visible") || !["iconVisible", "mainTextVisible", "secondaryTextVisible"].includes(temp3) || component.type === "device-button") && (!["haloVisible", "personVisible"].includes(temp3) || component.type === "presence-sensor")) {
+      if (!!component && !!["icon-button", "device-button", "presence-sensor"].includes(component.type) && (!entry.endsWith("Visible") || !["iconVisible", "mainTextVisible", "secondaryTextVisible"].includes(entry) || component.type === "device-button") && (!["haloVisible", "personVisible"].includes(entry) || component.type === "presence-sensor")) {
         component.properties = {
           ...(component.properties || {}),
-          [temp3]: component.properties?.[temp3] === false
+          [entry]: component.properties?.[entry] === false
         };
       }
     });
@@ -12139,16 +12139,16 @@ const timeSizeFieldMap = new Map([[timeFontSize, {
 const timeTransformFields = new Set([timeLeft, timeTop, timeScale, timeRotation]);
 function fitTimeComponentToContent(value, fallback) {
   const numeric = Number(value.position?.width || 100);
-  const number3 = Number(value.position?.height || 100);
+  const numberCurrent = Number(value.position?.height || 100);
   const number = Number(value.position?.x || 0) + numeric / 2;
-  const number2 = Number(value.position?.y || 0) + number3 / 2;
+  const numberNext = Number(value.position?.y || 0) + numberCurrent / 2;
   const {
     width,
     height
   } = timeComponentDimensions(fallback);
   editorRenderer?.previewComponentTransform(value.id, {
     x: number - width / 2,
-    y: number2 - height / 2,
+    y: numberNext - height / 2,
     width,
     height
   });
@@ -12159,27 +12159,27 @@ timeInspector.addEventListener("input", value => {
     return;
   }
   const eventTarget = value.target;
-  const temp2 = timeColorFieldMap.get(eventTarget);
-  if (temp2) {
+  const entry = timeColorFieldMap.get(eventTarget);
+  if (entry) {
     editorRenderer?.previewComponentProperties(target.id, {
-      [temp2]: eventTarget.value
+      [entry]: eventTarget.value
     });
     return;
   }
-  const temp3 = timeSizeFieldMap.get(eventTarget);
-  if (temp3) {
+  const item = timeSizeFieldMap.get(eventTarget);
+  if (item) {
     if (String(eventTarget.value).trim() === "" || !Number.isFinite(Number(eventTarget.value))) {
       return;
     }
-    const clamped = clampNumber(Number(eventTarget.value), temp3.minimum, temp3.maximum) / temp3.divisor;
+    const clamped = clampNumber(Number(eventTarget.value), item.minimum, item.maximum) / item.divisor;
     const options = {
       ...(target.properties || {}),
-      [temp3.property]: clamped
+      [item.property]: clamped
     };
     editorRenderer?.previewComponentProperties(target.id, {
-      [temp3.property]: clamped
+      [item.property]: clamped
     });
-    if (temp3.resizes) {
+    if (item.resizes) {
       fitTimeComponentToContent(target, options);
     }
     return;
@@ -12190,17 +12190,17 @@ timeInspector.addEventListener("input", value => {
   const number = Number(eventTarget.value);
   const canvasWidth = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
-  const number4 = Number(target.position?.width || 100);
-  const number5 = Number(target.position?.height || 100);
+  const numberCurrent = Number(target.position?.width || 100);
+  const numberNext = Number(target.position?.height || 100);
   if (eventTarget === timeLeft) {
     const clamped = clampNumber(number, 0, 100);
     editorRenderer?.previewComponentTransform(target.id, {
-      x: canvasWidth * clamped / 100 - number4 / 2
+      x: canvasWidth * clamped / 100 - numberCurrent / 2
     });
   } else if (eventTarget === timeTop) {
     const clamped = clampNumber(number, 0, 100);
     editorRenderer?.previewComponentTransform(target.id, {
-      y: canvasHeight * clamped / 100 - number5 / 2
+      y: canvasHeight * clamped / 100 - numberNext / 2
     });
   } else if (eventTarget === timeScale) {
     const clamped = clampNumber(number, 1, 500);
@@ -12208,9 +12208,9 @@ timeInspector.addEventListener("input", value => {
       scale: clamped / 100
     });
   } else if (eventTarget === timeRotation) {
-    const rotation4 = clampNumber(number, -360, 360);
+    const rotation = clampNumber(number, -360, 360);
     editorRenderer?.previewComponentTransform(target.id, {
-      rotation: rotation4
+      rotation: rotation
     });
   }
 });
@@ -12221,54 +12221,54 @@ timeInspector.addEventListener("change", value => {
     return;
   }
   const temp = timeColorFieldMap.get(eventTarget);
-  const temp2 = timeSizeFieldMap.get(eventTarget);
-  if (!!temp || !!temp2 || !!timeTransformFields.has(eventTarget)) {
-    if ((temp2 || timeTransformFields.has(eventTarget)) && (String(eventTarget.value).trim() === "" || !Number.isFinite(Number(eventTarget.value)))) {
+  const entry = timeSizeFieldMap.get(eventTarget);
+  if (!!temp || !!entry || !!timeTransformFields.has(eventTarget)) {
+    if ((entry || timeTransformFields.has(eventTarget)) && (String(eventTarget.value).trim() === "" || !Number.isFinite(Number(eventTarget.value)))) {
       refreshInspector();
       return;
     }
-    mutateDocument(canvas4 => {
-      const position7 = findComponent(canvas4, target)?.component;
-      if (!position7 || position7.type !== "time") {
+    mutateDocument(canvas => {
+      const position = findComponent(canvas, target)?.component;
+      if (!position || position.type !== "time") {
         return;
       }
-      position7.properties = {
-        ...(position7.properties || {})
+      position.properties = {
+        ...(position.properties || {})
       };
-      position7.position = {
-        ...(position7.position || {})
+      position.position = {
+        ...(position.position || {})
       };
-      position7.style = {
-        ...(position7.style || {})
+      position.style = {
+        ...(position.style || {})
       };
-      const number = Number(canvas4.canvas.width || 2778);
-      const canvasHeight = Number(canvas4.canvas.height || 1940);
-      const number3 = Number(eventTarget.value);
+      const number = Number(canvas.canvas.width || 2778);
+      const canvasHeight = Number(canvas.canvas.height || 1940);
+      const numberCurrent = Number(eventTarget.value);
       if (temp) {
-        position7.properties[temp] = eventTarget.value;
-      } else if (temp2) {
-        position7.properties[temp2.property] = clampNumber(number3, temp2.minimum, temp2.maximum) / temp2.divisor;
-        if (temp2.resizes) {
-          fitTimeComponent(position7, position7.properties);
+        position.properties[temp] = eventTarget.value;
+      } else if (entry) {
+        position.properties[entry.property] = clampNumber(numberCurrent, entry.minimum, entry.maximum) / entry.divisor;
+        if (entry.resizes) {
+          fitTimeComponent(position, position.properties);
         }
       } else if (eventTarget === timeLeft) {
-        position7.position.x = number * clampNumber(number3, 0, 100) / 100 - Number(position7.position.width || 100) / 2;
+        position.position.x = number * clampNumber(numberCurrent, 0, 100) / 100 - Number(position.position.width || 100) / 2;
       } else if (eventTarget === timeTop) {
-        position7.position.y = canvasHeight * clampNumber(number3, 0, 100) / 100 - Number(position7.position.height || 100) / 2;
+        position.position.y = canvasHeight * clampNumber(numberCurrent, 0, 100) / 100 - Number(position.position.height || 100) / 2;
       } else if (eventTarget === timeScale) {
-        position7.style.scale = clampNumber(number3, 1, 500) / 100;
+        position.style.scale = clampNumber(numberCurrent, 1, 500) / 100;
       } else if (eventTarget === timeRotation) {
-        setComponentsRotation(canvas4, target, clampNumber(number3, -360, 360));
+        setComponentsRotation(canvas, target, clampNumber(numberCurrent, -360, 360));
       }
     });
   }
 });
-for (const temp2 of [timeHourFormat, timeSeconds]) {
-  temp2.addEventListener("click", value => {
+for (const value of [timeHourFormat, timeSeconds]) {
+  value.addEventListener("click", value => {
     const temp = componentId;
     const ancestorEl = value.target.closest("[data-time-hour-format]");
-    const ancestorEl2 = value.target.closest("[data-time-seconds]");
-    if (!!temp && (!!ancestorEl || !!ancestorEl2)) {
+    const closest = value.target.closest("[data-time-seconds]");
+    if (!!temp && (!!ancestorEl || !!closest)) {
       mutateDocument(item => {
         const component = findComponent(item, temp)?.component;
         if (!!component && component.type === "time") {
@@ -12278,8 +12278,8 @@ for (const temp2 of [timeHourFormat, timeSeconds]) {
           if (ancestorEl) {
             component.properties.hour12 = ancestorEl.dataset.timeHourFormat === "12";
           }
-          if (ancestorEl2) {
-            component.properties.showSeconds = ancestorEl2.dataset.timeSeconds === "on";
+          if (closest) {
+            component.properties.showSeconds = closest.dataset.timeSeconds === "on";
           }
           fitTimeComponent(component, component.properties);
         }
@@ -12340,16 +12340,16 @@ const dateSizeFieldMap = new Map([[datePrimarySize, {
 const dateTransformFields = new Set([dateLeft, dateTop, dateScale, dateRotation]);
 function fitDateComponentToContent(value, fallback) {
   const numeric = Number(value.position?.width || 100);
-  const number3 = Number(value.position?.height || 100);
+  const numberCurrent = Number(value.position?.height || 100);
   const number = Number(value.position?.x || 0) + numeric / 2;
-  const number2 = Number(value.position?.y || 0) + number3 / 2;
+  const numberNext = Number(value.position?.y || 0) + numberCurrent / 2;
   const {
     width,
     height
   } = dateComponentDimensions(fallback);
   editorRenderer?.previewComponentTransform(value.id, {
     x: number - width / 2,
-    y: number2 - height / 2,
+    y: numberNext - height / 2,
     width,
     height
   });
@@ -12360,27 +12360,27 @@ dateInspector.addEventListener("input", value => {
     return;
   }
   const eventTarget = value.target;
-  const temp2 = dateColorFieldMap.get(eventTarget);
-  if (temp2) {
+  const entry = dateColorFieldMap.get(eventTarget);
+  if (entry) {
     editorRenderer?.previewComponentProperties(target.id, {
-      [temp2]: eventTarget.value
+      [entry]: eventTarget.value
     });
     return;
   }
-  const temp3 = dateSizeFieldMap.get(eventTarget);
-  if (temp3) {
+  const item = dateSizeFieldMap.get(eventTarget);
+  if (item) {
     if (String(eventTarget.value).trim() === "" || !Number.isFinite(Number(eventTarget.value))) {
       return;
     }
-    const clamped = clampNumber(Number(eventTarget.value), temp3.minimum, temp3.maximum) / temp3.divisor;
+    const clamped = clampNumber(Number(eventTarget.value), item.minimum, item.maximum) / item.divisor;
     const options = {
       ...(target.properties || {}),
-      [temp3.property]: clamped
+      [item.property]: clamped
     };
     editorRenderer?.previewComponentProperties(target.id, {
-      [temp3.property]: clamped
+      [item.property]: clamped
     });
-    if (temp3.resizes) {
+    if (item.resizes) {
       fitDateComponentToContent(target, options);
     }
     return;
@@ -12391,17 +12391,17 @@ dateInspector.addEventListener("input", value => {
   const number = Number(eventTarget.value);
   const canvasWidth = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
-  const number4 = Number(target.position?.width || 100);
-  const number5 = Number(target.position?.height || 100);
+  const numberCurrent = Number(target.position?.width || 100);
+  const numberNext = Number(target.position?.height || 100);
   if (eventTarget === dateLeft) {
     const clamped = clampNumber(number, 0, 100);
     editorRenderer?.previewComponentTransform(target.id, {
-      x: canvasWidth * clamped / 100 - number4 / 2
+      x: canvasWidth * clamped / 100 - numberCurrent / 2
     });
   } else if (eventTarget === dateTop) {
     const clamped = clampNumber(number, 0, 100);
     editorRenderer?.previewComponentTransform(target.id, {
-      y: canvasHeight * clamped / 100 - number5 / 2
+      y: canvasHeight * clamped / 100 - numberNext / 2
     });
   } else if (eventTarget === dateScale) {
     const clamped = clampNumber(number, 1, 500);
@@ -12409,9 +12409,9 @@ dateInspector.addEventListener("input", value => {
       scale: clamped / 100
     });
   } else if (eventTarget === dateRotation) {
-    const rotation5 = clampNumber(number, -360, 360);
+    const rotation = clampNumber(number, -360, 360);
     editorRenderer?.previewComponentTransform(target.id, {
-      rotation: rotation5
+      rotation: rotation
     });
   }
 });
@@ -12421,55 +12421,55 @@ dateInspector.addEventListener("change", value => {
   if (!target) {
     return;
   }
-  const temp2 = dateColorFieldMap.get(eventTarget);
-  const temp3 = dateSizeFieldMap.get(eventTarget);
-  if (!!temp2 || !!temp3 || !!dateTransformFields.has(eventTarget)) {
-    if ((temp3 || dateTransformFields.has(eventTarget)) && (String(eventTarget.value).trim() === "" || !Number.isFinite(Number(eventTarget.value)))) {
+  const entry = dateColorFieldMap.get(eventTarget);
+  const item = dateSizeFieldMap.get(eventTarget);
+  if (!!entry || !!item || !!dateTransformFields.has(eventTarget)) {
+    if ((item || dateTransformFields.has(eventTarget)) && (String(eventTarget.value).trim() === "" || !Number.isFinite(Number(eventTarget.value)))) {
       refreshInspector();
       return;
     }
-    mutateDocument(canvas5 => {
-      const position8 = findComponent(canvas5, target)?.component;
-      if (!position8 || position8.type !== "date") {
+    mutateDocument(canvas => {
+      const position = findComponent(canvas, target)?.component;
+      if (!position || position.type !== "date") {
         return;
       }
-      position8.properties = {
-        ...(position8.properties || {})
+      position.properties = {
+        ...(position.properties || {})
       };
-      position8.position = {
-        ...(position8.position || {})
+      position.position = {
+        ...(position.position || {})
       };
-      position8.style = {
-        ...(position8.style || {})
+      position.style = {
+        ...(position.style || {})
       };
-      const number = Number(canvas5.canvas.width || 2778);
-      const canvasHeight = Number(canvas5.canvas.height || 1940);
-      const number3 = Number(eventTarget.value);
-      if (temp2) {
-        position8.properties[temp2] = eventTarget.value;
-      } else if (temp3) {
-        position8.properties[temp3.property] = clampNumber(number3, temp3.minimum, temp3.maximum) / temp3.divisor;
-        if (temp3.resizes) {
-          fitDateComponent(position8, position8.properties);
+      const number = Number(canvas.canvas.width || 2778);
+      const canvasHeight = Number(canvas.canvas.height || 1940);
+      const numberCurrent = Number(eventTarget.value);
+      if (entry) {
+        position.properties[entry] = eventTarget.value;
+      } else if (item) {
+        position.properties[item.property] = clampNumber(numberCurrent, item.minimum, item.maximum) / item.divisor;
+        if (item.resizes) {
+          fitDateComponent(position, position.properties);
         }
       } else if (eventTarget === dateLeft) {
-        position8.position.x = number * clampNumber(number3, 0, 100) / 100 - Number(position8.position.width || 100) / 2;
+        position.position.x = number * clampNumber(numberCurrent, 0, 100) / 100 - Number(position.position.width || 100) / 2;
       } else if (eventTarget === dateTop) {
-        position8.position.y = canvasHeight * clampNumber(number3, 0, 100) / 100 - Number(position8.position.height || 100) / 2;
+        position.position.y = canvasHeight * clampNumber(numberCurrent, 0, 100) / 100 - Number(position.position.height || 100) / 2;
       } else if (eventTarget === dateScale) {
-        position8.style.scale = clampNumber(number3, 1, 500) / 100;
+        position.style.scale = clampNumber(numberCurrent, 1, 500) / 100;
       } else if (eventTarget === dateRotation) {
-        setComponentsRotation(canvas5, target, clampNumber(number3, -360, 360));
+        setComponentsRotation(canvas, target, clampNumber(numberCurrent, -360, 360));
       }
     });
   }
 });
-for (const temp2 of [dateWeekday, dateLunar]) {
-  temp2.addEventListener("click", value => {
+for (const value of [dateWeekday, dateLunar]) {
+  value.addEventListener("click", value => {
     const temp = componentId;
     const ancestorEl = value.target.closest("[data-date-weekday]");
-    const ancestorEl2 = value.target.closest("[data-date-lunar]");
-    if (!!temp && (!!ancestorEl || !!ancestorEl2)) {
+    const closest = value.target.closest("[data-date-lunar]");
+    if (!!temp && (!!ancestorEl || !!closest)) {
       mutateDocument(item => {
         const component = findComponent(item, temp)?.component;
         if (!!component && component.type === "date") {
@@ -12479,8 +12479,8 @@ for (const temp2 of [dateWeekday, dateLunar]) {
           if (ancestorEl) {
             component.properties.showWeekday = ancestorEl.dataset.dateWeekday === "on";
           }
-          if (ancestorEl2) {
-            component.properties.showLunar = ancestorEl2.dataset.dateLunar === "on";
+          if (closest) {
+            component.properties.showLunar = closest.dataset.dateLunar === "on";
           }
           fitDateComponent(component, component.properties);
         }
@@ -12553,16 +12553,16 @@ const weatherSizeFieldMap = new Map([[weatherIconSize, {
 const weatherTransformFields = new Set([weatherLeft, weatherTop, weatherScale, weatherRotation]);
 function fitWeatherComponentToContent(value, fallback) {
   const numeric = Number(value.position?.width || 100);
-  const number3 = Number(value.position?.height || 100);
+  const numberCurrent = Number(value.position?.height || 100);
   const number = Number(value.position?.x || 0) + numeric / 2;
-  const number2 = Number(value.position?.y || 0) + number3 / 2;
+  const numberNext = Number(value.position?.y || 0) + numberCurrent / 2;
   const {
     width,
     height
   } = weatherComponentDimensions(fallback);
   editorRenderer?.previewComponentTransform(value.id, {
     x: number - width / 2,
-    y: number2 - height / 2,
+    y: numberNext - height / 2,
     width,
     height
   });
@@ -12573,27 +12573,27 @@ weatherInspector.addEventListener("input", value => {
     return;
   }
   const eventTarget = value.target;
-  const temp2 = weatherColorFieldMap.get(eventTarget);
-  if (temp2) {
+  const entry = weatherColorFieldMap.get(eventTarget);
+  if (entry) {
     editorRenderer?.previewComponentProperties(target.id, {
-      [temp2]: eventTarget.value
+      [entry]: eventTarget.value
     });
     return;
   }
-  const temp3 = weatherSizeFieldMap.get(eventTarget);
-  if (temp3) {
+  const item = weatherSizeFieldMap.get(eventTarget);
+  if (item) {
     if (String(eventTarget.value).trim() === "" || !Number.isFinite(Number(eventTarget.value))) {
       return;
     }
-    const clamped = clampNumber(Number(eventTarget.value), temp3.minimum, temp3.maximum) / temp3.divisor;
+    const clamped = clampNumber(Number(eventTarget.value), item.minimum, item.maximum) / item.divisor;
     const options = {
       ...(target.properties || {}),
-      [temp3.property]: clamped
+      [item.property]: clamped
     };
     editorRenderer?.previewComponentProperties(target.id, {
-      [temp3.property]: clamped
+      [item.property]: clamped
     });
-    if (temp3.resizes) {
+    if (item.resizes) {
       fitWeatherComponentToContent(target, options);
     }
     return;
@@ -12601,30 +12601,30 @@ weatherInspector.addEventListener("input", value => {
   if (!weatherTransformFields.has(eventTarget) || String(eventTarget.value).trim() === "" || !Number.isFinite(Number(eventTarget.value))) {
     return;
   }
-  const number5 = Number(eventTarget.value);
+  const numberCurrent = Number(eventTarget.value);
   const number = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
-  const number3 = Number(target.position?.width || 100);
-  const number4 = Number(target.position?.height || 100);
+  const numberNext = Number(target.position?.width || 100);
+  const numberPrevious = Number(target.position?.height || 100);
   if (eventTarget === weatherLeft) {
-    const clamped = clampNumber(number5, 0, 100);
+    const clamped = clampNumber(numberCurrent, 0, 100);
     editorRenderer?.previewComponentTransform(target.id, {
-      x: number * clamped / 100 - number3 / 2
+      x: number * clamped / 100 - numberNext / 2
     });
   } else if (eventTarget === weatherTop) {
-    const clamped = clampNumber(number5, 0, 100);
+    const clamped = clampNumber(numberCurrent, 0, 100);
     editorRenderer?.previewComponentTransform(target.id, {
-      y: canvasHeight * clamped / 100 - number4 / 2
+      y: canvasHeight * clamped / 100 - numberPrevious / 2
     });
   } else if (eventTarget === weatherScale) {
-    const clamped = clampNumber(number5, 1, 500);
+    const clamped = clampNumber(numberCurrent, 1, 500);
     editorRenderer?.previewComponentTransform(target.id, {
       scale: clamped / 100
     });
   } else if (eventTarget === weatherRotation) {
-    const rotation6 = clampNumber(number5, -360, 360);
+    const rotation = clampNumber(numberCurrent, -360, 360);
     editorRenderer?.previewComponentTransform(target.id, {
-      rotation: rotation6
+      rotation: rotation
     });
   }
 });
@@ -12634,51 +12634,51 @@ weatherInspector.addEventListener("change", value => {
   if (!temp) {
     return;
   }
-  const temp2 = weatherColorFieldMap.get(ancestorEl);
-  const property2 = weatherSizeFieldMap.get(ancestorEl);
-  if (!!temp2 || !!property2 || !!weatherTransformFields.has(ancestorEl)) {
-    if ((property2 || weatherTransformFields.has(ancestorEl)) && (String(ancestorEl.value).trim() === "" || !Number.isFinite(Number(ancestorEl.value)))) {
+  const entry = weatherColorFieldMap.get(ancestorEl);
+  const property = weatherSizeFieldMap.get(ancestorEl);
+  if (!!entry || !!property || !!weatherTransformFields.has(ancestorEl)) {
+    if ((property || weatherTransformFields.has(ancestorEl)) && (String(ancestorEl.value).trim() === "" || !Number.isFinite(Number(ancestorEl.value)))) {
       refreshInspector();
       return;
     }
-    mutateDocument(canvas6 => {
-      const position9 = findComponent(canvas6, temp)?.component;
-      if (!position9 || position9.type !== "weather") {
+    mutateDocument(canvas => {
+      const position = findComponent(canvas, temp)?.component;
+      if (!position || position.type !== "weather") {
         return;
       }
-      position9.properties = {
-        ...(position9.properties || {})
+      position.properties = {
+        ...(position.properties || {})
       };
-      position9.position = {
-        ...(position9.position || {})
+      position.position = {
+        ...(position.position || {})
       };
-      position9.style = {
-        ...(position9.style || {})
+      position.style = {
+        ...(position.style || {})
       };
-      const number = Number(canvas6.canvas.width || 2778);
-      const canvasHeight = Number(canvas6.canvas.height || 1940);
-      const number3 = Number(ancestorEl.value);
-      if (temp2) {
-        position9.properties[temp2] = ancestorEl.value;
-      } else if (property2) {
-        position9.properties[property2.property] = clampNumber(number3, property2.minimum, property2.maximum) / property2.divisor;
-        if (property2.resizes) {
-          fitWeatherComponent(position9, position9.properties);
+      const number = Number(canvas.canvas.width || 2778);
+      const canvasHeight = Number(canvas.canvas.height || 1940);
+      const numberCurrent = Number(ancestorEl.value);
+      if (entry) {
+        position.properties[entry] = ancestorEl.value;
+      } else if (property) {
+        position.properties[property.property] = clampNumber(numberCurrent, property.minimum, property.maximum) / property.divisor;
+        if (property.resizes) {
+          fitWeatherComponent(position, position.properties);
         }
       } else if (ancestorEl === weatherLeft) {
-        position9.position.x = number * clampNumber(number3, 0, 100) / 100 - Number(position9.position.width || 100) / 2;
+        position.position.x = number * clampNumber(numberCurrent, 0, 100) / 100 - Number(position.position.width || 100) / 2;
       } else if (ancestorEl === weatherTop) {
-        position9.position.y = canvasHeight * clampNumber(number3, 0, 100) / 100 - Number(position9.position.height || 100) / 2;
+        position.position.y = canvasHeight * clampNumber(numberCurrent, 0, 100) / 100 - Number(position.position.height || 100) / 2;
       } else if (ancestorEl === weatherScale) {
-        position9.style.scale = clampNumber(number3, 1, 500) / 100;
+        position.style.scale = clampNumber(numberCurrent, 1, 500) / 100;
       } else if (ancestorEl === weatherRotation) {
-        setComponentsRotation(canvas6, temp, clampNumber(number3, -360, 360));
+        setComponentsRotation(canvas, temp, clampNumber(numberCurrent, -360, 360));
       }
     });
   }
 });
-for (const temp2 of [weatherIconVisible, weatherTemperatureVisible, weatherConditionVisible, weatherHumidityVisible]) {
-  temp2.addEventListener("click", value => {
+for (const value of [weatherIconVisible, weatherTemperatureVisible, weatherConditionVisible, weatherHumidityVisible]) {
+  value.addEventListener("click", value => {
     const temp = componentId;
     const ancestorEl = value.target.closest("button");
     if (!temp || !ancestorEl) {
@@ -12688,13 +12688,13 @@ for (const temp2 of [weatherIconVisible, weatherTemperatureVisible, weatherCondi
     if (!found) {
       return;
     }
-    const [alias, alias2] = found;
+    const [alias, aliasCurrent] = found;
     mutateDocument(item => {
       const component = findComponent(item, temp)?.component;
       if (!!component && component.type === "weather") {
         component.properties = {
           ...(component.properties || {}),
-          [alias2]: ancestorEl.dataset[alias] === "on"
+          [aliasCurrent]: ancestorEl.dataset[alias] === "on"
         };
         fitWeatherComponent(component, component.properties);
       }
@@ -12740,32 +12740,32 @@ lineChartInspector.addEventListener("input", value => {
     return;
   }
   const target = value.target;
-  const temp2 = lineChartColorFieldMap.get(target);
-  const temp3 = lineChartSizeFieldMap.get(target);
-  if (temp2) {
+  const entry = lineChartColorFieldMap.get(target);
+  const item = lineChartSizeFieldMap.get(target);
+  if (entry) {
     editorRenderer?.previewComponentProperties(temp.id, {
-      [temp2]: target.value
+      [entry]: target.value
     });
     return;
   }
-  if (temp3) {
+  if (item) {
     if (String(target.value).trim() === "" || !Number.isFinite(Number(target.value))) {
       return;
     }
-    const clamped = clampNumber(Number(target.value), temp3.minimum, temp3.maximum);
-    if (!["updateInterval", "hours"].includes(temp3.property)) {
+    const clamped = clampNumber(Number(target.value), item.minimum, item.maximum);
+    if (!["updateInterval", "hours"].includes(item.property)) {
       editorRenderer?.previewComponentProperties(temp.id, {
-        [temp3.property]: clamped / temp3.divisor
+        [item.property]: clamped / item.divisor
       });
     }
     return;
   }
-  if (lineChartThresholdFields.findIndex(el3 => el3.value === target || el3.color === target) >= 0) {
-    const every = lineChartThresholdFields.map(el3 => ({
-      value: Number(el3.value.value),
-      color: el3.color.value
+  if (lineChartThresholdFields.findIndex(el => el.value === target || el.color === target) >= 0) {
+    const every = lineChartThresholdFields.map(el => ({
+      value: Number(el.value.value),
+      color: el.color.value
     }));
-    if (every.every(el3 => Number.isFinite(el3.value))) {
+    if (every.every(el => Number.isFinite(el.value))) {
       editorRenderer?.previewComponentProperties(temp.id, {
         thresholdMode: "manual",
         thresholds: every
@@ -12779,29 +12779,29 @@ lineChartInspector.addEventListener("input", value => {
   const numeric = Number(target.value);
   const canvasWidth = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
-  const number3 = Number(temp.position?.width || 100);
-  const number4 = Number(temp.position?.height || 100);
-  const number = Number(temp.position?.x || 0) + number3 / 2;
-  const number2 = Number(temp.position?.y || 0) + number4 / 2;
+  const numberCurrent = Number(temp.position?.width || 100);
+  const numberNext = Number(temp.position?.height || 100);
+  const number = Number(temp.position?.x || 0) + numberCurrent / 2;
+  const numberPrevious = Number(temp.position?.y || 0) + numberNext / 2;
   if (target === lineChartLeft) {
     editorRenderer?.previewComponentTransform(temp.id, {
-      x: canvasWidth * clampNumber(numeric, 0, 100) / 100 - number3 / 2
+      x: canvasWidth * clampNumber(numeric, 0, 100) / 100 - numberCurrent / 2
     });
   } else if (target === lineChartTop) {
     editorRenderer?.previewComponentTransform(temp.id, {
-      y: canvasHeight * clampNumber(numeric, 0, 100) / 100 - number4 / 2
+      y: canvasHeight * clampNumber(numeric, 0, 100) / 100 - numberNext / 2
     });
   } else if (target === lineChartWidth) {
-    const width5 = canvasWidth * clampNumber(numeric, 0.1, 100) / 100;
+    const width = canvasWidth * clampNumber(numeric, 0.1, 100) / 100;
     editorRenderer?.previewComponentTransform(temp.id, {
-      x: number - width5 / 2,
-      width: width5
+      x: number - width / 2,
+      width: width
     });
   } else if (target === lineChartHeight) {
-    const height4 = canvasHeight * clampNumber(numeric, 0.1, 100) / 100;
+    const height = canvasHeight * clampNumber(numeric, 0.1, 100) / 100;
     editorRenderer?.previewComponentTransform(temp.id, {
-      y: number2 - height4 / 2,
-      height: height4
+      y: numberPrevious - height / 2,
+      height: height
     });
   } else if (target === lineChartScale) {
     editorRenderer?.previewComponentTransform(temp.id, {
@@ -12819,11 +12819,11 @@ lineChartInspector.addEventListener("change", value => {
   if (!temp) {
     return;
   }
-  const temp2 = lineChartColorFieldMap.get(target);
-  const temp3 = lineChartSizeFieldMap.get(target);
-  const target2 = lineChartThresholdFields.findIndex(el3 => el3.value === target || el3.color === target);
-  if (!!temp2 || !!temp3 || !(target2 < 0) || !!lineChartTransformFields.has(target)) {
-    if ((temp3 || lineChartTransformFields.has(target) || target2 >= 0 && target.type === "number") && (String(target.value).trim() === "" || !Number.isFinite(Number(target.value)))) {
+  const entry = lineChartColorFieldMap.get(target);
+  const item = lineChartSizeFieldMap.get(target);
+  const foundIndex = lineChartThresholdFields.findIndex(el => el.value === target || el.color === target);
+  if (!!entry || !!item || !(foundIndex < 0) || !!lineChartTransformFields.has(target)) {
+    if ((item || lineChartTransformFields.has(target) || foundIndex >= 0 && target.type === "number") && (String(target.value).trim() === "" || !Number.isFinite(Number(target.value)))) {
       refreshInspector();
       return;
     }
@@ -12843,41 +12843,41 @@ lineChartInspector.addEventListener("change", value => {
       };
       const number = Number(doc.canvas.width || 2778);
       const canvasHeight = Number(doc.canvas.height || 1940);
-      const number3 = Number(component.position.width || 100);
-      const number5 = Number(component.position.height || 100);
-      const number4 = Number(component.position.x || 0) + number3 / 2;
-      const number2 = Number(component.position.y || 0) + number5 / 2;
-      const number6 = Number(target.value);
-      if (temp2) {
-        component.properties[temp2] = target.value;
+      const numberCurrent = Number(component.position.width || 100);
+      const numberNext = Number(component.position.height || 100);
+      const value = Number(component.position.x || 0) + numberCurrent / 2;
+      const numberPrevious = Number(component.position.y || 0) + numberNext / 2;
+      const numberLocal = Number(target.value);
+      if (entry) {
+        component.properties[entry] = target.value;
         if (target === lineChartThresholdMode && target.value === "manual" && (!Array.isArray(component.properties.thresholds) || !component.properties.thresholds.some(item => Number.isFinite(Number(item?.value))))) {
-          component.properties.thresholds = lineChartThresholdFields.map(el3 => ({
-            value: Number(el3.value.value),
-            color: el3.color.value
+          component.properties.thresholds = lineChartThresholdFields.map(el => ({
+            value: Number(el.value.value),
+            color: el.color.value
           }));
         }
-      } else if (temp3) {
-        component.properties[temp3.property] = clampNumber(number6, temp3.minimum, temp3.maximum) / temp3.divisor;
-      } else if (target2 >= 0) {
+      } else if (item) {
+        component.properties[item.property] = clampNumber(numberLocal, item.minimum, item.maximum) / item.divisor;
+      } else if (foundIndex >= 0) {
         component.properties.thresholdMode = "manual";
-        component.properties.thresholds = lineChartThresholdFields.map(el3 => ({
-          value: Number(el3.value.value),
-          color: el3.color.value
+        component.properties.thresholds = lineChartThresholdFields.map(el => ({
+          value: Number(el.value.value),
+          color: el.color.value
         }));
       } else if (target === lineChartLeft) {
-        component.position.x = number * clampNumber(number6, 0, 100) / 100 - number3 / 2;
+        component.position.x = number * clampNumber(numberLocal, 0, 100) / 100 - numberCurrent / 2;
       } else if (target === lineChartTop) {
-        component.position.y = canvasHeight * clampNumber(number6, 0, 100) / 100 - number5 / 2;
+        component.position.y = canvasHeight * clampNumber(numberLocal, 0, 100) / 100 - numberNext / 2;
       } else if (target === lineChartWidth) {
-        component.position.width = number * clampNumber(number6, 0.1, 100) / 100;
-        component.position.x = number4 - component.position.width / 2;
+        component.position.width = number * clampNumber(numberLocal, 0.1, 100) / 100;
+        component.position.x = value - component.position.width / 2;
       } else if (target === lineChartHeight) {
-        component.position.height = canvasHeight * clampNumber(number6, 0.1, 100) / 100;
-        component.position.y = number2 - component.position.height / 2;
+        component.position.height = canvasHeight * clampNumber(numberLocal, 0.1, 100) / 100;
+        component.position.y = numberPrevious - component.position.height / 2;
       } else if (target === lineChartScale) {
-        component.style.scale = clampNumber(number6, 1, 500) / 100;
+        component.style.scale = clampNumber(numberLocal, 1, 500) / 100;
       } else if (target === lineChartRotation) {
-        setComponentsRotation(doc, temp, clampNumber(number6, -360, 360));
+        setComponentsRotation(doc, temp, clampNumber(numberLocal, -360, 360));
       }
     });
   }
@@ -12887,10 +12887,10 @@ lineChartValueVisible.addEventListener("click", value => {
   const target = componentId;
   if (!!temp && !!target) {
     mutateDocument(param => {
-      const properties27 = findComponent(param, target)?.component;
-      if (!!properties27 && properties27.type === "line-chart") {
-        properties27.properties = {
-          ...(properties27.properties || {}),
+      const properties = findComponent(param, target)?.component;
+      if (!!properties && properties.type === "line-chart") {
+        properties.properties = {
+          ...(properties.properties || {}),
           valueVisible: temp.dataset.lineChartValueVisible === "on"
         };
       }
@@ -12996,15 +12996,15 @@ const panelFrameSizeFieldMap = new Map([[panelFrameMainSize, {
 }]]);
 const panelFrameTransformFields = new Set([panelFrameLeft, panelFrameTop, panelFrameWidth, panelFrameHeight, panelFrameScale, panelFrameRotation]);
 panelFrameInspector.addEventListener("input", value => {
-  const component2 = selectedComponent();
-  if (!component2 || component2.type !== "panel-frame") {
+  const component = selectedComponent();
+  if (!component || component.type !== "panel-frame") {
     return;
   }
   const eventTarget = value.target;
   const temp = panelFrameColorFieldMap.get(eventTarget);
   const minimum = panelFrameSizeFieldMap.get(eventTarget);
   if (temp) {
-    editorRenderer?.previewComponentProperties(component2.id, {
+    editorRenderer?.previewComponentProperties(component.id, {
       [temp]: eventTarget.value
     });
     return;
@@ -13014,7 +13014,7 @@ panelFrameInspector.addEventListener("input", value => {
       return;
     }
     const clamped = clampNumber(Number(eventTarget.value), minimum.minimum, minimum.maximum);
-    editorRenderer?.previewComponentProperties(component2.id, {
+    editorRenderer?.previewComponentProperties(component.id, {
       [minimum.property]: clamped / minimum.divisor
     });
     return;
@@ -13025,36 +13025,36 @@ panelFrameInspector.addEventListener("input", value => {
   const number = Number(eventTarget.value);
   const canvasWidth = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
-  const number4 = Number(component2.position?.width || 100);
-  const number5 = Number(component2.position?.height || 100);
-  const number6 = Number(component2.position?.x || 0) + number4 / 2;
-  const number7 = Number(component2.position?.y || 0) + number5 / 2;
+  const numberCurrent = Number(component.position?.width || 100);
+  const numberNext = Number(component.position?.height || 100);
+  const numberPrevious = Number(component.position?.x || 0) + numberCurrent / 2;
+  const numberLocal = Number(component.position?.y || 0) + numberNext / 2;
   if (eventTarget === panelFrameLeft) {
-    editorRenderer?.previewComponentTransform(component2.id, {
-      x: canvasWidth * clampNumber(number, 0, 100) / 100 - number4 / 2
+    editorRenderer?.previewComponentTransform(component.id, {
+      x: canvasWidth * clampNumber(number, 0, 100) / 100 - numberCurrent / 2
     });
   } else if (eventTarget === panelFrameTop) {
-    editorRenderer?.previewComponentTransform(component2.id, {
-      y: canvasHeight * clampNumber(number, 0, 100) / 100 - number5 / 2
+    editorRenderer?.previewComponentTransform(component.id, {
+      y: canvasHeight * clampNumber(number, 0, 100) / 100 - numberNext / 2
     });
   } else if (eventTarget === panelFrameWidth) {
-    const width6 = canvasWidth * clampNumber(number, 0.1, 100) / 100;
-    editorRenderer?.previewComponentTransform(component2.id, {
-      x: number6 - width6 / 2,
-      width: width6
+    const width = canvasWidth * clampNumber(number, 0.1, 100) / 100;
+    editorRenderer?.previewComponentTransform(component.id, {
+      x: numberPrevious - width / 2,
+      width: width
     });
   } else if (eventTarget === panelFrameHeight) {
-    const height5 = canvasHeight * clampNumber(number, 0.1, 100) / 100;
-    editorRenderer?.previewComponentTransform(component2.id, {
-      y: number7 - height5 / 2,
-      height: height5
+    const height = canvasHeight * clampNumber(number, 0.1, 100) / 100;
+    editorRenderer?.previewComponentTransform(component.id, {
+      y: numberLocal - height / 2,
+      height: height
     });
   } else if (eventTarget === panelFrameScale) {
-    editorRenderer?.previewComponentTransform(component2.id, {
+    editorRenderer?.previewComponentTransform(component.id, {
       scale: clampNumber(number, 1, 500) / 100
     });
   } else if (eventTarget === panelFrameRotation) {
-    editorRenderer?.previewComponentTransform(component2.id, {
+    editorRenderer?.previewComponentTransform(component.id, {
       rotation: clampNumber(number, -360, 360)
     });
   }
@@ -13065,58 +13065,58 @@ panelFrameInspector.addEventListener("change", value => {
   if (!temp) {
     return;
   }
-  const temp2 = panelFrameColorFieldMap.get(target);
-  const property3 = panelFrameSizeFieldMap.get(target);
-  if (!!temp2 || !!property3 || !!panelFrameTransformFields.has(target)) {
-    if ((property3 || panelFrameTransformFields.has(target)) && (String(target.value).trim() === "" || !Number.isFinite(Number(target.value)))) {
+  const entry = panelFrameColorFieldMap.get(target);
+  const property = panelFrameSizeFieldMap.get(target);
+  if (!!entry || !!property || !!panelFrameTransformFields.has(target)) {
+    if ((property || panelFrameTransformFields.has(target)) && (String(target.value).trim() === "" || !Number.isFinite(Number(target.value)))) {
       refreshInspector();
       return;
     }
     mutateDocument(doc => {
-      const position10 = findComponent(doc, temp)?.component;
-      if (!position10 || position10.type !== "panel-frame") {
+      const position = findComponent(doc, temp)?.component;
+      if (!position || position.type !== "panel-frame") {
         return;
       }
-      position10.properties = {
-        ...(position10.properties || {})
+      position.properties = {
+        ...(position.properties || {})
       };
-      position10.position = {
-        ...(position10.position || {})
+      position.position = {
+        ...(position.position || {})
       };
-      position10.style = {
-        ...(position10.style || {})
+      position.style = {
+        ...(position.style || {})
       };
       const chosen = Number(doc.canvas.width || 2778);
       const numeric = Number(doc.canvas.height || 1940);
-      const number3 = Number(position10.position.width || 100);
-      const number4 = Number(position10.position.height || 100);
-      const number = Number(position10.position.x || 0) + number3 / 2;
-      const number2 = Number(position10.position.y || 0) + number4 / 2;
-      const number5 = Number(target.value);
-      if (temp2) {
-        position10.properties[temp2] = target.value;
-      } else if (property3) {
-        position10.properties[property3.property] = clampNumber(number5, property3.minimum, property3.maximum) / property3.divisor;
+      const numberCurrent = Number(position.position.width || 100);
+      const numberNext = Number(position.position.height || 100);
+      const number = Number(position.position.x || 0) + numberCurrent / 2;
+      const value = Number(position.position.y || 0) + numberNext / 2;
+      const numberPrevious = Number(target.value);
+      if (entry) {
+        position.properties[entry] = target.value;
+      } else if (property) {
+        position.properties[property.property] = clampNumber(numberPrevious, property.minimum, property.maximum) / property.divisor;
       } else if (target === panelFrameLeft) {
-        position10.position.x = chosen * clampNumber(number5, 0, 100) / 100 - number3 / 2;
+        position.position.x = chosen * clampNumber(numberPrevious, 0, 100) / 100 - numberCurrent / 2;
       } else if (target === panelFrameTop) {
-        position10.position.y = numeric * clampNumber(number5, 0, 100) / 100 - number4 / 2;
+        position.position.y = numeric * clampNumber(numberPrevious, 0, 100) / 100 - numberNext / 2;
       } else if (target === panelFrameWidth) {
-        position10.position.width = chosen * clampNumber(number5, 0.1, 100) / 100;
-        position10.position.x = number - position10.position.width / 2;
+        position.position.width = chosen * clampNumber(numberPrevious, 0.1, 100) / 100;
+        position.position.x = number - position.position.width / 2;
       } else if (target === panelFrameHeight) {
-        position10.position.height = numeric * clampNumber(number5, 0.1, 100) / 100;
-        position10.position.y = number2 - position10.position.height / 2;
+        position.position.height = numeric * clampNumber(numberPrevious, 0.1, 100) / 100;
+        position.position.y = value - position.position.height / 2;
       } else if (target === panelFrameScale) {
-        position10.style.scale = clampNumber(number5, 1, 500) / 100;
+        position.style.scale = clampNumber(numberPrevious, 1, 500) / 100;
       } else if (target === panelFrameRotation) {
-        setComponentsRotation(doc, temp, clampNumber(number5, -360, 360));
+        setComponentsRotation(doc, temp, clampNumber(numberPrevious, -360, 360));
       }
     });
   }
 });
-for (const [temp2, temp3] of [[panelFrameMainVisible, "mainTextVisible"], [panelFrameSecondaryVisible, "secondaryTextVisible"], [panelFrameEdgeVisible, "edgeVisible"], [panelFrameGlowVisible, "glowVisible"]]) {
-  temp2.addEventListener("click", () => {
+for (const [value, entry] of [[panelFrameMainVisible, "mainTextVisible"], [panelFrameSecondaryVisible, "secondaryTextVisible"], [panelFrameEdgeVisible, "edgeVisible"], [panelFrameGlowVisible, "glowVisible"]]) {
+  value.addEventListener("click", () => {
     const value = componentId;
     if (value) {
       mutateDocument(item => {
@@ -13124,7 +13124,7 @@ for (const [temp2, temp3] of [[panelFrameMainVisible, "mainTextVisible"], [panel
         if (!!component && component.type === "panel-frame") {
           component.properties = {
             ...(component.properties || {}),
-            [temp3]: component.properties?.[temp3] === false
+            [entry]: component.properties?.[entry] === false
           };
         }
       });
@@ -13271,8 +13271,8 @@ const navigationSizeFieldMap = new Map([[navigationMainSize, {
 const navigationOpacityModeMap = new Map([[navigationTextIdleOpacity, "off"], [navigationIconIdleOpacity, "off"], [navigationFrameIdleOpacity, "off"], [navigationGlowIdleStrength, "off"], [navigationGlowIdleSize, "off"], [navigationTextActiveOpacity, "on"], [navigationIconActiveOpacity, "on"], [navigationFrameActiveOpacity, "on"], [navigationGlowActiveStrength, "on"], [navigationGlowActiveSize, "on"]]);
 function syncNavigationPreviewButtons(value) {
   if (value) {
-    for (const classList2 of navigationPreviewState.querySelectorAll("[data-navigation-preview]")) {
-      classList2.classList.toggle("active", classList2.dataset.navigationPreview === value);
+    for (const classList of navigationPreviewState.querySelectorAll("[data-navigation-preview]")) {
+      classList.classList.toggle("active", classList.dataset.navigationPreview === value);
     }
   }
 }
@@ -13291,7 +13291,7 @@ function setNavigationPreviewState(value, param) {
     syncNavigationPreviewButtons(chosen);
   }
 }
-function withSelectedComponent3(value) {
+function withSelectedComponentCurrent(value) {
   const temp = navigationOpacityModeMap.get(value);
   const property = selectedComponent();
   if (!temp || property?.type !== "navigation-button") {
@@ -13307,9 +13307,9 @@ function navigationPropertyKeyForInput(value) {
   if (temp && airConditionerPropertyMeta[temp]) {
     return temp;
   }
-  const temp2 = navigationSizeFieldMap.get(value)?.property;
-  if (temp2 && airConditionerPropertyMeta[temp2]) {
-    return temp2;
+  const item = navigationSizeFieldMap.get(value)?.property;
+  if (item && airConditionerPropertyMeta[item]) {
+    return item;
   } else if (value === navigationWidth) {
     return "width";
   } else if (value === navigationHeight) {
@@ -13337,15 +13337,15 @@ navigationInspector.addEventListener("input", value => {
     }
     return;
   }
-  const minimum2 = navigationSizeFieldMap.get(temp);
-  if (minimum2) {
+  const minimum = navigationSizeFieldMap.get(temp);
+  if (minimum) {
     if (String(temp.value).trim() === "" || !Number.isFinite(Number(temp.value))) {
       return;
     }
-    const clamped = clampNumber(Number(temp.value), minimum2.minimum, minimum2.maximum);
-    withSelectedComponent3(temp);
+    const clamped = clampNumber(Number(temp.value), minimum.minimum, minimum.maximum);
+    withSelectedComponentCurrent(temp);
     editorRenderer?.previewComponentProperties(ancestorEl.id, {
-      [minimum2.property]: clamped / minimum2.divisor
+      [minimum.property]: clamped / minimum.divisor
     });
     return;
   }
@@ -13355,33 +13355,33 @@ navigationInspector.addEventListener("input", value => {
   const number = Number(temp.value);
   const canvasWidth = Number(currentProject.document.canvas.width || 2778);
   const canvasHeight = Number(currentProject.document.canvas.height || 1940);
-  const number4 = Number(ancestorEl.position?.width || 100);
-  const number5 = Number(ancestorEl.position?.height || 100);
+  const numberCurrent = Number(ancestorEl.position?.width || 100);
+  const numberNext = Number(ancestorEl.position?.height || 100);
   if (temp === navigationLeft) {
     const clamped = clampNumber(number, 0, 100);
     editorRenderer?.previewComponentTransform(ancestorEl.id, {
-      x: canvasWidth * clamped / 100 - number4 / 2
+      x: canvasWidth * clamped / 100 - numberCurrent / 2
     });
   } else if (temp === navigationTop) {
     const clamped = clampNumber(number, 0, 100);
     editorRenderer?.previewComponentTransform(ancestorEl.id, {
-      y: canvasHeight * clamped / 100 - number5 / 2
+      y: canvasHeight * clamped / 100 - numberNext / 2
     });
   } else if (temp === navigationWidth) {
     const clamped = clampNumber(number, 0.1, 100);
-    const width7 = canvasWidth * clamped / 100;
-    const number6 = Number(ancestorEl.position?.x || 0) + number4 / 2;
+    const width = canvasWidth * clamped / 100;
+    const value = Number(ancestorEl.position?.x || 0) + numberCurrent / 2;
     editorRenderer?.previewComponentTransform(ancestorEl.id, {
-      x: number6 - width7 / 2,
-      width: width7
+      x: value - width / 2,
+      width: width
     });
   } else if (temp === navigationHeight) {
     const clamped = clampNumber(number, 0.1, 100);
-    const height6 = canvasHeight * clamped / 100;
-    const number6 = Number(ancestorEl.position?.y || 0) + number5 / 2;
+    const height = canvasHeight * clamped / 100;
+    const value = Number(ancestorEl.position?.y || 0) + numberNext / 2;
     editorRenderer?.previewComponentTransform(ancestorEl.id, {
-      y: number6 - height6 / 2,
-      height: height6
+      y: value - height / 2,
+      height: height
     });
   } else if (temp === navigationScale) {
     const clamped = clampNumber(number, 1, 500);
@@ -13389,88 +13389,88 @@ navigationInspector.addEventListener("input", value => {
       scale: clamped / 100
     });
   } else if (temp === navigationRotation) {
-    const rotation2 = clampNumber(number, -360, 360);
+    const rotation = clampNumber(number, -360, 360);
     editorRenderer?.previewComponentTransform(ancestorEl.id, {
-      rotation: rotation2
+      rotation: rotation
     });
   }
 });
-navigationInspector.addEventListener("focusin", target29 => {
-  withSelectedComponent3(target29.target);
+navigationInspector.addEventListener("focusin", target => {
+  withSelectedComponentCurrent(target.target);
 });
-navigationInspector.addEventListener("change", target30 => {
-  const eventTarget = target30.target;
+navigationInspector.addEventListener("change", target => {
+  const eventTarget = target.target;
   const alias = componentId;
   if (!alias) {
     return;
   }
   const temp = navigationTextFieldMap.get(eventTarget);
-  const property4 = navigationSizeFieldMap.get(eventTarget);
-  const temp2 = navigationOpacityModeMap.get(eventTarget);
-  const temp3 = navigationPropertyKeyForInput(eventTarget);
-  if (eventTarget === navigationLabel || !!temp || !!property4 || !!navigationTransformFields.has(eventTarget)) {
-    if ((property4 || navigationTransformFields.has(eventTarget)) && (String(eventTarget.value).trim() === "" || !Number.isFinite(Number(eventTarget.value)))) {
+  const property = navigationSizeFieldMap.get(eventTarget);
+  const entry = navigationOpacityModeMap.get(eventTarget);
+  const input = navigationPropertyKeyForInput(eventTarget);
+  if (eventTarget === navigationLabel || !!temp || !!property || !!navigationTransformFields.has(eventTarget)) {
+    if ((property || navigationTransformFields.has(eventTarget)) && (String(eventTarget.value).trim() === "" || !Number.isFinite(Number(eventTarget.value)))) {
       refreshInspector();
       return;
     }
-    if (temp2) {
-      withSelectedComponent3(eventTarget);
+    if (entry) {
+      withSelectedComponentCurrent(eventTarget);
     }
-    mutateDocument(canvas7 => {
-      const position11 = findComponent(canvas7, alias)?.component;
-      if (!position11 || position11.type !== "navigation-button") {
+    mutateDocument(canvas => {
+      const position = findComponent(canvas, alias)?.component;
+      if (!position || position.type !== "navigation-button") {
         return;
       }
-      position11.properties = {
-        ...(position11.properties || {})
+      position.properties = {
+        ...(position.properties || {})
       };
-      position11.position = {
-        ...(position11.position || {})
+      position.position = {
+        ...(position.position || {})
       };
-      position11.style = {
-        ...(position11.style || {})
+      position.style = {
+        ...(position.style || {})
       };
-      position11.actions = {
-        ...(position11.actions || {})
+      position.actions = {
+        ...(position.actions || {})
       };
-      const chosen = temp3 ? readAirConditionerProperty(position11, temp3) : undefined;
-      const number = Number(canvas7.canvas.width || 2778);
-      const canvasHeight = Number(canvas7.canvas.height || 1940);
-      const number3 = Number(eventTarget.value);
+      const chosen = input ? readAirConditionerProperty(position, input) : undefined;
+      const number = Number(canvas.canvas.width || 2778);
+      const canvasHeight = Number(canvas.canvas.height || 1940);
+      const numberCurrent = Number(eventTarget.value);
       if (eventTarget === navigationLabel) {
-        position11.properties.label = eventTarget.value.trim();
+        position.properties.label = eventTarget.value.trim();
       } else if (temp) {
-        position11.properties[temp] = eventTarget.value;
-      } else if (property4) {
-        position11.properties[property4.property] = clampNumber(number3, property4.minimum, property4.maximum) / property4.divisor;
+        position.properties[temp] = eventTarget.value;
+      } else if (property) {
+        position.properties[property.property] = clampNumber(numberCurrent, property.minimum, property.maximum) / property.divisor;
       } else if (eventTarget === navigationLeft) {
-        position11.position.x = number * clampNumber(number3, 0, 100) / 100 - Number(position11.position.width || 100) / 2;
+        position.position.x = number * clampNumber(numberCurrent, 0, 100) / 100 - Number(position.position.width || 100) / 2;
       } else if (eventTarget === navigationTop) {
-        position11.position.y = canvasHeight * clampNumber(number3, 0, 100) / 100 - Number(position11.position.height || 100) / 2;
+        position.position.y = canvasHeight * clampNumber(numberCurrent, 0, 100) / 100 - Number(position.position.height || 100) / 2;
       } else if (eventTarget === navigationWidth) {
-        const width = number * clampNumber(number3, 0.1, 100) / 100;
-        const number4 = Number(position11.position.x || 0) + Number(position11.position.width || 100) / 2;
-        position11.position.x = number4 - width / 2;
-        position11.position.width = width;
+        const width = number * clampNumber(numberCurrent, 0.1, 100) / 100;
+        const value = Number(position.position.x || 0) + Number(position.position.width || 100) / 2;
+        position.position.x = value - width / 2;
+        position.position.width = width;
       } else if (eventTarget === navigationHeight) {
-        const height = canvasHeight * clampNumber(number3, 0.1, 100) / 100;
-        const number4 = Number(position11.position.y || 0) + Number(position11.position.height || 100) / 2;
-        position11.position.y = number4 - height / 2;
-        position11.position.height = height;
+        const height = canvasHeight * clampNumber(numberCurrent, 0.1, 100) / 100;
+        const number = Number(position.position.y || 0) + Number(position.position.height || 100) / 2;
+        position.position.y = number - height / 2;
+        position.position.height = height;
       } else if (eventTarget === navigationScale) {
-        position11.style.scale = clampNumber(number3, 1, 500) / 100;
+        position.style.scale = clampNumber(numberCurrent, 1, 500) / 100;
       } else if (eventTarget === navigationRotation) {
-        setComponentsRotation(canvas7, alias, clampNumber(number3, -360, 360));
+        setComponentsRotation(canvas, alias, clampNumber(numberCurrent, -360, 360));
       }
-      if (temp3) {
-        buildIdMap2(alias, temp3, chosen, readAirConditionerProperty(position11, temp3));
+      if (input) {
+        buildIdMapCurrent(alias, input, chosen, readAirConditionerProperty(position, input));
       }
     });
   }
 });
 const navigationVisibilityMap = new Map([[navigationMainVisible, "mainTextVisible"], [navigationSecondaryVisible, "secondaryTextVisible"], [navigationIconVisible, "iconVisible"], [navigationFrameVisible, "frameVisible"], [navigationGlowVisible, "glowVisible"]]);
-for (const [temp2, temp3] of navigationVisibilityMap) {
-  temp2.addEventListener("click", () => {
+for (const [value, entry] of navigationVisibilityMap) {
+  value.addEventListener("click", () => {
     const value = componentId;
     if (value) {
       mutateDocument(item => {
@@ -13478,23 +13478,23 @@ for (const [temp2, temp3] of navigationVisibilityMap) {
         if (!component || component.type !== "navigation-button") {
           return;
         }
-        const temp = readAirConditionerProperty(component, temp3);
+        const temp = readAirConditionerProperty(component, entry);
         component.properties = {
           ...(component.properties || {}),
-          [temp3]: component.properties?.[temp3] === false
+          [entry]: component.properties?.[entry] === false
         };
-        buildIdMap2(value, temp3, temp, readAirConditionerProperty(component, temp3));
+        buildIdMapCurrent(value, entry, temp, readAirConditionerProperty(component, entry));
       });
     }
   });
 }
-navigationPreviewState.addEventListener("click", target31 => {
-  const dataset18 = target31.target.closest("[data-navigation-preview]");
+navigationPreviewState.addEventListener("click", target => {
+  const dataset = target.target.closest("[data-navigation-preview]");
   const alias = componentId;
-  if (!dataset18 || !alias) {
+  if (!dataset || !alias) {
     return;
   }
-  const chosen = ["off", "on"].includes(dataset18.dataset.navigationPreview) ? dataset18.dataset.navigationPreview : "auto";
+  const chosen = ["off", "on"].includes(dataset.dataset.navigationPreview) ? dataset.dataset.navigationPreview : "auto";
   setNavigationPreviewState(alias, chosen);
 });
 const lineChartDefaultProperties = {
@@ -13595,7 +13595,7 @@ function collectList(value) {
   }
   return Object.keys(lineChartPropertyMeta).filter(item => JSON.stringify(readNavigationProperty(value, item)) !== JSON.stringify(readNavigationProperty(flag, item)));
 }
-function formatNavigationPropertyValue(value, param, param2 = currentProject?.document) {
+function formatNavigationPropertyValue(value, param, item = currentProject?.document) {
   if (typeof param == "boolean") {
     if (param) {
       return "显示";
@@ -13604,7 +13604,7 @@ function formatNavigationPropertyValue(value, param, param2 = currentProject?.do
     }
   }
   if (value === "width" || value === "height") {
-    const numeric = Number(param2?.canvas?.[value] || (value === "width" ? 2778 : 1940));
+    const numeric = Number(item?.canvas?.[value] || (value === "width" ? 2778 : 1940));
     return roundField(Number(param || 0) / numeric * 100) + "%";
   }
   if (value === "scale") {
@@ -13816,14 +13816,14 @@ function readPanelFrameProperty(component, value) {
     }
   }
 }
-function collectList2(value) {
+function collectListCurrent(value) {
   if (!value || value.type !== "title-button") {
     return [];
   }
   const temp = findComponent(autosaveTimer, value.id)?.component || value;
   return Object.keys(panelFramePropertyMeta).filter(item => JSON.stringify(readPanelFrameProperty(value, item)) !== JSON.stringify(readPanelFrameProperty(temp, item)));
 }
-function formatPanelFramePropertyValue(value, param, param2 = currentProject?.document) {
+function formatPanelFramePropertyValue(value, param, item = currentProject?.document) {
   if (typeof param == "boolean") {
     if (param) {
       return "显示";
@@ -13832,7 +13832,7 @@ function formatPanelFramePropertyValue(value, param, param2 = currentProject?.do
     }
   }
   if (value === "width" || value === "height") {
-    const numeric = Number(param2?.canvas?.[value] || (value === "width" ? 2778 : 1940));
+    const numeric = Number(item?.canvas?.[value] || (value === "width" ? 2778 : 1940));
     return roundField(Number(param || 0) / numeric * 100) + "%";
   }
   if (value === "scale") {
@@ -14130,7 +14130,7 @@ function readIbeProperty(component, value) {
     }
   }
 }
-function collectList3(value) {
+function collectListNext(value) {
   if (!value || value.type !== "air-conditioner") {
     return [];
   }
@@ -14141,7 +14141,7 @@ function collectList3(value) {
   }
   return Object.keys(titleButtonPropertyMeta).filter(item => JSON.stringify(readIbeProperty(value, item)) !== JSON.stringify(readIbeProperty(temp, item)));
 }
-function formatIbePropertyValue(value, param, param2 = currentProject?.document) {
+function formatIbePropertyValue(value, param, item = currentProject?.document) {
   if (typeof param == "boolean") {
     if (param) {
       return "显示";
@@ -14150,7 +14150,7 @@ function formatIbePropertyValue(value, param, param2 = currentProject?.document)
     }
   }
   if (value === "width" || value === "height") {
-    const numeric = Number(param2?.canvas?.[value] || (value === "width" ? 2778 : 1940));
+    const numeric = Number(item?.canvas?.[value] || (value === "width" ? 2778 : 1940));
     return roundField(Number(param || 0) / numeric * 100) + "%";
   }
   if (["scale", "airflowScale", "badgeOpacity"].includes(value)) {
@@ -14300,7 +14300,7 @@ function readTitleButtonProperty(component, value) {
     }
   }
 }
-function ibeTemplateOptions3(component) {
+function ibeTemplateOptionsNext(component) {
   if (!component || component.type !== "icon-button-effect") {
     return [];
   }
@@ -14311,7 +14311,7 @@ function ibeTemplateOptions3(component) {
   }
   return Object.keys(ibePropertyMeta).filter(item => JSON.stringify(readTitleButtonProperty(component, item)) !== JSON.stringify(readTitleButtonProperty(sensorKind, item)));
 }
-function formatTitleButtonPropertyValue(value, param, param2 = currentProject?.document) {
+function formatTitleButtonPropertyValue(value, param, item = currentProject?.document) {
   if (typeof param == "boolean") {
     if (param) {
       return "显示";
@@ -14320,7 +14320,7 @@ function formatTitleButtonPropertyValue(value, param, param2 = currentProject?.d
     }
   }
   if (value === "width" || value === "height") {
-    const numeric = Number(param2?.canvas?.[value] || (value === "width" ? 2778 : 1940));
+    const numeric = Number(item?.canvas?.[value] || (value === "width" ? 2778 : 1940));
     return roundField(Number(param || 0) / numeric * 100) + "%";
   }
   if (["buttonOpacity", "frameOpacity", "glowOffStrength", "glowOnStrength", "effectOpacity", "effectScale", "scale"].includes(value)) {
@@ -14680,7 +14680,7 @@ const presencePropertyMeta = {
   scale: iconButtonPropertyMeta.scale,
   rotation: iconButtonPropertyMeta.rotation
 };
-function presenceSensorKind2(value) {
+function presenceSensorKindCurrent(value) {
   const temp = value?.properties?.sensorKind;
   if (["presence", "door-window", "water-leak", "smoke", "natural-gas"].includes(temp)) {
     return temp;
@@ -14688,25 +14688,25 @@ function presenceSensorKind2(value) {
     return "presence";
   }
 }
-function presenceSensorKindLabel2(value) {
+function presenceSensorKindLabelCurrent(value) {
   return {
     presence: "人体/人在传感器",
     "door-window": "门窗传感器",
     "water-leak": "水浸传感器",
     smoke: "烟雾传感器",
     "natural-gas": "天然气传感器"
-  }[presenceSensorKind2(value)];
+  }[presenceSensorKindCurrent(value)];
 }
-function collectList4(value) {
+function collectListPrevious(value) {
   const temp = ["width", "height", "scale", "rotation"];
-  const temp2 = presenceSensorKind2(value);
-  if (temp2 === "presence") {
+  const kind = presenceSensorKindCurrent(value);
+  if (kind === "presence") {
     return ["iconColor", "iconOnColor", "haloVisible", "haloScaleX", "haloScaleY", "haloRotation", "haloOpacity", "personVisible", "personScale", "personRotation", "personOpacity", "orbitDuration", ...temp];
-  } else if (temp2 === "door-window") {
+  } else if (kind === "door-window") {
     return ["iconOnColor", "perspectiveCorners", ...temp];
-  } else if (temp2 === "water-leak") {
+  } else if (kind === "water-leak") {
     return ["waterLeakColor", ...temp];
-  } else if (temp2 === "smoke") {
+  } else if (kind === "smoke") {
     return ["smokeColor", ...temp];
   } else {
     return ["naturalGasColor", ...temp];
@@ -14738,7 +14738,7 @@ function readPresenceProperty(component, value) {
     return flag[value] ?? iconButtonDefaultProperties[value];
   }
 }
-function syncIconButtonIcon5(value) {
+function syncIconButtonIconLocal(value) {
   if (!value || !["icon-button", "device-button", "presence-sensor"].includes(value.type)) {
     return [];
   }
@@ -14747,7 +14747,7 @@ function syncIconButtonIcon5(value) {
     flag = cloneValue(findComponent(autosaveTimer, value.id)?.component || value);
     popupEntityOptionCache.set(value.id, flag);
   }
-  return (value.type === "presence-sensor" ? collectList4(value) : value.type === "device-button" ? ["iconColor", "iconOnColor", "badgeColor", "badgeOpacity", "symbolSize", "badgeSize", "iconLeft", "iconTop", "mainColor", "mainSize", "mainWeight", "mainSpacing", "mainTextLeft", "mainTextTop", "secondaryColor", "secondarySize", "secondaryWeight", "secondarySpacing", "secondaryTextLeft", "secondaryTextTop", "width", "height", "scale", "rotation"] : Object.keys(iconButtonPropertyMeta)).filter(item => JSON.stringify(readPresenceProperty(value, item)) !== JSON.stringify(readPresenceProperty(flag, item)));
+  return (value.type === "presence-sensor" ? collectListPrevious(value) : value.type === "device-button" ? ["iconColor", "iconOnColor", "badgeColor", "badgeOpacity", "symbolSize", "badgeSize", "iconLeft", "iconTop", "mainColor", "mainSize", "mainWeight", "mainSpacing", "mainTextLeft", "mainTextTop", "secondaryColor", "secondarySize", "secondaryWeight", "secondarySpacing", "secondaryTextLeft", "secondaryTextTop", "width", "height", "scale", "rotation"] : Object.keys(iconButtonPropertyMeta)).filter(item => JSON.stringify(readPresenceProperty(value, item)) !== JSON.stringify(readPresenceProperty(flag, item)));
 }
 function presenceOrDevicePropertyMeta(value, param) {
   if (value?.type === "presence-sensor") {
@@ -14768,7 +14768,7 @@ function presenceOrDevicePropertyMeta(value, param) {
     return iconButtonPropertyMeta[param];
   }
 }
-function formatPresencePropertyValue(value, param, param2 = currentProject?.document) {
+function formatPresencePropertyValue(value, param, item = currentProject?.document) {
   if (typeof param == "boolean") {
     if (param) {
       return "显示";
@@ -14777,7 +14777,7 @@ function formatPresencePropertyValue(value, param, param2 = currentProject?.docu
     }
   }
   if (value === "width" || value === "height") {
-    const numeric = Number(param2?.canvas?.[value] || (value === "width" ? 2778 : 1940));
+    const numeric = Number(item?.canvas?.[value] || (value === "width" ? 2778 : 1940));
     return roundField(Number(param || 0) / numeric * 100) + "%";
   }
   if (value === "scale") {
@@ -14914,14 +14914,14 @@ function readCameraProperty(component, value) {
   }
   return flag[value] ?? cameraDefaultProperties[value];
 }
-function collectList5(value) {
+function collectListLocal(value) {
   if (!value || value.type !== "camera") {
     return [];
   }
   const temp = findComponent(autosaveTimer, value.id)?.component || value;
   return Object.keys(cameraPropertyMeta).filter(item => JSON.stringify(readCameraProperty(value, item)) !== JSON.stringify(readCameraProperty(temp, item)));
 }
-function formatCameraPropertyValue(value, param, param2 = currentProject?.document) {
+function formatCameraPropertyValue(value, param, item = currentProject?.document) {
   if (typeof param == "boolean") {
     if (param) {
       return "显示";
@@ -14947,7 +14947,7 @@ function formatCameraPropertyValue(value, param, param2 = currentProject?.docume
     }
   }
   if (value === "width" || value === "height") {
-    const numeric = Number(param2?.canvas?.[value] || (value === "width" ? 2778 : 1940));
+    const numeric = Number(item?.canvas?.[value] || (value === "width" ? 2778 : 1940));
     return roundField(Number(param || 0) / numeric * 100) + "%";
   }
   if (value === "scale" || value === "radius" || value === "frameOpacity") {
@@ -15140,7 +15140,7 @@ function readVacuumMapProperty(component, value) {
     return flag[value] ?? navigationDefaultProperties[value];
   }
 }
-function collectList6(value) {
+function collectListItem(value) {
   if (!value || value.type !== "panel-frame") {
     return [];
   }
@@ -15151,7 +15151,7 @@ function collectList6(value) {
   }
   return Object.keys(navigationPropertyMeta).filter(item => !temp || temp.type !== "panel-frame" ? true : JSON.stringify(readVacuumMapProperty(value, item)) !== JSON.stringify(readVacuumMapProperty(temp, item)));
 }
-function formatVacuumMapPropertyValue(value, param, param2 = currentProject?.document) {
+function formatVacuumMapPropertyValue(value, param, item = currentProject?.document) {
   if (typeof param == "boolean") {
     if (param) {
       return "显示";
@@ -15160,7 +15160,7 @@ function formatVacuumMapPropertyValue(value, param, param2 = currentProject?.doc
     }
   }
   if (value === "width" || value === "height") {
-    const numeric = Number(param2?.canvas?.[value] || (value === "width" ? 2778 : 1940));
+    const numeric = Number(item?.canvas?.[value] || (value === "width" ? 2778 : 1940));
     return roundField(Number(param || 0) / numeric * 100) + "%";
   }
   if (value === "scale") {
@@ -15417,18 +15417,18 @@ function readAirConditionerProperty(component, value) {
 function deepEqualJson(value, param) {
   return JSON.stringify(value) === JSON.stringify(param);
 }
-function buildIdMap2(value, param, param2, param3) {
+function buildIdMapCurrent(value, param, item, entry) {
   if (!value || !airConditionerPropertyMeta[param]) {
     return;
   }
   let temp = componentBoundsCache.get(value);
-  if (!!temp || !deepEqualJson(param2, param3)) {
+  if (!!temp || !deepEqualJson(item, entry)) {
     if (!temp) {
       temp = new Map();
       componentBoundsCache.set(value, temp);
     }
     if (!temp.has(param)) {
-      temp.set(param, cloneValue(param2));
+      temp.set(param, cloneValue(item));
     }
   }
 }
@@ -15445,11 +15445,11 @@ function unusedAirConditionerPropertyKeys(value) {
     }
   }
 }
-function collectList7(param) {
+function collectListEntry(param) {
   unusedAirConditionerPropertyKeys(param);
-  return [...(componentBoundsCache.get(param?.id)?.entries() || [])].filter(([param, param2]) => !deepEqualJson(readAirConditionerProperty(param, param), param2)).map(([param]) => param);
+  return [...(componentBoundsCache.get(param?.id)?.entries() || [])].filter(([param, item]) => !deepEqualJson(readAirConditionerProperty(param, param), item)).map(([param]) => param);
 }
-function formatAirConditionerPropertyValue(value, param, param2 = currentProject?.document) {
+function formatAirConditionerPropertyValue(value, param, item = currentProject?.document) {
   if (typeof param == "boolean") {
     if (param) {
       return "显示";
@@ -15458,7 +15458,7 @@ function formatAirConditionerPropertyValue(value, param, param2 = currentProject
     }
   }
   if (value === "width" || value === "height") {
-    const numeric = Number(param2?.canvas?.[value] || (value === "width" ? 2778 : 1940));
+    const numeric = Number(item?.canvas?.[value] || (value === "width" ? 2778 : 1940));
     return roundField(Number(param || 0) / numeric * 100) + "%";
   }
   if (value === "scale") {
@@ -15477,35 +15477,35 @@ function formatAirConditionerPropertyValue(value, param, param2 = currentProject
 }
 function createNavigationTargetOption({
   value: navigationTargetId,
-  label: param2,
-  detail: param3,
+  label: value,
+  detail: item,
   target: param = false
 }) {
-  const className10 = document.createElement("label");
-  className10.className = "navigation-style-apply-option";
-  const dataset30 = document.createElement("input");
-  dataset30.type = "checkbox";
-  dataset30.checked = true;
+  const className = document.createElement("label");
+  className.className = "navigation-style-apply-option";
+  const dataset = document.createElement("input");
+  dataset.type = "checkbox";
+  dataset.checked = true;
   if (param) {
-    dataset30.dataset.navigationTargetId = navigationTargetId;
+    dataset.dataset.navigationTargetId = navigationTargetId;
   } else {
-    dataset30.dataset.navigationStyleProperty = navigationTargetId;
+    dataset.dataset.navigationStyleProperty = navigationTargetId;
   }
-  const textContent7 = document.createElement("span");
-  textContent7.textContent = param2;
-  if (param3) {
-    const textContent6 = document.createElement("small");
-    textContent6.textContent = param3;
-    textContent7.append(textContent6);
+  const textContent = document.createElement("span");
+  textContent.textContent = value;
+  if (item) {
+    const element = document.createElement("small");
+    element.textContent = item;
+    textContent.append(element);
   }
-  className10.append(dataset30, textContent7);
-  return className10;
+  className.append(dataset, textContent);
+  return className;
 }
-function renderList4(param) {
+function renderListPrevious(param) {
   navigationStyleApplyTargets.classList.remove("grouped-by-page");
   navigationStyleApplyTargets.replaceChildren(...param);
 }
-function buildIdMap3(value, detail) {
+function buildIdMapNext(value, detail) {
   const index = new Map();
   value.forEach(({
     component: item,
@@ -15526,56 +15526,56 @@ function buildIdMap3(value, detail) {
   }) => {
     const temp = document.createElement("section");
     temp.className = "navigation-style-apply-page-group";
-    const div2 = document.createElement("div");
-    div2.className = "navigation-style-apply-page-heading";
+    const div = document.createElement("div");
+    div.className = "navigation-style-apply-page-heading";
     const element = document.createElement("strong");
     element.textContent = item?.name || "未命名页面";
     const textContent = element.textContent;
-    const div3 = document.createElement("div");
-    div3.className = "navigation-style-apply-page-controls";
+    const divCurrent = document.createElement("div");
+    divCurrent.className = "navigation-style-apply-page-controls";
     const span = document.createElement("span");
     const button = document.createElement("button");
     button.type = "button";
     button.className = "navigation-style-apply-page-toggle";
-    const div4 = document.createElement("div");
-    div4.className = "navigation-style-apply-page-options";
-    div4.replaceChildren(...param.map(component => createNavigationTargetOption({
+    const divNext = document.createElement("div");
+    divNext.className = "navigation-style-apply-page-options";
+    divNext.replaceChildren(...param.map(component => createNavigationTargetOption({
       value: component.id,
       label: componentLabel(component),
       detail,
       target: true
     })));
-    const elements = [...div4.querySelectorAll("[data-navigation-target-id]")];
+    const elements = [...divNext.querySelectorAll("[data-navigation-target-id]")];
     const callback = () => {
-      const length = elements.filter(el3 => el3.checked).length;
+      const length = elements.filter(el => el.checked).length;
       const flag = length === elements.length;
       span.textContent = length + "/" + elements.length + " 个控件";
       button.textContent = flag ? "取消全选" : "全选";
       button.setAttribute("aria-label", (flag ? "取消选择" : "全选") + "“" + textContent + "”中的控件");
     };
     button.addEventListener("click", () => {
-      const flag = !elements.every(el3 => el3.checked);
-      elements.forEach(el3 => {
-        el3.checked = flag;
+      const flag = !elements.every(el => el.checked);
+      elements.forEach(el => {
+        el.checked = flag;
       });
       callback();
     });
-    div4.addEventListener("change", callback);
-    div3.append(span, button);
-    div2.append(element, div3);
-    temp.append(div2, div4);
+    divNext.addEventListener("change", callback);
+    divCurrent.append(span, button);
+    div.append(element, divCurrent);
+    temp.append(div, divNext);
     callback();
     return temp;
   });
   navigationStyleApplyTargets.classList.add("grouped-by-page");
   navigationStyleApplyTargets.replaceChildren(...list);
 }
-function withSelectedComponent4() {
+function withSelectedComponentNext() {
   const value = selectedComponent();
   if (!value || value.type !== "navigation-button") {
     return;
   }
-  const temp = collectList7(value);
+  const temp = collectListEntry(value);
   const filtered = collectComponentsByType(currentProject.document.sharedComponents, "navigation-button").filter(component => component.id !== value.id);
   if (!!temp.length && !!filtered.length) {
     navigationStyleApplyTitle.textContent = "应用导航按钮设置";
@@ -15583,17 +15583,17 @@ function withSelectedComponent4() {
     navigationStyleApplyTargetScope.textContent = "侧边栏通用";
     navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的侧边栏导航按钮。图标名称、文字内容、目标页面、备注和位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(component => {
-      const temp2 = airConditionerPropertyMeta[component];
-      const temp3 = readAirConditionerProperty(value, component);
+      const item = airConditionerPropertyMeta[component];
+      const property = readAirConditionerProperty(value, component);
       return createNavigationTargetOption({
         value: component,
-        label: temp2.label,
-        detail: temp2.group + " · " + formatAirConditionerPropertyValue(component, temp3)
+        label: item.label,
+        detail: item.group + " · " + formatAirConditionerPropertyValue(component, property)
       });
     }));
-    renderList4(filtered.map(component => {
+    renderListPrevious(filtered.map(component => {
       const flag = component.properties?.targetPage || component.actions?.tap?.target || "";
-      const found = currentProject.document.pages.find(item2 => item2.path === flag);
+      const found = currentProject.document.pages.find(item => item.path === flag);
       return createNavigationTargetOption({
         value: component.id,
         label: componentLabel(component),
@@ -15610,12 +15610,12 @@ function withSelectedComponent4() {
     navigationStyleApplyDialog.showModal();
   }
 }
-function withSelectedComponent5() {
+function withSelectedComponentPrevious() {
   const value = selectedComponent();
   if (!value || value.type !== "panel-frame") {
     return;
   }
-  const temp = collectList6(value);
+  const temp = collectListItem(value);
   const flag = findComponent(currentProject.document, value.id)?.scope === "page";
   const chosen = flag ? findComponentsByType("panel-frame").filter(({
     component
@@ -15628,18 +15628,18 @@ function withSelectedComponent5() {
     navigationStyleApplyTargetScope.textContent = flag ? "按页面区分" : "侧边栏通用";
     navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的" + (flag ? "主页面" : "侧边栏") + "底图框。文字内容、备注和位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(item => {
-      const temp2 = navigationPropertyMeta[item];
-      const temp3 = readVacuumMapProperty(value, item);
+      const entry = navigationPropertyMeta[item];
+      const property = readVacuumMapProperty(value, item);
       return createNavigationTargetOption({
         value: item,
-        label: temp2.label,
-        detail: temp2.group + " · " + formatVacuumMapPropertyValue(item, temp3)
+        label: entry.label,
+        detail: entry.group + " · " + formatVacuumMapPropertyValue(item, property)
       });
     }));
     if (flag) {
-      buildIdMap3(chosen, "主页面底图框");
+      buildIdMapNext(chosen, "主页面底图框");
     } else {
-      renderList4(chosen.map(({
+      renderListPrevious(chosen.map(({
         component
       }) => createNavigationTargetOption({
         value: component.id,
@@ -15657,12 +15657,12 @@ function withSelectedComponent5() {
     navigationStyleApplyDialog.showModal();
   }
 }
-function withSelectedComponent6() {
+function withSelectedComponentLocal() {
   const value = selectedComponent();
   if (!value || value.type !== "camera") {
     return;
   }
-  const temp = collectList5(value);
+  const temp = collectListLocal(value);
   const filtered = findComponentsByType("camera").filter(({
     component
   }) => component.id !== value.id);
@@ -15672,15 +15672,15 @@ function withSelectedComponent6() {
     navigationStyleApplyTargetScope.textContent = "按页面区分";
     navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的主页面摄像头实时预览。实体、备注、动作和控件位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(item => {
-      const temp2 = cameraPropertyMeta[item];
-      const temp3 = readCameraProperty(value, item);
+      const entry = cameraPropertyMeta[item];
+      const property = readCameraProperty(value, item);
       return createNavigationTargetOption({
         value: item,
-        label: temp2.label,
-        detail: temp2.group + " · " + formatCameraPropertyValue(item, temp3)
+        label: entry.label,
+        detail: entry.group + " · " + formatCameraPropertyValue(item, property)
       });
     }));
-    buildIdMap3(filtered, "摄像头实时预览");
+    buildIdMapNext(filtered, "摄像头实时预览");
     navigationStyleApplyMessage.hidden = true;
     navigationStyleApplyMessage.textContent = "";
     styleApplyPending = {
@@ -15690,12 +15690,12 @@ function withSelectedComponent6() {
     navigationStyleApplyDialog.showModal();
   }
 }
-function withSelectedComponent7() {
+function withSelectedComponentItem() {
   const value = selectedComponent();
   if (!value || value.type !== "title-button") {
     return;
   }
-  const temp = collectList2(value);
+  const temp = collectListCurrent(value);
   const filtered = findComponentsByType("title-button").filter(({
     component
   }) => component.id !== value.id);
@@ -15705,15 +15705,15 @@ function withSelectedComponent7() {
     navigationStyleApplyTargetScope.textContent = "按页面区分";
     navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的标题按钮。文字内容、图标名称、备注、动作和控件中心位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(item => {
-      const temp2 = panelFramePropertyMeta[item];
-      const temp3 = readPanelFrameProperty(value, item);
+      const entry = panelFramePropertyMeta[item];
+      const property = readPanelFrameProperty(value, item);
       return createNavigationTargetOption({
         value: item,
-        label: temp2.label,
-        detail: temp2.group + " · " + formatPanelFramePropertyValue(item, temp3)
+        label: entry.label,
+        detail: entry.group + " · " + formatPanelFramePropertyValue(item, property)
       });
     }));
-    buildIdMap3(filtered, "标题按钮");
+    buildIdMapNext(filtered, "标题按钮");
     navigationStyleApplyMessage.hidden = true;
     navigationStyleApplyMessage.textContent = "";
     styleApplyPending = {
@@ -15723,12 +15723,12 @@ function withSelectedComponent7() {
     navigationStyleApplyDialog.showModal();
   }
 }
-function ibeTemplateOptions4() {
+function ibeTemplateOptionsPrevious() {
   const value = selectedComponent();
   if (!value || value.type !== "icon-button-effect") {
     return;
   }
-  const temp = ibeTemplateOptions3(value);
+  const temp = ibeTemplateOptionsNext(value);
   const filtered = findComponentsByType("icon-button-effect").filter(({
     component
   }) => component.id !== value.id);
@@ -15738,15 +15738,15 @@ function ibeTemplateOptions4() {
     navigationStyleApplyTargetScope.textContent = "按页面区分";
     navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的主页面图标按钮（效果）。实体、备注、动作和按钮位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(item => {
-      const temp2 = ibePropertyMeta[item];
-      const temp3 = readTitleButtonProperty(value, item);
+      const entry = ibePropertyMeta[item];
+      const property = readTitleButtonProperty(value, item);
       return createNavigationTargetOption({
         value: item,
-        label: temp2.label,
-        detail: temp2.group + " · " + formatTitleButtonPropertyValue(item, temp3)
+        label: entry.label,
+        detail: entry.group + " · " + formatTitleButtonPropertyValue(item, property)
       });
     }));
-    buildIdMap3(filtered, "图标按钮（效果）");
+    buildIdMapNext(filtered, "图标按钮（效果）");
     navigationStyleApplyMessage.hidden = true;
     navigationStyleApplyMessage.textContent = "";
     styleApplyPending = {
@@ -15756,12 +15756,12 @@ function ibeTemplateOptions4() {
     navigationStyleApplyDialog.showModal();
   }
 }
-function withSelectedComponent8() {
+function withSelectedComponentEntry() {
   const value = selectedComponent();
   if (!value || value.type !== "air-conditioner") {
     return;
   }
-  const temp = collectList3(value);
+  const temp = collectListNext(value);
   const filtered = findComponentsByType("air-conditioner").filter(({
     component
   }) => component.id !== value.id);
@@ -15771,15 +15771,15 @@ function withSelectedComponent8() {
     navigationStyleApplyTargetScope.textContent = "按页面区分";
     navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的空调控件。实体、备注、文字内容、动作和按钮位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(item => {
-      const temp2 = titleButtonPropertyMeta[item];
-      const temp3 = readIbeProperty(value, item);
+      const entry = titleButtonPropertyMeta[item];
+      const property = readIbeProperty(value, item);
       return createNavigationTargetOption({
         value: item,
-        label: temp2.label,
-        detail: temp2.group + " · " + formatIbePropertyValue(item, temp3)
+        label: entry.label,
+        detail: entry.group + " · " + formatIbePropertyValue(item, property)
       });
     }));
-    buildIdMap3(filtered, "空调");
+    buildIdMapNext(filtered, "空调");
     navigationStyleApplyMessage.hidden = true;
     navigationStyleApplyMessage.textContent = "";
     styleApplyPending = {
@@ -15789,32 +15789,32 @@ function withSelectedComponent8() {
     navigationStyleApplyDialog.showModal();
   }
 }
-function syncIconButtonIcon6() {
+function syncIconButtonIconItem() {
   const value = selectedComponent();
   if (!value || !["icon-button", "device-button", "presence-sensor"].includes(value.type)) {
     return;
   }
-  const chosen = value.type === "presence-sensor" ? presenceSensorKindLabel2(value) : value.type === "device-button" ? "设备按钮" : "图标按钮";
-  const temp = syncIconButtonIcon5(value);
-  const temp2 = presenceSensorKind2(value);
+  const chosen = value.type === "presence-sensor" ? presenceSensorKindLabelCurrent(value) : value.type === "device-button" ? "设备按钮" : "图标按钮";
+  const temp = syncIconButtonIconLocal(value);
+  const kind = presenceSensorKindCurrent(value);
   const filtered = findComponentsByType(value.type).filter(({
     component
-  }) => component.id !== value.id && (value.type !== "presence-sensor" || presenceSensorKind2(component) === temp2));
+  }) => component.id !== value.id && (value.type !== "presence-sensor" || presenceSensorKindCurrent(component) === kind));
   if (!!temp.length && !!filtered.length) {
     navigationStyleApplyTitle.textContent = "应用" + chosen + "设置";
     navigationStyleApplyTargetHeading.textContent = "应用到主页面同类型控件";
     navigationStyleApplyTargetScope.textContent = "按页面区分";
     navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的主页面" + chosen + "。实体、备注、图标名称、文字内容和位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(item => {
-      const temp3 = presenceOrDevicePropertyMeta(value, item);
-      const temp4 = readPresenceProperty(value, item);
+      const meta = presenceOrDevicePropertyMeta(value, item);
+      const property = readPresenceProperty(value, item);
       return createNavigationTargetOption({
         value: item,
-        label: temp3.label,
-        detail: temp3.group + " · " + formatPresencePropertyValue(item, temp4)
+        label: meta.label,
+        detail: meta.group + " · " + formatPresencePropertyValue(item, property)
       });
     }));
-    buildIdMap3(filtered, chosen);
+    buildIdMapNext(filtered, chosen);
     navigationStyleApplyMessage.hidden = true;
     navigationStyleApplyMessage.textContent = "";
     styleApplyPending = {
@@ -15824,7 +15824,7 @@ function syncIconButtonIcon6() {
     navigationStyleApplyDialog.showModal();
   }
 }
-function withSelectedComponent9() {
+function withSelectedComponentList() {
   const value = selectedComponent();
   if (!value || value.type !== "line-chart") {
     return;
@@ -15837,15 +15837,15 @@ function withSelectedComponent9() {
     navigationStyleApplyTargetScope.textContent = "侧边栏通用";
     navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的侧边栏折线图。数值实体、备注、动作和位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(item => {
-      const temp2 = lineChartPropertyMeta[item];
-      const temp3 = readNavigationProperty(value, item);
+      const entry = lineChartPropertyMeta[item];
+      const property = readNavigationProperty(value, item);
       return createNavigationTargetOption({
         value: item,
-        label: temp2.label,
-        detail: temp2.group + " · " + formatNavigationPropertyValue(item, temp3)
+        label: entry.label,
+        detail: entry.group + " · " + formatNavigationPropertyValue(item, property)
       });
     }));
-    renderList4(filtered.map(component => createNavigationTargetOption({
+    renderListPrevious(filtered.map(component => createNavigationTargetOption({
       value: component.id,
       label: componentLabel(component),
       detail: component.bindings?.entity?.entityId || "未设置数值实体",
@@ -16172,18 +16172,18 @@ function scaleIbeProperty(value, component, param) {
     [param]: temp
   };
 }
-navigationApplyStyle.addEventListener("click", withSelectedComponent4);
-panelFrameApplyStyle.addEventListener("click", withSelectedComponent5);
-cameraApplyStyle.addEventListener("click", withSelectedComponent6);
-titleButtonApplyStyle.addEventListener("click", withSelectedComponent7);
-lineChartApplyStyle.addEventListener("click", withSelectedComponent9);
-ibeApplyStyle.addEventListener("click", ibeTemplateOptions4);
-iconButtonApplyStyle.addEventListener("click", syncIconButtonIcon6);
-airConditionerApplyStyle.addEventListener("click", withSelectedComponent8);
+navigationApplyStyle.addEventListener("click", withSelectedComponentNext);
+panelFrameApplyStyle.addEventListener("click", withSelectedComponentPrevious);
+cameraApplyStyle.addEventListener("click", withSelectedComponentLocal);
+titleButtonApplyStyle.addEventListener("click", withSelectedComponentItem);
+lineChartApplyStyle.addEventListener("click", withSelectedComponentList);
+ibeApplyStyle.addEventListener("click", ibeTemplateOptionsPrevious);
+iconButtonApplyStyle.addEventListener("click", syncIconButtonIconItem);
+airConditionerApplyStyle.addEventListener("click", withSelectedComponentEntry);
 navigationStyleApplyCloseBtn.addEventListener("click", () => navigationStyleApplyDialog.close());
 navigationStyleApplyCancelBtn.addEventListener("click", () => navigationStyleApplyDialog.close());
-navigationStyleApplyDialog.addEventListener("click", target32 => {
-  if (target32.target === navigationStyleApplyDialog) {
+navigationStyleApplyDialog.addEventListener("click", target => {
+  if (target.target === navigationStyleApplyDialog) {
     navigationStyleApplyDialog.close();
   }
 });
@@ -16192,59 +16192,59 @@ navigationStyleApplyDialog.addEventListener("close", () => {
 });
 navigationStyleApplyConfirmBtn.addEventListener("click", () => {
   const temp = styleApplyPending?.sourceId;
-  const temp2 = styleApplyPending?.type;
-  const length9 = [...navigationStyleApplyProperties.querySelectorAll("[data-navigation-style-property]:checked")].map(dataset2 => dataset2.dataset.navigationStyleProperty);
-  const length10 = [...navigationStyleApplyTargets.querySelectorAll("[data-navigation-target-id]:checked")].map(dataset3 => dataset3.dataset.navigationTargetId);
-  if (!temp || !length9.length || !length10.length) {
-    const chosen = temp2 === "panel-frame" ? "底图框" : temp2 === "camera" ? "摄像头实时预览" : temp2 === "title-button" ? "标题按钮" : temp2 === "air-conditioner" ? "空调" : temp2 === "line-chart" ? "折线图" : temp2 === "icon-button-effect" ? "图标按钮（效果）" : temp2 === "icon-button" ? "图标按钮" : temp2 === "device-button" ? "设备按钮" : temp2 === "presence-sensor" ? "传感器" : "导航按钮";
+  const value = styleApplyPending?.type;
+  const length = [...navigationStyleApplyProperties.querySelectorAll("[data-navigation-style-property]:checked")].map(dataset => dataset.dataset.navigationStyleProperty);
+  const mapped = [...navigationStyleApplyTargets.querySelectorAll("[data-navigation-target-id]:checked")].map(dataset => dataset.dataset.navigationTargetId);
+  if (!temp || !length.length || !mapped.length) {
+    const chosen = value === "panel-frame" ? "底图框" : value === "camera" ? "摄像头实时预览" : value === "title-button" ? "标题按钮" : value === "air-conditioner" ? "空调" : value === "line-chart" ? "折线图" : value === "icon-button-effect" ? "图标按钮（效果）" : value === "icon-button" ? "图标按钮" : value === "device-button" ? "设备按钮" : value === "presence-sensor" ? "传感器" : "导航按钮";
     navigationStyleApplyMessage.textContent = "请至少选择一项修改和一个目标" + chosen + "。";
     navigationStyleApplyMessage.hidden = false;
     return;
   }
   navigationStyleApplyDialog.close();
   mutateDocument(param => {
-    const temp3 = findComponent(param, temp)?.component;
-    if (!!temp3 && temp3.type === temp2) {
-      for (const temp3 of length10) {
-        const temp4 = findComponent(param, temp3)?.component;
-        if (!!temp4 && temp4.type === temp2 && (temp2 !== "presence-sensor" || presenceSensorKind2(temp4) === presenceSensorKind2(temp3))) {
-          for (const temp4 of length9) {
-            if (temp2 === "panel-frame") {
-              scaleVacuumMapProperty(temp3, temp4, temp4);
-            } else if (temp2 === "camera") {
-              scaleCameraProperty(temp3, temp4, temp4);
-            } else if (temp2 === "title-button") {
-              scalePanelFrameProperty(temp3, temp4, temp4);
-            } else if (temp2 === "line-chart") {
-              scaleNavigationProperty(temp3, temp4, temp4);
-            } else if (temp2 === "icon-button-effect") {
-              scaleTitleButtonProperty(temp3, temp4, temp4);
-            } else if (temp2 === "air-conditioner") {
-              scaleIbeProperty(temp3, temp4, temp4);
-            } else if (["icon-button", "device-button", "presence-sensor"].includes(temp2)) {
-              scalePresenceProperty(temp3, temp4, temp4);
+    const item = findComponent(param, temp)?.component;
+    if (!!item && item.type === value) {
+      for (const item of mapped) {
+        const entry = findComponent(param, item)?.component;
+        if (!!entry && entry.type === value && (value !== "presence-sensor" || presenceSensorKindCurrent(entry) === presenceSensorKindCurrent(item))) {
+          for (const entry of length) {
+            if (value === "panel-frame") {
+              scaleVacuumMapProperty(item, entry, entry);
+            } else if (value === "camera") {
+              scaleCameraProperty(item, entry, entry);
+            } else if (value === "title-button") {
+              scalePanelFrameProperty(item, entry, entry);
+            } else if (value === "line-chart") {
+              scaleNavigationProperty(item, entry, entry);
+            } else if (value === "icon-button-effect") {
+              scaleTitleButtonProperty(item, entry, entry);
+            } else if (value === "air-conditioner") {
+              scaleIbeProperty(item, entry, entry);
+            } else if (["icon-button", "device-button", "presence-sensor"].includes(value)) {
+              scalePresenceProperty(item, entry, entry);
             } else {
-              scaleAirConditionerProperty(temp3, temp4, temp4);
+              scaleAirConditionerProperty(item, entry, entry);
             }
           }
         }
       }
     }
   }).then(() => {
-    const classList = temp2 === "panel-frame" ? panelFrameApplyStyle : temp2 === "camera" ? cameraApplyStyle : temp2 === "title-button" ? titleButtonApplyStyle : temp2 === "air-conditioner" ? airConditionerApplyStyle : temp2 === "line-chart" ? lineChartApplyStyle : temp2 === "icon-button-effect" ? ibeApplyStyle : ["icon-button", "device-button", "presence-sensor"].includes(temp2) ? iconButtonApplyStyle : navigationApplyStyle;
-    if (temp2 === "panel-frame") {
+    const classList = value === "panel-frame" ? panelFrameApplyStyle : value === "camera" ? cameraApplyStyle : value === "title-button" ? titleButtonApplyStyle : value === "air-conditioner" ? airConditionerApplyStyle : value === "line-chart" ? lineChartApplyStyle : value === "icon-button-effect" ? ibeApplyStyle : ["icon-button", "device-button", "presence-sensor"].includes(value) ? iconButtonApplyStyle : navigationApplyStyle;
+    if (value === "panel-frame") {
       window.clearTimeout(panelFrameStyleApplyResetTimer);
-    } else if (temp2 === "camera") {
+    } else if (value === "camera") {
       window.clearTimeout(cameraStyleApplyResetTimer);
-    } else if (temp2 === "title-button") {
+    } else if (value === "title-button") {
       window.clearTimeout(titleButtonStyleApplyResetTimer);
-    } else if (temp2 === "air-conditioner") {
+    } else if (value === "air-conditioner") {
       window.clearTimeout(airConditionerStyleApplyResetTimer);
-    } else if (temp2 === "line-chart") {
+    } else if (value === "line-chart") {
       window.clearTimeout(lineChartStyleApplyResetTimer);
-    } else if (temp2 === "icon-button-effect") {
+    } else if (value === "icon-button-effect") {
       window.clearTimeout(ibeStyleApplyResetTimer);
-    } else if (["icon-button", "device-button", "presence-sensor"].includes(temp2)) {
+    } else if (["icon-button", "device-button", "presence-sensor"].includes(value)) {
       window.clearTimeout(iconButtonStyleApplyResetTimer);
     } else {
       window.clearTimeout(defaultStyleApplyResetTimer);
@@ -16256,19 +16256,19 @@ navigationStyleApplyConfirmBtn.addEventListener("click", () => {
         refreshInspector();
       }
     }, 1800);
-    if (temp2 === "panel-frame") {
+    if (value === "panel-frame") {
       panelFrameStyleApplyResetTimer = timerId;
-    } else if (temp2 === "camera") {
+    } else if (value === "camera") {
       cameraStyleApplyResetTimer = timerId;
-    } else if (temp2 === "title-button") {
+    } else if (value === "title-button") {
       titleButtonStyleApplyResetTimer = timerId;
-    } else if (temp2 === "air-conditioner") {
+    } else if (value === "air-conditioner") {
       airConditionerStyleApplyResetTimer = timerId;
-    } else if (temp2 === "line-chart") {
+    } else if (value === "line-chart") {
       lineChartStyleApplyResetTimer = timerId;
-    } else if (temp2 === "icon-button-effect") {
+    } else if (value === "icon-button-effect") {
       ibeStyleApplyResetTimer = timerId;
-    } else if (["icon-button", "device-button", "presence-sensor"].includes(temp2)) {
+    } else if (["icon-button", "device-button", "presence-sensor"].includes(value)) {
       iconButtonStyleApplyResetTimer = timerId;
     } else {
       defaultStyleApplyResetTimer = timerId;
@@ -16281,7 +16281,7 @@ navigationIconButton.addEventListener("click", () => {
   navigationIconMenu.hidden = !ancestorEl;
   navigationIconButton.setAttribute("aria-expanded", String(ancestorEl));
   if (ancestorEl) {
-    loadIconPickerOptions2(navigationIconSearch.value).then(() => {
+    loadIconPickerOptionsCurrent(navigationIconSearch.value).then(() => {
       positionNavigationIconMenu();
       navigationIconSearch.focus({
         preventScroll: true
@@ -16305,31 +16305,31 @@ navigationIconCopyBtn.addEventListener("click", async () => {
 navigationIconSearch.addEventListener("input", () => {
   window.clearTimeout(navigationIconSearchTimer);
   navigationIconSearchTimer = window.setTimeout(() => {
-    loadIconPickerOptions2(navigationIconSearch.value).catch(onError);
+    loadIconPickerOptionsCurrent(navigationIconSearch.value).catch(onError);
   }, 160);
 });
-navigationIconOptions.addEventListener("click", target33 => {
-  const dataset19 = target33.target.closest("[data-icon-name]");
+navigationIconOptions.addEventListener("click", target => {
+  const dataset = target.target.closest("[data-icon-name]");
   const alias = componentId;
-  if (!dataset19 || !alias) {
+  if (!dataset || !alias) {
     return;
   }
-  const icon = dataset19.dataset.iconName;
+  const icon = dataset.dataset.iconName;
   closeOtherPickerPanels();
   mutateDocument(param => {
-    const properties41 = findComponent(param, alias)?.component;
-    if (!properties41 || properties41.type !== "navigation-button") {
+    const properties = findComponent(param, alias)?.component;
+    if (!properties || properties.type !== "navigation-button") {
       return;
     }
-    const temp = readAirConditionerProperty(properties41, "icon");
-    const temp2 = readAirConditionerProperty(properties41, "iconVisible");
-    properties41.properties = {
-      ...(properties41.properties || {}),
+    const temp = readAirConditionerProperty(properties, "icon");
+    const property = readAirConditionerProperty(properties, "iconVisible");
+    properties.properties = {
+      ...(properties.properties || {}),
       icon,
       iconVisible: !!icon
     };
-    buildIdMap2(alias, "icon", temp, readAirConditionerProperty(properties41, "icon"));
-    buildIdMap2(alias, "iconVisible", temp2, readAirConditionerProperty(properties41, "iconVisible"));
+    buildIdMapCurrent(alias, "icon", temp, readAirConditionerProperty(properties, "icon"));
+    buildIdMapCurrent(alias, "iconVisible", property, readAirConditionerProperty(properties, "iconVisible"));
   });
 });
 ibeIconButton.addEventListener("click", () => {
@@ -16338,7 +16338,7 @@ ibeIconButton.addEventListener("click", () => {
   ibeIconMenu.hidden = !ancestorEl;
   ibeIconButton.setAttribute("aria-expanded", String(ancestorEl));
   if (ancestorEl) {
-    loadIconPickerOptions3(ibeIconSearch.value).then(() => {
+    loadIconPickerOptionsNext(ibeIconSearch.value).then(() => {
       positionIbeIconMenu();
       ibeIconSearch.focus({
         preventScroll: true
@@ -16361,22 +16361,22 @@ ibeIconCopyBtn.addEventListener("click", async () => {
 });
 ibeIconSearch.addEventListener("input", () => {
   window.clearTimeout(ibeIconSearchTimer);
-  ibeIconSearchTimer = window.setTimeout(() => loadIconPickerOptions3(ibeIconSearch.value).catch(onError), 160);
+  ibeIconSearchTimer = window.setTimeout(() => loadIconPickerOptionsNext(ibeIconSearch.value).catch(onError), 160);
 });
-ibeIconOptions.addEventListener("click", target34 => {
-  const dataset20 = target34.target.closest("[data-icon-name]");
+ibeIconOptions.addEventListener("click", target => {
+  const dataset = target.target.closest("[data-icon-name]");
   const alias = componentId;
-  if (!dataset20 || !alias) {
+  if (!dataset || !alias) {
     return;
   }
-  const icon2 = dataset20.dataset.iconName;
+  const icon = dataset.dataset.iconName;
   closeOtherPickerPanels();
   mutateDocument(param => {
-    const properties42 = findComponent(param, alias)?.component;
-    if (!!properties42 && properties42.type === "icon-button-effect") {
-      properties42.properties = {
-        ...(properties42.properties || {}),
-        icon: icon2
+    const properties = findComponent(param, alias)?.component;
+    if (!!properties && properties.type === "icon-button-effect") {
+      properties.properties = {
+        ...(properties.properties || {}),
+        icon: icon
       };
     }
   });
@@ -16387,8 +16387,8 @@ iconButtonIconButton.addEventListener("click", () => {
   iconButtonIconMenu.hidden = !ancestorEl;
   iconButtonIconButton.setAttribute("aria-expanded", String(ancestorEl));
   if (ancestorEl) {
-    loadIconPickerOptions4(iconButtonIconSearch.value).then(() => {
-      syncIconButtonIcon2();
+    loadIconPickerOptionsPrevious(iconButtonIconSearch.value).then(() => {
+      syncIconButtonIconCurrent();
       iconButtonIconSearch.focus({
         preventScroll: true
       });
@@ -16410,22 +16410,22 @@ iconButtonIconCopyBtn.addEventListener("click", async () => {
 });
 iconButtonIconSearch.addEventListener("input", () => {
   window.clearTimeout(iconButtonIconSearchTimer);
-  iconButtonIconSearchTimer = window.setTimeout(() => loadIconPickerOptions4(iconButtonIconSearch.value).catch(onError), 160);
+  iconButtonIconSearchTimer = window.setTimeout(() => loadIconPickerOptionsPrevious(iconButtonIconSearch.value).catch(onError), 160);
 });
-iconButtonIconOptions.addEventListener("click", target35 => {
-  const dataset21 = target35.target.closest("[data-icon-name]");
+iconButtonIconOptions.addEventListener("click", target => {
+  const dataset = target.target.closest("[data-icon-name]");
   const alias = componentId;
-  if (!dataset21 || !alias) {
+  if (!dataset || !alias) {
     return;
   }
-  const icon3 = dataset21.dataset.iconName;
+  const icon = dataset.dataset.iconName;
   closeOtherPickerPanels();
   mutateDocument(param => {
-    const properties43 = findComponent(param, alias)?.component;
-    if (!!properties43 && !!["icon-button", "device-button", "presence-sensor"].includes(properties43.type)) {
-      properties43.properties = {
-        ...(properties43.properties || {}),
-        icon: icon3
+    const properties = findComponent(param, alias)?.component;
+    if (!!properties && !!["icon-button", "device-button", "presence-sensor"].includes(properties.type)) {
+      properties.properties = {
+        ...(properties.properties || {}),
+        icon: icon
       };
     }
   });
@@ -16443,9 +16443,9 @@ titleButtonIconButton.addEventListener("click", value => {
   titleButtonIconMenu.style.zIndex = "760";
   titleButtonIconButton.setAttribute("aria-expanded", String(ancestorEl));
   if (ancestorEl) {
-    syncTitleButtonIcon2();
-    loadIconPickerOptions5(titleButtonIconSearch.value).then(() => {
-      syncTitleButtonIcon2();
+    syncTitleButtonIconCurrent();
+    loadIconPickerOptionsLocal(titleButtonIconSearch.value).then(() => {
+      syncTitleButtonIconCurrent();
       titleButtonIconSearch.focus({
         preventScroll: true
       });
@@ -16467,23 +16467,23 @@ titleButtonIconCopyBtn.addEventListener("click", async () => {
 });
 titleButtonIconSearch.addEventListener("input", () => {
   window.clearTimeout(titleButtonIconSearchTimer);
-  titleButtonIconSearchTimer = window.setTimeout(() => loadIconPickerOptions5(titleButtonIconSearch.value).catch(onError), 160);
+  titleButtonIconSearchTimer = window.setTimeout(() => loadIconPickerOptionsLocal(titleButtonIconSearch.value).catch(onError), 160);
 });
-titleButtonIconOptions.addEventListener("click", target36 => {
-  const dataset22 = target36.target.closest("[data-icon-name]");
+titleButtonIconOptions.addEventListener("click", target => {
+  const dataset = target.target.closest("[data-icon-name]");
   const alias = componentId;
-  if (!dataset22 || !alias) {
+  if (!dataset || !alias) {
     return;
   }
-  const icon4 = dataset22.dataset.iconName;
+  const icon = dataset.dataset.iconName;
   closeOtherPickerPanels();
   mutateDocument(param => {
-    const properties44 = findComponent(param, alias)?.component;
-    if (!!properties44 && properties44.type === "title-button") {
-      properties44.properties = {
-        ...(properties44.properties || {}),
-        icon: icon4,
-        iconVisible: !!icon4
+    const properties = findComponent(param, alias)?.component;
+    if (!!properties && properties.type === "title-button") {
+      properties.properties = {
+        ...(properties.properties || {}),
+        icon: icon,
+        iconVisible: !!icon
       };
     }
   });
@@ -16501,9 +16501,9 @@ lightStatisticsIconButton.addEventListener("click", value => {
   lightStatisticsIconMenu.style.zIndex = "760";
   lightStatisticsIconButton.setAttribute("aria-expanded", String(ancestorEl));
   if (ancestorEl) {
-    syncLightStatisticsIcon2();
-    loadIconPickerOptions6(lightStatisticsIconSearch.value).then(() => {
-      syncLightStatisticsIcon2();
+    syncLightStatisticsIconCurrent();
+    loadIconPickerOptionsItem(lightStatisticsIconSearch.value).then(() => {
+      syncLightStatisticsIconCurrent();
       lightStatisticsIconSearch.focus({
         preventScroll: true
       });
@@ -16525,7 +16525,7 @@ lightStatisticsIconCopyBtn.addEventListener("click", async () => {
 });
 lightStatisticsIconSearch.addEventListener("input", () => {
   window.clearTimeout(lightStatisticsIconSearchTimer);
-  lightStatisticsIconSearchTimer = window.setTimeout(() => loadIconPickerOptions6(lightStatisticsIconSearch.value).catch(onError), 160);
+  lightStatisticsIconSearchTimer = window.setTimeout(() => loadIconPickerOptionsItem(lightStatisticsIconSearch.value).catch(onError), 160);
 });
 lightStatisticsIconOptions.addEventListener("click", value => {
   const ancestorEl = value.target.closest("[data-light-statistics-icon-name]");
@@ -16533,21 +16533,21 @@ lightStatisticsIconOptions.addEventListener("click", value => {
   if (!ancestorEl || !alias) {
     return;
   }
-  const icon5 = ancestorEl.dataset.lightStatisticsIconName;
+  const icon = ancestorEl.dataset.lightStatisticsIconName;
   closeOtherPickerPanels();
   mutateDocument(param => {
-    const properties45 = findComponent(param, alias)?.component;
-    if (!!properties45 && properties45.type === "light-statistics") {
-      properties45.properties = {
-        ...(properties45.properties || {}),
-        icon: icon5
+    const properties = findComponent(param, alias)?.component;
+    if (!!properties && properties.type === "light-statistics") {
+      properties.properties = {
+        ...(properties.properties || {}),
+        icon: icon
       };
     }
   });
 });
-lightStatisticsEntityButton.addEventListener("click", preventDefault7 => {
-  preventDefault7.preventDefault();
-  preventDefault7.stopPropagation();
+lightStatisticsEntityButton.addEventListener("click", preventDefault => {
+  preventDefault.preventDefault();
+  preventDefault.stopPropagation();
   const hidden = lightStatisticsEntityMenu.hidden;
   closeOtherPickerPanels(hidden ? "light-statistics-entity" : null);
   if (hidden && lightStatisticsEntityMenu.parentElement !== document.body) {
@@ -16569,8 +16569,8 @@ lightStatisticsEntityButton.addEventListener("click", preventDefault7 => {
   }
 });
 lightStatisticsEntitySearch.addEventListener("input", () => filterLightStatisticsEntities(lightStatisticsEntitySearch.value));
-lightStatisticsEntityOptions.addEventListener("click", target37 => {
-  const hidden = target37.target.closest("[data-light-statistics-entity-id]");
+lightStatisticsEntityOptions.addEventListener("click", target => {
+  const hidden = target.target.closest("[data-light-statistics-entity-id]");
   if (hidden) {
     closePickerPanel(lightStatisticsEntityMenu, lightStatisticsEntityButton);
     highlightLightStatisticsEntityOption(hidden.dataset.lightStatisticsEntityId);
@@ -16611,13 +16611,13 @@ imageEntityButton.addEventListener("click", () => {
   }
 });
 imageEntitySearch.addEventListener("input", () => renderEntityPickerOptions(imageEntitySearch.value));
-imageEntityOptions.addEventListener("click", target38 => {
-  const dataset23 = target38.target.closest("[data-entity-id]");
-  if (!dataset23 || !componentId) {
+imageEntityOptions.addEventListener("click", target => {
+  const dataset = target.target.closest("[data-entity-id]");
+  if (!dataset || !componentId) {
     return;
   }
   const alias = componentId;
-  const entityId5 = dataset23.dataset.entityId;
+  const entityId = dataset.dataset.entityId;
   closeOtherPickerPanels();
   mutateDocument(param => {
     const bindings = findComponent(param, alias)?.component;
@@ -16632,9 +16632,9 @@ imageEntityOptions.addEventListener("click", target38 => {
       ...(bindings.properties || {}),
       fit: "contain"
     };
-    if (entityId5) {
+    if (entityId) {
       bindings.bindings.entity = {
-        entityId: entityId5
+        entityId: entityId
       };
     } else {
       delete bindings.bindings.entity;
@@ -16644,8 +16644,8 @@ imageEntityOptions.addEventListener("click", target38 => {
         }
       }
     }
-    if (entityId5 !== text) {
-      if (entityId5 ? relatedPopupContext(bindings, entityCatalogById(), deviceCatalogById()) : null) {
+    if (entityId !== text) {
+      if (entityId ? relatedPopupContext(bindings, entityCatalogById(), deviceCatalogById()) : null) {
         bindings.properties.relatedEntities = manualRelatedEntityConfig([]);
       } else {
         delete bindings.properties.relatedEntities;
@@ -16653,13 +16653,13 @@ imageEntityOptions.addEventListener("click", target38 => {
     }
   });
 });
-function withSelectedComponent10(value, param = [value]) {
+function withSelectedComponentText(value, param = [value]) {
   const temp = entityPickerConfig(value);
   temp.button.addEventListener("click", () => {
     const chosen = param.includes(selectedComponent()?.type) ? selectedComponent().type : value;
-    const temp2 = entityPickerConfig(chosen);
+    const config = entityPickerConfig(chosen);
     const hidden = temp.menu.hidden;
-    closeOtherPickerPanels(hidden ? temp2.except : null);
+    closeOtherPickerPanels(hidden ? config.except : null);
     temp.menu.hidden = !hidden;
     temp.button.setAttribute("aria-expanded", String(hidden));
     if (hidden) {
@@ -16677,8 +16677,8 @@ function withSelectedComponent10(value, param = [value]) {
     const chosen = param.includes(selectedComponent()?.type) ? selectedComponent().type : value;
     renderEntityPickerOptions(temp.search.value, chosen);
   });
-  temp.options.addEventListener("click", event2 => {
-    const ancestorEl = event2.target.closest("[data-entity-id]");
+  temp.options.addEventListener("click", event => {
+    const ancestorEl = event.target.closest("[data-entity-id]");
     const alias = componentId;
     if (!ancestorEl || !alias) {
       return;
@@ -16702,10 +16702,10 @@ function withSelectedComponent10(value, param = [value]) {
           entityId
         };
         if (component.type === "light-statistics") {
-          for (const temp3 of ["tap", "doubleTap", "hold"]) {
-            const temp4 = component.actions?.[temp3];
-            if (temp4?.type === "toggle" && !entityIdSupportsToggle(entityId) || temp4 && !ACTION_TYPES.includes(temp4.type)) {
-              delete component.actions[temp3];
+          for (const value of ["tap", "doubleTap", "hold"]) {
+            const item = component.actions?.[value];
+            if (item?.type === "toggle" && !entityIdSupportsToggle(entityId) || item && !ACTION_TYPES.includes(item.type)) {
+              delete component.actions[value];
             }
           }
         }
@@ -16724,15 +16724,15 @@ function withSelectedComponent10(value, param = [value]) {
         if (component.type === "light-statistics") {
           component.actions = Object.fromEntries(Object.entries(component.actions || {}).filter(([, item]) => !actionNeedsCurrentEntity(item)));
         }
-        let flag2 = false;
-        for (const temp4 of ["tap", "doubleTap", "hold"]) {
-          if (actionNeedsCurrentEntity(component.actions?.[temp4])) {
-            delete component.actions[temp4];
-            flag2 = true;
+        let flag = false;
+        for (const value of ["tap", "doubleTap", "hold"]) {
+          if (actionNeedsCurrentEntity(component.actions?.[value])) {
+            delete component.actions[value];
+            flag = true;
           }
         }
-        if (component.type === "navigation-button" && flag2 && !component.actions.tap) {
-          const target = new Set(doc.pages.map(item2 => item2.path)).has(component.properties?.targetPage) ? component.properties.targetPage : pageSelect.value || doc.pages[0]?.path || "";
+        if (component.type === "navigation-button" && flag && !component.actions.tap) {
+          const target = new Set(doc.pages.map(item => item.path)).has(component.properties?.targetPage) ? component.properties.targetPage : pageSelect.value || doc.pages[0]?.path || "";
           if (target) {
             component.actions.tap = {
               type: "navigate",
@@ -16742,10 +16742,10 @@ function withSelectedComponent10(value, param = [value]) {
         }
       }
       if (value === "weather") {
-        const entityId2 = entityCatalog.find(item => item.entityId === "sun.sun")?.entityId;
-        if (entityId2) {
+        const entityId = entityCatalog.find(item => item.entityId === "sun.sun")?.entityId;
+        if (entityId) {
           component.bindings.sun = {
-            entityId: entityId2
+            entityId: entityId
           };
         } else {
           delete component.bindings.sun;
@@ -16768,16 +16768,16 @@ function withSelectedComponent10(value, param = [value]) {
     });
   });
 }
-withSelectedComponent10("weather");
-withSelectedComponent10("line-chart");
-withSelectedComponent10("title-button");
-withSelectedComponent10("light-statistics");
-withSelectedComponent10("icon-button-effect");
-withSelectedComponent10("icon-button", ["icon-button", "device-button", "presence-sensor"]);
-withSelectedComponent10("vacuum-map");
-withSelectedComponent10("camera");
-withSelectedComponent10("air-conditioner");
-withSelectedComponent10("navigation-button");
+withSelectedComponentText("weather");
+withSelectedComponentText("line-chart");
+withSelectedComponentText("title-button");
+withSelectedComponentText("light-statistics");
+withSelectedComponentText("icon-button-effect");
+withSelectedComponentText("icon-button", ["icon-button", "device-button", "presence-sensor"]);
+withSelectedComponentText("vacuum-map");
+withSelectedComponentText("camera");
+withSelectedComponentText("air-conditioner");
+withSelectedComponentText("navigation-button");
 const entityPickerHintText = "推荐去 HA 复制实体 ID，粘贴搜索。可精准选择。";
 let interaction3dEditorPickers = null;
 const {
@@ -16793,47 +16793,47 @@ function closeInteraction3dPickers() {
 }
 function openEditorPicker({
   kind,
-  title: param14,
-  subtitle: param15 = "",
+  title: item,
+  subtitle: entry = "",
   searchPlaceholder: placeholder,
   triggerButton: setAttribute,
   pageSize,
   initialPage: param = 1,
   selectedText = "",
-  emptyText: param16,
-  itemClass: param2 = "",
-  getPage: param3,
-  renderItem: param4,
-  renderLeadingItems: param5 = null,
-  renderTrailingItems: param6 = null,
-  buildToolbar: param7 = null,
-  onSelect: param8,
-  onDelete: param9 = null,
-  onItemHover: param10 = null,
-  closeLegacyPickers: param11 = true,
-  renderSelectedActions: param12 = null,
-  renderSelectedContent: param13 = null
+  emptyText: current,
+  itemClass: result = "",
+  getPage: target,
+  renderItem: source,
+  renderLeadingItems: node = null,
+  renderTrailingItems: element = null,
+  buildToolbar: buildToolbar = null,
+  onSelect: onSelect,
+  onDelete: onDelete = null,
+  onItemHover: onItemHover = null,
+  closeLegacyPickers: closeLegacyPickers = true,
+  renderSelectedActions: renderSelectedActions = null,
+  renderSelectedContent: renderSelectedContent = null
 }) {
   closeInteraction3dPickers();
-  if (param11) {
+  if (closeLegacyPickers) {
     closeOtherPickerPanels();
   }
   const component = document.createElement("dialog");
   component.className = "editor-paged-picker-dialog";
   component.dataset.editorPickerKind = kind;
   const value = document.createElement("div");
-  value.className = "editor-paged-picker-card" + (param7 ? " with-toolbar" : "");
+  value.className = "editor-paged-picker-card" + (buildToolbar ? " with-toolbar" : "");
   const temp = document.createElement("div");
   temp.className = "editor-paged-picker-heading";
   const append = document.createElement("div");
-  append.className = param15 ? "editor-paged-picker-heading-copy has-subtitle" : "editor-paged-picker-heading-copy";
-  const textContent8 = document.createElement("strong");
-  textContent8.textContent = param14;
-  const textContent9 = document.createElement("span");
-  textContent9.textContent = param15;
-  append.append(textContent8);
-  if (param15) {
-    append.append(textContent9);
+  append.className = entry ? "editor-paged-picker-heading-copy has-subtitle" : "editor-paged-picker-heading-copy";
+  const textContent = document.createElement("strong");
+  textContent.textContent = item;
+  const textContentCurrent = document.createElement("span");
+  textContentCurrent.textContent = entry;
+  append.append(textContent);
+  if (entry) {
+    append.append(textContentCurrent);
   }
   const button = document.createElement("button");
   button.type = "button";
@@ -16841,76 +16841,76 @@ function openEditorPicker({
   button.setAttribute("aria-label", "关闭");
   button.textContent = "×";
   temp.append(append, button);
-  const hidden3 = document.createElement("div");
-  hidden3.className = "editor-paged-picker-toolbar";
-  hidden3.hidden = !param7;
-  const className11 = document.createElement("label");
-  className11.className = "editor-paged-picker-search";
-  const el4 = document.createElement("input");
-  el4.type = "search";
-  el4.placeholder = placeholder;
-  el4.autocomplete = "off";
-  className11.append(el4);
-  const append2 = document.createElement("div");
-  append2.className = "editor-paged-picker-selected";
+  const hidden = document.createElement("div");
+  hidden.className = "editor-paged-picker-toolbar";
+  hidden.hidden = !buildToolbar;
+  const className = document.createElement("label");
+  className.className = "editor-paged-picker-search";
+  const el = document.createElement("input");
+  el.type = "search";
+  el.placeholder = placeholder;
+  el.autocomplete = "off";
+  className.append(el);
+  const appendCurrent = document.createElement("div");
+  appendCurrent.className = "editor-paged-picker-selected";
   const selectedValueText = selectedText || (kind === "entity" ? "不使用实体" : "");
-  append2.hidden = !selectedValueText;
+  appendCurrent.hidden = !selectedValueText;
   if (selectedValueText) {
-    const className5 = document.createElement("span");
-    className5.className = "editor-paged-picker-current-label";
-    className5.textContent = "当前选择";
-    append2.append(className5);
-    if (param13) {
-      append2.append(...(param13({
+    const className = document.createElement("span");
+    className.className = "editor-paged-picker-current-label";
+    className.textContent = "当前选择";
+    appendCurrent.append(className);
+    if (renderSelectedContent) {
+      appendCurrent.append(...(renderSelectedContent({
         selectedText,
         selectedValueText
       }) || []));
     } else {
-      const textContent5 = document.createElement("strong");
-      textContent5.textContent = selectedValueText;
-      textContent5.title = selectedValueText;
-      append2.append(textContent5);
+      const textContent = document.createElement("strong");
+      textContent.textContent = selectedValueText;
+      textContent.title = selectedValueText;
+      appendCurrent.append(textContent);
     }
   }
-  if (param12) {
-    const length6 = param12({
+  if (renderSelectedActions) {
+    const length = renderSelectedActions({
       controller: null
     });
-    if (length6?.length) {
-      append2.classList.add("has-actions");
-      append2.hidden = false;
-      append2.append(...length6);
+    if (length?.length) {
+      appendCurrent.classList.add("has-actions");
+      appendCurrent.hidden = false;
+      appendCurrent.append(...length);
     }
   }
   const addEventListener = document.createElement("div");
-  addEventListener.className = ("editor-paged-picker-items " + param2).trim();
+  addEventListener.className = ("editor-paged-picker-items " + result).trim();
   addEventListener.setAttribute("role", "listbox");
-  const className12 = document.createElement("div");
-  className12.className = "editor-paged-picker-footer";
-  const textContent10 = document.createElement("span");
-  textContent10.className = "editor-paged-picker-status";
-  const className13 = document.createElement("div");
-  className13.className = "editor-paged-picker-pagination";
-  const disabled7 = document.createElement("button");
-  disabled7.type = "button";
-  disabled7.textContent = "上一页";
-  const el3 = document.createElement("input");
-  el3.type = "text";
-  el3.inputMode = "numeric";
-  el3.setAttribute("aria-label", "页码");
-  const textContent11 = document.createElement("span");
-  const disabled8 = document.createElement("button");
-  disabled8.type = "button";
-  disabled8.textContent = "下一页";
-  className13.append(disabled7, el3, textContent11, disabled8);
-  className12.append(textContent10, className13);
-  value.append(temp, hidden3, className11, append2, addEventListener, className12);
+  const classNameCurrent = document.createElement("div");
+  classNameCurrent.className = "editor-paged-picker-footer";
+  const textContentNext = document.createElement("span");
+  textContentNext.className = "editor-paged-picker-status";
+  const classNameNext = document.createElement("div");
+  classNameNext.className = "editor-paged-picker-pagination";
+  const disabled = document.createElement("button");
+  disabled.type = "button";
+  disabled.textContent = "上一页";
+  const elCurrent = document.createElement("input");
+  elCurrent.type = "text";
+  elCurrent.inputMode = "numeric";
+  elCurrent.setAttribute("aria-label", "页码");
+  const textContentPrevious = document.createElement("span");
+  const disabledCurrent = document.createElement("button");
+  disabledCurrent.type = "button";
+  disabledCurrent.textContent = "下一页";
+  classNameNext.append(disabled, elCurrent, textContentPrevious, disabledCurrent);
+  classNameCurrent.append(textContentNext, classNameNext);
+  value.append(temp, hidden, className, appendCurrent, addEventListener, classNameCurrent);
   component.append(value);
   document.body.append(component);
   let timerId = null;
   let number = 0;
   let flag = false;
-  const page4 = {
+  const page = {
     page: Math.max(1, Number(param) || 1),
     total: 0,
     pageCount: 1,
@@ -16920,23 +16920,23 @@ function openEditorPicker({
     kind,
     dialog: component,
     triggerButton: setAttribute,
-    state: page4,
+    state: page,
     refresh({
-      resetPage: param14 = false
+      resetPage: value = false
     } = {}) {
-      if (param14) {
-        page4.page = 1;
+      if (value) {
+        page.page = 1;
       }
       return loadPickerPage();
     },
     rebuildToolbar() {
-      if (!!param7 && !flag) {
-        hidden3.replaceChildren();
-        param7({
-          toolbar: hidden3,
+      if (!!buildToolbar && !flag) {
+        hidden.replaceChildren();
+        buildToolbar({
+          toolbar: hidden,
           controller: close
         });
-        hidden3.hidden = !hidden3.childElementCount;
+        hidden.hidden = !hidden.childElementCount;
       }
     },
     close() {
@@ -16956,7 +16956,7 @@ function openEditorPicker({
       number += 1;
       setAttribute?.setAttribute("aria-expanded", "false");
       addEventListener.replaceChildren();
-      hidden3.replaceChildren();
+      hidden.replaceChildren();
       if (component.contains(imageAssetLargePreview)) {
         document.body.append(imageAssetLargePreview);
       }
@@ -16968,57 +16968,57 @@ function openEditorPicker({
     }
   }
   async function loadPickerPage() {
-    const temp2 = ++number;
+    const value = ++number;
     addEventListener.setAttribute("aria-busy", "true");
-    textContent10.textContent = "正在加载…";
-    disabled7.disabled = true;
-    disabled8.disabled = true;
+    textContentNext.textContent = "正在加载…";
+    disabled.disabled = true;
+    disabledCurrent.disabled = true;
     try {
-      const total = await param3({
-        query: page4.query,
-        page: page4.page,
+      const total = await target({
+        query: page.query,
+        page: page.page,
         pageSize
       });
-      if (flag || temp2 !== number) {
+      if (flag || value !== number) {
         return;
       }
-      page4.total = Math.max(0, Number(total.total) || 0);
-      page4.pageCount = Math.max(1, Math.ceil(page4.total / pageSize));
-      if (page4.page > page4.pageCount) {
-        page4.page = page4.pageCount;
+      page.total = Math.max(0, Number(total.total) || 0);
+      page.pageCount = Math.max(1, Math.ceil(page.total / pageSize));
+      if (page.page > page.pageCount) {
+        page.page = page.pageCount;
         await loadPickerPage();
         return;
       }
-      const chosen = param5 ? param5(page4) : [];
-      const push3 = (total.items || []).map(item => param4(item));
-      if (!push3.length) {
-        const className2 = document.createElement("div");
-        className2.className = "editor-paged-picker-empty";
-        className2.textContent = param16;
-        push3.push(className2);
+      const chosen = node ? node(page) : [];
+      const push = (total.items || []).map(item => source(item));
+      if (!push.length) {
+        const className = document.createElement("div");
+        className.className = "editor-paged-picker-empty";
+        className.textContent = current;
+        push.push(className);
       }
-      if (param6 && page4.page === page4.pageCount) {
-        push3.push(...(param6(page4) || []));
+      if (element && page.page === page.pageCount) {
+        push.push(...(element(page) || []));
       }
-      addEventListener.replaceChildren(...chosen, ...push3);
+      addEventListener.replaceChildren(...chosen, ...push);
       addEventListener.scrollTop = 0;
-      el3.value = String(page4.page);
-      textContent11.textContent = "/ " + page4.pageCount;
-      textContent10.textContent = "第 " + page4.page + " / " + page4.pageCount + " 页 · 共 " + page4.total + " 项";
-      disabled7.disabled = page4.page <= 1;
-      disabled8.disabled = page4.page >= page4.pageCount;
-    } catch (temp3) {
-      if (flag || temp2 !== number) {
+      elCurrent.value = String(page.page);
+      textContentPrevious.textContent = "/ " + page.pageCount;
+      textContentNext.textContent = "第 " + page.page + " / " + page.pageCount + " 页 · 共 " + page.total + " 项";
+      disabled.disabled = page.page <= 1;
+      disabledCurrent.disabled = page.page >= page.pageCount;
+    } catch (error) {
+      if (flag || value !== number) {
         return;
       }
-      const className4 = document.createElement("div");
-      className4.className = "editor-paged-picker-empty error";
-      className4.textContent = "加载失败，请稍后重试";
-      addEventListener.replaceChildren(className4);
-      textContent10.textContent = "加载失败";
-      onError(temp3);
+      const className = document.createElement("div");
+      className.className = "editor-paged-picker-empty error";
+      className.textContent = "加载失败，请稍后重试";
+      addEventListener.replaceChildren(className);
+      textContentNext.textContent = "加载失败";
+      onError(error);
     } finally {
-      if (!flag && temp2 === number) {
+      if (!flag && value === number) {
         addEventListener.removeAttribute("aria-busy");
       }
     }
@@ -17028,88 +17028,88 @@ function openEditorPicker({
     preventDefault.preventDefault();
     close.close();
   });
-  component.addEventListener("click", target2 => {
-    if (target2.target === component) {
+  component.addEventListener("click", target => {
+    if (target.target === component) {
       close.close();
     }
   });
   component.addEventListener("close", teardownPickerPanel, {
     once: true
   });
-  el4.addEventListener("input", () => {
+  el.addEventListener("input", () => {
     window.clearTimeout(timerId);
     timerId = window.setTimeout(() => {
-      page4.query = el4.value.trim();
-      page4.page = 1;
+      page.query = el.value.trim();
+      page.page = 1;
       loadPickerPage();
     }, 160);
   });
-  disabled7.addEventListener("click", () => {
-    if (!(page4.page <= 1)) {
-      page4.page -= 1;
+  disabled.addEventListener("click", () => {
+    if (!(page.page <= 1)) {
+      page.page -= 1;
       loadPickerPage();
     }
   });
-  disabled8.addEventListener("click", () => {
-    if (!(page4.page >= page4.pageCount)) {
-      page4.page += 1;
+  disabledCurrent.addEventListener("click", () => {
+    if (!(page.page >= page.pageCount)) {
+      page.page += 1;
       loadPickerPage();
     }
   });
-  el3.addEventListener("change", () => {
-    const temp2 = Math.trunc(Number(el3.value));
-    page4.page = clampNumber(Number.isFinite(temp2) ? temp2 : page4.page, 1, page4.pageCount);
+  elCurrent.addEventListener("change", () => {
+    const trunc = Math.trunc(Number(elCurrent.value));
+    page.page = clampNumber(Number.isFinite(trunc) ? trunc : page.page, 1, page.pageCount);
     loadPickerPage();
   });
-  addEventListener.addEventListener("pointerover", target3 => {
-    const contains = target3.target.closest("[data-editor-picker-value]");
-    if (!!contains && !contains.contains(target3.relatedTarget)) {
-      param10?.(contains.dataset.editorPickerValue, contains);
+  addEventListener.addEventListener("pointerover", target => {
+    const contains = target.target.closest("[data-editor-picker-value]");
+    if (!!contains && !contains.contains(target.relatedTarget)) {
+      onItemHover?.(contains.dataset.editorPickerValue, contains);
     }
   });
   addEventListener.addEventListener("pointerleave", hideImageLargePreview);
   addEventListener.addEventListener("scroll", hideImageLargePreview);
-  addEventListener.addEventListener("click", target4 => {
-    const dataset7 = target4.target.closest("[data-delete-user-asset]");
-    if (dataset7 && param9) {
-      target4.preventDefault();
-      target4.stopPropagation();
-      const temp3 = dataset7.dataset.deleteUserAsset;
+  addEventListener.addEventListener("click", target => {
+    const dataset = target.target.closest("[data-delete-user-asset]");
+    if (dataset && onDelete) {
+      target.preventDefault();
+      target.stopPropagation();
+      const deleteUserAsset = dataset.dataset.deleteUserAsset;
       close.close();
-      param9(temp3);
+      onDelete(deleteUserAsset);
       return;
     }
-    const dataset8 = target4.target.closest("[data-editor-picker-value]");
-    if (!dataset8 || !addEventListener.contains(dataset8)) {
+    const closest = target.target.closest("[data-editor-picker-value]");
+    if (!closest || !addEventListener.contains(closest)) {
       return;
     }
-    const temp2 = dataset8.dataset.editorPickerValue;
+    const editorPickerValue = closest.dataset.editorPickerValue;
     close.close();
-    param8(temp2);
+    onSelect(editorPickerValue);
   });
-  append2.addEventListener("click", target5 => {
-    const dataset9 = target5.target.closest("[data-editor-picker-value]");
-    if (!dataset9 || !append2.contains(dataset9)) {
+  appendCurrent.addEventListener("click", target => {
+    const dataset = target.target.closest("[data-editor-picker-value]");
+    if (!dataset || !appendCurrent.contains(dataset)) {
       return;
     }
-    const temp2 = dataset9.dataset.editorPickerValue;
+    const editorPickerValue = dataset.dataset.editorPickerValue;
     close.close();
-    param8(temp2);
+    onSelect(editorPickerValue);
   });
   interaction3dEditorPickers = close;
   setAttribute?.setAttribute("aria-expanded", "true");
   close.rebuildToolbar();
   component.showModal();
   loadPickerPage();
-  window.requestAnimationFrame(() => el4.focus({
+  window.requestAnimationFrame(() => el.focus({
     preventScroll: true
   }));
   return close;
 }
-function renderList5(value, param, param2) {
+function renderListLocal(value, param, item) {
   const temp = document.createElement("button");
   temp.type = "button";
-  temp.dataset[param] = param2;
+  temp.dataset[param] = item;
   value.replaceChildren(temp);
   temp.click();
   value.replaceChildren();
@@ -17166,11 +17166,11 @@ function loadNavigationIconOptions(triggerButton) {
     itemClass: "icon-grid",
     async getPage({
       query: param,
-      page: param2,
-      pageSize: param3
+      page: value,
+      pageSize: item
     }) {
-      const number = (param2 - 1) * param3;
-      const items = await apiFetch("/icons?query=" + encodeURIComponent(param) + "&limit=" + param3 + "&offset=" + number);
+      const number = (value - 1) * item;
+      const items = await apiFetch("/icons?query=" + encodeURIComponent(param) + "&limit=" + item + "&offset=" + number);
       return {
         items: items.items || [],
         total: Number(items.total) || 0
@@ -17182,11 +17182,11 @@ function loadNavigationIconOptions(triggerButton) {
       textContent: "当前选择"
     }), createEditorPickerCurrentIcon(value.current, value.clear), editorPickerClearAction(value.clear, !value.current)],
     renderItem(name13) {
-      const dataset5 = createIconPickerOption(name13, value.current, "editorPickerValue");
-      dataset5.dataset.editorPickerValue = name13.name;
-      return dataset5;
+      const dataset = createIconPickerOption(name13, value.current, "editorPickerValue");
+      dataset.dataset.editorPickerValue = name13.name;
+      return dataset;
     },
-    onSelect: param => renderList5(value.options, value.datasetKey, param)
+    onSelect: param => renderListLocal(value.options, value.datasetKey, param)
   });
   return true;
 }
@@ -17201,10 +17201,10 @@ function openEntityPickerForButton(triggerButton) {
     return true;
   }
   const flag = entityPickerConfig(chosen);
-  const text2 = value?.bindings?.entity?.entityId || "";
-  const flag3 = pickerEntitiesForComponentType(chosen).find(entityId2 => entityId2.entityId === text2) || null;
-  const flag4 = ibeTemplateOptions()[0] || null;
-  const temp = readEntityId(chosen, "").findIndex(item => item.entityId === text2);
+  const text = value?.bindings?.entity?.entityId || "";
+  const found = pickerEntitiesForComponentType(chosen).find(entityId => entityId.entityId === text) || null;
+  const flagCurrent = ibeTemplateOptions()[0] || null;
+  const temp = readEntityId(chosen, "").findIndex(item => item.entityId === text);
   openEditorPicker({
     kind: "entity",
     title: "选择实体",
@@ -17212,22 +17212,22 @@ function openEntityPickerForButton(triggerButton) {
     searchPlaceholder: "搜索实体名称或 ID",
     triggerButton,
     pageSize: EDITOR_PICKER_PAGE_SIZES.entity,
-    initialPage: editorEntityPickerInitialPage(temp, flag4),
-    selectedText: text2 || "不使用实体",
+    initialPage: editorEntityPickerInitialPage(temp, flagCurrent),
+    selectedText: text || "不使用实体",
     emptyText: "没有匹配的实体",
     itemClass: "entity-list",
     getPage({
       query: item,
       page: param
     }) {
-      const temp2 = readEntityId(chosen, item);
-      return editorEntityPickerPage(temp2, param, flag4);
+      const id = readEntityId(chosen, item);
+      return editorEntityPickerPage(id, param, flagCurrent);
     },
-    renderLeadingItems: renderItem => renderItem.page === 1 && flag4 ? [createEditorEntityPickerOption(flag4, text2)] : [],
-    renderSelectedContent: () => [createEditorPickerCurrentEntity(flag3)],
-    renderSelectedActions: () => [editorPickerClearAction("不使用实体", !text2)],
-    renderItem: param => createEditorEntityPickerOption(param, text2),
-    onSelect: param => renderList5(flag.options, "entityId", param)
+    renderLeadingItems: renderItem => renderItem.page === 1 && flagCurrent ? [createEditorEntityPickerOption(flagCurrent, text)] : [],
+    renderSelectedContent: () => [createEditorPickerCurrentEntity(found)],
+    renderSelectedActions: () => [editorPickerClearAction("不使用实体", !text)],
+    renderItem: param => createEditorEntityPickerOption(param, text),
+    onSelect: param => renderListLocal(flag.options, "entityId", param)
   });
   return true;
 }
@@ -17240,20 +17240,20 @@ function openLightStatisticsEntityPicker() {
     return true;
   }
   const callback = item => {
-    const temp3 = String(item || "").trim().toLocaleLowerCase("zh-CN");
+    const value = String(item || "").trim().toLocaleLowerCase("zh-CN");
     return pickerEntitiesForComponentType("light-statistics").map((entity, index) => ({
       entity,
       index,
       support: lightStatisticsEntitySupport(entity)
     })).filter(({
       entity: param
-    }) => !temp3 || (entityPickerText(param) + " " + entityDomain(param)).toLocaleLowerCase("zh-CN").includes(temp3)).sort((left, right) => Number(right.support.supported) - Number(left.support.supported) || +(entityDomain(right.entity) === "light") - +(entityDomain(left.entity) === "light") || left.index - right.index).map(({
+    }) => !value || (entityPickerText(param) + " " + entityDomain(param)).toLocaleLowerCase("zh-CN").includes(value)).sort((left, right) => Number(right.support.supported) - Number(left.support.supported) || +(entityDomain(right.entity) === "light") - +(entityDomain(left.entity) === "light") || left.index - right.index).map(({
       entity: param
     }) => param);
   };
   const temp = callback("").findIndex(item => item.entityId === lightStatisticsSelectedEntityId);
   const flag = ibeTemplateOptions()[0] || null;
-  const temp2 = openEditorPicker({
+  const picker = openEditorPicker({
     kind: "entity",
     title: lightStatisticsReplaceIndex >= 0 ? "选择替换实体" : "添加统计实体",
     subtitle: entityPickerHintText,
@@ -17269,12 +17269,12 @@ function openLightStatisticsEntityPicker() {
       query: item,
       page: param
     }) {
-      const temp3 = callback(item);
-      return editorEntityPickerPage(temp3, param, flag);
+      const value = callback(item);
+      return editorEntityPickerPage(value, param, flag);
     },
     renderLeadingItems: renderLeadingItems => renderLeadingItems.page === 1 && flag ? [createEditorEntityPickerOption(flag, lightStatisticsSelectedEntityId)] : [],
     renderItem: renderItem => createEditorEntityPickerOption(renderItem, lightStatisticsSelectedEntityId),
-    onSelect: onSelect => renderList5(lightStatisticsEntityOptions, "lightStatisticsEntityId", onSelect)
+    onSelect: onSelect => renderListLocal(lightStatisticsEntityOptions, "lightStatisticsEntityId", onSelect)
   });
   return true;
 }
@@ -17289,13 +17289,13 @@ function openPopupEntityPickerForTrigger(triggerButton) {
     return true;
   }
   const chosen = flag.value || "";
-  const temp = entityCatalog.find(entityId3 => entityId3.entityId === chosen) || null;
-  const flag2 = ibeTemplateOptions()[0] || null;
+  const temp = entityCatalog.find(entityId => entityId.entityId === chosen) || null;
+  const flagCurrent = ibeTemplateOptions()[0] || null;
   const callback = param => {
-    const temp4 = String(param || "").trim().toLocaleLowerCase("zh-CN");
-    return entityCatalog.filter(virtual => !virtual.virtual && (!temp4 || (entityPickerText(virtual) + " " + virtual.entityId).toLocaleLowerCase("zh-CN").includes(temp4)));
+    const value = String(param || "").trim().toLocaleLowerCase("zh-CN");
+    return entityCatalog.filter(virtual => !virtual.virtual && (!value || (entityPickerText(virtual) + " " + virtual.entityId).toLocaleLowerCase("zh-CN").includes(value)));
   };
-  const temp3 = callback("").findIndex(entityId4 => entityId4.entityId === chosen);
+  const foundIndex = callback("").findIndex(entityId => entityId.entityId === chosen);
   openEditorPicker({
     kind: "entity",
     title: "选择弹窗实体",
@@ -17303,22 +17303,22 @@ function openPopupEntityPickerForTrigger(triggerButton) {
     searchPlaceholder: "搜索实体名称或 ID",
     triggerButton,
     pageSize: EDITOR_PICKER_PAGE_SIZES.entity,
-    initialPage: editorEntityPickerInitialPage(temp3, flag2),
+    initialPage: editorEntityPickerInitialPage(foundIndex, flagCurrent),
     selectedText: chosen || "不使用实体",
     emptyText: "没有匹配的实体",
     itemClass: "entity-list",
     getPage({
       query: param,
-      page: param2
+      page: value
     }) {
-      const temp4 = callback(param);
-      return editorEntityPickerPage(temp4, param2, flag2);
+      const item = callback(param);
+      return editorEntityPickerPage(item, value, flagCurrent);
     },
     renderItem: param => createEditorEntityPickerOption(param, chosen),
-    renderLeadingItems: page3 => page3.page === 1 && flag2 ? [createEditorEntityPickerOption(flag2, chosen)] : [],
+    renderLeadingItems: page => page.page === 1 && flagCurrent ? [createEditorEntityPickerOption(flagCurrent, chosen)] : [],
     renderSelectedContent: () => [createEditorPickerCurrentEntity(temp)],
     renderSelectedActions: () => [editorPickerClearAction("不使用实体", !chosen)],
-    onSelect: param => renderList5(component, "popupActionEntityId", param)
+    onSelect: param => renderListLocal(component, "popupActionEntityId", param)
   });
   return true;
 }
@@ -17331,15 +17331,15 @@ function openPopupModuleEntityPicker() {
   }
   const value = popupModuleForm.elements.entityId.value || "";
   const flag = entityCatalog.find(item => item.entityId === value) || null;
-  const flag2 = ibeTemplateOptions()[0] || null;
+  const flagCurrent = ibeTemplateOptions()[0] || null;
   const readEntityId = item => {
-    const temp2 = String(item || "").trim().toLocaleLowerCase("zh-CN");
+    const value = String(item || "").trim().toLocaleLowerCase("zh-CN");
     return entityCatalog.map((entity, index) => ({
       entity,
       index
     })).filter(({
       entity: param
-    }) => !param.virtual && (!temp2 || (entityPickerText(param) + " " + param.entityId).toLocaleLowerCase("zh-CN").includes(temp2))).sort((left, right) => Number(popupModuleEntityRecommended(right.entity, popupModuleForm.elements.type.value)) - Number(popupModuleEntityRecommended(left.entity, popupModuleForm.elements.type.value)) || left.index - right.index).map(({
+    }) => !param.virtual && (!value || (entityPickerText(param) + " " + param.entityId).toLocaleLowerCase("zh-CN").includes(value))).sort((left, right) => Number(popupModuleEntityRecommended(right.entity, popupModuleForm.elements.type.value)) - Number(popupModuleEntityRecommended(left.entity, popupModuleForm.elements.type.value)) || left.index - right.index).map(({
       entity: param
     }) => param);
   };
@@ -17351,7 +17351,7 @@ function openPopupModuleEntityPicker() {
     searchPlaceholder: "搜索实体名称或 ID",
     triggerButton: popupModuleEntityButton,
     pageSize: EDITOR_PICKER_PAGE_SIZES.entity,
-    initialPage: editorEntityPickerInitialPage(temp, flag2),
+    initialPage: editorEntityPickerInitialPage(temp, flagCurrent),
     selectedText: value || "不使用实体",
     emptyText: "没有匹配的实体",
     itemClass: "entity-list",
@@ -17359,25 +17359,25 @@ function openPopupModuleEntityPicker() {
       query: item,
       page: param
     }) {
-      const temp2 = readEntityId(item);
-      return editorEntityPickerPage(temp2, param, flag2);
+      const id = readEntityId(item);
+      return editorEntityPickerPage(id, param, flagCurrent);
     },
     renderItem: renderItem => createEditorEntityPickerOption(renderItem, value),
-    renderLeadingItems: renderLeadingItems => renderLeadingItems.page === 1 && flag2 ? [createEditorEntityPickerOption(flag2, value)] : [],
+    renderLeadingItems: renderLeadingItems => renderLeadingItems.page === 1 && flagCurrent ? [createEditorEntityPickerOption(flagCurrent, value)] : [],
     renderSelectedContent: () => [createEditorPickerCurrentEntity(flag)],
     renderSelectedActions: () => [editorPickerClearAction("不使用实体", !value)],
-    onSelect: onSelect => renderList5(popupModuleEntityOptions, "popupModuleEntityId", onSelect)
+    onSelect: onSelect => renderListLocal(popupModuleEntityOptions, "popupModuleEntityId", onSelect)
   });
   return true;
 }
-function withSelectedComponent11(value) {
+function withSelectedComponentValue(value) {
   const temp = value === imageAssetButton ? "image" : value === ibeAssetButton ? "ibe" : "";
   if (!temp) {
     return false;
   }
   const callback = temp === "image";
-  const properties51 = selectedComponent();
-  const chosen = callback ? properties51?.properties?.assetId || "" : properties51?.properties?.effectAssetId || "";
+  const properties = selectedComponent();
+  const chosen = callback ? properties?.properties?.assetId || "" : properties?.properties?.effectAssetId || "";
   const name19 = findAssetById(chosen);
   loadAssets({
     refreshInspector: false
@@ -17387,7 +17387,7 @@ function withSelectedComponent11(value) {
       interaction3dEditorPickers.refresh();
     }
   }).catch(onError);
-  const temp2 = editorAssetMatcher(temp).findIndex(item => assetMatchesId(item, chosen));
+  const foundIndex = editorAssetMatcher(temp).findIndex(item => assetMatchesId(item, chosen));
   openEditorPicker({
     kind: temp + "-asset",
     title: callback ? "选择控件图片" : "选择效果图片",
@@ -17395,19 +17395,19 @@ function withSelectedComponent11(value) {
     searchPlaceholder: "搜索图片名称",
     triggerButton: value,
     pageSize: EDITOR_PICKER_PAGE_SIZES.asset,
-    initialPage: temp2 < 0 ? 1 : Math.floor(temp2 / EDITOR_PICKER_PAGE_SIZES.asset) + 1,
+    initialPage: foundIndex < 0 ? 1 : Math.floor(foundIndex / EDITOR_PICKER_PAGE_SIZES.asset) + 1,
     selectedText: name19?.name || chosen || "不使用图片",
     emptyText: "没有匹配的图片",
     itemClass: "asset-grid",
     getPage({
       query: param,
-      page: param2,
-      pageSize: param3
+      page: value,
+      pageSize: item
     }) {
       const slice = editorAssetMatcher(temp, param);
-      const number = (param2 - 1) * param3;
+      const number = (value - 1) * item;
       return {
-        items: slice.slice(number, number + param3),
+        items: slice.slice(number, number + item),
         total: slice.length
       };
     },
@@ -17422,9 +17422,9 @@ function withSelectedComponent11(value) {
       return matches;
     },
     buildToolbar: param => editorAssetToolbar(temp, param),
-    onItemHover: (param, param2) => scheduleImageLargePreview(findAssetById(param), param2, interaction3dEditorPickers?.dialog),
+    onItemHover: (param, value) => scheduleImageLargePreview(findAssetById(param), value, interaction3dEditorPickers?.dialog),
     onDelete: confirmDeleteUserAsset,
-    onSelect: param => renderList5(callback ? imageAssetOptions : ibeAssetOptions, "assetId", param)
+    onSelect: param => renderListLocal(callback ? imageAssetOptions : ibeAssetOptions, "assetId", param)
   })?.dialog.append(imageAssetLargePreview);
   return true;
 }
@@ -17467,11 +17467,11 @@ async function uploadUserAssets(value, param) {
   }
   const chosen = param === "image" ? imageAssetUpload : ibeAssetUpload;
   chosen.disabled = true;
-  const list2 = [];
+  const listCurrent = [];
   try {
     for (const body of list) {
       if (!/\.(png|jpe?g|webp|svg)$/i.test(body.name)) {
-        list2.push(body.name + "：仅支持 PNG、JPG、JPEG、WebP 和 SVG");
+        listCurrent.push(body.name + "：仅支持 PNG、JPG、JPEG、WebP 和 SVG");
         continue;
       }
       try {
@@ -17484,15 +17484,15 @@ async function uploadUserAssets(value, param) {
           }
         });
       } catch (error) {
-        list2.push(body.name + "：" + error.message);
+        listCurrent.push(body.name + "：" + error.message);
       }
     }
     await loadAssets({
       refreshInspector: false
     });
     setAssetSourceAndRefresh(param, "user");
-    if (list2.length) {
-      onError(new Error(list2.join("\n")));
+    if (listCurrent.length) {
+      onError(new Error(listCurrent.join("\n")));
     }
   } finally {
     chosen.disabled = false;
@@ -17551,16 +17551,16 @@ function refreshAssetMenus() {
     positionIbeAssetMenu();
   }
 }
-imageAssetMenu.addEventListener("click", target39 => {
-  const dataset24 = target39.target.closest("[data-image-asset-source]");
-  if (dataset24) {
-    setAssetSourceAndRefresh("image", dataset24.dataset.imageAssetSource);
+imageAssetMenu.addEventListener("click", target => {
+  const dataset = target.target.closest("[data-image-asset-source]");
+  if (dataset) {
+    setAssetSourceAndRefresh("image", dataset.dataset.imageAssetSource);
   }
 });
-ibeAssetMenu.addEventListener("click", target40 => {
-  const dataset25 = target40.target.closest("[data-ibe-asset-source]");
-  if (dataset25) {
-    setAssetSourceAndRefresh("ibe", dataset25.dataset.ibeAssetSource);
+ibeAssetMenu.addEventListener("click", target => {
+  const dataset = target.target.closest("[data-ibe-asset-source]");
+  if (dataset) {
+    setAssetSourceAndRefresh("ibe", dataset.dataset.ibeAssetSource);
   }
 });
 imageAssetUpload.addEventListener("click", () => imageAssetUploadInput.click());
@@ -17573,8 +17573,8 @@ ibeAssetUploadInput.addEventListener("change", async () => {
   await uploadUserAssets(ibeAssetUploadInput.files, "ibe");
   ibeAssetUploadInput.value = "";
 });
-for (const temp2 of [imageAssetOptions, ibeAssetOptions]) {
-  temp2.addEventListener("click", event => {
+for (const value of [imageAssetOptions, ibeAssetOptions]) {
+  value.addEventListener("click", event => {
     const value = event.target.closest("[data-delete-user-asset]");
     if (value) {
       event.preventDefault();
@@ -17585,8 +17585,8 @@ for (const temp2 of [imageAssetOptions, ibeAssetOptions]) {
 }
 deleteAssetCloseBtn.addEventListener("click", () => deleteAssetDialog.close());
 deleteAssetCancelBtn.addEventListener("click", () => deleteAssetDialog.close());
-deleteAssetDialog.addEventListener("click", target41 => {
-  if (target41.target === deleteAssetDialog) {
+deleteAssetDialog.addEventListener("click", target => {
+  if (target.target === deleteAssetDialog) {
     deleteAssetDialog.close();
   }
 });
@@ -17614,8 +17614,8 @@ deleteAssetConfirmBtn.addEventListener("click", async () => {
 });
 deleteAssetFolderCloseBtn.addEventListener("click", () => deleteAssetFolderDialog.close());
 deleteAssetFolderCancelBtn.addEventListener("click", () => deleteAssetFolderDialog.close());
-deleteAssetFolderDialog.addEventListener("click", target42 => {
-  if (target42.target === deleteAssetFolderDialog) {
+deleteAssetFolderDialog.addEventListener("click", target => {
+  if (target.target === deleteAssetFolderDialog) {
     deleteAssetFolderDialog.close();
   }
 });
@@ -17641,11 +17641,11 @@ deleteAssetFolderConfirmBtn.addEventListener("click", async () => {
         refreshInspector: false
       });
       refreshAssetMenus();
-    } catch (code2) {
-      if (code2?.code === "STUDIO3D_EXPORT_IN_USE") {
+    } catch (error) {
+      if (error?.code === "STUDIO3D_EXPORT_IN_USE") {
         onError(new Error("这个文件夹中的图片仍被仪表盘、弹窗或户型图绘制使用，请先移除引用后再删除。"));
       } else {
-        onError(code2);
+        onError(error);
       }
     } finally {
       deleteAssetFolderConfirmBtn.disabled = false;
@@ -17693,42 +17693,42 @@ imageAssetOptions.addEventListener("pointerover", value => {
 });
 imageAssetOptions.addEventListener("pointerleave", hideImageLargePreview);
 imageAssetOptions.addEventListener("scroll", hideImageLargePreview);
-imageAssetOptions.addEventListener("click", async target43 => {
-  const dataset26 = target43.target.closest("[data-asset-id]");
-  if (!dataset26 || !componentId) {
+imageAssetOptions.addEventListener("click", async target => {
+  const dataset = target.target.closest("[data-asset-id]");
+  if (!dataset || !componentId) {
     return;
   }
   const alias = componentId;
-  const temp = dataset26.dataset.assetId;
+  const temp = dataset.dataset.assetId;
   hideImageLargePreview();
   closeOtherPickerPanels();
   if (!temp) {
     mutateDocument(param => {
-      const properties28 = findComponent(param, alias)?.component;
-      if (!!properties28 && properties28.type === "image") {
-        properties28.properties = {
-          ...(properties28.properties || {}),
+      const properties = findComponent(param, alias)?.component;
+      if (!!properties && properties.type === "image") {
+        properties.properties = {
+          ...(properties.properties || {}),
           fit: "contain"
         };
-        delete properties28.properties.assetId;
-        delete properties28.properties.naturalWidth;
-        delete properties28.properties.naturalHeight;
+        delete properties.properties.assetId;
+        delete properties.properties.naturalWidth;
+        delete properties.properties.naturalHeight;
       }
     });
     return;
   }
-  const temp2 = findAssetById(temp);
-  if (temp2) {
+  const id = findAssetById(temp);
+  if (id) {
     try {
-      const asyncResult = await ensureAssetDimensions(temp2);
+      const asyncResult = await ensureAssetDimensions(id);
       mutateDocument(param => {
-        const temp3 = findComponent(param, alias)?.component;
-        if (!!temp3 && temp3.type === "image") {
-          applyAssetToComponent(temp3, temp, asyncResult);
+        const value = findComponent(param, alias)?.component;
+        if (!!value && value.type === "image") {
+          applyAssetToComponent(value, temp, asyncResult);
         }
       });
-    } catch (temp3) {
-      onError(temp3);
+    } catch (error) {
+      onError(error);
     }
   }
 });
@@ -17771,47 +17771,47 @@ ibeAssetOptions.addEventListener("pointerover", value => {
 });
 ibeAssetOptions.addEventListener("pointerleave", hideImageLargePreview);
 ibeAssetOptions.addEventListener("scroll", hideImageLargePreview);
-ibeAssetOptions.addEventListener("click", async target44 => {
-  const dataset27 = target44.target.closest("[data-asset-id]");
+ibeAssetOptions.addEventListener("click", async target => {
+  const dataset = target.target.closest("[data-asset-id]");
   const list = componentId;
-  if (!dataset27 || !list) {
+  if (!dataset || !list) {
     return;
   }
-  const effectAssetId = dataset27.dataset.assetId;
+  const effectAssetId = dataset.dataset.assetId;
   hideImageLargePreview();
   closeOtherPickerPanels();
   const chosen = effectAssetId ? findAssetById(effectAssetId) : null;
-  let width11 = null;
+  let width = null;
   if (chosen) {
     try {
-      width11 = await ensureAssetDimensions(chosen);
+      width = await ensureAssetDimensions(chosen);
     } catch (temp) {
       onError(temp);
       return;
     }
   }
   mutateDocument(param => {
-    const properties46 = findComponent(param, list)?.component;
-    if (!!properties46 && properties46.type === "icon-button-effect") {
-      properties46.properties = {
-        ...(properties46.properties || {})
+    const properties = findComponent(param, list)?.component;
+    if (!!properties && properties.type === "icon-button-effect") {
+      properties.properties = {
+        ...(properties.properties || {})
       };
-      if (effectAssetId && width11) {
-        properties46.properties.effectAssetId = effectAssetId;
-        properties46.properties.effectNaturalWidth = width11.width;
-        properties46.properties.effectNaturalHeight = width11.height;
-        delete properties46.properties.effectWidth;
-        delete properties46.properties.effectHeight;
+      if (effectAssetId && width) {
+        properties.properties.effectAssetId = effectAssetId;
+        properties.properties.effectNaturalWidth = width.width;
+        properties.properties.effectNaturalHeight = width.height;
+        delete properties.properties.effectWidth;
+        delete properties.properties.effectHeight;
       } else {
-        delete properties46.properties.effectAssetId;
-        delete properties46.properties.effectNaturalWidth;
-        delete properties46.properties.effectNaturalHeight;
+        delete properties.properties.effectAssetId;
+        delete properties.properties.effectNaturalWidth;
+        delete properties.properties.effectNaturalHeight;
       }
     }
   });
 });
-undoBtn.addEventListener("click", () => mutateDocument2("undo"));
-redoBtn.addEventListener("click", () => mutateDocument2("redo"));
+undoBtn.addEventListener("click", () => mutateDocumentCurrent("undo"));
+redoBtn.addEventListener("click", () => mutateDocumentCurrent("redo"));
 recoveryRestoreBtn.addEventListener("click", () => {
   if (!recoveredDraft || !currentProject) {
     recoveryDialog.close();
@@ -17824,8 +17824,8 @@ recoveryRestoreBtn.addEventListener("click", () => {
     document: cloneValue(selectedComponentId.document)
   };
   componentId = findComponent(currentProject.document, selectedComponentId.selectedComponentId) ? selectedComponentId.selectedComponentId : null;
-  const length11 = Array.isArray(selectedComponentId.selectedComponentIds) ? selectedComponentId.selectedComponentIds.filter(item => findComponent(currentProject.document, item)) : [];
-  selectedComponentIds = new Set(length11.length ? length11 : componentId ? [componentId] : []);
+  const length = Array.isArray(selectedComponentId.selectedComponentIds) ? selectedComponentId.selectedComponentIds.filter(item => findComponent(currentProject.document, item)) : [];
+  selectedComponentIds = new Set(length.length ? length : componentId ? [componentId] : []);
   rangeSelectAnchorId = componentId;
   historyState.undo = Array.isArray(selectedComponentId.undo) ? cloneValue(selectedComponentId.undo) : [];
   historyState.redo = Array.isArray(selectedComponentId.redo) ? cloneValue(selectedComponentId.redo) : [];
@@ -17844,8 +17844,8 @@ recoveryDiscardBtn.addEventListener("click", () => {
 recoveryDialog.addEventListener("cancel", value => value.preventDefault());
 errorDialogCloseBtn.addEventListener("click", () => errorDialog.close());
 errorDialogConfirmBtn.addEventListener("click", () => errorDialog.close());
-errorDialog.addEventListener("click", target45 => {
-  if (target45.target === errorDialog) {
+errorDialog.addEventListener("click", target => {
+  if (target.target === errorDialog) {
     errorDialog.close();
   }
 });
@@ -17858,59 +17858,59 @@ addComponentButton.addEventListener("click", () => {
   }
 });
 componentTemplateCloseBtn.addEventListener("click", () => componentTemplateDialog.close());
-componentTemplateDialog.addEventListener("click", target46 => {
-  if (target46.target === componentTemplateDialog) {
+componentTemplateDialog.addEventListener("click", target => {
+  if (target.target === componentTemplateDialog) {
     componentTemplateDialog.close();
   }
 });
-componentTemplateList.addEventListener("click", target47 => {
-  const value = target47.target.closest("[data-template-id]");
+componentTemplateList.addEventListener("click", target => {
+  const value = target.target.closest("[data-template-id]");
   const inputValue = pageSelect.value;
   if (!value || value.disabled || !inputValue) {
     return;
   }
   const alias = componentAddScope;
-  const chosen2 = activeGroupId ? findComponent(currentProject?.document, activeGroupId) : null;
-  const chosen3 = chosen2?.component?.type === "group" ? chosen2.component : null;
-  const chosen = chosen3 ? chosen2.scope : alias;
+  const component = activeGroupId ? findComponent(currentProject?.document, activeGroupId) : null;
+  const chosenCurrent = component?.component?.type === "group" ? component.component : null;
+  const chosen = chosenCurrent ? component.scope : alias;
   const generatedId = newId("component");
   componentTemplateDialog.close();
   componentId = generatedId;
   selectedComponentIds = new Set([generatedId]);
   rangeSelectAnchorId = generatedId;
   const then = mutateDocument(pages => {
-    const components3 = pages.pages.find(path3 => path3.path === inputValue);
-    if (!components3) {
+    const components = pages.pages.find(path => path.path === inputValue);
+    if (!components) {
       throw new Error("当前页面不存在。");
     }
-    const component = chosen3 ? findComponent(pages, chosen3.id) : null;
-    const position12 = component?.component?.type === "group" ? component.component : null;
-    const mode2 = alias === "shared" ? pages.sharedComponents : components3.components;
-    const unshift = position12 ? position12.children ||= [] : mode2;
-    const chosen3 = value.dataset.templateId === "navigation-button" ? "导航按钮" : value.dataset.templateId === "interaction3d" ? "3D 交互" : value.dataset.templateId === "floorplan-auto-diagram" ? "户型图自动导图" : value.dataset.templateId === "icon-button-effect" ? "图标按钮（效果）" : value.dataset.templateId === "title-button" ? "标题按钮" : value.dataset.templateId === "light-statistics" ? "数量统计" : value.dataset.templateId === "icon-button" ? "图标按钮" : value.dataset.templateId === "device-button" ? "设备按钮" : value.dataset.templateId === "presence-sensor" ? "传感器" : value.dataset.templateId === "air-conditioner" ? "空调 / 浴霸" : value.dataset.templateId === "vacuum-map" ? "扫地机器人实时地图" : value.dataset.templateId === "camera" ? "摄像头实时预览" : value.dataset.templateId === "time" ? "时间" : value.dataset.templateId === "date" ? "日期" : value.dataset.templateId === "weather" ? "天气" : value.dataset.templateId === "line-chart" ? "折线图" : value.dataset.templateId === "panel-frame" ? "底图框" : "图片";
-    const instanceName = nextTemplateInstanceName(unshift, chosen3);
-    const position13 = createComponentFromTemplate(value.dataset.templateId, {
+    const component = chosenCurrent ? findComponent(pages, chosenCurrent.id) : null;
+    const position = component?.component?.type === "group" ? component.component : null;
+    const mode = alias === "shared" ? pages.sharedComponents : components.components;
+    const unshift = position ? position.children ||= [] : mode;
+    const templateLabel = value.dataset.templateId === "navigation-button" ? "导航按钮" : value.dataset.templateId === "interaction3d" ? "3D 交互" : value.dataset.templateId === "floorplan-auto-diagram" ? "户型图自动导图" : value.dataset.templateId === "icon-button-effect" ? "图标按钮（效果）" : value.dataset.templateId === "title-button" ? "标题按钮" : value.dataset.templateId === "light-statistics" ? "数量统计" : value.dataset.templateId === "icon-button" ? "图标按钮" : value.dataset.templateId === "device-button" ? "设备按钮" : value.dataset.templateId === "presence-sensor" ? "传感器" : value.dataset.templateId === "air-conditioner" ? "空调 / 浴霸" : value.dataset.templateId === "vacuum-map" ? "扫地机器人实时地图" : value.dataset.templateId === "camera" ? "摄像头实时预览" : value.dataset.templateId === "time" ? "时间" : value.dataset.templateId === "date" ? "日期" : value.dataset.templateId === "weather" ? "天气" : value.dataset.templateId === "line-chart" ? "折线图" : value.dataset.templateId === "panel-frame" ? "底图框" : "图片";
+    const instanceName = nextTemplateInstanceName(unshift, templateLabel);
+    const template = createComponentFromTemplate(value.dataset.templateId, {
       id: generatedId,
       instanceName,
       canvas: pages.canvas,
       uiPackId: currentUiPackId(pages)
     });
-    if (position12) {
-      const number = Number(position12.position?.width || 100);
-      const number2 = Number(position12.position?.height || 100);
-      const number3 = Number(position13.position?.width || 100);
-      const number4 = Number(position13.position?.height || 100);
-      position13.position = {
-        ...(position13.position || {}),
-        x: (number - number3) / 2,
-        y: (number2 - number4) / 2
+    if (position) {
+      const number = Number(position.position?.width || 100);
+      const numberCurrent = Number(position.position?.height || 100);
+      const numberNext = Number(template.position?.width || 100);
+      const numberPrevious = Number(template.position?.height || 100);
+      template.position = {
+        ...(template.position || {}),
+        x: (number - numberNext) / 2,
+        y: (numberCurrent - numberPrevious) / 2
       };
     }
-    unshift.unshift(position13);
+    unshift.unshift(template);
     applyCollectionLayerOrder(unshift);
-    if (chosen === "shared" && !position12) {
+    if (chosen === "shared" && !position) {
       for (const sharedComponentIds of pages.pages) {
-        sharedComponentIds.sharedComponentIds = [position13.id, ...(sharedComponentIds.sharedComponentIds || []).filter(item => item !== position13.id)];
+        sharedComponentIds.sharedComponentIds = [template.id, ...(sharedComponentIds.sharedComponentIds || []).filter(item => item !== template.id)];
       }
       syncSharedComponentReferenceOrder(pages);
     }
@@ -17967,7 +17967,7 @@ pageSelect.addEventListener("change", () => {
   renderComponentTree();
   refreshInspector();
 });
-function openDialog3(param) {
+function openDialogNext(param) {
   popupNameDialogMode = param;
   const name20 = findCustomPopup(currentProject?.document, selectedPopupId);
   popupNameDialogTitle.textContent = param === "rename" ? "重命名组合弹窗" : "新建组合弹窗";
@@ -17975,7 +17975,7 @@ function openDialog3(param) {
   popupNameDialog.showModal();
   popupNameForm.elements.name.select();
 }
-popupNewBtn.addEventListener("click", () => openDialog3("create"));
+popupNewBtn.addEventListener("click", () => openDialogNext("create"));
 popupNameCloseBtn.addEventListener("click", () => popupNameDialog.close());
 popupNameCancelBtn.addEventListener("click", () => popupNameDialog.close());
 popupNameForm.addEventListener("submit", event => {
@@ -17986,20 +17986,20 @@ popupNameForm.addEventListener("submit", event => {
   }
   const rect = popupNameDialogMode === "create" ? newId("custom-popup") : selectedPopupId;
   popupNameDialog.close();
-  mutateDocument(customPopups3 => {
-    customPopups3.customPopups = customPopups3.customPopups || [];
+  mutateDocument(customPopups => {
+    customPopups.customPopups = customPopups.customPopups || [];
     if (popupNameDialogMode === "rename") {
-      const name6 = customPopups3.customPopups.find(component => component.id === selectedPopupId);
+      const name6 = customPopups.customPopups.find(component => component.id === selectedPopupId);
       if (name6) {
         name6.name = value;
       }
       return;
     }
-    customPopups3.customPopups.push({
+    customPopups.customPopups.push({
       id: rect,
       name: value,
       templateRef: {
-        uiPackId: currentUiPackId(customPopups3),
+        uiPackId: currentUiPackId(customPopups),
         templateId: "custom-popup",
         version: 1
       },
@@ -18027,13 +18027,13 @@ popupList.addEventListener("click", value => {
     setEditorMode("popup");
   }
 });
-popupList.addEventListener("contextmenu", target48 => {
-  const dataset28 = target48.target.closest("[data-popup-id]");
-  if (!dataset28) {
+popupList.addEventListener("contextmenu", target => {
+  const dataset = target.target.closest("[data-popup-id]");
+  if (!dataset) {
     return;
   }
-  target48.preventDefault();
-  selectedPopupId = dataset28.dataset.popupId;
+  target.preventDefault();
+  selectedPopupId = dataset.dataset.popupId;
   popupSelect.value = selectedPopupId;
   renderPopupList(currentProject.document, selectedPopupId);
   setEditorMode("popup");
@@ -18041,9 +18041,9 @@ popupList.addEventListener("contextmenu", target48 => {
   popupActionsMenu.hidden = false;
   popupActionsMenu.style.left = "0px";
   popupActionsMenu.style.top = "0px";
-  const width12 = popupActionsMenu.getBoundingClientRect();
-  popupActionsMenu.style.left = clampNumber(target48.clientX, 8, window.innerWidth - width12.width - 8) + "px";
-  popupActionsMenu.style.top = clampNumber(target48.clientY, 8, window.innerHeight - width12.height - 8) + "px";
+  const width = popupActionsMenu.getBoundingClientRect();
+  popupActionsMenu.style.left = clampNumber(target.clientX, 8, window.innerWidth - width.width - 8) + "px";
+  popupActionsMenu.style.top = clampNumber(target.clientY, 8, window.innerHeight - width.height - 8) + "px";
 });
 popupActionsButton.addEventListener("click", () => {
   if (popupActionsButton.disabled) {
@@ -18055,13 +18055,13 @@ popupActionsButton.addEventListener("click", () => {
   popupActionsMenu.hidden = !hidden;
   popupActionsButton.setAttribute("aria-expanded", String(hidden));
 });
-popupActionsMenu.addEventListener("click", target49 => {
-  const temp = target49.target.closest("[data-popup-action]")?.dataset.popupAction;
+popupActionsMenu.addEventListener("click", target => {
+  const temp = target.target.closest("[data-popup-action]")?.dataset.popupAction;
   const flag = popupActionPending || selectedPopupId;
   closePopupActionsMenu();
   if (!!temp && !!flag) {
     if (temp === "rename") {
-      openDialog3("rename");
+      openDialogNext("rename");
       return;
     }
     if (temp === "duplicate") {
@@ -18109,8 +18109,8 @@ deletePopupConfirmBtn.addEventListener("click", () => {
     pendingDeletePopupId = null;
     deletePopupDialog.close();
     deletePopupConfirmBtn.disabled = true;
-    mutateDocument(customPopups2 => {
-      customPopups2.customPopups = (customPopups2.customPopups || []).filter(component => component.id !== hidden);
+    mutateDocument(customPopups => {
+      customPopups.customPopups = (customPopups.customPopups || []).filter(component => component.id !== hidden);
       const callback = param => {
         for (const actions of param || []) {
           for (const [value, data] of Object.entries(actions.actions || {})) {
@@ -18124,11 +18124,11 @@ deletePopupConfirmBtn.addEventListener("click", () => {
           callback(actions.children);
         }
       };
-      callback(customPopups2.sharedComponents);
-      for (const components of customPopups2.pages || []) {
+      callback(customPopups.sharedComponents);
+      for (const components of customPopups.pages || []) {
         callback(components.components);
       }
-      selectedPopupId = customPopups2.customPopups[0]?.id || null;
+      selectedPopupId = customPopups.customPopups[0]?.id || null;
       if (!selectedPopupId) {
         setEditorMode("edit");
       }
@@ -18181,11 +18181,11 @@ popupModuleForm.addEventListener("submit", event => {
   const allowed = popupModuleForm.elements.type.value;
   const value = popupModuleForm.elements.entityId.value;
   const title = popupModuleForm.elements.title.value.trim();
-  const deviceType2 = normalizedPopupClimateDeviceType(popupModuleForm.elements.deviceType.value);
+  const deviceType = normalizedPopupClimateDeviceType(popupModuleForm.elements.deviceType.value);
   if (!numeric || !value) {
     return;
   }
-  const modules3 = findCustomPopup(currentProject?.document, selectedPopupId);
+  const modules = findCustomPopup(currentProject?.document, selectedPopupId);
   const options = {
     id: editingPopupModuleId || "candidate",
     type: allowed,
@@ -18195,54 +18195,54 @@ popupModuleForm.addEventListener("submit", event => {
     } : {}),
     ...(allowed === "climate" ? {
       properties: {
-        deviceType: deviceType2
+        deviceType: deviceType
       }
     } : {})
   };
-  const chosen = editingPopupModuleId ? (modules3?.modules || []).map(component2 => component2.id === editingPopupModuleId ? {
-    ...component2,
+  const chosen = editingPopupModuleId ? (modules?.modules || []).map(component => component.id === editingPopupModuleId ? {
+    ...component,
     ...options
-  } : component2) : [...(modules3?.modules || []), options];
-  if (!modules3 || !packPopupModules(chosen, modules3.layout).fits) {
+  } : component) : [...(modules?.modules || []), options];
+  if (!modules || !packPopupModules(chosen, modules.layout).fits) {
     onError(new Error("当前布局已超过 3 行，可增加列数或删除其它模块。"));
     return;
   }
   closePopupModuleEntityMenu();
   popupModuleDialog.close();
-  mutateDocument(customPopups4 => {
-    const modules2 = (customPopups4.customPopups || []).find(component2 => component2.id === numeric);
-    if (!modules2) {
+  mutateDocument(customPopups => {
+    const modules = (customPopups.customPopups || []).find(component => component.id === numeric);
+    if (!modules) {
       return;
     }
-    const properties47 = modules2.modules.find(component2 => component2.id === editingPopupModuleId);
-    if (properties47) {
-      properties47.type = allowed;
-      properties47.entityId = value;
+    const found = modules.modules.find(component => component.id === editingPopupModuleId);
+    if (found) {
+      found.type = allowed;
+      found.entityId = value;
       if (title) {
-        properties47.title = title;
+        found.title = title;
       } else {
-        delete properties47.title;
+        delete found.title;
       }
       if (allowed === "climate") {
-        properties47.properties = {
-          ...(properties47.properties || {}),
-          deviceType: deviceType2
+        found.properties = {
+          ...(found.properties || {}),
+          deviceType: deviceType
         };
-      } else if (properties47.properties?.deviceType) {
+      } else if (found.properties?.deviceType) {
         const {
           deviceType: properties,
-          ...properties9
-        } = properties47.properties;
-        if (Object.keys(properties9).length) {
-          properties47.properties = properties9;
+          ...propertiesCurrent
+        } = found.properties;
+        if (Object.keys(propertiesCurrent).length) {
+          found.properties = propertiesCurrent;
         } else {
-          delete properties47.properties;
+          delete found.properties;
         }
       }
-      delete properties47.deviceType;
+      delete found.deviceType;
       return;
     }
-    modules2.modules.push({
+    modules.modules.push({
       id: newId("popup-module"),
       type: allowed,
       entityId: value,
@@ -18251,7 +18251,7 @@ popupModuleForm.addEventListener("submit", event => {
       } : {}),
       ...(allowed === "climate" ? {
         properties: {
-          deviceType: deviceType2
+          deviceType: deviceType
         }
       } : {})
     });
@@ -18342,64 +18342,64 @@ document.addEventListener("pointerdown", event => {
   }
 });
 const scaleOnlyFields = new Set([imageScale, ibeScale, titleButtonScale, lightStatisticsScale, iconButtonScale, airConditionerScale, vacuumMapScale, cameraScale, timeScale, dateScale, weatherScale, lineChartScale, panelFrameScale, navigationScale]);
-document.addEventListener("input", target50 => {
-  if (selectedComponentIds.size < 2 || !scaleOnlyFields.has(target50.target)) {
+document.addEventListener("input", target => {
+  if (selectedComponentIds.size < 2 || !scaleOnlyFields.has(target.target)) {
     return;
   }
-  target50.stopPropagation();
-  const number = Number(target50.target.value);
+  target.stopPropagation();
+  const number = Number(target.target.value);
   if (!Number.isFinite(number)) {
     return;
   }
-  const length12 = selectionRelativeOffsets(clampNumber(number, 1, 500) / 100);
-  if (length12.length) {
-    editorRenderer?.previewComponentsTransform(length12, componentId);
+  const length = selectionRelativeOffsets(clampNumber(number, 1, 500) / 100);
+  if (length.length) {
+    editorRenderer?.previewComponentsTransform(length, componentId);
   }
 }, true);
-document.addEventListener("change", target51 => {
-  if (selectedComponentIds.size < 2 || !scaleOnlyFields.has(target51.target)) {
+document.addEventListener("change", target => {
+  if (selectedComponentIds.size < 2 || !scaleOnlyFields.has(target.target)) {
     return;
   }
-  target51.stopPropagation();
-  const number = Number(target51.target.value);
+  target.stopPropagation();
+  const number = Number(target.target.value);
   if (!Number.isFinite(number)) {
     refreshInspector();
     return;
   }
   const idSet = new Set(selectedComponentIds);
-  const length13 = selectionRelativeOffsets(clampNumber(number, 1, 500) / 100);
-  if (length13.length) {
+  const length = selectionRelativeOffsets(clampNumber(number, 1, 500) / 100);
+  if (length.length) {
     mutateDocument(param => {
-      for (const componentId2 of length13) {
-        if (!idSet.has(componentId2.componentId)) {
+      for (const componentId of length) {
+        if (!idSet.has(componentId.componentId)) {
           continue;
         }
-        const position3 = findComponent(param, componentId2.componentId)?.component;
-        if (position3) {
-          position3.position = {
-            ...(position3.position || {}),
-            x: componentId2.x,
-            y: componentId2.y
+        const position = findComponent(param, componentId.componentId)?.component;
+        if (position) {
+          position.position = {
+            ...(position.position || {}),
+            x: componentId.x,
+            y: componentId.y
           };
-          position3.style = {
-            ...(position3.style || {}),
-            scale: componentId2.scale
+          position.style = {
+            ...(position.style || {}),
+            scale: componentId.scale
           };
         }
       }
     });
   }
 }, true);
-document.addEventListener("keydown", event2 => {
-  const ancestorEl = event2.target.closest("input, textarea, select, button, [contenteditable=\"true\"], dialog");
+document.addEventListener("keydown", event => {
+  const ancestorEl = event.target.closest("input, textarea, select, button, [contenteditable=\"true\"], dialog");
   if (editorMode === "edit" && selectedComponentIds.size && !ancestorEl) {
-    if ((event2.metaKey || event2.ctrlKey) && !event2.altKey && !event2.shiftKey && event2.key.toLowerCase() === "d") {
-      event2.preventDefault();
+    if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.key.toLowerCase() === "d") {
+      event.preventDefault();
       bringComponentsToFront([...selectedComponentIds], componentId);
       return;
     }
-    if (!event2.metaKey && !event2.ctrlKey && !event2.altKey && (event2.key === "Delete" || event2.key === "Backspace")) {
-      event2.preventDefault();
+    if (!event.metaKey && !event.ctrlKey && !event.altKey && (event.key === "Delete" || event.key === "Backspace")) {
+      event.preventDefault();
       deleteSelectedComponents([...selectedComponentIds]);
       return;
     }
@@ -18410,19 +18410,19 @@ document.addEventListener("keydown", event2 => {
     ArrowUp: [0, -1],
     ArrowDown: [0, 1]
   };
-  if (options[event2.key] && editorMode === "edit" && selectedComponentIds.size && !event2.metaKey && !event2.ctrlKey && !event2.altKey && !ancestorEl) {
-    event2.preventDefault();
-    const chosen = event2.shiftKey ? 10 : 1;
-    const [temp, temp2] = options[event2.key];
-    nudgeSelectedComponents(temp * chosen, temp2 * chosen);
+  if (options[event.key] && editorMode === "edit" && selectedComponentIds.size && !event.metaKey && !event.ctrlKey && !event.altKey && !ancestorEl) {
+    event.preventDefault();
+    const chosen = event.shiftKey ? 10 : 1;
+    const [temp, value] = options[event.key];
+    nudgeSelectedComponents(temp * chosen, value * chosen);
     return;
   }
-  if (event2.key !== "Enter" || event2.isComposing) {
+  if (event.key !== "Enter" || event.isComposing) {
     return;
   }
-  const blur = event2.target.closest("input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"button\"]):not([type=\"submit\"])");
+  const blur = event.target.closest("input:not([type=\"checkbox\"]):not([type=\"radio\"]):not([type=\"button\"]):not([type=\"submit\"])");
   if (blur) {
-    event2.preventDefault();
+    event.preventDefault();
     blur.blur();
   }
 });
@@ -18442,9 +18442,9 @@ inspector.addEventListener("scroll", () => {
   positionImageAssetMenu();
   positionIbeAssetMenu();
   positionIbeIconMenu();
-  syncIconButtonIcon2();
-  syncTitleButtonIcon2();
-  syncLightStatisticsIcon2();
+  syncIconButtonIconCurrent();
+  syncTitleButtonIconCurrent();
+  syncLightStatisticsIconCurrent();
   positionNavigationIconMenu();
   positionGlobalColorPicker();
   for (const closest of document.querySelectorAll("[data-popup-entity-menu]:not([hidden])")) {
@@ -18482,17 +18482,17 @@ enhanceSelectsIn();
 bindColorInputsIn(document);
 bindNumberInputsIn(document);
 const onColorPickerSvPointerMove = clientX => {
-  const left2 = globalColorPickerSv.getBoundingClientRect();
-  colorPickerSaturation = clampNumber((clientX.clientX - left2.left) / Math.max(1, left2.width), 0, 1);
-  colorPickerValue = 1 - clampNumber((clientX.clientY - left2.top) / Math.max(1, left2.height), 0, 1);
+  const left = globalColorPickerSv.getBoundingClientRect();
+  colorPickerSaturation = clampNumber((clientX.clientX - left.left) / Math.max(1, left.width), 0, 1);
+  colorPickerValue = 1 - clampNumber((clientX.clientY - left.top) / Math.max(1, left.height), 0, 1);
   syncColorPickerFromHsv();
 };
-globalColorPickerSv.addEventListener("pointerdown", pointerId4 => {
+globalColorPickerSv.addEventListener("pointerdown", pointerId => {
   if (activeColorInput) {
-    pointerId4.preventDefault();
-    colorPickerPointerId = pointerId4.pointerId;
-    globalColorPickerSv.setPointerCapture(pointerId4.pointerId);
-    onColorPickerSvPointerMove(pointerId4);
+    pointerId.preventDefault();
+    colorPickerPointerId = pointerId.pointerId;
+    globalColorPickerSv.setPointerCapture(pointerId.pointerId);
+    onColorPickerSvPointerMove(pointerId);
   }
 });
 globalColorPickerSv.addEventListener("pointermove", value => {
@@ -18500,10 +18500,10 @@ globalColorPickerSv.addEventListener("pointermove", value => {
     onColorPickerSvPointerMove(value);
   }
 });
-globalColorPickerSv.addEventListener("pointerup", pointerId5 => {
-  if (pointerId5.pointerId === colorPickerPointerId) {
+globalColorPickerSv.addEventListener("pointerup", pointerId => {
+  if (pointerId.pointerId === colorPickerPointerId) {
     colorPickerPointerId = null;
-    globalColorPickerSv.releasePointerCapture(pointerId5.pointerId);
+    globalColorPickerSv.releasePointerCapture(pointerId.pointerId);
   }
 });
 globalColorPickerHue.addEventListener("input", () => {
@@ -18513,9 +18513,9 @@ globalColorPickerHue.addEventListener("input", () => {
   }
 });
 globalColorPickerHex.addEventListener("input", () => {
-  const hex2 = normalizedHexColor(globalColorPickerHex.value);
-  if (hex2) {
-    applyColorPickerHex(hex2, true);
+  const hex = normalizedHexColor(globalColorPickerHex.value);
+  if (hex) {
+    applyColorPickerHex(hex, true);
   }
 });
 globalColorPickerHex.addEventListener("change", () => {
@@ -18531,15 +18531,15 @@ const syncColorPickerRgbInputs = () => {
     return;
   }
   const clamped = clampNumber(Number(globalColorPickerR.value), 0, 255);
-  const clamped2 = clampNumber(Number(globalColorPickerG.value), 0, 255);
-  const clamped3 = clampNumber(Number(globalColorPickerB.value), 0, 255);
-  if ([clamped, clamped2, clamped3].every(Number.isFinite)) {
-    applyColorPickerHex(rgbToHex(clamped, clamped2, clamped3), true);
+  const number = clampNumber(Number(globalColorPickerG.value), 0, 255);
+  const clampedCurrent = clampNumber(Number(globalColorPickerB.value), 0, 255);
+  if ([clamped, number, clampedCurrent].every(Number.isFinite)) {
+    applyColorPickerHex(rgbToHex(clamped, number, clampedCurrent), true);
   }
 };
-for (const temp2 of [globalColorPickerR, globalColorPickerG, globalColorPickerB]) {
-  temp2.addEventListener("input", syncColorPickerRgbInputs);
-  temp2.addEventListener("change", syncColorPickerRgbInputs);
+for (const value of [globalColorPickerR, globalColorPickerG, globalColorPickerB]) {
+  value.addEventListener("input", syncColorPickerRgbInputs);
+  value.addEventListener("change", syncColorPickerRgbInputs);
 }
 globalColorPickerCopyBtn.addEventListener("click", async () => {
   if (activeColorInput) {
@@ -18570,32 +18570,32 @@ globalColorPickerPasteBtn.addEventListener("click", async () => {
     }
   }
 });
-document.addEventListener("click", target52 => {
-  const matches2 = target52.target.closest("button");
-  if (!matches2) {
+document.addEventListener("click", target => {
+  const matches = target.target.closest("button");
+  if (!matches) {
     return;
   }
   let flag = false;
-  if ([navigationIconButton, ibeIconButton, iconButtonIconButton, titleButtonIconButton, lightStatisticsIconButton].includes(matches2)) {
-    flag = loadNavigationIconOptions(matches2);
-  } else if (matches2 === lightStatisticsEntityButton) {
+  if ([navigationIconButton, ibeIconButton, iconButtonIconButton, titleButtonIconButton, lightStatisticsIconButton].includes(matches)) {
+    flag = loadNavigationIconOptions(matches);
+  } else if (matches === lightStatisticsEntityButton) {
     flag = openLightStatisticsEntityPicker();
-  } else if (matches2.matches("[data-popup-entity-button]")) {
-    flag = openPopupEntityPickerForTrigger(matches2);
-  } else if (matches2 === popupModuleEntityButton) {
+  } else if (matches.matches("[data-popup-entity-button]")) {
+    flag = openPopupEntityPickerForTrigger(matches);
+  } else if (matches === popupModuleEntityButton) {
     flag = openPopupModuleEntityPicker();
-  } else if ([imageAssetButton, ibeAssetButton].includes(matches2)) {
-    flag = withSelectedComponent11(matches2);
+  } else if ([imageAssetButton, ibeAssetButton].includes(matches)) {
+    flag = withSelectedComponentValue(matches);
   } else {
-    flag = openEntityPickerForButton(matches2);
+    flag = openEntityPickerForButton(matches);
   }
   if (flag) {
-    target52.preventDefault();
-    target52.stopImmediatePropagation();
+    target.preventDefault();
+    target.stopImmediatePropagation();
   }
 }, true);
-document.addEventListener("pointerdown", target53 => {
-  if (!globalColorPicker.hidden && !globalColorPicker.contains(target53.target) && target53.target !== activeColorInput) {
+document.addEventListener("pointerdown", target => {
+  if (!globalColorPicker.hidden && !globalColorPicker.contains(target.target) && target.target !== activeColorInput) {
     closeGlobalColorPicker();
   }
 });

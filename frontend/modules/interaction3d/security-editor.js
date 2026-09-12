@@ -1,5 +1,5 @@
 import { mountInteraction3d } from './runtime.js?v=20260909-preview-sleep-v1-20260911-security-camera-popup-v6';
-import { openPresenceEditor } from './presence-editor.js?v=20260911-security-focal-v1';
+import { openPresenceEditor } from './presence-editor.js?v=20260911-security-focal-v1-presence-pages-v2';
 import { randomUuid } from '/bridge-static/utils/random-id.js';
 import { requestInteraction3dAccess, subscribeInteraction3dAccess } from '/bridge-static/modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1-focus-layout-anim-v1';
 import { interaction3dPreviewSize } from '/bridge-static/modules/interaction3d/preview-layout.js';
@@ -38,7 +38,7 @@ export async function openSecurityEditor({
   stylesheetLink['rel'] = 'stylesheet';
   stylesheetLink['href'] = '/api/v1/modules/interaction3d/runtime.css?v=20260911-security-layout-v2';
   const dialog = createEl('dialog', 'i3d-editor');
-  dialog['setAttribute']('aria-label', '3D\x20安防配置');
+  dialog['setAttribute']('aria-label', '3D 安防配置');
   dialog['dataset']['i3dPreviewScope'] = 'security';
   const header = createEl('header');
   const body = createEl("div", "i3d-editor-body");
@@ -78,7 +78,7 @@ export async function openSecurityEditor({
       return;
     }
     if (!popupPreview) {
-      const layer = createEl('div', 'hb-renderer-runtime-dialog-layer\x20i3d-vacuum-dialog-layer');
+      const layer = createEl('div', 'hb-renderer-runtime-dialog-layer i3d-vacuum-dialog-layer');
       const frame = createEl('dialog', "hb-camera-preview-dialog fit-media-ratio i3d-vacuum-details i3d-camera-details");
       const card = createEl('div', 'hb-camera-preview-card');
       const heading = createEl('div', 'hb-camera-preview-heading');
@@ -88,7 +88,7 @@ export async function openSecurityEditor({
       headingText["append"](labelEl, statusSpan);
       heading['append'](headingText);
       const media = createEl('div', "hb-camera-preview-stage");
-      media['append'](createEl('span', '', '视频区域\x20·\x20高度随实际画面比例适配'));
+      media['append'](createEl('span', '', '视频区域 · 高度随实际画面比例适配'));
       card["append"](heading, media);
       frame['append'](card);
       layer["append"](frame);
@@ -234,7 +234,7 @@ export async function openSecurityEditor({
   resizeObserver['observe'](view);
   const unsubscribeAccess = subscribeInteraction3dAccess(accessState => {
     const nextAllowed = accessState['allowed'] === true;
-    nextAllowed !== allowed && (allowed = nextAllowed, allowed || (focusEditing = false, closePicker(), presenceEditor?.['close'](), preview?.(), preview = null, statusEl['textContent'] = accessState["message"] || '3D\x20使用权限已失效。'), closed || (renderPanel(), allowed && dialog['open'] && mountPreview()));
+    nextAllowed !== allowed && (allowed = nextAllowed, allowed || (focusEditing = false, closePicker(), presenceEditor?.['close'](), preview?.(), preview = null, statusEl['textContent'] = accessState["message"] || '3D 使用权限已失效。'), closed || (renderPanel(), allowed && dialog['open'] && mountPreview()));
   });
   async function runFocusCommand(command, payload) {
     const target = currentItem();
@@ -343,7 +343,7 @@ export async function openSecurityEditor({
       renderPanel();
     });
     const modelSection = addSection('模型列表');
-    modelSection['className'] += '\x20i3d-security-model-list';
+    modelSection['className'] += ' i3d-security-model-list';
     container = modelSection;
     const placedItems = currentList()['filter'](entry => entry['floorId'] === floorSelection);
     placedItems['some'](entry => entry['id'] === selectedId) || (selectedId = placedItems[0]?.['id'] || '');
@@ -507,9 +507,9 @@ export async function openSecurityEditor({
             showError(error);
           }
         });
-        iconBtn['className'] = 'i3d-picker-button\x20i3d-icon-picker-button';
+        iconBtn['className'] = 'i3d-picker-button i3d-icon-picker-button';
         const iconEl = createEl('i');
-        iconEl['style']['maskImage'] = 'url(\x27/bridge-static/vendor/mdi/7.4.47/svg/' + (item['icon'] || 'mdi:cctv')['slice'](4) + '.svg\x27)';
+        iconEl['style']['maskImage'] = 'url(\'/bridge-static/vendor/mdi/7.4.47/svg/' + (item['icon'] || 'mdi:cctv')['slice'](4) + '.svg\')';
         iconEl['style']['webkitMaskImage'] = iconEl['style']['maskImage'];
         iconBtn["textContent"] = '';
         iconBtn['append'](iconEl, createEl('span', '', item['icon'] || 'mdi:cctv'));
@@ -521,7 +521,7 @@ export async function openSecurityEditor({
           item['size'] = nextSize / 100 * 44;
         }, 1);
         const sizesBody = addDisclosure("更多尺寸设置", 'camera-sizes', labelSection);
-        const sizeGrid = createEl('div', 'i3d-coordinate-grid\x20i3d-security-size-grid');
+        const sizeGrid = createEl('div', 'i3d-coordinate-grid i3d-security-size-grid');
         sizesBody['append'](sizeGrid);
         container = sizeGrid;
         addNumberField('图标大小（px）', item["iconSize"] ?? 26, 4, 200, nextIconSize => {
@@ -539,7 +539,7 @@ export async function openSecurityEditor({
         container = positionGrid;
         const model = floorModels()['find'](entry => entry['id'] === item['modelId']);
         for (const axis of ['x', 'y']) {
-          addNumberField('位置\x20' + axis['toUpperCase'](), item[axis] ?? model?.[axis] ?? 0, -1000000, 1000000, nextValue => {
+          addNumberField('位置 ' + axis['toUpperCase'](), item[axis] ?? model?.[axis] ?? 0, -1000000, 1000000, nextValue => {
             item[axis] = nextValue;
           });
         }
@@ -664,7 +664,7 @@ export async function openSecurityEditor({
         control['disabled'] = true;
       }
       if (focusEditing && !busy && allowed) {
-        for (const btn of aside["querySelectorAll"]('.i3d-focus-actions\x20button')) {
+        for (const btn of aside["querySelectorAll"]('.i3d-focus-actions button')) {
           btn['disabled'] = false;
         }
       }

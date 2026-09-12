@@ -33,7 +33,7 @@ export function floorNavigationChoices(floors, overrides = {}) {
   });
   let remainingBasementIndex = ranked.filter(entry => entry.basement).length;
   let nextFloorIndex = 0;
-  return [...(floors.length > 1 ? [["all", "ALL", "全部楼层"]] : []), ...ranked.map(({
+  return [...ranked.map(({
     floor,
     basement,
     explicit
@@ -45,5 +45,5 @@ export function floorNavigationChoices(floors, overrides = {}) {
     } else {
       return [floor.id, basement ? "B" + (explicit || sequentialLevel) : (explicit || sequentialLevel) + "F", floor.name || "未命名楼层"];
     }
-  })];
+  }).reverse(), ...(floors.length > 1 ? [["all", "ALL", "全部楼层"]] : [])];
 }

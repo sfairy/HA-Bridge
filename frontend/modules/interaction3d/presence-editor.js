@@ -1,6 +1,6 @@
 import { openPresenceFocusEditor } from "./presence-focus-editor.js?v=20260911-security-focal-v1";
 import { mountInteraction3d } from "./runtime.js";
-import { validPresenceRoute, snapsToPresenceStart, PRESENCE_PAGES } from "./presence-motion.js";
+import { validPresenceRoute, snapsToPresenceStart } from "./presence-motion.js?v=20260911-presence-pages-v2";
 import { DESIGNS, createWalker, animateWalker, disposeWalker } from "./presence-character.js";
 import { randomUuid } from "/bridge-static/utils/random-id.js";
 export async function openPresenceEditor({
@@ -27,6 +27,7 @@ export async function openPresenceEditor({
   const presenceSensors = security.security.presenceSensors;
   const entityNames = new Map(entities.map(entity => [entity.entityId, entity.name]));
   for (const sensor of presenceSensors) {
+    sensor.displayPages = "all";
     Object.assign(sensor, {
       character: sensor.character ?? "traveler",
       color: sensor.color ?? "cyan",
@@ -576,35 +577,8 @@ export async function openPresenceEditor({
     });
     addField("路线楼层", floorSelect);
     floorSelect.disabled = !manageBindings;
-    const pagesSelect = el("select");
-    pagesSelect.setAttribute("aria-label", "显示页面");
-    for (const [value, label] of [["all", "全部页面"], ["custom", "指定页面"]]) {
-      const option = el("option", label);
-      option.value = value;
-      pagesSelect.append(option);
-    }
-    pagesSelect.value = sensor.displayPages === "all" ? "all" : "custom";
-    pagesSelect.addEventListener("change", () => {
-      sensor.displayPages = pagesSelect.value === "all" ? "all" : ["overview", "security"];
-      rebuildUi();
-    });
-    addField("显示页面", pagesSelect);
-    if (sensor.displayPages !== "all") {
-      const includes = sensor.displayPages ?? ["overview", "security"];
-      const pagesGroup = el("div", "", "presence-pages");
-      pagesGroup.setAttribute("role", "group");
-      pagesGroup.setAttribute("aria-label", "指定显示页面");
-      for (const [pageId, pageLabel] of PRESENCE_PAGES) {
-        const pageBtn = button(pageLabel, () => {
-          sensor.displayPages = includes.includes(pageId) ? includes.filter(id => id !== pageId) : [...includes, pageId];
-          rebuildUi();
-        });
-        pageBtn.setAttribute("aria-pressed", String(includes.includes(pageId)));
-        pageBtn.disabled = includes.length === 1 && includes.includes(pageId);
-        pagesGroup.append(pageBtn);
-      }
-      controlsAside.append(pagesGroup);
-    }
+    sensor.displayPages = "all";
+    controlsAside.append(el("p", "显示页面：ALL（全部页面）", "presence-note"));
     controlsAside.append(el("strong", "人物方案"));
     const designs = el("div", "", "presence-designs");
     for (const [character, design] of Object.entries(DESIGNS)) {

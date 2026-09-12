@@ -31,7 +31,9 @@ const PAGE_BY_MODEL_TYPE = {
   curtain: "environment",
   nas: "devices",
   tv: "devices",
-  robotvacuum: "vacuum"
+  robotvacuum: "vacuum",
+  camera: "security",
+  presence: "security"
 };
 const DEVICE_KIND_BY_MODEL_TYPE = {
   wallac: "climate",
@@ -40,7 +42,9 @@ const DEVICE_KIND_BY_MODEL_TYPE = {
   curtain: "cover",
   nas: "nas",
   tv: "television",
-  robotvacuum: "vacuum"
+  robotvacuum: "vacuum",
+  camera: "camera",
+  presence: "presence"
 };
 export function pageModelBindings(floors, bindings, page, floorFilter) {
   const bindingByModel = new Map(bindings.map(binding => [JSON.stringify([binding.floorId, binding.modelId]), binding]));
@@ -124,6 +128,9 @@ export function createEnvironmentScene({
     },
     glow: {
       value: new THREE.Color(0, 0, 0)
+    },
+    lift: {
+      value: new THREE.Vector2(0.12, 0.8)
     }
   });
   const sharedUniforms = createUniforms();
@@ -142,15 +149,15 @@ export function createEnvironmentScene({
     const compile = function (shader, renderer) {
       priorCompile?.call(this, shader, renderer);
       const opaqueInclude = "#include <opaque_fragment>";
-      if (!shader.fragmentShader.includes(opaqueInclude) || (shader.uniforms.hbEnvironmentAmount = uniforms.amount, shader.uniforms.hbEnvironmentMode = modeUniform, shader.uniforms.hbEnvironmentSaturation = saturationUniform, shader.uniforms.hbEnvironmentRetain = uniforms.retain, shader.uniforms.hbEnvironmentGlow = uniforms.glow, shader.fragmentShader.includes("uniform float hbEnvironmentAmount;"))) {
+      if (!shader.fragmentShader.includes(opaqueInclude) || (shader.uniforms.hbEnvironmentAmount = uniforms.amount, shader.uniforms.hbEnvironmentMode = modeUniform, shader.uniforms.hbEnvironmentSaturation = saturationUniform, shader.uniforms.hbEnvironmentRetain = uniforms.retain, shader.uniforms.hbEnvironmentGlow = uniforms.glow, shader.uniforms.hbEnvironmentLift = uniforms.lift, shader.fragmentShader.includes("uniform float hbEnvironmentAmount;"))) {
         return;
       }
-      shader.fragmentShader = "uniform float hbEnvironmentAmount;\nuniform float hbEnvironmentMode;\nuniform float hbEnvironmentSaturation;\nuniform float hbEnvironmentRetain;\nuniform vec3 hbEnvironmentGlow;\n" + shader.fragmentShader.replace(opaqueInclude, "float hbEnvironmentLuma = dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722));\noutgoingLight = mix(outgoingLight, vec3(hbEnvironmentLuma) * vec3(1.005, 1.0, 0.99), hbEnvironmentMode * (1.0 - hbEnvironmentRetain) * (1.0 - hbEnvironmentSaturation));\noutgoingLight += hbEnvironmentGlow * hbEnvironmentMode * (vec3(0.12) + clamp(outgoingLight, 0.0, 1.0) * 0.8);\n" + opaqueInclude);
+      shader.fragmentShader = "uniform float hbEnvironmentAmount;\nuniform float hbEnvironmentMode;\nuniform float hbEnvironmentSaturation;\nuniform float hbEnvironmentRetain;\nuniform vec3 hbEnvironmentGlow;\nuniform vec2 hbEnvironmentLift;\n" + shader.fragmentShader.replace(opaqueInclude, "float hbEnvironmentLuma = dot(outgoingLight, vec3(0.2126, 0.7152, 0.0722));\noutgoingLight = mix(outgoingLight, vec3(hbEnvironmentLuma) * vec3(1.005, 1.0, 0.99), hbEnvironmentMode * (1.0 - hbEnvironmentRetain) * (1.0 - hbEnvironmentSaturation));\noutgoingLight += hbEnvironmentGlow * hbEnvironmentMode * (vec3(hbEnvironmentLift.x) + clamp(outgoingLight, 0.0, 1.0) * hbEnvironmentLift.y);\n" + opaqueInclude);
       const colorspaceInclude = "#include <colorspace_fragment>";
       shader.fragmentShader = shader.fragmentShader.replace(colorspaceInclude, colorspaceInclude + "\ngl_FragColor.rgb *= mix(1.0, 0.15, hbEnvironmentAmount * (1.0 - hbEnvironmentRetain));");
     };
     const cacheKey = function () {
-      return (priorKey === THREE.Material.prototype.customProgramCacheKey ? priorCompile?.toString() || "" : priorKey?.call(keySource) || "") + "|hb-environment-saturation-v6";
+      return (priorKey === THREE.Material.prototype.customProgramCacheKey ? priorCompile?.toString() || "" : priorKey?.call(keySource) || "") + "|hb-environment-saturation-v7";
     };
     patchedMaterials.set(material, {
       oldCompile,
@@ -258,6 +265,7 @@ export function createEnvironmentScene({
       clonesByBinding.set(key, cloneEntry);
     }
     cloneEntry.binding = binding;
+    cloneEntry.uniforms.lift.value.set(...(binding.deviceKind === "cover" ? [0.025, 0.9] : binding.deviceKind === "climate" ? [0.16, 1.05] : [0.12, 0.8]));
     return cloneEntry.material;
   }
   function applyMaterials() {
@@ -323,7 +331,7 @@ export function createEnvironmentScene({
         const hvacMode = String(state.state || "").toLowerCase();
         const isOn = !["", "off", "unknown", "unavailable"].includes(hvacMode);
         const isSelected = binding.id === selectedId;
-        const glowScale = retainAmount ? isSelected ? 1.45 : binding.deviceKind === "cover" ? 1.2 : isOn ? 1.125 : 0.325 : 0;
+        const glowScale = retainAmount ? isSelected ? 1.45 : binding.deviceKind === "cover" ? 1.2 : binding.deviceKind === "climate" ? isOn ? 1.35 : 1 : isOn ? 1.125 : 0.325 : 0;
         const baseColor = isSelected ? glowColors.selected : isOn && glowColors[hvacMode] || glowColors.other;
         const glowR = glowScale * baseColor.r;
         const glowG = glowScale * baseColor.g;

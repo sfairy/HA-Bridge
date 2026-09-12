@@ -61,7 +61,7 @@ export function normalizedThresholds(thresholds) {
   return (Array.isArray(thresholds) ? thresholds : []).filter(element => Number.isFinite(Number(element?.value))).map(element => ({
     value: Number(element.value),
     color: safeCssColor(element.color, "#68cc3e")
-  })).sort((element, element2) => element.value - element2.value);
+  })).sort((element, elementRight) => element.value - elementRight.value);
 }
 export function automaticThresholds(samples) {
   const sorted = (Array.isArray(samples) ? samples : []).map(element => Number(element?.value ?? element)).filter(sample => Number.isFinite(sample)).sort((left, right) => left - right);

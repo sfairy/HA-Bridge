@@ -103,7 +103,6 @@ export function createTelevisionPanel({
     powerTimeout = setTimeout(() => {
       if (!disposed && updateToken === requestToken) {
         clearPendingPower();
-        errorEl.textContent = "命令已发送，暂未收到新的电源状态。";
         render();
       }
     }, 14000);

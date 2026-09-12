@@ -93,6 +93,9 @@ export function normalizeBaseLighting(lighting) {
   const source = lighting && typeof lighting == "object" ? lighting : {};
   return {
     exposure: clamp(finite(source.exposure, DEFAULT_BASE_LIGHTING.exposure), 0.5, 2),
+    ...(source.floorBrightness !== undefined ? {
+      floorBrightness: clamp(finite(source.floorBrightness, 100), 50, 150)
+    } : {}),
     hemisphereIntensity: clamp(finite(source.hemisphereIntensity, DEFAULT_BASE_LIGHTING.hemisphereIntensity), 0, 3),
     ambientIntensity: clamp(finite(source.ambientIntensity, DEFAULT_BASE_LIGHTING.ambientIntensity), 0, 2),
     mainIntensity: clamp(finite(source.mainIntensity, DEFAULT_BASE_LIGHTING.mainIntensity), 0, 5),
