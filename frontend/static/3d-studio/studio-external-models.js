@@ -1,4 +1,5 @@
 import { finite } from "./studio-normalization.js?v=20260903-studio-normalization-v2";
+import { applyCarFinish } from "./studio-car-finish.js?v=20260911-car-lamps-v3";
 const HOME_LITE_VERSION = "20260903-home-lite-v1";
 const APPLIANCE_LITE_VERSION = "20260903-appliance-lite-v1";
 function homeLiteModel(baseName, fallbackVersion, extra) {
@@ -876,6 +877,12 @@ export function createExternalModelManager({
       return inputMaterial;
     }
     const resolvedMaterial = PALETTE_OVERRIDE_MODEL_TYPES.has(cacheModelType) || APPLIANCE_MODEL_TYPES.has(cacheModelType) ? resolveMaterial(inputMaterial, cachePalette, cacheModelType) : inputMaterial.clone?.() || inputMaterial;
+    if (cacheModelType === "smallcar") {
+      applyCarFinish(resolvedMaterial);
+    }
+    if (cacheModelType === "glasscabinet" && inputMaterial.name === "glasscabinet-material-0") {
+      resolvedMaterial.color?.set?.(cachePalette.furniture);
+    }
     const cacheKey = materialCacheKey(resolvedMaterial);
     if (materialCache.has(cacheKey)) {
       materialReuseCount += 1;

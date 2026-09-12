@@ -1,8 +1,12 @@
+import { windowGeometryParts } from "./studio-window-geometry.js?v=20260911-wide-window-v1";
+import { addSecurityModel } from "./studio-security-models.js?v=20260911-reference-palette-v1";
 import { compactRuntimeFurniture } from "./studio-runtime-furniture.js?v=20260909-runtime-furniture-v1";
 import { createReflectionDetail } from "./studio-reflection-detail.js?v=20260909-reflection-scope-v1";
 import { createFloorTransition } from "./studio-floor-transition.js?v=20260909-floor-reuse-v2";
 import { floorOpeningPolygon } from "./studio-floor-openings.js?v=20260908-floor-openings-v1";
 import { createGroundReflections } from "./studio-ground-reflections.js?v=20260909-reflection-scope-v1";
+import { createMotionPresentation } from "./studio-motion-presentation.js?v=20260910-effects-settle-v6-focus-live-v1";
+import { createWallSideMaterial, setWallGradientHeight, setWallCornerDistances, mergeWallBands } from "./studio-wall-materials.js?v=wall-device-D6-20260910210335-shade-v2";
 import { RENDER_CACHE_VERSION, createRenderCache, cacheSceneDescriptor, sha256, stableCacheJSON } from "../modules/interaction3d/render-cache.js?v=20260907-demand-v1-20260908-curtains-v1";
 import { transformSceneCamera } from "../modules/interaction3d/scene-frame.js?v=20260907-scene-sync-v1-20260908-curtains-v1";
 import { sceneUpdatePlan } from "../modules/interaction3d/scene-update.js?v=20260907-update-v1-20260908-curtains-v1";
@@ -32,6 +36,8 @@ window.__haBridgeStudioModuleVersion = "20260904-local-shadow-edge-v6-depth-prec
 const selectEl = selector => document.querySelector(selector);
 const isStageEmbed = window.location.pathname === "/api/v1/modules/interaction3d/stage.html";
 const yt = isStageEmbed && new URLSearchParams(location.search).get("lighting") === "region";
+const wallRuntimeProfile = "shader";
+window.__haBridgeWallRuntimeProfile = wallRuntimeProfile || "baseline";
 let studioReady = null;
 let renderCache = null;
 let ur = 1;
@@ -859,7 +865,7 @@ const furnitureCatalog = {
   }
 };
 const SOFT_TEXTURE_UNIT_RESERVE = new Set(["nightstand", "bar", "aquarium", "sideboard", "shoecabinet", "stairs", "steelstairs", "glassstairs", "smallcar", "cabinet", "glasscabinet", "bookcase", "shelf", "pillar", "wallcabinet", "kitchenbase", "kitchensink", "kitchencooktop", "vanity", "basin", "bathtub", "tvstand", "squarecoffeetable", "glasspartition", "washer", "airoutlet", "dryer", "dishwasher", "steamoven", "microwave", "rangehood", "nas", "pipelinewaterpurifier", "tea_bar_machine"]);
-const RESERVED_TEXTURE_UNITS = new Set(["fridge", "storagewaterheater", "gaswaterheater", "pipelinewaterpurifier", "tea_bar_machine", "washer", "airoutlet", "dryer", "dishwasher", "steamoven", "microwave", "ricecooker", "rangehood", "wallac", "floorac", "robotvacuum", "nas", "airpurifier", "tv", "desktop", "laptop", "floorlamp", "walllamp"]);
+const RESERVED_TEXTURE_UNITS = new Set(["fridge", "storagewaterheater", "gaswaterheater", "pipelinewaterpurifier", "tea_bar_machine", "washer", "airoutlet", "dryer", "dishwasher", "steamoven", "microwave", "ricecooker", "rangehood", "wallac", "floorac", "robotvacuum", "nas", "camera", "presence", "airpurifier", "tv", "desktop", "laptop", "floorlamp", "walllamp"]);
 const lightItemTypes2 = new Set(["downlight", "ceilinglight", "striplight"]);
 const Vl = new Set(["stairs", "steelstairs", "glassstairs"]);
 const stairItemTypes = new Set(["steelstairs", "glassstairs"]);
@@ -10930,9 +10936,11 @@ function buildStudioItemMeshGroup(type20, optionalValue = null) {
     });
     const position2 = new THREE.Mesh(new THREE.BoxGeometry(itemWidth, itemHeight, itemDepth), [localValue2, localValue2, localValue3, localValue2, localValue2, localValue2]);
     position2.position.y = itemHeight * 0.5;
+    setWallGradientHeight(THREE, position2.geometry, "y", itemHeight * 0.5, 1, itemHeight);
     position2.castShadow = true;
     position2.receiveShadow = true;
     position2.renderOrder = 4;
+    position2.userData.reflectionRole = "wall";
     position2.layers.set(HELPER_LAYER);
     rotation.add(position2);
   } else if (type20.type === "wallcabinet") {
@@ -11504,6 +11512,8 @@ function buildStudioItemMeshGroup(type20, optionalValue = null) {
       radius: Math.min(itemWidth, itemDepth) * 0.025,
       roughness: 0.24
     });
+  } else if (type20.type === "camera" || type20.type === "presence") {
+    addSecurityModel(THREE, rotation, type20, glass);
   } else if (type20.type === "nas") {
     addBoxMesh(rotation, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, furnitureItems, {
       rounded: false,
@@ -12225,7 +12235,7 @@ function mergeStaticItemInstanceBatches(object3d, argSecondary) {
     item,
     group: object3d2
   } of argSecondary) {
-    if (skipInstanceMergeTypes.has(item.type) || isStageEmbed && ["wallac", "floorac", "airoutlet", "curtain", "nas", "tv", "robotvacuum"].includes(item.type) || isSelected("item", item.id)) {
+    if (skipInstanceMergeTypes.has(item.type) || isStageEmbed && ["wallac", "floorac", "airoutlet", "curtain", "nas", "camera", "presence", "tv", "robotvacuum"].includes(item.type) || isSelected("item", item.id)) {
       continue;
     }
     const map6 = collectShadowLights(object3d2);
@@ -12315,7 +12325,7 @@ function buildCanvasPathFromPoints(updateMatrixWorld3, item) {
     item: type15,
     group: parent4
   } of item) {
-    if (parent4.parent === updateMatrixWorld3 && !skipInstanceMergeTypes.has(type15.type) && (!isStageEmbed || !["wallac", "floorac", "airoutlet", "curtain", "nas", "tv", "robotvacuum"].includes(type15.type)) && !isSelected("item", type15.id)) {
+    if (parent4.parent === updateMatrixWorld3 && !skipInstanceMergeTypes.has(type15.type) && (!isStageEmbed || !["wallac", "floorac", "airoutlet", "curtain", "nas", "camera", "presence", "tv", "robotvacuum"].includes(type15.type)) && !isSelected("item", type15.id)) {
       parent4.traverse(geometry2 => {
         if (!geometry2.isMesh || geometry2.isInstancedMesh || geometry2.geometry.drawRange.start !== 0 || geometry2.geometry.drawRange.count !== Infinity) {
           return;
@@ -12981,13 +12991,14 @@ function splitFloorPolygonsByHoles(argPrimary) {
 }
 function createGlassPhysicalMaterial(list, argSecondary, depthWrite = {}) {
   const list2 = argSecondary >= 0.999;
-  return new THREE.MeshPhysicalMaterial({
+  const alphaWallBand = yt && !list2;
+  const material = createWallSideMaterial(THREE, {
     color: list,
     roughness: 0.72,
     metalness: 0,
     clearcoat: 0.05,
     clearcoatRoughness: 0.82,
-    transmission: list2 ? 0 : 0.012,
+    transmission: list2 || alphaWallBand ? 0 : 0.012,
     thickness: 0.1,
     ior: 1.22,
     transparent: !list2,
@@ -13000,7 +13011,9 @@ function createGlassPhysicalMaterial(list, argSecondary, depthWrite = {}) {
     side: THREE.DoubleSide,
     emissive: depthWrite.emissive ?? list,
     emissiveIntensity: depthWrite.emissiveIntensity ?? 0.025
-  });
+  }, depthWrite.polygonOffset !== true, yt && typeof window < "u" ? new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile : "");
+  material.userData.alphaWallBand = alphaWallBand;
+  return material;
 }
 function createInvisibleBasicMaterial() {
   const value = new THREE.MeshBasicMaterial();
@@ -13044,9 +13057,16 @@ function addWallMeshBatch(list, argSecondary, argTertiary, color, opacity, light
       steps: 1,
       curveSegments: 1
     });
+    setWallGradientHeight(THREE, extrudeGeometry, "z", argTertiary, -1, floorScene2.settings.wallHeight);
+    if (yt && (new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile).split(",").includes("shader") && light.polygonOffset !== true) {
+      const wallPoints = entry.extractPoints(1);
+      setWallCornerDistances(THREE, extrudeGeometry, [wallPoints.shape, ...wallPoints.holes]);
+    }
     const invisibleMaterial = createInvisibleBasicMaterial();
     const glassMaterial = createGlassPhysicalMaterial(color, opacity, depthWrite);
     const light2 = new THREE.Mesh(extrudeGeometry, [invisibleMaterial, glassMaterial]);
+    light2.userData.hbMergeWallBand = light.polygonOffset !== true && (light.renderOrder ?? 4) === 4;
+    light2.userData.reflectionRole = "wall";
     light2.rotation.x = Math.PI / 2;
     light2.position.y = argTertiary;
     const isWallMaterialOpaque = opacity >= 0.999;
@@ -13631,7 +13651,11 @@ function rebuildWorldPreview({
       position3.rotation.y = y3;
       const localValue2 = Math.min(sill.width, wallLengthMeters(start6, group));
       const localValue3 = Math.min(sill.height, Math.max(start6.height - sill.sill, 0.2));
-      addSharedArchMesh(position3, [[localValue2 * 0.94, localValue3 * 0.92, 0.025, 0, sill.sill + localValue3 / 2, 0]], value.glass, {
+      const windowParts = windowGeometryParts(localValue2, localValue3, sill.sill, sill.hasDivider !== false);
+      if (!windowParts) {
+        continue;
+      }
+      addSharedArchMesh(position3, windowParts.glass, value.glass, {
         rounded: false,
         transparent: true,
         opacity: 0.2,
@@ -13643,22 +13667,16 @@ function rebuildWorldPreview({
         renderOrder: 6
       });
       const conditionalValue = isSelected("window", sill.id) ? value.accent : value.frame;
-      const numericValue = 0.045;
       const objectValue2 = {
         rounded: false,
         metalness: 0.15,
         castShadow: false,
         receiveShadow: false
       };
-      const push6 = [[localValue2, numericValue, 0.06, 0, sill.sill, 0], [localValue2, numericValue, 0.06, 0, sill.sill + localValue3, 0], [numericValue, localValue3, 0.06, -localValue2 / 2, sill.sill + localValue3 / 2, 0], [numericValue, localValue3, 0.06, localValue2 / 2, sill.sill + localValue3 / 2, 0]];
-      const comparisonFlag = sill.hasDivider !== false && localValue2 > 1.2;
-      if (comparisonFlag) {
-        push6.push([numericValue * 0.7, localValue3, 0.055, 0, sill.sill + localValue3 / 2, 0]);
-      }
-      addSharedArchMesh(position3, push6, conditionalValue, objectValue2);
+      addSharedArchMesh(position3, windowParts.frames, conditionalValue, objectValue2);
       position3.userData.optimizationStats = {
-        type: comparisonFlag ? "window-divided" : "window-plain",
-        before: comparisonFlag ? 6 : 5,
+        type: windowParts.divided ? "window-divided" : "window-plain",
+        before: windowParts.divided ? 6 : 5,
         after: 2
       };
       worldGroup.add(position3);
@@ -13951,7 +13969,7 @@ function rebuildWorldPreview({
     if (yt && type16.type === "smallcar") {
       userData33.userData.preserveDetailedSurface = true;
     }
-    if (isStageEmbed && ["wallac", "floorac", "airoutlet", "curtain", "nas", "tv", "robotvacuum"].includes(type16.type)) {
+    if (isStageEmbed && ["wallac", "floorac", "airoutlet", "curtain", "nas", "camera", "presence", "tv", "robotvacuum"].includes(type16.type)) {
       userData33.userData.environmentModelId = type16.id;
       userData33.userData.environmentModelType = type16.type;
       userData33.userData.environmentFloorId = activeFloorId;
@@ -13969,6 +13987,9 @@ function rebuildWorldPreview({
     }
   }
   mergeStaticItemInstanceBatches(worldGroup, push20);
+  if (yt && (new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile).split(",").includes("merge")) {
+    mergeWallBands(THREE, worldGroup, mergeGeometries);
+  }
   if (isStageEmbed && new URLSearchParams(window.location.search).get("furniture-runtime") === "compact") {
     compactRuntimeFurniture(worldGroup, push20.filter(({
       item: id2
@@ -14198,7 +14219,7 @@ function rebuildPreviewAfterPlanChange(argPrimary, {
     if (yt && type17.type === "smallcar") {
       userData34.userData.preserveDetailedSurface = true;
     }
-    if (isStageEmbed && ["wallac", "floorac", "airoutlet", "curtain", "nas", "tv", "robotvacuum"].includes(type17.type)) {
+    if (isStageEmbed && ["wallac", "floorac", "airoutlet", "curtain", "nas", "camera", "presence", "tv", "robotvacuum"].includes(type17.type)) {
       userData34.userData.environmentModelId = type17.id;
       userData34.userData.environmentModelType = type17.type;
       userData34.userData.environmentFloorId = activeFloorId;
@@ -17504,6 +17525,17 @@ function bootstrapStudioFromLoadedProject() {
   const localValue18 = new URLSearchParams(globalThis.window?.location?.search || "").get("floorEffects");
   let boolFlag9 = false;
   let boolFlag10 = false;
+  const motionPresentation = createMotionPresentation({
+    reflections(active) {
+      boolFlag10 = active;
+      changed.setSuspended?.(boolFlag9 || boolFlag10, {
+        fade: !boolFlag9
+      });
+    },
+    shadows(active) {
+      renderCache?.setMotion?.(active);
+    }
+  });
   function setEditorEffects(argPrimary, argSecondary) {
     const computedValue = argPrimary && !argSecondary;
     renderer.domElement.dataset.editorEffects = argPrimary ? argSecondary ? "light-preview" : "paused" : "runtime";
@@ -17574,9 +17606,7 @@ function bootstrapStudioFromLoadedProject() {
     dispose: disposeObject3dResources,
     release,
     suspendReflections: argPrimary => {
-      boolFlag10 = argPrimary;
-      changed.setSuspended?.(boolFlag9 || boolFlag10);
-      renderCache?.setMotion?.(argPrimary);
+      motionPresentation.floor(argPrimary);
       setShadowMapAutoUpdate(argPrimary);
     },
     invalidate: argPrimary => {
@@ -18133,7 +18163,10 @@ function bootstrapStudioFromLoadedProject() {
         });
       }
     },
-    beginCameraMotion(argPrimary, argSecondary) {
+    beginCameraMotion(argPrimary, argSecondary, argTertiary = "focus") {
+      motionPresentation.camera(!!argSecondary, {
+        live: argTertiary === "focus"
+      });
       const mode = this.cameraState();
       const comparisonFlag = argSecondary && (height10 || mode.mode !== argPrimary);
       const fromHeight = comparisonFlag ? height10?.height ?? resetOrbitTarget(camera2, orbitControls.target) : 0;
@@ -18175,6 +18208,7 @@ function bootstrapStudioFromLoadedProject() {
       const comparisonFlag = clampedValue === zeroValue;
       zeroValue = clampedValue;
       this.applyCameraPose(argPrimary, argSecondary, comparisonFlag);
+      motionPresentation.advance(argSecondary);
     },
     applyCameraPose(view2, numericParam = 1, preserveLightCache2 = true) {
       if (height10) {
@@ -18211,6 +18245,7 @@ function bootstrapStudioFromLoadedProject() {
       });
     },
     endCameraMotion() {
+      motionPresentation.camera(false);
       boolFlag3 = false;
       recreateOrbitControlsAtTarget();
       unlockPreviewOrbit();

@@ -1,4 +1,5 @@
-import { coverComponentIsDream, doorWindowPerspectiveCorners, doorWindowPerspectiveMatrix, formatLineChartValue, formatPresenceDuration, iconButtonEffectLightVisualAwaiting, iconButtonEffectLightVisualState, mountCameraMedia, prewarmCameraMedia, presenceHistoryBuckets, presenceMotionEventConfig, presenceSensorPresentation, presenceStateTimestamp, renderAirConditionerAirflowLayer, renderIconButtonEffectLayer, renderLineChartDetails, renderRegisteredComponent, setBuiltinAssetVersions, staticAssetImageSource, vacuumMapImageSource } from "./registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-vacuum-map-background-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-v2-20260901-renderer-date-time-runtime-v1-20260901-camera-prewarm-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-light-effect-layering-v2-20260901-light-effect-color-cache-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260905-client-log-v1-20260906-i3d-complete-v6-20260827-runtime-hydration-retry-v1-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1";
+import { cameraPopupLayout, cameraPreviewRatio } from "../modules/interaction3d/camera-popup-layout.js?v=20260911-security-camera-popup-v6";
+import { coverComponentIsDream, doorWindowPerspectiveCorners, doorWindowPerspectiveMatrix, formatLineChartValue, formatPresenceDuration, iconButtonEffectLightVisualAwaiting, iconButtonEffectLightVisualState, mountCameraMedia, prewarmCameraMedia, presenceHistoryBuckets, presenceMotionEventConfig, presenceSensorPresentation, presenceStateTimestamp, renderAirConditionerAirflowLayer, renderIconButtonEffectLayer, renderLineChartDetails, renderRegisteredComponent, setBuiltinAssetVersions, staticAssetImageSource, vacuumMapImageSource } from "./registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-vacuum-map-background-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-v2-20260901-renderer-date-time-runtime-v1-20260901-camera-prewarm-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-light-effect-layering-v2-20260901-light-effect-color-cache-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260905-client-log-v1-20260906-i3d-complete-v6-20260827-runtime-hydration-retry-v1-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1";
 import { randomUuid } from "../utils/random-id.js?v=20260724-revert-hold-popup-shield-v324";
 import { popupLayoutMetrics } from "../js/editor/popup-layout.js?v=20260821-electric-bed-combo-v2";
 import { bathHeaterModeUsesAirflow, climateControlStructureKey, climateDeviceLabel, climateEffectMode, climateIsPoweredOn, climateIsRunning, climateModeIcon, climateModeLabel, climateOperationModeValues, climateOptionPresentation, climatePowerCommand, climatePresentationMode, climateSwingModeLabel, normalizeClimateCapabilities, reconcileClimateTargetTemperature, resolveClimateDeviceType, waterHeaterStatusLabel } from "./climate.js?v=20260812-presence-phase-v79-20260904-climate-capability-options-v6";
@@ -1168,6 +1169,9 @@ export class PanelRenderer {
     window.addEventListener("blur", state3);
   }
   cleanupComponents(component = false, preserveIds = new Set()) {
+    if (this.retainedInteraction3d && !preserveIds.has(this.retainedInteraction3d.component.id)) {
+      this.releaseRetainedInteraction3d();
+    }
     for (const runHelper of this.cleanups.splice(0)) {
       runHelper();
     }
@@ -1191,6 +1195,15 @@ export class PanelRenderer {
         this.componentCleanups.set(componentId, []);
       }
       this.componentCleanups.get(componentId).push(cleanup);
+    }
+  }
+  releaseRetainedInteraction3d() {
+    const retained = this.retainedInteraction3d;
+    if (retained) {
+      this.retainedInteraction3d = null;
+      clearTimeout(retained.timer);
+      this.cleanupRenderedComponent(retained.component.id);
+      retained.host.remove();
     }
   }
   cleanupRenderedComponent(componentId) {
@@ -1249,14 +1262,51 @@ export class PanelRenderer {
       attributes: {}
     });
     const componentById = new Map([...(preserveSelection ? [...this.componentHosts].filter(([arg]) => ["camera", "vacuum-map", "floorplan-auto-diagram"].includes(this.componentRecords.get(arg)?.type)) : []), ...(renderOptions && typeof renderOptions[Symbol.iterator] == "function" ? renderOptions : [])]);
+    const currentById = new Map(collectComponents([...(this.page.components || []), ...filtered], () => true).map(arg => [arg.id, arg]));
+    const pageInteraction3d = [...currentById.values()].filter(arg => arg.type === "interaction3d");
+    const retainStage = !this.options?.editable && !this.replacingDocument && Array.isArray(this.document.pages);
+    const documentInteraction3d = retainStage ? new Map(collectComponents([...(this.document.sharedComponents || []), ...this.document.pages.flatMap(page => page.components || [])], arg => arg.type === "interaction3d").map(arg => [arg.id, arg])) : new Map();
+    const sameInteraction3dSettings = (record, nextRecord) => nextRecord?.type === "interaction3d" && record.properties?.sceneId === nextRecord.properties?.sceneId && record.properties?.lightingMode === nextRecord.properties?.lightingMode;
+    let retained = this.retainedInteraction3d;
+    if (retained && (!retainStage || retained.host.parentElement !== this.canvas || !sameInteraction3dSettings(retained.component, documentInteraction3d.get(retained.component.id)) || pageInteraction3d.some(arg => arg.id !== retained.component.id))) {
+      this.releaseRetainedInteraction3d();
+      retained = null;
+    }
+    if (retainStage && !retained && !pageInteraction3d.length) {
+      for (const [id, host] of this.componentHosts) {
+        const record = this.componentRecords.get(id);
+        if (!(record?.type !== "interaction3d" || host.parentElement !== this.canvas || !sameInteraction3dSettings(record, documentInteraction3d.get(id)))) {
+          retained = {
+            component: structuredClone(record),
+            host,
+            timer: null
+          };
+          this.retainedInteraction3d = retained;
+          host.hidden = true;
+          host.querySelector(".hb-interaction3d-host")?.setInteraction3dPageVisible?.(false);
+          retained.timer = setTimeout(() => {
+            if (this.retainedInteraction3d === retained) {
+              this.releaseRetainedInteraction3d();
+            }
+          }, 120000);
+          break;
+        }
+      }
+    }
+    if (retained) {
+      componentById.set(retained.component.id, retained.host);
+    }
     for (const [item, parentElement] of this.componentHosts) {
-      if (preserveSelection && this.componentRecords.get(item)?.type === "interaction3d" && parentElement.parentElement === this.canvas && allowed.has(item)) {
+      if ((preserveSelection || retainStage) && this.componentRecords.get(item)?.type === "interaction3d" && parentElement.parentElement === this.canvas && allowed.has(item)) {
         componentById.set(item, parentElement);
       }
     }
     const add = new Set();
-    const currentById = new Map(collectComponents([...(this.page.components || []), ...filtered], () => true).map(arg => [arg.id, arg]));
     for (const [selectionSnapshot] of componentById) {
+      if (retained?.component.id === selectionSnapshot) {
+        add.add(selectionSnapshot);
+        continue;
+      }
       if (this.componentRecords.get(selectionSnapshot)?.type === "interaction3d") {
         if (currentById.get(selectionSnapshot)?.type === "interaction3d") {
           add.add(selectionSnapshot);
@@ -1267,7 +1317,7 @@ export class PanelRenderer {
     }
     const componentById1 = new Map([...this.canvas.querySelectorAll(".hb-icon-button-effect-layer[data-effect-for]")].map(arg => [arg.dataset.effectFor, arg]));
     this.cleanupComponents(preserveSelection, add);
-    const allowed2 = new Set([...componentById.values()].filter(arg => arg.parentElement === this.canvas && allowed.has(arg.dataset.componentId) && (arg.querySelector(".hb-floorplan-auto-diagram-preview") || add.has(arg.dataset.componentId))));
+    const allowed2 = new Set([...componentById.values()].filter(arg => arg.parentElement === this.canvas && (allowed.has(arg.dataset.componentId) || arg === retained?.host) && (arg.querySelector(".hb-floorplan-auto-diagram-preview") || add.has(arg.dataset.componentId))));
     if (allowed2.size) {
       for (const child of [...this.canvas.children]) {
         if (!allowed2.has(child)) {
@@ -1289,6 +1339,11 @@ export class PanelRenderer {
     }
     for (const preservedSelectionIds of filtered) {
       this.renderComponent(preservedSelectionIds, this.canvas, 100000, componentById, componentById1);
+    }
+    if (retained && currentById.has(retained.component.id)) {
+      clearTimeout(retained.timer);
+      this.retainedInteraction3d = null;
+      retained.host.querySelector(".hb-interaction3d-host")?.setInteraction3dPageVisible?.(true);
     }
     this.syncActiveGroup();
     this.syncSelection();
@@ -1399,6 +1454,7 @@ export class PanelRenderer {
       isIconVisible: isIconVisible => this.iconVisibilityState(isIconVisible),
       navigate: navigate => this.navigate(navigate),
       callEntityService: (...callEntityService) => this.callEntityService(...callEntityService),
+      openCameraPreview: (camera, onClose, options) => this.openInteraction3dCameraPreview(camera, onClose, options),
       openVacuumDetails: (onError, vacuumOptions, extraOptions) => this.openInteraction3dVacuumDetails(onError, vacuumOptions, extraOptions),
       runVacuumRoom: registerRuntimeStateHandler => this.dispatchAction({
         id: state.id + ":room:" + registerRuntimeStateHandler.id,
@@ -2116,6 +2172,7 @@ export class PanelRenderer {
       isIconVisible: isIconVisible => this.iconVisibilityState(isIconVisible),
       navigate: navigate => this.navigate(navigate),
       callEntityService: (...callEntityService) => this.callEntityService(...callEntityService),
+      openCameraPreview: (camera, onClose, options) => this.openInteraction3dCameraPreview(camera, onClose, options),
       openVacuumDetails: (onError, vacuumOptions, extraOptions) => this.openInteraction3dVacuumDetails(onError, vacuumOptions, extraOptions),
       runVacuumRoom: registerRuntimeStateHandler => this.dispatchAction({
         id: component.id + ":room:" + registerRuntimeStateHandler.id,
@@ -4224,8 +4281,37 @@ export class PanelRenderer {
       }
     });
   }
+  openInteraction3dCameraPreview(camera, onClose, interaction3dOptions = {}) {
+    this.showCameraPreview({
+      id: "camera:" + camera.id,
+      type: "camera",
+      properties: {
+        label: camera.label
+      },
+      bindings: {
+        entity: {
+          entityId: camera.entityId
+        }
+      }
+    }, {
+      interaction3d: interaction3dOptions
+    });
+    const detailsDialog = this.detailsDialog;
+    detailsDialog?.addEventListener("close", onClose, {
+      once: true
+    });
+    return {
+      updateLayout: () => detailsDialog?.resizeInteraction3d?.(),
+      close: () => {
+        detailsDialog?.removeEventListener("close", onClose);
+        detailsDialog?.close();
+      },
+      contains: target => detailsDialog?.contains(target)
+    };
+  }
   showCameraPreview(component, {
-    preview = false
+    preview = false,
+    interaction3d = null
   } = {}) {
     const entityId = component.bindings?.entity?.entityId;
     if (!entityId) {
@@ -4244,7 +4330,7 @@ export class PanelRenderer {
     element.textContent = componentDialogTitle(component, "摄像头实时预览");
     const element2 = document.createElement("span");
     element2.className = "hb-camera-preview-status";
-    element2.textContent = "正在连接";
+    element2.textContent = interaction3d ? "正在加载画面" : "正在连接";
     element2.classList.add("is-connecting");
     cameraPreviewStatusEl.append(element, element2);
     const element3 = document.createElement("button");
@@ -4309,7 +4395,7 @@ export class PanelRenderer {
         once: true
       });
     };
-    if (!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+    if (!interaction3d && !window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
       state = window.setTimeout(filtered, 620);
     }
     const container = document.createElement("div");
@@ -4322,7 +4408,7 @@ export class PanelRenderer {
     cameraPreviewScanLineEl.className = "hb-camera-preview-scan-line";
     cameraPreviewScanLineEl.setAttribute("aria-hidden", "true");
     container.append(cameraPreviewRevealVeilEl, cameraPreviewScanLineEl);
-    const state3 = false;
+    const state3 = !!interaction3d;
     const state4 = component.properties?.mediaVisible !== false;
     container.classList.toggle("is-16-9", !state3);
     container.classList.toggle("media-hidden", !state4);
@@ -4349,8 +4435,13 @@ export class PanelRenderer {
       container.classList.remove("is-connecting", "is-revealing");
       container.classList.add("is-unavailable");
     };
-    let state7 = state3 ? 4 / 3 : 16 / 9;
+    let state7 = interaction3d ? cameraPreviewRatio(entityId) : 16 / 9;
     const applyElementStyle = () => {
+      if (interaction3d) {
+        container.style.aspectRatio = String(state7);
+        detailsDialog.resizeInteraction3d?.();
+        return;
+      }
       const count = Math.max(280, this.container.clientWidth - 32);
       const count2 = Math.max(180, Math.min(625, this.container.clientHeight - 88));
       const size = Math.min(760, count, count2 * state7);
@@ -4367,23 +4458,26 @@ export class PanelRenderer {
         container,
         entityId,
         label: element.textContent,
-        objectFit: "fill",
+        objectFit: interaction3d ? "contain" : "fill",
         placeholder,
         onReady,
         onUnavailable,
         cleanup: cleanup => state5.push(cleanup)
       });
-      const runHelper1 = (arg, second) => {
-        if (!!state3 && !!arg && !!second) {
-          state7 = arg / second;
+      const runHelper1 = (width, height) => {
+        if (state3 && Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+          state7 = width / height;
+          cameraPreviewRatio(entityId, state7);
           applyElementStyle();
         }
       };
       const state9 = () => runHelper1(state8.video.videoWidth, state8.video.videoHeight);
       const state10 = () => runHelper1(state8.image.naturalWidth, state8.image.naturalHeight);
       state8.video.addEventListener("loadedmetadata", state9);
+      state8.video.addEventListener("resize", state9);
       state8.image.addEventListener("load", state10);
       state5.push(() => state8.video.removeEventListener("loadedmetadata", state9));
+      state5.push(() => state8.video.removeEventListener("resize", state9));
       state5.push(() => state8.image.removeEventListener("load", state10));
     } else if (preview) {
       element2.textContent = "预览模式";
@@ -4405,7 +4499,7 @@ export class PanelRenderer {
     window.addEventListener("resize", applyElementStyle);
     state5.push(() => window.removeEventListener("resize", applyElementStyle));
     applyElementStyle();
-    cameraPreviewCardEl.append(cameraPreviewHeadingEl, element4, container);
+    cameraPreviewCardEl.append(cameraPreviewHeadingEl, ...(interaction3d ? [] : [element4]), container);
     detailsDialog.append(cameraPreviewCardEl);
     const rendererRuntimeDialogLayerEl = document.createElement("div");
     rendererRuntimeDialogLayerEl.className = "hb-renderer-runtime-dialog-layer" + (this.options.editable ? "" : " hb-runtime-no-select");
@@ -4413,7 +4507,39 @@ export class PanelRenderer {
     rendererRuntimeDialogLayerEl.append(detailsDialog);
     this.container.append(rendererRuntimeDialogLayerEl);
     this.detailsDialog = detailsDialog;
-    this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, detailsDialog, 760, 680);
+    if (interaction3d) {
+      rendererRuntimeDialogLayerEl.classList.add("i3d-vacuum-dialog-layer");
+      detailsDialog.classList.add("i3d-vacuum-details", "i3d-camera-details");
+      const root = interaction3d.root || this.container;
+      root.append(rendererRuntimeDialogLayerEl);
+      detailsDialog.style.setProperty("--i3d-panel-opacity", String(Math.max(0, Math.min(100, Number.isFinite(interaction3d.popupOpacity) ? interaction3d.popupOpacity : 74)) / 100));
+      const resizeInteraction3d = () => {
+        const presentationLayout = interaction3d.getPresentationLayout?.();
+        const layoutWidth = presentationLayout?.width > 0 ? presentationLayout.width : root.clientWidth;
+        const layoutHeight = presentationLayout?.height > 0 ? presentationLayout.height : root.clientHeight;
+        const scaleX = root.clientWidth / Math.max(1, layoutWidth);
+        const scaleY = root.clientHeight / Math.max(1, layoutHeight);
+        const {
+          panelWidth,
+          mediaHeight,
+          top
+        } = cameraPopupLayout(layoutWidth, layoutHeight, state7, cameraPreviewHeadingEl.offsetHeight || 58);
+        const scaledTop = top * scaleY;
+        detailsDialog.style.width = panelWidth + "px";
+        container.style.height = mediaHeight + "px";
+        detailsDialog.style.top = scaledTop + "px";
+        detailsDialog.style.right = 16 * scaleX + "px";
+        detailsDialog.style.transform = "scale(" + 2 * scaleX + "," + 2 * scaleY + ")";
+        detailsDialog.style.maxHeight = Math.max(100, (root.clientHeight - scaledTop - 12 * scaleY) / Math.max(0.001, 2 * scaleY)) + "px";
+      };
+      detailsDialog.resizeInteraction3d = resizeInteraction3d;
+      const resizeObserver = new ResizeObserver(resizeInteraction3d);
+      resizeObserver.observe(root);
+      state5.push(() => resizeObserver.disconnect());
+      resizeInteraction3d();
+    } else {
+      this.registerRuntimeDialogScale(rendererRuntimeDialogLayerEl, detailsDialog, 760, 680);
+    }
     element3.addEventListener("click", () => detailsDialog.close());
     this.bindRuntimeDialogOutsideDismiss(rendererRuntimeDialogLayerEl, detailsDialog, cameraPreviewCardEl);
     rendererRuntimeDialogLayerEl.addEventListener("keydown", arg => {
