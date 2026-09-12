@@ -24,7 +24,7 @@ export async function openInteraction3dRangeEditor({
   };
   const stylesheetLink = createEl("link");
   stylesheetLink.rel = "stylesheet";
-  stylesheetLink.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15";
+  stylesheetLink.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15-20260912-compact-list-note-v1";
   document.head.append(stylesheetLink);
   const dialog = createEl("dialog", "i3d-editor i3d-range-dialog");
   dialog.setAttribute("aria-label", "照射范围");

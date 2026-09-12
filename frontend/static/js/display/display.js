@@ -1,4 +1,4 @@
-import { PanelRenderer } from "../../renderer/renderer.js?v=20260909-curtain-action-v15-20260911-navigation-light-v14-20260911-security-camera-popup-v6-quiet-feedback-v1-stage-retain-v1-focus-layout-anim-v1-20260912-align-v1";
+import { PanelRenderer } from "../../renderer/renderer.js?v=20260909-curtain-action-v15-20260911-navigation-light-v14-20260911-security-camera-popup-v6-quiet-feedback-v1-stage-retain-v1-focus-layout-anim-v1-20260912-align-v1-camera-fallback-v1";
 import { ensureUiPackRuntime } from "../ui-packs/loader.js?v=20260811-water-heater-popup-v44-20260824-light-statistics-v4-20260828-count-statistics-v1-20260824-load-optimization-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260908-environment-v1-20260908-lighting-mode-v1";
 import { createButtonSound } from "../shared/sound-effects.js?v=20260826-button-sound-v2";
 const displayRoot = document.querySelector("#display-root");
@@ -233,6 +233,7 @@ async function refreshDisplay() {
       if (!draft) {
         return;
       }
+      window.HABridgeDisplayBoot?.setDocument(draft.document);
       buttonSound.setEnabled(draft.document?.soundEnabled !== false);
       await ensureDocumentUiPack(draft.document);
       let nextAssetVersion = assetVersion;
@@ -268,6 +269,7 @@ async function refreshDisplay() {
       }
       const pagePath = renderer.page?.path || null;
       renderer.setDocument(draft.document, pagePath);
+      window.HABridgeDisplayBoot?.ready(displayRoot);
       documentRevision = draft.revision;
       globalPopupRevision = draft.globalPopupRevision;
     })().finally(() => {
@@ -286,7 +288,7 @@ async function bootDisplay() {
   }
 }
 function refreshIfVisible() {
-  if (document.visibilityState === "visible") {
+  if (document.visibilityState === "visible" && !window.HABridgeDisplayBoot?.failed) {
     refreshDisplay().catch(handleDisplayError);
   }
 }
@@ -300,6 +302,7 @@ function handleDisplayError(code) {
   window.HABridgeLog?.error(code, {
     phase: "display-refresh"
   });
+  window.HABridgeDisplayBoot?.fail(code);
   if (code?.code !== "UI_PACK_RESTRICTED") {
     return;
   }

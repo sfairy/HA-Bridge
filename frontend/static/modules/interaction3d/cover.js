@@ -15,7 +15,7 @@ export function createInteraction3dCover({
   const c = document.createElement("span");
   c.className = "interaction3d-cover";
   const e = document.createElement("img");
-  e.src = "/bridge-static/component-thumbnails/interaction3d.png?v=20260905-interaction3d-cover-v2-20260908-curtains-v1";
+  e.src = "/bridge-static/component-thumbnails/interaction3d.jpg?v=20260912-navy-jpg-v7";
   e.alt = "";
   e.decoding = "async";
   const t = document.createElement("span");

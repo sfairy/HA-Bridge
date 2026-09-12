@@ -1,5 +1,5 @@
 import { cameraPopupLayout, cameraPreviewRatio } from "../modules/interaction3d/camera-popup-layout.js?v=20260911-security-camera-popup-v6";
-import { coverComponentIsDream, doorWindowPerspectiveCorners, doorWindowPerspectiveMatrix, formatLineChartValue, formatPresenceDuration, iconButtonEffectLightVisualAwaiting, iconButtonEffectLightVisualState, mountCameraMedia, prewarmCameraMedia, presenceHistoryBuckets, presenceMotionEventConfig, presenceSensorPresentation, presenceStateTimestamp, renderAirConditionerAirflowLayer, renderIconButtonEffectLayer, renderLineChartDetails, renderRegisteredComponent, setBuiltinAssetVersions, staticAssetImageSource, vacuumMapImageSource } from "./registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-vacuum-map-background-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-v2-20260901-renderer-date-time-runtime-v1-20260901-camera-prewarm-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-light-effect-layering-v2-20260901-light-effect-color-cache-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260905-client-log-v1-20260906-i3d-complete-v6-20260827-runtime-hydration-retry-v1-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1-focus-layout-anim-v1";
+import { coverComponentIsDream, doorWindowPerspectiveCorners, doorWindowPerspectiveMatrix, formatLineChartValue, formatPresenceDuration, iconButtonEffectLightVisualAwaiting, iconButtonEffectLightVisualState, mountCameraMedia, prewarmCameraMedia, presenceHistoryBuckets, presenceMotionEventConfig, presenceSensorPresentation, presenceStateTimestamp, renderAirConditionerAirflowLayer, renderIconButtonEffectLayer, renderLineChartDetails, renderRegisteredComponent, setBuiltinAssetVersions, staticAssetImageSource, vacuumMapImageSource } from "./registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-vacuum-map-background-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-v2-20260901-renderer-date-time-runtime-v1-20260901-camera-prewarm-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-light-effect-layering-v2-20260901-light-effect-color-cache-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260905-client-log-v1-20260906-i3d-complete-v6-20260827-runtime-hydration-retry-v1-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1-focus-layout-anim-v1-camera-fallback-v1";
 import { randomUuid } from "../utils/random-id.js?v=20260724-revert-hold-popup-shield-v324";
 import { popupLayoutMetrics } from "../js/editor/popup-layout.js?v=20260821-electric-bed-combo-v2";
 import { bathHeaterModeUsesAirflow, climateControlStructureKey, climateDeviceLabel, climateEffectMode, climateIsPoweredOn, climateIsRunning, climateModeIcon, climateModeLabel, climateOperationModeValues, climateOptionPresentation, climatePowerCommand, climatePresentationMode, climateSwingModeLabel, normalizeClimateCapabilities, reconcileClimateTargetTemperature, resolveClimateDeviceType, waterHeaterStatusLabel } from "./climate.js?v=20260812-presence-phase-v79-20260904-climate-capability-options-v6";
@@ -13,7 +13,7 @@ import { componentHostZIndex, effectCropRectangle, effectCroppedLayerGeometry, e
 import { LIGHT_DETAIL_PRESET_DEFINITIONS, LIGHT_PRESET_MAXIMUM_HOLD_MS, LIGHT_PRESET_MINIMUM_HOLD_MS, LIGHT_PRESET_STABLE_CONFIRMATION_MS, UNSUPPORTED_LIGHT_VISUAL_BRIGHTNESS_PERCENT, UNSUPPORTED_LIGHT_VISUAL_TEMPERATURE_KELVIN, hsToRgbColor, lightColorPickerHsFromPoint, lightColorPickerPointFromHs, lightColorServiceData, lightPresetBrightnessServiceData, lightPresetPendingDecision, lightRealtimeCapabilities, lightSupportsColor, lightVisualValueForCapability, relativeLightColorTemperature, rgbToHsColor } from "./light-runtime.js?v=20260901-renderer-light-runtime-v1";
 import { entityMetadataIsAvailable } from "./entity-metadata.js?v=20260901-renderer-entity-metadata-v1";
 import { relatedVacuumBatteryEntity, vacuumActionService, vacuumBatteryPercent, vacuumSupportedActions } from "./vacuum-runtime.js?v=20260901-renderer-vacuum-runtime-v1";
-import { airerDevicePosition, airerPositionCalibration, airerPresentationPosition, airerPresentationPositionForState, airerReportedPosition, airerVisualDrop, coverComponentIsAirer, coverMotorIsReversedForComponent, coverPendingDisplayPosition, coverPositionReachedTarget, coverPresentationState, coverToggleServiceForComponent, dreamCurtainBladeLabel, dreamCurtainIsRetracted, dreamCurtainStatusFromRetraction, dreamCurtainStatusText, dreamCurtainToggleService, learnAirerPositionCalibration, physicalCoverState, relatedAirerCurrentPositionSensor, relatedAirerLightEntity, relatedAirerMotorActionEntities, relatedAirerMotorSpeedSensor, relatedAirerPositionNumberEntity, relatedCoverMotorReverseEntity, relatedDeviceDomainEntity, relatedDeviceEntity, relatedWaterHeaterEntities, runtimeCoverStateIsActive, runtimeEntityStateIsActive, waterHeaterRelatedEntityLabel } from "./cover-runtime.js?v=20260901-renderer-cover-runtime-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1";
+import { airerDevicePosition, airerPositionCalibration, airerPresentationPosition, airerPresentationPositionForState, airerReportedPosition, airerVisualDrop, coverComponentIsAirer, coverMotorIsReversedForComponent, coverPendingDisplayPosition, coverPositionReachedTarget, coverPresentationState, coverToggleServiceForComponent, dreamCurtainBladeLabel, dreamCurtainIsRetracted, dreamCurtainStatusFromRetraction, dreamCurtainStatusText, dreamCurtainToggleService, learnAirerPositionCalibration, physicalCoverState, relatedAirerCurrentPositionSensor, relatedAirerLightEntity, relatedAirerMotorActionEntities, relatedAirerMotorSpeedSensor, relatedAirerPositionNumberEntity, relatedCoverMotorReverseEntity, relatedDeviceDomainEntity, relatedDeviceEntity, relatedWaterHeaterEntities, runtimeCoverStateIsActive, runtimeEntityStateIsActive, waterHeaterRelatedEntityLabel } from "./cover-runtime.js?v=20260901-renderer-cover-runtime-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-camera-fallback-v1";
 import { playFixedDeviceDropEntrance, playMediaSpeakerEntrance, playStableRuntimeDialogEntrance, runtimeDialogUsesStableMotion } from "./runtime-dialog-motion.js?v=20260901-renderer-dialog-motion-v1";
 import { HISTORY_FETCH_TIMEOUT_MS, HistoryRefreshCoordinator, RuntimeEffectImageLoader, RuntimeStaticImageCache, RuntimeVacuumMapImagePreloader, cacheHistorySeries, historyRequestStillRelevant, historySeriesCacheKey } from "./runtime-caches.js?v=20260901-renderer-runtime-caches-v1";
 import { collectComponents, collectEntityIds, lineChartRuntimeStateNeedsHydration, syncedLineChartProperties } from "./runtime-document.js?v=20260901-renderer-runtime-document-v1";
@@ -336,20 +336,26 @@ export class PanelRenderer {
     };
     this.boundVisibilityChange = () => {
       if (document.visibilityState === "visible") {
-        const lastRuntimeResumeAt = Date.now();
-        if (this.document && lastRuntimeResumeAt - this.lastRuntimeResumeAt >= 1500) {
-          this.lastRuntimeResumeAt = lastRuntimeResumeAt;
-          this.connectRuntime({
-            force: true
-          });
-        }
-        this.refreshHistorySeries();
+        this.resumeRuntime();
+      }
+    };
+    this.boundPageHide = () => {
+      // 页面进入 BFCache（往返缓存）时，浏览器会强制关闭仍打开的 WebSocket，
+      // 并在控制台输出“Page entered Back-Forward Cache”。提前主动断开可让连接
+      // 干净收尾，避免恢复时继续复用已失效的 socket。
+      this.disconnectRuntime();
+    };
+    this.boundPageShow = event => {
+      if (event?.persisted && document.visibilityState === "visible") {
+        this.resumeRuntime();
       }
     };
     this.historyPollTimer = window.setInterval(() => this.refreshHistorySeries(), 30000);
     window.visualViewport?.addEventListener("resize", this.boundResize);
     window.addEventListener("orientationchange", this.boundResize);
     window.addEventListener("online", this.boundReconnect);
+    window.addEventListener("pagehide", this.boundPageHide);
+    window.addEventListener("pageshow", this.boundPageShow);
     document.addEventListener("visibilitychange", this.boundVisibilityChange);
   }
   setDocument(documentModel, pagePath = null) {
@@ -4270,12 +4276,12 @@ export class PanelRenderer {
       }
     }
   }
-  bindRuntimeDialogOutsideDismiss(dialog, popupApi, event) {
+  bindRuntimeDialogOutsideDismiss(dialog, popupApi, card) {
     const state = performance.now() + 320;
-    dialog.addEventListener("click", event => {
-      if (!event.contains(event.target)) {
-        event.preventDefault();
-        event.stopPropagation();
+    dialog.addEventListener("click", clickEvent => {
+      if (!card.contains(clickEvent.target)) {
+        clickEvent.preventDefault();
+        clickEvent.stopPropagation();
         if (!(performance.now() < state)) {
           popupApi.close();
         }
@@ -12223,6 +12229,24 @@ export class PanelRenderer {
     this.updateMultiSelectionHandleScale(this.canvas.querySelector(":scope > .hb-multi-selection-bounds"));
     this.updateRuntimeDialogScale();
   }
+  resumeRuntime() {
+    if (this.destroyed || !this.document) {
+      return;
+    }
+    const lastRuntimeResumeAt = Date.now();
+    const socketLive = !!this.socket && this.socket.readyState < WebSocket.CLOSING;
+    // 仅在当前 socket 仍存活时做节流，避免标签页切换/唤醒时重复重连风暴；
+    // 若 socket 已被关闭（例如刚从 BFCache 恢复），则必须立即重建。
+    if (socketLive && lastRuntimeResumeAt - this.lastRuntimeResumeAt < 1500) {
+      this.refreshHistorySeries();
+      return;
+    }
+    this.lastRuntimeResumeAt = lastRuntimeResumeAt;
+    this.connectRuntime({
+      force: true
+    });
+    this.refreshHistorySeries();
+  }
   disconnectRuntime() {
     this.socketGeneration += 1;
     window.clearTimeout(this.reconnectTimer);
@@ -12810,6 +12834,8 @@ export class PanelRenderer {
     window.visualViewport?.removeEventListener("resize", this.boundResize);
     window.removeEventListener("orientationchange", this.boundResize);
     window.removeEventListener("online", this.boundReconnect);
+    window.removeEventListener("pagehide", this.boundPageHide);
+    window.removeEventListener("pageshow", this.boundPageShow);
     document.removeEventListener("visibilitychange", this.boundVisibilityChange);
     this.container.removeEventListener("click", this.boundRuntimeButtonSound, true);
     this.container.replaceChildren();

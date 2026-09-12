@@ -36,7 +36,7 @@ export async function openSecurityEditor({
   };
   const stylesheetLink = createEl("link");
   stylesheetLink['rel'] = 'stylesheet';
-  stylesheetLink['href'] = '/api/v1/modules/interaction3d/runtime.css?v=20260911-security-layout-v2';
+  stylesheetLink['href'] = '/api/v1/modules/interaction3d/runtime.css?v=20260911-security-layout-v2-20260912-compact-list-note-v1';
   const dialog = createEl('dialog', 'i3d-editor');
   dialog['setAttribute']('aria-label', '3D 安防配置');
   dialog['dataset']['i3dPreviewScope'] = 'security';

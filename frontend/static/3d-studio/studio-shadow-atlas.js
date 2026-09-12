@@ -156,6 +156,78 @@ function disposeLightShadowMaps(light) {
     light.shadow.mapPass = null;
   }
 }
+function isObjectWithin(object, ancestor) {
+  let cursor = object;
+  while (cursor) {
+    if (cursor === ancestor) {
+      return true;
+    }
+    cursor = cursor.parent;
+  }
+  return false;
+}
+// The atlas bakes by rendering the shared scene graph once per light. Three.js
+// only collects a light for the shadow pass when it is reachable from the render
+// root, visible through every ancestor and matched by the render camera layers.
+// Lights authored on a hidden floor group or on a dedicated layer (region
+// lighting moves user spots to layer 30) would otherwise be skipped by the pass
+// and leave light.shadow.map null. Force those three conditions for the bake and
+// restore them immediately afterwards so nothing leaks into the live frame.
+function isolateLightForBake(light, scene, camera) {
+  const restores = [];
+  const cameraMask = Number(camera?.layers?.mask);
+  const lightMask = Number(light?.layers?.mask);
+  // Three.js only requires the two masks to share one bit (Layers.test uses
+  // `!== 0`), so widen only when there is no overlap at all.
+  if (Number.isFinite(cameraMask) && Number.isFinite(lightMask) && (lightMask & cameraMask) === 0) {
+    const appliedMask = lightMask | cameraMask;
+    restores.push(() => {
+      // Only undo our own widening; another system may have re-scoped the light
+      // while the bake render was running.
+      if (light.layers.mask === appliedMask) {
+        light.layers.mask = lightMask;
+      }
+    });
+    light.layers.mask = appliedMask;
+  }
+  let node = light?.parent;
+  while (node && node !== scene) {
+    if (node.visible === false) {
+      const hiddenAncestor = node;
+      restores.push(() => {
+        hiddenAncestor.visible = false;
+      });
+      hiddenAncestor.visible = true;
+    }
+    node = node.parent;
+  }
+  return () => {
+    for (let index = restores.length - 1; index >= 0; index -= 1) {
+      restores[index]();
+    }
+  };
+}
+function describeUnbakeableLight(light, scene, camera) {
+  let hiddenAncestor = null;
+  let node = light?.parent;
+  while (node && node !== scene) {
+    if (node.visible === false) {
+      hiddenAncestor = node.name || node.uuid || "group";
+      break;
+    }
+    node = node.parent;
+  }
+  return {
+    inScene: isObjectWithin(light, scene),
+    visible: light?.visible !== false,
+    hiddenAncestor,
+    layers: light?.layers?.mask,
+    cameraLayers: camera?.layers?.mask,
+    castShadow: light?.castShadow,
+    hasMap: !!light?.shadow?.map,
+    mapSize: light?.shadow?.mapSize ? [light.shadow.mapSize.x, light.shadow.mapSize.y] : null
+  };
+}
 export function createSpotShadowAtlasController({
   THREE,
   renderer,
@@ -198,6 +270,7 @@ export function createSpotShadowAtlasController({
   let rebuildPending = false;
   let disposed = false;
   let atlasEnabled = true;
+  const warnedUnbakeableLights = new Set();
   let previousOrderedLights = null;
   let previousOrderedEntries = [];
   let orderedLightsScratch = [];
@@ -381,6 +454,7 @@ export function createSpotShadowAtlasController({
       throw new Error("当前设备最大阴影图集 " + maxTextureSize + "px 无法容纳 " + lights.length + " 盏灯。");
     }
     let texture = null;
+    let skippedLightCount = 0;
     const nextEntries = new Map();
     const previousTarget = renderer.getRenderTarget();
     const previousCubeFace = renderer.getActiveCubeFace?.() ?? 0;
@@ -443,6 +517,7 @@ export function createSpotShadowAtlasController({
         light.shadow.needsUpdate = true;
         light.target?.updateWorldMatrix?.(true, false);
         light.updateWorldMatrix?.(true, false);
+        const restoreBakeContext = isolateLightForBake(light, scene, camera);
         // Floor transitions temporarily force shadowMap.autoUpdate/needsUpdate both
         // false, which makes Three.js skip the entire shadow pass. Force a bake via
         // renderer.render so currentRenderState.lights exists (required by r182
@@ -456,6 +531,7 @@ export function createSpotShadowAtlasController({
           renderer.setRenderTarget(scratchTarget);
           renderer.render(scene, camera);
         } finally {
+          restoreBakeContext();
           // Revert only when still at bake values so a concurrent floor-motion
           // toggle is not overwritten with a stale pre-bake snapshot.
           if (renderer.shadowMap.enabled === true) {
@@ -467,7 +543,26 @@ export function createSpotShadowAtlasController({
         }
         const shadowTexture = light.shadow?.map?.texture;
         if (!shadowTexture) {
-          throw new Error("灯光 " + lightIdentityKey(light) + " 未生成阴影贴图。");
+          // A single un-bakeable light (detached from the render root, or authored
+          // on a floor/camera layer the bake camera cannot see) must not discard
+          // the whole atlas and force the no-shadow fallback. Skip it, keep the
+          // remaining lights shadowed, and report the cause once.
+          const unbakeableKey = lightIdentityKey(light);
+          skippedLightCount += 1;
+          if (!warnedUnbakeableLights.has(unbakeableKey)) {
+            warnedUnbakeableLights.add(unbakeableKey);
+            console.warn("[3D] 灯光 " + unbakeableKey + " 无法生成阴影贴图，已跳过该灯光的图集写入。", describeUnbakeableLight(light, scene, camera));
+          }
+          light.castShadow = false;
+          light.visible = false;
+          disposeLightShadowMaps(light);
+          restoreLightSnapshots();
+          await yieldFrame();
+          if (generation !== buildGeneration) {
+            return;
+          }
+          hideCandidateLights();
+          continue;
         }
         renderer.copyTextureToTexture(shadowTexture, texture.texture, new THREE.Box2(new THREE.Vector2(0, 0), new THREE.Vector2(tile.size, tile.size)), new THREE.Vector2(tile.x, tile.y));
         const edgeInset = 0.5;
@@ -499,6 +594,12 @@ export function createSpotShadowAtlasController({
       if (generation !== buildGeneration) {
         return;
       }
+      if (!nextEntries.size) {
+        // Nothing at all could be baked (the whole light set is detached from the
+        // render root, or every light was skipped). Reuse the retry/fallback path
+        // so per-light shadows take over instead of silently losing all shadows.
+        throw new Error("候选灯光（" + lights.length + " 盏）均无法生成阴影贴图，回退到逐灯阴影。");
+      }
       atlasTarget?.dispose?.();
       atlasTarget = texture;
       atlasEntries.clear();
@@ -511,6 +612,11 @@ export function createSpotShadowAtlasController({
       dom.dataset.spotShadowMode = "atlas";
       dom.dataset.spotShadowAtlasSize = String(packedAtlas.size);
       dom.dataset.spotShadowAtlasLights = String(atlasEntries.size);
+      dom.dataset.spotShadowAtlasSkipped = String(skippedLightCount);
+      if (!skippedLightCount) {
+        // Everything baked, so a future skip is a new problem worth reporting.
+        warnedUnbakeableLights.clear();
+      }
     } finally {
       renderer.setRenderTarget(previousTarget, previousCubeFace, previousMip);
       restoreLightSnapshots();

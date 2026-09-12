@@ -6,11 +6,11 @@
     },
     "backend": {
       "files": 50,
-      "sha256": "69608f1c4d0d5190ddb0b028220d386268f3480514a3c6d448919ffae9bf1470"
+      "sha256": "624fd92d441eb021b77f7af132d77fdaaaf72addad5fb5bdc37ce42a1de8f44e"
     },
     "frontend": {
-      "files": 7838,
-      "sha256": "91f6557891c99a97a7e93a9bd4840241ecc127de6187cfd515913ba1a46680f4"
+      "files": 7852,
+      "sha256": "34526273ad4d3aa90e5d5adb4c8896f4cc13a2bad3ce962b9008d684832fe047"
     },
     "image": {
       "files": 61,
@@ -27,7 +27,7 @@
   },
   "customerFingerprintSha256": "1c332cd11682bcc51255b498d1ec0b977d475db58cc7409b8f390c2fcf3500a5",
   "files": {
-    "VERSION": "d1f62539db82b51da84bda2f4885db5e847db8389183be41389efd0ae6edab94",
+    "VERSION": "26e0ab83aa1ff6bd0ae3882787a92663aa19db128e1241ffc99375fb9ca0c121",
     "alembic.ini": "2eb6b83f889d9449a1345d691697bc9f1e76eb7c331277544c671de455417696",
     "sbom.cdx.json": "21fc1899b4f31cb1ed1acd529c2b9c7d2da9cb7079093deced210e4a34035147"
   },
@@ -35,5 +35,5 @@
   "releaseBatch": "2026-09-a",
   "releaseId": "8b3528fb02ef4fb48b30643ae9e57797",
   "schemaVersion": 1,
-  "version": "0.5.1"
+  "version": "0.5.2"
 }

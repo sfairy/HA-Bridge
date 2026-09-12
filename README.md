@@ -1,6 +1,6 @@
 # HA Bridge
 
-面向 [Home Assistant](https://www.home-assistant.io/) 的本机仪表盘与中控平台，当前版本 **0.5.1**。
+面向 [Home Assistant](https://www.home-assistant.io/) 的本机仪表盘与中控平台，当前版本 **0.5.2**。
 
 提供可视化编辑器、3D 户型工作室、全屏展示页和中控配对。后端是 FastAPI，前端是原生 HTML / CSS / JavaScript，数据默认落在本机 SQLite。
 
@@ -202,6 +202,29 @@ docker exec ha-bridge rm /tmp/app.tar.gz
 - 3D 交互舞台脚本由 `/api/v1/modules/interaction3d/{filename}` 下发，需要已登录或已配对，且当前授权允许编辑器。
 
 ## 更新日志
+
+### v0.5.2
+
+新增
+
+- 展示页开屏：`display-boot.js` / `display-boot.css`，进入仪表盘前显示品牌 splash，等待首屏图片与 3D 资源就绪后淡出。
+- 支持 `?capturePreview=1` 跳过开屏；加载失败可重试或「先进入仪表盘」。
+
+修复
+
+- 3D 空间 ALL 总览下，人体传感器等对象不再响应点击聚焦，统一禁用总览中的对象点击交互。
+- 安防摄像头：补齐摄像头实体的状态订阅与聚焦判定，配置完成后状态与实际在线情况一致，不再误报离线；弹窗预览点击不再触发 `event.contains is not a function` 崩溃。
+- 安防摄像头：对不支持原生 HLS 的摄像头（如 Frigate）自动回落到 MJPEG 代理流，`/api/camera_hls` 不再返回 502，画面直达无需先失败一次。
+- 3D 工作室阴影图集：烘焙前补齐灯光 layer 与隐藏楼层组的可见性，避免合法灯光被渲染 pass 跳过；单盏灯无法生成阴影贴图时不再拖垮整张图集并回退到无阴影。
+- 自动生成控件遇到同名文件夹时，确认弹窗可正常操作，支持选择覆盖、改名或不覆盖，保留原有生成流程。
+- 3D 交互设备配置中，空列表提示不再挤压「添加设备」按钮，修复文字竖排和布局异常；补齐参考实现中紧凑列表的跨列与最小宽度样式（`.i3d-compact-list>.i3d-note`、`.i3d-compact-list>.i3d-config-list-row`）。
+- 与 0.5.2 参考实现逐模块对齐：渲染缓存模块导出名统一为 `sha256`；外部家具模型的 `bed` 声明 `geometryRevision: 20260908-base-inset-v1`，与参考一致。
+- 3D 交互组件缩略图改用 `<component-thumbnails>/interaction3d.jpg`，与组件库其余缩略图的 `.jpg` 命名保持一致。
+
+说明
+
+- 授权仍使用本机 `register` 商店（`APP_LICENSE_STORE_URL`），不接入官方授权云。
+- 本版本以 0.5.2 参考实现对齐展示页开屏，并补齐上述 3D 修复。
 
 ### v0.5.1
 

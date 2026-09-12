@@ -72,7 +72,8 @@ export const EXTERNAL_ITEM_MODELS = Object.freeze({
   }),
   bed: homeLiteModel("bed", "20260901-home-furniture-v1", {
     scaleBasis: [1.8, 0.62, 2],
-    preserveOrigin: true
+    preserveOrigin: true,
+    geometryRevision: "20260908-base-inset-v1"
   }),
   nightstand: homeLiteModel("nightstand", "20260901-home-furniture-v1", {
     scaleBasis: [0.5, 0.55, 0.42],
@@ -128,7 +129,8 @@ export const ALL_ITEM_MODELS = Object.freeze({
   ...EXTERNAL_ITEM_MODELS,
   bed: homeLiteModel("bed", "20260901-all-home-furniture-v1", {
     scaleBasis: [1.8, 0.62, 2],
-    preserveOrigin: true
+    preserveOrigin: true,
+    geometryRevision: "20260908-base-inset-v1"
   }),
   nightstand: homeLiteModel("nightstand", "20260901-all-home-furniture-v1", {
     scaleBasis: [0.5, 0.55, 0.42],

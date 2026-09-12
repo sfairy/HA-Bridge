@@ -2649,7 +2649,7 @@ export function mountStage(options) {
     const isTap = id && !id.moved && id.id === clientX.pointerId && Math.hypot(clientX.clientX - id.x, clientX.clientY - id.y) < 5;
     id = null;
     if (!!isTap && !presets && frameLoop !== "edit") {
-      if (!editing && !viewEditing && interactive && !presentedVisible) {
+      if (!editing && !viewEditing && interactive && !presentedVisible && !idleReturning() && activeFloorId !== "all") {
         const presencePick = hitRects.pick(clientX.clientX, clientX.clientY, options.camera, canvas, properties.security?.presenceSensors || []);
         if (presencePick) {
           focusBinding("presence:" + presencePick);

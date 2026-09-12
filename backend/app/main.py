@@ -464,7 +464,7 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
             else:
                 frame_ancestors = "'self'" if embedded_auto_diagram or embedded_i3d_stage else "'none'"
                 response.headers['Content-Security-Policy'] = (
-                    "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ws: wss:; worker-src 'self' blob:; frame-src 'self'; frame-ancestors "
+                    "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' blob: ws: wss:; worker-src 'self' blob:; frame-src 'self'; frame-ancestors "
                     f'{frame_ancestors}'
                     "; base-uri 'none'; form-action 'self'"
                 )
@@ -482,7 +482,12 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
             or path.startswith('/bridge-static/modules/')
             or path.startswith('/bridge-static/renderer/')
             or path.startswith('/bridge-static/js/editor/')
-            or path in frozenset({'/bridge-static/js/display/display.js', '/bridge-static/css/display/display.css'})
+            or path in frozenset({
+                '/bridge-static/js/display/display.js',
+                '/bridge-static/css/display/display.css',
+                '/bridge-static/js/display/display-boot.js',
+                '/bridge-static/css/display/display-boot.css',
+            })
         ):
             response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
             response.headers['Pragma'] = 'no-cache'

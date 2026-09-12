@@ -66,7 +66,7 @@ export async function openInteraction3dEditor({
   applyKindFlags();
   const rel = document.createElement("link");
   rel.rel = "stylesheet";
-  rel.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15-20260911-unified-settings-v1";
+  rel.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15-20260911-unified-settings-v1-20260912-compact-list-note-v1";
   document.head.append(rel);
   const createEl = (tagName, elClassName, element) => {
     const className = document.createElement(tagName);
@@ -2111,7 +2111,7 @@ export async function openInteraction3dAppearanceEditor({
   }
   const rel = document.createElement("link");
   rel.rel = "stylesheet";
-  rel.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15";
+  rel.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15-20260912-compact-list-note-v1";
   document.head.append(rel);
   const createEl = (appearanceTag, element = "") => {
     const appearanceNode = document.createElement(appearanceTag);

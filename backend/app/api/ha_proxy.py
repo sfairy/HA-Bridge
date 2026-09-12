@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import Mapping
 from dataclasses import dataclass
 from time import monotonic
+from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request, status
@@ -274,6 +275,38 @@ async def proxy_http(request: Request) -> Response:
     return Response(content=content, status_code=upstream.status_code, headers=response_headers)
 
 
+CAMERA_STREAM_UNSUPPORTED_MARKERS = (
+    'does not support play stream service',
+    'does not support stream',
+)
+
+
+def _camera_stream_unsupported(error: Exception) -> bool:
+    '''Detect Home Assistant cameras that cannot serve a native HLS stream.'''
+    message = str(error).casefold()
+    return any(marker in message for marker in CAMERA_STREAM_UNSUPPORTED_MARKERS)
+
+
+def _camera_mjpeg_fallback(entity_id: str) -> JSONResponse:
+    '''Fall back to the HA MJPEG proxy for cameras without HLS support.'''
+    return JSONResponse({
+        'url': f'/api/camera_proxy_stream/{quote(entity_id, safe="")}',
+        'format': 'mjpeg',
+    })
+
+
+async def _camera_stream_fallback(websocket, client, entity_id: str) -> JSONResponse | None:
+    '''Return an MJPEG source when the camera advertises no HLS stream type.'''
+    try:
+        capabilities = await client.command(websocket, 2, 'camera/capabilities', entity_id=entity_id)
+    except HAClientError:
+        return None
+    stream_types = capabilities.get('frontend_stream_types') if isinstance(capabilities, dict) else None
+    if isinstance(stream_types, list) and 'hls' not in stream_types:
+        return _camera_mjpeg_fallback(entity_id)
+    return None
+
+
 @router.get('/api/camera_hls/{entity_id}')
 async def camera_hls_stream(
     entity_id: str,
@@ -292,9 +325,12 @@ async def camera_hls_stream(
         client = request.app.state.ha_connector.client_for(connection)
         websocket = await client.connect_websocket()
         try:
+            fallback = await _camera_stream_fallback(websocket, client, entity_id)
+            if fallback is not None:
+                return fallback
             result = await client.command(
                 websocket,
-                1,
+                3,
                 'camera/stream',
                 entity_id=entity_id,
                 format='hls',
@@ -302,6 +338,8 @@ async def camera_hls_stream(
         finally:
             await websocket.close()
     except (HAClientError, CredentialCipherError) as error:
+        if _camera_stream_unsupported(error):
+            return _camera_mjpeg_fallback(entity_id)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f'无法启动摄像头实时流：{error}',
@@ -318,7 +356,7 @@ async def camera_hls_stream(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail='Home Assistant 返回了无效的摄像头流地址。',
         )
-    return JSONResponse({'url': stream_url})
+    return JSONResponse({'url': stream_url, 'format': 'hls'})
 
 
 @router.api_route('/api/camera_proxy/{path:path}', methods=['GET', 'HEAD'])

@@ -175,13 +175,13 @@ export function renderInteraction3d(component, context = {}) {
     loading = true;
     const generation = ++loadGeneration;
     try {
-      const runtime = await import("/api/v1/modules/interaction3d/runtime.js?v=20260911-stage-retain-v1-security-camera-popup-v6");
+      const runtime = await import("/api/v1/modules/interaction3d/runtime.js?v=20260912-security-camera-state-subscribe-v7");
       if (disposed || generation !== loadGeneration || document.hidden) {
         return;
       }
       stylesheetLink = document.createElement("link");
       stylesheetLink.rel = "stylesheet";
-      stylesheetLink.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15";
+      stylesheetLink.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15-20260912-compact-list-note-v1";
       host.append(stylesheetLink);
       const mountRoot = document.createElement("div");
       host.replaceChildren(stylesheetLink, mountRoot);

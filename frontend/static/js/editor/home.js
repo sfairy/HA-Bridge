@@ -1,5 +1,5 @@
-import { PanelRenderer, airflowCanvasOffsetBounds, setBuiltinAssetVersions, syncedLineChartProperties } from "../../renderer/renderer.js?v=20260909-curtain-action-v15-20260911-navigation-light-v14-20260911-security-camera-popup-v6-quiet-feedback-v1-stage-retain-v1-focus-layout-anim-v1-20260912-align-v1";
-import { lightStatisticsEntityStateStatus, lightStatisticsEntitySupport } from "../../renderer/registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-vacuum-map-background-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-v2-20260901-renderer-date-time-runtime-v1-20260901-camera-prewarm-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-light-effect-layering-v2-20260901-light-effect-color-cache-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260905-client-log-v1-20260906-i3d-complete-v6-20260827-runtime-hydration-retry-v1-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1-focus-layout-anim-v1";
+import { PanelRenderer, airflowCanvasOffsetBounds, setBuiltinAssetVersions, syncedLineChartProperties } from "../../renderer/renderer.js?v=20260909-curtain-action-v15-20260911-navigation-light-v14-20260911-security-camera-popup-v6-quiet-feedback-v1-stage-retain-v1-focus-layout-anim-v1-20260912-align-v1-camera-fallback-v1";
+import { lightStatisticsEntityStateStatus, lightStatisticsEntitySupport } from "../../renderer/registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-vacuum-map-background-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-v2-20260901-renderer-date-time-runtime-v1-20260901-camera-prewarm-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-light-effect-layering-v2-20260901-light-effect-color-cache-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260905-client-log-v1-20260906-i3d-complete-v6-20260827-runtime-hydration-retry-v1-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1-focus-layout-anim-v1-camera-fallback-v1";
 import { applyUiPackToDocument, createComponentFromTemplate, dateComponentDimensions, ensureUiPackRuntime, listComponentTemplates, timeComponentDimensions, weatherComponentDimensions } from "../ui-packs/loader.js?v=20260811-water-heater-popup-v44-20260815-component-thumbnails-v2-20260822-light-feedback-controls-v1-20260824-light-statistics-v6-20260828-count-statistics-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260908-environment-v1-20260908-lighting-mode-v1";
 import { clone as cloneValue, newId, normalizedHexColor, hexToRgb, rgbToHex, rgbToHsv, hsvToRgb, roundField, clampNumber, normalizedFontWeight } from "./editor-utils.js?v=20260831-editor-utils-v1";
 import { packPopupModules, popupLayoutColumns, popupLayoutMetrics } from "./popup-layout.js?v=20260821-electric-bed-combo-v2";
@@ -2929,7 +2929,7 @@ function listAllComponentTemplates() {
     } else {
       const img = document.createElement("img");
       const flag = component.thumbnailId || component.id;
-      img.src = "/bridge-static/component-thumbnails/" + encodeURIComponent(flag) + ".jpg?v=20260902-component-thumbnails-v3";
+      img.src = "/bridge-static/component-thumbnails/" + encodeURIComponent(flag) + ".jpg?v=20260912-interaction3d-bg-v1";
       img.alt = "";
       span.append(img);
     }
@@ -10352,6 +10352,22 @@ window.addEventListener("message", value => {
     }
     floorplanAutoDiagramOpenStudio.textContent = "确定位置大小并后台生成";
     floorplanAutoDiagramStatus.textContent = ancestorEl.message || "后台生成失败，请重试。";
+    return;
+  }
+  if (ancestorEl?.type === "ha-bridge-floorplan-auto-diagram-interaction") {
+    const text = String(ancestorEl.componentId || "");
+    const contentWindow = document.querySelector(".hb-component[data-component-id=\"" + CSS.escape(text) + "\"] .hb-floorplan-auto-diagram-preview");
+    if (!contentWindow || value.source !== contentWindow.contentWindow) {
+      return;
+    }
+    const active = ancestorEl.active === true;
+    contentWindow.style.pointerEvents = active ? "auto" : "";
+    const overlay = document.querySelector(".hb-component-selection-overlay[data-selection-for=\"" + CSS.escape(text) + "\"]");
+    if (overlay) {
+      for (const element of [overlay, ...overlay.querySelectorAll("*")]) {
+        element.style.pointerEvents = active ? "none" : "";
+      }
+    }
     return;
   }
   if (!ancestorEl || ancestorEl.type !== "ha-bridge-floorplan-auto-diagram-export") {

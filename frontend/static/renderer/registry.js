@@ -1767,7 +1767,7 @@ async function fetchCameraHlsSource(component) {
   const isOpen = Date.now();
   const label = CAMERA_HLS_SOURCE_CACHE.get(accent);
   if (label && isOpen - label.createdAt < CAMERA_HLS_CACHE_TTL_MS) {
-    return label.source;
+    return label;
   }
   const root = ie.get(accent);
   if (root) {
@@ -1783,11 +1783,13 @@ async function fetchCameraHlsSource(component) {
     if (!startsWith.startsWith("/")) {
       throw new Error("Camera HLS response has no proxy URL");
     }
-    CAMERA_HLS_SOURCE_CACHE.set(accent, {
+    const entry = {
       source: startsWith,
+      format: url?.format === "mjpeg" ? "mjpeg" : "hls",
       createdAt: Date.now()
-    });
-    return startsWith;
+    };
+    CAMERA_HLS_SOURCE_CACHE.set(accent, entry);
+    return entry;
   })();
   ie.set(accent, visual);
   try {
@@ -1998,7 +2000,7 @@ export function mountCameraMedia({
       loadSnapshotFallback();
     }
   };
-  const startLegacyStream = (item = sessionId) => {
+  const startLegacyStream = (item = sessionId, source = "") => {
     if (!disposed && !suspended && item === sessionId && !legacyStarted) {
       legacyStarted = true;
       container.dataset.cameraTransport = "legacy";
@@ -2010,7 +2012,7 @@ export function mountCameraMedia({
       video.load();
       video.remove();
       container.prepend(image);
-      image.src = "/api/camera_proxy_stream/" + encodeURIComponent(entityId);
+      image.src = source || "/api/camera_proxy_stream/" + encodeURIComponent(entityId);
       snapshotFallbackTimer = window.setTimeout(() => {
         if (!image.naturalWidth) {
           startSnapshotFallback(item);
@@ -2040,8 +2042,14 @@ export function mountCameraMedia({
   container.prepend(video);
   const startHls = async item => {
     try {
-      const hlsSource = await fetchCameraHlsSource(entityId);
+      const sourceEntry = await fetchCameraHlsSource(entityId);
       if (disposed || suspended || item !== sessionId) {
+        return;
+      }
+      const hlsSource = sourceEntry.source;
+      if (sourceEntry.format === "mjpeg") {
+        container.dataset.cameraState = "mjpeg-fallback";
+        startLegacyStream(item, hlsSource);
         return;
       }
       container.dataset.cameraHlsSource = hlsSource;

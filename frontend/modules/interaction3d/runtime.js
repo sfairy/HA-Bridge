@@ -268,7 +268,7 @@ export function mountInteraction3d(host, {
     }
     intersectionObserver.setActive(streamShouldBeActive);
   }
-  const collectObservedEntities = () => [...(properties.security?.presenceSensors || []), ...(properties.devices?.vacuums || []), ...(properties.devices?.vacuums || []).flatMap(relatedEntityIds => [...(relatedEntityIds.relatedEntityIds || []).map(entityId => ({
+  const collectObservedEntities = () => [...(properties.security?.cameras || []), ...(properties.security?.presenceSensors || []), ...(properties.devices?.vacuums || []), ...(properties.devices?.vacuums || []).flatMap(relatedEntityIds => [...(relatedEntityIds.relatedEntityIds || []).map(entityId => ({
     entityId: entityId
   })), relatedEntityIds.map, ...(relatedEntityIds.shortcuts || [])].filter(Boolean)), ...(properties.lights || []), ...(properties.environment?.airConditioners || []), ...(properties.environment?.curtains || []), ...(properties.devices?.nas || []), ...(properties.devices?.televisions || []), ...(properties.devices?.televisions || []).filter(powerEntityId => powerEntityId.powerEntityId).map(powerEntityId => ({
     entityId: powerEntityId.powerEntityId
@@ -279,7 +279,7 @@ export function mountInteraction3d(host, {
   function isFocusTargetId(focusId) {
     if (typeof focusId != "string" || !focusId) {
       return false;
-    } else if ((properties.lights || []).some(controller => controller.id === focusId) || (properties.security?.presenceSensors || []).some(command => focusId === "presence:" + command.id)) {
+    } else if ((properties.lights || []).some(controller => controller.id === focusId) || (properties.security?.cameras || []).some(camera => focusId === "camera:" + camera.id) || (properties.security?.presenceSensors || []).some(command => focusId === "presence:" + command.id)) {
       return true;
     } else {
       return [["climate", properties.environment?.airConditioners], ["cover", properties.environment?.curtains], ["nas", properties.devices?.nas], ["television", properties.devices?.televisions], ["vacuum", properties.devices?.vacuums]].some(([deviceKind, deviceList]) => (deviceList || []).some(id => typeof id.id == "string" && id.id && focusId === deviceKind + ":" + id.id));

@@ -7,7 +7,7 @@ import { floorOpeningPolygon } from "./studio-floor-openings.js?v=20260908-floor
 import { createGroundReflections } from "./studio-ground-reflections.js?v=20260909-reflection-scope-v1-20260910-wall-runtime-v21-floor-handoff-v20-effects-settle-v5-no-blur-v1-overlay-scope-v1";
 import { createMotionPresentation } from "./studio-motion-presentation.js?v=20260910-effects-settle-v6-focus-live-v1";
 import { createWallSideMaterial, setWallGradientHeight, setWallCornerDistances, mergeWallBands } from "./studio-wall-materials.js?v=wall-device-D6-20260910210335-shade-v2";
-import { RENDER_CACHE_VERSION, createRenderCache, cacheSceneDescriptor, sha256, stableCacheJSON } from "../modules/interaction3d/render-cache.js?v=20260907-demand-v1-20260908-curtains-v1";
+import { RENDER_CACHE_VERSION, createRenderCache, cacheSceneDescriptor, sha256, stableCacheJSON } from "../modules/interaction3d/render-cache.js?v=20260907-demand-v1-20260908-curtains-v1-20260912-sha-export-v2";
 import { transformSceneCamera } from "../modules/interaction3d/scene-frame.js?v=20260907-scene-sync-v1-20260908-curtains-v1";
 import { sceneUpdatePlan } from "../modules/interaction3d/scene-update.js?v=20260907-update-v1-20260908-curtains-v1";
 import { createDemandFrameLoop } from "../modules/interaction3d/frame-loop.js?v=20260907-demand-v1-20260908-curtains-v1";
@@ -26,9 +26,9 @@ import { MAX_EXPORT_PRESET_COUNT, exportPresetIsEmpty, normalizeActiveExportPres
 import { reorderFloors } from "./floor-order.js?v=20260825-floor-reorder-v1";
 import { syncControlValue } from "./ui-controls.js?v=20260826-input-stability-v1";
 import { initializeNumberInputs, initializeStudioSelects, syncStudioSelect } from "./studio-widgets.js?v=20260901-studio-widgets-v1";
-import { createExternalModelManager, ALL_ITEM_MODELS } from "./studio-external-models.js?v=20260904-studio-external-models-v48-load-state-20260905-client-log-v1-20260907-cache-representation-v1-20260908-curtains-v1-20260908-bed-base-v1-20260910-glasscabinet-back-v1";
+import { createExternalModelManager, ALL_ITEM_MODELS } from "./studio-external-models.js?v=20260904-studio-external-models-v48-load-state-20260905-client-log-v1-20260907-cache-representation-v1-20260908-curtains-v1-20260908-bed-base-v1-20260910-glasscabinet-back-v1-20260912-bed-geometry-revision-v1";
 import { createPlanDrawingTools, drawTrackedText } from "./studio-plan-drawing.js?v=20260901-studio-plan-drawing-v2";
-import { createSpotShadowAtlasController } from "./studio-shadow-atlas.js?v=20260910-three-0186-sun-lights-v1";
+import { createSpotShadowAtlasController } from "./studio-shadow-atlas.js?v=20260912-shadow-atlas-skip-unbakeable-v2";
 import { createRegionLightController } from "./studio-plan2-region-lights.js?v=20260909-reflection-scope-v1";
 import { createContactShadowController } from "./studio-plan2-contact-shadows.js?v=20260909-batch-shadow-v4";
 import { DEFAULT_BASE_LIGHTING, finite, itemMinimumHeight, kelvinToRgbHex, normalizeCameraSettings, normalizeBaseLighting, normalizeFixedCameraView, normalizeFullRotation, normalizeLabelText, normalizePoint } from "./studio-normalization.js?v=20260903-studio-normalization-v2";
@@ -8547,12 +8547,22 @@ function setExportRoleVisibility(reason, message) {
     });
   }
 }
+function notifyAutoDiagramInteraction(active) {
+  if (!!isAutoDiagramEmbedCurrent && !!autoDiagramComponentId && window.parent !== window) {
+    window.parent.postMessage({
+      type: "ha-bridge-floorplan-auto-diagram-interaction",
+      componentId: autoDiagramComponentId,
+      active: active === true
+    }, window.location.origin);
+  }
+}
 function resolveExportOverwrite(argPrimary = "cancel") {
   const value = exportOverwriteResolverCurrent;
   exportOverwriteResolverCurrent = null;
   if (exportOverwriteDialog.open) {
     exportOverwriteDialog.close();
   }
+  notifyAutoDiagramInteraction(false);
   value?.(argPrimary);
 }
 function promptExportOverwrite(argPrimary) {
@@ -8560,6 +8570,7 @@ function promptExportOverwrite(argPrimary) {
     resolveExportOverwrite("cancel");
   }
   Mg.textContent = argPrimary;
+  notifyAutoDiagramInteraction(true);
   exportOverwriteDialog.showModal();
   return new Promise(argPrimary => {
     exportOverwriteResolverCurrent = argPrimary;
@@ -15275,7 +15286,7 @@ async function clearInspectorHover() {
       await new Promise(requestAnimationFrame);
       const {
         mountStage: awaitedValue
-      } = await import("/api/v1/modules/interaction3d/stage.js?v=20260910-health-fixes-v3-reflection-visible-floor-v1-navigation-scale-v1-presence-pages-v2-module-tabs-v1-20260912-align-v1-20260912-security-floor-models-v1-20260912-overview-tab-v1");
+      } = await import("/api/v1/modules/interaction3d/stage.js?v=20260910-health-fixes-v3-reflection-visible-floor-v1-navigation-scale-v1-presence-pages-v2-module-tabs-v1-20260912-align-v1-20260912-security-floor-models-v1-20260912-overview-tab-v1-20260912-overview-click-lock-v1");
       awaitedValue(bootstrapStudioFromLoadedProject());
       return;
     }
