@@ -1,4 +1,4 @@
-import { clone, newId, slugify } from "./editor-utils.js?v=20260831-editor-utils-v1";
+import { clone, newId, slugify } from "./editor-utils.js?v=0.5.3";
 export function uniquePagePath(pages, name, excludePath = "") {
   const basePath = slugify(name);
   const usedPaths = new Set((pages || []).map(page => page.path).filter(path => path !== excludePath));

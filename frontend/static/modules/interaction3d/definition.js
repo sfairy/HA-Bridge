@@ -1,7 +1,9 @@
 export const INTERACTION3D_TYPE = "interaction3d";
 export const INTERACTION3D_FEATURE = "module.3d_interaction";
 export const INTERACTION3D_LIGHTING_MODES = [["standard", "标准光影"], ["region", "轻量柔光"]];
-export const normalizeInteraction3dLightingMode = e => e === "region" ? "region" : "standard";
+export const normalizeInteraction3dLightingMode = lightingMode => lightingMode === "region" ? "region" : "standard";
+export const BACKGROUND_THEMES = [["grid", "经典网格"], ["dots", "微光星尘"]];
+export const normalizeBackgroundTheme = theme => theme === "dots" || theme === "contours" ? "dots" : "grid";
 export const interaction3dTemplate = {
   id: INTERACTION3D_TYPE,
   type: INTERACTION3D_TYPE,
@@ -9,33 +11,35 @@ export const interaction3dTemplate = {
   description: "在 3D 户型中查看和控制灯光、设备。",
   scopes: ["page"],
   create({
-    id: e,
-    instanceName: t = "3D 交互",
-    canvas: n
+    id,
+    instanceName = "3D 交互",
+    canvas
   }) {
-    const o = Number(n?.width || 2778);
-    const i = Number(n?.height || 1940);
-    const r = o * 0.56;
-    const s = i * 0.56;
+    const canvasWidth = Number(canvas?.width || 2778);
+    const canvasHeight = Number(canvas?.height || 1940);
+    const width = canvasWidth * 0.56;
+    const height = canvasHeight * 0.56;
     return {
-      id: e,
+      id,
       type: INTERACTION3D_TYPE,
       componentVersion: 1,
       position: {
-        x: (o - r) / 2,
-        y: (i - s) / 2,
-        width: r,
-        height: s,
+        x: (canvasWidth - width) / 2,
+        y: (canvasHeight - height) / 2,
+        width,
+        height,
         rotation: 0,
         zIndex: 1
       },
       properties: {
-        label: t,
-        instanceName: t,
+        label: instanceName,
+        instanceName,
         layoutMode: "free",
         backgroundVisible: true,
+        backgroundTheme: "grid",
         renderScale: 0.8,
         lightingMode: "region",
+        uniformOverviewStack: false,
         groundReflection: {
           mode: "off",
           resolution: 512,

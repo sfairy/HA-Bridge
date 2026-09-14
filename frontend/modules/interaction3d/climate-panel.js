@@ -1,4 +1,4 @@
-import { climateState, climateControl, climatePowerControl, climateModeLabel, climateSwingModeLabel } from "./climate-state.js?v=20260908-climate-v1";
+import { climateState, climateControl, climatePowerControl, climateModeLabel, climateSwingModeLabel } from "./climate-state.js?v=0.5.3";
 const fanModeLabels = {
   auto: "自动",
   low: "低风",

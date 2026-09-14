@@ -86,7 +86,7 @@ export function createReflectionCulling(THREE) {
     }
     projection.copy(camera.projectionMatrix);
     if (cropValid) {
-      const padding = 0.013671875 + 2 / projection.map.width;
+      const padding = 0.013671875 + 2 / source.map.width;
       minX = Math.max(0, minX - padding);
       minY = Math.max(0, minY - padding);
       maxX = Math.min(1, maxX + padding);

@@ -26,6 +26,19 @@ export function resizeRegionDimensions(baseDims, nextWidth, nextDepth, handle, k
     depth: round(clamp(nextDepth, 0.5, 20))
   };
 }
+export function regionHeightPatch(current, field, value) {
+  const patch = {
+    heightAbove: undefined,
+    heightBelow: undefined,
+    heightMin: current.heightMin === undefined ? undefined : clamp(current.heightMin, 0, 20),
+    heightMax: current.heightMax === undefined ? undefined : clamp(current.heightMax, 0, 20),
+    [field]: value
+  };
+  if (patch.heightMin !== undefined && patch.heightMax !== undefined && patch.heightMin > patch.heightMax) {
+    patch[field === "heightMin" ? "heightMax" : "heightMin"] = value;
+  }
+  return patch;
+}
 export function mountRegionRangeEditor(host, {
   getConfig = () => ({}),
   onChange = () => {},
@@ -41,7 +54,7 @@ export function mountRegionRangeEditor(host, {
   editorEl.dataset.testid = "range-editor";
   editorEl.hidden = true;
   editorEl.setAttribute("aria-label", "平面光区编辑");
-  editorEl.innerHTML = "\n    <svg aria-label=\"灯具与照射范围\" role=\"group\"></svg>\n    <header class=\"p2r-top\"><div class=\"p2r-title\">平面光区编辑<small>拖动边角调整范围，按住 Shift 等比例缩放</small></div><span class=\"p2r-compact-caption\">自由拖动 · Shift 等比</span></header>\n    <div class=\"p2r-panel\">\n      <h3>照射范围</h3>\n      <div class=\"p2r-selectors\">\n        <label class=\"p2r-field\">楼层<select data-field=\"floor\" aria-label=\"楼层\"></select></label>\n        <label class=\"p2r-field\">灯具<select data-field=\"fixture\" aria-label=\"灯具\"></select></label>\n      </div>\n      <div class=\"p2r-grid\">\n        <label class=\"p2r-field p2r-shape\">光区形状<select data-field=\"shape\" aria-label=\"光区形状\"><option value=\"circle\">圆形</option><option value=\"square\">方形</option></select></label>\n        <label class=\"p2r-field\"><span data-width-label>宽度（米）</span><input data-field=\"width\" aria-label=\"宽度（米）\" type=\"number\" min=\"0.5\" max=\"20\" step=\"0.1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field\"><span data-depth-label>深度（米）</span><input data-field=\"depth\" aria-label=\"深度（米）\" type=\"number\" min=\"0.5\" max=\"20\" step=\"0.1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field p2r-rotation\">旋转（度）<input data-field=\"rotation\" aria-label=\"旋转（度）\" type=\"number\" min=\"-180\" max=\"180\" step=\"1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field p2r-soft-field\">边缘柔和度<span class=\"p2r-softness\"><input data-field=\"softness\" aria-label=\"边缘柔和度\" type=\"range\" min=\"5\" max=\"100\" step=\"1\"><output data-soft-value>35%</output></span></label>\n      </div>\n      <div class=\"p2r-options\">\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"moveCenter\" type=\"checkbox\">允许移动范围中心</label>\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"group\" type=\"checkbox\">同步本组范围</label>\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"preview\" type=\"checkbox\"><span data-preview-label>仅预览当前灯</span></label>\n      </div>\n      <div class=\"p2r-actions\"><button type=\"button\" data-action=\"reset-center\">中心回到灯位</button><button type=\"button\" data-action=\"reset\">恢复模型默认</button><button type=\"button\" class=\"p2r-done\" data-action=\"close\">完成</button></div>\n      <p class=\"p2r-status\" role=\"status\" aria-live=\"polite\"></p>\n    </div>\n    <div class=\"p2r-help\">外边界为光照衰减到零的位置 · 范围不代表墙体挡光</div>";
+  editorEl.innerHTML = "\n    <svg aria-label=\"灯具与照射范围\" role=\"group\"></svg>\n    <header class=\"p2r-top\"><div class=\"p2r-title\">俯视范围编辑 · 拖动边角调整<small>拖动边角调整范围，按住 Shift 等比例缩放</small></div><span class=\"p2r-compact-caption\">自由拖动 · Shift 等比</span></header>\n    <div class=\"p2r-panel\">\n      <h3>照射范围</h3>\n      <div class=\"p2r-view-switch\" role=\"group\" aria-label=\"编辑视图\">\n        <button type=\"button\" data-action=\"view-plan\" aria-pressed=\"true\">平面编辑</button>\n        <button type=\"button\" data-action=\"view-3d\" aria-pressed=\"false\">高度预览</button>\n      </div>\n      <div class=\"p2r-selectors\">\n        <label class=\"p2r-field\">楼层<select data-field=\"floor\" aria-label=\"楼层\"></select></label>\n        <label class=\"p2r-field\">灯具<select data-field=\"fixture\" aria-label=\"灯具\"></select></label>\n      </div>\n      <div class=\"p2r-grid\">\n        <label class=\"p2r-field p2r-shape\">光区形状<select data-field=\"shape\" aria-label=\"光区形状\"><option value=\"circle\">圆形</option><option value=\"square\">方形</option></select></label>\n        <label class=\"p2r-field\"><span data-width-label>宽度（米）</span><input data-field=\"width\" aria-label=\"宽度（米）\" type=\"number\" min=\"0.5\" max=\"20\" step=\"0.1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field\"><span data-depth-label>深度（米）</span><input data-field=\"depth\" aria-label=\"深度（米）\" type=\"number\" min=\"0.5\" max=\"20\" step=\"0.1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field p2r-rotation\">旋转（度）<input data-field=\"rotation\" aria-label=\"旋转（度）\" type=\"number\" min=\"-180\" max=\"180\" step=\"1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field p2r-soft-field\">边缘柔和度<span class=\"p2r-softness\"><input data-field=\"softness\" aria-label=\"边缘柔和度\" type=\"range\" min=\"5\" max=\"100\" step=\"1\"><output data-soft-value>35%</output></span></label>\n      </div>\n      <h3>离地照明范围</h3>\n      <div class=\"p2r-grid\">\n        <label class=\"p2r-field\">最低照到（米）<input data-field=\"heightMin\" aria-label=\"最低照到（米）\" type=\"number\" min=\"0\" max=\"20\" step=\"0.05\" placeholder=\"自动\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field\">最高照到（米）<input data-field=\"heightMax\" aria-label=\"最高照到（米）\" type=\"number\" min=\"0\" max=\"20\" step=\"0.05\" placeholder=\"自动\" inputmode=\"decimal\"></label>\n      </div>\n      <p class=\"p2r-status\" data-height-summary></p>\n      <p class=\"p2r-status\">从本层地面算起，0 米是地面；留空自动。切到“高度预览”可边调高度边看效果。</p>\n      <div class=\"p2r-options\">\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"moveCenter\" type=\"checkbox\">允许移动范围中心</label>\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"group\" type=\"checkbox\">同步本组范围</label>\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"preview\" type=\"checkbox\"><span data-preview-label>仅预览当前灯</span></label>\n      </div>\n      <div class=\"p2r-actions\"><button type=\"button\" data-action=\"reset-center\">中心回到灯位</button><button type=\"button\" data-action=\"reset\">恢复模型默认</button><button type=\"button\" class=\"p2r-done\" data-action=\"close\">完成</button></div>\n      <p class=\"p2r-status\" role=\"status\" aria-live=\"polite\"></p>\n    </div>\n    <div class=\"p2r-help\">外边界为光照衰减到零的位置 · 范围不代表墙体挡光</div>";
   editorEl.querySelector("[data-action=close]").hidden = standalone;
   host.container.append(editorEl);
   const svg = editorEl.querySelector("svg");
@@ -49,6 +62,7 @@ export function mountRegionRangeEditor(host, {
   const fields = Object.fromEntries([...editorEl.querySelectorAll("[data-field]")].map(dataset => [dataset.dataset.field, dataset]));
   const statusEl = editorEl.querySelector(".p2r-status");
   const softValueEl = editorEl.querySelector("[data-soft-value]");
+  const heightSummaryEl = editorEl.querySelector("[data-height-summary]");
   const close = mountRangeFormControls(editorEl);
   const raycaster = new THREE.Raycaster();
   const pointerNdc = new THREE.Vector2();
@@ -64,6 +78,8 @@ export function mountRegionRangeEditor(host, {
   let savedFloorId = "";
   let savedControlsEnabled = true;
   let topViewCamera = null;
+  let preview3dCamera = null;
+  let heightPreview = false;
   let dragState = null;
   let redrawRaf = 0;
   let pendingFit = false;
@@ -113,7 +129,7 @@ export function mountRegionRangeEditor(host, {
     const moveCenterEnabled = selectedRegion();
     const hasSelection = !!moveCenterEnabled;
     const length = regionsInGroup(moveCenterEnabled);
-    for (const fieldKey of ["fixture", "shape", "width", "depth", "rotation", "softness", "preview", "moveCenter"]) {
+    for (const fieldKey of ["fixture", "shape", "width", "depth", "rotation", "softness", "preview", "moveCenter", "heightMin", "heightMax"]) {
       fields[fieldKey].disabled = !hasSelection;
     }
     fields.group.disabled = length.length < 2;
@@ -128,10 +144,20 @@ export function mountRegionRangeEditor(host, {
           fields[numericField].value = round(moveCenterEnabled[numericField]);
         }
       }
+      for (const heightField of ["heightMin", "heightMax"]) {
+        if (doc.activeElement !== fields[heightField]) {
+          fields[heightField].value = moveCenterEnabled[heightField] === undefined ? "" : round(moveCenterEnabled[heightField]);
+        }
+      }
       fields.softness.value = Math.round(moveCenterEnabled.softness * 100);
       softValueEl.value = fields.softness.value + "%";
+      const lampHeight = Number.isFinite(moveCenterEnabled.lampHeight) ? round(moveCenterEnabled.lampHeight) : null;
+      const heightMinLabel = moveCenterEnabled.heightMin === undefined ? "自动" : moveCenterEnabled.heightMin === 0 ? "地面" : round(moveCenterEnabled.heightMin) + " 米";
+      const heightMaxLabel = moveCenterEnabled.heightMax === undefined ? "自动" : round(moveCenterEnabled.heightMax) + " 米";
+      heightSummaryEl.textContent = "灯具离地 " + (lampHeight === null ? "—" : lampHeight + " 米") + " · 照明：" + heightMinLabel + "–" + heightMaxLabel;
       statusEl.textContent = fields.group.checked && length.length > 1 ? "本组 " + length.length + " 盏 · 修改会同步到各自灯位" : length.length > 1 ? "本组 " + length.length + " 盏 · 当前只调整这一盏" : moveCenterEnabled.moveCenterEnabled ? "拖动光区或中心十字移动范围 · 灯位不变" : "范围中心已锁定 · 可拖动边角调整大小";
     } else {
+      heightSummaryEl.textContent = "";
       statusEl.textContent = "当前楼层暂无可编辑灯具，请切换楼层。";
     }
     if (saveError) {
@@ -164,6 +190,14 @@ export function mountRegionRangeEditor(host, {
           ...(overrides[editKey] || {}),
           ...patch
         };
+        if (shape.heightMin === undefined) {
+          delete shape.heightMin;
+        }
+        if (shape.heightMax === undefined) {
+          delete shape.heightMax;
+        }
+        delete shape.heightAbove;
+        delete shape.heightBelow;
         shape.shape = ["square", "strip"].includes(shape.shape) ? "square" : "circle";
         overrides[editKey] = shape;
       }
@@ -225,7 +259,10 @@ export function mountRegionRangeEditor(host, {
     return push.map((pt, ptIndex) => "" + (ptIndex ? "L" : "M") + pt[0].toFixed(2) + "," + pt[1].toFixed(2)).join("") + "Z";
   }
   function redrawOverlay() {
-    if (!editorOpen || !host.camera) {
+    if (!editorOpen || !host.camera || heightPreview) {
+      if (heightPreview) {
+        svg.replaceChildren();
+      }
       return;
     }
     host.camera.updateMatrixWorld();
@@ -417,7 +454,7 @@ export function mountRegionRangeEditor(host, {
     }
   }
   function onOverlayPointerDown(target) {
-    if (target.button !== 0 || !editorOpen) {
+    if (target.button !== 0 || !editorOpen || heightPreview) {
       return;
     }
     const dataset = target.target.closest?.("[data-range-handle]");
@@ -598,7 +635,7 @@ export function mountRegionRangeEditor(host, {
     };
   }
   function fitTopView() {
-    if (!editorOpen || !topViewCamera || fittingCamera) {
+    if (!editorOpen || !topViewCamera || fittingCamera || heightPreview) {
       return;
     }
     const width = editorEl.getBoundingClientRect();
@@ -727,6 +764,17 @@ export function mountRegionRangeEditor(host, {
         [fieldName]: Number(fieldEl.value)
       }, true);
     }
+    if (fieldName === "heightMin" || fieldName === "heightMax") {
+      const region = selectedRegion();
+      if (!region) {
+        return;
+      }
+      const nextValue = fieldEl.value.trim() === "" ? undefined : clamp(toFiniteNumber(fieldEl.value, region[fieldName] ?? 0), 0, 20);
+      if (nextValue !== undefined) {
+        fieldEl.value = round(nextValue);
+      }
+      applyOverrides(regionHeightPatch(region, fieldName, nextValue === undefined ? undefined : Number(fieldEl.value)), true);
+    }
   }
   function onEditorKeyDown(key) {
     if (!editorOpen || key.defaultPrevented) {
@@ -779,6 +827,12 @@ export function mountRegionRangeEditor(host, {
     if (actionName === "close") {
       closeEditor();
     }
+    if (actionName === "view-plan") {
+      setHeightPreview(false);
+    }
+    if (actionName === "view-3d") {
+      setHeightPreview(true);
+    }
     if (actionName === "reset-center") {
       applyOverrides({
         offsetX: 0,
@@ -797,6 +851,54 @@ export function mountRegionRangeEditor(host, {
       redrawOverlay();
       emitChange();
     }
+  }
+  function syncCameraInteraction() {
+    host.setCameraInteraction?.({
+      enabled: editorOpen && heightPreview,
+      rotationMode: "free",
+      panEnabled: heightPreview,
+      zoomEnabled: heightPreview
+    });
+    if (!heightPreview) {
+      disableOrbitControls();
+    }
+  }
+  function setHeightPreview(nextPreview) {
+    if (!editorOpen || heightPreview === nextPreview) {
+      return;
+    }
+    endDrag(null);
+    if (heightPreview) {
+      preview3dCamera = cloneJson(host.cameraState(true));
+    } else {
+      topViewCamera = cloneJson(host.cameraState(true));
+    }
+    heightPreview = nextPreview;
+    editorEl.dataset.heightPreview = heightPreview ? "true" : "false";
+    editorEl.querySelector("[data-action=view-plan]").setAttribute("aria-pressed", String(!heightPreview));
+    editorEl.querySelector("[data-action=view-3d]").setAttribute("aria-pressed", String(heightPreview));
+    editorEl.querySelector(".p2r-title").innerHTML = heightPreview ? "3D 高度预览 · 拖动旋转，滚轮缩放<small>旋转或缩放查看效果 · 修改高度实时预览</small>" : "俯视范围编辑 · 拖动边角调整<small>拖动边角调整范围，按住 Shift 等比例缩放</small>";
+    editorEl.querySelector(".p2r-compact-caption").textContent = heightPreview ? "拖动旋转照射范围" : "自由拖动 · Shift 等比";
+    const cameraState = heightPreview ? preview3dCamera : topViewCamera;
+    if (cameraState) {
+      host.restoreCamera(cameraState);
+    } else if (heightPreview) {
+      host.setCameraProjection?.("perspective");
+      host.setCameraView?.("free");
+    } else {
+      host.setCameraProjection("orthographic");
+      host.topView();
+      topViewCamera = cloneJson(host.cameraState(true));
+      scheduleRedraw({
+        fit: true
+      });
+    }
+    syncCameraInteraction();
+    refreshRegions();
+    syncForm();
+    redrawOverlay();
+    host.invalidateRegionLighting?.();
+    wake();
   }
   editorEl.addEventListener("change", onFieldChange);
   editorEl.addEventListener("input", target => {
@@ -835,6 +937,11 @@ export function mountRegionRangeEditor(host, {
       savedControlsEnabled = host.controls?.enabled;
       savedCamera = cloneJson(host.cameraState(true));
       editorOpen = true;
+      heightPreview = false;
+      preview3dCamera = null;
+      editorEl.dataset.heightPreview = "false";
+      editorEl.querySelector("[data-action=view-plan]")?.setAttribute("aria-pressed", "true");
+      editorEl.querySelector("[data-action=view-3d]")?.setAttribute("aria-pressed", "false");
       editorEl.hidden = false;
       overrides = cloneJson(getConfig()?.lightRegionOverrides || getRegionLighting()?.getOverrides?.() || {});
       getRegionLighting().setOverrides(overrides);
@@ -843,7 +950,7 @@ export function mountRegionRangeEditor(host, {
       host.setCameraProjection("orthographic");
       host.topView();
       topViewCamera = cloneJson(host.cameraState(true));
-      disableOrbitControls();
+      syncCameraInteraction();
       doc.addEventListener("keydown", onEditorKeyDown, true);
       unsubscribeCamera = host.onCameraChange?.(() => {
         if (!fittingCamera) {
@@ -884,6 +991,8 @@ export function mountRegionRangeEditor(host, {
       host.invalidateRegionLighting?.();
       wake();
       topViewCamera = null;
+      preview3dCamera = null;
+      heightPreview = false;
       onClose();
     }
   }

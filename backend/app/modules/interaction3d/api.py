@@ -5,6 +5,7 @@ import json
 import logging
 import re
 import shutil
+from pathlib import Path
 from urllib.parse import urlencode
 from uuid import uuid4
 
@@ -26,59 +27,27 @@ from starlette.concurrency import run_in_threadpool
 router = APIRouter(prefix='/modules/interaction3d', tags=['3D interaction'])
 logger = logging.getLogger(__name__)
 SCENE_ID = re.compile('[0-9a-f]{32}')
-RESOURCE_TYPES = {
-    **{
-        name: 'text/javascript'
-        for name in (
-            'security-editor.js',
-            'presence-focus-editor.js',
-            'presence-character.js',
-            'presence-motion.js',
-            'presence-scene.js',
-            'presence-editor.js',
-            'floor-navigation.js',
-            'vacuum-motion.js',
-            'vacuum-map.js',
-            'vacuum-map-editor.js',
-            'runtime.js',
-            'stage.js',
-            'television-state.js',
-            'television-panel.js',
-            'television-screen.js',
-            'nas-status.js',
-            'camera-status.js',
-            'nas-panel.js',
-            'config-editor.js',
-            'range-dialog.js',
-            'light-range-editor.js',
-            'light-state.js',
-            'light-stream.js',
-            'camera-motion.js',
-            'idle-rotation.js',
-            'scene-sync.js',
-            'climate-state.js',
-            'climate-panel.js',
-            'environment-scene.js',
-            'environment-halos.js',
-            'environment-airflow.js',
-            'cover-state.js',
-            'cover-panel.js',
-            'cover-feedback.js',
-            'curtain-motion.js',
-        )
-    },
-    **{
-        name: 'text/css'
-        for name in (
-            'presence-editor.css',
-            'runtime.css',
-            'stage.css',
-            'climate-panel.css',
-            'nas-panel.css',
-            'cover-panel.css',
-        )
-    },
+_RESOURCE_MEDIA_TYPES = {
+    '.js': 'text/javascript',
+    '.css': 'text/css',
 }
+
+
+def interaction3d_resource_types(frontend_dir) -> dict[str, str]:
+    '''Allowlist gated stage assets by scanning the module directory.'''
+    root = (Path(frontend_dir) / 'modules' / 'interaction3d').resolve()
+    if not root.is_dir():
+        return {}
+    resources: dict[str, str] = {}
+    for path in root.iterdir():
+        if not path.is_file():
+            continue
+        media_type = _RESOURCE_MEDIA_TYPES.get(path.suffix.lower())
+        if media_type is None:
+            continue
+        resources[path.name] = media_type
+    return resources
+
 
 TELEVISION_SERVICES = {
     'turn_on': 128,
@@ -561,7 +530,7 @@ def get_config(
 @router.get('/{filename}')
 def get_resource(filename: str, request: Request, _viewer: LicensedViewer):
     require_access(request)
-    media_type = RESOURCE_TYPES.get(filename)
+    media_type = interaction3d_resource_types(request.app.state.settings.frontend_dir).get(filename)
     if media_type is None:
         raise HTTPException(404, detail='3D 交互资源不存在。')
     root = (request.app.state.settings.frontend_dir / 'modules' / 'interaction3d').resolve()

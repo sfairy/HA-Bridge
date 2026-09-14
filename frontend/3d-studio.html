@@ -4,19 +4,19 @@
 <head>
     <meta name="ha-bridge-release" content="8b3528fb02ef4fb48b30643ae9e57797">
     <meta charset="utf-8">
-    <script src="/bridge-static/js/shared/client-log.js?v=20260905-client-log-v1"></script>
+    <script src="/bridge-static/js/shared/client-log.js?v=0.5.3"></script>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="theme-color" content="#111820">
     <title>户型图绘制</title>
     <link rel="icon" href="/bridge-static/assets/brand/ha-bridge-favicon-h5.svg" type="image/svg+xml">
     <link rel="stylesheet"
-        href="/bridge-static/3d-studio/studio.css?v=20260907-interaction3d-align-v1-light-areas-v1-area-ui-polish-v1-area-width-v1-layer-owner-v1">
+        href="/bridge-static/3d-studio/studio.css?v=0.5.3">
 </head>
 
 <body>
     <header class="studio-header">
         <div class="header-leading"> <img class="brand-logo"
-                src="/bridge-static/assets/brand/ha-bridge-mark-white-orange.svg?v=20260726-h2" alt="HA Bridge">
+                src="/bridge-static/assets/brand/ha-bridge-mark-white-orange.svg?v=0.5.3" alt="HA Bridge">
             <div class="header-title">
                 <p>HA BRIDGE · DESKTOP CREATOR</p>
                 <div class="header-title-row">
@@ -340,8 +340,10 @@
                                         class="active" type="button" data-preview-floor="active">当前层</button><button
                                         type="button" data-preview-floor="all">全楼</button></div> <label
                                     id="preview-floor-gap-control" class="floor-gap-control"
-                                    hidden><span>层间距</span><input id="preview-floor-gap" type="number" min="0" max="20"
-                                        step="0.1" value="3"><i>m</i></label>
+                                    hidden title="等比例叠加开启后，调小间距可继续靠近，允许重叠"><span>层间距</span><input
+                                        id="preview-floor-gap" type="number" min="0" max="20" step="0.1" value="3"><i>m</i></label>
+                                <label id="preview-floor-uniform-control" class="floor-gap-control" hidden><span>等比例叠加</span><input
+                                        id="preview-floor-uniform" type="checkbox"><i>各层同视图</i></label>
                             </div> <span class="preview-control-spacer"></span>
                             <div id="floor-camera-actions" class="fixed-camera-actions" role="group"
                                 aria-label="当前楼层视角"> <button id="save-camera-view" type="button"
@@ -907,7 +909,7 @@
     <div id="floor-context-menu" class="light-group-context-menu" hidden><button type="button"
             data-floor-action="rename">重命名</button><button type="button" data-floor-action="delete">删除楼层</button></div>
     <script type="module"
-        src="/bridge-static/3d-studio/studio-app.js?v=20260910-three-0186-compat-v1-20260911-studio-security-v1-floor-handoff-v1-reflection-visible-floor-v1-module-tabs-v1-20260912-presence-camera-fields-v1-glasscabinet-tdz-fix-v1-sha-export-fix-v1-overwrite-interaction-v1-shadow-atlas-skip-unbakeable-v2-wall-opacity-apply-all-v1-wall-size-apply-all-v1-light-areas-v1-drag-into-area-v1-area-ui-polish-v1-area-width-v1-layer-owner-v1-mural-model-v6-pillar-shape-v4-pillar-glb-v2-pillar-axis-v2-pillar-lying-v2-strip-axis-v3-region-lights-map-shadow-v1"></script>
+        src="/bridge-static/3d-studio/studio-app.js?v=0.5.3"></script>
 </body>
 
 </html>

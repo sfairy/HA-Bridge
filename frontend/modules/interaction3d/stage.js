@@ -1,27 +1,29 @@
-import { createPresenceScene, createPresenceWaves } from "./presence-scene.js?v=20260910-presence-v1-20260911-world-waves-v3-wave-settings-v1-presence-pages-v2";
-import { floorNavigationChoices } from "./floor-navigation.js?v=20260909-floor-numbers-v1-20260912-align-v1";
-import { createVacuumMotion, vacuumQuip, createVacuumFollowCamera, vacuumBirdCamera, vacuumFollowPose } from "./vacuum-motion.js?v=20260909-reflection-cache-v4";
-import { createVacuumMaps, vacuumStatusPresentation, vacuumBindingsForMap } from "./vacuum-map.js?v=20260909-curtain-action-v15";
+import { createPresenceScene, createPresenceWaves } from "./presence-scene.js?v=0.5.3";
+import { floorNavigationChoices } from "./floor-navigation.js?v=0.5.3";
+import { createVacuumMotion, vacuumQuip, createVacuumFollowCamera, vacuumBirdCamera, vacuumFollowPose } from "./vacuum-motion.js?v=0.5.3";
+import { createVacuumMaps, vacuumStatusPresentation, vacuumBindingsForMap } from "./vacuum-map.js?v=0.5.3";
 import { televisionState } from "./television-state.js";
-import { createTelevisionPanel } from "./television-panel.js?v=20260911-quiet-feedback-v1";
-import { createTelevisionScreens } from "./television-screen.js?v=20260909-reflection-cache-v4";
+import { createTelevisionPanel } from "./television-panel.js?v=0.5.3";
+import { createTelevisionScreens } from "./television-screen.js?v=0.5.3";
+import { createBackgroundTheme } from "./background-theme.js?v=0.5.3";
 import { createNasPanel } from "./nas-panel.js";
-import { createNasStatus, nasDeviceState } from "./nas-status.js?v=20260908-nas-v1";
+import { createNasStatus, nasDeviceState } from "./nas-status.js?v=0.5.3";
 import { createCameraStatus, cameraOnline } from "./camera-status.js";
-import { coverState, coverIconIsOn } from "./cover-state.js?v=20260910-curtain-default-open-v2-20260912-align-v1";
-import { createCoverFeedback } from "./cover-feedback.js?v=20260910-curtain-default-open-v2-20260912-align-v1";
-import { createCoverPanel } from "./cover-panel.js?v=20260910-curtain-default-open-v2-20260912-align-v1";
-import { createCurtainMotion } from "./curtain-motion.js?v=20260910-health-fixes-v2";
-import { createEnvironmentAirflow } from "./environment-airflow.js?v=20260908-outlet-airflow-v1-20260909-page-behavior-airflow-zoom-v1";
-import { mountRegionRangeEditor } from "./light-range-editor.js?v=20260909-curtain-action-v15";
-import { climateState } from "./climate-state.js?v=20260908-climate-v1";
-import { createClimatePanel } from "./climate-panel.js?v=20260908-climate-v1";
-import { createEnvironmentScene, pageDimming, pageModelBindings } from "./environment-scene.js?v=20260909-reflection-cache-v4";
-import { startSceneSync } from "./scene-sync.js?v=20260907-scene-sync-v1";
-import { lightCommand, createLightPreview, createLightStateCache, lightRenderState } from "./light-state.js?v=20260907-demand-v1";
-import { createDampedCameraMotion, automaticLightCamera, automaticAirConditionerCamera } from "./camera-motion.js?v=20260911-focus-damped-compare-v2-navigation-light-v1";
-import { createScreenOutlines } from "./environment-halos.js?v=20260911-screen-outline-pulse-v1";
-import { resolvePageBehavior, createIdleRotation, createIdleIconVisibility, createIdleFocusExit } from "./idle-rotation.js?v=20260907-idle-focus-exit-v1-20260909-page-behavior-airflow-zoom-v1";
+import { coverState, coverIconIsOn } from "./cover-state.js?v=0.5.3";
+import { createCoverFeedback } from "./cover-feedback.js?v=0.5.3";
+import { createCoverPanel } from "./cover-panel.js?v=0.5.3";
+import { createCurtainMotion } from "./curtain-motion.js?v=0.5.3";
+import { createEnvironmentAirflow } from "./environment-airflow.js?v=0.5.3";
+import { mountRegionRangeEditor } from "./light-range-editor.js?v=0.5.3";
+import { climateState } from "./climate-state.js?v=0.5.3";
+import { createClimatePanel } from "./climate-panel.js?v=0.5.3";
+import { createEnvironmentScene, pageDimming, pageModelBindings } from "./environment-scene.js?v=0.5.3";
+import { startSceneSync } from "./scene-sync.js?v=0.5.3";
+import { lightCommand, createLightPreview, createLightStateCache, lightRenderState } from "./light-state.js?v=0.5.3";
+import { createDampedCameraMotion, automaticLightCamera, automaticAirConditionerCamera } from "./camera-motion.js?v=0.5.3";
+import { createScreenOutlines } from "./environment-halos.js?v=0.5.3";
+import { resolvePageBehavior, createIdleRotation, createIdleIconVisibility, createIdleFocusExit } from "./idle-rotation.js?v=0.5.3";
+import { handleControlResult } from "./stage-control-queue.js?v=0.5.3";
 const defaultMarkerSvg = "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.7\" aria-hidden=\"true\"><path d=\"M8 15c0-2-3-3-3-7a7 7 0 0 1 14 0c0 4-3 5-3 7l-1 3H9l-1-3Z\"/><path d=\"M9 21h6M9 15h6\"/></svg>";
 const lightPresets = [{
   label: "柔和",
@@ -36,35 +38,9 @@ const lightPresets = [{
   brightness: 100,
   temperaturePercent: 100
 }];
-function handleControlResult(queueControlCommand, reject, value, previewToken) {
-  const next = [...sceneUpdating.values()].find(entityId => entityId.entityId === value.entityId);
-  if (!next) {
-    return queueControlCommand(value, previewToken);
-  }
-  const service = next.next?.command || next.command;
-  if (service.service === "turn_on" && value.service === "turn_on") {
-    const brightness = {
-      ...service.data
-    };
-    if ("brightness" in value.data || "brightness_pct" in value.data) {
-      delete brightness.brightness;
-      delete brightness.brightness_pct;
-    }
-    value = {
-      ...value,
-      data: {
-        ...brightness,
-        ...value.data
-      }
-    };
-  }
-  next.next = {
-    command: value,
-    previewToken: previewToken
-  };
-  reject.hold(value.entityId, previewToken);
+export function configuredModuleKinds(properties = {}) {
+  return ["overview", "light", ...(properties.environment?.airConditioners?.length || properties.environment?.curtains?.length ? ["environment"] : []), ...(properties.devices?.nas?.length || properties.devices?.televisions?.length ? ["devices"] : []), ...(properties.devices?.vacuums?.length ? ["vacuum"] : []), ...(properties.security?.cameras?.length || properties.security?.presenceSensors?.length ? ["security"] : [])];
 }
-
 export function mountStage(options) {
   const {
     THREE,
@@ -95,9 +71,9 @@ export function mountStage(options) {
   let idleRotating = false;
   const idleReturning = () => preFocusCamera === "overview";
   const idleCameraBase = floorId => activeFloorId === "all" || floorId.floorId === activeFloorId;
-  let frameLoop = "";
+  let interactionMode = "";
   let activityTracked = null;
-  let presentedVisible = null;
+  let cameraPresentation = null;
   let wakeFrameLoop = 0;
   let idleIconsHidden = false;
   let userHeld = false;
@@ -112,6 +88,8 @@ export function mountStage(options) {
   let markersConcealedAt = false;
   let lightPreview = false;
   const wake = () => markersById?.wake();
+  const backgroundTheme = createBackgroundTheme(options, () => wake());
+  options.setBackgroundTheme?.(backgroundTheme);
   let lightHistoryStorage = false;
   let lightStateCache = false;
   const resolveLightState = new Set();
@@ -123,7 +101,7 @@ export function mountStage(options) {
   let lastUserActivityAt;
   let transformCamera;
   let currentCamera = null;
-  const reject = createLightPreview();
+  const lightPreviewController = createLightPreview();
   const scope = document.body?.dataset?.i3dLightHistoryScope;
   let storage;
   if (scope) {
@@ -131,19 +109,19 @@ export function mountStage(options) {
       storage = window.localStorage;
     } catch {}
   }
-  const presentationRoot = createLightStateCache({
+  const lightEntityStateCache = createLightStateCache({
     storage,
     scope
   });
-  const resolveLightEntityState = entityId => presentationRoot.resolve(entityId || "", states[entityId]);
+  const resolveLightEntityState = entityId => lightEntityStateCache.resolve(entityId || "", states[entityId]);
   let presentationScale = null;
   let focusVignette = {
     lights: []
   };
-  let toolbar = false;
+  let floorTransitionBusy = false;
   let restoreViewButton = false;
   let lightPanel = null;
-  let lightPanelHeader = -Infinity;
+  let lastLightPanelActivityAt = -Infinity;
   const transformCameraForFloor = (cameraState, floorId = properties.floorSelection, forTitle = false) => options.transformCamera?.(cameraState, floorId, forTitle) ?? cameraState;
   // 解析楼层内的场景物件；deviceTypes 省略时不做类型过滤，也可传单个类型或类型数组。
   // （原先这段 find 链在本文件里重复了 10 次，且内层 lambda 参数与外层 id 同名）
@@ -157,6 +135,7 @@ export function mountStage(options) {
   function transformProperties(nextProperties) {
     const clonedProperties = structuredClone(nextProperties);
     clonedProperties.camera = transformCameraForFloor(clonedProperties.floorCameras?.[clonedProperties.floorSelection] || clonedProperties.camera, clonedProperties.floorSelection);
+    backgroundTheme.configure?.(clonedProperties.backgroundTheme);
     // 同一段 focusCamera 映射原先重复 5 次；`|| []` 与原实现逐处一致
     // （presenceSensors/cameras/devices 那三处原本无兜底，但外层 if 已保证非空值）
     const mapFocusCamera = collection => (collection || []).map(entry => ({
@@ -218,7 +197,7 @@ export function mountStage(options) {
   let previewState = 1;
   const focusVignetteEl = createEl("div", "i3d-focus-vignette");
   focusVignetteEl.setAttribute("aria-hidden", "true");
-  const toolbarEl = createEl("nav", "i3d-toolbar");
+  const toolbarEl = createEl("nav", "i3d-floorTransitionBusy");
   const navigationEl = createEl("div", "i3d-navigation");
   const floorTabsEl = createEl("nav", "i3d-floor-tabs");
   floorTabsEl.setAttribute("aria-label", "选择楼层");
@@ -226,6 +205,7 @@ export function mountStage(options) {
   const moduleTabsEl = createEl("nav", "i3d-module-tabs");
   moduleTabsEl.setAttribute("aria-label", "3D 控制模块");
   const controls = new Map();
+  let configuredKinds = configuredModuleKinds();
   for (const [module, moduleLabel] of [["overview", "总览"], ["light", "灯光"], ["environment", "环境"], ["devices", "设备"], ["vacuum", "扫地机"], ["security", "安防"]]) {
     const type = createEl("button", "", moduleLabel);
     type.type = "button";
@@ -283,7 +263,7 @@ export function mountStage(options) {
       output.value = "" + input.value + (kind === "temperature" ? " K" : "%");
       const focusedLight = callback();
       if (!!focusedLight && !editing && !!resolveLightEntityState(focusedLight.entityId).available) {
-        reject.set(focusedLight.entityId, kind, Number(input.value));
+        lightPreviewController.set(focusedLight.entityId, kind, Number(input.value));
         wake();
         syncLightPanelCurrent();
         syncEditorEffects({
@@ -710,7 +690,7 @@ export function mountStage(options) {
       displayLightState();
       return;
     }
-    if (options.floorTransitionActive || presentedVisible?.owner === "floor") {
+    if (options.floorTransitionActive || cameraPresentation?.owner === "floor") {
       return;
     }
     const find = (properties.devices?.vacuums || []).filter(id => idleCameraBase(id) && hasTracking.hasTracking(id.id));
@@ -729,7 +709,7 @@ export function mountStage(options) {
     clearFocus({
       immediate: true
     });
-    presentedVisible = null;
+    cameraPresentation = null;
     options.endCameraMotion();
     controlError = target;
     presets = id.id;
@@ -771,6 +751,7 @@ export function mountStage(options) {
   const presenceWaves = createPresenceWaves(options);
   let presenceSyncKey = null;
   let presenceEditorActive = false;
+  let presenceEditorOpen = false;
   let presenceHitTesting = false;
   const presenceHitLayer = createEl("div", "i3d-presence-hit-layer");
   presenceHitLayer.setAttribute("aria-hidden", "true");
@@ -806,7 +787,7 @@ export function mountStage(options) {
     }
   }
   function syncMarkers() {
-    const lightIds = presented && (!editing || preFocusCamera === "security") && !viewEditing && !active && markerWorldCache && !document.hidden && !options.floorTransitionActive && presentedVisible?.owner !== "floor";
+    const lightIds = presented && (!editing || presenceEditorOpen) && !viewEditing && !active && markerWorldCache && !document.hidden && !options.floorTransitionActive && cameraPresentation?.owner !== "floor";
     const every = [properties, states, options.sceneRevision, activeFloorId, lightIds, presenceEditorActive, preFocusCamera];
     if (!presenceSyncKey || !every.every((dep, depIndex) => dep === presenceSyncKey[depIndex])) {
       presenceSyncKey = every;
@@ -825,7 +806,7 @@ export function mountStage(options) {
   const entryMap = new Map();
   let vacuumMotionSyncKey = null;
   function collectMetadata() {
-    const vacuumMotionActive = preFocusCamera === "vacuum" && !viewEditing && !active && !options.floorTransitionActive && presentedVisible?.owner !== "floor" && markerWorldCache && !document.hidden;
+    const vacuumMotionActive = preFocusCamera === "vacuum" && !viewEditing && !active && !options.floorTransitionActive && cameraPresentation?.owner !== "floor" && markerWorldCache && !document.hidden;
     const every = [properties, states, options.sceneRevision, activeFloorId, vacuumMotionActive];
     if (!vacuumMotionSyncKey || !every.every((dep, dep3Index) => dep === vacuumMotionSyncKey[dep3Index])) {
       vacuumMotionSyncKey = every;
@@ -869,14 +850,14 @@ export function mountStage(options) {
     })));
   }
   function onUserInput(event) {
-    if (!editing && interactive && event.deviceKind === "camera" && event.entityId && focusedLightId === event.id && frameLoop !== "edit") {
+    if (!editing && interactive && event.deviceKind === "camera" && event.entityId && focusedLightId === event.id && interactionMode !== "edit") {
       deviceStatus({
         type: "camera-popup",
         id: event.id
       });
       return;
     }
-    if (!presets && !editing && interactive && event.deviceKind === "vacuum" && event.entityId && (frameLoop === "panel" || event.clickAction !== "focus") && focusedLightId === event.id) {
+    if (!presets && !editing && interactive && event.deviceKind === "vacuum" && event.entityId && (interactionMode === "panel" || event.clickAction !== "focus") && focusedLightId === event.id) {
       deviceStatus({
         type: "vacuum-popup",
         id: event.id
@@ -959,9 +940,14 @@ export function mountStage(options) {
     navigationEl.hidden = editing || viewEditing || active;
     floorTabsEl.hidden = navigationEl.hidden || options.document.floors.length < 2;
     const brightness = floorNavigationChoices(options.document.floors, properties.floorNumbers);
-    const reflectionFloorId = activeFloorId === "all" ? brightness.filter(([floorId]) => floorId !== "all").at(-1)?.[0] || "" : null;
-    options.groundReflections?.setOutsideFloor?.(reflectionFloorId);
-    options.groundReflections?.setVisibleFloor?.(reflectionFloorId);
+    const floorChoices = brightness.filter(([floorId]) => floorId !== "all");
+    if (activeFloorId === "all") {
+      options.groundReflections?.setVisibleFloor?.(null);
+      options.groundReflections?.setOutsideFloor?.(floorChoices[0]?.[0] || null);
+    } else {
+      options.groundReflections?.setVisibleFloor?.(activeFloorId);
+      options.groundReflections?.setOutsideFloor?.(activeFloorId);
+    }
     const temperatureRatio = JSON.stringify(brightness);
     if (temperatureRatio !== markerProjectionKey) {
       markerProjectionKey = temperatureRatio;
@@ -1036,7 +1022,7 @@ export function mountStage(options) {
     };
   }
   function updateMarkerPositions(floorSelection) {
-    if (editing || viewEditing || active || toolbar || floorSelection === activeFloorId || floorSelection !== "all" && !options.document.floors.some(id => id.id === floorSelection)) {
+    if (editing || viewEditing || active || floorTransitionBusy || floorSelection === activeFloorId || floorSelection !== "all" && !options.document.floors.some(id => id.id === floorSelection)) {
       return;
     }
     displayLightState(false);
@@ -1098,7 +1084,7 @@ export function mountStage(options) {
         error: error
       } : {})
     });
-    const rangeEditorBlockReason = markerFloorRef ? options.regionLighting ? presented ? toolbar ? "户型正在同步，请稍候再调整照射范围。" : viewEditing ? "请先完成户型视角调整，再编辑照射范围。" : "" : "户型还在加载，请稍候再调整照射范围。" : "请先选择轻量柔光模式。" : "请在已授权的控件编辑器中调整照射范围。";
+    const rangeEditorBlockReason = markerFloorRef ? options.regionLighting ? presented ? floorTransitionBusy ? "户型正在同步，请稍候再调整照射范围。" : viewEditing ? "请先完成户型视角调整，再编辑照射范围。" : "" : "户型还在加载，请稍候再调整照射范围。" : "请先选择轻量柔光模式。" : "请在已授权的控件编辑器中调整照射范围。";
     if (rangeEditorBlockReason) {
       point(false, rangeEditorBlockReason);
       return;
@@ -1218,10 +1204,10 @@ export function mountStage(options) {
       states,
       floorId: activeFloorId,
       preview: editing,
-      enabled: preFocusCamera === "security" && !focusedLightId && !frameLoop && !viewEditing && !active && !options.floorTransitionActive && presentedVisible?.owner !== "floor"
+      enabled: preFocusCamera === "security" && !focusedLightId && !interactionMode && !viewEditing && !active && !options.floorTransitionActive && cameraPresentation?.owner !== "floor"
     });
     collectMetadata();
-    if (!options.floorTransitionActive && presentedVisible?.owner !== "floor" || presentedVisible?.presentationRevealed) {
+    if (!options.floorTransitionActive && cameraPresentation?.owner !== "floor" || cameraPresentation?.presentationRevealed) {
       syncCurtainLayout();
       syncNasStatus();
       syncSecurityStatus();
@@ -1232,7 +1218,7 @@ export function mountStage(options) {
         ...deviceKind,
         id: ["camera", "presence"].includes(deviceKind.deviceKind) ? deviceKind.id : deviceKind.deviceKind + ":" + deviceKind.id
       })).concat(previewCoverBindings())).filter(modelAvailable => modelAvailable.modelAvailable && idleCameraBase(modelAvailable));
-      const enabled = pageDimming(properties, preFocusCamera, !!focusedLightId && frameLoop !== "panel");
+      const enabled = pageDimming(properties, preFocusCamera, !!focusedLightId && interactionMode !== "panel");
       const enabledCurrent = !viewEditing && !active && enabled.enabled;
       const bindings = pageModelBindings(options.document.floors, filter, enabled.page, activeFloorId);
       isActive.setRoot(options.modelRoot, options.environmentRevision ?? options.sceneRevision);
@@ -1253,23 +1239,32 @@ export function mountStage(options) {
         bindings: filter.filter(deviceKind => deviceKind.deviceKind === "climate"),
         states,
         focusedId: focusedLightId,
-        overview: !focusedLightId || frameLoop === "panel"
+        overview: !focusedLightId || interactionMode === "panel"
       });
       options.setEnvironmentActive?.(enabledCurrent || isActive.isActive);
     }
     const pending = focusLight().filter(idleCameraBase);
     syncPowerButton();
     const baseCommand = activeFloorId === "all";
+    configuredKinds = configuredModuleKinds(properties);
+    if (!editing && !configuredKinds.includes(preFocusCamera) && !["nas", "television", "cover", "climate", "vacuum-shortcut"].includes(preFocusCamera)) {
+      preFocusCamera = configuredKinds[0] || "light";
+    }
     setModuleTabsHidden(editing || viewEditing || active || baseCommand);
-    const selectedModule = ["overview", "security", "light", "devices", "vacuum"].includes(preFocusCamera) ? preFocusCamera : "environment";
+    const selectedModule = configuredKinds.includes(preFocusCamera) ? preFocusCamera : ["nas", "television"].includes(preFocusCamera) && configuredKinds.includes("devices") ? "devices" : ["cover", "climate"].includes(preFocusCamera) && configuredKinds.includes("environment") ? "environment" : configuredKinds[0] || "light";
     moduleTabsEl.classList.toggle("is-all-floors", baseCommand);
-    moduleTabsEl.style.setProperty("--i3d-tab-count", String(controls.size));
-    moduleTabsEl.style.setProperty("--i3d-selected-tab", String(baseCommand ? 0 : [...controls.keys()].indexOf(selectedModule)));
-    for (const [moduleId, hidden] of controls) {
-      baseCommand && blurActiveWithin(hidden);
-      hidden.hidden = moduleTabsEl.hidden;
-      hidden.disabled = baseCommand;
-      hidden.setAttribute("aria-pressed", String(moduleId === selectedModule));
+    moduleTabsEl.style.setProperty("--i3d-tab-count", String(configuredKinds.length));
+    moduleTabsEl.style.setProperty("--i3d-selected-tab", String(baseCommand ? 0 : Math.max(0, configuredKinds.indexOf(selectedModule))));
+    for (const [moduleId, tabButton] of controls) {
+      const tabIndex = configuredKinds.indexOf(moduleId);
+      const tabHidden = moduleTabsEl.hidden || tabIndex < 0;
+      if (tabHidden || baseCommand) {
+        blurActiveWithin(tabButton);
+      }
+      tabButton.hidden = tabHidden;
+      tabButton.disabled = baseCommand || tabIndex < 0;
+      tabButton.style.setProperty("--i3d-tab-index", String(Math.max(0, tabIndex)));
+      tabButton.setAttribute("aria-pressed", String(moduleId === selectedModule));
     }
     moduleEmptyEl.hidden = baseCommand || moduleTabsEl.hidden || !activityVisible && (preFocusCamera === "security" ? [...(properties.security?.presenceSensors || []), ...(properties.security?.cameras || [])].some(idleCameraBase) : preFocusCamera === "overview" || preFocusCamera === "light" || pending.length > 0);
     moduleEmptyEl.textContent = activityVisible ? "请选择楼层，再使用" + (controls.get(activityVisible)?.textContent || "控制") + "。" : preFocusCamera === "security" ? "尚未配置安防相关设备" : preFocusCamera === "vacuum" ? "尚未配置扫地机相关设备" : preFocusCamera === "devices" ? "尚未配置相关设备" : "尚未配置环境相关设备";
@@ -1348,7 +1343,7 @@ export function mountStage(options) {
     }).catch(() => {});
   }
   function selectNavigationModule(event) {
-    if (!editing && !viewEditing && !active && !toolbar && !!controls.has(event) && activeFloorId !== "all") {
+    if (!editing && !viewEditing && !active && !floorTransitionBusy && configuredKinds.includes(event) && activeFloorId !== "all") {
       activityVisible = "";
       if (event === preFocusCamera) {
         queueOrSendCommand();
@@ -1370,7 +1365,7 @@ export function mountStage(options) {
     }
   }
   const callback = () => findBinding(focusedLightId);
-  const readLightPanelState = lightEntityId => reject.state(lightEntityId, resolveLightEntityState(lightEntityId));
+  const readLightPanelState = lightEntityId => lightPreviewController.state(lightEntityId, resolveLightEntityState(lightEntityId));
   function applySceneUpdate(scene) {
     const savedScene = readLightPanelState(scene.entityId);
     if (editing && presentationScale?.id === scene.id) {
@@ -1391,9 +1386,9 @@ export function mountStage(options) {
   }
   function syncEditorEffects(kind) {
     const inEditorMode = editing || viewEditing;
-    const focusedEditId = inEditorMode && !viewEditing && frameLoop !== "edit" ? presentationScale?.id : null;
+    const focusedEditId = inEditorMode && !viewEditing && interactionMode !== "edit" ? presentationScale?.id : null;
     options.setEditorEffects?.(inEditorMode, !!focusedEditId);
-    if (!options.floorTransitionActive && presentedVisible?.owner !== "floor" || !!options.floorEffectsFollow) {
+    if (!options.floorTransitionActive && cameraPresentation?.owner !== "floor" || !!options.floorEffectsFollow) {
       options.setLightStates((properties.lights || []).filter(entityId => entityId.entityId).map(id => {
         const lightRenderPatch = applySceneUpdate(id);
         return {
@@ -1423,9 +1418,9 @@ export function mountStage(options) {
       ...properties.camera,
       ...resolvePageBehavior(properties, preFocusCamera).interaction
     };
-    const rect = viewEditing || frameLoop === "edit" || editing && !frameLoop && !presentedVisible;
+    const rect = viewEditing || interactionMode === "edit" || editing && !interactionMode && !cameraPresentation;
     options.setCameraInteraction({
-      enabled: !dragState && (rect || interactive && (!frameLoop || frameLoop === "panel") && !presentedVisible && !userHeld),
+      enabled: !dragState && (rect || interactive && (!interactionMode || interactionMode === "panel") && !cameraPresentation && !userHeld),
       rotationMode: rect ? "free" : origin.rotationMode,
       panEnabled: rect,
       zoomEnabled: rect
@@ -1482,10 +1477,10 @@ export function mountStage(options) {
       height: hostHeight + "px",
       transform: "scale(" + previewState + "," + light.height / hostHeight + ")"
     });
-    if (presentedVisible?.focused) {
-      presentedVisible.targetInset = focusPanelInset();
+    if (cameraPresentation?.focused) {
+      cameraPresentation.targetInset = focusPanelInset();
     }
-    if (frameLoop && frameLoop !== "panel" && !presentedVisible) {
+    if (interactionMode && interactionMode !== "panel" && !cameraPresentation) {
       wakeFrameLoop = focusPanelInset();
       options.setFocusViewport(wakeFrameLoop);
     }
@@ -1510,14 +1505,14 @@ export function mountStage(options) {
     }
   }
   function syncMarkerVisibility() {
-    const floorMarkersHidden = presentedVisible?.owner === "floor" && !presentedVisible.markersRevealed;
+    const floorMarkersHidden = cameraPresentation?.owner === "floor" && !cameraPresentation.markersRevealed;
     const hasHiddenClickable = !editing && !viewEditing && visibleBindings().some(visible => visible.visible !== false && visible.buttonHidden !== true && visible.hiddenClickable === true);
-    const markersConcealed = floorMarkersHidden || restoreViewButton || temperatureSlider || lightHistoryStorage && !hasHiddenClickable || activePointers && focusMode.hideIconsWhileRotating === true || !!frameLoop && !["edit", "panel"].includes(frameLoop);
+    const markersConcealed = floorMarkersHidden || restoreViewButton || temperatureSlider || lightHistoryStorage && !hasHiddenClickable || activePointers && focusMode.hideIconsWhileRotating === true || !!interactionMode && !["edit", "panel"].includes(interactionMode);
     for (const [markerId, classList] of rawProperties) {
       const buttonHidden = !editing && findBinding(markerId)?.buttonHidden === true;
       const hiddenClickable = !editing && !viewEditing && !buttonHidden && findBinding(markerId)?.hiddenClickable === true;
       const overviewQuip = findBinding(markerId)?.overviewQuip === true;
-      classList.disabled = presentedVisible?.owner === "floor" || buttonHidden || !editing && (idleReturning() || overviewQuip);
+      classList.disabled = cameraPresentation?.owner === "floor" || buttonHidden || !editing && (idleReturning() || overviewQuip);
       const deviceKind = findBinding(markerId);
       const workingMarker = !editing && (deviceKind?.passiveSensor || deviceKind?.deviceKind === "vacuum" && vacuumStatusPresentation(deviceKind, states).active);
       const append = workingMarker ? vacuumWorkingLayer : markersRootNode;
@@ -1554,7 +1549,7 @@ export function mountStage(options) {
     markersRootNode.classList.toggle("is-concealed", markersConcealed);
   }
   function syncChromeInert() {
-    const inert = !!focusedLightId && !!frameLoop && frameLoop !== "panel";
+    const inert = !!focusedLightId && !!interactionMode && interactionMode !== "panel";
     for (const classList of [navigationEl, floorTabsEl]) {
       classList.classList.toggle("is-focus-hidden", inert);
       classList.inert = inert;
@@ -1564,25 +1559,25 @@ export function mountStage(options) {
     lightPanelEl.style.setProperty("--i3d-panel-opacity", String(popupOpacity / 100));
     const vignetteStrength = Number.isFinite(properties.focusVignetteStrength) ? Math.max(0, Math.min(60, properties.focusVignetteStrength)) : 14;
     focusVignetteEl.style.setProperty("--i3d-vignette-opacity", String(vignetteStrength / 100));
-    focusVignetteEl.hidden = viewEditing || frameLoop === "edit" || frameLoop === "panel";
-    focusVignetteEl.classList.toggle("is-active", vignetteStrength > 0 && !!focusedLightId && !!frameLoop && !focusVignetteEl.hidden);
-    viewHelpEl.hidden = !viewEditing && frameLoop !== "edit" && (!editing || !!frameLoop);
-    viewHelpEl.textContent = frameLoop === "edit" ? "拖动旋转 · 右键平移 · 滚轮缩放。调整完成后保存" + (callback()?.deviceKind === "camera" ? "摄像头" : preFocusCamera === "television" ? "电视" : preFocusCamera === "nas" ? "NAS" : preFocusCamera === "cover" ? "窗帘" : preFocusCamera === "climate" ? "空调" : "此灯") + "视角。" : editing && !viewEditing ? "拖动空白处旋转 · 右键平移 · 滚轮缩放。临时查看不改变已保存视角。" : "拖动旋转 · 右键平移 · 滚轮缩放。调整完成后固定视角。";
-    markersRootNode.classList.toggle("is-view-editing", viewEditing || frameLoop === "edit");
+    focusVignetteEl.hidden = viewEditing || interactionMode === "edit" || interactionMode === "panel";
+    focusVignetteEl.classList.toggle("is-active", vignetteStrength > 0 && !!focusedLightId && !!interactionMode && !focusVignetteEl.hidden);
+    viewHelpEl.hidden = !viewEditing && interactionMode !== "edit" && (!editing || !!interactionMode);
+    viewHelpEl.textContent = interactionMode === "edit" ? "拖动旋转 · 右键平移 · 滚轮缩放。调整完成后保存" + (callback()?.deviceKind === "camera" ? "摄像头" : preFocusCamera === "television" ? "电视" : preFocusCamera === "nas" ? "NAS" : preFocusCamera === "cover" ? "窗帘" : preFocusCamera === "climate" ? "空调" : "此灯") + "视角。" : editing && !viewEditing ? "拖动空白处旋转 · 右键平移 · 滚轮缩放。临时查看不改变已保存视角。" : "拖动旋转 · 右键平移 · 滚轮缩放。调整完成后固定视角。";
+    markersRootNode.classList.toggle("is-view-editing", viewEditing || interactionMode === "edit");
     lightPanelEl.classList.toggle("is-preview", editing);
     queueOrSendCommand();
     syncMarkerVisibility();
   }
   function tickPresentedTransition(now) {
-    if (!presentedVisible) {
+    if (!cameraPresentation) {
       return;
     }
-    const done = presentedVisible;
-    const transitionElapsed = Math.max(0, now - presentedVisible.started);
-    const transitionEase = presentedVisible.transition.progress(transitionElapsed);
-    wakeFrameLoop = presentedVisible.inset + (presentedVisible.targetInset - presentedVisible.inset) * transitionEase;
-    const transitionSample = presentedVisible.transition.sample(transitionElapsed);
-    if (presentedVisible.owner === "floor") {
+    const done = cameraPresentation;
+    const transitionElapsed = Math.max(0, now - cameraPresentation.started);
+    const transitionEase = cameraPresentation.transition.progress(transitionElapsed);
+    wakeFrameLoop = cameraPresentation.inset + (cameraPresentation.targetInset - cameraPresentation.inset) * transitionEase;
+    const transitionSample = cameraPresentation.transition.sample(transitionElapsed);
+    if (cameraPresentation.owner === "floor") {
       options.advanceFloorTransition?.(transitionEase, transitionSample);
     }
     if (options.applyCameraFrame) {
@@ -1591,17 +1586,17 @@ export function mountStage(options) {
       options.applyCameraPose(transitionSample, transitionEase);
       options.setFocusViewport(wakeFrameLoop);
     }
-    if (presentedVisible.owner === "floor" && transitionEase >= 0.9 && !presentedVisible.presentationRevealed) {
-      presentedVisible.presentationRevealed = true;
+    if (cameraPresentation.owner === "floor" && transitionEase >= 0.9 && !cameraPresentation.presentationRevealed) {
+      cameraPresentation.presentationRevealed = true;
       queueOrSendCommand();
     }
-    if (presentedVisible.owner === "floor" && transitionEase >= 0.9 && !presentedVisible.markersRevealed) {
-      presentedVisible.markersRevealed = true;
+    if (cameraPresentation.owner === "floor" && transitionEase >= 0.9 && !cameraPresentation.markersRevealed) {
+      cameraPresentation.markersRevealed = true;
       syncMarkerVisibility();
       updateMarkerPositionsCurrent(true);
     }
-    if (presentedVisible.transition.settled(transitionElapsed) && presentedVisible === done) {
-      presentedVisible = null;
+    if (cameraPresentation.transition.settled(transitionElapsed) && cameraPresentation === done) {
+      cameraPresentation = null;
       options.endCameraMotion();
       pointerToFloorPoint();
       done.done?.();
@@ -1625,7 +1620,7 @@ export function mountStage(options) {
       options.setFloorSlideCameras?.(from, mode);
     }
     const reducedMotion = immediate || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
-    presentedVisible = {
+    cameraPresentation = {
       from,
       to: structuredClone(mode),
       inset: wakeFrameLoop,
@@ -1642,7 +1637,7 @@ export function mountStage(options) {
     };
     syncIdleAvailabilityCurrent();
     pointerToFloorPoint();
-    tickPresentedTransition(presentedVisible.started);
+    tickPresentedTransition(cameraPresentation.started);
     wake();
   }
   function camerasNearlyEqual(mode, modeCurrent) {
@@ -1652,9 +1647,9 @@ export function mountStage(options) {
     returnToBase(returnBase) {
       activePointers = true;
       activeKeys = structuredClone(focusMode.autoRotate.returnToDefault === true ? normalizeCameraUp(properties.camera || baseCameraState || options.cameraState()) : options.cameraState(true));
-      const hadFocusedTarget = !!focusedLightId || !!frameLoop;
+      const hadFocusedTarget = !!focusedLightId || !!interactionMode;
       focusedLightId = "";
-      frameLoop = "";
+      interactionMode = "";
       activityTracked = null;
       blurActiveWithin(lightPanelEl);
       lightPanelEl.classList.remove("is-open");
@@ -1667,7 +1662,7 @@ export function mountStage(options) {
         });
       }
       options.setOrbitPivot(null);
-      if (!presentedVisible && !wakeFrameLoop && camerasNearlyEqual(options.cameraState(), activeKeys)) {
+      if (!cameraPresentation && !wakeFrameLoop && camerasNearlyEqual(options.cameraState(), activeKeys)) {
         returnBase();
       } else {
         animateCameraTo(activeKeys, false, false, returnBase, "idle");
@@ -1682,7 +1677,7 @@ export function mountStage(options) {
       options.applyCameraPose(options.orbitCameraPose(activeKeys, yawDelta));
     },
     stop() {
-      const wasIdlePresented = presentedVisible?.owner === "idle";
+      const wasIdlePresented = cameraPresentation?.owner === "idle";
       const wasUserHeld = userHeld;
       userHeld = false;
       activePointers = false;
@@ -1691,7 +1686,7 @@ export function mountStage(options) {
       lightControls = options.camera.quaternion?.toArray?.().join(",") || "";
       syncMarkerVisibility();
       if (wasIdlePresented) {
-        presentedVisible = null;
+        cameraPresentation = null;
       }
       if (wasIdlePresented || wasUserHeld) {
         options.endCameraMotion();
@@ -1724,8 +1719,8 @@ export function mountStage(options) {
     if (!idleIconsAllowed) {
       clearLightPreviewHold();
     }
-    activity.setAvailable(idleIconsAllowed && !presets && !focusedLightId && !frameLoop && (!presentedVisible || presentedVisible.owner === "idle"));
-    exit.setAvailable(idleIconsAllowed && !!focusedLightId && ["runtime", "panel"].includes(frameLoop) && !presentedVisible);
+    activity.setAvailable(idleIconsAllowed && !presets && !focusedLightId && !interactionMode && (!cameraPresentation || cameraPresentation.owner === "idle"));
+    exit.setAvailable(idleIconsAllowed && !!focusedLightId && ["runtime", "panel"].includes(interactionMode) && !cameraPresentation);
     visibility.setAvailable(idleIconsAllowed);
     markersById?.setAvailable(!document.hidden && (!pendingCommands || markerWorldCache));
     wake();
@@ -1741,7 +1736,7 @@ export function mountStage(options) {
     if (presets && type.key === "Escape") {
       displayLightState();
     }
-    lightPanelHeader = performance.now();
+    lastLightPanelActivityAt = performance.now();
     restoreViewButton = false;
     syncMarkerVisibility();
     if (type.type === "pointerdown") {
@@ -1787,14 +1782,14 @@ export function mountStage(options) {
       });
     }
     rootNext.hide();
-    if (!focusedLightId && !frameLoop && (!activityTracked || immediate.immediate !== true)) {
+    if (!focusedLightId && !interactionMode && (!activityTracked || immediate.immediate !== true)) {
       return;
     }
     const hadFocus = !!presentationScale;
     presentationScale = null;
-    const wasEditingFocus = !!frameLoop && !!editing;
+    const wasEditingFocus = !!interactionMode && !!editing;
     focusedLightId = "";
-    frameLoop = "";
+    interactionMode = "";
     blurActiveWithin(lightPanelEl);
     lightPanelEl.classList.remove("is-open");
     lightPanelEl.setAttribute("inert", "");
@@ -1804,7 +1799,7 @@ export function mountStage(options) {
       active: false
     });
     if (immediate.preserveCamera) {
-      presentedVisible = null;
+      cameraPresentation = null;
       activityTracked = null;
       options.setOrbitPivot(null);
     } else if (activityTracked) {
@@ -1834,7 +1829,7 @@ export function mountStage(options) {
       presentationScale = null;
       syncEditorEffects();
     }
-    if (focusedLightId === id && frameLoop === focusSource && focusSource === "runtime") {
+    if (focusedLightId === id && interactionMode === focusSource && focusSource === "runtime") {
       clearFocus();
       return;
     }
@@ -1843,13 +1838,13 @@ export function mountStage(options) {
     }
     exit.activity();
     if (focusSource === "panel") {
-      if (activityTracked || presentedVisible) {
+      if (activityTracked || cameraPresentation) {
         clearFocus({
           immediate: true
         });
       }
       focusedLightId = id;
-      frameLoop = "panel";
+      interactionMode = "panel";
       controlErrorEl.textContent = "";
       lightPanelEl.removeAttribute("inert");
       lightPanelEl.classList.add("is-open");
@@ -1873,7 +1868,7 @@ export function mountStage(options) {
       return;
     }
     focusedLightId = id;
-    frameLoop = focusSource;
+    interactionMode = focusSource;
     controlErrorEl.textContent = "";
     if (!isDeviceFocusKind(modelId) || modelId.clickAction !== "focus") {
       lightPanelEl.removeAttribute("inert");
@@ -1903,7 +1898,7 @@ export function mountStage(options) {
     }
   }
   restoreViewBtn.addEventListener("click", () => {
-    if (frameLoop || activityTracked || presentedVisible) {
+    if (interactionMode || activityTracked || cameraPresentation) {
       clearFocus();
     } else {
       options.restoreCamera(normalizeCameraUp(properties.camera || baseCameraState));
@@ -2086,7 +2081,7 @@ export function mountStage(options) {
   function queueControlCommand(command, previewToken) {
     const requestId = String(++controlRequestSeq);
     const entityId = command.entityId;
-    reject.retain(entityId, previewToken);
+    lightPreviewController.retain(entityId, previewToken);
     const timeout = setTimeout(() => finishControlRequest(requestId, "请求超时，请检查设备状态。", true), 14000);
     sceneUpdating.set(requestId, {
       entityId: entityId,
@@ -2111,14 +2106,14 @@ export function mountStage(options) {
     const previewToken = entityId.next;
     const shouldRetainPreview = previewToken && !timedOut && !disposed && !editing && interactive && preFocusCamera === "light" && activeFloorId !== "all" && (properties.lights || []).some(item => idleCameraBase(item) && item.entityId === entityId.entityId) && resolveLightEntityState(entityId.entityId).available;
     if (resultError) {
-      reject.reject(entityId.entityId, entityId.previewToken);
+      lightPreviewController.reject(entityId.entityId, entityId.previewToken);
     } else {
-      reject.acknowledge(entityId.entityId, entityId.previewToken);
+      lightPreviewController.acknowledge(entityId.entityId, entityId.previewToken);
     }
     if (shouldRetainPreview) {
       queueControlCommand(previewToken.command, previewToken.previewToken);
     } else if (previewToken) {
-      reject.reject(entityId.entityId, previewToken.previewToken);
+      lightPreviewController.reject(entityId.entityId, previewToken.previewToken);
     }
     if (callback()?.entityId === entityId.entityId) {
       controlErrorEl.textContent = shouldRetainPreview ? "" : resultError;
@@ -2160,11 +2155,11 @@ export function mountStage(options) {
         } else {
           value = lightCommand(entityId.entityId, commandName, brightness, brightnessSupported);
         }
-        const commandPreview = reject.set(entityId.entityId, commandName, kelvin, true);
+        const commandPreview = lightPreviewController.set(entityId.entityId, commandName, kelvin, true);
         syncEditorEffects({
           preview: commandName !== "power"
         });
-        handleControlResult(queueControlCommand, reject, value, commandPreview);
+        handleControlResult(sceneUpdating, queueControlCommand, lightPreviewController, value, commandPreview);
         controlErrorEl.textContent = "";
         pruneMarkerElements();
       } catch (error) {
@@ -2264,16 +2259,16 @@ export function mountStage(options) {
       return;
     }
     focusBinding(id);
-    if (focusedLightId === id && frameLoop === "runtime" && clickAction === "turn-on-focus" && available.available && !available.on) {
+    if (focusedLightId === id && interactionMode === "runtime" && clickAction === "turn-on-focus" && available.available && !available.on) {
       sendLightCommand("power", true);
     }
   }
   let lastMarkerLayoutKey = "";
   function updateMarkerPositionsCurrent(forceLayout = false) {
-    if (active || toolbar || disposed) {
+    if (active || floorTransitionBusy || disposed) {
       return;
     }
-    if (options.floorTransitionActive || presentedVisible) {
+    if (options.floorTransitionActive || cameraPresentation) {
       screenOutlines.pause();
     }
     screenOutlines.update();
@@ -2344,7 +2339,7 @@ export function mountStage(options) {
     }
   }
   function pruneMarkerElements() {
-    if (toolbar) {
+    if (floorTransitionBusy) {
       return;
     }
     wake();
@@ -2363,7 +2358,7 @@ export function mountStage(options) {
         classList.type = "button";
         classList.addEventListener("click", stopPropagation => {
           stopPropagation.stopPropagation();
-          if (!deviceKind.passiveSensor && !toolbar && !viewEditing && frameLoop !== "edit" && (!!editing || findBinding(deviceKind.id)?.buttonHidden !== true)) {
+          if (!deviceKind.passiveSensor && !floorTransitionBusy && !viewEditing && interactionMode !== "edit" && (!!editing || findBinding(deviceKind.id)?.buttonHidden !== true)) {
             if (classList.dataset.dragged === "true") {
               classList.dataset.dragged = "";
               return;
@@ -2531,7 +2526,7 @@ export function mountStage(options) {
     };
   }
   function onMarkerPointerDown(pointerEvent, id) {
-    if (!editing || frameLoop || pointerEvent.button !== 0) {
+    if (!editing || interactionMode || pointerEvent.button !== 0) {
       return;
     }
     pointerEvent.preventDefault();
@@ -2630,6 +2625,7 @@ export function mountStage(options) {
     } : null;
   });
   canvas.addEventListener("pointermove", pointerId => {
+    backgroundTheme.interact?.(pointerId, false);
     if (id && (pointerId.pointerId !== id.id || Math.hypot(pointerId.clientX - id.x, pointerId.clientY - id.y) >= 5)) {
       id.moved = true;
     }
@@ -2640,15 +2636,15 @@ export function mountStage(options) {
   canvas.addEventListener("pointerup", clientX => {
     const isTap = id && !id.moved && id.id === clientX.pointerId && Math.hypot(clientX.clientX - id.x, clientX.clientY - id.y) < 5;
     id = null;
-    if (!!isTap && !presets && frameLoop !== "edit") {
-      if (!editing && !viewEditing && interactive && !presentedVisible && !idleReturning() && activeFloorId !== "all") {
+    if (!!isTap && !presets && interactionMode !== "edit") {
+      if (!editing && !viewEditing && interactive && !cameraPresentation && !idleReturning() && activeFloorId !== "all") {
         const presencePick = hitRects.pick(clientX.clientX, clientX.clientY, options.camera, canvas, properties.security?.presenceSensors || []);
         if (presencePick) {
           focusBinding("presence:" + presencePick);
           return;
         }
       }
-      if (!idleReturning() && preFocusCamera !== "light" && !viewEditing && !presentedVisible && (editing || interactive)) {
+      if (!idleReturning() && preFocusCamera !== "light" && !viewEditing && !cameraPresentation && (editing || interactive)) {
         const binding = options.pickEnvironmentModel?.(clientX.clientX, clientX.clientY, visibleBindings(), clientX.pointerType === "touch" ? 10 : 5);
         const id = binding && visibleBindings().find(floorId => floorId.floorId === binding.floorId && floorId.modelId === binding.modelId);
         if (id) {
@@ -2679,7 +2675,7 @@ export function mountStage(options) {
         syncPresentationLayout();
       }
     } else if (requestId.type === "config") {
-      if (toolbar) {
+      if (floorTransitionBusy) {
         lightPanel = value;
         return;
       }
@@ -2722,7 +2718,7 @@ export function mountStage(options) {
       visibility.activity();
       exit.activity();
       const viewEditingChanged = viewEditing && requestId.viewEditing !== true || JSON.stringify(properties.camera) !== JSON.stringify(requestId.properties.camera);
-      if ((frameLoop || activityTracked || presentedVisible) && (viewEditingChanged || properties.floorSelection !== requestId.properties.floorSelection || editing !== (requestId.editing === true) || requestId.viewEditing === true || editing && selectedId !== (requestId.selectedId || ""))) {
+      if ((interactionMode || activityTracked || cameraPresentation) && (viewEditingChanged || properties.floorSelection !== requestId.properties.floorSelection || editing !== (requestId.editing === true) || requestId.viewEditing === true || editing && selectedId !== (requestId.selectedId || ""))) {
         clearFocus({
           immediate: true
         });
@@ -2732,6 +2728,11 @@ export function mountStage(options) {
       viewEditing = requestId.viewEditing === true;
       selectedId = requestId.selectedId || "";
       states = requestId.states || {};
+      if (!editing) {
+        presenceEditorOpen = false;
+        presenceEditorActive = false;
+      }
+      configuredKinds = configuredModuleKinds(properties);
       interactive = !editing && requestId.interactive === true;
       cameraMotion = requestId.editingVacuumId || "";
       const moduleCandidates = editing ? ["security", "climate", "cover", "nas", "television", "vacuum", "vacuum-shortcut"].includes(requestId.editingModule) ? requestId.editingModule : "light" : ["overview", "security", "light", "devices", "vacuum"].includes(preFocusCamera) ? preFocusCamera : ["nas", "television"].includes(preFocusCamera) ? "devices" : "environment";
@@ -2743,7 +2744,7 @@ export function mountStage(options) {
       }
       for (const next of sceneUpdating.values()) {
         if (next.next && (!interactive || !(properties.lights || []).some(entityId => entityId.entityId === next.entityId))) {
-          reject.reject(next.entityId, next.next.previewToken);
+          lightPreviewController.reject(next.entityId, next.next.previewToken);
           next.next = null;
         }
       }
@@ -2844,7 +2845,7 @@ export function mountStage(options) {
     } else if (requestId.type === "activity-state") {
       pendingCommands = true;
       idleIconsHidden = requestId.visible === true;
-      markerWorldCache = requestId.presentedVisible === undefined ? idleIconsHidden : requestId.presentedVisible === true;
+      markerWorldCache = requestId.cameraPresentation === undefined ? idleIconsHidden : requestId.cameraPresentation === true;
       options.setPresentedVisible?.(markerWorldCache);
       collectMetadata();
       if (!idleIconsHidden) {
@@ -2853,7 +2854,7 @@ export function mountStage(options) {
       syncIdleAvailabilityCurrent();
     } else if (requestId.type === "user-activity") {
       restoreViewButton = false;
-      lightPanelHeader = performance.now();
+      lastLightPanelActivityAt = performance.now();
       syncMarkerVisibility();
       lightStateCache = requestId.held === true;
       syncIdleHold();
@@ -2870,7 +2871,7 @@ export function mountStage(options) {
       } : requestId.states || {};
       for (const entityId of properties.lights || []) {
         if (requestId.patch !== true || Object.hasOwn(requestId.states || {}, entityId.entityId)) {
-          reject.reconcile(entityId.entityId, resolveLightEntityState(entityId.entityId));
+          lightPreviewController.reconcile(entityId.entityId, resolveLightEntityState(entityId.entityId));
         }
       }
       pruneMarkerElements();
@@ -2917,6 +2918,12 @@ export function mountStage(options) {
         } else if (requestId.command === "presence-3d-view") {
           options.setCameraView?.("free");
           options.restoreCamera(properties.camera || options.floorDefaultCamera?.(activeFloorId) || baseCameraState);
+        } else if (requestId.command === "presence-editor-open") {
+          presenceEditorOpen = requestId.value === true;
+          if (!presenceEditorOpen) {
+            presenceEditorActive = false;
+          }
+          syncMarkers();
         } else if (requestId.command === "presence-preview-walk") {
           presenceEditorActive = requestId.value === true;
           syncMarkers();
@@ -2959,7 +2966,7 @@ export function mountStage(options) {
             immediate: true
           });
         } else {
-          if (frameLoop !== "edit" || requestId.id !== focusedLightId) {
+          if (interactionMode !== "edit" || requestId.id !== focusedLightId) {
             throw new Error(preFocusCamera === "nas" ? "请先调整这台NAS的聚焦视角。" : preFocusCamera === "cover" ? "请先调整这幅窗帘的聚焦视角。" : preFocusCamera === "climate" ? "请先调整这台空调的聚焦视角。" : "请先调整这盏灯的聚焦视角。");
           }
           if (requestId.command === "focus-projection") {
@@ -3028,10 +3035,11 @@ export function mountStage(options) {
   observe.observe(navigationEl);
   observe.observe(floorTabsEl);
   async function apply(sceneUpdate) {
+    invalidateBackgroundLayerCache();
     const savedScene = options.savedScene;
     const titleCamera = lightTitle();
     restoreViewButton = restoreViewButton || activePointers && focusMode.hideIconsWhileRotating === true || lightHistoryStorage;
-    toolbar = true;
+    floorTransitionBusy = true;
     activity.activity();
     syncMarkerVisibility();
     let cancelFloorWait = () => {};
@@ -3079,10 +3087,15 @@ export function mountStage(options) {
       }
       throw floorTransitionError;
     } finally {
+      if (!disposed) {
+        pointerToFloorPoint();
+        pruneMarkerElements();
+        syncPresentationChrome();
+      }
       cancelFloorWait();
-      toolbar = false;
+      floorTransitionBusy = false;
       markersSuppressedByActivity.clear();
-      if (!disposed && (pointerToFloorPoint(), pruneMarkerElements(), lightPanel)) {
+      if (!disposed && lightPanel) {
         const parentMessage = lightPanel;
         lightPanel = null;
         onParentMessage(parentMessage);
@@ -3090,16 +3103,50 @@ export function mountStage(options) {
     }
   }
   const sceneSync = options.readSceneUpdate ? startSceneSync({
-    eligible: () => !disposed && presented && idleIconsHidden && !document.hidden && !editing && !viewEditing && !frameLoop && !presentedVisible && !dragState && !active && !toolbar && !sceneUpdating.size && !fallback.size && !map.size && !set.size && !curtainMotion.isMoving() && nextDelay.nextDelay() === Infinity && !lightStateCache && !resolveLightState.size && !effectPreview.size && performance.now() - lightPanelHeader > 1200,
+    eligible: () => {
+      const sceneQuiet = !sceneUpdating.size && !fallback.size && !map.size && !set.size && !curtainMotion.isMoving();
+      const uiQuiet = !editing && !viewEditing && !interactionMode && !cameraPresentation && !dragState && !active && !floorTransitionBusy;
+      const lightsQuiet = !lightStateCache && !resolveLightState.size && !effectPreview.size && performance.now() - lastLightPanelActivityAt > 1200;
+      return !disposed && presented && idleIconsHidden && !document.hidden && uiQuiet && sceneQuiet && nextDelay.nextDelay() === Infinity && lightsQuiet;
+    },
     read: sceneId => options.readSceneUpdate(sceneId),
     apply
   }) : () => {};
+  let backgroundLayerMeshes = null;
+  let backgroundLayerRoot = null;
+  function backgroundAndGridMeshes() {
+    const root = options.modelRoot;
+    if (!root) {
+      backgroundLayerMeshes = null;
+      backgroundLayerRoot = null;
+      return [];
+    }
+    if (backgroundLayerRoot === root && backgroundLayerMeshes) {
+      return backgroundLayerMeshes;
+    }
+    const meshes = [];
+    root.traverse?.(node => {
+      if (node.userData?.exportRole === "background" || node.userData?.exportRole === "grid") {
+        meshes.push(node);
+      }
+    });
+    backgroundLayerRoot = root;
+    backgroundLayerMeshes = meshes;
+    return meshes;
+  }
+  function invalidateBackgroundLayerCache() {
+    backgroundLayerMeshes = null;
+    backgroundLayerRoot = null;
+  }
   function tickStageFrame(frameTime) {
-    if (disposed || document.hidden || toolbar) {
+    const backgroundMeshes = backgroundAndGridMeshes();
+    backgroundTheme.sync?.(backgroundMeshes, properties.backgroundVisible !== false);
+    backgroundTheme.tick?.(frameTime);
+    if (disposed || document.hidden || floorTransitionBusy) {
       return Infinity;
     }
     syncMarkers();
-    const cameraBusy = options.floorTransitionActive || presentedVisible?.owner === "floor";
+    const cameraBusy = options.floorTransitionActive || cameraPresentation?.owner === "floor";
     options.recordFloorFrame?.(frameTime, !!cameraBusy);
     if (!cameraBusy) {
       syncCurtainLayout();
@@ -3134,7 +3181,7 @@ export function mountStage(options) {
     exit.tick(frameTime);
     activity.tick(frameTime);
     visibility.tick(frameTime);
-    if (reject.expire()) {
+    if (lightPreviewController.expire()) {
       pruneMarkerElements();
     }
     const frameDeltaSec = brightnessSlider ? Math.min(0.1, (frameTime - brightnessSlider) / 1000) : 0;
@@ -3157,7 +3204,7 @@ export function mountStage(options) {
     if (cameraQuatKey !== lightControls) {
       const frameSec = Math.min(100, Math.max(1, frameTime - (previousCameraFrameTime ?? frameTime - 16.7))) / 1000;
       const rotationSpeed = previousCameraQuaternion.angleTo(options.camera.quaternion) / frameSec;
-      lightControls && !presentedVisible && !presets && (activePointers || userHeld || rotationSpeed > 0.035) && (hideIconsUntilDeg = frameTime + 60);
+      lightControls && !cameraPresentation && !presets && (activePointers || userHeld || rotationSpeed > 0.035) && (hideIconsUntilDeg = frameTime + 60);
       lightControls = cameraQuatKey;
     }
     previousCameraQuaternion.copy(options.camera.quaternion);
@@ -3173,7 +3220,7 @@ export function mountStage(options) {
     followRoamBtn.disabled = !presets && !anyVacuumFollowing;
     updateMarkerPositionsCurrent();
     canvas.dataset.stageFrameChecks = String(markersById.stats.frames);
-    return Math.min(presenceWaveTicked ? 1000 / 30 : Infinity, presenceTicked ? 1000 / 30 : Infinity, vacuumMapTicked || presets ? 1000 / 30 : Infinity, temperatureSlider ? 100 : Infinity, anyVacuumActive ? 7000 - frameTime % 7000 : Infinity, presentedVisible || curtainTickMs || vacuumTickMs ? 0 : Infinity, curtainMotion.isMoving() ? 1000 / 30 : Infinity, nextDelay.nextDelay(frameTime), setRoot.nextDelay(), markersRoot.nextDelay(), screenOutlines.nextDelay(), exit.nextDelay(frameTime), activity.nextDelay(frameTime), visibility.nextDelay(frameTime), reject.nextDelay(frameTime));
+    return Math.min(presenceWaveTicked ? 1000 / 30 : Infinity, presenceTicked ? 1000 / 30 : Infinity, vacuumMapTicked || presets ? 1000 / 30 : Infinity, temperatureSlider ? 100 : Infinity, anyVacuumActive ? 7000 - frameTime % 7000 : Infinity, cameraPresentation || curtainTickMs || vacuumTickMs ? 0 : Infinity, curtainMotion.isMoving() ? 1000 / 30 : Infinity, nextDelay.nextDelay(frameTime), setRoot.nextDelay(), markersRoot.nextDelay(), screenOutlines.nextDelay(), exit.nextDelay(frameTime), activity.nextDelay(frameTime), visibility.nextDelay(frameTime), lightPreviewController.nextDelay(frameTime));
   }
   markersById = options.createFrameLoop({
     step: frameDt => options.profileFrameWork ? options.profileFrameWork("stage-updates", () => tickStageFrame(frameDt)) : tickStageFrame(frameDt)
@@ -3186,6 +3233,7 @@ export function mountStage(options) {
     hasTracking.dispose();
     hitRects.dispose();
     presenceWaves.dispose();
+    invalidateBackgroundLayerCache();
     if (presets) {
       displayLightState(false);
     }
@@ -3198,6 +3246,8 @@ export function mountStage(options) {
     options.setCurtainSync?.(null);
     panel.dispose();
     curtainMotion.dispose();
+    backgroundTheme.dispose?.();
+    options.setBackgroundTheme?.(null);
     nextDelay.clear();
     for (const pendingControlId of set.keys()) {
       enqueueCommand(pendingControlId, "页面已关闭。");
@@ -3205,7 +3255,7 @@ export function mountStage(options) {
     for (const pendingCameraRequestId of map.keys()) {
       camerasEqual(pendingCameraRequestId, "页面已关闭。");
     }
-    presentationRoot.flush();
+    lightEntityStateCache.flush();
     sceneSync();
     rootCurrent.dispose();
     markersRoot.dispose();
@@ -3224,7 +3274,7 @@ export function mountStage(options) {
     activity.dispose();
     visibility.dispose();
     exit.dispose();
-    presentedVisible = null;
+    cameraPresentation = null;
     deviceStatus({
       type: "focus-state",
       active: false

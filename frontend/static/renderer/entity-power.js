@@ -1,4 +1,4 @@
-import { climateIsPoweredOn, climatePowerCommand, resolveClimateDeviceType } from "./climate.js?v=20260812-presence-phase-v79";
+import { climateIsPoweredOn, climatePowerCommand, resolveClimateDeviceType } from "./climate.js?v=0.5.3";
 function entityState(state) {
   return state?.newState || state || {
     state: "",

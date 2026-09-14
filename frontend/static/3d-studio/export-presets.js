@@ -1,4 +1,4 @@
-import { finite } from "./studio-normalization.js?v=20260903-studio-normalization-v2";
+import { finite } from "./studio-normalization.js?v=0.5.3";
 
 export const DEFAULT_EXPORT_PRESET_COUNT = 4;
 export const MAX_EXPORT_PRESET_COUNT = 8;

@@ -1,4 +1,4 @@
-import { coverState, coverControl, coverStateLabel } from "./cover-state.js?v=20260910-curtain-default-open-v2-20260912-align-v1";
+import { coverState, coverControl, coverStateLabel } from "./cover-state.js?v=0.5.3";
 export function createCoverPanel({
   element: host,
   onControl = async () => {},

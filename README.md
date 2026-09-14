@@ -1,6 +1,6 @@
 # HA Bridge
 
-面向 [Home Assistant](https://www.home-assistant.io/) 的本机仪表盘与中控平台，当前版本 **0.5.2.1**。
+面向 [Home Assistant](https://www.home-assistant.io/) 的本机仪表盘与中控平台，当前版本 **0.5.3**。
 
 提供可视化编辑器、3D 户型工作室、全屏展示页和中控配对。后端是 FastAPI，前端是原生 HTML / CSS / JavaScript，数据默认落在本机 SQLite。
 
@@ -155,11 +155,13 @@ APP_DATA_DIR=./data PYTHONPATH=backend/app alembic upgrade head
 | `APP_PORT` | `18081` | 容器监听端口 |
 | `APP_SESSION_MAX_AGE_SECONDS` | `28800` | 登录会话时长 |
 | `APP_COOKIE_SECURE` | `false` | HTTPS 下设为 `true` |
+| `APP_DISPLAY_COOKIE_MAX_AGE_SECONDS` | `15552000`（180 天） | 中控配对 cookie 时长 |
 | `APP_HA_REQUEST_TIMEOUT_SECONDS` | `10` | 调用 HA 的超时 |
 | `APP_HA_RECONCILE_INTERVAL_SECONDS` | `1800` | HA 全量对账间隔 |
 | `APP_HA_WEBSOCKET_MAX_SIZE_BYTES` | `67108864` | HA WebSocket 最大消息 |
 | `APP_LICENSE_STORE_URL` | `http://127.0.0.1:18082` | 本机授权店地址，仅允许本机 host |
 | `APP_LICENSE_REQUEST_TIMEOUT_SECONDS` | `10` | 授权请求超时 |
+| `APP_LICENSE_CLOCK_SKEW_SECONDS` | `300` | 授权时钟偏斜容差 |
 | `APP_HA_CREDENTIAL_FILE` | 数据目录内默认路径 | HA 凭据密钥文件 |
 | `APP_DISPLAY_PAIRING_KEY_FILE` | 数据目录内默认路径 | 中控配对密钥文件 |
 | `APP_LICENSE_CREDENTIAL_FILE` | 数据目录内默认路径 | 授权密钥文件 |
@@ -194,14 +196,37 @@ docker exec ha-bridge rm /tmp/app.tar.gz
 
 ## 开发注意
 
-- 修改业务 JavaScript 后，保留 HTML / `import` 里的 `?v=` 缓存标记。`home.js` 与 `renderer.js` 必须使用同一条 `registry.js?v=`，否则会出现两份控件注册表。
+- 修改业务 JavaScript 后，保留 HTML / `import` 里的 `?v=` 缓存标记。优先使用单一 `releaseId` / `VERSION`（例如 `?v=0.5.3`），避免把功能 changelog 拼进查询串。`home.js` 与 `renderer.js` 必须使用同一条 `registry.js?v=`，否则会出现两份控件注册表。
 - 不要改 `frontend/static/vendor/` 下的 three.js、hls.js、OrbitControls 等第三方文件。
 - 界面中文文案保持原词。
 - `migrations/env.py` 必须从 `backend/app` 导入 `database` 和 `models`，不要写成 `from backend.app import models`，否则会重复注册表。
 - 旧扁平静态路径（如 `/bridge-static/home.js`）已改为 `js/`、`css/`、`assets/`。户型工作室与 3D 交互还会引用 `/bridge-static/utils/`（与 dump 0.4.8 一致）。
 - 3D 交互舞台脚本由 `/api/v1/modules/interaction3d/{filename}` 下发，需要已登录或已配对，且当前授权允许编辑器。
+- **3D 目录职责（勿合并）：**
+  - `frontend/static/3d-studio/` — 户型工作室引擎（`studio-app.js`）；舞台嵌入模式复用同一引擎。
+  - `frontend/modules/interaction3d/` — 授权门控的舞台运行时（灯光/设备面板、`stage.js` 等），经 API 白名单下发，不是公开静态资源。
+  - `frontend/static/modules/interaction3d/` — 编辑器桥接、控件定义、frame-loop / render-cache 等公开辅助模块。
+- **JavaScript 标识符：** 禁止 1–2 字母变量名（循环下标除外）；禁止无配对语义的 `Current` 后缀；DOM 绑定按职责命名；禁止同一绑定换类型复用。
+- 本地护栏：`pip install -r requirements-dev.txt` 后可运行 `ruff check`、`pytest`、`bash scripts/check-js.sh`。
 
 ## 更新日志
+
+### v0.5.3
+
+新增
+
+- 编辑器增加「开发计划与更新日志」入口（位于「使用教程」后方），默认打开更新日志；发现新版本时显示「有更新」标记，约 6 小时检测一次。
+- 人体检测支持摄像头检测、人数计数及自定义实体，可选择自动识别、数值阈值、指定状态或状态变化触发，并设置触发后显示时长。
+- 窗帘增加布帘、纱帘外观；未绑定实体时也可设置关闭、半开或全开。
+- 轻量柔光支持照射高度范围，并可切换平面编辑与 3D 预览。
+- 多层总览增加等比例叠加开关，支持调整楼层间距。
+- 3D 背景新增「微光星尘」主题，保留经典网格可选。
+
+优化与修复
+
+- 对齐 0.5.3：减少编辑连带刷新相关行为、实体绑定放宽、电视电源海报/黑屏、扫地机基站滞留与家具参照、柜体背板、相机俯视约束、独立仪表盘 HLS 依赖等。
+- 保留 0.5.2.1 独有能力：本机授权店、壁画/背景墙、多种柱截面、本地使用教程等。
+- 授权仍使用本机 `register` 商店（`APP_LICENSE_STORE_URL`），不接入官方授权云。
 
 ### v0.5.2.1
 

@@ -14,16 +14,23 @@ def _environment_bool(name: str, default: bool = False) -> bool:
     return value.strip().lower() in frozenset({'1', 'on', 'yes', 'true'})
 
 
+def _read_version(project_root: Path) -> str:
+    return (project_root / 'VERSION').read_text(encoding='utf-8').strip()
+
+
 @dataclass(frozen=True)
 class Settings:
     data_dir: Path
+    version: str
     project_root: Path = PROJECT_ROOT
     app_base_url: str = ''
     session_max_age_seconds: int = 28800
     cookie_secure: bool = False
     cookie_name: str = 'ha_bridge_session'
     display_cookie_name: str = 'ha_bridge_display'
-    display_cookie_max_age_seconds: int = 315360000
+    display_cookie_max_age_seconds: int = 15552000
+    update_checks_enabled: bool = True
+    update_channel: str = 'docker'
     ha_request_timeout_seconds: float = 10
     ha_reconcile_interval_seconds: int = 1800
     ha_websocket_max_size_bytes: int = 67108864
@@ -95,10 +102,6 @@ class Settings:
     def instance_id_path(self) -> Path:
         return self.data_dir / 'instance-id'
 
-    @property
-    def version(self) -> str:
-        return (self.project_root / 'VERSION').read_text(encoding='utf-8').strip()
-
 
 def load_settings() -> Settings:
     data_dir = Path(os.getenv('APP_DATA_DIR', PROJECT_ROOT / 'data')).expanduser().resolve()
@@ -107,14 +110,19 @@ def load_settings() -> Settings:
     license_key_path = os.getenv('APP_LICENSE_CREDENTIAL_FILE', '').strip()
     return Settings(
         data_dir=data_dir,
+        version=_read_version(PROJECT_ROOT),
         app_base_url=os.getenv('APP_BASE_URL', '').strip().rstrip('/'),
         session_max_age_seconds=int(os.getenv('APP_SESSION_MAX_AGE_SECONDS', '28800')),
         cookie_secure=_environment_bool('APP_COOKIE_SECURE'),
+        display_cookie_max_age_seconds=int(os.getenv('APP_DISPLAY_COOKIE_MAX_AGE_SECONDS', '15552000')),
+        update_checks_enabled=_environment_bool('APP_UPDATE_CHECKS_ENABLED', True),
+        update_channel=(os.getenv('APP_UPDATE_CHANNEL', 'docker').strip().lower() or 'docker'),
         ha_request_timeout_seconds=float(os.getenv('APP_HA_REQUEST_TIMEOUT_SECONDS', '10')),
         ha_reconcile_interval_seconds=int(os.getenv('APP_HA_RECONCILE_INTERVAL_SECONDS', '1800')),
         ha_websocket_max_size_bytes=int(os.getenv('APP_HA_WEBSOCKET_MAX_SIZE_BYTES', str(67108864))),
         license_required=True,
         license_request_timeout_seconds=float(os.getenv('APP_LICENSE_REQUEST_TIMEOUT_SECONDS', '10')),
+        license_clock_skew_seconds=int(os.getenv('APP_LICENSE_CLOCK_SKEW_SECONDS', '300')),
         credential_key_path_override=Path(ha_key_path).expanduser().resolve() if ha_key_path else None,
         display_pairing_key_path_override=(
             Path(display_pairing_key_path).expanduser().resolve() if display_pairing_key_path else None

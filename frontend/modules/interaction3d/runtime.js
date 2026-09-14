@@ -1,4 +1,4 @@
-import { createLightStream } from "./light-stream.js?v=20260909-preview-sleep-v1";
+import { createLightStream } from "./light-stream.js?v=0.5.3";
 const INTERACTION3D_API = "/api/v1/modules/interaction3d";
 export function mountInteraction3d(host, {
   component,

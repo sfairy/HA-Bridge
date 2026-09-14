@@ -1,5 +1,6 @@
-import { finite } from "./studio-normalization.js?v=20260903-studio-normalization-v2";
-import { applyCarFinish } from "./studio-car-finish.js?v=20260911-car-lamps-v3";
+import { finite } from "./studio-normalization.js?v=0.5.3";
+import { applyCarFinish, smoothCarSurfaceNormals } from "./studio-car-finish.js?v=0.5.3";
+import { repairGlassCabinetBack, repairWallCabinetSides } from "./studio-cabinet-back.js?v=0.5.3";
 const HOME_LITE_VERSION = "20260903-home-lite-v1";
 const APPLIANCE_LITE_VERSION = "20260903-appliance-lite-v1";
 function homeLiteModel(baseName, fallbackVersion, extra) {
@@ -12,7 +13,7 @@ function homeLiteModel(baseName, fallbackVersion, extra) {
 function applianceLiteModel(applianceName, applianceExtra) {
   return Object.freeze({
     url: "/bridge-static/3d-studio/models/" + applianceName + "-lite.glb?v=" + APPLIANCE_LITE_VERSION,
-    fallbackUrl: "/bridge-static/3d-studio/models/" + applianceName + ".glb?v=20260901-all-appliance-models-v1",
+    fallbackUrl: "/bridge-static/3d-studio/models/" + applianceName + ".glb?v=0.5.3",
     ...applianceExtra
   });
 }
@@ -39,8 +40,8 @@ export function insetBedBaseGeometry(geometry) {
 }
 export const EXTERNAL_ITEM_MODELS = Object.freeze({
   sofa: {
-    url: "/bridge-static/3d-studio/models/sofa-lite.glb?v=20260903-sofa-lite-v1",
-    fallbackUrl: "/bridge-static/3d-studio/models/sofa.glb?v=20260901-sofa-draco-v1",
+    url: "/bridge-static/3d-studio/models/sofa-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/sofa.glb?v=0.5.3",
     scaleBasis: [2.2, 0.82, 0.9],
     preserveOrigin: true,
     groundAlign: true,
@@ -51,14 +52,14 @@ export const EXTERNAL_ITEM_MODELS = Object.freeze({
     preserveOrigin: true
   }),
   squarecoffeetable: homeLiteModel("squarecoffeetable", "20260901-home-assets-v1", {
-    url: "/bridge-static/3d-studio/models/squarecoffeetable-lite.glb?v=20260903-square-coffee-table-v2",
-    fallbackUrl: "/bridge-static/3d-studio/models/squarecoffeetable.glb?v=20260903-square-coffee-table-v2",
+    url: "/bridge-static/3d-studio/models/squarecoffeetable-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/squarecoffeetable.glb?v=0.5.3",
     scaleBasis: [1.4, 0.46, 0.7],
     preserveOrigin: true
   }),
   tvstand: homeLiteModel("tvstand", "20260901-home-assets-v1", {
-    url: "/bridge-static/3d-studio/models/tvstand-lite.glb?v=20260903-tvstand-top-board-v3",
-    fallbackUrl: "/bridge-static/3d-studio/models/tvstand.glb?v=20260903-tvstand-top-board-v3",
+    url: "/bridge-static/3d-studio/models/tvstand-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/tvstand.glb?v=0.5.3",
     scaleBasis: [1.8, 0.48, 0.42],
     preserveOrigin: true
   }),
@@ -92,36 +93,36 @@ export const EXTERNAL_ITEM_MODELS = Object.freeze({
     preserveOrigin: true
   }),
   smallcar: {
-    url: "/bridge-static/3d-studio/models/car-lite.glb?v=20260902-car-lite-v1",
-    fallbackUrl: "/bridge-static/3d-studio/models/car.glb?v=20260811-car1"
+    url: "/bridge-static/3d-studio/models/car-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/car.glb?v=0.5.3"
   },
   airoutlet: {
-    url: "/bridge-static/3d-studio/models/air-outlet-lite.glb?v=20260902-air-outlet-lite-v1",
-    fallbackUrl: "/bridge-static/3d-studio/models/air-outlet.glb?v=20260812-air-outlet1"
+    url: "/bridge-static/3d-studio/models/air-outlet-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/air-outlet.glb?v=0.5.3"
   },
   pipelinewaterpurifier: {
-    url: "/bridge-static/3d-studio/models/pipeline-water-purifier-lite.glb?v=20260902-pipeline-water-purifier-lite-v1",
-    fallbackUrl: "/bridge-static/3d-studio/models/pipeline-water-purifier.glb?v=20260821-glb-material-v1"
+    url: "/bridge-static/3d-studio/models/pipeline-water-purifier-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/pipeline-water-purifier.glb?v=0.5.3"
   },
   tea_bar_machine: {
-    url: "/bridge-static/3d-studio/models/tea-bar-machine-lite.glb?v=20260902-tea-bar-machine-lite-v1",
-    fallbackUrl: "/bridge-static/3d-studio/models/tea-bar-machine.glb?v=20260821-glb-material-v1"
+    url: "/bridge-static/3d-studio/models/tea-bar-machine-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/tea-bar-machine.glb?v=0.5.3"
   },
   elevator: {
-    url: "/bridge-static/3d-studio/models/elevator-lite.glb?v=20260902-elevator-lite-v1",
-    fallbackUrl: "/bridge-static/3d-studio/models/elevator.glb?v=20260825-elevator-material-v1"
+    url: "/bridge-static/3d-studio/models/elevator-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/elevator.glb?v=0.5.3"
   },
   steelstairs: {
-    url: "/bridge-static/3d-studio/models/steel-stairs-lite.glb?v=20260902-steel-stairs-lite-v1",
-    fallbackUrl: "/bridge-static/3d-studio/models/steel-stairs.glb?v=20260821-stairs-v1"
+    url: "/bridge-static/3d-studio/models/steel-stairs-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/steel-stairs.glb?v=0.5.3"
   },
   glassstairs: {
-    url: "/bridge-static/3d-studio/models/glass-stairs-lite.glb?v=20260902-glass-stairs-lite-v1",
-    fallbackUrl: "/bridge-static/3d-studio/models/glass-stairs.glb?v=20260821-stairs-v1"
+    url: "/bridge-static/3d-studio/models/glass-stairs-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/glass-stairs.glb?v=0.5.3"
   },
   piano: {
-    url: "/bridge-static/3d-studio/models/piano-lite.glb?v=20260902-piano-lite-v1",
-    fallbackUrl: "/bridge-static/3d-studio/models/piano.glb?v=20260824-piano-v3",
+    url: "/bridge-static/3d-studio/models/piano-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/piano.glb?v=0.5.3",
     preserveAspect: true
   }
 });
@@ -245,26 +246,26 @@ export const ALL_ITEM_MODELS = Object.freeze({
   // exported from the same geometry studio-app.js builds (see gen-pillars.mjs) and share the pillar's
   // scaleBasis, so the item keeps its 0.45 x 2.8 x 0.45 footprint and base-at-origin placement.
   pillar_round: {
-    url: "/bridge-static/3d-studio/models/pillar-round-lite.glb?v=20260913-pillar-shapes-v1",
-    fallbackUrl: "/bridge-static/3d-studio/models/pillar-round.glb?v=20260913-pillar-shapes-v1",
+    url: "/bridge-static/3d-studio/models/pillar-round-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/pillar-round.glb?v=0.5.3",
     scaleBasis: [0.45, 2.8, 0.45],
     preserveOrigin: true
   },
   pillar_semicircle: {
-    url: "/bridge-static/3d-studio/models/pillar-semicircle-lite.glb?v=20260913-pillar-shapes-v1",
-    fallbackUrl: "/bridge-static/3d-studio/models/pillar-semicircle.glb?v=20260913-pillar-shapes-v1",
+    url: "/bridge-static/3d-studio/models/pillar-semicircle-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/pillar-semicircle.glb?v=0.5.3",
     scaleBasis: [0.45, 2.8, 0.45],
     preserveOrigin: true
   },
   pillar_quarter: {
-    url: "/bridge-static/3d-studio/models/pillar-quarter-lite.glb?v=20260913-pillar-shapes-v1",
-    fallbackUrl: "/bridge-static/3d-studio/models/pillar-quarter.glb?v=20260913-pillar-shapes-v1",
+    url: "/bridge-static/3d-studio/models/pillar-quarter-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/pillar-quarter.glb?v=0.5.3",
     scaleBasis: [0.45, 2.8, 0.45],
     preserveOrigin: true
   },
   pillar_quarterinner: {
-    url: "/bridge-static/3d-studio/models/pillar-quarterinner-lite.glb?v=20260913-pillar-shapes-v2",
-    fallbackUrl: "/bridge-static/3d-studio/models/pillar-quarterinner.glb?v=20260913-pillar-shapes-v2",
+    url: "/bridge-static/3d-studio/models/pillar-quarterinner-lite.glb?v=0.5.3",
+    fallbackUrl: "/bridge-static/3d-studio/models/pillar-quarterinner.glb?v=0.5.3",
     scaleBasis: [0.45, 2.8, 0.45],
     preserveOrigin: true
   },
@@ -485,6 +486,30 @@ export function createExternalModelManager({
       const sceneRoot = gltf.scene || gltf.scenes?.[0];
       if (!sceneRoot) {
         throw new Error("模型 " + typeKey + " 没有可显示的场景");
+      }
+      if ((typeKey === "glasscabinet" || typeKey === "bookcase") && repairGlassCabinetBack(THREE, sceneRoot, typeKey)) {
+        // cabinet backboard repaired
+      }
+      if (typeKey === "wallcabinet") {
+        repairWallCabinetSides(THREE, sceneRoot);
+      }
+      if (typeKey === "smallcar") {
+        const smoothedGeometries = new Map();
+        sceneRoot.traverse(node => {
+          if (!node.isMesh) {
+            return;
+          }
+          const geometry = node.geometry;
+          if (!smoothedGeometries.has(geometry)) {
+            smoothedGeometries.set(geometry, smoothCarSurfaceNormals(THREE, geometry));
+          }
+          node.geometry = smoothedGeometries.get(geometry);
+        });
+        for (const [originalGeometry, nextGeometry] of smoothedGeometries) {
+          if (originalGeometry !== nextGeometry) {
+            originalGeometry.dispose();
+          }
+        }
       }
       if (typeKey === "bed") {
         sceneRoot.traverse(node => {
@@ -918,7 +943,7 @@ export function createExternalModelManager({
     if (cacheModelType === "smallcar") {
       applyCarFinish(resolvedMaterial);
     }
-    if (cacheModelType === "glasscabinet" && inputMaterial.name === "glasscabinet-material-0") {
+    if (cacheModelType === "glasscabinet" && /^glasscabinet-material-(0|10)$/.test(inputMaterial.name) || cacheModelType === "bookcase" && /^bookcase-material-(0|7)$/.test(inputMaterial.name)) {
       resolvedMaterial.color?.set?.(cachePalette.furniture);
     }
     const cacheKey = materialCacheKey(resolvedMaterial);

@@ -1,5 +1,5 @@
-import { EDITOR_PICKER_PAGE_SIZES, editorEntityPickerInitialPage, editorEntityPickerPage } from "../../js/editor/editor-picker-pagination.js?v=20260830-editor-picker-pagination-v1";
-import { createEditorPickerQueries } from "../../js/editor/editor-picker-queries.js?v=20260830-editor-picker-queries-v1";
+import { EDITOR_PICKER_PAGE_SIZES, editorEntityPickerInitialPage, editorEntityPickerPage } from "../../js/editor/editor-picker-pagination.js?v=0.5.3";
+import { createEditorPickerQueries } from "../../js/editor/editor-picker-queries.js?v=0.5.3";
 import { vacuumProfiles } from "./vacuum-catalog.js";
 import { nasProfiles } from "./nas-catalog.js";
 const DEFAULT_LIGHT_ICON = "mdi:lightbulb-outline";
@@ -292,12 +292,13 @@ export function createInteraction3dEditorPickers({
       const isTelevisionPower = startsWith === "television-power";
       const isCover = startsWith === "cover" || domainFilter === "cover";
       const isClimate = !isCover && (startsWith === "climate" || domainFilter === "climate");
-      const test = startsWith === "camera" ? /^camera\.[a-z0-9_]+$/ : startsWith === "presence" ? /^(binary_sensor|event)\.[a-z0-9_]+$/ : startsWith === "vacuum" ? /^vacuum\.[a-z0-9_]+$/ : startsWith === "vacuum-map" ? /^(camera|image)\.[a-z0-9_]+$/ : startsWith === "vacuum-room" ? /^[a-z_]+\.[a-z0-9_]+$/ : isTelevision ? /^media_player\.[a-z0-9_]+$/ : isTelevisionPower ? /^(media_player|switch|binary_sensor|input_boolean)\.[a-z0-9_]+$/ : isNas ? /^(binary_sensor|switch|input_boolean)\.[a-z0-9_]+$/ : isCover ? /^cover\.[a-z0-9_]+$/ : isClimate ? /^climate\.[a-z0-9_]+$/ : /^(light|switch)\.[a-z0-9_]+$/;
+      const isPresence = startsWith === "presence";
+      const test = isPresence ? /^[a-z_]+\.[a-z0-9_]+$/ : startsWith === "camera" ? /^camera\.[a-z0-9_]+$/ : startsWith === "vacuum" ? /^vacuum\.[a-z0-9_]+$/ : startsWith === "vacuum-map" ? /^(camera|image)\.[a-z0-9_]+$/ : startsWith === "vacuum-room" ? /^[a-z_]+\.[a-z0-9_]+$/ : isTelevision ? /^media_player\.[a-z0-9_]+$/ : isTelevisionPower ? /^(media_player|switch|binary_sensor|input_boolean)\.[a-z0-9_]+$/ : isNas ? /^(binary_sensor|switch|input_boolean)\.[a-z0-9_]+$/ : isCover ? /^cover\.[a-z0-9_]+$/ : isClimate ? /^climate\.[a-z0-9_]+$/ : /^(light|switch)\.[a-z0-9_]+$/;
       const {
         editorEntityMatches: matchEntities
       } = createEditorPickerQueries({
         entityPickerConfig: () => ({
-          recommended: entityId => startsWith === "presence" ? ["occupancy", "motion", "presence"].includes(entityId.deviceClass || entityId.device_class || entityId.attributes?.device_class || getEntityState(entityId.entityId)?.attributes?.device_class) : entityId.entityId.startsWith(isTelevision || isTelevisionPower ? "media_player." : isNas || startsWith === "presence" ? "binary_sensor." : isCover ? "cover." : isClimate ? "climate." : isCamera ? "camera." : "light.")
+          recommended: entityId => isPresence ? ["occupancy", "motion", "presence"].includes(entityId.deviceClass || entityId.device_class || entityId.attributes?.device_class || getEntityState(entityId.entityId)?.attributes?.device_class) : entityId.entityId.startsWith(isTelevision || isTelevisionPower ? "media_player." : isNas || isPresence ? "binary_sensor." : isCover ? "cover." : isClimate ? "climate." : isCamera ? "camera." : "light.")
         }),
         pickerEntitiesForComponentType: () => getEntities().filter(entityId => test.test(entityId.entityId)),
         entityPickerText: elements,
@@ -315,6 +316,13 @@ export function createInteraction3dEditorPickers({
         const push = matchEntities("interaction3d", searchQuery);
         if (options && (!searchQuery || elements(options).toLocaleLowerCase("zh-CN").includes(String(searchQuery).trim().toLocaleLowerCase("zh-CN")))) {
           push.push(options);
+        }
+        if (!isTelevision && !isTelevisionPower && !isNas && !isCover && !isClimate && !isPresence && !startsWith.startsWith("vacuum") && startsWith !== "camera") {
+          push.sort((left, right) => {
+            const leftLight = left.entityId.startsWith("light.") ? 0 : 1;
+            const rightLight = right.entityId.startsWith("light.") ? 0 : 1;
+            return leftLight - rightLight || String(left.name || left.entityId).localeCompare(String(right.name || right.entityId), "zh-CN");
+          });
         }
         return push;
       };

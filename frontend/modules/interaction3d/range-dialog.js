@@ -1,5 +1,5 @@
-import { mountInteraction3d } from "./runtime.js?v=20260910-control-projectid-v1-20260911-security-camera-popup-v6";
-import { requestInteraction3dAccess, subscribeInteraction3dAccess } from "/bridge-static/modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1-focus-layout-anim-v1";
+import { mountInteraction3d } from "./runtime.js?v=0.5.3";
+import { requestInteraction3dAccess, subscribeInteraction3dAccess } from "/bridge-static/modules/interaction3d/bridge.js?v=0.5.3";
 export async function openInteraction3dRangeEditor({
   component,
   document: panelDocument,
@@ -24,7 +24,7 @@ export async function openInteraction3dRangeEditor({
   };
   const stylesheetLink = createEl("link");
   stylesheetLink.rel = "stylesheet";
-  stylesheetLink.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15-20260912-compact-list-note-v1";
+  stylesheetLink.href = "/api/v1/modules/interaction3d/runtime.css?v=0.5.3";
   document.head.append(stylesheetLink);
   const dialog = createEl("dialog", "i3d-editor i3d-range-dialog");
   dialog.setAttribute("aria-label", "照射范围");

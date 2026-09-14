@@ -1,8 +1,8 @@
-import { randomUuid } from "../utils/random-id.js?v=20260724-revert-hold-popup-shield-v324";
-import { climateDefaultIcon, climateEffectMode, climateIsPoweredOn, climateModeLabel, climatePresentationMode, normalizeClimateCapabilities, resolveClimateDeviceType } from "./climate.js?v=20260812-presence-phase-v79-20260904-climate-capability-options-v3";
-import { entityPowerIsOn } from "./entity-power.js?v=20260813-generic-device-power-v2";
-import { lightRealtimeCapabilities } from "./light-runtime.js?v=20260901-renderer-light-runtime-v1";
-import { renderInteraction3d } from "../modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1-focus-layout-anim-v1";
+import { randomUuid } from "../utils/random-id.js?v=0.5.3";
+import { climateDefaultIcon, climateEffectMode, climateIsPoweredOn, climateModeLabel, climatePresentationMode, normalizeClimateCapabilities, resolveClimateDeviceType } from "./climate.js?v=0.5.3";
+import { entityPowerIsOn } from "./entity-power.js?v=0.5.3";
+import { lightRealtimeCapabilities } from "./light-runtime.js?v=0.5.3";
+import { renderInteraction3d } from "../modules/interaction3d/bridge.js?v=0.5.3";
 const COMPONENT_RENDERERS = new Map();
 registerComponent("interaction3d", {
   render: renderInteraction3d
@@ -238,13 +238,13 @@ export function vacuumMapImageSource(vacuumMapImage, stateEntry = null) {
   const text = String(state.updatedAt || state.lastChanged || state.state || "initial");
   return "/api/image_proxy/" + encodeURIComponent(String(vacuumMapImage || "")) + "?hb=" + encodeURIComponent(text);
 }
-import { lightStatisticsEntityStateStatus, lightStatisticsEntitySupport, lightStatisticsSummary } from "./light-statistics-runtime.js?v=20260901-renderer-light-statistics-runtime-v1";
-import { automaticNumericPrecision, formatLineChartValue, formatNumericValue, lineChartGeometry, normalizedStatePrecision } from "./line-chart-runtime.js?v=20260901-renderer-line-chart-runtime-v1";
-import { doorWindowPerspectiveCorners, doorWindowPerspectiveMatrix } from "./door-window-runtime.js?v=20260901-renderer-door-window-runtime-v1";
-import { automaticThresholds, meteoconUrl, normalizedThresholds, resolvedThresholds, smoothChartPath, thresholdColor, weatherVisual } from "./weather-chart-runtime.js?v=20260901-renderer-weather-chart-runtime-v2";
-import { formatLocalDate, formatLocalTime, formatLunarDate } from "./date-time-runtime.js?v=20260901-renderer-date-time-runtime-v1";
+import { lightStatisticsEntityStateStatus, lightStatisticsEntitySupport, lightStatisticsSummary } from "./light-statistics-runtime.js?v=0.5.3";
+import { automaticNumericPrecision, formatLineChartValue, formatNumericValue, lineChartGeometry, normalizedStatePrecision } from "./line-chart-runtime.js?v=0.5.3";
+import { doorWindowPerspectiveCorners, doorWindowPerspectiveMatrix } from "./door-window-runtime.js?v=0.5.3";
+import { automaticThresholds, meteoconUrl, normalizedThresholds, resolvedThresholds, smoothChartPath, thresholdColor, weatherVisual } from "./weather-chart-runtime.js?v=0.5.3";
+import { formatLocalDate, formatLocalTime, formatLunarDate } from "./date-time-runtime.js?v=0.5.3";
 export { lightStatisticsEntityStateStatus, lightStatisticsEntitySupport, lightStatisticsSummary, automaticNumericPrecision, formatLineChartValue, formatNumericValue, lineChartGeometry, normalizedStatePrecision, doorWindowPerspectiveCorners, doorWindowPerspectiveMatrix, meteoconUrl, automaticThresholds, normalizedThresholds, resolvedThresholds, smoothChartPath, thresholdColor, weatherVisual, formatLocalDate, formatLocalTime, formatLunarDate };
-import { formatPresenceDuration, presenceAnimationPhase, presenceHistoryBuckets, presenceMotionEventConfig, presenceSensorPresentation, presenceStateTimestamp } from "./presence-runtime.js?v=20260901-renderer-presence-runtime-v1";
+import { formatPresenceDuration, presenceAnimationPhase, presenceHistoryBuckets, presenceMotionEventConfig, presenceSensorPresentation, presenceStateTimestamp } from "./presence-runtime.js?v=0.5.3";
 export { formatPresenceDuration, presenceAnimationPhase, presenceHistoryBuckets, presenceMotionEventConfig, presenceSensorPresentation, presenceStateTimestamp };
 function tt(entityMetadata, entityId) {
   const metadata = String(readState(entityId)?.attributes?.icon || "").trim();

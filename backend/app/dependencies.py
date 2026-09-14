@@ -22,6 +22,11 @@ def get_database_session(request: Request):
 DatabaseSession = Annotated[Session, Depends(get_database_session)]
 
 
+def require_admin(user: User, *, detail: str = '仅管理员可以执行此操作。') -> None:
+    if user.role != 'admin':
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
+
+
 def _aware(value: datetime) -> datetime:
     return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 

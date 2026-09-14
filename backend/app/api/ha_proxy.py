@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 from collections.abc import Mapping
 from dataclasses import dataclass
 from time import monotonic
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 import httpx
 from api.ha import active_connection
@@ -22,6 +23,12 @@ ALLOWED_MEDIA_PROXY_PREFIXES = (
     '/api/image_proxy/',
     '/api/media_player_proxy/',
     '/api/hls/',
+)
+ENTITY_SCOPED_MEDIA_PREFIXES = (
+    '/api/camera_proxy/',
+    '/api/camera_proxy_stream/',
+    '/api/image_proxy/',
+    '/api/media_player_proxy/',
 )
 REQUEST_HEADERS_TO_DROP = {
     'te',
@@ -53,6 +60,8 @@ RESPONSE_HEADERS_TO_DROP = {
 }
 CAMERA_SNAPSHOT_CACHE_TTL_SECONDS = 8
 CAMERA_SNAPSHOT_CACHE_MAX_ENTRIES = 64
+HLS_GRANT_TTL_SECONDS = 300
+HLS_GRANT_MAX_ENTRIES = 256
 
 
 @dataclass
@@ -62,8 +71,17 @@ class CameraSnapshotCacheEntry:
     created_at: float
 
 
+@dataclass
+class HlsPathGrant:
+    viewer_key: str
+    path_prefix: str
+    expires_at: float
+
+
 camera_snapshot_cache: dict[str, CameraSnapshotCacheEntry] = {}
 camera_snapshot_refreshes: dict[str, asyncio.Task[None]] = {}
+_hls_grants: dict[str, HlsPathGrant] = {}
+_hls_grants_lock = threading.Lock()
 
 
 def upstream_path(request: Request) -> str:
@@ -88,12 +106,25 @@ def allowed_media_proxy_path(path: str) -> bool:
     return all(segment not in frozenset({'.', '..'}) for segment in path.split('/'))
 
 
+def media_proxy_entity_id(path: str) -> str | None:
+    '''Extract the HA entity id from entity-scoped media proxy paths.'''
+    for prefix in ENTITY_SCOPED_MEDIA_PREFIXES:
+        if not path.startswith(prefix):
+            continue
+        remainder = path[len(prefix) :]
+        entity_id = unquote(remainder.split('/', 1)[0]).strip()
+        if entity_id and '.' in entity_id and '\\' not in entity_id and '..' not in entity_id:
+            return entity_id
+        return None
+    return None
+
+
 def rewrite_location(value: str, base_url: str) -> str:
     normalized_base = base_url.rstrip('/')
     if value == normalized_base:
         return '/'
     if value.startswith(f'{normalized_base}/'):
-        return value[len(normalized_base):]
+        return value[len(normalized_base) :]
     return value
 
 
@@ -111,6 +142,84 @@ def versioned_image_proxy_cache_control(path: str, query: str, status_code: int)
 
 def camera_snapshot_cache_key(base_url: str, path: str) -> str:
     return f'{base_url.rstrip("/")}{path}'
+
+
+def viewer_grant_key(viewer: ViewerPrincipal) -> str:
+    if viewer.user is not None:
+        return f'user:{viewer.user.id}'
+    if viewer.display is not None:
+        return f'display:{viewer.display.id}'
+    return 'anonymous'
+
+
+def hls_path_prefix(stream_path: str) -> str:
+    '''Grant the playlist directory, not only the exact playlist filename.'''
+    path = stream_path.split('?', 1)[0]
+    if not path.startswith('/api/hls/'):
+        return path
+    parts = path.rstrip('/').split('/')
+    # /api/hls/{token}/master_playlist.m3u8 → /api/hls/{token}/
+    if len(parts) >= 4:
+        return '/'.join(parts[:4]) + '/'
+    return path if path.endswith('/') else f'{path}/'
+
+
+def _prune_hls_grants(now: float) -> None:
+    expired = [key for key, grant in _hls_grants.items() if grant.expires_at <= now]
+    for key in expired:
+        _hls_grants.pop(key, None)
+    while len(_hls_grants) > HLS_GRANT_MAX_ENTRIES:
+        oldest_key = min(_hls_grants, key=lambda item: _hls_grants[item].expires_at)
+        _hls_grants.pop(oldest_key, None)
+
+
+def remember_hls_path_grant(viewer: ViewerPrincipal, stream_url: str) -> None:
+    path = stream_url.split('?', 1)[0]
+    if not path.startswith('/api/hls/'):
+        return
+    prefix = hls_path_prefix(path)
+    key = f'{viewer_grant_key(viewer)}|{prefix}'
+    now = monotonic()
+    with _hls_grants_lock:
+        _prune_hls_grants(now)
+        _hls_grants[key] = HlsPathGrant(
+            viewer_key=viewer_grant_key(viewer),
+            path_prefix=prefix,
+            expires_at=now + HLS_GRANT_TTL_SECONDS,
+        )
+
+
+def hls_path_granted(viewer: ViewerPrincipal, path: str) -> bool:
+    if not path.startswith('/api/hls/'):
+        return False
+    viewer_key = viewer_grant_key(viewer)
+    now = monotonic()
+    with _hls_grants_lock:
+        _prune_hls_grants(now)
+        for grant in _hls_grants.values():
+            if grant.viewer_key == viewer_key and path.startswith(grant.path_prefix):
+                return True
+    return False
+
+
+def authorize_media_proxy_path(
+    database_manager: Database,
+    viewer: ViewerPrincipal,
+    path: str,
+) -> None:
+    '''Enforce entity ACL for entity-scoped paths, or HLS grant for playlist paths.'''
+    entity_id = media_proxy_entity_id(path)
+    if entity_id is not None:
+        with database_manager.session_factory() as database:
+            require_viewer_entity(database, viewer, entity_id)
+        return
+    if path.startswith('/api/hls/'):
+        if viewer.is_admin_session:
+            return
+        if not hls_path_granted(viewer, path):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='该媒体流未授权给当前中控。')
+        return
+    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='媒体资源不存在。')
 
 
 def _remember_camera_snapshot(key: str, content: bytes, content_type: str) -> None:
@@ -189,9 +298,10 @@ def _schedule_camera_snapshot_refresh(
     camera_snapshot_refreshes[key] = task
 
 
-async def proxy_http(request: Request) -> Response:
+async def proxy_http(request: Request, viewer: ViewerPrincipal) -> Response:
     if request.method not in frozenset({'GET', 'HEAD'}) or not allowed_media_proxy_path(request.url.path):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='媒体资源不存在。')
+    await asyncio.to_thread(authorize_media_proxy_path, request.app.state.database, viewer, request.url.path)
     connection = await asyncio.to_thread(load_active_connection, request.app.state.database)
     if connection is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='请先配置 Home Assistant 连接。')
@@ -251,6 +361,7 @@ async def proxy_http(request: Request) -> Response:
     if 'location' in response_headers:
         response_headers['location'] = rewrite_location(response_headers['location'], client_config.base_url)
     if stream_response:
+
         async def stream_body():
             try:
                 async for chunk in upstream.aiter_raw():
@@ -355,6 +466,7 @@ async def camera_hls_stream(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail='Home Assistant 返回了无效的摄像头流地址。',
         )
+    remember_hls_path_grant(viewer, stream_url)
     return JSONResponse({'url': stream_url, 'format': 'hls'})
 
 
@@ -365,6 +477,6 @@ async def camera_hls_stream(
 @router.api_route('/api/hls/{path:path}', methods=['GET', 'HEAD'])
 async def proxy_home_assistant_media(
     request: Request,
-    _viewer: ShortLivedLicensedViewer,
+    viewer: ShortLivedLicensedViewer,
 ) -> Response:
-    return await proxy_http(request)
+    return await proxy_http(request, viewer)

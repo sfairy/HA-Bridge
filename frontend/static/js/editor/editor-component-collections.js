@@ -1,4 +1,4 @@
-import { newId } from "./editor-utils.js?v=20260831-editor-utils-v1";
+import { newId } from "./editor-utils.js?v=0.5.3";
 export function componentLabel(component) {
   const typeLabel = component.type === "image" ? "图片" : component.type === "time" ? "时间" : component.type === "date" ? "日期" : component.type === "weather" ? "天气" : component.type === "line-chart" ? "折线图" : component.type === "panel-frame" ? "底图框" : component.type === "navigation-button" ? "导航按钮" : component.type === "title-button" ? "标题按钮" : component.type === "light-statistics" ? "数量统计" : component.type === "icon-button" ? "图标按钮" : component.type === "device-button" ? "设备按钮" : component.type === "presence-sensor" ? "传感器" : component.type === "air-conditioner" ? "空调" : component.type === "vacuum-map" ? "扫地机器人实时地图" : component.type === "camera" ? "摄像头实时预览" : component.type === "icon-button-effect" ? "图标按钮（效果）" : component.type === "group" ? "组合" : component.type;
   const instanceName = component.properties?.instanceName;

@@ -1,6 +1,6 @@
-import { createAccessMonitor } from "./access-monitor.js?v=20260905-interaction3d-v1-20260905-i3d-polish-v1-20260906-access-state-v2";
-import { createInteraction3dCover } from "./cover.js?v=20260905-interaction3d-cover-v1-20260908-access-lock-v1";
-import { createInteraction3dFocusLayout } from "./focus-layout.js?v=20260911-navigation-light-v14-focus-layout-anim-v1";
+import { createAccessMonitor } from "./access-monitor.js?v=0.5.3";
+import { createInteraction3dCover } from "./cover.js?v=0.5.3";
+import { createInteraction3dFocusLayout } from "./focus-layout.js?v=0.5.3";
 export async function requestInteraction3dAccess() {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -175,13 +175,13 @@ export function renderInteraction3d(component, context = {}) {
     loading = true;
     const generation = ++loadGeneration;
     try {
-      const runtime = await import("/api/v1/modules/interaction3d/runtime.js?v=20260912-security-camera-state-subscribe-v7");
+      const runtime = await import("/api/v1/modules/interaction3d/runtime.js?v=0.5.3");
       if (disposed || generation !== loadGeneration || document.hidden) {
         return;
       }
       stylesheetLink = document.createElement("link");
       stylesheetLink.rel = "stylesheet";
-      stylesheetLink.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15-20260912-compact-list-note-v1";
+      stylesheetLink.href = "/api/v1/modules/interaction3d/runtime.css?v=0.5.3";
       host.append(stylesheetLink);
       const mountRoot = document.createElement("div");
       host.replaceChildren(stylesheetLink, mountRoot);

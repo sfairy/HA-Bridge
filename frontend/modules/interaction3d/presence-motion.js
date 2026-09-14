@@ -1,8 +1,17 @@
-export const PRESENCE_PAGES = [["overview", "ALL（全部楼层）"], ["light", "灯光"], ["environment", "环境"], ["devices", "设备"], ["vacuum", "扫地机"], ["security", "安防"]];
+export const PRESENCE_PAGES = [
+  ["overview", "ALL（全部楼层）"],
+  ["light", "灯光"],
+  ["environment", "环境"],
+  ["devices", "设备"],
+  ["vacuum", "扫地机"],
+  ["security", "安防"]
+];
+
 export function presenceVisibleOnPage(sensor, pageId) {
   const includes = sensor.displayPages ?? ["overview", "light", "security"];
   return PRESENCE_PAGES.some(([id]) => id === pageId) && (includes === "all" || Array.isArray(includes) && includes.includes(pageId));
 }
+
 export function validPresenceRoute(route) {
   if (!Array.isArray(route) || route.length < 3 || route.length > 128 || route.some(point => !point || !Number.isFinite(point.x) || !Number.isFinite(point.y) || Math.abs(point.x) > 1000000 || Math.abs(point.y) > 1000000)) {
     return false;
@@ -10,20 +19,36 @@ export function validPresenceRoute(route) {
   const first = route[0];
   if (new Set(route.map(point => point.x + "," + point.y)).size !== route.length) {
     return false;
-  } else {
-    return route.slice(1, -1).some((point, index) => {
-      const next = route[index + 2];
-      return Math.abs((point.x - first.x) * (next.y - first.y) - (point.y - first.y) * (next.x - first.x)) > 0.000001;
-    });
   }
+  return route.slice(1, -1).some((point, index) => {
+    const next = route[index + 2];
+    return Math.abs((point.x - first.x) * (next.y - first.y) - (point.y - first.y) * (next.x - first.x)) > 0.000001;
+  });
 }
+
 export function snapsToPresenceStart(route, point, scale, threshold = 16) {
   return validPresenceRoute(route) && !!point && Math.hypot(point.x - route[0].x, point.y - route[0].y) * Math.abs(scale) <= threshold;
 }
+
 export function presenceIsActive(newState) {
   const available = newState?.newState || newState;
   return available?.available !== false && available?.state === "on";
 }
+
+export const PRESENCE_TRIGGER_MODES = [
+  ["auto", "自动识别"],
+  ["threshold", "数值大于阈值"],
+  ["equals", "变为指定值"],
+  ["change", "状态值变化"]
+];
+
+export function presenceTriggerIsTimed(sensor) {
+  return ["equals", "change"].includes(sensor.triggerMode) ||
+    (!sensor.triggerMode || sensor.triggerMode === "auto") && sensor.entityId?.startsWith("event.");
+}
+
+const PEOPLE_COUNT_RE = /person_count|people_count|occupancy_count|human_count|人数|人员数量|人体数量/i;
+
 export function createPresenceTriggers(getNow = () => Date.now()) {
   const triggers = new Map();
   return {
@@ -36,32 +61,83 @@ export function createPresenceTriggers(getNow = () => Date.now()) {
       }
       for (const sensor of sensors) {
         const state = states[sensor.entityId]?.newState || states[sensor.entityId];
-        if (sensor.entityId?.startsWith("event.")) {
-          const started = /^\d{4}-\d{2}-\d{2}T/.test(state?.state || "") ? Date.parse(state.state) : NaN;
+        const stateValue = typeof state?.state === "string" ? state.state.trim() : "";
+        const available = state?.available !== false && !!stateValue && !["unknown", "unavailable"].includes(stateValue.toLowerCase());
+        let mode = sensor.triggerMode || "auto";
+        if (mode === "auto") {
+          const looksLikePeopleCount = PEOPLE_COUNT_RE.test(
+            sensor.entityId + " " + (state?.attributes?.friendly_name || "")
+          );
+          mode = sensor.entityId?.startsWith("event.")
+            ? "event"
+            : looksLikePeopleCount && Number.isFinite(Number(stateValue))
+              ? "threshold"
+              : "state";
+        }
+        const key = JSON.stringify([
+          sensor.entityId,
+          sensor.triggerMode || "auto",
+          sensor.triggerValue ?? "on",
+          sensor.triggerThreshold ?? 0
+        ]);
+        let previous = triggers.get(sensor.id);
+        if (previous?.key !== key) {
+          previous = null;
+        }
+        const parsed = Date.parse(state?.lastChanged || state?.last_changed || "");
+        const timestamp = Number.isFinite(parsed) ? Math.min(parsed, getNow()) : null;
+        const duration = ["equals", "change", "event"].includes(mode)
+          ? sensor.displayDuration > 0 ? sensor.displayDuration : 30
+          : sensor.displayDuration ?? 0;
+
+        if (mode === "event") {
+          const started = /^\d{4}-\d{2}-\d{2}T/.test(stateValue) ? Date.parse(stateValue) : NaN;
           triggers.set(sensor.id, {
-            entityId: sensor.entityId,
-            on: state?.available !== false && Number.isFinite(started),
+            key,
+            on: available && Number.isFinite(started),
             started,
-            duration: sensor.displayDuration > 0 ? sensor.displayDuration : 30
+            duration
           });
           continue;
         }
-        const on = presenceIsActive(state);
-        const previous = triggers.get(sensor.id);
-        const parsed = Date.parse(state?.lastChanged || state?.last_changed || "");
-        const timestamp = Number.isFinite(parsed) ? Math.min(parsed, getNow()) : null;
-        if (!previous || previous.entityId !== sensor.entityId || on && (!previous.on || timestamp !== null && timestamp !== previous.timestamp)) {
+
+        if (mode === "equals" || mode === "change") {
+          const changed = available && previous?.available && stateValue !== previous.value;
+          const newer = timestamp === null || previous?.timestamp == null || timestamp > previous.timestamp;
+          const triggered = changed && newer && (
+            mode === "change" || stateValue === String(sensor.triggerValue ?? "on").trim()
+          );
           triggers.set(sensor.id, {
-            entityId: sensor.entityId,
-            on,
+            key,
+            value: stateValue,
+            available,
             timestamp,
-            started: timestamp ?? getNow(),
-            duration: sensor.displayDuration ?? 0
+            duration,
+            on: available && (triggered || !!previous?.on),
+            started: triggered ? timestamp ?? getNow() : previous?.started ?? getNow()
           });
-        } else {
-          previous.on = on;
-          previous.duration = sensor.displayDuration ?? 0;
+          continue;
         }
+
+        const on = available && (
+          mode === "threshold"
+            ? Number.isFinite(Number(stateValue)) && Number(stateValue) > (
+              sensor.triggerMode === "threshold" ? sensor.triggerThreshold ?? 0 : 0
+            )
+            : presenceIsActive(state)
+        );
+        const valueChanged = previous?.value !== stateValue;
+        const started = !previous || on && (!previous.on || valueChanged)
+          ? timestamp ?? getNow()
+          : previous.started;
+        triggers.set(sensor.id, {
+          key,
+          value: stateValue,
+          on,
+          timestamp,
+          started,
+          duration
+        });
       }
     },
     visible(id) {
@@ -70,6 +146,7 @@ export function createPresenceTriggers(getNow = () => Date.now()) {
     }
   };
 }
+
 export function closedPath(points) {
   const segments = [];
   let offset = 0;
@@ -92,6 +169,7 @@ export function closedPath(points) {
     segments
   };
 }
+
 export function sampleClosedPath(path, distance) {
   if (!(path.length > 0)) {
     return null;

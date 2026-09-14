@@ -1,46 +1,50 @@
-import { windowGeometryParts } from "./studio-window-geometry.js?v=20260911-wide-window-v1";
-import { addSecurityModel } from "./studio-security-models.js?v=20260911-reference-palette-v1";
-import { compactRuntimeFurniture } from "./studio-runtime-furniture.js?v=20260909-runtime-furniture-v1";
-import { createReflectionDetail } from "./studio-reflection-detail.js?v=20260909-reflection-scope-v1";
-import { createFloorTransition } from "./studio-floor-transition.js?v=20260909-floor-reuse-v2-20260911-floor-handoff-v1";
-import { floorOpeningPolygon } from "./studio-floor-openings.js?v=20260908-floor-openings-v1";
-import { createGroundReflections } from "./studio-ground-reflections.js?v=20260909-reflection-scope-v1-20260910-wall-runtime-v21-floor-handoff-v20-effects-settle-v5-no-blur-v1-overlay-scope-v1";
-import { createMotionPresentation } from "./studio-motion-presentation.js?v=20260910-effects-settle-v6-focus-live-v1";
-import { createWallSideMaterial, setWallGradientHeight, setWallCornerDistances, mergeWallBands } from "./studio-wall-materials.js?v=wall-device-D6-20260910210335-shade-v2";
-import { RENDER_CACHE_VERSION, createRenderCache, cacheSceneDescriptor, sha256, stableCacheJSON } from "../modules/interaction3d/render-cache.js?v=20260907-demand-v1-20260908-curtains-v1-20260912-sha-export-v2";
-import { transformSceneCamera } from "../modules/interaction3d/scene-frame.js?v=20260907-scene-sync-v1-20260908-curtains-v1";
-import { sceneUpdatePlan } from "../modules/interaction3d/scene-update.js?v=20260907-update-v1-20260908-curtains-v1";
-import { createDemandFrameLoop } from "../modules/interaction3d/frame-loop.js?v=20260907-demand-v1-20260908-curtains-v1";
-import { cacheObjectTransforms } from "../modules/interaction3d/scene-matrices.js?v=20260907-demand-v2-20260908-curtains-v1";
-import { withRequestTimeout } from "../utils/request-timeout.js?v=20260907-browser-compat-v1";
+import { drawTelevisionPoster } from "./studio-television-poster.js?v=0.5.3";
+import { createTvScreenTexture as createTvScreenTextureFromModule } from "./studio-tv-texture.js?v=0.5.3";
+import { createOverviewStack } from "./studio-overview-stack.js?v=0.5.3";
+import { MAX_CAMERA_POLAR_ANGLE, constrainCameraPosition, constrainCameraPose } from "./studio-camera-constraints.js?v=0.5.3";
+import { windowGeometryParts } from "./studio-window-geometry.js?v=0.5.3";
+import { addSecurityModel } from "./studio-security-models.js?v=0.5.3";
+import { compactRuntimeFurniture } from "./studio-runtime-furniture.js?v=0.5.3";
+import { createReflectionDetail } from "./studio-reflection-detail.js?v=0.5.3";
+import { createFloorTransition } from "./studio-floor-transition.js?v=0.5.3";
+import { floorOpeningPolygon } from "./studio-floor-openings.js?v=0.5.3";
+import { createGroundReflections } from "./studio-ground-reflections.js?v=0.5.3";
+import { createMotionPresentation } from "./studio-motion-presentation.js?v=0.5.3";
+import { createWallSideMaterial, setWallGradientHeight, setWallCornerDistances, mergeWallBands } from "./studio-wall-materials.js?v=0.5.3";
+import { RENDER_CACHE_VERSION, createRenderCache, cacheSceneDescriptor, sha256, stableCacheJSON } from "../modules/interaction3d/render-cache.js?v=0.5.3";
+import { transformSceneCamera } from "../modules/interaction3d/scene-frame.js?v=0.5.3";
+import { sceneUpdatePlan } from "../modules/interaction3d/scene-update.js?v=0.5.3";
+import { createDemandFrameLoop } from "../modules/interaction3d/frame-loop.js?v=0.5.3";
+import { cacheObjectTransforms } from "../modules/interaction3d/scene-matrices.js?v=0.5.3";
+import { withRequestTimeout } from "../utils/request-timeout.js?v=0.5.3";
 import * as THREE from "/bridge-static/vendor/three/0.186.0/three.module.min.js";
-import { OrbitControls } from "/bridge-static/vendor/three/0.186.0/OrbitControls.js?v=20260910-three-0186-rotate-smoothing-v1";
+import { OrbitControls } from "/bridge-static/vendor/three/0.186.0/OrbitControls.js?v=0.5.3";
 import { RoundedBoxGeometry } from "/bridge-static/vendor/three/0.186.0/RoundedBoxGeometry.js";
 import { mergeGeometries } from "/bridge-static/vendor/three/0.186.0/BufferGeometryUtils.js";
-import { GLTFLoader } from "/bridge-static/vendor/three/0.186.0/GLTFLoader.js?v=20260910-three-0186-glb";
-import { SameOriginDRACOLoader } from "./draco-loader.js?v=20260910-three-0186-decoder-path-v1";
-import { createLightTransition, sampleLightTransition, lightTransitionDurationMs, mapLightEffectState, lightEffectColorHex } from "../modules/interaction3d/light-motion.js?v=20260907-light-defaults-v1-20260908-curtains-v1";
-import { adaptiveDeviceLightBudget, adaptiveLightRenderCost, assessAdaptiveRenderFrames, axisLockedPoint, canonicalPolygonKey, clamp, clampWindowT, closedWallFloorPolygons, closedWallPolygons, distance, doorLeafRotation, itemRotationFromPointers, localSpotShadowSettings, mergeCollinearWallSegments, modelBounds, nearestWall, pointInRotatedRectangle, pointInPolygon, planLabelProjectionMetrics, polygonArea, projectPointToSegment, resizeRotatedItemFromCorner, remapWallAttachment, selectShadowCastingLightIds, segmentIntersection, slidingDoorPanelCenters, spotShadowTextureUnitLimit, spotLightBrightnessResponse, splitWallSegments, snapPoint, uncoveredCollinearWallSegments, unclosedWallEndpoints, subtractPolygonLoops, validatedUnionPolygonLoops, wallLengthMeters, wallIntersections, wallJoinExtensions, wallSolidPieces } from "./geometry.js?v=20260903-wall-overlap-guard-v1-20260904-local-shadow-bands-v1-20260905-bounded-wall-faces-v1-20260908-floor-openings-v1";
-import { buildLightDeltaPixels, buildStoredZip, EXPORT_IMAGE_EXTENSION, EXPORT_IMAGE_MIME_TYPE, EXPORT_IMAGE_QUALITY, EXPORT_RENDER_SCALE, scaledExportResolution } from "./export-utils.js?v=20260902-native-resolution-q95-v185";
-import { MAX_EXPORT_PRESET_COUNT, exportPresetIsEmpty, normalizeActiveExportPresetSlot, normalizeExportPreset, normalizeExportPresetSlots } from "./export-presets.js?v=20260826-export-presets-v4";
-import { reorderFloors } from "./floor-order.js?v=20260825-floor-reorder-v1";
-import { syncControlValue } from "./ui-controls.js?v=20260826-input-stability-v1";
-import { initializeNumberInputs, initializeStudioSelects, syncStudioSelect } from "./studio-widgets.js?v=20260901-studio-widgets-v1";
-import { createExternalModelManager, ALL_ITEM_MODELS } from "./studio-external-models.js?v=20260904-studio-external-models-v48-load-state-20260905-client-log-v1-20260907-cache-representation-v1-20260908-curtains-v1-20260908-bed-base-v1-20260910-glasscabinet-back-v1-20260912-bed-geometry-revision-v1-20260913-pillar-shapes-v2";
-import { createPlanDrawingTools, drawTrackedText } from "./studio-plan-drawing.js?v=20260901-studio-plan-drawing-v2";
-import { createSpotShadowAtlasController } from "./studio-shadow-atlas.js?v=20260912-shadow-atlas-skip-unbakeable-v2";
-import { createRegionLightController } from "./studio-plan2-region-lights.js?v=20260909-reflection-scope-v1-20260913-region-lights-map-shadow-v1";
-import { createContactShadowController } from "./studio-plan2-contact-shadows.js?v=20260909-batch-shadow-v4";
-import { DEFAULT_BASE_LIGHTING, finite, itemMinimumHeight, kelvinToRgbHex, normalizeCameraSettings, normalizeBaseLighting, normalizeFixedCameraView, normalizeFullRotation, normalizeLabelText, normalizePoint } from "./studio-normalization.js?v=20260903-studio-normalization-v2";
+import { GLTFLoader } from "/bridge-static/vendor/three/0.186.0/GLTFLoader.js?v=0.5.3";
+import { SameOriginDRACOLoader } from "./draco-loader.js?v=0.5.3";
+import { createLightTransition, sampleLightTransition, lightTransitionDurationMs, mapLightEffectState, lightEffectColorHex } from "../modules/interaction3d/light-motion.js?v=0.5.3";
+import { adaptiveDeviceLightBudget, adaptiveLightRenderCost, assessAdaptiveRenderFrames, axisLockedPoint, canonicalPolygonKey, clamp, clampWindowT, closedWallFloorPolygons, closedWallPolygons, distance, doorLeafRotation, itemRotationFromPointers, localSpotShadowSettings, mergeCollinearWallSegments, modelBounds, nearestWall, pointInRotatedRectangle, pointInPolygon, planLabelProjectionMetrics, polygonArea, projectPointToSegment, resizeRotatedItemFromCorner, remapWallAttachment, selectShadowCastingLightIds, segmentIntersection, slidingDoorPanelCenters, spotShadowTextureUnitLimit, spotLightBrightnessResponse, splitWallSegments, snapPoint, uncoveredCollinearWallSegments, unclosedWallEndpoints, subtractPolygonLoops, validatedUnionPolygonLoops, wallLengthMeters, wallIntersections, wallJoinExtensions, wallSolidPieces } from "./geometry.js?v=0.5.3";
+import { buildLightDeltaPixels, buildStoredZip, EXPORT_IMAGE_EXTENSION, EXPORT_IMAGE_MIME_TYPE, EXPORT_IMAGE_QUALITY, EXPORT_RENDER_SCALE, scaledExportResolution } from "./export-utils.js?v=0.5.3";
+import { MAX_EXPORT_PRESET_COUNT, exportPresetIsEmpty, normalizeActiveExportPresetSlot, normalizeExportPreset, normalizeExportPresetSlots } from "./export-presets.js?v=0.5.3";
+import { reorderFloors } from "./floor-order.js?v=0.5.3";
+import { syncControlValue } from "./ui-controls.js?v=0.5.3";
+import { initializeNumberInputs, initializeStudioSelects, syncStudioSelect } from "./studio-widgets.js?v=0.5.3";
+import { createExternalModelManager, ALL_ITEM_MODELS } from "./studio-external-models.js?v=0.5.3";
+import { createPlanDrawingTools, drawTrackedText } from "./studio-plan-drawing.js?v=0.5.3";
+import { createSpotShadowAtlasController } from "./studio-shadow-atlas.js?v=0.5.3";
+import { createRegionLightController } from "./studio-plan2-region-lights.js?v=0.5.3";
+import { createContactShadowController } from "./studio-plan2-contact-shadows.js?v=0.5.3";
+import { DEFAULT_BASE_LIGHTING, finite, itemMinimumHeight, kelvinToRgbHex, normalizeCameraSettings, normalizeBaseLighting, normalizeFixedCameraView, normalizeFullRotation, normalizeLabelText, normalizePoint } from "./studio-normalization.js?v=0.5.3";
 window.__haBridgeStudioModuleVersion = "20260904-local-shadow-edge-v6-depth-precision-v1-model-load-state-v3-floor-scope-v1-ground-grid-v3-depth-fade-v2-local-shadow-depth-v1-export-shadow-quality-v1-base-light-entry-v1-auto-diagram-preview-hd-v1-auto-diagram-floor-v1-20260905-first-light-prewarm-v3-20260905-orbit-architecture-center-v1";
 const selectEl = selector => document.querySelector(selector);
 const isStageEmbed = window.location.pathname === "/api/v1/modules/interaction3d/stage.html";
-const yt = isStageEmbed && new URLSearchParams(location.search).get("lighting") === "region";
+const regionLightingEnabled = isStageEmbed && new URLSearchParams(location.search).get("lighting") === "region";
 const wallRuntimeProfile = "shader";
 window.__haBridgeWallRuntimeProfile = wallRuntimeProfile || "baseline";
 let studioReady = null;
 let renderCache = null;
-let ur = 1;
+let studioDevicePixelRatio = 1;
 let isAutoDiagramEmbed = null;
 let exportFolderQuery = "off";
 let floorSelectionQuery = false;
@@ -50,7 +54,7 @@ let canvasEmpty = 0;
 let curtainMotionActive = false;
 let saveState = "[]";
 let importPlan = "[]";
-let Vo = true;
+let stagePageVisible = true;
 const cache = isStageEmbed ? createRenderCache({
   sceneId: new URLSearchParams(window.location.search).get("sceneId"),
   projectId: new URLSearchParams(window.location.search).get("projectId"),
@@ -63,7 +67,7 @@ window.addEventListener("pagehide", () => cache?.close(), {
 });
 function computeLightRenderCacheKey(width, height) {
   const floors = getPreviewFloorModeCurrent() === "all" ? projectDocCurrent.floors : [activeFloor()];
-  cameraCurrent.updateMatrixWorld();
+  previewCamera.updateMatrixWorld();
   const roundMatrix = matrixElements => matrixElements.map(component => Math.round(component * 100000000) / 100000000);
   const layerVisibility = [];
   worldGroup.traverse(node => {
@@ -76,6 +80,10 @@ function computeLightRenderCacheKey(width, height) {
     scene: cacheSceneDescriptor(floors),
     mode: getPreviewFloorModeCurrent(),
     gap: projectDocCurrent.previewFloorGap,
+    uniformOverviewStack: projectDocCurrent.uniformOverviewStack === true,
+    ...(projectDocCurrent.uniformOverviewStack === true ? {
+      overviewProjection: "saved-camera-v1"
+    } : {}),
     lighting: baseLighting,
     style: themeColors,
     visibility: layerVisibility,
@@ -83,8 +91,8 @@ function computeLightRenderCacheKey(width, height) {
     curtains: saveState,
     models: manager.cacheRepresentation(floors.flatMap(scene => scene.scene.items)),
     camera: {
-      world: roundMatrix(cameraCurrent.matrixWorld.elements),
-      projection: roundMatrix(cameraCurrent.projectionMatrix.elements)
+      world: roundMatrix(previewCamera.matrixWorld.elements),
+      projection: roundMatrix(previewCamera.projectionMatrix.elements)
     },
     width,
     height,
@@ -95,67 +103,67 @@ function computeLightRenderCacheKey(width, height) {
   }));
 }
 const autoDiagramComponentId = new URLSearchParams(window.location.search).get("auto-diagram-component") || "";
-const isAutoDiagramEmbedCurrent = new URLSearchParams(window.location.search).get("auto-diagram-embed") === "1";
+const isAutoDiagramEmbedMode = new URLSearchParams(window.location.search).get("auto-diagram-embed") === "1";
 const entry = new URLSearchParams(window.location.search).get("export-folder") || "";
-const floorSelectionQueryCurrent = new URLSearchParams(window.location.search).has("floor-selection") ? new URLSearchParams(window.location.search).get("floor-selection") : null;
-if (isAutoDiagramEmbedCurrent) {
+const floorSelectionQueryParam = new URLSearchParams(window.location.search).has("floor-selection") ? new URLSearchParams(window.location.search).get("floor-selection") : null;
+if (isAutoDiagramEmbedMode) {
   document.body.classList.add("auto-diagram-embedded");
 }
 const element = selectEl("#plan-canvas");
 const planStage = selectEl("#plan-stage");
-const mf = selectEl("#canvas-empty");
+const canvasEmptyEl = selectEl("#canvas-empty");
 const floorRenameInput = selectEl("#project-name");
 const el = selectEl("#save-state");
-const importPlanCurrent = selectEl("#import-plan");
-const Ia = selectEl("#plan-file");
+const importPlanButtonEl = selectEl("#import-plan");
+const planFileEl = selectEl("#plan-file");
 const toggleBackground = selectEl("#toggle-background");
-const Ud = selectEl("#remove-plan");
-const yf = selectEl("#add-floor");
+const removePlanEl = selectEl("#remove-plan");
+const addFloorEl = selectEl("#add-floor");
 const floorList = selectEl("#floor-list");
 const alignFloor = selectEl("#align-floor");
 const floorContextMenu = selectEl("#floor-context-menu");
 const bl = selectEl("#floor-rename-dialog");
 const toolEls = selectEl("#floor-rename-form");
-const floorRenameInputCurrent = selectEl("#floor-rename-input");
+const floorRenameInputEl = selectEl("#floor-rename-input");
 const floorDeleteDialog = selectEl("#floor-delete-dialog");
 const activeToolLabel = selectEl("#floor-delete-form");
 const bf = selectEl("#floor-delete-name");
 const saveConflictDialog = selectEl("#save-conflict-dialog");
-const Mf = selectEl("#save-conflict-load");
-const Sf = selectEl("#save-conflict-overwrite");
+const saveConflictLoadEl = selectEl("#save-conflict-load");
+const saveConflictOverwriteEl = selectEl("#save-conflict-overwrite");
 const globalWallHeight = selectEl("#global-wall-height");
 const globalWallThickness = selectEl("#global-wall-thickness");
 const globalWallOpacity = selectEl("#global-wall-opacity");
 const toggleFloorEdge = selectEl("#toggle-floor-edge");
-const Zd = [...document.querySelectorAll("[data-tool]")];
+const toolButtons = [...document.querySelectorAll("[data-tool]")];
 const yr = selectEl("#finish-wall");
-const Kd = selectEl("#delete-selection");
-const activeToolLabelCurrent = selectEl("#active-tool-label");
+const deleteSelectionEl = selectEl("#delete-selection");
+const activeToolLabelEl = selectEl("#active-tool-label");
 const toolHelp = selectEl("#tool-help");
 const referencePixels = selectEl("#cursor-position");
-const No = selectEl("#snap-indicator");
+const snapIndicatorEl = selectEl("#snap-indicator");
 const snapToggle = selectEl("#snap-toggle");
-const Ef = selectEl("#snap-toggle-state");
-const Qd = selectEl("#snap-settings-toggle");
+const snapToggleStateEl = selectEl("#snap-toggle-state");
+const snapSettingsToggleEl = selectEl("#snap-settings-toggle");
 const xr = selectEl("#snap-settings-panel");
 const snapSettingEls = [...document.querySelectorAll("[data-snap-setting]")];
 const snapTolerance = selectEl("#snap-tolerance");
 const jd = selectEl("#snap-tolerance-value");
-const Lf = selectEl("#zoom-value");
+const zoomValueEl = selectEl("#zoom-value");
 const lightPropertyApplyTitle = selectEl("#scale-dialog");
 const lightPropertyApplyValue = selectEl("#scale-form");
 const applyLightPropertyEls = selectEl("#reference-pixels");
 const toast = selectEl("#reference-meters");
-const Il = selectEl("#light-group-rename-dialog");
-const Tf = selectEl("#light-group-rename-form");
+const lightGroupRenameDialogEl = selectEl("#light-group-rename-dialog");
+const lightGroupRenameFormEl = selectEl("#light-group-rename-form");
 const lightGroupRenameInput = selectEl("#light-group-rename-input");
-const Rl = selectEl("#light-property-apply-dialog");
-const Rf = selectEl("#light-property-apply-form");
+const lightPropertyApplyDialogEl = selectEl("#light-property-apply-dialog");
+const lightPropertyApplyFormEl = selectEl("#light-property-apply-form");
 const wallFields = selectEl("#light-property-target-list");
 const windowFields = selectEl("#light-property-selection-count");
 const ka = selectEl("#light-property-toggle-all");
-const Df = selectEl("#light-property-apply-title");
-const Ff = selectEl("#light-property-apply-value");
+const lightPropertyApplyTitleEl = selectEl("#light-property-apply-title");
+const lightPropertyApplyValueEl = selectEl("#light-property-apply-value");
 const list = [...document.querySelectorAll("[data-apply-light-property]")];
 const wallApplyPropertyEls = [...document.querySelectorAll("[data-apply-wall-property]")];
 const wallPropertyApplyDialog = selectEl("#wall-property-apply-dialog");
@@ -165,33 +173,33 @@ const wallPropertySelectionCount = selectEl("#wall-property-selection-count");
 const wallPropertyToggleAll = selectEl("#wall-property-toggle-all");
 const wallPropertyApplyTitle = selectEl("#wall-property-apply-title");
 const wallPropertyApplyValue = selectEl("#wall-property-apply-value");
-const toastCurrent = selectEl("#toast");
+const toastEl = selectEl("#toast");
 const inspectorEmpty = selectEl("#inspector-empty");
 const selectionInspector = selectEl("#selection-inspector");
 const selectionHeadingEl = selectEl(".selection-heading");
 const selectionId = selectEl("#selection-id");
 const lightPreviewNote = selectEl("#light-preview-note");
-const Af = selectEl("#wall-fields");
+const wallFieldsEl = selectEl("#wall-fields");
 const zf = selectEl("#window-fields");
-const Of = selectEl("#door-fields");
-const Bf = selectEl("#railing-fields");
-const Gf = selectEl("#item-fields");
+const doorFieldsEl = selectEl("#door-fields");
+const railingFieldsEl = selectEl("#railing-fields");
+const itemFieldsEl = selectEl("#item-fields");
 const $f = selectEl("#label-text-fields");
-const Wf = selectEl("#light-fields");
-const Vf = selectEl("#item-height-field");
-const Hf = selectEl("#item-elevation-field");
-const Nf = selectEl("#item-rotation-field");
-const Xf = selectEl("#item-rotation-actions");
+const lightFieldsEl = selectEl("#light-fields");
+const itemHeightFieldEl = selectEl("#item-height-field");
+const itemElevationFieldEl = selectEl("#item-elevation-field");
+const itemRotationFieldEl = selectEl("#item-rotation-field");
+const itemRotationActionsEl = selectEl("#item-rotation-actions");
 const qf = selectEl("#item-vertical-rotation-field");
-const _f = selectEl("#item-vertical-rotation-label");
-const Yf = selectEl("#item-strip-orientation-heading");
-const Uf = selectEl("#item-strip-roll-field");
+const itemVerticalRotationLabelEl = selectEl("#item-vertical-rotation-label");
+const itemStripOrientationHeadingEl = selectEl("#item-strip-orientation-heading");
+const itemStripRollFieldEl = selectEl("#item-strip-roll-field");
 const itemStripRoll = selectEl("#item-strip-roll");
-const Zf = selectEl("#item-light-source-visibility-field");
+const itemLightSourceVisibilityFieldEl = selectEl("#item-light-source-visibility-field");
 const zl = selectEl("#item-light-source-visible");
-const Kf = selectEl("#curtain-position-field");
-const Qf = selectEl("#round-table-turntable-field");
-const Jf = selectEl("#stair-direction-field");
+const curtainPositionFieldEl = selectEl("#curtain-position-field");
+const roundTableTurntableFieldEl = selectEl("#round-table-turntable-field");
+const stairDirectionFieldEl = selectEl("#stair-direction-field");
 const jf = selectEl("#tv-mount-style-field");
 const muralStyleField = selectEl("#mural-style-field");
 const featureWallStyleField = selectEl("#feature-wall-style-field");
@@ -200,12 +208,12 @@ const pillarAxisField = selectEl("#pillar-axis-field");
 const stripAxisField = selectEl("#strip-axis-field");
 const itemHeightLabel = selectEl("#item-height-label");
 const eg = selectEl("#shoe-cabinet-actions");
-const o0 = selectEl("#shoe-cabinet-mirror");
+const shoeCabinetMirrorEl = selectEl("#shoe-cabinet-mirror");
 const tg = selectEl("#item-width-label");
 const ng = selectEl("#item-depth-label");
 const og = selectEl("#scene-counts");
 const previewSyncEls = [...document.querySelectorAll("[data-preview-sync]")];
-const r0 = [...document.querySelectorAll("[data-preview-floor]")];
+const previewFloorButtons = [...document.querySelectorAll("[data-preview-floor]")];
 const refreshPreview = selectEl("#refresh-preview");
 const refreshLightPreview = selectEl("#refresh-light-preview");
 const previewQualityStatus = selectEl("#preview-quality-status");
@@ -236,6 +244,8 @@ const ug = selectEl("#save-overview-view");
 const fixedOverviewView = selectEl("#fixed-overview-view");
 const hg = selectEl("#preview-floor-gap-control");
 const previewFloorGapInput = selectEl("#preview-floor-gap");
+const previewFloorUniformControl = selectEl("#preview-floor-uniform-control");
+const previewFloorUniformInput = selectEl("#preview-floor-uniform");
 const exportDialog = selectEl("#export-dialog");
 const fg = selectEl("#export-preview-frame");
 const exportPreviewStage = selectEl("#export-preview-stage");
@@ -254,10 +264,10 @@ const exportGroupFiles = selectEl("#export-group-files");
 const exportFloorSelect = selectEl("#export-floor-select");
 const yg = selectEl("#export-floor-gap-control");
 const exportFloorGap = selectEl("#export-floor-gap");
-const h0 = selectEl("#export-preset-slots");
-const f0 = selectEl("#export-preset-add");
-const g0 = selectEl("#export-preset-rename");
-const p0 = selectEl("#export-preset-delete");
+const exportPresetSlotsEl = selectEl("#export-preset-slots");
+const exportPresetAddEl = selectEl("#export-preset-add");
+const exportPresetRenameEl = selectEl("#export-preset-rename");
+const exportPresetDeleteEl = selectEl("#export-preset-delete");
 const exportPresetRenameDialog = selectEl("#export-preset-rename-dialog");
 const detailsPanelEl = selectEl("#export-preset-rename-form");
 const exportPresetRenameInput = selectEl("#export-preset-rename-input");
@@ -265,11 +275,11 @@ const exportPresetDeleteDialog = selectEl("#export-preset-delete-dialog");
 const vg = selectEl("#export-preset-delete-form");
 const bg = selectEl("#export-preset-delete-name");
 const exportOverwriteDialog = selectEl("#export-overwrite-dialog");
-const Mg = selectEl("#export-overwrite-name");
+const exportOverwriteNameEl = selectEl("#export-overwrite-name");
 const exportCompleteDialog = selectEl("#export-complete-dialog");
-const Sg = selectEl("#export-complete-title");
-const Pg = selectEl("#export-complete-message");
-const Eg = selectEl("#export-complete-path");
+const exportCompleteTitleEl = selectEl("#export-complete-title");
+const exportCompleteMessageEl = selectEl("#export-complete-message");
+const exportCompletePathEl = selectEl("#export-complete-path");
 const studioShellEl = selectEl(".studio-shell");
 const detailsPanelElCurrent = selectEl(".details-panel");
 const detailsResizer = selectEl("#details-resizer");
@@ -281,7 +291,7 @@ const stairLikeTypes = selectEl("#light-asset-row");
 const lightLayerPanel = selectEl("#light-layer-panel");
 const lightGroupList = selectEl("#light-group-list");
 const lightLayerActions = selectEl("#light-layer-actions");
-const Tg = selectEl("#add-light-group");
+const addLightGroupEl = selectEl("#add-light-group");
 const fridgeSize = selectEl("#light-groups-off");
 const lightGroupContextMenu = selectEl("#light-group-context-menu");
 const areaContextMenu = selectEl("#area-context-menu");
@@ -1030,7 +1040,7 @@ function visibleExternalModelKeys() {
   const floors = getPreviewFloorModeCurrent() === "all" ? projectDocCurrent?.floors || [] : [activeFloor()].filter(Boolean);
   return collectExternalModelKeysFromFloors(floors);
 }
-const dracoLoader = new SameOriginDRACOLoader("/bridge-static/3d-studio/draco-decoder-worker.js?v=20260904-csp-static-worker-v1");
+const dracoLoader = new SameOriginDRACOLoader("/bridge-static/3d-studio/draco-decoder-worker.js?v=0.5.3");
 dracoLoader.setDecoderPath("/bridge-static/vendor/three/0.186.0/draco/");
 // Prefer WASM when available; avoid deprecated setDecoderConfig (removed in r194).
 dracoLoader.decoderConfig = {
@@ -1090,7 +1100,7 @@ function loadVisibleExternalModels() {
 }
 function requestModelRender() {
   updateModelLoadStatus();
-  if (!isAutoDiagramEmbedCurrent && !deferExternalModelsCurrent) {
+  if (!isAutoDiagramEmbedMode && !deferExternalModelsCurrent) {
     if (isLeavingStudio || previewOrbitLocked) {
       modelsLoading = true;
       return;
@@ -1366,9 +1376,11 @@ const hc = 1852;
 const fc = 1293;
 let Tn = hc / fc;
 let previewSceneCurrent = null;
-let cameraCurrent = null;
+let previewCamera = null;
 let renderer = null;
 let orbitControls = null;
+let overviewStackController = null;
+let overviewStackCenter = null;
 let worldGroup = null;
 let Lo = null;
 let orbitResumeTimer = null;
@@ -1527,6 +1539,7 @@ function normalizeProjectDocument(projectDoc) {
     activeFloorId: activeFloorEntry.id,
     defaultFloorHeight: clamp(finite(projectDoc?.defaultFloorHeight, 3), 1.8, 8),
     previewFloorGap: clamp(hasFloorGapSchema ? finite(projectDoc?.previewFloorGap, 3) : baselineHeight + finite(projectDoc?.previewFloorGap, 0), 0, 20),
+    uniformOverviewStack: projectDoc?.uniformOverviewStack === true,
     exportFloorGap: clamp(hasFloorGapSchema ? finite(projectDoc?.exportFloorGap, 3) : baselineHeight + finite(projectDoc?.exportFloorGap, 0), 0, 20),
     previewFloorMode: projectDoc?.previewFloorMode === "all" ? "all" : "active",
     combinedCameraSettings: normalizeCameraSettings(projectDoc?.combinedCameraSettings),
@@ -1622,9 +1635,9 @@ async function executePendingFloorDelete() {
 function openFloorRenameDialog(id) {
   if (id) {
     contextFloorId = id.id;
-    floorRenameInputCurrent.value = id.name;
+    floorRenameInputEl.value = id.name;
     bl.showModal();
-    requestAnimationFrame(() => floorRenameInputCurrent.select());
+    requestAnimationFrame(() => floorRenameInputEl.select());
   }
 }
 function renderFloorList() {
@@ -1763,10 +1776,10 @@ function updateAlignFloorButton() {
   alignFloor.disabled = !flag || !floor?.scene?.calibration;
   alignFloor.textContent = floor?.aligned ? "重新对齐" : "对齐楼层";
   if (alignSession?.stage === "reference") {
-    activeToolLabelCurrent.textContent = "楼层对齐 · 参照层";
+    activeToolLabelEl.textContent = "楼层对齐 · 参照层";
     toolHelp.textContent = "点击" + alignSession.referenceFloor.name + "上的楼梯角、墙角或柱点；Esc 取消";
   } else if (alignSession?.stage === "current") {
-    activeToolLabelCurrent.textContent = "楼层对齐 · 当前层";
+    activeToolLabelEl.textContent = "楼层对齐 · 当前层";
     toolHelp.textContent = "点击" + floor.name + "上的相同位置；系统会自动重合上下楼层";
   }
 }
@@ -2751,7 +2764,7 @@ function renderLightLayerPanel() {
   }
   fridgeSize.textContent = showLightGroups ? "全关" : showScreens ? "全关画面" : "全关充电";
   addAreaButton.hidden = !showLightGroups;
-  Tg.hidden = !showLightGroups;
+  addLightGroupEl.hidden = !showLightGroups;
   lightLayerActions.classList.toggle("single", !showLightGroups);
   lightGroupList.replaceChildren();
   if (showLightGroups) {
@@ -3127,10 +3140,10 @@ async function studioFetch(path, requestOptions = {}) {
 }
 function showToast(message, variant = "") {
   window.clearTimeout(toastTimer);
-  toastCurrent.textContent = message;
-  toastCurrent.className = ("toast visible " + variant).trim();
+  toastEl.textContent = message;
+  toastEl.className = ("toast visible " + variant).trim();
   toastTimer = window.setTimeout(() => {
-    toastCurrent.className = "toast";
+    toastEl.className = "toast";
   }, variant === "warning" ? 4400 : 2600);
 }
 function setSaveStateLabel(labelHtml, variant = "") {
@@ -3206,9 +3219,9 @@ async function loadProjectDocument(studioDocument) {
   }
   applyBaseLighting(projectDocCurrent.baseLighting);
   activeFloorId = projectDocCurrent.activeFloorId;
-  if (isAutoDiagramEmbedCurrent && floorSelectionQueryCurrent !== null) {
-    const matchedFloor = projectDocCurrent.floors.find(selectedFloor => selectedFloor.id === floorSelectionQueryCurrent);
-    if (floorSelectionQueryCurrent === "all" && projectDocCurrent.floors.length > 1) {
+  if (isAutoDiagramEmbedMode && floorSelectionQueryParam !== null) {
+    const matchedFloor = projectDocCurrent.floors.find(selectedFloor => selectedFloor.id === floorSelectionQueryParam);
+    if (floorSelectionQueryParam === "all" && projectDocCurrent.floors.length > 1) {
       projectDocCurrent.previewFloorMode = "all";
     } else if (matchedFloor) {
       projectDocCurrent.previewFloorMode = "active";
@@ -3223,7 +3236,7 @@ async function loadProjectDocument(studioDocument) {
   undoStack = [];
   redoStack = [];
   const modelKeys = visibleExternalModelKeys();
-  const isEmbed = isAutoDiagramEmbedCurrent;
+  const isEmbed = isAutoDiagramEmbedMode;
   if (isEmbed) {
     deferExternalModelsCurrent = true;
   }
@@ -3349,7 +3362,7 @@ async function flushSave() {
   }
 }
 saveConflictDialog.addEventListener("cancel", event => event.preventDefault());
-Mf.addEventListener("click", async () => {
+saveConflictLoadEl.addEventListener("click", async () => {
   const isLatest = saveConflictStateCurrent;
   if (isLatest) {
     saveConflictStateCurrent = null;
@@ -3365,7 +3378,7 @@ Mf.addEventListener("click", async () => {
     }
   }
 });
-Sf.addEventListener("click", () => {
+saveConflictOverwriteEl.addEventListener("click", () => {
   const isLocalScene = saveConflictStateCurrent;
   if (isLocalScene) {
     projectDocCurrent = normalizeProjectDocument(isLocalScene.localScene);
@@ -4938,7 +4951,7 @@ function drawPlan() {
   }
   planCtx.restore();
   drawMarqueeSelection();
-  Lf.textContent = Math.round(planView.zoom * 100) + "%";
+  zoomValueEl.textContent = Math.round(planView.zoom * 100) + "%";
 }
 function selectedEntity() {
   if (!selection) {
@@ -5057,20 +5070,20 @@ function isSnapActive() {
 }
 function setSnapSettingsOpen(flag) {
   xr.hidden = !flag;
-  Qd.setAttribute("aria-expanded", String(flag));
+  snapSettingsToggleEl.setAttribute("aria-expanded", String(flag));
 }
 function syncSnapUi() {
   const flag = floorSceneCurrent.settings.snapEnabled !== false;
   snapToggle.classList.toggle("active", flag);
   snapToggle.setAttribute("aria-pressed", String(flag));
-  Ef.textContent = flag ? "开" : "关";
+  snapToggleStateEl.textContent = flag ? "开" : "关";
   for (const el of snapSettingEls) {
     el.checked = floorSceneCurrent.settings[el.dataset.snapSetting] !== false;
   }
   syncControlValue(snapTolerance, clamp(Math.round(finite(floorSceneCurrent.settings.snapTolerance, 13)), 6, 24));
   jd.textContent = snapTolerance.value + " px";
   if (!Fi) {
-    No.textContent = flag ? "吸附：开启" : "吸附：关闭";
+    snapIndicatorEl.textContent = flag ? "吸附：开启" : "吸附：关闭";
   }
 }
 function onDetailsResizePointerMove(event) {
@@ -5101,13 +5114,13 @@ function refreshStudioPanels() {
   renderFloorList();
   toggleBackground.disabled = !floorSceneCurrent.background;
   toggleBackground.textContent = floorSceneCurrent.settings.backgroundVisible ? "隐藏" : "显示";
-  Ud.disabled = !floorSceneCurrent.background;
+  removePlanEl.disabled = !floorSceneCurrent.background;
   syncControlValue(globalWallHeight, floorSceneCurrent.settings.wallHeight.toFixed(2));
   syncControlValue(globalWallThickness, floorSceneCurrent.settings.wallThickness.toFixed(2));
   syncControlValue(globalWallOpacity, Math.round(floorSceneCurrent.settings.wallOpacity * 100));
   toggleFloorEdge.textContent = floorSceneCurrent.settings.floorEdgeVisible === false ? "隐藏" : "显示";
   toggleFloorEdge.setAttribute("aria-pressed", String(floorSceneCurrent.settings.floorEdgeVisible !== false));
-  mf.hidden = !!floorSceneCurrent.background || !!floorSceneCurrent.walls.length || !!floorSceneCurrent.items.length;
+  canvasEmptyEl.hidden = !!floorSceneCurrent.background || !!floorSceneCurrent.walls.length || !!floorSceneCurrent.items.length;
   og.textContent = floorSceneCurrent.walls.length + " 墙 · " + floorSceneCurrent.windows.length + " 窗 · " + floorSceneCurrent.doors.length + " 门 · " + floorSceneCurrent.railings.length + " 栏杆 · " + floorSceneCurrent.items.length + " 物件";
   renderLightLayerPanel();
   applyPreviewPaneWidth();
@@ -5124,7 +5137,7 @@ function updateSelectionInspector() {
   const flag = multiSelection.length;
   inspectorEmpty.hidden = !!lightGroup;
   selectionInspector.hidden = !lightGroup;
-  Kd.disabled = !lightGroup && !flag;
+  deleteSelectionEl.disabled = !lightGroup && !flag;
   if (flag) {
     inspectorEmpty.hidden = false;
     selectionInspector.hidden = true;
@@ -5137,11 +5150,11 @@ function updateSelectionInspector() {
   if (!!lightGroup && !!selection) {
     lightPreviewNote.hidden = true;
     selectionHeadingEl.classList.remove("light-selected");
-    Af.hidden = selection.kind !== "wall";
+    wallFieldsEl.hidden = selection.kind !== "wall";
     zf.hidden = selection.kind !== "window";
-    Of.hidden = selection.kind !== "door";
-    Bf.hidden = selection.kind !== "railing";
-    Gf.hidden = selection.kind !== "item";
+    doorFieldsEl.hidden = selection.kind !== "door";
+    railingFieldsEl.hidden = selection.kind !== "railing";
+    itemFieldsEl.hidden = selection.kind !== "item";
     selectionId.hidden = selection.kind === "item";
     selectionId.textContent = selectionId.hidden ? "" : lightGroup.id;
     if (selection.kind === "wall") {
@@ -5196,20 +5209,20 @@ function updateSelectionInspector() {
       lightPreviewNote.hidden = !present;
       selectionHeadingEl.classList.toggle("light-selected", present);
       $f.hidden = !flag;
-      Wf.hidden = !present;
-      Wf.title = "";
-      Kf.hidden = lightGroup.type !== "curtain";
-      Vf.hidden = flag || present || lightGroup.type === "flooropening";
-      Hf.hidden = flag || lightGroup.type === "flooropening";
-      Nf.hidden = lightGroup.type === "ceilinglight";
-      Xf.hidden = lightGroup.type === "ceilinglight";
+      lightFieldsEl.hidden = !present;
+      lightFieldsEl.title = "";
+      curtainPositionFieldEl.hidden = lightGroup.type !== "curtain";
+      itemHeightFieldEl.hidden = flag || present || lightGroup.type === "flooropening";
+      itemElevationFieldEl.hidden = flag || lightGroup.type === "flooropening";
+      itemRotationFieldEl.hidden = lightGroup.type === "ceilinglight";
+      itemRotationActionsEl.hidden = lightGroup.type === "ceilinglight";
       qf.hidden = !(present || isSecurityDevice);
       qf.title = isSecurityDevice ? "0° 正装，±90° 侧装，180° 倒装；离地高度为底座安装点高度" : "";
-      Uf.hidden = lightGroup.type !== "striplight";
-      Yf.hidden = lightGroup.type !== "striplight";
-      Zf.hidden = lightGroup.type !== "striplight";
-      Qf.hidden = !roundTableTypes.has(lightGroup.type);
-      Jf.hidden = !stairItemTypes.has(lightGroup.type);
+      itemStripRollFieldEl.hidden = lightGroup.type !== "striplight";
+      itemStripOrientationHeadingEl.hidden = lightGroup.type !== "striplight";
+      itemLightSourceVisibilityFieldEl.hidden = lightGroup.type !== "striplight";
+      roundTableTurntableFieldEl.hidden = !roundTableTypes.has(lightGroup.type);
+      stairDirectionFieldEl.hidden = !stairItemTypes.has(lightGroup.type);
       jf.hidden = lightGroup.type !== "tv";
       muralStyleField.hidden = lightGroup.type !== "mural";
       featureWallStyleField.hidden = lightGroup.type !== "featurewall";
@@ -5217,11 +5230,11 @@ function updateSelectionInspector() {
       pillarAxisField.hidden = lightGroup.type !== "pillar";
       stripAxisField.hidden = lightGroup.type !== "striplight";
       eg.hidden = lightGroup.type !== "shoecabinet";
-      o0.setAttribute("aria-pressed", lightGroup.shoeCabinetMirrored === true ? "true" : "false");
+      shoeCabinetMirrorEl.setAttribute("aria-pressed", lightGroup.shoeCabinetMirrored === true ? "true" : "false");
       selectEl("#item-rotation-label").textContent = lightGroup.type === "striplight" ? "平面旋转（°）" : present ? "平面方向（°）" : "旋转角度（°）";
       selectEl("#item-rotation").min = lightGroup.type === "striplight" ? "0" : "-360";
       selectEl("#item-rotation").max = "360";
-      _f.textContent = lightGroup.type === "striplight" ? "安装倾斜（°）" : isSecurityDevice ? "安装翻转／侧装（°）" : "出光角度（°）";
+      itemVerticalRotationLabelEl.textContent = lightGroup.type === "striplight" ? "安装倾斜（°）" : isSecurityDevice ? "安装翻转／侧装（°）" : "出光角度（°）";
       selectEl("#item-vertical-rotation").min = lightGroup.type === "striplight" ? "0" : isSecurityDevice ? "-180" : "-90";
       selectEl("#item-vertical-rotation").max = lightGroup.type === "striplight" ? "360" : isSecurityDevice ? "180" : "90";
       for (const hidden of list) {
@@ -5326,10 +5339,10 @@ function setActiveTool(toolName) {
   activeTool = toolName;
   element.dataset.tool = toolName;
   element.style.cursor = "";
-  for (const element of Zd) {
+  for (const element of toolButtons) {
     element.classList.toggle("active", element.dataset.tool === toolName);
   }
-  [activeToolLabelCurrent.textContent, toolHelp.textContent] = assetCategory === "light" ? ["灯光编辑", "户型已锁定；框选多盏灯后可整体拖动，Shift 锁轴，Option/Alt 复制"] : toolHelpText[toolName];
+  [activeToolLabelEl.textContent, toolHelp.textContent] = assetCategory === "light" ? ["灯光编辑", "户型已锁定；框选多盏灯后可整体拖动，Shift 锁轴，Option/Alt 复制"] : toolHelpText[toolName];
   yr.hidden = toolName !== "wall" || !Tt;
   if (toolName !== "wall") {
     resetWallDrawingCurrent();
@@ -5636,8 +5649,8 @@ async function importPlanBackgroundFile(body) {
       showToast("仅支持 PNG、JPG、JPEG、WebP 和 SVG 图片。", "error");
       return;
     }
-    importPlanCurrent.disabled = true;
-    importPlanCurrent.textContent = "上传中…";
+    importPlanButtonEl.disabled = true;
+    importPlanButtonEl.textContent = "上传中…";
     try {
       const size = await studioFetch("/assets/user", {
         method: "POST",
@@ -5671,8 +5684,8 @@ async function importPlanBackgroundFile(body) {
     } catch (error) {
       showToast(error.message || "底图上传失败。", "error");
     } finally {
-      importPlanCurrent.disabled = false;
-      importPlanCurrent.textContent = "导入";
+      importPlanButtonEl.disabled = false;
+      importPlanButtonEl.textContent = "导入";
     }
   }
 }
@@ -5698,7 +5711,7 @@ function applyPreviewEnvironment() {
   renderer.setClearColor(value.background, 0);
   previewSceneCurrent.fog = null;
   renderer.toneMappingExposure = exposure.exposure;
-  const conditionalValue = yt ? 0.5 : 1;
+  const conditionalValue = regionLightingEnabled ? 0.5 : 1;
   if (hemisphereLight) {
     hemisphereLight.color.setHex(14278376);
     hemisphereLight.groundColor.setHex(1909296);
@@ -5931,7 +5944,7 @@ function evaluatePreviewLightBudget() {
   return value;
 }
 function isPreviewQualityReady() {
-  if (yt) {
+  if (regionLightingEnabled) {
     return false;
   } else {
     evaluatePreviewLightBudget();
@@ -6028,7 +6041,7 @@ function syncCameraFocalControls(mode = getCameraProjectionMode()) {
     inputEl.closest(".camera-focal-control")?.classList.toggle("is-disabled", inputEl.disabled);
   }
 }
-function applyCameraFocalLength(camera = cameraCurrent, focalLength = getCameraFocalLength()) {
+function applyCameraFocalLength(camera = previewCamera, focalLength = getCameraFocalLength()) {
   if (camera?.isPerspectiveCamera) {
     camera.setFocalLength(clamp(finite(focalLength, 50), 18, 120));
   }
@@ -6053,10 +6066,10 @@ function syncOrbitControls() {
 }
 function computeStudioPixelRatio(isEmbedCapture = false) {
   if (isStageEmbed && isEmbedCapture && isAutoDiagramEmbed !== null && (!isStageWarmup || previewOrbitLocked)) {
-    return Math.min(window.devicePixelRatio || 1, 1.6) * ur * isAutoDiagramEmbed;
+    return Math.min(window.devicePixelRatio || 1, 1.6) * studioDevicePixelRatio * isAutoDiagramEmbed;
   }
-  if (yt) {
-    const baseRatio = Math.min(window.devicePixelRatio || 1, 1.6) * ur;
+  if (regionLightingEnabled) {
+    const baseRatio = Math.min(window.devicePixelRatio || 1, 1.6) * studioDevicePixelRatio;
     if (isEmbedCapture) {
       return Math.min(baseRatio, 1);
     } else {
@@ -6064,7 +6077,7 @@ function computeStudioPixelRatio(isEmbedCapture = false) {
     }
   }
   const isWarmupEmbed = isStageEmbed && isStageWarmup;
-  let ratio = Math.min(window.devicePixelRatio || 1, isEmbedCapture ? 1 : 1.6) * (isStageEmbed ? ur : 1);
+  let ratio = Math.min(window.devicePixelRatio || 1, isEmbedCapture ? 1 : 1.6) * (isStageEmbed ? studioDevicePixelRatio : 1);
   if (isStageEmbed && (isEmbedCapture || isWarmupEmbed)) {
     const {
       cost: estimatedCost,
@@ -6580,7 +6593,7 @@ function capturePreviewCanvas(cacheKey, bitmapCanvas, shouldCapture) {
 }
 async function finishStageSessionWarmup() {
   stageSessionEndTimer = null;
-  if (!Vo || cache?.closed || !renderer || stageSession || previewOrbitLocked || isLeavingStudio || isBakingLightCache || isCapturingFrame || isStageWarmup || curtainMotionActive || vacuumMotionActive || rs) {
+  if (!stagePageVisible || cache?.closed || !renderer || stageSession || previewOrbitLocked || isLeavingStudio || isBakingLightCache || isCapturingFrame || isStageWarmup || curtainMotionActive || vacuumMotionActive || rs) {
     return;
   }
   if (hasPendingModelLoads() || shadowAtlas?.isBuilding() || shadowAtlas?.isPending()) {
@@ -6594,7 +6607,7 @@ async function finishStageSessionWarmup() {
     return;
   }
   const value = lightCacheEpoch;
-  const onComplete = () => Vo && !cache?.closed && !hasPendingModelLoads() && value === lightCacheEpoch && !stageSession && !previewOrbitLocked && !isLeavingStudio && !isCapturingFrame && !isStageWarmup && !curtainMotionActive && !vacuumMotionActive && !rs;
+  const onComplete = () => stagePageVisible && !cache?.closed && !hasPendingModelLoads() && value === lightCacheEpoch && !stageSession && !previewOrbitLocked && !isLeavingStudio && !isCapturingFrame && !isStageWarmup && !curtainMotionActive && !vacuumMotionActive && !rs;
   isBakingLightCache = true;
   let rect;
   let flag = null;
@@ -6625,7 +6638,7 @@ async function finishStageSessionWarmup() {
       const worldItemsCached = ensureWorldItemsCached(entry);
       syncLightGroupVisibility(worldItemsCached);
       syncOrbitControls();
-      renderer.render(previewSceneCurrent, cameraCurrent);
+      renderer.render(previewSceneCurrent, previewCamera);
       rect = document.createElement("canvas");
       flag = rect;
       rect.width = width;
@@ -7022,7 +7035,7 @@ function syncPreviewRenderShield() {
     canvasCtx.fillStyle = "#" + resolvedThemeColors().background.toString(16).padStart(6, "0");
     canvasCtx.fillRect(0, 0, previewRenderShield.width, previewRenderShield.height);
     if (isStageEmbed) {
-      renderer.render(previewSceneCurrent, cameraCurrent);
+      renderer.render(previewSceneCurrent, previewCamera);
     }
     canvasCtx.drawImage(domElement, 0, 0);
     if (!previewLightCache.hidden) {
@@ -7078,7 +7091,7 @@ function createOffscreenCanvas(width, height) {
 }
 function warmPreviewRenderer() {
   for (let frame = 0; frame < 3; frame += 1) {
-    renderer.render(previewSceneCurrent, cameraCurrent);
+    renderer.render(previewSceneCurrent, previewCamera);
   }
 }
 function yieldToScheduler() {
@@ -7100,7 +7113,7 @@ function yieldToIdle() {
   }
 }
 function scheduleAdaptiveQuality(delayMs = 420) {
-  if ((!isStageEmbed || !!Vo) && (!isStageEmbed || !cache?.closed) && !!renderer && !!worldGroup && !stageSession && !previewOrbitLocked && !isLeavingStudio && !isBakingLightCache && !isCapturingFrame && !isStageWarmup && !!isPreviewQualityReady()) {
+  if ((!isStageEmbed || !!stagePageVisible) && (!isStageEmbed || !cache?.closed) && !!renderer && !!worldGroup && !stageSession && !previewOrbitLocked && !isLeavingStudio && !isBakingLightCache && !isCapturingFrame && !isStageWarmup && !!isPreviewQualityReady()) {
     window.clearTimeout(stageSessionEndTimer);
     stageSessionEndTimer = window.setTimeout(() => {
       const active = manager.modelLoadState();
@@ -7300,7 +7313,7 @@ function scheduleLeaveStudio() {
 function setPreviewPixelRatio(pixelRatio, {
   preserveLightCache: preserveLightCache = false
 } = {}) {
-  if (!renderer || stageSession && !isAutoDiagramEmbedCurrent) {
+  if (!renderer || stageSession && !isAutoDiagramEmbedMode) {
     return;
   }
   const targetRatio = stageSession ? stageEmbedPixelRatio(pixelRatio) : computeStudioPixelRatio(pixelRatio);
@@ -7359,7 +7372,11 @@ function syncFloorCameraChrome() {
   cg.hidden = value;
   dg.hidden = !flag || !value;
   hg.hidden = !flag || !value;
+  previewFloorUniformControl.hidden = !flag || !value;
   syncControlValue(previewFloorGapInput, finite(projectDocCurrent?.previewFloorGap, 3).toFixed(1));
+  if (previewFloorUniformInput) {
+    previewFloorUniformInput.checked = projectDocCurrent?.uniformOverviewStack === true;
+  }
   const flagCurrent = !!floorSceneCurrent.settings?.fixedCameraView;
   const flagNext = !!projectDocCurrent?.combinedFixedCameraView;
   fixedCameraView.disabled = !flagCurrent;
@@ -7398,7 +7415,7 @@ function createOrbitControls(view) {
   el.maxDistance = 100;
   el.minZoom = 0.35;
   el.maxZoom = 6;
-  el.maxPolarAngle = Math.PI * 0.49;
+  el.maxPolarAngle = MAX_CAMERA_POLAR_ANGLE;
   el.target.set(0, 0.6, 0);
   el.addEventListener("start", lockPreviewOrbit);
   el.addEventListener("change", () => {
@@ -7423,12 +7440,30 @@ function createOrbitControls(view) {
     }
   });
   el.addEventListener("end", unlockPreviewOrbit);
+  const orbitUpdate = el.update.bind(el);
+  el.update = (...args) => {
+    if (el.minPolarAngle !== el.maxPolarAngle) {
+      el.maxPolarAngle = Math.min(el.maxPolarAngle, MAX_CAMERA_POLAR_ANGLE);
+    }
+    const polarAngle = el.getPolarAngle();
+    if (polarAngle >= el.maxPolarAngle - 1e-8 && el._sphericalDelta?.phi > 0 || polarAngle <= el.minPolarAngle + 0.000001 && el._sphericalDelta?.phi < 0) {
+      el._sphericalDelta.phi = 0;
+    }
+    const updated = orbitUpdate(...args);
+    if (constrainCameraPosition(view.position, el.target)) {
+      if (el._sphericalDelta?.phi > 0) {
+        el._sphericalDelta.phi = 0;
+      }
+      view.lookAt(el.target);
+    }
+    return updated;
+  };
   return el;
 }
 const am = 0.02;
 const sm = 0.32;
 const lm = 0.006;
-function getCameraPose(camera = cameraCurrent, target = orbitControls?.target) {
+function getCameraPose(camera = previewCamera, target = orbitControls?.target) {
   if (!camera || !target) {
     return false;
   }
@@ -7456,7 +7491,7 @@ function resetOrbitTarget(camera, target) {
   return 10;
 }
 async function saveCurrentCameraView() {
-  if (!cameraCurrent || !orbitControls) {
+  if (!previewCamera || !orbitControls) {
     return;
   }
   const value = getPreviewFloorModeCurrent() === "all" ? "总览视角" : "当前层视角";
@@ -7465,22 +7500,22 @@ async function saveCurrentCameraView() {
   }
   const point = orbitControls.target;
   setActiveFixedCameraView({
-    mode: cameraCurrent.isPerspectiveCamera ? "perspective" : "orthographic",
+    mode: previewCamera.isPerspectiveCamera ? "perspective" : "orthographic",
     view: cameraViewMode(),
     topRotation: topViewRotation(),
     position: {
-      x: cameraCurrent.position.x,
-      y: cameraCurrent.position.y,
-      z: cameraCurrent.position.z
+      x: previewCamera.position.x,
+      y: previewCamera.position.y,
+      z: previewCamera.position.z
     },
     target: {
       x: point.x,
       y: point.y,
       z: point.z
     },
-    visibleHeight: resetOrbitTarget(cameraCurrent, point),
-    fov: cameraCurrent.isPerspectiveCamera ? cameraCurrent.fov : 36,
-    focalLength: cameraCurrent.isPerspectiveCamera ? getCameraFocalLength() : null
+    visibleHeight: resetOrbitTarget(previewCamera, point),
+    fov: previewCamera.isPerspectiveCamera ? previewCamera.fov : 36,
+    focalLength: previewCamera.isPerspectiveCamera ? getCameraFocalLength() : null
   });
   syncFloorCameraChrome();
   if (stageSession) {
@@ -7497,7 +7532,7 @@ async function saveCurrentCameraView() {
 }
 function restoreFixedCameraView(recordChange = {}) {
   const isMode = activeFixedCameraView();
-  if (!isMode || !cameraCurrent || !orbitControls) {
+  if (!isMode || !previewCamera || !orbitControls) {
     return;
   }
   const flag = isMode.mode !== getCameraProjectionMode();
@@ -7519,28 +7554,28 @@ function restoreFixedCameraView(recordChange = {}) {
     preserveView: false
   });
   const vector = new THREE.Vector3(isMode.target.x, isMode.target.y, isMode.target.z);
-  cameraCurrent.position.set(isMode.position.x, isMode.position.y, isMode.position.z);
-  cameraCurrent.up.copy(isMode.view === "top" ? topViewForwardVector(isMode.topRotation) : new THREE.Vector3(0, 1, 0));
-  cameraCurrent.userData.frameSize = isMode.visibleHeight;
-  cameraCurrent.userData.cameraView = isMode.view;
-  cameraCurrent.userData.topRotation = isMode.topRotation;
-  cameraCurrent.userData.viewportAspect ||= Math.max(selectEl("#preview-3d").clientWidth / Math.max(selectEl("#preview-3d").clientHeight, 1), 0.1);
-  cameraCurrent.zoom = 1;
-  if (cameraCurrent.isPerspectiveCamera) {
-    cameraCurrent.aspect = cameraCurrent.userData.viewportAspect;
+  previewCamera.position.set(isMode.position.x, isMode.position.y, isMode.position.z);
+  previewCamera.up.copy(isMode.view === "top" ? topViewForwardVector(isMode.topRotation) : new THREE.Vector3(0, 1, 0));
+  previewCamera.userData.frameSize = isMode.visibleHeight;
+  previewCamera.userData.cameraView = isMode.view;
+  previewCamera.userData.topRotation = isMode.topRotation;
+  previewCamera.userData.viewportAspect ||= Math.max(selectEl("#preview-3d").clientWidth / Math.max(selectEl("#preview-3d").clientHeight, 1), 0.1);
+  previewCamera.zoom = 1;
+  if (previewCamera.isPerspectiveCamera) {
+    previewCamera.aspect = previewCamera.userData.viewportAspect;
     if (isMode.focalLength !== null) {
-      applyCameraFocalLength(cameraCurrent, isMode.focalLength);
+      applyCameraFocalLength(previewCamera, isMode.focalLength);
     } else {
-      cameraCurrent.fov = isMode.fov;
-      cameraCurrent.updateProjectionMatrix();
-      value.cameraFocalLength = clamp(cameraCurrent.getFocalLength(), 18, 120);
+      previewCamera.fov = isMode.fov;
+      previewCamera.updateProjectionMatrix();
+      value.cameraFocalLength = clamp(previewCamera.getFocalLength(), 18, 120);
     }
   } else {
-    focusCameraOnPoint(isMode.visibleHeight, cameraCurrent.userData.viewportAspect, cameraCurrent);
+    focusCameraOnPoint(isMode.visibleHeight, previewCamera.userData.viewportAspect, previewCamera);
   }
-  getCameraPose(cameraCurrent, vector);
-  cameraCurrent.lookAt(vector);
-  cameraCurrent.updateProjectionMatrix();
+  getCameraPose(previewCamera, vector);
+  previewCamera.lookAt(vector);
+  previewCamera.updateProjectionMatrix();
   orbitControls.target.copy(vector);
   syncOrbitControls();
   orbitControls.update();
@@ -7558,10 +7593,10 @@ function nudgeCamera(cameraView, options = {}) {
   const viewMode = cameraView === "top" ? "top" : "free";
   const topRotation = topViewRotation();
   syncCameraViewButtons(viewMode);
-  if (!cameraCurrent || !orbitControls) {
+  if (!previewCamera || !orbitControls) {
     return;
   }
-  if (cameraCurrent.userData.cameraView === viewMode && (viewMode !== "top" || cameraCurrent.userData.topRotation === topRotation) && options.force !== true) {
+  if (previewCamera.userData.cameraView === viewMode && (viewMode !== "top" || previewCamera.userData.topRotation === topRotation) && options.force !== true) {
     syncOrbitControls();
     return;
   }
@@ -7572,24 +7607,24 @@ function nudgeCamera(cameraView, options = {}) {
     return;
   }
   const orbitTarget = orbitControls.target.clone();
-  const orbitRadius = resetOrbitTarget(cameraCurrent, orbitTarget);
-  const topDistance = Math.max(cameraCurrent.position.distanceTo(orbitTarget), 8);
-  cameraCurrent.up.copy(topViewForwardVector(topRotation));
-  if (cameraCurrent.isPerspectiveCamera) {
+  const orbitRadius = resetOrbitTarget(previewCamera, orbitTarget);
+  const topDistance = Math.max(previewCamera.position.distanceTo(orbitTarget), 8);
+  previewCamera.up.copy(topViewForwardVector(topRotation));
+  if (previewCamera.isPerspectiveCamera) {
     applyCameraFocalLength();
-    const halfFov = THREE.MathUtils.degToRad(cameraCurrent.getEffectiveFOV());
+    const halfFov = THREE.MathUtils.degToRad(previewCamera.getEffectiveFOV());
     const heightOffset = Math.max(orbitRadius / (Math.tan(halfFov / 2) * 2), 8);
-    cameraCurrent.position.set(orbitTarget.x, orbitTarget.y + heightOffset, orbitTarget.z);
+    previewCamera.position.set(orbitTarget.x, orbitTarget.y + heightOffset, orbitTarget.z);
   } else {
-    focusCameraOnPoint(orbitRadius, cameraCurrent.userData.viewportAspect || 1, cameraCurrent);
-    cameraCurrent.position.set(orbitTarget.x, orbitTarget.y + topDistance, orbitTarget.z);
+    focusCameraOnPoint(orbitRadius, previewCamera.userData.viewportAspect || 1, previewCamera);
+    previewCamera.position.set(orbitTarget.x, orbitTarget.y + topDistance, orbitTarget.z);
   }
-  cameraCurrent.userData.frameSize = orbitRadius;
-  cameraCurrent.userData.cameraView = "top";
-  cameraCurrent.userData.topRotation = topRotation;
-  getCameraPose(cameraCurrent, orbitTarget);
-  cameraCurrent.lookAt(orbitTarget);
-  cameraCurrent.updateProjectionMatrix();
+  previewCamera.userData.frameSize = orbitRadius;
+  previewCamera.userData.cameraView = "top";
+  previewCamera.userData.topRotation = topRotation;
+  getCameraPose(previewCamera, orbitTarget);
+  previewCamera.lookAt(orbitTarget);
+  previewCamera.updateProjectionMatrix();
   orbitControls.target.copy(orbitTarget);
   syncOrbitControls();
   orbitControls.update();
@@ -7600,13 +7635,13 @@ function setCameraProjectionMode(view, viewportAspect = {}) {
   if (!renderer) {
     return;
   }
-  if (viewMode === "perspective" == !!cameraCurrent?.isPerspectiveCamera) {
+  if (viewMode === "perspective" == !!previewCamera?.isPerspectiveCamera) {
     applyCameraFocalLength();
     syncOrbitControls();
     return;
   }
   const preserveView = viewportAspect.preserveView !== false;
-  const previousCamera = cameraCurrent;
+  const previousCamera = previewCamera;
   const orbitTarget = orbitControls?.target.clone() || new THREE.Vector3(0, 0.6, 0);
   const cameraOffset = previousCamera ? previousCamera.position.clone().sub(orbitTarget) : new THREE.Vector3(1.12, 1.42, 1.2);
   const currentDistance = Math.max(cameraOffset.length(), 2);
@@ -7615,26 +7650,26 @@ function setCameraProjectionMode(view, viewportAspect = {}) {
   const frameSize = preserveView && previousCamera ? resetOrbitTarget(previousCamera, orbitTarget) : previousCamera?.userData.frameSize || 10;
   orbitControls?.dispose();
   if (viewMode === "perspective") {
-    cameraCurrent = new THREE.PerspectiveCamera(36, aspect, 0.02, 200);
-    applyCameraFocalLength(cameraCurrent);
-    const halfFrameHeight = frameSize / (Math.tan(THREE.MathUtils.degToRad(cameraCurrent.getEffectiveFOV()) / 2) * 2);
+    previewCamera = new THREE.PerspectiveCamera(36, aspect, 0.02, 200);
+    applyCameraFocalLength(previewCamera);
+    const halfFrameHeight = frameSize / (Math.tan(THREE.MathUtils.degToRad(previewCamera.getEffectiveFOV()) / 2) * 2);
     const cameraDistance = preserveView ? halfFrameHeight : currentDistance;
-    cameraCurrent.position.copy(orbitTarget).addScaledVector(normalize, Math.max(cameraDistance, 2));
+    previewCamera.position.copy(orbitTarget).addScaledVector(normalize, Math.max(cameraDistance, 2));
   } else {
-    cameraCurrent = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.02, 200);
-    cameraCurrent.position.copy(orbitTarget).addScaledVector(normalize, currentDistance);
-    focusCameraOnPoint(frameSize, aspect, cameraCurrent);
+    previewCamera = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.02, 200);
+    previewCamera.position.copy(orbitTarget).addScaledVector(normalize, currentDistance);
+    focusCameraOnPoint(frameSize, aspect, previewCamera);
   }
-  cameraCurrent.layers.enable(HELPER_LAYER);
-  cameraCurrent.userData.viewportAspect = aspect;
-  cameraCurrent.userData.frameSize = frameSize;
-  cameraCurrent.userData.cameraView = previousCamera?.userData.cameraView || "free";
-  cameraCurrent.userData.topRotation = previousCamera?.userData.topRotation || 0;
-  cameraCurrent.up.copy(previousCamera?.up || new THREE.Vector3(0, 1, 0));
-  getCameraPose(cameraCurrent, orbitTarget);
-  cameraCurrent.lookAt(orbitTarget);
-  cameraCurrent.updateProjectionMatrix();
-  orbitControls = createOrbitControls(cameraCurrent);
+  previewCamera.layers.enable(HELPER_LAYER);
+  previewCamera.userData.viewportAspect = aspect;
+  previewCamera.userData.frameSize = frameSize;
+  previewCamera.userData.cameraView = previousCamera?.userData.cameraView || "free";
+  previewCamera.userData.topRotation = previousCamera?.userData.topRotation || 0;
+  previewCamera.up.copy(previousCamera?.up || new THREE.Vector3(0, 1, 0));
+  getCameraPose(previewCamera, orbitTarget);
+  previewCamera.lookAt(orbitTarget);
+  previewCamera.updateProjectionMatrix();
+  orbitControls = createOrbitControls(previewCamera);
   orbitControls.target.copy(orbitTarget);
   syncOrbitControls();
   if (!isStageEmbed || viewportAspect.deferControlUpdate !== true) {
@@ -7645,8 +7680,8 @@ function initPreviewRenderer() {
   const value = selectEl("#preview-3d");
   try {
     previewSceneCurrent = new THREE.Scene();
-    cameraCurrent = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.05, 200);
-    cameraCurrent.layers.enable(HELPER_LAYER);
+    previewCamera = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.05, 200);
+    previewCamera.layers.enable(HELPER_LAYER);
     renderer = new THREE.WebGLRenderer({
       antialias: true,
       alpha: true,
@@ -7664,11 +7699,11 @@ function initPreviewRenderer() {
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.NeutralToneMapping;
     renderer.toneMappingExposure = 1.04;
-    renderer.shadowMap.enabled = !yt;
+    renderer.shadowMap.enabled = !regionLightingEnabled;
     renderer.shadowMap.type = THREE.VSMShadowMap;
     value.append(renderer.domElement);
     ensurePerfHud();
-    orbitControls = createOrbitControls(cameraCurrent);
+    orbitControls = createOrbitControls(previewCamera);
     updateModelLoadStatus();
     syncCameraModeButtons("orthographic");
     syncCameraViewButtons();
@@ -7700,7 +7735,48 @@ function initPreviewRenderer() {
     previewSceneCurrent.add(topLight);
     worldGroup = new THREE.Group();
     previewSceneCurrent.add(worldGroup);
-    if (yt) {
+    let overviewFloorBounds = null;
+    let overviewBoundsDoc = null;
+    let overviewBoundsKey = null;
+    overviewStackController = createOverviewStack({
+      THREE,
+      renderer,
+      scene: previewSceneCurrent,
+      getCamera: () => previewCamera,
+      getLayout: () => {
+        const floors = projectDocCurrent?.floors || [];
+        const gap = stageSession ? finite(projectDocCurrent?.exportFloorGap, 3) : finite(projectDocCurrent?.previewFloorGap, 3);
+        const layoutKey = getPreviewFloorModeCurrent() + ":" + gap + ":" + floors.map(floor => floor.id).join(",");
+        if (projectDocCurrent?.uniformOverviewStack && (overviewBoundsDoc !== projectDocCurrent || overviewBoundsKey !== layoutKey)) {
+          const combined = new THREE.Box3();
+          overviewFloorBounds = new Map();
+          for (const floor of floors) {
+            const entries = [];
+            for (const wall of floor.scene?.walls || []) {
+              const height = finite(wall.height, finite(projectDocCurrent?.defaultFloorHeight, 3));
+              entries.push([finite(wall.length, 0), height]);
+            }
+            overviewFloorBounds.set(floor.id, entries);
+            for (const entry of entries) {
+              combined.expandByPoint(new THREE.Vector3(entry[0], entry[1], entry[0]));
+            }
+          }
+          const center = combined.isEmpty() ? new THREE.Vector3() : combined.getCenter(new THREE.Vector3());
+          overviewStackCenter = [center.x, (floors.length - 1) * gap / 2, center.z];
+          overviewBoundsDoc = projectDocCurrent;
+          overviewBoundsKey = layoutKey;
+        }
+        return {
+          enabled: projectDocCurrent?.uniformOverviewStack === true,
+          floors,
+          gap,
+          bounds: overviewFloorBounds,
+          center: overviewStackCenter || [0, (floors.length - 1) * gap / 2, 0],
+          amount: getPreviewFloorModeCurrent() === "all" || stageSession ? 1 : 0
+        };
+      }
+    });
+    if (regionLightingEnabled) {
       renderCache = createContactShadowController({
         THREE,
         renderer,
@@ -7721,7 +7797,7 @@ function initPreviewRenderer() {
         THREE,
         renderer,
         scene: previewSceneCurrent,
-        camera: cameraCurrent,
+        camera: previewCamera,
         syncBeforeRender: isStageEmbed,
         requestFrame: updateLightPreview,
         canBuild: () => !document.hidden && !stageSession && !previewOrbitLocked && !isStageWarmup && !curtainMotionActive && !vacuumMotionActive && !isLeavingStudio && !isBakingLightCache && !floorShadowMotionActive && manager.modelLoadState().active === 0 && manager.modelLoadState().queued === 0
@@ -7765,7 +7841,7 @@ function initPreviewRenderer() {
       needsRenderFrame = false;
       const beginGpuTimingQueryResult = beginGpuTimingQuery(isInteractiveRenderHot);
       const perfSampleStartedAt = isPerfDiagnosticsEnabled ? performance.now() : 0;
-      renderer.render(previewSceneCurrent, cameraCurrent);
+      renderer.render(previewSceneCurrent, previewCamera);
       const perfSampleElapsedMs = isPerfDiagnosticsEnabled ? performance.now() - perfSampleStartedAt : 0;
       endGpuTimingQuery(beginGpuTimingQueryResult);
       recordPerfFloorSwitchSample(param, perfSampleElapsedMs, isInteractiveRenderHot);
@@ -7805,7 +7881,7 @@ function initPreviewRenderer() {
       const wakeFrameLoop = () => demandFrameLoop.wake();
       const callback = () => {
         nowResult = performance.now();
-        const loopAvailable = !document.hidden && Vo;
+        const loopAvailable = !document.hidden && stagePageVisible;
         demandFrameLoop.setAvailable(loopAvailable);
         if (loopAvailable) {
           updateLightPreview();
@@ -7818,9 +7894,9 @@ function initPreviewRenderer() {
         }
       };
       const handleParentVisibilityChange = detail => {
-        Vo = detail.detail === true;
+        stagePageVisible = detail.detail === true;
         callback();
-        if (Vo && ORBIT_DOLLY_SPEED_SCALE) {
+        if (stagePageVisible && ORBIT_DOLLY_SPEED_SCALE) {
           scheduleOrbitInteractionWarmup();
         }
       };
@@ -7857,7 +7933,7 @@ function initPreviewRenderer() {
     console.error(error);
   }
 }
-function focusCameraOnPoint(frameHeight, aspect, left = cameraCurrent) {
+function focusCameraOnPoint(frameHeight, aspect, left = previewCamera) {
   if (!left?.isOrthographicCamera) {
     return;
   }
@@ -7888,39 +7964,39 @@ function onPreviewContainerResize() {
   const max = Math.max(value.clientHeight, 1);
   const planPoint = isStageEmbed ? renderer.getSize(new THREE.Vector2()) : null;
   const flag = planPoint?.x === maxValue && planPoint?.y === max;
-  const projectionMatrixCacheKey = isStageEmbed ? cameraCurrent.projectionMatrix.elements.join(",") : "";
+  const projectionMatrixCacheKey = isStageEmbed ? previewCamera.projectionMatrix.elements.join(",") : "";
   if (!flag) {
     renderer.setSize(maxValue, max, false);
   }
-  cameraCurrent.userData.viewportAspect = maxValue / max;
-  if (cameraCurrent.isOrthographicCamera) {
-    focusCameraOnPoint(cameraCurrent.userData.frameSize || 10, cameraCurrent.userData.viewportAspect);
+  previewCamera.userData.viewportAspect = maxValue / max;
+  if (previewCamera.isOrthographicCamera) {
+    focusCameraOnPoint(previewCamera.userData.frameSize || 10, previewCamera.userData.viewportAspect);
   } else {
-    cameraCurrent.aspect = cameraCurrent.userData.viewportAspect;
+    previewCamera.aspect = previewCamera.userData.viewportAspect;
     applyCameraFocalLength();
   }
-  if (!flag || projectionMatrixCacheKey !== cameraCurrent.projectionMatrix.elements.join(",")) {
+  if (!flag || projectionMatrixCacheKey !== previewCamera.projectionMatrix.elements.join(",")) {
     requestRender();
   }
 }
 function serializeCameraState() {
-  if (!cameraCurrent || !orbitControls) {
+  if (!previewCamera || !orbitControls) {
     return null;
   } else {
     return {
-      mode: cameraCurrent.isPerspectiveCamera ? "perspective" : "orthographic",
-      cameraView: cameraCurrent.userData.cameraView || cameraViewMode(),
-      topRotation: cameraCurrent.userData.topRotation || 0,
-      position: cameraCurrent.position.clone(),
+      mode: previewCamera.isPerspectiveCamera ? "perspective" : "orthographic",
+      cameraView: previewCamera.userData.cameraView || cameraViewMode(),
+      topRotation: previewCamera.userData.topRotation || 0,
+      position: previewCamera.position.clone(),
       target: orbitControls.target.clone(),
-      up: cameraCurrent.up.clone(),
-      zoom: cameraCurrent.zoom,
-      visibleHeight: resetOrbitTarget(cameraCurrent, orbitControls.target),
-      frameSize: cameraCurrent.userData.frameSize || resetOrbitTarget(cameraCurrent, orbitControls.target),
-      viewportAspect: cameraCurrent.userData.viewportAspect || 1,
-      fov: cameraCurrent.isPerspectiveCamera ? cameraCurrent.fov : 36,
-      near: cameraCurrent.near,
-      far: cameraCurrent.far
+      up: previewCamera.up.clone(),
+      zoom: previewCamera.zoom,
+      visibleHeight: resetOrbitTarget(previewCamera, orbitControls.target),
+      frameSize: previewCamera.userData.frameSize || resetOrbitTarget(previewCamera, orbitControls.target),
+      viewportAspect: previewCamera.userData.viewportAspect || 1,
+      fov: previewCamera.isPerspectiveCamera ? previewCamera.fov : 36,
+      near: previewCamera.near,
+      far: previewCamera.far
     };
   }
 }
@@ -7929,23 +8005,23 @@ function applyStoredCameraPose(cameraPose, flag = cameraPose?.viewportAspect || 
     setCameraProjectionMode(cameraPose.mode, {
       preserveView: false
     });
-    cameraCurrent.position.copy(cameraPose.position);
-    cameraCurrent.up.copy(cameraPose.up);
-    cameraCurrent.zoom = cameraPose.zoom || 1;
-    cameraCurrent.near = cameraPose.near;
-    cameraCurrent.far = cameraPose.far;
-    cameraCurrent.userData.frameSize = cameraPose.frameSize;
-    cameraCurrent.userData.viewportAspect = flag;
-    cameraCurrent.userData.cameraView = cameraPose.cameraView || cameraViewMode();
-    cameraCurrent.userData.topRotation = cameraPose.topRotation || 0;
-    if (cameraCurrent.isPerspectiveCamera) {
-      cameraCurrent.fov = cameraPose.fov;
-      cameraCurrent.aspect = flag;
+    previewCamera.position.copy(cameraPose.position);
+    previewCamera.up.copy(cameraPose.up);
+    previewCamera.zoom = cameraPose.zoom || 1;
+    previewCamera.near = cameraPose.near;
+    previewCamera.far = cameraPose.far;
+    previewCamera.userData.frameSize = cameraPose.frameSize;
+    previewCamera.userData.viewportAspect = flag;
+    previewCamera.userData.cameraView = cameraPose.cameraView || cameraViewMode();
+    previewCamera.userData.topRotation = cameraPose.topRotation || 0;
+    if (previewCamera.isPerspectiveCamera) {
+      previewCamera.fov = cameraPose.fov;
+      previewCamera.aspect = flag;
     } else {
-      focusCameraOnPoint(cameraPose.frameSize, flag, cameraCurrent);
+      focusCameraOnPoint(cameraPose.frameSize, flag, previewCamera);
     }
-    cameraCurrent.lookAt(cameraPose.target);
-    cameraCurrent.updateProjectionMatrix();
+    previewCamera.lookAt(cameraPose.target);
+    previewCamera.updateProjectionMatrix();
     orbitControls.target.copy(cameraPose.target);
     syncOrbitControls();
     orbitControls.update();
@@ -7976,7 +8052,7 @@ function syncExportResolutionLabel() {
 }
 function stageEmbedPixelRatio(flag = false) {
   const value = window.devicePixelRatio || 1;
-  if (!isAutoDiagramEmbedCurrent || !exportPreviewStage) {
+  if (!isAutoDiagramEmbedMode || !exportPreviewStage) {
     return value;
   }
   const {
@@ -7989,7 +8065,7 @@ function stageEmbedPixelRatio(flag = false) {
   return Math.min(maxValueCurrent, flag ? 2 : 4);
 }
 function resizeStageEmbedViewport() {
-  if (!stageSession || orbitSuspended || !renderer || !cameraCurrent) {
+  if (!stageSession || orbitSuspended || !renderer || !previewCamera) {
     return;
   }
   const {
@@ -7999,14 +8075,14 @@ function resizeStageEmbedViewport() {
   const cameraPose = width / height;
   const value = Math.max(exportPreviewStage.clientWidth, 1);
   const maxValue = Math.max(exportPreviewStage.clientHeight, 1);
-  const minValue = isAutoDiagramEmbedCurrent ? stageEmbedPixelRatio(false) : Math.min(window.devicePixelRatio || 1, 2);
+  const minValue = isAutoDiagramEmbedMode ? stageEmbedPixelRatio(false) : Math.min(window.devicePixelRatio || 1, 2);
   renderer.setPixelRatio(minValue);
   renderer.setSize(value, maxValue, false);
-  cameraCurrent.userData.viewportAspect = cameraPose;
-  if (cameraCurrent.isOrthographicCamera) {
-    focusCameraOnPoint(cameraCurrent.userData.frameSize || 10, cameraPose, cameraCurrent);
+  previewCamera.userData.viewportAspect = cameraPose;
+  if (previewCamera.isOrthographicCamera) {
+    focusCameraOnPoint(previewCamera.userData.frameSize || 10, cameraPose, previewCamera);
   } else {
-    cameraCurrent.aspect = cameraPose;
+    previewCamera.aspect = cameraPose;
     applyCameraFocalLength();
   }
   orbitControls.update();
@@ -8112,7 +8188,7 @@ function normalizeProjectExportPresets() {
   projectDocCurrent.exportPresets = presets;
   projectDocCurrent.activeExportPresetSlot = slot;
   const lookupMap = new Map((projectDocCurrent?.floors || []).map(floorRef => [floorRef.id, floorRef.name]));
-  h0.replaceChildren(...presets.map((preset, presetIndex) => {
+  exportPresetSlotsEl.replaceChildren(...presets.map((preset, presetIndex) => {
     const element = document.createElement("button");
     element.type = "button";
     element.dataset.exportPresetSlot = String(presetIndex);
@@ -8130,9 +8206,9 @@ function normalizeProjectExportPresets() {
     return element;
   }));
   const activePreset = presets[slot];
-  f0.disabled = presets.length >= MAX_EXPORT_PRESET_COUNT;
-  g0.disabled = !activePreset;
-  p0.disabled = presets.length <= 1;
+  exportPresetAddEl.disabled = presets.length >= MAX_EXPORT_PRESET_COUNT;
+  exportPresetRenameEl.disabled = !activePreset;
+  exportPresetDeleteEl.disabled = presets.length <= 1;
   const presetIsEmpty = exportPresetIsEmpty(activePreset, exportPresetEditorOpenCurrent);
   gg.hidden = !presetIsEmpty;
   pg.textContent = activePreset ? defaultExportPresetLabel(activePreset, slot) + "已设置" : "当前存档尚未设置";
@@ -8140,14 +8216,14 @@ function normalizeProjectExportPresets() {
 function syncExportCameraFocalUi({
   name = ""
 } = {}) {
-  if (cameraCurrent.isPerspectiveCamera) {
+  if (previewCamera.isPerspectiveCamera) {
     const value = selectEl("#camera-focal-length");
     const clampCurrent = clamp(finite(value?.value, getCameraFocalLength()), 18, 120);
     activeCameraSettings().cameraFocalLength = clampCurrent;
     for (const entry of cameraFocalLengthEls) {
       entry.value = String(Math.round(clampCurrent));
     }
-    applyCameraFocalLength(cameraCurrent, clampCurrent);
+    applyCameraFocalLength(previewCamera, clampCurrent);
   }
   const {
     width,
@@ -8163,22 +8239,22 @@ function syncExportCameraFocalUi({
     floorId: activeFloor()?.id || activeFloorId,
     floorGap: finite(projectDocCurrent.exportFloorGap, 3),
     camera: {
-      mode: cameraCurrent.isPerspectiveCamera ? "perspective" : "orthographic",
+      mode: previewCamera.isPerspectiveCamera ? "perspective" : "orthographic",
       view: cameraViewMode(),
       topRotation: topViewRotation(),
       position: {
-        x: cameraCurrent.position.x,
-        y: cameraCurrent.position.y,
-        z: cameraCurrent.position.z
+        x: previewCamera.position.x,
+        y: previewCamera.position.y,
+        z: previewCamera.position.z
       },
       target: {
         x: point.x,
         y: point.y,
         z: point.z
       },
-      visibleHeight: resetOrbitTarget(cameraCurrent, point),
-      fov: cameraCurrent.isPerspectiveCamera ? cameraCurrent.fov : 36,
-      focalLength: cameraCurrent.isPerspectiveCamera ? getCameraFocalLength() : null
+      visibleHeight: resetOrbitTarget(previewCamera, point),
+      fov: previewCamera.isPerspectiveCamera ? previewCamera.fov : 36,
+      focalLength: previewCamera.isPerspectiveCamera ? getCameraFocalLength() : null
     },
     folderName: exportFolderName.value,
     selectedFiles: [...checkedExportFileKeys()]
@@ -8395,9 +8471,9 @@ function confirmExportPresetDelete() {
   showToast("已删除“" + value + "”，楼层和户型未受影响。", "success");
 }
 function postAutoDiagramMessage(attempt = 0) {
-  if (!!isAutoDiagramEmbedCurrent && !!autoDiagramComponentId && window.parent !== window) {
+  if (!!isAutoDiagramEmbedMode && !!autoDiagramComponentId && window.parent !== window) {
     requestAnimationFrame(() => {
-      if (!stageSession || !renderer || !previewSceneCurrent || !cameraCurrent || !orbitControls) {
+      if (!stageSession || !renderer || !previewSceneCurrent || !previewCamera || !orbitControls) {
         return;
       }
       resizeStageEmbedViewport();
@@ -8413,7 +8489,7 @@ function postAutoDiagramMessage(attempt = 0) {
         });
         orbitControls.update();
         for (let renderPass = 0; renderPass < 2; renderPass += 1) {
-          renderer.render(previewSceneCurrent, cameraCurrent);
+          renderer.render(previewSceneCurrent, previewCamera);
         }
         const renderStats = renderer.info.render;
         didRender = renderStats.calls > 0 && renderStats.triangles > 0;
@@ -8449,7 +8525,7 @@ function postAutoDiagramMessage(attempt = 0) {
   }
 }
 function scheduleOrbitResumeAfterModels() {
-  if (stageSession || !renderer || !cameraCurrent || !orbitControls) {
+  if (stageSession || !renderer || !previewCamera || !orbitControls) {
     return;
   }
   window.clearTimeout(exportUiDebounceTimerCurrent);
@@ -8512,7 +8588,7 @@ function scheduleOrbitResumeAfterModels() {
   syncFloorCameraChrome();
   normalizeProjectExportPresets();
   exportPackage.disabled = false;
-  if (isAutoDiagramEmbedCurrent) {
+  if (isAutoDiagramEmbedMode) {
     document.body.classList.add("auto-diagram-embedded");
     const value = new URLSearchParams(window.location.search);
     const clampCurrent = clamp(finite(value.get("dashboard-width"), finite(value.get("component-width"), exportWidth.value)), 320, 4096);
@@ -8531,9 +8607,9 @@ function scheduleOrbitResumeAfterModels() {
   const flag = slot !== null && activateExportPresetSlot(slot, {
     silent: true
   });
-  if (isAutoDiagramEmbedCurrent && floorSelectionQueryCurrent !== null) {
-    const id = projectDocCurrent.floors.find(item => item.id === floorSelectionQueryCurrent);
-    const value = floorSelectionQueryCurrent === "all" && projectDocCurrent.floors.length > 1 ? "all" : id?.id || activeFloor()?.id || activeFloorId;
+  if (isAutoDiagramEmbedMode && floorSelectionQueryParam !== null) {
+    const id = projectDocCurrent.floors.find(item => item.id === floorSelectionQueryParam);
+    const value = floorSelectionQueryParam === "all" && projectDocCurrent.floors.length > 1 ? "all" : id?.id || activeFloor()?.id || activeFloorId;
     setExportFloorScope(value);
   }
   if (!flag) {
@@ -8542,7 +8618,7 @@ function scheduleOrbitResumeAfterModels() {
       applyStageFixedCameraView({
         silent: true
       });
-    } else if (isAutoDiagramEmbedCurrent) {
+    } else if (isAutoDiagramEmbedMode) {
       setCameraProjectionMode(getCameraProjectionMode(), {
         preserveView: false
       });
@@ -8746,7 +8822,7 @@ function setOrbitSuspended(flag) {
 function forceTripleRender() {
   orbitControls.update();
   for (let value = 0; value < 3; value += 1) {
-    renderer.render(previewSceneCurrent, cameraCurrent);
+    renderer.render(previewSceneCurrent, previewCamera);
   }
 }
 function canvasToBlob(blob) {
@@ -8875,11 +8951,11 @@ function uniqueExportFileName(baseName, lightGroupIndex, usedNames, extension = 
 function captureCameraPoseSnapshot(viewportWidth, viewportHeight) {
   const orbitTarget = orbitControls.target;
   return {
-    mode: cameraCurrent.isPerspectiveCamera ? "perspective" : "orthographic",
+    mode: previewCamera.isPerspectiveCamera ? "perspective" : "orthographic",
     position: {
-      x: cameraCurrent.position.x,
-      y: cameraCurrent.position.y,
-      z: cameraCurrent.position.z
+      x: previewCamera.position.x,
+      y: previewCamera.position.y,
+      z: previewCamera.position.z
     },
     target: {
       x: orbitTarget.x,
@@ -8887,8 +8963,8 @@ function captureCameraPoseSnapshot(viewportWidth, viewportHeight) {
       z: orbitTarget.z
     },
     aspect: viewportWidth / viewportHeight,
-    visibleHeight: resetOrbitTarget(cameraCurrent, orbitTarget),
-    fov: cameraCurrent.isPerspectiveCamera ? cameraCurrent.fov : null
+    visibleHeight: resetOrbitTarget(previewCamera, orbitTarget),
+    fov: previewCamera.isPerspectiveCamera ? previewCamera.fov : null
   };
 }
 function serializeFloorLightItem(light, scene = activeFloor()) {
@@ -8916,7 +8992,7 @@ function serializeFloorLightItem(light, scene = activeFloor()) {
   };
 }
 function projectItemToScreenNorm(item, scene, floorEntries = previewFloorEntries()) {
-  if (!item || !scene || !cameraCurrent) {
+  if (!item || !scene || !previewCamera) {
     return null;
   }
   const pixelsPerMeter = scene.scene?.calibration?.pixelsPerMeter || 1;
@@ -8946,8 +9022,8 @@ function projectItemToScreenNorm(item, scene, floorEntries = previewFloorEntries
     screenX = (finite(item.x, 0) - (bounds.minX + bounds.maxX) / 2) / pixelsPerMeter;
     screenZ = (finite(item.y, 0) - (bounds.minY + bounds.maxY) / 2) / pixelsPerMeter;
   }
-  cameraCurrent.updateMatrixWorld(true);
-  const projected = new THREE.Vector3(screenX, screenY, screenZ).project(cameraCurrent);
+  previewCamera.updateMatrixWorld(true);
+  const projected = new THREE.Vector3(screenX, screenY, screenZ).project(previewCamera);
   if (![projected.x, projected.y, projected.z].every(Number.isFinite) || projected.z < -1 || projected.z > 1) {
     return null;
   } else {
@@ -9003,7 +9079,7 @@ function setExportRoleVisibility(reason, message) {
   }
 }
 function notifyAutoDiagramInteraction(active) {
-  if (!!isAutoDiagramEmbedCurrent && !!autoDiagramComponentId && window.parent !== window) {
+  if (!!isAutoDiagramEmbedMode && !!autoDiagramComponentId && window.parent !== window) {
     window.parent.postMessage({
       type: "ha-bridge-floorplan-auto-diagram-interaction",
       componentId: autoDiagramComponentId,
@@ -9024,7 +9100,7 @@ function promptExportOverwrite(message) {
   if (exportOverwriteResolverCurrent) {
     resolveExportOverwrite("cancel");
   }
-  Mg.textContent = message;
+  exportOverwriteNameEl.textContent = message;
   notifyAutoDiagramInteraction(true);
   exportOverwriteDialog.showModal();
   return new Promise(resolve => {
@@ -9032,7 +9108,7 @@ function promptExportOverwrite(message) {
   });
 }
 function notifyAutoDiagramExport(reason, message) {
-  if (!!isAutoDiagramEmbedCurrent && !!autoDiagramComponentId && window.parent !== window) {
+  if (!!isAutoDiagramEmbedMode && !!autoDiagramComponentId && window.parent !== window) {
     window.parent.postMessage({
       type: "ha-bridge-floorplan-auto-diagram-stopped",
       componentId: autoDiagramComponentId,
@@ -9043,9 +9119,9 @@ function notifyAutoDiagramExport(reason, message) {
 }
 function showExportCompleteDialog(overwritten) {
   const flag = overwritten?.overwritten === true;
-  Sg.textContent = flag ? "导图覆盖完成" : "导图保存完成";
-  Pg.textContent = flag ? "新导图已经安全替换原文件夹，已有仪表盘中的同名图片会自动更新。" : "导出的图片和数据已经保存到 NAS，可以在编辑器素材中继续使用。";
-  Eg.textContent = "data/" + (overwritten?.relativePath || "exports");
+  exportCompleteTitleEl.textContent = flag ? "导图覆盖完成" : "导图保存完成";
+  exportCompleteMessageEl.textContent = flag ? "新导图已经安全替换原文件夹，已有仪表盘中的同名图片会自动更新。" : "导出的图片和数据已经保存到 NAS，可以在编辑器素材中继续使用。";
+  exportCompletePathEl.textContent = "data/" + (overwritten?.relativePath || "exports");
   if (!exportCompleteDialog.open) {
     exportCompleteDialog.showModal();
   }
@@ -9374,8 +9450,8 @@ async function runExportPipeline() {
     }
     exportStatus.textContent = "已保存到 data/" + overwritten.relativePath;
     showToast("导图已保存到 data/" + overwritten.relativePath, "success");
-    const isClosed = isAutoDiagramEmbedCurrent ? window.parent : window.opener;
-    if (autoDiagramComponentId && isClosed && (isAutoDiagramEmbedCurrent || !isClosed.closed)) {
+    const isClosed = isAutoDiagramEmbedMode ? window.parent : window.opener;
+    if (autoDiagramComponentId && isClosed && (isAutoDiagramEmbedMode || !isClosed.closed)) {
       isClosed.postMessage({
         type: "ha-bridge-floorplan-auto-diagram-export",
         componentId: autoDiagramComponentId,
@@ -9394,7 +9470,7 @@ async function runExportPipeline() {
     console.error(error);
     exportStatus.textContent = error?.message || "导出失败，请重试。";
     showToast(error?.message || "导图失败。", "error");
-    if (isAutoDiagramEmbedCurrent && autoDiagramComponentId && window.parent !== window) {
+    if (isAutoDiagramEmbedMode && autoDiagramComponentId && window.parent !== window) {
       window.parent.postMessage({
         type: "ha-bridge-floorplan-auto-diagram-error",
         componentId: autoDiagramComponentId,
@@ -10186,7 +10262,7 @@ function countSceneMeshes(root = worldGroup) {
 function syncSpotShadowCastingLights(traverse = worldGroup, {
   rebuildAtlas: options = true
 } = {}) {
-  if (yt) {
+  if (regionLightingEnabled) {
     traverse?.traverse(isLight => {
       if (isLight.isLight && isLight.userData?.lightItemId) {
         isLight.castShadow = false;
@@ -10302,7 +10378,7 @@ function buildWallCornerCaps(list, color, shadowDirtyIds) {
     rotation.rotation.z = THREE.MathUtils.degToRad(normalizeFullRotation(color.verticalRotation));
     const group = new THREE.Group();
     group.rotation.x = THREE.MathUtils.degToRad(normalizeFullRotation(color.stripRollRotation));
-    const lightOnIntensity = (yt ? halfValue : Math.pow(halfValue, 0.82)) * 48 * clampedValueNext * clampedValuePrevious * lightIntensityScale;
+    const lightOnIntensity = (regionLightingEnabled ? halfValue : Math.pow(halfValue, 0.82)) * 48 * clampedValueNext * clampedValuePrevious * lightIntensityScale;
     const userData = new THREE.RectAreaLight(hex, visible ? lightOnIntensity : 0, object3d * 0.94, clampedValue * 0.94);
     userData.visible = visible;
     userData.position.y = -0.04;
@@ -10312,7 +10388,7 @@ function buildWallCornerCaps(list, color, shadowDirtyIds) {
     userData.userData.lightFloorId = activeFloorId;
     userData.userData.lightSourceType = "continuous-area-strip";
     userData.userData.lightOnIntensity = lightOnIntensity;
-    if (yt) {
+    if (regionLightingEnabled) {
       userData.userData.regionFullIntensity = clampedValueNext * 48 * clampedValuePrevious * lightIntensityScale;
       studioReady?.register(userData, color);
     }
@@ -10326,7 +10402,7 @@ function buildWallCornerCaps(list, color, shadowDirtyIds) {
   const far = clamp(finite(color.lightRange, range.range), 0.5, 10);
   const clampedValue = clamp(finite(color.lightAngle, range.angle), 15, defaultItemDepth(color.type));
   const spotLightCount = 1;
-  const spotIntensity = (color.type === "ceilinglight" ? 680 : 520) * (yt ? halfValue : spotLightBrightnessResponse(color.type, halfValue)) * lightIntensityScale;
+  const spotIntensity = (color.type === "ceilinglight" ? 680 : 520) * (regionLightingEnabled ? halfValue : spotLightBrightnessResponse(color.type, halfValue)) * lightIntensityScale;
   for (let spotIndex = 0; spotIndex < spotLightCount; spotIndex += 1) {
     const spotOffsetX = spotLightCount === 1 ? 0 : -color.width * 0.47 + color.width * 0.94 * spotIndex / (spotLightCount - 1);
     const spotLight = new THREE.SpotLight(hex, visible ? spotIntensity / spotLightCount : 0, far, THREE.MathUtils.degToRad(clampedValue / 2), 0.86, 2);
@@ -10356,7 +10432,7 @@ function buildWallCornerCaps(list, color, shadowDirtyIds) {
     spotLight.userData.shadowCandidate = true;
     spotLight.userData.prewarmShadow = isStageEmbed;
     spotLight.userData.lightOnIntensity = spotIntensity / spotLightCount;
-    if (yt) {
+    if (regionLightingEnabled) {
       spotLight.userData.regionFullIntensity = (color.type === "ceilinglight" ? 680 : 520) * lightIntensityScale;
       studioReady?.register(spotLight, color);
     }
@@ -10368,122 +10444,9 @@ function buildWallCornerCaps(list, color, shadowDirtyIds) {
   }
 }
 function createTvScreenTexture() {
-  const el = document.createElement("canvas");
-  el.width = 960;
-  el.height = 540;
-  const canvasCtx = el.getContext("2d");
-  if (!canvasCtx) {
-    return null;
-  }
-  canvasCtx.fillStyle = "#07111d";
-  canvasCtx.fillRect(0, 0, el.width, el.height);
-  canvasCtx.fillStyle = "#0f2031";
-  canvasCtx.fillRect(0, 0, 510, el.height);
-  canvasCtx.fillStyle = "#ff9f36";
-  canvasCtx.fillRect(54, 54, 12, 54);
-  canvasCtx.fillStyle = "#f4f8fb";
-  canvasCtx.font = "700 42px Arial, sans-serif";
-  canvasCtx.fillText("HA BRIDGE", 88, 92);
-  canvasCtx.fillStyle = "#7f93a6";
-  canvasCtx.font = "600 15px Arial, sans-serif";
-  canvasCtx.fillText("SMART HOME, SIMPLY CONNECTED", 88, 119);
-  canvasCtx.fillStyle = "#ffffff";
-  canvasCtx.font = "700 48px sans-serif";
-  canvasCtx.fillText("让全屋设备", 54, 224);
-  canvasCtx.fillText("自然协作", 54, 286);
-  canvasCtx.fillStyle = "#9cafbf";
-  canvasCtx.font = "400 20px sans-serif";
-  canvasCtx.fillText("一张图，连接灯光、环境与家庭场景", 56, 331);
-  [{
-    label: "LIGHT",
-    color: "#ff9f36"
-  }, {
-    label: "CLIMATE",
-    color: "#32c59b"
-  }, {
-    label: "SECURITY",
-    color: "#5c9dff"
-  }].forEach((badgeColor, badgeIndex) => {
-    const contactShadowTint = 54 + badgeIndex * 142;
-    canvasCtx.fillStyle = "#172d40";
-    canvasCtx.beginPath();
-    canvasCtx.roundRect(contactShadowTint, 398, 126, 54, 8);
-    canvasCtx.fill();
-    canvasCtx.fillStyle = badgeColor.color;
-    canvasCtx.fillRect(contactShadowTint + 14, 414, 8, 22);
-    canvasCtx.fillStyle = "#dbe5ed";
-    canvasCtx.font = "700 13px Arial, sans-serif";
-    canvasCtx.fillText(badgeColor.label, contactShadowTint + 32, 432);
-  });
-  canvasCtx.fillStyle = "#0a1624";
-  canvasCtx.fillRect(510, 0, 450, 540);
-  canvasCtx.fillStyle = "#15283a";
-  canvasCtx.beginPath();
-  canvasCtx.roundRect(552, 44, 366, 164, 12);
-  canvasCtx.fill();
-  canvasCtx.fillStyle = "#8295a6";
-  canvasCtx.font = "600 14px Arial, sans-serif";
-  canvasCtx.fillText("HOME STATUS", 578, 76);
-  canvasCtx.fillStyle = "#f5f8fb";
-  canvasCtx.font = "700 58px Arial, sans-serif";
-  canvasCtx.fillText("24°", 578, 148);
-  canvasCtx.fillStyle = "#32c59b";
-  canvasCtx.beginPath();
-  canvasCtx.arc(856, 118, 31, 0, Math.PI * 2);
-  canvasCtx.fill();
-  canvasCtx.fillStyle = "#07111d";
-  canvasCtx.font = "700 17px Arial, sans-serif";
-  canvasCtx.textAlign = "center";
-  canvasCtx.fillText("ON", 856, 124);
-  canvasCtx.textAlign = "left";
-  canvasCtx.fillStyle = "#91a4b5";
-  canvasCtx.font = "400 15px Arial, sans-serif";
-  canvasCtx.fillText("COMFORT MODE · ALL SYSTEMS READY", 578, 181);
-  const statusBadges = [{
-    x: 552,
-    y: 230,
-    color: "#ff9f36",
-    value: "8",
-    label: "LIGHTS"
-  }, {
-    x: 742,
-    y: 230,
-    color: "#5c9dff",
-    value: "4",
-    label: "ROOMS"
-  }, {
-    x: 552,
-    y: 360,
-    color: "#32c59b",
-    value: "92%",
-    label: "AIR"
-  }, {
-    x: 742,
-    y: 360,
-    color: "#ef6580",
-    value: "SAFE",
-    label: "HOME"
-  }];
-  for (const badge of statusBadges) {
-    canvasCtx.fillStyle = "#15283a";
-    canvasCtx.beginPath();
-    canvasCtx.roundRect(badge.x, badge.y, 176, 108, 10);
-    canvasCtx.fill();
-    canvasCtx.fillStyle = badge.color;
-    canvasCtx.fillRect(badge.x + 18, badge.y + 18, 30, 5);
-    canvasCtx.fillStyle = "#f4f8fb";
-    canvasCtx.font = "700 29px Arial, sans-serif";
-    canvasCtx.fillText(badge.value, badge.x + 18, badge.y + 66);
-    canvasCtx.fillStyle = "#8295a6";
-    canvasCtx.font = "600 12px Arial, sans-serif";
-    canvasCtx.fillText(badge.label, badge.x + 18, badge.y + 89);
-  }
-  const texture = new THREE.CanvasTexture(el);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = Math.min(renderer?.capabilities?.getMaxAnisotropy?.() || 1, 8);
-  texture.needsUpdate = true;
-  return texture;
+  return createTvScreenTextureFromModule(renderer);
 }
+
 const MURAL_ART_STYLES = Object.freeze(["bauhaus", "colorfield", "linework", "blocks", "ink", "terrazzo"]);
 const muralArtStyleSet = new Set(MURAL_ART_STYLES);
 const muralArtTextures = new Map();
@@ -14342,13 +14305,13 @@ function countLightPrecompileWork(renderer, sceneRoot, camera, isStillActive) {
   });
 }
 function activeFloorContentBounds() {
-  return endBaseLightPanelDrag || document.hidden || isStageEmbed && (!Vo || cache?.closed);
+  return endBaseLightPanelDrag || document.hidden || isStageEmbed && (!stagePageVisible || cache?.closed);
 }
 function createInvisibleMaterial() {
   return stageSession || previewOrbitLocked || isLeavingStudio || isBakingLightCache || isLightPrecompiling || isStageEmbed && (isStageWarmup || isCapturingFrame) || !isStageEmbed && isPreviewQualityReady();
 }
 function scheduleOrbitInteractionWarmup(delayMs = 360) {
-  if (!yt && !isAutoDiagramEmbedCurrent && !endBaseLightPanelDrag) {
+  if (!regionLightingEnabled && !isAutoDiagramEmbedMode && !endBaseLightPanelDrag) {
     ORBIT_DOLLY_SPEED_SCALE = true;
     window.clearTimeout(endDetailsPanelResize);
     if (!ORBIT_DOLLY_SPEED_MAX && !activeFloorContentBounds()) {
@@ -14358,7 +14321,7 @@ function scheduleOrbitInteractionWarmup(delayMs = 360) {
           return;
         }
         const active = manager.modelLoadState();
-        if (!renderer || !previewSceneCurrent || !cameraCurrent || !worldGroup || createInvisibleMaterial() || externalModelQueueActive || deferredModelTimerCurrent || active.active > 0 || active.queued > 0) {
+        if (!renderer || !previewSceneCurrent || !previewCamera || !worldGroup || createInvisibleMaterial() || externalModelQueueActive || deferredModelTimerCurrent || active.active > 0 || active.queued > 0) {
           scheduleOrbitInteractionWarmup(240);
           return;
         }
@@ -14405,7 +14368,7 @@ function scheduleOrbitInteractionWarmup(delayMs = 360) {
               syncSpotShadowCastingLights(worldRoot, {
                 rebuildAtlas: false
               });
-              precompileResult = countLightPrecompileWork(rendererRef, restoreStates, cameraCurrent, isPrecompileTargetValid);
+              precompileResult = countLightPrecompileWork(rendererRef, restoreStates, previewCamera, isPrecompileTargetValid);
             } finally {
               for (const restoreState of restoreStates) {
                 restoreState.light.visible = restoreState.visible;
@@ -14457,13 +14420,13 @@ window.addEventListener("pagehide", () => {
   once: true
 });
 function scheduleLightPrecompile(delayMs = 0) {
-  if (!yt) {
+  if (!regionLightingEnabled) {
     lightPrecompileRequested = true;
     window.clearTimeout(lightPrecompileTimer);
     if (!isLightPrecompiling) {
       lightPrecompileTimer = window.setTimeout(async () => {
         lightPrecompileTimer = null;
-        if (!renderer || !previewSceneCurrent || !cameraCurrent || !worldGroup || stageSession || document.hidden || previewOrbitLocked || isLeavingStudio || isBakingLightCache) {
+        if (!renderer || !previewSceneCurrent || !previewCamera || !worldGroup || stageSession || document.hidden || previewOrbitLocked || isLeavingStudio || isBakingLightCache) {
           scheduleLightPrecompile(240);
           return;
         }
@@ -14481,7 +14444,7 @@ function scheduleLightPrecompile(delayMs = 0) {
           syncSpotShadowCastingLights(worldGroup, {
             rebuildAtlas: false
           });
-          renderer.compile(previewSceneCurrent, cameraCurrent);
+          renderer.compile(previewSceneCurrent, previewCamera);
           sharedMeshes.forEach(mesh => O.add(mesh));
           cs += 1;
           renderer.domElement.dataset.externalPrecompileState = "ready";
@@ -14680,7 +14643,7 @@ function splitFloorPolygonsByHoles(loops) {
 }
 function createGlassPhysicalMaterial(baseColor, opacity, styleOptions = {}) {
   const isOpaque = opacity >= 0.999;
-  const alphaWallBand = yt && !isOpaque;
+  const alphaWallBand = regionLightingEnabled && !isOpaque;
   const material = createWallSideMaterial(THREE, {
     color: baseColor,
     roughness: 0.72,
@@ -14700,7 +14663,7 @@ function createGlassPhysicalMaterial(baseColor, opacity, styleOptions = {}) {
     side: THREE.DoubleSide,
     emissive: styleOptions.emissive ?? baseColor,
     emissiveIntensity: styleOptions.emissiveIntensity ?? 0.025
-  }, styleOptions.polygonOffset !== true, yt && typeof window < "u" ? new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile : "");
+  }, styleOptions.polygonOffset !== true, regionLightingEnabled && typeof window < "u" ? new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile : "");
   material.userData.alphaWallBand = alphaWallBand;
   return material;
 }
@@ -14712,7 +14675,7 @@ function createInvisibleBasicMaterial() {
 function createFloorStandardMaterial(baseColor, isWallBand, styleOptions = {}) {
   const isOpaque = isWallBand >= 0.999;
   const floorColor = new THREE.Color(styleOptions.topColor ?? baseColor);
-  if (yt && (new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile).split(",").includes("shader") && styleOptions.polygonOffset !== true) {
+  if (regionLightingEnabled && (new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile).split(",").includes("shader") && styleOptions.polygonOffset !== true) {
     floorColor.multiplyScalar(1.2);
   }
   return new THREE.MeshStandardMaterial({
@@ -14751,7 +14714,7 @@ function addWallMeshBatch(shapes, bottomY, topY, color, opacity, light = {}) {
       curveSegments: 1
     });
     setWallGradientHeight(THREE, geometry, "z", topY, -1, floorSceneCurrent.settings.wallHeight);
-    if (yt && (new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile).split(",").includes("shader") && light.polygonOffset !== true) {
+    if (regionLightingEnabled && (new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile).split(",").includes("shader") && light.polygonOffset !== true) {
       const extractedPoints = polygon.extractPoints(1);
       setWallCornerDistances(THREE, geometry, [extractedPoints.shape, ...extractedPoints.holes]);
     }
@@ -15506,7 +15469,7 @@ function addPreviewItemMeshes(toPreviewLocalWallPoint, shadowLightIdSet, staticI
       continue;
     }
     const userData = buildStudioItemMeshGroup(type, shadowLightIdSet);
-    if (yt && type.type === "smallcar") {
+    if (regionLightingEnabled && type.type === "smallcar") {
       userData.userData.preserveDetailedSurface = true;
     }
     if (isStageEmbed && ["wallac", "floorac", "airoutlet", "curtain", "nas", "camera", "presence", "tv", "robotvacuum"].includes(type.type)) {
@@ -15531,7 +15494,7 @@ function rebuildWorldPreview({
   preserveLightCache = false
 } = {}) {
   renderCache?.invalidate();
-  if (yt && worldGroup) {
+  if (regionLightingEnabled && worldGroup) {
     worldGroup.userData.regionFloorId = activeFloorId;
   }
   if (!worldGroup) {
@@ -15720,7 +15683,7 @@ function rebuildWorldPreview({
   const push = [];
   addPreviewItemMeshes(toPreviewLocalWallPoint, shadowCasterIds, push);
   mergeStaticItemInstanceBatches(worldGroup, push);
-  if (yt && (new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile).split(",").includes("merge")) {
+  if (regionLightingEnabled && (new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile).split(",").includes("merge")) {
     mergeWallBands(THREE, worldGroup, mergeGeometries);
   }
   if (isStageEmbed && new URLSearchParams(window.location.search).get("furniture-runtime") === "compact") {
@@ -15799,7 +15762,7 @@ function getPreviewFloorModeCurrent() {
 function syncPreviewFloorButtons() {
   const previewFloorMode = getPreviewFloorModeCurrent();
   const showFloorToggle = (projectDocCurrent?.floors.length || 0) > 1;
-  for (const button of r0) {
+  for (const button of previewFloorButtons) {
     const isActive = button.dataset.previewFloor === previewFloorMode;
     button.classList.toggle("active", isActive);
     button.setAttribute("aria-pressed", String(isActive));
@@ -15993,7 +15956,7 @@ function rebuildPreviewAfterPlanChange(scope, {
       continue;
     }
     const meshGroup = buildStudioItemMeshGroup(item, shadowLightIds);
-    if (yt && item.type === "smallcar") {
+    if (regionLightingEnabled && item.type === "smallcar") {
       meshGroup.userData.preserveDetailedSurface = true;
     }
     if (isStageEmbed && ["wallac", "floorac", "airoutlet", "curtain", "nas", "camera", "presence", "tv", "robotvacuum"].includes(item.type)) {
@@ -16119,7 +16082,7 @@ function flushPlanZoomFrame() {
   return true;
 }
 function applyCameraViewCurrent(forceOrthogonalAxis = {}) {
-  if (!cameraCurrent || !orbitControls) {
+  if (!previewCamera || !orbitControls) {
     return;
   }
   const cameraView = forceOrthogonalAxis.view === "top" ? "top" : forceOrthogonalAxis.view === "free" ? "free" : cameraViewMode();
@@ -16135,32 +16098,32 @@ function applyCameraViewCurrent(forceOrthogonalAxis = {}) {
   const frameExtent = showsAllFloors && allFloorsSize ? clamp(Math.max(allFloorsSize.x, allFloorsSize.z), 5, 100) : clamp(Math.max(width.width, width.height) / pixelsPerMeterValue, 5, 35);
   const wallTopHeight = showsAllFloors && allFloorsSize ? allFloorsSize.y : Math.max(0, ...floorSceneCurrent.walls.map(height => height.height || 0));
   const frameSize = Math.max(frameExtent * 1.18, frameExtent + wallTopHeight * 0.32);
-  cameraCurrent.userData.frameSize = frameSize;
-  cameraCurrent.userData.cameraView = cameraView;
-  cameraCurrent.userData.topRotation = currentTopViewRotation;
+  previewCamera.userData.frameSize = frameSize;
+  previewCamera.userData.cameraView = cameraView;
+  previewCamera.userData.topRotation = currentTopViewRotation;
   const focusPoint = allFloorsCenter ? new THREE.Vector3(allFloorsCenter.x, allFloorsCenter.y, allFloorsCenter.z) : new THREE.Vector3(0, Math.min(0.78, frameExtent * 0.055), 0);
   let cameraDistance;
-  if (cameraCurrent.isPerspectiveCamera) {
-    cameraCurrent.aspect = cameraCurrent.userData.viewportAspect || 1;
+  if (previewCamera.isPerspectiveCamera) {
+    previewCamera.aspect = previewCamera.userData.viewportAspect || 1;
     applyCameraFocalLength();
-    const axisLockedPoint = frameSize / (Math.tan(THREE.MathUtils.degToRad(cameraCurrent.getEffectiveFOV()) / 2) * 2);
+    const axisLockedPoint = frameSize / (Math.tan(THREE.MathUtils.degToRad(previewCamera.getEffectiveFOV()) / 2) * 2);
     cameraDistance = Math.max(axisLockedPoint * 1.04, frameExtent * 1.65, 8);
   } else {
-    focusCameraOnPoint(frameSize, cameraCurrent.userData.viewportAspect || 1);
+    focusCameraOnPoint(frameSize, previewCamera.userData.viewportAspect || 1);
     cameraDistance = Math.max(frameExtent * 3.2, 18);
   }
   if (cameraView === "top") {
-    cameraCurrent.up.copy(topViewForwardVector(currentTopViewRotation));
-    cameraCurrent.position.set(focusPoint.x, focusPoint.y + cameraDistance, focusPoint.z);
+    previewCamera.up.copy(topViewForwardVector(currentTopViewRotation));
+    previewCamera.position.set(focusPoint.x, focusPoint.y + cameraDistance, focusPoint.z);
   } else {
-    cameraCurrent.up.set(0, 1, 0);
+    previewCamera.up.set(0, 1, 0);
     const normalize = new THREE.Vector3(1.08, 1.7, 1.12).normalize();
-    cameraCurrent.position.copy(focusPoint).addScaledVector(normalize, cameraDistance);
+    previewCamera.position.copy(focusPoint).addScaledVector(normalize, cameraDistance);
   }
-  getCameraPose(cameraCurrent, focusPoint);
-  cameraCurrent.zoom = 1;
-  cameraCurrent.lookAt(focusPoint);
-  cameraCurrent.updateProjectionMatrix();
+  getCameraPose(previewCamera, focusPoint);
+  previewCamera.zoom = 1;
+  previewCamera.lookAt(focusPoint);
+  previewCamera.updateProjectionMatrix();
   orbitControls.target.copy(focusPoint);
   syncOrbitControls();
   orbitControls.update();
@@ -16223,15 +16186,15 @@ function updatePlanStatusChrome(allowSnap = zr) {
     const axisPoint = axisLockedPoint(Fi, wallDrawAnchorCurrent);
     no = axisPoint.point;
     at = null;
-    No.textContent = "吸附：" + axisPoint.label;
+    snapIndicatorEl.textContent = "吸附：" + axisPoint.label;
   } else if (activeTool === "scale") {
     at = null;
-    No.textContent = "吸附：自由";
+    snapIndicatorEl.textContent = "吸附：自由";
   }
   referencePixels.textContent = "X " + (no.x / scalePixels).toFixed(2) + " m · Y " + (no.y / scalePixels).toFixed(2) + " m";
   if (activeTool === "wall") {
     at = onPlanPointerMove(Fi, Tt, allowSnap);
-    No.textContent = onPlanPointerDown(at) ? "闭合：点击闭合空间" : at.kind ? (!isSnapActive() && allowSnap ? "锁定" : "吸附") + "：" + at.label : isSnapActive() ? "吸附：自由" : snapOffLabel;
+    snapIndicatorEl.textContent = onPlanPointerDown(at) ? "闭合：点击闭合空间" : at.kind ? (!isSnapActive() && allowSnap ? "锁定" : "吸附") + "：" + at.label : isSnapActive() ? "吸附：自由" : snapOffLabel;
   } else if (["window", "door", "railing"].includes(activeTool)) {
     const hitWall = nearestWall(no, floorSceneCurrent.walls, 16 / planView.zoom);
     if (hitWall) {
@@ -16247,26 +16210,26 @@ function updatePlanStatusChrome(allowSnap = zr) {
       Uo = activeTool === "window" ? placementPreview : null;
       railingPlacementPreviewCurrent = activeTool === "door" ? placementPreview : null;
       Ko = activeTool === "railing" ? placementPreview : null;
-      No.textContent = activeTool === "door" ? "吸附：墙体门洞" : activeTool === "railing" ? "吸附：墙体栏杆" : "吸附：墙体";
+      snapIndicatorEl.textContent = activeTool === "door" ? "吸附：墙体门洞" : activeTool === "railing" ? "吸附：墙体栏杆" : "吸附：墙体";
     } else {
       Uo = null;
       railingPlacementPreviewCurrent = null;
       Ko = null;
-      No.textContent = "吸附：未找到墙体";
+      snapIndicatorEl.textContent = "吸附：未找到墙体";
     }
   } else if (activeTool === "pan") {
     at = null;
     Uo = null;
     railingPlacementPreviewCurrent = null;
     Ko = null;
-    No.textContent = isSnapActive() ? "吸附：开启" : snapOffLabel;
+    snapIndicatorEl.textContent = isSnapActive() ? "吸附：开启" : snapOffLabel;
     element.style.cursor = "";
   } else if (activeTool !== "scale") {
     at = null;
     Uo = null;
     railingPlacementPreviewCurrent = null;
     Ko = null;
-    No.textContent = isSnapActive() ? "吸附：开启" : snapOffLabel;
+    snapIndicatorEl.textContent = isSnapActive() ? "吸附：开启" : snapOffLabel;
     const dragTarget = beginItemDrag(no);
     element.style.cursor = dragTarget?.type === "rotate-item" ? "grab" : dragTarget?.type === "resize-item" ? "nwse-resize" : "";
   }
@@ -17019,7 +16982,7 @@ function schedulePlanRedraw() {
   resetWallDrawingCurrent();
   drawPlan();
 }
-async function clearInspectorHover() {
+async function loadStudioOrStage() {
   if (!planBackgroundImage) {
     setSaveStateLabel("地址无效", "error");
     return;
@@ -17036,13 +16999,13 @@ async function clearInspectorHover() {
       await new Promise(requestAnimationFrame);
       const {
         mountStage: awaitedValue
-      } = await import("/api/v1/modules/interaction3d/stage.js?v=20260910-health-fixes-v3-reflection-visible-floor-v1-navigation-scale-v1-presence-pages-v2-module-tabs-v1-20260912-align-v1-20260912-security-floor-models-v1-20260912-overview-tab-v1-20260912-overview-click-lock-v1");
+      } = await import("/api/v1/modules/interaction3d/stage.js?v=0.5.3");
       awaitedValue(bootstrapStudioFromLoadedProject());
       return;
     }
     setSaveStateLabel("已自动保存", "saved");
     if (autoDiagramComponentId) {
-      if (isAutoDiagramEmbedCurrent) {
+      if (isAutoDiagramEmbedMode) {
         scheduleOrbitResumeAfterModels();
       } else {
         window.setTimeout(() => scheduleOrbitResumeAfterModels(), 180);
@@ -17060,20 +17023,37 @@ async function clearInspectorHover() {
     showToast(message.message || "无法载入项目。", "error");
   }
 }
-Zd.forEach(addEventListener => addEventListener.addEventListener("click", () => setActiveTool(addEventListener.dataset.tool)));
-yf.addEventListener("click", () => {
+toolButtons.forEach(addEventListener => addEventListener.addEventListener("click", () => setActiveTool(addEventListener.dataset.tool)));
+addFloorEl.addEventListener("click", () => {
   addNewFloor();
 });
 alignFloor.addEventListener("click", startAlignFloorSession);
 previewFloorGapInput.addEventListener("change", commitPreviewFloorGap);
+previewFloorUniformInput?.addEventListener("change", () => {
+  if (!projectDocCurrent) {
+    return;
+  }
+  const enabled = !!previewFloorUniformInput.checked;
+  if (projectDocCurrent.uniformOverviewStack === enabled) {
+    return;
+  }
+  projectDocCurrent.uniformOverviewStack = enabled;
+  rebuildWorldPreviewCurrent();
+  scheduleSave();
+  syncFloorCameraChrome();
+  requestRender({
+    force: true
+  });
+});
+
 exportFloorGap.addEventListener("change", commitExportFloorGap);
-for (const e of r0) {
+for (const e of previewFloorButtons) {
   e.addEventListener("click", () => setPreviewFloorModeCurrent(e.dataset.previewFloor));
 }
-importPlanCurrent.addEventListener("click", () => Ia.click());
-Ia.addEventListener("change", async () => {
-  await importPlanBackgroundFile(Ia.files?.[0]);
-  Ia.value = "";
+importPlanButtonEl.addEventListener("click", () => planFileEl.click());
+planFileEl.addEventListener("change", async () => {
+  await importPlanBackgroundFile(planFileEl.files?.[0]);
+  planFileEl.value = "";
 });
 toggleBackground.addEventListener("click", () => {
   if (floorSceneCurrent.background) {
@@ -17084,7 +17064,7 @@ toggleBackground.addEventListener("click", () => {
     scheduleSave();
   }
 });
-Ud.addEventListener("click", () => {
+removePlanEl.addEventListener("click", () => {
   if (floorSceneCurrent.background) {
     pushHistory();
     floorSceneCurrent.background = null;
@@ -17220,7 +17200,7 @@ for (const e of m0) {
   e.addEventListener("click", () => setAssetCategoryFilter(e.dataset.assetCategory));
 }
 setAssetCategoryFilter("home");
-Tg.addEventListener("click", () => {
+addLightGroupEl.addEventListener("click", () => {
   pushHistory();
   const has = new Set(floorSceneCurrent.lightGroups.map(lightGroup => lightGroup.name));
   let nextGroupNumber = floorSceneCurrent.lightGroups.length + 1;
@@ -17251,7 +17231,7 @@ for (const e of lightGroupContextMenu.querySelectorAll("[data-light-group-action
       } else if (lightGroupAction === "rename") {
         _a = lightGroup.id;
         lightGroupRenameInput.value = lightGroup.name;
-        Il.showModal();
+        lightGroupRenameDialogEl.showModal();
         requestAnimationFrame(() => lightGroupRenameInput.select());
       } else if (lightGroupAction === "duplicate") {
         duplicateLightGroup(lightGroup);
@@ -17399,7 +17379,7 @@ toolEls.addEventListener("submit", domEvent => {
     closeLightPropertyApplyDialog();
     return;
   }
-  const name = uniqueFloorName(normalizeLabelText(floorRenameInputCurrent.value, renamedFloor.name, 24), renamedFloor.id);
+  const name = uniqueFloorName(normalizeLabelText(floorRenameInputEl.value, renamedFloor.name, 24), renamedFloor.id);
   if (name !== renamedFloor.name) {
     renamedFloor.name = name;
     renderFloorList();
@@ -17421,14 +17401,14 @@ activeToolLabel.addEventListener("submit", preventDefault => {
 });
 function syncLightPropertySelectAll() {
   _a = "";
-  Il.close();
+  lightGroupRenameDialogEl.close();
 }
 selectEl("#light-group-rename-close").addEventListener("click", syncLightPropertySelectAll);
 selectEl("#light-group-rename-cancel").addEventListener("click", syncLightPropertySelectAll);
-Il.addEventListener("cancel", () => {
+lightGroupRenameDialogEl.addEventListener("cancel", () => {
   _a = "";
 });
-Tf.addEventListener("submit", camera => {
+lightGroupRenameFormEl.addEventListener("submit", camera => {
   camera.preventDefault();
   const isClosest = floorSceneCurrent.lightGroups.find(floor => floor.id === _a);
   if (!isClosest) {
@@ -17446,7 +17426,7 @@ Tf.addEventListener("submit", camera => {
 });
 function postAutoDiagramBusy() {
   Dr = null;
-  Rl.close();
+  lightPropertyApplyDialogEl.close();
 }
 function buildStageReferenceScene(groupNameCandidate = wallFields) {
   return [...groupNameCandidate.querySelectorAll("[data-light-target-item-id]")];
@@ -17538,10 +17518,10 @@ for (const e of list) {
       label: propMeta.label,
       value
     };
-    Df.textContent = "应用" + propMeta.label;
-    Ff.textContent = formatLightPropertyValue(property, value);
+    lightPropertyApplyTitleEl.textContent = "应用" + propMeta.label;
+    lightPropertyApplyValueEl.textContent = formatLightPropertyValue(property, value);
     renderLightPropertyTargetList(property);
-    Rl.showModal();
+    lightPropertyApplyDialogEl.showModal();
     requestAnimationFrame(() => ka.focus());
   });
 }
@@ -17569,10 +17549,10 @@ wallFields.addEventListener("click", target => {
 wallFields.addEventListener("change", updateStageLightTargetSummary);
 selectEl("#light-property-apply-close").addEventListener("click", postAutoDiagramBusy);
 selectEl("#light-property-apply-cancel").addEventListener("click", postAutoDiagramBusy);
-Rl.addEventListener("cancel", () => {
+lightPropertyApplyDialogEl.addEventListener("cancel", () => {
   Dr = null;
 });
-Rf.addEventListener("submit", event => {
+lightPropertyApplyFormEl.addEventListener("submit", event => {
   event.preventDefault();
   if (!Dr) {
     postAutoDiagramBusy();
@@ -17913,15 +17893,15 @@ const syncExportPresetEditor = () => {
 };
 selectEl("#export-complete-close").addEventListener("click", syncExportPresetEditor);
 selectEl("#export-complete-confirm").addEventListener("click", syncExportPresetEditor);
-h0.addEventListener("click", target => {
+exportPresetSlotsEl.addEventListener("click", target => {
   const dataset = target.target.closest("[data-export-preset-slot]");
   if (dataset) {
     selectExportPresetIndex(Number(dataset.dataset.exportPresetSlot));
   }
 });
-f0.addEventListener("click", addExportPresetSlot);
-g0.addEventListener("click", duplicateActiveExportPreset);
-p0.addEventListener("click", removeActiveExportPreset);
+exportPresetAddEl.addEventListener("click", addExportPresetSlot);
+exportPresetRenameEl.addEventListener("click", duplicateActiveExportPreset);
+exportPresetDeleteEl.addEventListener("click", removeActiveExportPreset);
 selectEl("#export-preset-rename-close").addEventListener("click", closeExportPresetRenameDialog);
 selectEl("#export-preset-rename-cancel").addEventListener("click", closeExportPresetRenameDialog);
 exportPresetRenameDialog.addEventListener("cancel", preventDefault => {
@@ -17991,7 +17971,7 @@ selectEl("#export-use-fixed").addEventListener("click", applyStageFixedCameraVie
 exportFloorSelect.addEventListener("change", () => setExportFloorScope(exportFloorSelect.value));
 exportPackage.addEventListener("click", runExportPipeline);
 function postAutoDiagramBaseReady(status = "ready") {
-  if (!!isAutoDiagramEmbedCurrent && !!autoDiagramComponentId && window.parent !== window && !!projectDocCurrent) {
+  if (!!isAutoDiagramEmbedMode && !!autoDiagramComponentId && window.parent !== window && !!projectDocCurrent) {
     window.parent.postMessage({
       type: "ha-bridge-floorplan-auto-diagram-base-lighting-state",
       componentId: autoDiagramComponentId,
@@ -18003,7 +17983,7 @@ function postAutoDiagramBaseReady(status = "ready") {
   }
 }
 function postAutoDiagramFloorState() {
-  if (!!isAutoDiagramEmbedCurrent && !!autoDiagramComponentId && window.parent !== window && !!projectDocCurrent) {
+  if (!!isAutoDiagramEmbedMode && !!autoDiagramComponentId && window.parent !== window && !!projectDocCurrent) {
     window.parent.postMessage({
       type: "ha-bridge-floorplan-auto-diagram-floor-state",
       componentId: autoDiagramComponentId,
@@ -18016,7 +17996,7 @@ function postAutoDiagramFloorState() {
   }
 }
 window.addEventListener("message", origin => {
-  if (!isAutoDiagramEmbedCurrent || origin.origin !== window.location.origin || origin.source !== window.parent) {
+  if (!isAutoDiagramEmbedMode || origin.origin !== window.location.origin || origin.source !== window.parent) {
     return;
   }
   const command = origin.data;
@@ -18341,7 +18321,7 @@ snapToggle.addEventListener("click", () => {
   drawPlan();
   scheduleSave();
 });
-Qd.addEventListener("click", stopPropagationVar => {
+snapSettingsToggleEl.addEventListener("click", stopPropagationVar => {
   stopPropagationVar.stopPropagation();
   setSnapSettingsOpen(xr.hidden);
 });
@@ -18370,7 +18350,7 @@ snapTolerance.addEventListener("change", () => {
   }
 });
 yr.addEventListener("click", () => schedulePlanRedraw());
-Kd.addEventListener("click", deleteCurrentSelection);
+deleteSelectionEl.addEventListener("click", deleteCurrentSelection);
 selectEl("#scale-close").addEventListener("click", () => {
   shiftKeyHeld = null;
   lightPropertyApplyTitle.close();
@@ -18445,7 +18425,7 @@ selectEl("#feature-wall-style").addEventListener("change", () => applyInspectorF
 selectEl("#pillar-shape").addEventListener("change", () => applyInspectorFieldsCurrent("item"));
 selectEl("#pillar-axis").addEventListener("change", () => applyInspectorFieldsCurrent("item"));
 selectEl("#strip-axis").addEventListener("change", () => applyInspectorFieldsCurrent("item"));
-o0.addEventListener("click", () => {
+shoeCabinetMirrorEl.addEventListener("click", () => {
   const door = selectedEntity();
   if (!!door && selection?.kind === "item" && door.type === "shoecabinet") {
     pushHistory();
@@ -18734,7 +18714,7 @@ if (materialTestTypeQueryCurrent) {
       for (let value = 0; !renderer && value < 120; value += 1) {
         await yieldToScheduler();
       }
-      if (!renderer || !cameraCurrent || !previewSceneCurrent) {
+      if (!renderer || !previewCamera || !previewSceneCurrent) {
         throw new Error("Material test renderer was not initialized");
       }
       const list = [];
@@ -18762,7 +18742,7 @@ if (materialTestTypeQueryCurrent) {
         object3d.add(object3dCurrent);
       }
       document.documentElement.dataset.materialTestStage = "compiling";
-      renderer.compile(object3d, cameraCurrent, previewSceneCurrent);
+      renderer.compile(object3d, previewCamera, previewSceneCurrent);
       const unique = new Set(list).size;
       for (let value = 0; value < 600; value += 1) {
         const active = manager.modelLoadState();
@@ -18917,6 +18897,7 @@ function bootstrapStudioFromLoadedProject() {
   let trackedLightKeys = [];
   let previousLightKeys = [];
   let floorBackgroundVisible = true;
+  let backgroundThemeHost = null;
   let enabled = false;
   let shadowScopeGroup;
   let shadowScopeChild;
@@ -18945,9 +18926,9 @@ function bootstrapStudioFromLoadedProject() {
   const rendererSizeVector = new THREE.Vector2();
   function computeCameraViewHeight(zoom) {
     if (zoom.mode !== "perspective") {
-      return Math.max(1, zoom.frameSize || 10) / zoom.zoom / Math.min(1, Math.max(0.1, cameraCurrent.userData.viewportAspect || 1));
+      return Math.max(1, zoom.frameSize || 10) / zoom.zoom / Math.min(1, Math.max(0.1, previewCamera.userData.viewportAspect || 1));
     } else {
-      aspectCurrent.aspect = cameraCurrent.userData.viewportAspect || 1;
+      aspectCurrent.aspect = previewCamera.userData.viewportAspect || 1;
       aspectCurrent.zoom = zoom.zoom;
       aspectCurrent.setFocalLength(zoom.focalLength || 50);
       return new THREE.Vector3().fromArray(zoom.position).distanceTo(new THREE.Vector3().fromArray(zoom.target)) * 2 * Math.tan(THREE.MathUtils.degToRad(aspectCurrent.getEffectiveFOV()) / 2);
@@ -18957,14 +18938,14 @@ function bootstrapStudioFromLoadedProject() {
     if (!height) {
       return;
     }
-    const cameraDistance = Math.max(0.000001, cameraCurrent.position.distanceTo(orbitControls.target));
+    const cameraDistance = Math.max(0.000001, previewCamera.position.distanceTo(orbitControls.target));
     const maxViewSize = Math.max(0.000001, height.height);
-    const viewportAspect = cameraCurrent.userData.viewportAspect || 1;
+    const viewportAspect = previewCamera.userData.viewportAspect || 1;
     const blendWeight = height.weight;
-    const orthoView = cameraCurrent.view;
+    const orthoView = previewCamera.view;
     const perspectiveView = camera.view;
     const viewsMatch = orthoView === perspectiveView || orthoView && perspectiveView && orthoView.enabled === perspectiveView.enabled && orthoView.fullWidth === perspectiveView.fullWidth && orthoView.fullHeight === perspectiveView.fullHeight && orthoView.offsetX === perspectiveView.offsetX && orthoView.offsetY === perspectiveView.offsetY && orthoView.width === perspectiveView.width && orthoView.height === perspectiveView.height;
-    if (motion.motion === height && motion.camera === cameraCurrent && motion.distance === cameraDistance && motion.height === maxViewSize && motion.aspect === viewportAspect && motion.weight === blendWeight && motion.near === cameraCurrent.near && motion.far === cameraCurrent.far && viewsMatch && motion.matrix.equals(cameraCurrent.projectionMatrix)) {
+    if (motion.motion === height && motion.camera === previewCamera && motion.distance === cameraDistance && motion.height === maxViewSize && motion.aspect === viewportAspect && motion.weight === blendWeight && motion.near === previewCamera.near && motion.far === previewCamera.far && viewsMatch && motion.matrix.equals(previewCamera.projectionMatrix)) {
       return;
     }
     Object.assign(camera, {
@@ -18972,38 +18953,38 @@ function bootstrapStudioFromLoadedProject() {
       right: maxViewSize * viewportAspect / 2,
       top: maxViewSize / 2,
       bottom: -maxViewSize / 2,
-      near: cameraCurrent.near,
-      far: cameraCurrent.far,
+      near: previewCamera.near,
+      far: previewCamera.far,
       zoom: 1
     });
     Object.assign(aspectCurrent, {
       fov: THREE.MathUtils.radToDeg(Math.atan(maxViewSize / (cameraDistance * 2)) * 2),
       aspect: viewportAspect,
-      near: cameraCurrent.near,
-      far: cameraCurrent.far,
+      near: previewCamera.near,
+      far: previewCamera.far,
       zoom: 1
     });
     for (const targetView of [camera, aspectCurrent]) {
-      targetView.view = cameraCurrent.view ? {
-        ...cameraCurrent.view
+      targetView.view = previewCamera.view ? {
+        ...previewCamera.view
       } : null;
       targetView.updateProjectionMatrix();
     }
     const orthoElements = camera.projectionMatrix.elements;
     const perspectiveElements = aspectCurrent.projectionMatrix.elements;
     for (let elementIndex = 0; elementIndex < 16; elementIndex++) {
-      cameraCurrent.projectionMatrix.elements[elementIndex] = orthoElements[elementIndex] * (1 - blendWeight) + perspectiveElements[elementIndex] / cameraDistance * blendWeight;
+      previewCamera.projectionMatrix.elements[elementIndex] = orthoElements[elementIndex] * (1 - blendWeight) + perspectiveElements[elementIndex] / cameraDistance * blendWeight;
     }
-    cameraCurrent.projectionMatrixInverse.copy(cameraCurrent.projectionMatrix).invert();
+    previewCamera.projectionMatrixInverse.copy(previewCamera.projectionMatrix).invert();
     motion.motion = height;
-    motion.camera = cameraCurrent;
+    motion.camera = previewCamera;
     motion.distance = cameraDistance;
     motion.height = maxViewSize;
     motion.aspect = viewportAspect;
     motion.weight = blendWeight;
-    motion.near = cameraCurrent.near;
-    motion.far = cameraCurrent.far;
-    motion.matrix.copy(cameraCurrent.projectionMatrix);
+    motion.near = previewCamera.near;
+    motion.far = previewCamera.far;
+    motion.matrix.copy(previewCamera.projectionMatrix);
   }
   const size = new Map();
   const lightFadeCache = new Map();
@@ -19049,7 +19030,7 @@ function bootstrapStudioFromLoadedProject() {
   }
   function normalizedLightBrightness(type, rawBrightness) {
     const normalized = clamp(finite(rawBrightness, 0), 0, 100) / 100;
-    if (yt) {
+    if (regionLightingEnabled) {
       return normalized;
     } else if (type.type === "striplight") {
       return Math.pow(normalized, 0.82);
@@ -19445,16 +19426,16 @@ function bootstrapStudioFromLoadedProject() {
     renderer.getSize(rendererSizeVector);
     const viewportWidth = Math.max(rendererSizeVector.x || 1, 1);
     const viewportHeight = Math.max(rendererSizeVector.y || 1, 1);
-    const renderSizeKey = viewportWidth + "/" + viewportHeight + "/" + viewOffsetFraction + "/" + cameraCurrent.uuid;
+    const renderSizeKey = viewportWidth + "/" + viewportHeight + "/" + viewOffsetFraction + "/" + previewCamera.uuid;
     if (renderSizeKey === lastRenderSizeKey) {
       blendCameraProjectionMatrices();
       return;
     }
     lastRenderSizeKey = renderSizeKey;
     if (viewOffsetFraction) {
-      cameraCurrent.setViewOffset(viewportWidth, viewportHeight, viewportWidth * viewOffsetFraction / 2, 0, viewportWidth, viewportHeight);
+      previewCamera.setViewOffset(viewportWidth, viewportHeight, viewportWidth * viewOffsetFraction / 2, 0, viewportWidth, viewportHeight);
     } else {
-      cameraCurrent.clearViewOffset();
+      previewCamera.clearViewOffset();
     }
     blendCameraProjectionMatrices();
   }
@@ -19482,19 +19463,22 @@ function bootstrapStudioFromLoadedProject() {
       });
       return new THREE.Vector3(projectedPoint.x, sortedFloors.indexOf(floor) * projectDocCurrent.previewFloorGap + heightOffset, projectedPoint.z);
     }
-    const previousFloorScene = floorSceneCurrent;
-    floorSceneCurrent = floor.scene;
-    const previewBounds = getPreviewFloorMode();
-    floorSceneCurrent = previousFloorScene;
-    return new THREE.Vector3((planeX - (previewBounds.minX + previewBounds.maxX) / 2) / planScale, heightOffset, (planeY - (previewBounds.minY + previewBounds.maxY) / 2) / planScale);
+    // Keep the same plan origin as rebuildWorldPreview (Lo / floor.origin*),
+    // otherwise synced or old plans get a shifted orbit center vs. meshes.
+    const originX = finite(floor.originX, 0);
+    const originY = finite(floor.originY, 0);
+    return new THREE.Vector3((planeX - originX) / planScale, heightOffset, (planeY - originY) / planScale);
   }
   function findFloorOrbitCenter(floorId) {
-    if (!projectDocCurrent.floors.some(floor => floor.id === floorId)) {
+    const floor = projectDocCurrent.floors.find(entry => entry.id === floorId);
+    if (!floor) {
       return null;
     }
-    const planScale = projectDocCurrent.floors.find(floor => floor.id === floorId)?.scene.calibration?.pixelsPerMeter || 1;
-    const orbitCenter = worldPoint(floorId, 0, 0, 0);
-    return new THREE.Matrix4().makeBasis(worldPoint(floorId, planScale, 0, 0).sub(orbitCenter), new THREE.Vector3(0, 1, 0), worldPoint(floorId, 0, planScale, 0).sub(orbitCenter)).setPosition(orbitCenter);
+    const planScale = floor.scene.calibration?.pixelsPerMeter || 1;
+    const originX = finite(floor.originX, 0);
+    const originY = finite(floor.originY, 0);
+    const orbitCenter = worldPoint(floorId, originX, originY, 0);
+    return new THREE.Matrix4().makeBasis(worldPoint(floorId, originX + planScale, originY, 0).sub(orbitCenter), new THREE.Vector3(0, 1, 0), worldPoint(floorId, originX, originY + planScale, 0).sub(orbitCenter)).setPosition(orbitCenter);
   }
   function resolveOrbitPanTarget(fallbackTarget) {
     if (orbitBoundsSourceGroup !== worldGroup || orbitBoundsSourceCanvas !== planCanvas) {
@@ -19514,7 +19498,7 @@ function bootstrapStudioFromLoadedProject() {
       return;
     }
     const controls = orbitControls;
-    const camera = cameraCurrent;
+    const camera = previewCamera;
     const baseUpdate = controls.update.bind(controls);
     boundOrbitControls = controls;
     const maybeFinishCapture = () => {
@@ -19568,14 +19552,30 @@ function bootstrapStudioFromLoadedProject() {
       if (isLightCacheCaptureActive) {
         return false;
       }
+      if (controls.minPolarAngle !== controls.maxPolarAngle) {
+        controls.maxPolarAngle = Math.min(controls.maxPolarAngle, MAX_CAMERA_POLAR_ANGLE);
+      }
+      const polarAngle = controls.getPolarAngle();
+      if (polarAngle >= controls.maxPolarAngle - 1e-8 && controls._sphericalDelta?.phi > 0 || polarAngle <= controls.minPolarAngle + 0.000001 && controls._sphericalDelta?.phi < 0) {
+        controls._sphericalDelta.phi = 0;
+      }
       const startQuaternion = camera.quaternion.clone();
       const updateResult = baseUpdate(updateDelta);
+      if (constrainCameraPosition(camera.position, controls.target)) {
+        if (controls._sphericalDelta?.phi > 0) {
+          controls._sphericalDelta.phi = 0;
+        }
+        camera.lookAt(controls.target);
+      }
       if (enabled && startQuaternion.angleTo(camera.quaternion) > 1e-7) {
         const rotationDelta = camera.quaternion.clone().multiply(startQuaternion.invert());
         const offsetVector = orbitPivot.clone().sub(controls.target);
         const rotatedOffset = offsetVector.clone().sub(offsetVector.applyQuaternion(rotationDelta));
         camera.position.add(rotatedOffset);
         controls.target.add(rotatedOffset);
+        if (constrainCameraPosition(camera.position, controls.target)) {
+          camera.lookAt(controls.target);
+        }
         camera.updateMatrixWorld();
         controls.dispatchEvent({
           type: "change"
@@ -19597,7 +19597,7 @@ function bootstrapStudioFromLoadedProject() {
       });
     }
     for (const visible of visibleMeshes) {
-      visible.visible = floorBackgroundVisible && !visible.userData.floorBackgroundHidden;
+      visible.visible = floorBackgroundVisible && !visible.userData.floorBackgroundHidden && !visible.userData.backgroundThemeHidden;
     }
   }
   const detail = new URLSearchParams(globalThis.window?.location?.search || "").get("reflection-detail") === "low" ? createReflectionDetail({
@@ -19615,12 +19615,13 @@ function bootstrapStudioFromLoadedProject() {
     scene: previewSceneCurrent,
     getRoot: () => worldGroup,
     getSceneRevision: () => planCanvas,
-    floorLighting: yt,
+    floorLighting: regionLightingEnabled,
     cull: !reflectionBaseline,
     blur: false,
     syncLighting: sceneState => reflectionBaseline ? studioReady?.sync(sceneState, true) : studioReady?.syncCamera(sceneState),
     requestFrame: () => updateLightPreview(),
-    getStateKey: () => [planCanvas, floorSelectionQuery, yt ? "" : lightCacheEpoch, lightCacheReady, renderer.toneMappingExposure].join("|")
+    getStateKey: () => [planCanvas, floorSelectionQuery, regionLightingEnabled ? "" : lightCacheEpoch, lightCacheReady, renderer.toneMappingExposure].join("|"),
+    getReflectionCamera: (camera, object) => overviewStackController?.captureCamera?.(camera, object) || camera
   });
   const entry = new URLSearchParams(globalThis.window?.location?.search || "").get("floorEffects");
   let suspendedState = false;
@@ -19646,7 +19647,7 @@ function bootstrapStudioFromLoadedProject() {
       updateLightPreview();
     }
   }
-  const followLiveEntry = (yt || entry === "follow") && entry !== "deferred";
+  const followLiveEntry = (regionLightingEnabled || entry === "follow") && entry !== "deferred";
     let shadowMotionStartedAt = null;
   let autoUpdate = true;
   const hasNext = new Map();
@@ -19837,18 +19838,20 @@ function bootstrapStudioFromLoadedProject() {
     }
   };
   function recreateOrbitControlsAtTarget(targetPoint = orbitControls.target.clone()) {
-    const cameraPosition = cameraCurrent.position.clone();
+    const cameraPosition = previewCamera.position.clone();
     orbitControls.dispose();
-    orbitControls = createOrbitControls(cameraCurrent);
-    cameraCurrent.position.copy(cameraPosition);
+    orbitControls = createOrbitControls(previewCamera);
+    previewCamera.position.copy(cameraPosition);
     orbitControls.target.copy(targetPoint);
     const camDistance = Math.max(cameraPosition.distanceTo(targetPoint), 0.001);
-    const polarAngle = cameraPosition.clone().sub(targetPoint).normalize().angleTo(cameraCurrent.up);
     orbitControls.minDistance = Math.min(2, camDistance);
     orbitControls.maxDistance = Math.max(100, camDistance * 2);
-    orbitControls.minZoom = Math.min(0.35, cameraCurrent.zoom);
-    orbitControls.maxZoom = Math.max(6, cameraCurrent.zoom);
-    orbitControls.maxPolarAngle = Math.max(Math.PI * 0.49, polarAngle + 0.00001);
+    orbitControls.minZoom = Math.min(0.35, previewCamera.zoom);
+    orbitControls.maxZoom = Math.max(6, previewCamera.zoom);
+    orbitControls.maxPolarAngle = MAX_CAMERA_POLAR_ANGLE;
+    if (constrainCameraPosition(previewCamera.position, orbitControls.target)) {
+      previewCamera.lookAt(orbitControls.target);
+    }
     orbitControls.enableRotate = true;
     orbitControls.enabled = enabled;
     orbitControls.update();
@@ -19870,6 +19873,16 @@ function bootstrapStudioFromLoadedProject() {
     THREE,
     container: selectEl("#preview-3d"),
     canvas: renderer.domElement,
+    setBackgroundTheme(controller) {
+      backgroundThemeHost = controller || null;
+    },
+    backgroundFrame(active) {
+      if (active) {
+        requestRender({
+          preserveLightCache: true
+        });
+      }
+    },
     get groundReflections() {
       return changed;
     },
@@ -20038,7 +20051,7 @@ function bootstrapStudioFromLoadedProject() {
       const materialList = [];
       const add = new Set();
       worldGroup.updateWorldMatrix(true, true);
-      cameraCurrent.updateMatrixWorld();
+      previewCamera.updateMatrixWorld();
       worldGroup.traverse(material => {
         if (!material.isMesh) {
           return;
@@ -20071,7 +20084,7 @@ function bootstrapStudioFromLoadedProject() {
       const radiusLimit = Math.max(0, Math.min(12, sampleRadius));
       const sampleOffsets = [[0, 0], ...(radiusLimit ? [[radiusLimit, 0], [-radiusLimit, 0], [0, radiusLimit], [0, -radiusLimit], [radiusLimit * 0.7, radiusLimit * 0.7], [-radiusLimit * 0.7, radiusLimit * 0.7], [radiusLimit * 0.7, -radiusLimit * 0.7], [-radiusLimit * 0.7, -radiusLimit * 0.7]] : [])];
       for (const [offsetX, sampleOffsetY] of sampleOffsets) {
-        setFromCamera.setFromCamera(new THREE.Vector2((screenX + offsetX - width.left) / width.width * 2 - 1, 1 - (screenY + sampleOffsetY - width.top) / width.height * 2), cameraCurrent);
+        setFromCamera.setFromCamera(new THREE.Vector2((screenX + offsetX - width.left) / width.width * 2 - 1, 1 - (screenY + sampleOffsetY - width.top) / width.height * 2), previewCamera);
         for (const object of setFromCamera.intersectObjects(cacheKey, false)) {
           const visible = Array.isArray(object.object.material) ? object.object.material[object.face?.materialIndex || 0] : object.object.material;
           if (visible?.visible !== false && visible?.opacity !== 0) {
@@ -20082,7 +20095,7 @@ function bootstrapStudioFromLoadedProject() {
       return null;
     },
     get camera() {
-      return cameraCurrent;
+      return previewCamera;
     },
     get controls() {
       return orbitControls;
@@ -20097,7 +20110,7 @@ function bootstrapStudioFromLoadedProject() {
       return studioReady;
     },
     invalidateRegionLighting() {
-      studioReady?.sync(cameraCurrent);
+      studioReady?.sync(previewCamera);
       updateLightPreview();
     },
     transformCamera(requestedPose, requestedFloorId, animate = false) {
@@ -20198,7 +20211,7 @@ function bootstrapStudioFromLoadedProject() {
       const width = document.createElement("canvas");
       width.width = renderer.domElement.width;
       width.height = renderer.domElement.height;
-      renderer.render(previewSceneCurrent, cameraCurrent);
+      renderer.render(previewSceneCurrent, previewCamera);
       const drawImage = width.getContext("2d");
       drawImage.drawImage(renderer.domElement, 0, 0);
       if (!previewLightCache.hidden) {
@@ -20218,10 +20231,21 @@ function bootstrapStudioFromLoadedProject() {
       });
       width.setAttribute("aria-label", "正在同步户型");
       selectEl("#preview-3d").append(width);
+      let restored = false;
       return () => {
-        renderer.domElement.style.visibility = visibility;
-        previewLightCache.style.visibility = visibilityCurrent;
-        width.remove();
+        if (restored) {
+          return;
+        }
+        restored = true;
+        const restore = () => {
+          renderer.domElement.style.visibility = visibility;
+          previewLightCache.style.visibility = visibilityCurrent;
+          width.remove();
+          requestRender({
+            preserveLightCache: true
+          });
+        };
+        requestAnimationFrame(() => requestAnimationFrame(restore));
       };
     },
     getOrbitCenter() {
@@ -20270,7 +20294,7 @@ function bootstrapStudioFromLoadedProject() {
       });
       const mode = this.cameraState();
       const needsHeightTransition = targetHeight && (height || mode.mode !== targetMode);
-      const fromHeight = needsHeightTransition ? height?.height ?? resetOrbitTarget(cameraCurrent, orbitControls.target) : 0;
+      const fromHeight = needsHeightTransition ? height?.height ?? resetOrbitTarget(previewCamera, orbitControls.target) : 0;
       const fromWeight = height?.weight ?? (mode.mode === "perspective" ? 1 : 0);
       height = null;
       isLightCacheCaptureActive = true;
@@ -20311,7 +20335,9 @@ function bootstrapStudioFromLoadedProject() {
       this.applyCameraPose(cameraPose, frameProgress, offsetUnchanged);
       motionPresentation.advance(frameProgress);
     },
+    constrainCameraPose,
     applyCameraPose(view, heightBlend = 1, preserveLightCache = true) {
+      const constrained = constrainCameraPose(view) || view;
       if (height) {
         if (heightBlend >= 1) {
           height = null;
@@ -20322,24 +20348,24 @@ function bootstrapStudioFromLoadedProject() {
       }
       softLockPreviewOrbit();
       const cameraView = activeCameraSettings();
-      cameraView.cameraView = view.view || "free";
-      cameraView.cameraTopRotation = view.topRotation || 0;
-      cameraView.cameraFocalLength = view.focalLength || 50;
-      cameraCurrent.position.fromArray(view.position);
-      orbitControls.target.fromArray(view.target);
-      cameraCurrent.up.fromArray(view.up || [0, 1, 0]);
-      cameraCurrent.zoom = view.zoom;
-      cameraCurrent.userData.frameSize = view.frameSize || 10;
-      cameraCurrent.userData.cameraView = cameraView.cameraView;
-      cameraCurrent.userData.topRotation = cameraView.cameraTopRotation;
-      if (cameraCurrent.isOrthographicCamera) {
-        focusCameraOnPoint(cameraCurrent.userData.frameSize, cameraCurrent.userData.viewportAspect || 1);
+      cameraView.cameraView = constrained.view || "free";
+      cameraView.cameraTopRotation = constrained.topRotation || 0;
+      cameraView.cameraFocalLength = constrained.focalLength || 50;
+      previewCamera.position.fromArray(constrained.position);
+      orbitControls.target.fromArray(constrained.target);
+      previewCamera.up.fromArray(constrained.up || [0, 1, 0]);
+      previewCamera.zoom = constrained.zoom;
+      previewCamera.userData.frameSize = constrained.frameSize || 10;
+      previewCamera.userData.cameraView = cameraView.cameraView;
+      previewCamera.userData.topRotation = cameraView.cameraTopRotation;
+      if (previewCamera.isOrthographicCamera) {
+        focusCameraOnPoint(previewCamera.userData.frameSize, previewCamera.userData.viewportAspect || 1);
       } else {
         applyCameraFocalLength();
       }
-      cameraCurrent.lookAt(orbitControls.target);
-      getCameraPose(cameraCurrent, orbitControls.target);
-      cameraCurrent.updateMatrixWorld();
+      previewCamera.lookAt(orbitControls.target);
+      getCameraPose(previewCamera, orbitControls.target);
+      previewCamera.updateMatrixWorld();
       syncRendererSizeCacheKey();
       requestRender({
         preserveLightCache: preserveLightCache
@@ -20398,8 +20424,8 @@ function bootstrapStudioFromLoadedProject() {
       flag = !!baseLightingCurrent.baseLighting;
       const clampedValue = clamp(finite(baseLightingCurrent.renderScale, 1), 0.25, 2);
       const conditionalValue = typeof baseLightingCurrent.motionRenderScale == "number" && Number.isFinite(baseLightingCurrent.motionRenderScale) ? clamp(baseLightingCurrent.motionRenderScale, 0.25, 1) : null;
-      if (clampedValue !== ur || conditionalValue !== isAutoDiagramEmbed) {
-        ur = clampedValue;
+      if (clampedValue !== studioDevicePixelRatio || conditionalValue !== isAutoDiagramEmbed) {
+        studioDevicePixelRatio = clampedValue;
         isAutoDiagramEmbed = conditionalValue;
         renderer.setPixelRatio(computeStudioPixelRatio(previewOrbitLocked));
         onPreviewContainerResize();
@@ -20521,8 +20547,8 @@ function bootstrapStudioFromLoadedProject() {
       }
       const floorBoundsSize = bounds.getSize(new THREE.Vector3());
       const handoffNeeded = !previewingAllFloors && target !== "all";
-      const conditionalValue = handoffNeeded ? new THREE.Vector3(0, 1, 0).applyQuaternion(cameraCurrent.quaternion).normalize() : null;
-      const value = handoffNeeded ? resetOrbitTarget(cameraCurrent, orbitControls.target) * 1.2 : Math.max(20, floorBoundsSize.x, floorBoundsSize.z) * 1.5;
+      const conditionalValue = handoffNeeded ? new THREE.Vector3(0, 1, 0).applyQuaternion(previewCamera.quaternion).normalize() : null;
+      const value = handoffNeeded ? resetOrbitTarget(previewCamera, orbitControls.target) * 1.2 : Math.max(20, floorBoundsSize.x, floorBoundsSize.z) * 1.5;
       const scrollFrom = findVar.find(record => Number.isFinite(record.scrollPosition))?.scrollPosition ?? floorsByElevation.indexOf(scrollTargetFloorId);
       const targetIndex = floorsByElevation.indexOf(target);
       const handoffRange = handoffNeeded ? floorsByElevation.slice(Math.min(Math.floor(scrollFrom), targetIndex), Math.max(Math.ceil(scrollFrom), targetIndex) + 1) : [];
@@ -20593,7 +20619,7 @@ function bootstrapStudioFromLoadedProject() {
             finish.reuse(id, orbitCenterResolver(id.id)).traverse(userData => {
               if (["background", "grid"].includes(userData.userData?.exportRole)) {
                 userData.userData.floorBackgroundHidden = previewFloorMode === "all" && id.id !== idValue;
-                userData.visible = floorBackgroundVisible && !userData.userData.floorBackgroundHidden;
+                userData.visible = floorBackgroundVisible && !userData.userData.floorBackgroundHidden && !userData.userData.backgroundThemeHidden;
               }
             });
           }
@@ -20650,12 +20676,12 @@ function bootstrapStudioFromLoadedProject() {
         recreateOrbitControlsAtTarget();
       }
       return {
-        position: cameraCurrent.position.toArray(),
+        position: previewCamera.position.toArray(),
         target: orbitControls.target.toArray(),
-        zoom: cameraCurrent.zoom,
-        mode: cameraCurrent.isPerspectiveCamera ? "perspective" : "orthographic",
-        up: cameraCurrent.up.toArray(),
-        frameSize: cameraCurrent.userData.frameSize || 10,
+        zoom: previewCamera.zoom,
+        mode: previewCamera.isPerspectiveCamera ? "perspective" : "orthographic",
+        up: previewCamera.up.toArray(),
+        frameSize: previewCamera.userData.frameSize || 10,
         view: cameraViewMode(),
         topRotation: topViewRotation(),
         focalLength: getCameraFocalLength()
@@ -20707,7 +20733,7 @@ function bootstrapStudioFromLoadedProject() {
         await new Promise(requestAnimationFrame);
         collectShadowCastingLights();
         await waitUntilPreviewQualityReady();
-        renderer.render(previewSceneCurrent, cameraCurrent);
+        renderer.render(previewSceneCurrent, previewCamera);
         await new Promise(requestAnimationFrame);
       })();
       return firstPresentPromise;
@@ -20738,18 +20764,18 @@ function bootstrapStudioFromLoadedProject() {
       setCameraProjectionMode(mode.mode, {
         preserveView: false
       });
-      cameraCurrent.position.fromArray(mode.position);
+      previewCamera.position.fromArray(mode.position);
       if (mode.up) {
-        cameraCurrent.up.fromArray(mode.up);
+        previewCamera.up.fromArray(mode.up);
       }
       orbitControls.target.fromArray(mode.target);
-      cameraCurrent.zoom = mode.zoom;
+      previewCamera.zoom = mode.zoom;
       if (mode.frameSize) {
-        cameraCurrent.userData.frameSize = mode.frameSize;
+        previewCamera.userData.frameSize = mode.frameSize;
       }
-      cameraCurrent.userData.cameraView = cameraView.cameraView;
-      cameraCurrent.userData.topRotation = cameraView.cameraTopRotation;
-      getCameraPose(cameraCurrent, orbitControls.target);
+      previewCamera.userData.cameraView = cameraView.cameraView;
+      previewCamera.userData.topRotation = cameraView.cameraTopRotation;
+      getCameraPose(previewCamera, orbitControls.target);
       onPreviewContainerResize();
       recreateOrbitControlsAtTarget(orbitControls.target.clone());
       height = motionState ? {
@@ -20764,4 +20790,4 @@ function bootstrapStudioFromLoadedProject() {
     }
   };
 }
-clearInspectorHover();
+loadStudioOrStage();

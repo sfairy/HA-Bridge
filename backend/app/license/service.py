@@ -27,6 +27,7 @@ class LicenseClientError(RuntimeError):
 
 
 STORE_KEY_ID = 'hb-store-local'
+ACCESS_CACHE_TTL_SECONDS = 5.0
 BASE_FEATURES = {
     'api',
     'assets',
@@ -67,7 +68,34 @@ class LicenseService:
         self.cipher = SecretCipher(settings.license_secret_key_path)
         self._transport = transport
         self._cached_instance_id = None
+        self._access_cache_lock = threading.Lock()
+        # signed_lease sha256 → (monotonic expiry, verified payload)
+        self._access_cache: dict[str, tuple[float, dict]] = {}
         self._load_cached_store_key()
+
+    def _invalidate_access_cache(self) -> None:
+        with self._access_cache_lock:
+            self._access_cache.clear()
+
+    def _cache_key(self, signed_lease: str) -> str:
+        return hashlib.sha256(signed_lease.encode('utf-8')).hexdigest()
+
+    def _verify_lease_payload(self, state: LicenseState) -> dict:
+        '''Verify the signed lease, reusing a short in-memory cache.'''
+        cache_key = self._cache_key(state.signed_lease)
+        now_mono = time.monotonic()
+        with self._access_cache_lock:
+            cached = self._access_cache.get(cache_key)
+            if cached is not None and cached[0] > now_mono:
+                return cached[1]
+        payload = self.verifier.verify(state.signed_lease, state.instance_id)
+        expires_at = parse_timestamp(payload['expiresAt'])
+        remaining = max(0.0, (expires_at - datetime.now(UTC)).total_seconds())
+        ttl = min(ACCESS_CACHE_TTL_SECONDS, remaining) if remaining else 0.0
+        if ttl > 0:
+            with self._access_cache_lock:
+                self._access_cache[cache_key] = (time.monotonic() + ttl, payload)
+        return payload
 
     def _log_event(self, level: str, message: str) -> None:
         if self.event_log is None:
@@ -345,6 +373,7 @@ class LicenseService:
             state.last_error = str(error)
             self._record_failure('本地校验', error, sensitive_values=(state.signed_lease,))
         database.commit()
+        self._invalidate_access_cache()
         self._record_status(state.status)
 
     @staticmethod
@@ -424,6 +453,7 @@ class LicenseService:
             if response.get('recoveryToken'):
                 state.encrypted_recovery_token = self.cipher.encrypt(response['recoveryToken'])
             database.commit()
+            self._invalidate_access_cache()
             return self._payload(state)
 
     async def activate(self, activation_code: str, email: str | None = None) -> dict:
@@ -491,7 +521,7 @@ class LicenseService:
         visible_products = []
         if state.signed_lease:
             try:
-                signed_payload = self.verifier.verify(state.signed_lease, state.instance_id)
+                signed_payload = self._verify_lease_payload(state)
             except LicenseCryptoError:
                 signed_payload = {}
             raw_products = signed_payload.get('products')
@@ -523,6 +553,7 @@ class LicenseService:
             'edition': 'full' if state.license_id else None,
             'features': visible_features if state.license_id else [],
             'products': visible_products if state.license_id else [],
+            # Display-only: local store has no renew/heartbeat endpoint.
             'heartbeatIn': state.heartbeat_interval_seconds,
             'leaseIssuedAt': aware(state.lease_issued_at),
             'leaseExpiresAt': aware(state.lease_expires_at),
@@ -547,7 +578,7 @@ class LicenseService:
             self._record_failure('本地校验', '授权记录缺少签名租约或租约关联信息。')
             return False
         try:
-            payload = self.verifier.verify(state.signed_lease, state.instance_id)
+            payload = self._verify_lease_payload(state)
             issued_at = parse_timestamp(payload['issuedAt'])
             expires_at = parse_timestamp(payload['expiresAt'])
         except LicenseCryptoError as error:

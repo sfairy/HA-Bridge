@@ -1,17 +1,68 @@
 import { createWalker, animateWalker, disposeWalker } from "./presence-character.js";
-import { validPresenceRoute, createPresenceTriggers, closedPath, sampleClosedPath, presenceVisibleOnPage } from "./presence-motion.js?v=20260911-presence-pages-v2";
+import { validPresenceRoute, createPresenceTriggers, closedPath, sampleClosedPath, presenceVisibleOnPage } from "./presence-motion.js?v=0.5.3";
 export function createPresenceScene(api, wake = () => {}, getNow) {
   const walkers = new Map();
   const progressCache = new Map();
   let elapsed = 0;
   const triggers = createPresenceTriggers(getNow);
   const footWorld = new api.THREE.Vector3();
+  let footShadowAssets = null;
+
+  function createFootShadow() {
+    if (!footShadowAssets) {
+      const data = new Uint8Array(64 * 64 * 4);
+      for (let row = 0; row < 64; row++) {
+        for (let col = 0; col < 64; col++) {
+          const radius = Math.hypot((col + 0.5) / 64 * 2 - 1, (row + 0.5) / 64 * 2 - 1);
+          data[(row * 64 + col) * 4 + 3] = Math.round(255 * Math.max(0, 1 - radius * radius) ** 2);
+        }
+      }
+      const texture = new api.THREE.DataTexture(data, 64, 64);
+      texture.magFilter = texture.minFilter = api.THREE.LinearFilter;
+      texture.needsUpdate = true;
+      footShadowAssets = {
+        texture,
+        geometry: new api.THREE.PlaneGeometry(1.05, 0.8)
+      };
+    }
+    const material = new api.THREE.MeshBasicMaterial({
+      map: footShadowAssets.texture,
+      transparent: true,
+      opacity: 0.62,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
+      toneMapped: false
+    });
+    const shadow = new api.THREE.Mesh(footShadowAssets.geometry, material);
+    shadow.name = "presence-foot-shadow";
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.renderOrder = 2;
+    shadow.userData.environmentEffect = true;
+    shadow.raycast = () => {};
+    return shadow;
+  }
+
+  function walkerBounds(entry) {
+    const box = new api.THREE.Box3();
+    entry.root.updateWorldMatrix(true, true);
+    for (const child of entry.root.children) {
+      if (child !== entry.shadow) {
+        box.expandByObject(child);
+      }
+    }
+    return box;
+  }
+
   const removeWalker = id => {
     const entry = walkers.get(id);
     progressCache.set(id, {
       key: entry.progressKey,
       distance: entry.distance
     });
+    entry.shadow.removeFromParent();
+    entry.shadow.material.dispose();
     disposeWalker(entry.root);
     if (entry.routeLine) {
       entry.routeLine.geometry.dispose();
@@ -34,6 +85,7 @@ export function createPresenceScene(api, wake = () => {}, getNow) {
       return footWorld.y - entry.root.userData.soleHeight * entry.size;
     }));
     entry.root.position.y += sample.y + entry.size * 0.014 - lowestFootY;
+    entry.shadow.position.y = (sample.y + 0.008 - entry.root.position.y) / entry.size;
   }
   function hitRects(camera, canvas, sensors) {
     const rect = canvas.getBoundingClientRect();
@@ -43,7 +95,7 @@ export function createPresenceScene(api, wake = () => {}, getNow) {
       if (!sensor?.clickToFocus) {
         continue;
       }
-      const box = new api.THREE.Box3().setFromObject(entry.root);
+      const box = walkerBounds(entry);
       const projected = [];
       for (const x of [box.min.x, box.max.x]) {
         for (const y of [box.min.y, box.max.y]) {
@@ -117,6 +169,7 @@ export function createPresenceScene(api, wake = () => {}, getNow) {
             entry = {
               root,
               size,
+              shadow: createFootShadow(),
               path: closedPath(worldRoute),
               distance: cached?.key === progressKey ? cached.distance : 0,
               progressKey,
@@ -125,6 +178,7 @@ export function createPresenceScene(api, wake = () => {}, getNow) {
               simulated,
               preview: simulated && !previewWalk
             };
+            root.add(entry.shadow);
             if (simulated) {
               const linePoints = [...worldRoute, worldRoute[0]].map(point => new api.THREE.Vector3(point.x, point.y + 0.025, point.z));
               entry.routeLine = new api.THREE.Line(new api.THREE.BufferGeometry().setFromPoints(linePoints), new api.THREE.LineBasicMaterial({
@@ -245,6 +299,9 @@ export function createPresenceScene(api, wake = () => {}, getNow) {
         removeWalker(id);
       }
       progressCache.clear();
+      footShadowAssets?.geometry.dispose();
+      footShadowAssets?.texture.dispose();
+      footShadowAssets = null;
     }
   };
 }

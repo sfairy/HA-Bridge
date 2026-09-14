@@ -1,4 +1,4 @@
-import { DRACOLoader } from "/bridge-static/vendor/three/0.186.0/DRACOLoader.js?v=20260910-three-0186-draco-v2";
+import { DRACOLoader } from "/bridge-static/vendor/three/0.186.0/DRACOLoader.js?v=0.5.3";
 
 function workerStartError(error) {
   const message = String(error?.message || "").trim();

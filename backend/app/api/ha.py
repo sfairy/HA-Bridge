@@ -19,6 +19,9 @@ from dependencies import (
     resolve_viewer_principal,
     viewer_entity_ids,
 )
+from dependencies import (
+    require_admin as _require_admin,
+)
 from display_access import active_display_device
 from fastapi import APIRouter, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
 from global_log import event_context
@@ -92,8 +95,7 @@ ALLOWED_SERVICES: dict[tuple[str, str], set[str]] = {
 
 
 def require_admin(user: User) -> None:
-    if user.role != 'admin':
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='仅管理员可以修改 Home Assistant 连接。')
+    _require_admin(user, detail='仅管理员可以修改 Home Assistant 连接。')
 
 
 def active_connection(database: DatabaseSession) -> HAConnection | None:

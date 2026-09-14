@@ -1,6 +1,6 @@
 const climateModule = await (import.meta.url.startsWith("file:")
   ? import(new URL("../../static/renderer/climate.js", import.meta.url))
-  : import("/bridge-static/renderer/climate.js?v=20260908-climate-v1"));
+  : import("/bridge-static/renderer/climate.js?v=0.5.3"));
 const {
   normalizeClimateCapabilities,
   climateIsPoweredOn,

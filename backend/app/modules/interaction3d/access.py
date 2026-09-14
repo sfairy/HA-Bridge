@@ -10,7 +10,7 @@ MAX_GRANT_SECONDS = 15
 
 def allowed(request: Request) -> bool:
     service = request.app.state.license_service
-    # Local leases that grant editor also unlock this BASE_FEATURES module.
+    # Base edition leases include module.3d_interaction; editor also unlocks BASE_FEATURES.
     return service.allows(FEATURE)
 
 
@@ -20,7 +20,7 @@ def require_access(request: Request) -> None:
             403,
             detail={
                 'code': 'INTERACTION3D_RESTRICTED',
-                'message': '当前授权未开通 3D 交互功能增量包，或该权益已失效。',
+                'message': '当前授权未开通 3D 交互，或该权益已失效。',
             },
         )
 

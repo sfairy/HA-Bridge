@@ -4,7 +4,7 @@ import secrets
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from dependencies import DatabaseSession, LicensedUser
+from dependencies import DatabaseSession, LicensedUser, require_admin
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from ha.crypto import CredentialCipher, CredentialCipherError
 from models import DisplayDevice, DisplayPairingCode, Project, User
@@ -20,9 +20,8 @@ from sqlalchemy import select
 router = APIRouter(prefix='/displays', tags=['displays'])
 
 
-def require_admin(user: User) -> None:
-    if user.role != 'admin':
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='仅管理员可以管理中控设备。')
+def _require_display_admin(user: User) -> None:
+    require_admin(user, detail='仅管理员可以管理中控设备。')
 
 
 def device_payload(device: DisplayDevice, project: Project) -> dict:
@@ -85,7 +84,7 @@ def unique_pairing_code(database: DatabaseSession, requested: str | None = None)
 
 @router.get('')
 def list_display_devices(database: DatabaseSession, user: LicensedUser) -> dict:
-    require_admin(user)
+    _require_display_admin(user)
     devices = list(
         database.scalars(
             select(DisplayDevice)
@@ -118,7 +117,7 @@ def list_pairing_codes(
     user: LicensedUser,
     project_id: str | None = Query(default=None, alias='projectId'),
 ) -> dict:
-    require_admin(user)
+    _require_display_admin(user)
     query = select(DisplayPairingCode).order_by(DisplayPairingCode.created_at.desc())
     if project_id is not None:
         query = query.where(DisplayPairingCode.project_id == project_id)
@@ -159,7 +158,7 @@ def create_pairing_code(
     database: DatabaseSession,
     user: LicensedUser,
 ) -> dict:
-    require_admin(user)
+    _require_display_admin(user)
     if not request.app.state.license_service.allows('display'):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='当前授权不允许添加中控设备。')
     project = database.get(Project, payload.project_id)
@@ -190,7 +189,7 @@ def update_pairing_code(
     database: DatabaseSession,
     user: LicensedUser,
 ) -> dict:
-    require_admin(user)
+    _require_display_admin(user)
     pairing = database.get(DisplayPairingCode, pairing_id)
     if pairing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='配对码不存在。')
@@ -220,7 +219,7 @@ def update_pairing_code(
 
 @router.delete('/pairing-codes/{pairing_id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_pairing_code(pairing_id: str, database: DatabaseSession, user: LicensedUser) -> None:
-    require_admin(user)
+    _require_display_admin(user)
     pairing = database.get(DisplayPairingCode, pairing_id)
     if pairing is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='配对码不存在。')
@@ -290,7 +289,7 @@ def update_display_device(
     database: DatabaseSession,
     user: LicensedUser,
 ) -> dict:
-    require_admin(user)
+    _require_display_admin(user)
     device = database.get(DisplayDevice, device_id)
     if device is None or device.revoked_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='中控设备不存在。')
@@ -317,7 +316,7 @@ def update_display_device(
 
 @router.delete('/{device_id}', status_code=status.HTTP_204_NO_CONTENT)
 def revoke_display_device(device_id: str, database: DatabaseSession, user: LicensedUser) -> None:
-    require_admin(user)
+    _require_display_admin(user)
     device = database.get(DisplayDevice, device_id)
     if device is None or device.revoked_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='中控设备不存在。')

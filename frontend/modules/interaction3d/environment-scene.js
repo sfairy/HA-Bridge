@@ -1,4 +1,4 @@
-import { createEnvironmentHalos } from "./environment-halos.js?v=20260908-model-halo-v1";
+import { createEnvironmentHalos } from "./environment-halos.js?v=0.5.3";
 export function pageDimming(settings, pageOrAlias, focused = false) {
   const page = {
     climate: "environment",

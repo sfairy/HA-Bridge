@@ -1,5 +1,10 @@
 import { televisionState } from "./television-state.js";
-const APPLE_TV_PATH = "M18.71,19.5C17.88,20.74 17,21.95 15.66,21.97C14.32,22 13.89,21.18 12.37,21.18C10.84,21.18 10.37,21.95 9.1,22C7.79,22.05 6.8,20.68 5.96,19.47C4.25,17 2.94,12.45 4.7,9.39C5.57,7.87 7.13,6.91 8.82,6.88C10.1,6.86 11.32,7.75 12.11,7.75C12.89,7.75 14.37,6.68 15.92,6.84C16.57,6.87 18.39,7.1 19.56,8.82C19.47,8.88 17.39,10.1 17.41,12.63C17.44,15.65 20.06,16.66 20.09,16.67C20.06,16.74 19.67,18.11 18.71,19.5M13,3.5C13.73,2.67 14.94,2.04 15.94,2C16.07,3.17 15.6,4.35 14.9,5.19C14.21,6.04 13.07,6.7 11.95,6.61C11.8,5.46 12.36,4.26 13,3.5Z";
+
+const posterModuleUrl = import.meta.url.startsWith("file:")
+  ? new URL("../../static/3d-studio/studio-television-poster.js?v=0.5.3", import.meta.url)
+  : "/bridge-static/3d-studio/studio-television-poster.js?v=0.5.3";
+const { drawTelevisionPoster } = await import(posterModuleUrl);
+
 export function createTelevisionScreens({
   THREE,
   requestFrame = () => {}
@@ -10,14 +15,37 @@ export function createTelevisionScreens({
   let screenNodes = new Map();
   let disposed = false;
   const bindingKey = binding => JSON.stringify([binding.floorId, binding.modelId]);
+  function collectGlows(modelNode) {
+    const glows = [];
+    modelNode.traverse(child => {
+      if (child.userData?.televisionGlow) {
+        glows.push([child, child.visible]);
+        child.visible = false;
+      }
+    });
+    return glows;
+  }
+  function restoreGlows(entry) {
+    for (const [glowNode, wasVisible] of entry.glows) {
+      glowNode.visible = wasVisible;
+    }
+  }
+  function attachMaterials(entry, screenMesh) {
+    const original = screenMesh.material;
+    const materials = Array.from({
+      length: 6
+    }, (_slot, faceIndex) => faceIndex === 4 ? entry.material : Array.isArray(original) ? original[faceIndex] : original);
+    entry.screen = screenMesh;
+    entry.original = original;
+    entry.materials = materials;
+    screenMesh.material = materials;
+  }
   function disposeEntry(entry) {
     entry.generation++;
     if (entry.screen.material === entry.materials) {
       entry.screen.material = entry.original;
     }
-    for (const [glowNode, wasVisible] of entry.glows) {
-      glowNode.visible = wasVisible;
-    }
+    restoreGlows(entry);
     entry.texture.dispose();
     entry.material.dispose();
   }
@@ -31,24 +59,18 @@ export function createTelevisionScreens({
       state,
       image
     } = entry;
-    context.fillStyle = "#050609";
-    context.fillRect(0, 0, canvas.width, canvas.height);
     if (state.on && image) {
+      context.fillStyle = "#050609";
+      context.fillRect(0, 0, canvas.width, canvas.height);
       const scale = Math.min(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight);
       const drawWidth = image.naturalWidth * scale;
       const drawHeight = image.naturalHeight * scale;
       context.drawImage(image, (canvas.width - drawWidth) / 2, (canvas.height - drawHeight) / 2, drawWidth, drawHeight);
     } else if (state.on) {
-      context.save();
-      context.translate(canvas.width / 2 - 36, 76);
-      context.scale(3, 3);
-      context.fillStyle = "#e2e5eb";
-      context.fill(new Path2D(APPLE_TV_PATH));
-      context.restore();
-      context.textAlign = "center";
-      context.fillStyle = "#9da5b1";
-      context.font = "18px sans-serif";
-      context.fillText("暂无播放内容", canvas.width / 2, 196);
+      drawTelevisionPoster(canvas, context);
+    } else {
+      context.fillStyle = "#050609";
+      context.fillRect(0, 0, canvas.width, canvas.height);
     }
     entry.texture.needsUpdate = true;
     requestFrame([entry.floorId]);
@@ -97,9 +119,12 @@ export function createTelevisionScreens({
         activeKeys.add(key);
         let entry = items.get(key);
         if (entry && entry.screen !== screenMesh) {
-          disposeEntry(entry);
-          items.delete(key);
-          entry = null;
+          if (entry.screen.material === entry.materials) {
+            entry.screen.material = entry.original;
+          }
+          restoreGlows(entry);
+          attachMaterials(entry, screenMesh);
+          entry.glows = collectGlows(modelNode);
         }
         if (!entry) {
           const canvas = document.createElement("canvas");
@@ -118,33 +143,24 @@ export function createTelevisionScreens({
             polygonOffsetFactor: -2,
             polygonOffsetUnits: -2
           });
-          const original = screenMesh.material;
-          const materials = Array.from({
-            length: 6
-          }, (_slot, faceIndex) => faceIndex === 4 ? material : Array.isArray(original) ? original[faceIndex] : original);
-          const glows = [];
-          modelNode.traverse(child => {
-            if (child.userData?.televisionGlow) {
-              glows.push([child, child.visible]);
-              child.visible = false;
-            }
-          });
           entry = {
             floorId: binding.floorId,
             screen: screenMesh,
-            original,
-            materials,
+            original: screenMesh.material,
+            materials: null,
             material,
             canvas,
             context,
             texture,
-            glows,
+            glows: collectGlows(modelNode),
             generation: 0,
             artwork: "",
             signature: "",
-            image: null
+            image: null,
+            state: televisionState(binding, states)
           };
-          screenMesh.material = materials;
+          paintEntry(entry);
+          attachMaterials(entry, screenMesh);
           items.set(key, entry);
         }
         const mediaState = televisionState(binding, states);

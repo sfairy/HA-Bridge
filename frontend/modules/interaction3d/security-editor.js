@@ -1,7 +1,8 @@
-import { mountInteraction3d } from './runtime.js?v=20260909-preview-sleep-v1-20260911-security-camera-popup-v6';
-import { openPresenceEditor } from './presence-editor.js?v=20260911-security-focal-v1-presence-pages-v2';
+import { PRESENCE_TRIGGER_MODES, presenceTriggerIsTimed } from './presence-motion.js?v=0.5.3';
+import { mountInteraction3d } from './runtime.js?v=0.5.3';
+import { openPresenceEditor } from './presence-editor.js?v=0.5.3';
 import { randomUuid } from '/bridge-static/utils/random-id.js';
-import { requestInteraction3dAccess, subscribeInteraction3dAccess } from '/bridge-static/modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1-focus-layout-anim-v1';
+import { requestInteraction3dAccess, subscribeInteraction3dAccess } from '/bridge-static/modules/interaction3d/bridge.js?v=0.5.3';
 import { interaction3dPreviewSize } from '/bridge-static/modules/interaction3d/preview-layout.js';
 import { cameraPopupLayout, cameraPreviewRatio } from '/bridge-static/modules/interaction3d/camera-popup-layout.js';
 export async function openSecurityEditor({
@@ -36,7 +37,7 @@ export async function openSecurityEditor({
   };
   const stylesheetLink = createEl("link");
   stylesheetLink['rel'] = 'stylesheet';
-  stylesheetLink['href'] = '/api/v1/modules/interaction3d/runtime.css?v=20260911-security-layout-v2-20260912-compact-list-note-v1';
+  stylesheetLink['href'] = '/api/v1/modules/interaction3d/runtime.css?v=0.5.3';
   const dialog = createEl('dialog', 'i3d-editor');
   dialog['setAttribute']('aria-label', '3D 安防配置');
   dialog['dataset']['i3dPreviewScope'] = 'security';
@@ -171,7 +172,7 @@ export async function openSecurityEditor({
     container['append'](field);
     return select;
   }
-  function addNumberField(label, value, min, max, onChange, step = 0.1) {
+  function addNumberField(label, value, min, max, onChange, step = 0.1, live = false) {
     const input = createEl('input');
     Object['assign'](input, {
       'type': 'number',
@@ -181,6 +182,16 @@ export async function openSecurityEditor({
       'step': step
     });
     input["setAttribute"]('aria-label', label);
+    if (live) {
+      input['addEventListener']('input', () => {
+        const parsed = Number(input['value']);
+        if (input['value']['trim']() && Number['isFinite'](parsed) && parsed >= min && parsed <= max) {
+          value = parsed;
+          onChange(parsed);
+          markDirty();
+        }
+      });
+    }
     input['addEventListener']('change', () => {
       const parsed = Number(input['value']);
       if (!input['value']["trim"]() || !Number["isFinite"](parsed) || parsed < min || parsed > max) {
@@ -483,7 +494,60 @@ export async function openSecurityEditor({
       entityBtn['title'] = entityLabel;
       entityBtn['className'] = "i3d-picker-button";
       entityBtn['setAttribute']('aria-label', '选择' + kindLabel() + '实体');
-      kind === 'presence' ? (detectionBody['append'](createEl('p', 'i3d-note', '仅在自动匹配不合适时更换来源。无设备归属的模板实体可手动绑定。'), entityBtn), container['append'](createEl('p', 'i3d-note', '配置时点击标签选择传感器；正式页面仅展示模型和感应效果。'))) : container['append'](entityBtn);
+      if (kind === 'presence') {
+        detectionBody['append'](createEl('p', 'i3d-note', '可选择摄像头检测、人体传感器或自定义实体，按检测结果触发。'), entityBtn);
+        container = detectionBody;
+        addSelect('触发方式', PRESENCE_TRIGGER_MODES, item['triggerMode'] || 'auto', nextMode => {
+          item['triggerMode'] = nextMode;
+          if (nextMode === 'equals') {
+            item['triggerValue'] ||= 'on';
+          }
+          if (nextMode === 'threshold') {
+            item['triggerThreshold'] ??= 0;
+          }
+          if (presenceTriggerIsTimed(item) && !(item['displayDuration'] > 0)) {
+            item['displayDuration'] = 30;
+          }
+          markDirty();
+          renderPanel();
+        });
+        if (item['triggerMode'] === 'threshold') {
+          addNumberField('数值大于', item['triggerThreshold'] ?? 0, -1000000, 1000000, nextThreshold => {
+            item['triggerThreshold'] = nextThreshold;
+          }, 0.1, true);
+        }
+        if (item['triggerMode'] === 'equals') {
+          const valueInput = createEl('input');
+          valueInput['value'] = item['triggerValue'] ?? 'on';
+          valueInput['maxLength'] = 128;
+          valueInput['setAttribute']('aria-label', '触发值');
+          valueInput['addEventListener']('input', () => {
+            if (valueInput['value']['trim']()) {
+              item['triggerValue'] = valueInput['value']['trim']().slice(0, 128);
+              markDirty();
+            }
+          });
+          valueInput['addEventListener']('change', () => {
+            valueInput['value'] = item['triggerValue'] ?? 'on';
+          });
+          const valueField = createEl('label');
+          valueField['append'](createEl('span', '', '触发值'), valueInput);
+          container['append'](valueField);
+        }
+        const timed = presenceTriggerIsTimed(item);
+        addNumberField('触发后显示（秒）', item['displayDuration'] ?? (timed ? 30 : 0), timed ? 1 : 0, 3600, nextDuration => {
+          item['displayDuration'] = nextDuration;
+        }, 1, true);
+        container['append'](createEl('p', 'i3d-note', item['triggerMode'] === 'change' || item['triggerMode'] === 'equals'
+          ? '只比较状态值，属性刷新不触发；首次加载和离线恢复不触发。再次触发重新计时。'
+          : timed
+            ? '按检测事件发生时间计时，再次检测重新计时；到时隐藏。'
+            : '0 秒：满足条件时持续显示，不满足时隐藏。其他值：达到时长后隐藏。自动识别开关状态、检测事件及名称明确的人数；其他数值请设置阈值。'));
+        container = bindingSection;
+        container['append'](createEl('p', 'i3d-note', '配置时点击标签选择传感器；正式页面仅展示模型和感应效果。'));
+      } else {
+        container['append'](entityBtn);
+      }
       if (kind === "camera") {
         container['append'](createEl('p', 'i3d-note', '标签显示设备状态；仅点击聚焦后连接视频，退出时断开。可拖动标签调整位置。'));
         const labelSection = addSection('标签设置');

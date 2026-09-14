@@ -1,4 +1,14 @@
-import { mapCorners, mapSource } from "./vacuum-map.js?v=20260909-curtain-action-v15";
+import { mapCorners, mapSource } from "./vacuum-map.js?v=0.5.3";
+export function planFurniture(plan = {}) {
+  const pixelsPerMeter = Number(plan.pixelsPerMeter) > 0 ? Number(plan.pixelsPerMeter) : 1;
+  const skipTypes = new Set(["downlight", "ceilinglight", "striplight", "camera", "presence", "flooropening", "label"]);
+  return (plan.items || []).filter(item => !skipTypes.has(item.type) && [item.x, item.y, item.width, item.depth].every(Number.isFinite) && item.width > 0 && item.depth > 0).map(item => ({
+    ...item,
+    width: item.width * pixelsPerMeter,
+    depth: item.depth * pixelsPerMeter,
+    rotation: Number(item.rotation) || 0
+  }));
+}
 export function openVacuumMapEditor({
   item,
   floor: plan,
@@ -21,7 +31,8 @@ export function openVacuumMapEditor({
     return el;
   };
   const walls = plan?.plan?.walls || [];
-  const wallPoints = walls.flatMap(wall => [wall.start, wall.end]);
+  const furniture = planFurniture(plan?.plan);
+  const wallPoints = [...walls.flatMap(wall => [wall.start, wall.end]), ...furniture.flatMap(mapCorners)];
   const minX = wallPoints.length ? Math.min(...wallPoints.map(point => point.x)) : 0;
   const minY = wallPoints.length ? Math.min(...wallPoints.map(point => point.y)) : 0;
   const planWidth = Math.max(100, wallPoints.length ? Math.max(...wallPoints.map(point => point.x)) - minX : 1000);
@@ -113,8 +124,99 @@ export function openVacuumMapEditor({
   const mapImage = createSvg("image", {
     preserveAspectRatio: "none"
   });
+  const furnitureGroup = createSvg("g", {
+    "pointer-events": "none",
+    "data-layer": "furniture"
+  });
   const wallsGroup = createSvg("g");
   const handlesGroup = createSvg("g");
+  const furnitureLabels = [];
+  for (const piece of furniture) {
+    const width = piece.width;
+    const depth = piece.depth;
+    const group = createSvg("g", {
+      transform: "translate(" + piece.x + " " + piece.y + ") rotate(" + piece.rotation + ")",
+      "data-furniture-id": piece.id,
+      fill: /^#[0-9a-f]{6}$/i.test(piece.color || "") ? piece.color : "#91a4b5",
+      "fill-opacity": 0.28,
+      stroke: "#d0dae3",
+      "stroke-width": 1,
+      "stroke-opacity": 0.8
+    });
+    const appendShape = (tag, attrs) => group.append(createSvg(tag, {
+      ...attrs,
+      "vector-effect": "non-scaling-stroke"
+    }));
+    const round = ["plant", "robotvacuum", "roundtable", "stool"].includes(piece.type);
+    appendShape(round ? "ellipse" : "rect", round ? {
+      cx: 0,
+      cy: 0,
+      rx: width / 2,
+      ry: depth / 2
+    } : {
+      x: -width / 2,
+      y: -depth / 2,
+      width,
+      height: depth,
+      rx: Math.min(width, depth) * 0.06
+    });
+    if (piece.type === "bed") {
+      appendShape("rect", {
+        x: -width * 0.42,
+        y: -depth * 0.43,
+        width: width * 0.36,
+        height: depth * 0.2,
+        rx: depth * 0.03
+      });
+      appendShape("rect", {
+        x: width * 0.06,
+        y: -depth * 0.43,
+        width: width * 0.36,
+        height: depth * 0.2,
+        rx: depth * 0.03
+      });
+      appendShape("line", {
+        x1: -width / 2,
+        x2: width / 2,
+        y1: -depth * 0.12,
+        y2: -depth * 0.12
+      });
+    } else if (piece.type === "sofa") {
+      appendShape("rect", {
+        x: -width * 0.38,
+        y: -depth * 0.26,
+        width: width * 0.76,
+        height: depth * 0.65,
+        rx: depth * 0.04
+      });
+      appendShape("line", {
+        x1: 0,
+        x2: 0,
+        y1: -depth * 0.26,
+        y2: depth * 0.39
+      });
+    }
+    furnitureGroup.append(group);
+    if (piece.name) {
+      const label = createSvg("text", {
+        x: piece.x,
+        y: piece.y,
+        fill: "#e0e7ed",
+        "text-anchor": "middle",
+        "dominant-baseline": "central",
+        stroke: "#17212d",
+        "stroke-width": 2.5,
+        "paint-order": "stroke",
+        "vector-effect": "non-scaling-stroke"
+      });
+      label.textContent = piece.name;
+      furnitureGroup.append(label);
+      furnitureLabels.push({
+        label,
+        item: piece
+      });
+    }
+  }
   for (const wall of walls) {
     wallsGroup.append(createSvg("line", {
       x1: wall.start.x,
@@ -127,7 +229,7 @@ export function openVacuumMapEditor({
       "pointer-events": "none"
     }));
   }
-  svg.append(mapImage, wallsGroup, handlesGroup);
+  svg.append(mapImage, furnitureGroup, wallsGroup, handlesGroup);
   planPane.append(svg);
   const viewTools = createEl("div");
   viewTools.className = "i3d-vacuum-view-tools";
@@ -202,6 +304,17 @@ export function openVacuumMapEditor({
   });
   visibleLabel.append(createEl("span", "显示地图"), visibleCheckbox);
   aside.append(visibleLabel);
+  const furnitureLabel = createEl("label");
+  const furnitureCheckbox = createEl("input");
+  furnitureLabel.className = "i3d-setting-toggle";
+  furnitureCheckbox.type = "checkbox";
+  furnitureCheckbox.checked = true;
+  furnitureCheckbox.setAttribute("aria-label", "显示家具参照");
+  furnitureCheckbox.addEventListener("change", () => {
+    furnitureGroup.style.display = furnitureCheckbox.checked ? "" : "none";
+  });
+  furnitureLabel.append(createEl("span", "显示家具参照"), furnitureCheckbox);
+  aside.append(furnitureLabel);
   aside.append(createButton("重置地图位置", () => {
     Object.assign(draft.map, defaultMap);
     visibleCheckbox.checked = true;
@@ -216,12 +329,23 @@ export function openVacuumMapEditor({
     mapImage.setAttribute("href", mapSource(draft.map.entityId));
   }
   aside.append(mapNote);
+  let lastLabelScale = null;
   function render() {
     const map = draft.map;
     const handleRadius = 1 / Math.max(0.001, svg.getScreenCTM()?.a || 1);
     for (const [key, input] of fieldInputs) {
       if (doc.activeElement !== input) {
         input.value = Number(map[key].toFixed(2));
+      }
+    }
+    if (handleRadius !== lastLabelScale) {
+      lastLabelScale = handleRadius;
+      for (const {
+        label,
+        item: piece
+      } of furnitureLabels) {
+        label.setAttribute("font-size", Math.min(11 * handleRadius, piece.width * 0.85 / Math.max(1, [...piece.name].length)));
+        label.style.display = Math.min(piece.width, piece.depth) / handleRadius < 25 ? "none" : "";
       }
     }
     for (const [name, value] of Object.entries({

@@ -1,5 +1,5 @@
 const SOUND_ENABLED_KEY = "ha-bridge-dashboard-sound-enabled";
-const BUTTON_CLICK_URL = "/bridge-static/audio/button-click.mp3?v=20260826-button-sound-v1";
+const BUTTON_CLICK_URL = "/bridge-static/audio/button-click.mp3?v=0.5.3";
 function readSoundEnabled() {
   try {
     const stored = window.localStorage.getItem(SOUND_ENABLED_KEY);

@@ -1,4 +1,4 @@
-import { createRenderLightIndex } from "../modules/interaction3d/render-light-index.js?v=20260907-focus-work-v1";
+import { createRenderLightIndex } from "../modules/interaction3d/render-light-index.js?v=0.5.3";
 const DEFAULT_ATLAS_PADDING = 1;
 function positiveInt(value, fallback = 0) {
   const parsed = Math.floor(Number(value));
@@ -189,6 +189,14 @@ function isolateLightForBake(light, scene, camera) {
       }
     });
     light.layers.mask = appliedMask;
+  }
+  // Stage prewarm collects off lights; force the light itself visible for the
+  // shadow pass and restore afterwards so live frames keep authored state.
+  if (light && light.visible === false) {
+    restores.push(() => {
+      light.visible = false;
+    });
+    light.visible = true;
   }
   let node = light?.parent;
   while (node && node !== scene) {
@@ -512,12 +520,18 @@ export function createSpotShadowAtlasController({
         light.intensity = Math.max(Number(light.userData?.lightOnIntensity || light.intensity || 1), 0.001);
         sync(root);
         setAtlasEnabledUniform(false);
+        light.visible = true;
         light.castShadow = true;
         light.shadow.autoUpdate = false;
         light.shadow.needsUpdate = true;
         light.target?.updateWorldMatrix?.(true, false);
         light.updateWorldMatrix?.(true, false);
         const restoreBakeContext = isolateLightForBake(light, scene, camera);
+        // sync() clears castShadow on currently-visible candidates; isolate may
+        // also restore ancestor visibility. Re-assert bake-critical flags after both.
+        light.visible = true;
+        light.castShadow = true;
+        let bakeDiag = null;
         // Floor transitions temporarily force shadowMap.autoUpdate/needsUpdate both
         // false, which makes Three.js skip the entire shadow pass. Force a bake via
         // renderer.render so currentRenderState.lights exists (required by r182
@@ -530,6 +544,7 @@ export function createSpotShadowAtlasController({
           renderer.shadowMap.needsUpdate = true;
           renderer.setRenderTarget(scratchTarget);
           renderer.render(scene, camera);
+          bakeDiag = describeUnbakeableLight(light, scene, camera);
         } finally {
           restoreBakeContext();
           // Revert only when still at bake values so a concurrent floor-motion
@@ -546,12 +561,15 @@ export function createSpotShadowAtlasController({
           // A single un-bakeable light (detached from the render root, or authored
           // on a floor/camera layer the bake camera cannot see) must not discard
           // the whole atlas and force the no-shadow fallback. Skip it, keep the
-          // remaining lights shadowed, and report the cause once.
+          // remaining lights shadowed, and report the cause once for lights that
+          // were authored on. Stage prewarm also collects off lights; those skips
+          // are expected and stay quiet.
           const unbakeableKey = lightIdentityKey(light);
           skippedLightCount += 1;
-          if (!warnedUnbakeableLights.has(unbakeableKey)) {
+          const authoredOn = snapshot.visible !== false && Number(light.userData?.lightBrightness || 0) > 0;
+          if (authoredOn && !warnedUnbakeableLights.has(unbakeableKey)) {
             warnedUnbakeableLights.add(unbakeableKey);
-            console.warn("[3D] 灯光 " + unbakeableKey + " 无法生成阴影贴图，已跳过该灯光的图集写入。", describeUnbakeableLight(light, scene, camera));
+            console.warn("[3D] 灯光 " + unbakeableKey + " 无法生成阴影贴图，已跳过该灯光的图集写入。", bakeDiag || describeUnbakeableLight(light, scene, camera));
           }
           light.castShadow = false;
           light.visible = false;

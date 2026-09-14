@@ -1,10 +1,10 @@
-import { resolvePageBehavior } from "./page-behavior.js?v=20260910-full-page-behavior-v1";
-import { performanceWarnings, confirmPerformanceWarning } from "./performance-warning.js?v=20260908-performance-warning-v1-motion-resolution-v1";
-import { normalizeGroundReflection } from "./reflection-settings.js?v=20260908-reflections-v1";
-import { requestInteraction3dAccess, getInteraction3dEditorView, waitInteraction3dEditorView, cancelOtherInteraction3dViews } from "./bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1";
-import { createInteraction3dCover, updateInteraction3dCoverMessage } from "./cover.js?v=20260905-interaction3d-cover-v1-20260908-access-lock-v1";
-import { withRequestTimeout } from "../../utils/request-timeout.js?v=20260907-browser-compat-v1";
-import { INTERACTION3D_LIGHTING_MODES, normalizeInteraction3dLightingMode } from "./definition.js?v=20260905-interaction3d-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1";
+import { resolvePageBehavior } from "./page-behavior.js?v=0.5.3";
+import { performanceWarnings, confirmPerformanceWarning } from "./performance-warning.js?v=0.5.3";
+import { normalizeGroundReflection } from "./reflection-settings.js?v=0.5.3";
+import { requestInteraction3dAccess, getInteraction3dEditorView, waitInteraction3dEditorView, cancelOtherInteraction3dViews } from "./bridge.js?v=0.5.3";
+import { createInteraction3dCover, updateInteraction3dCoverMessage } from "./cover.js?v=0.5.3";
+import { withRequestTimeout } from "../../utils/request-timeout.js?v=0.5.3";
+import { INTERACTION3D_LIGHTING_MODES, normalizeInteraction3dLightingMode, BACKGROUND_THEMES, normalizeBackgroundTheme } from "./definition.js?v=0.5.3";
 export function interaction3dEntries(node, path = [], entries = new Map()) {
   if (Array.isArray(node)) {
     node.forEach((item, index) => interaction3dEntries(item, [...path, String(item?.id ?? item?.path ?? index)], entries));
@@ -304,7 +304,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       await requestInteraction3dAccess();
       const {
         openInteraction3dAppearanceEditor: openAppearanceEditor
-      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1-20260911-unified-settings-v1-focus-layout-anim-v1-hint-align-v1-20260912-align-v1-nas-select-tdz-fix-v1");
+      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=0.5.3");
       await openAppearanceEditor({
         component,
         onSave: baseLighting => callbacks.onChange({
@@ -336,7 +336,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     try {
       const {
         openInteraction3dEditor: openDevicesEditor
-      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1-20260911-unified-settings-v1-focus-layout-anim-v1-hint-align-v1-20260912-align-v1-nas-select-tdz-fix-v1");
+      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=0.5.3");
       await openDevicesEditor({
         component,
         deviceKind: "devices",
@@ -366,7 +366,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       await requestInteraction3dAccess();
       const {
         openSecurityEditor
-      } = await import("/api/v1/modules/interaction3d/security-editor.js?v=20260911-security-focal-v1-focus-layout-anim-v1-presence-pages-v2");
+      } = await import("/api/v1/modules/interaction3d/security-editor.js?v=0.5.3");
       await openSecurityEditor({
         component,
         panelDocument: callbacks.document,
@@ -395,7 +395,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
     try {
       const {
         openInteraction3dEditor: openVacuumEditor
-      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1-20260911-unified-settings-v1-focus-layout-anim-v1-hint-align-v1-20260912-align-v1-nas-select-tdz-fix-v1");
+      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=0.5.3");
       await openVacuumEditor({
         component,
         deviceKind: "vacuum",
@@ -450,7 +450,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       await requestInteraction3dAccess();
       const {
         openInteraction3dEditor: openClimateEditor
-      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1-20260911-unified-settings-v1-focus-layout-anim-v1-hint-align-v1-20260912-align-v1-nas-select-tdz-fix-v1");
+      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=0.5.3");
       await openClimateEditor({
         component,
         document: callbacks.document,
@@ -475,7 +475,7 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       await requestInteraction3dAccess();
       const {
         openInteraction3dEditor: openEnvironmentEditor
-      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=20260909-preview-sleep-v1-20260911-unified-settings-v1-focus-layout-anim-v1-hint-align-v1-20260912-align-v1-nas-select-tdz-fix-v1");
+      } = await import("/api/v1/modules/interaction3d/config-editor.js?v=0.5.3");
       await openEnvironmentEditor({
         component,
         deviceKind: "environment",
@@ -526,6 +526,24 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
       } else {
         disabledCurrent.value = String(canvasWidth.floorGap ?? metadata?.metadata?.floorGap ?? 3);
       }
+    }
+  });
+  const uniformOverviewStackInput = createEl("input");
+  Object.assign(uniformOverviewStackInput, {
+    name: "i3d-uniform-overview-stack",
+    type: "checkbox",
+    checked: canvasWidth.uniformOverviewStack ?? metadata?.metadata?.uniformOverviewStack ?? false
+  });
+  viewEditing(section, "多层等比例叠加", uniformOverviewStackInput);
+  uniformOverviewStackInput.parentElement.className = "i3d-setting-toggle i3d-view-toggle";
+  section.append(createEl("p", "inspector-section-note", "仅总览生效：各层使用相同视角。调小楼层间距可让各层继续靠近，允许重叠。"));
+  uniformOverviewStackInput.addEventListener("change", () => {
+    if (!uniformOverviewStackInput.disabled) {
+      applyInspectorChange({
+        properties: {
+          uniformOverviewStack: uniformOverviewStackInput.checked
+        }
+      });
     }
   });
   const appendCurrent = createEl("div", "i3d-floor-number-group");
@@ -1281,6 +1299,26 @@ export function renderInteraction3dInspector(panel, component, callbacks) {
   }
   appendRaw.append(createEl("span", "", "户型底图"), setAttributePrevious);
   appendPending.append(appendRaw);
+  const backgroundThemeSelect = createEl("select");
+  backgroundThemeSelect.name = "i3d-background-theme";
+  backgroundThemeSelect.setAttribute("aria-label", "背景主题");
+  for (const [themeValue, themeLabel] of BACKGROUND_THEMES) {
+    const themeOption = createEl("option", "", themeLabel);
+    themeOption.value = themeValue;
+    backgroundThemeSelect.append(themeOption);
+  }
+  backgroundThemeSelect.value = normalizeBackgroundTheme(canvasWidth.backgroundTheme);
+  backgroundThemeSelect.addEventListener("change", () => {
+    if (!compWidth.has(backgroundThemeSelect)) {
+      applyInspectorChange({
+        properties: {
+          backgroundTheme: normalizeBackgroundTheme(backgroundThemeSelect.value)
+        }
+      });
+    }
+  });
+  viewEditing(appendPending, "背景主题", backgroundThemeSelect);
+  appendPending.append(createEl("p", "inspector-section-note", "微光围绕户型中心渐隐，随视角呈现远近层次；操作反馈会逐渐消退。"));
   const renderScaleSelectEl = createEl("select");
   renderScaleSelectEl.name = "i3d-render-scale";
   for (const [renderScaleValue, renderScaleLabel] of [[1.5, "高清 150%"], [1, "标准 100%"], [0.8, "均衡 80%"], [0.75, "均衡 75%"], [0.5, "流畅 50%"], [0.25, "低负载 25%"]]) {

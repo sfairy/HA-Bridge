@@ -18,7 +18,7 @@ function normalizeOverrides(raw) {
     return normalized;
   }
   for (const [overrideKey, override] of Object.entries(raw)) {
-    if (!isRegionLightKey(overrideKey) || !override || typeof override != "object" || Array.isArray(override) || !["circle", "square", "ellipse", "strip"].includes(override.shape) || !["width", "depth"].every(prop => typeof override[prop] == "number" && Number.isFinite(override[prop])) || ["rotation", "softness"].some(prop => override[prop] !== undefined && (typeof override[prop] != "number" || !Number.isFinite(override[prop]))) || ["offsetX", "offsetZ"].some(prop => override[prop] !== undefined && (typeof override[prop] != "number" || !Number.isFinite(override[prop]))) || override.moveCenterEnabled !== undefined && typeof override.moveCenterEnabled != "boolean") {
+    if (!isRegionLightKey(overrideKey) || !override || typeof override != "object" || Array.isArray(override) || !["circle", "square", "ellipse", "strip"].includes(override.shape) || !["width", "depth"].every(prop => typeof override[prop] == "number" && Number.isFinite(override[prop])) || ["rotation", "softness"].some(prop => override[prop] !== undefined && (typeof override[prop] != "number" || !Number.isFinite(override[prop]))) || ["offsetX", "offsetZ"].some(prop => override[prop] !== undefined && (typeof override[prop] != "number" || !Number.isFinite(override[prop]))) || ["heightAbove", "heightBelow", "heightMin", "heightMax"].some(prop => override[prop] !== undefined && (typeof override[prop] != "number" || !Number.isFinite(override[prop]))) || override.heightMin !== undefined && override.heightMax !== undefined && override.heightMin > override.heightMax || override.moveCenterEnabled !== undefined && typeof override.moveCenterEnabled != "boolean") {
       continue;
     }
     const rotation = override.rotation ?? 0;
@@ -29,6 +29,18 @@ function normalizeOverrides(raw) {
       rotation: (rotation % 360 + 540) % 360 - 180,
       softness: clamp(override.softness ?? 1, 0.05, 1),
       shape: override.shape,
+      ...(override.heightMin !== undefined ? {
+        heightMin: clamp(override.heightMin, 0, 20)
+      } : {}),
+      ...(override.heightMax !== undefined ? {
+        heightMax: clamp(override.heightMax, 0, 20)
+      } : {}),
+      ...(override.heightAbove !== undefined ? {
+        heightAbove: clamp(override.heightAbove, 0, 20)
+      } : {}),
+      ...(override.heightBelow !== undefined ? {
+        heightBelow: clamp(override.heightBelow, 0, 20)
+      } : {}),
       ...(override.offsetX !== undefined ? {
         offsetX: clamp(override.offsetX, -100, 100)
       } : {}),
@@ -103,7 +115,7 @@ function setVector4Changed(target, nextX, nextY, nextZ, nextW) {
   return changed;
 }
 function regionLightShaderPrelude(capacity) {
-  return "\n#define PLAN2_LIGHT_CAPACITY " + capacity.capacity + "\n#define PLAN2_TEXTURE_DATA " + (capacity.textureMode ? 1 : 0) + "\nuniform int plan2LightCount;\nuniform float plan2Gain;\nuniform float plan2SunShadowStrength;\nuniform mat4 plan2MotionToLayout;\nvarying vec3 vPlan2WorldPosition;\n#if PLAN2_TEXTURE_DATA\nuniform sampler2D plan2LightData;\nvec4 plan2ReadData(int slot, float column) {\n  return texture2D(plan2LightData, vec2((column + 0.5) / 4.0, (float(slot) + 0.5) / float(PLAN2_LIGHT_CAPACITY)));\n}\n#else\nuniform vec4 plan2Centers[PLAN2_LIGHT_CAPACITY];\nuniform vec4 plan2Extents[PLAN2_LIGHT_CAPACITY];\nuniform vec4 plan2Colors[PLAN2_LIGHT_CAPACITY];\nuniform vec4 plan2Axes[PLAN2_LIGHT_CAPACITY];\n#endif\nvec3 plan2SurfaceLight(vec3 worldPoint) {\n  worldPoint = (plan2MotionToLayout * vec4(worldPoint, 1.0)).xyz;\n  vec3 weightedColor = vec3(0.0);\n  float totalWeight = 0.0;\n  float coverage = 0.0;\n  for (int slot = 0; slot < PLAN2_LIGHT_CAPACITY; slot++) {\n    if (slot >= plan2LightCount) break;\n    #if PLAN2_TEXTURE_DATA\n      vec4 center = plan2ReadData(slot, 0.0);\n    #else\n      vec4 center = plan2Centers[slot];\n    #endif\n    if (center.w < 0.00001) continue;\n    #if PLAN2_TEXTURE_DATA\n      vec4 extent = plan2ReadData(slot, 1.0);\n      vec4 axis = plan2ReadData(slot, 3.0);\n    #else\n      vec4 extent = plan2Extents[slot];\n      vec4 axis = plan2Axes[slot];\n    #endif\n    vec3 offset = worldPoint - center.xyz;\n    vec3 localPoint = vec3(dot(offset.xz, axis.xy), offset.y, dot(offset.xz, vec2(-axis.y, axis.x)));\n    float verticalDistance = max(abs(localPoint.y) - extent.y, 0.0);\n    if (verticalDistance >= extent.w) continue;\n    float radialDistance;\n    if (axis.z > 3.5) {\n      // Square volumes retain actual straight edges and corners. Their fade\n      // follows the normalized box metric, not a radial or rounded boundary.\n      vec2 fromCenter = abs(localPoint.xz) / max(extent.xz, vec2(0.001));\n      radialDistance = max(fromCenter.x, fromCenter.y);\n    } else if (axis.z > 2.5) {\n      // Edited strips are rounded rectangles with their zero-light boundary\n      // exactly at the requested width/depth, including both rounded ends.\n      float radius = max(min(extent.x, extent.z), 0.001);\n      vec2 fromCore = max(abs(localPoint.xz) - (extent.xz - vec2(radius)), vec2(0.0));\n      radialDistance = length(fromCore) / radius;\n    } else if (axis.z > 0.5 && axis.z < 1.5) {\n      // A strip is a line source. Brightness falls away from the line, rather\n      // than remaining constant throughout a wide rectangular room volume.\n      vec2 fromSegment = vec2(max(abs(localPoint.x) - extent.x, 0.0), localPoint.z);\n      radialDistance = length(fromSegment) / max(extent.z, 0.001);\n    } else {\n      radialDistance = length(localPoint.xz / max(extent.xz, vec2(0.001)));\n    }\n    if (radialDistance >= 1.0) continue;\n    float fadeStart = axis.z > 1.5 ? 1.0 - clamp(axis.w, 0.05, 1.0) : 0.0;\n    float influence = (1.0 - smoothstep(fadeStart, 1.0, radialDistance))\n      * (1.0 - smoothstep(0.0, extent.w, verticalDistance)) * clamp(center.w, 0.0, 1.0);\n    #if PLAN2_TEXTURE_DATA\n      vec3 lightColor = plan2ReadData(slot, 2.0).rgb;\n    #else\n      vec3 lightColor = plan2Colors[slot].rgb;\n    #endif\n    weightedColor += lightColor * influence;\n    totalWeight += influence;\n    coverage += (1.0 - coverage) * influence;\n  }\n  // Smooth bounded union: max() produced a derivative crease wherever two\n  // lamps exchanged dominance. This preserves single-lamp falloff and blends\n  // overlaps continuously, with coverage capped at one rather than added HDR.\n  return weightedColor / max(totalWeight, 0.00001) * coverage;\n}\n";
+  return "\n#define PLAN2_LIGHT_CAPACITY " + capacity.capacity + "\n#define PLAN2_TEXTURE_DATA " + (capacity.textureMode ? 1 : 0) + "\nuniform int plan2LightCount;\nuniform float plan2Gain;\nuniform float plan2SunShadowStrength;\nuniform mat4 plan2MotionToLayout;\nvarying vec3 vPlan2WorldPosition;\n#if PLAN2_TEXTURE_DATA\nuniform sampler2D plan2LightData;\nvec4 plan2ReadData(int slot, float column) {\n  return texture2D(plan2LightData, vec2((column + 0.5) / 4.0, (float(slot) + 0.5) / float(PLAN2_LIGHT_CAPACITY)));\n}\n#else\nuniform vec4 plan2Centers[PLAN2_LIGHT_CAPACITY];\nuniform vec4 plan2Extents[PLAN2_LIGHT_CAPACITY];\nuniform vec4 plan2Colors[PLAN2_LIGHT_CAPACITY];\nuniform vec4 plan2Axes[PLAN2_LIGHT_CAPACITY];\n#endif\nvec3 plan2SurfaceLight(vec3 worldPoint) {\n  worldPoint = (plan2MotionToLayout * vec4(worldPoint, 1.0)).xyz;\n  vec3 weightedColor = vec3(0.0);\n  float totalWeight = 0.0;\n  float coverage = 0.0;\n  for (int slot = 0; slot < PLAN2_LIGHT_CAPACITY; slot++) {\n    if (slot >= plan2LightCount) break;\n    #if PLAN2_TEXTURE_DATA\n      vec4 center = plan2ReadData(slot, 0.0);\n    #else\n      vec4 center = plan2Centers[slot];\n    #endif\n    if (center.w < 0.00001) continue;\n    #if PLAN2_TEXTURE_DATA\n      vec4 extent = plan2ReadData(slot, 1.0);\n      vec4 axis = plan2ReadData(slot, 3.0);\n    #else\n      vec4 extent = plan2Extents[slot];\n      vec4 axis = plan2Axes[slot];\n    #endif\n    vec3 offset = worldPoint - center.xyz;\n    vec3 localPoint = vec3(dot(offset.xz, axis.xy), offset.y, dot(offset.xz, vec2(-axis.y, axis.x)));\n    float verticalDistance = max(abs(localPoint.y) - extent.y, 0.0);\n    if (verticalDistance >= extent.w) continue;\n    float fadeStart = axis.z > 1.5 ? 1.0 - clamp(axis.w, 0.05, 1.0) : 0.0;\n    float squareFalloff = 1.0;\n    float radialDistance;\n    if (axis.z > 3.5) {\n      // Retain straight zero-light edges, but fade each axis independently.\n      // Using max(x,z) for brightness changes derivatives on the diagonals,\n      // making four visible triangular wedges. max is only a bounds check.\n      vec2 fromCenter = abs(localPoint.xz) / max(extent.xz, vec2(0.001));\n      radialDistance = max(fromCenter.x, fromCenter.y);\n      vec2 edgeFade = vec2(1.0) - smoothstep(vec2(fadeStart), vec2(1.0), fromCenter);\n      squareFalloff = edgeFade.x * edgeFade.y;\n    } else if (axis.z > 2.5) {\n      // Edited strips are rounded rectangles with their zero-light boundary\n      // exactly at the requested width/depth, including both rounded ends.\n      float radius = max(min(extent.x, extent.z), 0.001);\n      vec2 fromCore = max(abs(localPoint.xz) - (extent.xz - vec2(radius)), vec2(0.0));\n      radialDistance = length(fromCore) / radius;\n    } else if (axis.z > 0.5 && axis.z < 1.5) {\n      // A strip is a line source. Brightness falls away from the line, rather\n      // than remaining constant throughout a wide rectangular room volume.\n      vec2 fromSegment = vec2(max(abs(localPoint.x) - extent.x, 0.0), localPoint.z);\n      radialDistance = length(fromSegment) / max(extent.z, 0.001);\n    } else {\n      radialDistance = length(localPoint.xz / max(extent.xz, vec2(0.001)));\n    }\n    if (radialDistance >= 1.0) continue;\n    float horizontalFalloff = axis.z > 3.5 ? squareFalloff : 1.0 - smoothstep(fadeStart, 1.0, radialDistance);\n    float influence = horizontalFalloff\n      * (1.0 - smoothstep(0.0, extent.w, verticalDistance)) * clamp(center.w, 0.0, 1.0);\n    #if PLAN2_TEXTURE_DATA\n      vec3 lightColor = plan2ReadData(slot, 2.0).rgb;\n    #else\n      vec3 lightColor = plan2Colors[slot].rgb;\n    #endif\n    weightedColor += lightColor * influence;\n    totalWeight += influence;\n    coverage += (1.0 - coverage) * influence;\n  }\n  // Smooth bounded union: max() produced a derivative crease wherever two\n  // lamps exchanged dominance. This preserves single-lamp falloff and blends\n  // overlaps continuously, with coverage capped at one rather than added HDR.\n  return weightedColor / max(totalWeight, 0.00001) * coverage;\n}\n";
 }
 export function sampleRegionVolumes(volumes, worldPoint, gain = 1) {
   let coverage = 0;
@@ -129,7 +141,13 @@ export function sampleRegionVolumes(volumes, worldPoint, gain = 1) {
     const fadeStartShape = axis.z > 1.5 ? 1 - clamp(axis.w, 0.05, 1) : 0;
     const radialT = clamp((radialDistance - fadeStartShape) / (1 - fadeStartShape), 0, 1);
     const verticalT = clamp(Math.max(Math.abs(deltaY) - extent.y, 0) / extent.w, 0, 1);
-    const influence = (1 - radialT * radialT * (3 - radialT * 2)) * (1 - verticalT * verticalT * (3 - verticalT * 2)) * clamp(center.w, 0, 1);
+    let horizontalFalloff = 1 - radialT * radialT * (3 - radialT * 2);
+    if (axis.z > 3.5) {
+      const edgeXT = clamp((Math.abs(localX) / Math.max(extent.x, 0.001) - fadeStartShape) / (1 - fadeStartShape), 0, 1);
+      const edgeZT = clamp((Math.abs(localZ) / Math.max(extent.z, 0.001) - fadeStartShape) / (1 - fadeStartShape), 0, 1);
+      horizontalFalloff = (1 - edgeXT * edgeXT * (3 - edgeXT * 2)) * (1 - edgeZT * edgeZT * (3 - edgeZT * 2));
+    }
+    const influence = horizontalFalloff * (1 - verticalT * verticalT * (3 - verticalT * 2)) * clamp(center.w, 0, 1);
     weightSum += influence;
     coverage += (1 - coverage) * influence;
     colorSum[0] += color.x * influence;
@@ -666,15 +684,32 @@ export function createRegionLightController({
         centerCurrent.overridden = !!shape;
         centerCurrent.amount = amount;
         centerCurrent.realAmount = realAmount;
+        centerCurrent.heightAbove = shape?.heightAbove;
+        centerCurrent.heightBelow = shape?.heightBelow;
+        centerCurrent.lampHeight = y.y - floorY;
+        centerCurrent.heightMin = shape?.heightMin ?? (shape?.heightBelow === undefined ? undefined : centerCurrent.lampHeight - shape.heightBelow);
+        centerCurrent.heightMax = shape?.heightMax ?? (shape?.heightAbove === undefined ? undefined : centerCurrent.lampHeight + shape.heightAbove);
         for (const texture of uniformGroups) {
           const center = texture.slots[slotIndex];
           const slotKind = texture.kind;
-          const bottomY = floorY - (slotKind === "floor" ? 0.18 : 0.1);
-          const topY = Math.max(floorY + 0.2, y.y + (slotKind === "wall" ? 0.55 : 0.2));
-          const verticalPad = Math.max(0.3, lightRange * (slotKind === "floor" ? 0.23 : slotKind === "wall" ? 0.18 : 0.2));
+          let bottomY = floorY - (slotKind === "floor" ? 0.18 : 0.1);
+          let topY = Math.max(floorY + 0.2, y.y + (slotKind === "wall" ? 0.55 : 0.2));
+          let verticalPad = Math.max(0.3, lightRange * (slotKind === "floor" ? 0.23 : slotKind === "wall" ? 0.18 : 0.2));
+          let slotAmount = amount;
+          if (shape?.heightAbove !== undefined || shape?.heightBelow !== undefined || shape?.heightMin !== undefined || shape?.heightMax !== undefined) {
+            const rangeBottom = shape.heightMin !== undefined ? shape.heightMin === 0 ? floorY - 0.18 - verticalPad : floorY + shape.heightMin : shape.heightBelow === undefined ? bottomY - verticalPad : y.y - shape.heightBelow;
+            const rangeTop = shape.heightMax !== undefined ? floorY + shape.heightMax : shape.heightAbove === undefined ? topY + verticalPad : y.y + shape.heightAbove;
+            const span = Math.max(0, rangeTop - rangeBottom);
+            verticalPad = Math.max(0.00001, Math.min(verticalPad, span / 2));
+            bottomY = rangeBottom + verticalPad;
+            topY = Math.max(bottomY, rangeTop - verticalPad);
+            if (span <= 0.00001) {
+              slotAmount = 0;
+            }
+          }
           const extentX = shape ? shape.width / 2 : isStrip ? halfWidth : ellipseRadius + verticalPad;
           const extentZ = shape ? shape.depth / 2 : isStrip ? halfDepth + lightRange * 0.07 + verticalPad : ellipseRadius + verticalPad;
-          let changed = setVector4Changed(center.center, centerCurrent.center[0], (bottomY + topY) / 2, centerCurrent.center[2], amount);
+          let changed = setVector4Changed(center.center, centerCurrent.center[0], (bottomY + topY) / 2, centerCurrent.center[2], slotAmount);
           changed = setVector4Changed(center.extent, extentX, (topY - bottomY) / 2, extentZ, verticalPad) || changed;
           changed = setVector4Changed(center.color, color.color.r, color.color.g, color.color.b, 0) || changed;
           changed = setVector4Changed(center.axis, axisX, axisY, shape ? shape.shape === "square" ? 4 : shape.shape === "strip" ? 3 : 2 : isStrip ? 1 : 0, shape?.softness ?? 0) || changed;

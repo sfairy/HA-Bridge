@@ -49,6 +49,8 @@ from modules.interaction3d.api import router as interaction3d_router
 from security import session_token_hash, set_display_cookie
 from sqlalchemy import select, text
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from updates import UpdateChecker
+from updates import router as updates_router
 
 from migrations import restore_upgrade_backup, run_migrations
 
@@ -178,6 +180,13 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
                 event_log=app.state.global_log,
             )
             app.state.ha_connector.start()
+            app.state.update_checker = UpdateChecker(
+                app_settings.data_dir,
+                app_settings.version,
+                app_settings.update_channel,
+                enabled=app_settings.update_checks_enabled,
+            )
+            app.state.update_checker.start()
             app.state.global_log.append(
                 'success',
                 '系统后台',
@@ -187,7 +196,7 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
             )
         except Exception as error:
             _record_lifecycle_failure(app, 'startup', error)
-            for service_name in ('ha_connector', 'license_service'):
+            for service_name in ('update_checker', 'ha_connector', 'license_service'):
                 service = getattr(app.state, service_name, None)
                 if service is None:
                     continue
@@ -206,7 +215,7 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
         try:
             yield
         finally:
-            for service in (app.state.ha_connector, app.state.license_service):
+            for service in (app.state.update_checker, app.state.ha_connector, app.state.license_service):
                 try:
                     await service.stop()
                 except Exception as error:
@@ -349,6 +358,7 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
     app.include_router(license_router, prefix='/api/v1')
     app.include_router(interaction3d_router, prefix='/api/v1')
     app.include_router(global_logs_router, prefix='/api/v1')
+    app.include_router(updates_router, prefix='/api/v1')
     app.mount(
         '/bridge-static',
         StaticFiles(directory=app_settings.frontend_dir / 'static'),
@@ -458,7 +468,7 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
         if premium_asset(path):
             if not await asyncio.to_thread(browser_authorized, request):
                 return Response('请先登录或完成中控设备配对。', status_code=401, media_type='text/plain')
-            if not request.app.state.license_service.allows('assets'):
+            if not await asyncio.to_thread(request.app.state.license_service.allows, 'assets'):
                 return Response('当前授权状态不允许读取该资源。', status_code=403, media_type='text/plain')
         response = await call_next(request)
         app_surface = (
@@ -552,8 +562,8 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
         )
 
     @app.get('/assets/builtin/{asset_path:path}', include_in_schema=False)
-    def built_in_asset(asset_path: str, request: Request) -> FileResponse:
-        if not browser_authorized(request):
+    async def built_in_asset(asset_path: str, request: Request) -> FileResponse:
+        if not await asyncio.to_thread(browser_authorized, request):
             raise HTTPException(status_code=401, detail='请先登录或完成中控设备配对。')
         return read_builtin_asset(asset_path, request)
 
@@ -568,49 +578,50 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
         }
 
     @app.get('/setup', include_in_schema=False)
-    def setup_page(request: Request):
+    async def setup_page(request: Request):
         if initialized(request):
-            return RedirectResponse('/' if signed_in(request) else '/login', status_code=303)
+            signed = await asyncio.to_thread(signed_in, request)
+            return RedirectResponse('/' if signed else '/login', status_code=303)
         return FileResponse(app_settings.frontend_dir / 'setup.html')
 
     @app.get('/login', include_in_schema=False)
-    def login_page(request: Request):
+    async def login_page(request: Request):
         if not initialized(request):
             return RedirectResponse('/setup', status_code=303)
-        if signed_in(request):
+        if await asyncio.to_thread(signed_in, request):
             return RedirectResponse(safe_next_path(request), status_code=303)
         return FileResponse(app_settings.frontend_dir / 'login.html')
 
     @app.get('/pair', include_in_schema=False)
-    def pair_page(request: Request):
+    async def pair_page(request: Request):
         if not initialized(request):
             return RedirectResponse('/setup', status_code=303)
-        if signed_in(request):
+        if await asyncio.to_thread(signed_in, request):
             return RedirectResponse(safe_next_path(request), status_code=303)
-        device = active_display(request)
+        device = await asyncio.to_thread(active_display, request)
         if device is not None:
             return RedirectResponse(f'/display/{device.project_id}', status_code=303)
-        if not request.app.state.license_service.allows('display'):
+        if not await asyncio.to_thread(request.app.state.license_service.allows, 'display'):
             raise HTTPException(status_code=403, detail='当前授权状态不允许添加中控设备。')
         return FileResponse(app_settings.frontend_dir / 'pair.html')
 
     @app.get('/', include_in_schema=False)
-    def home_page(request: Request):
+    async def home_page(request: Request):
         if not initialized(request):
             return RedirectResponse('/setup', status_code=303)
-        if not signed_in(request):
+        if not await asyncio.to_thread(signed_in, request):
             return RedirectResponse('/login', status_code=303)
-        if not request.app.state.license_service.allows('editor'):
+        if not await asyncio.to_thread(request.app.state.license_service.allows, 'editor'):
             return RedirectResponse('/license', status_code=303)
         return FileResponse(app_settings.frontend_dir / 'index.html')
 
     @app.get('/license', include_in_schema=False)
-    def license_page(request: Request):
+    async def license_page(request: Request):
         if not initialized(request):
             return RedirectResponse('/setup', status_code=303)
-        if not signed_in(request):
+        if not await asyncio.to_thread(signed_in, request):
             return RedirectResponse('/login', status_code=303)
-        if request.app.state.license_service.allows('editor'):
+        if await asyncio.to_thread(request.app.state.license_service.allows, 'editor'):
             return RedirectResponse('/', status_code=303)
         return FileResponse(app_settings.frontend_dir / 'license.html')
 
@@ -621,33 +632,34 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
         return FileResponse(app_settings.frontend_dir / 'help.html')
 
     @app.get('/3d-studio', include_in_schema=False)
-    def three_d_studio_page(request: Request):
+    async def three_d_studio_page(request: Request):
         if not initialized(request):
             return RedirectResponse('/setup', status_code=303)
-        if not signed_in(request):
+        if not await asyncio.to_thread(signed_in, request):
             return login_redirect(request)
-        if not request.app.state.license_service.allows('editor'):
+        if not await asyncio.to_thread(request.app.state.license_service.allows, 'editor'):
             return RedirectResponse('/license', status_code=303)
         return FileResponse(app_settings.frontend_dir / '3d-studio.html')
 
     @app.get('/projects/{project_id}/3d-studio', include_in_schema=False)
-    def legacy_three_d_studio_page(project_id: str, request: Request):
+    async def legacy_three_d_studio_page(project_id: str, request: Request):
         if not initialized(request):
             return RedirectResponse('/setup', status_code=303)
-        if not signed_in(request):
+        if not await asyncio.to_thread(signed_in, request):
             return login_redirect(request)
-        if not request.app.state.license_service.allows('editor'):
+        if not await asyncio.to_thread(request.app.state.license_service.allows, 'editor'):
             return RedirectResponse('/license', status_code=303)
         return RedirectResponse('/3d-studio', status_code=308)
 
     @app.get('/display/{project_id}', include_in_schema=False)
-    def display_page(project_id: str, request: Request):
+    async def display_page(project_id: str, request: Request):
         if not initialized(request):
             return RedirectResponse('/setup', status_code=303)
-        device = active_display(request)
-        if not signed_in(request) and (device is None or device.project_id != project_id):
+        device = await asyncio.to_thread(active_display, request)
+        signed = await asyncio.to_thread(signed_in, request)
+        if not signed and (device is None or device.project_id != project_id):
             return pairing_redirect(request)
-        if not request.app.state.license_service.allows('display'):
+        if not await asyncio.to_thread(request.app.state.license_service.allows, 'display'):
             raise HTTPException(status_code=403, detail='当前授权状态不允许打开正式显示页面。')
         response = FileResponse(app_settings.frontend_dir / 'display.html')
         if device is not None:
@@ -655,19 +667,24 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
         return response
 
     @app.get('/habridge/{project_name:path}', include_in_schema=False)
-    def named_display_page(project_name: str, request: Request):
+    async def named_display_page(project_name: str, request: Request):
         if not initialized(request):
             return RedirectResponse('/setup', status_code=303)
-        device = active_display(request)
-        if not signed_in(request) and device is None:
+        device = await asyncio.to_thread(active_display, request)
+        signed = await asyncio.to_thread(signed_in, request)
+        if not signed and device is None:
             return pairing_redirect(request)
-        if not request.app.state.license_service.allows('display'):
+        if not await asyncio.to_thread(request.app.state.license_service.allows, 'display'):
             raise HTTPException(status_code=403, detail='当前授权状态不允许打开正式显示页面。')
-        with request.app.state.database.session_factory() as database:
-            project = database.scalar(select(Project).where(Project.name == project_name))
+
+        def load_project():
+            with request.app.state.database.session_factory() as database:
+                return database.scalar(select(Project).where(Project.name == project_name))
+
+        project = await asyncio.to_thread(load_project)
         if project is None:
             raise HTTPException(status_code=404, detail='仪表盘不存在。')
-        if not signed_in(request) and (device is None or device.project_id != project.id):
+        if not signed and (device is None or device.project_id != project.id):
             return pairing_redirect(request)
         response = FileResponse(app_settings.frontend_dir / 'display.html')
         if device is not None:

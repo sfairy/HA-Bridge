@@ -8,15 +8,19 @@ const FRAME_INTERVAL_MS = 1000 / 30;
 const MOTION_DURATION_MS = 420;
 const MIN_PANEL_SCALE = 0.12;
 const FOLD_WIDTH = 0.15;
-const foldCountForBinding = binding => Math.max(4, Math.min(96, Math.round((Number(binding.curtainWidth) || 1.8) / (resolveCoverDirection(binding) === "split" ? 2 : 1) / FOLD_WIDTH)));
+const SHEER_FOLD_WIDTH = 0.1;
+const resolveCurtainFabric = binding => binding?.curtainFabric === "sheer" ? "sheer" : "cloth";
+const resolveUnboundPosition = binding => !binding?.entityId && Number.isFinite(binding?.unboundPosition) ? Math.max(0, Math.min(100, binding.unboundPosition)) : 0;
+const foldCountForBinding = binding => Math.max(4, Math.min(96, Math.round((Number(binding.curtainWidth) || 1.8) / (resolveCoverDirection(binding) === "split" ? 2 : 1) / (resolveCurtainFabric(binding) === "sheer" ? SHEER_FOLD_WIDTH : FOLD_WIDTH))));
 const modelKey = (floorId, modelId) => JSON.stringify([String(floorId ?? ""), String(modelId ?? "")]);
 const resolveCoverDirection = binding => COVER_DIRECTIONS.has(binding.coverDirection) ? binding.coverDirection : COVER_DIRECTIONS.has(binding.curtainPosition) ? binding.curtainPosition : "split";
 const clampPosition = state => typeof state?.position == "number" && Number.isFinite(state.position) ? Math.max(0, Math.min(100, state.position)) : null;
 const rigBasis = node => Array.isArray(node.userData?.curtainRigBasis) && node.userData.curtainRigBasis.length === 3 && node.userData.curtainRigBasis.every(n => typeof n == "number" && Number.isFinite(n) && n > 0) ? [...node.userData.curtainRigBasis] : [1.8, 2.4, 0.18];
-function buildFoldGeometry(THREE, folds) {
+function buildFoldGeometry(THREE, folds, fabric = "cloth") {
+  const isSheer = fabric === "sheer";
   const segments = Math.max(64, folds * 6);
   const height = 2.28168;
-  const waveAmp = 0.046;
+  const waveAmp = isSheer ? 0.023 : 0.046;
   const thickness = 0.003;
   const positions = [];
   const normals = [];
@@ -29,7 +33,7 @@ function buildFoldGeometry(THREE, folds) {
     normals.push(nx, ny, nz);
     uvs.push(u, v);
   };
-  for (const face of ["front", "back", "top", "bottom"]) {
+  for (const face of isSheer ? ["front"] : ["front", "back", "top", "bottom"]) {
     const baseIndex = positions.length / 3;
     for (let i = 0; i <= segments; i++) {
       const t = i / segments;
@@ -57,7 +61,7 @@ function buildFoldGeometry(THREE, folds) {
       }
     }
   }
-  for (const end of [0, 1]) {
+  for (const end of isSheer ? [] : [0, 1]) {
     const baseIndex = positions.length / 3;
     const nx = end === 0 ? -1 : 1;
     for (const y of [0, height]) {
@@ -132,11 +136,12 @@ export function createCurtainMotion({
   let bindingsSignature = "";
   let disposed = false;
   const geometryCache = new Map();
-  function geometryForFolds(folds) {
-    if (!geometryCache.has(folds)) {
-      geometryCache.set(folds, buildFoldGeometry(THREE, folds));
+  function geometryForFolds(folds, fabric) {
+    const cacheKey = fabric + ":" + folds;
+    if (!geometryCache.has(cacheKey)) {
+      geometryCache.set(cacheKey, buildFoldGeometry(THREE, folds, fabric));
     }
-    return geometryCache.get(folds);
+    return geometryCache.get(cacheKey);
   }
   let entries = new Map();
   let pendingStates = new Map();
@@ -155,16 +160,26 @@ export function createCurtainMotion({
     const clothParts = located.parts.filter(part => CLOTH_PARTS.has(part.userData.curtainPart));
     const sourceMaterials = clothParts.filter(part => part.userData.curtainPart === "cloth").flatMap(mesh => Array.isArray(mesh.material) ? mesh.material : [mesh.material]).filter(Boolean);
     const colorSum = material => material.color ? material.color.r + material.color.g + material.color.b : 0;
-    const material = sourceMaterials.reduce((best, candidate) => !best || colorSum(candidate) > colorSum(best) ? candidate : best, null)?.clone?.() || new THREE.MeshStandardMaterial({
-      color: 13094354,
+    const sourceMaterial = sourceMaterials.reduce((best, candidate) => !best || colorSum(candidate) > colorSum(best) ? candidate : best, null);
+    const fabric = resolveCurtainFabric(binding);
+    const isSheer = fabric === "sheer";
+    const material = isSheer ? new THREE.MeshStandardMaterial({
+      color: 0xf5f3ee,
+      roughness: 1,
+      metalness: 0,
+      transparent: true,
+      opacity: 0.48,
+      depthWrite: false
+    }) : sourceMaterial?.clone?.() || new THREE.MeshStandardMaterial({
+      color: 0xc7cdd2,
       roughness: 0.94,
       metalness: 0
     });
-    material.color?.lerp(new THREE.Color(16777215), 0.2);
+    material.color?.lerp(new THREE.Color(0xffffff), 0.2);
     material.side = THREE.DoubleSide;
     material.forceSinglePass = true;
     const folds = foldCountForBinding(binding);
-    const geometry = geometryForFolds(folds);
+    const geometry = geometryForFolds(folds, fabric);
     const rig = new THREE.Group();
     const basis = rigBasis(located.anchor);
     rig.name = "curtain-motion-" + binding.id;
@@ -180,7 +195,7 @@ export function createCurtainMotion({
       panel.userData.externalModelSharedTextures = true;
       panel.userData.externalModelSharedMaterial = true;
       panel.position.set(curtainSide === "left" ? -0.9 : 0.9, 0.06, 0);
-      panel.castShadow = clothParts.some(part => part.castShadow);
+      panel.castShadow = !isSheer && clothParts.some(part => part.castShadow);
       panel.receiveShadow = clothParts.some(part => part.receiveShadow);
       panel.visible = false;
       rig.add(panel);
@@ -189,6 +204,7 @@ export function createCurtainMotion({
     return {
       model: modelNode,
       binding,
+      fabric,
       folds,
       anchor: located.anchor,
       parts: located.parts,
@@ -220,10 +236,10 @@ export function createCurtainMotion({
     applyPose(entry);
   }
   function applyPose(entry) {
-    // Unconfigured / unknown cover position previews as open (retracted).
-    const position = entry.position ?? 100;
+    // Unbound curtains use unboundPosition; bound unknown position previews closed until state arrives.
+    const position = entry.position ?? resolveUnboundPosition(entry.binding);
     const isSplit = entry.direction === "split";
-    const fullWidth = isSplit ? 0.906 : 1.8;
+    const fullWidth = isSplit ? entry.fabric === "sheer" ? 0.9 : 0.906 : 1.8;
     const scaleX = 1 - (1 - MIN_PANEL_SCALE) * position / 100;
     for (const part of entry.originals.keys()) {
       part.visible = false;
@@ -289,7 +305,9 @@ export function createCurtainMotion({
       modelId: String(binding.modelId),
       curtainWidth: Number(binding.curtainWidth) > 0 ? Number(binding.curtainWidth) : 1.8,
       coverDirection: binding.coverDirection || "auto",
-      curtainPosition: binding.curtainPosition || "split"
+      curtainPosition: binding.curtainPosition || "split",
+      curtainFabric: resolveCurtainFabric(binding),
+      unboundPosition: resolveUnboundPosition(binding)
     }));
     const nextSignature = JSON.stringify(bindings);
     if (root === nextRoot && sceneRevision === revision && bindingsSignature === nextSignature) {
@@ -334,7 +352,7 @@ export function createCurtainMotion({
     const reused = new Map();
     for (const item of locatedBindings) {
       const existing = entries.get(item.binding.id);
-      if (existing && existing.model === item.model && existing.anchor === item.located.anchor && existing.parts.length === item.located.parts.length && existing.parts.every((part, index) => part === item.located.parts[index])) {
+      if (existing && existing.model === item.model && existing.anchor === item.located.anchor && existing.fabric === item.binding.curtainFabric && existing.parts.length === item.located.parts.length && existing.parts.every((part, index) => part === item.located.parts[index])) {
         reused.set(item.binding.id, existing);
       }
     }
@@ -354,18 +372,22 @@ export function createCurtainMotion({
       if (entry.binding.entityId !== binding.entityId) {
         resetMotion(entry);
       }
+      const unboundChanged = entry.binding.unboundPosition !== binding.unboundPosition;
       entry.binding = binding;
+      entry.fabric = binding.curtainFabric;
       const folds = foldCountForBinding(binding);
       if (entry.folds !== folds) {
         entry.folds = folds;
         for (const panel of entry.panels) {
-          panel.geometry = geometryForFolds(folds);
+          panel.geometry = geometryForFolds(folds, binding.curtainFabric);
         }
       }
       entry.basis = rigBasis(entry.anchor);
       entry.rig.scale.set(entry.basis[0] / 1.8, entry.basis[1] / 2.4, entry.basis[2] / 0.18);
       if (entry.direction !== direction) {
         entry.direction = direction;
+        applyPose(entry);
+      } else if (unboundChanged && entry.position === null) {
         applyPose(entry);
       }
       entries.set(binding.id, entry);
@@ -424,14 +446,14 @@ export function createCurtainMotion({
   }
   function poseKey() {
     if (poseDirty) {
-      cachedPoseKey = JSON.stringify([...entries.values()].map(entry => [entry.binding.id, entry.binding.floorId, entry.binding.modelId, entry.binding.entityId, entry.generation, entry.direction, entry.basis, entry.folds, entry.position === null ? "preview-closed" : Math.round(entry.position * 100) / 100]).sort((a, b) => a[0].localeCompare(b[0])));
+      cachedPoseKey = JSON.stringify([...entries.values()].map(entry => [entry.binding.id, entry.binding.floorId, entry.binding.modelId, entry.binding.entityId, entry.binding.curtainFabric, entry.binding.unboundPosition, entry.generation, entry.direction, entry.basis, entry.folds, entry.position === null ? "preview-closed" : Math.round(entry.position * 100) / 100]).sort((a, b) => a[0].localeCompare(b[0])));
       poseDirty = false;
     }
     return cachedPoseKey;
   }
   function structureKey() {
     if (structureDirty) {
-      cachedStructureKey = JSON.stringify([...entries.values()].map(entry => [entry.binding.id, entry.binding.floorId, entry.binding.modelId, entry.generation, entry.direction, entry.basis, entry.folds]).sort((a, b) => a[0].localeCompare(b[0])));
+      cachedStructureKey = JSON.stringify([...entries.values()].map(entry => [entry.binding.id, entry.binding.floorId, entry.binding.modelId, entry.binding.curtainFabric, entry.generation, entry.direction, entry.basis, entry.folds]).sort((a, b) => a[0].localeCompare(b[0])));
       structureDirty = false;
     }
     return cachedStructureKey;

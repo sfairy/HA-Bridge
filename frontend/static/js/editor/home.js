@@ -1,54 +1,45 @@
-import { PanelRenderer, airflowCanvasOffsetBounds, setBuiltinAssetVersions, syncedLineChartProperties } from "../../renderer/renderer.js?v=20260909-curtain-action-v15-20260911-navigation-light-v14-20260911-security-camera-popup-v6-quiet-feedback-v1-stage-retain-v1-focus-layout-anim-v1-20260912-align-v1-camera-fallback-v1";
-import { lightStatisticsEntityStateStatus, lightStatisticsEntitySupport } from "../../renderer/registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-vacuum-map-background-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-v2-20260901-renderer-date-time-runtime-v1-20260901-camera-prewarm-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-light-effect-layering-v2-20260901-light-effect-color-cache-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260905-client-log-v1-20260906-i3d-complete-v6-20260827-runtime-hydration-retry-v1-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1-focus-layout-anim-v1-camera-fallback-v1";
-import { applyUiPackToDocument, createComponentFromTemplate, dateComponentDimensions, ensureUiPackRuntime, listComponentTemplates, timeComponentDimensions, weatherComponentDimensions } from "../ui-packs/loader.js?v=20260811-water-heater-popup-v44-20260815-component-thumbnails-v2-20260822-light-feedback-controls-v1-20260824-light-statistics-v6-20260828-count-statistics-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260908-environment-v1-20260908-lighting-mode-v1";
-import { clone as cloneValue, newId, normalizedHexColor, hexToRgb, rgbToHex, rgbToHsv, hsvToRgb, roundField, clampNumber, normalizedFontWeight } from "./editor-utils.js?v=20260831-editor-utils-v1";
-import { packPopupModules, popupLayoutColumns, popupLayoutMetrics } from "./popup-layout.js?v=20260821-electric-bed-combo-v2";
-import { countComponentsOutsideCanvas, resizeDashboardDocument } from "./dashboard-resize.js?v=20260820-dashboard-resize-v439";
-import { copyComponentsAcrossDocuments, copyComponentTargets, copyComponentsToTarget } from "./component-page-copy.js?v=20260826-cross-dashboard-copy-v4";
-import { RELATED_ENTITY_DOMAIN_LABELS, legacyRelatedEntityIds, manualRelatedEntityConfig, relatedEntityIsAvailable, relatedEntityLabel, relatedEntityNeedsConfirmation, relatedPopupCandidates, relatedPopupContext, relatedPopupSelectionLimit, selectedRelatedEntityIds } from "./related-entities.js?v=20260825-bath-heater-primary-v1";
-import { createIconVisibilityVirtualEntity } from "./virtual-entities.js?v=20260822-icon-visibility-v1";
-import { withRequestTimeout } from "../../utils/request-timeout.js?v=20260907-browser-compat-v1";
-import { createButtonSound } from "../shared/sound-effects.js?v=20260826-button-sound-v2";
-import { deferHiddenEditorDialogs, installSettingsDialogBackdropGuard } from "./editor-dialogs.js?v=20260830-editor-dialogs-v1";
-import { createEditorPickerElements } from "./editor-picker-elements.js?v=20260902-asset-display-name-v1";
-import { EDITOR_PICKER_PAGE_SIZES, editorEntityPickerInitialPage, editorEntityPickerPage } from "./editor-picker-pagination.js?v=20260830-editor-picker-pagination-v1";
-import { createEditorPickerQueries } from "./editor-picker-queries.js?v=20260830-editor-picker-queries-v1";
-import { createEditorAssetMatcher } from "./editor-asset-queries.js?v=20260830-editor-asset-queries-v1";
-import { createEditorPickerLifecycle } from "./editor-picker-lifecycle.js?v=20260831-editor-picker-lifecycle-v1";
-import { createInteraction3dEditorPickers } from "../../modules/interaction3d/editor-pickers.js?v=20260910-presence-v9-20260906-i3d-buttons-v1-20260908-environment-v1-20260908-curtains-v1-20260908-nas-v1-20260908-devices-entry-v1-20260908-nas-status-panel-v1-television-v1-20260908-vacuum-v1-20260911-device-room-integration-v3-device-entry-unify-v1";
-import { createEditorAssetToolbar } from "./editor-asset-toolbar.js?v=20260902-asset-folder-delete-v1";
-import { ACTION_TYPES, TOGGLE_ENTITY_DOMAINS, actionNeedsCurrentEntity, actionPopupData, componentActionIsSupported, entityIdSupportsToggle } from "./action-rules.js?v=20260831-action-rules-v1";
-import { componentDirectLocation, findComponent, findComponentInItems, findComponentLocation } from "./component-tree.js?v=20260831-component-tree-v1";
-import { applyCollectionLayerOrder, componentLabel, copiedComponentLabel, ensureSharedComponentReference, groupNameForCollection, nextTemplateInstanceName, refreshComponentIds, syncSharedComponentReferenceOrder } from "./editor-component-collections.js?v=20260831-editor-component-collections-v1";
-import { fitInspectorComponentToDimensions, iconButtonEffectInspectorLayer, inspectorComponentMetrics, setInspectorToggle } from "./editor-basic-inspectors.js?v=20260901-editor-basic-inspectors-v4";
-import { clonePageWithFreshIds, findCustomPopup, greatestCommonDivisor, normalizedPopupClimateDeviceType, popupModuleDropPosition, popupModuleEntityRecommended, popupModuleTypeLabel, reorderedPopupModules, uniquePagePath } from "./editor-document-management.js?v=20260901-editor-document-management-v1";
-import { createRecoveryWriter, documentSignature, editorComponentEntries, editorComponentStructure, editorDocumentFrameSignature, recoveryStorageKey } from "./editor-history.js?v=20260909-preview-sleep-v1";
-import { DEFAULT_BASE_LIGHTING, normalizeBaseLighting } from "../../3d-studio/studio-normalization.js?v=20260903-studio-normalization-v2";
-import { guardInteraction3dChanges, renderInteraction3dThumbnail, updateInteraction3dCard, renderInteraction3dInspector } from "../../modules/interaction3d/editor.js?v=20260909-preview-sleep-v1-20260910-presence-security-v9-20260911-security-focal-v1-20260911-unified-device-settings-v3-navigation-scale-v1-stage-retain-v1-focus-layout-anim-v1-presence-pages-v2-hint-align-v1";
-import { createLicenseCard } from "./license-card.js?v=20260910-local-store-v1";
+import { PanelRenderer, airflowCanvasOffsetBounds, setBuiltinAssetVersions, syncedLineChartProperties } from "../../renderer/renderer.js?v=0.5.3";
+import { lightStatisticsEntityStateStatus, lightStatisticsEntitySupport } from "../../renderer/registry.js?v=0.5.3";
+import { applyUiPackToDocument, createComponentFromTemplate, dateComponentDimensions, ensureUiPackRuntime, listComponentTemplates, timeComponentDimensions, weatherComponentDimensions } from "../ui-packs/loader.js?v=0.5.3";
+import { clone as cloneValue, newId, normalizedHexColor, hexToRgb, rgbToHex, rgbToHsv, hsvToRgb, roundField, clampNumber, normalizedFontWeight } from "./editor-utils.js?v=0.5.3";
+import { packPopupModules, popupLayoutColumns, popupLayoutMetrics } from "./popup-layout.js?v=0.5.3";
+import { countComponentsOutsideCanvas, resizeDashboardDocument } from "./dashboard-resize.js?v=0.5.3";
+import { copyComponentsAcrossDocuments, copyComponentTargets, copyComponentsToTarget } from "./component-page-copy.js?v=0.5.3";
+import { RELATED_ENTITY_DOMAIN_LABELS, legacyRelatedEntityIds, manualRelatedEntityConfig, relatedEntityIsAvailable, relatedEntityLabel, relatedEntityNeedsConfirmation, relatedPopupCandidates, relatedPopupContext, relatedPopupSelectionLimit, selectedRelatedEntityIds } from "./related-entities.js?v=0.5.3";
+import { createIconVisibilityVirtualEntity } from "./virtual-entities.js?v=0.5.3";
+import { withRequestTimeout } from "../../utils/request-timeout.js?v=0.5.3";
+import { createButtonSound } from "../shared/sound-effects.js?v=0.5.3";
+import { deferHiddenEditorDialogs, installSettingsDialogBackdropGuard } from "./editor-dialogs.js?v=0.5.3";
+import { createEditorPickerElements } from "./editor-picker-elements.js?v=0.5.3";
+import { EDITOR_PICKER_PAGE_SIZES, editorEntityPickerInitialPage, editorEntityPickerPage } from "./editor-picker-pagination.js?v=0.5.3";
+import { createEditorPickerQueries } from "./editor-picker-queries.js?v=0.5.3";
+import { createEditorAssetMatcher } from "./editor-asset-queries.js?v=0.5.3";
+import { createEditorPickerLifecycle } from "./editor-picker-lifecycle.js?v=0.5.3";
+import { createInteraction3dEditorPickers } from "../../modules/interaction3d/editor-pickers.js?v=0.5.3";
+import { createEditorAssetToolbar } from "./editor-asset-toolbar.js?v=0.5.3";
+import { ACTION_TYPES, TOGGLE_ENTITY_DOMAINS, actionNeedsCurrentEntity, actionPopupData, componentActionIsSupported, entityIdSupportsToggle } from "./action-rules.js?v=0.5.3";
+import { componentDirectLocation, findComponent, findComponentInItems, findComponentLocation } from "./component-tree.js?v=0.5.3";
+import { applyCollectionLayerOrder, componentLabel, copiedComponentLabel, ensureSharedComponentReference, groupNameForCollection, nextTemplateInstanceName, refreshComponentIds, syncSharedComponentReferenceOrder } from "./editor-component-collections.js?v=0.5.3";
+import { fitInspectorComponentToDimensions, iconButtonEffectInspectorLayer, inspectorComponentMetrics, setInspectorToggle } from "./editor-basic-inspectors.js?v=0.5.3";
+import { clonePageWithFreshIds, findCustomPopup, greatestCommonDivisor, normalizedPopupClimateDeviceType, popupModuleDropPosition, popupModuleEntityRecommended, popupModuleTypeLabel, reorderedPopupModules, uniquePagePath } from "./editor-document-management.js?v=0.5.3";
+import { createRecoveryWriter, documentSignature, editorComponentEntries, editorComponentStructure, editorDocumentFrameSignature, recoveryStorageKey } from "./editor-history.js?v=0.5.3";
+import { DEFAULT_BASE_LIGHTING, normalizeBaseLighting } from "../../3d-studio/studio-normalization.js?v=0.5.3";
+import { guardInteraction3dChanges, renderInteraction3dThumbnail, updateInteraction3dCard, renderInteraction3dInspector } from "../../modules/interaction3d/editor.js?v=0.5.3";
+import { createLicenseCard } from "./license-card.js?v=0.5.3";
+import {
+  installEditorViewportListeners,
+  syncComponentTemplateDialogScale,
+  syncEditorViewportFit,
+} from "./editor-viewport.js?v=0.5.3";
 const qs = param => document.querySelector(param);
 installSettingsDialogBackdropGuard();
-const EDITOR_MIN_WIDTH = 1020;
+installEditorViewportListeners();
 const EDITOR_LAYOUT_GAP = 2;
 const DESIGN_WIDTH = 1920;
 const DESIGN_HEIGHT = 1080;
 const TEMPLATE_DIALOG_SCALE_FACTOR = 1.1;
 const editorHeader = qs(".editor-header");
 const editorShell = qs(".editor-shell");
-function syncEditorViewportFit() {
-  const count = Math.max(1, editorHeader.offsetHeight + editorShell.offsetHeight);
-  const value = Math.min(1, window.innerWidth / EDITOR_MIN_WIDTH, window.innerHeight / count);
-  const needsViewportFit = value < 0.999;
-  document.documentElement.classList.toggle("editor-viewport-fit", needsViewportFit);
-  document.documentElement.style.setProperty("--editor-layout-height", count + "px");
-  document.documentElement.style.setProperty("--editor-viewport-scale", String(value));
-}
-function syncComponentTemplateDialogScale() {
-  const count = Math.max(0.1, TEMPLATE_DIALOG_SCALE_FACTOR * Math.min(window.innerWidth / DESIGN_WIDTH, window.innerHeight / DESIGN_HEIGHT));
-  document.documentElement.style.setProperty("--component-template-dialog-scale", String(count));
-}
-syncEditorViewportFit();
-syncComponentTemplateDialogScale();
 const logoutBtn = qs("#logout");
 const saveBtn = qs("#save");
 const licenseOpenBtn = qs("#license-open");
@@ -2187,11 +2178,20 @@ function collectComponentsByType(value, param, list = []) {
   }
   return list;
 }
+const SIDEBAR_APPLY_PAGE = Object.freeze({
+  id: "__sidebar__",
+  name: "侧边栏"
+});
 function findComponentsByType(value) {
-  return (currentProject?.document?.pages || []).flatMap(page => collectComponentsByType(page.components, value).map(component => ({
+  const pages = (currentProject?.document?.pages || []).flatMap(page => collectComponentsByType(page.components, value).map(component => ({
     component,
     page
   })));
+  const shared = collectComponentsByType(currentProject?.document?.sharedComponents, value).map(component => ({
+    component,
+    page: SIDEBAR_APPLY_PAGE
+  }));
+  return [...pages, ...shared];
 }
 function syncRendererSelection() {
   editorRenderer?.setActiveGroup(activeGroupId);
@@ -2952,7 +2952,7 @@ function listAllComponentTemplates() {
     } else {
       const img = document.createElement("img");
       const flag = component.thumbnailId || component.id;
-      img.src = "/bridge-static/component-thumbnails/" + encodeURIComponent(flag) + ".jpg?v=20260912-interaction3d-bg-v1";
+      img.src = "/bridge-static/component-thumbnails/" + encodeURIComponent(flag) + ".jpg?v=0.5.3";
       img.alt = "";
       span.append(img);
     }
@@ -5207,7 +5207,7 @@ function syncLineChartInspector(component) {
   lineChartHeight.disabled = isMultiSelect;
   lineChartScale.disabled = false;
   lineChartRotation.disabled = false;
-  const length = collectComponentsByType(currentProject.document.sharedComponents, "line-chart").length;
+  const length = findComponentsByType("line-chart").length;
   const lengthCurrent = collectList(component).length;
   lineChartApplyStyle.disabled = length < 2 || !lengthCurrent;
   lineChartApplyCount.textContent = lengthCurrent + " 项修改";
@@ -5265,7 +5265,7 @@ function syncPanelFrameInspector(component) {
   panelFrameHeight.disabled = isMultiSelect;
   panelFrameScale.disabled = false;
   panelFrameRotation.disabled = false;
-  const chosen = findComponent(currentProject.document, component.id)?.scope === "page" ? findComponentsByType("panel-frame").length : collectComponentsByType(currentProject.document.sharedComponents, "panel-frame").length;
+  const chosen = findComponentsByType("panel-frame").length;
   const length = collectListItem(component).length;
   panelFrameApplyStyle.disabled = chosen < 2 || !length;
   panelFrameApplyCount.textContent = length + " 项修改";
@@ -5339,7 +5339,7 @@ function syncNavigationInspector(component) {
   navigationHeight.disabled = isMultiSelect;
   navigationScale.disabled = false;
   navigationRotation.disabled = false;
-  const length = collectComponentsByType(currentProject.document.sharedComponents, "navigation-button").length;
+  const length = findComponentsByType("navigation-button").length;
   const lengthCurrent = collectListEntry(component).length;
   navigationApplyStyle.disabled = length < 2 || !lengthCurrent;
   navigationApplyCount.textContent = lengthCurrent + " 项修改";
@@ -15623,12 +15623,14 @@ function withSelectedComponentNext() {
     return;
   }
   const temp = collectListEntry(value);
-  const filtered = collectComponentsByType(currentProject.document.sharedComponents, "navigation-button").filter(component => component.id !== value.id);
+  const filtered = findComponentsByType("navigation-button").filter(({
+    component
+  }) => component.id !== value.id);
   if (!!temp.length && !!filtered.length) {
     navigationStyleApplyTitle.textContent = "应用导航按钮设置";
-    navigationStyleApplyTargetHeading.textContent = "应用到导航按钮";
-    navigationStyleApplyTargetScope.textContent = "侧边栏通用";
-    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的侧边栏导航按钮。图标名称、文字内容、目标页面、备注和位置不会改变。";
+    navigationStyleApplyTargetHeading.textContent = "应用到同类型控件";
+    navigationStyleApplyTargetScope.textContent = "按页面区分";
+    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的主页面或侧边栏导航按钮。图标名称、文字内容、目标页面、备注和位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(component => {
       const item = airConditionerPropertyMeta[component];
       const property = readAirConditionerProperty(value, component);
@@ -15638,16 +15640,7 @@ function withSelectedComponentNext() {
         detail: item.group + " · " + formatAirConditionerPropertyValue(component, property)
       });
     }));
-    renderListPrevious(filtered.map(component => {
-      const flag = component.properties?.targetPage || component.actions?.tap?.target || "";
-      const found = currentProject.document.pages.find(item => item.path === flag);
-      return createNavigationTargetOption({
-        value: component.id,
-        label: componentLabel(component),
-        detail: found ? "跳转到：" + found.name : "未设置目标页面",
-        target: true
-      });
-    }));
+    buildIdMapNext(filtered, "导航按钮");
     navigationStyleApplyMessage.hidden = true;
     navigationStyleApplyMessage.textContent = "";
     styleApplyPending = {
@@ -15663,17 +15656,14 @@ function withSelectedComponentPrevious() {
     return;
   }
   const temp = collectListItem(value);
-  const flag = findComponent(currentProject.document, value.id)?.scope === "page";
-  const chosen = flag ? findComponentsByType("panel-frame").filter(({
+  const chosen = findComponentsByType("panel-frame").filter(({
     component
-  }) => component.id !== value.id) : collectComponentsByType(currentProject.document.sharedComponents, "panel-frame").filter(component => component.id !== value.id).map(component => ({
-    component
-  }));
+  }) => component.id !== value.id);
   if (!!temp.length && !!chosen.length) {
     navigationStyleApplyTitle.textContent = "应用底图框设置";
-    navigationStyleApplyTargetHeading.textContent = flag ? "应用到主页面底图框" : "应用到侧边栏底图框";
-    navigationStyleApplyTargetScope.textContent = flag ? "按页面区分" : "侧边栏通用";
-    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的" + (flag ? "主页面" : "侧边栏") + "底图框。文字内容、备注和位置不会改变。";
+    navigationStyleApplyTargetHeading.textContent = "应用到同类型控件";
+    navigationStyleApplyTargetScope.textContent = "按页面区分";
+    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的主页面或侧边栏底图框。文字内容、备注和位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(item => {
       const entry = navigationPropertyMeta[item];
       const property = readVacuumMapProperty(value, item);
@@ -15683,18 +15673,7 @@ function withSelectedComponentPrevious() {
         detail: entry.group + " · " + formatVacuumMapPropertyValue(item, property)
       });
     }));
-    if (flag) {
-      buildIdMapNext(chosen, "主页面底图框");
-    } else {
-      renderListPrevious(chosen.map(({
-        component
-      }) => createNavigationTargetOption({
-        value: component.id,
-        label: componentLabel(component),
-        detail: "侧边栏共享控件",
-        target: true
-      })));
-    }
+    buildIdMapNext(chosen, "底图框");
     navigationStyleApplyMessage.hidden = true;
     navigationStyleApplyMessage.textContent = "";
     styleApplyPending = {
@@ -15715,9 +15694,9 @@ function withSelectedComponentLocal() {
   }) => component.id !== value.id);
   if (!!temp.length && !!filtered.length) {
     navigationStyleApplyTitle.textContent = "应用摄像头实时预览设置";
-    navigationStyleApplyTargetHeading.textContent = "应用到主页面摄像头实时预览";
+    navigationStyleApplyTargetHeading.textContent = "应用到同类型控件";
     navigationStyleApplyTargetScope.textContent = "按页面区分";
-    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的主页面摄像头实时预览。实体、备注、动作和控件位置不会改变。";
+    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的主页面或侧边栏摄像头实时预览。实体、备注、动作和控件位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(item => {
       const entry = cameraPropertyMeta[item];
       const property = readCameraProperty(value, item);
@@ -15748,9 +15727,9 @@ function withSelectedComponentItem() {
   }) => component.id !== value.id);
   if (!!temp.length && !!filtered.length) {
     navigationStyleApplyTitle.textContent = "应用标题按钮设置";
-    navigationStyleApplyTargetHeading.textContent = "应用到主页面标题按钮";
+    navigationStyleApplyTargetHeading.textContent = "应用到同类型控件";
     navigationStyleApplyTargetScope.textContent = "按页面区分";
-    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的标题按钮。文字内容、图标名称、备注、动作和控件中心位置不会改变。";
+    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的主页面或侧边栏标题按钮。文字内容、图标名称、备注、动作和控件中心位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(item => {
       const entry = panelFramePropertyMeta[item];
       const property = readPanelFrameProperty(value, item);
@@ -15781,9 +15760,9 @@ function ibeTemplateOptionsPrevious() {
   }) => component.id !== value.id);
   if (!!temp.length && !!filtered.length) {
     navigationStyleApplyTitle.textContent = "应用图标按钮（效果）设置";
-    navigationStyleApplyTargetHeading.textContent = "应用到主页面同类型控件";
+    navigationStyleApplyTargetHeading.textContent = "应用到同类型控件";
     navigationStyleApplyTargetScope.textContent = "按页面区分";
-    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的主页面图标按钮（效果）。实体、备注、动作和按钮位置不会改变。";
+    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的主页面或侧边栏图标按钮（效果）。实体、备注、动作和按钮位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(item => {
       const entry = ibePropertyMeta[item];
       const property = readTitleButtonProperty(value, item);
@@ -15814,9 +15793,9 @@ function withSelectedComponentEntry() {
   }) => component.id !== value.id);
   if (!!temp.length && !!filtered.length) {
     navigationStyleApplyTitle.textContent = "应用空调设置";
-    navigationStyleApplyTargetHeading.textContent = "应用到主页面同类型控件";
+    navigationStyleApplyTargetHeading.textContent = "应用到同类型控件";
     navigationStyleApplyTargetScope.textContent = "按页面区分";
-    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的空调控件。实体、备注、文字内容、动作和按钮位置不会改变。";
+    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的主页面或侧边栏空调控件。实体、备注、文字内容、动作和按钮位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(item => {
       const entry = titleButtonPropertyMeta[item];
       const property = readIbeProperty(value, item);
@@ -15849,9 +15828,9 @@ function syncIconButtonIconItem() {
   }) => component.id !== value.id && (value.type !== "presence-sensor" || presenceSensorKindCurrent(component) === kind));
   if (!!temp.length && !!filtered.length) {
     navigationStyleApplyTitle.textContent = "应用" + chosen + "设置";
-    navigationStyleApplyTargetHeading.textContent = "应用到主页面同类型控件";
+    navigationStyleApplyTargetHeading.textContent = "应用到同类型控件";
     navigationStyleApplyTargetScope.textContent = "按页面区分";
-    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的主页面" + chosen + "。实体、备注、图标名称、文字内容和位置不会改变。";
+    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的主页面或侧边栏" + chosen + "。实体、备注、图标名称、文字内容和位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(item => {
       const meta = presenceOrDevicePropertyMeta(value, item);
       const property = readPresenceProperty(value, item);
@@ -15877,12 +15856,14 @@ function withSelectedComponentList() {
     return;
   }
   const temp = collectList(value);
-  const filtered = collectComponentsByType(currentProject.document.sharedComponents, "line-chart").filter(component => component.id !== value.id);
+  const filtered = findComponentsByType("line-chart").filter(({
+    component
+  }) => component.id !== value.id);
   if (!!temp.length && !!filtered.length) {
     navigationStyleApplyTitle.textContent = "应用折线图设置";
-    navigationStyleApplyTargetHeading.textContent = "应用到折线图";
-    navigationStyleApplyTargetScope.textContent = "侧边栏通用";
-    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的侧边栏折线图。数值实体、备注、动作和位置不会改变。";
+    navigationStyleApplyTargetHeading.textContent = "应用到同类型控件";
+    navigationStyleApplyTargetScope.textContent = "按页面区分";
+    navigationStyleApplySummary.textContent = "将“" + componentLabel(value) + "”中选定的修改应用到选中的主页面或侧边栏折线图。数值实体、备注、动作和位置不会改变。";
     navigationStyleApplyProperties.replaceChildren(...temp.map(item => {
       const entry = lineChartPropertyMeta[item];
       const property = readNavigationProperty(value, item);
@@ -15892,12 +15873,7 @@ function withSelectedComponentList() {
         detail: entry.group + " · " + formatNavigationPropertyValue(item, property)
       });
     }));
-    renderListPrevious(filtered.map(component => createNavigationTargetOption({
-      value: component.id,
-      label: componentLabel(component),
-      detail: component.bindings?.entity?.entityId || "未设置数值实体",
-      target: true
-    })));
+    buildIdMapNext(filtered, "折线图");
     navigationStyleApplyMessage.hidden = true;
     navigationStyleApplyMessage.textContent = "";
     styleApplyPending = {
@@ -16238,60 +16214,66 @@ navigationStyleApplyDialog.addEventListener("close", () => {
   styleApplyPending = null;
 });
 navigationStyleApplyConfirmBtn.addEventListener("click", () => {
-  const temp = styleApplyPending?.sourceId;
-  const value = styleApplyPending?.type;
-  const length = [...navigationStyleApplyProperties.querySelectorAll("[data-navigation-style-property]:checked")].map(dataset => dataset.dataset.navigationStyleProperty);
-  const mapped = [...navigationStyleApplyTargets.querySelectorAll("[data-navigation-target-id]:checked")].map(dataset => dataset.dataset.navigationTargetId);
-  if (!temp || !length.length || !mapped.length) {
-    const chosen = value === "panel-frame" ? "底图框" : value === "camera" ? "摄像头实时预览" : value === "title-button" ? "标题按钮" : value === "air-conditioner" ? "空调" : value === "line-chart" ? "折线图" : value === "icon-button-effect" ? "图标按钮（效果）" : value === "icon-button" ? "图标按钮" : value === "device-button" ? "设备按钮" : value === "presence-sensor" ? "传感器" : "导航按钮";
+  const sourceId = styleApplyPending?.sourceId;
+  const applyType = styleApplyPending?.type;
+  const propertyKeys = [...navigationStyleApplyProperties.querySelectorAll("[data-navigation-style-property]:checked")].map(dataset => dataset.dataset.navigationStyleProperty);
+  const targetIds = [...navigationStyleApplyTargets.querySelectorAll("[data-navigation-target-id]:checked")].map(dataset => dataset.dataset.navigationTargetId);
+  if (!sourceId || !propertyKeys.length || !targetIds.length) {
+    const chosen = applyType === "panel-frame" ? "底图框" : applyType === "camera" ? "摄像头实时预览" : applyType === "title-button" ? "标题按钮" : applyType === "air-conditioner" ? "空调" : applyType === "line-chart" ? "折线图" : applyType === "icon-button-effect" ? "图标按钮（效果）" : applyType === "icon-button" ? "图标按钮" : applyType === "device-button" ? "设备按钮" : applyType === "presence-sensor" ? "传感器" : "导航按钮";
     navigationStyleApplyMessage.textContent = "请至少选择一项修改和一个目标" + chosen + "。";
     navigationStyleApplyMessage.hidden = false;
     return;
   }
   navigationStyleApplyDialog.close();
-  mutateDocument(param => {
-    const item = findComponent(param, temp)?.component;
-    if (!!item && item.type === value) {
-      for (const item of mapped) {
-        const entry = findComponent(param, item)?.component;
-        if (!!entry && entry.type === value && (value !== "presence-sensor" || presenceSensorKindCurrent(entry) === presenceSensorKindCurrent(item))) {
-          for (const entry of length) {
-            if (value === "panel-frame") {
-              scaleVacuumMapProperty(item, entry, entry);
-            } else if (value === "camera") {
-              scaleCameraProperty(item, entry, entry);
-            } else if (value === "title-button") {
-              scalePanelFrameProperty(item, entry, entry);
-            } else if (value === "line-chart") {
-              scaleNavigationProperty(item, entry, entry);
-            } else if (value === "icon-button-effect") {
-              scaleTitleButtonProperty(item, entry, entry);
-            } else if (value === "air-conditioner") {
-              scaleIbeProperty(item, entry, entry);
-            } else if (["icon-button", "device-button", "presence-sensor"].includes(value)) {
-              scalePresenceProperty(item, entry, entry);
-            } else {
-              scaleAirConditionerProperty(item, entry, entry);
-            }
-          }
+  mutateDocument(doc => {
+    const sourceComponent = findComponent(doc, sourceId)?.component;
+    if (!sourceComponent || sourceComponent.type !== applyType) {
+      return;
+    }
+    const sourceKind = applyType === "presence-sensor" ? presenceSensorKindCurrent(sourceComponent) : null;
+    for (const targetId of targetIds) {
+      const targetComponent = findComponent(doc, targetId)?.component;
+      if (!targetComponent || targetComponent.type !== applyType || targetComponent.id === sourceComponent.id) {
+        continue;
+      }
+      if (applyType === "presence-sensor" && presenceSensorKindCurrent(targetComponent) !== sourceKind) {
+        continue;
+      }
+      for (const propertyKey of propertyKeys) {
+        if (applyType === "panel-frame") {
+          scaleVacuumMapProperty(sourceComponent, targetComponent, propertyKey);
+        } else if (applyType === "camera") {
+          scaleCameraProperty(sourceComponent, targetComponent, propertyKey);
+        } else if (applyType === "title-button") {
+          scalePanelFrameProperty(sourceComponent, targetComponent, propertyKey);
+        } else if (applyType === "line-chart") {
+          scaleNavigationProperty(sourceComponent, targetComponent, propertyKey);
+        } else if (applyType === "icon-button-effect") {
+          scaleTitleButtonProperty(sourceComponent, targetComponent, propertyKey);
+        } else if (applyType === "air-conditioner") {
+          scaleIbeProperty(sourceComponent, targetComponent, propertyKey);
+        } else if (["icon-button", "device-button", "presence-sensor"].includes(applyType)) {
+          scalePresenceProperty(sourceComponent, targetComponent, propertyKey);
+        } else {
+          scaleAirConditionerProperty(sourceComponent, targetComponent, propertyKey);
         }
       }
     }
   }).then(() => {
-    const classList = value === "panel-frame" ? panelFrameApplyStyle : value === "camera" ? cameraApplyStyle : value === "title-button" ? titleButtonApplyStyle : value === "air-conditioner" ? airConditionerApplyStyle : value === "line-chart" ? lineChartApplyStyle : value === "icon-button-effect" ? ibeApplyStyle : ["icon-button", "device-button", "presence-sensor"].includes(value) ? iconButtonApplyStyle : navigationApplyStyle;
-    if (value === "panel-frame") {
+    const classList = applyType === "panel-frame" ? panelFrameApplyStyle : applyType === "camera" ? cameraApplyStyle : applyType === "title-button" ? titleButtonApplyStyle : applyType === "air-conditioner" ? airConditionerApplyStyle : applyType === "line-chart" ? lineChartApplyStyle : applyType === "icon-button-effect" ? ibeApplyStyle : ["icon-button", "device-button", "presence-sensor"].includes(applyType) ? iconButtonApplyStyle : navigationApplyStyle;
+    if (applyType === "panel-frame") {
       window.clearTimeout(panelFrameStyleApplyResetTimer);
-    } else if (value === "camera") {
+    } else if (applyType === "camera") {
       window.clearTimeout(cameraStyleApplyResetTimer);
-    } else if (value === "title-button") {
+    } else if (applyType === "title-button") {
       window.clearTimeout(titleButtonStyleApplyResetTimer);
-    } else if (value === "air-conditioner") {
+    } else if (applyType === "air-conditioner") {
       window.clearTimeout(airConditionerStyleApplyResetTimer);
-    } else if (value === "line-chart") {
+    } else if (applyType === "line-chart") {
       window.clearTimeout(lineChartStyleApplyResetTimer);
-    } else if (value === "icon-button-effect") {
+    } else if (applyType === "icon-button-effect") {
       window.clearTimeout(ibeStyleApplyResetTimer);
-    } else if (["icon-button", "device-button", "presence-sensor"].includes(value)) {
+    } else if (["icon-button", "device-button", "presence-sensor"].includes(applyType)) {
       window.clearTimeout(iconButtonStyleApplyResetTimer);
     } else {
       window.clearTimeout(defaultStyleApplyResetTimer);
@@ -16299,23 +16281,23 @@ navigationStyleApplyConfirmBtn.addEventListener("click", () => {
     classList.classList.add("applied");
     const timerId = window.setTimeout(() => {
       classList.classList.remove("applied");
-      if (componentId === temp) {
+      if (componentId === sourceId) {
         refreshInspector();
       }
     }, 1800);
-    if (value === "panel-frame") {
+    if (applyType === "panel-frame") {
       panelFrameStyleApplyResetTimer = timerId;
-    } else if (value === "camera") {
+    } else if (applyType === "camera") {
       cameraStyleApplyResetTimer = timerId;
-    } else if (value === "title-button") {
+    } else if (applyType === "title-button") {
       titleButtonStyleApplyResetTimer = timerId;
-    } else if (value === "air-conditioner") {
+    } else if (applyType === "air-conditioner") {
       airConditionerStyleApplyResetTimer = timerId;
-    } else if (value === "line-chart") {
+    } else if (applyType === "line-chart") {
       lineChartStyleApplyResetTimer = timerId;
-    } else if (value === "icon-button-effect") {
+    } else if (applyType === "icon-button-effect") {
       ibeStyleApplyResetTimer = timerId;
-    } else if (["icon-button", "device-button", "presence-sensor"].includes(value)) {
+    } else if (["icon-button", "device-button", "presence-sensor"].includes(applyType)) {
       iconButtonStyleApplyResetTimer = timerId;
     } else {
       defaultStyleApplyResetTimer = timerId;

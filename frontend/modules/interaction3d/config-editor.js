@@ -1,13 +1,13 @@
-import { vacuumMapIdentity } from "./vacuum-map.js?v=20260909-curtain-action-v15";
-import { openInteraction3dRangeEditor } from "./range-dialog.js?v=20260910-document-shadow-v1-20260911-navigation-light-v14-stage-retain-v1-focus-layout-anim-v1";
-import { mountInteraction3d } from "./runtime.js?v=20260910-control-projectid-v1-20260911-workspace-switch-v1-20260911-security-camera-popup-v6";
-import { lightState } from "./light-state.js?v=20260906-i3d-render-recovery-v1";
-import { openVacuumMapEditor } from "./vacuum-map-editor.js?v=20260909-curtain-action-v15";
+import { vacuumMapIdentity } from "./vacuum-map.js?v=0.5.3";
+import { openInteraction3dRangeEditor } from "./range-dialog.js?v=0.5.3";
+import { mountInteraction3d } from "./runtime.js?v=0.5.3";
+import { lightState } from "./light-state.js?v=0.5.3";
+import { openVacuumMapEditor } from "./vacuum-map-editor.js?v=0.5.3";
 import { nasGroups } from "./nas-panel.js";
-import { randomUuid } from "/bridge-static/utils/random-id.js?v=20260724-revert-hold-popup-shield-v324";
-import { interaction3dPreviewSize } from "/bridge-static/modules/interaction3d/preview-layout.js?v=20260906-i3d-preview-layout-v1-20260908-curtains-v1";
-import { requestInteraction3dAccess, getInteraction3dEditorView, subscribeInteraction3dAccess } from "/bridge-static/modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1-focus-layout-anim-v1";
-import { normalizeInteraction3dLightingMode } from "/bridge-static/modules/interaction3d/definition.js?v=20260909-curtain-action-v15";
+import { randomUuid } from "/bridge-static/utils/random-id.js?v=0.5.3";
+import { interaction3dPreviewSize } from "/bridge-static/modules/interaction3d/preview-layout.js?v=0.5.3";
+import { requestInteraction3dAccess, getInteraction3dEditorView, subscribeInteraction3dAccess } from "/bridge-static/modules/interaction3d/bridge.js?v=0.5.3";
+import { normalizeInteraction3dLightingMode } from "/bridge-static/modules/interaction3d/definition.js?v=0.5.3";
 const APPEARANCE_LIGHTING_SECTIONS = [["整体", [["曝光", "exposure", 0.5, 2, 0.05], ["半球光", "hemisphereIntensity", 0, 3, 0.05], ["环境光", "ambientIntensity", 0, 2, 0.05]]], ["主光与阴影", [["强度", "mainIntensity", 0, 5, 0.05], ["水平角", "mainAzimuth", -180, 180, 5], ["高度角", "mainElevation", 5, 89, 5], ["阴影浓度", "mainShadowIntensity", 0, 1, 0.05]]], ["侧面补光", [["强度", "fillIntensity", 0, 3, 0.05], ["水平角", "fillAzimuth", -180, 180, 5], ["高度角", "fillElevation", 0, 89, 5]]], ["顶部补光", [["强度", "topIntensity", 0, 3, 0.05], ["水平角", "topAzimuth", -180, 180, 5], ["高度角", "topElevation", 0, 89, 5]]]];
 export async function openInteraction3dEditor({
   component,
@@ -41,9 +41,9 @@ export async function openInteraction3dEditor({
   let isNonLight = false;
   let stageLabel = "灯光";
   let dialogLabel = stageLabel;
-  let statusNote = "airConditioners";
-  let errorNote = "mdi:lightbulb-outline";
-  let selectedLightId = "groupId";
+  let deviceCollectionKey = "airConditioners";
+  let emptyStateIcon = "mdi:lightbulb-outline";
+  let bindingIdField = "groupId";
   function applyKindFlags() {
     isEnvironmentKind = ["environment", "climate", "cover"].includes(deviceKindLocal);
     isDeviceMode = deviceKindLocal === "devices" || deviceKindLocal === "nas" || deviceKindLocal === "television";
@@ -57,16 +57,16 @@ export async function openInteraction3dEditor({
     isNonLight = isClimate || isCover || isNas || isTelevision || isVacuum || isVacuumShortcut;
     stageLabel = isVacuumShortcut ? "快捷指令" : isVacuum ? "扫地机" : isDeviceMode ? "设备" : isCover ? "窗帘" : isClimate ? "空调" : "灯光";
     dialogLabel = isEnvironmentKind ? "环境" : isVacuumShortcut ? "扫地机" : stageLabel;
-    statusNote = isVacuum || isVacuumShortcut ? "vacuums" : isTelevision ? "televisions" : isNas ? "nas" : isCover ? "curtains" : "airConditioners";
-    errorNote = isVacuumShortcut ? "mdi:broom" : isVacuum ? "mdi:robot-vacuum" : isTelevision ? "mdi:television" : isNas ? "mdi:nas" : isCover ? "mdi:curtains" : isClimate ? "mdi:air-conditioner" : "mdi:lightbulb-outline";
-    selectedLightId = isNonLight ? "modelId" : "groupId";
+    deviceCollectionKey = isVacuum || isVacuumShortcut ? "vacuums" : isTelevision ? "televisions" : isNas ? "nas" : isCover ? "curtains" : "airConditioners";
+    emptyStateIcon = isVacuumShortcut ? "mdi:broom" : isVacuum ? "mdi:robot-vacuum" : isTelevision ? "mdi:television" : isNas ? "mdi:nas" : isCover ? "mdi:curtains" : isClimate ? "mdi:air-conditioner" : "mdi:lightbulb-outline";
+    bindingIdField = isNonLight ? "modelId" : "groupId";
   }
-  const draft = name3 => name3.name || name3.label || stageLabel;
-  const sceneMeta = clickActionValue => isDeviceLike ? ["focus", "focus-panel", "panel"].includes(clickActionValue) ? clickActionValue : "focus-panel" : isCover ? clickActionValue === "panel" ? "panel" : "focus" : ["turn-on-focus", "turn-on", "turn-on-panel"].includes(clickActionValue) ? clickActionValue : "focus";
+  const deviceDisplayName = device => device.name || device.label || stageLabel;
+  const normalizeClickAction = clickActionValue => isDeviceLike ? ["focus", "focus-panel", "panel"].includes(clickActionValue) ? clickActionValue : "focus-panel" : isCover ? clickActionValue === "panel" ? "panel" : "focus" : ["turn-on-focus", "turn-on", "turn-on-panel"].includes(clickActionValue) ? clickActionValue : "focus";
   applyKindFlags();
   const rel = document.createElement("link");
   rel.rel = "stylesheet";
-  rel.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15-20260911-unified-settings-v1-20260912-compact-list-note-v1";
+  rel.href = "/api/v1/modules/interaction3d/runtime.css?v=0.5.3";
   document.head.append(rel);
   const createEl = (tagName, elClassName, element) => {
     const nodeEl = document.createElement(tagName);
@@ -127,14 +127,14 @@ export async function openInteraction3dEditor({
     if (isDeviceLike) {
       effectRangeOpen.devices = {
         ...effectRangeOpen.devices,
-        [statusNote]: effectRangeOpen.devices?.[statusNote] || []
+        [deviceCollectionKey]: effectRangeOpen.devices?.[deviceCollectionKey] || []
       };
     }
     if (isNonLight && !isDeviceLike) {
       effectRangeOpen.environment = {
         ...effectRangeOpen.environment,
         dimStrength: Number.isFinite(effectRangeOpen.environment?.dimStrength) ? Math.max(0, Math.min(100, effectRangeOpen.environment.dimStrength)) : 70,
-        [statusNote]: effectRangeOpen.environment?.[statusNote] || []
+        [deviceCollectionKey]: effectRangeOpen.environment?.[deviceCollectionKey] || []
       };
     }
     if (isVacuumShortcut) {
@@ -150,16 +150,16 @@ export async function openInteraction3dEditor({
     vacuumId ||= effectRangeOpen.devices?.vacuums?.[0]?.id || "";
   }
   const getCurrentVacuum = () => effectRangeOpen.devices?.vacuums?.find(id => id.id === vacuumId);
-  const getCurrentItems = () => isVacuumShortcut ? getCurrentVacuum()?.shortcuts || [] : isDeviceLike ? effectRangeOpen.devices[statusNote] : isNonLight ? effectRangeOpen.environment[statusNote] : effectRangeOpen.lights;
+  const getCurrentItems = () => isVacuumShortcut ? getCurrentVacuum()?.shortcuts || [] : isDeviceLike ? effectRangeOpen.devices[deviceCollectionKey] : isNonLight ? effectRangeOpen.environment[deviceCollectionKey] : effectRangeOpen.lights;
   const setCurrentItems = shortcuts => {
     if (isVacuumShortcut) {
       if (getCurrentVacuum()) {
         getCurrentVacuum().shortcuts = shortcuts;
       }
     } else if (isDeviceLike) {
-      effectRangeOpen.devices[statusNote] = shortcuts;
+      effectRangeOpen.devices[deviceCollectionKey] = shortcuts;
     } else if (isNonLight) {
-      effectRangeOpen.environment[statusNote] = shortcuts;
+      effectRangeOpen.environment[deviceCollectionKey] = shortcuts;
     } else {
       effectRangeOpen.lights = shortcuts;
     }
@@ -171,15 +171,17 @@ export async function openInteraction3dEditor({
         ...size,
         size: sizeCurrent,
         visible: isVacuumShortcut ? size.visible !== false : true,
-        icon: size.icon || errorNote,
+        icon: size.icon || emptyStateIcon,
         ...(isNonLight ? {} : {
           fadeDuration: size.fadeDuration ?? 0.3
         }),
         ...(isCover ? {
-          coverDirection: ["left", "right", "split"].includes(size.coverDirection) ? size.coverDirection : "auto"
+          coverDirection: ["left", "right", "split"].includes(size.coverDirection) ? size.coverDirection : "auto",
+          curtainFabric: size.curtainFabric === "sheer" ? "sheer" : "cloth",
+          unboundPosition: Number.isFinite(size.unboundPosition) ? Math.max(0, Math.min(100, size.unboundPosition)) : 0
         } : {}),
         ...(isVacuumShortcut ? {} : {
-          clickAction: sceneMeta(size.clickAction)
+          clickAction: normalizeClickAction(size.clickAction)
         }),
         iconSize: Number.isFinite(size.iconSize) && size.iconSize > 0 ? size.iconSize : Math.min(sizeCurrent, Math.max(4, sizeCurrent - 18))
       };
@@ -206,7 +208,7 @@ export async function openInteraction3dEditor({
   function markDirty(size, minimum = resolveEntityLightState(size)) {
     if (isNonLight) {
       return {
-        icon: size.icon || errorNote,
+        icon: size.icon || emptyStateIcon,
         size: size.size ?? 44,
         iconSize: size.iconSize ?? 26,
         hitSize: size.hitSize ?? Math.max(44, size.size ?? 44),
@@ -858,14 +860,14 @@ export async function openInteraction3dEditor({
     effectPanelHost.append(effectRangeDetails);
   }
   function listFloorTargets() {
-    return (draftRevision?.floors || []).filter(floor => floor.id === syncPreviewSize).flatMap(floor => (isNonLight ? floor[statusNote] || [] : floor.groups || []).map(group => ({
+    return (draftRevision?.floors || []).filter(floor => floor.id === syncPreviewSize).flatMap(floor => (isNonLight ? floor[deviceCollectionKey] || [] : floor.groups || []).map(group => ({
       floor,
       group,
       key: JSON.stringify([floor.id, group.id])
     })));
   }
   function listAvailableTargets() {
-    return listFloorTargets().filter(target => !getCurrentItems().some(item => item.floorId === target.floor.id && item[selectedLightId] === target.group.id));
+    return listFloorTargets().filter(target => !getCurrentItems().some(item => item.floorId === target.floor.id && item[bindingIdField] === target.group.id));
   }
   function switchDeviceKind(nextKind, startAddingMode = false) {
     if (refreshCapabilities || isSavingConfig || !capabilityCache || saveButton || unsubscribeAccess || nextKind === deviceKindLocal) {
@@ -957,7 +959,7 @@ export async function openInteraction3dEditor({
         }
       }).setAttribute("aria-label", "设备类型");
     }
-    const disabled = appendPositiveNumber(addDialogBody, isNonLight ? "关联" + stageLabel + "模型" : "关联灯组", length.map(key => [key.key, draft(key.group)]), length[0].key, () => {
+    const disabled = appendPositiveNumber(addDialogBody, isNonLight ? "关联" + stageLabel + "模型" : "关联灯组", length.map(key => [key.key, deviceDisplayName(key.group)]), length[0].key, () => {
       addDialogError.textContent = "";
     });
     disabled.setAttribute("aria-label", isNonLight ? "关联" + stageLabel + "模型" : "关联灯组");
@@ -984,9 +986,9 @@ export async function openInteraction3dEditor({
         const id = {
           id: randomUuid(),
           floorId: group.floor.id,
-          [selectedLightId]: group.group.id,
+          [bindingIdField]: group.group.id,
           entityId: "",
-          label: draft(group.group),
+          label: deviceDisplayName(group.group),
           ...(isNonLight ? {} : {
             x: group.group.x,
             y: group.group.y,
@@ -994,12 +996,14 @@ export async function openInteraction3dEditor({
             fadeDuration: 0.3
           }),
           ...(isCover ? {
-            coverDirection: "auto"
+            coverDirection: "auto",
+            curtainFabric: "cloth",
+            unboundPosition: 0
           } : {}),
           size: 44,
           iconSize: 26,
           visible: true,
-          icon: errorNote,
+          icon: emptyStateIcon,
           clickAction: isDeviceLike ? "focus-panel" : "focus"
         };
         getCurrentItems().push(id);
@@ -1197,9 +1201,9 @@ export async function openInteraction3dEditor({
     const classNameCurrent = accessAllowed("", () => openShortcutPicker("icon", classNameCurrent));
     classNameCurrent.className = "i3d-picker-button i3d-icon-picker-button";
     const style = createEl("i");
-    style.style.maskImage = "url('/bridge-static/vendor/mdi/7.4.47/svg/" + (binding.icon || errorNote).slice(4) + ".svg')";
+    style.style.maskImage = "url('/bridge-static/vendor/mdi/7.4.47/svg/" + (binding.icon || emptyStateIcon).slice(4) + ".svg')";
     style.style.webkitMaskImage = style.style.maskImage;
-    classNameCurrent.append(style, createEl("span", "", binding.icon || errorNote));
+    classNameCurrent.append(style, createEl("span", "", binding.icon || emptyStateIcon));
     appendSetting(shortcutAppearanceRow, "图标", classNameCurrent);
     const shortcutVisibilityRow = createEl("div", "i3d-button-visibility-row i3d-shortcut-visibility");
     shortcutAppearanceSection.append(shortcutVisibilityRow);
@@ -1396,14 +1400,14 @@ export async function openInteraction3dEditor({
         });
         appendSetting(baseRow, "名称", itemNameInput);
         if (isNonLight) {
-          const some = draftRevision.floors.filter(id => id.id === syncPreviewSize).flatMap(id => (id[statusNote] || []).filter(item => !getCurrentItems().some(floorId => floorId !== statusSource && floorId.floorId === id.id && floorId.modelId === item.id)).map(model => ({
+          const some = draftRevision.floors.filter(id => id.id === syncPreviewSize).flatMap(id => (id[deviceCollectionKey] || []).filter(item => !getCurrentItems().some(floorId => floorId !== statusSource && floorId.floorId === id.id && floorId.modelId === item.id)).map(model => ({
             floor: id,
             model,
             key: id.id + "/" + model.id
           })));
           const boundModelKey = statusSource.floorId + "/" + statusSource.modelId;
           const boundModelStillExists = some.some(key => key.key === boundModelKey);
-          const unshift = some.map(key => [key.key, draft(key.model)]);
+          const unshift = some.map(key => [key.key, deviceDisplayName(key.model)]);
           if (!boundModelStillExists) {
             unshift.unshift([boundModelKey, "原模型已移除，请重新选择"]);
           }
@@ -1423,12 +1427,26 @@ export async function openInteraction3dEditor({
           }
         }
         if (isCover) {
+          appendPositiveNumber(baseSection, "帘布外观", [["cloth", "布帘"], ["sheer", "纱帘"]], statusSource.curtainFabric === "sheer" ? "sheer" : "cloth", fabricChoice => {
+            statusSource.curtainFabric = fabricChoice === "sheer" ? "sheer" : "cloth";
+            mountRuntime();
+          });
           appendPositiveNumber(baseSection, "开合方向", [["auto", "继承模型"], ["left", "单开 · 向左收拢"], ["right", "单开 · 向右收拢"], ["split", "双开 · 向两侧收拢"]], statusSource.coverDirection, coverDirectionChoice => {
             statusSource.coverDirection = ["left", "right", "split"].includes(coverDirectionChoice) ? coverDirectionChoice : "auto";
             mountRuntime();
           });
-        }
-        if (isCover) {
+          if (statusSource.entityId) {
+            baseSection.append(createEl("p", "i3d-note", "开合状态跟随绑定实体；解除绑定后恢复预设的展示状态。"));
+          } else {
+            const unboundOptions = [["0", "关闭"], ["50", "半开"], ["100", "全开"]];
+            if (![0, 50, 100].includes(statusSource.unboundPosition)) {
+              unboundOptions.push([String(statusSource.unboundPosition), "自定义 " + statusSource.unboundPosition + "%"]);
+            }
+            appendPositiveNumber(baseSection, "未绑定时显示", unboundOptions, String(statusSource.unboundPosition ?? 0), unboundChoice => {
+              statusSource.unboundPosition = Number(unboundChoice);
+              mountRuntime();
+            });
+          }
           const iconStateToggleInput = createEl("input");
           Object.assign(iconStateToggleInput, {
             type: "checkbox",
@@ -1654,14 +1672,15 @@ export async function openInteraction3dEditor({
           const powerEntityPickerButton = accessAllowed(statusSource.powerEntityId || "不单独绑定", () => void openItemPicker("powerEntity", powerEntityPickerButton));
           powerEntityPickerButton.className = "i3d-picker-button";
           appendSetting(baseSection, "电视电源状态（可选）", powerEntityPickerButton);
-          baseSection.append(createEl("p", "i3d-note", "绑定 Apple TV 的 media_player 实体，同步封面、应用、节目和播放状态。电源状态可单独绑定电视；弹窗只读，不同步实际视频。"));
+          baseSection.append(createEl("p", "i3d-note", "可绑定任意能提供开关状态的实体：开启显示 HA BRIDGE 海报，关闭黑屏。上方绑定媒体播放器后，有节目封面时优先显示封面；不单独绑定电源时，跟随媒体播放器电源状态。"));
+          baseSection.append(createEl("p", "i3d-note", "绑定 Apple TV 的 media_player 实体，同步封面、应用、节目和播放状态。弹窗只读，不同步实际视频。"));
         }
         if (isNas) {
           baseSection.append(createEl("p", "i3d-note", statusSource.statusSource ? "已选择 NAS 自身状态数据作为呼吸灯依据。安全状态只用于告警。" : "请先选择 NAS 数据来源。原来的试绑实体不会自动作为 NAS 数据来源。"));
         }
         const interactionSection = makeConfigSection("交互行为");
         appendPositiveNumber(interactionSection, "点击" + stageLabel, isDeviceLike ? [["focus-panel", "聚焦并显示状态"], ["panel", "仅显示状态"], ["focus", "仅聚焦"]] : isCover ? [["focus", "聚焦并显示控制"], ["panel", "仅显示控制"]] : isClimate ? [["focus", "聚焦并显示控制"], ["turn-on-focus", "聚焦并开启"], ["turn-on", "仅开关空调"], ["turn-on-panel", "开启并显示控制"]] : [["focus", "仅聚焦"], ["turn-on-focus", "聚焦并开灯"], ["turn-on", "仅开关灯"], ["turn-on-panel", "开灯并弹窗"]], statusSource.clickAction, clickActionChoice => {
-          statusSource.clickAction = sceneMeta(clickActionChoice);
+          statusSource.clickAction = normalizeClickAction(clickActionChoice);
           mountRuntime();
         });
         const visibilityRow = createEl("div", "i3d-button-visibility-row");
@@ -1727,7 +1746,7 @@ export async function openInteraction3dEditor({
         });
         if (isNonLight) {
           const positionSection = makeConfigSection(isVacuum ? "标签位置" : "按钮位置");
-          const elevation = draftRevision.floors.find(id => id.id === statusSource.floorId)?.[statusNote]?.find(id => id.id === statusSource.modelId);
+          const elevation = draftRevision.floors.find(id => id.id === statusSource.floorId)?.[deviceCollectionKey]?.find(id => id.id === statusSource.modelId);
           const modelCoordGrid = createEl("div", "i3d-coordinate-grid");
           positionSection.append(modelCoordGrid);
           const disabled = accessAllowed("恢复跟随模型", () => {
@@ -1917,7 +1936,7 @@ export async function openInteraction3dEditor({
         }
         makeConfigSection("绑定管理").append(removeDeviceButton);
       } else {
-        const emptyListHint = length.length ? isVacuum ? "点击“添加扫地机”，选择模型后绑定扫地机设备。" : isTelevision || isNas ? "点击“添加设备”，选择" + (isTelevision ? "电视模型并绑定媒体播放器实体。" : "设备类型和模型，再绑定开启实体。") : isCover ? "点击“添加窗帘”，选择需要控制的窗帘模型。" : isClimate ? "点击“添加空调”，选择需要控制的空调模型。" : "点击“添加灯光”，选择需要控制的灯组。" : isVacuum ? "当前楼层暂无扫地机模型，请先在户型绘制中添加扫地机器人后更新户型。" : isTelevision ? "当前楼层暂无电视模型，请先在户型绘制中添加电视后更新户型。" : isNas ? "当前楼层暂无 NAS 模型，请先在户型绘制中添加模型后更新户型。" : isCover ? "当前楼层暂无窗帘模型，请在户型绘制中添加普通窗帘后更新户型。" : isClimate ? "当前楼层暂无空调模型，请在户型绘制中添加壁挂空调、柜机或出风口后更新户型。" : "当前楼层暂无灯组，请在户型绘制中添加灯组后更新户型。";
+        const emptyListHint = length.length ? isVacuum ? "点击“添加扫地机”，选择模型后绑定扫地机设备。" : isTelevision || isNas ? "点击“添加设备”，选择" + (isTelevision ? "电视模型并绑定媒体播放器实体。" : "设备类型和模型，再绑定开启实体。") : isCover ? "点击“添加窗帘”，选择需要控制的窗帘模型。" : isClimate ? "点击“添加空调”，选择需要控制的空调模型。" : "点击“添加灯光”，选择需要控制的灯组。" : isVacuum ? "当前楼层暂无扫地机模型，请先在 3D 户型图绘制中添加扫地机器人后更新户型。" : isTelevision ? "当前楼层暂无电视模型，请先在 3D 户型图绘制中添加电视后更新户型。" : isNas ? "当前楼层暂无 NAS 模型，请先在 3D 户型图绘制中添加 NAS 模型后更新户型。" : isCover ? "当前楼层暂无窗帘模型，请先在 3D 户型图绘制中添加普通窗帘后更新户型。" : isClimate ? "当前楼层暂无空调模型，请先在 3D 户型图绘制中添加壁挂空调、柜机或出风口后更新户型。" : "当前楼层暂无灯组，请先在 3D 户型图绘制中添加灯组后更新户型。";
         focusQueue.append(createEl("p", "i3d-note", emptyListHint));
       }
     }
@@ -2111,7 +2130,7 @@ export async function openInteraction3dAppearanceEditor({
   }
   const rel = document.createElement("link");
   rel.rel = "stylesheet";
-  rel.href = "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15-20260912-compact-list-note-v1";
+  rel.href = "/api/v1/modules/interaction3d/runtime.css?v=0.5.3";
   document.head.append(rel);
   const createEl = (appearanceTag, element = "") => {
     const appearanceNode = document.createElement(appearanceTag);

@@ -1,6 +1,6 @@
-import { openPresenceFocusEditor } from "./presence-focus-editor.js?v=20260911-security-focal-v1";
+import { openPresenceFocusEditor } from "./presence-focus-editor.js?v=0.5.3";
 import { mountInteraction3d } from "./runtime.js";
-import { validPresenceRoute, snapsToPresenceStart } from "./presence-motion.js?v=20260911-presence-pages-v2";
+import { validPresenceRoute, snapsToPresenceStart, PRESENCE_TRIGGER_MODES, presenceTriggerIsTimed } from "./presence-motion.js?v=0.5.3";
 import { DESIGNS, createWalker, animateWalker, disposeWalker } from "./presence-character.js";
 import { randomUuid } from "/bridge-static/utils/random-id.js";
 export async function openPresenceEditor({
@@ -33,7 +33,9 @@ export async function openPresenceEditor({
       color: sensor.color ?? "cyan",
       speed: sensor.speed ?? 0.45,
       size: sensor.size ?? 1,
-      displayDuration: sensor.entityId?.startsWith("event.") ? sensor.displayDuration > 0 ? sensor.displayDuration : 30 : sensor.displayDuration ?? 0
+      displayDuration: presenceTriggerIsTimed(sensor)
+        ? sensor.displayDuration > 0 ? sensor.displayDuration : 30
+        : sensor.displayDuration ?? 0
     });
   }
   const el = (tag, text, className) => {
@@ -310,6 +312,7 @@ export async function openPresenceEditor({
         if (!closed) {
           presented = true;
           scheduleTopView();
+          focusCommand.focusCommand("presence-editor-open", "", true).catch(onLoadError);
           if (previewWalk) {
             focusCommand.focusCommand("presence-preview-walk", "", true).catch(onLoadError);
           }
@@ -608,12 +611,56 @@ export async function openPresenceEditor({
       colors.append(colorBtn);
     }
     controlsAside.append(colors);
-    const isEventEntity = sensor.entityId.startsWith("event.");
-    addNumberField("每次触发显示时长（秒）", "displayDuration", isEventEntity ? 1 : 0, 3600, 1);
-    controlsAside.append(el("p", isEventEntity ? "移动事件触发后显示，再次触发重新计时；到时隐藏。" : "0：随有人状态显示；其他值：到时隐藏，无人立即隐藏，下次触发重新计时。", "presence-note"));
+    if (manageBindings) {
+      const modeSelect = el("select");
+      modeSelect.setAttribute("aria-label", "触发方式");
+      for (const [mode, label] of PRESENCE_TRIGGER_MODES) {
+        const option = el("option", label);
+        option.value = mode;
+        modeSelect.append(option);
+      }
+      modeSelect.value = sensor.triggerMode || "auto";
+      modeSelect.addEventListener("change", () => {
+        flushInputs();
+        flushers = [];
+        sensor.triggerMode = modeSelect.value;
+        if (modeSelect.value === "equals") {
+          sensor.triggerValue ||= "on";
+        }
+        if (modeSelect.value === "threshold") {
+          sensor.triggerThreshold ??= 0;
+        }
+        if (presenceTriggerIsTimed(sensor) && !(sensor.displayDuration > 0)) {
+          sensor.displayDuration = 30;
+        }
+        rebuildUi();
+      });
+      addField("触发方式", modeSelect);
+      if (sensor.triggerMode === "threshold") {
+        sensor.triggerThreshold ??= 0;
+        addNumberField("数值大于", "triggerThreshold", -1000000, 1000000, 0.1);
+      }
+      if (sensor.triggerMode === "equals") {
+        const valueInput = el("input");
+        valueInput.value = sensor.triggerValue ?? "on";
+        valueInput.maxLength = 128;
+        valueInput.setAttribute("aria-label", "触发值");
+        const commitValue = () => {
+          if (valueInput.value.trim()) {
+            sensor.triggerValue = valueInput.value.trim().slice(0, 128);
+          }
+        };
+        flushers.push(commitValue);
+        valueInput.addEventListener("input", commitValue);
+        addField("触发值", valueInput);
+      }
+    }
+    const timed = presenceTriggerIsTimed(sensor);
+    addNumberField("每次触发显示时长（秒）", "displayDuration", timed ? 1 : 0, 3600, 1);
+    controlsAside.append(el("p", timed ? "每次满足触发条件后显示，再次触发重新计时；到时隐藏。" : "0：随有人状态显示；其他值：到时隐藏，无人立即隐藏，下次触发重新计时。", "presence-note"));
     addNumberField("行走速度（米/秒）", "speed", 0.1, 2, 0.05);
     addNumberField("人物大小（%）", "size", 25, 300, 5, 100);
-    controlsAside.append(el("p", (isEventEntity ? "事件触发后沿路线走动；计时结束或离线时隐藏。" : "有人时沿路线循环走动；无人或离线时隐藏。") + "路线是展示动画，不代表实际人员位置。", "presence-note"));
+    controlsAside.append(el("p", (timed ? "事件触发后沿路线走动；计时结束或离线时隐藏。" : "有人时沿路线循环走动；无人或离线时隐藏。") + "路线是展示动画，不代表实际人员位置。", "presence-note"));
     const focusToggle = el("input");
     focusToggle.type = "checkbox";
     focusToggle.checked = sensor.clickToFocus === true;

@@ -38,6 +38,8 @@ PROPERTY_KEYS = frozenset(
         'focusDimStrength',
         'groundReflection',
         'backgroundVisible',
+        'backgroundTheme',
+        'uniformOverviewStack',
         'motionRenderScale',
         'lightRegionOverrides',
         'focusVignetteStrength',
@@ -141,14 +143,18 @@ PRESENCE_KEYS = frozenset(
         'hitPadding',
         'focusCamera',
         'routeClosed',
+        'triggerMode',
         'waveEnabled',
         'waveOpacity',
         'clickToFocus',
         'displayPages',
+        'triggerValue',
         'displayDuration',
+        'triggerThreshold',
     }
 )
-PRESENCE_ENTITY_PATTERN = re.compile(r'(?:binary_sensor|event)\.[a-z0-9_]{1,200}')
+PRESENCE_ENTITY_PATTERN = re.compile(r'[a-z_]+\.[a-z0-9_]{1,200}')
+PRESENCE_TRIGGER_MODES = ('auto', 'threshold', 'equals', 'change')
 PRESENCE_PAGE_IDS = ('overview', 'light', 'environment', 'devices', 'vacuum', 'security')
 PRESENCE_DEFAULT_PAGES = ['overview', 'light', 'security']
 PRESENCE_CHARACTERS = ('traveler', 'bean', 'glow')
@@ -196,12 +202,16 @@ CURTAIN_KEYS = frozenset(
         'focusCamera',
         'buttonHidden',
         'coverDirection',
+        'curtainFabric',
+        'unboundPosition',
         'hiddenClickable',
         'iconStateReversed',
     }
 )
 CURTAIN_ENTITY_PATTERN = re.compile(r'cover\.[a-z0-9_]+')
 CURTAIN_DIRECTIONS = ('auto', 'left', 'right', 'split')
+CURTAIN_FABRICS = ('cloth', 'sheer')
+BACKGROUND_THEMES = ('grid', 'dots', 'contours')
 
 DEVICE_KEYS = frozenset({'nas', 'vacuums', 'televisions'})
 TELEVISION_KEYS = frozenset(
@@ -334,8 +344,24 @@ LIGHT_REGION_BOUNDS = {
     'softness': (0.05, 1),
 }
 LIGHT_REGION_FIELDS = frozenset(set(LIGHT_REGION_BOUNDS) | {'shape'})
-LIGHT_REGION_OPTIONAL_FIELDS = frozenset({'offsetX', 'offsetZ', 'moveCenterEnabled'})
+LIGHT_REGION_OPTIONAL_FIELDS = frozenset(
+    {
+        'offsetX',
+        'offsetZ',
+        'moveCenterEnabled',
+        'heightMin',
+        'heightMax',
+        'heightAbove',
+        'heightBelow',
+    }
+)
 LIGHT_REGION_OFFSET_BOUNDS = (('offsetX', -100, 100), ('offsetZ', -100, 100))
+LIGHT_REGION_HEIGHT_BOUNDS = (
+    ('heightMin', 0, 20),
+    ('heightMax', 0, 20),
+    ('heightAbove', 0, 20),
+    ('heightBelow', 0, 20),
+)
 LIGHT_REGION_SHAPES = ('circle', 'square', 'ellipse', 'strip')
 
 NAVIGATION_KEYS = frozenset({'floors', 'categories', 'followOffset'})
@@ -531,7 +557,20 @@ def validate_config(properties) -> None:
             fail()
         if person.get('color', 'cyan') not in PRESENCE_COLORS:
             fail()
-        event_sensor = entity_id.startswith('event.')
+        trigger_mode = person.get('triggerMode', 'auto')
+        if trigger_mode not in PRESENCE_TRIGGER_MODES:
+            fail()
+        if 'triggerValue' in person:
+            trigger_value = person['triggerValue']
+            if not isinstance(trigger_value, str) or len(trigger_value) > 128:
+                fail()
+        if trigger_mode == 'equals' and not str(person.get('triggerValue', 'on')).strip():
+            fail()
+        if 'triggerThreshold' in person and not number(person['triggerThreshold'], -1000000, 1000000):
+            fail()
+        event_sensor = trigger_mode in ('equals', 'change') or (
+            trigger_mode == 'auto' and entity_id.startswith('event.')
+        )
         if not number(
             person.get('displayDuration', 30 if event_sensor else 0),
             1 if event_sensor else 0,
@@ -689,16 +728,28 @@ def validate_config(properties) -> None:
             fail()
         if not optional_numbers(region, LIGHT_REGION_OFFSET_BOUNDS):
             fail()
+        if not optional_numbers(region, LIGHT_REGION_HEIGHT_BOUNDS):
+            fail()
         if 'moveCenterEnabled' in region and not isinstance(region['moveCenterEnabled'], bool):
             fail()
         if region['shape'] not in LIGHT_REGION_SHAPES:
             fail()
         if any(not number(region[field], low, high) for field, (low, high) in LIGHT_REGION_BOUNDS.items()):
             fail()
+        if (
+            'heightMin' in region
+            and 'heightMax' in region
+            and region['heightMin'] > region['heightMax']
+        ):
+            fail()
 
     if properties.get('layoutMode', 'free') not in frozenset({'fill', 'free'}):
         fail()
     if not isinstance(properties.get('backgroundVisible', True), bool):
+        fail()
+    if properties.get('backgroundTheme', 'grid') not in BACKGROUND_THEMES:
+        fail()
+    if 'uniformOverviewStack' in properties and not isinstance(properties['uniformOverviewStack'], bool):
         fail()
 
     if properties.get('motionRenderScale') is not None:
@@ -899,6 +950,10 @@ def validate_config(properties) -> None:
         if not optional_numbers(item, COMMON_ITEM_BOUNDS):
             fail()
         if item.get('coverDirection', 'auto') not in CURTAIN_DIRECTIONS:
+            fail()
+        if item.get('curtainFabric', 'cloth') not in CURTAIN_FABRICS:
+            fail()
+        if 'unboundPosition' in item and not number(item['unboundPosition'], 0, 100):
             fail()
         if 'iconStateReversed' in item and not isinstance(item['iconStateReversed'], bool):
             fail()

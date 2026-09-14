@@ -1,5 +1,5 @@
 import { normalizeGroundReflection } from "../modules/interaction3d/reflection-settings.js";
-import { createReflectionCulling } from "./studio-reflection-culling.js?v=20260909-reflection-scope-v1";
+import { createReflectionCulling } from "./studio-reflection-culling.js?v=0.5.3";
 export function createGroundReflections({
   THREE,
   renderer,
@@ -12,7 +12,8 @@ export function createGroundReflections({
   detail = null,
   cull = true,
   blur = true,
-  requestFrame = () => {}
+  requestFrame = () => {},
+  getReflectionCamera = null
 }) {
   const settings = {
     ...normalizeGroundReflection(),
@@ -593,10 +594,27 @@ export function createGroundReflections({
       for (const entry of dirtyOverlays) {
         entry.hasCapture = false;
         const mirrored = mirrorCamera(camera, entry.plane, entry.matrix);
-        syncLighting(mirrored);
+        const captureCamera = typeof getReflectionCamera === "function"
+          ? getReflectionCamera(mirrored, entry.source) || mirrored
+          : mirrored;
+        syncLighting(captureCamera);
         const hiddenWalls = [];
+        const hiddenOtherFloors = [];
+        const captureFloorId = visibleFloorId === null ? floorIdOf(entry.source) : "";
         try {
-          if (cull && !culling.begin(entry, mirrored)) {
+          if (captureFloorId) {
+            scene.traverse(object => {
+              if (!object.visible) {
+                return;
+              }
+              const objectFloorId = floorIdOf(object);
+              if (objectFloorId && objectFloorId !== captureFloorId) {
+                hiddenOtherFloors.push(object);
+                object.visible = false;
+              }
+            });
+          }
+          if (cull && !culling.begin(entry, captureCamera)) {
             entry.state = entryStateKeys.get(entry);
             continue;
           }
@@ -610,7 +628,7 @@ export function createGroundReflections({
           }
           renderer.setRenderTarget(entry.map);
           renderer.clear();
-          renderer.render(scene, mirrored);
+          renderer.render(scene, captureCamera);
           stats.renders++;
           stats.lastDrawCalls += renderer.info?.render.calls || 0;
           stats.lastTriangles += renderer.info?.render.triangles || 0;
@@ -618,6 +636,9 @@ export function createGroundReflections({
           culling.restore();
           for (const wall of hiddenWalls) {
             wall.visible = true;
+          }
+          for (const object of hiddenOtherFloors) {
+            object.visible = true;
           }
         }
         if (entry.scratch) {

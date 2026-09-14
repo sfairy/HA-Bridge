@@ -1,4 +1,4 @@
-import { mapSource, vacuumStatusPresentation, vacuumBindingsForMap } from "./vacuum-map.js?v=20260909-curtain-action-v15";
+import { mapSource, vacuumStatusPresentation, vacuumBindingsForMap } from "./vacuum-map.js?v=0.5.3";
 const isFiniteNumber = value => typeof value == "number" && Number.isFinite(value);
 const asPoint = point => point && isFiniteNumber(point.x) && isFiniteNumber(point.y) ? point : null;
 export function vacuumMapPoint(point, calibrationPoints, imageSize, mapPlacement) {
@@ -44,7 +44,8 @@ export function vacuumTelemetry(binding, states, imageSize) {
   if (!presentation.available || !charger || !imageSize) {
     return null;
   }
-  const docked = ["docked", "charging", "charging_completed"].includes(entityState?.state) || entityState?.attributes?.charging === true;
+  const cleaning = ["cleaning", "sweeping", "mopping", "returning", "mapping"].includes(entityState?.state);
+  const docked = ["docked", "charging", "charging_completed"].includes(entityState?.state) || !cleaning && entityState?.attributes?.charging === true;
   const activePoint = docked ? charger : robot;
   const chargerWorld = vacuumMapPoint(charger, mapAttrs.calibration_points, imageSize, binding.map);
   const robotWorld = vacuumMapPoint(activePoint, mapAttrs.calibration_points, imageSize, binding.map);

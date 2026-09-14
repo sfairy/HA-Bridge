@@ -4,7 +4,7 @@
 <head>
     <meta name="ha-bridge-release" content="8b3528fb02ef4fb48b30643ae9e57797">
     <meta charset="utf-8">
-    <script src="/bridge-static/js/shared/client-log.js?v=20260905-client-log-v1"></script>
+    <script src="/bridge-static/js/shared/client-log.js?v=0.5.3"></script>
     <meta name="viewport" content="width=1020,user-scalable=yes">
     <meta name="theme-color" content="#172029">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,20 +17,26 @@
     <link rel="apple-touch-icon" href="/bridge-static/assets/brand/ha-bridge-icon-180-h5.png" sizes="180x180">
     <link rel="apple-touch-icon-precomposed" href="/bridge-static/assets/brand/ha-bridge-icon-180-h5.png" sizes="180x180">
     <link rel="manifest" href="/bridge-static/assets/manifests/manifest-h5.webmanifest">
-    <link rel="stylesheet" href="/bridge-static/css/shared/global-log.css?v=20260905-global-log-v2-20260911-ui-selector-parity-v1">
+    <link rel="stylesheet" href="/bridge-static/css/shared/global-log.css?v=0.5.3">
     <link rel="stylesheet"
-        href="/bridge-static/css/editor/app.css?v=20260812-persistent-pairing-v1-20260813-climate-device-type-v2-20260815-effect-image-align-v2-20260815-component-thumbnails-v4-20260817-editor-viewport-scroll-v3-20260817-component-template-desktop-v4-20260818-editor-tabs-equal-v1-20260818-airer-v1-20260820-resolution-lock-v1-20260820-entity-name-scroll-v1-20260821-navigation-entity-menu-v1-20260821-unified-component-library-v3-20260822-light-feedback-controls-v1-20260822-realtime-capabilities-v1-20260824-light-statistics-v6-20260825-icon-picker-paging-v1-20260826-resource-links-v1-20260826-button-sound-v3-20260826-cross-dashboard-copy-v3-20260827-group-label-v1-20260827-group-label-size-v1-20260828-default-page-marker-v1-20260830-count-statistics-v1-20260830-editor-paged-picker-v27-20260830-style-cleanup-v2-20260901-picker-bottom-clearance-v1-20260901-line-chart-threshold-ui-v2-20260902-floorplan-auto-diagram-v12-20260902-asset-folder-delete-v2-20260902-component-library-six-columns-v1-20260904-auto-diagram-light-panel-v1">
+        href="/bridge-static/css/editor/app.css?v=0.5.3">
     <link rel="stylesheet"
-        href="/bridge-static/renderer/renderer.css?v=20260910-0500-align-20260911-ui-selector-parity-v1">
-    <link rel="stylesheet" href="/bridge-static/modules/interaction3d/bridge.css?v=20260910-0500-align-20260911-ui-selector-parity-v1">
+        href="/bridge-static/renderer/renderer.css?v=0.5.3">
+    <link rel="stylesheet" href="/bridge-static/modules/interaction3d/bridge.css?v=0.5.3">
 </head>
 
 <body>
     <header class="editor-header">
         <div class="brand-lockup"><img class="brand-icon"
-                src="/bridge-static/assets/brand/ha-bridge-mark-white-orange.svg?v=20260726-h2" alt=""><strong>HA
-                Bridge</strong><span class="version">0.5.2.1</span></div>
-        <a class="header-resource-link" href="/help" target="_blank" rel="noopener noreferrer">使用教程</a>
+                src="/bridge-static/assets/brand/ha-bridge-mark-white-orange.svg?v=0.5.3" alt=""><strong>HA
+                Bridge</strong><span class="version">0.5.3</span></div>
+        <div class="header-resource-links">
+            <a class="header-resource-link" href="/help" target="_blank" rel="noopener noreferrer">使用教程</a>
+            <a id="product-updates-link" class="header-resource-link"
+                href="https://wiki.habridge.cn/updates.html#changelog" target="_blank"
+                rel="noopener noreferrer">开发计划与更新日志<span id="product-update-badge"
+                    class="product-update-badge" hidden>有更新</span></a>
+        </div>
         <div class="header-actions"><button id="ha-open" class="ha-status" type="button"><i></i><span>HA
                     未配置</span></button><button id="license-open" class="ha-status"
                 type="button"><i></i><span>授权状态</span></button><button id="global-log-open"
@@ -2638,10 +2644,11 @@
             </div>
         </div>
     </dialog>
-    <script type="module" src="/bridge-static/js/shared/global-log-boot.js?v=20260905-global-log-v2"></script>
+    <script type="module" src="/bridge-static/js/shared/global-log-boot.js?v=0.5.3"></script>
+    <script type="module" src="/bridge-static/js/editor/update-notice.js?v=0.5.3"></script>
     <script src="/bridge-static/vendor/hls.js/1.7.2/hls.min.js"></script>
     <script type="module"
-        src="/bridge-static/js/editor/home.js?v=20260910-license-card-help-v1-20260911-security-focal-v1-focus-layout-anim-v1-presence-pages-v2-hint-align-v1-copy-payload-fix-v1-overwrite-interaction-v1"></script>
+        src="/bridge-static/js/editor/home.js?v=0.5.3"></script>
 </body>
 
 </html>
