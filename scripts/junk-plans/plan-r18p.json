@@ -1,0 +1,111 @@
+[
+  { "range": [9467, 9490], "bindings": {
+    "argN": ["offsetX"],
+    "argNCurrent": ["offsetY"],
+    "argNNext": ["offsetZ"]
+  } },
+  { "range": [9491, 9513], "bindings": {
+    "point": ["spec"],
+    "x35": ["offsetX"],
+    "y2": ["offsetY"],
+    "z2": ["offsetZ"]
+  } },
+  { "range": [9514, 9534], "bindings": {
+    "list": ["parts"],
+    "filtered": ["validParts"],
+    "size": ["part"],
+    "argPrimary": ["dimension"],
+    "value": ["cacheKey"],
+    "item": ["geometries"],
+    "point": ["partTuple", "partSpec"],
+    "applyMatrix": ["boxGeometry"],
+    "vector": ["transform"],
+    "flag": ["merged"],
+    "dispose": ["geometry"]
+  } },
+  { "range": [9535, 9552], "bindings": { "flag": ["options"], "value": ["cacheKey"] } },
+  { "range": [9554, 9566], "bindings": {
+    "argTertiary": ["color"],
+    "entriesArg": ["boxSpecs"],
+    "roughness": ["options"],
+    "flag": ["mergedGeometry"],
+    "light": ["mesh"]
+  } },
+  { "range": [9635, 9650], "bindings": {
+    "group": ["width"],
+    "id": ["height"],
+    "hasFlag": ["depth"],
+    "value": ["rugThickness"],
+    "flag": ["cacheKey"],
+    "localValue": ["minDimension"],
+    "min": ["cornerRadius"],
+    "base": ["baseGeometry"],
+    "inset": ["insetGeometry"]
+  } },
+  { "range": [9651, 9666], "bindings": {
+    "object3d": ["colorHex"],
+    "flag": ["inset"],
+    "computedValue": ["materialKey"]
+  } },
+  { "range": [9843, 9864], "bindings": {
+    "argSecondary": ["radiusTop"],
+    "argTertiary": ["radiusBottom"],
+    "argN": ["height"],
+    "argNCurrent": ["offsetX"],
+    "argNNext": ["offsetY"],
+    "argNPrevious": ["offsetZ"],
+    "light": ["options"],
+    "value": ["material"]
+  } },
+  { "range": [9872, 9921], "bindings": {
+    "object3d": ["item"],
+    "flag": ["light"],
+    "value": ["previewGroup"],
+    "emissive": ["previewColor"],
+    "clampedValue": ["depth"],
+    "clampedValueCurrent": ["width"],
+    "localValue": ["boxDepth"],
+    "rotation": ["rollGroup"],
+    "group": ["tiltGroup"],
+    "clampedValueNext": ["coneOffset"],
+    "mesh": ["coneMesh"]
+  } },
+  { "range": [10008, 10040], "bindings": {
+    "argSecondary": ["risers"],
+    "value": ["archColor"],
+    "param": ["archOptions"],
+    "light": ["threadOptions"],
+    "list": ["treadParts"],
+    "entriesVar": ["sideParts"],
+    "size": ["riser"],
+    "minValue": ["capThickness"],
+    "maxValue": ["treadWidth"],
+    "max": ["treadDepth"],
+    "tupleItem": ["part"]
+  } },
+  { "range": [10041, 10055], "bindings": {
+    "traverse": ["root"],
+    "argSecondary": ["enabled"],
+    "material": ["mesh"],
+    "conditionalValue": ["materials"],
+    "isMeshStandardMaterial": ["entry"],
+    "maxTextureUnits": ["themeColors"]
+  } },
+  { "range": [10056, 10125], "bindings": {
+    "light": ["label"],
+    "rect": ["canvas"],
+    "context": ["ctx"],
+    "normalizedLabel": ["title"],
+    "text": ["subtitle"],
+    "numericValue": ["titleY"],
+    "count": ["titleFontPx"],
+    "numericValueCurrent": ["arrowX"],
+    "numericValueNext": ["arrowY"],
+    "numericValuePrevious": ["arrowSize"],
+    "numericValueLocal": ["subtitleFontPx"],
+    "numericValueItem": ["lineStartX"],
+    "computedValue": ["lineEndX"],
+    "colorSpace": ["texture"],
+    "mesh": ["planeMesh"]
+  } }
+]

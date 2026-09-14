@@ -1,0 +1,22 @@
+[
+  {
+    "function": "buildGlassCabinetItemMeshGroup",
+    "bindings": {
+      "localValue": ["panelThickness", "doorWidth"],
+      "localValueCurrent": ["railWidth", "bayRatio", "shelfGap"],
+      "localValueNext": ["shelfThickness", "doorGlassHeight"],
+      "computedValue": ["topBandHeight", "bayOffsetX", "dividerWidth", "bayLeftX", "bayFillWidth", "bookWidth", "nicheWidth"],
+      "computedValueCurrent": ["baseHeight", "bayMidX"],
+      "computedValueNext": ["midHeight", "shelfBaseY", "nicheBaseY"],
+      "computedValuePrevious": ["frontPanelZ", "bookCursorX"],
+      "computedValueItem": ["dividerCursorX"],
+      "computedValueLocal": ["doorHeight"],
+      "zeroValue": ["shelfRowIndex", "dividerIndex", "baySlotIndex", "bookIndex", "nicheIndex"],
+      "helperFn": ["addShelfStack"],
+      "argPrimary": ["baySlot", "nicheSlot"],
+      "argSecondary": ["bayRowOffset", "nicheRowOffset"],
+      "numericParam": ["itemCount", "ornamentCount"],
+      "numericParamCurrent": ["itemSeed", "ornamentSeed"]
+    }
+  }
+]

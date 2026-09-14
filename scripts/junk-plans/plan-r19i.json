@@ -1,0 +1,7 @@
+[
+  {
+    "function": "bootstrapStudioFromLoadedProject",
+    "note": "Three.js calls onBeforeRender(renderer, scene, camera, ...); index 2 is the camera",
+    "map": { "argPrimary": "renderArgs" }
+  }
+]

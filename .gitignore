@@ -13,3 +13,6 @@ register/data/
 /app/
 app.tar.gz
 .deobf/
+
+# Session snapshots for the round-scoped differential guards (scripts/diff-*.mjs).
+scripts/.snapshots/

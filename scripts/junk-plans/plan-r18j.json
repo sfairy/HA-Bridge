@@ -1,0 +1,37 @@
+[
+  { "function": "marqueeSelectHits", "bindings": {
+    "planPoint": ["dragStartPoint"],
+    "point": ["dragEndPoint", "cornerPoint"],
+    "minX": ["bounds"],
+    "value": ["scalePixels"],
+    "list": ["hits"],
+    "flag": ["isLightCategory"],
+    "size": ["windowFixture", "doorFixture", "railingFixture"],
+    "isStart": ["windowSpan", "doorSpan", "railingSpan"],
+    "someFlag": ["boundsCorners"],
+    "item": ["sceneItem"],
+    "some": ["rotatedCorners"],
+    "argPrimary": ["localX", "corner"],
+    "argPrimaryCurrent": ["localY"]
+  } },
+  { "function": "publishPerfHud", "bindings": {
+    "argPrimary": ["nowMs"],
+    "frameIntervals": ["stats"],
+    "domElement": ["canvasEl"],
+    "flag": ["avgFrameMs"],
+    "sorted": ["medianFrameMs"],
+    "scene": ["sceneStats"],
+    "value": ["programCount"],
+    "frame": ["hudPayload"],
+    "perfFpsSummaryText": ["fpsText"],
+    "perfGpuSummaryText": ["gpuText"]
+  } },
+  { "function": "reloadPlanBackground", "bindings": {
+    "value": ["revision"],
+    "argPrimary": ["resolve"],
+    "flag": ["settled"],
+    "el": ["imageEl"],
+    "setTimeoutResult": ["timeoutId"],
+    "onComplete": ["settle"]
+  } }
+]

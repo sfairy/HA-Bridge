@@ -1,0 +1,44 @@
+[
+  {
+    "function": "syncSpotShadowCastingLights",
+    "note": "texture-unit budget, then the individual (non-atlas) spot shadow pass",
+    "bindings": {
+      "boolFlag": ["hasRectAreaLight"],
+      "computedValue": ["remainingUnits", "lightKey"],
+      "localValue": ["activeSpotShadows", "shadowUnitLimit"],
+      "zeroValue": ["visibleUserLightCount", "shadowCasterCount"],
+      "conditionalValue": ["shadowBudget"],
+      "has": ["shadowCastIds"],
+      "count": ["userLightCount"]
+    }
+  },
+  {
+    "function": "rebuildPreviewMeshes",
+    "bindings": {
+      "comparisonFlag": ["forceRebuild"],
+      "conditionalValue": ["rebuildScope"],
+      "computedValue": ["previewActive"],
+      "localValue": ["settlePrecompile"],
+      "has": ["rebuildReasons"]
+    }
+  },
+  {
+    "function": "rebuildWorldPreviewCurrent",
+    "bindings": {
+      "name4": ["wallGroup"],
+      "argSecondary": ["wallIndex"]
+    }
+  },
+  {
+    "function": "activateExportPresetSlot",
+    "bindings": {
+      "localValue": ["televisionOn"]
+    }
+  },
+  {
+    "function": "scheduleOrbitResumeAfterModels",
+    "bindings": {
+      "argPrimary": ["selectionEntry"]
+    }
+  }
+]

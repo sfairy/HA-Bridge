@@ -1,0 +1,38 @@
+[
+  {
+    "function": "buildBookcaseItemMeshGroup",
+    "bindings": {
+      "localValue": ["bottomRailHeight", "shelfRatio", "bookDepthRatio"],
+      "computedValue": ["sideHeight", "rowY", "bookCursorX"],
+      "computedValueNext": ["rightShelfWidth"],
+      "computedValuePrevious": ["rightShelfX"],
+      "computedValueCurrent": ["leftShelfX"],
+      "computedValueLocal": ["rightShelfCenterX"],
+      "computedValueItem": ["backPanelZ"],
+      "computedValueEntry": ["midShelfY"],
+      "computedValueList": ["topShelfY"],
+      "computedValueText": ["bookRowStartY"],
+      "computedValueValue": ["counterY"],
+      "computedValueSource": ["leftBookStartX"],
+      "computedValueTarget": ["rightBookWidth"],
+      "computedValueDefault": ["leftBookWidth"],
+      "computedValueFallback": ["backPanelHeight"],
+      "computedValuePending": ["lowShelfY"],
+      "localValueCurrent": ["bookAreaHeight", "bookSlotHeight"],
+      "localValueNext": ["bookGap", "bookHeightRatio"],
+      "zeroValue": ["rowIndex", "bookIndex", "ornamentIndex"],
+      "helperFn": ["addBookRow"],
+      "argPrimary": ["rowWidth", "ornamentX"]
+    }
+  },
+  {
+    "function": "buildWallCornerCaps",
+    "bindings": {
+      "argTertiary": ["shadowDirtyIds"],
+      "localValue": ["stripElevation", "shadowMapSize"],
+      "computedValue": ["lightIntensityScale"],
+      "computedValueCurrent": ["needsShadowUpdate"],
+      "oneValue": ["spotLightCount"]
+    }
+  }
+]

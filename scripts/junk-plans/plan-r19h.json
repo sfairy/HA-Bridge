@@ -1,0 +1,86 @@
+[
+  {
+    "range": [52, 60],
+    "note": "render-cache report callback payload",
+    "map": { "argPrimary": "lightCacheStats" }
+  },
+  {
+    "range": [3084, 3088],
+    "note": "StudioHttpError carries the message, the status code and the parsed payload",
+    "map": { "argPrimary": "message", "argSecondary": "statusCode", "argTertiary": "payload" }
+  },
+  {
+    "range": [17223, 17241],
+    "note": "add a light group with the next free 灯组 N number",
+    "map": { "name2": "lightGroup", "computedValue": "nextGroupNumber" }
+  },
+  {
+    "range": [17395, 17411],
+    "note": "floor-rename submit handler",
+    "map": { "name5": "renamedFloor" }
+  },
+  {
+    "range": [17556, 17568],
+    "note": "light-target group toggle",
+    "map": { "localValue": "targetGroupEl" }
+  },
+  {
+    "range": [17575, 17606],
+    "note": "apply a light property to every selected light",
+    "map": {
+      "localValue": "propertyName",
+      "localValueCurrent": "propertyLabel",
+      "localValueNext": "propertyValue"
+    }
+  },
+  {
+    "range": [17859, 17866],
+    "note": "catalog drop on the stage",
+    "map": { "localValue": "itemId" }
+  },
+  {
+    "range": [17931, 17950],
+    "note": "rename the active export preset",
+    "map": { "localValue": "presetIndex", "name7": "preset" }
+  },
+  {
+    "range": [17980, 17989],
+    "note": "keep the export width/height ratio locked",
+    "map": { "localValue": "widthPx" }
+  },
+  {
+    "range": [18179, 18179],
+    "note": "lostpointercapture forwards the event without releasing it",
+    "map": { "argPrimary": "pointerUpEvent" }
+  },
+  {
+    "range": [18183, 18196],
+    "note": "resize the detail panes with the arrow keys",
+    "map": { "conditionalValue": "verticalDelta" }
+  },
+  {
+    "range": [18197, 18213],
+    "note": "camera projection toggle",
+    "map": { "argPrimary": "projectionMode" }
+  },
+  {
+    "range": [18214, 18230],
+    "note": "camera view toggle",
+    "map": { "argPrimary": "viewMode" }
+  },
+  {
+    "range": [18301, 18318],
+    "note": "drag the floating light control panel",
+    "map": { "computedValue": "deltaX", "localValue": "maxLeft" }
+  },
+  {
+    "range": [18384, 18412],
+    "note": "floor calibration from a measured distance",
+    "map": { "localValue": "pixelLength" }
+  },
+  {
+    "range": [18485, 18609],
+    "note": "keyboard shortcuts: skip while a text field has focus",
+    "map": { "computedValue": "editingTextField", "x42": "arrowDelta", "localValue": "previousLightFilter" }
+  }
+]

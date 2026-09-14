@@ -1,0 +1,32 @@
+[
+  { "function": "capturePreviewCanvas", "bindings": {
+    "argPrimary": ["cacheKey", "loggedError"],
+    "argSecondary": ["bitmapCanvas"],
+    "argTertiary": ["shouldCapture"],
+    "blob": ["controls"],
+    "frame": ["captureJob"],
+    "imageData": ["isStillActive"],
+    "callback": ["cancelCapture"],
+    "helperFn": ["logCacheWriteError"],
+    "helperFnCurrent": ["writeCacheWhenIdle"],
+    "localValue": ["writeError", "setupError"]
+  } },
+  { "function": "renderLightLayerPanel", "bindings": {
+    "screens": ["tvScreens"],
+    "chargingCars": ["smallCars"],
+    "id2": ["lightGroup", "unassignedGroup"],
+    "value": ["screenIndex", "carIndex"],
+    "area": ["areaRef", "areaEntry"]
+  } },
+  { "range": [19461, 19537], "bindings": {
+    "addEventListener": ["controls"],
+    "quaternion": ["camera"],
+    "bind": ["baseUpdate"],
+    "helperFn": ["maybeFinishCapture"],
+    "localValue": ["enabledFlag", "updateResult", "rotationDelta"],
+    "argPrimary": ["nextEnabled", "updateDelta"],
+    "angleTo": ["startQuaternion"],
+    "clone": ["offsetVector"],
+    "sub": ["rotatedOffset"]
+  } }
+]

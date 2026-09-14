@@ -1,0 +1,33 @@
+[
+  {
+    "function": "buildShowerItemMeshGroup",
+    "bindings": {
+      "localValue": ["fixtureColor"],
+      "computedValue": ["columnDepth"],
+      "value": ["headLift"],
+      "computedValueCurrent": ["columnTopY"],
+      "computedValueNext": ["columnLength"],
+      "objectValue": ["metalMaterial"],
+      "computedValuePrevious": ["armY"],
+      "localValueCurrent": ["headY", "nozzleY", "handleX"],
+      "computedValueLocal": ["riserRise"],
+      "computedValueItem": ["riserRun"],
+      "hypot": ["riserLength"],
+      "y": ["columnBase"],
+      "z": ["columnTop"]
+    }
+  },
+  {
+    "function": "buildTvItemMeshGroup",
+    "bindings": {
+      "localValue": ["bodyHeight", "mountThickness", "screwX", "screwZ", "baseThickness"],
+      "metrics": ["mountCenterY"],
+      "value": ["screenBottom"],
+      "computedValue": ["backingWidth", "baseWidth"],
+      "max": ["backingDepth", "baseDepth"],
+      "localValueCurrent": ["mountDrop", "neckHeight"],
+      "computedValueCurrent": ["mountBracketY"],
+      "localValueNext": ["screwRadius"]
+    }
+  }
+]

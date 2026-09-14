@@ -1,0 +1,59 @@
+{
+  "file": "frontend/static/3d-studio/studio-app.js",
+  "function": "rebuildWorldPreview",
+  "extractions": [
+    {
+      "id": "makePreviewLocalWallPoint",
+      "lines": [15101, 15104],
+      "as": "makePreviewLocalWallPoint",
+      "params": ["centerX", "centerZ", "scale"],
+      "rename": {
+        "previewFloorCenterX": "centerX",
+        "item": "centerZ",
+        "group": "scale",
+        "toPreviewLocalWallPoint": "resolvePreviewLocalPoint"
+      },
+      "epilogue": ["return resolvePreviewLocalPoint;"],
+      "doc": "Build the world-point -> preview-local (x,z) projector for one floor.",
+      "replaceWith": [
+        "const toPreviewLocalWallPoint = makePreviewLocalWallPoint(previewFloorCenterX, item, group);"
+      ]
+    },
+    {
+      "id": "collectPreviewFloorOpeningLoops",
+      "lines": [15130, 15136],
+      "as": "collectPreviewFloorOpeningLoops",
+      "params": ["scale", "toLocal"],
+      "rename": {
+        "mapped": "openingLoops",
+        "group": "scale",
+        "argPrimary": "openingPoint",
+        "x14": "localPoint",
+        "toPreviewLocalWallPoint": "toLocal"
+      },
+      "epilogue": ["return openingLoops;"],
+      "doc": "Preview-local (x,z) loops of every floor-opening polygon of the active floor.",
+      "replaceWith": [
+        "const mapped = collectPreviewFloorOpeningLoops(group, toPreviewLocalWallPoint);"
+      ]
+    },
+    {
+      "id": "makePreviewFloorOutlinePainter",
+      "lines": [15137, 15142],
+      "as": "makePreviewFloorOutlinePainter",
+      "params": ["baseY", "themeColors", "baseHeight"],
+      "rename": {
+        "helperFn": "paintFloorOutline",
+        "argPrimary": "floorPolygon",
+        "computedValueCurrent": "baseY",
+        "value": "themeColors",
+        "computedValue": "baseHeight"
+      },
+      "epilogue": ["return paintFloorOutline;"],
+      "doc": "Outline pass for one preview floor polygon: mode plane plus optional edge snap.",
+      "replaceWith": [
+        "const helperFn = makePreviewFloorOutlinePainter(computedValueCurrent, value, computedValue);"
+      ]
+    }
+  ]
+}

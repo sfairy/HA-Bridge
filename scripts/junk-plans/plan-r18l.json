@@ -1,0 +1,31 @@
+[
+  { "range": [1477, 1479], "bindings": { "argPrimary": ["floorIndex"] } },
+  { "range": [2261, 2263], "bindings": { "argPrimary": ["prefix"], "value": ["randomSuffix"] } },
+  { "range": [2265, 2267], "bindings": { "argPrimary": ["scene"] } },
+  { "range": [2303, 2305], "bindings": { "argPrimary": ["floorId"], "argSecondary": ["keySuffix"] } },
+  { "range": [2306, 2308], "bindings": { "flag": ["layerId"], "argSecondary": ["keySuffix"] } },
+  { "range": [2309, 2315], "bindings": { "argPrimary": ["floorId"], "value": ["itemKey"] } },
+  { "range": [2383, 2386], "bindings": { "argPrimary": ["scene"] } },
+  { "range": [2957, 2959], "bindings": { "argPrimary": ["selectedKind"], "argSecondary": ["selectedId"] } },
+  { "range": [3493, 3497], "bindings": { "argPrimary": ["scene"], "value": ["analysis"] } },
+  { "range": [3498, 3502], "bindings": { "argPrimary": ["scene"], "value": ["analysis"] } },
+  { "range": [3503, 3507], "bindings": { "argPrimary": ["scene"], "value": ["analysis"] } },
+  { "range": [3508, 3512], "bindings": { "argPrimary": ["scene"], "value": ["analysis"] } },
+  { "range": [5766, 5772], "bindings": { "argPrimary": ["requestedSize"], "value": ["maxTextureSize"] } },
+  { "range": [6008, 6013], "bindings": { "argPrimary": ["mode"], "element": ["button"] } },
+  { "range": [6024, 6030], "bindings": { "argPrimary": ["mode"], "disabled": ["inputEl"] } },
+  { "range": [6031, 6035], "bindings": { "isPerspectiveCamera": ["camera"], "argSecondary": ["focalLength"] } },
+  { "range": [6128, 6134], "bindings": { "list": ["samples"], "argPrimary": ["sum"], "argSecondary": ["sample"] } },
+  { "range": [6143, 6149], "bindings": { "list": ["maybeNumber"], "numericParam": ["digits"] } },
+  { "range": [6735, 6737], "bindings": { "argPrimary": ["lightGroupId"], "item": ["lightGroup"] } },
+  { "range": [7062, 7065], "bindings": { "argPrimary": ["resolve"] } },
+  { "range": [7066, 7078], "bindings": { "flag": ["width"], "value": ["canvas"], "drawImage": ["ctx"] } },
+  { "range": [7079, 7083], "bindings": { "value": ["frame"] } },
+  { "range": [7084, 7090], "bindings": { "argPrimary": ["resolve"] } },
+  { "range": [19054, 19057], "bindings": {
+    "duration": ["transition"],
+    "argSecondary": ["nowMs"],
+    "conditionalValue": ["progress"]
+  } },
+  { "range": [19202, 19230], "bindings": { "localValue": ["transitionKey"], "to": ["transitionEntry"] } }
+]

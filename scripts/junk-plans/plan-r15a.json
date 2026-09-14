@@ -1,0 +1,118 @@
+[
+  {
+    "range": [13519, 13527],
+    "bindings": {
+      "ornamentX": ["centerX"],
+      "argSecondary": ["baseY"],
+      "argTertiary": ["material"],
+      "numericParam": ["ornamentCount"],
+      "numericParamCurrent": ["ornamentOffset"]
+    }
+  },
+  {
+    "range": [18520, 18527],
+    "bindings": {
+      "computedValue": ["stepPx"],
+      "has": ["hookedIds"]
+    }
+  },
+  {
+    "function": "cancelWallDrawing",
+    "bindings": {
+      "localValue": ["previousExportHeight"],
+      "localValueCurrent": ["previousAspect"]
+    }
+  },
+  {
+    "range": [18822, 18832],
+    "bindings": {
+      "has": ["keyFilter"],
+      "localValue": ["cacheKey"],
+      "localValueCurrent": ["cachedNodes"]
+    }
+  },
+  {
+    "function": "setGroupVisibilityByKey",
+    "bindings": {
+      "argPrimary": ["lightGroups"],
+      "argSecondary": ["activeKey"],
+      "localValue": ["key"],
+      "localValueCurrent": ["lights"],
+      "shadow": ["light"]
+    }
+  },
+  {
+    "function": "uniqueExportPresetLabel",
+    "bindings": {
+      "size": ["label"],
+      "argSecondary": ["presetIndex"],
+      "blob": ["text"],
+      "isPutImageData": ["usedLabels"],
+      "argPrimary": ["preset"],
+      "item": ["index"],
+      "buildLightDeltaPixels": ["suffix"]
+    }
+  },
+  {
+    "function": "focusCameraOnPoint",
+    "bindings": {
+      "argPrimary": ["frameHeight"],
+      "argSecondary": ["aspect"],
+      "blob": ["halfHeight"]
+    }
+  },
+  {
+    "range": [8563, 8577],
+    "bindings": {
+      "argPrimary": ["exportFileName"],
+      "argSecondary": ["labelText"],
+      "argTertiary": ["detailText"],
+      "appendEl": ["listItem"],
+      "append": ["labelEl"],
+      "button": ["checkbox"],
+      "el": ["nameSpan"],
+      "element": ["detailSpan"]
+    }
+  },
+  {
+    "function": "getCameraPose",
+    "bindings": {
+      "isPerspectiveCamera": ["camera"],
+      "argSecondary": ["target"],
+      "localValue": ["distance"]
+    }
+  },
+  {
+    "function": "resetWallDrawing",
+    "bindings": {
+      "localValue": ["pendingZoom"]
+    }
+  },
+  {
+    "function": "yieldToIdle",
+    "bindings": {
+      "argPrimary": ["resolveIdle", "resolveFrame"]
+    }
+  },
+  {
+    "function": "canvasToBlob",
+    "bindings": {
+      "argPrimary": ["resolve"],
+      "argSecondary": ["reject"],
+      "flag": ["resultBlob"]
+    }
+  },
+  {
+    "function": "polygonCentroid",
+    "bindings": {
+      "list": ["PathClass"],
+      "argSecondary": ["points", "pointIndex"]
+    }
+  },
+  {
+    "function": "tvMountLayoutMetrics",
+    "bindings": {
+      "argSecondary": ["screenHeight"]
+    }
+  }
+]

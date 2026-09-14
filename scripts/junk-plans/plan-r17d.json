@@ -1,0 +1,20 @@
+[
+  {
+    "comment": "R17d: the instance-batch merger. Binding order per name was read off the tool's own refusal message (it lists bindings in the order it will hand out names). `item` and `object3d` also appear as object/pattern shorthands; the tool expands those to `item: batchItem` so the property keys survive.",
+    "function": "mergeStaticItemInstanceBatches",
+    "bindings": {
+      "object3d": ["rootGroup", "entryGroup"],
+      "item": ["batchItem", "descriptorCount"],
+      "argSecondary": ["batches", "instanceIndex"],
+      "argPrimary": ["descriptorList", "totalSoFar", "savedSoFar"],
+      "localValue": ["instanceMatrix", "removedGroup"],
+      "list": ["batchEntries"],
+      "value": ["worldToLocal"],
+      "reduceVar": ["batchStats"],
+      "userData19": ["instancedMesh"],
+      "conditionalValue": ["instanceMaterial"],
+      "zeroValue": ["descriptorIndex"],
+      "userData": ["sourceMesh"]
+    }
+  }
+]

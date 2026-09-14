@@ -1,0 +1,93 @@
+[
+  { "range": [18833, 18856], "bindings": {
+    "idValue": ["nodeKey"],
+    "inputValue": ["oldestKey"]
+  } },
+  { "range": [18906, 18957], "allowRefs": ["enabled"], "note": "the function-body `let enabled` is a separate binding; the entry renames the local `enabled` inside blendCameraProjectionMatrices", "bindings": {
+    "max": ["maxViewSize"],
+    "weight": ["blendWeight"],
+    "enabled": ["orthoView"],
+    "rect": ["perspectiveView"],
+    "comparisonFlag": ["viewsMatch"],
+    "localValue": ["orthoElements"],
+    "elements": ["perspectiveElements"],
+    "zeroValue": ["elementIndex"],
+    "view": ["targetView"],
+    "aspect": ["viewportAspect"],
+    "distance": ["cameraDistance"]
+  } },
+  { "range": [18974, 18999], "bindings": { "argPrimary": ["active"] } },
+  { "range": [19084, 19112], "allowRefs": ["entry"], "note": "the `entry` reads belong to the `const entry` declared just above the range", "bindings": {
+    "argTertiary": ["fadeOptions"],
+    "every": ["fadeTargets"],
+    "floorId": ["modeTarget"],
+    "item": ["targetItem"],
+    "wasOn": ["fadeTarget"],
+    "localValue": ["cacheKey"],
+    "entry": ["cachedEntry"],
+    "from": ["startValue"],
+    "started": ["startedAt"]
+  } },
+  { "range": [19113, 19159], "allowRefs": ["map"], "note": "`map` is the world-item cache bound outside the range; only captureLightCacheFrame's own `map` was renamed", "bindings": {
+    "map": ["previousFadeState"],
+    "list": ["visibleLights"],
+    "itemKey": ["lightRecord"],
+    "groupKey": ["lightFilter"],
+    "to": ["fadeState"],
+    "localValue": ["fadeFactor"],
+    "userData": ["lightTarget"],
+    "finiteValue": ["baseIntensity"],
+    "color": ["lightColor"],
+    "timestampMs": ["capturedAt"]
+  } },
+  { "range": [19603, 19637], "bindings": { "motionActive": ["active"] } },
+  { "range": [19638, 19652], "bindings": {
+    "intensity": ["shadowRef"],
+    "localValue": ["targetIntensity"]
+  } },
+  { "range": [19789, 19807], "bindings": {
+    "domEvent": ["targetPoint"],
+    "distanceTo": ["cameraPosition"],
+    "localValue": ["camDistance"],
+    "to": ["polarAngle"]
+  } },
+  { "range": [18514, 18530], "bindings": {
+    "length": ["selectedIds"],
+    "hookedIds": ["selectedIdSet"],
+    "id": ["entry", "sceneItem"],
+    "stepMeters": ["stepPixels"]
+  } },
+  { "range": [15667, 15691], "bindings": {
+    "halfValue": ["midHeight"],
+    "list": ["coveringSegments"],
+    "bottom": ["wallSegment"],
+    "has": ["byOpacity"],
+    "opacity": ["opacityEntry"],
+    "volumes": ["opacityGroup"]
+  } },
+  { "range": [15677, 15684], "bindings": { "localValue": ["opacityKey"] } },
+  { "range": [10324, 10368], "bindings": {
+    "comparisonFlag": ["spotIntensity"],
+    "value": ["spotIndex"],
+    "worldPoint": ["spotOffsetX"]
+  } },
+  { "range": [18106, 18126], "allowRefs": ["flag", "pointerId"], "note": "the click handler's `flag` and the resizer's `pointerId` parameter are separate bindings split by the range start", "bindings": {
+    "flag": ["releaseCapture"],
+    "pointerIdCurrent": ["dragSnapshot"],
+    "pointerId": ["downEvent"],
+    "comparisonFlag": ["layoutChanged"]
+  } },
+  { "range": [4001, 4015], "bindings": {
+    "left": ["startX"],
+    "width": ["runWidth"],
+    "slat": ["slatIndex"]
+  } },
+  { "range": [7805, 7819], "bindings": { "computedValue": ["loopAvailable"] } },
+  { "range": [14380, 14447], "bindings": {
+    "boolTrue": ["completed"],
+    "changes": ["batch"],
+    "localValueCurrent": ["precompileResult"],
+    "light": ["lightRef", "lightState", "restoreState"]
+  } },
+  { "range": [14390, 14425], "bindings": { "localValue": ["restoreStates"] } }
+]

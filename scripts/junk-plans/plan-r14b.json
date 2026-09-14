@@ -1,0 +1,73 @@
+[
+  {
+    "function": "resolvePlanSnap",
+    "bindings": {
+      "argPrimary": ["polygon"],
+      "anchor": ["outlineColor"],
+      "argTertiary": ["baseHeight"],
+      "zeroValue": ["index"],
+      "x36": ["pointA"],
+      "x37": ["pointB"],
+      "computedValue": ["dx"],
+      "computedValueCurrent": ["dz"],
+      "localValue": ["edgeLength"],
+      "halfValue": ["midX"],
+      "halfValueCurrent": ["midZ"],
+      "atan": ["angle"],
+      "compose": ["edgeMatrix"],
+      "localValueCurrent": ["glowMatrix"],
+      "value": ["edgeGeometries"],
+      "settings": ["glowGeometries"],
+      "conditionalValue": ["mergedEdges"],
+      "geometries": ["mergedGlow"],
+      "dispose": ["edgeGeometry", "glowGeometry"],
+      "userData": ["edgeMesh", "glowMesh"]
+    }
+  },
+  {
+    "function": "addCeilingMeshes",
+    "bindings": {
+      "list": ["points"],
+      "argSecondary": ["offset", "listPoint"],
+      "point": ["center"],
+      "computedValue": ["dx"],
+      "value": ["dy"],
+      "localValue": ["distance"]
+    }
+  },
+  {
+    "function": "setActiveTool",
+    "bindings": {
+      "argPrimary": ["toolName"],
+      "flag": ["needsUnclosedWallWarning"]
+    }
+  },
+  {
+    "function": "instanceMergeIdenticalItems",
+    "bindings": {
+      "argSecondary": ["item"],
+      "x17": ["verticalRad"]
+    }
+  },
+  {
+    "function": "computeMultiFloorBoundsCenter",
+    "bindings": {
+      "worldPoint": ["toWorldPoint"],
+      "zeroValue": ["maxWallHeight"],
+      "x8": ["endpoint"],
+      "x7": ["worldP"],
+      "y5": ["boundsCenter"],
+      "id": ["floorRecord", "matchedFloor"],
+      "x44": ["planPoint"]
+    }
+  },
+  {
+    "function": "tickLightTransitionStates",
+    "bindings": {
+      "argPrimary": ["nowMs"],
+      "flag": ["forceRefresh"],
+      "localValue": ["lightKey", "transitionKey"],
+      "localValueCurrent": ["lightList", "transitionList"]
+    }
+  }
+]

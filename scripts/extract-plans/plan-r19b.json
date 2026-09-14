@@ -1,0 +1,62 @@
+{
+  "file": "frontend/static/3d-studio/studio-app.js",
+  "function": "rebuildWorldPreview",
+  "extractions": [
+    {
+      "id": "makePreviewFloorAppender",
+      "lines": [15158, 15171],
+      "as": "makePreviewFloorAppender",
+      "params": ["material", "topY", "thickness", "openingLoops", "drawOutline"],
+      "rename": {
+        "callback": "appendFloorSurface",
+        "dispose": "material",
+        "localValueCurrent": "topY",
+        "depth": "thickness",
+        "mapped": "openingLoops",
+        "helperFn": "drawOutline"
+      },
+      "epilogue": ["return appendFloorSurface;"],
+      "doc": "Add one preview floor surface (extruded plan polygon) to the world group.",
+      "replaceWith": [
+        "const callback = makePreviewFloorAppender(dispose, localValueCurrent, depth, mapped, helperFn);"
+      ]
+    },
+    {
+      "id": "collectPreviewWallOpenings",
+      "lines": [15251, 15261],
+      "as": "collectPreviewWallOpenings",
+      "params": [],
+      "rename": {
+        "arrayValue": "wallOpenings",
+        "argPrimary": "opening",
+        "wallId": "railing",
+        "item": "sourceWall"
+      },
+      "epilogue": ["return wallOpenings;"],
+      "doc": "Windows, door leafs and railings of the active floor, with their sill heights.",
+      "replaceWith": [
+        "const arrayValue = collectPreviewWallOpenings();"
+      ]
+    },
+    {
+      "id": "collectPreviewWallSegments",
+      "lines": [15262, 15284],
+      "as": "collectPreviewWallSegments",
+      "params": ["scale", "openings", "toLocal"],
+      "rename": {
+        "filter": "segments",
+        "has": "seenKeys",
+        "toFixed": "wallOpacity",
+        "localValue": "segmentKey",
+        "group": "scale",
+        "arrayValue": "openings",
+        "toPreviewLocalWallPoint": "toLocal"
+      },
+      "epilogue": ["return segments;"],
+      "doc": "Wall solid segments (shape plus height band) of the active floor, de-duplicated.",
+      "replaceWith": [
+        "const filter = collectPreviewWallSegments(group, arrayValue, toPreviewLocalWallPoint);"
+      ]
+    }
+  ]
+}

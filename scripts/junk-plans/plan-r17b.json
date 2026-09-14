@@ -1,0 +1,92 @@
+[
+  {
+    "function": "executePendingFloorDelete",
+    "bindings": {
+      "id2": ["doomedFloor"],
+      "value": ["removedIndex"],
+      "argSecondary": ["floorIndex"]
+    }
+  },
+  {
+    "comment": "`id` is also the parameter of two find() predicates above; isolate the surviving floor and give it a name (the predicates keep theirs).",
+    "range": [1614, 1615],
+    "bindings": { "id": ["nextActiveFloor"] }
+  },
+  {
+    "function": "syncLightGroupSelect",
+    "bindings": {
+      "value": ["groupSelect"],
+      "id2": ["group"],
+      "el": ["option"]
+    }
+  },
+  {
+    "function": "createLightGroupRow",
+    "bindings": {
+      "id2": ["lightGroup"],
+      "el": ["row"],
+      "flag": ["dropAfter"],
+      "button": ["toggleButton"],
+      "element": ["nameLabel"],
+      "elCurrent": ["itemCount"],
+      "argPrimary": ["sourceGroupId"]
+    }
+  },
+  {
+    "comment": "second `value` in the same function (the drop-position boolean), isolated from the outer one.",
+    "range": [2577, 2582],
+    "bindings": { "value": ["placeAfter"] }
+  },
+  {
+    "function": "requireCalibration",
+    "bindings": { "argPrimary": ["toolName"] }
+  },
+  {
+    "function": "computeStudioPixelRatio",
+    "bindings": {
+      "flag": ["isEmbedCapture"],
+      "computedValue": ["baseRatio"],
+      "flagCurrent": ["isWarmupEmbed"],
+      "value": ["ratio"],
+      "localValue": ["estimatedCost"],
+      "cost": ["costBudget"]
+    }
+  },
+  {
+    "function": "updatePerfMotionState",
+    "bindings": { "argPrimary": ["framesPerSecond"] }
+  },
+  {
+    "function": "collectWorldItemKeys",
+    "bindings": {
+      "argPrimary": ["lightItemId"],
+      "value": ["layerKey"]
+    }
+  },
+  {
+    "comment": "`normalizeLabelText` here is a local shadow of the module-level helper of the same name -- rename it so the call on the next line is readable.",
+    "function": "defaultExportPresetLabel",
+    "bindings": {
+      "argPrimary": ["preset"],
+      "argSecondary": ["index"],
+      "normalizeLabelText": ["floorName"]
+    }
+  },
+  {
+    "function": "buildRiceCookerItemMeshGroup",
+    "bindings": { "computedValue": ["bodyRadius"] }
+  },
+  {
+    "comment": "three `argPrimary` bindings: the function parameter, the map() predicate, and the rAF callback.",
+    "function": "scheduleLightCacheForGroups",
+    "bindings": {
+      "argPrimary": ["requestedGroupIds", "rawGroupId", "nowMs"],
+      "value": ["groupIds"],
+      "flag": ["groupFades"],
+      "list": ["startedAt"],
+      "clampedValue": ["progress"],
+      "computedValue": ["eased"],
+      "from": ["fade"]
+    }
+  }
+]

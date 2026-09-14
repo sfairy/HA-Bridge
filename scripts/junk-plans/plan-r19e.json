@@ -1,0 +1,45 @@
+[
+  {
+    "function": "applyCameraViewCurrent",
+    "note": "camera framing: the all-floors bounding box, the focus point and the resulting eye distance",
+    "bindings": {
+      "comparisonFlag": ["showsAllFloors"],
+      "computedValue": ["pixelsPerMeterValue"],
+      "x49": ["allFloorsSize"],
+      "x50": ["allFloorsCenter"],
+      "x51": ["focusPoint"],
+      "localValue": ["cameraDistance"],
+      "conditionalValue": ["frameExtent"],
+      "y": ["wallTopHeight"],
+      "isEmpty": ["wallSnap"]
+    }
+  },
+  {
+    "function": "setCameraProjectionMode",
+    "note": "the inner conditionalValue is the perspective eye distance, the outer one is the view mode",
+    "bindings": {
+      "conditionalValue": ["viewMode", "cameraDistance"],
+      "comparisonFlag": ["preserveView"],
+      "userData": ["previousCamera"],
+      "computedValue": ["orbitTarget"],
+      "length": ["cameraOffset"],
+      "localValue": ["currentDistance"],
+      "max": ["aspect"],
+      "halfValue": ["halfFrameHeight"]
+    }
+  },
+  {
+    "function": "createGlassMaterial",
+    "bindings": {
+      "argPrimary": ["entryItem"]
+    }
+  },
+  {
+    "function": "addPreviewItemMeshes",
+    "bindings": {
+      "x38": ["anchorPoint"],
+      "localValuePrevious": ["shadowLightIdSet"],
+      "push": ["staticItems"]
+    }
+  }
+]

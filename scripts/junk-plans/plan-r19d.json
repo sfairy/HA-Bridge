@@ -1,0 +1,50 @@
+[
+  {
+    "function": "addPreviewWallMeshes",
+    "note": "one placeholder name, six bindings: wall length, the three opening positions along the wall, then the rolling-shutter panel and entry-leaf widths",
+    "bindings": {
+      "localValue": [
+        "wallLength",
+        "windowT",
+        "railingT",
+        "doorT",
+        "panelWidth",
+        "leafWidth"
+      ],
+      "computedValue": [
+        "wallDx",
+        "slatOffset"
+      ],
+      "computedValueCurrent": [
+        "wallDy"
+      ],
+      "localValueCurrent": [
+        "windowHeight",
+        "railingHeight",
+        "doorHeight"
+      ],
+      "localValueNext": [
+        "barThickness",
+        "slatCount"
+      ],
+      "localValuePrevious": [
+        "barCount"
+      ],
+      "oneValue": [
+        "slatIndex"
+      ],
+      "zeroValue": [
+        "barIndex"
+      ],
+      "x21": [
+        "windowAnchor"
+      ],
+      "x22": [
+        "railingAnchor"
+      ],
+      "x23": [
+        "doorAnchor"
+      ]
+    }
+  }
+]

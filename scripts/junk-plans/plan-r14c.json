@@ -1,0 +1,42 @@
+[
+  {
+    "function": "normalizedLightBrightness",
+    "bindings": {
+      "argSecondary": ["rawBrightness"],
+      "computedValue": ["normalized"]
+    }
+  },
+  {
+    "function": "estimateLightRenderIntensity",
+    "bindings": {
+      "range": ["preset"],
+      "computedValue": ["typeMultiplier"],
+      "clampedValue": ["lightRange"],
+      "localValue": ["elevation"]
+    }
+  },
+  {
+    "function": "closeLightGroupRenameDialog",
+    "bindings": {
+      "hidden": ["entry"],
+      "dataset": ["optionEl"],
+      "localValue": ["itemType"],
+      "localValueCurrent": ["isReservedUnit"],
+      "conditionalValue": ["visible"]
+    }
+  },
+  {
+    "function": "setAssetCategoryFilter",
+    "bindings": {
+      "argPrimary": ["requested"],
+      "conditionalValue": ["category"]
+    }
+  },
+  {
+    "range": [19653, 19681],
+    "bindings": {
+      "argPrimary": ["frameRequest", "suspended", "forceFull"],
+      "argSecondary": ["work"]
+    }
+  }
+]

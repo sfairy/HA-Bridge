@@ -1,0 +1,67 @@
+[
+  {
+    "function": "createGroundGridHelper",
+    "bindings": {
+      "argPrimary": ["worldSize", "renderer"],
+      "grid": ["theme"],
+      "argTertiary": ["floorY"],
+      "material": ["gridHelper"],
+      "bounds": ["lookTarget"],
+      "uniforms": ["shader", "depthFadeShader"],
+      "argSecondary": ["scene"],
+      "position": ["camera"],
+      "localValue": ["cameraDistance"],
+      "conditionalValue": ["viewHeight"],
+      "max": ["fadeExtent"],
+      "element": ["depthFadeNear"]
+    }
+  },
+  {
+    "function": "recordPerfFloorSwitchSample",
+    "bindings": {
+      "argPrimary": ["nowMs"],
+      "argSecondary": ["cpuRenderMs"],
+      "argTertiary": ["isMotionFrame"],
+      "value": ["stats"],
+      "left": ["switchStats"],
+      "last": ["sampledAt"],
+      "computedValue": ["frameInterval"]
+    }
+  },
+  {
+    "function": "buildTvStandItemMeshGroup",
+    "bindings": {
+      "computedValue": ["plinthHeight"],
+      "value": ["plinthTopY"],
+      "localValue": ["footOffset"]
+    }
+  },
+  {
+    "function": "warmLightCacheMeshesForGroups",
+    "bindings": {
+      "argPrimary": ["lightGroupIds", "groupIntensity", "nowMs"],
+      "value": ["groupIds"],
+      "userData": ["object"],
+      "to": ["targetIntensity", "entry"],
+      "flag": ["startedAt"],
+      "helperFn": ["advanceFade"],
+      "clampedValue": ["progress"],
+      "computedValue": ["eased"],
+      "from": ["mesh"],
+      "boolFlag": ["needsSync"]
+    }
+  },
+  {
+    "function": "removeWorldModelLayer",
+    "bindings": {
+      "argPrimary": ["removedFloorIds"],
+      "childNodes": ["rootGroup"],
+      "localValue": ["savedScene", "floorIndex"],
+      "localValueCurrent": ["savedFloorId"],
+      "localValueNext": ["savedPlanOrigin"],
+      "someFlag": ["floorsByElevation"],
+      "id": ["floorRecord"],
+      "userData": ["layer", "foundLayer", "child"]
+    }
+  }
+]

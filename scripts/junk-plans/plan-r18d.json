@@ -1,0 +1,30 @@
+[
+  { "function": "collectWorldExternalMeshes", "bindings": {
+    "list": ["visibleLights"],
+    "lookupMap": ["byGroup"],
+    "object3d": ["node", "groupNode"],
+    "flag": ["groupId"],
+    "idSet": ["groupedLights"],
+    "set": ["seenSignatures"],
+    "listCurrent": ["descriptors", "groupLights"],
+    "localValue": ["baseSignature"],
+    "computedValue": ["meshSetKey"],
+    "visible": ["lightCandidate", "visibleCandidate"],
+    "light": ["lightRef", "hiddenEntry", "shownEntry", "inactiveEntry", "embedEntry"],
+    "argPrimary": ["visibleNode"]
+  } },
+  { "function": "addTvMountMeshes", "bindings": {
+    "argTertiary": ["itemWidth"],
+    "argN": ["itemDepth"],
+    "argNCurrent": ["itemHeight"],
+    "value": ["screenOffset"],
+    "userData": ["frameMesh", "glowMesh"],
+    "mapVar": ["screenTexture"],
+    "meshBasicMaterial": ["frameMaterial"],
+    "material": ["screenMaterial"],
+    "light": ["panelMesh"]
+  } },
+  { "function": "buildDishwasherItemMeshGroup", "bindings": { "localValue": ["handleOffset"] } },
+  { "function": "buildMicrowaveItemMeshGroup", "bindings": { "localValue": ["buttonY"] } },
+  { "function": "buildSteamOvenItemMeshGroup", "bindings": { "localValue": ["knobOffset"] } }
+]

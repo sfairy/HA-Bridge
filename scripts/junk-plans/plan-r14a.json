@@ -1,0 +1,31 @@
+[
+  {
+    "function": "flushPlanZoomFrame",
+    "bindings": {
+      "argPrimary": ["wallSnapBounds"],
+      "flag": ["shadowCamera"],
+      "localValue": ["lightWorldPos", "cornerY", "cornerZ"],
+      "x47": ["boundsMin"],
+      "x48": ["boundsMax"],
+      "localValueCurrent": ["cornerX", "padding"],
+      "localValueNext": ["nearZ"],
+      "localValuePrevious": ["depthPadding"]
+    }
+  },
+  {
+    "function": "onPlanWheelZoom",
+    "bindings": {
+      "x52": ["canvasPoint"],
+      "x53": ["planPoint"],
+      "computedValue": ["deltaX", "snapStep"],
+      "localValue": ["dragExtent", "baseHeight"],
+      "x25": ["panPoint"],
+      "comparisonFlag": ["snapToGrid"],
+      "computedValueCurrent": ["dragDeltaY"],
+      "x16": ["originalSnapshot"],
+      "x15": ["targetCandidate"],
+      "x6": ["candidate"],
+      "x26": ["resizeTarget"]
+    }
+  }
+]
