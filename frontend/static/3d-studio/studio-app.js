@@ -26,10 +26,10 @@ import { MAX_EXPORT_PRESET_COUNT, exportPresetIsEmpty, normalizeActiveExportPres
 import { reorderFloors } from "./floor-order.js?v=20260825-floor-reorder-v1";
 import { syncControlValue } from "./ui-controls.js?v=20260826-input-stability-v1";
 import { initializeNumberInputs, initializeStudioSelects, syncStudioSelect } from "./studio-widgets.js?v=20260901-studio-widgets-v1";
-import { createExternalModelManager, ALL_ITEM_MODELS } from "./studio-external-models.js?v=20260904-studio-external-models-v48-load-state-20260905-client-log-v1-20260907-cache-representation-v1-20260908-curtains-v1-20260908-bed-base-v1-20260910-glasscabinet-back-v1-20260912-bed-geometry-revision-v1";
+import { createExternalModelManager, ALL_ITEM_MODELS } from "./studio-external-models.js?v=20260904-studio-external-models-v48-load-state-20260905-client-log-v1-20260907-cache-representation-v1-20260908-curtains-v1-20260908-bed-base-v1-20260910-glasscabinet-back-v1-20260912-bed-geometry-revision-v1-20260913-pillar-shapes-v2";
 import { createPlanDrawingTools, drawTrackedText } from "./studio-plan-drawing.js?v=20260901-studio-plan-drawing-v2";
 import { createSpotShadowAtlasController } from "./studio-shadow-atlas.js?v=20260912-shadow-atlas-skip-unbakeable-v2";
-import { createRegionLightController } from "./studio-plan2-region-lights.js?v=20260909-reflection-scope-v1";
+import { createRegionLightController } from "./studio-plan2-region-lights.js?v=20260909-reflection-scope-v1-20260913-region-lights-map-shadow-v1";
 import { createContactShadowController } from "./studio-plan2-contact-shadows.js?v=20260909-batch-shadow-v4";
 import { DEFAULT_BASE_LIGHTING, finite, itemMinimumHeight, kelvinToRgbHex, normalizeCameraSettings, normalizeBaseLighting, normalizeFixedCameraView, normalizeFullRotation, normalizeLabelText, normalizePoint } from "./studio-normalization.js?v=20260903-studio-normalization-v2";
 window.__haBridgeStudioModuleVersion = "20260904-local-shadow-edge-v6-depth-precision-v1-model-load-state-v3-floor-scope-v1-ground-grid-v3-depth-fade-v2-local-shadow-depth-v1-export-shadow-quality-v1-base-light-entry-v1-auto-diagram-preview-hd-v1-auto-diagram-floor-v1-20260905-first-light-prewarm-v3-20260905-orbit-architecture-center-v1";
@@ -54,8 +54,8 @@ let Vo = true;
 const cache = isStageEmbed ? createRenderCache({
   sceneId: new URLSearchParams(window.location.search).get("sceneId"),
   projectId: new URLSearchParams(window.location.search).get("projectId"),
-  report: argPrimary => {
-    document.documentElement.dataset.lightRenderCache = JSON.stringify(argPrimary);
+  report: lightCacheStats => {
+    document.documentElement.dataset.lightRenderCache = JSON.stringify(lightCacheStats);
   }
 }) : null;
 window.addEventListener("pagehide", () => cache?.close(), {
@@ -64,11 +64,11 @@ window.addEventListener("pagehide", () => cache?.close(), {
 function computeLightRenderCacheKey(width, height) {
   const floors = getPreviewFloorModeCurrent() === "all" ? projectDocCurrent.floors : [activeFloor()];
   cameraCurrent.updateMatrixWorld();
-  const roundMatrix = elements => elements.map(argPrimary => Math.round(argPrimary * 100000000) / 100000000);
-  const visibility = [];
-  worldGroup.traverse(object3d => {
-    if (["background", "grid"].includes(object3d.userData?.exportRole)) {
-      visibility.push([object3d.userData.exportRole, object3d.visible]);
+  const roundMatrix = matrixElements => matrixElements.map(component => Math.round(component * 100000000) / 100000000);
+  const layerVisibility = [];
+  worldGroup.traverse(node => {
+    if (["background", "grid"].includes(node.userData?.exportRole)) {
+      layerVisibility.push([node.userData.exportRole, node.visible]);
     }
   });
   return sha256(stableCacheJSON({
@@ -78,7 +78,7 @@ function computeLightRenderCacheKey(width, height) {
     gap: projectDocCurrent.previewFloorGap,
     lighting: baseLighting,
     style: themeColors,
-    visibility,
+    visibility: layerVisibility,
     reflections: exportFolderQuery,
     curtains: saveState,
     models: manager.cacheRepresentation(floors.flatMap(scene => scene.scene.items)),
@@ -157,6 +157,14 @@ const ka = selectEl("#light-property-toggle-all");
 const Df = selectEl("#light-property-apply-title");
 const Ff = selectEl("#light-property-apply-value");
 const list = [...document.querySelectorAll("[data-apply-light-property]")];
+const wallApplyPropertyEls = [...document.querySelectorAll("[data-apply-wall-property]")];
+const wallPropertyApplyDialog = selectEl("#wall-property-apply-dialog");
+const wallPropertyApplyForm = selectEl("#wall-property-apply-form");
+const wallPropertyTargetList = selectEl("#wall-property-target-list");
+const wallPropertySelectionCount = selectEl("#wall-property-selection-count");
+const wallPropertyToggleAll = selectEl("#wall-property-toggle-all");
+const wallPropertyApplyTitle = selectEl("#wall-property-apply-title");
+const wallPropertyApplyValue = selectEl("#wall-property-apply-value");
 const toastCurrent = selectEl("#toast");
 const inspectorEmpty = selectEl("#inspector-empty");
 const selectionInspector = selectEl("#selection-inspector");
@@ -185,6 +193,12 @@ const Kf = selectEl("#curtain-position-field");
 const Qf = selectEl("#round-table-turntable-field");
 const Jf = selectEl("#stair-direction-field");
 const jf = selectEl("#tv-mount-style-field");
+const muralStyleField = selectEl("#mural-style-field");
+const featureWallStyleField = selectEl("#feature-wall-style-field");
+const pillarShapeField = selectEl("#pillar-shape-field");
+const pillarAxisField = selectEl("#pillar-axis-field");
+const stripAxisField = selectEl("#strip-axis-field");
+const itemHeightLabel = selectEl("#item-height-label");
 const eg = selectEl("#shoe-cabinet-actions");
 const o0 = selectEl("#shoe-cabinet-mirror");
 const tg = selectEl("#item-width-label");
@@ -266,9 +280,22 @@ const lightItemTypes = selectEl("#asset-grid");
 const stairLikeTypes = selectEl("#light-asset-row");
 const lightLayerPanel = selectEl("#light-layer-panel");
 const lightGroupList = selectEl("#light-group-list");
+const lightLayerActions = selectEl("#light-layer-actions");
 const Tg = selectEl("#add-light-group");
 const fridgeSize = selectEl("#light-groups-off");
 const lightGroupContextMenu = selectEl("#light-group-context-menu");
+const areaContextMenu = selectEl("#area-context-menu");
+const addAreaButton = selectEl("#add-area");
+const areaRenameDialog = selectEl("#area-rename-dialog");
+const areaRenameForm = selectEl("#area-rename-form");
+const areaRenameTitle = selectEl("#area-rename-title");
+const areaRenameInput = selectEl("#area-rename-input");
+const lightGroupAreaDialog = selectEl("#light-group-area-dialog");
+const lightGroupAreaForm = selectEl("#light-group-area-form");
+const lightGroupAreaName = selectEl("#light-group-area-name");
+const lightGroupAreaSelect = selectEl("#light-group-area-select");
+const lightGroupAreaNewName = selectEl("#light-group-area-new-name");
+const lightGroupAreaCreate = selectEl("#light-group-area-create");
 const HELPER_LAYER = 2;
 const themeColors = {
   background: 1120029,
@@ -398,6 +425,26 @@ const furnitureCatalog = {
     height: 1.4,
     color: "#7896a4"
   },
+  mural: {
+    name: "壁画",
+    glyph: "❐",
+    width: 1.2,
+    depth: 0.1,
+    height: 0.8,
+    elevation: 0.9,
+    color: "#8d7b62",
+    muralStyle: "bauhaus"
+  },
+  featurewall: {
+    name: "背景墙",
+    glyph: "❏",
+    width: 3,
+    depth: 0.1,
+    height: 2.4,
+    elevation: 0,
+    color: "#c4bcae",
+    wallStyle: "marble"
+  },
   coffeetable: {
     name: "组合茶几",
     glyph: "◉",
@@ -492,7 +539,9 @@ const furnitureCatalog = {
     width: 0.45,
     depth: 0.45,
     height: 2.8,
-    color: "#9099aa"
+    color: "#9099aa",
+    pillarShape: "square",
+    pillarAxis: "vertical"
   },
   wallcabinet: {
     name: "吊柜",
@@ -879,7 +928,8 @@ const furnitureCatalog = {
     depth: 0.28,
     height: 0.05,
     elevation: 2.7,
-    color: "#d4dbe2"
+    color: "#d4dbe2",
+    stripAxis: "horizontal"
   }
 };
 const SOFT_TEXTURE_UNIT_RESERVE = new Set(["nightstand", "bar", "aquarium", "sideboard", "shoecabinet", "stairs", "steelstairs", "glassstairs", "smallcar", "cabinet", "glasscabinet", "bookcase", "shelf", "pillar", "wallcabinet", "kitchenbase", "kitchensink", "kitchencooktop", "vanity", "basin", "bathtub", "tvstand", "squarecoffeetable", "glasspartition", "washer", "airoutlet", "dryer", "dishwasher", "steamoven", "microwave", "rangehood", "nas", "pipelinewaterpurifier", "tea_bar_machine"]);
@@ -1114,8 +1164,12 @@ const Zl = new Map();
 const mergedBoxGeometryCache = new Map();
 const rugMaterialCache = new Map();
 const skipInstanceMergeTypes = new Set(["tv", "smallcar", "planlabel", "downlight", "ceilinglight", "striplight"]);
-const hasProjectLoaded = new Set(["coffeetable", "squarecoffeetable", "tvstand", "plant", "bed", "nightstand", "curtain", "vanity", "desk", "bookcase", "piano", "table", "rounddiningtable", "rounddiningtableturntable", "bar", "sideboard", "shoecabinet", "chair", "cabinet", "glasscabinet", "shelf", "wallcabinet", "kitchenbase", "kitchensink", "kitchencooktop", "fridge", "washer", "dryer", "dishwasher", "steamoven", "microwave", "ricecooker", "rangehood", "wallac", "floorac", "nas", "airpurifier", "tv", "desktop", "laptop", "toilet", "squattoilet", "urinal", "bathtub", "shower", "basin"]);
-const Gg = new Set();
+const meshMergeAllowlist = new Set();
+// NOTE: meshMergeAllowlist is intentionally empty, so mergeSimilarItemMeshes() currently returns
+// immediately at every call site: the mesh-dedup pass is disabled, not merely a no-op for some
+// types. Re-enable it by listing the item types whose meshes are known to be safe to share
+// (skipInstanceMergeTypes lists the ones that are explicitly not), or delete the function.
+const stripLightHelperTypes = new Set(["coffeetable", "squarecoffeetable", "tvstand", "plant", "bed", "nightstand", "curtain", "vanity", "desk", "bookcase", "piano", "table", "rounddiningtable", "rounddiningtableturntable", "bar", "sideboard", "shoecabinet", "chair", "cabinet", "glasscabinet", "shelf", "wallcabinet", "kitchenbase", "kitchensink", "kitchencooktop", "fridge", "washer", "dryer", "dishwasher", "steamoven", "microwave", "ricecooker", "rangehood", "wallac", "floorac", "nas", "airpurifier", "tv", "desktop", "laptop", "toilet", "squattoilet", "urinal", "bathtub", "shower", "basin"]);
 const $g = new Set(["aquarium", "bed", "nightstand", "curtain", "vanity", "desk", "bookcase", "piano", "table", "rounddiningtable"]);
 const floorScene = new Set(["coffeetable", "squarecoffeetable", "tvstand", "rug", "plant", "bed", "nightstand", "vanity", "desk", "bookcase", "aquarium", "curtain", "table", "rounddiningtable", "rounddiningtableturntable", "chair", "bar", "sideboard", "shoecabinet", "cabinet", "glasscabinet", "shelf", "wallcabinet", "kitchenbase", "kitchensink", "kitchencooktop", "basin", "toilet", "squattoilet", "urinal", "shower", "bathtub", "glasspartition", "stairs", "pillar"]);
 const projectDoc = new Set(["tv", "wallac", "floorac", "airpurifier", "robotvacuum", "floorlamp", "walllamp", "fridge", "rangehood", "dishwasher", "steamoven", "microwave", "ricecooker", "washer", "dryer", "storagewaterheater", "gaswaterheater", "desktop", "laptop", "nas"]);
@@ -1183,6 +1237,7 @@ function formatLightPropertyValue(prop, value) {
 const toolHelpText = {
   flooropening: ["楼板洞口", "拖出矩形洞口；仅切除当前层楼板，楼梯通往上层时请在上层开洞。Esc 取消"],
   select: ["选择工具", "移动时 Shift 锁轴；缩放时 Shift 等比例；Option/Alt 拖动复制；⌘/Ctrl+C、V 复制粘贴"],
+  pan: ["平移画布", "按住左键拖动即可平移画布；滚轮缩放；中键或按住空格拖动同样可平移"],
   scale: ["参考线工具", "依次单击两个端点；按住 Shift 强制锁定水平或垂直轴线"],
   wall: ["连续画墙", "逐点绘制并回到起点闭合空间；未闭合不会生成地面，按住 Shift 锁轴，Esc 结束"],
   window: ["窗户工具", "靠近墙体单击，窗户会自动吸附并生成真实窗洞"],
@@ -1211,7 +1266,7 @@ const {
   }),
   getViewZoom: () => planView.zoom
 });
-let hasProjectLoadedCurrent = null;
+let currentStudioDocument = null;
 let projectLoadGeneration = 0;
 let planBackgroundRevision = 0;
 let floorSceneCurrent = createEmptyFloorScene();
@@ -1224,10 +1279,16 @@ const wallDrawAnchor = "solid";
 let assetCategory = "home";
 let on = "";
 let lightGroupContextMenuId = "";
+let areaContextMenuId = "";
+let areaRenameMode = "create";
+let areaRenameId = "";
+let areaAssignGroupId = "";
+const expandedAreaIds = new Set();
 let _a = "";
 let draggingLightGroupId = "";
 let draggingFloorId = "";
 let Dr = null;
+let wallApplyState = null;
 let clipboardItems = [];
 let Fr = null;
 let clipboardPasteCount = 0;
@@ -1403,16 +1464,18 @@ function createEmptyFloorScene() {
     windows: [],
     doors: [],
     railings: [],
+    areas: [],
     lightGroups: [{
       id: "light-group-default",
       name: "默认灯组",
-      enabled: true
+      enabled: true,
+      areaId: null
     }],
     items: []
   };
 }
-function defaultFloorChineseName(argPrimary) {
-  return ["一层", "二层", "三层", "四层", "五层", "六层", "七层", "八层", "九层", "十层"][argPrimary] || argPrimary + 1 + "层";
+function defaultFloorChineseName(floorIndex) {
+  return ["一层", "二层", "三层", "四层", "五层", "六层", "七层", "八层", "九层", "十层"][floorIndex] || floorIndex + 1 + "层";
 }
 function createFloorEntry(elevation = 0, scene = createEmptyFloorScene()) {
   const sceneCurrent = normalizeFloorScene(scene);
@@ -1433,38 +1496,38 @@ function createFloorEntry(elevation = 0, scene = createEmptyFloorScene()) {
   };
 }
 function normalizeProjectDocument(projectDoc) {
-  const list = Array.isArray(projectDoc?.floors) ? projectDoc.floors : null;
-  const floors = list?.length ? list.map((floor, argSecondary) => {
+  const rawFloors = Array.isArray(projectDoc?.floors) ? projectDoc.floors : null;
+  const floors = rawFloors?.length ? rawFloors.map((floor, floorIndex) => {
     const scene = normalizeFloorScene(floor?.scene);
-    const flag = floor?.originInitialized === true;
-    const text = normalizeLabelText(floor?.name, defaultFloorChineseName(argSecondary), 24);
-    const name = text === argSecondary + 1 + "层" ? defaultFloorChineseName(argSecondary) : text;
+    const originInitialized = floor?.originInitialized === true;
+    const rawFloorName = normalizeLabelText(floor?.name, defaultFloorChineseName(floorIndex), 24);
+    const name = rawFloorName === floorIndex + 1 + "层" ? defaultFloorChineseName(floorIndex) : rawFloorName;
     return {
       id: String(floor?.id || makeId("floor")),
       name,
-      elevation: clamp(finite(floor?.elevation, argSecondary * 3), -30, 120),
+      elevation: clamp(finite(floor?.elevation, floorIndex * 3), -30, 120),
       offsetX: clamp(finite(floor?.offsetX, 0), -100, 100),
       offsetZ: clamp(finite(floor?.offsetZ, 0), -100, 100),
       rotation: clamp(finite(floor?.rotation, 0), -180, 180),
-      originX: flag ? finite(floor?.originX, 0) : scene.background?.width ? scene.background.width / 2 : 0,
-      originY: flag ? finite(floor?.originY, 0) : scene.background?.height ? scene.background.height / 2 : 0,
-      originInitialized: flag || !!scene.background,
-      aligned: argSecondary === 0 || floor?.aligned === true || Math.abs(finite(floor?.offsetX, 0)) > 0.000001 || Math.abs(finite(floor?.offsetZ, 0)) > 0.000001,
+      originX: originInitialized ? finite(floor?.originX, 0) : scene.background?.width ? scene.background.width / 2 : 0,
+      originY: originInitialized ? finite(floor?.originY, 0) : scene.background?.height ? scene.background.height / 2 : 0,
+      originInitialized: originInitialized || !!scene.background,
+      aligned: floorIndex === 0 || floor?.aligned === true || Math.abs(finite(floor?.offsetX, 0)) > 0.000001 || Math.abs(finite(floor?.offsetZ, 0)) > 0.000001,
       alignmentPending: floor?.alignmentPending === true,
       scene
     };
   }) : [createFloorEntry(0, projectDoc)];
-  const id = String(projectDoc?.activeFloorId || "");
-  const found = floors.find(item => item.id === id) || floors[0];
-  const clampCurrent = clamp(finite(projectDoc?.defaultFloorHeight, 3), 0, 20);
-  const flag = finite(projectDoc?.schemaVersion, 0) >= 6;
+  const requestedActiveFloorId = String(projectDoc?.activeFloorId || "");
+  const activeFloorEntry = floors.find(item => item.id === requestedActiveFloorId) || floors[0];
+  const baselineHeight = clamp(finite(projectDoc?.defaultFloorHeight, 3), 0, 20);
+  const hasFloorGapSchema = finite(projectDoc?.schemaVersion, 0) >= 6;
   const exportPresets = normalizeExportPresetSlots(projectDoc?.exportPresets);
   return {
     schemaVersion: 7,
-    activeFloorId: found.id,
+    activeFloorId: activeFloorEntry.id,
     defaultFloorHeight: clamp(finite(projectDoc?.defaultFloorHeight, 3), 1.8, 8),
-    previewFloorGap: clamp(flag ? finite(projectDoc?.previewFloorGap, 3) : clampCurrent + finite(projectDoc?.previewFloorGap, 0), 0, 20),
-    exportFloorGap: clamp(flag ? finite(projectDoc?.exportFloorGap, 3) : clampCurrent + finite(projectDoc?.exportFloorGap, 0), 0, 20),
+    previewFloorGap: clamp(hasFloorGapSchema ? finite(projectDoc?.previewFloorGap, 3) : baselineHeight + finite(projectDoc?.previewFloorGap, 0), 0, 20),
+    exportFloorGap: clamp(hasFloorGapSchema ? finite(projectDoc?.exportFloorGap, 3) : baselineHeight + finite(projectDoc?.exportFloorGap, 0), 0, 20),
     previewFloorMode: projectDoc?.previewFloorMode === "all" ? "all" : "active",
     combinedCameraSettings: normalizeCameraSettings(projectDoc?.combinedCameraSettings),
     combinedFixedCameraView: normalizeFixedCameraView(projectDoc?.combinedFixedCameraView),
@@ -1538,23 +1601,23 @@ function closeFloorDeleteDialog() {
   }
 }
 async function executePendingFloorDelete() {
-  const id2 = projectDocCurrent.floors.find(id => id.id === pendingDeleteFloorId);
+  const doomedFloor = projectDocCurrent.floors.find(id => id.id === pendingDeleteFloorId);
   closeFloorDeleteDialog();
-  if (!id2 || projectDocCurrent.floors.length <= 1) {
+  if (!doomedFloor || projectDocCurrent.floors.length <= 1) {
     return;
   }
-  const value = projectDocCurrent.floors.findIndex(id => id.id === id2.id);
-  projectDocCurrent.floors.splice(value, 1);
-  projectDocCurrent.floors.forEach((elevation, argSecondary) => {
-    elevation.elevation = argSecondary * projectDocCurrent.defaultFloorHeight;
+  const removedIndex = projectDocCurrent.floors.findIndex(id => id.id === doomedFloor.id);
+  projectDocCurrent.floors.splice(removedIndex, 1);
+  projectDocCurrent.floors.forEach((elevation, floorIndex) => {
+    elevation.elevation = floorIndex * projectDocCurrent.defaultFloorHeight;
   });
-  const id = projectDocCurrent.floors[Math.max(0, value - 1)] || projectDocCurrent.floors[0];
-  await switchActiveFloor(id.id, {
+  const nextActiveFloor = projectDocCurrent.floors[Math.max(0, removedIndex - 1)] || projectDocCurrent.floors[0];
+  await switchActiveFloor(nextActiveFloor.id, {
     persist: false
   });
   syncPreviewFloorButtons();
   scheduleSave();
-  showToast("已删除“" + id2.name + "”。", "success");
+  showToast("已删除“" + doomedFloor.name + "”。", "success");
 }
 function openFloorRenameDialog(id) {
   if (id) {
@@ -2008,6 +2071,20 @@ function normalizeFloorScene(scene) {
     height: clamp(finite(attachment?.height, 1.1), 0.5, 3),
     sill: 0
   })).filter(wall => wallIdSet.has(wall.wallId)) : [];
+  const areas = [];
+  const areaIds = new Set();
+  if (Array.isArray(scene.areas)) {
+    for (const area of scene.areas) {
+      const areaId = String(area?.id || makeId("area"));
+      if (!areaIds.has(areaId)) {
+        areaIds.add(areaId);
+        areas.push({
+          id: areaId,
+          name: normalizeLabelText(area?.name, "区域 " + (areas.length + 1), 16)
+        });
+      }
+    }
+  }
   const lightGroups = [];
   const lightGroupIds = new Set();
   if (Array.isArray(scene.lightGroups)) {
@@ -2015,10 +2092,12 @@ function normalizeFloorScene(scene) {
       const groupId = String(lightGroup?.id || makeId("light-group"));
       if (!lightGroupIds.has(groupId)) {
         lightGroupIds.add(groupId);
+        const areaId = String(lightGroup?.areaId || "");
         lightGroups.push({
           id: groupId,
           name: normalizeLabelText(lightGroup?.name, "灯组 " + (lightGroups.length + 1), 24),
-          enabled: lightGroup?.enabled !== false
+          enabled: lightGroup?.enabled !== false,
+          areaId: areaIds.has(areaId) ? areaId : null
         });
       }
     }
@@ -2042,7 +2121,8 @@ function normalizeFloorScene(scene) {
     lightGroups.push({
       id: "light-group-default",
       name: "默认灯组",
-      enabled: true
+      enabled: true,
+      areaId: null
     });
     lightGroupIds.add("light-group-default");
   }
@@ -2096,6 +2176,16 @@ function normalizeFloorScene(scene) {
       ...(item?.type === "curtain" ? {
         curtainPosition: ["left", "right", "split"].includes(item?.curtainPosition) ? item.curtainPosition : "split"
       } : {}),
+      ...(item?.type === "mural" ? {
+        muralStyle: normalizeMuralArtStyle(item?.muralStyle)
+      } : {}),
+      ...(item?.type === "featurewall" ? {
+        wallStyle: normalizeFeatureWallStyle(item?.wallStyle)
+      } : {}),
+      ...(item?.type === "pillar" ? {
+        pillarShape: normalizePillarShape(item?.pillarShape),
+        pillarAxis: normalizePillarAxis(item?.pillarAxis)
+      } : {}),
       ...(stairItemTypes.has(item?.type) ? {
         stairDirection: ["left", "right"].includes(item?.stairDirection) ? item.stairDirection : "right"
       } : {}),
@@ -2112,6 +2202,7 @@ function normalizeFloorScene(scene) {
         lightGroupId,
         verticalRotation: item?.type === "striplight" ? normalizeFullRotation(item?.verticalRotation) : clamp(finite(item?.verticalRotation, 0), -90, 90),
         ...(item?.type === "striplight" ? {
+          stripAxis: normalizeStripAxis(item?.stripAxis),
           stripRollRotation: normalizeFullRotation(item?.stripRollRotation),
           lightSourceVisible: item?.lightSourceVisible !== false
         } : {}),
@@ -2162,16 +2253,17 @@ function normalizeFloorScene(scene) {
     windows: wallOpenings.windows,
     doors: wallOpenings.doors,
     railings: wallOpenings.railings,
+    areas,
     lightGroups,
     items
   };
 }
-function makeId(argPrimary) {
-  const value = globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
-  return argPrimary + "-" + value;
+function makeId(prefix) {
+  const randomSuffix = globalThis.crypto?.randomUUID?.() || Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+  return prefix + "-" + randomSuffix;
 }
-function cloneFloorScene(argPrimary = floorSceneCurrent) {
-  return structuredClone(argPrimary);
+function cloneFloorScene(scene = floorSceneCurrent) {
+  return structuredClone(scene);
 }
 function resolveLightGroup(lightGroup) {
   return floorSceneCurrent.lightGroups?.find(item => item.id === lightGroup?.lightGroupId) || floorSceneCurrent.lightGroups?.[0] || null;
@@ -2208,17 +2300,17 @@ function floorStackOffsetY(id) {
   const value = projectDocCurrent.floors.findIndex(item => item.id === id?.id);
   return Math.max(value, 0) * finite(projectDocCurrent.exportFloorGap, 3);
 }
-function floorScopedKey(argPrimary, argSecondary) {
-  return argPrimary + ":" + argSecondary;
+function floorScopedKey(floorId, keySuffix) {
+  return floorId + ":" + keySuffix;
 }
-function layerScopedKey(flag, argSecondary) {
-  return (flag || "floor") + ":" + argSecondary;
+function layerScopedKey(layerId, keySuffix) {
+  return (layerId || "floor") + ":" + keySuffix;
 }
-function previewScopedItemKey(argPrimary, value) {
+function previewScopedItemKey(floorId, itemKey) {
   if (getPreviewFloorModeCurrent() === "all") {
-    return floorScopedKey(argPrimary, value);
+    return floorScopedKey(floorId, itemKey);
   } else {
-    return value;
+    return itemKey;
   }
 }
 function collectVisibleLights() {
@@ -2258,39 +2350,39 @@ function collectSmallCarsAcrossFloors(list = projectDocCurrent?.floors || []) {
     key: floor.id + ":" + item.id
   })));
 }
-function ensureTvScreenLayerNames(argPrimary) {
+function ensureTvScreenLayerNames(items) {
   const idSet = new Set(tvItemsOnFloor().map(screenLayerName => screenLayerName.screenLayerName));
-  let value = 1;
-  for (const screenLayerName of argPrimary) {
+  let layerNumber = 1;
+  for (const screenLayerName of items) {
     if (screenLayerName.type === "tv") {
-      while (idSet.has("电视画面 " + value)) {
-        value += 1;
+      while (idSet.has("电视画面 " + layerNumber)) {
+        layerNumber += 1;
       }
-      screenLayerName.screenLayerName = "电视画面 " + value;
+      screenLayerName.screenLayerName = "电视画面 " + layerNumber;
       screenLayerName.screenEnabled = screenLayerName.screenEnabled !== false;
       idSet.add(screenLayerName.screenLayerName);
-      value += 1;
+      layerNumber += 1;
     }
   }
 }
-function ensureSmallCarChargingLayerNames(argPrimary) {
+function ensureSmallCarChargingLayerNames(items) {
   const idSet = new Set(smallCarItemsOnFloor().map(chargingLayerName => chargingLayerName.chargingLayerName));
-  let value = 1;
-  for (const chargingLayerName of argPrimary) {
+  let layerNumber = 1;
+  for (const chargingLayerName of items) {
     if (chargingLayerName.type === "smallcar") {
-      while (idSet.has("汽车充电 " + value)) {
-        value += 1;
+      while (idSet.has("汽车充电 " + layerNumber)) {
+        layerNumber += 1;
       }
-      chargingLayerName.chargingLayerName = "汽车充电 " + value;
+      chargingLayerName.chargingLayerName = "汽车充电 " + layerNumber;
       chargingLayerName.chargingEnabled = chargingLayerName.chargingEnabled === true;
       idSet.add(chargingLayerName.chargingLayerName);
-      value += 1;
+      layerNumber += 1;
     }
   }
 }
-function ensureItemLayerNames(argPrimary) {
-  ensureTvScreenLayerNames(argPrimary);
-  ensureSmallCarChargingLayerNames(argPrimary);
+function ensureItemLayerNames(scene) {
+  ensureTvScreenLayerNames(scene);
+  ensureSmallCarChargingLayerNames(scene);
 }
 function ensureDefaultLightGroup() {
   const list = floorSceneCurrent.lightGroups ||= [];
@@ -2298,7 +2390,8 @@ function ensureDefaultLightGroup() {
     list.push({
       id: makeId("light-group"),
       name: "默认灯组",
-      enabled: true
+      enabled: true,
+      areaId: null
     });
   }
   if (!list.some(item => item.id === on)) {
@@ -2307,16 +2400,16 @@ function ensureDefaultLightGroup() {
   return list.find(item => item.id === on) || list[0];
 }
 function syncLightGroupSelect(lightGroup) {
-  const value = selectEl("#light-group");
-  value.replaceChildren();
-  for (const id2 of floorSceneCurrent.lightGroups || []) {
-    const el = document.createElement("option");
-    el.value = id2.id;
-    el.textContent = id2.name;
-    value.append(el);
+  const groupSelect = selectEl("#light-group");
+  groupSelect.replaceChildren();
+  for (const group of floorSceneCurrent.lightGroups || []) {
+    const option = document.createElement("option");
+    option.value = group.id;
+    option.textContent = group.name;
+    groupSelect.append(option);
   }
-  value.value = resolveLightGroup(lightGroup)?.id || ensureDefaultLightGroup().id;
-  syncStudioSelect(value);
+  groupSelect.value = resolveLightGroup(lightGroup)?.id || ensureDefaultLightGroup().id;
+  syncStudioSelect(groupSelect);
 }
 function hideLightGroupContextMenu() {
   lightGroupContextMenu.hidden = true;
@@ -2330,7 +2423,7 @@ function showLightGroupContextMenu(id, event) {
   disabled.disabled = floorSceneCurrent.lightGroups.length <= 1;
   lightGroupContextMenu.hidden = false;
   lightGroupContextMenu.style.left = Math.min(event.clientX, window.innerWidth - 116) + "px";
-  lightGroupContextMenu.style.top = Math.min(event.clientY, window.innerHeight - 108) + "px";
+  lightGroupContextMenu.style.top = Math.min(event.clientY, window.innerHeight - 148) + "px";
 }
 function deleteLightGroup(id) {
   if (!id || floorSceneCurrent.lightGroups.length <= 1) {
@@ -2352,253 +2445,517 @@ function deleteLightGroup(id) {
   scheduleSave();
   showToast("已删除“" + id.name + "”及组内 " + value.size + " 盏灯。", "success");
 }
-function uniqueLightGroupName(argPrimary) {
-  const value = new Set(floorSceneCurrent.lightGroups.map(named => named.name));
-  if (!value.has(argPrimary)) {
-    return argPrimary;
+function uniqueLightGroupName(candidate) {
+  const existingNames = new Set(floorSceneCurrent.lightGroups.map(entry => entry.name));
+  if (!existingNames.has(candidate)) {
+    return candidate;
   }
-  let nameSuffix = 2;
-  while (value.has(argPrimary + " " + nameSuffix)) {
-    nameSuffix += 1;
+  let suffix = 2;
+  while (existingNames.has(candidate + " " + suffix)) {
+    suffix += 1;
   }
-  return argPrimary + " " + nameSuffix;
+  return candidate + " " + suffix;
 }
 function duplicateLightGroup(lightGroup) {
   if (!lightGroup) {
     return;
   }
   pushHistory();
-  const id = {
+  const duplicateGroup = {
     ...structuredClone(lightGroup),
     id: makeId("light-group"),
     name: uniqueLightGroupName(lightGroup.name + " 副本")
   };
-  const value = floorSceneCurrent.lightGroups.findIndex(item => item.id === lightGroup.id);
-  floorSceneCurrent.lightGroups.splice(value + 1, 0, id);
-  const list = floorSceneCurrent.items.filter(item => set.has(item.type) && item.lightGroupId === lightGroup.id).map(argPrimary => ({
-    ...structuredClone(argPrimary),
+  const sourceIndex = floorSceneCurrent.lightGroups.findIndex(item => item.id === lightGroup.id);
+  floorSceneCurrent.lightGroups.splice(sourceIndex + 1, 0, duplicateGroup);
+  const duplicatedItems = floorSceneCurrent.items.filter(item => set.has(item.type) && item.lightGroupId === lightGroup.id).map(sourceItem => ({
+    ...structuredClone(sourceItem),
     id: makeId("item"),
-    lightGroupId: id.id
+    lightGroupId: duplicateGroup.id
   }));
-  floorSceneCurrent.items.push(...list);
-  on = id.id;
-  selection = list.length === 1 ? {
+  floorSceneCurrent.items.push(...duplicatedItems);
+  on = duplicateGroup.id;
+  selection = duplicatedItems.length === 1 ? {
     kind: "item",
-    id: list[0].id
+    id: duplicatedItems[0].id
   } : null;
-  multiSelection = list.length > 1 ? list.map(id => ({
+  multiSelection = duplicatedItems.length > 1 ? duplicatedItems.map(entry => ({
     kind: "item",
-    id: id.id
+    id: entry.id
   })) : [];
   renderLightLayerPanel();
   refreshViews("lights");
   scheduleSave();
-  showToast("已复制“" + lightGroup.name + "”及组内 " + list.length + " 盏灯。", "success");
+  showToast("已复制“" + lightGroup.name + "”及组内 " + duplicatedItems.length + " 盏灯。", "success");
 }
 function clearLightGroupDropIndicators() {
   for (const element of lightGroupList.querySelectorAll(".light-group-row")) {
     element.classList.remove("drop-before", "drop-after");
     delete element.dataset.dropPosition;
   }
+  for (const element of lightGroupList.querySelectorAll(".light-area-row")) {
+    element.classList.remove("drop-into");
+  }
 }
-function reorderLightGroups(argPrimary, argSecondary, flag) {
-  const value = floorSceneCurrent.lightGroups.findIndex(item => item.id === argPrimary);
-  const fromIndex = floorSceneCurrent.lightGroups.findIndex(item => item.id === argSecondary);
-  if (value < 0 || fromIndex < 0 || value === fromIndex) {
+function moveLightGroupToArea(sourceId, targetAreaId, targetGroupId = null, placeAfter = false) {
+  const list = floorSceneCurrent.lightGroups || [];
+  const moved = list.find(item => item.id === sourceId);
+  if (!moved) {
     return;
   }
-  const list = [...floorSceneCurrent.lightGroups];
-  const [movedGroup] = list.splice(value, 1);
-  const targetIndex = list.findIndex(item => item.id === argSecondary);
-  list.splice(targetIndex + (flag ? 1 : 0), 0, movedGroup);
-  if (!list.every((id, mutateFlag) => id.id === floorSceneCurrent.lightGroups[mutateFlag]?.id)) {
-    pushHistory();
-    floorSceneCurrent.lightGroups = list;
-    renderLightLayerPanel();
-    updateSelectionInspector();
-    scheduleSave();
+  const nextAreaId = targetAreaId || null;
+  const areaChanged = (moved.areaId || null) !== nextAreaId;
+  let nextOrder = list;
+  if (targetGroupId) {
+    const without = list.filter(item => item.id !== sourceId);
+    const anchorIndex = without.findIndex(item => item.id === targetGroupId);
+    if (anchorIndex >= 0) {
+      nextOrder = [...without];
+      nextOrder.splice(anchorIndex + (placeAfter ? 1 : 0), 0, moved);
+    }
   }
+  const orderChanged = nextOrder.some((id, index) => id.id !== list[index]?.id);
+  if (!areaChanged && !orderChanged) {
+    return;
+  }
+  pushHistory();
+  moved.areaId = nextAreaId;
+  if (orderChanged) {
+    floorSceneCurrent.lightGroups = nextOrder;
+  }
+  if (nextAreaId) {
+    expandedAreaIds.add(nextAreaId);
+  }
+  renderLightLayerPanel();
+  updateSelectionInspector();
+  scheduleSave();
 }
-function renderLightLayerPanel() {
-  lightLayerPanel.hidden = assetCategory !== "light";
-  if (!lightLayerPanel.hidden) {
-    ensureDefaultLightGroup();
-    lightGroupList.replaceChildren();
-    for (const id2 of floorSceneCurrent.lightGroups) {
-      const el = document.createElement("div");
-      el.className = "light-group-row" + (id2.id === on ? " active" : "");
-      el.dataset.lightGroupId = id2.id;
-      el.draggable = true;
-      el.setAttribute("aria-label", id2.name + "，长按拖动排序，右键可重命名、复制或删除");
-      let flag = false;
-      let flagCurrent = null;
-      const onPointerUp = () => {
-        if (flagCurrent) {
-          clearTimeout(flagCurrent);
-        }
-        flagCurrent = null;
-        flag = false;
-        el.classList.remove("drag-ready");
-      };
-      el.addEventListener("pointerdown", event => {
-        if (event.button === 0 && !event.target.closest("button")) {
-          onPointerUp();
-          flagCurrent = setTimeout(() => {
-            flagCurrent = null;
-            flag = true;
-            el.classList.add("drag-ready");
-          }, 280);
-        }
-      });
-      el.addEventListener("pointerup", onPointerUp);
-      el.addEventListener("pointercancel", onPointerUp);
-      el.addEventListener("dragstart", event => {
-        if (!flag) {
-          event.preventDefault();
-          onPointerUp();
-          return;
-        }
-        draggingLightGroupId = id2.id;
-        el.classList.remove("drag-ready");
-        el.classList.add("dragging");
+function createLightGroupRow(lightGroup) {
+  const row = document.createElement("div");
+  row.className = "light-group-row" + (lightGroup.id === on ? " active" : "");
+  row.dataset.lightGroupId = lightGroup.id;
+  row.dataset.lightGroupAreaId = lightGroup.areaId || "";
+  row.draggable = true;
+      row.setAttribute("aria-label", lightGroup.name + "，拖动可排序或移入区域，右键可设置区域、重命名、复制或删除");
+      row.addEventListener("dragstart", event => {
+        draggingLightGroupId = lightGroup.id;
+        row.classList.add("dragging");
         event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("application/x-ha-bridge-light-group", id2.id);
+        event.dataTransfer.setData("application/x-ha-bridge-light-group", lightGroup.id);
       });
-      el.addEventListener("dragend", () => {
+      row.addEventListener("dragend", () => {
         draggingLightGroupId = "";
-        el.classList.remove("dragging");
-        onPointerUp();
+        row.classList.remove("dragging");
         clearLightGroupDropIndicators();
       });
-      el.addEventListener("click", () => {
-        on = id2.id;
+      row.addEventListener("click", () => {
+        on = lightGroup.id;
         renderLightLayerPanel();
       });
-      el.addEventListener("contextmenu", event => {
+      row.addEventListener("contextmenu", event => {
         event.preventDefault();
-        showLightGroupContextMenu(id2, event);
+        showLightGroupContextMenu(lightGroup, event);
       });
-      el.addEventListener("dragover", event => {
-        if (!draggingLightGroupId || draggingLightGroupId === id2.id) {
+      row.addEventListener("dragover", event => {
+        if (!draggingLightGroupId || draggingLightGroupId === lightGroup.id) {
           return;
         }
         event.preventDefault();
         clearLightGroupDropIndicators();
-        const flag = event.clientY >= el.getBoundingClientRect().top + el.getBoundingClientRect().height / 2;
-        el.dataset.dropPosition = flag ? "after" : "before";
-        el.classList.add(flag ? "drop-after" : "drop-before");
+        const dropAfter = event.clientY >= row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2;
+        row.dataset.dropPosition = dropAfter ? "after" : "before";
+        row.classList.add(dropAfter ? "drop-after" : "drop-before");
         if (event.dataTransfer) {
           event.dataTransfer.dropEffect = "move";
         }
       });
-      el.addEventListener("drop", event => {
-        if (!draggingLightGroupId || draggingLightGroupId === id2.id) {
+      row.addEventListener("drop", event => {
+        if (!draggingLightGroupId || draggingLightGroupId === lightGroup.id) {
           return;
         }
         event.preventDefault();
-        const argPrimary = draggingLightGroupId;
-        const value = el.dataset.dropPosition === "after";
+        const sourceGroupId = draggingLightGroupId;
+        const placeAfter = row.dataset.dropPosition === "after";
         draggingLightGroupId = "";
         clearLightGroupDropIndicators();
-        reorderLightGroups(argPrimary, id2.id, value);
+        moveLightGroupToArea(sourceGroupId, lightGroup.areaId || null, lightGroup.id, placeAfter);
       });
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = id2.enabled ? "on" : "";
-      button.textContent = id2.enabled ? "◉" : "○";
-      button.title = id2.enabled ? "关闭这个灯组" : "开启这个灯组";
-      button.addEventListener("click", event => {
+      const toggleButton = document.createElement("button");
+      toggleButton.type = "button";
+      toggleButton.className = lightGroup.enabled ? "on" : "";
+      toggleButton.textContent = lightGroup.enabled ? "◉" : "○";
+      toggleButton.title = lightGroup.enabled ? "关闭这个灯组" : "开启这个灯组";
+      toggleButton.addEventListener("click", event => {
         event.stopPropagation();
         pushHistory();
-        id2.enabled = !id2.enabled;
-        requestLightGroupCacheRefresh([id2.id]);
+        lightGroup.enabled = !lightGroup.enabled;
+        requestLightGroupCacheRefresh([lightGroup.id]);
         scheduleSave();
       });
-      const element = document.createElement("span");
-      element.className = "light-group-name";
-      element.textContent = id2.name;
-      element.title = "长按灯组后拖动排序，右键可重命名、复制或删除";
-      const elCurrent = document.createElement("small");
-      elCurrent.textContent = String(floorSceneCurrent.items.filter(item => set.has(item.type) && item.lightGroupId === id2.id).length);
-      el.append(button, element, elCurrent);
-      lightGroupList.append(el);
+      const nameLabel = document.createElement("span");
+      nameLabel.className = "light-group-name";
+      nameLabel.textContent = lightGroup.name;
+      nameLabel.title = "拖动可排序或移入区域，右键可设置区域、重命名、复制或删除";
+      const itemCount = document.createElement("small");
+      itemCount.textContent = String(floorSceneCurrent.items.filter(item => set.has(item.type) && item.lightGroupId === lightGroup.id).length);
+      row.append(toggleButton, nameLabel, itemCount);
+  return row;
+}
+function createAreaSection(area, members) {
+  const expanded = expandedAreaIds.has(area.id);
+  const section = document.createElement("div");
+  section.className = "light-area-section";
+  section.dataset.areaId = area.id;
+  const header = document.createElement("div");
+  header.className = "light-area-row" + (expanded ? " expanded" : "");
+  header.setAttribute("aria-label", area.name + "，单击展开或收起，右键可重命名或删除");
+  const caret = document.createElement("button");
+  caret.type = "button";
+  caret.className = "light-area-caret";
+  caret.textContent = expanded ? "▾" : "▸";
+  caret.title = expanded ? "收起区域" : "展开区域";
+  caret.addEventListener("click", event => {
+    event.stopPropagation();
+    toggleAreaExpanded(area.id);
+  });
+  header.addEventListener("dragover", event => {
+    if (!draggingLightGroupId) {
+      return;
     }
-    for (const [value, screenEnabled] of tvItemsOnFloor().entries()) {
-      const el = document.createElement("div");
-      el.className = "light-group-row tv-screen-layer-row";
-      el.setAttribute("aria-label", (screenEnabled.screenLayerName || "电视画面 " + (value + 1)) + "，可独立开启或关闭");
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = screenEnabled.screenEnabled !== false ? "on" : "";
-      button.textContent = screenEnabled.screenEnabled !== false ? "◉" : "○";
-      button.title = screenEnabled.screenEnabled !== false ? "关闭电视画面" : "开启电视画面";
-      button.addEventListener("click", () => {
-        pushHistory();
-        screenEnabled.screenEnabled = screenEnabled.screenEnabled === false;
-        refreshViews("items");
-        scheduleSave();
-      });
-      const element = document.createElement("span");
-      element.className = "light-group-name";
-      element.textContent = screenEnabled.screenLayerName || "电视画面 " + (value + 1);
-      element.title = "电视开启画面";
-      const elCurrent = document.createElement("small");
-      elCurrent.textContent = "1";
-      el.append(button, element, elCurrent);
-      lightGroupList.append(el);
+    const dragged = (floorSceneCurrent.lightGroups || []).find(item => item.id === draggingLightGroupId);
+    if (!dragged) {
+      return;
     }
-    for (const [value, chargingEnabled] of smallCarItemsOnFloor().entries()) {
-      const el = document.createElement("div");
-      el.className = "light-group-row car-charging-layer-row";
-      el.setAttribute("aria-label", (chargingEnabled.chargingLayerName || "汽车充电 " + (value + 1)) + "，可独立开启或关闭");
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = chargingEnabled.chargingEnabled === true ? "on" : "";
-      button.textContent = chargingEnabled.chargingEnabled === true ? "◉" : "○";
-      button.title = chargingEnabled.chargingEnabled === true ? "关闭汽车充电状态" : "开启汽车充电状态";
-      button.addEventListener("click", () => {
-        pushHistory();
-        chargingEnabled.chargingEnabled = chargingEnabled.chargingEnabled !== true;
-        refreshViews("items");
-        scheduleSave();
-      });
-      const element = document.createElement("span");
-      element.className = "light-group-name";
-      element.textContent = chargingEnabled.chargingLayerName || "汽车充电 " + (value + 1);
-      element.title = "汽车充电中状态图层";
-      const elCurrent = document.createElement("small");
-      elCurrent.textContent = "1";
-      el.append(button, element, elCurrent);
-      lightGroupList.append(el);
+    event.preventDefault();
+    clearLightGroupDropIndicators();
+    if ((dragged.areaId || null) !== area.id) {
+      header.classList.add("drop-into");
+    }
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+  });
+  header.addEventListener("dragleave", event => {
+    if (!header.contains(event.relatedTarget)) {
+      header.classList.remove("drop-into");
+    }
+  });
+  header.addEventListener("drop", event => {
+    if (!draggingLightGroupId) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const sourceId = draggingLightGroupId;
+    draggingLightGroupId = "";
+    clearLightGroupDropIndicators();
+    moveLightGroupToArea(sourceId, area.id);
+  });
+  const name = document.createElement("span");
+  name.className = "light-area-name";
+  name.textContent = area.name;
+  const count = document.createElement("small");
+  count.textContent = String(members.length);
+  header.append(caret, name, count);
+  header.addEventListener("click", () => toggleAreaExpanded(area.id));
+  header.addEventListener("contextmenu", event => {
+    event.preventDefault();
+    showAreaContextMenu(area, event);
+  });
+  section.append(header);
+  if (expanded) {
+    if (!members.length) {
+      const empty = document.createElement("div");
+      empty.className = "light-area-empty";
+      empty.textContent = "暂无灯组";
+      section.append(empty);
+    } else {
+      const container = document.createElement("div");
+      container.className = "light-area-groups";
+      for (const member of members) {
+        container.append(createLightGroupRow(member));
+      }
+      section.append(container);
     }
   }
+  return section;
 }
-function setAllLightGroupsEnabled(mutateFlag) {
-  const list = tvItemsOnFloor();
-  const floor = smallCarItemsOnFloor();
-  if (!(floorSceneCurrent.lightGroups || []).every(enabled => enabled.enabled === mutateFlag) || !list.every(screenEnabled => screenEnabled.screenEnabled !== false === mutateFlag) || !floor.every(chargingEnabled => chargingEnabled.chargingEnabled === true === mutateFlag)) {
+function toggleAreaExpanded(areaId) {
+  if (expandedAreaIds.has(areaId)) {
+    expandedAreaIds.delete(areaId);
+  } else {
+    expandedAreaIds.add(areaId);
+  }
+  renderLightLayerPanel();
+}
+function createTvScreenLayerRow(value, screenEnabled) {
+  const el = document.createElement("div");
+  el.className = "light-group-row tv-screen-layer-row";
+  el.setAttribute("aria-label", (screenEnabled.screenLayerName || "电视画面 " + (value + 1)) + "，可独立开启或关闭");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = screenEnabled.screenEnabled !== false ? "on" : "";
+  button.textContent = screenEnabled.screenEnabled !== false ? "◉" : "○";
+  button.title = screenEnabled.screenEnabled !== false ? "关闭电视画面" : "开启电视画面";
+  button.addEventListener("click", () => {
     pushHistory();
-    for (const enabled of floorSceneCurrent.lightGroups) {
-      enabled.enabled = mutateFlag;
-    }
-    for (const screenEnabled of list) {
-      screenEnabled.screenEnabled = mutateFlag;
-    }
-    for (const chargingEnabled of floor) {
-      chargingEnabled.chargingEnabled = mutateFlag;
-    }
-    requestLightGroupCacheRefresh(floorSceneCurrent.lightGroups.map(item => item.id));
-    if (list.length || floor.length) {
-      rebuildPreviewMeshes({
-        scope: "items",
-        preserveLightCache: true
-      });
-    }
+    screenEnabled.screenEnabled = screenEnabled.screenEnabled === false;
+    refreshViews("items");
     scheduleSave();
+  });
+  const element = document.createElement("span");
+  element.className = "light-group-name";
+  element.textContent = screenEnabled.screenLayerName || "电视画面 " + (value + 1);
+  element.title = "电视开启画面";
+  const elCurrent = document.createElement("small");
+  elCurrent.textContent = "1";
+  el.append(button, element, elCurrent);
+  return el;
+}
+function createCarChargingLayerRow(value, chargingEnabled) {
+  const el = document.createElement("div");
+  el.className = "light-group-row car-charging-layer-row";
+  el.setAttribute("aria-label", (chargingEnabled.chargingLayerName || "汽车充电 " + (value + 1)) + "，可独立开启或关闭");
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = chargingEnabled.chargingEnabled === true ? "on" : "";
+  button.textContent = chargingEnabled.chargingEnabled === true ? "◉" : "○";
+  button.title = chargingEnabled.chargingEnabled === true ? "关闭汽车充电状态" : "开启汽车充电状态";
+  button.addEventListener("click", () => {
+    pushHistory();
+    chargingEnabled.chargingEnabled = chargingEnabled.chargingEnabled !== true;
+    refreshViews("items");
+    scheduleSave();
+  });
+  const element = document.createElement("span");
+  element.className = "light-group-name";
+  element.textContent = chargingEnabled.chargingLayerName || "汽车充电 " + (value + 1);
+  element.title = "汽车充电中状态图层";
+  const elCurrent = document.createElement("small");
+  elCurrent.textContent = "1";
+  el.append(button, element, elCurrent);
+  return el;
+}
+function renderLightLayerPanel() {
+  const tvScreens = tvItemsOnFloor();
+  const smallCars = smallCarItemsOnFloor();
+  const isLightCategory = assetCategory === "light";
+  const isApplianceCategory = assetCategory === "appliance";
+  const isHomeCategory = assetCategory === "home";
+  const showLightGroups = isLightCategory;
+  const showScreens = isApplianceCategory && tvScreens.length > 0;
+  const showCharging = isHomeCategory && smallCars.length > 0;
+  lightLayerPanel.hidden = !(showLightGroups || showScreens || showCharging);
+  if (lightLayerPanel.hidden) {
+    return;
+  }
+  fridgeSize.textContent = showLightGroups ? "全关" : showScreens ? "全关画面" : "全关充电";
+  addAreaButton.hidden = !showLightGroups;
+  Tg.hidden = !showLightGroups;
+  lightLayerActions.classList.toggle("single", !showLightGroups);
+  lightGroupList.replaceChildren();
+  if (showLightGroups) {
+    ensureDefaultLightGroup();
+    const areas = floorSceneCurrent.areas || [];
+    const areaIdSet = new Set(areas.map(areaRef => areaRef.id));
+    const grouped = new Map();
+    const unassigned = [];
+    for (const lightGroup of floorSceneCurrent.lightGroups) {
+      const areaId = areaIdSet.has(lightGroup.areaId) ? lightGroup.areaId : null;
+      if (areaId) {
+        if (!grouped.has(areaId)) {
+          grouped.set(areaId, []);
+        }
+        grouped.get(areaId).push(lightGroup);
+      } else {
+        unassigned.push(lightGroup);
+      }
+    }
+    for (const areaEntry of areas) {
+      lightGroupList.append(createAreaSection(areaEntry, grouped.get(areaEntry.id) || []));
+    }
+    for (const unassignedGroup of unassigned) {
+      lightGroupList.append(createLightGroupRow(unassignedGroup));
+    }
+  }
+  if (showScreens) {
+    for (const [screenIndex, screenEnabled] of tvScreens.entries()) {
+      lightGroupList.append(createTvScreenLayerRow(screenIndex, screenEnabled));
+    }
+  }
+  if (showCharging) {
+    for (const [carIndex, chargingEnabled] of smallCars.entries()) {
+      lightGroupList.append(createCarChargingLayerRow(carIndex, chargingEnabled));
+    }
   }
 }
-function isSelected(argPrimary, argSecondary) {
-  return selection?.kind === argPrimary && selection.id === argSecondary || multiSelection.some(kind => kind.kind === argPrimary && kind.id === argSecondary);
+function hideAreaContextMenu() {
+  areaContextMenu.hidden = true;
+  areaContextMenuId = "";
+}
+function showAreaContextMenu(area, event) {
+  areaContextMenuId = area.id;
+  areaContextMenu.hidden = false;
+  areaContextMenu.style.left = Math.min(event.clientX, window.innerWidth - 128) + "px";
+  areaContextMenu.style.top = Math.min(event.clientY, window.innerHeight - 84) + "px";
+}
+function normalizeAreaName(value) {
+  return normalizeLabelText(value, "", 16);
+}
+function areaNameTaken(name, excludeId) {
+  return (floorSceneCurrent.areas || []).some(area => area.id !== excludeId && area.name === name);
+}
+function openAreaCreateDialog() {
+  areaRenameMode = "create";
+  areaRenameId = "";
+  areaRenameTitle.textContent = "新建区域";
+  areaRenameInput.value = "";
+  areaRenameDialog.showModal();
+  requestAnimationFrame(() => areaRenameInput.focus());
+}
+function openAreaRenameDialog(area) {
+  if (!area) {
+    return;
+  }
+  areaRenameMode = "rename";
+  areaRenameId = area.id;
+  areaRenameTitle.textContent = "重命名区域";
+  areaRenameInput.value = area.name;
+  areaRenameDialog.showModal();
+  requestAnimationFrame(() => areaRenameInput.select());
+}
+function closeAreaRenameDialog() {
+  areaRenameMode = "create";
+  areaRenameId = "";
+  areaRenameDialog.close();
+}
+function deleteArea(area) {
+  if (!area) {
+    return;
+  }
+  pushHistory();
+  for (const lightGroup of floorSceneCurrent.lightGroups || []) {
+    if (lightGroup.areaId === area.id) {
+      lightGroup.areaId = null;
+    }
+  }
+  floorSceneCurrent.areas = (floorSceneCurrent.areas || []).filter(item => item.id !== area.id);
+  expandedAreaIds.delete(area.id);
+  renderLightLayerPanel();
+  scheduleSave();
+  showToast("已删除区域“" + area.name + "”，组内灯组已移到未分类。", "success");
+}
+function syncAreaAssignOptions(selectedAreaId) {
+  const options = [{
+    value: "",
+    label: "未分类"
+  }];
+  for (const area of floorSceneCurrent.areas || []) {
+    options.push({
+      value: area.id,
+      label: area.name
+    });
+  }
+  lightGroupAreaSelect.replaceChildren(...options.map(option => {
+    const element = document.createElement("option");
+    element.value = option.value;
+    element.textContent = option.label;
+    return element;
+  }));
+  lightGroupAreaSelect.value = options.some(option => option.value === selectedAreaId) ? selectedAreaId : "";
+  syncStudioSelect(lightGroupAreaSelect);
+}
+function openLightGroupAreaDialog(lightGroup) {
+  if (!lightGroup) {
+    return;
+  }
+  areaAssignGroupId = lightGroup.id;
+  lightGroupAreaName.textContent = lightGroup.name;
+  lightGroupAreaNewName.value = "";
+  syncAreaAssignOptions(lightGroup.areaId || "");
+  lightGroupAreaDialog.showModal();
+}
+function closeLightGroupAreaDialog() {
+  areaAssignGroupId = "";
+  lightGroupAreaDialog.close();
+}
+function createAreaFromAssignDialog() {
+  const name = normalizeAreaName(lightGroupAreaNewName.value);
+  if (!name) {
+    showToast("请输入新区域名称。", "error");
+    return;
+  }
+  if (areaNameTaken(name)) {
+    showToast("已存在同名区域。", "error");
+    return;
+  }
+  pushHistory();
+  const area = {
+    id: makeId("area"),
+    name
+  };
+  floorSceneCurrent.areas.push(area);
+  expandedAreaIds.add(area.id);
+  syncAreaAssignOptions(area.id);
+  lightGroupAreaNewName.value = "";
+  renderLightLayerPanel();
+  scheduleSave();
+  showToast("已新建区域“" + name + "”并选中。", "success");
+}
+function setLightGroupsEnabled(mutateFlag) {
+  const groups = floorSceneCurrent.lightGroups || [];
+  if (groups.every(enabled => enabled.enabled === mutateFlag)) {
+    return;
+  }
+  pushHistory();
+  for (const enabled of groups) {
+    enabled.enabled = mutateFlag;
+  }
+  requestLightGroupCacheRefresh(groups.map(item => item.id));
+  scheduleSave();
+}
+function setTvScreensEnabled(mutateFlag) {
+  const list = tvItemsOnFloor();
+  if (list.every(screenEnabled => (screenEnabled.screenEnabled !== false) === mutateFlag)) {
+    return;
+  }
+  pushHistory();
+  for (const screenEnabled of list) {
+    screenEnabled.screenEnabled = mutateFlag;
+  }
+  rebuildPreviewMeshes({
+    scope: "items",
+    preserveLightCache: true
+  });
+  scheduleSave();
+}
+function setSmallCarChargingEnabled(mutateFlag) {
+  const list = smallCarItemsOnFloor();
+  if (list.every(chargingEnabled => (chargingEnabled.chargingEnabled === true) === mutateFlag)) {
+    return;
+  }
+  pushHistory();
+  for (const chargingEnabled of list) {
+    chargingEnabled.chargingEnabled = mutateFlag;
+  }
+  rebuildPreviewMeshes({
+    scope: "items",
+    preserveLightCache: true
+  });
+  scheduleSave();
+}
+function setCategoryLayersEnabled(mutateFlag) {
+  if (assetCategory === "appliance") {
+    setTvScreensEnabled(mutateFlag);
+  } else if (assetCategory === "home") {
+    setSmallCarChargingEnabled(mutateFlag);
+  } else {
+    setLightGroupsEnabled(mutateFlag);
+  }
+  renderLightLayerPanel();
+}
+function isSelected(selectedKind, selectedId) {
+  return selection?.kind === selectedKind && selection.id === selectedId || multiSelection.some(kind => kind.kind === selectedKind && kind.id === selectedId);
 }
 function clearSelection() {
   selection = null;
@@ -2669,9 +3026,9 @@ function selectionLightGroupFilter(list) {
 function activeSelectionLightGroupFilter() {
   return selectionLightGroupFilter(multiSelection.length ? multiSelection : selection ? [selection] : []);
 }
-function rebuildPreviewForAssetFilters(argPrimary) {
-  const value = activeSelectionLightGroupFilter();
-  const scopeSet = new Set([argPrimary, value].filter(Boolean));
+function rebuildPreviewForAssetFilters(assetScope) {
+  const selectedLightGroup = activeSelectionLightGroupFilter();
+  const scopeSet = new Set([assetScope, selectedLightGroup].filter(Boolean));
   if (scopeSet.size) {
     if (scopeSet.has("all")) {
       rebuildPreviewMeshes({
@@ -2724,61 +3081,61 @@ function pixelsPerMeter() {
   return floorSceneCurrent.calibration?.pixelsPerMeter || 0;
 }
 class StudioHttpError extends Error {
-  constructor(argPrimary, argSecondary, argTertiary) {
-    super(argPrimary);
-    this.status = argSecondary;
-    this.payload = argTertiary;
+  constructor(message, statusCode, payload) {
+    super(message);
+    this.status = statusCode;
+    this.payload = payload;
   }
 }
-async function studioFetch(argPrimary, method = {}) {
-  if (isStageEmbed && method.method && method.method !== "GET") {
+async function studioFetch(path, requestOptions = {}) {
+  if (isStageEmbed && requestOptions.method && requestOptions.method !== "GET") {
     throw new Error("交互户型为只读视图。");
   }
-  const status = await fetch("/api/v1" + argPrimary, {
+  const response = await fetch("/api/v1" + path, {
     cache: "no-store",
-    ...method,
-    headers: method.body ? {
+    ...requestOptions,
+    headers: requestOptions.body ? {
       "Content-Type": "application/json",
-      ...(method.headers || {})
-    } : method.headers
+      ...(requestOptions.headers || {})
+    } : requestOptions.headers
   });
-  const flag = status.status === 204 ? "" : await status.text();
-  let detail = null;
-  if (flag) {
+  const responseText = response.status === 204 ? "" : await response.text();
+  let payload = null;
+  if (responseText) {
     try {
-      detail = JSON.parse(flag);
+      payload = JSON.parse(responseText);
     } catch {
-      detail = null;
+      payload = null;
     }
   }
-  if (status.status === 401) {
+  if (response.status === 401) {
     window.location.assign("/login?next=" + encodeURIComponent(window.location.pathname));
-    const flag = new StudioHttpError("登录状态已失效。", status.status, detail);
-    throw window.HABridgeLog?.linkError(flag, status) || flag;
+    const authError = new StudioHttpError("登录状态已失效。", response.status, payload);
+    throw window.HABridgeLog?.linkError(authError, response) || authError;
   }
-  if (status.status === 403 && detail?.detail?.code === "LICENSE_RESTRICTED") {
+  if (response.status === 403 && payload?.detail?.code === "LICENSE_RESTRICTED") {
     window.location.assign("/license");
-    const flag = new StudioHttpError("当前授权无法使用户型图绘制。", status.status, detail);
-    throw window.HABridgeLog?.linkError(flag, status) || flag;
+    const licenseError = new StudioHttpError("当前授权无法使用户型图绘制。", response.status, payload);
+    throw window.HABridgeLog?.linkError(licenseError, response) || licenseError;
   }
-  if (!status.ok) {
-    const message = detail?.detail;
-    const flag = new StudioHttpError(typeof message == "string" ? message : message?.message || "请求失败（HTTP " + status.status + "）", status.status, detail);
-    throw window.HABridgeLog?.linkError(flag, status) || flag;
+  if (!response.ok) {
+    const errorMessage = payload?.detail;
+    const requestError = new StudioHttpError(typeof errorMessage == "string" ? errorMessage : errorMessage?.message || "请求失败（HTTP " + response.status + "）", response.status, payload);
+    throw window.HABridgeLog?.linkError(requestError, response) || requestError;
   }
-  return detail;
+  return payload;
 }
-function showToast(argPrimary, argSecondary = "") {
+function showToast(message, variant = "") {
   window.clearTimeout(toastTimer);
-  toastCurrent.textContent = argPrimary;
-  toastCurrent.className = ("toast visible " + argSecondary).trim();
+  toastCurrent.textContent = message;
+  toastCurrent.className = ("toast visible " + variant).trim();
   toastTimer = window.setTimeout(() => {
     toastCurrent.className = "toast";
-  }, argSecondary === "warning" ? 4400 : 2600);
+  }, variant === "warning" ? 4400 : 2600);
 }
-function setSaveStateLabel(mutateFlag, argSecondary = "") {
-  el.className = ("save-state " + argSecondary).trim();
-  el.innerHTML = "<i></i>" + mutateFlag;
+function setSaveStateLabel(labelHtml, variant = "") {
+  el.className = ("save-state " + variant).trim();
+  el.innerHTML = "<i></i>" + labelHtml;
 }
 function pushHistory() {
   undoStack.push(cloneFloorScene());
@@ -2787,8 +3144,8 @@ function pushHistory() {
   }
   redoStack = [];
 }
-function pushUndoSnapshot(argPrimary) {
-  undoStack.push(argPrimary);
+function pushUndoSnapshot(snapshot) {
+  undoStack.push(snapshot);
   if (undoStack.length > 40) {
     undoStack.shift();
   }
@@ -2833,30 +3190,30 @@ function scheduleSave() {
     updateProgressChecklist();
   }
 }
-async function loadProjectDocument(floor) {
-  const value = ++projectLoadGeneration;
+async function loadProjectDocument(studioDocument) {
+  const loadGeneration = ++projectLoadGeneration;
   window.clearTimeout(deferredModelTimerCurrent);
   deferredModelTimerCurrent = null;
   deferredModelTasks = [];
   externalModelQueueActive = false;
   window.externalModelLoadsDeferred = false;
-  hasProjectLoadedCurrent = floor;
-  projectDocCurrent = normalizeProjectDocument(floor.scene);
+  currentStudioDocument = studioDocument;
+  projectDocCurrent = normalizeProjectDocument(studioDocument.scene);
   if (isStageEmbed) {
-    for (const floor of projectDocCurrent.floors) {
-      floor.scene.settings.livePreviewEnabled = true;
+    for (const floorEntry of projectDocCurrent.floors) {
+      floorEntry.scene.settings.livePreviewEnabled = true;
     }
   }
   applyBaseLighting(projectDocCurrent.baseLighting);
   activeFloorId = projectDocCurrent.activeFloorId;
   if (isAutoDiagramEmbedCurrent && floorSelectionQueryCurrent !== null) {
-    const id = projectDocCurrent.floors.find(item => item.id === floorSelectionQueryCurrent);
+    const matchedFloor = projectDocCurrent.floors.find(selectedFloor => selectedFloor.id === floorSelectionQueryCurrent);
     if (floorSelectionQueryCurrent === "all" && projectDocCurrent.floors.length > 1) {
       projectDocCurrent.previewFloorMode = "all";
-    } else if (id) {
+    } else if (matchedFloor) {
       projectDocCurrent.previewFloorMode = "active";
-      projectDocCurrent.activeFloorId = id.id;
-      activeFloorId = id.id;
+      projectDocCurrent.activeFloorId = matchedFloor.id;
+      activeFloorId = matchedFloor.id;
     }
   }
   floorSceneCurrent = activeFloor().scene;
@@ -2865,19 +3222,19 @@ async function loadProjectDocument(floor) {
   resetWallDrawingCurrent();
   undoStack = [];
   redoStack = [];
-  const list = visibleExternalModelKeys();
-  const flag = isAutoDiagramEmbedCurrent;
-  if (flag) {
+  const modelKeys = visibleExternalModelKeys();
+  const isEmbed = isAutoDiagramEmbedCurrent;
+  if (isEmbed) {
     deferExternalModelsCurrent = true;
   }
   let modelPromises = [];
-  if (flag) {
-    modelPromises = list.map(argPrimary => loadExternalItemModel(argPrimary));
+  if (isEmbed) {
+    modelPromises = modelKeys.map(modelKey => loadExternalItemModel(modelKey));
   }
-  externalModelQueueActive = !flag;
+  externalModelQueueActive = !isEmbed;
   window.externalModelLoadsDeferred = externalModelQueueActive;
-  deferredModelTasks = flag ? [] : list;
-  if (!flag) {
+  deferredModelTasks = isEmbed ? [] : modelKeys;
+  if (!isEmbed) {
     scheduleDeferredModelLoad();
   }
   updateModelLoadStatus();
@@ -2885,21 +3242,21 @@ async function loadProjectDocument(floor) {
   updateAlignFloorButton();
   planView.rotation = floorSceneCurrent.settings.planViewRotation;
   await reloadPlanBackground();
-  refreshViews(flag ? "none" : "all");
-  if (!flag) {
+  refreshViews(isEmbed ? "none" : "all");
+  if (!isEmbed) {
     scheduleOrbitInteractionWarmup(1200);
   }
-  if (flag) {
+  if (isEmbed) {
     try {
       const settledResults = Promise.allSettled(modelPromises);
-      await Promise.race([settledResults, new Promise(argPrimary => window.setTimeout(argPrimary, 3500))]);
+      await Promise.race([settledResults, new Promise(resolve => window.setTimeout(resolve, 3500))]);
       Promise.allSettled(modelPromises).then(() => {
-        if (value === projectLoadGeneration) {
+        if (loadGeneration === projectLoadGeneration) {
           refreshStudioChrome();
         }
       });
     } finally {
-      if (value === projectLoadGeneration) {
+      if (loadGeneration === projectLoadGeneration) {
         window.clearTimeout(modelLoadStatusTimerCurrent);
         modelLoadStatusTimerCurrent = null;
         deferExternalModelsCurrent = false;
@@ -2911,14 +3268,14 @@ async function loadProjectDocument(floor) {
       force: true
     });
     Promise.allSettled(modelPromises).then(() => {
-      if (value === projectLoadGeneration) {
+      if (loadGeneration === projectLoadGeneration) {
         refreshStudioChrome();
       }
     });
   }
   resizePlanCanvas();
   fitPlanViewToContent();
-  if (!flag) {
+  if (!isEmbed) {
     requestAnimationFrame(() => {
       if (activeFixedCameraView()) {
         restoreFixedCameraView({
@@ -2946,7 +3303,7 @@ function showSaveConflict(latest, localScene, targetVersion) {
   }
 }
 async function flushSave() {
-  if (isStageEmbed || !hasProjectLoadedCurrent || isFlushingSave || saveConflictStateCurrent || saveGeneration === savedGeneration) {
+  if (isStageEmbed || !currentStudioDocument || isFlushingSave || saveConflictStateCurrent || saveGeneration === savedGeneration) {
     return;
   }
   isFlushingSave = true;
@@ -2964,7 +3321,7 @@ async function flushSave() {
   });
   try {
     try {
-      hasProjectLoadedCurrent = await putStudioDocument(hasProjectLoadedCurrent);
+      currentStudioDocument = await putStudioDocument(currentStudioDocument);
     } catch (error) {
       if (error.status !== 409) {
         throw error;
@@ -3014,7 +3371,7 @@ Sf.addEventListener("click", () => {
     projectDocCurrent = normalizeProjectDocument(isLocalScene.localScene);
     activeFloorId = projectDocCurrent.activeFloorId;
     floorSceneCurrent = activeFloor().scene;
-    hasProjectLoadedCurrent = isLocalScene.latest;
+    currentStudioDocument = isLocalScene.latest;
     saveConflictStateCurrent = null;
     saveConflictDialog.close();
     setSaveStateLabel("正在确认覆盖…", "saving");
@@ -3086,15 +3443,15 @@ function fitPlanViewToContent() {
   planNeedsRedraw = true;
   drawPlan();
 }
-function zoomPlanViewAt(argPrimary, planPointCurrent = {
+function zoomPlanViewAt(scaleFactor, screenAnchor = {
   x: planWidth / 2,
   y: planHeight / 2
 }) {
-  const planPoint = screenToPlanWithView(planPointCurrent);
-  const point = screenToPlan(planPointCurrent);
-  planView.zoom = clamp(planView.zoom * argPrimary, 0.03, 12);
-  planView.offsetX = point.x - planPoint.x * planView.zoom;
-  planView.offsetY = point.y - planPoint.y * planView.zoom;
+  const anchorInPlan = screenToPlanWithView(screenAnchor);
+  const anchorInScene = screenToPlan(screenAnchor);
+  planView.zoom = clamp(planView.zoom * scaleFactor, 0.03, 12);
+  planView.offsetX = anchorInScene.x - anchorInPlan.x * planView.zoom;
+  planView.offsetY = anchorInScene.y - anchorInPlan.y * planView.zoom;
   drawPlan();
 }
 function rotatePlanView() {
@@ -3117,13 +3474,13 @@ function resizePlanCanvas() {
     fitPlanViewToContent();
   }
 }
-function getWallAnalysis(argPrimary) {
-  const tolerance = Math.max(1, argPrimary * 0.01);
-  const value = floorSceneCurrent.walls.map(wall => wall.id + "," + wall.start.x + "," + wall.start.y + "," + wall.end.x + "," + wall.end.y + "," + wall.thickness + "," + (wall.allowOpenEnd === true ? 1 : 0)).join(";");
-  if (wallAnalysisCache.scene !== floorSceneCurrent || wallAnalysisCache.signature !== tolerance + "|" + value) {
+function getWallAnalysis(thicknessMeters) {
+  const tolerance = Math.max(1, thicknessMeters * 0.01);
+  const sceneSignature = floorSceneCurrent.walls.map(wall => wall.id + "," + wall.start.x + "," + wall.start.y + "," + wall.end.x + "," + wall.end.y + "," + wall.thickness + "," + (wall.allowOpenEnd === true ? 1 : 0)).join(";");
+  if (wallAnalysisCache.scene !== floorSceneCurrent || wallAnalysisCache.signature !== tolerance + "|" + sceneSignature) {
     wallAnalysisCache = {
       scene: floorSceneCurrent,
-      signature: tolerance + "|" + value,
+      signature: tolerance + "|" + sceneSignature,
       tolerance,
       floorPolygons: null,
       intersections: null,
@@ -3133,25 +3490,25 @@ function getWallAnalysis(argPrimary) {
   }
   return wallAnalysisCache;
 }
-function getFloorPolygons(argPrimary) {
-  const value = getWallAnalysis(argPrimary);
-  value.floorPolygons ||= closedWallFloorPolygons(floorSceneCurrent.walls, value.tolerance);
-  return value.floorPolygons;
+function getFloorPolygons(scene) {
+  const analysis = getWallAnalysis(scene);
+  analysis.floorPolygons ||= closedWallFloorPolygons(floorSceneCurrent.walls, analysis.tolerance);
+  return analysis.floorPolygons;
 }
-function getWallIntersections(argPrimary) {
-  const value = getWallAnalysis(argPrimary);
-  value.intersections ||= wallIntersections(floorSceneCurrent.walls);
-  return value.intersections;
+function getWallIntersections(scene) {
+  const analysis = getWallAnalysis(scene);
+  analysis.intersections ||= wallIntersections(floorSceneCurrent.walls);
+  return analysis.intersections;
 }
-function getWallJoinExtensions(argPrimary) {
-  const value = getWallAnalysis(argPrimary);
-  value.joinExtensions ||= wallJoinExtensions(floorSceneCurrent.walls);
-  return value.joinExtensions;
+function getWallJoinExtensions(scene) {
+  const analysis = getWallAnalysis(scene);
+  analysis.joinExtensions ||= wallJoinExtensions(floorSceneCurrent.walls);
+  return analysis.joinExtensions;
 }
-function getUnclosedWallEndpoints(argPrimary) {
-  const value = getWallAnalysis(argPrimary);
-  value.unclosedEndpoints ||= unclosedWallEndpoints(floorSceneCurrent.walls, value.tolerance, getFloorPolygons(argPrimary));
-  return value.unclosedEndpoints;
+function getUnclosedWallEndpoints(scene) {
+  const analysis = getWallAnalysis(scene);
+  analysis.unclosedEndpoints ||= unclosedWallEndpoints(floorSceneCurrent.walls, analysis.tolerance, getFloorPolygons(scene));
+  return analysis.unclosedEndpoints;
 }
 function wallAttachmentWorldPoint(size) {
   const wall = floorSceneCurrent.walls.find(item => item.id === size.wallId);
@@ -3263,9 +3620,10 @@ function drawDoorPreview(size, preview = {}) {
     const maxValue = Math.max(2.5 / planView.zoom, isWall.wall.thickness * (pixelsPerMeter() || 100) * 0.16);
     const distanceCurrent = distance(isWall.start, isWall.end);
     const doorHingeSign = size.hinge === "right" ? 1 : -1;
+    const doorFlipSign = size.swing === -1 ? -1 : 1;
     const centers = slidingDoorPanelCenters(distanceCurrent, doorHingeSign);
     const doorPanelInset = distanceCurrent * 0.27;
-    for (const [panelOffset, hingeSign] of [[centers.fixed, -1], [centers.moving, 1]]) {
+    for (const [panelOffset, hingeSign] of [[centers.fixed, -doorFlipSign], [centers.moving, doorFlipSign]]) {
       const point = {
         x: isWall.center.x + isWall.unit.x * panelOffset,
         y: isWall.center.y + isWall.unit.y * panelOffset
@@ -3341,7 +3699,7 @@ function drawDoorPreview(size, preview = {}) {
       x: -isWall.unit.y,
       y: isWall.unit.x
     };
-    const maxValue = Math.max(2 / planView.zoom, isWall.wall.thickness * (pixelsPerMeter() || 100) * 0.08);
+    const maxValue = Math.max(2 / planView.zoom, isWall.wall.thickness * (pixelsPerMeter() || 100) * 0.08) * (size.swing === -1 ? -1 : 1);
     drawPlanLine({
       x: isWall.start.x + planPoint.x * maxValue,
       y: isWall.start.y + planPoint.y * maxValue
@@ -3462,8 +3820,9 @@ function drawDoorPreview(size, preview = {}) {
 }
 function drawItemOnPlan(item) {
   const planPoint = planToScreen(item);
-  const planItemWidthPx = item.width * pixelsPerMeter() * planView.zoom;
-  const planItemDepthPx = item.depth * pixelsPerMeter() * planView.zoom;
+  const planFootprint = itemPlanFootprint(item);
+  const planItemWidthPx = planFootprint.width * pixelsPerMeter() * planView.zoom;
+  const planItemDepthPx = planFootprint.depth * pixelsPerMeter() * planView.zoom;
   const selected = isSelected("item", item.id);
   planCtx.save();
   planCtx.translate(planPoint.x, planPoint.y);
@@ -3488,57 +3847,70 @@ function drawItemOnPlan(item) {
     planCtx.textAlign = "center";
     planCtx.fillText("楼板洞口", 0, 4);
   } else if (set.has(item.type)) {
-    const planLabelProjectionMetrics = Math.max(Math.min(planItemWidthPx, planItemDepthPx) * 0.44, item.type === "downlight" ? 10 : 8);
-    const titleFontSize = "#" + kelvinToRgbHex(item.lightTemperature).toString(16).padStart(6, "0");
-    const iconX = isLightGroupVisible(item);
-    planCtx.fillStyle = iconX ? titleFontSize : "#68737d";
-    planCtx.strokeStyle = iconX ? "rgba(255, 221, 163, .88)" : "rgba(196, 207, 216, .48)";
+    const iconRadius = Math.max(Math.min(planItemWidthPx, planItemDepthPx) * 0.44, item.type === "downlight" ? 10 : 8);
+    const lightColorHex = "#" + kelvinToRgbHex(item.lightTemperature).toString(16).padStart(6, "0");
+    const lightVisible = isLightGroupVisible(item);
+    planCtx.fillStyle = lightVisible ? lightColorHex : "#68737d";
+    planCtx.strokeStyle = lightVisible ? "rgba(255, 221, 163, .88)" : "rgba(196, 207, 216, .48)";
     planCtx.lineWidth = 1.2;
-    if (item.type === "striplight") {
-      planCtx.beginPath();
-      const localValue = Math.min(7, planItemDepthPx * 0.42);
-      planCtx.roundRect(-planItemWidthPx / 2, -planItemDepthPx * 0.34, planItemWidthPx, planItemDepthPx * 0.68, localValue);
+    if (item.type === "striplight" && stripIsStanding(item)) {
+      // Stood up, so the only thing the plan can show is the footprint the strip occupies
+      // (thickness x 发光宽度); the emitting length now runs up the room and is invisible from above.
+      // Double-outline treatment, same as a laid-down pillar, the other posture that breaks width x depth.
+      planCtx.rect(-planItemWidthPx / 2, -planItemDepthPx / 2, planItemWidthPx, planItemDepthPx);
       planCtx.fill();
       planCtx.stroke();
-      planCtx.strokeStyle = iconX ? "rgba(255, 238, 195, .95)" : "rgba(196, 207, 216, .42)";
+      planCtx.strokeStyle = selected ? "rgba(255, 193, 116, .95)" : "rgba(25, 34, 43, .5)";
+      planCtx.lineWidth = 1;
+      const standingInset = Math.min(planItemWidthPx, planItemDepthPx) * 0.3;
+      planCtx.beginPath();
+      planCtx.rect(-planItemWidthPx / 2 + standingInset, -planItemDepthPx / 2 + standingInset, Math.max(planItemWidthPx - standingInset * 2, 0.6), Math.max(planItemDepthPx - standingInset * 2, 0.6));
+      planCtx.stroke();
+    } else if (item.type === "striplight") {
+      planCtx.beginPath();
+      const stripCornerRadius = Math.min(7, planItemDepthPx * 0.42);
+      planCtx.roundRect(-planItemWidthPx / 2, -planItemDepthPx * 0.34, planItemWidthPx, planItemDepthPx * 0.68, stripCornerRadius);
+      planCtx.fill();
+      planCtx.stroke();
+      planCtx.strokeStyle = lightVisible ? "rgba(255, 238, 195, .95)" : "rgba(196, 207, 216, .42)";
       planCtx.lineWidth = Math.max(2, planItemDepthPx * 0.12);
       planCtx.beginPath();
       planCtx.moveTo(-planItemWidthPx * 0.42, 0);
       planCtx.lineTo(planItemWidthPx * 0.42, 0);
       planCtx.stroke();
     } else if (item.type === "ceilinglight") {
-      const localValue = Math.max(Math.min(planItemWidthPx, planItemDepthPx) * 0.82, 16);
+      const ceilingLightSize = Math.max(Math.min(planItemWidthPx, planItemDepthPx) * 0.82, 16);
       planCtx.beginPath();
-      planCtx.rect(-localValue / 2, -localValue / 2, localValue, localValue);
+      planCtx.rect(-ceilingLightSize / 2, -ceilingLightSize / 2, ceilingLightSize, ceilingLightSize);
       planCtx.fill();
       planCtx.stroke();
-      const computedValue = localValue * 0.58;
-      planCtx.strokeRect(-computedValue / 2, -computedValue / 2, computedValue, computedValue);
+      const ceilingLightInnerSize = ceilingLightSize * 0.58;
+      planCtx.strokeRect(-ceilingLightInnerSize / 2, -ceilingLightInnerSize / 2, ceilingLightInnerSize, ceilingLightInnerSize);
     } else {
       planCtx.beginPath();
-      planCtx.arc(0, 0, planLabelProjectionMetrics, 0, Math.PI * 2);
+      planCtx.arc(0, 0, iconRadius, 0, Math.PI * 2);
       planCtx.fill();
       planCtx.stroke();
       planCtx.beginPath();
-      planCtx.arc(0, 0, planLabelProjectionMetrics * 0.5, 0, Math.PI * 2);
+      planCtx.arc(0, 0, iconRadius * 0.5, 0, Math.PI * 2);
       planCtx.stroke();
-      for (let zeroValue = 0; zeroValue < 4; zeroValue += 1) {
-        const halfValue = zeroValue * Math.PI / 2;
+      for (let spokeIndex = 0; spokeIndex < 4; spokeIndex += 1) {
+        const spokeAngle = spokeIndex * Math.PI / 2;
         planCtx.beginPath();
-        planCtx.moveTo(Math.cos(halfValue) * planLabelProjectionMetrics * 0.68, Math.sin(halfValue) * planLabelProjectionMetrics * 0.68);
-        planCtx.lineTo(Math.cos(halfValue) * planLabelProjectionMetrics * 1.12, Math.sin(halfValue) * planLabelProjectionMetrics * 1.12);
+        planCtx.moveTo(Math.cos(spokeAngle) * iconRadius * 0.68, Math.sin(spokeAngle) * iconRadius * 0.68);
+        planCtx.lineTo(Math.cos(spokeAngle) * iconRadius * 1.12, Math.sin(spokeAngle) * iconRadius * 1.12);
         planCtx.stroke();
       }
     }
   } else if (item.type === "planlabel") {
-    const cornerRadius = planLabelProjectionMetrics(planItemWidthPx, planItemDepthPx, item.lineLength);
+    const labelMetrics = planLabelProjectionMetrics(planItemWidthPx, planItemDepthPx, item.lineLength);
     planCtx.fillStyle = "#929baa";
-    const localValue = cornerRadius.titleFontSize;
-    planCtx.font = "700 " + localValue + "px sans-serif";
-    drawTrackedText(planCtx, item.title || "家庭总览", cornerRadius.titleStartX, cornerRadius.titleY, localValue * clamp(finite(item.titleSpacing, 1.05), 0, 1.8), cornerRadius.titleMaxWidth);
-    const iconX = cornerRadius.iconX;
-    const iconY = cornerRadius.iconY;
-    const iconSize = cornerRadius.iconSize;
+    const titleFontPx = labelMetrics.titleFontSize;
+    planCtx.font = "700 " + titleFontPx + "px sans-serif";
+    drawTrackedText(planCtx, item.title || "家庭总览", labelMetrics.titleStartX, labelMetrics.titleY, titleFontPx * clamp(finite(item.titleSpacing, 1.05), 0, 1.8), labelMetrics.titleMaxWidth);
+    const iconX = labelMetrics.iconX;
+    const iconY = labelMetrics.iconY;
+    const iconSize = labelMetrics.iconSize;
     planCtx.fillStyle = "#929baa";
     planCtx.beginPath();
     planCtx.moveTo(iconX, iconY - iconSize * 0.58);
@@ -3553,32 +3925,32 @@ function drawItemOnPlan(item) {
     planCtx.fill();
     planCtx.fillStyle = "#929baa";
     planCtx.textAlign = "left";
-    const subtitleFontSize = cornerRadius.subtitleFontSize;
+    const subtitleFontSize = labelMetrics.subtitleFontSize;
     planCtx.font = "400 " + subtitleFontSize + "px \"Arial Narrow\", Arial, sans-serif";
-    drawTrackedText(planCtx, item.subtitle || "HOME PLAN", cornerRadius.subtitleStartX, cornerRadius.subtitleY, subtitleFontSize * clamp(finite(item.subtitleSpacing, 0.08), 0, 0.6), cornerRadius.subtitleMaxWidth);
+    drawTrackedText(planCtx, item.subtitle || "HOME PLAN", labelMetrics.subtitleStartX, labelMetrics.subtitleY, subtitleFontSize * clamp(finite(item.subtitleSpacing, 0.08), 0, 0.6), labelMetrics.subtitleMaxWidth);
     planCtx.strokeStyle = "rgba(146, 155, 170, .72)";
-    planCtx.lineWidth = cornerRadius.baselineLineWidth;
-    const baselineY = cornerRadius.baselineY;
-    const baselineStartX = cornerRadius.baselineStartX;
-    const computedValue = baselineStartX + cornerRadius.baselineLength;
+    planCtx.lineWidth = labelMetrics.baselineLineWidth;
+    const baselineY = labelMetrics.baselineY;
+    const baselineStartX = labelMetrics.baselineStartX;
+    const baselineEndX = baselineStartX + labelMetrics.baselineLength;
     planCtx.beginPath();
     planCtx.moveTo(baselineStartX, baselineY);
-    planCtx.lineTo(computedValue, baselineY);
-    planCtx.moveTo(baselineStartX, baselineY - cornerRadius.baselineCapHalfHeight);
-    planCtx.lineTo(baselineStartX, baselineY + cornerRadius.baselineCapHalfHeight);
-    planCtx.moveTo(computedValue, baselineY - cornerRadius.baselineCapHalfHeight);
-    planCtx.lineTo(computedValue, baselineY + cornerRadius.baselineCapHalfHeight);
+    planCtx.lineTo(baselineEndX, baselineY);
+    planCtx.moveTo(baselineStartX, baselineY - labelMetrics.baselineCapHalfHeight);
+    planCtx.lineTo(baselineStartX, baselineY + labelMetrics.baselineCapHalfHeight);
+    planCtx.moveTo(baselineEndX, baselineY - labelMetrics.baselineCapHalfHeight);
+    planCtx.lineTo(baselineEndX, baselineY + labelMetrics.baselineCapHalfHeight);
     planCtx.stroke();
   } else if (item.type === "smallcar") {
-    const curtainPosition = Math.min(planItemWidthPx * 0.22, planItemDepthPx * 0.08);
+    const cardCornerRadius = Math.min(planItemWidthPx * 0.22, planItemDepthPx * 0.08);
     if (item.chargingEnabled === true) {
       planCtx.save();
       planCtx.scale(planItemWidthPx * 0.76, planItemDepthPx * 0.62);
-      const addColorStop = planCtx.createRadialGradient(0, 0, 0, 0, 0, 1);
-      addColorStop.addColorStop(0, "rgba(79, 239, 183, .32)");
-      addColorStop.addColorStop(0.48, "rgba(79, 239, 183, .17)");
-      addColorStop.addColorStop(1, "rgba(79, 239, 183, 0)");
-      planCtx.fillStyle = addColorStop;
+      const chargingGlow = planCtx.createRadialGradient(0, 0, 0, 0, 0, 1);
+      chargingGlow.addColorStop(0, "rgba(79, 239, 183, .32)");
+      chargingGlow.addColorStop(0.48, "rgba(79, 239, 183, .17)");
+      chargingGlow.addColorStop(1, "rgba(79, 239, 183, 0)");
+      planCtx.fillStyle = chargingGlow;
       planCtx.beginPath();
       planCtx.arc(0, 0, 1, 0, Math.PI * 2);
       planCtx.fill();
@@ -3600,16 +3972,16 @@ function drawItemOnPlan(item) {
       planCtx.fillStyle = item.color + "c7";
     }
     planCtx.beginPath();
-    planCtx.roundRect(-planItemWidthPx * 0.48, -planItemDepthPx * 0.49, planItemWidthPx * 0.96, planItemDepthPx * 0.98, curtainPosition);
+    planCtx.roundRect(-planItemWidthPx * 0.48, -planItemDepthPx * 0.49, planItemWidthPx * 0.96, planItemDepthPx * 0.98, cardCornerRadius);
     planCtx.fill();
     planCtx.stroke();
     planCtx.fillStyle = "rgba(38, 48, 57, .72)";
     planCtx.beginPath();
-    planCtx.roundRect(-planItemWidthPx * 0.38, -planItemDepthPx * 0.2, planItemWidthPx * 0.76, planItemDepthPx * 0.42, curtainPosition * 0.7);
+    planCtx.roundRect(-planItemWidthPx * 0.38, -planItemDepthPx * 0.2, planItemWidthPx * 0.76, planItemDepthPx * 0.42, cardCornerRadius * 0.7);
     planCtx.fill();
-    for (const localValue of [-0.5, 0.5]) {
-      for (const localValue of [-0.3, 0.3]) {
-        planCtx.fillRect(localValue * planItemWidthPx - planItemWidthPx * 0.045, localValue * planItemDepthPx - planItemDepthPx * 0.085, planItemWidthPx * 0.09, planItemDepthPx * 0.17);
+    for (const offsetX of [-0.5, 0.5]) {
+      for (const offsetY of [-0.3, 0.3]) {
+        planCtx.fillRect(offsetY * planItemWidthPx - planItemWidthPx * 0.045, offsetY * planItemDepthPx - planItemDepthPx * 0.085, planItemWidthPx * 0.09, planItemDepthPx * 0.17);
       }
     }
     if (item.chargingEnabled === true) {
@@ -3626,18 +3998,18 @@ function drawItemOnPlan(item) {
     }
   } else if (item.type === "curtain") {
     const conditionalValue = ["left", "right", "split"].includes(item.curtainPosition) ? item.curtainPosition : "split";
-    const helperFn = (argPrimary, argSecondary) => {
+    const drawCurtainSlatRun = (startX, runWidth) => {
       planCtx.beginPath();
-      planCtx.roundRect(argPrimary, -planItemDepthPx * 0.46, argSecondary, planItemDepthPx * 0.92, Math.min(planItemDepthPx * 0.32, argSecondary * 0.18));
+      planCtx.roundRect(startX, -planItemDepthPx * 0.46, runWidth, planItemDepthPx * 0.92, Math.min(planItemDepthPx * 0.32, runWidth * 0.18));
       planCtx.fill();
       planCtx.stroke();
       planCtx.strokeStyle = "rgba(25, 34, 43, .48)";
       planCtx.lineWidth = 1;
-      for (let oneValue = 1; oneValue < 5; oneValue += 1) {
-        const halfValue = argPrimary + argSecondary * oneValue / 5;
+      for (let slatIndex = 1; slatIndex < 5; slatIndex += 1) {
+        const slatX = startX + runWidth * slatIndex / 5;
         planCtx.beginPath();
-        planCtx.moveTo(halfValue, -planItemDepthPx * 0.34);
-        planCtx.lineTo(halfValue, planItemDepthPx * 0.34);
+        planCtx.moveTo(slatX, -planItemDepthPx * 0.34);
+        planCtx.lineTo(slatX, planItemDepthPx * 0.34);
         planCtx.stroke();
       }
     };
@@ -3648,21 +4020,36 @@ function drawItemOnPlan(item) {
     planCtx.lineTo(planItemWidthPx * 0.5, 0);
     planCtx.stroke();
     if (conditionalValue === "left") {
-      helperFn(-planItemWidthPx * 0.5, planItemWidthPx * 0.24);
+      drawCurtainSlatRun(-planItemWidthPx * 0.5, planItemWidthPx * 0.24);
     } else if (conditionalValue === "right") {
-      helperFn(planItemWidthPx * 0.26, planItemWidthPx * 0.24);
+      drawCurtainSlatRun(planItemWidthPx * 0.26, planItemWidthPx * 0.24);
     } else {
-      helperFn(-planItemWidthPx * 0.5, planItemWidthPx * 0.16);
-      helperFn(planItemWidthPx * 0.34, planItemWidthPx * 0.16);
+      drawCurtainSlatRun(-planItemWidthPx * 0.5, planItemWidthPx * 0.16);
+      drawCurtainSlatRun(planItemWidthPx * 0.34, planItemWidthPx * 0.16);
     }
   } else if (item.type === "pillar") {
-    planCtx.beginPath();
-    planCtx.rect(-planItemWidthPx / 2, -planItemDepthPx / 2, planItemWidthPx, planItemDepthPx);
-    planCtx.fill();
-    planCtx.stroke();
-    planCtx.strokeStyle = selected ? "rgba(255, 193, 116, .95)" : "rgba(25, 34, 43, .5)";
-    planCtx.lineWidth = 1;
-    planCtx.strokeRect(-planItemWidthPx * 0.36, -planItemDepthPx * 0.36, planItemWidthPx * 0.72, planItemDepthPx * 0.72);
+    if (pillarIsLying(item)) {
+      // Laid down: the plan shows the floor area the column occupies (width x length) rather than a
+      // cross-section. The inner outline keeps the same double-line treatment as the other shapes.
+      planCtx.rect(-planItemWidthPx / 2, -planItemDepthPx / 2, planItemWidthPx, planItemDepthPx);
+      planCtx.fill();
+      planCtx.stroke();
+      planCtx.strokeStyle = selected ? "rgba(255, 193, 116, .95)" : "rgba(25, 34, 43, .5)";
+      planCtx.lineWidth = 1;
+      const lyingInset = Math.min(planItemWidthPx, planItemDepthPx) * 0.18;
+      planCtx.beginPath();
+      planCtx.rect(-planItemWidthPx / 2 + lyingInset, -planItemDepthPx / 2 + lyingInset, planItemWidthPx - lyingInset * 2, planItemDepthPx - lyingInset * 2);
+      planCtx.stroke();
+    } else {
+      const pillarShape = normalizePillarShape(item.pillarShape);
+      tracePillarPlanPath(planCtx, pillarShape, planItemWidthPx, planItemDepthPx);
+      planCtx.fill();
+      planCtx.stroke();
+      planCtx.strokeStyle = selected ? "rgba(255, 193, 116, .95)" : "rgba(25, 34, 43, .5)";
+      planCtx.lineWidth = 1;
+      tracePillarPlanPath(planCtx, pillarShape, planItemWidthPx * 0.72, planItemDepthPx * 0.72);
+      planCtx.stroke();
+    }
   } else if (item.type === "bar") {
     planCtx.beginPath();
     planCtx.roundRect(-planItemWidthPx / 2, -planItemDepthPx / 2, planItemWidthPx, planItemDepthPx, Math.min(5, planItemDepthPx * 0.16));
@@ -3685,20 +4072,20 @@ function drawItemOnPlan(item) {
     planCtx.fill();
     planCtx.stroke();
     planCtx.strokeRect(-planItemWidthPx * 0.43, -planItemDepthPx * 0.34, planItemWidthPx * 0.86, planItemDepthPx * 0.68);
-    for (const localValue of [-0.25, 0.18]) {
+    for (const offsetX of [-0.25, 0.18]) {
       planCtx.beginPath();
-      planCtx.arc(planItemWidthPx * localValue, planItemDepthPx * (localValue > 0 ? 0.08 : -0.06), Math.max(2, planItemDepthPx * 0.08), 0, Math.PI * 2);
+      planCtx.arc(planItemWidthPx * offsetX, planItemDepthPx * (offsetX > 0 ? 0.08 : -0.06), Math.max(2, planItemDepthPx * 0.08), 0, Math.PI * 2);
       planCtx.stroke();
     }
   } else if (item.type === "coffeetable") {
-    const computedValue = Math.min(planItemWidthPx, planItemDepthPx) * 0.32;
-    const value = computedValue * 0.7;
+    const glowRadius = Math.min(planItemWidthPx, planItemDepthPx) * 0.32;
+    const innerRadius = glowRadius * 0.7;
     planCtx.beginPath();
-    planCtx.arc(-planItemWidthPx * 0.16, planItemDepthPx * 0.08, computedValue, 0, Math.PI * 2);
+    planCtx.arc(-planItemWidthPx * 0.16, planItemDepthPx * 0.08, glowRadius, 0, Math.PI * 2);
     planCtx.fill();
     planCtx.stroke();
     planCtx.beginPath();
-    planCtx.arc(planItemWidthPx * 0.24, -planItemDepthPx * 0.2, value, 0, Math.PI * 2);
+    planCtx.arc(planItemWidthPx * 0.24, -planItemDepthPx * 0.2, innerRadius, 0, Math.PI * 2);
     planCtx.fill();
     planCtx.stroke();
   } else if (roundTableTypes.has(item.type)) {
@@ -3706,9 +4093,9 @@ function drawItemOnPlan(item) {
     planCtx.ellipse(0, 0, planItemWidthPx * 0.32, planItemDepthPx * 0.32, 0, 0, Math.PI * 2);
     planCtx.fill();
     planCtx.stroke();
-    for (const [localValue, localValueCurrent] of [[-0.38, 0], [0.38, 0], [0, -0.38], [0, 0.38]]) {
+    for (const [offsetX, offsetY] of [[-0.38, 0], [0.38, 0], [0, -0.38], [0, 0.38]]) {
       planCtx.beginPath();
-      planCtx.roundRect(planItemWidthPx * localValue - planItemWidthPx * 0.085, planItemDepthPx * localValueCurrent - planItemDepthPx * 0.095, planItemWidthPx * 0.17, planItemDepthPx * 0.19, Math.min(planItemWidthPx, planItemDepthPx) * 0.035);
+      planCtx.roundRect(planItemWidthPx * offsetX - planItemWidthPx * 0.085, planItemDepthPx * offsetY - planItemDepthPx * 0.095, planItemWidthPx * 0.17, planItemDepthPx * 0.19, Math.min(planItemWidthPx, planItemDepthPx) * 0.035);
       planCtx.fill();
       planCtx.stroke();
     }
@@ -3731,30 +4118,30 @@ function drawItemOnPlan(item) {
     planCtx.lineTo(planItemWidthPx * 0.08, planItemDepthPx * 0.38);
     planCtx.stroke();
     planCtx.fillStyle = "rgba(25, 34, 43, .58)";
-    for (const localValue of [-0.39, 0.39]) {
-      for (const localValue of [-0.34, 0.34]) {
+    for (const offsetX of [-0.39, 0.39]) {
+      for (const offsetY of [-0.34, 0.34]) {
         planCtx.beginPath();
-        planCtx.arc(planItemWidthPx * localValue, planItemDepthPx * localValue, Math.max(1.5, Math.min(planItemWidthPx, planItemDepthPx) * 0.045), 0, Math.PI * 2);
+        planCtx.arc(planItemWidthPx * offsetY, planItemDepthPx * offsetY, Math.max(1.5, Math.min(planItemWidthPx, planItemDepthPx) * 0.045), 0, Math.PI * 2);
         planCtx.fill();
       }
     }
   } else if (item.type === "floorlamp") {
-    const computedValue = -planItemWidthPx * 0.34;
-    const value = planItemWidthPx * 0.31;
-    const localValue = Math.min(planItemDepthPx * 0.34, planItemWidthPx * 0.13);
+    const lampX = -planItemWidthPx * 0.34;
+    const lampRadius = planItemWidthPx * 0.31;
+    const dotRadius = Math.min(planItemDepthPx * 0.34, planItemWidthPx * 0.13);
     const min = Math.min(planItemDepthPx * 0.46, planItemWidthPx * 0.14);
     planCtx.lineCap = "round";
     planCtx.lineWidth = selected ? 2.4 : 1.5;
     planCtx.beginPath();
-    planCtx.moveTo(computedValue, 0);
-    planCtx.lineTo(value, 0);
+    planCtx.moveTo(lampX, 0);
+    planCtx.lineTo(lampRadius, 0);
     planCtx.stroke();
     planCtx.beginPath();
-    planCtx.arc(computedValue, 0, localValue, 0, Math.PI * 2);
+    planCtx.arc(lampX, 0, dotRadius, 0, Math.PI * 2);
     planCtx.fill();
     planCtx.stroke();
     planCtx.beginPath();
-    planCtx.arc(value, 0, min, 0, Math.PI * 2);
+    planCtx.arc(lampRadius, 0, min, 0, Math.PI * 2);
     planCtx.fill();
     planCtx.stroke();
   } else if (item.type === "toilet") {
@@ -3774,8 +4161,8 @@ function drawItemOnPlan(item) {
     planCtx.beginPath();
     planCtx.ellipse(0, planItemDepthPx * 0.04, planItemWidthPx * 0.18, planItemDepthPx * 0.31, 0, 0, Math.PI * 2);
     planCtx.stroke();
-    for (const localValue of [-1, 1]) {
-      planCtx.strokeRect(localValue * planItemWidthPx * 0.38 - planItemWidthPx * 0.07, -planItemDepthPx * 0.25, planItemWidthPx * 0.14, planItemDepthPx * 0.5);
+    for (const side of [-1, 1]) {
+      planCtx.strokeRect(side * planItemWidthPx * 0.38 - planItemWidthPx * 0.07, -planItemDepthPx * 0.25, planItemWidthPx * 0.14, planItemDepthPx * 0.5);
     }
   } else if (item.type === "urinal") {
     planCtx.beginPath();
@@ -3856,9 +4243,9 @@ function drawItemOnPlan(item) {
     planCtx.lineTo(planItemWidthPx * 0.12, -planItemDepthPx * 0.18);
     planCtx.stroke();
     planCtx.fillStyle = "rgba(47, 58, 69, .7)";
-    for (const localValue of [-0.2, 0.2]) {
+    for (const offsetX of [-0.2, 0.2]) {
       planCtx.beginPath();
-      planCtx.arc(planItemWidthPx * localValue, planItemDepthPx * 0.18, Math.max(1.5, Math.min(planItemWidthPx, planItemDepthPx) * 0.055), 0, Math.PI * 2);
+      planCtx.arc(planItemWidthPx * offsetX, planItemDepthPx * 0.18, Math.max(1.5, Math.min(planItemWidthPx, planItemDepthPx) * 0.055), 0, Math.PI * 2);
       planCtx.fill();
     }
     planCtx.strokeStyle = "rgba(25, 34, 43, .5)";
@@ -3892,6 +4279,35 @@ function drawItemOnPlan(item) {
     planCtx.ellipse(0, 0, planItemWidthPx * 0.46, planItemDepthPx * 0.46, 0, 0, Math.PI * 2);
     planCtx.fill();
     planCtx.stroke();
+  } else if (item.type === "mural") {
+    const muralThickness = Math.max(planItemDepthPx, 3);
+    planCtx.beginPath();
+    planCtx.rect(-planItemWidthPx / 2, -muralThickness / 2, planItemWidthPx, muralThickness);
+    planCtx.fill();
+    planCtx.stroke();
+    planCtx.strokeStyle = selected ? "rgba(255, 193, 116, .95)" : "rgba(25, 34, 43, .5)";
+    planCtx.lineWidth = 1;
+    planCtx.beginPath();
+    planCtx.moveTo(-planItemWidthPx * 0.42, -muralThickness * 0.16);
+    planCtx.lineTo(-planItemWidthPx * 0.08, muralThickness * 0.16);
+    planCtx.moveTo(planItemWidthPx * 0.04, -muralThickness * 0.16);
+    planCtx.lineTo(planItemWidthPx * 0.4, muralThickness * 0.16);
+    planCtx.stroke();
+  } else if (item.type === "featurewall") {
+    const featureThickness = Math.max(planItemDepthPx, 3);
+    planCtx.beginPath();
+    planCtx.rect(-planItemWidthPx / 2, -featureThickness / 2, planItemWidthPx, featureThickness);
+    planCtx.fill();
+    planCtx.stroke();
+    planCtx.strokeStyle = selected ? "rgba(255, 193, 116, .95)" : "rgba(25, 34, 43, .5)";
+    planCtx.lineWidth = 1;
+    for (let tick = 0; tick < 6; tick += 1) {
+      const tickX = -planItemWidthPx * 0.4 + planItemWidthPx * 0.8 * tick / 5;
+      planCtx.beginPath();
+      planCtx.moveTo(tickX, -featureThickness * 0.24);
+      planCtx.lineTo(tickX, featureThickness * 0.24);
+      planCtx.stroke();
+    }
   } else {
     planCtx.beginPath();
     planCtx.roundRect(-planItemWidthPx / 2, -planItemDepthPx / 2, planItemWidthPx, planItemDepthPx, Math.min(6, planItemWidthPx / 5, planItemDepthPx / 5));
@@ -4005,11 +4421,11 @@ function drawItemOnPlan(item) {
     planCtx.arc(0, 0, Math.min(planItemWidthPx, planItemDepthPx) * 0.31, 0, Math.PI * 2);
     planCtx.stroke();
   } else if (Vl.has(item.type)) {
-    for (let oneValue = 1; oneValue < 10; oneValue += 1) {
-      const halfValue = -planItemDepthPx / 2 + planItemDepthPx * oneValue / 10;
+    for (let slatIndex = 1; slatIndex < 10; slatIndex += 1) {
+      const slatY = -planItemDepthPx / 2 + planItemDepthPx * slatIndex / 10;
       planCtx.beginPath();
-      planCtx.moveTo(-planItemWidthPx / 2, halfValue);
-      planCtx.lineTo(planItemWidthPx / 2, halfValue);
+      planCtx.moveTo(-planItemWidthPx / 2, slatY);
+      planCtx.lineTo(planItemWidthPx / 2, slatY);
       planCtx.stroke();
     }
     planCtx.beginPath();
@@ -4046,11 +4462,11 @@ function drawItemOnPlan(item) {
   }
   planCtx.restore();
 }
-function rotatedItemCorner(planPoint, argSecondary, argTertiary) {
-  const value = (Number(planPoint.rotation) || 0) * Math.PI / 180;
+function rotatedItemCorner(item, offsetX, offsetY) {
+  const angleRad = (Number(item.rotation) || 0) * Math.PI / 180;
   return {
-    x: planPoint.x + argSecondary * Math.cos(value) - argTertiary * Math.sin(value),
-    y: planPoint.y + argSecondary * Math.sin(value) + argTertiary * Math.cos(value)
+    x: item.x + offsetX * Math.cos(angleRad) - offsetY * Math.sin(angleRad),
+    y: item.y + offsetX * Math.sin(angleRad) + offsetY * Math.cos(angleRad)
   };
 }
 function itemPlanBounds(size) {
@@ -4079,7 +4495,7 @@ function itemPlanBounds(size) {
     rotationHandle: rotatedItemCorner(size, 0, -halfItemDepth - 17 / Math.max(planView.zoom, 0.01))
   };
 }
-function beginItemDrag(argPrimary) {
+function beginItemDrag(pointerPoint) {
   if (activeTool !== "select" || selection?.kind !== "item" || multiSelection.length) {
     return null;
   }
@@ -4087,21 +4503,21 @@ function beginItemDrag(argPrimary) {
   if (!item) {
     return null;
   }
-  const controls = itemPlanBounds(item);
-  const value = 9 / Math.max(planView.zoom, 0.01);
-  if (distance(argPrimary, controls.rotationHandle) <= value) {
+  const itemControls = itemPlanBounds(itemWithPlanFootprint(item));
+  const handleHitRadius = 9 / Math.max(planView.zoom, 0.01);
+  if (distance(pointerPoint, itemControls.rotationHandle) <= handleHitRadius) {
     return {
       type: "rotate-item",
       item,
-      controls
+      controls: itemControls
     };
   }
-  const corner = controls.corners.find(point => distance(argPrimary, point.point) <= value);
+  const corner = itemControls.corners.find(point => distance(pointerPoint, point.point) <= handleHitRadius);
   if (corner) {
     return {
       type: "resize-item",
       item,
-      controls,
+      controls: itemControls,
       corner
     };
   } else {
@@ -4143,82 +4559,83 @@ function segmentHitsBounds(planPoint, point, minX) {
   }
   return false;
 }
-function marqueeSelectHits(planPoint, point) {
-  const minX = axisAlignedBounds(planPoint, point);
-  const value = pixelsPerMeter() || 100;
-  const list = [];
-  const flag = assetCategory === "light";
-  if (!flag) {
+function marqueeSelectHits(dragStartPoint, dragEndPoint) {
+  const bounds = axisAlignedBounds(dragStartPoint, dragEndPoint);
+  const scalePixels = pixelsPerMeter() || 100;
+  const hits = [];
+  const isLightCategory = assetCategory === "light";
+  if (!isLightCategory) {
     for (const wall of floorSceneCurrent.walls) {
-      if (segmentHitsBounds(wall.start, wall.end, minX)) {
-        list.push({
+      if (segmentHitsBounds(wall.start, wall.end, bounds)) {
+        hits.push({
           kind: "wall",
           id: wall.id
         });
       }
     }
-    for (const size of floorSceneCurrent.windows) {
-      const isStart = wallAttachmentWorldPoint(size);
-      if (isStart && segmentHitsBounds(isStart.start, isStart.end, minX)) {
-        list.push({
+    for (const windowFixture of floorSceneCurrent.windows) {
+      const windowSpan = wallAttachmentWorldPoint(windowFixture);
+      if (windowSpan && segmentHitsBounds(windowSpan.start, windowSpan.end, bounds)) {
+        hits.push({
           kind: "window",
-          id: size.id
+          id: windowFixture.id
         });
       }
     }
-    for (const size of floorSceneCurrent.doors) {
-      const isStart = wallAttachmentWorldPoint(size);
-      if (isStart && segmentHitsBounds(isStart.start, isStart.end, minX)) {
-        list.push({
+    for (const doorFixture of floorSceneCurrent.doors) {
+      const doorSpan = wallAttachmentWorldPoint(doorFixture);
+      if (doorSpan && segmentHitsBounds(doorSpan.start, doorSpan.end, bounds)) {
+        hits.push({
           kind: "door",
-          id: size.id
+          id: doorFixture.id
         });
       }
     }
-    for (const size of floorSceneCurrent.railings) {
-      const isStart = wallAttachmentWorldPoint(size);
-      if (isStart && segmentHitsBounds(isStart.start, isStart.end, minX)) {
-        list.push({
+    for (const railingFixture of floorSceneCurrent.railings) {
+      const railingSpan = wallAttachmentWorldPoint(railingFixture);
+      if (railingSpan && segmentHitsBounds(railingSpan.start, railingSpan.end, bounds)) {
+        hits.push({
           kind: "railing",
-          id: size.id
+          id: railingFixture.id
         });
       }
     }
   }
-  const someFlag = [{
-    x: minX.minX,
-    y: minX.minY
+  const boundsCorners = [{
+    x: bounds.minX,
+    y: bounds.minY
   }, {
-    x: minX.maxX,
-    y: minX.minY
+    x: bounds.maxX,
+    y: bounds.minY
   }, {
-    x: minX.maxX,
-    y: minX.maxY
+    x: bounds.maxX,
+    y: bounds.maxY
   }, {
-    x: minX.minX,
-    y: minX.maxY
+    x: bounds.minX,
+    y: bounds.maxY
   }];
-  for (const item of floorSceneCurrent.items) {
-    if (set.has(item.type) !== flag) {
+  for (const sceneItem of floorSceneCurrent.items) {
+    if (set.has(sceneItem.type) !== isLightCategory) {
       continue;
     }
-    const rotationRad = item.rotation * Math.PI / 180;
+    const rotationRad = sceneItem.rotation * Math.PI / 180;
     const cos = Math.cos(rotationRad);
     const sin = Math.sin(rotationRad);
-    const halfMeshWidth = item.width * value / 2;
-    const halfMeshDepth = item.depth * value / 2;
-    const some = [[-halfMeshWidth, -halfMeshDepth], [halfMeshWidth, -halfMeshDepth], [halfMeshWidth, halfMeshDepth], [-halfMeshWidth, halfMeshDepth]].map(([argPrimary, argPrimaryCurrent]) => ({
-      x: item.x + argPrimary * cos - argPrimaryCurrent * sin,
-      y: item.y + argPrimary * sin + argPrimaryCurrent * cos
+    const itemFootprint = itemPlanFootprint(sceneItem);
+    const halfMeshWidth = itemFootprint.width * scalePixels / 2;
+    const halfMeshDepth = itemFootprint.depth * scalePixels / 2;
+    const rotatedCorners = [[-halfMeshWidth, -halfMeshDepth], [halfMeshWidth, -halfMeshDepth], [halfMeshWidth, halfMeshDepth], [-halfMeshWidth, halfMeshDepth]].map(([localX, localY]) => ({
+      x: sceneItem.x + localX * cos - localY * sin,
+      y: sceneItem.y + localX * sin + localY * cos
     }));
-    if (pointInBounds(item, minX) || some.some(point => pointInBounds(point, minX)) || someFlag.some(argPrimary => pointInRotatedRectangle(argPrimary, item, value))) {
-      list.push({
+    if (pointInBounds(sceneItem, bounds) || rotatedCorners.some(cornerPoint => pointInBounds(cornerPoint, bounds)) || boundsCorners.some(corner => pointInRotatedRectangle(corner, itemWithPlanFootprint(sceneItem), scalePixels))) {
+      hits.push({
         kind: "item",
-        id: item.id
+        id: sceneItem.id
       });
     }
   }
-  return list;
+  return hits;
 }
 function ensureMeasureCanvas() {
   if (!element.width || !element.height || !measureCtx) {
@@ -4399,18 +4816,18 @@ function drawPlan() {
   }
   if (dragState?.type === "draw-flooropening") {
     const {
-      start: x33,
-      current: x34
+      start: dragStart,
+      current: dragEnd
     } = dragState;
     drawItemOnPlan({
       ...furnitureCatalog.flooropening,
       type: "flooropening",
       id: "opening-preview",
       rotation: 0,
-      x: (x33.x + x34.x) / 2,
-      y: (x33.y + x34.y) / 2,
-      width: Math.abs(x34.x - x33.x) / value,
-      depth: Math.abs(x34.y - x33.y) / value
+      x: (dragStart.x + dragEnd.x) / 2,
+      y: (dragStart.y + dragEnd.y) / 2,
+      width: Math.abs(dragEnd.x - dragStart.x) / value,
+      depth: Math.abs(dragEnd.y - dragStart.y) / value
     });
   }
   for (const size of floorSceneCurrent.items) {
@@ -4459,20 +4876,20 @@ function drawPlan() {
     drawPlanPoint(no, "#ff9d2e");
   }
   if (Tt && at) {
-    const localValue = onPlanPointerDown(at);
+    const wouldClose = onPlanPointerDown(at);
     drawPlanLine(Tt, at.point, {
       color: "#ff9d2e",
       width: 2,
       dash: [7, 5]
     });
     drawPlanPoint(Tt, "#ff9d2e");
-    drawPlanPoint(at.point, localValue ? "#76cfa1" : at.kind ? "#43d2e6" : "#ff9d2e", localValue ? 5 : 3.5);
+    drawPlanPoint(at.point, wouldClose ? "#76cfa1" : at.kind ? "#43d2e6" : "#ff9d2e", wouldClose ? 5 : 3.5);
     const isStart = distance(Tt, at.point) / value;
     drawFloatingLabel({
       x: (Tt.x + at.point.x) / 2,
       y: (Tt.y + at.point.y) / 2
     }, isStart.toFixed(2) + " m", "#ffb04a");
-    if (localValue) {
+    if (wouldClose) {
       drawFloatingLabel(at.point, "点击闭合空间", "#76cfa1");
     }
   } else if (at?.kind && ["wall", "scale"].includes(activeTool)) {
@@ -4539,50 +4956,50 @@ function selectedEntity() {
   }
   return flag || null;
 }
-function placeCatalogItemAt(argPrimary) {
-  const value = pixelsPerMeter() || 100;
-  const flag = assetCategory === "light";
+function placeCatalogItemAt(planPoint) {
+  const scalePixels = pixelsPerMeter() || 100;
+  const isLightCategory = assetCategory === "light";
   for (const item of [...floorSceneCurrent.items].reverse()) {
-    if (set.has(item.type) === flag && pointInRotatedRectangle(argPrimary, item, value)) {
+    if (set.has(item.type) === isLightCategory && pointInRotatedRectangle(planPoint, itemWithPlanFootprint(item), scalePixels)) {
       return {
         kind: "item",
         id: item.id
       };
     }
   }
-  if (flag) {
+  if (isLightCategory) {
     return null;
   }
-  for (const size of [...floorSceneCurrent.windows].reverse()) {
-    const isStart = wallAttachmentWorldPoint(size);
-    if (isStart && projectPointToSegment(argPrimary, isStart.start, isStart.end).distance <= 10 / planView.zoom) {
+  for (const windowFixture of [...floorSceneCurrent.windows].reverse()) {
+    const windowAttachment = wallAttachmentWorldPoint(windowFixture);
+    if (windowAttachment && projectPointToSegment(planPoint, windowAttachment.start, windowAttachment.end).distance <= 10 / planView.zoom) {
       return {
         kind: "window",
-        id: size.id
+        id: windowFixture.id
       };
     }
   }
-  for (const size of [...floorSceneCurrent.doors].reverse()) {
-    const isStart = wallAttachmentWorldPoint(size);
-    if (isStart && projectPointToSegment(argPrimary, isStart.start, isStart.end).distance <= 12 / planView.zoom) {
+  for (const doorFixture of [...floorSceneCurrent.doors].reverse()) {
+    const doorAttachment = wallAttachmentWorldPoint(doorFixture);
+    if (doorAttachment && projectPointToSegment(planPoint, doorAttachment.start, doorAttachment.end).distance <= 12 / planView.zoom) {
       return {
         kind: "door",
-        id: size.id
+        id: doorFixture.id
       };
     }
   }
-  for (const size of [...floorSceneCurrent.railings].reverse()) {
-    const isStart = wallAttachmentWorldPoint(size);
-    if (isStart && projectPointToSegment(argPrimary, isStart.start, isStart.end).distance <= 12 / planView.zoom) {
+  for (const railingFixture of [...floorSceneCurrent.railings].reverse()) {
+    const railingAttachment = wallAttachmentWorldPoint(railingFixture);
+    if (railingAttachment && projectPointToSegment(planPoint, railingAttachment.start, railingAttachment.end).distance <= 12 / planView.zoom) {
       return {
         kind: "railing",
-        id: size.id
+        id: railingFixture.id
       };
     }
   }
   for (const wall of [...floorSceneCurrent.walls].reverse()) {
-    const maxValue = Math.max(wall.thickness * value / 2, 8 / planView.zoom);
-    if (projectPointToSegment(argPrimary, wall.start, wall.end).distance <= maxValue) {
+    const wallHitSlop = Math.max(wall.thickness * scalePixels / 2, 8 / planView.zoom);
+    if (projectPointToSegment(planPoint, wall.start, wall.end).distance <= wallHitSlop) {
       return {
         kind: "wall",
         id: wall.id
@@ -4592,7 +5009,7 @@ function placeCatalogItemAt(argPrimary) {
   return null;
 }
 function updateProgressChecklist() {
-  const value = {
+  const stepState = {
     background: !!floorSceneCurrent.background,
     scale: !!floorSceneCurrent.calibration,
     walls: floorSceneCurrent.walls.length > 0,
@@ -4600,10 +5017,10 @@ function updateProgressChecklist() {
     lights: floorSceneCurrent.items.some(item => set.has(item.type)),
     export: isExporting
   };
-  const layerKeys = ["background", "scale", "walls", "items", "lights", "export"].find(argPrimary => !value[argPrimary]) || "export";
+  const nextStepKey = ["background", "scale", "walls", "items", "lights", "export"].find(step => !stepState[step]) || "export";
   for (const element of document.querySelectorAll("[data-step]")) {
-    element.classList.toggle("complete", value[element.dataset.step]);
-    element.classList.toggle("active", element.dataset.step === layerKeys);
+    element.classList.toggle("complete", stepState[element.dataset.step]);
+    element.classList.toggle("active", element.dataset.step === nextStepKey);
   }
 }
 function studioLayoutMetrics() {
@@ -4762,7 +5179,7 @@ function updateSelectionInspector() {
       syncControlValue(selectEl("#door-width"), lightGroup.width.toFixed(2));
       syncControlValue(selectEl("#door-height"), lightGroup.height.toFixed(2));
       syncControlValue(selectEl("#door-position"), Math.round(lightGroup.t * 100) + "%");
-      selectEl(".door-actions").hidden = ["entry", "sliding-glass", "frame-only"].includes(lightGroup.doorType);
+      selectEl(".door-actions").hidden = lightGroup.doorType === "frame-only";
       selectEl("#door-hinge").hidden = ["double", "roller-shutter"].includes(lightGroup.doorType);
       selectEl("#door-swing").hidden = false;
     } else if (selection.kind === "railing") {
@@ -4794,6 +5211,11 @@ function updateSelectionInspector() {
       Qf.hidden = !roundTableTypes.has(lightGroup.type);
       Jf.hidden = !stairItemTypes.has(lightGroup.type);
       jf.hidden = lightGroup.type !== "tv";
+      muralStyleField.hidden = lightGroup.type !== "mural";
+      featureWallStyleField.hidden = lightGroup.type !== "featurewall";
+      pillarShapeField.hidden = lightGroup.type !== "pillar";
+      pillarAxisField.hidden = lightGroup.type !== "pillar";
+      stripAxisField.hidden = lightGroup.type !== "striplight";
       eg.hidden = lightGroup.type !== "shoecabinet";
       o0.setAttribute("aria-pressed", lightGroup.shoeCabinetMirrored === true ? "true" : "false");
       selectEl("#item-rotation-label").textContent = lightGroup.type === "striplight" ? "平面旋转（°）" : present ? "平面方向（°）" : "旋转角度（°）";
@@ -4848,9 +5270,31 @@ function updateSelectionInspector() {
         selectEl("#tv-mount-style").value = tvMountStyles.has(lightGroup.tvMountStyle) ? lightGroup.tvMountStyle : "standard";
         syncStudioSelect(selectEl("#tv-mount-style"));
       }
+      if (lightGroup.type === "mural") {
+        selectEl("#mural-style").value = normalizeMuralArtStyle(lightGroup.muralStyle);
+        syncStudioSelect(selectEl("#mural-style"));
+      }
+      if (lightGroup.type === "featurewall") {
+        selectEl("#feature-wall-style").value = normalizeFeatureWallStyle(lightGroup.wallStyle);
+        syncStudioSelect(selectEl("#feature-wall-style"));
+      }
+      if (lightGroup.type === "pillar") {
+        selectEl("#pillar-shape").value = normalizePillarShape(lightGroup.pillarShape);
+        syncStudioSelect(selectEl("#pillar-shape"));
+        selectEl("#pillar-axis").value = normalizePillarAxis(lightGroup.pillarAxis);
+        syncStudioSelect(selectEl("#pillar-axis"));
+      }
+      if (lightGroup.type === "striplight") {
+        selectEl("#strip-axis").value = normalizeStripAxis(lightGroup.stripAxis);
+        syncStudioSelect(selectEl("#strip-axis"));
+      }
       syncControlValue(selectEl("#item-x"), (lightGroup.x / (pixelsPerMeter() || 1)).toFixed(2));
       syncControlValue(selectEl("#item-y"), (lightGroup.y / (pixelsPerMeter() || 1)).toFixed(2));
       syncControlValue(selectEl("#item-width"), lightGroup.width.toFixed(2));
+      // A lying pillar uses height as its length along the plan, so label the field accordingly.
+      if (itemHeightLabel) {
+        itemHeightLabel.textContent = pillarIsLying(lightGroup) ? "长（m）" : "高（m）";
+      }
       selectEl("#item-height").min = String(itemMinimumHeight(lightGroup.type));
       selectEl("#item-height").step = lightGroup.type === "rug" ? "0.002" : "0.05";
       syncControlValue(selectEl("#item-height"), lightGroup.type === "rug" ? lightGroup.height.toFixed(3) : lightGroup.height.toFixed(2));
@@ -4870,27 +5314,27 @@ function refreshViews(scope = "all") {
     });
   }
 }
-function setActiveTool(argPrimary) {
-  if (!toolHelpText[argPrimary]) {
+function setActiveTool(toolName) {
+  if (!toolHelpText[toolName]) {
     return;
   }
-  if (assetCategory === "light" && argPrimary !== "select") {
+  if (assetCategory === "light" && toolName !== "select") {
     showToast("灯光编辑中户型已锁定，请先切回家居或电器。");
     return;
   }
-  const flag = activeTool === "wall" && argPrimary !== "wall" && Ar > 0;
-  activeTool = argPrimary;
-  element.dataset.tool = argPrimary;
+  const needsUnclosedWallWarning = activeTool === "wall" && toolName !== "wall" && Ar > 0;
+  activeTool = toolName;
+  element.dataset.tool = toolName;
   element.style.cursor = "";
   for (const element of Zd) {
-    element.classList.toggle("active", element.dataset.tool === argPrimary);
+    element.classList.toggle("active", element.dataset.tool === toolName);
   }
-  [activeToolLabelCurrent.textContent, toolHelp.textContent] = assetCategory === "light" ? ["灯光编辑", "户型已锁定；框选多盏灯后可整体拖动，Shift 锁轴，Option/Alt 复制"] : toolHelpText[argPrimary];
-  yr.hidden = argPrimary !== "wall" || !Tt;
-  if (argPrimary !== "wall") {
+  [activeToolLabelCurrent.textContent, toolHelp.textContent] = assetCategory === "light" ? ["灯光编辑", "户型已锁定；框选多盏灯后可整体拖动，Shift 锁轴，Option/Alt 复制"] : toolHelpText[toolName];
+  yr.hidden = toolName !== "wall" || !Tt;
+  if (toolName !== "wall") {
     resetWallDrawingCurrent();
   }
-  if (argPrimary !== "scale") {
+  if (toolName !== "scale") {
     wallDrawAnchorCurrent = null;
   }
   at = null;
@@ -4898,16 +5342,16 @@ function setActiveTool(argPrimary) {
   railingPlacementPreviewCurrent = null;
   Ko = null;
   drawPlan();
-  if (flag) {
+  if (needsUnclosedWallWarning) {
     showToast("当前墙线未闭合，不会生成地面；如果绘制的是隔墙，可以忽略此提醒。", "warning");
   }
 }
-function requireCalibration(argPrimary = "scale") {
+function requireCalibration(toolName = "scale") {
   if (pixelsPerMeter()) {
     return true;
   } else {
     showToast("请先画一条参考线并填写真实长度。", "error");
-    setActiveTool(argPrimary);
+    setActiveTool(toolName);
     return false;
   }
 }
@@ -4958,74 +5402,85 @@ function deleteCurrentSelection() {
   refreshViews(scope);
   scheduleSave();
 }
-function placeCatalogFurnitureItem(argPrimary, argSecondary, width = {}) {
-  const lastMotionRenderAt = furnitureCatalog[argPrimary];
-  if (!lastMotionRenderAt || !requireCalibration()) {
+function placeCatalogFurnitureItem(itemType, position, sizes = {}) {
+  const catalogEntry = furnitureCatalog[itemType];
+  if (!catalogEntry || !requireCalibration()) {
     return;
   }
-  const temperature = defaultLightPresets[argPrimary] || defaultLightPresets.downlight;
-  const id = set.has(argPrimary) ? ensureDefaultLightGroup() : null;
+  const lightPreset = defaultLightPresets[itemType] || defaultLightPresets.downlight;
+  const lightGroup = set.has(itemType) ? ensureDefaultLightGroup() : null;
   pushHistory();
-  const options = {
+  const item = {
     id: makeId("item"),
-    type: argPrimary,
-    x: argSecondary.x,
-    y: argSecondary.y,
+    type: itemType,
+    x: position.x,
+    y: position.y,
     rotation: 0,
-    width: width.width ?? lastMotionRenderAt.width,
-    depth: width.depth ?? lastMotionRenderAt.depth,
-    height: lastMotionRenderAt.height,
-    elevation: lastMotionRenderAt.elevation || 0,
-    color: lastMotionRenderAt.color,
-    ...(argPrimary === "planlabel" ? {
+    width: sizes.width ?? catalogEntry.width,
+    depth: sizes.depth ?? catalogEntry.depth,
+    height: catalogEntry.height,
+    elevation: catalogEntry.elevation || 0,
+    color: catalogEntry.color,
+    ...(itemType === "planlabel" ? {
       title: "家庭总览",
       subtitle: "HOME PLAN",
       titleSpacing: 1.05,
       subtitleSpacing: 0.08,
       lineLength: 0.86
     } : {}),
-    ...(argPrimary === "camera" || argPrimary === "presence" ? {
+    ...(itemType === "camera" || itemType === "presence" ? {
       verticalRotation: 0
     } : {}),
-    ...(argPrimary === "tv" ? {
+    ...(itemType === "tv" ? {
       screenEnabled: true,
       screenLayerName: "电视画面 " + (tvItemsOnFloor().length + 1),
       tvMountStyle: "standard"
     } : {}),
-    ...(argPrimary === "smallcar" ? {
+    ...(itemType === "smallcar" ? {
       chargingEnabled: false,
       chargingLayerName: "汽车充电 " + (smallCarItemsOnFloor().length + 1)
     } : {}),
-    ...(argPrimary === "curtain" ? {
+    ...(itemType === "curtain" ? {
       curtainPosition: "split"
     } : {}),
-    ...(stairItemTypes.has(argPrimary) ? {
+    ...(itemType === "mural" ? {
+      muralStyle: normalizeMuralArtStyle(catalogEntry.muralStyle)
+    } : {}),
+    ...(itemType === "featurewall" ? {
+      wallStyle: normalizeFeatureWallStyle(catalogEntry.wallStyle)
+    } : {}),
+    ...(itemType === "pillar" ? {
+      pillarShape: normalizePillarShape(catalogEntry.pillarShape),
+      pillarAxis: normalizePillarAxis(catalogEntry.pillarAxis)
+    } : {}),
+    ...(stairItemTypes.has(itemType) ? {
       stairDirection: "right"
     } : {}),
-    ...(argPrimary === "shoecabinet" ? {
+    ...(itemType === "shoecabinet" ? {
       shoeCabinetMirrored: false
     } : {}),
-    ...(roundTableTypes.has(argPrimary) ? {
+    ...(roundTableTypes.has(itemType) ? {
       roundTableTurntable: false
     } : {}),
-    ...(set.has(argPrimary) ? {
-      lightGroupId: id.id,
+    ...(set.has(itemType) ? {
+      lightGroupId: lightGroup.id,
       verticalRotation: 0,
-      ...(argPrimary === "striplight" ? {
+      ...(itemType === "striplight" ? {
+        stripAxis: "horizontal",
         stripRollRotation: 0,
         lightSourceVisible: true
       } : {}),
-      lightTemperature: temperature.temperature,
-      lightBrightness: temperature.brightness,
-      lightRange: temperature.range,
-      lightAngle: temperature.angle
+      lightTemperature: lightPreset.temperature,
+      lightBrightness: lightPreset.brightness,
+      lightRange: lightPreset.range,
+      lightAngle: lightPreset.angle
     } : {})
   };
-  ensureItemLayerNames([options]);
-  floorSceneCurrent.items.push(options);
-  setSelection("item", options.id);
+  ensureItemLayerNames([item]);
+  floorSceneCurrent.items.push(item);
+  setSelection("item", item.id);
   setActiveTool("select");
-  refreshViews(itemPreviewScope(options));
+  refreshViews(itemPreviewScope(item));
   scheduleSave();
 }
 function selectedItemIds() {
@@ -5065,20 +5520,20 @@ function cloneSelectedItems() {
   return floorSceneCurrent.items.filter(id => value.has(id.id) && set.has(id.type) === isLightAssetCategory);
 }
 function copySelectedItems() {
-  const list = cloneSelectedItems();
-  if (!list.length) {
+  const copiedItems = cloneSelectedItems();
+  if (!copiedItems.length) {
     showToast("请先选择要复制的灯具、家具或电器。");
     return;
   }
-  clipboardItems = list.map(argPrimary => structuredClone(argPrimary));
-  const id = activeFloor();
+  clipboardItems = copiedItems.map(selectedItem => structuredClone(selectedItem));
+  const floorEntry = activeFloor();
   Fr = {
-    id: id.id,
-    originX: id.originX,
-    originY: id.originY,
-    offsetX: id.offsetX,
-    offsetZ: id.offsetZ,
-    rotation: id.rotation,
+    id: floorEntry.id,
+    originX: floorEntry.originX,
+    originY: floorEntry.originY,
+    offsetX: floorEntry.offsetX,
+    offsetZ: floorEntry.offsetZ,
+    rotation: floorEntry.rotation,
     scene: {
       calibration: structuredClone(floorSceneCurrent.calibration)
     }
@@ -5132,47 +5587,47 @@ function pasteClipboardItems() {
   showToast("已粘贴 " + list.length + " 个物件。");
 }
 async function reloadPlanBackground() {
-  const value = ++planBackgroundRevision;
+  const revision = ++planBackgroundRevision;
   planBackgroundImageCurrent = null;
   if (!floorSceneCurrent.background?.url) {
     return;
   }
   const bgUrl = floorSceneCurrent.background.url;
-  await new Promise(argPrimary => {
-    let flag = false;
-    const onComplete = () => {
-      if (!flag) {
-        flag = true;
-        argPrimary();
+  await new Promise(resolve => {
+    let settled = false;
+    const settle = () => {
+      if (!settled) {
+        settled = true;
+        resolve();
       }
     };
-    const el = new Image();
-    const setTimeoutResult = window.setTimeout(onComplete, 2000);
-    el.addEventListener("load", () => {
-      if (value !== planBackgroundRevision || floorSceneCurrent.background?.url !== bgUrl) {
-        onComplete();
+    const imageEl = new Image();
+    const timeoutId = window.setTimeout(settle, 2000);
+    imageEl.addEventListener("load", () => {
+      if (revision !== planBackgroundRevision || floorSceneCurrent.background?.url !== bgUrl) {
+        settle();
         return;
       }
-      planBackgroundImageCurrent = el;
-      window.clearTimeout(setTimeoutResult);
-      if (flag) {
+      planBackgroundImageCurrent = imageEl;
+      window.clearTimeout(timeoutId);
+      if (settled) {
         drawPlan();
       } else {
-        onComplete();
+        settle();
       }
     }, {
       once: true
     });
-    el.addEventListener("error", () => {
-      window.clearTimeout(setTimeoutResult);
-      if (value === planBackgroundRevision) {
+    imageEl.addEventListener("error", () => {
+      window.clearTimeout(timeoutId);
+      if (revision === planBackgroundRevision) {
         showToast("底图加载失败，请重新导入。", "error");
       }
-      onComplete();
+      settle();
     }, {
       once: true
     });
-    el.src = bgUrl;
+    imageEl.src = bgUrl;
   });
 }
 async function importPlanBackgroundFile(body) {
@@ -5278,42 +5733,42 @@ function applyPreviewEnvironment() {
     positionDirectionalLight(topLight, exposure.topAzimuth, exposure.topElevation, 16.1);
   }
 }
-function setShadowCameraExpanded(argPrimary) {
-  const flag = argPrimary === true;
-  if (flag !== shadowCameraExpanded) {
-    if (flag && previewSpotLight?.shadow?.camera) {
-      const camera = previewSpotLight.shadow.camera;
+function setShadowCameraExpanded(shouldExpand) {
+  const isExpanded = shouldExpand === true;
+  if (isExpanded !== shadowCameraExpanded) {
+    if (isExpanded && previewSpotLight?.shadow?.camera) {
+      const expandedCamera = previewSpotLight.shadow.camera;
       savedSpotShadowCamera = {
-        left: camera.left,
-        right: camera.right,
-        top: camera.top,
-        bottom: camera.bottom,
-        near: camera.near,
-        far: camera.far
+        left: expandedCamera.left,
+        right: expandedCamera.right,
+        top: expandedCamera.top,
+        bottom: expandedCamera.bottom,
+        near: expandedCamera.near,
+        far: expandedCamera.far
       };
     }
-    shadowCameraExpanded = flag;
+    shadowCameraExpanded = isExpanded;
     applyPreviewEnvironment();
-    if (!flag && savedSpotShadowCamera && previewSpotLight?.shadow?.camera) {
-      const camera = previewSpotLight.shadow.camera;
-      Object.assign(camera, savedSpotShadowCamera);
-      camera.updateProjectionMatrix();
+    if (!isExpanded && savedSpotShadowCamera && previewSpotLight?.shadow?.camera) {
+      const currentCamera = previewSpotLight.shadow.camera;
+      Object.assign(currentCamera, savedSpotShadowCamera);
+      currentCamera.updateProjectionMatrix();
       savedSpotShadowCamera = null;
     }
     if (previewSpotLight?.shadow) {
       previewSpotLight.shadow.needsUpdate = true;
     }
     if (renderer?.domElement) {
-      renderer.domElement.dataset.exportShadowQuality = flag ? "high" : "realtime";
+      renderer.domElement.dataset.exportShadowQuality = isExpanded ? "high" : "realtime";
     }
   }
 }
-function scaledShadowMapSize(argPrimary) {
+function scaledShadowMapSize(requestedSize) {
   if (!shadowCameraExpanded) {
-    return argPrimary;
+    return requestedSize;
   }
-  const value = Math.max(1, Math.floor(finite(renderer?.capabilities?.maxTextureSize, DEFAULT_MAX_TEXTURE_SIZE)));
-  return Math.min(value, Math.max(argPrimary, DEFAULT_MAX_TEXTURE_SIZE));
+  const maxTextureSize = Math.max(1, Math.floor(finite(renderer?.capabilities?.maxTextureSize, DEFAULT_MAX_TEXTURE_SIZE)));
+  return Math.min(maxTextureSize, Math.max(requestedSize, DEFAULT_MAX_TEXTURE_SIZE));
 }
 function syncBaseLightingControls() {
   for (const el of baseLightControlEls) {
@@ -5322,13 +5777,13 @@ function syncBaseLightingControls() {
     syncControlValue(el, flag ? Math.round(toFixed) : Number(toFixed.toFixed(2)));
   }
 }
-function applyBaseLighting(argPrimary) {
-  const localValue = baseLighting;
-  baseLighting = normalizeBaseLighting(argPrimary);
+function applyBaseLighting(values) {
+  const previous = baseLighting;
+  baseLighting = normalizeBaseLighting(values);
   syncBaseLightingControls();
   applyPreviewEnvironment();
   requestRender({
-    shadows: Object.keys(DEFAULT_BASE_LIGHTING).some(argPrimary => localValue[argPrimary] !== baseLighting[argPrimary])
+    shadows: Object.keys(DEFAULT_BASE_LIGHTING).some(key => previous[key] !== baseLighting[key])
   });
 }
 function relocateBaseLightControls() {
@@ -5410,9 +5865,9 @@ function cameraViewMode() {
 function topViewRotation() {
   return (Math.round(finite(activeCameraSettings()?.cameraTopRotation, 0) / 90) * 90 % 360 + 360) % 360;
 }
-function topViewForwardVector(argPrimary = topViewRotation()) {
-  const value = THREE.MathUtils.degToRad(argPrimary);
-  return new THREE.Vector3(Math.sin(value), 0, -Math.cos(value));
+function topViewForwardVector(rotationDeg = topViewRotation()) {
+  const rotationRad = THREE.MathUtils.degToRad(rotationDeg);
+  return new THREE.Vector3(Math.sin(rotationRad), 0, -Math.cos(rotationRad));
 }
 function getCameraFocalLength() {
   return clamp(finite(activeCameraSettings()?.cameraFocalLength, 50), 18, 120);
@@ -5518,18 +5973,18 @@ function checkAdaptiveQuality() {
     markPreviewQualityReady(sufficient);
   }
 }
-function tickQualityProbe(argPrimary = performance.now()) {
+function tickQualityProbe(nowMs = performance.now()) {
   if (!previewOrbitLocked && (!isStageEmbed || !isStageWarmup) || stageSession || previewQualityReady || !enabledVisibleLights().length) {
     qualityProbeStartMs = 0;
     return;
   }
   if (qualityProbeStartMs > 0) {
-    const value = argPrimary - qualityProbeStartMs;
-    if (value >= 8 && (value <= 120 || isStageEmbed && value <= 2000)) {
-      recentFrameMsSamplesCurrent.push(Math.min(value, 120));
+    const frameIntervalMs = nowMs - qualityProbeStartMs;
+    if (frameIntervalMs >= 8 && (frameIntervalMs <= 120 || isStageEmbed && frameIntervalMs <= 2000)) {
+      recentFrameMsSamplesCurrent.push(Math.min(frameIntervalMs, 120));
     }
   }
-  qualityProbeStartMs = argPrimary;
+  qualityProbeStartMs = nowMs;
   if (!(recentFrameMsSamplesCurrent.length < 24)) {
     checkAdaptiveQuality();
     recentFrameMsSamplesCurrent.splice(0, 12);
@@ -5550,11 +6005,11 @@ function syncLivePreviewButtons() {
   refreshPreview.classList.toggle("is-dirty", previewNeedsRefresh);
   refreshPreview.textContent = previewNeedsRefresh ? "待更新 · 更新" : "已更新";
 }
-function syncCameraModeButtons(argPrimary = getCameraProjectionMode()) {
-  for (const element of cameraModeEls) {
-    element.classList.toggle("active", element.dataset.cameraMode === argPrimary);
+function syncCameraModeButtons(mode = getCameraProjectionMode()) {
+  for (const button of cameraModeEls) {
+    button.classList.toggle("active", button.dataset.cameraMode === mode);
   }
-  syncCameraFocalControls(argPrimary);
+  syncCameraFocalControls(mode);
 }
 function syncCameraViewButtons(cameraView = cameraViewMode()) {
   for (const element of cameraViewEls) {
@@ -5566,16 +6021,16 @@ function syncCameraViewButtons(cameraView = cameraViewMode()) {
     disabled.disabled = cameraView !== "top";
   }
 }
-function syncCameraFocalControls(argPrimary = getCameraProjectionMode()) {
-  for (const disabled of cameraFocalLengthEls) {
-    syncControlValue(disabled, Math.round(getCameraFocalLength()));
-    disabled.disabled = argPrimary !== "perspective";
-    disabled.closest(".camera-focal-control")?.classList.toggle("is-disabled", disabled.disabled);
+function syncCameraFocalControls(mode = getCameraProjectionMode()) {
+  for (const inputEl of cameraFocalLengthEls) {
+    syncControlValue(inputEl, Math.round(getCameraFocalLength()));
+    inputEl.disabled = mode !== "perspective";
+    inputEl.closest(".camera-focal-control")?.classList.toggle("is-disabled", inputEl.disabled);
   }
 }
-function applyCameraFocalLength(isPerspectiveCamera = cameraCurrent, argSecondary = getCameraFocalLength()) {
-  if (isPerspectiveCamera?.isPerspectiveCamera) {
-    isPerspectiveCamera.setFocalLength(clamp(finite(argSecondary, 50), 18, 120));
+function applyCameraFocalLength(camera = cameraCurrent, focalLength = getCameraFocalLength()) {
+  if (camera?.isPerspectiveCamera) {
+    camera.setFocalLength(clamp(finite(focalLength, 50), 18, 120));
   }
 }
 function syncOrbitControls() {
@@ -5596,30 +6051,30 @@ function syncOrbitControls() {
     refreshLightPreview.disabled = true;
   }
 }
-function computeStudioPixelRatio(flag = false) {
-  if (isStageEmbed && flag && isAutoDiagramEmbed !== null && (!isStageWarmup || previewOrbitLocked)) {
+function computeStudioPixelRatio(isEmbedCapture = false) {
+  if (isStageEmbed && isEmbedCapture && isAutoDiagramEmbed !== null && (!isStageWarmup || previewOrbitLocked)) {
     return Math.min(window.devicePixelRatio || 1, 1.6) * ur * isAutoDiagramEmbed;
   }
   if (yt) {
-    const computedValue = Math.min(window.devicePixelRatio || 1, 1.6) * ur;
-    if (flag) {
-      return Math.min(computedValue, 1);
+    const baseRatio = Math.min(window.devicePixelRatio || 1, 1.6) * ur;
+    if (isEmbedCapture) {
+      return Math.min(baseRatio, 1);
     } else {
-      return computedValue;
+      return baseRatio;
     }
   }
-  const flagCurrent = isStageEmbed && isStageWarmup;
-  let value = Math.min(window.devicePixelRatio || 1, flag ? 1 : 1.6) * (isStageEmbed ? ur : 1);
-  if (isStageEmbed && (flag || flagCurrent)) {
+  const isWarmupEmbed = isStageEmbed && isStageWarmup;
+  let ratio = Math.min(window.devicePixelRatio || 1, isEmbedCapture ? 1 : 1.6) * (isStageEmbed ? ur : 1);
+  if (isStageEmbed && (isEmbedCapture || isWarmupEmbed)) {
     const {
-      cost: localValue,
-      budget: cost
+      cost: estimatedCost,
+      budget: costBudget
     } = estimateLightRenderCost();
-    if (localValue > cost) {
-      value = Math.min(value, clamp(Math.sqrt(cost / localValue) * 0.85, 0.5, 0.85));
+    if (estimatedCost > costBudget) {
+      ratio = Math.min(ratio, clamp(Math.sqrt(costBudget / estimatedCost) * 0.85, 0.5, 0.85));
     }
   }
-  return value;
+  return ratio;
 }
 const isRenderStatsTest = new URLSearchParams(window.location.search).has("render-stats-test");
 const isPerfDiagnosticsEnabled = new URLSearchParams(window.location.search).get("performance-diagnostics") === "1";
@@ -5670,24 +6125,24 @@ function pushBoundedTimingSample(isPerspectiveCamera, sampleMs) {
     }
   }
 }
-function averagePerfSample(list) {
-  if (list.length) {
-    return list.reduce((argPrimary, argSecondary) => argPrimary + argSecondary, 0) / list.length;
+function averagePerfSample(samples) {
+  if (samples.length) {
+    return samples.reduce((sum, sample) => sum + sample, 0) / samples.length;
   } else {
     return null;
   }
 }
-function percentileOfSorted(list, argSecondary) {
+function percentileOfSorted(list, percentile) {
   if (!list.length) {
     return null;
   }
-  const length = [...list].sort((argPrimary, argSecondary) => argPrimary - argSecondary);
-  const localValue = Math.min(length.length - 1, Math.max(0, Math.ceil(length.length * argSecondary) - 1));
-  return length[localValue];
+  const sorted = [...list].sort((left, right) => left - right);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * percentile) - 1));
+  return sorted[index];
 }
-function fitCameraToSelection(list, numericParam = 1) {
-  if (Number.isFinite(list)) {
-    return Number(list.toFixed(numericParam));
+function fitCameraToSelection(maybeNumber, digits = 1) {
+  if (Number.isFinite(maybeNumber)) {
+    return Number(maybeNumber.toFixed(digits));
   } else {
     return null;
   }
@@ -5806,17 +6261,17 @@ function fitCameraToSelectionCurrent(toFixed, Number) {
     pendingPhases.pendingPhases[toFixed] = (pendingPhases.pendingPhases[toFixed] || 0) + totalMs;
   }
 }
-function setPerfMotionActive(lastTick, flag = true) {
+function setPerfMotionActive(lastTick, isActive = true) {
   const floorSwitch = isPerfDiagnosticsEnabled && perfStats.floorSwitch;
   if (!!floorSwitch && !(performance.now() > floorSwitch.until)) {
-    if (!flag) {
+    if (!isActive) {
       floorSwitch.lastTick = null;
       return;
     }
     if (floorSwitch.lastTick != null) {
-      const computedValue = lastTick - floorSwitch.lastTick;
-      floorSwitch.maxTickMs = Math.max(floorSwitch.maxTickMs || 0, computedValue);
-      if (computedValue > 50) {
+      const tickMs = lastTick - floorSwitch.lastTick;
+      floorSwitch.maxTickMs = Math.max(floorSwitch.maxTickMs || 0, tickMs);
+      if (tickMs > 50) {
         floorSwitch.tickLongFrames = (floorSwitch.tickLongFrames || 0) + 1;
       }
     }
@@ -5824,24 +6279,24 @@ function setPerfMotionActive(lastTick, flag = true) {
     floorSwitch.checksSinceRender = (floorSwitch.checksSinceRender || 0) + 1;
   }
 }
-function recordPerfFloorSwitchSample(argPrimary, argSecondary, argTertiary) {
+function recordPerfFloorSwitchSample(nowMs, cpuRenderMs, isMotionFrame) {
   if (!isPerfDiagnosticsEnabled) {
     return;
   }
-  const value = perfStats;
-  const left = value.floorSwitch;
-  const last = performance.now();
-  if (left && last <= left.until) {
-    const renderGapMs = last - left.last;
-    left.last = last;
-    left.frames++;
-    if (renderGapMs > left.maxMs) {
-      left.worstFrame = {
+  const stats = perfStats;
+  const switchStats = stats.floorSwitch;
+  const sampledAt = performance.now();
+  if (switchStats && sampledAt <= switchStats.until) {
+    const renderGapMs = sampledAt - switchStats.last;
+    switchStats.last = sampledAt;
+    switchStats.frames++;
+    if (renderGapMs > switchStats.maxMs) {
+      switchStats.worstFrame = {
         renderGapMs,
-        cpuRenderMs: argSecondary,
-        checksSinceRender: left.checksSinceRender,
+        cpuRenderMs: cpuRenderMs,
+        checksSinceRender: switchStats.checksSinceRender,
         phases: {
-          ...left.pendingPhases
+          ...switchStats.pendingPhases
         },
         programs: renderer.info.programs?.length,
         geometries: renderer.info.memory.geometries,
@@ -5850,148 +6305,148 @@ function recordPerfFloorSwitchSample(argPrimary, argSecondary, argTertiary) {
         } : null
       };
     }
-    left.pendingPhases = {};
-    left.checksSinceRender = 0;
-    left.maxMs = Math.max(left.maxMs, renderGapMs);
+    switchStats.pendingPhases = {};
+    switchStats.checksSinceRender = 0;
+    switchStats.maxMs = Math.max(switchStats.maxMs, renderGapMs);
     if (renderGapMs > 50) {
-      left.longFrames++;
+      switchStats.longFrames++;
     }
-    left.cpuMs += argSecondary;
-    left.maxRenderCpuMs = Math.max(left.maxRenderCpuMs || 0, argSecondary);
-    if (argSecondary > 50) {
-      left.slowRenderCount = (left.slowRenderCount || 0) + 1;
+    switchStats.cpuMs += cpuRenderMs;
+    switchStats.maxRenderCpuMs = Math.max(switchStats.maxRenderCpuMs || 0, cpuRenderMs);
+    if (cpuRenderMs > 50) {
+      switchStats.slowRenderCount = (switchStats.slowRenderCount || 0) + 1;
     }
   }
-  if (argTertiary) {
-    pushBoundedTimingSample(value.cpuRenderTimes, argSecondary);
-    if (value.lastMotionRenderAt > 0) {
-      const computedValue = argPrimary - value.lastMotionRenderAt;
-      if (computedValue >= 2 && computedValue <= 250) {
-        pushBoundedTimingSample(value.frameIntervals, computedValue);
+  if (isMotionFrame) {
+    pushBoundedTimingSample(stats.cpuRenderTimes, cpuRenderMs);
+    if (stats.lastMotionRenderAt > 0) {
+      const frameInterval = nowMs - stats.lastMotionRenderAt;
+      if (frameInterval >= 2 && frameInterval <= 250) {
+        pushBoundedTimingSample(stats.frameIntervals, frameInterval);
       }
     }
-    value.lastMotionRenderAt = argPrimary;
+    stats.lastMotionRenderAt = nowMs;
   } else {
-    value.lastMotionRenderAt = 0;
+    stats.lastMotionRenderAt = 0;
   }
 }
 function collectSceneMeshStats() {
-  const value = new Set();
+  const materialSet = new Set();
   const meshes = {
     before: 0,
     after: 0,
     triangles: 0
   };
-  let count = 0;
-  let lights = 0;
-  let visibleLights = 0;
-  let activeSpotShadows = 0;
-  previewSceneCurrent?.traverse(light => {
-    if (light.isMesh) {
-      count += 1;
-      if (light.userData.runtimeFurnitureStats) {
-        for (const localValue of Object.keys(meshes)) {
-          meshes[localValue] += light.userData.runtimeFurnitureStats[localValue];
+  let meshCount = 0;
+  let lightCount = 0;
+  let visibleLightCount = 0;
+  let activeShadowCount = 0;
+  previewSceneCurrent?.traverse(node => {
+    if (node.isMesh) {
+      meshCount += 1;
+      if (node.userData.runtimeFurnitureStats) {
+        for (const statKey of Object.keys(meshes)) {
+          meshes[statKey] += node.userData.runtimeFurnitureStats[statKey];
         }
       }
-      const isArrayResult = Array.isArray(light.material) ? light.material : [light.material];
-      for (const flag of isArrayResult) {
-        if (flag) {
-          value.add(flag);
+      const materialList = Array.isArray(node.material) ? node.material : [node.material];
+      for (const material of materialList) {
+        if (material) {
+          materialSet.add(material);
         }
       }
     }
-    if (light.isLight) {
-      lights += 1;
-      if (light.visible !== false && finite(light.intensity, 0) > 0) {
-        visibleLights += 1;
+    if (node.isLight) {
+      lightCount += 1;
+      if (node.visible !== false && finite(node.intensity, 0) > 0) {
+        visibleLightCount += 1;
       }
-      if (light.isSpotLight && light.castShadow && light.visible !== false) {
-        activeSpotShadows += 1;
+      if (node.isSpotLight && node.castShadow && node.visible !== false) {
+        activeShadowCount += 1;
       }
     }
   });
   if (renderer?.domElement?.dataset.spotShadowMode === "atlas") {
-    activeSpotShadows = Math.max(activeSpotShadows, Math.floor(finite(renderer.domElement.dataset.activeSpotShadows, 0)));
+    activeShadowCount = Math.max(activeShadowCount, Math.floor(finite(renderer.domElement.dataset.activeSpotShadows, 0)));
   }
   const activeUserFixtures = collectVisibleLights().filter(({
     item: lightBrightness,
     group: enabled
   }) => enabled?.enabled !== false && finite(lightBrightness.lightBrightness, 0) > 0).length;
   return {
-    meshes: count,
-    materials: value.size,
-    lights,
-    visibleLights,
+    meshes: meshCount,
+    materials: materialSet.size,
+    lights: lightCount,
+    visibleLights: visibleLightCount,
     activeUserFixtures,
-    activeSpotShadows,
+    activeSpotShadows: activeShadowCount,
     runtimeFurniture: meshes
   };
 }
-function publishPerfHud(argPrimary = performance.now()) {
+function publishPerfHud(nowMs = performance.now()) {
   if (!isPerfDiagnosticsEnabled || !renderer || !perfStats.hud) {
     return;
   }
-  const frameIntervals = perfStats;
-  if (argPrimary - frameIntervals.lastPublishAt < PERF_HUD_PUBLISH_MS) {
+  const stats = perfStats;
+  if (nowMs - stats.lastPublishAt < PERF_HUD_PUBLISH_MS) {
     return;
   }
-  frameIntervals.lastPublishAt = argPrimary;
-  const domElement = renderer.domElement;
-  const flag = averagePerfSample(frameIntervals.frameIntervals);
-  const sorted = percentileOfSorted(frameIntervals.frameIntervals, 0.5);
-  const scene = collectSceneMeshStats();
-  const value = renderer.info.programs?.length;
-  const frame = {
+  stats.lastPublishAt = nowMs;
+  const canvasEl = renderer.domElement;
+  const avgFrameMs = averagePerfSample(stats.frameIntervals);
+  const medianFrameMs = percentileOfSorted(stats.frameIntervals, 0.5);
+  const sceneStats = collectSceneMeshStats();
+  const programCount = renderer.info.programs?.length;
+  const hudPayload = {
     enabled: true,
-    floorSwitch: frameIntervals.floorSwitch ? {
-      target: frameIntervals.floorSwitch.target,
-      frames: frameIntervals.floorSwitch.frames,
-      maxFrameMs: fitCameraToSelection(frameIntervals.floorSwitch.maxTickMs || 0, 2),
-      longFrames: frameIntervals.floorSwitch.tickLongFrames || 0,
-      maxRenderGapMs: fitCameraToSelection(frameIntervals.floorSwitch.maxMs, 2),
-      maxRenderCpuMs: fitCameraToSelection(frameIntervals.floorSwitch.maxRenderCpuMs || 0, 2),
-      slowRenderCount: frameIntervals.floorSwitch.slowRenderCount || 0,
-      phases: frameIntervals.floorSwitch.phases,
-      worstFrame: frameIntervals.floorSwitch.worstFrame,
-      averageCpuMs: fitCameraToSelection(frameIntervals.floorSwitch.cpuMs / Math.max(1, frameIntervals.floorSwitch.frames), 2)
+    floorSwitch: stats.floorSwitch ? {
+      target: stats.floorSwitch.target,
+      frames: stats.floorSwitch.frames,
+      maxFrameMs: fitCameraToSelection(stats.floorSwitch.maxTickMs || 0, 2),
+      longFrames: stats.floorSwitch.tickLongFrames || 0,
+      maxRenderGapMs: fitCameraToSelection(stats.floorSwitch.maxMs, 2),
+      maxRenderCpuMs: fitCameraToSelection(stats.floorSwitch.maxRenderCpuMs || 0, 2),
+      slowRenderCount: stats.floorSwitch.slowRenderCount || 0,
+      phases: stats.floorSwitch.phases,
+      worstFrame: stats.floorSwitch.worstFrame,
+      averageCpuMs: fitCameraToSelection(stats.floorSwitch.cpuMs / Math.max(1, stats.floorSwitch.frames), 2)
     } : null,
-    motionActive: frameIntervals.motionActive,
+    motionActive: stats.motionActive,
     frame: {
-      samples: frameIntervals.frameIntervals.length,
-      averageFps: fitCameraToSelection(flag ? 1000 / flag : null),
-      medianFps: fitCameraToSelection(sorted ? 1000 / sorted : null),
-      p95Ms: fitCameraToSelection(percentileOfSorted(frameIntervals.frameIntervals, 0.95), 2)
+      samples: stats.frameIntervals.length,
+      averageFps: fitCameraToSelection(avgFrameMs ? 1000 / avgFrameMs : null),
+      medianFps: fitCameraToSelection(medianFrameMs ? 1000 / medianFrameMs : null),
+      p95Ms: fitCameraToSelection(percentileOfSorted(stats.frameIntervals, 0.95), 2)
     },
     cpuRenderMs: {
-      samples: frameIntervals.cpuRenderTimes.length,
-      average: fitCameraToSelection(averagePerfSample(frameIntervals.cpuRenderTimes), 2),
-      p95: fitCameraToSelection(percentileOfSorted(frameIntervals.cpuRenderTimes, 0.95), 2)
+      samples: stats.cpuRenderTimes.length,
+      average: fitCameraToSelection(averagePerfSample(stats.cpuRenderTimes), 2),
+      p95: fitCameraToSelection(percentileOfSorted(stats.cpuRenderTimes, 0.95), 2)
     },
     gpuRenderMs: {
-      supported: !!frameIntervals.gpuExtension,
-      status: frameIntervals.gpuStatus,
-      samples: frameIntervals.gpuRenderTimes.length,
-      average: fitCameraToSelection(averagePerfSample(frameIntervals.gpuRenderTimes), 2),
-      p95: fitCameraToSelection(percentileOfSorted(frameIntervals.gpuRenderTimes, 0.95), 2)
+      supported: !!stats.gpuExtension,
+      status: stats.gpuStatus,
+      samples: stats.gpuRenderTimes.length,
+      average: fitCameraToSelection(averagePerfSample(stats.gpuRenderTimes), 2),
+      p95: fitCameraToSelection(percentileOfSorted(stats.gpuRenderTimes, 0.95), 2)
     },
     render: {
-      calls: Number(domElement.dataset.renderCalls || 0),
-      triangles: Number(domElement.dataset.renderTriangles || 0),
-      lines: Number(domElement.dataset.renderLines || 0)
+      calls: Number(canvasEl.dataset.renderCalls || 0),
+      triangles: Number(canvasEl.dataset.renderTriangles || 0),
+      lines: Number(canvasEl.dataset.renderLines || 0)
     },
     memory: {
       geometries: Number(renderer.info.memory.geometries || 0),
       textures: Number(renderer.info.memory.textures || 0),
-      programs: Number.isFinite(value) ? value : null
+      programs: Number.isFinite(programCount) ? programCount : null
     },
-    scene,
+    scene: sceneStats,
     viewport: {
       devicePixelRatio: fitCameraToSelection(renderer.getPixelRatio(), 2),
-      canvasWidth: domElement.width,
-      canvasHeight: domElement.height,
-      cssWidth: Math.round(domElement.clientWidth),
-      cssHeight: Math.round(domElement.clientHeight)
+      canvasWidth: canvasEl.width,
+      canvasHeight: canvasEl.height,
+      cssWidth: Math.round(canvasEl.clientWidth),
+      cssHeight: Math.round(canvasEl.clientHeight)
     },
     lighting: {
       adaptiveCacheEnabled: previewQualityReady,
@@ -5999,19 +6454,19 @@ function publishPerfHud(argPrimary = performance.now()) {
       cacheReady: lightCacheReady
     }
   };
-  const perfFpsSummaryText = frame.frame.samples ? frame.frame.averageFps + " / " + frame.frame.medianFps + " FPS · P95 " + frame.frame.p95Ms + " ms" : "移动镜头后采样";
-  const perfGpuSummaryText = frame.gpuRenderMs.samples ? frame.gpuRenderMs.average + " ms · P95 " + frame.gpuRenderMs.p95 + " ms" : frame.gpuRenderMs.status;
-  frameIntervals.hud.innerHTML = ["<strong>3D 性能诊断</strong><span>" + (frameIntervals.motionActive ? "交互 / 阻尼中" : "空闲") + "</span>", "<span>帧率</span><b>" + perfFpsSummaryText + "</b>", "<span>CPU 提交</span><b>" + (frame.cpuRenderMs.average ?? "—") + " ms · P95 " + (frame.cpuRenderMs.p95 ?? "—") + " ms</b>", "<span>GPU 渲染</span><b>" + perfGpuSummaryText + "</b>", "<span>绘制</span><b>" + frame.render.calls + " calls · " + frame.render.triangles.toLocaleString() + " tris</b>", "<span>场景</span><b>" + scene.meshes + " mesh · " + scene.materials + " 材质实例</b>", "<span>资源</span><b>" + frame.memory.geometries + " 几何 · " + frame.memory.textures + " 纹理 · " + (frame.memory.programs ?? "—") + " 程序</b>", "<span>灯光</span><b>" + scene.visibleLights + "/" + scene.lights + " 可见 · " + scene.activeUserFixtures + " 用户灯 · " + scene.activeSpotShadows + " 阴影</b>", "<span>画布</span><b>" + frame.viewport.canvasWidth + "×" + frame.viewport.canvasHeight + " · DPR " + frame.viewport.devicePixelRatio + "</b>", "<span>光照缓存</span><b>" + (frame.lighting.adaptiveCacheEnabled ? "自适应" : frame.lighting.residentCacheMode ? "驻留" : "实时") + "</b>"].join("");
-  document.documentElement.dataset.performanceDiagnostics = JSON.stringify(frame);
+  const fpsText = hudPayload.frame.samples ? hudPayload.frame.averageFps + " / " + hudPayload.frame.medianFps + " FPS · P95 " + hudPayload.frame.p95Ms + " ms" : "移动镜头后采样";
+  const gpuText = hudPayload.gpuRenderMs.samples ? hudPayload.gpuRenderMs.average + " ms · P95 " + hudPayload.gpuRenderMs.p95 + " ms" : hudPayload.gpuRenderMs.status;
+  stats.hud.innerHTML = ["<strong>3D 性能诊断</strong><span>" + (stats.motionActive ? "交互 / 阻尼中" : "空闲") + "</span>", "<span>帧率</span><b>" + fpsText + "</b>", "<span>CPU 提交</span><b>" + (hudPayload.cpuRenderMs.average ?? "—") + " ms · P95 " + (hudPayload.cpuRenderMs.p95 ?? "—") + " ms</b>", "<span>GPU 渲染</span><b>" + gpuText + "</b>", "<span>绘制</span><b>" + hudPayload.render.calls + " calls · " + hudPayload.render.triangles.toLocaleString() + " tris</b>", "<span>场景</span><b>" + sceneStats.meshes + " mesh · " + sceneStats.materials + " 材质实例</b>", "<span>资源</span><b>" + hudPayload.memory.geometries + " 几何 · " + hudPayload.memory.textures + " 纹理 · " + (hudPayload.memory.programs ?? "—") + " 程序</b>", "<span>灯光</span><b>" + sceneStats.visibleLights + "/" + sceneStats.lights + " 可见 · " + sceneStats.activeUserFixtures + " 用户灯 · " + sceneStats.activeSpotShadows + " 阴影</b>", "<span>画布</span><b>" + hudPayload.viewport.canvasWidth + "×" + hudPayload.viewport.canvasHeight + " · DPR " + hudPayload.viewport.devicePixelRatio + "</b>", "<span>光照缓存</span><b>" + (hudPayload.lighting.adaptiveCacheEnabled ? "自适应" : hudPayload.lighting.residentCacheMode ? "驻留" : "实时") + "</b>"].join("");
+  document.documentElement.dataset.performanceDiagnostics = JSON.stringify(hudPayload);
 }
-function updatePerfMotionState(argPrimary, motionActive) {
+function updatePerfMotionState(framesPerSecond, motionActive) {
   if (isPerfDiagnosticsEnabled) {
     perfStats.motionActive = motionActive;
     if (!motionActive) {
       perfStats.lastMotionRenderAt = 0;
     }
     collectGpuTimingResults();
-    publishPerfHud(argPrimary);
+    publishPerfHud(framesPerSecond);
   }
 }
 const LIGHT_CACHE_TILE_MS = 150;
@@ -6031,96 +6486,96 @@ function hasPendingModelLoads() {
   return active.active > 0 || active.queued > 0 || modelsLoading || modelLoadStatusTimerCurrent !== null || isSceneRebuildQueued;
 }
 let Ds = null;
-function capturePreviewCanvas(argPrimary, argSecondary, argTertiary) {
+function capturePreviewCanvas(cacheKey, bitmapCanvas, shouldCapture) {
   Ds?.cancel();
-  const blob = orbitControls;
-  const frame = {
+  const controls = orbitControls;
+  const captureJob = {
     cancelled: false,
     frame: null,
     timer: null,
     idle: null,
     cancel: null
   };
-  const imageData = () => !frame.cancelled && argTertiary();
-  const callback = () => {
-    frame.cancelled = true;
-    if (frame.frame !== null) {
-      window.cancelAnimationFrame(frame.frame);
+  const isStillActive = () => !captureJob.cancelled && shouldCapture();
+  const cancelCapture = () => {
+    captureJob.cancelled = true;
+    if (captureJob.frame !== null) {
+      window.cancelAnimationFrame(captureJob.frame);
     }
-    if (frame.timer !== null) {
-      window.clearTimeout(frame.timer);
+    if (captureJob.timer !== null) {
+      window.clearTimeout(captureJob.timer);
     }
-    if (frame.idle !== null) {
-      window.cancelIdleCallback?.(frame.idle);
+    if (captureJob.idle !== null) {
+      window.cancelIdleCallback?.(captureJob.idle);
     }
-    frame.frame = frame.timer = frame.idle = null;
-    window.removeEventListener("pagehide", callback);
-    window.removeEventListener("pointerdown", callback, true);
-    window.removeEventListener("wheel", callback, true);
-    blob?.removeEventListener("start", callback);
-    blob?.removeEventListener("change", callback);
-    if (argSecondary) {
-      argSecondary.width = argSecondary.height = 0;
-      argSecondary = null;
+    captureJob.frame = captureJob.timer = captureJob.idle = null;
+    window.removeEventListener("pagehide", cancelCapture);
+    window.removeEventListener("pointerdown", cancelCapture, true);
+    window.removeEventListener("wheel", cancelCapture, true);
+    controls?.removeEventListener("start", cancelCapture);
+    controls?.removeEventListener("change", cancelCapture);
+    if (bitmapCanvas) {
+      bitmapCanvas.width = bitmapCanvas.height = 0;
+      bitmapCanvas = null;
     }
-    if (Ds === frame) {
+    if (Ds === captureJob) {
       Ds = null;
     }
   };
-  frame.cancel = callback;
-  Ds = frame;
-  const helperFn = argPrimary => window.HABridgeLog?.error(argPrimary, {
+  captureJob.cancel = cancelCapture;
+  Ds = captureJob;
+  const logCacheWriteError = loggedError => window.HABridgeLog?.error(loggedError, {
     phase: "interaction3d-cache-write"
   });
-  const helperFnCurrent = () => {
-    frame.idle = null;
+  const writeCacheWhenIdle = () => {
+    captureJob.idle = null;
     Promise.resolve().then(() => {
-      if (imageData()) {
-        return cache?.write(argPrimary, argSecondary, imageData);
+      if (isStillActive()) {
+        return cache?.write(cacheKey, bitmapCanvas, isStillActive);
       }
-    }).catch(helperFn).finally(callback);
+    }).catch(logCacheWriteError).finally(cancelCapture);
   };
   try {
-    window.addEventListener("pagehide", callback, {
+    window.addEventListener("pagehide", cancelCapture, {
       once: true
     });
-    window.addEventListener("pointerdown", callback, {
+    window.addEventListener("pointerdown", cancelCapture, {
       capture: true,
       passive: true
     });
-    window.addEventListener("wheel", callback, {
+    window.addEventListener("wheel", cancelCapture, {
       capture: true,
       passive: true
     });
-    blob?.addEventListener("start", callback);
-    blob?.addEventListener("change", callback);
-    frame.frame = window.requestAnimationFrame(() => {
-      frame.frame = null;
-      if (!imageData()) {
-        callback();
+    controls?.addEventListener("start", cancelCapture);
+    controls?.addEventListener("change", cancelCapture);
+    captureJob.frame = window.requestAnimationFrame(() => {
+      captureJob.frame = null;
+      if (!isStillActive()) {
+        cancelCapture();
         return;
       }
-      frame.timer = window.setTimeout(() => {
-        frame.timer = null;
-        if (!imageData()) {
-          callback();
+      captureJob.timer = window.setTimeout(() => {
+        captureJob.timer = null;
+        if (!isStillActive()) {
+          cancelCapture();
           return;
         }
         try {
           if (typeof window.requestIdleCallback == "function") {
-            frame.idle = window.requestIdleCallback(helperFnCurrent);
+            captureJob.idle = window.requestIdleCallback(writeCacheWhenIdle);
           } else {
-            helperFnCurrent();
+            writeCacheWhenIdle();
           }
-        } catch (localValue) {
-          callback();
-          helperFn(localValue);
+        } catch (writeError) {
+          cancelCapture();
+          logCacheWriteError(writeError);
         }
       }, 180);
     });
-  } catch (localValue) {
-    callback();
-    helperFn(localValue);
+  } catch (setupError) {
+    cancelCapture();
+    logCacheWriteError(setupError);
   }
 }
 async function finishStageSessionWarmup() {
@@ -6175,11 +6630,11 @@ async function finishStageSessionWarmup() {
       flag = rect;
       rect.width = width;
       rect.height = height;
-      const isDrawImage = rect.getContext("2d");
-      if (!isDrawImage) {
+      const snapshotContext = rect.getContext("2d");
+      if (!snapshotContext) {
         throw new Error("当前浏览器无法创建静止画面缓存。");
       }
-      isDrawImage.drawImage(domElement, 0, 0);
+      snapshotContext.drawImage(domElement, 0, 0);
     }
     if (!onComplete()) {
       return;
@@ -6227,33 +6682,33 @@ function blitLightCacheToOverlay() {
   if (!lightCacheReady || previewLightCache.hidden) {
     return;
   }
-  const isClearRect = previewLightCache.getContext("2d");
-  if (isClearRect) {
-    isClearRect.clearRect(0, 0, previewLightCache.width, previewLightCache.height);
+  const previewContext = previewLightCache.getContext("2d");
+  if (previewContext) {
+    previewContext.clearRect(0, 0, previewLightCache.width, previewLightCache.height);
     for (const [value, tileCanvas] of map) {
       const clampCurrent = clamp(finite(pendingModelLoads.get(value), 0), 0, 1);
       if (!(clampCurrent <= 0.001)) {
-        isClearRect.save();
-        isClearRect.globalAlpha = clampCurrent;
-        isClearRect.drawImage(tileCanvas, 0, 0);
-        isClearRect.restore();
+        previewContext.save();
+        previewContext.globalAlpha = clampCurrent;
+        previewContext.drawImage(tileCanvas, 0, 0);
+        previewContext.restore();
       }
     }
   }
 }
-function scheduleLightCacheForGroups(argPrimary, cacheDurationMs = LIGHT_CACHE_TILE_MS) {
-  const value = [...new Set(argPrimary)].filter(Boolean);
-  if (!value.length) {
+function scheduleLightCacheForGroups(requestedGroupIds, cacheDurationMs = LIGHT_CACHE_TILE_MS) {
+  const groupIds = [...new Set(requestedGroupIds)].filter(Boolean);
+  if (!groupIds.length) {
     return;
   }
-  const flag = value.map(argPrimary => ({
-    groupId: previewScopedItemKey(activeFloorId, argPrimary),
-    from: clamp(finite(pendingModelLoads.get(previewScopedItemKey(activeFloorId, argPrimary)), findLightGroupById(argPrimary)?.enabled === false ? 0 : 1), 0, 1),
-    to: findLightGroupById(argPrimary)?.enabled === false ? 0 : 1
+  const groupFades = groupIds.map(rawGroupId => ({
+    groupId: previewScopedItemKey(activeFloorId, rawGroupId),
+    from: clamp(finite(pendingModelLoads.get(previewScopedItemKey(activeFloorId, rawGroupId)), findLightGroupById(rawGroupId)?.enabled === false ? 0 : 1), 0, 1),
+    to: findLightGroupById(rawGroupId)?.enabled === false ? 0 : 1
   }));
   cancelAnimationFrame(recentFrameMsSamples);
   if (!lightCacheReady) {
-    for (const groupId of flag) {
+    for (const groupId of groupFades) {
       pendingModelLoads.set(groupId.groupId, groupId.to);
     }
     if (!isBakingLightCache) {
@@ -6261,15 +6716,15 @@ function scheduleLightCacheForGroups(argPrimary, cacheDurationMs = LIGHT_CACHE_T
     }
     return;
   }
-  const list = performance.now();
-  const nowResult = argPrimary => {
-    const clampedValue = clamp((argPrimary - list) / cacheDurationMs, 0, 1);
-    const computedValue = clampedValue * clampedValue * (3 - clampedValue * 2);
-    for (const from of flag) {
-      pendingModelLoads.set(from.groupId, from.from + (from.to - from.from) * computedValue);
+  const startedAt = performance.now();
+  const nowResult = nowMs => {
+    const progress = clamp((nowMs - startedAt) / cacheDurationMs, 0, 1);
+    const eased = progress * progress * (3 - progress * 2);
+    for (const fade of groupFades) {
+      pendingModelLoads.set(fade.groupId, fade.from + (fade.to - fade.from) * eased);
     }
     blitLightCacheToOverlay();
-    if (clampedValue < 1) {
+    if (progress < 1) {
       recentFrameMsSamples = requestAnimationFrame(nowResult);
     } else {
       recentFrameMsSamples = 0;
@@ -6277,72 +6732,72 @@ function scheduleLightCacheForGroups(argPrimary, cacheDurationMs = LIGHT_CACHE_T
   };
   recentFrameMsSamples = requestAnimationFrame(nowResult);
 }
-function findLightGroupById(argPrimary) {
-  return floorSceneCurrent.lightGroups?.find(item => item.id === argPrimary) || null;
+function findLightGroupById(lightGroupId) {
+  return floorSceneCurrent.lightGroups?.find(lightGroup => lightGroup.id === lightGroupId) || null;
 }
-function warmLightCacheMeshesForGroups(argPrimary, cacheDurationMs = LIGHT_CACHE_TILE_MS) {
+function warmLightCacheMeshesForGroups(lightGroupIds, cacheDurationMs = LIGHT_CACHE_TILE_MS) {
   if (!worldGroup) {
     return false;
   }
-  const value = new Set(argPrimary);
+  const groupIds = new Set(lightGroupIds);
   const canWarmLightCache = isPreviewQualityReady() && !stageSession;
   const warmCacheMeshList = [];
-  worldGroup.traverse(userData => {
-    if (!userData.isLight || !value.has(userData.userData?.lightGroupId)) {
+  worldGroup.traverse(object => {
+    if (!object.isLight || !groupIds.has(object.userData?.lightGroupId)) {
       return;
     }
-    const to = findLightGroupById(userData.userData.lightGroupId)?.enabled !== false && !canWarmLightCache ? finite(userData.userData.lightOnIntensity, 0) : 0;
-    if (to > 0) {
-      userData.visible = true;
+    const targetIntensity = findLightGroupById(object.userData.lightGroupId)?.enabled !== false && !canWarmLightCache ? finite(object.userData.lightOnIntensity, 0) : 0;
+    if (targetIntensity > 0) {
+      object.visible = true;
     }
     warmCacheMeshList.push({
-      object: userData,
-      from: finite(userData.intensity, 0),
-      to: to
+      object: object,
+      from: finite(object.intensity, 0),
+      to: targetIntensity
     });
   });
   if (!warmCacheMeshList.length) {
     return false;
   }
   if (warmCacheMeshList.some(({
-    to: argPrimary
-  }) => argPrimary > 0)) {
+    to: groupIntensity
+  }) => groupIntensity > 0)) {
     syncSpotShadowCastingLights(worldGroup, {
       rebuildAtlas: false
     });
   }
   cancelAnimationFrame(is);
-  const flag = performance.now();
-  const helperFn = argPrimary => {
-    const clampedValue = clamp((argPrimary - flag) / cacheDurationMs, 0, 1);
-    const computedValue = clampedValue * clampedValue * (3 - clampedValue * 2);
-    for (const from of warmCacheMeshList) {
-      from.object.intensity = from.from + (from.to - from.from) * computedValue;
+  const startedAt = performance.now();
+  const advanceFade = nowMs => {
+    const progress = clamp((nowMs - startedAt) / cacheDurationMs, 0, 1);
+    const eased = progress * progress * (3 - progress * 2);
+    for (const mesh of warmCacheMeshList) {
+      mesh.object.intensity = mesh.from + (mesh.to - mesh.from) * eased;
     }
     updateLightPreview();
-    if (clampedValue < 1) {
-      is = requestAnimationFrame(helperFn);
+    if (progress < 1) {
+      is = requestAnimationFrame(advanceFade);
     } else {
       is = 0;
-      let boolFlag = false;
-      for (const to of warmCacheMeshList) {
-        if (!(to.to > 0)) {
-          to.object.visible = false;
-          boolFlag = true;
+      let needsSync = false;
+      for (const entry of warmCacheMeshList) {
+        if (!(entry.to > 0)) {
+          entry.object.visible = false;
+          needsSync = true;
         }
       }
-      if (boolFlag) {
+      if (needsSync) {
         syncSpotShadowCastingLights(worldGroup, {
           rebuildAtlas: false
         });
       }
     }
   };
-  is = requestAnimationFrame(helperFn);
+  is = requestAnimationFrame(advanceFade);
   return true;
 }
-function requestLightGroupCacheRefresh(argPrimary) {
-  const filtered = [...new Set(argPrimary)].filter(Boolean);
+function requestLightGroupCacheRefresh(groupKeys) {
+  const filtered = [...new Set(groupKeys)].filter(Boolean);
   if (isPreviewQualityReady() && !stageSession) {
     scheduleLightCacheForGroups(filtered);
   } else if (!warmLightCacheMeshesForGroups(filtered)) {
@@ -6417,15 +6872,15 @@ function rebuildWorldPreserveLights() {
 function collectWorldItemKeys() {
   const lookupMap = new Map();
   worldGroup?.traverse(object3d => {
-    const argPrimary = object3d.userData?.lightItemId;
-    if (!object3d.isLight || !argPrimary) {
+    const lightItemId = object3d.userData?.lightItemId;
+    if (!object3d.isLight || !lightItemId) {
       return;
     }
-    const value = layerScopedKey(object3d.userData?.lightFloorId, argPrimary);
-    if (!lookupMap.has(value)) {
-      lookupMap.set(value, []);
+    const layerKey = layerScopedKey(object3d.userData?.lightFloorId, lightItemId);
+    if (!lookupMap.has(layerKey)) {
+      lookupMap.set(layerKey, []);
     }
-    lookupMap.get(value).push(object3d);
+    lookupMap.get(layerKey).push(object3d);
   });
   return lookupMap;
 }
@@ -6448,74 +6903,74 @@ function ensureWorldItemsCached(entry) {
   hasVar = collectWorldItemKeys();
   return hasVar;
 }
-function runWithResidentFloorCache(argPrimary, has) {
-  const localValue = floorSceneCurrent;
-  const localValueCurrent = activeFloorId;
-  const localValueNext = residentCacheMode;
-  const comparisonFlag = getPreviewFloorModeCurrent() === "all";
+function runWithResidentFloorCache(entries, lightCache) {
+  const savedScene = floorSceneCurrent;
+  const savedFloorId = activeFloorId;
+  const savedCacheMode = residentCacheMode;
+  const isAllFloors = getPreviewFloorModeCurrent() === "all";
   try {
     residentCacheMode = true;
     for (const {
-      floor: id,
-      item: x28,
-      itemKey: localValue
-    } of argPrimary) {
-      if (has.has(localValue) || !comparisonFlag && id.id !== localValueCurrent) {
+      floor: floorRecord,
+      item: item,
+      itemKey: itemKey
+    } of entries) {
+      if (lightCache.has(itemKey) || !isAllFloors && floorRecord.id !== savedFloorId) {
         continue;
       }
-      const addedObject = comparisonFlag ? worldGroup?.children.find(userData => userData.userData?.floorId === id.id) : worldGroup;
+      const addedObject = isAllFloors ? worldGroup?.children.find(existingLayer => existingLayer.userData?.floorId === floorRecord.id) : worldGroup;
       if (!addedObject) {
         continue;
       }
-      floorSceneCurrent = id.scene;
-      activeFloorId = id.id;
+      floorSceneCurrent = floorRecord.scene;
+      activeFloorId = floorRecord.id;
       const pixelsPerMeterValue = pixelsPerMeter();
       if (!pixelsPerMeterValue) {
         continue;
       }
-      const minX = getPreviewFloorMode();
-      const conditionalValue = comparisonFlag ? finite(id.originX, 0) : (minX.minX + minX.maxX) / 2;
-      const conditionalValueCurrent = comparisonFlag ? finite(id.originY, 0) : (minX.minY + minX.maxY) / 2;
-      const userData = new THREE.Group();
-      buildWallCornerCaps(userData, x28, shadowCastingLightIdSet());
-      userData.position.set((x28.x - conditionalValue) / pixelsPerMeterValue, x28.elevation || 0, (x28.y - conditionalValueCurrent) / pixelsPerMeterValue);
-      instanceMergeIdenticalItems(userData, x28);
-      userData.userData.modelLayer = "lights";
-      userData.userData.exportRole = "plan";
-      addedObject.add(userData);
+      const planBounds = getPreviewFloorMode();
+      const originX = isAllFloors ? finite(floorRecord.originX, 0) : (planBounds.minX + planBounds.maxX) / 2;
+      const originY = isAllFloors ? finite(floorRecord.originY, 0) : (planBounds.minY + planBounds.maxY) / 2;
+      const layerGroup = new THREE.Group();
+      buildWallCornerCaps(layerGroup, item, shadowCastingLightIdSet());
+      layerGroup.position.set((item.x - originX) / pixelsPerMeterValue, item.elevation || 0, (item.y - originY) / pixelsPerMeterValue);
+      instanceMergeIdenticalItems(layerGroup, item);
+      layerGroup.userData.modelLayer = "lights";
+      layerGroup.userData.exportRole = "plan";
+      addedObject.add(layerGroup);
       if (isStageEmbed) {
-        cacheObjectTransforms(userData, THREE.Object3D);
+        cacheObjectTransforms(layerGroup, THREE.Object3D);
       }
-      const push = [];
-      userData.traverse(isLight => {
+      const lights = [];
+      layerGroup.traverse(isLight => {
         if (isLight.isLight) {
-          push.push(isLight);
+          lights.push(isLight);
         }
       });
-      if (push.length) {
-        has.set(localValue, push);
+      if (lights.length) {
+        lightCache.set(itemKey, lights);
       }
     }
   } finally {
-    floorSceneCurrent = localValue;
-    activeFloorId = localValueCurrent;
-    residentCacheMode = localValueNext;
+    floorSceneCurrent = savedScene;
+    activeFloorId = savedFloorId;
+    residentCacheMode = savedCacheMode;
   }
   syncSpotShadowCastingLights(worldGroup, {
     rebuildAtlas: false
   });
-  return has;
+  return lightCache;
 }
-function setGroupVisibilityByKey(argPrimary, argSecondary = "") {
-  for (const [localValue, localValueCurrent] of argPrimary) {
-    const visible = localValue === argSecondary;
-    for (const shadow of localValueCurrent) {
-      shadow.visible = visible;
-      shadow.intensity = visible ? finite(shadow.userData?.lightOnIntensity, 0) : 0;
-      if (shadow.isSpotLight) {
-        shadow.castShadow = visible;
-        if (visible && shadow.shadow && !shadow.shadow.map) {
-          shadow.shadow.needsUpdate = true;
+function setGroupVisibilityByKey(lightGroups, activeKey = "") {
+  for (const [key, lights] of lightGroups) {
+    const visible = key === activeKey;
+    for (const light of lights) {
+      light.visible = visible;
+      light.intensity = visible ? finite(light.userData?.lightOnIntensity, 0) : 0;
+      if (light.isSpotLight) {
+        light.castShadow = visible;
+        if (visible && light.shadow && !light.shadow.map) {
+          light.shadow.needsUpdate = true;
         }
       }
     }
@@ -6530,13 +6985,13 @@ function enabledVisibleLightKeys() {
     itemKey
   }) => itemKey));
 }
-function syncLightGroupVisibility(argPrimary) {
-  const value = enabledVisibleLightKeys();
-  for (const [groupKey, lights] of argPrimary) {
-    const flag = value.has(groupKey);
+function syncLightGroupVisibility(lightsByGroup) {
+  const enabledGroupKeys = enabledVisibleLightKeys();
+  for (const [groupKey, lights] of lightsByGroup) {
+    const isGroupEnabled = enabledGroupKeys.has(groupKey);
     for (const light of lights) {
-      light.visible = flag;
-      light.intensity = flag ? finite(light.userData?.lightOnIntensity, 0) : 0;
+      light.visible = isGroupEnabled;
+      light.intensity = isGroupEnabled ? finite(light.userData?.lightOnIntensity, 0) : 0;
       if (light.isSpotLight) {
         light.castShadow = false;
       }
@@ -6606,23 +7061,23 @@ function showPreviewRenderShield({
 }
 function waitTwoAnimationFrames() {
   syncPreviewRenderShield();
-  return new Promise(argPrimary => requestAnimationFrame(() => requestAnimationFrame(argPrimary)));
+  return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
-function createOffscreenCanvas(flag, height) {
-  const value = document.createElement("canvas");
-  value.width = flag;
-  value.height = height;
-  const drawImage = value.getContext("2d", {
+function createOffscreenCanvas(width, height) {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d", {
     willReadFrequently: true
   });
-  if (!drawImage) {
+  if (!ctx) {
     throw new Error("当前浏览器无法创建多灯缓存画布。");
   }
-  drawImage.drawImage(renderer.domElement, 0, 0, flag, height);
-  return drawImage.getImageData(0, 0, flag, height);
+  ctx.drawImage(renderer.domElement, 0, 0, width, height);
+  return ctx.getImageData(0, 0, width, height);
 }
 function warmPreviewRenderer() {
-  for (let value = 0; value < 3; value += 1) {
+  for (let frame = 0; frame < 3; frame += 1) {
     renderer.render(previewSceneCurrent, cameraCurrent);
   }
 }
@@ -6630,21 +7085,21 @@ function yieldToScheduler() {
   if (globalThis.scheduler?.yield) {
     return globalThis.scheduler.yield();
   } else {
-    return new Promise(argPrimary => requestAnimationFrame(() => argPrimary()));
+    return new Promise(resolve => requestAnimationFrame(() => resolve()));
   }
 }
 function yieldToIdle() {
   if (globalThis.scheduler?.yield) {
     return globalThis.scheduler.yield();
   } else if (globalThis.requestIdleCallback) {
-    return new Promise(argPrimary => requestIdleCallback(() => argPrimary(), {
+    return new Promise(resolveIdle => requestIdleCallback(() => resolveIdle(), {
       timeout: 80
     }));
   } else {
-    return new Promise(argPrimary => requestAnimationFrame(() => argPrimary()));
+    return new Promise(resolveFrame => requestAnimationFrame(() => resolveFrame()));
   }
 }
-function scheduleAdaptiveQuality(numericParam = 420) {
+function scheduleAdaptiveQuality(delayMs = 420) {
   if ((!isStageEmbed || !!Vo) && (!isStageEmbed || !cache?.closed) && !!renderer && !!worldGroup && !stageSession && !previewOrbitLocked && !isLeavingStudio && !isBakingLightCache && !isCapturingFrame && !isStageWarmup && !!isPreviewQualityReady()) {
     window.clearTimeout(stageSessionEndTimer);
     stageSessionEndTimer = window.setTimeout(() => {
@@ -6655,7 +7110,7 @@ function scheduleAdaptiveQuality(numericParam = 420) {
         return;
       }
       endStageSession();
-    }, numericParam);
+    }, delayMs);
   }
 }
 function markPreviewQualityDirty() {
@@ -6691,14 +7146,14 @@ async function endStageSession() {
   let flag = false;
   syncOrbitControls();
   try {
-    const isClearRect = previewLightCache.getContext("2d");
-    if (!isClearRect) {
+    const previewContext = previewLightCache.getContext("2d");
+    if (!previewContext) {
       throw new Error("当前浏览器无法显示多灯缓存。");
     }
     if (previewLightCache.hidden || !lightCacheReady || previewLightCache.width !== width || previewLightCache.height !== height) {
       previewLightCache.width = width;
       previewLightCache.height = height;
-      isClearRect.clearRect(0, 0, width, height);
+      previewContext.clearRect(0, 0, width, height);
     }
     const el = document.createElement("canvas");
     el.width = width;
@@ -6842,15 +7297,15 @@ function scheduleLeaveStudio() {
     }
   }, 120);
 }
-function setPreviewPixelRatio(argPrimary, {
+function setPreviewPixelRatio(pixelRatio, {
   preserveLightCache: preserveLightCache = false
 } = {}) {
   if (!renderer || stageSession && !isAutoDiagramEmbedCurrent) {
     return;
   }
-  const value = stageSession ? stageEmbedPixelRatio(argPrimary) : computeStudioPixelRatio(argPrimary);
-  if (Math.abs(renderer.getPixelRatio() - value) > 0.000001) {
-    renderer.setPixelRatio(value);
+  const targetRatio = stageSession ? stageEmbedPixelRatio(pixelRatio) : computeStudioPixelRatio(pixelRatio);
+  if (Math.abs(renderer.getPixelRatio() - targetRatio) > 0.000001) {
+    renderer.setPixelRatio(targetRatio);
   }
   requestRender({
     preserveLightCache: preserveLightCache
@@ -6926,11 +7381,11 @@ function activeFixedCameraView() {
     return floorSceneCurrent.settings?.fixedCameraView;
   }
 }
-function setActiveFixedCameraView(argPrimary) {
+function setActiveFixedCameraView(cameraView) {
   if (getPreviewFloorModeCurrent() === "all") {
-    projectDocCurrent.combinedFixedCameraView = argPrimary;
+    projectDocCurrent.combinedFixedCameraView = cameraView;
   } else {
-    floorSceneCurrent.settings.fixedCameraView = argPrimary;
+    floorSceneCurrent.settings.fixedCameraView = cameraView;
   }
 }
 function createOrbitControls(view) {
@@ -6973,30 +7428,30 @@ function createOrbitControls(view) {
 const am = 0.02;
 const sm = 0.32;
 const lm = 0.006;
-function getCameraPose(isPerspectiveCamera = cameraCurrent, argSecondary = orbitControls?.target) {
-  if (!isPerspectiveCamera || !argSecondary) {
+function getCameraPose(camera = cameraCurrent, target = orbitControls?.target) {
+  if (!camera || !target) {
     return false;
   }
-  const localValue = Math.max(isPerspectiveCamera.position.distanceTo(argSecondary), 1);
-  const near = isPerspectiveCamera.isPerspectiveCamera ? clamp(localValue * lm, am, sm) : 0.02;
-  const far = Math.max(localValue * (isPerspectiveCamera.isPerspectiveCamera ? 8 : 5), 100);
-  if (Math.abs(isPerspectiveCamera.near - near) < 0.000001 && Math.abs(isPerspectiveCamera.far - far) < 0.0001) {
+  const distance = Math.max(camera.position.distanceTo(target), 1);
+  const near = camera.isPerspectiveCamera ? clamp(distance * lm, am, sm) : 0.02;
+  const far = Math.max(distance * (camera.isPerspectiveCamera ? 8 : 5), 100);
+  if (Math.abs(camera.near - near) < 0.000001 && Math.abs(camera.far - far) < 0.0001) {
     return false;
   } else {
-    isPerspectiveCamera.near = near;
-    isPerspectiveCamera.far = far;
-    isPerspectiveCamera.updateProjectionMatrix();
+    camera.near = near;
+    camera.far = far;
+    camera.updateProjectionMatrix();
     return true;
   }
 }
-function resetOrbitTarget(argPrimary, argSecondary) {
-  if (argPrimary?.isOrthographicCamera) {
-    return Math.abs(argPrimary.top - argPrimary.bottom) / Math.max(argPrimary.zoom || 1, 0.000001);
+function resetOrbitTarget(camera, target) {
+  if (camera?.isOrthographicCamera) {
+    return Math.abs(camera.top - camera.bottom) / Math.max(camera.zoom || 1, 0.000001);
   }
-  if (argPrimary?.isPerspectiveCamera) {
-    const localValue = Math.max(argPrimary.position.distanceTo(argSecondary), 0.0001);
-    const rad = THREE.MathUtils.degToRad(argPrimary.getEffectiveFOV());
-    return localValue * 2 * Math.tan(rad / 2);
+  if (camera?.isPerspectiveCamera) {
+    const distance = Math.max(camera.position.distanceTo(target), 0.0001);
+    const rad = THREE.MathUtils.degToRad(camera.getEffectiveFOV());
+    return distance * 2 * Math.tan(rad / 2);
   }
   return 10;
 }
@@ -7099,88 +7554,88 @@ function restoreFixedCameraView(recordChange = {}) {
     showToast("已恢复上次保存的" + previewFloorMode + "。");
   }
 }
-function nudgeCamera(argPrimary, preserveView = {}) {
-  const value = argPrimary === "top" ? "top" : "free";
+function nudgeCamera(cameraView, options = {}) {
+  const viewMode = cameraView === "top" ? "top" : "free";
   const topRotation = topViewRotation();
-  syncCameraViewButtons(value);
+  syncCameraViewButtons(viewMode);
   if (!cameraCurrent || !orbitControls) {
     return;
   }
-  if (cameraCurrent.userData.cameraView === value && (value !== "top" || cameraCurrent.userData.topRotation === topRotation) && preserveView.force !== true) {
+  if (cameraCurrent.userData.cameraView === viewMode && (viewMode !== "top" || cameraCurrent.userData.topRotation === topRotation) && options.force !== true) {
     syncOrbitControls();
     return;
   }
-  if (value === "free") {
+  if (viewMode === "free") {
     applyCameraViewCurrent({
       view: "free"
     });
     return;
   }
-  const x45 = orbitControls.target.clone();
-  const vector = resetOrbitTarget(cameraCurrent, x45);
-  const list = Math.max(cameraCurrent.position.distanceTo(x45), 8);
+  const orbitTarget = orbitControls.target.clone();
+  const orbitRadius = resetOrbitTarget(cameraCurrent, orbitTarget);
+  const topDistance = Math.max(cameraCurrent.position.distanceTo(orbitTarget), 8);
   cameraCurrent.up.copy(topViewForwardVector(topRotation));
   if (cameraCurrent.isPerspectiveCamera) {
     applyCameraFocalLength();
-    const localValue = THREE.MathUtils.degToRad(cameraCurrent.getEffectiveFOV());
-    const max = Math.max(vector / (Math.tan(localValue / 2) * 2), 8);
-    cameraCurrent.position.set(x45.x, x45.y + max, x45.z);
+    const halfFov = THREE.MathUtils.degToRad(cameraCurrent.getEffectiveFOV());
+    const heightOffset = Math.max(orbitRadius / (Math.tan(halfFov / 2) * 2), 8);
+    cameraCurrent.position.set(orbitTarget.x, orbitTarget.y + heightOffset, orbitTarget.z);
   } else {
-    focusCameraOnPoint(vector, cameraCurrent.userData.viewportAspect || 1, cameraCurrent);
-    cameraCurrent.position.set(x45.x, x45.y + list, x45.z);
+    focusCameraOnPoint(orbitRadius, cameraCurrent.userData.viewportAspect || 1, cameraCurrent);
+    cameraCurrent.position.set(orbitTarget.x, orbitTarget.y + topDistance, orbitTarget.z);
   }
-  cameraCurrent.userData.frameSize = vector;
+  cameraCurrent.userData.frameSize = orbitRadius;
   cameraCurrent.userData.cameraView = "top";
   cameraCurrent.userData.topRotation = topRotation;
-  getCameraPose(cameraCurrent, x45);
-  cameraCurrent.lookAt(x45);
+  getCameraPose(cameraCurrent, orbitTarget);
+  cameraCurrent.lookAt(orbitTarget);
   cameraCurrent.updateProjectionMatrix();
-  orbitControls.target.copy(x45);
+  orbitControls.target.copy(orbitTarget);
   syncOrbitControls();
   orbitControls.update();
 }
 function setCameraProjectionMode(view, viewportAspect = {}) {
-  const conditionalValue = view === "perspective" ? "perspective" : "orthographic";
-  syncCameraModeButtons(conditionalValue);
+  const viewMode = view === "perspective" ? "perspective" : "orthographic";
+  syncCameraModeButtons(viewMode);
   if (!renderer) {
     return;
   }
-  if (conditionalValue === "perspective" == !!cameraCurrent?.isPerspectiveCamera) {
+  if (viewMode === "perspective" == !!cameraCurrent?.isPerspectiveCamera) {
     applyCameraFocalLength();
     syncOrbitControls();
     return;
   }
-  const comparisonFlag = viewportAspect.preserveView !== false;
-  const userData = cameraCurrent;
-  const computedValue = orbitControls?.target.clone() || new THREE.Vector3(0, 0.6, 0);
-  const length = userData ? userData.position.clone().sub(computedValue) : new THREE.Vector3(1.12, 1.42, 1.2);
-  const localValue = Math.max(length.length(), 2);
-  const normalize = length.lengthSq() > 1e-8 ? length.normalize() : new THREE.Vector3(1.12, 1.42, 1.2).normalize();
-  const max = userData?.userData.viewportAspect || Math.max(selectEl("#preview-3d").clientWidth / Math.max(selectEl("#preview-3d").clientHeight, 1), 0.1);
-  const frameSize = comparisonFlag && userData ? resetOrbitTarget(userData, computedValue) : userData?.userData.frameSize || 10;
+  const preserveView = viewportAspect.preserveView !== false;
+  const previousCamera = cameraCurrent;
+  const orbitTarget = orbitControls?.target.clone() || new THREE.Vector3(0, 0.6, 0);
+  const cameraOffset = previousCamera ? previousCamera.position.clone().sub(orbitTarget) : new THREE.Vector3(1.12, 1.42, 1.2);
+  const currentDistance = Math.max(cameraOffset.length(), 2);
+  const normalize = cameraOffset.lengthSq() > 1e-8 ? cameraOffset.normalize() : new THREE.Vector3(1.12, 1.42, 1.2).normalize();
+  const aspect = previousCamera?.userData.viewportAspect || Math.max(selectEl("#preview-3d").clientWidth / Math.max(selectEl("#preview-3d").clientHeight, 1), 0.1);
+  const frameSize = preserveView && previousCamera ? resetOrbitTarget(previousCamera, orbitTarget) : previousCamera?.userData.frameSize || 10;
   orbitControls?.dispose();
-  if (conditionalValue === "perspective") {
-    cameraCurrent = new THREE.PerspectiveCamera(36, max, 0.02, 200);
+  if (viewMode === "perspective") {
+    cameraCurrent = new THREE.PerspectiveCamera(36, aspect, 0.02, 200);
     applyCameraFocalLength(cameraCurrent);
-    const halfValue = frameSize / (Math.tan(THREE.MathUtils.degToRad(cameraCurrent.getEffectiveFOV()) / 2) * 2);
-    const conditionalValue = comparisonFlag ? halfValue : localValue;
-    cameraCurrent.position.copy(computedValue).addScaledVector(normalize, Math.max(conditionalValue, 2));
+    const halfFrameHeight = frameSize / (Math.tan(THREE.MathUtils.degToRad(cameraCurrent.getEffectiveFOV()) / 2) * 2);
+    const cameraDistance = preserveView ? halfFrameHeight : currentDistance;
+    cameraCurrent.position.copy(orbitTarget).addScaledVector(normalize, Math.max(cameraDistance, 2));
   } else {
     cameraCurrent = new THREE.OrthographicCamera(-5, 5, 5, -5, 0.02, 200);
-    cameraCurrent.position.copy(computedValue).addScaledVector(normalize, localValue);
-    focusCameraOnPoint(frameSize, max, cameraCurrent);
+    cameraCurrent.position.copy(orbitTarget).addScaledVector(normalize, currentDistance);
+    focusCameraOnPoint(frameSize, aspect, cameraCurrent);
   }
   cameraCurrent.layers.enable(HELPER_LAYER);
-  cameraCurrent.userData.viewportAspect = max;
+  cameraCurrent.userData.viewportAspect = aspect;
   cameraCurrent.userData.frameSize = frameSize;
-  cameraCurrent.userData.cameraView = userData?.userData.cameraView || "free";
-  cameraCurrent.userData.topRotation = userData?.userData.topRotation || 0;
-  cameraCurrent.up.copy(userData?.up || new THREE.Vector3(0, 1, 0));
-  getCameraPose(cameraCurrent, computedValue);
-  cameraCurrent.lookAt(computedValue);
+  cameraCurrent.userData.cameraView = previousCamera?.userData.cameraView || "free";
+  cameraCurrent.userData.topRotation = previousCamera?.userData.topRotation || 0;
+  cameraCurrent.up.copy(previousCamera?.up || new THREE.Vector3(0, 1, 0));
+  getCameraPose(cameraCurrent, orbitTarget);
+  cameraCurrent.lookAt(orbitTarget);
   cameraCurrent.updateProjectionMatrix();
   orbitControls = createOrbitControls(cameraCurrent);
-  orbitControls.target.copy(computedValue);
+  orbitControls.target.copy(orbitTarget);
   syncOrbitControls();
   if (!isStageEmbed || viewportAspect.deferControlUpdate !== true) {
     orbitControls.update();
@@ -7341,18 +7796,18 @@ function initPreviewRenderer() {
         onWake() {
           nowResult = performance.now();
         },
-        step(argPrimary) {
-          const localValue = handler(argPrimary);
+        step(event) {
+          const handlerResult = handler(event);
           renderer.domElement.dataset.renderFrameChecks = String(demandFrameLoop.stats.frames);
-          return localValue;
+          return handlerResult;
         }
       });
-      const helperFn = () => demandFrameLoop.wake();
+      const wakeFrameLoop = () => demandFrameLoop.wake();
       const callback = () => {
         nowResult = performance.now();
-        const computedValue = !document.hidden && Vo;
-        demandFrameLoop.setAvailable(computedValue);
-        if (computedValue) {
+        const loopAvailable = !document.hidden && Vo;
+        demandFrameLoop.setAvailable(loopAvailable);
+        if (loopAvailable) {
           updateLightPreview();
           if (previewQualityJustBecameReady) {
             scheduleAdaptiveQuality();
@@ -7362,16 +7817,16 @@ function initPreviewRenderer() {
           stageSessionEndTimer = null;
         }
       };
-      const helperFnCurrent = detail => {
+      const handleParentVisibilityChange = detail => {
         Vo = detail.detail === true;
         callback();
         if (Vo && ORBIT_DOLLY_SPEED_SCALE) {
           scheduleOrbitInteractionWarmup();
         }
       };
-      renderer.domElement.addEventListener("hb-i3d-parent-visibility", helperFnCurrent);
-      for (const localValue of ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel", "keydown", "keyup"]) {
-        renderer.domElement.addEventListener(localValue, helperFn, {
+      renderer.domElement.addEventListener("hb-i3d-parent-visibility", handleParentVisibilityChange);
+      for (const eventType of ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel", "keydown", "keyup"]) {
+        renderer.domElement.addEventListener(eventType, wakeFrameLoop, {
           passive: true
         });
       }
@@ -7382,15 +7837,15 @@ function initPreviewRenderer() {
         shadowAtlas?.dispose?.();
         studioReady?.dispose();
         renderCache?.dispose();
-        renderer.domElement.removeEventListener("hb-i3d-parent-visibility", helperFnCurrent);
-        for (const localValue of ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel", "keydown", "keyup"]) {
-          renderer.domElement.removeEventListener(localValue, helperFn);
+        renderer.domElement.removeEventListener("hb-i3d-parent-visibility", handleParentVisibilityChange);
+        for (const removedEventType of ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel", "keydown", "keyup"]) {
+          renderer.domElement.removeEventListener(removedEventType, wakeFrameLoop);
         }
       }, {
         once: true
       });
       callback();
-      helperFn();
+      wakeFrameLoop();
     } else {
       handler();
     }
@@ -7402,21 +7857,21 @@ function initPreviewRenderer() {
     console.error(error);
   }
 }
-function focusCameraOnPoint(argPrimary, argSecondary, left = cameraCurrent) {
+function focusCameraOnPoint(frameHeight, aspect, left = cameraCurrent) {
   if (!left?.isOrthographicCamera) {
     return;
   }
-  const blob = Math.max(argPrimary, 1) / 2;
-  if (argSecondary >= 1) {
-    left.left = -blob * argSecondary;
-    left.right = blob * argSecondary;
-    left.top = blob;
-    left.bottom = -blob;
+  const halfHeight = Math.max(frameHeight, 1) / 2;
+  if (aspect >= 1) {
+    left.left = -halfHeight * aspect;
+    left.right = halfHeight * aspect;
+    left.top = halfHeight;
+    left.bottom = -halfHeight;
   } else {
-    left.left = -blob;
-    left.right = blob;
-    left.top = blob / Math.max(argSecondary, 0.1);
-    left.bottom = -blob / Math.max(argSecondary, 0.1);
+    left.left = -halfHeight;
+    left.right = halfHeight;
+    left.top = halfHeight / Math.max(aspect, 0.1);
+    left.bottom = -halfHeight / Math.max(aspect, 0.1);
   }
   left.updateProjectionMatrix();
 }
@@ -7561,56 +8016,56 @@ function scheduleStageEmbedResize() {
   syncExportResolutionLabel();
   requestAnimationFrame(() => requestAnimationFrame(resizeStageEmbedViewport));
 }
-function onExportDimensionInput(argPrimary, silent = false) {
-  const isWidth = Number((argPrimary === "width" ? exportWidth : exportHeight).value);
-  if (!Number.isFinite(isWidth) || isWidth <= 0) {
+function onExportDimensionInput(dimension, silent = false) {
+  const typedValue = Number((dimension === "width" ? exportWidth : exportHeight).value);
+  if (!Number.isFinite(typedValue) || typedValue <= 0) {
     return;
   }
-  let id = argPrimary === "width" ? isWidth : Number(exportWidth.value);
-  let argPrimaryCurrent = argPrimary === "height" ? isWidth : Number(exportHeight.value);
-  id = Number.isFinite(id) && id > 0 ? id : hc;
-  argPrimaryCurrent = Number.isFinite(argPrimaryCurrent) && argPrimaryCurrent > 0 ? argPrimaryCurrent : fc;
+  let widthPx = dimension === "width" ? typedValue : Number(exportWidth.value);
+  let heightPx = dimension === "height" ? typedValue : Number(exportHeight.value);
+  widthPx = Number.isFinite(widthPx) && widthPx > 0 ? widthPx : hc;
+  heightPx = Number.isFinite(heightPx) && heightPx > 0 ? heightPx : fc;
   if (exportLockRatio.checked) {
-    if (argPrimary === "width") {
+    if (dimension === "width") {
       if (silent) {
-        id = clamp(id, 320, 4096);
-        argPrimaryCurrent = Math.round(id / Tn);
-        if (argPrimaryCurrent < 320) {
-          argPrimaryCurrent = 320;
-          id = Math.round(argPrimaryCurrent * Tn);
+        widthPx = clamp(widthPx, 320, 4096);
+        heightPx = Math.round(widthPx / Tn);
+        if (heightPx < 320) {
+          heightPx = 320;
+          widthPx = Math.round(heightPx * Tn);
         }
-        if (argPrimaryCurrent > 4096) {
-          argPrimaryCurrent = 4096;
-          id = Math.round(argPrimaryCurrent * Tn);
+        if (heightPx > 4096) {
+          heightPx = 4096;
+          widthPx = Math.round(heightPx * Tn);
         }
       } else {
-        argPrimaryCurrent = Math.round(clamp(id / Tn, 320, 4096));
+        heightPx = Math.round(clamp(widthPx / Tn, 320, 4096));
       }
     } else if (silent) {
-      argPrimaryCurrent = clamp(argPrimaryCurrent, 320, 4096);
-      id = Math.round(argPrimaryCurrent * Tn);
-      if (id < 320) {
-        id = 320;
-        argPrimaryCurrent = Math.round(id / Tn);
+      heightPx = clamp(heightPx, 320, 4096);
+      widthPx = Math.round(heightPx * Tn);
+      if (widthPx < 320) {
+        widthPx = 320;
+        heightPx = Math.round(widthPx / Tn);
       }
-      if (id > 4096) {
-        id = 4096;
-        argPrimaryCurrent = Math.round(id / Tn);
+      if (widthPx > 4096) {
+        widthPx = 4096;
+        heightPx = Math.round(widthPx / Tn);
       }
     } else {
-      id = Math.round(clamp(argPrimaryCurrent * Tn, 320, 4096));
+      widthPx = Math.round(clamp(heightPx * Tn, 320, 4096));
     }
   }
   if (silent) {
-    id = Math.round(clamp(id, 320, 4096));
-    argPrimaryCurrent = Math.round(clamp(argPrimaryCurrent, 320, 4096));
-    exportWidth.value = String(id);
-    exportHeight.value = String(argPrimaryCurrent);
+    widthPx = Math.round(clamp(widthPx, 320, 4096));
+    heightPx = Math.round(clamp(heightPx, 320, 4096));
+    exportWidth.value = String(widthPx);
+    exportHeight.value = String(heightPx);
   } else if (exportLockRatio.checked) {
-    if (argPrimary === "width") {
-      exportHeight.value = String(argPrimaryCurrent);
+    if (dimension === "width") {
+      exportHeight.value = String(heightPx);
     } else {
-      exportWidth.value = String(id);
+      exportWidth.value = String(widthPx);
     }
   }
   scheduleStageEmbedResize();
@@ -7652,35 +8107,35 @@ function applyStageFixedCameraView(silent = {}) {
   }
 }
 function normalizeProjectExportPresets() {
-  const list = normalizeExportPresetSlots(projectDocCurrent?.exportPresets);
-  const slot = normalizeActiveExportPresetSlot(projectDocCurrent?.activeExportPresetSlot, list.length);
-  projectDocCurrent.exportPresets = list;
+  const presets = normalizeExportPresetSlots(projectDocCurrent?.exportPresets);
+  const slot = normalizeActiveExportPresetSlot(projectDocCurrent?.activeExportPresetSlot, presets.length);
+  projectDocCurrent.exportPresets = presets;
   projectDocCurrent.activeExportPresetSlot = slot;
-  const lookupMap = new Map((projectDocCurrent?.floors || []).map(floor => [floor.id, floor.name]));
-  h0.replaceChildren(...list.map((preset, argSecondary) => {
+  const lookupMap = new Map((projectDocCurrent?.floors || []).map(floorRef => [floorRef.id, floorRef.name]));
+  h0.replaceChildren(...presets.map((preset, presetIndex) => {
     const element = document.createElement("button");
     element.type = "button";
-    element.dataset.exportPresetSlot = String(argSecondary);
+    element.dataset.exportPresetSlot = String(presetIndex);
     element.setAttribute("role", "tab");
-    const el = document.createElement("strong");
-    const elCurrent = document.createElement("small");
-    el.textContent = preset?.name || lookupMap.get(preset?.floorId) || "未命名存档";
-    elCurrent.textContent = preset ? "已设置" : "未设置";
-    const value = argSecondary === slot;
-    element.classList.toggle("active", value);
+    const titleEl = document.createElement("strong");
+    const statusEl = document.createElement("small");
+    titleEl.textContent = preset?.name || lookupMap.get(preset?.floorId) || "未命名存档";
+    statusEl.textContent = preset ? "已设置" : "未设置";
+    const isActive = presetIndex === slot;
+    element.classList.toggle("active", isActive);
     element.classList.toggle("has-value", !!preset);
-    element.setAttribute("aria-selected", String(value));
-    element.title = preset ? el.textContent + "：已设置" : el.textContent + "：未设置";
-    element.append(el, elCurrent);
+    element.setAttribute("aria-selected", String(isActive));
+    element.title = preset ? titleEl.textContent + "：已设置" : titleEl.textContent + "：未设置";
+    element.append(titleEl, statusEl);
     return element;
   }));
-  const floor = list[slot];
-  f0.disabled = list.length >= MAX_EXPORT_PRESET_COUNT;
-  g0.disabled = !floor;
-  p0.disabled = list.length <= 1;
-  const flag = exportPresetIsEmpty(floor, exportPresetEditorOpenCurrent);
-  gg.hidden = !flag;
-  pg.textContent = floor ? defaultExportPresetLabel(floor, slot) + "已设置" : "当前存档尚未设置";
+  const activePreset = presets[slot];
+  f0.disabled = presets.length >= MAX_EXPORT_PRESET_COUNT;
+  g0.disabled = !activePreset;
+  p0.disabled = presets.length <= 1;
+  const presetIsEmpty = exportPresetIsEmpty(activePreset, exportPresetEditorOpenCurrent);
+  gg.hidden = !presetIsEmpty;
+  pg.textContent = activePreset ? defaultExportPresetLabel(activePreset, slot) + "已设置" : "当前存档尚未设置";
 }
 function syncExportCameraFocalUi({
   name = ""
@@ -7774,11 +8229,11 @@ function activateExportPresetSlot(floor, silent = {}) {
   exportFloorGap.value = flag.floorGap.toFixed(1);
   exportFolderName.value = flag.folderName;
   const has = new Set(flag.selectedFiles);
-  const localValue = has.has("televisionOn");
+  const televisionOn = has.has("televisionOn");
   const present = has.has("vehicleCharging");
   for (const dataset of exportDialog.querySelectorAll("input[data-export-file]")) {
     const prefixText = dataset.dataset.exportFile;
-    dataset.checked = has.has(prefixText) || localValue && prefixText.startsWith("screen:") || present && prefixText.startsWith("vehicle:");
+    dataset.checked = has.has(prefixText) || televisionOn && prefixText.startsWith("screen:") || present && prefixText.startsWith("vehicle:");
   }
   fitExportCameraAspect(flag.camera);
   syncExportResolutionLabel();
@@ -7790,19 +8245,19 @@ function activateExportPresetSlot(floor, silent = {}) {
   scheduleStageEmbedResize();
   return true;
 }
-function selectExportPresetIndex(argPrimary) {
-  const value = projectDocCurrent?.exportPresets?.length || 0;
-  if (!Number.isInteger(argPrimary) || argPrimary < 0 || argPrimary >= value || orbitSuspended) {
+function selectExportPresetIndex(slotIndex) {
+  const slotCount = projectDocCurrent?.exportPresets?.length || 0;
+  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= slotCount || orbitSuspended) {
     return;
   }
   flushExportUiDebounce();
-  projectDocCurrent.activeExportPresetSlot = argPrimary;
-  const flag = activateExportPresetSlot(argPrimary);
+  projectDocCurrent.activeExportPresetSlot = slotIndex;
+  const activated = activateExportPresetSlot(slotIndex);
   exportPresetEditorOpenCurrent = false;
   normalizeProjectExportPresets();
   scheduleSave();
-  if (!flag) {
-    exportStatus.textContent = "存档 " + String(argPrimary + 1).padStart(2, "0") + " 没有设置";
+  if (!activated) {
+    exportStatus.textContent = "存档 " + String(slotIndex + 1).padStart(2, "0") + " 没有设置";
   }
 }
 function flushExportUiDebounce() {
@@ -7833,24 +8288,24 @@ function openExportPresetEditor() {
     exportUiDebounceTimerCurrent = window.setTimeout(flushExportUiDebounce, 360);
   }
 }
-function defaultExportPresetLabel(argPrimary, argSecondary) {
-  if (!argPrimary) {
-    return "存档 " + String(argSecondary + 1).padStart(2, "0");
+function defaultExportPresetLabel(preset, index) {
+  if (!preset) {
+    return "存档 " + String(index + 1).padStart(2, "0");
   }
-  const normalizeLabelText = (projectDocCurrent?.floors || []).find(item => item.id === argPrimary.floorId)?.name;
-  return argPrimary.name || normalizeLabelText || "存档 " + String(argSecondary + 1).padStart(2, "0");
+  const floorName = (projectDocCurrent?.floors || []).find(item => item.id === preset.floorId)?.name;
+  return preset.name || floorName || "存档 " + String(index + 1).padStart(2, "0");
 }
-function uniqueExportPresetLabel(size, argSecondary = -1) {
-  const blob = normalizeLabelText(size, "导出视角", 24);
-  const isPutImageData = new Set((projectDocCurrent?.exportPresets || []).map((argPrimary, item) => item === argSecondary ? "" : defaultExportPresetLabel(argPrimary, item)).filter(Boolean));
-  if (!isPutImageData.has(blob)) {
-    return blob;
+function uniqueExportPresetLabel(label, presetIndex = -1) {
+  const text = normalizeLabelText(label, "导出视角", 24);
+  const usedLabels = new Set((projectDocCurrent?.exportPresets || []).map((preset, index) => index === presetIndex ? "" : defaultExportPresetLabel(preset, index)).filter(Boolean));
+  if (!usedLabels.has(text)) {
+    return text;
   }
-  let buildLightDeltaPixels = 2;
-  while (isPutImageData.has(blob + " " + buildLightDeltaPixels)) {
-    buildLightDeltaPixels += 1;
+  let suffix = 2;
+  while (usedLabels.has(text + " " + suffix)) {
+    suffix += 1;
   }
-  return (blob + " " + buildLightDeltaPixels).slice(0, 24);
+  return (text + " " + suffix).slice(0, 24);
 }
 function addExportPresetSlot() {
   if (!stageSession || orbitSuspended) {
@@ -7939,7 +8394,7 @@ function confirmExportPresetDelete() {
   exportStatus.textContent = flag ? "已切换到相邻存档" : "当前存档尚未设置";
   showToast("已删除“" + value + "”，楼层和户型未受影响。", "success");
 }
-function postAutoDiagramMessage(numericParam = 0) {
+function postAutoDiagramMessage(attempt = 0) {
   if (!!isAutoDiagramEmbedCurrent && !!autoDiagramComponentId && window.parent !== window) {
     requestAnimationFrame(() => {
       if (!stageSession || !renderer || !previewSceneCurrent || !cameraCurrent || !orbitControls) {
@@ -7949,31 +8404,31 @@ function postAutoDiagramMessage(numericParam = 0) {
       if (!worldGroup?.children?.length) {
         rebuildWorldPreviewCurrent();
       }
-      const flag = exportPreviewStage.clientWidth > 1 && exportPreviewStage.clientHeight > 1;
-      const flagCurrent = !!worldGroup?.children?.length;
-      let flagNext = false;
-      if (flag && flagCurrent) {
+      const hasViewport = exportPreviewStage.clientWidth > 1 && exportPreviewStage.clientHeight > 1;
+      const hasWorldModel = !!worldGroup?.children?.length;
+      let didRender = false;
+      if (hasViewport && hasWorldModel) {
         requestRender({
           shadows: true
         });
         orbitControls.update();
-        for (let value = 0; value < 2; value += 1) {
+        for (let renderPass = 0; renderPass < 2; renderPass += 1) {
           renderer.render(previewSceneCurrent, cameraCurrent);
         }
-        const render = renderer.info.render;
-        flagNext = render.calls > 0 && render.triangles > 0;
-        renderer.domElement.dataset.renderCalls = String(render.calls);
-        renderer.domElement.dataset.renderTriangles = String(render.triangles);
-        renderer.domElement.dataset.renderLines = String(render.lines);
+        const renderStats = renderer.info.render;
+        didRender = renderStats.calls > 0 && renderStats.triangles > 0;
+        renderer.domElement.dataset.renderCalls = String(renderStats.calls);
+        renderer.domElement.dataset.renderTriangles = String(renderStats.triangles);
+        renderer.domElement.dataset.renderLines = String(renderStats.lines);
         needsRenderFrame = false;
-        renderIdle = flagNext;
+        renderIdle = didRender;
         initRenderStatsHud();
       }
-      if (!flagNext && numericParam < 7) {
-        postAutoDiagramMessage(numericParam + 1);
+      if (!didRender && attempt < 7) {
+        postAutoDiagramMessage(attempt + 1);
         return;
       }
-      if (!flagNext) {
+      if (!didRender) {
         window.parent.postMessage({
           type: "ha-bridge-floorplan-auto-diagram-error",
           componentId: autoDiagramComponentId,
@@ -7984,9 +8439,9 @@ function postAutoDiagramMessage(numericParam = 0) {
       window.parent.postMessage({
         type: "ha-bridge-floorplan-auto-diagram-ready",
         componentId: autoDiagramComponentId,
-        floors: projectDocCurrent.floors.map(id => ({
-          id: id.id,
-          name: id.name
+        floors: projectDocCurrent.floors.map(floor => ({
+          id: floor.id,
+          name: floor.name
         })),
         floorSelection: getPreviewFloorModeCurrent() === "all" ? "all" : activeFloor()?.id || activeFloorId
       }, window.location.origin);
@@ -8009,8 +8464,8 @@ function scheduleOrbitResumeAfterModels() {
     selected: selection ? {
       ...selection
     } : null,
-    selectedMany: multiSelection.map(argPrimary => ({
-      ...argPrimary
+    selectedMany: multiSelection.map(selectionEntry => ({
+      ...selectionEntry
     })),
     floorMode: getPreviewFloorModeCurrent(),
     selectedFloorId: activeFloorId,
@@ -8105,20 +8560,20 @@ function renderExportFileChecklist() {
   }
   const list = previewFloorEntries();
   const listCurrent = [];
-  const handler = (argPrimary, argSecondary, argTertiary) => {
-    const appendEl = document.createElement("li");
-    const append = document.createElement("label");
-    const button = document.createElement("input");
-    button.type = "checkbox";
-    button.checked = true;
-    button.dataset.exportFile = argPrimary;
-    const el = document.createElement("span");
-    el.textContent = argSecondary;
-    const element = document.createElement("small");
-    element.textContent = argTertiary;
-    append.append(button, el);
-    appendEl.append(append, element);
-    listCurrent.push(appendEl);
+  const handler = (exportFileName, labelText, detailText) => {
+    const listItem = document.createElement("li");
+    const labelEl = document.createElement("label");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = true;
+    checkbox.dataset.exportFile = exportFileName;
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = labelText;
+    const detailSpan = document.createElement("small");
+    detailSpan.textContent = detailText;
+    labelEl.append(checkbox, nameSpan);
+    listItem.append(labelEl, detailSpan);
+    listCurrent.push(listItem);
   };
   collectTvsAcrossFloors(list).forEach(({
     floor,
@@ -8295,12 +8750,12 @@ function forceTripleRender() {
   }
 }
 function canvasToBlob(blob) {
-  return new Promise((argPrimary, argSecondary) => {
-    blob.toBlob(flag => {
-      if (flag) {
-        argPrimary(flag);
+  return new Promise((resolve, reject) => {
+    blob.toBlob(resultBlob => {
+      if (resultBlob) {
+        resolve(resultBlob);
       } else {
-        argSecondary(new Error("无法生成导出图像。"));
+        reject(new Error("无法生成导出图像。"));
       }
     }, EXPORT_IMAGE_MIME_TYPE, EXPORT_IMAGE_QUALITY);
   });
@@ -8326,36 +8781,36 @@ async function capturePreviewCanvasCurrent(planPoint, floor, options = {}) {
   }
   return maxValue;
 }
-async function composeExportCanvas(flag, flagCurrent) {
-  const width = document.createElement("canvas");
-  width.width = flag.width;
-  width.height = flag.height;
-  const putImageData = width.getContext("2d");
-  if (!putImageData) {
+async function composeExportCanvas(previousLightCache, currentLightCache) {
+  const outCanvas = document.createElement("canvas");
+  outCanvas.width = previousLightCache.width;
+  outCanvas.height = previousLightCache.height;
+  const outContext = outCanvas.getContext("2d");
+  if (!outContext) {
     throw new Error("当前浏览器无法创建透明灯光层。");
   }
-  const localValue = buildLightDeltaPixels(flag.data, flagCurrent.data);
-  putImageData.putImageData(new ImageData(localValue, flag.width, flag.height), 0, 0);
-  return canvasToBlob(width);
+  const deltaPixels = buildLightDeltaPixels(previousLightCache.data, currentLightCache.data);
+  outContext.putImageData(new ImageData(deltaPixels, previousLightCache.width, previousLightCache.height), 0, 0);
+  return canvasToBlob(outCanvas);
 }
-async function drawExportAnnotations(data, lights, argTertiary, value, argN, argNCurrent) {
-  const blob = document.createElement("canvas");
-  blob.width = argTertiary;
-  blob.height = value;
-  const isDrawImage = blob.getContext("2d");
-  const el = document.createElement("canvas");
-  el.width = argTertiary;
-  el.height = value;
-  const isClearRect = el.getContext("2d");
-  if (!isDrawImage || !isClearRect) {
+async function drawExportAnnotations(data, lights, canvasWidth, canvasHeight, lightGroupIndex, lightGroupTotal) {
+  const compositeCanvas = document.createElement("canvas");
+  compositeCanvas.width = canvasWidth;
+  compositeCanvas.height = canvasHeight;
+  const compositeContext = compositeCanvas.getContext("2d");
+  const scratchCanvas = document.createElement("canvas");
+  scratchCanvas.width = canvasWidth;
+  scratchCanvas.height = canvasHeight;
+  const scratchContext = scratchCanvas.getContext("2d");
+  if (!compositeContext || !scratchContext) {
     throw new Error("当前浏览器无法合成逐灯阴影。");
   }
-  const list = lights.lights.filter(lightBrightness => finite(lightBrightness.lightBrightness, 0) > 0);
+  const visibleLightGroups = lights.lights.filter(lightBrightness => finite(lightBrightness.lightBrightness, 0) > 0);
   try {
-    for (let count = 0; count < list.length; count += 1) {
-      const id = list[count];
-      exportStatus.textContent = "正在渲染灯组 " + (argN + 1) + "/" + argNCurrent + "：" + lights.name + "（" + (count + 1) + "/" + list.length + "）";
-      forcedVisibleLightGroupIds = new Set([id.id]);
+    for (let groupCursor = 0; groupCursor < visibleLightGroups.length; groupCursor += 1) {
+      const lightGroup = visibleLightGroups[groupCursor];
+      exportStatus.textContent = "正在渲染灯组 " + (lightGroupIndex + 1) + "/" + lightGroupTotal + "：" + lights.name + "（" + (groupCursor + 1) + "/" + visibleLightGroups.length + "）";
+      forcedVisibleLightGroupIds = new Set([lightGroup.id]);
       if (getPreviewFloorModeCurrent() === "all") {
         rebuildWorldPreviewCurrent({
           preserveLightCache: true
@@ -8365,19 +8820,19 @@ async function drawExportAnnotations(data, lights, argTertiary, value, argN, arg
           preserveLightCache: true
         });
       }
-      const imageData = await capturePreviewCanvasCurrent(argTertiary, value, {
+      const captureResult = await capturePreviewCanvasCurrent(canvasWidth, canvasHeight, {
         pixels: true
       });
-      const pixels = buildLightDeltaPixels(data.data, imageData.imageData.data);
-      isClearRect.clearRect(0, 0, argTertiary, value);
-      isClearRect.putImageData(new ImageData(pixels, argTertiary, value), 0, 0);
-      isDrawImage.drawImage(el, 0, 0);
+      const pixels = buildLightDeltaPixels(data.data, captureResult.imageData.data);
+      scratchContext.clearRect(0, 0, canvasWidth, canvasHeight);
+      scratchContext.putImageData(new ImageData(pixels, canvasWidth, canvasHeight), 0, 0);
+      compositeContext.drawImage(scratchCanvas, 0, 0);
       await yieldToScheduler();
     }
   } finally {
     forcedVisibleLightGroupIds = null;
   }
-  return canvasToBlob(blob);
+  return canvasToBlob(compositeCanvas);
 }
 async function buildExportImageCanvas(flag, floor, optionalValue = null) {
   const width = document.createElement("canvas");
@@ -8402,23 +8857,23 @@ async function buildExportImageCanvas(flag, floor, optionalValue = null) {
   }
   return canvasToBlob(width);
 }
-function sanitizeExportFileName(argPrimary, argSecondary) {
-  return String(argPrimary || "").normalize("NFKC").replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || argSecondary;
+function sanitizeExportFileName(rawName, fallbackName) {
+  return String(rawName || "").normalize("NFKC").replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || fallbackName;
 }
-function uniqueExportFileName(flag, argSecondary, idSet, argN = EXPORT_IMAGE_EXTENSION) {
-  const value = sanitizeExportFileName(flag, "灯组-" + (argSecondary + 1));
-  const string = String(argN).replace(/^\./, "");
-  let uniqueExportNameSuffix = 1;
-  let toLocaleLowerCaseVar = value + "." + string;
-  while (idSet.has(toLocaleLowerCaseVar.toLocaleLowerCase())) {
-    uniqueExportNameSuffix += 1;
-    toLocaleLowerCaseVar = value + "-" + uniqueExportNameSuffix + "." + string;
+function uniqueExportFileName(baseName, lightGroupIndex, usedNames, extension = EXPORT_IMAGE_EXTENSION) {
+  const sanitizedName = sanitizeExportFileName(baseName, "灯组-" + (lightGroupIndex + 1));
+  const extensionSuffix = String(extension).replace(/^\./, "");
+  let attempt = 1;
+  let candidate = sanitizedName + "." + extensionSuffix;
+  while (usedNames.has(candidate.toLocaleLowerCase())) {
+    attempt += 1;
+    candidate = sanitizedName + "-" + attempt + "." + extensionSuffix;
   }
-  idSet.add(toLocaleLowerCaseVar.toLocaleLowerCase());
-  return toLocaleLowerCaseVar;
+  usedNames.add(candidate.toLocaleLowerCase());
+  return candidate;
 }
-function captureCameraPoseSnapshot(item, argSecondary) {
-  const value = orbitControls.target;
+function captureCameraPoseSnapshot(viewportWidth, viewportHeight) {
+  const orbitTarget = orbitControls.target;
   return {
     mode: cameraCurrent.isPerspectiveCamera ? "perspective" : "orthographic",
     position: {
@@ -8427,86 +8882,86 @@ function captureCameraPoseSnapshot(item, argSecondary) {
       z: cameraCurrent.position.z
     },
     target: {
-      x: value.x,
-      y: value.y,
-      z: value.z
+      x: orbitTarget.x,
+      y: orbitTarget.y,
+      z: orbitTarget.z
     },
-    aspect: item / argSecondary,
-    visibleHeight: resetOrbitTarget(cameraCurrent, value),
+    aspect: viewportWidth / viewportHeight,
+    visibleHeight: resetOrbitTarget(cameraCurrent, orbitTarget),
     fov: cameraCurrent.isPerspectiveCamera ? cameraCurrent.fov : null
   };
 }
-function serializeFloorLightItem(argPrimary, scene = activeFloor()) {
-  const computedValue = scene?.scene?.calibration?.pixelsPerMeter || 1;
+function serializeFloorLightItem(light, scene = activeFloor()) {
+  const pixelsPerMeter = scene?.scene?.calibration?.pixelsPerMeter || 1;
   return {
-    id: argPrimary.id,
+    id: light.id,
     floorId: scene?.id || null,
-    type: argPrimary.type,
+    type: light.type,
     position: {
-      x: argPrimary.x / computedValue,
-      z: argPrimary.y / computedValue,
-      elevation: floorStackOffsetY(scene) + (argPrimary.elevation || 0)
+      x: light.x / pixelsPerMeter,
+      z: light.y / pixelsPerMeter,
+      elevation: floorStackOffsetY(scene) + (light.elevation || 0)
     },
-    rotation: argPrimary.rotation || 0,
-    verticalRotation: argPrimary.verticalRotation || 0,
-    stripRollRotation: argPrimary.type === "striplight" && argPrimary.stripRollRotation || 0,
+    rotation: light.rotation || 0,
+    verticalRotation: light.verticalRotation || 0,
+    stripRollRotation: light.type === "striplight" && light.stripRollRotation || 0,
     size: {
-      width: argPrimary.width,
-      depth: argPrimary.depth
+      width: light.width,
+      depth: light.depth
     },
-    temperature: argPrimary.lightTemperature,
-    brightness: argPrimary.lightBrightness,
-    range: argPrimary.lightRange,
-    angle: argPrimary.lightAngle
+    temperature: light.lightTemperature,
+    brightness: light.lightBrightness,
+    range: light.lightRange,
+    angle: light.lightAngle
   };
 }
-function projectItemToScreenNorm(x46, scene, floorEntries = previewFloorEntries()) {
-  if (!x46 || !scene || !cameraCurrent) {
+function projectItemToScreenNorm(item, scene, floorEntries = previewFloorEntries()) {
+  if (!item || !scene || !cameraCurrent) {
     return null;
   }
-  const computedValue = scene.scene?.calibration?.pixelsPerMeter || 1;
-  let zeroValue = 0;
-  let halfValue = Math.max(0, finite(x46.elevation, 0)) + Math.max(0.02, finite(x46.height, 0.1)) / 2;
-  let count = 0;
+  const pixelsPerMeter = scene.scene?.calibration?.pixelsPerMeter || 1;
+  let screenX = 0;
+  let screenY = Math.max(0, finite(item.elevation, 0)) + Math.max(0.02, finite(item.height, 0.1)) / 2;
+  let screenZ = 0;
   if (getPreviewFloorModeCurrent() === "all") {
-    const value = (finite(x46.x, 0) - finite(scene.originX, 0)) / computedValue;
-    const computedValueCurrent = (finite(x46.y, 0) - finite(scene.originY, 0)) / computedValue;
-    const localValue = -THREE.MathUtils.degToRad(finite(scene.rotation, 0));
-    zeroValue = value * Math.cos(localValue) + computedValueCurrent * Math.sin(localValue) + finite(scene.offsetX, 0);
-    count = -value * Math.sin(localValue) + computedValueCurrent * Math.cos(localValue) + finite(scene.offsetZ, 0);
-    const foundIndex = [...floorEntries].sort((elevation, elevationRight) => elevation.elevation - elevationRight.elevation);
-    const max = Math.max(0, foundIndex.findIndex(wall => wall.id === scene.id));
-    halfValue += max * finite(projectDocCurrent.exportFloorGap, 3);
+    const localX = (finite(item.x, 0) - finite(scene.originX, 0)) / pixelsPerMeter;
+    const localY = (finite(item.y, 0) - finite(scene.originY, 0)) / pixelsPerMeter;
+    const sceneRotation = -THREE.MathUtils.degToRad(finite(scene.rotation, 0));
+    screenX = localX * Math.cos(sceneRotation) + localY * Math.sin(sceneRotation) + finite(scene.offsetX, 0);
+    screenZ = -localX * Math.sin(sceneRotation) + localY * Math.cos(sceneRotation) + finite(scene.offsetZ, 0);
+    const sortedFloors = [...floorEntries].sort((floorA, floorB) => floorA.elevation - floorB.elevation);
+    const floorIndex = Math.max(0, sortedFloors.findIndex(floor => floor.id === scene.id));
+    screenY += floorIndex * finite(projectDocCurrent.exportFloorGap, 3);
   } else {
-    const walls = scene.scene;
-    const minX = walls.walls?.length ? modelBounds({
+    const sceneData = scene.scene;
+    const bounds = sceneData.walls?.length ? modelBounds({
       background: null,
-      walls: walls.walls,
+      walls: sceneData.walls,
       items: []
-    }) : walls.items?.length ? modelBounds({
+    }) : sceneData.items?.length ? modelBounds({
       background: null,
       walls: [],
-      items: walls.items
-    }) : modelBounds(walls);
-    zeroValue = (finite(x46.x, 0) - (minX.minX + minX.maxX) / 2) / computedValue;
-    count = (finite(x46.y, 0) - (minX.minY + minX.maxY) / 2) / computedValue;
+      items: sceneData.items
+    }) : modelBounds(sceneData);
+    screenX = (finite(item.x, 0) - (bounds.minX + bounds.maxX) / 2) / pixelsPerMeter;
+    screenZ = (finite(item.y, 0) - (bounds.minY + bounds.maxY) / 2) / pixelsPerMeter;
   }
   cameraCurrent.updateMatrixWorld(true);
-  const z3 = new THREE.Vector3(zeroValue, halfValue, count).project(cameraCurrent);
-  if (![z3.x, z3.y, z3.z].every(Number.isFinite) || z3.z < -1 || z3.z > 1) {
+  const projected = new THREE.Vector3(screenX, screenY, screenZ).project(cameraCurrent);
+  if (![projected.x, projected.y, projected.z].every(Number.isFinite) || projected.z < -1 || projected.z > 1) {
     return null;
   } else {
     return {
-      x: clamp((z3.x + 1) / 2, 0, 1),
-      y: clamp((1 - z3.y) / 2, 0, 1)
+      x: clamp((projected.x + 1) / 2, 0, 1),
+      y: clamp((1 - projected.y) / 2, 0, 1)
     };
   }
 }
-function projectItemsToScreenAnchors(argPrimary, argSecondary, floorEntries = previewFloorEntries()) {
-  for (const localValue of argPrimary || []) {
-    const norm = projectItemToScreenNorm(localValue, argSecondary, floorEntries);
-    if (norm) {
-      return norm;
+function projectItemsToScreenAnchors(items, floorId, floorEntries = previewFloorEntries()) {
+  for (const item of items || []) {
+    const screenNorm = projectItemToScreenNorm(item, floorId, floorEntries);
+    if (screenNorm) {
+      return screenNorm;
     }
   }
   return null;
@@ -8514,24 +8969,24 @@ function projectItemsToScreenAnchors(argPrimary, argSecondary, floorEntries = pr
 async function readFileAsUint8Array(arrayBuffer) {
   return new Uint8Array(await arrayBuffer.arrayBuffer());
 }
-function applyCrossFloorLayerEnableMasks(argPrimary = "", argSecondary = "", argTertiary = "") {
+function applyCrossFloorLayerEnableMasks(floorLightGroupKey = "", tvKey = "", chargerKey = "") {
   for (const {
-    key: localValue,
-    group: enabled
+    key: groupKey,
+    group: lightGroup
   } of collectLightGroupsAcrossFloors()) {
-    enabled.enabled = argPrimary === "*" || localValue === argPrimary;
+    lightGroup.enabled = floorLightGroupKey === "*" || groupKey === floorLightGroupKey;
   }
   for (const {
-    key: localValue,
-    item: screenEnabled
+    key: screenKey,
+    item: tv
   } of collectTvsAcrossFloors()) {
-    screenEnabled.screenEnabled = argSecondary === "*" || localValue === argSecondary;
+    tv.screenEnabled = tvKey === "*" || screenKey === tvKey;
   }
   for (const {
-    key: localValue,
-    item: chargingEnabled
+    key: carKey,
+    item: car
   } of collectSmallCarsAcrossFloors()) {
-    chargingEnabled.chargingEnabled = argTertiary === "*" || localValue === argTertiary;
+    car.chargingEnabled = chargerKey === "*" || carKey === chargerKey;
   }
   rebuildWorldPreviewCurrent();
 }
@@ -8556,32 +9011,32 @@ function notifyAutoDiagramInteraction(active) {
     }, window.location.origin);
   }
 }
-function resolveExportOverwrite(argPrimary = "cancel") {
-  const value = exportOverwriteResolverCurrent;
+function resolveExportOverwrite(choice = "cancel") {
+  const resolver = exportOverwriteResolverCurrent;
   exportOverwriteResolverCurrent = null;
   if (exportOverwriteDialog.open) {
     exportOverwriteDialog.close();
   }
   notifyAutoDiagramInteraction(false);
-  value?.(argPrimary);
+  resolver?.(choice);
 }
-function promptExportOverwrite(argPrimary) {
+function promptExportOverwrite(message) {
   if (exportOverwriteResolverCurrent) {
     resolveExportOverwrite("cancel");
   }
-  Mg.textContent = argPrimary;
+  Mg.textContent = message;
   notifyAutoDiagramInteraction(true);
   exportOverwriteDialog.showModal();
-  return new Promise(argPrimary => {
-    exportOverwriteResolverCurrent = argPrimary;
+  return new Promise(resolve => {
+    exportOverwriteResolverCurrent = resolve;
   });
 }
-function notifyAutoDiagramExport(argPrimary, message) {
+function notifyAutoDiagramExport(reason, message) {
   if (!!isAutoDiagramEmbedCurrent && !!autoDiagramComponentId && window.parent !== window) {
     window.parent.postMessage({
       type: "ha-bridge-floorplan-auto-diagram-stopped",
       componentId: autoDiagramComponentId,
-      reason: argPrimary,
+      reason: reason,
       message: message
     }, window.location.origin);
   }
@@ -8608,8 +9063,8 @@ async function runExportPipeline() {
     return;
   }
   exportFolderName.classList.remove("invalid");
-  const value = checkedExportFileKeys();
-  if (!value.size) {
+  const checkedKeys = checkedExportFileKeys();
+  if (!checkedKeys.size) {
     exportStatus.textContent = "请至少勾选一项图片";
     return;
   }
@@ -8618,7 +9073,7 @@ async function runExportPipeline() {
     width,
     height
   } = scaledExportResolution(sourceResolution.width, sourceResolution.height, EXPORT_RENDER_SCALE);
-  const view = serializeCameraState();
+  const cameraPose = serializeCameraState();
   const background = {
     background: "00底图." + EXPORT_IMAGE_EXTENSION,
     backgroundWithPlan: "00底图带户型." + EXPORT_IMAGE_EXTENSION,
@@ -8639,7 +9094,7 @@ async function runExportPipeline() {
     enabledInEditor: stageSession.groupStates.get(id) !== false,
     file: uniqueExportFileName(list.length > 1 ? floor.name + "-" + group.name : group.name, index, idSet),
     lights: floor.scene.items.filter(item => set.has(item.type) && item.lightGroupId === group.id)
-  })).filter(id => value.has("group:" + id.id));
+  })).filter(id => checkedKeys.has("group:" + id.id));
   const mapped = collectTvsAcrossFloors(list).map(({
     floor,
     item,
@@ -8680,9 +9135,9 @@ async function runExportPipeline() {
     const file = listCurrent[count];
     file.file = uniqueExportFileName(file.name, count, idSet);
   }
-  const listNext = mapped.filter(key => value.has("screen:" + key.key));
-  const listPrevious = listCurrent.filter(key => value.has("vehicle:" + key.key));
-  const flag = value.has("backgroundWithPlan") || value.has("floorPlan") || listNext.length > 0 || listPrevious.length > 0 || filtered.length > 0;
+  const listNext = mapped.filter(key => checkedKeys.has("screen:" + key.key));
+  const listPrevious = listCurrent.filter(key => checkedKeys.has("vehicle:" + key.key));
+  const hasAnyLayer = checkedKeys.has("backgroundWithPlan") || checkedKeys.has("floorPlan") || listNext.length > 0 || listPrevious.length > 0 || filtered.length > 0;
   let flagCurrent = false;
   setOrbitSuspended(true);
   try {
@@ -8712,13 +9167,13 @@ async function runExportPipeline() {
     }
     renderer.setPixelRatio(1);
     renderer.setSize(width, height, false);
-    applyStoredCameraPose(view, width / height);
+    applyStoredCameraPose(cameraPose, width / height);
     setShadowCameraExpanded(true);
     exportStatus.textContent = "正在生成精细阴影导出图层…";
     applyCrossFloorLayerEnableMasks();
     let isImageData = null;
     let imageData = null;
-    if (value.has("background")) {
+    if (checkedKeys.has("background")) {
       setExportRoleVisibility("plan", false);
       setExportRoleVisibility("label", false);
       setExportRoleVisibility("outline", false);
@@ -8729,7 +9184,7 @@ async function runExportPipeline() {
       setExportRoleVisibility("label", true);
       setExportRoleVisibility("outline", true);
     }
-    if (flag) {
+    if (hasAnyLayer) {
       imageData = await capturePreviewCanvasCurrent(width, height, {
         pixels: true
       });
@@ -8742,14 +9197,14 @@ async function runExportPipeline() {
         data: await readFileAsUint8Array(arrayBuffer)
       });
     }
-    if (value.has("backgroundWithPlan")) {
+    if (checkedKeys.has("backgroundWithPlan")) {
       const arrayBuffer = await buildExportImageCanvas(width, height, imageData.imageData);
       listLocal.push({
         name: background.backgroundWithPlan,
         data: await readFileAsUint8Array(arrayBuffer)
       });
     }
-    if (value.has("floorPlan")) {
+    if (checkedKeys.has("floorPlan")) {
       setExportRoleVisibility("background", false);
       setExportRoleVisibility("grid", false);
       const blob = await capturePreviewCanvasCurrent(width, height, {
@@ -8822,9 +9277,9 @@ async function runExportPipeline() {
         quality: EXPORT_IMAGE_QUALITY
       },
       camera: captureCameraPoseSnapshot(width, height),
-      backgroundImage: value.has("background") ? background.background : null,
-      baseImage: value.has("backgroundWithPlan") ? background.backgroundWithPlan : null,
-      floorPlanImage: value.has("floorPlan") ? background.floorPlan : null,
+      backgroundImage: checkedKeys.has("background") ? background.background : null,
+      baseImage: checkedKeys.has("backgroundWithPlan") ? background.backgroundWithPlan : null,
+      floorPlanImage: checkedKeys.has("floorPlan") ? background.floorPlan : null,
       televisionOnImage: listNext.length === 1 ? listNext[0].file : null,
       televisionOnImages: listNext.map(file => file.file),
       vehicleChargingImage: listPrevious.length === 1 ? listPrevious[0].file : null,
@@ -8844,30 +9299,30 @@ async function runExportPipeline() {
         key,
         floor,
         item,
-        ...argPrimary
+        ...screenRest
       }) => ({
-        ...argPrimary,
+        ...screenRest,
         anchor: projectItemToScreenNorm(item, floor, list),
-        file: value.has("screen:" + key) ? argPrimary.file : null
+        file: checkedKeys.has("screen:" + key) ? screenRest.file : null
       })),
       vehicles: listCurrent.map(({
         key,
         floor,
         item,
-        ...argPrimary
+        ...vehicleRest
       }) => ({
-        ...argPrimary,
+        ...vehicleRest,
         anchor: projectItemToScreenNorm(item, floor, list),
-        file: value.has("vehicle:" + key) ? argPrimary.file : null
+        file: checkedKeys.has("vehicle:" + key) ? vehicleRest.file : null
       }))
     };
-    if (value.has("dataLights")) {
+    if (checkedKeys.has("dataLights")) {
       listLocal.push({
         name: "lights.json",
         data: new TextEncoder().encode(JSON.stringify(manifest, null, 2) + "\n")
       });
     }
-    if (value.has("dataScene")) {
+    if (checkedKeys.has("dataScene")) {
       const previewFloorMode = getPreviewFloorModeCurrent() === "all" ? cloneProjectDoc() : cloneFloorScene();
       listLocal.push({
         name: "scene.json",
@@ -8880,13 +9335,13 @@ async function runExportPipeline() {
     const body = new Blob([zip], {
       type: "application/zip"
     });
-    const putStudioDocument = (flag = false) => studioFetch("/studio3d/exports", {
+    const putStudioDocument = (includeDocument = false) => studioFetch("/studio3d/exports", {
       method: "POST",
       body,
       headers: {
         "Content-Type": "application/zip",
         "X-Export-Folder": encodeURIComponent(exportName),
-        ...(flag ? {
+        ...(includeDocument ? {
           "X-Export-Overwrite": "true"
         } : {})
       }
@@ -8973,7 +9428,7 @@ async function runExportPipeline() {
       }
     }
     rebuildWorldPreviewCurrent();
-    applyStoredCameraPose(view, width / height);
+    applyStoredCameraPose(cameraPose, width / height);
     setOrbitSuspended(false);
     scheduleStageEmbedResize();
   }
@@ -9009,7 +9464,7 @@ function clearWorldGroupChildren() {
     }
   }
 }
-function addBoxMesh(group, width, height, depth, argN, argNCurrent, argNNext, color, options = {}) {
+function addBoxMesh(group, width, height, depth, offsetX, offsetY, offsetZ, color, options = {}) {
   const material = new THREE.MeshStandardMaterial({
     color,
     roughness: options.roughness ?? 0.8,
@@ -9026,121 +9481,121 @@ function addBoxMesh(group, width, height, depth, argN, argNCurrent, argNNext, co
   const radius = Math.min(options.radius ?? minDim * 0.14, minDim * 0.45, 0.08);
   const geometry = options.rounded === false || group.userData.squareEdges ? new THREE.BoxGeometry(width, height, depth) : new RoundedBoxGeometry(width, height, depth, options.segments ?? 2, radius);
   const mesh = new THREE.Mesh(geometry, material);
-  mesh.position.set(argN, argNCurrent, argNNext);
+  mesh.position.set(offsetX, offsetY, offsetZ);
   mesh.castShadow = options.castShadow !== false;
   mesh.receiveShadow = options.receiveShadow !== false;
   mesh.renderOrder = options.renderOrder ?? 0;
   group.add(mesh);
   return mesh;
 }
-function normalizeBoxPartSpec(point) {
-  if (Array.isArray(point)) {
-    const [width, height, depth, x35 = 0, y2 = 0, z2 = 0, rotationY = 0] = point;
+function normalizeBoxPartSpec(spec) {
+  if (Array.isArray(spec)) {
+    const [width, height, depth, offsetX = 0, offsetY = 0, offsetZ = 0, rotationY = 0] = spec;
     return {
       width,
       height,
       depth,
-      x: x35,
-      y: y2,
-      z: z2,
+      x: offsetX,
+      y: offsetY,
+      z: offsetZ,
       rotationY
     };
   }
   return {
-    width: point.width,
-    height: point.height,
-    depth: point.depth,
-    x: point.x || 0,
-    y: point.y || 0,
-    z: point.z || 0,
-    rotationY: point.rotationY || 0
+    width: spec.width,
+    height: spec.height,
+    depth: spec.depth,
+    x: spec.x || 0,
+    y: spec.y || 0,
+    z: spec.z || 0,
+    rotationY: spec.rotationY || 0
   };
 }
-function buildMergedBoxGeometry(list) {
-  const filtered = list.map(normalizeBoxPartSpec).filter(size => [size.width, size.height, size.depth].every(argPrimary => Number.isFinite(argPrimary) && argPrimary > 0.0001));
-  if (!filtered.length) {
+function buildMergedBoxGeometry(parts) {
+  const validParts = parts.map(normalizeBoxPartSpec).filter(part => [part.width, part.height, part.depth].every(dimension => Number.isFinite(dimension) && dimension > 0.0001));
+  if (!validParts.length) {
     return null;
   }
-  const value = JSON.stringify(filtered.map(point => [point.width, point.height, point.depth, point.x, point.y, point.z, point.rotationY]));
-  if (!mergedBoxGeometryCache.has(value)) {
-    const item = filtered.map(point => {
-      const applyMatrix = new THREE.BoxGeometry(point.width, point.height, point.depth);
-      const vector = new THREE.Matrix4().compose(new THREE.Vector3(point.x, point.y, point.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, point.rotationY, 0)), new THREE.Vector3(1, 1, 1));
-      return applyMatrix.applyMatrix4(vector);
+  const cacheKey = JSON.stringify(validParts.map(partTuple => [partTuple.width, partTuple.height, partTuple.depth, partTuple.x, partTuple.y, partTuple.z, partTuple.rotationY]));
+  if (!mergedBoxGeometryCache.has(cacheKey)) {
+    const geometries = validParts.map(partSpec => {
+      const boxGeometry = new THREE.BoxGeometry(partSpec.width, partSpec.height, partSpec.depth);
+      const transform = new THREE.Matrix4().compose(new THREE.Vector3(partSpec.x, partSpec.y, partSpec.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, partSpec.rotationY, 0)), new THREE.Vector3(1, 1, 1));
+      return boxGeometry.applyMatrix4(transform);
     });
-    const flag = mergeGeometries(item);
-    item.forEach(dispose => dispose.dispose());
-    if (!flag) {
+    const merged = mergeGeometries(geometries);
+    geometries.forEach(geometry => geometry.dispose());
+    if (!merged) {
       return null;
     }
-    mergedBoxGeometryCache.set(value, flag);
+    mergedBoxGeometryCache.set(cacheKey, merged);
   }
-  return mergedBoxGeometryCache.get(value);
+  return mergedBoxGeometryCache.get(cacheKey);
 }
-function getCachedMeshStandardMaterial(color, flag = {}) {
+function getCachedMeshStandardMaterial(color, options = {}) {
   const hex = new THREE.Color(color).getHex();
-  const value = JSON.stringify([hex, flag.roughness ?? 0.8, flag.metalness ?? 0.01, !!flag.transparent, flag.opacity ?? 1, flag.depthWrite ?? true, flag.depthFunc ?? THREE.LessEqualDepth, flag.side ?? THREE.FrontSide, flag.emissive ?? 0, flag.emissiveIntensity ?? 0]);
-  if (!rugMaterialCache.has(value)) {
-    rugMaterialCache.set(value, new THREE.MeshStandardMaterial({
+  const cacheKey = JSON.stringify([hex, options.roughness ?? 0.8, options.metalness ?? 0.01, !!options.transparent, options.opacity ?? 1, options.depthWrite ?? true, options.depthFunc ?? THREE.LessEqualDepth, options.side ?? THREE.FrontSide, options.emissive ?? 0, options.emissiveIntensity ?? 0]);
+  if (!rugMaterialCache.has(cacheKey)) {
+    rugMaterialCache.set(cacheKey, new THREE.MeshStandardMaterial({
       color: hex,
-      roughness: flag.roughness ?? 0.8,
-      metalness: flag.metalness ?? 0.01,
-      transparent: !!flag.transparent,
-      opacity: flag.opacity ?? 1,
-      depthWrite: flag.depthWrite ?? true,
-      depthFunc: flag.depthFunc ?? THREE.LessEqualDepth,
-      side: flag.side ?? THREE.FrontSide,
-      emissive: flag.emissive ?? 0,
-      emissiveIntensity: flag.emissiveIntensity ?? 0
+      roughness: options.roughness ?? 0.8,
+      metalness: options.metalness ?? 0.01,
+      transparent: !!options.transparent,
+      opacity: options.opacity ?? 1,
+      depthWrite: options.depthWrite ?? true,
+      depthFunc: options.depthFunc ?? THREE.LessEqualDepth,
+      side: options.side ?? THREE.FrontSide,
+      emissive: options.emissive ?? 0,
+      emissiveIntensity: options.emissiveIntensity ?? 0
     }));
   }
-  return rugMaterialCache.get(value);
+  return rugMaterialCache.get(cacheKey);
 }
-function addSharedArchMesh(group, entriesArg, argTertiary, roughness = {}) {
-  const flag = buildMergedBoxGeometry(entriesArg);
-  if (!flag) {
+function addSharedArchMesh(group, boxSpecs, color, options = {}) {
+  const mergedGeometry = buildMergedBoxGeometry(boxSpecs);
+  if (!mergedGeometry) {
     return null;
   }
-  const light = new THREE.Mesh(flag, getCachedMeshStandardMaterial(argTertiary, roughness));
-  light.castShadow = roughness.castShadow !== false;
-  light.receiveShadow = roughness.receiveShadow !== false;
-  light.renderOrder = roughness.renderOrder ?? 0;
-  light.userData.architectureSharedGeometry = true;
-  light.userData.architectureSharedMaterial = true;
-  group.add(light);
-  return light;
+  const mesh = new THREE.Mesh(mergedGeometry, getCachedMeshStandardMaterial(color, options));
+  mesh.castShadow = options.castShadow !== false;
+  mesh.receiveShadow = options.receiveShadow !== false;
+  mesh.renderOrder = options.renderOrder ?? 0;
+  mesh.userData.architectureSharedGeometry = true;
+  mesh.userData.architectureSharedMaterial = true;
+  group.add(mesh);
+  return mesh;
 }
-function createBoxPartMesh(argPrimary, argSecondary, argTertiary, argN, argNCurrent, argNNext) {
-  const value = Math.max(Math.min(argPrimary, argSecondary, argTertiary), 0.001);
-  const minValue = Math.min(value * 0.14, value * 0.45, 0.08);
-  const boxGeometry = new RoundedBoxGeometry(argPrimary, argSecondary, argTertiary, 2, minValue);
-  boxGeometry.translate(argN, argNCurrent, argNNext);
+function createBoxPartMesh(width, height, depth, offsetX, offsetY, offsetZ) {
+  const minSide = Math.max(Math.min(width, height, depth), 0.001);
+  const cornerRadius = Math.min(minSide * 0.14, minSide * 0.45, 0.08);
+  const boxGeometry = new RoundedBoxGeometry(width, height, depth, 2, cornerRadius);
+  boxGeometry.translate(offsetX, offsetY, offsetZ);
   return boxGeometry;
 }
-function mergeBoxPartGeometries(list) {
-  const item = list.map(argPrimary => createBoxPartMesh(...argPrimary));
-  const geometries = mergeGeometries(item);
-  item.forEach(dispose => dispose.dispose());
-  return geometries;
+function mergeBoxPartGeometries(parts) {
+  const geometries = parts.map(partSpec => createBoxPartMesh(...partSpec));
+  const merged = mergeGeometries(geometries);
+  geometries.forEach(part => part.dispose());
+  return merged;
 }
-function getCachedSofaSeatGeometry(argPrimary, argSecondary, argTertiary) {
-  const list = argPrimary + ":" + argSecondary + ":" + argTertiary;
-  if (lightPropertyMeta.has(list)) {
-    return lightPropertyMeta.get(list);
+function getCachedSofaSeatGeometry(width, height, depth) {
+  const cacheKey = width + ":" + height + ":" + depth;
+  if (lightPropertyMeta.has(cacheKey)) {
+    return lightPropertyMeta.get(cacheKey);
   }
-  const handler = mergeBoxPartGeometries([[argPrimary * 0.92, argSecondary * 0.28, argTertiary * 0.72, 0, argSecondary * 0.28, argTertiary * 0.06], [argPrimary * 0.92, argSecondary * 0.55, argTertiary * 0.18, 0, argSecondary * 0.56, -argTertiary * 0.35], [argPrimary * 0.1, argSecondary * 0.48, argTertiary * 0.75, -argPrimary * 0.46, argSecondary * 0.39, argTertiary * 0.03], [argPrimary * 0.1, argSecondary * 0.48, argTertiary * 0.75, argPrimary * 0.46, argSecondary * 0.39, argTertiary * 0.03]]);
-  const geometries = mergeBoxPartGeometries([[argPrimary * 0.42, argSecondary * 0.12, argTertiary * 0.55, -argPrimary * 0.22, argSecondary * 0.47, argTertiary * 0.07], [argPrimary * 0.42, argSecondary * 0.12, argTertiary * 0.55, argPrimary * 0.22, argSecondary * 0.47, argTertiary * 0.07]]);
-  const conditionalValue = handler && geometries ? {
-    frame: handler,
-    cushions: geometries
+  const frameGeometry = mergeBoxPartGeometries([[width * 0.92, height * 0.28, depth * 0.72, 0, height * 0.28, depth * 0.06], [width * 0.92, height * 0.55, depth * 0.18, 0, height * 0.56, -depth * 0.35], [width * 0.1, height * 0.48, depth * 0.75, -width * 0.46, height * 0.39, depth * 0.03], [width * 0.1, height * 0.48, depth * 0.75, width * 0.46, height * 0.39, depth * 0.03]]);
+  const cushionGeometry = mergeBoxPartGeometries([[width * 0.42, height * 0.12, depth * 0.55, -width * 0.22, height * 0.47, depth * 0.07], [width * 0.42, height * 0.12, depth * 0.55, width * 0.22, height * 0.47, depth * 0.07]]);
+  const seatGeometry = frameGeometry && cushionGeometry ? {
+    frame: frameGeometry,
+    cushions: cushionGeometry
   } : null;
-  if (conditionalValue) {
-    lightPropertyMeta.set(list, conditionalValue);
+  if (seatGeometry) {
+    lightPropertyMeta.set(cacheKey, seatGeometry);
   } else {
-    handler?.dispose();
-    geometries?.dispose();
+    frameGeometry?.dispose();
+    cushionGeometry?.dispose();
   }
-  return conditionalValue;
+  return seatGeometry;
 }
 function getCachedColorMaterial(color) {
   const id = String(color);
@@ -9177,37 +9632,37 @@ function addSofaMeshes(group, size, color, cushionColor) {
   }
   return true;
 }
-function getCachedRoundedBoxGeometry(group, id, hasFlag) {
-  const value = clamp(id, 0.004, 0.018);
-  const flag = group + ":" + value + ":" + hasFlag;
-  if (!isStudioRoute.has(flag)) {
-    const localValue = Math.max(Math.min(group, value, hasFlag), 0.001);
-    const min = Math.min(Math.min(group, hasFlag) * 0.018, localValue * 0.45, 0.08);
-    const base = new RoundedBoxGeometry(group, value, hasFlag, 2, min);
-    const inset = new THREE.PlaneGeometry(group * 0.88, hasFlag * 0.84);
-    isStudioRoute.set(flag, {
-      base,
-      inset,
-      rugThickness: value
+function getCachedRoundedBoxGeometry(width, height, depth) {
+  const rugThickness = clamp(height, 0.004, 0.018);
+  const cacheKey = width + ":" + rugThickness + ":" + depth;
+  if (!isStudioRoute.has(cacheKey)) {
+    const minDimension = Math.max(Math.min(width, rugThickness, depth), 0.001);
+    const cornerRadius = Math.min(Math.min(width, depth) * 0.018, minDimension * 0.45, 0.08);
+    const baseGeometry = new RoundedBoxGeometry(width, rugThickness, depth, 2, cornerRadius);
+    const insetGeometry = new THREE.PlaneGeometry(width * 0.88, depth * 0.84);
+    isStudioRoute.set(cacheKey, {
+      base: baseGeometry,
+      inset: insetGeometry,
+      rugThickness: rugThickness
     });
   }
-  return isStudioRoute.get(flag);
+  return isStudioRoute.get(cacheKey);
 }
-function getCachedRugMaterial(object3d, flag = false) {
-  const computedValue = (flag ? "inset" : "base") + ":" + object3d;
-  if (!Zl.has(computedValue)) {
-    Zl.set(computedValue, new THREE.MeshStandardMaterial({
-      color: object3d,
+function getCachedRugMaterial(colorHex, inset = false) {
+  const materialKey = (inset ? "inset" : "base") + ":" + colorHex;
+  if (!Zl.has(materialKey)) {
+    Zl.set(materialKey, new THREE.MeshStandardMaterial({
+      color: colorHex,
       roughness: 1,
       metalness: 0,
-      ...(flag ? {
+      ...(inset ? {
         polygonOffset: true,
         polygonOffsetFactor: -2,
         polygonOffsetUnits: -4
       } : {})
     }));
   }
-  return Zl.get(computedValue);
+  return Zl.get(materialKey);
 }
 function addRugMeshes(group, size, color, colorCurrent) {
   const base = getCachedRoundedBoxGeometry(size.width, size.height, size.depth);
@@ -9241,40 +9696,40 @@ function addRugMeshes(group, size, color, colorCurrent) {
   };
   return true;
 }
-function createGlassMaterial(color, flagCurrent = false, depthWrite = false) {
-  const flag = color.material;
-  if (!color.isMesh || color.isSkinnedMesh || color.isBatchedMesh || color.morphTargetInfluences || Array.isArray(flag) || !flag?.isMeshStandardMaterial || flag.transparent || flag.opacity < 1 || flag.transmission > 0 || flag.alphaHash || flag.displacementMap || flag.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile || flag.customProgramCacheKey !== THREE.Material.prototype.customProgramCacheKey || color.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender || flag.clippingPlanes?.length || !flagCurrent && Object.values(flag).some(isTexture => isTexture?.isTexture)) {
+function createGlassMaterial(mesh, skipTextureCheck = false, forceWhiteColor = false) {
+  const material = mesh.material;
+  if (!mesh.isMesh || mesh.isSkinnedMesh || mesh.isBatchedMesh || mesh.morphTargetInfluences || Array.isArray(material) || !material?.isMeshStandardMaterial || material.transparent || material.opacity < 1 || material.transmission > 0 || material.alphaHash || material.displacementMap || material.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile || material.customProgramCacheKey !== THREE.Material.prototype.customProgramCacheKey || mesh.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender || material.clippingPlanes?.length || !skipTextureCheck && Object.values(material).some(propertyValue => propertyValue?.isTexture)) {
     return "";
   }
-  const push = [];
-  for (const localValue of Object.keys(flag).sort()) {
-    if (["id", "uuid", "name", "userData", "version", "_listeners"].includes(localValue)) {
+  const signatureParts = [];
+  for (const propertyName of Object.keys(material).sort()) {
+    if (["id", "uuid", "name", "userData", "version", "_listeners"].includes(propertyName)) {
       continue;
     }
-    const isTexture = flag[localValue];
-    if (localValue === "color" && depthWrite) {
-      push.push([localValue, [1, 1, 1]]);
+    const entry = material[propertyName];
+    if (propertyName === "color" && forceWhiteColor) {
+      signatureParts.push([propertyName, [1, 1, 1]]);
       continue;
     }
-    if (isTexture == null || ["number", "boolean", "string"].includes(typeof isTexture)) {
-      push.push([localValue, isTexture]);
-    } else if (isTexture.isTexture) {
-      push.push([localValue, isTexture.uuid]);
-    } else if (isTexture.isColor || isTexture.isVector2 || isTexture.isVector3 || isTexture.isVector4 || isTexture.isMatrix3 || isTexture.isMatrix4 || isTexture.isEuler) {
-      push.push([localValue, isTexture.toArray()]);
-    } else if (Array.isArray(isTexture) && isTexture.every(argPrimary => ["number", "boolean", "string"].includes(typeof argPrimary))) {
-      push.push([localValue, isTexture]);
-    } else if (localValue === "defines") {
-      push.push([localValue, Object.entries(isTexture).sort(([localeCompare], [argSecondary]) => localeCompare.localeCompare(argSecondary))]);
+    if (entry == null || ["number", "boolean", "string"].includes(typeof entry)) {
+      signatureParts.push([propertyName, entry]);
+    } else if (entry.isTexture) {
+      signatureParts.push([propertyName, entry.uuid]);
+    } else if (entry.isColor || entry.isVector2 || entry.isVector3 || entry.isVector4 || entry.isMatrix3 || entry.isMatrix4 || entry.isEuler) {
+      signatureParts.push([propertyName, entry.toArray()]);
+    } else if (Array.isArray(entry) && entry.every(entryItem => ["number", "boolean", "string"].includes(typeof entryItem))) {
+      signatureParts.push([propertyName, entry]);
+    } else if (propertyName === "defines") {
+      signatureParts.push([propertyName, Object.entries(entry).sort(([keyA], [keyB]) => keyA.localeCompare(keyB))]);
     } else {
       return "";
     }
   }
-  return JSON.stringify([push, color.castShadow, color.receiveShadow, color.renderOrder, color.layers.mask]);
+  return JSON.stringify([signatureParts, mesh.castShadow, mesh.receiveShadow, mesh.renderOrder, mesh.layers.mask]);
 }
-function meshMaterialSignature(light) {
-  const material = Object.entries(light.geometry?.attributes || {}).sort(([localeCompare], [argSecondary]) => localeCompare.localeCompare(argSecondary)).map(([argPrimary, itemSize]) => [argPrimary, itemSize.itemSize, itemSize.normalized, itemSize.array?.constructor?.name]);
-  return JSON.stringify([!!light.geometry?.index, material, Object.keys(light.geometry?.morphAttributes || {}).sort()]);
+function meshMaterialSignature(mesh) {
+  const attributes = Object.entries(mesh.geometry?.attributes || {}).sort(([keyA], [keyB]) => keyA.localeCompare(keyB)).map(([attributeName, attribute]) => [attributeName, attribute.itemSize, attribute.normalized, attribute.array?.constructor?.name]);
+  return JSON.stringify([!!mesh.geometry?.index, attributes, Object.keys(mesh.geometry?.morphAttributes || {}).sort()]);
 }
 function collectDescendantMeshes(geometry) {
   const value = [];
@@ -9293,116 +9748,117 @@ function collectChildMeshes(object3d) {
     return JSON.stringify([list.color?.getHex(), list.roughness, list.metalness, list.emissive?.getHex(), list.emissiveIntensity, list.side, list.transparent, list.opacity, list.depthWrite, list.depthTest, list.depthFunc, list.blending, list.polygonOffset, list.polygonOffsetFactor, list.polygonOffsetUnits, list.map?.uuid || ""]);
   }
 }
-function mergeSimilarItemMeshes(object3d, type) {
-  if (!Gg.has(type)) {
+function mergeSimilarItemMeshes(root, itemType) {
+  if (!meshMergeAllowlist.has(itemType)) {
+    // Disabled: see the meshMergeAllowlist declaration comment.
     return;
   }
-  const list = collectDescendantMeshes(object3d);
+  const meshes = collectDescendantMeshes(root);
   const beforeCount = new Map();
   const lookupMap = new Map();
-  for (const light of list) {
-    const flag = light.geometry?.parameters;
-    const mergedGeometryCacheKey = flag ? light.geometry.type + ":" + JSON.stringify(flag) : "";
-    if (mergedGeometryCacheKey && beforeCount.has(mergedGeometryCacheKey)) {
-      light.geometry.dispose();
-      light.geometry = beforeCount.get(mergedGeometryCacheKey);
-    } else if (mergedGeometryCacheKey) {
-      beforeCount.set(mergedGeometryCacheKey, light.geometry);
+  for (const mesh of meshes) {
+    const geometryParameters = mesh.geometry?.parameters;
+    const sharedGeometryKey = geometryParameters ? mesh.geometry.type + ":" + JSON.stringify(geometryParameters) : "";
+    if (sharedGeometryKey && beforeCount.has(sharedGeometryKey)) {
+      mesh.geometry.dispose();
+      mesh.geometry = beforeCount.get(sharedGeometryKey);
+    } else if (sharedGeometryKey) {
+      beforeCount.set(sharedGeometryKey, mesh.geometry);
     }
-    const localValue = collectChildMeshes(light);
-    if (localValue && lookupMap.has(localValue)) {
-      light.material.dispose();
-      light.material = lookupMap.get(localValue);
-    } else if (localValue) {
-      lookupMap.set(localValue, light.material);
+    const materialKey = collectChildMeshes(mesh);
+    if (materialKey && lookupMap.has(materialKey)) {
+      mesh.material.dispose();
+      mesh.material = lookupMap.get(materialKey);
+    } else if (materialKey) {
+      lookupMap.set(materialKey, mesh.material);
     }
   }
-  object3d.userData.optimizationStats = {
-    type,
-    before: list.length,
-    after: list.length,
-    uniqueGeometries: new Set(list.map(geometry => geometry.geometry)).size,
-    uniqueMaterials: new Set(list.map(material => material.material)).size
+  root.userData.optimizationStats = {
+    type: itemType,
+    before: meshes.length,
+    after: meshes.length,
+    uniqueGeometries: new Set(meshes.map(geometry => geometry.geometry)).size,
+    uniqueMaterials: new Set(meshes.map(material => material.material)).size
   };
 }
-function addStripLightHelpers(updateMatrixWorld, item) {
-  if (!hasProjectLoaded.has(item) || item === "curtain") {
+function addStripLightHelpers(root, itemType) {
+  if (!stripLightHelperTypes.has(itemType) || itemType === "curtain") {
     return;
   }
-  const group = collectDescendantMeshes(updateMatrixWorld);
-  const emissive = group.length;
-  const clamp = new Map();
-  for (const userData of group) {
-    if (userData.userData.televisionScreen || userData.userData.televisionGlow || userData.userData.curtainPart) {
+  const meshes = collectDescendantMeshes(root);
+  const meshCount = meshes.length;
+  const materialGroups = new Map();
+  for (const mesh of meshes) {
+    if (mesh.userData.televisionScreen || mesh.userData.televisionGlow || mesh.userData.curtainPart) {
       continue;
     }
-    const localValue = createGlassMaterial(userData);
-    if (!localValue) {
+    const materialKey = createGlassMaterial(mesh);
+    if (!materialKey) {
       continue;
     }
-    const computedValue = localValue + ":" + meshMaterialSignature(userData);
-    if (!clamp.has(computedValue)) {
-      clamp.set(computedValue, []);
+    const groupKey = materialKey + ":" + meshMaterialSignature(mesh);
+    if (!materialGroups.has(groupKey)) {
+      materialGroups.set(groupKey, []);
     }
-    clamp.get(computedValue).push(userData);
+    materialGroups.get(groupKey).push(mesh);
   }
-  updateMatrixWorld.updateMatrixWorld(true);
-  const invert = updateMatrixWorld.matrixWorld.clone().invert();
-  for (const length of clamp.values()) {
-    if (length.length < 2) {
+  root.updateMatrixWorld(true);
+  const worldInverse = root.matrixWorld.clone().invert();
+  for (const meshGroup of materialGroups.values()) {
+    if (meshGroup.length < 2) {
       continue;
     }
-    const forEach = length.map(matrixWorld => {
-      const localValue = new THREE.Matrix4().multiplyMatrices(invert, matrixWorld.matrixWorld);
-      return matrixWorld.geometry.clone().applyMatrix4(localValue);
+    const transformedGeometries = meshGroup.map(sourceMesh => {
+      const localMatrix = new THREE.Matrix4().multiplyMatrices(worldInverse, sourceMesh.matrixWorld);
+      return sourceMesh.geometry.clone().applyMatrix4(localMatrix);
     });
-    const localValue = mergeGeometries(forEach);
-    forEach.forEach(dispose => dispose.dispose());
-    if (!localValue) {
+    const mergedGeometry = mergeGeometries(transformedGeometries);
+    transformedGeometries.forEach(dispose => dispose.dispose());
+    if (!mergedGeometry) {
       continue;
     }
-    const material = length[0];
-    const castShadow = new THREE.Mesh(localValue, material.material);
-    castShadow.castShadow = material.castShadow;
-    castShadow.receiveShadow = material.receiveShadow;
-    castShadow.renderOrder = material.renderOrder;
-    castShadow.userData = {};
-    length.forEach((parent, argSecondary) => {
-      parent.parent?.remove(parent);
-      if (!parent.userData.externalModelSharedGeometry) {
-        parent.geometry.dispose();
+    const firstMesh = meshGroup[0];
+    const mergedMesh = new THREE.Mesh(mergedGeometry, firstMesh.material);
+    mergedMesh.castShadow = firstMesh.castShadow;
+    mergedMesh.receiveShadow = firstMesh.receiveShadow;
+    mergedMesh.renderOrder = firstMesh.renderOrder;
+    mergedMesh.userData = {};
+    meshGroup.forEach((meshToRemove, index) => {
+      meshToRemove.parent?.remove(meshToRemove);
+      if (!meshToRemove.userData.externalModelSharedGeometry) {
+        meshToRemove.geometry.dispose();
       }
-      if (argSecondary > 0) {
-        parent.material.dispose();
+      if (index > 0) {
+        meshToRemove.material.dispose();
       }
     });
-    updateMatrixWorld.add(castShadow);
+    root.add(mergedMesh);
   }
-  updateMatrixWorld.userData.optimizationStats = {
-    type: item,
-    before: emissive,
-    after: collectDescendantMeshes(updateMatrixWorld).length
+  root.userData.optimizationStats = {
+    type: itemType,
+    before: meshCount,
+    after: collectDescendantMeshes(root).length
   };
 }
-function addSoftBoxMesh(group, argSecondary, argTertiary, argN, argNCurrent, argNNext, argNPrevious, color, light = {}) {
-  const value = new THREE.MeshStandardMaterial({
+function addSoftBoxMesh(group, radiusTop, radiusBottom, height, offsetX, offsetY, offsetZ, color, options = {}) {
+  const material = new THREE.MeshStandardMaterial({
     color,
-    roughness: light.roughness ?? 0.62,
-    metalness: light.metalness ?? 0.03,
-    transparent: !!light.transparent,
-    opacity: light.opacity ?? 1,
-    depthWrite: light.depthWrite ?? true
+    roughness: options.roughness ?? 0.62,
+    metalness: options.metalness ?? 0.03,
+    transparent: !!options.transparent,
+    opacity: options.opacity ?? 1,
+    depthWrite: options.depthWrite ?? true
   });
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(argSecondary, argTertiary, argN, light.segments ?? 24), value);
-  mesh.position.set(argNCurrent, argNNext, argNPrevious);
-  if (light.rotationX) {
-    mesh.rotation.x = light.rotationX;
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radiusTop, radiusBottom, height, options.segments ?? 24), material);
+  mesh.position.set(offsetX, offsetY, offsetZ);
+  if (options.rotationX) {
+    mesh.rotation.x = options.rotationX;
   }
-  if (light.rotationZ) {
-    mesh.rotation.z = light.rotationZ;
+  if (options.rotationZ) {
+    mesh.rotation.z = options.rotationZ;
   }
-  mesh.castShadow = light.castShadow !== false;
-  mesh.receiveShadow = light.receiveShadow !== false;
+  mesh.castShadow = options.castShadow !== false;
+  mesh.receiveShadow = options.receiveShadow !== false;
   group.add(mesh);
   return mesh;
 }
@@ -9413,161 +9869,161 @@ function materialFingerprint(material) {
   material.renderOrder = 20;
   return material;
 }
-function applySelectionHighlight(object3d, flag) {
-  if (flag.type !== "striplight") {
+function applySelectionHighlight(item, light) {
+  if (light.type !== "striplight") {
     return;
   }
-  const value = new THREE.Group();
-  value.userData.exportRole = "light-source-preview";
-  value.userData.lightSourcePreview = true;
-  value.visible = flag.lightSourceVisible !== false && !stageSession && isSelected("item", flag.id);
-  const emissive = kelvinToRgbHex(flag.lightTemperature) || 16762219;
-  const clampedValue = clamp(finite(flag.depth, 0.28), 0.1, 8);
-  const clampedValueCurrent = clamp(finite(flag.width, 1), 0.1, 8);
-  const localValue = clampedValue;
-  const rotation = new THREE.Group();
-  rotation.rotation.z = THREE.MathUtils.degToRad(normalizeFullRotation(flag.verticalRotation));
-  const group = new THREE.Group();
-  group.rotation.x = THREE.MathUtils.degToRad(normalizeFullRotation(flag.stripRollRotation));
-  const clampedValueNext = clamp(finite(flag.lightRange, 3.5) * 0.16, 0.28, 0.72);
-  materialFingerprint(addBoxMesh(group, clampedValueCurrent, 0.014, localValue, 0, -clampedValueNext, 0, emissive, {
+  const previewGroup = new THREE.Group();
+  previewGroup.userData.exportRole = "light-source-preview";
+  previewGroup.userData.lightSourcePreview = true;
+  previewGroup.visible = light.lightSourceVisible !== false && !stageSession && isSelected("item", light.id);
+  const previewColor = kelvinToRgbHex(light.lightTemperature) || 16762219;
+  const depth = clamp(finite(light.depth, 0.28), 0.1, 8);
+  const width = clamp(finite(light.width, 1), 0.1, 8);
+  const boxDepth = depth;
+  const rollGroup = new THREE.Group();
+  rollGroup.rotation.z = THREE.MathUtils.degToRad(normalizeFullRotation(light.verticalRotation));
+  const tiltGroup = new THREE.Group();
+  tiltGroup.rotation.x = THREE.MathUtils.degToRad(normalizeFullRotation(light.stripRollRotation));
+  const coneOffset = clamp(finite(light.lightRange, 3.5) * 0.16, 0.28, 0.72);
+  materialFingerprint(addBoxMesh(tiltGroup, width, 0.014, boxDepth, 0, -coneOffset, 0, previewColor, {
     rounded: false,
     transparent: true,
     opacity: 0.24,
     depthWrite: false,
-    emissive,
+    emissive: previewColor,
     emissiveIntensity: 0.68,
     castShadow: false,
     receiveShadow: false
   }));
-  materialFingerprint(addSoftBoxMesh(group, 0.012, 0.012, clampedValueNext, 0, -clampedValueNext * 0.5, 0, emissive, {
+  materialFingerprint(addSoftBoxMesh(tiltGroup, 0.012, 0.012, coneOffset, 0, -coneOffset * 0.5, 0, previewColor, {
     segments: 10,
     transparent: true,
     opacity: 0.78,
     depthWrite: false,
     roughness: 0.3,
-    emissive,
+    emissive: previewColor,
     emissiveIntensity: 0.8
   }));
-  const mesh = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.12, 10), new THREE.MeshBasicMaterial({
-    color: emissive,
+  const coneMesh = new THREE.Mesh(new THREE.ConeGeometry(0.045, 0.12, 10), new THREE.MeshBasicMaterial({
+    color: previewColor,
     transparent: true,
     opacity: 0.82,
     depthWrite: false
   }));
-  mesh.rotation.x = Math.PI;
-  mesh.position.set(0, -clampedValueNext, 0);
-  materialFingerprint(mesh);
-  group.add(mesh);
-  rotation.add(group);
-  value.add(rotation);
-  object3d.add(value);
+  coneMesh.rotation.x = Math.PI;
+  coneMesh.position.set(0, -coneOffset, 0);
+  materialFingerprint(coneMesh);
+  tiltGroup.add(coneMesh);
+  rollGroup.add(tiltGroup);
+  previewGroup.add(rollGroup);
+  item.add(previewGroup);
 }
-function createWallTopMaterial(flag, argSecondary, argTertiary) {
-  const list = [{
+function createWallTopMaterial(width, height, depth) {
+  const profileRings = [{
     y: 0,
-    halfWidth: flag * 0.31,
-    backZ: -argSecondary * 0.16,
-    sideZ: argSecondary * 0.08,
-    frontZ: argSecondary * 0.46
+    halfWidth: width * 0.31,
+    backZ: -height * 0.16,
+    sideZ: height * 0.08,
+    frontZ: height * 0.46
   }, {
-    y: argTertiary * 0.42,
-    halfWidth: flag * 0.43,
-    backZ: -argSecondary * 0.34,
-    sideZ: argSecondary * 0.08,
-    frontZ: argSecondary * 0.47
+    y: depth * 0.42,
+    halfWidth: width * 0.43,
+    backZ: -height * 0.34,
+    sideZ: height * 0.08,
+    frontZ: height * 0.47
   }, {
-    y: argTertiary * 0.72,
-    halfWidth: flag * 0.49,
-    backZ: -argSecondary * 0.47,
-    sideZ: argSecondary * 0.08,
-    frontZ: argSecondary * 0.47
+    y: depth * 0.72,
+    halfWidth: width * 0.49,
+    backZ: -height * 0.47,
+    sideZ: height * 0.08,
+    frontZ: height * 0.47
   }];
-  const helperFn = halfWidth => {
-    const push = [new THREE.Vector3(-halfWidth.halfWidth, halfWidth.y, halfWidth.backZ), new THREE.Vector3(halfWidth.halfWidth, halfWidth.y, halfWidth.backZ), new THREE.Vector3(halfWidth.halfWidth, halfWidth.y, halfWidth.sideZ)];
-    for (let oneValue = 1; oneValue <= 18; oneValue += 1) {
-      const halfValue = oneValue / 18 * Math.PI;
-      push.push(new THREE.Vector3(Math.cos(halfValue) * halfWidth.halfWidth, halfWidth.y, halfWidth.sideZ + Math.sin(halfValue) * (halfWidth.frontZ - halfWidth.sideZ)));
+  const buildRingPath = ring => {
+    const ringPoints = [new THREE.Vector3(-ring.halfWidth, ring.y, ring.backZ), new THREE.Vector3(ring.halfWidth, ring.y, ring.backZ), new THREE.Vector3(ring.halfWidth, ring.y, ring.sideZ)];
+    for (let step = 1; step <= 18; step += 1) {
+      const angle = step / 18 * Math.PI;
+      ringPoints.push(new THREE.Vector3(Math.cos(angle) * ring.halfWidth, ring.y, ring.sideZ + Math.sin(angle) * (ring.frontZ - ring.sideZ)));
     }
-    return push;
+    return ringPoints;
   };
-  const length = list.map(helperFn);
-  const lengthValue = length[0].length;
-  const flattened = length.flatMap(flatMap => flatMap.flatMap(point => [point.x, point.y, point.z]));
-  const push = [];
-  for (let ring = 0; ring < length.length - 1; ring += 1) {
-    const ringBase = ring * lengthValue;
-    const nextRingBase = (ring + 1) * lengthValue;
-    for (let i = 0; i < lengthValue; i += 1) {
-      const next = (i + 1) % lengthValue;
-      const a = ringBase + i;
-      const b = ringBase + next;
-      const c = nextRingBase + i;
-      const d = nextRingBase + next;
-      push.push(a, d, b, a, c, d);
+  const ringPaths = profileRings.map(buildRingPath);
+  const ringPointCount = ringPaths[0].length;
+  const flattened = ringPaths.flatMap(ringPath => ringPath.flatMap(pathPoint => [pathPoint.x, pathPoint.y, pathPoint.z]));
+  const indices = [];
+  for (let ringIndex = 0; ringIndex < ringPaths.length - 1; ringIndex += 1) {
+    const ringStart = ringIndex * ringPointCount;
+    const nextRingStart = (ringIndex + 1) * ringPointCount;
+    for (let i = 0; i < ringPointCount; i += 1) {
+      const nextPoint = (i + 1) % ringPointCount;
+      const indexA = ringStart + i;
+      const indexB = ringStart + nextPoint;
+      const indexC = nextRingStart + i;
+      const indexD = nextRingStart + nextPoint;
+      indices.push(indexA, indexD, indexB, indexA, indexC, indexD);
     }
   }
-  const topCenter = flattened.length / 3;
-  flattened.push(0, list[0].y, argSecondary * 0.08);
-  const bottomCenter = flattened.length / 3;
-  flattened.push(0, list.at(-1).y, argSecondary * 0.08);
-  const lastRingBase = (length.length - 1) * lengthValue;
-  for (let i = 0; i < lengthValue; i += 1) {
-    const next = (i + 1) % lengthValue;
-    push.push(topCenter, i, next);
-    push.push(bottomCenter, lastRingBase + next, lastRingBase + i);
+  const topCenterIndex = flattened.length / 3;
+  flattened.push(0, profileRings[0].y, height * 0.08);
+  const bottomCenterIndex = flattened.length / 3;
+  flattened.push(0, profileRings.at(-1).y, height * 0.08);
+  const lastRingStart = (ringPaths.length - 1) * ringPointCount;
+  for (let i = 0; i < ringPointCount; i += 1) {
+    const wrappedNextPoint = (i + 1) % ringPointCount;
+    indices.push(topCenterIndex, i, wrappedNextPoint);
+    indices.push(bottomCenterIndex, lastRingStart + wrappedNextPoint, lastRingStart + i);
   }
-  const setAttribute = new THREE.BufferGeometry();
-  setAttribute.setAttribute("position", new THREE.Float32BufferAttribute(flattened, 3));
-  setAttribute.setIndex(push);
-  setAttribute.computeVertexNormals();
-  setAttribute.computeBoundingSphere();
-  return setAttribute;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(flattened, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  return geometry;
 }
-function buildTelevisionMesh(group, argSecondary, argTertiary, argN, argNCurrent, argNNext, argNPrevious, color, colorCurrent) {
-  const groupCurrent = new THREE.Group();
-  const computedValue = argN * 0.49;
-  const height = argN * 0.12;
-  const computedValueCurrent = -argTertiary * 0.39;
-  addBoxMesh(groupCurrent, argSecondary * 0.9, height, argTertiary * 0.82, 0, computedValue, argTertiary * 0.02, color, {
-    radius: Math.min(argSecondary, argTertiary) * 0.06,
+function buildTelevisionMesh(parentGroup, width, depth, height, offsetX, offsetZ, rotationY, frameColor, accentColor) {
+  const tvGroup = new THREE.Group();
+  const topBezelY = height * 0.49;
+  const bezelHeight = height * 0.12;
+  const bottomBezelZ = -depth * 0.39;
+  addBoxMesh(tvGroup, width * 0.9, bezelHeight, depth * 0.82, 0, topBezelY, depth * 0.02, frameColor, {
+    radius: Math.min(width, depth) * 0.06,
     roughness: 0.72
   });
-  addBoxMesh(groupCurrent, argSecondary * 0.78, argN * 0.34, argTertiary * 0.09, 0, argN * 0.78, computedValueCurrent, color, {
-    radius: Math.min(argSecondary, argTertiary) * 0.045,
+  addBoxMesh(tvGroup, width * 0.78, height * 0.34, depth * 0.09, 0, height * 0.78, bottomBezelZ, frameColor, {
+    radius: Math.min(width, depth) * 0.045,
     roughness: 0.72
   });
-  for (const value of [-0.38, 0.38]) {
-    addBoxMesh(groupCurrent, 0.05, argN * 0.47, 0.05, argSecondary * value, argN * 0.235, argTertiary * 0.34, colorCurrent, {
+  for (const sideOffset of [-0.38, 0.38]) {
+    addBoxMesh(tvGroup, 0.05, height * 0.47, 0.05, width * sideOffset, height * 0.235, depth * 0.34, accentColor, {
       rounded: false
     });
-    addBoxMesh(groupCurrent, 0.05, argN * 0.94, 0.05, argSecondary * value, argN * 0.47, computedValueCurrent, colorCurrent, {
+    addBoxMesh(tvGroup, 0.05, height * 0.94, 0.05, width * sideOffset, height * 0.47, bottomBezelZ, accentColor, {
       rounded: false
     });
   }
-  groupCurrent.position.set(argNCurrent, 0, argNNext);
-  groupCurrent.rotation.y = argNPrevious;
-  group.add(groupCurrent);
+  tvGroup.position.set(offsetX, 0, offsetZ);
+  tvGroup.rotation.y = rotationY;
+  parentGroup.add(tvGroup);
 }
-function stairRiserMaterialOptions(group, argSecondary, value, param) {
-  const light = {
+function stairRiserMaterialOptions(group, risers, archColor, archOptions) {
+  const threadOptions = {
     rounded: false,
     metalness: 0.18,
     roughness: 0.36,
     castShadow: false,
     receiveShadow: false
   };
-  const list = [];
-  const entriesVar = [];
-  for (const size of argSecondary) {
-    const minValue = Math.min(0.045, size.width * 0.08, size.height * 0.04);
-    const maxValue = Math.max(size.width - minValue * 2, 0.04);
-    const max = Math.max(size.height - minValue * 2, 0.08);
-    list.push([maxValue, max, 0.018, size.centerX, size.height / 2, size.centerZ]);
-    entriesVar.push([size.width, minValue, 0.045, size.centerX, minValue / 2, size.centerZ], [size.width, minValue, 0.045, size.centerX, size.height - minValue / 2, size.centerZ], [minValue, size.height, 0.045, size.centerX - size.width / 2 + minValue / 2, size.height / 2, size.centerZ], [minValue, size.height, 0.045, size.centerX + size.width / 2 - minValue / 2, size.height / 2, size.centerZ]);
+  const treadParts = [];
+  const sideParts = [];
+  for (const riser of risers) {
+    const capThickness = Math.min(0.045, riser.width * 0.08, riser.height * 0.04);
+    const treadWidth = Math.max(riser.width - capThickness * 2, 0.04);
+    const treadDepth = Math.max(riser.height - capThickness * 2, 0.08);
+    treadParts.push([treadWidth, treadDepth, 0.018, riser.centerX, riser.height / 2, riser.centerZ]);
+    sideParts.push([riser.width, capThickness, 0.045, riser.centerX, capThickness / 2, riser.centerZ], [riser.width, capThickness, 0.045, riser.centerX, riser.height - capThickness / 2, riser.centerZ], [capThickness, riser.height, 0.045, riser.centerX - riser.width / 2 + capThickness / 2, riser.height / 2, riser.centerZ], [capThickness, riser.height, 0.045, riser.centerX + riser.width / 2 - capThickness / 2, riser.height / 2, riser.centerZ]);
   }
-  for (const tupleItem of list) {
-    addSharedArchMesh(group, [tupleItem], param, {
+  for (const part of treadParts) {
+    addSharedArchMesh(group, [part], archOptions, {
       rounded: false,
       transparent: true,
       opacity: 0.24,
@@ -9580,79 +10036,79 @@ function stairRiserMaterialOptions(group, argSecondary, value, param) {
       renderOrder: 7
     });
   }
-  addSharedArchMesh(group, entriesVar, value, light);
+  addSharedArchMesh(group, sideParts, archColor, threadOptions);
 }
-function countShadowLights(traverse, argSecondary) {
-  if (!argSecondary) {
+function countShadowLights(root, enabled) {
+  if (!enabled) {
     return;
   }
-  const maxTextureUnits = resolvedThemeColors();
-  traverse.traverse(material => {
-    const conditionalValue = Array.isArray(material.material) ? material.material : material.material ? [material.material] : [];
-    for (const isMeshStandardMaterial of conditionalValue) {
-      if (isMeshStandardMaterial?.isMeshStandardMaterial) {
-        isMeshStandardMaterial.emissive = new THREE.Color(maxTextureUnits.accent);
-        isMeshStandardMaterial.emissiveIntensity = 0.32;
+  const themeColors = resolvedThemeColors();
+  root.traverse(mesh => {
+    const materials = Array.isArray(mesh.material) ? mesh.material : mesh.material ? [mesh.material] : [];
+    for (const entry of materials) {
+      if (entry?.isMeshStandardMaterial) {
+        entry.emissive = new THREE.Color(themeColors.accent);
+        entry.emissiveIntensity = 0.32;
       }
     }
   });
 }
-function markAsLightSourcePreview(light) {
-  const rect = document.createElement("canvas");
-  rect.width = 2048;
-  rect.height = 640;
-  const context = rect.getContext("2d");
-  context.clearRect(0, 0, rect.width, rect.height);
-  context.fillStyle = "#929baa";
-  context.textAlign = "left";
-  context.textBaseline = "middle";
-  const normalizedLabel = normalizeLabelText(light.title, "家庭总览", 24);
-  const text = normalizeLabelText(light.subtitle, "HOME PLAN", 36);
-  const numericValue = 115;
-  const count = 184;
-  context.font = "700 " + count + "px sans-serif";
-  drawTrackedText(context, normalizedLabel, numericValue, 130, count * clamp(finite(light.titleSpacing, 1.05), 0, 1.8), 1340);
-  const numericValueCurrent = 1580;
-  const numericValueNext = 130;
-  const numericValuePrevious = 170;
-  context.fillStyle = "#929baa";
-  context.beginPath();
-  context.moveTo(numericValueCurrent, numericValueNext - numericValuePrevious * 0.58);
-  context.lineTo(numericValueCurrent + numericValuePrevious * 0.56, numericValueNext - numericValuePrevious * 0.02);
-  context.lineTo(numericValueCurrent + numericValuePrevious * 0.38, numericValueNext - numericValuePrevious * 0.02);
-  context.lineTo(numericValueCurrent + numericValuePrevious * 0.38, numericValueNext + numericValuePrevious * 0.5);
-  context.lineTo(numericValueCurrent - numericValuePrevious * 0.38, numericValueNext + numericValuePrevious * 0.5);
-  context.lineTo(numericValueCurrent - numericValuePrevious * 0.38, numericValueNext - numericValuePrevious * 0.02);
-  context.lineTo(numericValueCurrent - numericValuePrevious * 0.56, numericValueNext - numericValuePrevious * 0.02);
-  context.closePath();
-  context.fill();
-  context.save();
-  context.globalCompositeOperation = "destination-out";
-  context.fillRect(numericValueCurrent - numericValuePrevious * 0.09, numericValueNext + numericValuePrevious * 0.2, numericValuePrevious * 0.18, numericValuePrevious * 0.3);
-  context.restore();
-  context.fillStyle = "#929baa";
-  context.textAlign = "left";
-  const numericValueLocal = 310;
-  context.font = "400 " + numericValueLocal + "px \"Arial Narrow\", Arial, sans-serif";
-  drawTrackedText(context, text, 72, 410, numericValueLocal * clamp(finite(light.subtitleSpacing, 0.08), 0, 0.6), 1880);
-  const numericValueItem = 74;
-  const computedValue = numericValueItem + clamp(finite(light.lineLength, 0.86), 0.3, 1) * 1880;
-  context.strokeStyle = "rgba(146, 155, 170, 0.72)";
-  context.lineWidth = 16;
-  context.beginPath();
-  context.moveTo(numericValueItem, 590);
-  context.lineTo(computedValue, 590);
-  context.moveTo(numericValueItem, 566);
-  context.lineTo(numericValueItem, 614);
-  context.moveTo(computedValue, 566);
-  context.lineTo(computedValue, 614);
-  context.stroke();
-  const colorSpace = new THREE.CanvasTexture(rect);
-  colorSpace.colorSpace = THREE.SRGBColorSpace;
-  colorSpace.anisotropy = Math.min(renderer?.capabilities?.getMaxAnisotropy?.() || 1, 8);
-  colorSpace.needsUpdate = true;
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(light.width, light.depth), new THREE.MeshBasicMaterial({
-    map: colorSpace,
+function markAsLightSourcePreview(label) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 2048;
+  canvas.height = 640;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#929baa";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  const title = normalizeLabelText(label.title, "家庭总览", 24);
+  const subtitle = normalizeLabelText(label.subtitle, "HOME PLAN", 36);
+  const titleY = 115;
+  const titleFontPx = 184;
+  ctx.font = "700 " + titleFontPx + "px sans-serif";
+  drawTrackedText(ctx, title, titleY, 130, titleFontPx * clamp(finite(label.titleSpacing, 1.05), 0, 1.8), 1340);
+  const arrowX = 1580;
+  const arrowY = 130;
+  const arrowSize = 170;
+  ctx.fillStyle = "#929baa";
+  ctx.beginPath();
+  ctx.moveTo(arrowX, arrowY - arrowSize * 0.58);
+  ctx.lineTo(arrowX + arrowSize * 0.56, arrowY - arrowSize * 0.02);
+  ctx.lineTo(arrowX + arrowSize * 0.38, arrowY - arrowSize * 0.02);
+  ctx.lineTo(arrowX + arrowSize * 0.38, arrowY + arrowSize * 0.5);
+  ctx.lineTo(arrowX - arrowSize * 0.38, arrowY + arrowSize * 0.5);
+  ctx.lineTo(arrowX - arrowSize * 0.38, arrowY - arrowSize * 0.02);
+  ctx.lineTo(arrowX - arrowSize * 0.56, arrowY - arrowSize * 0.02);
+  ctx.closePath();
+  ctx.fill();
+  ctx.save();
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.fillRect(arrowX - arrowSize * 0.09, arrowY + arrowSize * 0.2, arrowSize * 0.18, arrowSize * 0.3);
+  ctx.restore();
+  ctx.fillStyle = "#929baa";
+  ctx.textAlign = "left";
+  const subtitleFontPx = 310;
+  ctx.font = "400 " + subtitleFontPx + "px \"Arial Narrow\", Arial, sans-serif";
+  drawTrackedText(ctx, subtitle, 72, 410, subtitleFontPx * clamp(finite(label.subtitleSpacing, 0.08), 0, 0.6), 1880);
+  const lineStartX = 74;
+  const lineEndX = lineStartX + clamp(finite(label.lineLength, 0.86), 0.3, 1) * 1880;
+  ctx.strokeStyle = "rgba(146, 155, 170, 0.72)";
+  ctx.lineWidth = 16;
+  ctx.beginPath();
+  ctx.moveTo(lineStartX, 590);
+  ctx.lineTo(lineEndX, 590);
+  ctx.moveTo(lineStartX, 566);
+  ctx.lineTo(lineStartX, 614);
+  ctx.moveTo(lineEndX, 566);
+  ctx.lineTo(lineEndX, 614);
+  ctx.stroke();
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = Math.min(renderer?.capabilities?.getMaxAnisotropy?.() || 1, 8);
+  texture.needsUpdate = true;
+  const planeMesh = new THREE.Mesh(new THREE.PlaneGeometry(label.width, label.depth), new THREE.MeshBasicMaterial({
+    map: texture,
     transparent: true,
     alphaTest: 0.02,
     depthWrite: false,
@@ -9660,12 +10116,12 @@ function markAsLightSourcePreview(light) {
     side: THREE.DoubleSide,
     forceSinglePass: isStageEmbed
   }));
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.position.y = 0.008;
-  mesh.castShadow = false;
-  mesh.receiveShadow = false;
-  mesh.renderOrder = 8;
-  return mesh;
+  planeMesh.rotation.x = -Math.PI / 2;
+  planeMesh.position.y = 0.008;
+  planeMesh.castShadow = false;
+  planeMesh.receiveShadow = false;
+  planeMesh.renderOrder = 8;
+  return planeMesh;
 }
 function shadowCastingLightIdSet() {
   return new Set(selectShadowCastingLightIds(floorSceneCurrent.items.map(id => ({
@@ -9686,46 +10142,46 @@ function createPlanLabelSprite(size) {
   }
   return lengthValue;
 }
-function countMaterialTextures(traverse = worldGroup) {
-  let length = 0;
-  traverse?.traverse(material => {
-    if (!material.isMesh) {
+function countMaterialTextures(root = worldGroup) {
+  let textureCount = 0;
+  root?.traverse(node => {
+    if (!node.isMesh) {
       return;
     }
-    const conditionalValue = Array.isArray(material.material) ? material.material : material.material ? [material.material] : [];
-    for (const localValue of conditionalValue) {
-      length = Math.max(length, createPlanLabelSprite(localValue));
+    const materials = Array.isArray(node.material) ? node.material : node.material ? [node.material] : [];
+    for (const materialEntry of materials) {
+      textureCount = Math.max(textureCount, createPlanLabelSprite(materialEntry));
     }
   });
   if (previewSceneCurrent?.environment?.isTexture) {
-    length += 1;
+    textureCount += 1;
   }
-  return length;
+  return textureCount;
 }
 function maxTextureUnits() {
   const getParameter = renderer?.getContext?.();
   const value = getParameter?.getParameter?.(getParameter.MAX_TEXTURE_IMAGE_UNITS);
   return Math.max(1, Math.floor(finite(value, renderer?.capabilities?.maxTextures || 16)));
 }
-function countSceneMeshes(object3d = worldGroup) {
-  const value = [];
-  object3d?.traverse(object3d => {
-    if (!object3d.isSpotLight || object3d.userData?.shadowCandidate !== true) {
+function countSceneMeshes(root = worldGroup) {
+  const shadowCasters = [];
+  root?.traverse(node => {
+    if (!node.isSpotLight || node.userData?.shadowCandidate !== true) {
       return;
     }
-    const isArrayResult = String(object3d.userData?.lightFloorId || "");
-    const localValue = String(object3d.userData?.lightItemId || "");
-    if (localValue) {
-      value.push({
-        id: isArrayResult + ":" + localValue,
-        groupId: isArrayResult + ":" + String(object3d.userData?.lightGroupId || ""),
-        type: String(object3d.userData?.lightType || "downlight"),
-        brightness: finite(object3d.userData?.lightBrightness, 0),
-        enabled: object3d.visible !== false
+    const floorId = String(node.userData?.lightFloorId || "");
+    const itemId = String(node.userData?.lightItemId || "");
+    if (itemId) {
+      shadowCasters.push({
+        id: floorId + ":" + itemId,
+        groupId: floorId + ":" + String(node.userData?.lightGroupId || ""),
+        type: String(node.userData?.lightType || "downlight"),
+        brightness: finite(node.userData?.lightBrightness, 0),
+        enabled: node.visible !== false
       });
     }
   });
-  return value;
+  return shadowCasters;
 }
 function syncSpotShadowCastingLights(traverse = worldGroup, {
   rebuildAtlas: options = true
@@ -9754,32 +10210,32 @@ function syncSpotShadowCastingLights(traverse = worldGroup, {
       nonSpotShadowTextureUnits += 1;
     }
   });
-  let boolFlag = false;
+  let hasRectAreaLight = false;
   traverse.traverse(visible => {
     if (visible.visible !== false && visible.isRectAreaLight) {
-      boolFlag = true;
+      hasRectAreaLight = true;
     }
   });
-  const rectAreaLightTextureUnits = boolFlag ? deferredModelTimer : 0;
-  const computedValue = flag - textures - nonSpotShadowTextureUnits - rectAreaLightTextureUnits - externalModels;
-  if (!stageSession && shadowAtlas && computedValue >= 1 && renderer.domElement.dataset.spotShadowMode !== "fallback") {
-    const conditionalValue = options ? shadowAtlas.schedule(traverse) : countSceneMeshes(traverse).length;
-    const localValue = shadowAtlas.sync(traverse);
+  const rectAreaLightTextureUnits = hasRectAreaLight ? deferredModelTimer : 0;
+  const remainingUnits = flag - textures - nonSpotShadowTextureUnits - rectAreaLightTextureUnits - externalModels;
+  if (!stageSession && shadowAtlas && remainingUnits >= 1 && renderer.domElement.dataset.spotShadowMode !== "fallback") {
+    const shadowBudget = options ? shadowAtlas.schedule(traverse) : countSceneMeshes(traverse).length;
+    const activeSpotShadows = shadowAtlas.sync(traverse);
     const dataset = renderer.domElement;
     dataset.dataset.fragmentTextureUnits = String(flag);
     dataset.dataset.materialTextureUnits = String(textures);
-    dataset.dataset.spotShadowLimit = String(conditionalValue);
-    dataset.dataset.activeSpotShadows = String(localValue);
-    let zeroValue = 0;
+    dataset.dataset.spotShadowLimit = String(shadowBudget);
+    dataset.dataset.activeSpotShadows = String(activeSpotShadows);
+    let visibleUserLightCount = 0;
     traverse.traverse(isLight => {
       if (isLight.isLight && isLight.userData?.lightItemId && isLight.visible !== false) {
-        zeroValue += 1;
+        visibleUserLightCount += 1;
       }
     });
-    dataset.dataset.activeUserLights = String(zeroValue);
-    return localValue;
+    dataset.dataset.activeUserLights = String(visibleUserLightCount);
+    return activeSpotShadows;
   }
-  const localValue = spotShadowTextureUnitLimit({
+  const shadowUnitLimit = spotShadowTextureUnitLimit({
     maxTextureUnits: flag,
     materialTextureUnits: textures,
     nonSpotShadowTextureUnits,
@@ -9791,17 +10247,17 @@ function syncSpotShadowCastingLights(traverse = worldGroup, {
     shadowAtlas.setEnabled(false);
     shadowAtlas.sync(traverse);
   }
-  const has = new Set(selectShadowCastingLightIds(countSceneMeshes(traverse), localValue));
-  let zeroValue = 0;
+  const shadowCastIds = new Set(selectShadowCastingLightIds(countSceneMeshes(traverse), shadowUnitLimit));
+  let shadowCasterCount = 0;
   traverse.traverse(userData => {
     if (!userData.isSpotLight || !userData.userData?.lightItemId) {
       return;
     }
-    const computedValue = String(userData.userData?.lightFloorId || "") + ":" + String(userData.userData.lightItemId);
-    const castShadow = has.has(computedValue);
+    const lightKey = String(userData.userData?.lightFloorId || "") + ":" + String(userData.userData.lightItemId);
+    const castShadow = shadowCastIds.has(lightKey);
     userData.castShadow = castShadow;
     if (castShadow) {
-      zeroValue += 1;
+      shadowCasterCount += 1;
       if (userData.shadow && !userData.shadow.map) {
         userData.shadow.needsUpdate = true;
       }
@@ -9811,18 +10267,18 @@ function syncSpotShadowCastingLights(traverse = worldGroup, {
   dataset.dataset.spotShadowMode = "individual";
   dataset.dataset.fragmentTextureUnits = String(flag);
   dataset.dataset.materialTextureUnits = String(textures);
-  dataset.dataset.spotShadowLimit = String(localValue);
-  dataset.dataset.activeSpotShadows = String(zeroValue);
-  let count = 0;
+  dataset.dataset.spotShadowLimit = String(shadowUnitLimit);
+  dataset.dataset.activeSpotShadows = String(shadowCasterCount);
+  let userLightCount = 0;
   traverse.traverse(isLight => {
     if (isLight.isLight && isLight.userData?.lightItemId && isLight.visible !== false) {
-      count += 1;
+      userLightCount += 1;
     }
   });
-  dataset.dataset.activeUserLights = String(count);
-  return zeroValue;
+  dataset.dataset.activeUserLights = String(userLightCount);
+  return shadowCasterCount;
 }
-function buildWallCornerCaps(list, color, argTertiary) {
+function buildWallCornerCaps(list, color, shadowDirtyIds) {
   const hex = isStageEmbed ? lightEffectColorHex(color.lightTemperature) : kelvinToRgbHex(color.lightTemperature);
   const visible = isLightGroupVisible(color) && finite(color.lightBrightness, 0) > 0;
   const flag = !stageSession && forcedVisibleLightGroupIds === null && (isStageEmbed || !isPreviewQualityReady());
@@ -9832,7 +10288,7 @@ function buildWallCornerCaps(list, color, argTertiary) {
   }
   const range = defaultLightPresets[color.type] || defaultLightPresets.downlight;
   const halfValue = clamp(finite(color.lightBrightness, range.brightness), 0, 100) / 100;
-  const computedValue = deferExternalModels[color.type] || 1.1;
+  const lightIntensityScale = deferExternalModels[color.type] || 1.1;
   const value = color.type === "striplight";
   const id = resolveLightGroup(color);
   if (value) {
@@ -9840,13 +10296,13 @@ function buildWallCornerCaps(list, color, argTertiary) {
     const clampedValue = clamp(finite(color.depth, 0.28), 0.1, 8);
     const clampedValueCurrent = clamp(finite(color.lightRange, range.range), 0.5, 10);
     const clampedValueNext = clamp(clampedValueCurrent / range.range, 0.45, 1.65);
-    const localValue = Math.max(finite(color.elevation, 2.7), 0.4);
-    const clampedValuePrevious = clamp(Math.max(1, Math.pow(localValue / 2.7, 2)), 1, 4);
+    const stripElevation = Math.max(finite(color.elevation, 2.7), 0.4);
+    const clampedValuePrevious = clamp(Math.max(1, Math.pow(stripElevation / 2.7, 2)), 1, 4);
     const rotation = new THREE.Group();
     rotation.rotation.z = THREE.MathUtils.degToRad(normalizeFullRotation(color.verticalRotation));
     const group = new THREE.Group();
     group.rotation.x = THREE.MathUtils.degToRad(normalizeFullRotation(color.stripRollRotation));
-    const lightOnIntensity = (yt ? halfValue : Math.pow(halfValue, 0.82)) * 48 * clampedValueNext * clampedValuePrevious * computedValue;
+    const lightOnIntensity = (yt ? halfValue : Math.pow(halfValue, 0.82)) * 48 * clampedValueNext * clampedValuePrevious * lightIntensityScale;
     const userData = new THREE.RectAreaLight(hex, visible ? lightOnIntensity : 0, object3d * 0.94, clampedValue * 0.94);
     userData.visible = visible;
     userData.position.y = -0.04;
@@ -9857,7 +10313,7 @@ function buildWallCornerCaps(list, color, argTertiary) {
     userData.userData.lightSourceType = "continuous-area-strip";
     userData.userData.lightOnIntensity = lightOnIntensity;
     if (yt) {
-      userData.userData.regionFullIntensity = clampedValueNext * 48 * clampedValuePrevious * computedValue;
+      userData.userData.regionFullIntensity = clampedValueNext * 48 * clampedValuePrevious * lightIntensityScale;
       studioReady?.register(userData, color);
     }
     group.add(userData);
@@ -9865,23 +10321,23 @@ function buildWallCornerCaps(list, color, argTertiary) {
     list.add(rotation);
     return;
   }
-  const needsUpdate = argTertiary?.has(color.id) === true;
-  const computedValueCurrent = needsUpdate || flagCurrent || flag;
+  const needsUpdate = shadowDirtyIds?.has(color.id) === true;
+  const needsShadowUpdate = needsUpdate || flagCurrent || flag;
   const far = clamp(finite(color.lightRange, range.range), 0.5, 10);
   const clampedValue = clamp(finite(color.lightAngle, range.angle), 15, defaultItemDepth(color.type));
-  const oneValue = 1;
-  const comparisonFlag = (color.type === "ceilinglight" ? 680 : 520) * (yt ? halfValue : spotLightBrightnessResponse(color.type, halfValue)) * computedValue;
-  for (let value = 0; value < oneValue; value += 1) {
-    const worldPoint = oneValue === 1 ? 0 : -color.width * 0.47 + color.width * 0.94 * value / (oneValue - 1);
-    const spotLight = new THREE.SpotLight(hex, visible ? comparisonFlag / oneValue : 0, far, THREE.MathUtils.degToRad(clampedValue / 2), 0.86, 2);
+  const spotLightCount = 1;
+  const spotIntensity = (color.type === "ceilinglight" ? 680 : 520) * (yt ? halfValue : spotLightBrightnessResponse(color.type, halfValue)) * lightIntensityScale;
+  for (let spotIndex = 0; spotIndex < spotLightCount; spotIndex += 1) {
+    const spotOffsetX = spotLightCount === 1 ? 0 : -color.width * 0.47 + color.width * 0.94 * spotIndex / (spotLightCount - 1);
+    const spotLight = new THREE.SpotLight(hex, visible ? spotIntensity / spotLightCount : 0, far, THREE.MathUtils.degToRad(clampedValue / 2), 0.86, 2);
     spotLight.visible = visible;
-    spotLight.position.set(worldPoint, -0.025, 0);
+    spotLight.position.set(spotOffsetX, -0.025, 0);
     spotLight.castShadow = false;
     spotLight.layers.enable(HELPER_LAYER);
-    if (computedValueCurrent) {
+    if (needsShadowUpdate) {
       const blurSamples = localSpotShadowSettings(color.type, far, clampedValue);
-      const localValue = scaledShadowMapSize(blurSamples.mapSize);
-      spotLight.shadow.mapSize.set(localValue, localValue);
+      const shadowMapSize = scaledShadowMapSize(blurSamples.mapSize);
+      spotLight.shadow.mapSize.set(shadowMapSize, shadowMapSize);
       spotLight.shadow.camera.near = clamp(far * 0.05, 0.12, 0.24);
       spotLight.shadow.camera.far = far;
       spotLight.shadow.camera.layers.set(HELPER_LAYER);
@@ -9899,13 +10355,13 @@ function buildWallCornerCaps(list, color, argTertiary) {
     spotLight.userData.lightBrightness = finite(color.lightBrightness, range.brightness);
     spotLight.userData.shadowCandidate = true;
     spotLight.userData.prewarmShadow = isStageEmbed;
-    spotLight.userData.lightOnIntensity = comparisonFlag / oneValue;
+    spotLight.userData.lightOnIntensity = spotIntensity / spotLightCount;
     if (yt) {
-      spotLight.userData.regionFullIntensity = (color.type === "ceilinglight" ? 680 : 520) * computedValue;
+      spotLight.userData.regionFullIntensity = (color.type === "ceilinglight" ? 680 : 520) * lightIntensityScale;
       studioReady?.register(spotLight, color);
     }
     const shadowCameraHelperTarget = new THREE.Object3D();
-    shadowCameraHelperTarget.position.set(worldPoint, -Math.max(finite(color.elevation, 2.68), 0.8), 0);
+    shadowCameraHelperTarget.position.set(spotOffsetX, -Math.max(finite(color.elevation, 2.68), 0.8), 0);
     list.add(shadowCameraHelperTarget);
     spotLight.target = shadowCameraHelperTarget;
     list.add(spotLight);
@@ -9947,17 +10403,17 @@ function createTvScreenTexture() {
   }, {
     label: "SECURITY",
     color: "#5c9dff"
-  }].forEach((color, argSecondary) => {
-    const contactShadowTint = 54 + argSecondary * 142;
+  }].forEach((badgeColor, badgeIndex) => {
+    const contactShadowTint = 54 + badgeIndex * 142;
     canvasCtx.fillStyle = "#172d40";
     canvasCtx.beginPath();
     canvasCtx.roundRect(contactShadowTint, 398, 126, 54, 8);
     canvasCtx.fill();
-    canvasCtx.fillStyle = color.color;
+    canvasCtx.fillStyle = badgeColor.color;
     canvasCtx.fillRect(contactShadowTint + 14, 414, 8, 22);
     canvasCtx.fillStyle = "#dbe5ed";
     canvasCtx.font = "700 13px Arial, sans-serif";
-    canvasCtx.fillText(color.label, contactShadowTint + 32, 432);
+    canvasCtx.fillText(badgeColor.label, contactShadowTint + 32, 432);
   });
   canvasCtx.fillStyle = "#0a1624";
   canvasCtx.fillRect(510, 0, 450, 540);
@@ -9983,7 +10439,7 @@ function createTvScreenTexture() {
   canvasCtx.fillStyle = "#91a4b5";
   canvasCtx.font = "400 15px Arial, sans-serif";
   canvasCtx.fillText("COMFORT MODE · ALL SYSTEMS READY", 578, 181);
-  const value = [{
+  const statusBadges = [{
     x: 552,
     y: 230,
     color: "#ff9f36",
@@ -10008,55 +10464,737 @@ function createTvScreenTexture() {
     value: "SAFE",
     label: "HOME"
   }];
-  for (const planPoint of value) {
+  for (const badge of statusBadges) {
     canvasCtx.fillStyle = "#15283a";
     canvasCtx.beginPath();
-    canvasCtx.roundRect(planPoint.x, planPoint.y, 176, 108, 10);
+    canvasCtx.roundRect(badge.x, badge.y, 176, 108, 10);
     canvasCtx.fill();
-    canvasCtx.fillStyle = planPoint.color;
-    canvasCtx.fillRect(planPoint.x + 18, planPoint.y + 18, 30, 5);
+    canvasCtx.fillStyle = badge.color;
+    canvasCtx.fillRect(badge.x + 18, badge.y + 18, 30, 5);
     canvasCtx.fillStyle = "#f4f8fb";
     canvasCtx.font = "700 29px Arial, sans-serif";
-    canvasCtx.fillText(planPoint.value, planPoint.x + 18, planPoint.y + 66);
+    canvasCtx.fillText(badge.value, badge.x + 18, badge.y + 66);
     canvasCtx.fillStyle = "#8295a6";
     canvasCtx.font = "600 12px Arial, sans-serif";
-    canvasCtx.fillText(planPoint.label, planPoint.x + 18, planPoint.y + 89);
+    canvasCtx.fillText(badge.label, badge.x + 18, badge.y + 89);
   }
-  const colorSpace = new THREE.CanvasTexture(el);
-  colorSpace.colorSpace = THREE.SRGBColorSpace;
-  colorSpace.anisotropy = Math.min(renderer?.capabilities?.getMaxAnisotropy?.() || 1, 8);
-  colorSpace.needsUpdate = true;
-  return colorSpace;
+  const texture = new THREE.CanvasTexture(el);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = Math.min(renderer?.capabilities?.getMaxAnisotropy?.() || 1, 8);
+  texture.needsUpdate = true;
+  return texture;
 }
-function tvMountLayoutMetrics(item, argSecondary) {
+const MURAL_ART_STYLES = Object.freeze(["bauhaus", "colorfield", "linework", "blocks", "ink", "terrazzo"]);
+const muralArtStyleSet = new Set(MURAL_ART_STYLES);
+const muralArtTextures = new Map();
+function normalizeMuralArtStyle(value) {
+  return muralArtStyleSet.has(value) ? value : MURAL_ART_STYLES[0];
+}
+/** Deterministic pseudo-random source so a style always renders to the exact same artwork. */
+function muralRandomSource(seed) {
+  let muralSeed = seed >>> 0;
+  return () => {
+    muralSeed = muralSeed * 1664525 + 1013904223 >>> 0;
+    return muralSeed / 4294967296;
+  };
+}
+function paintMuralBauhaus(canvasCtx, width, height) {
+  const muralBase = canvasCtx.createLinearGradient(0, 0, width, height);
+  muralBase.addColorStop(0, "#f5f0e6");
+  muralBase.addColorStop(0.55, "#ead9c6");
+  muralBase.addColorStop(1, "#d8ccba");
+  canvasCtx.fillStyle = muralBase;
+  canvasCtx.fillRect(0, 0, width, height);
+  canvasCtx.fillStyle = "rgba(47, 90, 102, .9)";
+  canvasCtx.beginPath();
+  canvasCtx.arc(width * 0.28, height * 0.42, height * 0.3, 0, Math.PI * 2);
+  canvasCtx.fill();
+  canvasCtx.fillStyle = "rgba(216, 161, 63, .9)";
+  canvasCtx.fillRect(width * 0.61, height * 0.14, width * 0.25, height * 0.27);
+  canvasCtx.fillStyle = "rgba(201, 111, 74, .88)";
+  canvasCtx.beginPath();
+  canvasCtx.arc(width * 0.53, height * 0.64, height * 0.27, Math.PI * 1.05, Math.PI * 1.95);
+  canvasCtx.closePath();
+  canvasCtx.fill();
+  canvasCtx.fillStyle = "rgba(217, 163, 160, .85)";
+  canvasCtx.beginPath();
+  canvasCtx.arc(width * 0.73, height * 0.75, height * 0.115, 0, Math.PI * 2);
+  canvasCtx.fill();
+  canvasCtx.save();
+  canvasCtx.translate(width * 0.43, height * 0.28);
+  canvasCtx.rotate(Math.PI / 5);
+  canvasCtx.fillStyle = "rgba(43, 47, 56, .9)";
+  canvasCtx.fillRect(-height * 0.055, -height * 0.055, height * 0.11, height * 0.11);
+  canvasCtx.restore();
+  canvasCtx.lineCap = "round";
+  canvasCtx.strokeStyle = "rgba(43, 47, 56, .92)";
+  canvasCtx.lineWidth = height * 0.022;
+  canvasCtx.beginPath();
+  canvasCtx.moveTo(width * 0.09, height * 0.83);
+  canvasCtx.bezierCurveTo(width * 0.34, height * 0.61, width * 0.56, height * 0.99, width * 0.91, height * 0.71);
+  canvasCtx.stroke();
+  canvasCtx.strokeStyle = "rgba(43, 47, 56, .36)";
+  canvasCtx.lineWidth = 2;
+  canvasCtx.beginPath();
+  canvasCtx.moveTo(width * 0.5, height * 0.07);
+  canvasCtx.lineTo(width * 0.5, height * 0.93);
+  canvasCtx.stroke();
+  for (let stripe = 0; stripe < 7; stripe += 1) {
+    const stripeY = height * (0.13 + stripe * 0.055);
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(width * 0.84, stripeY);
+    canvasCtx.lineTo(width * 0.94, stripeY);
+    canvasCtx.stroke();
+  }
+}
+function paintMuralColorField(canvasCtx, width, height) {
+  const muralRandom = muralRandomSource(74123);
+  const muralBase = canvasCtx.createLinearGradient(0, 0, 0, height);
+  muralBase.addColorStop(0, "#f7f3ec");
+  muralBase.addColorStop(1, "#e7ded0");
+  canvasCtx.fillStyle = muralBase;
+  canvasCtx.fillRect(0, 0, width, height);
+  const muralFields = [{
+    x: 0.12,
+    y: 0.26,
+    w: 0.46,
+    h: 0.54,
+    color: "rgba(72, 122, 148, .5)"
+  }, {
+    x: 0.44,
+    y: 0.14,
+    w: 0.4,
+    h: 0.46,
+    color: "rgba(213, 156, 88, .5)"
+  }, {
+    x: 0.56,
+    y: 0.47,
+    w: 0.36,
+    h: 0.44,
+    color: "rgba(184, 101, 94, .44)"
+  }, {
+    x: 0.24,
+    y: 0.58,
+    w: 0.36,
+    h: 0.3,
+    color: "rgba(120, 133, 97, .4)"
+  }];
+  for (const muralField of muralFields) {
+    const muralRadius = Math.min(width, height) * (0.05 + muralRandom() * 0.09);
+    canvasCtx.fillStyle = muralField.color;
+    canvasCtx.beginPath();
+    canvasCtx.roundRect(width * muralField.x, height * muralField.y, width * muralField.w, height * muralField.h, muralRadius);
+    canvasCtx.fill();
+  }
+  canvasCtx.fillStyle = "rgba(255, 253, 248, .3)";
+  for (let muralBand = 0; muralBand < 5; muralBand += 1) {
+    canvasCtx.fillRect(width * (0.06 + muralBand * 0.19), 0, width * 0.045, height);
+  }
+  canvasCtx.strokeStyle = "rgba(53, 62, 70, .5)";
+  canvasCtx.lineWidth = 2;
+  canvasCtx.strokeRect(width * 0.07, height * 0.09, width * 0.86, height * 0.82);
+}
+function paintMuralLinework(canvasCtx, width, height) {
+  const muralRandom = muralRandomSource(90211);
+  canvasCtx.fillStyle = "#f6f3ec";
+  canvasCtx.fillRect(0, 0, width, height);
+  canvasCtx.lineCap = "round";
+  for (let muralLine = 0; muralLine < 46; muralLine += 1) {
+    const muralOffset = muralRandom();
+    const muralLength = height * (0.24 + muralRandom() * 0.55);
+    const muralStartX = width * (-0.08 + muralOffset * 1.16);
+    const muralStartY = height * (muralRandom() * 0.5);
+    canvasCtx.strokeStyle = "rgba(48, 55, 63, " + (0.1 + muralRandom() * 0.36).toFixed(2) + ")";
+    canvasCtx.lineWidth = 1 + muralRandom() * 2.4;
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(muralStartX, muralStartY);
+    canvasCtx.lineTo(muralStartX + muralLength * 0.34, muralStartY + muralLength);
+    canvasCtx.stroke();
+  }
+  canvasCtx.strokeStyle = "rgba(43, 92, 112, .82)";
+  canvasCtx.lineWidth = height * 0.032;
+  canvasCtx.beginPath();
+  canvasCtx.arc(width * 0.62, height * 0.68, height * 0.34, Math.PI * 1.06, Math.PI * 1.72);
+  canvasCtx.stroke();
+  canvasCtx.fillStyle = "rgba(201, 96, 68, .92)";
+  canvasCtx.beginPath();
+  canvasCtx.arc(width * 0.26, height * 0.34, height * 0.045, 0, Math.PI * 2);
+  canvasCtx.fill();
+  canvasCtx.strokeStyle = "rgba(48, 55, 63, .55)";
+  canvasCtx.lineWidth = 1.6;
+  canvasCtx.beginPath();
+  canvasCtx.moveTo(0, height * 0.5);
+  canvasCtx.lineTo(width, height * 0.5);
+  canvasCtx.stroke();
+}
+function paintMuralBlocks(canvasCtx, width, height) {
+  const muralRandom = muralRandomSource(31577);
+  canvasCtx.fillStyle = "#f2ece1";
+  canvasCtx.fillRect(0, 0, width, height);
+  const muralColumns = [0.06, 0.3, 0.52, 0.72];
+  const muralPalette = ["#2f5a66", "#c98f45", "#b8604c", "#8f9c74", "#3d4550", "#d9a3a0", "#5d7f92"];
+  for (let muralColumn = 0; muralColumn < muralColumns.length; muralColumn += 1) {
+    let muralCursor = 0.07;
+    const muralColumnWidth = muralColumn === muralColumns.length - 1 ? 0.22 : 0.18 + muralRandom() * 0.06;
+    while (muralCursor < 0.92) {
+      const muralBlockHeight = 0.12 + muralRandom() * 0.3;
+      const muralColor = muralPalette[Math.floor(muralRandom() * muralPalette.length)];
+      canvasCtx.fillStyle = muralColor;
+      canvasCtx.fillRect(width * muralColumns[muralColumn], height * muralCursor, width * muralColumnWidth, height * Math.min(muralBlockHeight, 0.93 - muralCursor));
+      muralCursor += muralBlockHeight + 0.015;
+    }
+  }
+  canvasCtx.fillStyle = "rgba(255, 252, 246, .9)";
+  for (let muralGap = 0; muralGap < muralColumns.length - 1; muralGap += 1) {
+    canvasCtx.fillRect(width * (muralColumns[muralGap] + 0.19), 0, width * 0.012, height);
+  }
+  canvasCtx.fillStyle = "rgba(255, 252, 246, .9)";
+  canvasCtx.fillRect(width * 0.52, height * 0.44, width * 0.06, height * 0.14);
+}
+function paintMuralInk(canvasCtx, width, height) {
+  const muralRandom = muralRandomSource(60413);
+  canvasCtx.fillStyle = "#f7f2e8";
+  canvasCtx.fillRect(0, 0, width, height);
+  for (let muralWash = 0; muralWash < 14; muralWash += 1) {
+    const muralCenterX = width * (0.08 + muralRandom() * 0.84);
+    const muralCenterY = height * (0.12 + muralRandom() * 0.76);
+    const muralRadius = height * (0.08 + muralRandom() * 0.24);
+    const muralWashGradient = canvasCtx.createRadialGradient(muralCenterX, muralCenterY, 0, muralCenterX, muralCenterY, muralRadius);
+    const muralTone = Math.floor(40 + muralRandom() * 60);
+    muralWashGradient.addColorStop(0, "rgba(" + muralTone + ", " + (muralTone + 6) + ", " + (muralTone + 14) + ", " + (0.1 + muralRandom() * 0.2).toFixed(2) + ")");
+    muralWashGradient.addColorStop(1, "rgba(" + muralTone + ", " + (muralTone + 6) + ", " + (muralTone + 14) + ", 0)");
+    canvasCtx.fillStyle = muralWashGradient;
+    canvasCtx.beginPath();
+    canvasCtx.arc(muralCenterX, muralCenterY, muralRadius, 0, Math.PI * 2);
+    canvasCtx.fill();
+  }
+  canvasCtx.strokeStyle = "rgba(38, 44, 51, .82)";
+  canvasCtx.lineCap = "round";
+  canvasCtx.lineWidth = height * 0.018;
+  canvasCtx.beginPath();
+  canvasCtx.moveTo(width * 0.1, height * 0.68);
+  canvasCtx.bezierCurveTo(width * 0.32, height * 0.42, width * 0.52, height * 0.78, width * 0.78, height * 0.44);
+  canvasCtx.stroke();
+  canvasCtx.strokeStyle = "rgba(178, 64, 46, .92)";
+  canvasCtx.lineWidth = height * 0.03;
+  canvasCtx.beginPath();
+  canvasCtx.moveTo(width * 0.58, height * 0.26);
+  canvasCtx.lineTo(width * 0.88, height * 0.3);
+  canvasCtx.stroke();
+  canvasCtx.fillStyle = "rgba(178, 64, 46, .9)";
+  canvasCtx.beginPath();
+  canvasCtx.arc(width * 0.5, height * 0.3, height * 0.035, 0, Math.PI * 2);
+  canvasCtx.fill();
+}
+function paintMuralTerrazzo(canvasCtx, width, height) {
+  const muralRandom = muralRandomSource(52019);
+  canvasCtx.fillStyle = "#f3eee4";
+  canvasCtx.fillRect(0, 0, width, height);
+  const muralChips = ["#2f5a66", "#c98f45", "#b8604c", "#8f9c74", "#3d4550", "#d9a3a0", "#5d7f92", "#b9a88f"];
+  for (let muralChip = 0; muralChip < 340; muralChip += 1) {
+    const muralCenterX = muralRandom() * width;
+    const muralCenterY = muralRandom() * height;
+    const muralSize = 3 + muralRandom() * 12;
+    canvasCtx.save();
+    canvasCtx.translate(muralCenterX, muralCenterY);
+    canvasCtx.rotate(muralRandom() * Math.PI);
+    canvasCtx.fillStyle = muralChips[Math.floor(muralRandom() * muralChips.length)];
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(-muralSize, -muralSize * 0.5);
+    canvasCtx.lineTo(muralSize * 0.8, -muralSize);
+    canvasCtx.lineTo(muralSize, muralSize * 0.7);
+    canvasCtx.lineTo(-muralSize * 0.6, muralSize);
+    canvasCtx.closePath();
+    canvasCtx.fill();
+    canvasCtx.restore();
+  }
+  canvasCtx.fillStyle = "rgba(243, 238, 228, .72)";
+  canvasCtx.beginPath();
+  canvasCtx.arc(width * 0.3, height * 0.42, height * 0.28, 0, Math.PI * 2);
+  canvasCtx.fill();
+  canvasCtx.strokeStyle = "rgba(47, 90, 102, .8)";
+  canvasCtx.lineWidth = height * 0.026;
+  canvasCtx.beginPath();
+  canvasCtx.arc(width * 0.3, height * 0.42, height * 0.28, Math.PI * 0.9, Math.PI * 1.9);
+  canvasCtx.stroke();
+  canvasCtx.strokeStyle = "rgba(184, 96, 76, .82)";
+  canvasCtx.lineWidth = height * 0.02;
+  canvasCtx.beginPath();
+  canvasCtx.arc(width * 0.72, height * 0.62, height * 0.19, Math.PI * 1.7, Math.PI * 0.7);
+  canvasCtx.stroke();
+}
+/** Procedural artwork used by the framed wall mural so the model needs no external texture. */
+function createMuralArtTexture(styleValue) {
+  const style = normalizeMuralArtStyle(styleValue);
+  if (muralArtTextures.has(style)) {
+    return muralArtTextures.get(style);
+  }
+  const el = document.createElement("canvas");
+  el.width = 768;
+  el.height = 512;
+  const canvasCtx = el.getContext("2d");
+  if (!canvasCtx) {
+    return null;
+  }
+  const muralPainters = {
+    bauhaus: paintMuralBauhaus,
+    colorfield: paintMuralColorField,
+    linework: paintMuralLinework,
+    blocks: paintMuralBlocks,
+    ink: paintMuralInk,
+    terrazzo: paintMuralTerrazzo
+  };
+  muralPainters[style](canvasCtx, el.width, el.height);
+  const texture = new THREE.CanvasTexture(el);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = Math.min(renderer?.capabilities?.getMaxAnisotropy?.() || 1, 8);
+  texture.needsUpdate = true;
+  muralArtTextures.set(style, texture);
+  return texture;
+}
+const FEATURE_WALL_STYLES = Object.freeze(["marble", "wood", "slat", "stone", "concrete", "fabric", "metal"]);
+const featureWallStyleSet = new Set(FEATURE_WALL_STYLES);
+const featureWallTextures = new Map();
+function normalizeFeatureWallStyle(value) {
+  return featureWallStyleSet.has(value) ? value : FEATURE_WALL_STYLES[0];
+}
+/** Per-surface look so each background-wall cladding reads differently in 3D, not just by texture. */
+const FEATURE_WALL_STYLE_MATERIAL = Object.freeze({
+  marble: {
+    color: 0xf7f7f5,
+    roughness: 0.34,
+    metalness: 0.03
+  },
+  wood: {
+    color: 0x9a6f42,
+    roughness: 0.72,
+    metalness: 0.02
+  },
+  slat: {
+    color: 0x6f523a,
+    roughness: 0.74,
+    metalness: 0.02
+  },
+  stone: {
+    color: 0xcec8bd,
+    roughness: 0.46,
+    metalness: 0.02
+  },
+  concrete: {
+    color: 0xb4b1ab,
+    roughness: 0.94,
+    metalness: 0
+  },
+  fabric: {
+    color: 0xc9c0b2,
+    roughness: 0.98,
+    metalness: 0
+  },
+  metal: {
+    color: 0x9ba0a6,
+    roughness: 0.38,
+    metalness: 0.28
+  }
+});
+function featureWallShade(hex, factor) {
+  const red = Math.min(255, Math.max(0, Math.round((hex >> 16 & 255) * factor)));
+  const green = Math.min(255, Math.max(0, Math.round((hex >> 8 & 255) * factor)));
+  const blue = Math.min(255, Math.max(0, Math.round((hex & 255) * factor)));
+  return "rgb(" + red + ", " + green + ", " + blue + ")";
+}
+/** Quadratic smoothing between sampled points so procedural veins and grain stay organic. */
+function strokeSmoothPath(canvasCtx, points) {
+  if (points.length < 2) {
+    return;
+  }
+  canvasCtx.beginPath();
+  canvasCtx.moveTo(points[0].x, points[0].y);
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const midX = (points[index].x + points[index + 1].x) / 2;
+    const midY = (points[index].y + points[index + 1].y) / 2;
+    canvasCtx.quadraticCurveTo(points[index].x, points[index].y, midX, midY);
+  }
+  const last = points[points.length - 1];
+  canvasCtx.lineTo(last.x, last.y);
+  canvasCtx.stroke();
+}
+function paintFeatureWallMarble(canvasCtx, width, height) {
+  const featureRandom = muralRandomSource(88117);
+  const surfaceBase = canvasCtx.createLinearGradient(0, 0, width, height);
+  surfaceBase.addColorStop(0, "#ffffff");
+  surfaceBase.addColorStop(0.5, "#fbfbfa");
+  surfaceBase.addColorStop(1, "#f2f2f0");
+  canvasCtx.fillStyle = surfaceBase;
+  canvasCtx.fillRect(0, 0, width, height);
+  for (let cloud = 0; cloud < 24; cloud += 1) {
+    const cloudX = featureRandom() * width;
+    const cloudY = featureRandom() * height;
+    const cloudRadius = Math.min(width, height) * (0.08 + featureRandom() * 0.32);
+    const cloudLighter = featureRandom() > 0.35;
+    const cloudTone = cloudLighter ? "255, 255, 255" : "214, 216, 220";
+    const cloudAlpha = cloudLighter ? 0.08 + featureRandom() * 0.18 : 0.03 + featureRandom() * 0.08;
+    const cloudGradient = canvasCtx.createRadialGradient(cloudX, cloudY, 0, cloudX, cloudY, cloudRadius);
+    cloudGradient.addColorStop(0, "rgba(" + cloudTone + ", " + cloudAlpha.toFixed(2) + ")");
+    cloudGradient.addColorStop(1, "rgba(" + cloudTone + ", 0)");
+    canvasCtx.fillStyle = cloudGradient;
+    canvasCtx.fillRect(cloudX - cloudRadius, cloudY - cloudRadius, cloudRadius * 2, cloudRadius * 2);
+  }
+  canvasCtx.lineCap = "round";
+  // Bold black stripe veins give the classic white-marble contrast.
+  for (let vein = 0; vein < 9; vein += 1) {
+    const points = [];
+    let veinX = width * (-0.04 + featureRandom() * 1.08);
+    let veinY = -height * 0.12;
+    points.push({
+      x: veinX,
+      y: veinY
+    });
+    while (veinY < height * 1.1) {
+      veinX += (featureRandom() - 0.5) * width * 0.23;
+      veinY += height * (0.07 + featureRandom() * 0.13);
+      points.push({
+        x: veinX,
+        y: veinY
+      });
+    }
+    canvasCtx.strokeStyle = "rgba(16, 17, 20, " + (0.34 + featureRandom() * 0.42).toFixed(2) + ")";
+    canvasCtx.lineWidth = 1.6 + featureRandom() * 5.2;
+    strokeSmoothPath(canvasCtx, points);
+  }
+  // Thin secondary branches in softer black keep the stone from reading as printed stripes.
+  for (let fine = 0; fine < 46; fine += 1) {
+    const points = [];
+    let fineX = featureRandom() * width;
+    let fineY = -height * 0.06;
+    points.push({
+      x: fineX,
+      y: fineY
+    });
+    const fineSteps = 3 + Math.floor(featureRandom() * 5);
+    for (let step = 0; step < fineSteps; step += 1) {
+      fineX += (featureRandom() - 0.5) * width * 0.16;
+      fineY += height * (0.05 + featureRandom() * 0.1);
+      points.push({
+        x: fineX,
+        y: fineY
+      });
+    }
+    canvasCtx.strokeStyle = "rgba(38, 40, 45, " + (0.14 + featureRandom() * 0.3).toFixed(2) + ")";
+    canvasCtx.lineWidth = 0.7 + featureRandom() * 1.9;
+    strokeSmoothPath(canvasCtx, points);
+  }
+  canvasCtx.fillStyle = "rgba(255, 255, 255, .5)";
+  for (let speck = 0; speck < 700; speck += 1) {
+    canvasCtx.fillRect(featureRandom() * width, featureRandom() * height, 1.2, 1.2);
+  }
+  canvasCtx.fillStyle = "rgba(24, 25, 28, .3)";
+  for (let speck = 0; speck < 260; speck += 1) {
+    canvasCtx.fillRect(featureRandom() * width, featureRandom() * height, 1.3, 1.3);
+  }
+}
+function paintFeatureWallWood(canvasCtx, width, height) {
+  const featureRandom = muralRandomSource(45119);
+  const grainPalette = [0xa4713f, 0x8c5c31, 0xb98a54];
+  const plankCount = 4;
+  const plankWidth = width / plankCount;
+  for (let plank = 0; plank < plankCount; plank += 1) {
+    const plankX = plank * plankWidth;
+    const plankTone = 0.86 + featureRandom() * 0.3;
+    const plankGradient = canvasCtx.createLinearGradient(plankX, 0, plankX + plankWidth, 0);
+    plankGradient.addColorStop(0, featureWallShade(grainPalette[plank % grainPalette.length], plankTone * 0.92));
+    plankGradient.addColorStop(0.45, featureWallShade(grainPalette[plank % grainPalette.length], plankTone * 1.08));
+    plankGradient.addColorStop(1, featureWallShade(grainPalette[plank % grainPalette.length], plankTone * 0.88));
+    canvasCtx.fillStyle = plankGradient;
+    canvasCtx.fillRect(plankX, 0, plankWidth, height);
+    canvasCtx.lineCap = "round";
+    for (let grain = 0; grain < 120; grain += 1) {
+      const points = [];
+      let grainX = plankX + featureRandom() * plankWidth;
+      let grainY = -height * 0.06;
+      const grainDrift = (featureRandom() - 0.5) * plankWidth * 0.09;
+      points.push({
+        x: grainX,
+        y: grainY
+      });
+      while (grainY < height * 1.06) {
+        grainX += grainDrift + (featureRandom() - 0.5) * plankWidth * 0.045;
+        grainY += height * (0.1 + featureRandom() * 0.2);
+        points.push({
+          x: grainX,
+          y: grainY
+        });
+      }
+      const grainDark = featureRandom() > 0.35;
+      canvasCtx.strokeStyle = grainDark ? "rgba(62, 38, 18, " + (0.05 + featureRandom() * 0.2).toFixed(2) + ")" : "rgba(246, 214, 172, " + (0.04 + featureRandom() * 0.14).toFixed(2) + ")";
+      canvasCtx.lineWidth = 0.6 + featureRandom() * 3;
+      strokeSmoothPath(canvasCtx, points);
+    }
+    const knotCount = featureRandom() > 0.5 ? 2 : 1;
+    for (let knot = 0; knot < knotCount; knot += 1) {
+      const knotX = plankX + plankWidth * (0.2 + featureRandom() * 0.6);
+      const knotY = height * (0.12 + featureRandom() * 0.76);
+      const knotRadius = Math.min(plankWidth, height) * (0.04 + featureRandom() * 0.05);
+      for (let ring = 4; ring >= 1; ring -= 1) {
+        canvasCtx.strokeStyle = "rgba(58, 34, 15, " + (0.1 + ring * 0.05).toFixed(2) + ")";
+        canvasCtx.lineWidth = 1.1;
+        canvasCtx.beginPath();
+        canvasCtx.ellipse(knotX, knotY, knotRadius * ring * 0.5, knotRadius * ring * 0.82, 0, 0, Math.PI * 2);
+        canvasCtx.stroke();
+      }
+    }
+    canvasCtx.fillStyle = "rgba(46, 28, 12, .5)";
+    canvasCtx.fillRect(plankX, 0, 2.4, height);
+  }
+  canvasCtx.fillStyle = "rgba(46, 28, 12, .5)";
+  canvasCtx.fillRect(width - 2.4, 0, 2.4, height);
+}
+function paintFeatureWallSlat(canvasCtx, width, height) {
+  const featureRandom = muralRandomSource(70841);
+  const slatCount = Math.max(12, Math.round(width / 34));
+  const slatPitch = width / slatCount;
+  const recessGradient = canvasCtx.createLinearGradient(0, 0, 0, height);
+  recessGradient.addColorStop(0, "#241b14");
+  recessGradient.addColorStop(0.5, "#180f0a");
+  recessGradient.addColorStop(1, "#241b14");
+  canvasCtx.fillStyle = recessGradient;
+  canvasCtx.fillRect(0, 0, width, height);
+  for (let slat = 0; slat < slatCount; slat += 1) {
+    const slatX = slatPitch * slat;
+    const slatGradient = canvasCtx.createLinearGradient(slatX, 0, slatX + slatPitch, 0);
+    slatGradient.addColorStop(0, "rgba(20, 12, 7, .94)");
+    slatGradient.addColorStop(0.5, "rgba(46, 32, 21, .5)");
+    slatGradient.addColorStop(1, "rgba(20, 12, 7, .94)");
+    canvasCtx.fillStyle = slatGradient;
+    canvasCtx.fillRect(slatX, 0, slatPitch * 0.96, height);
+    canvasCtx.strokeStyle = "rgba(148, 112, 76, " + (0.06 + featureRandom() * 0.1).toFixed(2) + ")";
+    canvasCtx.lineWidth = 1;
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(slatX + slatPitch * 0.5, 0);
+    canvasCtx.lineTo(slatX + slatPitch * 0.5, height);
+    canvasCtx.stroke();
+  }
+  const castShadow = canvasCtx.createLinearGradient(0, 0, 0, height);
+  castShadow.addColorStop(0, "rgba(0, 0, 0, .4)");
+  castShadow.addColorStop(0.16, "rgba(0, 0, 0, 0)");
+  castShadow.addColorStop(0.84, "rgba(0, 0, 0, 0)");
+  castShadow.addColorStop(1, "rgba(0, 0, 0, .4)");
+  canvasCtx.fillStyle = castShadow;
+  canvasCtx.fillRect(0, 0, width, height);
+}
+function paintFeatureWallStone(canvasCtx, width, height) {
+  const featureRandom = muralRandomSource(25309);
+  const slabColumns = 3;
+  const slabRows = 2;
+  canvasCtx.fillStyle = "#6f6b64";
+  canvasCtx.fillRect(0, 0, width, height);
+  const slabWidth = width / slabColumns;
+  const slabHeight = height / slabRows;
+  for (let row = 0; row < slabRows; row += 1) {
+    for (let column = 0; column < slabColumns; column += 1) {
+      const slabX = column * slabWidth;
+      const slabY = row * slabHeight;
+      const slabTone = 0.9 + featureRandom() * 0.24;
+      const slabBase = [214, 208, 197, 201, 197, 186, 224, 218, 208][row * slabColumns + column];
+      canvasCtx.fillStyle = featureWallShade(slabBase, slabTone);
+      canvasCtx.fillRect(slabX + 1.6, slabY + 1.6, slabWidth - 3.2, slabHeight - 3.2);
+      for (let mot = 0; mot < 20; mot += 1) {
+        const motX = slabX + featureRandom() * slabWidth;
+        const motY = slabY + featureRandom() * slabHeight;
+        const motRadius = Math.min(slabWidth, slabHeight) * (0.1 + featureRandom() * 0.4);
+        const motDark = featureRandom() > 0.5;
+        const motTone = motDark ? "150, 144, 133" : "246, 243, 236";
+        const motGradient = canvasCtx.createRadialGradient(motX, motY, 0, motX, motY, motRadius);
+        motGradient.addColorStop(0, "rgba(" + motTone + ", " + (0.08 + featureRandom() * 0.2).toFixed(2) + ")");
+        motGradient.addColorStop(1, "rgba(" + motTone + ", 0)");
+        canvasCtx.fillStyle = motGradient;
+        canvasCtx.fillRect(motX - motRadius, motY - motRadius, motRadius * 2, motRadius * 2);
+      }
+      canvasCtx.lineCap = "round";
+      for (let vein = 0; vein < 3; vein += 1) {
+        const points = [];
+        let veinX = slabX + featureRandom() * slabWidth;
+        let veinY = slabY + featureRandom() * slabHeight;
+        points.push({
+          x: veinX,
+          y: veinY
+        });
+        for (let step = 0; step < 4; step += 1) {
+          veinX += (featureRandom() - 0.5) * slabWidth * 0.4;
+          veinY += (featureRandom() - 0.4) * slabHeight * 0.4;
+          points.push({
+            x: veinX,
+            y: veinY
+          });
+        }
+        canvasCtx.strokeStyle = "rgba(126, 120, 110, " + (0.1 + featureRandom() * 0.22).toFixed(2) + ")";
+        canvasCtx.lineWidth = 0.8 + featureRandom() * 2.2;
+        strokeSmoothPath(canvasCtx, points);
+      }
+    }
+  }
+  canvasCtx.fillStyle = "rgba(255, 255, 255, .34)";
+  for (let speck = 0; speck < 900; speck += 1) {
+    canvasCtx.fillRect(featureRandom() * width, featureRandom() * height, 1.3, 1.3);
+  }
+}
+function paintFeatureWallConcrete(canvasCtx, width, height) {
+  const featureRandom = muralRandomSource(13627);
+  const surfaceBase = canvasCtx.createLinearGradient(0, 0, width, height);
+  surfaceBase.addColorStop(0, "#bcb9b3");
+  surfaceBase.addColorStop(0.5, "#b2afa9");
+  surfaceBase.addColorStop(1, "#a8a5a0");
+  canvasCtx.fillStyle = surfaceBase;
+  canvasCtx.fillRect(0, 0, width, height);
+  for (let cloud = 0; cloud < 34; cloud += 1) {
+    const cloudX = featureRandom() * width;
+    const cloudY = featureRandom() * height;
+    const cloudRadius = Math.min(width, height) * (0.1 + featureRandom() * 0.4);
+    const cloudLighter = featureRandom() > 0.5;
+    const cloudTone = cloudLighter ? "226, 224, 219" : "138, 136, 131";
+    const cloudGradient = canvasCtx.createRadialGradient(cloudX, cloudY, 0, cloudX, cloudY, cloudRadius);
+    cloudGradient.addColorStop(0, "rgba(" + cloudTone + ", " + (0.1 + featureRandom() * 0.22).toFixed(2) + ")");
+    cloudGradient.addColorStop(1, "rgba(" + cloudTone + ", 0)");
+    canvasCtx.fillStyle = cloudGradient;
+    canvasCtx.fillRect(cloudX - cloudRadius, cloudY - cloudRadius, cloudRadius * 2, cloudRadius * 2);
+  }
+  for (let trowel = 0; trowel < 16; trowel += 1) {
+    const trowelX = featureRandom() * width;
+    const trowelY = featureRandom() * height;
+    const trowelRadius = Math.min(width, height) * (0.18 + featureRandom() * 0.34);
+    canvasCtx.strokeStyle = "rgba(240, 238, 233, " + (0.05 + featureRandom() * 0.12).toFixed(2) + ")";
+    canvasCtx.lineWidth = 6 + featureRandom() * 22;
+    canvasCtx.beginPath();
+    canvasCtx.arc(trowelX, trowelY, trowelRadius, Math.PI * (0.7 + featureRandom() * 0.6), Math.PI * (1.3 + featureRandom() * 0.7));
+    canvasCtx.stroke();
+  }
+  canvasCtx.fillStyle = "rgba(255, 255, 255, .3)";
+  for (let speck = 0; speck < 1100; speck += 1) {
+    canvasCtx.fillRect(featureRandom() * width, featureRandom() * height, 1.3, 1.3);
+  }
+  canvasCtx.fillStyle = "rgba(64, 62, 59, .12)";
+  for (let speck = 0; speck < 900; speck += 1) {
+    canvasCtx.fillRect(featureRandom() * width, featureRandom() * height, 1.6, 1.6);
+  }
+}
+function paintFeatureWallFabric(canvasCtx, width, height) {
+  const featureRandom = muralRandomSource(38971);
+  canvasCtx.fillStyle = featureWallShade(0xc9c0b2, 1);
+  canvasCtx.fillRect(0, 0, width, height);
+  for (let blotch = 0; blotch < 22; blotch += 1) {
+    const blotchX = featureRandom() * width;
+    const blotchY = featureRandom() * height;
+    const blotchRadius = Math.min(width, height) * (0.12 + featureRandom() * 0.38);
+    const blotchLighter = featureRandom() > 0.5;
+    const blotchGradient = canvasCtx.createRadialGradient(blotchX, blotchY, 0, blotchX, blotchY, blotchRadius);
+    blotchGradient.addColorStop(0, blotchLighter ? "rgba(238, 232, 220, .22)" : "rgba(150, 140, 124, .18)");
+    blotchGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+    canvasCtx.fillStyle = blotchGradient;
+    canvasCtx.fillRect(blotchX - blotchRadius, blotchY - blotchRadius, blotchRadius * 2, blotchRadius * 2);
+  }
+  const weavePitch = 3;
+  for (let column = 0; column < width; column += weavePitch) {
+    canvasCtx.fillStyle = (column / weavePitch) % 2 === 0 ? "rgba(96, 86, 72, .12)" : "rgba(252, 248, 240, .14)";
+    canvasCtx.fillRect(column, 0, 1.2, height);
+  }
+  for (let row = 0; row < height; row += weavePitch) {
+    canvasCtx.fillStyle = (row / weavePitch) % 2 === 0 ? "rgba(96, 86, 72, .1)" : "rgba(252, 248, 240, .12)";
+    canvasCtx.fillRect(0, row, width, 1.2);
+  }
+  for (let slub = 0; slub < 90; slub += 1) {
+    const slubY = featureRandom() * height;
+    const slubLength = width * (0.04 + featureRandom() * 0.16);
+    const slubX = featureRandom() * (width - slubLength);
+    canvasCtx.fillStyle = "rgba(255, 252, 246, " + (0.08 + featureRandom() * 0.2).toFixed(2) + ")";
+    canvasCtx.fillRect(slubX, slubY, slubLength, 1.6 + featureRandom() * 1.6);
+  }
+}
+function paintFeatureWallMetal(canvasCtx, width, height) {
+  const featureRandom = muralRandomSource(19237);
+  const surfaceBase = canvasCtx.createLinearGradient(0, 0, 0, height);
+  surfaceBase.addColorStop(0, "#8f959c");
+  surfaceBase.addColorStop(0.24, "#b3b8be");
+  surfaceBase.addColorStop(0.52, "#9aa0a7");
+  surfaceBase.addColorStop(0.78, "#b8bdc3");
+  surfaceBase.addColorStop(1, "#8b9198");
+  canvasCtx.fillStyle = surfaceBase;
+  canvasCtx.fillRect(0, 0, width, height);
+  for (let brush = 0; brush < 900; brush += 1) {
+    const brushY = featureRandom() * height;
+    const brushLength = width * (0.2 + featureRandom() * 0.8);
+    const brushX = featureRandom() * (width - brushLength);
+    const brushLighter = featureRandom() > 0.5;
+    canvasCtx.fillStyle = brushLighter ? "rgba(255, 255, 255, " + (0.03 + featureRandom() * 0.12).toFixed(2) + ")" : "rgba(56, 60, 66, " + (0.03 + featureRandom() * 0.11).toFixed(2) + ")";
+    canvasCtx.fillRect(brushX, brushY, brushLength, 0.6 + featureRandom() * 1.4);
+  }
+  for (let streak = 0; streak < 12; streak += 1) {
+    const streakY = featureRandom() * height;
+    const streakGradient = canvasCtx.createLinearGradient(0, streakY - height * 0.05, 0, streakY + height * 0.05);
+    streakGradient.addColorStop(0, "rgba(255, 255, 255, 0)");
+    streakGradient.addColorStop(0.5, "rgba(255, 255, 255, " + (0.06 + featureRandom() * 0.12).toFixed(2) + ")");
+    streakGradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+    canvasCtx.fillStyle = streakGradient;
+    canvasCtx.fillRect(0, streakY - height * 0.05, width, height * 0.1);
+  }
+}
+/** Procedural cladding for the background wall so no external texture file is required. */
+function createFeatureWallTexture(styleValue) {
+  const style = normalizeFeatureWallStyle(styleValue);
+  if (featureWallTextures.has(style)) {
+    return featureWallTextures.get(style);
+  }
+  const el = document.createElement("canvas");
+  el.width = 1024;
+  el.height = 768;
+  const canvasCtx = el.getContext("2d");
+  if (!canvasCtx) {
+    return null;
+  }
+  const surfacePainters = {
+    marble: paintFeatureWallMarble,
+    wood: paintFeatureWallWood,
+    slat: paintFeatureWallSlat,
+    stone: paintFeatureWallStone,
+    concrete: paintFeatureWallConcrete,
+    fabric: paintFeatureWallFabric,
+    metal: paintFeatureWallMetal
+  };
+  surfacePainters[style](canvasCtx, el.width, el.height);
+  const texture = new THREE.CanvasTexture(el);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = Math.min(renderer?.capabilities?.getMaxAnisotropy?.() || 1, 8);
+  texture.needsUpdate = true;
+  featureWallTextures.set(style, texture);
+  return texture;
+}
+function tvMountLayoutMetrics(item, screenHeight) {
   const group = item.tvMountStyle === "mobile";
   const width = item.tvMountStyle === "tabletop";
   return {
-    bodyHeight: argSecondary * (group ? 0.43 : width ? 0.56 : 0.62),
-    centerY: argSecondary * (group ? 0.76 : width ? 0.67 : 0.62)
+    bodyHeight: screenHeight * (group ? 0.43 : width ? 0.56 : 0.62),
+    centerY: screenHeight * (group ? 0.76 : width ? 0.67 : 0.62)
   };
 }
-function addTvMountMeshes(group, tvMountStyle, argTertiary, argN, argNCurrent) {
+function addTvMountMeshes(group, tvMountStyle, itemWidth, itemDepth, itemHeight) {
   const {
     bodyHeight,
     centerY
-  } = tvMountLayoutMetrics(tvMountStyle, argNCurrent);
-  const width = argTertiary * 0.965;
+  } = tvMountLayoutMetrics(tvMountStyle, itemHeight);
+  const width = itemWidth * 0.965;
   const height = bodyHeight * 0.94;
   const depth = 0.012;
-  const value = Math.max(argN * 0.28, 0.05) * 0.5 + 0.006;
-  const scaledDepth = value - depth * 0.5;
+  const screenOffset = Math.max(itemDepth * 0.28, 0.05) * 0.5 + 0.006;
+  const scaledDepth = screenOffset - depth * 0.5;
   if (tvMountStyle.screenEnabled === false) {
-    const userData = addBoxMesh(group, width, height, depth, 0, centerY, scaledDepth, 527122, {
+    const frameMesh = addBoxMesh(group, width, height, depth, 0, centerY, scaledDepth, 527122, {
       roughness: 0.18
     });
-    userData.userData.televisionScreen = true;
+    frameMesh.userData.televisionScreen = true;
     if (isStageEmbed) {
-      userData.userData.environmentEffect = true;
+      frameMesh.userData.environmentEffect = true;
     }
     return;
   }
-  const userData = new THREE.Mesh(new THREE.PlaneGeometry(width * 1.035, height * 1.08), new THREE.MeshBasicMaterial({
+  const glowMesh = new THREE.Mesh(new THREE.PlaneGeometry(width * 1.035, height * 1.08), new THREE.MeshBasicMaterial({
     color: 7253215,
     transparent: true,
     opacity: 0.09,
@@ -10066,72 +11204,72 @@ function addTvMountMeshes(group, tvMountStyle, argTertiary, argN, argNCurrent) {
     toneMapped: false,
     side: THREE.DoubleSide
   }));
-  userData.userData.televisionGlow = true;
+  glowMesh.userData.televisionGlow = true;
   if (isStageEmbed) {
-    userData.userData.environmentEffect = true;
+    glowMesh.userData.environmentEffect = true;
   }
-  userData.position.set(0, centerY, value - 0.014);
-  userData.renderOrder = 6;
-  userData.castShadow = false;
-  userData.receiveShadow = false;
-  group.add(userData);
-  const mapVar = createTvScreenTexture();
-  const meshBasicMaterial = new THREE.MeshBasicMaterial({
+  glowMesh.position.set(0, centerY, screenOffset - 0.014);
+  glowMesh.renderOrder = 6;
+  glowMesh.castShadow = false;
+  glowMesh.receiveShadow = false;
+  group.add(glowMesh);
+  const screenTexture = createTvScreenTexture();
+  const frameMaterial = new THREE.MeshBasicMaterial({
     color: 527122,
     toneMapped: false
   });
-  const material = new THREE.MeshBasicMaterial({
-    color: mapVar ? 16777215 : 1519946,
-    mapVar,
+  const screenMaterial = new THREE.MeshBasicMaterial({
+    color: screenTexture ? 16777215 : 1519946,
+    mapVar: screenTexture,
     toneMapped: false,
     polygonOffset: true,
     polygonOffsetFactor: -2,
     polygonOffsetUnits: -2
   });
-  const light = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), [meshBasicMaterial, meshBasicMaterial, meshBasicMaterial, meshBasicMaterial, material, meshBasicMaterial]);
-  light.userData.televisionScreen = true;
+  const panelMesh = new THREE.Mesh(new THREE.BoxGeometry(width, height, depth), [frameMaterial, frameMaterial, frameMaterial, frameMaterial, screenMaterial, frameMaterial]);
+  panelMesh.userData.televisionScreen = true;
   if (isStageEmbed) {
-    light.userData.environmentEffect = true;
+    panelMesh.userData.environmentEffect = true;
   }
-  light.position.set(0, centerY, scaledDepth);
-  light.renderOrder = 7;
-  light.castShadow = false;
-  light.receiveShadow = false;
-  group.add(light);
+  panelMesh.position.set(0, centerY, scaledDepth);
+  panelMesh.renderOrder = 7;
+  panelMesh.castShadow = false;
+  panelMesh.receiveShadow = false;
+  group.add(panelMesh);
 }
-function addSmallCarMeshes(group, chargingEnabled, argTertiary, argN, argNCurrent) {
+function addSmallCarMeshes(group, chargingEnabled, itemWidth, itemDepth, itemHeight) {
   if (chargingEnabled.chargingEnabled !== true) {
     return;
   }
-  const value = 5238711;
-  const el = document.createElement("canvas");
-  el.width = 256;
-  el.height = 256;
-  const canvasCtx = el.getContext("2d");
-  const halfScreenWidth = el.width / 2;
-  const addColorStop = canvasCtx.createRadialGradient(halfScreenWidth, halfScreenWidth, 0, halfScreenWidth, halfScreenWidth, halfScreenWidth);
-  addColorStop.addColorStop(0, "rgba(79, 239, 183, .48)");
-  addColorStop.addColorStop(0.46, "rgba(79, 239, 183, .23)");
-  addColorStop.addColorStop(1, "rgba(79, 239, 183, 0)");
-  canvasCtx.fillStyle = addColorStop;
-  canvasCtx.fillRect(0, 0, el.width, el.height);
-  for (let index = 18; index < el.height - 18; index += 10) {
-    for (let count = 18; count < el.width - 18; count += 10) {
-      const hypot = Math.hypot(count - halfScreenWidth, index - halfScreenWidth) / halfScreenWidth;
-      const maxValue = Math.max(0, 1 - hypot) * 0.32;
-      if (!(maxValue <= 0.01)) {
-        canvasCtx.fillStyle = "rgba(116, 255, 202, " + maxValue + ")";
+  const glowColor = 5238711;
+  const glowCanvas = document.createElement("canvas");
+  glowCanvas.width = 256;
+  glowCanvas.height = 256;
+  const canvasCtx = glowCanvas.getContext("2d");
+  const canvasRadius = glowCanvas.width / 2;
+  const glowGradient = canvasCtx.createRadialGradient(canvasRadius, canvasRadius, 0, canvasRadius, canvasRadius, canvasRadius);
+  glowGradient.addColorStop(0, "rgba(79, 239, 183, .48)");
+  glowGradient.addColorStop(0.46, "rgba(79, 239, 183, .23)");
+  glowGradient.addColorStop(1, "rgba(79, 239, 183, 0)");
+  canvasCtx.fillStyle = glowGradient;
+  canvasCtx.fillRect(0, 0, glowCanvas.width, glowCanvas.height);
+  for (let pixelY = 18; pixelY < glowCanvas.height - 18; pixelY += 10) {
+    for (let pixelX = 18; pixelX < glowCanvas.width - 18; pixelX += 10) {
+      const radialDistance = Math.hypot(pixelX - canvasRadius, pixelY - canvasRadius) / canvasRadius;
+      const alpha = Math.max(0, 1 - radialDistance) * 0.32;
+      if (!(alpha <= 0.01)) {
+        canvasCtx.fillStyle = "rgba(116, 255, 202, " + alpha + ")";
         canvasCtx.beginPath();
-        canvasCtx.arc(count, index, 1.45, 0, Math.PI * 2);
+        canvasCtx.arc(pixelX, pixelY, 1.45, 0, Math.PI * 2);
         canvasCtx.fill();
       }
     }
   }
-  const mapVar = new THREE.CanvasTexture(el);
-  mapVar.colorSpace = THREE.SRGBColorSpace;
-  mapVar.needsUpdate = true;
-  const light = new THREE.Mesh(new THREE.PlaneGeometry(argTertiary * 1.72, argN * 1.42), new THREE.MeshBasicMaterial({
-    mapVar,
+  const glowTexture = new THREE.CanvasTexture(glowCanvas);
+  glowTexture.colorSpace = THREE.SRGBColorSpace;
+  glowTexture.needsUpdate = true;
+  const glowMesh = new THREE.Mesh(new THREE.PlaneGeometry(itemWidth * 1.72, itemDepth * 1.42), new THREE.MeshBasicMaterial({
+    mapVar: glowTexture,
     transparent: true,
     opacity: 0.82,
     depthWrite: false,
@@ -10141,21 +11279,21 @@ function addSmallCarMeshes(group, chargingEnabled, argTertiary, argN, argNCurren
     polygonOffsetFactor: -1,
     polygonOffsetUnits: -3
   }));
-  light.rotation.x = -Math.PI / 2;
-  light.position.y = 0.014;
-  light.renderOrder = 2;
-  light.castShadow = false;
-  light.receiveShadow = false;
-  group.add(light);
-  const lineTo = new THREE.Shape();
-  lineTo.moveTo(0.08, 0.5);
-  lineTo.lineTo(-0.22, 0.04);
-  lineTo.lineTo(-0.03, 0.04);
-  lineTo.lineTo(-0.13, -0.5);
-  lineTo.lineTo(0.25, -0.02);
-  lineTo.lineTo(0.05, -0.02);
-  lineTo.closePath();
-  const mesh = new THREE.Mesh(new THREE.ShapeGeometry(lineTo), new THREE.MeshBasicMaterial({
+  glowMesh.rotation.x = -Math.PI / 2;
+  glowMesh.position.y = 0.014;
+  glowMesh.renderOrder = 2;
+  glowMesh.castShadow = false;
+  glowMesh.receiveShadow = false;
+  group.add(glowMesh);
+  const boltShape = new THREE.Shape();
+  boltShape.moveTo(0.08, 0.5);
+  boltShape.lineTo(-0.22, 0.04);
+  boltShape.lineTo(-0.03, 0.04);
+  boltShape.lineTo(-0.13, -0.5);
+  boltShape.lineTo(0.25, -0.02);
+  boltShape.lineTo(0.05, -0.02);
+  boltShape.closePath();
+  const boltMesh = new THREE.Mesh(new THREE.ShapeGeometry(boltShape), new THREE.MeshBasicMaterial({
     color: 8257488,
     transparent: true,
     opacity: 0.88,
@@ -10164,916 +11302,2426 @@ function addSmallCarMeshes(group, chargingEnabled, argTertiary, argN, argNCurren
     toneMapped: false,
     side: THREE.DoubleSide
   }));
-  const maxValue = Math.max(Math.min(argTertiary, argN) * 0.22, 0.18);
-  mesh.scale.setScalar(maxValue);
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.position.set(0, argNCurrent + 0.04, 0);
-  mesh.renderOrder = 9;
-  mesh.castShadow = false;
-  mesh.receiveShadow = false;
-  group.add(mesh);
+  const boltScale = Math.max(Math.min(itemWidth, itemDepth) * 0.22, 0.18);
+  boltMesh.scale.setScalar(boltScale);
+  boltMesh.rotation.x = -Math.PI / 2;
+  boltMesh.position.set(0, itemHeight + 0.04, 0);
+  boltMesh.renderOrder = 9;
+  boltMesh.castShadow = false;
+  boltMesh.receiveShadow = false;
+  group.add(boltMesh);
 }
+const PILLAR_SHAPES = Object.freeze(["square", "round", "semicircle", "quarter", "quarterinner"]);
+const pillarShapeSet = new Set(PILLAR_SHAPES);
+function normalizePillarShape(value) {
+  return pillarShapeSet.has(value) ? value : PILLAR_SHAPES[0];
+}
+/**
+ * Whether an item's body stands up or lies along the plan. The axis is the item's length: "vertical"
+ * points that length into the room, "horizontal" runs it along the plan. It is not a plan rotation:
+ * use 平面旋转 for that, including in either posture.
+ *
+ * A pillar and a light strip ship in opposite postures but share the axis vocabulary, so every helper
+ * below keys off the item type rather than off the axis value alone.
+ */
+const ITEM_AXES = Object.freeze(["vertical", "horizontal"]);
+const itemAxisSet = new Set(ITEM_AXES);
+/** Pillars ship standing, so a missing axis means "vertical". */
+function normalizePillarAxis(value) {
+  return itemAxisSet.has(value) ? value : "vertical";
+}
+/** Light strips ship lying flat, so a missing axis means "horizontal". */
+function normalizeStripAxis(value) {
+  return itemAxisSet.has(value) ? value : "horizontal";
+}
+/** True when the pillar is laid down rather than standing. */
+function pillarIsLying(item) {
+  return item?.type === "pillar" && normalizePillarAxis(item.pillarAxis) === "horizontal";
+}
+/** True when the light strip is stood up rather than lying flat. */
+function stripIsStanding(item) {
+  return item?.type === "striplight" && normalizeStripAxis(item.stripAxis) === "vertical";
+}
+/** True when the item's plan footprint is not simply width x depth and has to be derived. */
+function itemFootprintSwapped(item) {
+  return pillarIsLying(item) || stripIsStanding(item);
+}
+/**
+ * Plan footprint in metres. A posture trades the item's length axis with the room, so the footprint
+ * cannot always be read straight off width/depth:
+ * - standing pillar: width x depth (the cross-section);
+ * - lying pillar: width x length, because the length now runs along the plan;
+ * - lying strip: width x depth (the emitting face);
+ * - standing strip: depth x thickness, because the emitting length now runs up the room.
+ * Canonical item fields are never mutated, so width/depth/height keep their length and cross-section
+ * meaning everywhere else.
+ */
+function itemPlanFootprint(item) {
+  if (pillarIsLying(item)) {
+    return { width: finite(item?.width, 0), depth: finite(item?.height, 0) };
+  }
+  if (stripIsStanding(item)) {
+    return { width: finite(item?.height, 0), depth: finite(item?.depth, 0) };
+  }
+  return { width: finite(item?.width, 0), depth: finite(item?.depth, 0) };
+}
+/** The same item with its plan footprint written onto width/depth, for whole-item helpers. */
+function itemWithPlanFootprint(item) {
+  if (!itemFootprintSwapped(item)) {
+    return item;
+  }
+  const footprint = itemPlanFootprint(item);
+  return {
+    ...item,
+    width: footprint.width,
+    depth: footprint.depth
+  };
+}
+/** Maps footprint-resize output back onto the item's canonical fields for the current posture. */
+function itemFromPlanFootprintResize(item, resized) {
+  if (pillarIsLying(item)) {
+    // resized.depth is the new length; resized.height still holds the old length and must be dropped.
+    const { height: ignoredHeight, ...rest } = resized;
+    return {
+      ...rest,
+      height: finite(resized?.depth, finite(item?.height, 0)),
+      depth: finite(item?.depth, finite(resized?.depth, 0.1))
+    };
+  }
+  if (stripIsStanding(item)) {
+    // The footprint is thickness x 发光宽度, so the only real size on the plan is the 发光宽度
+    // (depth); the thickness is a physical constant and the emitting length is vertical, not on the
+    // plan, so both canonical fields are restored rather than taken from the drag.
+    return {
+      ...resized,
+      width: finite(item?.width, 0),
+      height: finite(item?.height, 0)
+    };
+  }
+  return resized;
+}
+/**
+ * Applies an item's posture to the mesh group it built, by wrapping the content in a pivot. Wrapping
+ * (rather than moving each child) keeps the offset right whatever the asset's origin convention is,
+ * and the pivot's local frame is already yawed by the item group, so 平面旋转 still reads as "the
+ * direction the item points" and composes with the posture instead of fighting it.
+ *
+ * Must run LAST, after the external-model swap: that swap disposes everything built before it and
+ * attaches a fresh upright clone, so posing any earlier is thrown away.
+ *
+ * - A lying pillar pitches down about X, so its length runs along the plan and its cross-section rests
+ *   on the item's floor plane.
+ * - A standing strip pitches up about Z, so its emitting length runs up the room; it hangs from the
+ *   mounting height (离地) rather than rising past it, which keeps a ceiling-mounted strip indoors.
+ */
+function applyItemPosture(group, item) {
+  const lyingPillar = pillarIsLying(item);
+  const standingStrip = stripIsStanding(item);
+  if ((!lyingPillar && !standingStrip) || !group.children.length) {
+    return;
+  }
+  const pivot = new THREE.Group();
+  for (const child of [...group.children]) {
+    pivot.add(child);
+  }
+  pivot.rotation[lyingPillar ? "x" : "z"] = lyingPillar ? -Math.PI / 2 : Math.PI / 2;
+  pivot.updateMatrixWorld(true);
+  // Measured before the pivot joins the group, so this box is already in the group's local frame.
+  const content = new THREE.Box3().setFromObject(pivot);
+  const centreOf = (min, max) => Number.isFinite(min) && Number.isFinite(max) ? -(min + max) / 2 : 0;
+  if (lyingPillar) {
+    pivot.position.set(0, Number.isFinite(content.min.y) ? -content.min.y : 0, centreOf(content.min.z, content.max.z));
+  } else {
+    pivot.position.set(centreOf(content.min.x, content.max.x), Number.isFinite(content.max.y) ? -content.max.y : 0, centreOf(content.min.z, content.max.z));
+  }
+  group.add(pivot);
+}
+/** Traces an arc for a pillar outline. The caller has already placed the pen on the arc start. */
+function appendPillarOutlineArc(path, centerX, centerY, radiusX, radiusY, startAngle, endAngle, segments) {
+  for (let step = 1; step <= segments; step += 1) {
+    const angle = startAngle + (endAngle - startAngle) * step / segments;
+    path.lineTo(centerX + Math.cos(angle) * radiusX, centerY + Math.sin(angle) * radiusY);
+  }
+}
+/**
+ * Pillar footprint in the XY plane: X is the item width and +Y is the item's back edge, so once the
+ * extrusion is stood upright every flat face ends up on -Z (the wall side). Every shape fills the
+ * item's full width x depth footprint, which keeps the plan symbol and hit-testing unchanged.
+ */
+function buildPillarOutline(shape, width, depth) {
+  const path = new THREE.Shape();
+  const halfWidth = width / 2;
+  const halfDepth = depth / 2;
+  if (shape === "round") {
+    path.moveTo(halfWidth, 0);
+    appendPillarOutlineArc(path, 0, 0, halfWidth, halfDepth, 0, Math.PI * 2, 64);
+    return path;
+  }
+  if (shape === "semicircle") {
+    path.moveTo(-halfWidth, halfDepth);
+    path.lineTo(halfWidth, halfDepth);
+    appendPillarOutlineArc(path, 0, halfDepth, halfWidth, depth, 0, -Math.PI, 32);
+    return path;
+  }
+  if (shape === "quarter") {
+    path.moveTo(-halfWidth, halfDepth);
+    path.lineTo(halfWidth, halfDepth);
+    appendPillarOutlineArc(path, -halfWidth, halfDepth, width, depth, 0, -Math.PI / 2, 32);
+    return path;
+  }
+  if (shape === "quarterinner") {
+    // Complement of "quarter" within the same footprint: the concave arc cuts in from the far corner,
+    // so stacking a quarter and a quarterinner pillar in place tiles the full width x depth square.
+    path.moveTo(halfWidth, halfDepth);
+    path.lineTo(halfWidth, -halfDepth);
+    path.lineTo(-halfWidth, -halfDepth);
+    appendPillarOutlineArc(path, -halfWidth, halfDepth, width, depth, -Math.PI / 2, 0, 32);
+    return path;
+  }
+  path.moveTo(-halfWidth, -halfDepth);
+  path.lineTo(halfWidth, -halfDepth);
+  path.lineTo(halfWidth, halfDepth);
+  path.lineTo(-halfWidth, halfDepth);
+  return path;
+}
+/**
+ * Watertight pillar solid for the non-square shapes. The result shares the box convention: centred on
+ * the origin and spanning the exact width x depth x height footprint, with ExtrudeGeometry's material
+ * groups ordered as [lid caps, side walls] instead of the box's [px, nx, py, ny, pz, nz].
+ */
+function buildPillarSolidGeometry(shape, width, depth, height) {
+  const geometry = new THREE.ExtrudeGeometry(buildPillarOutline(shape, width, depth), {
+    depth: height,
+    bevelEnabled: false,
+    steps: 1,
+    curveSegments: 1
+  });
+  geometry.rotateX(-Math.PI / 2);
+  geometry.translate(0, -height / 2, 0);
+  geometry.computeVertexNormals();
+  return geometry;
+}
+/** Mirrors buildPillarOutline on the plan canvas: plan +y is world +z, so the flat faces stay on the back. */
+function tracePillarPlanPath(planCtx, shape, widthPx, depthPx) {
+  const halfWidth = widthPx / 2;
+  const halfDepth = depthPx / 2;
+  planCtx.beginPath();
+  if (shape === "round") {
+    planCtx.ellipse(0, 0, halfWidth, halfDepth, 0, 0, Math.PI * 2);
+    return;
+  }
+  if (shape === "semicircle") {
+    // The flat edge sits on the back (-y) and the arc starts exactly where the line ends.
+    planCtx.moveTo(-halfWidth, -halfDepth);
+    planCtx.lineTo(halfWidth, -halfDepth);
+    planCtx.ellipse(0, -halfDepth, halfWidth, depthPx, 0, 0, Math.PI, false);
+    return;
+  }
+  if (shape === "quarter") {
+    planCtx.moveTo(-halfWidth, -halfDepth);
+    planCtx.lineTo(halfWidth, -halfDepth);
+    planCtx.ellipse(-halfWidth, -halfDepth, widthPx, depthPx, 0, 0, Math.PI / 2, false);
+    planCtx.closePath();
+    return;
+  }
+  if (shape === "quarterinner") {
+    // Mirror of the quarter: same corners, but the arc sweeps back so the symbol is the complement.
+    planCtx.moveTo(halfWidth, -halfDepth);
+    planCtx.lineTo(halfWidth, halfDepth);
+    planCtx.lineTo(-halfWidth, halfDepth);
+    planCtx.ellipse(-halfWidth, -halfDepth, widthPx, depthPx, 0, Math.PI / 2, 0, true);
+    return;
+  }
+  planCtx.rect(-halfWidth, -halfDepth, widthPx, depthPx);
+}
+function buildSmallCarItemMeshGroup(group, item, itemWidth, itemDepth, itemHeight, body, bodyColor, wheelColor) {
+  if (!attachExternalItemModel(group, item)) {
+    addBoxMesh(group, itemWidth * 0.96, itemHeight * 0.38, itemDepth * 0.9, 0, itemHeight * 0.28, 0, body, {
+      roughness: 0.46,
+      metalness: 0.18
+    });
+    addBoxMesh(group, itemWidth * 0.78, itemHeight * 0.42, itemDepth * 0.48, 0, itemHeight * 0.62, -itemDepth * 0.03, bodyColor, {
+      roughness: 0.38,
+      metalness: 0.12
+    });
+    for (const offsetX of [-0.48, 0.48]) {
+      for (const offsetZ of [-0.3, 0.3]) {
+        addBoxMesh(group, itemWidth * 0.1, itemHeight * 0.22, itemDepth * 0.17, offsetX * itemWidth, itemHeight * 0.17, offsetZ * itemDepth, wheelColor, {
+          rounded: false,
+          roughness: 0.82
+        });
+      }
+    }
+  }
+  addSmallCarMeshes(group, item, itemWidth, itemDepth, itemHeight);
+}
+function buildCurtainItemMeshGroup(group, item, itemWidth, itemDepth, itemHeight, lightColor, darkColor) {
+  const curtainPosition = ["left", "right", "split"].includes(item.curtainPosition) ? item.curtainPosition : "split";
+  // Children added from here on are the curtain's own parts, tagged below for the rig.
+  const firstChildIndex = group.children.length;
+  if (isStageEmbed) {
+    group.userData.curtainRigRoot = true;
+    group.userData.curtainRigBasis = [itemWidth, itemHeight, itemDepth];
+  }
+  const railGap = Math.min(Math.max(itemDepth * 0.09, 0.012), 0.028);
+  const railY = itemHeight - railGap * 1.8;
+  const clothTopY = railY - railGap * 1.8;
+  const hemY = Math.max(itemHeight * 0.025, 0.025);
+  const foldHeight = Math.max(clothTopY - hemY, itemHeight * 0.72);
+  addSoftBoxMesh(group, railGap, railGap, itemWidth * 1.06, 0, railY, 0, darkColor, {
+    segments: 18,
+    rotationZ: Math.PI / 2,
+    metalness: 0.68,
+    roughness: 0.22
+  });
+  for (const capX of [-itemWidth * 0.52, itemWidth * 0.52]) {
+    addSoftBoxMesh(group, railGap * 1.45, railGap * 1.45, railGap * 0.9, capX, railY, 0, lightColor, {
+      segments: 18,
+      rotationZ: Math.PI / 2,
+      metalness: 0.52,
+      roughness: 0.26
+    });
+  }
+  const addCurtainPanel = (startX, panelWidth) => {
+    const foldWidth = panelWidth / 7;
+    for (let foldIndex = 0; foldIndex < 7; foldIndex += 1) {
+      const foldCenterX = startX + foldWidth * (foldIndex + 0.5);
+      const foldOffsetZ = foldIndex % 2 === 0 ? itemDepth * 0.1 : -itemDepth * 0.1;
+      addBoxMesh(group, foldWidth * 1.24, foldHeight, itemDepth * 0.62, foldCenterX, hemY + foldHeight * 0.5, foldOffsetZ, lightColor, {
+        radius: Math.min(foldWidth * 0.34, 0.035),
+        roughness: 0.94,
+        metalness: 0
+      });
+    }
+    addBoxMesh(group, panelWidth * 1.03, Math.max(itemHeight * 0.018, 0.025), itemDepth * 0.74, startX + panelWidth * 0.5, hemY + itemHeight * 0.015, 0, darkColor, {
+      radius: 0.01,
+      roughness: 0.72,
+      metalness: 0.02
+    });
+    addBoxMesh(group, panelWidth * 1.06, Math.max(itemHeight * 0.025, 0.035), itemDepth * 0.82, startX + panelWidth * 0.5, hemY + foldHeight * 0.52, 0, lightColor, {
+      radius: 0.012,
+      roughness: 0.48,
+      metalness: 0.08
+    });
+  };
+  if (curtainPosition === "left") {
+    addCurtainPanel(-itemWidth * 0.5, itemWidth * 0.24);
+  } else if (curtainPosition === "right") {
+    addCurtainPanel(itemWidth * 0.26, itemWidth * 0.24);
+  } else {
+    addCurtainPanel(-itemWidth * 0.5, itemWidth * 0.16);
+    addCurtainPanel(itemWidth * 0.34, itemWidth * 0.16);
+  }
+  if (isStageEmbed) {
+    const curtainParts = group.children.slice(firstChildIndex);
+    curtainParts.forEach((part, index) => {
+      part.userData.curtainPart = index === 0 ? "rod" : index < 3 ? "cap" : (index - 3) % 9 < 7 ? "cloth" : "band";
+    });
+  }
+}
+function buildStairItemMeshGroup(group, itemWidth, itemDepth, itemHeight, furnitureColor, accentColor, softColor) {
+  const depthStep = itemDepth / 10;
+  for (let stepIndex = 0; stepIndex < 10; stepIndex += 1) {
+    const layerHeight = itemHeight * (stepIndex + 1) / 10;
+    const layerZ = -itemDepth * 0.5 + depthStep * (stepIndex + 0.5);
+    addBoxMesh(group, itemWidth, layerHeight, depthStep * 1.015, 0, layerHeight * 0.5, layerZ, stepIndex % 2 ? furnitureColor : accentColor, {
+      rounded: false,
+      roughness: 0.82
+    });
+    addBoxMesh(group, itemWidth * 1.01, 0.018, depthStep * 0.94, 0, layerHeight + 0.009, layerZ, softColor, {
+      rounded: false,
+      castShadow: false,
+      roughness: 0.72
+    });
+  }
+}
+function buildSofaItemMeshGroup(group, itemWidth, itemDepth, itemHeight, furnitureColor, accentColor) {
+  // Seat parts sit slightly below their nominal height so cushions visually rest on the frame.
+  const seatDrop = itemHeight * 0.14;
+  const seatY = nominalY => nominalY - seatDrop - 0.008;
+  addBoxMesh(group, itemWidth * 0.92, itemHeight * 0.28, itemDepth * 0.72, 0, seatY(itemHeight * 0.28), itemDepth * 0.06, furnitureColor);
+  addBoxMesh(group, itemWidth * 0.92, itemHeight * 0.55, itemDepth * 0.18, 0, seatY(itemHeight * 0.56), -itemDepth * 0.35, furnitureColor);
+  addBoxMesh(group, itemWidth * 0.1, itemHeight * 0.48, itemDepth * 0.75, -itemWidth * 0.46, seatY(itemHeight * 0.39), itemDepth * 0.03, furnitureColor);
+  addBoxMesh(group, itemWidth * 0.1, itemHeight * 0.48, itemDepth * 0.75, itemWidth * 0.46, seatY(itemHeight * 0.39), itemDepth * 0.03, furnitureColor);
+  addBoxMesh(group, itemWidth * 0.42, itemHeight * 0.12, itemDepth * 0.55, -itemWidth * 0.22, seatY(itemHeight * 0.47), itemDepth * 0.07, accentColor);
+  addBoxMesh(group, itemWidth * 0.42, itemHeight * 0.12, itemDepth * 0.55, itemWidth * 0.22, seatY(itemHeight * 0.47), itemDepth * 0.07, accentColor);
+}
+function buildBedItemMeshGroup(group, itemWidth, itemDepth, itemHeight, frameColor, quiltColor, headboardColor, pillowColor) {
+  addBoxMesh(group, itemWidth * 0.996, itemHeight * 0.3, itemDepth * 0.996, 0, itemHeight * 0.15, 0, frameColor);
+  addBoxMesh(group, itemWidth * 0.96, itemHeight * 0.32, itemDepth * 0.92, 0, itemHeight * 0.43, itemDepth * 0.03, quiltColor);
+  addBoxMesh(group, itemWidth, itemHeight * 0.95, itemDepth * 0.09, 0, itemHeight * 0.48, -itemDepth * 0.455, headboardColor);
+  addBoxMesh(group, itemWidth * 0.38, itemHeight * 0.14, itemDepth * 0.22, -itemWidth * 0.23, itemHeight * 0.66, -itemDepth * 0.29, pillowColor);
+  addBoxMesh(group, itemWidth * 0.38, itemHeight * 0.14, itemDepth * 0.22, itemWidth * 0.23, itemHeight * 0.66, -itemDepth * 0.29, pillowColor);
+}
+function buildCabinetItemMeshGroup(group, itemWidth, itemDepth, itemHeight, furnitureColor, darkColor, softColor) {
+  addBoxMesh(group, itemWidth, itemHeight, itemDepth, 0, itemHeight / 2, 0, furnitureColor);
+  addBoxMesh(group, 0.018, itemHeight * 0.9, itemDepth * 1.01, 0, itemHeight * 0.52, itemDepth * 0.01, darkColor);
+  addBoxMesh(group, 0.025, 0.16, 0.035, -0.08, itemHeight * 0.55, itemDepth * 0.515, softColor, {
+    metalness: 0.55
+  });
+  addBoxMesh(group, 0.025, 0.16, 0.035, 0.08, itemHeight * 0.55, itemDepth * 0.515, softColor, {
+    metalness: 0.55
+  });
+}
+function buildDeskItemMeshGroup(group, itemWidth, itemDepth, itemHeight, topColor, legColor, drawerColor, handleColor) {
+  addBoxMesh(group, itemWidth, itemHeight * 0.1, itemDepth, 0, itemHeight * 0.93, 0, topColor);
+  addBoxMesh(group, itemWidth * 0.05, itemHeight * 0.88, itemDepth * 0.82, -itemWidth * 0.44, itemHeight * 0.44, 0, legColor);
+  addBoxMesh(group, itemWidth * 0.05, itemHeight * 0.88, itemDepth * 0.82, itemWidth * 0.44, itemHeight * 0.44, 0, legColor);
+  addBoxMesh(group, itemWidth * 0.34, itemHeight * 0.18, itemDepth * 0.78, itemWidth * 0.22, itemHeight * 0.74, 0, drawerColor);
+  addBoxMesh(group, itemWidth * 0.27, 0.018, itemDepth * 0.04, itemWidth * 0.22, itemHeight * 0.73, itemDepth * 0.41, handleColor, {
+    metalness: 0.35
+  });
+}
+function buildNightstandItemMeshGroup(group, itemWidth, itemDepth, itemHeight, furnitureColor, accentColor, darkColor, softColor) {
+  addBoxMesh(group, itemWidth, itemHeight * 0.78, itemDepth, 0, itemHeight * 0.49, 0, furnitureColor);
+  addBoxMesh(group, itemWidth * 1.04, itemHeight * 0.07, itemDepth * 1.05, 0, itemHeight * 0.91, 0, accentColor, {
+    roughness: 0.5
+  });
+  addBoxMesh(group, itemWidth * 0.9, 0.014, itemDepth * 1.01, 0, itemHeight * 0.63, itemDepth * 0.01, darkColor, {
+    rounded: false
+  });
+  addBoxMesh(group, itemWidth * 0.9, 0.014, itemDepth * 1.01, 0, itemHeight * 0.38, itemDepth * 0.01, darkColor, {
+    rounded: false
+  });
+  addBoxMesh(group, itemWidth * 0.22, 0.022, 0.032, 0, itemHeight * 0.5, itemDepth * 0.52, softColor, {
+    metalness: 0.5
+  });
+  for (const legOffsetX of [-0.38, 0.38]) {
+    for (const legOffsetZ of [-0.35, 0.35]) {
+      addBoxMesh(group, 0.035, itemHeight * 0.2, 0.035, itemWidth * legOffsetX, itemHeight * 0.1, itemDepth * legOffsetZ, darkColor, {
+        metalness: 0.18
+      });
+    }
+  }
+}
+function buildTableItemMeshGroup(group, itemWidth, itemDepth, itemHeight, topColor, legColor, accentColor) {
+  const topWidth = itemWidth * 0.64;
+  const topDepth = itemDepth * 0.48;
+  addBoxMesh(group, topWidth, itemHeight * 0.1, topDepth, 0, itemHeight * 0.93, 0, topColor);
+  for (const legOffsetX of [-0.43, 0.43]) {
+    for (const legOffsetZ of [-0.38, 0.38]) {
+      addBoxMesh(group, 0.07, itemHeight * 0.9, 0.07, topWidth * legOffsetX, itemHeight * 0.45, topDepth * legOffsetZ, legColor);
+    }
+  }
+  // Four upright panels double as the table's display bezels.
+  const panelWidth = Math.min(itemWidth * 0.2, 0.5);
+  const panelDepth = Math.min(itemDepth * 0.27, 0.5);
+  const panelHeight = itemHeight * 1.18;
+  buildTelevisionMesh(group, panelWidth, panelDepth, panelHeight, -itemWidth * 0.37, 0, Math.PI / 2, accentColor, legColor);
+  buildTelevisionMesh(group, panelWidth, panelDepth, panelHeight, itemWidth * 0.37, 0, -Math.PI / 2, accentColor, legColor);
+  buildTelevisionMesh(group, panelWidth, panelDepth, panelHeight, 0, -itemDepth * 0.35, 0, accentColor, legColor);
+  buildTelevisionMesh(group, panelWidth, panelDepth, panelHeight, 0, itemDepth * 0.35, Math.PI, accentColor, legColor);
+}
+function buildRoundTableItemMeshGroup(group, item, itemWidth, itemDepth, itemHeight, lightColor, bodyColor, darkColor, accentColor) {
+  const tabletopSize = Math.min(itemWidth, itemDepth) * 0.32;
+  const tabletopThickness = Math.max(itemHeight * 0.07, 0.045);
+  const tabletopY = itemHeight * 0.92;
+  const narrowSide = Math.min(itemWidth, itemDepth);
+  addSoftBoxMesh(group, tabletopSize, tabletopSize, tabletopThickness, 0, tabletopY, 0, lightColor, {
+    segments: 48,
+    roughness: 0.5,
+    metalness: 0.08
+  });
+  addSoftBoxMesh(group, narrowSide * 0.22, narrowSide * 0.3, itemHeight * 0.68, 0, itemHeight * 0.43, 0, bodyColor, {
+    segments: 36,
+    roughness: 0.55,
+    metalness: 0.06
+  });
+  addSoftBoxMesh(group, narrowSide * 0.34, narrowSide * 0.34, itemHeight * 0.07, 0, itemHeight * 0.045, 0, darkColor, {
+    segments: 40,
+    roughness: 0.42,
+    metalness: 0.12
+  });
+  if (hasRoundTableTurntable(item)) {
+    const turntableY = tabletopY + tabletopThickness * 0.58;
+    addSoftBoxMesh(group, tabletopSize * 0.58, tabletopSize * 0.58, Math.max(itemHeight * 0.035, 0.025), 0, turntableY, 0, accentColor, {
+      segments: 48,
+      roughness: 0.48,
+      metalness: 0.08
+    });
+    addSoftBoxMesh(group, tabletopSize * 0.44, tabletopSize * 0.44, 0.018, 0, turntableY + 0.036, 0, darkColor, {
+      segments: 48,
+      roughness: 0.32,
+      metalness: 0.12
+    });
+  }
+  const panelWidth = Math.min(itemWidth * 0.17, 0.42);
+  const panelDepth = Math.min(itemDepth * 0.19, 0.44);
+  const panelHeight = itemHeight * 1.15;
+  buildTelevisionMesh(group, panelWidth, panelDepth, panelHeight, -itemWidth * 0.38, 0, Math.PI / 2, accentColor, darkColor);
+  buildTelevisionMesh(group, panelWidth, panelDepth, panelHeight, itemWidth * 0.38, 0, -Math.PI / 2, accentColor, darkColor);
+  buildTelevisionMesh(group, panelWidth, panelDepth, panelHeight, 0, -itemDepth * 0.38, 0, accentColor, darkColor);
+  buildTelevisionMesh(group, panelWidth, panelDepth, panelHeight, 0, itemDepth * 0.38, Math.PI, accentColor, darkColor);
+}
+function buildBarItemMeshGroup(group, itemWidth, itemDepth, itemHeight, accentColor, furnitureColor, darkColor) {
+  addBoxMesh(group, itemWidth, itemHeight * 0.12, itemDepth, 0, itemHeight * 0.94, 0, accentColor, {
+    roughness: 0.5
+  });
+  addBoxMesh(group, itemWidth * 0.92, itemHeight * 0.78, itemDepth * 0.46, 0, itemHeight * 0.45, -itemDepth * 0.18, furnitureColor, {
+    roughness: 0.65
+  });
+  addBoxMesh(group, itemWidth * 0.86, itemHeight * 0.48, 0.035, 0, itemHeight * 0.42, itemDepth * 0.28, darkColor, {
+    rounded: false,
+    roughness: 0.48
+  });
+  for (const stoolOffset of [-0.3, 0, 0.3]) {
+    addSoftBoxMesh(group, itemDepth * 0.14, itemDepth * 0.14, 0.045, itemWidth * stoolOffset, itemHeight * 0.66, itemDepth * 0.52, accentColor, {
+      segments: 28,
+      roughness: 0.52
+    });
+    addSoftBoxMesh(group, 0.025, 0.025, itemHeight * 0.62, itemWidth * stoolOffset, itemHeight * 0.34, itemDepth * 0.52, darkColor, {
+      segments: 18,
+      metalness: 0.38,
+      roughness: 0.28
+    });
+    addSoftBoxMesh(group, itemDepth * 0.1, itemDepth * 0.12, 0.035, itemWidth * stoolOffset, 0.018, itemDepth * 0.52, darkColor, {
+      segments: 24,
+      metalness: 0.3,
+      roughness: 0.34
+    });
+  }
+}
+function buildFridgeItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, handleColor) {
+  addBoxMesh(group, itemWidth, itemHeight, itemDepth, 0, itemHeight / 2, 0, bodyColor, {
+    metalness: 0.18,
+    roughness: 0.5
+  });
+  addBoxMesh(group, itemWidth * 0.88, 0.018, itemDepth * 1.01, 0, itemHeight * 0.42, itemDepth * 0.01, handleColor, {
+    metalness: 0.5
+  });
+  addBoxMesh(group, 0.025, itemHeight * 0.27, 0.035, itemWidth * 0.35, itemHeight * 0.65, itemDepth * 0.515, handleColor, {
+    metalness: 0.7
+  });
+}
+function buildWallAcItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, darkColor, accentColor) {
+  addBoxMesh(group, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, bodyColor, {
+    roughness: 0.46
+  });
+  addBoxMesh(group, itemWidth * 0.9, itemHeight * 0.08, itemDepth * 0.18, 0, itemHeight * 0.18, itemDepth * 0.46, darkColor, {
+    rounded: false,
+    roughness: 0.3
+  });
+  addBoxMesh(group, itemWidth * 0.12, itemHeight * 0.08, itemDepth * 0.05, itemWidth * 0.34, itemHeight * 0.68, itemDepth * 0.51, accentColor, {
+    rounded: false,
+    emissive: accentColor,
+    emissiveIntensity: 0.18
+  });
+}
+function buildAquariumItemMeshGroup(group, itemWidth, itemDepth, itemHeight, glassColors, bodyColor) {
+  const tankHeight = Math.max(itemHeight * 0.52, 0.45);
+  const upperHeight = Math.max(itemHeight - tankHeight, 0.2);
+  const glassThickness = Math.min(Math.max(Math.min(itemWidth, itemDepth) * 0.025, 0.012), 0.028);
+  const glassProfile = {
+    rounded: false,
+    transparent: true,
+    opacity: 0.22,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    roughness: 0.06,
+    metalness: 0.02,
+    castShadow: false,
+    receiveShadow: false,
+    renderOrder: 6
+  };
+  addBoxMesh(group, itemWidth, tankHeight, itemDepth, 0, tankHeight * 0.5, 0, bodyColor, {
+    rounded: false,
+    roughness: 0.56
+  });
+  addBoxMesh(group, itemWidth, 0.035, itemDepth, 0, tankHeight, 0, glassColors.frame, {
+    rounded: false,
+    metalness: 0.34,
+    roughness: 0.3
+  });
+  addBoxMesh(group, itemWidth - glassThickness * 2, upperHeight, glassThickness, 0, tankHeight + upperHeight * 0.5, -itemDepth * 0.5 + glassThickness * 0.5, glassColors.glass, glassProfile);
+  addBoxMesh(group, itemWidth - glassThickness * 2, upperHeight, glassThickness, 0, tankHeight + upperHeight * 0.5, itemDepth * 0.5 - glassThickness * 0.5, glassColors.glass, glassProfile);
+  addBoxMesh(group, glassThickness, upperHeight, itemDepth - glassThickness * 2, -itemWidth * 0.5 + glassThickness * 0.5, tankHeight + upperHeight * 0.5, 0, glassColors.glass, glassProfile);
+  addBoxMesh(group, glassThickness, upperHeight, itemDepth - glassThickness * 2, itemWidth * 0.5 - glassThickness * 0.5, tankHeight + upperHeight * 0.5, 0, glassColors.glass, glassProfile);
+}
+function buildMuralItemMeshGroup(group, item, itemWidth, itemDepth, itemHeight, frameColor, artColor) {
+  const frameDepth = Math.max(itemDepth, 0.04);
+  const frameBand = Math.min(itemWidth, itemHeight) * 0.058;
+  const artWidth = Math.max(itemWidth - frameBand * 1.9, itemWidth * 0.36);
+  const artHeight = Math.max(itemHeight - frameBand * 1.9, itemHeight * 0.36);
+  const wallZ = -frameDepth * 0.5;
+  addBoxMesh(group, itemWidth, itemHeight, frameDepth * 0.66, 0, itemHeight * 0.5, wallZ + frameDepth * 0.33, frameColor, {
+    rounded: false,
+    roughness: 0.62,
+    metalness: 0.04
+  });
+  addBoxMesh(group, artWidth, artHeight, frameDepth * 0.34, 0, itemHeight * 0.5, wallZ + frameDepth * 0.5, artColor, {
+    rounded: false,
+    roughness: 0.94,
+    metalness: 0
+  });
+  const muralTexture = createMuralArtTexture(item.muralStyle);
+  if (muralTexture) {
+    const artwork = new THREE.Mesh(new THREE.PlaneGeometry(artWidth, artHeight), new THREE.MeshStandardMaterial({
+      map: muralTexture,
+      roughness: 0.82,
+      metalness: 0
+    }));
+    artwork.position.set(0, itemHeight * 0.5, wallZ + frameDepth * 0.72);
+    artwork.castShadow = false;
+    artwork.receiveShadow = true;
+    group.add(artwork);
+  }
+  const frameProfile = {
+    rounded: false,
+    roughness: 0.4,
+    metalness: 0.16
+  };
+  addBoxMesh(group, itemWidth, frameBand, frameDepth, 0, frameBand * 0.5, 0, frameColor, frameProfile);
+  addBoxMesh(group, itemWidth, frameBand, frameDepth, 0, itemHeight - frameBand * 0.5, 0, frameColor, frameProfile);
+  addBoxMesh(group, frameBand, itemHeight - frameBand * 2, frameDepth, -itemWidth * 0.5 + frameBand * 0.5, itemHeight * 0.5, 0, frameColor, frameProfile);
+  addBoxMesh(group, frameBand, itemHeight - frameBand * 2, frameDepth, itemWidth * 0.5 - frameBand * 0.5, itemHeight * 0.5, 0, frameColor, frameProfile);
+}
+function buildFeatureWallItemMeshGroup(group, item, itemWidth, itemDepth, itemHeight) {
+  const wallStyle = normalizeFeatureWallStyle(item.wallStyle);
+  const wallMaterial = FEATURE_WALL_STYLE_MATERIAL[wallStyle];
+  const panelDepth = Math.max(itemDepth, 0.04);
+  addBoxMesh(group, itemWidth, itemHeight, panelDepth, 0, itemHeight * 0.5, -panelDepth * 0.5, wallMaterial.color, {
+    rounded: false,
+    roughness: wallMaterial.roughness,
+    metalness: wallMaterial.metalness
+  });
+  const panelTexture = createFeatureWallTexture(wallStyle);
+  if (panelTexture) {
+    const cladding = new THREE.Mesh(new THREE.PlaneGeometry(itemWidth, itemHeight), new THREE.MeshStandardMaterial({
+      map: panelTexture,
+      roughness: wallMaterial.roughness,
+      metalness: wallMaterial.metalness
+    }));
+    cladding.position.set(0, itemHeight * 0.5, 0.0015);
+    cladding.castShadow = false;
+    cladding.receiveShadow = true;
+    group.add(cladding);
+  }
+  if (wallStyle === "slat") {
+    const slatCount = Math.min(48, Math.max(4, Math.round(itemWidth / 0.1)));
+    const slatPitch = itemWidth / slatCount;
+    const slatWidth = slatPitch * 0.62;
+    const slatDepth = Math.min(Math.max(panelDepth * 0.62, 0.02), 0.05);
+    for (let slat = 0; slat < slatCount; slat += 1) {
+      addBoxMesh(group, slatWidth, itemHeight, slatDepth, -itemWidth * 0.5 + slatPitch * (slat + 0.5), itemHeight * 0.5, slatDepth * 0.5 + 0.002, wallMaterial.color, {
+        rounded: false,
+        roughness: 0.7,
+        metalness: 0.03
+      });
+    }
+  }
+}
+function buildCoffeeTableItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, darkColor, lightColor, accentColor) {
+  const tabletopRadius = Math.min(itemWidth * 0.34, itemDepth * 0.42);
+  const lowerTopRadius = Math.min(itemWidth * 0.23, itemDepth * 0.29);
+  const leftX = -itemWidth * 0.16;
+  const frontZ = itemDepth * 0.08;
+  const rightX = itemWidth * 0.24;
+  const backZ = -itemDepth * 0.2;
+  // The two supports are boxes whose depth happens to be derived from itemHeight.
+  const nearSupportDepth = itemHeight * 0.58;
+  const farSupportDepth = itemHeight * 0.76;
+  addSoftBoxMesh(group, tabletopRadius * 0.3, tabletopRadius * 0.5, nearSupportDepth, leftX, nearSupportDepth * 0.5, frontZ, bodyColor, {
+    segments: 40,
+    roughness: 0.82
+  });
+  const slabThickness = itemHeight * 0.07;
+  const inlayThickness = itemHeight * 0.055;
+  const slabY = nearSupportDepth + slabThickness * 0.5 + 0.001;
+  const inlayY = slabY + (slabThickness + inlayThickness) * 0.5 + 0.001;
+  addSoftBoxMesh(group, tabletopRadius * 1.02, tabletopRadius * 1.02, slabThickness, leftX, slabY, frontZ, darkColor, {
+    segments: 48,
+    roughness: 0.72
+  });
+  addSoftBoxMesh(group, tabletopRadius, tabletopRadius, inlayThickness, leftX, inlayY, frontZ, lightColor, {
+    segments: 48,
+    roughness: 0.9
+  });
+  addSoftBoxMesh(group, lowerTopRadius * 0.32, lowerTopRadius * 0.52, farSupportDepth, rightX, farSupportDepth * 0.5, backZ, accentColor, {
+    segments: 40,
+    roughness: 0.82
+  });
+  const lowerSlabThickness = itemHeight * 0.07;
+  const lowerInlayThickness = itemHeight * 0.055;
+  const lowerSlabY = farSupportDepth + lowerSlabThickness * 0.5 + 0.001;
+  const lowerInlayY = lowerSlabY + (lowerSlabThickness + lowerInlayThickness) * 0.5 + 0.001;
+  addSoftBoxMesh(group, lowerTopRadius * 1.02, lowerTopRadius * 1.02, lowerSlabThickness, rightX, lowerSlabY, backZ, darkColor, {
+    segments: 48,
+    roughness: 0.72
+  });
+  addSoftBoxMesh(group, lowerTopRadius, lowerTopRadius, lowerInlayThickness, rightX, lowerInlayY, backZ, lightColor, {
+    segments: 48,
+    roughness: 0.9
+  });
+}
+function buildSquareCoffeeTableItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, topColor, darkColor) {
+  const baseThickness = Math.max(itemHeight * 0.22, 0.085);
+  const topThickness = Math.max(itemHeight * 0.16, 0.065);
+  const baseY = baseThickness + 0.012;
+  const bodyHeight = Math.max(itemHeight - baseY - topThickness, 0.16);
+  const sideThickness = Math.max(itemWidth * 0.075, 0.045);
+  const drawerDepth = Math.max(itemDepth * 0.035, 0.018);
+  const drawerHeight = bodyHeight * 0.72;
+  const drawerY = baseY + bodyHeight * 0.48;
+  const drawerWidth = itemWidth * 0.27;
+  const drawerOffsetX = itemWidth * 0.34;
+  addBoxMesh(group, itemWidth * 0.98, topThickness, itemDepth * 1.03, 0, baseY + bodyHeight + topThickness * 0.5, 0, topColor, {
+    radius: Math.min(itemWidth, itemDepth) * 0.035,
+    roughness: 0.5,
+    metalness: 0.02
+  });
+  addBoxMesh(group, sideThickness, bodyHeight, itemDepth * 0.92, -itemWidth * 0.5 + sideThickness * 0.5, baseY + bodyHeight * 0.5, 0, bodyColor, {
+    rounded: false,
+    roughness: 0.6
+  });
+  addBoxMesh(group, sideThickness, bodyHeight, itemDepth * 0.92, itemWidth * 0.5 - sideThickness * 0.5, baseY + bodyHeight * 0.5, 0, bodyColor, {
+    rounded: false,
+    roughness: 0.6
+  });
+  addBoxMesh(group, itemWidth * 0.86, bodyHeight * 0.9, 0.035, 0, baseY + bodyHeight * 0.52, -itemDepth * 0.45, bodyColor, {
+    rounded: false,
+    roughness: 0.75
+  });
+  addBoxMesh(group, itemWidth * 0.86, bodyHeight * 0.1, itemDepth * 0.9, 0, baseY + bodyHeight * 0.08, 0, bodyColor, {
+    rounded: false,
+    roughness: 0.58
+  });
+  for (const drawerX of [-drawerOffsetX, 0, drawerOffsetX]) {
+    addBoxMesh(group, drawerWidth, drawerHeight, drawerDepth, drawerX, drawerY, itemDepth * 0.48, topColor, {
+      radius: Math.min(itemWidth, itemDepth) * 0.025,
+      roughness: 0.52
+    });
+    const handleX = drawerX === 0 ? 0 : drawerX + (drawerX < 0 ? drawerWidth * 0.3 : -drawerWidth * 0.3);
+    addBoxMesh(group, 0.022, drawerHeight * 0.2, 0.025, handleX, drawerY, itemDepth * 0.505, darkColor, {
+      radius: 0.009,
+      metalness: 0.22,
+      roughness: 0.3
+    });
+  }
+  const legSize = Math.max(Math.min(itemWidth, itemDepth) * 0.055, 0.035);
+  for (const legX of [-itemWidth * 0.4, itemWidth * 0.4]) {
+    for (const legZ of [-itemDepth * 0.36, itemDepth * 0.36]) {
+      const mesh = addBoxMesh(group, legSize, legZ, legSize, legX, legZ * 0.5, legZ, darkColor, {
+        radius: legSize * 0.22,
+        roughness: 0.55,
+        metalness: 0.02
+      });
+      mesh.rotation.z = (legX < 0 ? -1 : 1) * 0.09;
+      mesh.rotation.x = (legZ < 0 ? -1 : 1) * 0.06;
+    }
+  }
+}
+function buildSideboardItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, accentColor, handleColor) {
+  // Heights are floored so a very short sideboard still keeps readable proportions.
+  const cabinetHeight = Math.max(itemHeight, 1.8);
+  const lowerBodyHeight = cabinetHeight * 0.39;
+  const topBandHeight = cabinetHeight * 0.22;
+  const upperBodyStartY = lowerBodyHeight + topBandHeight;
+  const upperBodyHeight = cabinetHeight - upperBodyStartY;
+  const handleWidth = itemWidth * 0.31;
+  const lowerHandleHeight = lowerBodyHeight * 0.88;
+  const upperHandleHeight = upperBodyHeight * 0.86;
+  addBoxMesh(group, itemWidth, lowerBodyHeight, itemDepth, 0, lowerBodyHeight * 0.5, 0, bodyColor, {
+    roughness: 0.58
+  });
+  addBoxMesh(group, itemWidth, 0.045, itemDepth, 0, lowerBodyHeight, 0, accentColor, {
+    roughness: 0.5
+  });
+  addBoxMesh(group, itemWidth, topBandHeight, 0.045, 0, lowerBodyHeight + topBandHeight * 0.5, -itemDepth * 0.46, bodyColor, {
+    rounded: false,
+    roughness: 0.62
+  });
+  addBoxMesh(group, itemWidth, upperBodyHeight, itemDepth, 0, upperBodyStartY + upperBodyHeight * 0.5, 0, bodyColor, {
+    roughness: 0.58
+  });
+  for (const handleOffset of [-0.33, 0, 0.33]) {
+    addBoxMesh(group, handleWidth, lowerHandleHeight, 0.026, itemWidth * handleOffset, lowerBodyHeight * 0.48, itemDepth * 0.515, handleColor, {
+      rounded: false,
+      roughness: 0.45
+    });
+    addBoxMesh(group, handleWidth, upperHandleHeight, 0.026, itemWidth * handleOffset, upperBodyStartY + upperBodyHeight * 0.5, itemDepth * 0.515, handleColor, {
+      rounded: false,
+      roughness: 0.45
+    });
+  }
+}
+function buildShoeCabinetItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, accentColor, handleColor) {
+  // Stored height never drops below 1.9 so the stacked compartments stay separable.
+  const cabinetHeight = Math.max(itemHeight, 1.9);
+  const leftWidth = itemWidth * 0.5;
+  const rightWidth = itemWidth * 0.5;
+  const leftCenterX = -itemWidth * 0.25;
+  const rightCenterX = itemWidth * 0.25;
+  const lowerSectionHeight = cabinetHeight * 0.22;
+  const middleSectionHeight = cabinetHeight * 0.43;
+  const middleDrawerHeight = cabinetHeight * 0.21;
+  const upperDrawerHeight = cabinetHeight * 0.37;
+  addBoxMesh(group, itemWidth * 0.98, cabinetHeight * 0.93, 0.045, 0, cabinetHeight * 0.48, -itemDepth * 0.47, bodyColor, {
+    rounded: false,
+    roughness: 0.62
+  });
+  addBoxMesh(group, leftWidth, lowerSectionHeight * 0.56, itemDepth * 0.92, leftCenterX, lowerSectionHeight * 0.35, 0, bodyColor, {
+    roughness: 0.56
+  });
+  addBoxMesh(group, leftWidth * 1.02, 0.055, itemDepth * 1.04, leftCenterX, lowerSectionHeight * 0.67, 0, accentColor, {
+    roughness: 0.5
+  });
+  addBoxMesh(group, rightWidth, middleSectionHeight, itemDepth, rightCenterX, middleSectionHeight * 0.5, 0, bodyColor, {
+    roughness: 0.58
+  });
+  for (const handleOffset of [-0.245, 0.245]) {
+    addBoxMesh(group, rightWidth * 0.47, middleSectionHeight * 0.84, 0.026, rightCenterX + rightWidth * handleOffset, middleSectionHeight * 0.48, itemDepth * 0.515, handleColor, {
+      rounded: false,
+      roughness: 0.45
+    });
+  }
+  const middleDrawerY = cabinetHeight - middleDrawerHeight - 0.045;
+  addBoxMesh(group, leftWidth, middleDrawerHeight, itemDepth, leftCenterX, middleDrawerY + middleDrawerHeight * 0.5, 0, bodyColor, {
+    roughness: 0.58
+  });
+  for (const handleOffset of [-0.245, 0.245]) {
+    addBoxMesh(group, leftWidth * 0.47, middleDrawerHeight * 0.86, 0.026, leftCenterX + leftWidth * handleOffset, middleDrawerY + middleDrawerHeight * 0.5, itemDepth * 0.515, handleColor, {
+      rounded: false,
+      roughness: 0.45
+    });
+  }
+  const upperDrawerY = cabinetHeight - upperDrawerHeight - 0.045;
+  addBoxMesh(group, rightWidth, upperDrawerHeight, itemDepth, rightCenterX, upperDrawerY + upperDrawerHeight * 0.5, 0, bodyColor, {
+    roughness: 0.58
+  });
+  for (const handleOffset of [-0.245, 0.245]) {
+    addBoxMesh(group, rightWidth * 0.47, upperDrawerHeight * 0.9, 0.026, rightCenterX + rightWidth * handleOffset, upperDrawerY + upperDrawerHeight * 0.5, itemDepth * 0.515, handleColor, {
+      rounded: false,
+      roughness: 0.45
+    });
+  }
+}
+function buildShelfItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, accentColor, softColor) {
+  const postSize = Math.min(Math.max(Math.min(itemWidth, itemDepth) * 0.07, 0.028), 0.052);
+  const boardThickness = Math.min(Math.max(itemHeight * 0.022, 0.028), 0.052);
+  const boardDepth = Math.max(itemDepth - postSize * 1.4, itemDepth * 0.78);
+  const postProfile = {
+    rounded: false,
+    metalness: 0.62,
+    roughness: 0.28
+  };
+  const boardProfile = {
+    rounded: false,
+    metalness: 0.18,
+    roughness: 0.48
+  };
+  for (const postOffsetX of [-itemWidth * 0.5 + postSize * 0.5, itemWidth * 0.5 - postSize * 0.5]) {
+    for (const postOffsetZ of [-itemDepth * 0.5 + postSize * 0.5, itemDepth * 0.5 - postSize * 0.5]) {
+      // NOTE: width and depth intentionally reuse the z offset, because in the original code the
+      // inner loop variable shadowed postSize. That makes the posts as thick as they are far from
+      // the centre, which looks wrong, but it is preserved verbatim so this extraction stays
+      // behaviour-neutral. Fixing it is a separate, visible change.
+      addBoxMesh(group, postOffsetZ, itemHeight, postOffsetZ, postOffsetX, itemHeight * 0.5, postOffsetZ, bodyColor, postProfile);
+    }
+  }
+  for (const boardRatio of [0.04, 0.26, 0.49, 0.72, 0.96]) {
+    addBoxMesh(group, itemWidth, boardThickness, boardDepth, 0, itemHeight * boardRatio, 0, boardRatio === 0.96 ? softColor : accentColor, boardProfile);
+    addBoxMesh(group, itemWidth, postSize * 0.65, postSize, 0, itemHeight * boardRatio, -itemDepth * 0.5 + postSize * 0.5, bodyColor, postProfile);
+  }
+  const braceSpan = Math.max(itemWidth - postSize * 2, postSize);
+  const braceHeight = itemHeight * 0.84;
+  const braceLength = Math.hypot(braceSpan, braceHeight);
+  for (const braceSide of [-1, 1]) {
+    const mesh = addBoxMesh(group, postSize * 0.48, braceLength, postSize * 0.42, 0, itemHeight * 0.5, -itemDepth * 0.5 + postSize * 0.18, bodyColor, {
+      ...postProfile,
+      castShadow: false
+    });
+    mesh.rotation.z = braceSide * Math.atan2(braceSpan, braceHeight);
+  }
+}
+function buildPillarItemMeshGroup(group, item, itemWidth, itemDepth, itemHeight, glassColors) {
+  const wallOpacity = Math.min(glassColors.wallOpacity * 1.75, 0.55);
+  // The baked pillar asset is a plain box carrying one uniform material on every face, so all four
+  // shapes use a single material too and the shaped solids stay visually identical to the square
+  // one. setWallGradientHeight below is kept because wall-trial shader mode reads that attribute.
+  const material = createGlassPhysicalMaterial(glassColors.wall, wallOpacity, {
+    depthWrite: false,
+    depthFunc: THREE.LessDepth
+  });
+  const pillarShape = normalizePillarShape(item.pillarShape);
+  const pillarMesh = pillarShape === "square"
+    ? new THREE.Mesh(new THREE.BoxGeometry(itemWidth, itemHeight, itemDepth), material)
+    : new THREE.Mesh(buildPillarSolidGeometry(pillarShape, itemWidth, itemDepth, itemHeight), material);
+  pillarMesh.position.y = itemHeight * 0.5;
+  setWallGradientHeight(THREE, pillarMesh.geometry, "y", itemHeight * 0.5, 1, itemHeight);
+  pillarMesh.castShadow = true;
+  pillarMesh.receiveShadow = true;
+  pillarMesh.renderOrder = 4;
+  pillarMesh.userData.reflectionRole = "wall";
+  pillarMesh.layers.set(HELPER_LAYER);
+  group.add(pillarMesh);
+}
+function buildWallCabinetItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, accentColor) {
+  // Sits 1.4 units above the floor, so every y is measured from that mount height.
+  const mountY = 1.4;
+  const cabinetHeight = itemHeight * 0.28;
+  const doorHeight = itemHeight - cabinetHeight;
+  const upperY = mountY + cabinetHeight;
+  addBoxMesh(group, itemWidth, doorHeight, itemDepth, 0, upperY + doorHeight * 0.5, 0, bodyColor);
+  addBoxMesh(group, itemWidth, cabinetHeight, 0.045, 0, mountY + cabinetHeight * 0.5, -itemDepth * 0.45, bodyColor, {
+    rounded: false,
+    roughness: 0.62
+  });
+  addBoxMesh(group, itemWidth * 1.02, 0.045, itemDepth * 1.05, 0, mountY, 0, accentColor, {
+    roughness: 0.5
+  });
+  addBoxMesh(group, itemWidth * 1.02, 0.045, itemDepth * 1.05, 0, upperY, 0, accentColor, {
+    roughness: 0.5
+  });
+  addBoxMesh(group, 0.045, cabinetHeight, itemDepth, -itemWidth * 0.49, mountY + cabinetHeight * 0.5, 0, bodyColor);
+  addBoxMesh(group, 0.045, cabinetHeight, itemDepth, itemWidth * 0.49, mountY + cabinetHeight * 0.5, 0, bodyColor);
+  const handleWidth = itemWidth * 0.31;
+  for (const handleOffset of [-0.33, 0, 0.33]) {
+    addBoxMesh(group, handleWidth, doorHeight * 0.9, 0.026, itemWidth * handleOffset, upperY + doorHeight * 0.5, itemDepth * 0.515, accentColor, {
+      rounded: false,
+      roughness: 0.45
+    });
+  }
+}
+function buildGlassCabinetItemMeshGroup(group, itemWidth, itemDepth, itemHeight, glassColors, bodyColor, accentColor, lightColor) {
+  const panelThickness = Math.min(Math.max(Math.min(itemWidth, itemDepth) * 0.1, 0.032), 0.058);
+  const min = Math.min(Math.max(itemDepth * 0.075, 0.018), 0.032);
+  const railWidth = Math.min(Math.max(itemWidth * 0.014, 0.016), 0.03);
+  const max = Math.max(itemWidth - panelThickness * 2, itemWidth * 0.7);
+  const numericValue = 0.13;
+  const value = 0.3;
+  const count = 4;
+  const topBandHeight = itemHeight * numericValue;
+  const baseHeight = itemHeight * value;
+  const midHeight = itemHeight - panelThickness - baseHeight;
+  const halfValue = midHeight / count;
+  const length = [0.56, 0.24, 0.2];
+  const slicedValue = [0, length[0], length[0] + length[1]];
+  const slice = slicedValue.slice(1);
+  const shelfThickness = Math.max(itemWidth * 0.005, 0.005);
+  const frontPanelZ = itemDepth * 0.5 + 0.012;
+  const objectValue = {
+    rounded: false,
+    roughness: 0.62,
+    metalness: 0.015
+  };
+  const options = {
+    rounded: false,
+    roughness: 0.48,
+    metalness: 0.035
+  };
+  const objectValueCurrent = {
+    rounded: false,
+    transparent: true,
+    opacity: 0.28,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    roughness: 0.08,
+    metalness: 0.08,
+    castShadow: false,
+    receiveShadow: false,
+    renderOrder: 7
+  };
+  const objectValueNext = {
+    rounded: false,
+    transparent: true,
+    opacity: 0.5,
+    depthWrite: false,
+    roughness: 0.12,
+    metalness: 0,
+    castShadow: false,
+    receiveShadow: false,
+    renderOrder: 8
+  };
+  addBoxMesh(group, panelThickness, itemHeight, itemDepth, -itemWidth * 0.5 + panelThickness * 0.5, itemHeight * 0.5, 0, bodyColor, objectValue);
+  addBoxMesh(group, panelThickness, itemHeight, itemDepth, itemWidth * 0.5 - panelThickness * 0.5, itemHeight * 0.5, 0, bodyColor, objectValue);
+  addBoxMesh(group, max, itemHeight - panelThickness * 2, min, 0, itemHeight * 0.5, -itemDepth * 0.5 + min * 0.5, bodyColor, {
+    ...objectValue,
+    roughness: 0.76
+  });
+  addBoxMesh(group, itemWidth, panelThickness, itemDepth, 0, itemHeight - panelThickness * 0.5, 0, bodyColor, objectValue);
+  for (let shelfRowIndex = 0; shelfRowIndex < count; shelfRowIndex += 1) {
+    addBoxMesh(group, max, panelThickness * 0.72, itemDepth * 0.9, 0, baseHeight + halfValue * shelfRowIndex, -itemDepth * 0.025, accentColor, objectValue);
+  }
+  addBoxMesh(group, max, panelThickness * 0.72, itemDepth * 0.9, 0, topBandHeight, -itemDepth * 0.025, accentColor, objectValue);
+  for (const bayRatio of slice) {
+    const bayOffsetX = -max * 0.5 + max * bayRatio;
+    addBoxMesh(group, panelThickness * 0.72, itemHeight - panelThickness, itemDepth * 0.9, bayOffsetX, (itemHeight - panelThickness) * 0.5, -itemDepth * 0.025, bodyColor, objectValue);
+  }
+  const doorHeight = baseHeight - topBandHeight - panelThickness * 0.9;
+  const list = [max * length[0], max * (1 - length[0])];
+  let dividerCursorX = -max * 0.5;
+  for (let dividerIndex = 0; dividerIndex < list.length; dividerIndex += 1) {
+    const dividerWidth = list[dividerIndex] - shelfThickness;
+    const value = dividerCursorX + list[dividerIndex] * 0.5;
+    addBoxMesh(group, dividerWidth, doorHeight, 0.03, value, value + (baseHeight - value) * 0.5, frontPanelZ, dividerIndex ? accentColor : bodyColor, {
+      ...options,
+      roughness: 0.56
+    });
+    dividerCursorX += list[dividerIndex];
+  }
+  for (let baySlotIndex = 0; baySlotIndex < length.length; baySlotIndex += 1) {
+    const bayLeftX = -max * 0.5 + max * slicedValue[baySlotIndex];
+    const value = max * length[baySlotIndex];
+    const bayMidX = bayLeftX + value * 0.5;
+    const doorWidth = Math.max(value - railWidth * 1.65, value * 0.76);
+    const doorGlassHeight = Math.max(midHeight - railWidth * 1.55, midHeight * 0.86);
+    addBoxMesh(group, doorWidth, doorGlassHeight, 0.018, bayMidX, bayMidX + midHeight * 0.5, frontPanelZ, glassColors.glass, objectValueCurrent);
+    addBoxMesh(group, railWidth, midHeight, 0.032, bayLeftX + railWidth * 0.5, bayMidX + midHeight * 0.5, frontPanelZ + 0.009, bodyColor, options);
+    if (baySlotIndex === length.length - 1) {
+      addBoxMesh(group, railWidth, midHeight, 0.032, bayLeftX + value - railWidth * 0.5, bayMidX + midHeight * 0.5, frontPanelZ + 0.009, bodyColor, options);
+    }
+    const glassThickness = Math.max(doorWidth * 0.025, 0.007);
+    addBoxMesh(group, glassThickness, doorGlassHeight * 0.88, 0.006, bayMidX - doorWidth * 0.37, bayMidX + midHeight * 0.52, frontPanelZ + 0.014, 14282227, objectValueNext);
+    addBoxMesh(group, doorWidth * 0.34, Math.max(glassThickness * 0.11, 0.004), 0.006, bayMidX - doorWidth * 0.18, bayMidX + midHeight * 0.88, frontPanelZ + 0.014, 15267578, objectValueNext);
+  }
+  addBoxMesh(group, max, railWidth, 0.032, 0, baseHeight + railWidth * 0.5, frontPanelZ + 0.009, bodyColor, options);
+  addBoxMesh(group, max, railWidth, 0.032, 0, itemHeight - panelThickness - railWidth * 0.5, frontPanelZ + 0.009, bodyColor, options);
+  const lengthCurrent = [14736852, 13025203, 10327434, 7301474, accentColor, lightColor];
+  const addShelfStack = (baySlot, bayRowOffset, itemCount = 5, itemSeed = 0) => {
+    const bayFillWidth = max * length[baySlot];
+    const value = -max * 0.5 + max * slicedValue[baySlot];
+    const shelfBaseY = baseHeight + halfValue * bayRowOffset + panelThickness * 0.42;
+    const shelfGap = Math.max(bayFillWidth * 0.022, 0.004);
+    const halfValueCurrent = (bayFillWidth * 0.72 - shelfGap * (itemCount - 1)) / itemCount;
+    let bookCursorX = value + bayFillWidth * 0.13;
+    for (let bookIndex = 0; bookIndex < itemCount; bookIndex += 1) {
+      const bookWidth = halfValueCurrent * [0.8, 1.05, 0.9, 0.72, 0.96][(bookIndex + itemSeed) % 5];
+      const value = halfValue * [0.48, 0.58, 0.52, 0.64, 0.55][(bookIndex * 2 + itemSeed) % 5];
+      addBoxMesh(group, bookWidth, value, itemDepth * 0.42, bookCursorX + bookWidth * 0.5, shelfBaseY + value * 0.5, itemDepth * 0.12, lengthCurrent[(bookIndex + itemSeed) % lengthCurrent.length], {
+        radius: Math.min(bookWidth * 0.12, 0.009),
+        roughness: 0.78,
+        metalness: 0
+      });
+      bookCursorX += bookWidth + shelfGap;
+    }
+  };
+  const callback = (nicheSlot, nicheRowOffset, ornamentCount = 3, ornamentSeed = 0) => {
+    const nicheWidth = max * length[nicheSlot];
+    const value = -max * 0.5 + max * slicedValue[nicheSlot] + nicheWidth * 0.5;
+    const nicheBaseY = baseHeight + halfValue * nicheRowOffset + panelThickness * 0.42;
+    for (let nicheIndex = 0; nicheIndex < ornamentCount; nicheIndex += 1) {
+      addBoxMesh(group, nicheWidth * 0.56, panelThickness * 0.48, itemDepth * 0.4, value, nicheBaseY + panelThickness * (0.3 + nicheIndex * 0.52), itemDepth * 0.12, lengthCurrent[(nicheIndex + ornamentSeed) % lengthCurrent.length], {
+        radius: 0.006,
+        roughness: 0.78,
+        metalness: 0
+      });
+    }
+  };
+  addShelfStack(0, 1, 7, 0);
+  addShelfStack(2, 2, 4, 2);
+  callback(0, 0, 3, 2);
+  callback(1, 2, 3, 4);
+  for (const [bayIndex, shelfIndex, softScale, softColor] of [[1, 1, 0.16, 12169895], [0, 2, 0.075, 9406334], [2, 3, 0.14, 13749184]]) {
+    const bayWidth = max * length[bayIndex];
+    const bayCenterX = -max * 0.5 + max * slicedValue[bayIndex] + bayWidth * 0.5;
+    const softBaseY = baseHeight + halfValue * shelfIndex + panelThickness * 0.42;
+    addSoftBoxMesh(group, bayWidth * softScale * 0.72, bayWidth * softScale, halfValue * 0.46, bayCenterX, softBaseY + halfValue * 0.23, itemDepth * 0.12, softColor, {
+      segments: 24,
+      roughness: 0.68
+    });
+  }
+}
+function buildFloorAcItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, darkColor, accentColor) {
+  addSoftBoxMesh(group, itemWidth * 0.46, itemWidth * 0.48, itemHeight, 0, itemHeight * 0.5, 0, bodyColor, {
+    segments: 32,
+    roughness: 0.48
+  });
+  addBoxMesh(group, itemWidth * 0.5, itemHeight * 0.42, 0.025, 0, itemHeight * 0.68, itemDepth * 0.48, darkColor, {
+    rounded: false,
+    roughness: 0.3
+  });
+  for (const heightRatio of [0.58, 0.68, 0.78]) {
+    addBoxMesh(group, itemWidth * 0.42, 0.018, 0.03, 0, itemHeight * heightRatio, itemDepth * 0.5, accentColor, {
+      rounded: false,
+      roughness: 0.34
+    });
+  }
+}
+
+function buildRangeHoodItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, lightColor, darkColor, accentColor) {
+  addBoxMesh(group, itemWidth * 0.34, itemHeight * 0.72, itemDepth * 0.42, 0, itemHeight * 0.6, -itemDepth * 0.18, bodyColor, {
+    rounded: false,
+    metalness: 0.22,
+    roughness: 0.42
+  });
+  addBoxMesh(group, itemWidth, itemHeight * 0.22, itemDepth, 0, itemHeight * 0.18, 0, lightColor, {
+    rounded: false,
+    metalness: 0.2,
+    roughness: 0.4
+  });
+  addBoxMesh(group, itemWidth * 0.9, itemHeight * 0.07, itemDepth * 0.8, 0, itemHeight * 0.055, itemDepth * 0.02, darkColor, {
+    rounded: false,
+    metalness: 0.35,
+    roughness: 0.28
+  });
+  addBoxMesh(group, itemWidth * 0.22, itemHeight * 0.035, 0.025, itemWidth * 0.3, itemHeight * 0.2, itemDepth * 0.515, accentColor, {
+    rounded: false,
+    emissive: accentColor,
+    emissiveIntensity: 0.12,
+    roughness: 0.3
+  });
+}
+
+function buildAirPurifierItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, darkColor, accentColor) {
+  const bodyRadius = Math.min(itemWidth, itemDepth) * 0.47;
+  addSoftBoxMesh(group, bodyRadius * 0.96, bodyRadius, itemHeight * 0.92, 0, itemHeight * 0.46, 0, bodyColor, {
+    segments: 36,
+    roughness: 0.5
+  });
+  addSoftBoxMesh(group, bodyRadius * 0.92, bodyRadius * 0.92, itemHeight * 0.055, 0, itemHeight * 0.965, 0, darkColor, {
+    segments: 36,
+    metalness: 0.18,
+    roughness: 0.3
+  });
+  addSoftBoxMesh(group, bodyRadius * 0.55, bodyRadius * 0.55, itemHeight * 0.018, 0, itemHeight * 1.005, 0, accentColor, {
+    segments: 32,
+    metalness: 0.08,
+    roughness: 0.35
+  });
+  for (const grilleOffset of [-0.28, -0.14, 0, 0.14, 0.28]) {
+    addBoxMesh(group, 0.012, itemHeight * 0.45, 0.012, itemWidth * grilleOffset, itemHeight * 0.35, itemDepth * 0.46, accentColor, {
+      rounded: false,
+      roughness: 0.45
+    });
+  }
+}
+
+function buildLaptopItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, darkColor) {
+  addBoxMesh(group, itemWidth, 0.025, itemDepth * 0.72, 0, 0.018, itemDepth * 0.08, bodyColor, {
+    metalness: 0.28,
+    roughness: 0.36
+  });
+  const mesh = addBoxMesh(group, itemWidth * 0.96, itemHeight * 0.78, 0.018, 0, itemHeight * 0.43, -itemDepth * 0.29, darkColor, {
+    rounded: false,
+    metalness: 0.22,
+    roughness: 0.25
+  });
+  mesh.rotation.x = -Math.PI * 0.08;
+  addBoxMesh(group, itemWidth * 0.86, itemHeight * 0.63, 0.01, 0, itemHeight * 0.43, -itemDepth * 0.278, 659740, {
+    rounded: false,
+    emissive: 1585226,
+    emissiveIntensity: 0.38,
+    roughness: 0.18
+  });
+  addBoxMesh(group, itemWidth * 0.62, 0.009, itemDepth * 0.34, 0, 0.035, itemDepth * 0.12, darkColor, {
+    rounded: false
+  });
+}
+
+function buildSquatToiletItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, accentColor, darkColor) {
+  addBoxMesh(group, itemWidth, itemHeight * 0.58, itemDepth, 0, itemHeight * 0.29, 0, bodyColor, {
+    radius: Math.min(itemWidth, itemDepth) * 0.08,
+    roughness: 0.38
+  });
+  addBoxMesh(group, itemWidth * 0.28, itemHeight * 0.12, itemDepth * 0.58, -itemWidth * 0.34, itemHeight * 0.66, 0, accentColor, {
+    radius: Math.min(itemWidth, itemDepth) * 0.035,
+    roughness: 0.4
+  });
+  addBoxMesh(group, itemWidth * 0.28, itemHeight * 0.12, itemDepth * 0.58, itemWidth * 0.34, itemHeight * 0.66, 0, accentColor, {
+    radius: Math.min(itemWidth, itemDepth) * 0.035,
+    roughness: 0.4
+  });
+  const scale = new THREE.Mesh(new THREE.CylinderGeometry(itemWidth * 0.16, itemWidth * 0.2, itemHeight * 0.18, 28), new THREE.MeshStandardMaterial({
+    color: darkColor,
+    roughness: 0.34,
+    metalness: 0.02
+  }));
+  scale.scale.z = 1.75;
+  scale.position.y = itemHeight * 0.67;
+  group.add(scale);
+}
+
+function buildUrinalItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, accentColor, darkColor) {
+  addBoxMesh(group, itemWidth * 0.78, itemHeight * 0.88, itemDepth * 0.72, 0, itemHeight * 0.5, -itemDepth * 0.06, bodyColor, {
+    radius: Math.min(itemWidth, itemDepth) * 0.16,
+    roughness: 0.32
+  });
+  const scale = new THREE.Mesh(new THREE.SphereGeometry(Math.min(itemWidth, itemDepth) * 0.3, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.58), new THREE.MeshStandardMaterial({
+    color: accentColor,
+    roughness: 0.28,
+    metalness: 0.02,
+    side: THREE.DoubleSide
+  }));
+  scale.scale.set(0.9, 1.1, 0.62);
+  scale.rotation.x = Math.PI;
+  scale.position.set(0, itemHeight * 0.53, itemDepth * 0.17);
+  group.add(scale);
+  addSoftBoxMesh(group, 0.018, 0.018, itemHeight * 0.22, 0, itemHeight * 0.95, -itemDepth * 0.18, darkColor, {
+    segments: 16,
+    metalness: 0.72,
+    roughness: 0.22
+  });
+}
+
+function buildTvStandItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, accentColor, darkColor) {
+  addBoxMesh(group, itemWidth, itemHeight * 0.76, itemDepth, 0, itemHeight * 0.42, 0, bodyColor);
+  const plinthHeight = itemHeight * 0.08;
+  const plinthTopY = itemHeight * 0.8;
+  addBoxMesh(group, itemWidth * 0.98, plinthHeight, itemDepth, 0, plinthTopY + plinthHeight * 0.5, 0, accentColor);
+  addBoxMesh(group, 0.018, itemHeight * 0.58, itemDepth * 1.01, 0, itemHeight * 0.43, itemDepth * 0.01, darkColor, {
+    rounded: false
+  });
+  addBoxMesh(group, itemWidth * 0.91, 0.015, itemDepth * 1.01, 0, itemHeight * 0.43, itemDepth * 0.01, darkColor, {
+    rounded: false
+  });
+  for (const footOffset of [-0.4, 0.4]) {
+    addBoxMesh(group, 0.055, itemHeight * 0.2, 0.055, itemWidth * footOffset, itemHeight * 0.1, 0, darkColor, {
+      metalness: 0.32
+    });
+  }
+}
+
+function buildRugItemMeshGroup(group, item, itemWidth, itemDepth, itemHeight, bodyColor, accentColor) {
+  if (!addRugMeshes(group, item, bodyColor, accentColor)) {
+    const clampedValue = clamp(itemHeight, 0.004, 0.018);
+    addBoxMesh(group, itemWidth, clampedValue, itemDepth, 0, clampedValue * 0.5, 0, bodyColor, {
+      radius: Math.min(itemWidth, itemDepth) * 0.018,
+      roughness: 1,
+      metalness: 0,
+      castShadow: false,
+      receiveShadow: true
+    });
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(itemWidth * 0.88, itemDepth * 0.84), new THREE.MeshStandardMaterial({
+      color: accentColor,
+      roughness: 1,
+      metalness: 0,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -4
+    }));
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = clampedValue + 0.001;
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    mesh.renderOrder = 1;
+    group.add(mesh);
+  }
+}
+
+function buildDesktopItemMeshGroup(group, itemWidth, itemDepth, itemHeight, darkColor, accentColor) {
+  const screenWidth = itemWidth * 0.72;
+  const screenHeight = itemHeight * 0.58;
+  addBoxMesh(group, screenWidth, screenHeight, 0.035, -itemWidth * 0.06, itemHeight * 0.66, -itemDepth * 0.25, darkColor, {
+    rounded: false,
+    roughness: 0.24
+  });
+  addBoxMesh(group, screenWidth * 0.9, screenHeight * 0.84, 0.01, -itemWidth * 0.06, itemHeight * 0.66, -itemDepth * 0.19, 659481, {
+    rounded: false,
+    roughness: 0.18,
+    emissive: 1517112,
+    emissiveIntensity: 0.35
+  });
+  addBoxMesh(group, 0.035, itemHeight * 0.24, 0.035, -itemWidth * 0.06, itemHeight * 0.25, -itemDepth * 0.25, darkColor, {
+    metalness: 0.5
+  });
+  addBoxMesh(group, itemWidth * 0.28, 0.025, itemDepth * 0.3, -itemWidth * 0.06, 0.02, -itemDepth * 0.22, darkColor, {
+    metalness: 0.42
+  });
+  addBoxMesh(group, itemWidth * 0.58, 0.022, itemDepth * 0.38, -itemWidth * 0.08, 0.025, itemDepth * 0.24, accentColor, {
+    rounded: false,
+    roughness: 0.5
+  });
+  addBoxMesh(group, itemWidth * 0.1, 0.035, itemDepth * 0.22, itemWidth * 0.36, 0.028, itemDepth * 0.24, accentColor, {
+    radius: Math.min(itemWidth, itemDepth) * 0.035,
+    roughness: 0.46
+  });
+}
+
+function buildRobotVacuumItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, accentColor, darkColor) {
+  addBoxMesh(group, itemWidth * 0.82, 0.035, itemDepth * 0.92, 0, 0.018, 0, accentColor, {
+    radius: Math.min(itemWidth, itemDepth) * 0.05,
+    roughness: 0.58
+  });
+  addBoxMesh(group, itemWidth * 0.68, itemHeight * 0.82, itemDepth * 0.48, 0, itemHeight * 0.47, -itemDepth * 0.23, bodyColor, {
+    radius: Math.min(itemWidth, itemDepth) * 0.12,
+    roughness: 0.48
+  });
+  addBoxMesh(group, itemWidth * 0.44, itemHeight * 0.16, 0.03, 0, itemHeight * 0.2, itemDepth * 0.02, accentColor, {
+    radius: Math.min(itemWidth, itemDepth) * 0.04,
+    roughness: 0.42
+  });
+  addBoxMesh(group, itemWidth * 0.34, itemHeight * 0.07, 0.035, 0, itemHeight * 0.14, itemDepth * 0.04, darkColor, {
+    radius: Math.min(itemWidth, itemDepth) * 0.025,
+    roughness: 0.28
+  });
+  addSoftBoxMesh(group, itemWidth * 0.31, itemWidth * 0.32, itemHeight * 0.12, 0, itemHeight * 0.07, itemDepth * 0.2, bodyColor, {
+    segments: 32,
+    roughness: 0.42
+  });
+  addSoftBoxMesh(group, itemWidth * 0.085, itemWidth * 0.09, itemHeight * 0.055, -itemWidth * 0.08, itemHeight * 0.16, itemDepth * 0.15, accentColor, {
+    segments: 24,
+    roughness: 0.34
+  });
+  addBoxMesh(group, itemWidth * 0.36, itemHeight * 0.045, 0.025, 0, itemHeight * 0.08, itemDepth * 0.52, darkColor, {
+    radius: Math.min(itemWidth, itemDepth) * 0.025,
+    roughness: 0.24
+  });
+}
+
+function buildGlassPartitionItemMeshGroup(group, itemWidth, itemDepth, itemHeight, accentColor, glass) {
+  const frameThickness = Math.min(Math.max(itemWidth * 0.018, 0.018), 0.035);
+  const panelDepth = Math.max(itemDepth, 0.045);
+  const panelWidth = Math.max(itemWidth - frameThickness * 2.4, frameThickness);
+  const panelHeight = Math.max(itemHeight - frameThickness * 2.4, frameThickness);
+  const frameMaterial = {
+    rounded: false,
+    metalness: 0.58,
+    roughness: 0.24,
+    castShadow: false,
+    receiveShadow: false
+  };
+  addBoxMesh(group, panelWidth, panelHeight, Math.max(itemDepth * 0.24, 0.012), 0, itemHeight * 0.5, 0, glass.glass, {
+    rounded: false,
+    transparent: true,
+    opacity: 0.24,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    metalness: 0.04,
+    roughness: 0.08,
+    castShadow: false,
+    receiveShadow: false,
+    renderOrder: 6
+  });
+  addBoxMesh(group, itemWidth, frameThickness, panelDepth, 0, frameThickness * 0.5, 0, glass.frame, frameMaterial);
+  addBoxMesh(group, itemWidth, frameThickness, panelDepth, 0, itemHeight - frameThickness * 0.5, 0, glass.frame, frameMaterial);
+  addBoxMesh(group, frameThickness, itemHeight, panelDepth, -itemWidth * 0.5 + frameThickness * 0.5, itemHeight * 0.5, 0, glass.frame, frameMaterial);
+  addBoxMesh(group, frameThickness, itemHeight, panelDepth, itemWidth * 0.5 - frameThickness * 0.5, itemHeight * 0.5, 0, glass.frame, frameMaterial);
+  for (const handleOffsetX of [-itemWidth * 0.34, itemWidth * 0.34]) {
+    addBoxMesh(group, frameThickness * 1.7, frameThickness * 2.2, panelDepth * 1.18, handleOffsetX, frameThickness * 1.3, 0, accentColor, frameMaterial);
+  }
+}
+
+function buildNasItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, darkColor, accentColor) {
+  addBoxMesh(group, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, bodyColor, {
+    rounded: false,
+    metalness: 0.16,
+    roughness: 0.46
+  });
+  addBoxMesh(group, itemWidth * 0.9, itemHeight * 0.88, 0.025, 0, itemHeight * 0.5, itemDepth * 0.515, darkColor, {
+    rounded: false,
+    metalness: 0.12,
+    roughness: 0.32
+  });
+  for (const bayOffsetX of [-itemWidth * 0.23, itemWidth * 0.23]) {
+    for (const bayOffsetY of [itemHeight * 0.3, itemHeight * 0.7]) {
+      addBoxMesh(group, itemWidth * 0.38, itemHeight * 0.34, 0.018, bayOffsetY, bayOffsetY, itemDepth * 0.535, accentColor, {
+        rounded: false,
+        roughness: 0.38
+      });
+      addBoxMesh(group, itemWidth * 0.18, 0.018, 0.012, bayOffsetY, bayOffsetY + itemHeight * 0.1, itemDepth * 0.55, darkColor, {
+        rounded: false,
+        metalness: 0.25,
+        roughness: 0.3
+      });
+    }
+  }
+  for (const ledY of [0.18, 0.26, 0.34]) {
+    addBoxMesh(group, 0.012, 0.012, 0.012, itemWidth * 0.42, itemHeight * ledY, itemDepth * 0.55, 9550021, {
+      rounded: false,
+      emissive: 9550021,
+      emissiveIntensity: 0.28,
+      roughness: 0.2
+    });
+  }
+}
+
+function buildVanityItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, darkColor, lightColor, glass) {
+  const counterHeight = Math.min(0.76, itemHeight * 0.5);
+  addBoxMesh(group, itemWidth, 0.075, itemDepth, 0, counterHeight, 0, bodyColor);
+  addBoxMesh(group, itemWidth * 0.27, counterHeight * 0.82, itemDepth * 0.88, -itemWidth * 0.34, counterHeight * 0.42, 0, bodyColor);
+  addBoxMesh(group, itemWidth * 0.27, counterHeight * 0.82, itemDepth * 0.88, itemWidth * 0.34, counterHeight * 0.42, 0, bodyColor);
+  for (const drawerSideX of [-0.34, 0.34]) {
+    for (const drawerY of [0.23, 0.48]) {
+      addBoxMesh(group, itemWidth * 0.22, 0.012, itemDepth * 0.02, itemWidth * drawerSideX, drawerY * drawerY, itemDepth * 0.46, darkColor, {
+        rounded: false
+      });
+    }
+  }
+  const max = Math.max(itemHeight - counterHeight - 0.08, 0.45);
+  addBoxMesh(group, itemWidth * 0.54, max, 0.025, 0, counterHeight + max * 0.5, -itemDepth * 0.43, glass.glass, {
+    transparent: true,
+    opacity: 0.42,
+    depthWrite: false,
+    metalness: 0.22,
+    roughness: 0.16
+  });
+  addBoxMesh(group, itemWidth * 0.59, 0.045, 0.05, 0, counterHeight + max, -itemDepth * 0.43, lightColor, {
+    metalness: 0.12
+  });
+  addBoxMesh(group, itemWidth * 0.59, 0.045, 0.05, 0, counterHeight, -itemDepth * 0.43, lightColor, {
+    metalness: 0.12
+  });
+  addBoxMesh(group, 0.045, max, 0.05, -itemWidth * 0.295, counterHeight + max * 0.5, -itemDepth * 0.43, lightColor, {
+    metalness: 0.12
+  });
+  addBoxMesh(group, 0.045, max, 0.05, itemWidth * 0.295, counterHeight + max * 0.5, -itemDepth * 0.43, lightColor, {
+    metalness: 0.12
+  });
+}
+
+function buildDishwasherItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, accentColor, darkColor) {
+  addBoxMesh(group, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, bodyColor, {
+    rounded: false,
+    metalness: 0.12,
+    roughness: 0.48
+  });
+  addBoxMesh(group, itemWidth * 0.93, itemHeight * 0.74, 0.028, 0, itemHeight * 0.46, itemDepth * 0.515, accentColor, {
+    rounded: false,
+    metalness: 0.08,
+    roughness: 0.44
+  });
+  addBoxMesh(group, itemWidth * 0.93, itemHeight * 0.14, 0.032, 0, itemHeight * 0.87, itemDepth * 0.52, darkColor, {
+    rounded: false,
+    metalness: 0.18,
+    roughness: 0.3
+  });
+  addBoxMesh(group, itemWidth * 0.58, itemHeight * 0.026, 0.034, 0, itemHeight * 0.78, itemDepth * 0.54, darkColor, {
+    rounded: false,
+    metalness: 0.5,
+    roughness: 0.22
+  });
+  addBoxMesh(group, itemWidth * 0.9, itemHeight * 0.075, itemDepth * 0.78, 0, itemHeight * 0.038, -itemDepth * 0.04, darkColor, {
+    rounded: false,
+    roughness: 0.4
+  });
+  for (const handleOffset of [0.22, 0.31, 0.4]) {
+    addSoftBoxMesh(group, itemWidth * 0.018, itemWidth * 0.018, 0.012, itemWidth * handleOffset, itemHeight * 0.88, itemDepth * 0.545, accentColor, {
+      segments: 18,
+      rotationX: Math.PI / 2,
+      metalness: 0.26,
+      roughness: 0.24
+    });
+  }
+}
+
+function buildMicrowaveItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, darkColor, accentColor) {
+  addBoxMesh(group, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, bodyColor, {
+    rounded: false,
+    metalness: 0.12,
+    roughness: 0.44
+  });
+  addBoxMesh(group, itemWidth * 0.93, itemHeight * 0.82, 0.025, 0, itemHeight * 0.49, itemDepth * 0.515, darkColor, {
+    rounded: false,
+    metalness: 0.16,
+    roughness: 0.24
+  });
+  addBoxMesh(group, itemWidth * 0.62, itemHeight * 0.63, 0.018, -itemWidth * 0.13, itemHeight * 0.48, itemDepth * 0.54, 1515819, {
+    rounded: false,
+    metalness: 0.12,
+    roughness: 0.18
+  });
+  addBoxMesh(group, itemWidth * 0.035, itemHeight * 0.54, 0.03, itemWidth * 0.19, itemHeight * 0.48, itemDepth * 0.55, accentColor, {
+    rounded: false,
+    metalness: 0.46,
+    roughness: 0.22
+  });
+  addBoxMesh(group, itemWidth * 0.17, itemHeight * 0.1, 0.02, itemWidth * 0.36, itemHeight * 0.72, itemDepth * 0.54, 7706534, {
+    rounded: false,
+    emissive: 7706534,
+    emissiveIntensity: 0.16,
+    roughness: 0.2
+  });
+  for (const buttonY of [0.48, 0.34, 0.2]) {
+    addBoxMesh(group, itemWidth * 0.13, itemHeight * 0.055, 0.018, itemWidth * 0.36, itemHeight * buttonY, itemDepth * 0.545, accentColor, {
+      rounded: false,
+      roughness: 0.3
+    });
+  }
+}
+
+function buildPlantItemMeshGroup(group, itemWidth, itemDepth, itemHeight, accentColor, darkColor) {
+  addSoftBoxMesh(group, itemWidth * 0.25, itemWidth * 0.21, itemHeight * 0.22, 0, itemHeight * 0.11, 0, accentColor, {
+    segments: 24,
+    roughness: 0.82
+  });
+  addSoftBoxMesh(group, itemWidth * 0.22, itemWidth * 0.22, 0.035, 0, itemHeight * 0.22, 0, darkColor, {
+    segments: 24,
+    roughness: 0.96
+  });
+  const arrayValue = [[new THREE.Vector3(0, itemHeight * 0.21, 0), new THREE.Vector3(-itemWidth * 0.06, itemHeight * 0.58, 0), new THREE.Vector3(-itemWidth * 0.27, itemHeight * 0.78, 0)], [new THREE.Vector3(itemWidth * 0.03, itemHeight * 0.21, 0), new THREE.Vector3(itemWidth * 0.06, itemHeight * 0.64, 0), new THREE.Vector3(itemWidth * 0.12, itemHeight * 0.94, 0)], [new THREE.Vector3(0, itemHeight * 0.28, 0), new THREE.Vector3(itemWidth * 0.18, itemHeight * 0.62, 0), new THREE.Vector3(itemWidth * 0.31, itemHeight * 0.79, 0)]];
+  for (const leafPoints of arrayValue) {
+    const castShadow = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(leafPoints), 20, 0.014, 7, false), new THREE.MeshStandardMaterial({
+      color: darkColor,
+      roughness: 0.86
+    }));
+    castShadow.castShadow = true;
+    group.add(castShadow);
+  }
+  const list = [[-0.27, 0.78, 0], [-0.1, 0.61, 0.02], [0.12, 0.94, 0], [0.31, 0.79, 0], [0.18, 0.63, -0.02], [0.02, 0.46, 0.03]];
+  for (const [leafX, leafY, leafZ] of list) {
+    for (let bladeIndex = 0; bladeIndex < 5; bladeIndex += 1) {
+      const value = bladeIndex / 5 * Math.PI * 2;
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 6), new THREE.MeshStandardMaterial({
+        color: bladeIndex % 2 ? 7835779 : 6257261,
+        roughness: 0.9
+      }));
+      mesh.scale.set(itemWidth * 0.045, itemHeight * 0.085, itemDepth * 0.025);
+      mesh.position.set(itemWidth * leafX + Math.cos(value) * itemWidth * 0.08, itemHeight * leafY + Math.sin(value) * itemHeight * 0.035, itemDepth * leafZ + Math.sin(value) * itemDepth * 0.06);
+      mesh.rotation.z = value - Math.PI / 2;
+      mesh.rotation.y = value * 0.6;
+      mesh.castShadow = true;
+      group.add(mesh);
+    }
+  }
+}
+
+function buildRiceCookerItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, accentColor, darkColor) {
+  const bodyRadius = Math.min(itemWidth, itemDepth) * 0.47;
+  addSoftBoxMesh(group, bodyRadius * 0.9, bodyRadius, itemHeight * 0.68, 0, itemHeight * 0.38, 0, bodyColor, {
+    segments: 36,
+    roughness: 0.46
+  });
+  addSoftBoxMesh(group, bodyRadius * 0.94, bodyRadius * 0.94, itemHeight * 0.12, 0, itemHeight * 0.77, 0, accentColor, {
+    segments: 36,
+    roughness: 0.38
+  });
+  addSoftBoxMesh(group, bodyRadius * 0.72, bodyRadius * 0.74, itemHeight * 0.035, 0, itemHeight * 0.85, 0, darkColor, {
+    segments: 32,
+    metalness: 0.12,
+    roughness: 0.28
+  });
+  addBoxMesh(group, itemWidth * 0.5, itemHeight * 0.16, 0.026, 0, itemHeight * 0.42, itemDepth * 0.47, darkColor, {
+    radius: Math.min(itemWidth, itemDepth) * 0.04,
+    roughness: 0.28
+  });
+  addBoxMesh(group, itemWidth * 0.24, itemHeight * 0.06, 0.018, 0, itemHeight * 0.43, itemDepth * 0.49, 7706534, {
+    rounded: false,
+    emissive: 7706534,
+    emissiveIntensity: 0.16,
+    roughness: 0.2
+  });
+  addBoxMesh(group, itemWidth * 0.05, itemHeight * 0.16, itemDepth * 0.1, -itemWidth * 0.27, itemHeight * 0.86, 0, darkColor, {
+    roughness: 0.3
+  });
+  addBoxMesh(group, itemWidth * 0.05, itemHeight * 0.16, itemDepth * 0.1, itemWidth * 0.27, itemHeight * 0.86, 0, darkColor, {
+    roughness: 0.3
+  });
+  addBoxMesh(group, itemWidth * 0.58, itemHeight * 0.055, itemDepth * 0.1, 0, itemHeight * 0.94, 0, darkColor, {
+    roughness: 0.3
+  });
+}
+
+function buildSteamOvenItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, darkColor, accentColor) {
+  addBoxMesh(group, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, bodyColor, {
+    rounded: false,
+    metalness: 0.16,
+    roughness: 0.42
+  });
+  addBoxMesh(group, itemWidth * 0.94, itemHeight * 0.9, 0.026, 0, itemHeight * 0.5, itemDepth * 0.515, darkColor, {
+    rounded: false,
+    metalness: 0.18,
+    roughness: 0.25
+  });
+  addBoxMesh(group, itemWidth * 0.78, itemHeight * 0.56, 0.018, -itemWidth * 0.03, itemHeight * 0.42, itemDepth * 0.54, 1515819, {
+    rounded: false,
+    metalness: 0.12,
+    roughness: 0.18
+  });
+  addBoxMesh(group, itemWidth * 0.72, itemHeight * 0.035, 0.038, -itemWidth * 0.03, itemHeight * 0.74, itemDepth * 0.56, accentColor, {
+    rounded: false,
+    metalness: 0.52,
+    roughness: 0.22
+  });
+  addBoxMesh(group, itemWidth * 0.24, itemHeight * 0.075, 0.022, 0, itemHeight * 0.86, itemDepth * 0.545, 7706534, {
+    rounded: false,
+    emissive: 7706534,
+    emissiveIntensity: 0.18,
+    roughness: 0.2
+  });
+  for (const knobOffset of [-0.36, 0.36]) {
+    addSoftBoxMesh(group, itemWidth * 0.045, itemWidth * 0.045, 0.026, itemWidth * knobOffset, itemHeight * 0.86, itemDepth * 0.55, accentColor, {
+      segments: 24,
+      rotationX: Math.PI / 2,
+      metalness: 0.4,
+      roughness: 0.24
+    });
+  }
+}
+
+function buildFloorLampItemMeshGroup(group, itemWidth, itemDepth, itemHeight, darkColor, accentColor) {
+  const lampOffsetX = -itemWidth * 0.34;
+  const value = itemWidth * 0.31;
+  const baseRadius = Math.min(itemWidth * 0.13, itemDepth * 0.34);
+  const min = Math.min(itemWidth * 0.18, itemDepth * 0.46);
+  const shadeBaseY = itemHeight * 0.115;
+  const shadeTopY = itemHeight * 0.76;
+  const shadeTipY = shadeTopY + shadeBaseY;
+  addSoftBoxMesh(group, baseRadius * 0.82, baseRadius, 0.045, lampOffsetX, 0.0225, 0, darkColor, {
+    segments: 32,
+    metalness: 0.38,
+    roughness: 0.3
+  });
+  const constructedCubicBezierCurve = new THREE.CubicBezierCurve3(new THREE.Vector3(lampOffsetX, 0.045, 0), new THREE.Vector3(lampOffsetX, itemHeight * 0.72, 0), new THREE.Vector3(itemWidth * 0.02, itemHeight * 1.01, 0), new THREE.Vector3(value, shadeTipY, 0));
+  const castShadow = new THREE.Mesh(new THREE.TubeGeometry(constructedCubicBezierCurve, 48, Math.max(0.012, itemWidth * 0.012), 8, false), new THREE.MeshStandardMaterial({
+    color: darkColor,
+    roughness: 0.3,
+    metalness: 0.48
+  }));
+  castShadow.castShadow = true;
+  group.add(castShadow);
+  const scale = new THREE.Mesh(new THREE.SphereGeometry(min, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({
+    color: accentColor,
+    roughness: 0.62,
+    metalness: 0.04
+  }));
+  scale.scale.set(1, shadeBaseY / min, 1);
+  scale.position.set(value, shadeTopY, 0);
+  scale.castShadow = true;
+  group.add(scale);
+  addSoftBoxMesh(group, min * 0.94, min * 0.98, 0.025, value, shadeTopY, 0, darkColor, {
+    segments: 32,
+    metalness: 0.12,
+    roughness: 0.5
+  });
+  addSoftBoxMesh(group, Math.max(0.018, itemWidth * 0.014), Math.max(0.022, itemWidth * 0.018), 0.045, value, shadeTipY + 0.012, 0, darkColor, {
+    segments: 20,
+    metalness: 0.42,
+    roughness: 0.28
+  });
+}
+
+function buildWallLampItemMeshGroup(group, itemWidth, itemDepth, itemHeight, lightColor, glass) {
+  const shadeZ = -itemDepth * 0.5 + 0.018;
+  const metalFinish = {
+    rounded: false,
+    metalness: 0.64,
+    roughness: 0.22
+  };
+  addBoxMesh(group, itemWidth * 0.68, itemHeight * 0.5, 0.035, 0, itemHeight * 0.52, shadeZ, glass.furniture, {
+    radius: 0.02,
+    metalness: 0.18,
+    roughness: 0.46
+  });
+  addSoftBoxMesh(group, itemWidth * 0.11, itemWidth * 0.11, 0.035, 0, itemHeight * 0.57, shadeZ - 0.012, glass.furnitureSoft, {
+    segments: 24,
+    rotationX: Math.PI / 2,
+    metalness: 0.3,
+    roughness: 0.34
+  });
+  addBoxMesh(group, 0.04, itemHeight * 0.2, itemDepth * 0.28, 0, itemHeight * 0.57, -itemDepth * 0.3, glass.furniture, {
+    ...metalFinish,
+    metalness: 0.18,
+    roughness: 0.46
+  });
+  const shadeMesh = new THREE.Mesh(new THREE.CylinderGeometry(itemWidth * 0.3, itemWidth * 0.19, itemHeight * 0.38, 24, 1, true), new THREE.MeshStandardMaterial({
+    color: lightColor,
+    roughness: 0.3,
+    metalness: 0.04,
+    emissive: 16767386,
+    emissiveIntensity: 0.24,
+    side: THREE.DoubleSide
+  }));
+  shadeMesh.position.set(0, itemHeight * 0.4, -itemDepth * 0.16);
+  shadeMesh.castShadow = true;
+  shadeMesh.receiveShadow = true;
+  group.add(shadeMesh);
+  addSoftBoxMesh(group, itemWidth * 0.15, itemWidth * 0.15, 0.025, 0, itemHeight * 0.19, -itemDepth * 0.16, 16769707, {
+    segments: 24,
+    emissive: 16760156,
+    emissiveIntensity: 0.38,
+    roughness: 0.24
+  });
+}
+
+function buildGasWaterHeaterItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, accentColor, darkColor) {
+  const tankHeight = itemHeight * 0.82;
+  addBoxMesh(group, itemWidth, tankHeight, itemDepth, 0, itemHeight * 0.47, 0, bodyColor, {
+    rounded: false,
+    metalness: 0.12,
+    roughness: 0.46
+  });
+  addBoxMesh(group, itemWidth * 0.86, tankHeight * 0.42, 0.026, 0, itemHeight * 0.55, itemDepth * 0.515, accentColor, {
+    rounded: false,
+    roughness: 0.36
+  });
+  addBoxMesh(group, itemWidth * 0.44, tankHeight * 0.18, 0.018, 0, itemHeight * 0.67, itemDepth * 0.54, darkColor, {
+    rounded: false,
+    metalness: 0.14,
+    roughness: 0.22
+  });
+  for (let ventSlotIndex = 0; ventSlotIndex < 5; ventSlotIndex += 1) {
+    addBoxMesh(group, itemWidth * 0.62, 0.012, 0.02, 0, itemHeight * (0.24 + ventSlotIndex * 0.07), itemDepth * 0.525, darkColor, {
+      rounded: false,
+      roughness: 0.3
+    });
+  }
+  addSoftBoxMesh(group, itemDepth * 0.17, itemDepth * 0.17, itemHeight * 0.18, 0, itemHeight * 0.91, 0, darkColor, {
+    segments: 24,
+    metalness: 0.58,
+    roughness: 0.24
+  });
+  addSoftBoxMesh(group, itemDepth * 0.22, itemDepth * 0.22, 0.035, 0, itemHeight * 0.84, 0, accentColor, {
+    segments: 24,
+    metalness: 0.5,
+    roughness: 0.25
+  });
+  for (const [footX, footColor] of [[-itemWidth * 0.28, 4885698], [0, 9410205], [itemWidth * 0.28, 12868184]]) {
+    addSoftBoxMesh(group, 0.018, 0.018, itemHeight * 0.18, footX, itemHeight * 0.09, itemDepth * 0.12, footColor, {
+      segments: 18,
+      metalness: 0.62,
+      roughness: 0.22
+    });
+    addSoftBoxMesh(group, 0.034, 0.034, 0.025, footX, 0.014, itemDepth * 0.12, darkColor, {
+      segments: 18,
+      metalness: 0.5,
+      roughness: 0.25
+    });
+  }
+}
+
+function buildBasinItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, lightColor, accentColor, darkColor, glass) {
+  addBoxMesh(group, itemWidth * 0.92, itemHeight * 0.72, itemDepth * 0.9, 0, itemHeight * 0.36, 0, bodyColor);
+  addBoxMesh(group, itemWidth, 0.065, itemDepth, 0, itemHeight * 0.75, 0, lightColor, {
+    roughness: 0.3
+  });
+  addSoftBoxMesh(group, itemWidth * 0.25, itemWidth * 0.21, 0.08, 0, itemHeight * 0.8, itemDepth * 0.02, accentColor, {
+    roughness: 0.28
+  });
+  addSoftBoxMesh(group, 0.018, 0.018, itemHeight * 0.2, 0, itemHeight * 0.9, -itemDepth * 0.2, darkColor, {
+    metalness: 0.78,
+    roughness: 0.18
+  });
+  addSoftBoxMesh(group, 0.018, 0.018, itemDepth * 0.2, 0, itemHeight * 0.99, -itemDepth * 0.11, darkColor, {
+    rotationX: Math.PI / 2,
+    metalness: 0.78,
+    roughness: 0.18
+  });
+  addBoxMesh(group, 0.012, itemHeight * 0.62, itemDepth * 0.02, 0, itemHeight * 0.34, itemDepth * 0.46, darkColor, {
+    rounded: false
+  });
+  const mirrorY = itemHeight * 1.05;
+  const value = itemWidth * 0.72;
+  const numericValue = 0.72;
+  const mirrorZ = -itemDepth * 0.46;
+  addBoxMesh(group, value, numericValue, 0.018, 0, mirrorY + numericValue * 0.5, mirrorZ, glass.glass, {
+    rounded: false,
+    transparent: true,
+    opacity: 0.46,
+    depthWrite: false,
+    metalness: 0.26,
+    roughness: 0.12,
+    castShadow: false
+  });
+  addBoxMesh(group, value + 0.055, 0.035, 0.045, 0, mirrorY, mirrorZ, darkColor, {
+    metalness: 0.35
+  });
+  addBoxMesh(group, value + 0.055, 0.035, 0.045, 0, mirrorY + numericValue, mirrorZ, darkColor, {
+    metalness: 0.35
+  });
+  addBoxMesh(group, 0.035, numericValue, 0.045, -value * 0.5, mirrorY + numericValue * 0.5, mirrorZ, darkColor, {
+    metalness: 0.35
+  });
+  addBoxMesh(group, 0.035, numericValue, 0.045, value * 0.5, mirrorY + numericValue * 0.5, mirrorZ, darkColor, {
+    metalness: 0.35
+  });
+}
+
+function buildStorageWaterHeaterItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, darkColor, accentColor) {
+  const tankRadius = Math.min(itemDepth * 0.43, itemHeight * 0.44);
+  const tankY = itemHeight * 0.52;
+  addBoxMesh(group, itemWidth * 0.78, itemHeight * 0.12, itemDepth * 0.22, 0, itemHeight * 0.1, -itemDepth * 0.36, darkColor, {
+    rounded: false,
+    metalness: 0.55,
+    roughness: 0.3
+  });
+  addSoftBoxMesh(group, tankRadius, tankRadius, itemWidth * 0.82, 0, tankY, 0, bodyColor, {
+    segments: 36,
+    rotationZ: Math.PI / 2,
+    metalness: 0.2,
+    roughness: 0.42
+  });
+  for (const capX of [-itemWidth * 0.43, itemWidth * 0.43]) {
+    addSoftBoxMesh(group, tankRadius * 1.03, tankRadius * 1.03, 0.025, capX, tankY, 0, accentColor, {
+      segments: 36,
+      rotationZ: Math.PI / 2,
+      metalness: 0.28,
+      roughness: 0.34
+    });
+  }
+  addBoxMesh(group, itemWidth * 0.31, itemHeight * 0.23, 0.026, 0, itemHeight * 0.51, itemDepth * 0.44, darkColor, {
+    rounded: false,
+    metalness: 0.18,
+    roughness: 0.25
+  });
+  addBoxMesh(group, itemWidth * 0.16, itemHeight * 0.045, 0.018, 0, itemHeight * 0.58, itemDepth * 0.46, 7706534, {
+    rounded: false,
+    emissive: 7706534,
+    emissiveIntensity: 0.18,
+    roughness: 0.2
+  });
+  for (const footX of [-itemWidth * 0.28, itemWidth * 0.28]) {
+    addSoftBoxMesh(group, 0.022, 0.022, itemHeight * 0.16, footX, itemHeight * 0.08, itemDepth * 0.12, footX < 0 ? 4885698 : 12868184, {
+      segments: 18,
+      metalness: 0.55,
+      roughness: 0.24
+    });
+    addSoftBoxMesh(group, 0.04, 0.04, 0.028, footX, 0.015, itemDepth * 0.12, darkColor, {
+      segments: 20,
+      metalness: 0.45,
+      roughness: 0.28
+    });
+  }
+}
+
+function buildToiletItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, accentColor, darkColor) {
+  const castShadow = new THREE.Mesh(createWallTopMaterial(itemWidth, itemDepth, itemHeight), new THREE.MeshStandardMaterial({
+    color: bodyColor,
+    roughness: 0.4,
+    metalness: 0.02
+  }));
+  castShadow.castShadow = true;
+  castShadow.receiveShadow = true;
+  group.add(castShadow);
+  const bezierCurveTo = new THREE.Shape();
+  bezierCurveTo.moveTo(-itemWidth * 0.46, -itemDepth * 0.44);
+  bezierCurveTo.lineTo(itemWidth * 0.46, -itemDepth * 0.44);
+  bezierCurveTo.bezierCurveTo(itemWidth * 0.49, -itemDepth * 0.05, itemWidth * 0.49, itemDepth * 0.29, 0, itemDepth * 0.47);
+  bezierCurveTo.bezierCurveTo(-itemWidth * 0.49, itemDepth * 0.29, -itemWidth * 0.49, -itemDepth * 0.05, -itemWidth * 0.46, -itemDepth * 0.44);
+  bezierCurveTo.closePath();
+  const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(bezierCurveTo, {
+    depth: itemHeight * 0.085,
+    bevelEnabled: true,
+    bevelSegments: 2,
+    bevelSize: 0.012,
+    bevelThickness: 0.01,
+    steps: 1
+  }), new THREE.MeshStandardMaterial({
+    color: accentColor,
+    roughness: 0.34,
+    metalness: 0.01
+  }));
+  mesh.rotation.x = Math.PI / 2;
+  mesh.position.set(0, itemHeight * 0.82, 0);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  group.add(mesh);
+  addBoxMesh(group, itemWidth * 0.9, itemHeight * 0.095, itemDepth * 0.2, 0, itemHeight * 0.775, -itemDepth * 0.34, bodyColor, {
+    radius: Math.min(itemWidth, itemDepth) * 0.035,
+    roughness: 0.36
+  });
+  addBoxMesh(group, 0.016, itemHeight * 0.38, 0.024, -itemWidth * 0.42, itemHeight * 0.38, -itemDepth * 0.18, darkColor, {
+    rounded: false,
+    roughness: 0.46
+  });
+  addSoftBoxMesh(group, itemWidth * 0.035, itemWidth * 0.035, 0.018, -itemWidth * 0.46, itemHeight * 0.66, itemDepth * 0.12, accentColor, {
+    segments: 24,
+    rotationZ: Math.PI / 2,
+    metalness: 0.08,
+    roughness: 0.3
+  });
+}
+
+function buildPipelineWaterPurifierItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, darkColor, accentColor) {
+  const bodyHeight = itemHeight * 0.9;
+  addBoxMesh(group, itemWidth, bodyHeight, itemDepth, 0, bodyHeight * 0.5, 0, bodyColor, {
+    rounded: false,
+    metalness: 0.04,
+    roughness: 0.4
+  });
+  addBoxMesh(group, itemWidth * 0.92, bodyHeight * 0.27, 0.028, 0, itemHeight * 0.76, itemDepth * 0.515, darkColor, {
+    rounded: false,
+    metalness: 0.16,
+    roughness: 0.18
+  });
+  addBoxMesh(group, itemWidth * 0.34, bodyHeight * 0.045, 0.014, -itemWidth * 0.08, itemHeight * 0.79, itemDepth * 0.54, 10470608, {
+    rounded: false,
+    emissive: 10470608,
+    emissiveIntensity: 0.2,
+    roughness: 0.22
+  });
+  for (const filterOffsetX of [-0.26, 0, 0.26]) {
+    addSoftBoxMesh(group, Math.min(itemWidth, itemDepth) * 0.055, Math.min(itemWidth, itemDepth) * 0.055, 0.018, itemWidth * filterOffsetX, itemHeight * 0.66, itemDepth * 0.535, accentColor, {
+      segments: 24,
+      rotationX: Math.PI / 2,
+      metalness: 0.22,
+      roughness: 0.28
+    });
+  }
+  for (const pipeOffsetX of [-itemWidth * 0.2, itemWidth * 0.2]) {
+    addSoftBoxMesh(group, 0.014, 0.014, itemHeight * 0.12, pipeOffsetX, itemHeight * 0.49, itemDepth * 0.48, darkColor, {
+      segments: 18,
+      metalness: 0.46,
+      roughness: 0.22
+    });
+    addSoftBoxMesh(group, 0.024, 0.018, 0.035, pipeOffsetX, itemHeight * 0.425, itemDepth * 0.52, darkColor, {
+      segments: 18,
+      rotationX: Math.PI / 2,
+      metalness: 0.46,
+      roughness: 0.22
+    });
+  }
+  addBoxMesh(group, itemWidth * 0.68, itemHeight * 0.045, itemDepth * 0.52, 0, itemHeight * 0.11, itemDepth * 0.16, darkColor, {
+    rounded: false,
+    metalness: 0.2,
+    roughness: 0.3
+  });
+  addBoxMesh(group, itemWidth * 0.42, 0.028, itemDepth * 0.28, 0, itemHeight * 0.16, itemDepth * 0.28, accentColor, {
+    rounded: false,
+    roughness: 0.34
+  });
+}
+
+function buildShowerItemMeshGroup(group, itemWidth, itemDepth, itemHeight, lightColor) {
+  const fixtureColor = lightColor;
+  const columnDepth = -itemDepth * 0.42;
+  const headLift = itemHeight * 0.13;
+  const columnTopY = itemHeight * 0.9;
+  const columnLength = columnTopY - headLift;
+  const metalMaterial = {
+    rounded: false,
+    metalness: 0.68,
+    roughness: 0.22
+  };
+  addBoxMesh(group, 0.045, columnLength, 0.045, 0, (headLift + columnTopY) * 0.5, columnDepth, fixtureColor, metalMaterial);
+  for (const headY of [headLift, itemHeight * 0.47, itemHeight * 0.78, columnTopY]) {
+    addBoxMesh(group, 0.085, 0.085, 0.065, 0, headY, columnDepth, fixtureColor, metalMaterial);
+  }
+  for (const nozzleY of [headLift, columnTopY]) {
+    addSoftBoxMesh(group, itemWidth * 0.055, itemWidth * 0.055, 0.04, 0, nozzleY, -itemDepth * 0.47, fixtureColor, {
+      segments: 28,
+      rotationX: Math.PI / 2,
+      metalness: 0.7,
+      roughness: 0.2
+    });
+  }
+  const armY = itemHeight * 0.12;
+  addBoxMesh(group, itemWidth * 0.36, 0.065, 0.065, 0, armY, columnDepth + itemDepth * 0.08, fixtureColor, metalMaterial);
+  for (const handleX of [-itemWidth * 0.2, itemWidth * 0.2]) {
+    addSoftBoxMesh(group, itemWidth * 0.055, itemWidth * 0.055, 0.045, handleX, armY, -itemDepth * 0.45, fixtureColor, {
+      segments: 28,
+      rotationX: Math.PI / 2,
+      metalness: 0.7,
+      roughness: 0.2
+    });
+    addBoxMesh(group, 0.05, 0.05, itemDepth * 0.13, handleX, armY, columnDepth + itemDepth * 0.01, fixtureColor, metalMaterial);
+  }
+  addBoxMesh(group, 0.045, itemHeight * 0.12, 0.045, 0, armY - itemHeight * 0.045, columnDepth + itemDepth * 0.13, fixtureColor, metalMaterial);
+  const columnBase = new THREE.Vector3(0, columnTopY, columnDepth);
+  const columnTop = new THREE.Vector3(0, itemHeight * 0.76, itemDepth * 0.08);
+  const riserRise = columnTop.y - columnBase.y;
+  const riserRun = columnTop.z - columnBase.z;
+  const riserLength = Math.hypot(riserRise, riserRun);
+  const mesh = addBoxMesh(group, 0.055, riserLength, 0.055, 0, (columnBase.y + columnTop.y) * 0.5, (columnBase.z + columnTop.z) * 0.5, fixtureColor, metalMaterial);
+  mesh.rotation.x = Math.atan2(riserRun, riserRise);
+  addBoxMesh(group, 0.055, itemHeight * 0.13, 0.055, 0, itemHeight * 0.705, columnTop.z, fixtureColor, metalMaterial);
+  addBoxMesh(group, itemWidth * 0.34, 0.035, itemDepth * 0.3, 0, itemHeight * 0.64, columnTop.z + itemDepth * 0.03, fixtureColor, {
+    rounded: false,
+    metalness: 0.64,
+    roughness: 0.24
+  });
+}
+
+function buildBathtubItemMeshGroup(group, itemWidth, itemDepth, itemHeight, accentColor, lightColor, darkColor, glass) {
+  const tubTopY = itemHeight * 0.84;
+  const cornerRadius = Math.min(itemWidth, itemDepth) * 0.11;
+  const rimY = tubTopY * 0.8;
+  const innerWidth = Math.max(itemWidth - cornerRadius * 2, itemWidth * 0.48);
+  const innerDepth = Math.max(itemDepth - cornerRadius * 2, itemDepth * 0.42);
+  addBoxMesh(group, innerWidth, tubTopY * 0.16, innerDepth, 0, tubTopY * 0.14, 0, accentColor, {
+    radius: Math.min(itemWidth, itemDepth) * 0.16,
+    roughness: 0.33
+  });
+  addBoxMesh(group, itemWidth, rimY, cornerRadius, 0, rimY * 0.5, -itemDepth * 0.5 + cornerRadius * 0.5, lightColor, {
+    radius: cornerRadius * 0.5,
+    roughness: 0.34
+  });
+  addBoxMesh(group, itemWidth, rimY, cornerRadius, 0, rimY * 0.5, itemDepth * 0.5 - cornerRadius * 0.5, lightColor, {
+    radius: cornerRadius * 0.5,
+    roughness: 0.34
+  });
+  addBoxMesh(group, cornerRadius, rimY, innerDepth, -itemWidth * 0.5 + cornerRadius * 0.5, rimY * 0.5, 0, lightColor, {
+    radius: cornerRadius * 0.5,
+    roughness: 0.34
+  });
+  addBoxMesh(group, cornerRadius, rimY, innerDepth, itemWidth * 0.5 - cornerRadius * 0.5, rimY * 0.5, 0, lightColor, {
+    radius: cornerRadius * 0.5,
+    roughness: 0.34
+  });
+  const rimBandHeight = tubTopY * 0.075;
+  const rimBandY = rimY + rimBandHeight * 0.5;
+  addBoxMesh(group, itemWidth, rimBandHeight, cornerRadius, 0, rimBandY, -itemDepth * 0.5 + cornerRadius * 0.5, lightColor, {
+    radius: cornerRadius * 0.45,
+    roughness: 0.29
+  });
+  addBoxMesh(group, itemWidth, rimBandHeight, cornerRadius, 0, rimBandY, itemDepth * 0.5 - cornerRadius * 0.5, lightColor, {
+    radius: cornerRadius * 0.45,
+    roughness: 0.29
+  });
+  addBoxMesh(group, cornerRadius, rimBandHeight, innerDepth, -itemWidth * 0.5 + cornerRadius * 0.5, rimBandY, 0, lightColor, {
+    radius: cornerRadius * 0.45,
+    roughness: 0.29
+  });
+  addBoxMesh(group, cornerRadius, rimBandHeight, innerDepth, itemWidth * 0.5 - cornerRadius * 0.5, rimBandY, 0, lightColor, {
+    radius: cornerRadius * 0.45,
+    roughness: 0.29
+  });
+  for (const jetX of [-itemWidth * 0.38, itemWidth * 0.38]) {
+    for (const jetZ of [-itemDepth * 0.3, itemDepth * 0.3]) {
+      addSoftBoxMesh(group, 0.026, 0.026, itemHeight * 0.16, jetX, itemHeight * 0.08, jetZ, glass.furnitureDark, {
+        segments: 12,
+        metalness: 0.42,
+        roughness: 0.3
+      });
+    }
+  }
+  addSoftBoxMesh(group, 0.016, 0.016, itemHeight * 0.25, itemWidth * 0.34, itemHeight * 0.96, -itemDepth * 0.22, darkColor, {
+    segments: 16,
+    metalness: 0.72,
+    roughness: 0.2
+  });
+  addSoftBoxMesh(group, 0.016, 0.016, itemDepth * 0.28, itemWidth * 0.34, itemHeight * 1.08, -itemDepth * 0.08, darkColor, {
+    segments: 16,
+    rotationX: Math.PI / 2,
+    metalness: 0.72,
+    roughness: 0.2
+  });
+}
+
+function buildTvItemMeshGroup(group, item, itemWidth, itemDepth, itemHeight, darkColor, accentColor) {
+  const {
+    bodyHeight: bodyHeight,
+    centerY: mountCenterY
+  } = tvMountLayoutMetrics(item, itemHeight);
+  const screenBottom = mountCenterY - bodyHeight * 0.5;
+  if (item.tvMountStyle === "mobile") {
+    const mountThickness = Math.max(itemHeight * 0.045, 0.055);
+    const backingWidth = itemWidth * 0.7;
+    const backingDepth = Math.max(itemDepth * 0.78, 0.3);
+    const mountDrop = Math.max(screenBottom - mountThickness * 0.7, itemHeight * 0.22);
+    const mountBracketY = mountThickness * 0.7 + mountDrop * 0.5;
+    addBoxMesh(group, backingWidth, mountThickness, backingDepth, 0, mountThickness * 0.72, 0, darkColor, {
+      radius: Math.min(mountThickness, backingDepth) * 0.22,
+      metalness: 0.18,
+      roughness: 0.32
+    });
+    addBoxMesh(group, itemWidth * 0.075, mountDrop, Math.max(itemDepth * 0.2, 0.06), -itemWidth * 0.035, mountBracketY, -itemDepth * 0.03, darkColor, {
+      rounded: false,
+      metalness: 0.2,
+      roughness: 0.3
+    });
+    addBoxMesh(group, itemWidth * 0.105, mountDrop * 0.86, Math.max(itemDepth * 0.12, 0.04), itemWidth * 0.025, mountBracketY + mountDrop * 0.02, itemDepth * 0.015, accentColor, {
+      rounded: false,
+      metalness: 0.35,
+      roughness: 0.28
+    });
+    addBoxMesh(group, itemWidth * 0.34, Math.max(itemHeight * 0.018, 0.025), Math.max(itemDepth * 0.5, 0.2), 0, screenBottom * 0.76, itemDepth * 0.04, darkColor, {
+      radius: 0.012,
+      metalness: 0.22,
+      roughness: 0.3
+    });
+    const screwRadius = Math.max(Math.min(itemWidth, itemDepth) * 0.045, 0.025);
+    for (const screwX of [-backingWidth * 0.42, backingWidth * 0.42]) {
+      for (const screwZ of [-backingDepth * 0.34, backingDepth * 0.34]) {
+        addSoftBoxMesh(group, screwRadius, screwRadius, Math.max(screwRadius * 0.56, 0.018), screwZ, screwRadius, screwZ, 1448479, {
+          segments: 20,
+          rotationZ: Math.PI / 2,
+          roughness: 0.38,
+          metalness: 0.1
+        });
+      }
+    }
+  } else if (item.tvMountStyle === "tabletop") {
+    const baseThickness = Math.max(itemHeight * 0.035, 0.028);
+    const baseWidth = itemWidth * 0.34;
+    const baseDepth = Math.max(itemDepth * 0.72, 0.16);
+    const neckHeight = Math.max(screenBottom - baseThickness, itemHeight * 0.12);
+    addBoxMesh(group, baseWidth, baseThickness, baseDepth, 0, baseThickness * 0.5, 0, darkColor, {
+      radius: Math.min(baseThickness, baseDepth) * 0.26,
+      metalness: 0.2,
+      roughness: 0.3
+    });
+    addBoxMesh(group, itemWidth * 0.075, neckHeight, Math.max(itemDepth * 0.24, 0.05), 0, baseThickness + neckHeight * 0.5, -itemDepth * 0.03, accentColor, {
+      rounded: false,
+      metalness: 0.34,
+      roughness: 0.28
+    });
+    addBoxMesh(group, itemWidth * 0.18, Math.max(itemHeight * 0.025, 0.022), Math.max(itemDepth * 0.34, 0.08), 0, screenBottom, 0, darkColor, {
+      radius: 0.008,
+      metalness: 0.22,
+      roughness: 0.3
+    });
+  }
+  addBoxMesh(group, itemWidth, bodyHeight, Math.max(itemDepth * 0.28, 0.05), 0, mountCenterY, 0, darkColor, {
+    radius: Math.min(itemWidth, bodyHeight) * 0.012,
+    roughness: 0.28
+  });
+}
+
+function buildTeaBarMachineItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, darkColor, accentColor) {
+  const cabinetHeight = itemHeight * 0.67;
+  const counterY = cabinetHeight + itemHeight * 0.045;
+  const upperHeight = itemHeight - counterY;
+  addBoxMesh(group, itemWidth, cabinetHeight, itemDepth, 0, cabinetHeight * 0.5, 0, bodyColor, {
+    rounded: false,
+    roughness: 0.5,
+    metalness: 0.04
+  });
+  addBoxMesh(group, itemWidth * 0.94, 0.028, itemDepth * 1.02, 0, cabinetHeight * 0.5, itemDepth * 0.515, darkColor, {
+    rounded: false,
+    roughness: 0.34
+  });
+  addBoxMesh(group, itemWidth * 0.94, 0.032, itemDepth * 1.02, 0, cabinetHeight, 0, accentColor, {
+    rounded: false,
+    roughness: 0.42
+  });
+  addBoxMesh(group, itemWidth * 0.94, itemHeight * 0.04, itemDepth * 1.04, 0, counterY, 0, bodyColor, {
+    rounded: false,
+    roughness: 0.36,
+    metalness: 0.1
+  });
+  addBoxMesh(group, itemWidth * 0.92, upperHeight, 0.032, 0, counterY + upperHeight * 0.5, -itemDepth * 0.46, accentColor, {
+    rounded: false,
+    roughness: 0.56
+  });
+  for (const sidePanelX of [-itemWidth * 0.46, itemWidth * 0.46]) {
+    addBoxMesh(group, itemWidth * 0.075, upperHeight, itemDepth * 0.78, sidePanelX, counterY + upperHeight * 0.5, 0, bodyColor, {
+      rounded: false,
+      roughness: 0.48
+    });
+  }
+  addBoxMesh(group, itemWidth * 0.86, itemHeight * 0.14, itemDepth * 0.18, 0, itemHeight * 0.9, itemDepth * 0.48, darkColor, {
+    rounded: false,
+    metalness: 0.32,
+    roughness: 0.22
+  });
+  for (const cupX of [-itemWidth * 0.22, itemWidth * 0.22]) {
+    addSoftBoxMesh(group, Math.min(itemWidth, itemDepth) * 0.035, Math.min(itemWidth, itemDepth) * 0.035, 0.018, cupX, itemHeight * 0.9, itemDepth * 0.585, accentColor, {
+      segments: 20,
+      rotationX: Math.PI / 2,
+      metalness: 0.2,
+      roughness: 0.25
+    });
+    addSoftBoxMesh(group, 0.012, 0.012, itemHeight * 0.11, cupX, itemHeight * 0.79, itemDepth * 0.5, darkColor, {
+      segments: 18,
+      metalness: 0.48,
+      roughness: 0.22
+    });
+    const cupRadius = Math.min(itemWidth, itemDepth) * 0.16;
+    addSoftBoxMesh(group, cupRadius * 0.9, cupRadius, itemHeight * 0.13, cupX, itemHeight * 0.75, itemDepth * 0.12, cupX < 0 ? 8752009 : accentColor, {
+      segments: 28,
+      metalness: 0.08,
+      roughness: 0.34
+    });
+    addSoftBoxMesh(group, cupRadius * 0.84, cupRadius * 0.84, 0.016, cupX, itemHeight * 0.82, itemDepth * 0.12, darkColor, {
+      segments: 28,
+      metalness: 0.18,
+      roughness: 0.28
+    });
+    addBoxMesh(group, itemWidth * 0.12, itemHeight * 0.06, 0.016, cupX, itemHeight * 0.77, itemDepth * 0.3, darkColor, {
+      radius: 0.012,
+      metalness: 0.24,
+      roughness: 0.24
+    });
+  }
+  addBoxMesh(group, itemWidth * 0.92, itemHeight * 0.055, itemDepth * 0.82, 0, 0.028, 0, darkColor, {
+    rounded: false,
+    roughness: 0.36
+  });
+}
+
+function buildBookcaseItemMeshGroup(group, itemWidth, itemDepth, itemHeight, bodyColor, darkColor, accentColor, lightColor) {
+  const clampedCornerRadius = Math.min(Math.max(Math.min(itemWidth, itemDepth) * 0.11, 0.032), 0.062);
+  const bottomRailHeight = Math.min(Math.max(itemDepth * 0.075, 0.018), 0.032);
+  const max = Math.max(itemWidth - clampedCornerRadius * 2, itemWidth * 0.72);
+  const numericValue = 0.255;
+  const arrayValue = [numericValue, 0.47, 0.59, 0.79];
+  const sideHeight = itemHeight - clampedCornerRadius * 0.5;
+  const value = max * 0.27;
+  const leftShelfX = itemWidth * 0.5 - clampedCornerRadius * 1.5 - value;
+  const rightShelfWidth = max - value - clampedCornerRadius;
+  const rightShelfX = -max * 0.5 + rightShelfWidth * 0.5;
+  const rightShelfCenterX = max * 0.5 - value * 0.5;
+  const objectValue = {
+    rounded: false,
+    roughness: 0.62,
+    metalness: 0.015
+  };
+  const backPanelZ = itemDepth * 0.5 + 0.013;
+  addBoxMesh(group, clampedCornerRadius, itemHeight, itemDepth, -itemWidth * 0.5 + clampedCornerRadius * 0.5, itemHeight * 0.5, 0, bodyColor, objectValue);
+  addBoxMesh(group, clampedCornerRadius, itemHeight, itemDepth, itemWidth * 0.5 - clampedCornerRadius * 0.5, itemHeight * 0.5, 0, bodyColor, objectValue);
+  addBoxMesh(group, max, itemHeight * 0.95, bottomRailHeight, 0, itemHeight * 0.5, -itemDepth * 0.5 + bottomRailHeight * 0.5, darkColor, {
+    ...objectValue,
+    roughness: 0.76
+  });
+  addBoxMesh(group, max, itemHeight * numericValue - clampedCornerRadius * 0.5, itemDepth * 0.9, 0, itemHeight * numericValue * 0.5, -itemDepth * 0.025, accentColor, {
+    ...objectValue,
+    roughness: 0.66
+  });
+  for (const shelfRatio of arrayValue) {
+    addBoxMesh(group, max, clampedCornerRadius, itemDepth, 0, itemHeight * shelfRatio, 0, accentColor, objectValue);
+  }
+  addBoxMesh(group, itemWidth, clampedCornerRadius, itemDepth, 0, sideHeight, 0, bodyColor, objectValue);
+  const midShelfY = itemHeight * arrayValue[1] + clampedCornerRadius * 0.5;
+  const topShelfY = itemHeight - clampedCornerRadius;
+  addBoxMesh(group, clampedCornerRadius, topShelfY - midShelfY, itemDepth, leftShelfX, (topShelfY + midShelfY) * 0.5, 0, bodyColor, objectValue);
+  const count = 3;
+  const bookRowStartY = clampedCornerRadius * 0.72;
+  const counterY = itemHeight * numericValue - clampedCornerRadius * 0.5;
+  const bookAreaHeight = Math.max(counterY - bookRowStartY, itemHeight * 0.16);
+  const bookGap = Math.max(itemWidth * 0.008, 0.008);
+  const leftBookStartX = -max * 0.18;
+  const rightBookWidth = leftBookStartX + max * 0.5 - bookGap * 0.5;
+  const leftBookWidth = max - rightBookWidth - bookGap;
+  const halfValue = (bookAreaHeight - bookGap * (count - 1)) / count;
+  for (let rowIndex = 0; rowIndex < count; rowIndex += 1) {
+    const rowY = bookRowStartY + halfValue * 0.5 + rowIndex * (halfValue + bookGap);
+    addBoxMesh(group, rightBookWidth, halfValue, 0.026, -max * 0.5 + rightBookWidth * 0.5, rowY, backPanelZ, bodyColor, {
+      ...objectValue,
+      roughness: 0.55
+    });
+    addBoxMesh(group, leftBookWidth, halfValue, 0.026, leftBookStartX + bookGap * 0.5 + leftBookWidth * 0.5, rowY, backPanelZ, accentColor, {
+      ...objectValue,
+      roughness: 0.55
+    });
+  }
+  const backPanelHeight = itemHeight * (arrayValue[2] - arrayValue[1]) - clampedCornerRadius * 1.15;
+  addBoxMesh(group, rightShelfWidth * 0.97, backPanelHeight, 0.028, rightShelfX, itemHeight * (arrayValue[1] + arrayValue[2]) * 0.5, backPanelZ, bodyColor, {
+    ...objectValue,
+    roughness: 0.54
+  });
+  const length = [14276045, 12499117, 10459536, 7828334, lightColor, accentColor];
+  const addBookRow = ({
+    startX: arg,
+    maxWidth: rowWidth,
+    shelfY: argPrimaryCurrent,
+    availableHeight: argPrimaryNext,
+    count: argPrimaryPrevious = 6,
+    seed: argPrimaryLocal = 0
+  }) => {
+    const max = Math.max(rowWidth * 0.018, 0.006);
+    const bookSlotHeight = Math.max((rowWidth - max * (argPrimaryPrevious + 1)) / argPrimaryPrevious, 0.026);
+    // `computedValue` is the running x cursor along the shelf; `bookWidth` is the width of the
+    // single book being placed. Upstream obfuscation had collapsed both values onto the name
+    // `computedValue` and declared the per-book width as a loop-local `const`, which shadowed
+    // the cursor and made the accumulation below throw "Assignment to constant variable", so the
+    // whole bookshelf branch failed. Separating the two values is the only reading under which
+    // every use inside this loop is self-consistent.
+    let bookCursorX = arg + max;
+    for (let bookIndex = 0; bookIndex < argPrimaryPrevious; bookIndex += 1) {
+      const bookDepthRatio = [0.72, 0.9, 0.78, 1.04, 0.82, 0.68][(bookIndex + argPrimaryLocal) % 6];
+      const bookWidth = bookSlotHeight * bookDepthRatio;
+      const bookHeightRatio = [0.72, 0.88, 0.78, 0.94, 0.82, 0.68][(bookIndex * 2 + argPrimaryLocal) % 6];
+      const value = argPrimaryNext * bookHeightRatio;
+      if (bookCursorX + bookWidth > arg + rowWidth - max) {
+        break;
+      }
+      const mesh = addBoxMesh(group, bookWidth, value, itemDepth * (0.47 + (bookIndex + argPrimaryLocal) % 3 * 0.045), bookCursorX + bookWidth * 0.5, argPrimaryCurrent + value * 0.5, itemDepth * 0.15, length[(bookIndex + argPrimaryLocal) % length.length], {
+        radius: Math.min(bookWidth * 0.14, 0.012),
+        roughness: 0.78,
+        metalness: 0
+      });
+      if (bookIndex === argPrimaryPrevious - 1 && argPrimaryLocal % 2 === 1) {
+        mesh.rotation.z = -0.07;
+      }
+      bookCursorX += bookWidth + max;
+    }
+  };
+  const callback = (centerX, baseY, material, ornamentCount = 3, ornamentOffset = 0) => {
+    for (let ornamentIndex = 0; ornamentIndex < ornamentCount; ornamentIndex += 1) {
+      addBoxMesh(group, material, clampedCornerRadius * 0.54, itemDepth * 0.48, centerX, baseY + clampedCornerRadius * (0.38 + ornamentIndex * 0.56), itemDepth * 0.15, length[(ornamentIndex + ornamentOffset) % length.length], {
+        radius: 0.007,
+        roughness: 0.78,
+        metalness: 0
+      });
+    }
+  };
+  const shelfY = itemHeight * arrayValue[0] + clampedCornerRadius * 0.5;
+  addBookRow({
+    startX: -max * 0.47,
+    maxWidth: max * 0.29,
+    shelfY,
+    availableHeight: itemHeight * 0.15,
+    count: 5,
+    seed: 2
+  });
+  addBookRow({
+    startX: max * 0.04,
+    maxWidth: max * 0.38,
+    shelfY,
+    availableHeight: itemHeight * 0.16,
+    count: 7,
+    seed: 4
+  });
+  const shelfYCurrent = itemHeight * arrayValue[1] + clampedCornerRadius * 0.5;
+  addBookRow({
+    startX: leftShelfX + clampedCornerRadius * 0.6,
+    maxWidth: value * 0.82,
+    shelfY: shelfYCurrent,
+    availableHeight: itemHeight * 0.075,
+    count: 4,
+    seed: 1
+  });
+  const shelfYNext = itemHeight * arrayValue[2] + clampedCornerRadius * 0.5;
+  addBookRow({
+    startX: -max * 0.47,
+    maxWidth: rightShelfWidth * 0.42,
+    shelfY: shelfYNext,
+    availableHeight: itemHeight * 0.14,
+    count: 6,
+    seed: 0
+  });
+  addBoxMesh(group, rightShelfWidth * 0.17, itemHeight * 0.12, 0.022, rightShelfX + rightShelfWidth * 0.27, shelfYNext + itemHeight * 0.065, itemDepth * 0.22, 11972517, {
+    rounded: false,
+    roughness: 0.5
+  });
+  addBoxMesh(group, rightShelfWidth * 0.125, itemHeight * 0.085, 0.026, rightShelfX + rightShelfWidth * 0.27, shelfYNext + itemHeight * 0.065, itemDepth * 0.235, 7762283, {
+    rounded: false,
+    roughness: 0.42
+  });
+  callback(rightShelfCenterX, shelfYNext, value * 0.48, 3, 3);
+  const lowShelfY = itemHeight * arrayValue[3] + clampedCornerRadius * 0.5;
+  callback(rightShelfX - rightShelfWidth * 0.22, lowShelfY, rightShelfWidth * 0.24, 2, 1);
+  addSoftBoxMesh(group, rightShelfWidth * 0.055, rightShelfWidth * 0.075, itemHeight * 0.12, rightShelfX - rightShelfWidth * 0.08, lowShelfY + itemHeight * 0.06, itemDepth * 0.12, 5196615, {
+    segments: 22,
+    roughness: 0.66
+  });
+  addSoftBoxMesh(group, rightShelfWidth * 0.045, rightShelfWidth * 0.064, itemHeight * 0.15, rightShelfX + rightShelfWidth * 0.08, lowShelfY + itemHeight * 0.075, itemDepth * 0.12, 6643802, {
+    segments: 22,
+    roughness: 0.66
+  });
+  callback(rightShelfCenterX, lowShelfY, value * 0.5, 2, 4);
+}
+
 function buildStudioItemMeshGroup(type, optionalValue = null) {
-  const rotation = new THREE.Group();
-  rotation.userData.squareEdges = SOFT_TEXTURE_UNIT_RESERVE.has(type.type);
+  const meshGroup = new THREE.Group();
+  meshGroup.userData.squareEdges = SOFT_TEXTURE_UNIT_RESERVE.has(type.type);
   if ($g.has(type.type)) {
-    rotation.userData.optimizationBatch = "v1-next-ten";
+    meshGroup.userData.optimizationBatch = "v1-next-ten";
   }
   const itemWidth = type.width;
   const itemDepth = type.depth;
   const itemHeight = type.height;
-  const glass = resolvedThemeColors();
-  const furnitureItems = glass.furniture;
-  const computedValue = glass.appliance ?? furnitureItems;
-  const color = glass.furnitureSoft;
-  const furnitureLight = glass.furnitureLight;
-  const furnitureDark = glass.furnitureDark;
+  const themeColors = resolvedThemeColors();
+  const woodColor = themeColors.furniture;
+  const applianceColor = themeColors.appliance ?? woodColor;
+  const accentColor = themeColors.furnitureSoft;
+  const lightColor = themeColors.furnitureLight;
+  const darkColor = themeColors.furnitureDark;
   if (set.has(type.type)) {
-    buildWallCornerCaps(rotation, type, optionalValue);
-    applySelectionHighlight(rotation, type);
+    buildWallCornerCaps(meshGroup, type, optionalValue);
+    applySelectionHighlight(meshGroup, type);
   } else if (type.type === "planlabel") {
-    rotation.add(markAsLightSourcePreview(type));
+    meshGroup.add(markAsLightSourcePreview(type));
   } else if (type.offlineModelExport !== true && ALL_ITEM_MODELS[type.type] && type.type !== "smallcar" && type.type !== "sofa") {
-    if (!attachExternalItemModel(rotation, type)) {
-      addBoxMesh(rotation, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, RESERVED_TEXTURE_UNITS.has(type.type) ? computedValue : furnitureItems, {
+    if (!attachExternalItemModel(meshGroup, type)) {
+      addBoxMesh(meshGroup, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, RESERVED_TEXTURE_UNITS.has(type.type) ? applianceColor : woodColor, {
         rounded: false,
         roughness: 0.6,
         metalness: 0.1
       });
     }
   } else if (type.type === "smallcar") {
-    if (!attachExternalItemModel(rotation, type)) {
-      addBoxMesh(rotation, itemWidth * 0.96, itemHeight * 0.38, itemDepth * 0.9, 0, itemHeight * 0.28, 0, furnitureItems, {
-        roughness: 0.46,
-        metalness: 0.18
-      });
-      addBoxMesh(rotation, itemWidth * 0.78, itemHeight * 0.42, itemDepth * 0.48, 0, itemHeight * 0.62, -itemDepth * 0.03, color, {
-        roughness: 0.38,
-        metalness: 0.12
-      });
-      for (const localValue of [-0.48, 0.48]) {
-        for (const localValue of [-0.3, 0.3]) {
-          addBoxMesh(rotation, itemWidth * 0.1, itemHeight * 0.22, itemDepth * 0.17, localValue * itemWidth, itemHeight * 0.17, localValue * itemDepth, furnitureDark, {
-            rounded: false,
-            roughness: 0.82
-          });
-        }
-      }
-    }
-    addSmallCarMeshes(rotation, type, itemWidth, itemDepth, itemHeight);
+    buildSmallCarItemMeshGroup(meshGroup, type, itemWidth, itemDepth, itemHeight, woodColor, accentColor, darkColor);
   } else if (type.type === "curtain") {
-    const conditionalValue = ["left", "right", "split"].includes(type.curtainPosition) ? type.curtainPosition : "split";
-    const lengthValue = rotation.children.length;
-    if (isStageEmbed) {
-      rotation.userData.curtainRigRoot = true;
-      rotation.userData.curtainRigBasis = [itemWidth, itemHeight, itemDepth];
-    }
-    const localValue = Math.min(Math.max(itemDepth * 0.09, 0.012), 0.028);
-    const computedValue = itemHeight - localValue * 1.8;
-    const value = computedValue - localValue * 1.8;
-    const max = Math.max(itemHeight * 0.025, 0.025);
-    const localValueCurrent = Math.max(value - max, itemHeight * 0.72);
-    addSoftBoxMesh(rotation, localValue, localValue, itemWidth * 1.06, 0, computedValue, 0, furnitureDark, {
-      segments: 18,
-      rotationZ: Math.PI / 2,
-      metalness: 0.68,
-      roughness: 0.22
-    });
-    for (const localValueCurrent of [-itemWidth * 0.52, itemWidth * 0.52]) {
-      addSoftBoxMesh(rotation, localValue * 1.45, localValue * 1.45, localValue * 0.9, localValueCurrent, computedValue, 0, furnitureLight, {
-        segments: 18,
-        rotationZ: Math.PI / 2,
-        metalness: 0.52,
-        roughness: 0.26
-      });
-    }
-    const helperFn = (argPrimary, argSecondary) => {
-      const foldWidth = argSecondary / 7;
-      for (let zeroValue = 0; zeroValue < 7; zeroValue += 1) {
-        const foldCenterX = argPrimary + foldWidth * (zeroValue + 0.5);
-        const foldOffsetZ = zeroValue % 2 === 0 ? itemDepth * 0.1 : -itemDepth * 0.1;
-        addBoxMesh(rotation, foldWidth * 1.24, localValueCurrent, itemDepth * 0.62, foldCenterX, max + localValueCurrent * 0.5, foldOffsetZ, furnitureLight, {
-          radius: Math.min(foldWidth * 0.34, 0.035),
-          roughness: 0.94,
-          metalness: 0
-        });
-      }
-      addBoxMesh(rotation, argSecondary * 1.03, Math.max(itemHeight * 0.018, 0.025), itemDepth * 0.74, argPrimary + argSecondary * 0.5, max + itemHeight * 0.015, 0, furnitureDark, {
-        radius: 0.01,
-        roughness: 0.72,
-        metalness: 0.02
-      });
-      addBoxMesh(rotation, argSecondary * 1.06, Math.max(itemHeight * 0.025, 0.035), itemDepth * 0.82, argPrimary + argSecondary * 0.5, max + localValueCurrent * 0.52, 0, furnitureLight, {
-        radius: 0.012,
-        roughness: 0.48,
-        metalness: 0.08
-      });
-    };
-    if (conditionalValue === "left") {
-      helperFn(-itemWidth * 0.5, itemWidth * 0.24);
-    } else if (conditionalValue === "right") {
-      helperFn(itemWidth * 0.26, itemWidth * 0.24);
-    } else {
-      helperFn(-itemWidth * 0.5, itemWidth * 0.16);
-      helperFn(itemWidth * 0.34, itemWidth * 0.16);
-    }
-    if (isStageEmbed) {
-      rotation.children.slice(lengthValue).forEach((userData, argSecondary) => {
-        userData.userData.curtainPart = argSecondary === 0 ? "rod" : argSecondary < 3 ? "cap" : (argSecondary - 3) % 9 < 7 ? "cloth" : "band";
-      });
-    }
+    buildCurtainItemMeshGroup(meshGroup, type, itemWidth, itemDepth, itemHeight, lightColor, darkColor);
   } else if (Vl.has(type.type)) {
-    const depthStep = itemDepth / 10;
-    for (let zeroValue = 0; zeroValue < 10; zeroValue += 1) {
-      const layerHeight = itemHeight * (zeroValue + 1) / 10;
-      const layerZ = -itemDepth * 0.5 + depthStep * (zeroValue + 0.5);
-      addBoxMesh(rotation, itemWidth, layerHeight, depthStep * 1.015, 0, layerHeight * 0.5, layerZ, zeroValue % 2 ? furnitureItems : color, {
-        rounded: false,
-        roughness: 0.82
-      });
-      addBoxMesh(rotation, itemWidth * 1.01, 0.018, depthStep * 0.94, 0, layerHeight + 0.009, layerZ, furnitureLight, {
-        rounded: false,
-        castShadow: false,
-        roughness: 0.72
-      });
-    }
+    buildStairItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, accentColor, lightColor);
   } else if (type.type === "sofa") {
-    const computedValue = itemHeight * 0.14;
-    const helperFn = argPrimary => argPrimary - computedValue + -0.008;
-    addBoxMesh(rotation, itemWidth * 0.92, itemHeight * 0.28, itemDepth * 0.72, 0, helperFn(itemHeight * 0.28), itemDepth * 0.06, furnitureItems);
-    addBoxMesh(rotation, itemWidth * 0.92, itemHeight * 0.55, itemDepth * 0.18, 0, helperFn(itemHeight * 0.56), -itemDepth * 0.35, furnitureItems);
-    addBoxMesh(rotation, itemWidth * 0.1, itemHeight * 0.48, itemDepth * 0.75, -itemWidth * 0.46, helperFn(itemHeight * 0.39), itemDepth * 0.03, furnitureItems);
-    addBoxMesh(rotation, itemWidth * 0.1, itemHeight * 0.48, itemDepth * 0.75, itemWidth * 0.46, helperFn(itemHeight * 0.39), itemDepth * 0.03, furnitureItems);
-    addBoxMesh(rotation, itemWidth * 0.42, itemHeight * 0.12, itemDepth * 0.55, -itemWidth * 0.22, helperFn(itemHeight * 0.47), itemDepth * 0.07, color);
-    addBoxMesh(rotation, itemWidth * 0.42, itemHeight * 0.12, itemDepth * 0.55, itemWidth * 0.22, helperFn(itemHeight * 0.47), itemDepth * 0.07, color);
+    buildSofaItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, accentColor);
   } else if (type.type === "bed") {
-    addBoxMesh(rotation, itemWidth * 0.996, itemHeight * 0.3, itemDepth * 0.996, 0, itemHeight * 0.15, 0, furnitureDark);
-    addBoxMesh(rotation, itemWidth * 0.96, itemHeight * 0.32, itemDepth * 0.92, 0, itemHeight * 0.43, itemDepth * 0.03, color);
-    addBoxMesh(rotation, itemWidth, itemHeight * 0.95, itemDepth * 0.09, 0, itemHeight * 0.48, -itemDepth * 0.455, furnitureItems);
-    addBoxMesh(rotation, itemWidth * 0.38, itemHeight * 0.14, itemDepth * 0.22, -itemWidth * 0.23, itemHeight * 0.66, -itemDepth * 0.29, furnitureLight);
-    addBoxMesh(rotation, itemWidth * 0.38, itemHeight * 0.14, itemDepth * 0.22, itemWidth * 0.23, itemHeight * 0.66, -itemDepth * 0.29, furnitureLight);
+    buildBedItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, darkColor, accentColor, woodColor, lightColor);
   } else if (type.type === "nightstand") {
-    addBoxMesh(rotation, itemWidth, itemHeight * 0.78, itemDepth, 0, itemHeight * 0.49, 0, furnitureItems);
-    addBoxMesh(rotation, itemWidth * 1.04, itemHeight * 0.07, itemDepth * 1.05, 0, itemHeight * 0.91, 0, color, {
-      roughness: 0.5
-    });
-    addBoxMesh(rotation, itemWidth * 0.9, 0.014, itemDepth * 1.01, 0, itemHeight * 0.63, itemDepth * 0.01, furnitureDark, {
-      rounded: false
-    });
-    addBoxMesh(rotation, itemWidth * 0.9, 0.014, itemDepth * 1.01, 0, itemHeight * 0.38, itemDepth * 0.01, furnitureDark, {
-      rounded: false
-    });
-    addBoxMesh(rotation, itemWidth * 0.22, 0.022, 0.032, 0, itemHeight * 0.5, itemDepth * 0.52, furnitureLight, {
-      metalness: 0.5
-    });
-    for (const localValue of [-0.38, 0.38]) {
-      for (const localValue of [-0.35, 0.35]) {
-        addBoxMesh(rotation, 0.035, itemHeight * 0.2, 0.035, itemWidth * localValue, itemHeight * 0.1, itemDepth * localValue, furnitureDark, {
-          metalness: 0.18
-        });
-      }
-    }
+    buildNightstandItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, accentColor, darkColor, lightColor);
   } else if (type.type === "table") {
-    const computedValue = itemWidth * 0.64;
-    const value = itemDepth * 0.48;
-    addBoxMesh(rotation, computedValue, itemHeight * 0.1, value, 0, itemHeight * 0.93, 0, furnitureItems);
-    for (const localValue of [-0.43, 0.43]) {
-      for (const localValue of [-0.38, 0.38]) {
-        addBoxMesh(rotation, 0.07, itemHeight * 0.9, 0.07, computedValue * localValue, itemHeight * 0.45, value * localValue, furnitureDark);
-      }
-    }
-    const localValue = Math.min(itemWidth * 0.2, 0.5);
-    const min = Math.min(itemDepth * 0.27, 0.5);
-    const computedValueCurrent = itemHeight * 1.18;
-    buildTelevisionMesh(rotation, localValue, min, computedValueCurrent, -itemWidth * 0.37, 0, Math.PI / 2, color, furnitureDark);
-    buildTelevisionMesh(rotation, localValue, min, computedValueCurrent, itemWidth * 0.37, 0, -Math.PI / 2, color, furnitureDark);
-    buildTelevisionMesh(rotation, localValue, min, computedValueCurrent, 0, -itemDepth * 0.35, 0, color, furnitureDark);
-    buildTelevisionMesh(rotation, localValue, min, computedValueCurrent, 0, itemDepth * 0.35, Math.PI, color, furnitureDark);
+    buildTableItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, darkColor, accentColor);
   } else if (roundTableTypes.has(type.type)) {
-    const computedValue = Math.min(itemWidth, itemDepth) * 0.32;
-    const localValue = Math.max(itemHeight * 0.07, 0.045);
-    const value = itemHeight * 0.92;
-    addSoftBoxMesh(rotation, computedValue, computedValue, localValue, 0, value, 0, furnitureLight, {
-      segments: 48,
-      roughness: 0.5,
-      metalness: 0.08
-    });
-    addSoftBoxMesh(rotation, Math.min(itemWidth, itemDepth) * 0.22, Math.min(itemWidth, itemDepth) * 0.3, itemHeight * 0.68, 0, itemHeight * 0.43, 0, furnitureItems, {
-      segments: 36,
-      roughness: 0.55,
-      metalness: 0.06
-    });
-    addSoftBoxMesh(rotation, Math.min(itemWidth, itemDepth) * 0.34, Math.min(itemWidth, itemDepth) * 0.34, itemHeight * 0.07, 0, itemHeight * 0.045, 0, furnitureDark, {
-      segments: 40,
-      roughness: 0.42,
-      metalness: 0.12
-    });
-    if (hasRoundTableTurntable(type)) {
-      addSoftBoxMesh(rotation, computedValue * 0.58, computedValue * 0.58, Math.max(itemHeight * 0.035, 0.025), 0, value + localValue * 0.58, 0, color, {
-        segments: 48,
-        roughness: 0.48,
-        metalness: 0.08
-      });
-      addSoftBoxMesh(rotation, computedValue * 0.44, computedValue * 0.44, 0.018, 0, value + localValue * 0.58 + 0.036, 0, furnitureDark, {
-        segments: 48,
-        roughness: 0.32,
-        metalness: 0.12
-      });
-    }
-    const min = Math.min(itemWidth * 0.17, 0.42);
-    const localValueCurrent = Math.min(itemDepth * 0.19, 0.44);
-    const computedValueCurrent = itemHeight * 1.15;
-    buildTelevisionMesh(rotation, min, localValueCurrent, computedValueCurrent, -itemWidth * 0.38, 0, Math.PI / 2, color, furnitureDark);
-    buildTelevisionMesh(rotation, min, localValueCurrent, computedValueCurrent, itemWidth * 0.38, 0, -Math.PI / 2, color, furnitureDark);
-    buildTelevisionMesh(rotation, min, localValueCurrent, computedValueCurrent, 0, -itemDepth * 0.38, 0, color, furnitureDark);
-    buildTelevisionMesh(rotation, min, localValueCurrent, computedValueCurrent, 0, itemDepth * 0.38, Math.PI, color, furnitureDark);
+    buildRoundTableItemMeshGroup(meshGroup, type, itemWidth, itemDepth, itemHeight, lightColor, woodColor, darkColor, accentColor);
   } else if (type.type === "bar") {
-    addBoxMesh(rotation, itemWidth, itemHeight * 0.12, itemDepth, 0, itemHeight * 0.94, 0, color, {
-      roughness: 0.5
-    });
-    addBoxMesh(rotation, itemWidth * 0.92, itemHeight * 0.78, itemDepth * 0.46, 0, itemHeight * 0.45, -itemDepth * 0.18, furnitureItems, {
-      roughness: 0.65
-    });
-    addBoxMesh(rotation, itemWidth * 0.86, itemHeight * 0.48, 0.035, 0, itemHeight * 0.42, itemDepth * 0.28, furnitureDark, {
-      rounded: false,
-      roughness: 0.48
-    });
-    for (const localValue of [-0.3, 0, 0.3]) {
-      addSoftBoxMesh(rotation, itemDepth * 0.14, itemDepth * 0.14, 0.045, itemWidth * localValue, itemHeight * 0.66, itemDepth * 0.52, color, {
-        segments: 28,
-        roughness: 0.52
-      });
-      addSoftBoxMesh(rotation, 0.025, 0.025, itemHeight * 0.62, itemWidth * localValue, itemHeight * 0.34, itemDepth * 0.52, furnitureDark, {
-        segments: 18,
-        metalness: 0.38,
-        roughness: 0.28
-      });
-      addSoftBoxMesh(rotation, itemDepth * 0.1, itemDepth * 0.12, 0.035, itemWidth * localValue, 0.018, itemDepth * 0.52, furnitureDark, {
-        segments: 24,
-        metalness: 0.3,
-        roughness: 0.34
-      });
-    }
+    buildBarItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, accentColor, woodColor, darkColor);
   } else if (type.type === "aquarium") {
-    const localValue = Math.max(itemHeight * 0.52, 0.45);
-    const localValueCurrent = localValue;
-    const max = Math.max(itemHeight - localValue, 0.2);
-    const min = Math.min(Math.max(Math.min(itemWidth, itemDepth) * 0.025, 0.012), 0.028);
-    const objectValue = {
-      rounded: false,
-      transparent: true,
-      opacity: 0.22,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      roughness: 0.06,
-      metalness: 0.02,
-      castShadow: false,
-      receiveShadow: false,
-      renderOrder: 6
-    };
-    addBoxMesh(rotation, itemWidth, localValue, itemDepth, 0, localValue * 0.5, 0, furnitureItems, {
-      rounded: false,
-      roughness: 0.56
-    });
-    addBoxMesh(rotation, itemWidth, 0.035, itemDepth, 0, localValue, 0, glass.frame, {
-      rounded: false,
-      metalness: 0.34,
-      roughness: 0.3
-    });
-    addBoxMesh(rotation, itemWidth - min * 2, max, min, 0, localValueCurrent + max * 0.5, -itemDepth * 0.5 + min * 0.5, glass.glass, objectValue);
-    addBoxMesh(rotation, itemWidth - min * 2, max, min, 0, localValueCurrent + max * 0.5, itemDepth * 0.5 - min * 0.5, glass.glass, objectValue);
-    addBoxMesh(rotation, min, max, itemDepth - min * 2, -itemWidth * 0.5 + min * 0.5, localValueCurrent + max * 0.5, 0, glass.glass, objectValue);
-    addBoxMesh(rotation, min, max, itemDepth - min * 2, itemWidth * 0.5 - min * 0.5, localValueCurrent + max * 0.5, 0, glass.glass, objectValue);
+    buildAquariumItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, themeColors, woodColor);
+  } else if (type.type === "mural") {
+    buildMuralItemMeshGroup(meshGroup, type, itemWidth, itemDepth, itemHeight, darkColor, lightColor);
+  } else if (type.type === "featurewall") {
+    buildFeatureWallItemMeshGroup(meshGroup, type, itemWidth, itemDepth, itemHeight);
   } else if (type.type === "coffeetable") {
-    const localValue = Math.min(itemWidth * 0.34, itemDepth * 0.42);
-    const min = Math.min(itemWidth * 0.23, itemDepth * 0.29);
-    const computedValue = -itemWidth * 0.16;
-    const value = itemDepth * 0.08;
-    const computedValueCurrent = itemWidth * 0.24;
-    const computedValueNext = -itemDepth * 0.2;
-    const computedValuePrevious = itemHeight * 0.58;
-    const computedValueLocal = itemHeight * 0.76;
-    const computedValueItem = itemHeight * 0.68;
-    const computedValueEntry = itemHeight * 0.9;
-    addSoftBoxMesh(rotation, localValue * 0.3, localValue * 0.5, computedValuePrevious, computedValue, computedValuePrevious * 0.5, value, furnitureItems, {
-      segments: 40,
-      roughness: 0.82
-    });
-    const computedValueList = itemHeight * 0.07;
-    const computedValueText = itemHeight * 0.055;
-    const computedValueValue = computedValuePrevious + computedValueList * 0.5 + 0.001;
-    const computedValueSource = computedValueValue + (computedValueList + computedValueText) * 0.5 + 0.001;
-    addSoftBoxMesh(rotation, localValue * 1.02, localValue * 1.02, computedValueList, computedValue, computedValueValue, value, furnitureDark, {
-      segments: 48,
-      roughness: 0.72
-    });
-    addSoftBoxMesh(rotation, localValue, localValue, computedValueText, computedValue, computedValueSource, value, furnitureLight, {
-      segments: 48,
-      roughness: 0.9
-    });
-    addSoftBoxMesh(rotation, min * 0.32, min * 0.52, computedValueLocal, computedValueCurrent, computedValueLocal * 0.5, computedValueNext, color, {
-      segments: 40,
-      roughness: 0.82
-    });
-    const computedValueTarget = itemHeight * 0.07;
-    const computedValueDefault = itemHeight * 0.055;
-    const computedValueFallback = computedValueLocal + computedValueTarget * 0.5 + 0.001;
-    const computedValuePending = computedValueFallback + (computedValueTarget + computedValueDefault) * 0.5 + 0.001;
-    addSoftBoxMesh(rotation, min * 1.02, min * 1.02, computedValueTarget, computedValueCurrent, computedValueFallback, computedValueNext, furnitureDark, {
-      segments: 48,
-      roughness: 0.72
-    });
-    addSoftBoxMesh(rotation, min, min, computedValueDefault, computedValueCurrent, computedValuePending, computedValueNext, furnitureLight, {
-      segments: 48,
-      roughness: 0.9
-    });
+    buildCoffeeTableItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, darkColor, lightColor, accentColor);
   } else if (type.type === "squarecoffeetable") {
-    const localValue = Math.max(itemHeight * 0.22, 0.085);
-    const max = Math.max(itemHeight * 0.16, 0.065);
-    const computedValue = localValue + 0.012;
-    const localValueCurrent = Math.max(itemHeight - computedValue - max, 0.16);
-    const localValueNext = Math.max(itemWidth * 0.075, 0.045);
-    const localValuePrevious = Math.max(itemDepth * 0.035, 0.018);
-    const value = localValueCurrent * 0.72;
-    const computedValueCurrent = computedValue + localValueCurrent * 0.48;
-    const computedValueNext = itemWidth * 0.27;
-    const computedValuePrevious = itemWidth * 0.34;
-    const localValueLocal = furnitureItems;
-    const localValueItem = color;
-    addBoxMesh(rotation, itemWidth * 0.98, max, itemDepth * 1.03, 0, computedValue + localValueCurrent + max * 0.5, 0, localValueItem, {
-      radius: Math.min(itemWidth, itemDepth) * 0.035,
-      roughness: 0.5,
-      metalness: 0.02
-    });
-    addBoxMesh(rotation, localValueNext, localValueCurrent, itemDepth * 0.92, -itemWidth * 0.5 + localValueNext * 0.5, computedValue + localValueCurrent * 0.5, 0, localValueLocal, {
-      rounded: false,
-      roughness: 0.6
-    });
-    addBoxMesh(rotation, localValueNext, localValueCurrent, itemDepth * 0.92, itemWidth * 0.5 - localValueNext * 0.5, computedValue + localValueCurrent * 0.5, 0, localValueLocal, {
-      rounded: false,
-      roughness: 0.6
-    });
-    addBoxMesh(rotation, itemWidth * 0.86, localValueCurrent * 0.9, 0.035, 0, computedValue + localValueCurrent * 0.52, -itemDepth * 0.45, localValueLocal, {
-      rounded: false,
-      roughness: 0.75
-    });
-    addBoxMesh(rotation, itemWidth * 0.86, localValueCurrent * 0.1, itemDepth * 0.9, 0, computedValue + localValueCurrent * 0.08, 0, localValueLocal, {
-      rounded: false,
-      roughness: 0.58
-    });
-    for (const localValue of [-computedValuePrevious, 0, computedValuePrevious]) {
-      addBoxMesh(rotation, computedValueNext, value, localValuePrevious, localValue, computedValueCurrent, itemDepth * 0.48, localValueItem, {
-        radius: Math.min(itemWidth, itemDepth) * 0.025,
-        roughness: 0.52
-      });
-      const conditionalValue = localValue === 0 ? 0 : localValue + (localValue < 0 ? computedValueNext * 0.3 : -computedValueNext * 0.3);
-      addBoxMesh(rotation, 0.022, value * 0.2, 0.025, conditionalValue, computedValueCurrent, itemDepth * 0.505, furnitureDark, {
-        radius: 0.009,
-        metalness: 0.22,
-        roughness: 0.3
-      });
-    }
-    const localValueEntry = Math.max(Math.min(itemWidth, itemDepth) * 0.055, 0.035);
-    for (const localValueCurrent of [-itemWidth * 0.4, itemWidth * 0.4]) {
-      for (const localValue of [-itemDepth * 0.36, itemDepth * 0.36]) {
-        const mesh = addBoxMesh(rotation, localValueEntry, localValue, localValueEntry, localValueCurrent, localValue * 0.5, localValue, furnitureDark, {
-          radius: localValueEntry * 0.22,
-          roughness: 0.55,
-          metalness: 0.02
-        });
-        mesh.rotation.z = (localValueCurrent < 0 ? -1 : 1) * 0.09;
-        mesh.rotation.x = (localValue < 0 ? -1 : 1) * 0.06;
-      }
-    }
+    buildSquareCoffeeTableItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, accentColor, darkColor);
   } else if (type.type === "chair") {
-    buildTelevisionMesh(rotation, itemWidth, itemDepth, itemHeight, 0, 0, 0, furnitureItems, furnitureDark);
+    buildTelevisionMesh(meshGroup, itemWidth, itemDepth, itemHeight, 0, 0, 0, woodColor, darkColor);
   } else if (type.type === "sideboard") {
-    const localValue = Math.max(itemHeight, 1.8);
-    const computedValue = localValue * 0.39;
-    const value = localValue * 0.22;
-    const computedValueCurrent = computedValue + value;
-    const computedValueNext = localValue - computedValueCurrent;
-    const localValueCurrent = color;
-    const computedValuePrevious = itemWidth * 0.31;
-    const computedValueLocal = computedValue * 0.88;
-    const computedValueItem = computedValueNext * 0.86;
-    addBoxMesh(rotation, itemWidth, computedValue, itemDepth, 0, computedValue * 0.5, 0, furnitureItems, {
-      roughness: 0.58
-    });
-    addBoxMesh(rotation, itemWidth, 0.045, itemDepth, 0, computedValue, 0, color, {
-      roughness: 0.5
-    });
-    addBoxMesh(rotation, itemWidth, value, 0.045, 0, computedValue + value * 0.5, -itemDepth * 0.46, furnitureItems, {
-      rounded: false,
-      roughness: 0.62
-    });
-    addBoxMesh(rotation, itemWidth, computedValueNext, itemDepth, 0, computedValueCurrent + computedValueNext * 0.5, 0, furnitureItems, {
-      roughness: 0.58
-    });
-    for (const localValue of [-0.33, 0, 0.33]) {
-      addBoxMesh(rotation, computedValuePrevious, computedValueLocal, 0.026, itemWidth * localValue, computedValue * 0.48, itemDepth * 0.515, localValueCurrent, {
-        rounded: false,
-        roughness: 0.45
-      });
-      addBoxMesh(rotation, computedValuePrevious, computedValueItem, 0.026, itemWidth * localValue, computedValueCurrent + computedValueNext * 0.5, itemDepth * 0.515, localValueCurrent, {
-        rounded: false,
-        roughness: 0.45
-      });
-    }
+    buildSideboardItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, accentColor, accentColor);
   } else if (type.type === "shoecabinet") {
-    const localValue = Math.max(itemHeight, 1.9);
-    const localValueCurrent = color;
-    const localValueNext = color;
-    const computedValue = itemWidth * 0.5;
-    const value = itemWidth * 0.5;
-    const computedValueCurrent = -itemWidth * 0.25;
-    const computedValueNext = itemWidth * 0.25;
-    const computedValuePrevious = localValue * 0.22;
-    const computedValueLocal = localValue * 0.43;
-    const computedValueItem = localValue * 0.21;
-    const computedValueEntry = localValue * 0.37;
-    addBoxMesh(rotation, itemWidth * 0.98, localValue * 0.93, 0.045, 0, localValue * 0.48, -itemDepth * 0.47, furnitureItems, {
-      rounded: false,
-      roughness: 0.62
-    });
-    addBoxMesh(rotation, computedValue, computedValuePrevious * 0.56, itemDepth * 0.92, computedValueCurrent, computedValuePrevious * 0.35, 0, furnitureItems, {
-      roughness: 0.56
-    });
-    addBoxMesh(rotation, computedValue * 1.02, 0.055, itemDepth * 1.04, computedValueCurrent, computedValuePrevious * 0.67, 0, localValueNext, {
-      roughness: 0.5
-    });
-    addBoxMesh(rotation, value, computedValueLocal, itemDepth, computedValueNext, computedValueLocal * 0.5, 0, furnitureItems, {
-      roughness: 0.58
-    });
-    for (const localValue of [-0.245, 0.245]) {
-      addBoxMesh(rotation, value * 0.47, computedValueLocal * 0.84, 0.026, computedValueNext + value * localValue, computedValueLocal * 0.48, itemDepth * 0.515, localValueCurrent, {
-        rounded: false,
-        roughness: 0.45
-      });
-    }
-    const computedValueList = localValue - computedValueItem - 0.045;
-    addBoxMesh(rotation, computedValue, computedValueItem, itemDepth, computedValueCurrent, computedValueList + computedValueItem * 0.5, 0, furnitureItems, {
-      roughness: 0.58
-    });
-    for (const localValue of [-0.245, 0.245]) {
-      addBoxMesh(rotation, computedValue * 0.47, computedValueItem * 0.86, 0.026, computedValueCurrent + computedValue * localValue, computedValueList + computedValueItem * 0.5, itemDepth * 0.515, localValueCurrent, {
-        rounded: false,
-        roughness: 0.45
-      });
-    }
-    const computedValueText = localValue - computedValueEntry - 0.045;
-    addBoxMesh(rotation, value, computedValueEntry, itemDepth, computedValueNext, computedValueText + computedValueEntry * 0.5, 0, furnitureItems, {
-      roughness: 0.58
-    });
-    for (const localValue of [-0.245, 0.245]) {
-      addBoxMesh(rotation, value * 0.47, computedValueEntry * 0.9, 0.026, computedValueNext + value * localValue, computedValueText + computedValueEntry * 0.5, itemDepth * 0.515, localValueCurrent, {
-        rounded: false,
-        roughness: 0.45
-      });
-    }
+    buildShoeCabinetItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, accentColor, accentColor);
   } else if (type.type === "cabinet") {
-    addBoxMesh(rotation, itemWidth, itemHeight, itemDepth, 0, itemHeight / 2, 0, furnitureItems);
-    addBoxMesh(rotation, 0.018, itemHeight * 0.9, itemDepth * 1.01, 0, itemHeight * 0.52, itemDepth * 0.01, furnitureDark);
-    addBoxMesh(rotation, 0.025, 0.16, 0.035, -0.08, itemHeight * 0.55, itemDepth * 0.515, furnitureLight, {
-      metalness: 0.55
-    });
-    addBoxMesh(rotation, 0.025, 0.16, 0.035, 0.08, itemHeight * 0.55, itemDepth * 0.515, furnitureLight, {
-      metalness: 0.55
-    });
+    buildCabinetItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, darkColor, lightColor);
   } else if (type.type === "glasscabinet") {
-    const localValue = Math.min(Math.max(Math.min(itemWidth, itemDepth) * 0.1, 0.032), 0.058);
-    const min = Math.min(Math.max(itemDepth * 0.075, 0.018), 0.032);
-    const localValueCurrent = Math.min(Math.max(itemWidth * 0.014, 0.016), 0.03);
-    const max = Math.max(itemWidth - localValue * 2, itemWidth * 0.7);
-    const numericValue = 0.13;
-    const value = 0.3;
-    const count = 4;
-    const computedValue = itemHeight * numericValue;
-    const computedValueCurrent = itemHeight * value;
-    const computedValueNext = itemHeight - localValue - computedValueCurrent;
-    const halfValue = computedValueNext / count;
-    const length = [0.56, 0.24, 0.2];
-    const slicedValue = [0, length[0], length[0] + length[1]];
-    const slice = slicedValue.slice(1);
-    const localValueNext = Math.max(itemWidth * 0.005, 0.005);
-    const computedValuePrevious = itemDepth * 0.5 + 0.012;
-    const objectValue = {
-      rounded: false,
-      roughness: 0.62,
-      metalness: 0.015
-    };
-    const options = {
-      rounded: false,
-      roughness: 0.48,
-      metalness: 0.035
-    };
-    const objectValueCurrent = {
-      rounded: false,
-      transparent: true,
-      opacity: 0.28,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      roughness: 0.08,
-      metalness: 0.08,
-      castShadow: false,
-      receiveShadow: false,
-      renderOrder: 7
-    };
-    const objectValueNext = {
-      rounded: false,
-      transparent: true,
-      opacity: 0.5,
-      depthWrite: false,
-      roughness: 0.12,
-      metalness: 0,
-      castShadow: false,
-      receiveShadow: false,
-      renderOrder: 8
-    };
-    addBoxMesh(rotation, localValue, itemHeight, itemDepth, -itemWidth * 0.5 + localValue * 0.5, itemHeight * 0.5, 0, furnitureItems, objectValue);
-    addBoxMesh(rotation, localValue, itemHeight, itemDepth, itemWidth * 0.5 - localValue * 0.5, itemHeight * 0.5, 0, furnitureItems, objectValue);
-    addBoxMesh(rotation, max, itemHeight - localValue * 2, min, 0, itemHeight * 0.5, -itemDepth * 0.5 + min * 0.5, furnitureItems, {
-      ...objectValue,
-      roughness: 0.76
-    });
-    addBoxMesh(rotation, itemWidth, localValue, itemDepth, 0, itemHeight - localValue * 0.5, 0, furnitureItems, objectValue);
-    for (let zeroValue = 0; zeroValue < count; zeroValue += 1) {
-      addBoxMesh(rotation, max, localValue * 0.72, itemDepth * 0.9, 0, computedValueCurrent + halfValue * zeroValue, -itemDepth * 0.025, color, objectValue);
-    }
-    addBoxMesh(rotation, max, localValue * 0.72, itemDepth * 0.9, 0, computedValue, -itemDepth * 0.025, color, objectValue);
-    for (const localValueCurrent of slice) {
-      const computedValue = -max * 0.5 + max * localValueCurrent;
-      addBoxMesh(rotation, localValue * 0.72, itemHeight - localValue, itemDepth * 0.9, computedValue, (itemHeight - localValue) * 0.5, -itemDepth * 0.025, furnitureItems, objectValue);
-    }
-    const computedValueLocal = computedValueCurrent - computedValue - localValue * 0.9;
-    const list = [max * length[0], max * (1 - length[0])];
-    let computedValueItem = -max * 0.5;
-    for (let zeroValue = 0; zeroValue < list.length; zeroValue += 1) {
-      const computedValue = list[zeroValue] - localValueNext;
-      const value = computedValueItem + list[zeroValue] * 0.5;
-      addBoxMesh(rotation, computedValue, computedValueLocal, 0.03, value, value + (computedValueCurrent - value) * 0.5, computedValuePrevious, zeroValue ? color : furnitureItems, {
-        ...options,
-        roughness: 0.56
-      });
-      computedValueItem += list[zeroValue];
-    }
-    for (let zeroValue = 0; zeroValue < length.length; zeroValue += 1) {
-      const computedValue = -max * 0.5 + max * slicedValue[zeroValue];
-      const value = max * length[zeroValue];
-      const computedValueCurrent = computedValue + value * 0.5;
-      const localValue = Math.max(value - localValueCurrent * 1.65, value * 0.76);
-      const localValueNext = Math.max(computedValueNext - localValueCurrent * 1.55, computedValueNext * 0.86);
-      addBoxMesh(rotation, localValue, localValueNext, 0.018, computedValueCurrent, computedValueCurrent + computedValueNext * 0.5, computedValuePrevious, glass.glass, objectValueCurrent);
-      addBoxMesh(rotation, localValueCurrent, computedValueNext, 0.032, computedValue + localValueCurrent * 0.5, computedValueCurrent + computedValueNext * 0.5, computedValuePrevious + 0.009, furnitureItems, options);
-      if (zeroValue === length.length - 1) {
-        addBoxMesh(rotation, localValueCurrent, computedValueNext, 0.032, computedValue + value - localValueCurrent * 0.5, computedValueCurrent + computedValueNext * 0.5, computedValuePrevious + 0.009, furnitureItems, options);
-      }
-      const glassThickness = Math.max(localValue * 0.025, 0.007);
-      addBoxMesh(rotation, glassThickness, localValueNext * 0.88, 0.006, computedValueCurrent - localValue * 0.37, computedValueCurrent + computedValueNext * 0.52, computedValuePrevious + 0.014, 14282227, objectValueNext);
-      addBoxMesh(rotation, localValue * 0.34, Math.max(glassThickness * 0.11, 0.004), 0.006, computedValueCurrent - localValue * 0.18, computedValueCurrent + computedValueNext * 0.88, computedValuePrevious + 0.014, 15267578, objectValueNext);
-    }
-    addBoxMesh(rotation, max, localValueCurrent, 0.032, 0, computedValueCurrent + localValueCurrent * 0.5, computedValuePrevious + 0.009, furnitureItems, options);
-    addBoxMesh(rotation, max, localValueCurrent, 0.032, 0, itemHeight - localValue - localValueCurrent * 0.5, computedValuePrevious + 0.009, furnitureItems, options);
-    const lengthCurrent = [14736852, 13025203, 10327434, 7301474, color, furnitureLight];
-    const helperFn = (argPrimary, argSecondary, numericParam = 5, numericParamCurrent = 0) => {
-      const computedValue = max * length[argPrimary];
-      const value = -max * 0.5 + max * slicedValue[argPrimary];
-      const computedValueNext = computedValueCurrent + halfValue * argSecondary + localValue * 0.42;
-      const localValueCurrent = Math.max(computedValue * 0.022, 0.004);
-      const halfValueCurrent = (computedValue * 0.72 - localValueCurrent * (numericParam - 1)) / numericParam;
-      let computedValuePrevious = value + computedValue * 0.13;
-      for (let zeroValue = 0; zeroValue < numericParam; zeroValue += 1) {
-        const computedValue = halfValueCurrent * [0.8, 1.05, 0.9, 0.72, 0.96][(zeroValue + numericParamCurrent) % 5];
-        const value = halfValue * [0.48, 0.58, 0.52, 0.64, 0.55][(zeroValue * 2 + numericParamCurrent) % 5];
-        addBoxMesh(rotation, computedValue, value, itemDepth * 0.42, computedValuePrevious + computedValue * 0.5, computedValueNext + value * 0.5, itemDepth * 0.12, lengthCurrent[(zeroValue + numericParamCurrent) % lengthCurrent.length], {
-          radius: Math.min(computedValue * 0.12, 0.009),
-          roughness: 0.78,
-          metalness: 0
-        });
-        computedValuePrevious += computedValue + localValueCurrent;
-      }
-    };
-    const callback = (argPrimary, argSecondary, numericParam = 3, numericParamCurrent = 0) => {
-      const computedValue = max * length[argPrimary];
-      const value = -max * 0.5 + max * slicedValue[argPrimary] + computedValue * 0.5;
-      const computedValueNext = computedValueCurrent + halfValue * argSecondary + localValue * 0.42;
-      for (let zeroValue = 0; zeroValue < numericParam; zeroValue += 1) {
-        addBoxMesh(rotation, computedValue * 0.56, localValue * 0.48, itemDepth * 0.4, value, computedValueNext + localValue * (0.3 + zeroValue * 0.52), itemDepth * 0.12, lengthCurrent[(zeroValue + numericParamCurrent) % lengthCurrent.length], {
-          radius: 0.006,
-          roughness: 0.78,
-          metalness: 0
-        });
-      }
-    };
-    helperFn(0, 1, 7, 0);
-    helperFn(2, 2, 4, 2);
-    callback(0, 0, 3, 2);
-    callback(1, 2, 3, 4);
-    for (const [bayIndex, shelfIndex, softScale, softColor] of [[1, 1, 0.16, 12169895], [0, 2, 0.075, 9406334], [2, 3, 0.14, 13749184]]) {
-      const bayWidth = max * length[bayIndex];
-      const bayCenterX = -max * 0.5 + max * slicedValue[bayIndex] + bayWidth * 0.5;
-      const softBaseY = computedValueCurrent + halfValue * shelfIndex + localValue * 0.42;
-      addSoftBoxMesh(rotation, bayWidth * softScale * 0.72, bayWidth * softScale, halfValue * 0.46, bayCenterX, softBaseY + halfValue * 0.23, itemDepth * 0.12, softColor, {
-        segments: 24,
-        roughness: 0.68
-      });
-    }
+    buildGlassCabinetItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, themeColors, woodColor, accentColor, lightColor);
   } else if (type.type === "bookcase") {
-    const clampedCornerRadius = Math.min(Math.max(Math.min(itemWidth, itemDepth) * 0.11, 0.032), 0.062);
-    const localValue = Math.min(Math.max(itemDepth * 0.075, 0.018), 0.032);
-    const max = Math.max(itemWidth - clampedCornerRadius * 2, itemWidth * 0.72);
-    const numericValue = 0.255;
-    const arrayValue = [numericValue, 0.47, 0.59, 0.79];
-    const computedValue = itemHeight - clampedCornerRadius * 0.5;
-    const value = max * 0.27;
-    const computedValueCurrent = itemWidth * 0.5 - clampedCornerRadius * 1.5 - value;
-    const computedValueNext = max - value - clampedCornerRadius;
-    const computedValuePrevious = -max * 0.5 + computedValueNext * 0.5;
-    const computedValueLocal = max * 0.5 - value * 0.5;
-    const objectValue = {
-      rounded: false,
-      roughness: 0.62,
-      metalness: 0.015
-    };
-    const computedValueItem = itemDepth * 0.5 + 0.013;
-    addBoxMesh(rotation, clampedCornerRadius, itemHeight, itemDepth, -itemWidth * 0.5 + clampedCornerRadius * 0.5, itemHeight * 0.5, 0, furnitureItems, objectValue);
-    addBoxMesh(rotation, clampedCornerRadius, itemHeight, itemDepth, itemWidth * 0.5 - clampedCornerRadius * 0.5, itemHeight * 0.5, 0, furnitureItems, objectValue);
-    addBoxMesh(rotation, max, itemHeight * 0.95, localValue, 0, itemHeight * 0.5, -itemDepth * 0.5 + localValue * 0.5, furnitureDark, {
-      ...objectValue,
-      roughness: 0.76
-    });
-    addBoxMesh(rotation, max, itemHeight * numericValue - clampedCornerRadius * 0.5, itemDepth * 0.9, 0, itemHeight * numericValue * 0.5, -itemDepth * 0.025, color, {
-      ...objectValue,
-      roughness: 0.66
-    });
-    for (const localValue of arrayValue) {
-      addBoxMesh(rotation, max, clampedCornerRadius, itemDepth, 0, itemHeight * localValue, 0, color, objectValue);
-    }
-    addBoxMesh(rotation, itemWidth, clampedCornerRadius, itemDepth, 0, computedValue, 0, furnitureItems, objectValue);
-    const computedValueEntry = itemHeight * arrayValue[1] + clampedCornerRadius * 0.5;
-    const computedValueList = itemHeight - clampedCornerRadius;
-    addBoxMesh(rotation, clampedCornerRadius, computedValueList - computedValueEntry, itemDepth, computedValueCurrent, (computedValueList + computedValueEntry) * 0.5, 0, furnitureItems, objectValue);
-    const count = 3;
-    const computedValueText = clampedCornerRadius * 0.72;
-    const computedValueValue = itemHeight * numericValue - clampedCornerRadius * 0.5;
-    const localValueCurrent = Math.max(computedValueValue - computedValueText, itemHeight * 0.16);
-    const localValueNext = Math.max(itemWidth * 0.008, 0.008);
-    const computedValueSource = -max * 0.18;
-    const computedValueTarget = computedValueSource + max * 0.5 - localValueNext * 0.5;
-    const computedValueDefault = max - computedValueTarget - localValueNext;
-    const halfValue = (localValueCurrent - localValueNext * (count - 1)) / count;
-    for (let zeroValue = 0; zeroValue < count; zeroValue += 1) {
-      const computedValue = computedValueText + halfValue * 0.5 + zeroValue * (halfValue + localValueNext);
-      addBoxMesh(rotation, computedValueTarget, halfValue, 0.026, -max * 0.5 + computedValueTarget * 0.5, computedValue, computedValueItem, furnitureItems, {
-        ...objectValue,
-        roughness: 0.55
-      });
-      addBoxMesh(rotation, computedValueDefault, halfValue, 0.026, computedValueSource + localValueNext * 0.5 + computedValueDefault * 0.5, computedValue, computedValueItem, color, {
-        ...objectValue,
-        roughness: 0.55
-      });
-    }
-    const computedValueFallback = itemHeight * (arrayValue[2] - arrayValue[1]) - clampedCornerRadius * 1.15;
-    addBoxMesh(rotation, computedValueNext * 0.97, computedValueFallback, 0.028, computedValuePrevious, itemHeight * (arrayValue[1] + arrayValue[2]) * 0.5, computedValueItem, furnitureItems, {
-      ...objectValue,
-      roughness: 0.54
-    });
-    const length = [14276045, 12499117, 10459536, 7828334, furnitureLight, color];
-    const helperFn = ({
-      startX: arg,
-      maxWidth: argPrimary,
-      shelfY: argPrimaryCurrent,
-      availableHeight: argPrimaryNext,
-      count: argPrimaryPrevious = 6,
-      seed: argPrimaryLocal = 0
-    }) => {
-      const max = Math.max(argPrimary * 0.018, 0.006);
-      const localValueCurrent = Math.max((argPrimary - max * (argPrimaryPrevious + 1)) / argPrimaryPrevious, 0.026);
-      let computedValue = arg + max;
-      for (let zeroValue = 0; zeroValue < argPrimaryPrevious; zeroValue += 1) {
-        const localValue = [0.72, 0.9, 0.78, 1.04, 0.82, 0.68][(zeroValue + argPrimaryLocal) % 6];
-        const computedValue = localValueCurrent * localValue;
-        const localValueNext = [0.72, 0.88, 0.78, 0.94, 0.82, 0.68][(zeroValue * 2 + argPrimaryLocal) % 6];
-        const value = argPrimaryNext * localValueNext;
-        if (computedValue + computedValue > arg + argPrimary - max) {
-          break;
-        }
-        const mesh = addBoxMesh(rotation, computedValue, value, itemDepth * (0.47 + (zeroValue + argPrimaryLocal) % 3 * 0.045), computedValue + computedValue * 0.5, argPrimaryCurrent + value * 0.5, itemDepth * 0.15, length[(zeroValue + argPrimaryLocal) % length.length], {
-          radius: Math.min(computedValue * 0.14, 0.012),
-          roughness: 0.78,
-          metalness: 0
-        });
-        if (zeroValue === argPrimaryPrevious - 1 && argPrimaryLocal % 2 === 1) {
-          mesh.rotation.z = -0.07;
-        }
-        computedValue += computedValue + max;
-      }
-    };
-    const callback = (argPrimary, argSecondary, argTertiary, numericParam = 3, numericParamCurrent = 0) => {
-      for (let zeroValue = 0; zeroValue < numericParam; zeroValue += 1) {
-        addBoxMesh(rotation, argTertiary, clampedCornerRadius * 0.54, itemDepth * 0.48, argPrimary, argSecondary + clampedCornerRadius * (0.38 + zeroValue * 0.56), itemDepth * 0.15, length[(zeroValue + numericParamCurrent) % length.length], {
-          radius: 0.007,
-          roughness: 0.78,
-          metalness: 0
-        });
-      }
-    };
-    const shelfY = itemHeight * arrayValue[0] + clampedCornerRadius * 0.5;
-    helperFn({
-      startX: -max * 0.47,
-      maxWidth: max * 0.29,
-      shelfY,
-      availableHeight: itemHeight * 0.15,
-      count: 5,
-      seed: 2
-    });
-    helperFn({
-      startX: max * 0.04,
-      maxWidth: max * 0.38,
-      shelfY,
-      availableHeight: itemHeight * 0.16,
-      count: 7,
-      seed: 4
-    });
-    const shelfYCurrent = itemHeight * arrayValue[1] + clampedCornerRadius * 0.5;
-    helperFn({
-      startX: computedValueCurrent + clampedCornerRadius * 0.6,
-      maxWidth: value * 0.82,
-      shelfY: shelfYCurrent,
-      availableHeight: itemHeight * 0.075,
-      count: 4,
-      seed: 1
-    });
-    const shelfYNext = itemHeight * arrayValue[2] + clampedCornerRadius * 0.5;
-    helperFn({
-      startX: -max * 0.47,
-      maxWidth: computedValueNext * 0.42,
-      shelfY: shelfYNext,
-      availableHeight: itemHeight * 0.14,
-      count: 6,
-      seed: 0
-    });
-    addBoxMesh(rotation, computedValueNext * 0.17, itemHeight * 0.12, 0.022, computedValuePrevious + computedValueNext * 0.27, shelfYNext + itemHeight * 0.065, itemDepth * 0.22, 11972517, {
-      rounded: false,
-      roughness: 0.5
-    });
-    addBoxMesh(rotation, computedValueNext * 0.125, itemHeight * 0.085, 0.026, computedValuePrevious + computedValueNext * 0.27, shelfYNext + itemHeight * 0.065, itemDepth * 0.235, 7762283, {
-      rounded: false,
-      roughness: 0.42
-    });
-    callback(computedValueLocal, shelfYNext, value * 0.48, 3, 3);
-    const computedValuePending = itemHeight * arrayValue[3] + clampedCornerRadius * 0.5;
-    callback(computedValuePrevious - computedValueNext * 0.22, computedValuePending, computedValueNext * 0.24, 2, 1);
-    addSoftBoxMesh(rotation, computedValueNext * 0.055, computedValueNext * 0.075, itemHeight * 0.12, computedValuePrevious - computedValueNext * 0.08, computedValuePending + itemHeight * 0.06, itemDepth * 0.12, 5196615, {
-      segments: 22,
-      roughness: 0.66
-    });
-    addSoftBoxMesh(rotation, computedValueNext * 0.045, computedValueNext * 0.064, itemHeight * 0.15, computedValuePrevious + computedValueNext * 0.08, computedValuePending + itemHeight * 0.075, itemDepth * 0.12, 6643802, {
-      segments: 22,
-      roughness: 0.66
-    });
-    callback(computedValueLocal, computedValuePending, value * 0.5, 2, 4);
+    buildBookcaseItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, darkColor, accentColor, lightColor);
   } else if (type.type === "shelf") {
-    const localValue = Math.min(Math.max(Math.min(itemWidth, itemDepth) * 0.07, 0.028), 0.052);
-    const min = Math.min(Math.max(itemHeight * 0.022, 0.028), 0.052);
-    const max = Math.max(itemDepth - localValue * 1.4, itemDepth * 0.78);
-    const objectValue = {
-      rounded: false,
-      metalness: 0.62,
-      roughness: 0.28
-    };
-    const options = {
-      rounded: false,
-      metalness: 0.18,
-      roughness: 0.48
-    };
-    for (const localValueCurrent of [-itemWidth * 0.5 + localValue * 0.5, itemWidth * 0.5 - localValue * 0.5]) {
-      for (const localValue of [-itemDepth * 0.5 + localValue * 0.5, itemDepth * 0.5 - localValue * 0.5]) {
-        addBoxMesh(rotation, localValue, itemHeight, localValue, localValueCurrent, itemHeight * 0.5, localValue, furnitureItems, objectValue);
-      }
-    }
-    for (const localValueCurrent of [0.04, 0.26, 0.49, 0.72, 0.96]) {
-      addBoxMesh(rotation, itemWidth, min, max, 0, itemHeight * localValueCurrent, 0, localValueCurrent === 0.96 ? furnitureLight : color, options);
-      addBoxMesh(rotation, itemWidth, localValue * 0.65, localValue, 0, itemHeight * localValueCurrent, -itemDepth * 0.5 + localValue * 0.5, furnitureItems, objectValue);
-    }
-    const localValueCurrent = Math.max(itemWidth - localValue * 2, localValue);
-    const computedValue = itemHeight * 0.84;
-    const hypot = Math.hypot(localValueCurrent, computedValue);
-    for (const localValueNext of [-1, 1]) {
-      const mesh = addBoxMesh(rotation, localValue * 0.48, hypot, localValue * 0.42, 0, itemHeight * 0.5, -itemDepth * 0.5 + localValue * 0.18, furnitureItems, {
-        ...objectValue,
-        castShadow: false
-      });
-      mesh.rotation.z = localValueNext * Math.atan2(localValueCurrent, computedValue);
-    }
+    buildShelfItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, accentColor, lightColor);
   } else if (type.type === "pillar") {
-    const localValue = Math.min(glass.wallOpacity * 1.75, 0.55);
-    const material = createGlassPhysicalMaterial(glass.wall, localValue, {
-      depthWrite: false,
-      depthFunc: THREE.LessDepth
-    });
-    const localValueCurrent = createFloorStandardMaterial(glass.wall, localValue, {
-      topColor: glass.wallTop ?? glass.wall
-    });
-    const position = new THREE.Mesh(new THREE.BoxGeometry(itemWidth, itemHeight, itemDepth), [material, material, localValueCurrent, material, material, material]);
-    position.position.y = itemHeight * 0.5;
-    setWallGradientHeight(THREE, position.geometry, "y", itemHeight * 0.5, 1, itemHeight);
-    position.castShadow = true;
-    position.receiveShadow = true;
-    position.renderOrder = 4;
-    position.userData.reflectionRole = "wall";
-    position.layers.set(HELPER_LAYER);
-    rotation.add(position);
+    buildPillarItemMeshGroup(meshGroup, type, itemWidth, itemDepth, itemHeight, themeColors);
   } else if (type.type === "wallcabinet") {
-    const computedValue = itemHeight * 0.28;
-    const value = itemHeight - computedValue;
-    const computedValueCurrent = 1.4 + computedValue;
-    addBoxMesh(rotation, itemWidth, value, itemDepth, 0, computedValueCurrent + value * 0.5, 0, furnitureItems);
-    addBoxMesh(rotation, itemWidth, computedValue, 0.045, 0, 1.4 + computedValue * 0.5, -itemDepth * 0.45, furnitureItems, {
-      rounded: false,
-      roughness: 0.62
-    });
-    addBoxMesh(rotation, itemWidth * 1.02, 0.045, itemDepth * 1.05, 0, 1.4, 0, color, {
-      roughness: 0.5
-    });
-    addBoxMesh(rotation, itemWidth * 1.02, 0.045, itemDepth * 1.05, 0, computedValueCurrent, 0, color, {
-      roughness: 0.5
-    });
-    addBoxMesh(rotation, 0.045, computedValue, itemDepth, -itemWidth * 0.49, 1.4 + computedValue * 0.5, 0, furnitureItems);
-    addBoxMesh(rotation, 0.045, computedValue, itemDepth, itemWidth * 0.49, 1.4 + computedValue * 0.5, 0, furnitureItems);
-    const computedValueNext = itemWidth * 0.31;
-    for (const localValue of [-0.33, 0, 0.33]) {
-      addBoxMesh(rotation, computedValueNext, value * 0.9, 0.026, itemWidth * localValue, computedValueCurrent + value * 0.5, itemDepth * 0.515, color, {
-        rounded: false,
-        roughness: 0.45
-      });
-    }
+    buildWallCabinetItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, accentColor);
   } else if (["kitchenbase", "kitchensink", "kitchencooktop"].includes(type.type)) {
-    const value = itemHeight * 0.1;
-    const computedValue = itemHeight * 0.07;
-    const computedValueCurrent = itemHeight - value - computedValue;
-    const computedValueNext = value + computedValueCurrent * 0.5;
-    addBoxMesh(rotation, itemWidth * 0.96, value, itemDepth * 0.8, 0, value * 0.5, -itemDepth * 0.06, furnitureDark, {
+    const toeKickHeight = itemHeight * 0.1;
+    const counterTopGap = itemHeight * 0.07;
+    const cabinetBodyHeight = itemHeight - toeKickHeight - counterTopGap;
+    const cabinetBodyCenter = toeKickHeight + cabinetBodyHeight * 0.5;
+    addBoxMesh(meshGroup, itemWidth * 0.96, toeKickHeight, itemDepth * 0.8, 0, toeKickHeight * 0.5, -itemDepth * 0.06, darkColor, {
       rounded: false,
       roughness: 0.52
     });
-    addBoxMesh(rotation, itemWidth, computedValueCurrent, itemDepth, 0, computedValueNext, 0, furnitureItems, {
+    addBoxMesh(meshGroup, itemWidth, cabinetBodyHeight, itemDepth, 0, cabinetBodyCenter, 0, woodColor, {
       rounded: false,
       roughness: 0.58
     });
-    addBoxMesh(rotation, itemWidth * 1.02, computedValue, itemDepth * 1.04, 0, itemHeight - computedValue * 0.5, 0, furnitureLight, {
+    addBoxMesh(meshGroup, itemWidth * 1.02, counterTopGap, itemDepth * 1.04, 0, itemHeight - counterTopGap * 0.5, 0, lightColor, {
       rounded: false,
       roughness: 0.42
     });
-    const localValue = Math.max(2, Math.min(6, Math.round(itemWidth / 0.6)));
-    const halfValue = itemWidth / localValue;
-    for (let zeroValue = 0; zeroValue < localValue; zeroValue += 1) {
-      const computedValue = -itemWidth * 0.5 + halfValue * (zeroValue + 0.5);
-      addBoxMesh(rotation, halfValue * 0.92, computedValueCurrent * 0.9, 0.025, computedValue, computedValueNext, itemDepth * 0.515, color, {
+    const drawerCount = Math.max(2, Math.min(6, Math.round(itemWidth / 0.6)));
+    const drawerWidth = itemWidth / drawerCount;
+    for (let drawerIndex = 0; drawerIndex < drawerCount; drawerIndex += 1) {
+      const drawerCenterX = -itemWidth * 0.5 + drawerWidth * (drawerIndex + 0.5);
+      addBoxMesh(meshGroup, drawerWidth * 0.92, cabinetBodyHeight * 0.9, 0.025, drawerCenterX, cabinetBodyCenter, itemDepth * 0.515, accentColor, {
         rounded: false,
         roughness: 0.46
       });
-      addBoxMesh(rotation, halfValue * 0.28, 0.022, 0.03, computedValue, value + computedValueCurrent * 0.83, itemDepth * 0.535, furnitureDark, {
+      addBoxMesh(meshGroup, drawerWidth * 0.28, 0.022, 0.03, drawerCenterX, toeKickHeight + cabinetBodyHeight * 0.83, itemDepth * 0.535, darkColor, {
         rounded: false,
         metalness: 0.28,
         roughness: 0.3
       });
     }
     if (type.type === "kitchensink") {
-      addBoxMesh(rotation, itemWidth * 0.42, 0.025, itemDepth * 0.52, 0, itemHeight + 0.008, 0, furnitureDark, {
+      addBoxMesh(meshGroup, itemWidth * 0.42, 0.025, itemDepth * 0.52, 0, itemHeight + 0.008, 0, darkColor, {
         rounded: false,
         metalness: 0.42,
         roughness: 0.28
       });
-      addBoxMesh(rotation, itemWidth * 0.34, 0.02, itemDepth * 0.4, 0, itemHeight + 0.022, 0, color, {
+      addBoxMesh(meshGroup, itemWidth * 0.34, 0.02, itemDepth * 0.4, 0, itemHeight + 0.022, 0, accentColor, {
         rounded: false,
         metalness: 0.18,
         roughness: 0.34
       });
-      addSoftBoxMesh(rotation, 0.018, 0.018, itemHeight * 0.22, itemWidth * 0.22, itemHeight + itemHeight * 0.11, -itemDepth * 0.17, furnitureDark, {
+      addSoftBoxMesh(meshGroup, 0.018, 0.018, itemHeight * 0.22, itemWidth * 0.22, itemHeight + itemHeight * 0.11, -itemDepth * 0.17, darkColor, {
         segments: 20,
         metalness: 0.65,
         roughness: 0.2
       });
-      addBoxMesh(rotation, itemWidth * 0.16, 0.035, 0.035, itemWidth * 0.14, itemHeight + itemHeight * 0.2, -itemDepth * 0.17, furnitureDark, {
+      addBoxMesh(meshGroup, itemWidth * 0.16, 0.035, 0.035, itemWidth * 0.14, itemHeight + itemHeight * 0.2, -itemDepth * 0.17, darkColor, {
         rounded: false,
         metalness: 0.65,
         roughness: 0.2
       });
     } else if (type.type === "kitchencooktop") {
-      addBoxMesh(rotation, itemWidth * 0.48, 0.025, itemDepth * 0.55, 0, itemHeight + 0.008, 0, furnitureDark, {
+      addBoxMesh(meshGroup, itemWidth * 0.48, 0.025, itemDepth * 0.55, 0, itemHeight + 0.008, 0, darkColor, {
         rounded: false,
         metalness: 0.32,
         roughness: 0.25
       });
-      for (const localValue of [-itemWidth * 0.13, itemWidth * 0.13]) {
-        for (const localValue of [-itemDepth * 0.14, itemDepth * 0.14]) {
-          addSoftBoxMesh(rotation, itemWidth * 0.06, itemWidth * 0.06, 0.018, localValue, itemHeight + 0.028, localValue, color, {
+      for (const burnerOffsetX of [-itemWidth * 0.13, itemWidth * 0.13]) {
+        for (const burnerOffsetZ of [-itemDepth * 0.14, itemDepth * 0.14]) {
+          addSoftBoxMesh(meshGroup, itemWidth * 0.06, itemWidth * 0.06, 0.018, burnerOffsetZ, itemHeight + 0.028, burnerOffsetZ, accentColor, {
             segments: 28,
             metalness: 0.42,
             roughness: 0.26
           });
-          addSoftBoxMesh(rotation, itemWidth * 0.025, itemWidth * 0.025, 0.025, localValue, itemHeight + 0.045, localValue, furnitureDark, {
+          addSoftBoxMesh(meshGroup, itemWidth * 0.025, itemWidth * 0.025, 0.025, burnerOffsetZ, itemHeight + 0.045, burnerOffsetZ, darkColor, {
             segments: 24,
             metalness: 0.5,
             roughness: 0.22
@@ -11082,1435 +13730,430 @@ function buildStudioItemMeshGroup(type, optionalValue = null) {
       }
     }
   } else if (type.type === "fridge") {
-    addBoxMesh(rotation, itemWidth, itemHeight, itemDepth, 0, itemHeight / 2, 0, furnitureLight, {
-      metalness: 0.18,
-      roughness: 0.5
-    });
-    addBoxMesh(rotation, itemWidth * 0.88, 0.018, itemDepth * 1.01, 0, itemHeight * 0.42, itemDepth * 0.01, furnitureDark, {
-      metalness: 0.5
-    });
-    addBoxMesh(rotation, 0.025, itemHeight * 0.27, 0.035, itemWidth * 0.35, itemHeight * 0.65, itemDepth * 0.515, furnitureDark, {
-      metalness: 0.7
-    });
+    buildFridgeItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, darkColor);
   } else if (type.type === "storagewaterheater") {
-    const localValue = Math.min(itemDepth * 0.43, itemHeight * 0.44);
-    const computedValue = itemHeight * 0.52;
-    addBoxMesh(rotation, itemWidth * 0.78, itemHeight * 0.12, itemDepth * 0.22, 0, itemHeight * 0.1, -itemDepth * 0.36, furnitureDark, {
-      rounded: false,
-      metalness: 0.55,
-      roughness: 0.3
-    });
-    addSoftBoxMesh(rotation, localValue, localValue, itemWidth * 0.82, 0, computedValue, 0, furnitureLight, {
-      segments: 36,
-      rotationZ: Math.PI / 2,
-      metalness: 0.2,
-      roughness: 0.42
-    });
-    for (const localValueCurrent of [-itemWidth * 0.43, itemWidth * 0.43]) {
-      addSoftBoxMesh(rotation, localValue * 1.03, localValue * 1.03, 0.025, localValueCurrent, computedValue, 0, color, {
-        segments: 36,
-        rotationZ: Math.PI / 2,
-        metalness: 0.28,
-        roughness: 0.34
-      });
-    }
-    addBoxMesh(rotation, itemWidth * 0.31, itemHeight * 0.23, 0.026, 0, itemHeight * 0.51, itemDepth * 0.44, furnitureDark, {
-      rounded: false,
-      metalness: 0.18,
-      roughness: 0.25
-    });
-    addBoxMesh(rotation, itemWidth * 0.16, itemHeight * 0.045, 0.018, 0, itemHeight * 0.58, itemDepth * 0.46, 7706534, {
-      rounded: false,
-      emissive: 7706534,
-      emissiveIntensity: 0.18,
-      roughness: 0.2
-    });
-    for (const localValue of [-itemWidth * 0.28, itemWidth * 0.28]) {
-      addSoftBoxMesh(rotation, 0.022, 0.022, itemHeight * 0.16, localValue, itemHeight * 0.08, itemDepth * 0.12, localValue < 0 ? 4885698 : 12868184, {
-        segments: 18,
-        metalness: 0.55,
-        roughness: 0.24
-      });
-      addSoftBoxMesh(rotation, 0.04, 0.04, 0.028, localValue, 0.015, itemDepth * 0.12, furnitureDark, {
-        segments: 20,
-        metalness: 0.45,
-        roughness: 0.28
-      });
-    }
+    buildStorageWaterHeaterItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, darkColor, accentColor);
   } else if (type.type === "gaswaterheater") {
-    const computedValue = itemHeight * 0.82;
-    addBoxMesh(rotation, itemWidth, computedValue, itemDepth, 0, itemHeight * 0.47, 0, furnitureLight, {
-      rounded: false,
-      metalness: 0.12,
-      roughness: 0.46
-    });
-    addBoxMesh(rotation, itemWidth * 0.86, computedValue * 0.42, 0.026, 0, itemHeight * 0.55, itemDepth * 0.515, color, {
-      rounded: false,
-      roughness: 0.36
-    });
-    addBoxMesh(rotation, itemWidth * 0.44, computedValue * 0.18, 0.018, 0, itemHeight * 0.67, itemDepth * 0.54, furnitureDark, {
-      rounded: false,
-      metalness: 0.14,
-      roughness: 0.22
-    });
-    for (let zeroValue = 0; zeroValue < 5; zeroValue += 1) {
-      addBoxMesh(rotation, itemWidth * 0.62, 0.012, 0.02, 0, itemHeight * (0.24 + zeroValue * 0.07), itemDepth * 0.525, furnitureDark, {
-        rounded: false,
-        roughness: 0.3
-      });
-    }
-    addSoftBoxMesh(rotation, itemDepth * 0.17, itemDepth * 0.17, itemHeight * 0.18, 0, itemHeight * 0.91, 0, furnitureDark, {
-      segments: 24,
-      metalness: 0.58,
-      roughness: 0.24
-    });
-    addSoftBoxMesh(rotation, itemDepth * 0.22, itemDepth * 0.22, 0.035, 0, itemHeight * 0.84, 0, color, {
-      segments: 24,
-      metalness: 0.5,
-      roughness: 0.25
-    });
-    for (const [localValue, localValueCurrent] of [[-itemWidth * 0.28, 4885698], [0, 9410205], [itemWidth * 0.28, 12868184]]) {
-      addSoftBoxMesh(rotation, 0.018, 0.018, itemHeight * 0.18, localValue, itemHeight * 0.09, itemDepth * 0.12, localValueCurrent, {
-        segments: 18,
-        metalness: 0.62,
-        roughness: 0.22
-      });
-      addSoftBoxMesh(rotation, 0.034, 0.034, 0.025, localValue, 0.014, itemDepth * 0.12, furnitureDark, {
-        segments: 18,
-        metalness: 0.5,
-        roughness: 0.25
-      });
-    }
+    buildGasWaterHeaterItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, accentColor, darkColor);
   } else if (type.type === "pipelinewaterpurifier") {
-    const computedValue = itemHeight * 0.9;
-    addBoxMesh(rotation, itemWidth, computedValue, itemDepth, 0, computedValue * 0.5, 0, furnitureLight, {
-      rounded: false,
-      metalness: 0.04,
-      roughness: 0.4
-    });
-    addBoxMesh(rotation, itemWidth * 0.92, computedValue * 0.27, 0.028, 0, itemHeight * 0.76, itemDepth * 0.515, furnitureDark, {
-      rounded: false,
-      metalness: 0.16,
-      roughness: 0.18
-    });
-    addBoxMesh(rotation, itemWidth * 0.34, computedValue * 0.045, 0.014, -itemWidth * 0.08, itemHeight * 0.79, itemDepth * 0.54, 10470608, {
-      rounded: false,
-      emissive: 10470608,
-      emissiveIntensity: 0.2,
-      roughness: 0.22
-    });
-    for (const localValue of [-0.26, 0, 0.26]) {
-      addSoftBoxMesh(rotation, Math.min(itemWidth, itemDepth) * 0.055, Math.min(itemWidth, itemDepth) * 0.055, 0.018, itemWidth * localValue, itemHeight * 0.66, itemDepth * 0.535, color, {
-        segments: 24,
-        rotationX: Math.PI / 2,
-        metalness: 0.22,
-        roughness: 0.28
-      });
-    }
-    for (const localValue of [-itemWidth * 0.2, itemWidth * 0.2]) {
-      addSoftBoxMesh(rotation, 0.014, 0.014, itemHeight * 0.12, localValue, itemHeight * 0.49, itemDepth * 0.48, furnitureDark, {
-        segments: 18,
-        metalness: 0.46,
-        roughness: 0.22
-      });
-      addSoftBoxMesh(rotation, 0.024, 0.018, 0.035, localValue, itemHeight * 0.425, itemDepth * 0.52, furnitureDark, {
-        segments: 18,
-        rotationX: Math.PI / 2,
-        metalness: 0.46,
-        roughness: 0.22
-      });
-    }
-    addBoxMesh(rotation, itemWidth * 0.68, itemHeight * 0.045, itemDepth * 0.52, 0, itemHeight * 0.11, itemDepth * 0.16, furnitureDark, {
-      rounded: false,
-      metalness: 0.2,
-      roughness: 0.3
-    });
-    addBoxMesh(rotation, itemWidth * 0.42, 0.028, itemDepth * 0.28, 0, itemHeight * 0.16, itemDepth * 0.28, color, {
-      rounded: false,
-      roughness: 0.34
-    });
+    buildPipelineWaterPurifierItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, darkColor, accentColor);
   } else if (type.type === "tea_bar_machine") {
-    const computedValue = itemHeight * 0.67;
-    const value = computedValue + itemHeight * 0.045;
-    const computedValueCurrent = itemHeight - value;
-    addBoxMesh(rotation, itemWidth, computedValue, itemDepth, 0, computedValue * 0.5, 0, furnitureLight, {
-      rounded: false,
-      roughness: 0.5,
-      metalness: 0.04
-    });
-    addBoxMesh(rotation, itemWidth * 0.94, 0.028, itemDepth * 1.02, 0, computedValue * 0.5, itemDepth * 0.515, furnitureDark, {
-      rounded: false,
-      roughness: 0.34
-    });
-    addBoxMesh(rotation, itemWidth * 0.94, 0.032, itemDepth * 1.02, 0, computedValue, 0, color, {
-      rounded: false,
-      roughness: 0.42
-    });
-    addBoxMesh(rotation, itemWidth * 0.94, itemHeight * 0.04, itemDepth * 1.04, 0, value, 0, furnitureLight, {
-      rounded: false,
-      roughness: 0.36,
-      metalness: 0.1
-    });
-    addBoxMesh(rotation, itemWidth * 0.92, computedValueCurrent, 0.032, 0, value + computedValueCurrent * 0.5, -itemDepth * 0.46, color, {
-      rounded: false,
-      roughness: 0.56
-    });
-    for (const localValue of [-itemWidth * 0.46, itemWidth * 0.46]) {
-      addBoxMesh(rotation, itemWidth * 0.075, computedValueCurrent, itemDepth * 0.78, localValue, value + computedValueCurrent * 0.5, 0, furnitureLight, {
-        rounded: false,
-        roughness: 0.48
-      });
-    }
-    addBoxMesh(rotation, itemWidth * 0.86, itemHeight * 0.14, itemDepth * 0.18, 0, itemHeight * 0.9, itemDepth * 0.48, furnitureDark, {
-      rounded: false,
-      metalness: 0.32,
-      roughness: 0.22
-    });
-    for (const localValue of [-itemWidth * 0.22, itemWidth * 0.22]) {
-      addSoftBoxMesh(rotation, Math.min(itemWidth, itemDepth) * 0.035, Math.min(itemWidth, itemDepth) * 0.035, 0.018, localValue, itemHeight * 0.9, itemDepth * 0.585, color, {
-        segments: 20,
-        rotationX: Math.PI / 2,
-        metalness: 0.2,
-        roughness: 0.25
-      });
-      addSoftBoxMesh(rotation, 0.012, 0.012, itemHeight * 0.11, localValue, itemHeight * 0.79, itemDepth * 0.5, furnitureDark, {
-        segments: 18,
-        metalness: 0.48,
-        roughness: 0.22
-      });
-      const computedValue = Math.min(itemWidth, itemDepth) * 0.16;
-      addSoftBoxMesh(rotation, computedValue * 0.9, computedValue, itemHeight * 0.13, localValue, itemHeight * 0.75, itemDepth * 0.12, localValue < 0 ? 8752009 : color, {
-        segments: 28,
-        metalness: 0.08,
-        roughness: 0.34
-      });
-      addSoftBoxMesh(rotation, computedValue * 0.84, computedValue * 0.84, 0.016, localValue, itemHeight * 0.82, itemDepth * 0.12, furnitureDark, {
-        segments: 28,
-        metalness: 0.18,
-        roughness: 0.28
-      });
-      addBoxMesh(rotation, itemWidth * 0.12, itemHeight * 0.06, 0.016, localValue, itemHeight * 0.77, itemDepth * 0.3, furnitureDark, {
-        radius: 0.012,
-        metalness: 0.24,
-        roughness: 0.24
-      });
-    }
-    addBoxMesh(rotation, itemWidth * 0.92, itemHeight * 0.055, itemDepth * 0.82, 0, 0.028, 0, furnitureDark, {
-      rounded: false,
-      roughness: 0.36
-    });
+    buildTeaBarMachineItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, darkColor, accentColor);
   } else if (type.type === "washer" || type.type === "dryer") {
-    const comparisonFlag = type.type === "dryer";
-    const computedValue = itemWidth * (comparisonFlag ? 0.32 : 0.29);
-    addBoxMesh(rotation, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, furnitureLight, {
+    const isDryer = type.type === "dryer";
+    const doorRadius = itemWidth * (isDryer ? 0.32 : 0.29);
+    addBoxMesh(meshGroup, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, lightColor, {
       rounded: false,
       metalness: 0.1,
       roughness: 0.48
     });
-    addBoxMesh(rotation, itemWidth * 0.92, itemHeight * 0.18, 0.035, 0, itemHeight * 0.86, itemDepth * 0.505, color, {
+    addBoxMesh(meshGroup, itemWidth * 0.92, itemHeight * 0.18, 0.035, 0, itemHeight * 0.86, itemDepth * 0.505, accentColor, {
       rounded: false,
       roughness: 0.4
     });
-    addSoftBoxMesh(rotation, computedValue, computedValue, 0.045, 0, itemHeight * 0.47, itemDepth * 0.515, furnitureDark, {
+    addSoftBoxMesh(meshGroup, doorRadius, doorRadius, 0.045, 0, itemHeight * 0.47, itemDepth * 0.515, darkColor, {
       segments: 40,
       rotationX: Math.PI / 2,
       metalness: 0.32,
       roughness: 0.28
     });
-    addSoftBoxMesh(rotation, computedValue * 0.74, computedValue * 0.74, 0.03, 0, itemHeight * 0.47, itemDepth * 0.545, comparisonFlag ? 2502715 : 3622485, {
+    addSoftBoxMesh(meshGroup, doorRadius * 0.74, doorRadius * 0.74, 0.03, 0, itemHeight * 0.47, itemDepth * 0.545, isDryer ? 2502715 : 3622485, {
       segments: 40,
       rotationX: Math.PI / 2,
       metalness: 0.08,
       roughness: 0.22
     });
-    addSoftBoxMesh(rotation, itemWidth * 0.055, itemWidth * 0.055, 0.035, itemWidth * 0.27, itemHeight * 0.86, itemDepth * 0.535, furnitureDark, {
+    addSoftBoxMesh(meshGroup, itemWidth * 0.055, itemWidth * 0.055, 0.035, itemWidth * 0.27, itemHeight * 0.86, itemDepth * 0.535, darkColor, {
       segments: 24,
       rotationX: Math.PI / 2,
       metalness: 0.4,
       roughness: 0.25
     });
-    addBoxMesh(rotation, itemWidth * 0.25, itemHeight * 0.035, 0.026, -itemWidth * 0.23, itemHeight * 0.86, itemDepth * 0.535, furnitureDark, {
+    addBoxMesh(meshGroup, itemWidth * 0.25, itemHeight * 0.035, 0.026, -itemWidth * 0.23, itemHeight * 0.86, itemDepth * 0.535, darkColor, {
       rounded: false,
       roughness: 0.3
     });
-    if (!comparisonFlag) {
-      addBoxMesh(rotation, itemWidth * 0.2, itemHeight * 0.055, 0.025, -itemWidth * 0.3, itemHeight * 0.12, itemDepth * 0.525, color, {
+    if (!isDryer) {
+      addBoxMesh(meshGroup, itemWidth * 0.2, itemHeight * 0.055, 0.025, -itemWidth * 0.3, itemHeight * 0.12, itemDepth * 0.525, accentColor, {
         rounded: false,
         roughness: 0.42
       });
     }
   } else if (type.type === "dishwasher") {
-    addBoxMesh(rotation, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, furnitureLight, {
-      rounded: false,
-      metalness: 0.12,
-      roughness: 0.48
-    });
-    addBoxMesh(rotation, itemWidth * 0.93, itemHeight * 0.74, 0.028, 0, itemHeight * 0.46, itemDepth * 0.515, color, {
-      rounded: false,
-      metalness: 0.08,
-      roughness: 0.44
-    });
-    addBoxMesh(rotation, itemWidth * 0.93, itemHeight * 0.14, 0.032, 0, itemHeight * 0.87, itemDepth * 0.52, furnitureDark, {
-      rounded: false,
-      metalness: 0.18,
-      roughness: 0.3
-    });
-    addBoxMesh(rotation, itemWidth * 0.58, itemHeight * 0.026, 0.034, 0, itemHeight * 0.78, itemDepth * 0.54, furnitureDark, {
-      rounded: false,
-      metalness: 0.5,
-      roughness: 0.22
-    });
-    addBoxMesh(rotation, itemWidth * 0.9, itemHeight * 0.075, itemDepth * 0.78, 0, itemHeight * 0.038, -itemDepth * 0.04, furnitureDark, {
-      rounded: false,
-      roughness: 0.4
-    });
-    for (const localValue of [0.22, 0.31, 0.4]) {
-      addSoftBoxMesh(rotation, itemWidth * 0.018, itemWidth * 0.018, 0.012, itemWidth * localValue, itemHeight * 0.88, itemDepth * 0.545, color, {
-        segments: 18,
-        rotationX: Math.PI / 2,
-        metalness: 0.26,
-        roughness: 0.24
-      });
-    }
+    buildDishwasherItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, accentColor, darkColor);
   } else if (type.type === "steamoven") {
-    addBoxMesh(rotation, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, furnitureLight, {
-      rounded: false,
-      metalness: 0.16,
-      roughness: 0.42
-    });
-    addBoxMesh(rotation, itemWidth * 0.94, itemHeight * 0.9, 0.026, 0, itemHeight * 0.5, itemDepth * 0.515, furnitureDark, {
-      rounded: false,
-      metalness: 0.18,
-      roughness: 0.25
-    });
-    addBoxMesh(rotation, itemWidth * 0.78, itemHeight * 0.56, 0.018, -itemWidth * 0.03, itemHeight * 0.42, itemDepth * 0.54, 1515819, {
-      rounded: false,
-      metalness: 0.12,
-      roughness: 0.18
-    });
-    addBoxMesh(rotation, itemWidth * 0.72, itemHeight * 0.035, 0.038, -itemWidth * 0.03, itemHeight * 0.74, itemDepth * 0.56, color, {
-      rounded: false,
-      metalness: 0.52,
-      roughness: 0.22
-    });
-    addBoxMesh(rotation, itemWidth * 0.24, itemHeight * 0.075, 0.022, 0, itemHeight * 0.86, itemDepth * 0.545, 7706534, {
-      rounded: false,
-      emissive: 7706534,
-      emissiveIntensity: 0.18,
-      roughness: 0.2
-    });
-    for (const localValue of [-0.36, 0.36]) {
-      addSoftBoxMesh(rotation, itemWidth * 0.045, itemWidth * 0.045, 0.026, itemWidth * localValue, itemHeight * 0.86, itemDepth * 0.55, color, {
-        segments: 24,
-        rotationX: Math.PI / 2,
-        metalness: 0.4,
-        roughness: 0.24
-      });
-    }
+    buildSteamOvenItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, darkColor, accentColor);
   } else if (type.type === "microwave") {
-    addBoxMesh(rotation, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, furnitureLight, {
-      rounded: false,
-      metalness: 0.12,
-      roughness: 0.44
-    });
-    addBoxMesh(rotation, itemWidth * 0.93, itemHeight * 0.82, 0.025, 0, itemHeight * 0.49, itemDepth * 0.515, furnitureDark, {
-      rounded: false,
-      metalness: 0.16,
-      roughness: 0.24
-    });
-    addBoxMesh(rotation, itemWidth * 0.62, itemHeight * 0.63, 0.018, -itemWidth * 0.13, itemHeight * 0.48, itemDepth * 0.54, 1515819, {
-      rounded: false,
-      metalness: 0.12,
-      roughness: 0.18
-    });
-    addBoxMesh(rotation, itemWidth * 0.035, itemHeight * 0.54, 0.03, itemWidth * 0.19, itemHeight * 0.48, itemDepth * 0.55, color, {
-      rounded: false,
-      metalness: 0.46,
-      roughness: 0.22
-    });
-    addBoxMesh(rotation, itemWidth * 0.17, itemHeight * 0.1, 0.02, itemWidth * 0.36, itemHeight * 0.72, itemDepth * 0.54, 7706534, {
-      rounded: false,
-      emissive: 7706534,
-      emissiveIntensity: 0.16,
-      roughness: 0.2
-    });
-    for (const localValue of [0.48, 0.34, 0.2]) {
-      addBoxMesh(rotation, itemWidth * 0.13, itemHeight * 0.055, 0.018, itemWidth * 0.36, itemHeight * localValue, itemDepth * 0.545, color, {
-        rounded: false,
-        roughness: 0.3
-      });
-    }
+    buildMicrowaveItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, darkColor, accentColor);
   } else if (type.type === "ricecooker") {
-    const computedValue = Math.min(itemWidth, itemDepth) * 0.47;
-    addSoftBoxMesh(rotation, computedValue * 0.9, computedValue, itemHeight * 0.68, 0, itemHeight * 0.38, 0, furnitureLight, {
-      segments: 36,
-      roughness: 0.46
-    });
-    addSoftBoxMesh(rotation, computedValue * 0.94, computedValue * 0.94, itemHeight * 0.12, 0, itemHeight * 0.77, 0, color, {
-      segments: 36,
-      roughness: 0.38
-    });
-    addSoftBoxMesh(rotation, computedValue * 0.72, computedValue * 0.74, itemHeight * 0.035, 0, itemHeight * 0.85, 0, furnitureDark, {
-      segments: 32,
-      metalness: 0.12,
-      roughness: 0.28
-    });
-    addBoxMesh(rotation, itemWidth * 0.5, itemHeight * 0.16, 0.026, 0, itemHeight * 0.42, itemDepth * 0.47, furnitureDark, {
-      radius: Math.min(itemWidth, itemDepth) * 0.04,
-      roughness: 0.28
-    });
-    addBoxMesh(rotation, itemWidth * 0.24, itemHeight * 0.06, 0.018, 0, itemHeight * 0.43, itemDepth * 0.49, 7706534, {
-      rounded: false,
-      emissive: 7706534,
-      emissiveIntensity: 0.16,
-      roughness: 0.2
-    });
-    addBoxMesh(rotation, itemWidth * 0.05, itemHeight * 0.16, itemDepth * 0.1, -itemWidth * 0.27, itemHeight * 0.86, 0, furnitureDark, {
-      roughness: 0.3
-    });
-    addBoxMesh(rotation, itemWidth * 0.05, itemHeight * 0.16, itemDepth * 0.1, itemWidth * 0.27, itemHeight * 0.86, 0, furnitureDark, {
-      roughness: 0.3
-    });
-    addBoxMesh(rotation, itemWidth * 0.58, itemHeight * 0.055, itemDepth * 0.1, 0, itemHeight * 0.94, 0, furnitureDark, {
-      roughness: 0.3
-    });
+    buildRiceCookerItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, accentColor, darkColor);
   } else if (type.type === "rangehood") {
-    addBoxMesh(rotation, itemWidth * 0.34, itemHeight * 0.72, itemDepth * 0.42, 0, itemHeight * 0.6, -itemDepth * 0.18, furnitureItems, {
-      rounded: false,
-      metalness: 0.22,
-      roughness: 0.42
-    });
-    addBoxMesh(rotation, itemWidth, itemHeight * 0.22, itemDepth, 0, itemHeight * 0.18, 0, furnitureLight, {
-      rounded: false,
-      metalness: 0.2,
-      roughness: 0.4
-    });
-    addBoxMesh(rotation, itemWidth * 0.9, itemHeight * 0.07, itemDepth * 0.8, 0, itemHeight * 0.055, itemDepth * 0.02, furnitureDark, {
-      rounded: false,
-      metalness: 0.35,
-      roughness: 0.28
-    });
-    addBoxMesh(rotation, itemWidth * 0.22, itemHeight * 0.035, 0.025, itemWidth * 0.3, itemHeight * 0.2, itemDepth * 0.515, color, {
-      rounded: false,
-      emissive: color,
-      emissiveIntensity: 0.12,
-      roughness: 0.3
-    });
+    buildRangeHoodItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, lightColor, darkColor, accentColor);
   } else if (type.type === "wallac") {
-    addBoxMesh(rotation, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, furnitureLight, {
-      roughness: 0.46
-    });
-    addBoxMesh(rotation, itemWidth * 0.9, itemHeight * 0.08, itemDepth * 0.18, 0, itemHeight * 0.18, itemDepth * 0.46, furnitureDark, {
-      rounded: false,
-      roughness: 0.3
-    });
-    addBoxMesh(rotation, itemWidth * 0.12, itemHeight * 0.08, itemDepth * 0.05, itemWidth * 0.34, itemHeight * 0.68, itemDepth * 0.51, color, {
-      rounded: false,
-      emissive: color,
-      emissiveIntensity: 0.18
-    });
+    buildWallAcItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, darkColor, accentColor);
   } else if (type.type === "floorac") {
-    addSoftBoxMesh(rotation, itemWidth * 0.46, itemWidth * 0.48, itemHeight, 0, itemHeight * 0.5, 0, furnitureLight, {
-      segments: 32,
-      roughness: 0.48
-    });
-    addBoxMesh(rotation, itemWidth * 0.5, itemHeight * 0.42, 0.025, 0, itemHeight * 0.68, itemDepth * 0.48, furnitureDark, {
-      rounded: false,
-      roughness: 0.3
-    });
-    for (const localValue of [0.58, 0.68, 0.78]) {
-      addBoxMesh(rotation, itemWidth * 0.42, 0.018, 0.03, 0, itemHeight * localValue, itemDepth * 0.5, color, {
-        rounded: false,
-        roughness: 0.34
-      });
-    }
+    buildFloorAcItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, darkColor, accentColor);
   } else if (type.type === "robotvacuum") {
-    addBoxMesh(rotation, itemWidth * 0.82, 0.035, itemDepth * 0.92, 0, 0.018, 0, color, {
-      radius: Math.min(itemWidth, itemDepth) * 0.05,
-      roughness: 0.58
-    });
-    addBoxMesh(rotation, itemWidth * 0.68, itemHeight * 0.82, itemDepth * 0.48, 0, itemHeight * 0.47, -itemDepth * 0.23, furnitureLight, {
-      radius: Math.min(itemWidth, itemDepth) * 0.12,
-      roughness: 0.48
-    });
-    addBoxMesh(rotation, itemWidth * 0.44, itemHeight * 0.16, 0.03, 0, itemHeight * 0.2, itemDepth * 0.02, color, {
-      radius: Math.min(itemWidth, itemDepth) * 0.04,
-      roughness: 0.42
-    });
-    addBoxMesh(rotation, itemWidth * 0.34, itemHeight * 0.07, 0.035, 0, itemHeight * 0.14, itemDepth * 0.04, furnitureDark, {
-      radius: Math.min(itemWidth, itemDepth) * 0.025,
-      roughness: 0.28
-    });
-    addSoftBoxMesh(rotation, itemWidth * 0.31, itemWidth * 0.32, itemHeight * 0.12, 0, itemHeight * 0.07, itemDepth * 0.2, furnitureLight, {
-      segments: 32,
-      roughness: 0.42
-    });
-    addSoftBoxMesh(rotation, itemWidth * 0.085, itemWidth * 0.09, itemHeight * 0.055, -itemWidth * 0.08, itemHeight * 0.16, itemDepth * 0.15, color, {
-      segments: 24,
-      roughness: 0.34
-    });
-    addBoxMesh(rotation, itemWidth * 0.36, itemHeight * 0.045, 0.025, 0, itemHeight * 0.08, itemDepth * 0.52, furnitureDark, {
-      radius: Math.min(itemWidth, itemDepth) * 0.025,
-      roughness: 0.24
-    });
+    buildRobotVacuumItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, accentColor, darkColor);
   } else if (type.type === "camera" || type.type === "presence") {
-    addSecurityModel(THREE, rotation, type, glass);
+    addSecurityModel(THREE, meshGroup, type, themeColors);
   } else if (type.type === "nas") {
-    addBoxMesh(rotation, itemWidth, itemHeight, itemDepth, 0, itemHeight * 0.5, 0, furnitureItems, {
-      rounded: false,
-      metalness: 0.16,
-      roughness: 0.46
-    });
-    addBoxMesh(rotation, itemWidth * 0.9, itemHeight * 0.88, 0.025, 0, itemHeight * 0.5, itemDepth * 0.515, furnitureDark, {
-      rounded: false,
-      metalness: 0.12,
-      roughness: 0.32
-    });
-    for (const localValue of [-itemWidth * 0.23, itemWidth * 0.23]) {
-      for (const localValue of [itemHeight * 0.3, itemHeight * 0.7]) {
-        addBoxMesh(rotation, itemWidth * 0.38, itemHeight * 0.34, 0.018, localValue, localValue, itemDepth * 0.535, color, {
-          rounded: false,
-          roughness: 0.38
-        });
-        addBoxMesh(rotation, itemWidth * 0.18, 0.018, 0.012, localValue, localValue + itemHeight * 0.1, itemDepth * 0.55, furnitureDark, {
-          rounded: false,
-          metalness: 0.25,
-          roughness: 0.3
-        });
-      }
-    }
-    for (const localValue of [0.18, 0.26, 0.34]) {
-      addBoxMesh(rotation, 0.012, 0.012, 0.012, itemWidth * 0.42, itemHeight * localValue, itemDepth * 0.55, 9550021, {
-        rounded: false,
-        emissive: 9550021,
-        emissiveIntensity: 0.28,
-        roughness: 0.2
-      });
-    }
+    buildNasItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, darkColor, accentColor);
   } else if (type.type === "airpurifier") {
-    const computedValue = Math.min(itemWidth, itemDepth) * 0.47;
-    addSoftBoxMesh(rotation, computedValue * 0.96, computedValue, itemHeight * 0.92, 0, itemHeight * 0.46, 0, furnitureLight, {
-      segments: 36,
-      roughness: 0.5
-    });
-    addSoftBoxMesh(rotation, computedValue * 0.92, computedValue * 0.92, itemHeight * 0.055, 0, itemHeight * 0.965, 0, furnitureDark, {
-      segments: 36,
-      metalness: 0.18,
-      roughness: 0.3
-    });
-    addSoftBoxMesh(rotation, computedValue * 0.55, computedValue * 0.55, itemHeight * 0.018, 0, itemHeight * 1.005, 0, color, {
-      segments: 32,
-      metalness: 0.08,
-      roughness: 0.35
-    });
-    for (const localValue of [-0.28, -0.14, 0, 0.14, 0.28]) {
-      addBoxMesh(rotation, 0.012, itemHeight * 0.45, 0.012, itemWidth * localValue, itemHeight * 0.35, itemDepth * 0.46, color, {
-        rounded: false,
-        roughness: 0.45
-      });
-    }
+    buildAirPurifierItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, darkColor, accentColor);
   } else if (type.type === "tv") {
-    const {
-      bodyHeight: localValue,
-      centerY: metrics
-    } = tvMountLayoutMetrics(type, itemHeight);
-    const value = metrics - localValue * 0.5;
-    if (type.tvMountStyle === "mobile") {
-      const localValue = Math.max(itemHeight * 0.045, 0.055);
-      const computedValue = itemWidth * 0.7;
-      const max = Math.max(itemDepth * 0.78, 0.3);
-      const localValueCurrent = Math.max(value - localValue * 0.7, itemHeight * 0.22);
-      const computedValueCurrent = localValue * 0.7 + localValueCurrent * 0.5;
-      addBoxMesh(rotation, computedValue, localValue, max, 0, localValue * 0.72, 0, furnitureDark, {
-        radius: Math.min(localValue, max) * 0.22,
-        metalness: 0.18,
-        roughness: 0.32
-      });
-      addBoxMesh(rotation, itemWidth * 0.075, localValueCurrent, Math.max(itemDepth * 0.2, 0.06), -itemWidth * 0.035, computedValueCurrent, -itemDepth * 0.03, furnitureDark, {
-        rounded: false,
-        metalness: 0.2,
-        roughness: 0.3
-      });
-      addBoxMesh(rotation, itemWidth * 0.105, localValueCurrent * 0.86, Math.max(itemDepth * 0.12, 0.04), itemWidth * 0.025, computedValueCurrent + localValueCurrent * 0.02, itemDepth * 0.015, color, {
-        rounded: false,
-        metalness: 0.35,
-        roughness: 0.28
-      });
-      addBoxMesh(rotation, itemWidth * 0.34, Math.max(itemHeight * 0.018, 0.025), Math.max(itemDepth * 0.5, 0.2), 0, value * 0.76, itemDepth * 0.04, furnitureDark, {
-        radius: 0.012,
-        metalness: 0.22,
-        roughness: 0.3
-      });
-      const localValueNext = Math.max(Math.min(itemWidth, itemDepth) * 0.045, 0.025);
-      for (const localValue of [-computedValue * 0.42, computedValue * 0.42]) {
-        for (const localValue of [-max * 0.34, max * 0.34]) {
-          addSoftBoxMesh(rotation, localValueNext, localValueNext, Math.max(localValueNext * 0.56, 0.018), localValue, localValueNext, localValue, 1448479, {
-            segments: 20,
-            rotationZ: Math.PI / 2,
-            roughness: 0.38,
-            metalness: 0.1
-          });
-        }
-      }
-    } else if (type.tvMountStyle === "tabletop") {
-      const localValue = Math.max(itemHeight * 0.035, 0.028);
-      const computedValue = itemWidth * 0.34;
-      const max = Math.max(itemDepth * 0.72, 0.16);
-      const localValueCurrent = Math.max(value - localValue, itemHeight * 0.12);
-      addBoxMesh(rotation, computedValue, localValue, max, 0, localValue * 0.5, 0, furnitureDark, {
-        radius: Math.min(localValue, max) * 0.26,
-        metalness: 0.2,
-        roughness: 0.3
-      });
-      addBoxMesh(rotation, itemWidth * 0.075, localValueCurrent, Math.max(itemDepth * 0.24, 0.05), 0, localValue + localValueCurrent * 0.5, -itemDepth * 0.03, color, {
-        rounded: false,
-        metalness: 0.34,
-        roughness: 0.28
-      });
-      addBoxMesh(rotation, itemWidth * 0.18, Math.max(itemHeight * 0.025, 0.022), Math.max(itemDepth * 0.34, 0.08), 0, value, 0, furnitureDark, {
-        radius: 0.008,
-        metalness: 0.22,
-        roughness: 0.3
-      });
-    }
-    addBoxMesh(rotation, itemWidth, localValue, Math.max(itemDepth * 0.28, 0.05), 0, metrics, 0, furnitureDark, {
-      radius: Math.min(itemWidth, localValue) * 0.012,
-      roughness: 0.28
-    });
+    buildTvItemMeshGroup(meshGroup, type, itemWidth, itemDepth, itemHeight, darkColor, accentColor);
   } else if (type.type === "vanity") {
-    const localValue = Math.min(0.76, itemHeight * 0.5);
-    addBoxMesh(rotation, itemWidth, 0.075, itemDepth, 0, localValue, 0, furnitureItems);
-    addBoxMesh(rotation, itemWidth * 0.27, localValue * 0.82, itemDepth * 0.88, -itemWidth * 0.34, localValue * 0.42, 0, furnitureItems);
-    addBoxMesh(rotation, itemWidth * 0.27, localValue * 0.82, itemDepth * 0.88, itemWidth * 0.34, localValue * 0.42, 0, furnitureItems);
-    for (const localValueCurrent of [-0.34, 0.34]) {
-      for (const localValue of [0.23, 0.48]) {
-        addBoxMesh(rotation, itemWidth * 0.22, 0.012, itemDepth * 0.02, itemWidth * localValueCurrent, localValue * localValue, itemDepth * 0.46, furnitureDark, {
-          rounded: false
-        });
-      }
-    }
-    const max = Math.max(itemHeight - localValue - 0.08, 0.45);
-    addBoxMesh(rotation, itemWidth * 0.54, max, 0.025, 0, localValue + max * 0.5, -itemDepth * 0.43, glass.glass, {
-      transparent: true,
-      opacity: 0.42,
-      depthWrite: false,
-      metalness: 0.22,
-      roughness: 0.16
-    });
-    addBoxMesh(rotation, itemWidth * 0.59, 0.045, 0.05, 0, localValue + max, -itemDepth * 0.43, furnitureLight, {
-      metalness: 0.12
-    });
-    addBoxMesh(rotation, itemWidth * 0.59, 0.045, 0.05, 0, localValue, -itemDepth * 0.43, furnitureLight, {
-      metalness: 0.12
-    });
-    addBoxMesh(rotation, 0.045, max, 0.05, -itemWidth * 0.295, localValue + max * 0.5, -itemDepth * 0.43, furnitureLight, {
-      metalness: 0.12
-    });
-    addBoxMesh(rotation, 0.045, max, 0.05, itemWidth * 0.295, localValue + max * 0.5, -itemDepth * 0.43, furnitureLight, {
-      metalness: 0.12
-    });
+    buildVanityItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, darkColor, lightColor, themeColors);
   } else if (type.type === "desk") {
-    addBoxMesh(rotation, itemWidth, itemHeight * 0.1, itemDepth, 0, itemHeight * 0.93, 0, furnitureItems);
-    addBoxMesh(rotation, itemWidth * 0.05, itemHeight * 0.88, itemDepth * 0.82, -itemWidth * 0.44, itemHeight * 0.44, 0, furnitureDark);
-    addBoxMesh(rotation, itemWidth * 0.05, itemHeight * 0.88, itemDepth * 0.82, itemWidth * 0.44, itemHeight * 0.44, 0, furnitureDark);
-    addBoxMesh(rotation, itemWidth * 0.34, itemHeight * 0.18, itemDepth * 0.78, itemWidth * 0.22, itemHeight * 0.74, 0, furnitureItems);
-    addBoxMesh(rotation, itemWidth * 0.27, 0.018, itemDepth * 0.04, itemWidth * 0.22, itemHeight * 0.73, itemDepth * 0.41, furnitureLight, {
-      metalness: 0.35
-    });
+    buildDeskItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, darkColor, woodColor, lightColor);
   } else if (type.type === "desktop") {
-    const computedValue = itemWidth * 0.72;
-    const value = itemHeight * 0.58;
-    addBoxMesh(rotation, computedValue, value, 0.035, -itemWidth * 0.06, itemHeight * 0.66, -itemDepth * 0.25, furnitureDark, {
-      rounded: false,
-      roughness: 0.24
-    });
-    addBoxMesh(rotation, computedValue * 0.9, value * 0.84, 0.01, -itemWidth * 0.06, itemHeight * 0.66, -itemDepth * 0.19, 659481, {
-      rounded: false,
-      roughness: 0.18,
-      emissive: 1517112,
-      emissiveIntensity: 0.35
-    });
-    addBoxMesh(rotation, 0.035, itemHeight * 0.24, 0.035, -itemWidth * 0.06, itemHeight * 0.25, -itemDepth * 0.25, furnitureDark, {
-      metalness: 0.5
-    });
-    addBoxMesh(rotation, itemWidth * 0.28, 0.025, itemDepth * 0.3, -itemWidth * 0.06, 0.02, -itemDepth * 0.22, furnitureDark, {
-      metalness: 0.42
-    });
-    addBoxMesh(rotation, itemWidth * 0.58, 0.022, itemDepth * 0.38, -itemWidth * 0.08, 0.025, itemDepth * 0.24, color, {
-      rounded: false,
-      roughness: 0.5
-    });
-    addBoxMesh(rotation, itemWidth * 0.1, 0.035, itemDepth * 0.22, itemWidth * 0.36, 0.028, itemDepth * 0.24, color, {
-      radius: Math.min(itemWidth, itemDepth) * 0.035,
-      roughness: 0.46
-    });
+    buildDesktopItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, darkColor, accentColor);
   } else if (type.type === "laptop") {
-    addBoxMesh(rotation, itemWidth, 0.025, itemDepth * 0.72, 0, 0.018, itemDepth * 0.08, furnitureItems, {
-      metalness: 0.28,
-      roughness: 0.36
-    });
-    const mesh = addBoxMesh(rotation, itemWidth * 0.96, itemHeight * 0.78, 0.018, 0, itemHeight * 0.43, -itemDepth * 0.29, furnitureDark, {
-      rounded: false,
-      metalness: 0.22,
-      roughness: 0.25
-    });
-    mesh.rotation.x = -Math.PI * 0.08;
-    addBoxMesh(rotation, itemWidth * 0.86, itemHeight * 0.63, 0.01, 0, itemHeight * 0.43, -itemDepth * 0.278, 659740, {
-      rounded: false,
-      emissive: 1585226,
-      emissiveIntensity: 0.38,
-      roughness: 0.18
-    });
-    addBoxMesh(rotation, itemWidth * 0.62, 0.009, itemDepth * 0.34, 0, 0.035, itemDepth * 0.12, furnitureDark, {
-      rounded: false
-    });
+    buildLaptopItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, darkColor);
   } else if (type.type === "toilet") {
-    const castShadow = new THREE.Mesh(createWallTopMaterial(itemWidth, itemDepth, itemHeight), new THREE.MeshStandardMaterial({
-      color: furnitureLight,
-      roughness: 0.4,
-      metalness: 0.02
-    }));
-    castShadow.castShadow = true;
-    castShadow.receiveShadow = true;
-    rotation.add(castShadow);
-    const bezierCurveTo = new THREE.Shape();
-    bezierCurveTo.moveTo(-itemWidth * 0.46, -itemDepth * 0.44);
-    bezierCurveTo.lineTo(itemWidth * 0.46, -itemDepth * 0.44);
-    bezierCurveTo.bezierCurveTo(itemWidth * 0.49, -itemDepth * 0.05, itemWidth * 0.49, itemDepth * 0.29, 0, itemDepth * 0.47);
-    bezierCurveTo.bezierCurveTo(-itemWidth * 0.49, itemDepth * 0.29, -itemWidth * 0.49, -itemDepth * 0.05, -itemWidth * 0.46, -itemDepth * 0.44);
-    bezierCurveTo.closePath();
-    const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(bezierCurveTo, {
-      depth: itemHeight * 0.085,
-      bevelEnabled: true,
-      bevelSegments: 2,
-      bevelSize: 0.012,
-      bevelThickness: 0.01,
-      steps: 1
-    }), new THREE.MeshStandardMaterial({
-      color: color,
-      roughness: 0.34,
-      metalness: 0.01
-    }));
-    mesh.rotation.x = Math.PI / 2;
-    mesh.position.set(0, itemHeight * 0.82, 0);
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-    rotation.add(mesh);
-    addBoxMesh(rotation, itemWidth * 0.9, itemHeight * 0.095, itemDepth * 0.2, 0, itemHeight * 0.775, -itemDepth * 0.34, furnitureLight, {
-      radius: Math.min(itemWidth, itemDepth) * 0.035,
-      roughness: 0.36
-    });
-    addBoxMesh(rotation, 0.016, itemHeight * 0.38, 0.024, -itemWidth * 0.42, itemHeight * 0.38, -itemDepth * 0.18, furnitureDark, {
-      rounded: false,
-      roughness: 0.46
-    });
-    addSoftBoxMesh(rotation, itemWidth * 0.035, itemWidth * 0.035, 0.018, -itemWidth * 0.46, itemHeight * 0.66, itemDepth * 0.12, color, {
-      segments: 24,
-      rotationZ: Math.PI / 2,
-      metalness: 0.08,
-      roughness: 0.3
-    });
+    buildToiletItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, accentColor, darkColor);
   } else if (type.type === "squattoilet") {
-    addBoxMesh(rotation, itemWidth, itemHeight * 0.58, itemDepth, 0, itemHeight * 0.29, 0, furnitureLight, {
-      radius: Math.min(itemWidth, itemDepth) * 0.08,
-      roughness: 0.38
-    });
-    addBoxMesh(rotation, itemWidth * 0.28, itemHeight * 0.12, itemDepth * 0.58, -itemWidth * 0.34, itemHeight * 0.66, 0, color, {
-      radius: Math.min(itemWidth, itemDepth) * 0.035,
-      roughness: 0.4
-    });
-    addBoxMesh(rotation, itemWidth * 0.28, itemHeight * 0.12, itemDepth * 0.58, itemWidth * 0.34, itemHeight * 0.66, 0, color, {
-      radius: Math.min(itemWidth, itemDepth) * 0.035,
-      roughness: 0.4
-    });
-    const scale = new THREE.Mesh(new THREE.CylinderGeometry(itemWidth * 0.16, itemWidth * 0.2, itemHeight * 0.18, 28), new THREE.MeshStandardMaterial({
-      color: furnitureDark,
-      roughness: 0.34,
-      metalness: 0.02
-    }));
-    scale.scale.z = 1.75;
-    scale.position.y = itemHeight * 0.67;
-    rotation.add(scale);
+    buildSquatToiletItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, accentColor, darkColor);
   } else if (type.type === "urinal") {
-    addBoxMesh(rotation, itemWidth * 0.78, itemHeight * 0.88, itemDepth * 0.72, 0, itemHeight * 0.5, -itemDepth * 0.06, furnitureLight, {
-      radius: Math.min(itemWidth, itemDepth) * 0.16,
-      roughness: 0.32
-    });
-    const scale = new THREE.Mesh(new THREE.SphereGeometry(Math.min(itemWidth, itemDepth) * 0.3, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.58), new THREE.MeshStandardMaterial({
-      color: color,
-      roughness: 0.28,
-      metalness: 0.02,
-      side: THREE.DoubleSide
-    }));
-    scale.scale.set(0.9, 1.1, 0.62);
-    scale.rotation.x = Math.PI;
-    scale.position.set(0, itemHeight * 0.53, itemDepth * 0.17);
-    rotation.add(scale);
-    addSoftBoxMesh(rotation, 0.018, 0.018, itemHeight * 0.22, 0, itemHeight * 0.95, -itemDepth * 0.18, furnitureDark, {
-      segments: 16,
-      metalness: 0.72,
-      roughness: 0.22
-    });
+    buildUrinalItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, accentColor, darkColor);
   } else if (type.type === "bathtub") {
-    const computedValue = itemHeight * 0.84;
-    const cornerRadiusBase = Math.min(itemWidth, itemDepth) * 0.11;
-    const value = computedValue * 0.8;
-    const localValue = Math.max(itemWidth - cornerRadiusBase * 2, itemWidth * 0.48);
-    const max = Math.max(itemDepth - cornerRadiusBase * 2, itemDepth * 0.42);
-    addBoxMesh(rotation, localValue, computedValue * 0.16, max, 0, computedValue * 0.14, 0, color, {
-      radius: Math.min(itemWidth, itemDepth) * 0.16,
-      roughness: 0.33
-    });
-    addBoxMesh(rotation, itemWidth, value, cornerRadiusBase, 0, value * 0.5, -itemDepth * 0.5 + cornerRadiusBase * 0.5, furnitureLight, {
-      radius: cornerRadiusBase * 0.5,
-      roughness: 0.34
-    });
-    addBoxMesh(rotation, itemWidth, value, cornerRadiusBase, 0, value * 0.5, itemDepth * 0.5 - cornerRadiusBase * 0.5, furnitureLight, {
-      radius: cornerRadiusBase * 0.5,
-      roughness: 0.34
-    });
-    addBoxMesh(rotation, cornerRadiusBase, value, max, -itemWidth * 0.5 + cornerRadiusBase * 0.5, value * 0.5, 0, furnitureLight, {
-      radius: cornerRadiusBase * 0.5,
-      roughness: 0.34
-    });
-    addBoxMesh(rotation, cornerRadiusBase, value, max, itemWidth * 0.5 - cornerRadiusBase * 0.5, value * 0.5, 0, furnitureLight, {
-      radius: cornerRadiusBase * 0.5,
-      roughness: 0.34
-    });
-    const computedValueCurrent = computedValue * 0.075;
-    const computedValueNext = value + computedValueCurrent * 0.5;
-    addBoxMesh(rotation, itemWidth, computedValueCurrent, cornerRadiusBase, 0, computedValueNext, -itemDepth * 0.5 + cornerRadiusBase * 0.5, furnitureLight, {
-      radius: cornerRadiusBase * 0.45,
-      roughness: 0.29
-    });
-    addBoxMesh(rotation, itemWidth, computedValueCurrent, cornerRadiusBase, 0, computedValueNext, itemDepth * 0.5 - cornerRadiusBase * 0.5, furnitureLight, {
-      radius: cornerRadiusBase * 0.45,
-      roughness: 0.29
-    });
-    addBoxMesh(rotation, cornerRadiusBase, computedValueCurrent, max, -itemWidth * 0.5 + cornerRadiusBase * 0.5, computedValueNext, 0, furnitureLight, {
-      radius: cornerRadiusBase * 0.45,
-      roughness: 0.29
-    });
-    addBoxMesh(rotation, cornerRadiusBase, computedValueCurrent, max, itemWidth * 0.5 - cornerRadiusBase * 0.5, computedValueNext, 0, furnitureLight, {
-      radius: cornerRadiusBase * 0.45,
-      roughness: 0.29
-    });
-    for (const localValueCurrent of [-itemWidth * 0.38, itemWidth * 0.38]) {
-      for (const localValue of [-itemDepth * 0.3, itemDepth * 0.3]) {
-        addSoftBoxMesh(rotation, 0.026, 0.026, itemHeight * 0.16, localValueCurrent, itemHeight * 0.08, localValue, glass.furnitureDark, {
-          segments: 12,
-          metalness: 0.42,
-          roughness: 0.3
-        });
-      }
-    }
-    addSoftBoxMesh(rotation, 0.016, 0.016, itemHeight * 0.25, itemWidth * 0.34, itemHeight * 0.96, -itemDepth * 0.22, furnitureDark, {
-      segments: 16,
-      metalness: 0.72,
-      roughness: 0.2
-    });
-    addSoftBoxMesh(rotation, 0.016, 0.016, itemDepth * 0.28, itemWidth * 0.34, itemHeight * 1.08, -itemDepth * 0.08, furnitureDark, {
-      segments: 16,
-      rotationX: Math.PI / 2,
-      metalness: 0.72,
-      roughness: 0.2
-    });
+    buildBathtubItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, accentColor, lightColor, darkColor, themeColors);
   } else if (type.type === "walllamp") {
-    const computedValue = -itemDepth * 0.5 + 0.018;
-    const objectValue = {
-      rounded: false,
-      metalness: 0.64,
-      roughness: 0.22
-    };
-    addBoxMesh(rotation, itemWidth * 0.68, itemHeight * 0.5, 0.035, 0, itemHeight * 0.52, computedValue, glass.furniture, {
-      radius: 0.02,
-      metalness: 0.18,
-      roughness: 0.46
-    });
-    addSoftBoxMesh(rotation, itemWidth * 0.11, itemWidth * 0.11, 0.035, 0, itemHeight * 0.57, computedValue - 0.012, glass.furnitureSoft, {
-      segments: 24,
-      rotationX: Math.PI / 2,
-      metalness: 0.3,
-      roughness: 0.34
-    });
-    addBoxMesh(rotation, 0.04, itemHeight * 0.2, itemDepth * 0.28, 0, itemHeight * 0.57, -itemDepth * 0.3, glass.furniture, {
-      ...objectValue,
-      metalness: 0.18,
-      roughness: 0.46
-    });
-    const position = new THREE.Mesh(new THREE.CylinderGeometry(itemWidth * 0.3, itemWidth * 0.19, itemHeight * 0.38, 24, 1, true), new THREE.MeshStandardMaterial({
-      color: furnitureLight,
-      roughness: 0.3,
-      metalness: 0.04,
-      emissive: 16767386,
-      emissiveIntensity: 0.24,
-      side: THREE.DoubleSide
-    }));
-    position.position.set(0, itemHeight * 0.4, -itemDepth * 0.16);
-    position.castShadow = true;
-    position.receiveShadow = true;
-    rotation.add(position);
-    addSoftBoxMesh(rotation, itemWidth * 0.15, itemWidth * 0.15, 0.025, 0, itemHeight * 0.19, -itemDepth * 0.16, 16769707, {
-      segments: 24,
-      emissive: 16760156,
-      emissiveIntensity: 0.38,
-      roughness: 0.24
-    });
+    buildWallLampItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor, themeColors);
   } else if (type.type === "glasspartition") {
-    const localValue = Math.min(Math.max(itemWidth * 0.018, 0.018), 0.035);
-    const max = Math.max(itemDepth, 0.045);
-    const localValueCurrent = Math.max(itemWidth - localValue * 2.4, localValue);
-    const localValueNext = Math.max(itemHeight - localValue * 2.4, localValue);
-    const objectValue = {
-      rounded: false,
-      metalness: 0.58,
-      roughness: 0.24,
-      castShadow: false,
-      receiveShadow: false
-    };
-    addBoxMesh(rotation, localValueCurrent, localValueNext, Math.max(itemDepth * 0.24, 0.012), 0, itemHeight * 0.5, 0, glass.glass, {
-      rounded: false,
-      transparent: true,
-      opacity: 0.24,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      metalness: 0.04,
-      roughness: 0.08,
-      castShadow: false,
-      receiveShadow: false,
-      renderOrder: 6
-    });
-    addBoxMesh(rotation, itemWidth, localValue, max, 0, localValue * 0.5, 0, glass.frame, objectValue);
-    addBoxMesh(rotation, itemWidth, localValue, max, 0, itemHeight - localValue * 0.5, 0, glass.frame, objectValue);
-    addBoxMesh(rotation, localValue, itemHeight, max, -itemWidth * 0.5 + localValue * 0.5, itemHeight * 0.5, 0, glass.frame, objectValue);
-    addBoxMesh(rotation, localValue, itemHeight, max, itemWidth * 0.5 - localValue * 0.5, itemHeight * 0.5, 0, glass.frame, objectValue);
-    for (const localValueCurrent of [-itemWidth * 0.34, itemWidth * 0.34]) {
-      addBoxMesh(rotation, localValue * 1.7, localValue * 2.2, max * 1.18, localValueCurrent, localValue * 1.3, 0, color, objectValue);
-    }
+    buildGlassPartitionItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, accentColor, themeColors);
   } else if (type.type === "shower") {
-    const localValue = furnitureLight;
-    const computedValue = -itemDepth * 0.42;
-    const value = itemHeight * 0.13;
-    const computedValueCurrent = itemHeight * 0.9;
-    const computedValueNext = computedValueCurrent - value;
-    const objectValue = {
-      rounded: false,
-      metalness: 0.68,
-      roughness: 0.22
-    };
-    addBoxMesh(rotation, 0.045, computedValueNext, 0.045, 0, (value + computedValueCurrent) * 0.5, computedValue, localValue, objectValue);
-    for (const localValueCurrent of [value, itemHeight * 0.47, itemHeight * 0.78, computedValueCurrent]) {
-      addBoxMesh(rotation, 0.085, 0.085, 0.065, 0, localValueCurrent, computedValue, localValue, objectValue);
-    }
-    for (const localValueCurrent of [value, computedValueCurrent]) {
-      addSoftBoxMesh(rotation, itemWidth * 0.055, itemWidth * 0.055, 0.04, 0, localValueCurrent, -itemDepth * 0.47, localValue, {
-        segments: 28,
-        rotationX: Math.PI / 2,
-        metalness: 0.7,
-        roughness: 0.2
-      });
-    }
-    const computedValuePrevious = itemHeight * 0.12;
-    addBoxMesh(rotation, itemWidth * 0.36, 0.065, 0.065, 0, computedValuePrevious, computedValue + itemDepth * 0.08, localValue, objectValue);
-    for (const localValueCurrent of [-itemWidth * 0.2, itemWidth * 0.2]) {
-      addSoftBoxMesh(rotation, itemWidth * 0.055, itemWidth * 0.055, 0.045, localValueCurrent, computedValuePrevious, -itemDepth * 0.45, localValue, {
-        segments: 28,
-        rotationX: Math.PI / 2,
-        metalness: 0.7,
-        roughness: 0.2
-      });
-      addBoxMesh(rotation, 0.05, 0.05, itemDepth * 0.13, localValueCurrent, computedValuePrevious, computedValue + itemDepth * 0.01, localValue, objectValue);
-    }
-    addBoxMesh(rotation, 0.045, itemHeight * 0.12, 0.045, 0, computedValuePrevious - itemHeight * 0.045, computedValue + itemDepth * 0.13, localValue, objectValue);
-    const y = new THREE.Vector3(0, computedValueCurrent, computedValue);
-    const z = new THREE.Vector3(0, itemHeight * 0.76, itemDepth * 0.08);
-    const computedValueLocal = z.y - y.y;
-    const computedValueItem = z.z - y.z;
-    const hypot = Math.hypot(computedValueLocal, computedValueItem);
-    const mesh = addBoxMesh(rotation, 0.055, hypot, 0.055, 0, (y.y + z.y) * 0.5, (y.z + z.z) * 0.5, localValue, objectValue);
-    mesh.rotation.x = Math.atan2(computedValueItem, computedValueLocal);
-    addBoxMesh(rotation, 0.055, itemHeight * 0.13, 0.055, 0, itemHeight * 0.705, z.z, localValue, objectValue);
-    addBoxMesh(rotation, itemWidth * 0.34, 0.035, itemDepth * 0.3, 0, itemHeight * 0.64, z.z + itemDepth * 0.03, localValue, {
-      rounded: false,
-      metalness: 0.64,
-      roughness: 0.24
-    });
+    buildShowerItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, lightColor);
   } else if (type.type === "basin") {
-    addBoxMesh(rotation, itemWidth * 0.92, itemHeight * 0.72, itemDepth * 0.9, 0, itemHeight * 0.36, 0, furnitureItems);
-    addBoxMesh(rotation, itemWidth, 0.065, itemDepth, 0, itemHeight * 0.75, 0, furnitureLight, {
-      roughness: 0.3
-    });
-    addSoftBoxMesh(rotation, itemWidth * 0.25, itemWidth * 0.21, 0.08, 0, itemHeight * 0.8, itemDepth * 0.02, color, {
-      roughness: 0.28
-    });
-    addSoftBoxMesh(rotation, 0.018, 0.018, itemHeight * 0.2, 0, itemHeight * 0.9, -itemDepth * 0.2, furnitureDark, {
-      metalness: 0.78,
-      roughness: 0.18
-    });
-    addSoftBoxMesh(rotation, 0.018, 0.018, itemDepth * 0.2, 0, itemHeight * 0.99, -itemDepth * 0.11, furnitureDark, {
-      rotationX: Math.PI / 2,
-      metalness: 0.78,
-      roughness: 0.18
-    });
-    addBoxMesh(rotation, 0.012, itemHeight * 0.62, itemDepth * 0.02, 0, itemHeight * 0.34, itemDepth * 0.46, furnitureDark, {
-      rounded: false
-    });
-    const computedValue = itemHeight * 1.05;
-    const value = itemWidth * 0.72;
-    const numericValue = 0.72;
-    const computedValueCurrent = -itemDepth * 0.46;
-    addBoxMesh(rotation, value, numericValue, 0.018, 0, computedValue + numericValue * 0.5, computedValueCurrent, glass.glass, {
-      rounded: false,
-      transparent: true,
-      opacity: 0.46,
-      depthWrite: false,
-      metalness: 0.26,
-      roughness: 0.12,
-      castShadow: false
-    });
-    addBoxMesh(rotation, value + 0.055, 0.035, 0.045, 0, computedValue, computedValueCurrent, furnitureDark, {
-      metalness: 0.35
-    });
-    addBoxMesh(rotation, value + 0.055, 0.035, 0.045, 0, computedValue + numericValue, computedValueCurrent, furnitureDark, {
-      metalness: 0.35
-    });
-    addBoxMesh(rotation, 0.035, numericValue, 0.045, -value * 0.5, computedValue + numericValue * 0.5, computedValueCurrent, furnitureDark, {
-      metalness: 0.35
-    });
-    addBoxMesh(rotation, 0.035, numericValue, 0.045, value * 0.5, computedValue + numericValue * 0.5, computedValueCurrent, furnitureDark, {
-      metalness: 0.35
-    });
+    buildBasinItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, lightColor, accentColor, darkColor, themeColors);
   } else if (type.type === "rug") {
-    if (!addRugMeshes(rotation, type, furnitureItems, color)) {
-      const clampedValue = clamp(itemHeight, 0.004, 0.018);
-      addBoxMesh(rotation, itemWidth, clampedValue, itemDepth, 0, clampedValue * 0.5, 0, furnitureItems, {
-        radius: Math.min(itemWidth, itemDepth) * 0.018,
-        roughness: 1,
-        metalness: 0,
-        castShadow: false,
-        receiveShadow: true
-      });
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(itemWidth * 0.88, itemDepth * 0.84), new THREE.MeshStandardMaterial({
-        color: color,
-        roughness: 1,
-        metalness: 0,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-        polygonOffsetUnits: -4
-      }));
-      mesh.rotation.x = -Math.PI / 2;
-      mesh.position.y = clampedValue + 0.001;
-      mesh.castShadow = false;
-      mesh.receiveShadow = true;
-      mesh.renderOrder = 1;
-      rotation.add(mesh);
-    }
+    buildRugItemMeshGroup(meshGroup, type, itemWidth, itemDepth, itemHeight, woodColor, accentColor);
   } else if (type.type === "tvstand") {
-    addBoxMesh(rotation, itemWidth, itemHeight * 0.76, itemDepth, 0, itemHeight * 0.42, 0, furnitureItems);
-    const computedValue = itemHeight * 0.08;
-    const value = itemHeight * 0.8;
-    addBoxMesh(rotation, itemWidth * 0.98, computedValue, itemDepth, 0, value + computedValue * 0.5, 0, color);
-    addBoxMesh(rotation, 0.018, itemHeight * 0.58, itemDepth * 1.01, 0, itemHeight * 0.43, itemDepth * 0.01, furnitureDark, {
-      rounded: false
-    });
-    addBoxMesh(rotation, itemWidth * 0.91, 0.015, itemDepth * 1.01, 0, itemHeight * 0.43, itemDepth * 0.01, furnitureDark, {
-      rounded: false
-    });
-    for (const localValue of [-0.4, 0.4]) {
-      addBoxMesh(rotation, 0.055, itemHeight * 0.2, 0.055, itemWidth * localValue, itemHeight * 0.1, 0, furnitureDark, {
-        metalness: 0.32
-      });
-    }
+    buildTvStandItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, woodColor, accentColor, darkColor);
   } else if (type.type === "floorlamp") {
-    const computedValue = -itemWidth * 0.34;
-    const value = itemWidth * 0.31;
-    const localValue = Math.min(itemWidth * 0.13, itemDepth * 0.34);
-    const min = Math.min(itemWidth * 0.18, itemDepth * 0.46);
-    const computedValueCurrent = itemHeight * 0.115;
-    const computedValueNext = itemHeight * 0.76;
-    const computedValuePrevious = computedValueNext + computedValueCurrent;
-    addSoftBoxMesh(rotation, localValue * 0.82, localValue, 0.045, computedValue, 0.0225, 0, furnitureDark, {
-      segments: 32,
-      metalness: 0.38,
-      roughness: 0.3
-    });
-    const constructedCubicBezierCurve = new THREE.CubicBezierCurve3(new THREE.Vector3(computedValue, 0.045, 0), new THREE.Vector3(computedValue, itemHeight * 0.72, 0), new THREE.Vector3(itemWidth * 0.02, itemHeight * 1.01, 0), new THREE.Vector3(value, computedValuePrevious, 0));
-    const castShadow = new THREE.Mesh(new THREE.TubeGeometry(constructedCubicBezierCurve, 48, Math.max(0.012, itemWidth * 0.012), 8, false), new THREE.MeshStandardMaterial({
-      color: furnitureDark,
-      roughness: 0.3,
-      metalness: 0.48
-    }));
-    castShadow.castShadow = true;
-    rotation.add(castShadow);
-    const scale = new THREE.Mesh(new THREE.SphereGeometry(min, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshStandardMaterial({
-      color: color,
-      roughness: 0.62,
-      metalness: 0.04
-    }));
-    scale.scale.set(1, computedValueCurrent / min, 1);
-    scale.position.set(value, computedValueNext, 0);
-    scale.castShadow = true;
-    rotation.add(scale);
-    addSoftBoxMesh(rotation, min * 0.94, min * 0.98, 0.025, value, computedValueNext, 0, furnitureDark, {
-      segments: 32,
-      metalness: 0.12,
-      roughness: 0.5
-    });
-    addSoftBoxMesh(rotation, Math.max(0.018, itemWidth * 0.014), Math.max(0.022, itemWidth * 0.018), 0.045, value, computedValuePrevious + 0.012, 0, furnitureDark, {
-      segments: 20,
-      metalness: 0.42,
-      roughness: 0.28
-    });
+    buildFloorLampItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, darkColor, accentColor);
   } else if (type.type === "plant") {
-    addSoftBoxMesh(rotation, itemWidth * 0.25, itemWidth * 0.21, itemHeight * 0.22, 0, itemHeight * 0.11, 0, color, {
-      segments: 24,
-      roughness: 0.82
-    });
-    addSoftBoxMesh(rotation, itemWidth * 0.22, itemWidth * 0.22, 0.035, 0, itemHeight * 0.22, 0, furnitureDark, {
-      segments: 24,
-      roughness: 0.96
-    });
-    const arrayValue = [[new THREE.Vector3(0, itemHeight * 0.21, 0), new THREE.Vector3(-itemWidth * 0.06, itemHeight * 0.58, 0), new THREE.Vector3(-itemWidth * 0.27, itemHeight * 0.78, 0)], [new THREE.Vector3(itemWidth * 0.03, itemHeight * 0.21, 0), new THREE.Vector3(itemWidth * 0.06, itemHeight * 0.64, 0), new THREE.Vector3(itemWidth * 0.12, itemHeight * 0.94, 0)], [new THREE.Vector3(0, itemHeight * 0.28, 0), new THREE.Vector3(itemWidth * 0.18, itemHeight * 0.62, 0), new THREE.Vector3(itemWidth * 0.31, itemHeight * 0.79, 0)]];
-    for (const localValue of arrayValue) {
-      const castShadow = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(localValue), 20, 0.014, 7, false), new THREE.MeshStandardMaterial({
-        color: furnitureDark,
-        roughness: 0.86
-      }));
-      castShadow.castShadow = true;
-      rotation.add(castShadow);
-    }
-    const list = [[-0.27, 0.78, 0], [-0.1, 0.61, 0.02], [0.12, 0.94, 0], [0.31, 0.79, 0], [0.18, 0.63, -0.02], [0.02, 0.46, 0.03]];
-    for (const [localValue, localValueCurrent, localValueNext] of list) {
-      for (let zeroValue = 0; zeroValue < 5; zeroValue += 1) {
-        const value = zeroValue / 5 * Math.PI * 2;
-        const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 6), new THREE.MeshStandardMaterial({
-          color: zeroValue % 2 ? 7835779 : 6257261,
-          roughness: 0.9
-        }));
-        mesh.scale.set(itemWidth * 0.045, itemHeight * 0.085, itemDepth * 0.025);
-        mesh.position.set(itemWidth * localValue + Math.cos(value) * itemWidth * 0.08, itemHeight * localValueCurrent + Math.sin(value) * itemHeight * 0.035, itemDepth * localValueNext + Math.sin(value) * itemDepth * 0.06);
-        mesh.rotation.z = value - Math.PI / 2;
-        mesh.rotation.y = value * 0.6;
-        mesh.castShadow = true;
-        rotation.add(mesh);
-      }
-    }
+    buildPlantItemMeshGroup(meshGroup, itemWidth, itemDepth, itemHeight, accentColor, darkColor);
   }
   if ((floorScene.has(type.type) || projectDoc.has(type.type)) && type.offlineModelExport !== true) {
-    const forEach = [...rotation.children];
+    const builtChildren = [...meshGroup.children];
     // Stage curtain motion needs procedural curtainPart tags; keep the built-in rig there.
-    if (!(isStageEmbed && type.type === "curtain") && attachExternalItemModel(rotation, type)) {
-      forEach.forEach(argPrimary => {
-        rotation.remove(argPrimary);
-        disposeObject3dResources(argPrimary);
+    if (!(isStageEmbed && type.type === "curtain") && attachExternalItemModel(meshGroup, type)) {
+      builtChildren.forEach(child => {
+        meshGroup.remove(child);
+        disposeObject3dResources(child);
       });
     }
   }
   if (type.type === "tv" && type.offlineModelExport !== true) {
-    addTvMountMeshes(rotation, type, itemWidth, itemDepth, itemHeight);
+    addTvMountMeshes(meshGroup, type, itemWidth, itemDepth, itemHeight);
   }
-  mergeSimilarItemMeshes(rotation, type.type);
-  addStripLightHelpers(rotation, type.type);
-  countShadowLights(rotation, isSelected("item", type.id));
-  return rotation;
+  mergeSimilarItemMeshes(meshGroup, type.type);
+  addStripLightHelpers(meshGroup, type.type);
+  countShadowLights(meshGroup, isSelected("item", type.id));
+  // Last step on purpose: the external-model swap above may have replaced everything built so far, so
+  // the posture has to pose whatever survived that swap.
+  applyItemPosture(meshGroup, type);
+  return meshGroup;
 }
-function instanceMergeIdenticalItems(object3d, argSecondary) {
-  object3d.rotation.y = -THREE.MathUtils.degToRad(finite(argSecondary.rotation, 0));
-  if (stairItemTypes.has(argSecondary.type)) {
-    object3d.scale.x = argSecondary.stairDirection === "left" ? -1 : 1;
+function instanceMergeIdenticalItems(object3d, item) {
+  object3d.rotation.y = -THREE.MathUtils.degToRad(finite(item.rotation, 0));
+  if (stairItemTypes.has(item.type)) {
+    object3d.scale.x = item.stairDirection === "left" ? -1 : 1;
   }
-  if (argSecondary.type === "shoecabinet" && argSecondary.shoeCabinetMirrored === true) {
+  if (item.type === "shoecabinet" && item.shoeCabinetMirrored === true) {
     object3d.scale.x = -1;
   }
-  if (argSecondary.type === "camera" || argSecondary.type === "presence") {
+  if (item.type === "camera" || item.type === "presence") {
     object3d.rotation.order = "YXZ";
-    object3d.rotation.x = THREE.MathUtils.degToRad(clamp(finite(argSecondary.verticalRotation, 0), -180, 180));
+    object3d.rotation.x = THREE.MathUtils.degToRad(clamp(finite(item.verticalRotation, 0), -180, 180));
     return;
   }
-  if (set.has(argSecondary.type)) {
-    if (argSecondary.type === "striplight") {
+  if (set.has(item.type)) {
+    if (item.type === "striplight") {
       object3d.rotation.order = "YXZ";
       object3d.rotation.x = 0;
       object3d.rotation.z = 0;
     } else {
-      const x17 = THREE.MathUtils.degToRad(clamp(finite(argSecondary.verticalRotation, 0), -90, 90));
+      const verticalRad = THREE.MathUtils.degToRad(clamp(finite(item.verticalRotation, 0), -90, 90));
       object3d.rotation.order = "YXZ";
-      object3d.rotation.x = x17;
+      object3d.rotation.x = verticalRad;
     }
   }
 }
-function collectShadowLights(updateMatrixWorld) {
-  updateMatrixWorld.updateMatrixWorld(true);
-  updateMatrixWorld.updateMatrix();
-  if (updateMatrixWorld.matrix.determinant() < 0) {
+function collectShadowLights(sourceObject) {
+  sourceObject.updateMatrixWorld(true);
+  sourceObject.updateMatrix();
+  if (sourceObject.matrix.determinant() < 0) {
     return null;
   }
-  const list = updateMatrixWorld.matrixWorld.clone().invert();
-  const push = [];
-  let boolTrue = true;
-  updateMatrixWorld.traverse(isMesh => {
-    if (!boolTrue || !isMesh.isMesh) {
+  const worldToLocal = sourceObject.matrixWorld.clone().invert();
+  const descriptors = [];
+  let isMergeable = true;
+  sourceObject.traverse(isMesh => {
+    if (!isMergeable || !isMesh.isMesh) {
       return;
     }
-    const transparent = isMesh.material;
-    if (!isMesh.userData.externalModelSharedGeometry || Array.isArray(transparent) || !transparent || transparent.transparent === true || finite(transparent.opacity, 1) < 0.999 || isMesh.isSkinnedMesh || isMesh.morphTargetInfluences) {
-      boolTrue = false;
+    const material = isMesh.material;
+    if (!isMesh.userData.externalModelSharedGeometry || Array.isArray(material) || !material || material.transparent === true || finite(material.opacity, 1) < 0.999 || isMesh.isSkinnedMesh || isMesh.morphTargetInfluences) {
+      isMergeable = false;
       return;
     }
-    const relativeMatrix = new THREE.Matrix4().multiplyMatrices(list, isMesh.matrixWorld);
-    const localValue = collectChildMeshes(isMesh);
-    if (!localValue) {
-      boolTrue = false;
+    const relativeMatrix = new THREE.Matrix4().multiplyMatrices(worldToLocal, isMesh.matrixWorld);
+    const childSignature = collectChildMeshes(isMesh);
+    if (!childSignature) {
+      isMergeable = false;
       return;
     }
-    push.push({
+    descriptors.push({
       mesh: isMesh,
       relativeMatrix,
-      signature: JSON.stringify([isMesh.geometry.uuid, localValue, relativeMatrix.elements.map(argPrimary => Math.round(argPrimary * 1000000) / 1000000), isMesh.castShadow, isMesh.receiveShadow, isMesh.renderOrder])
+      signature: JSON.stringify([isMesh.geometry.uuid, childSignature, relativeMatrix.elements.map(component => Math.round(component * 1000000) / 1000000), isMesh.castShadow, isMesh.receiveShadow, isMesh.renderOrder])
     });
   });
-  if (boolTrue && push.length) {
-    return push;
+  if (isMergeable && descriptors.length) {
+    return descriptors;
   } else {
     return null;
   }
 }
-function mergeStaticItemInstanceBatches(object3d, argSecondary) {
+function mergeStaticItemInstanceBatches(rootGroup, batches) {
   const lookupMap = new Map();
   for (const {
-    item,
-    group: object3d
-  } of argSecondary) {
-    if (skipInstanceMergeTypes.has(item.type) || isStageEmbed && ["wallac", "floorac", "airoutlet", "curtain", "nas", "camera", "presence", "tv", "robotvacuum"].includes(item.type) || isSelected("item", item.id)) {
+    item: batchItem,
+    group: entryGroup
+  } of batches) {
+    if (skipInstanceMergeTypes.has(batchItem.type) || isStageEmbed && ["wallac", "floorac", "airoutlet", "curtain", "nas", "camera", "presence", "tv", "robotvacuum"].includes(batchItem.type) || isSelected("item", batchItem.id)) {
       continue;
     }
-    const map = collectShadowLights(object3d);
+    const map = collectShadowLights(entryGroup);
     if (!map) {
       continue;
     }
-    const cacheKey = JSON.stringify([item.type, map.map(signature => signature.signature)]);
+    const cacheKey = JSON.stringify([batchItem.type, map.map(signature => signature.signature)]);
     if (!lookupMap.has(cacheKey)) {
       lookupMap.set(cacheKey, []);
     }
     lookupMap.get(cacheKey).push({
-      item,
-      group: object3d,
+      item: batchItem,
+      group: entryGroup,
       descriptors: map
     });
   }
-  object3d.updateMatrixWorld(true);
-  const value = object3d.matrixWorld.clone().invert();
-  const reduceVar = [];
-  for (const list of lookupMap.values()) {
-    if (list.length < 2) {
+  rootGroup.updateMatrixWorld(true);
+  const worldToLocal = rootGroup.matrixWorld.clone().invert();
+  const batchStats = [];
+  for (const batchEntries of lookupMap.values()) {
+    if (batchEntries.length < 2) {
       continue;
     }
-    const item = list[0].descriptors.length;
-    for (let zeroValue = 0; zeroValue < item; zeroValue += 1) {
-      const userData = list[0].descriptors[zeroValue].mesh;
-      const conditionalValue = userData.userData.externalModelSharedMaterial ? userData.material : userData.material.clone();
-      const userData19 = new THREE.InstancedMesh(userData.geometry, conditionalValue, list.length);
-      userData19.name = "ha-bridge-instance-" + list[0].item.type + "-" + (zeroValue + 1);
-      userData19.castShadow = userData.castShadow;
-      userData19.receiveShadow = userData.receiveShadow;
-      userData19.renderOrder = userData.renderOrder;
-      userData19.instanceMatrix.setUsage(THREE.StaticDrawUsage);
-      userData19.userData.externalModelSharedGeometry = true;
-      userData19.userData.externalModelSharedTextures = true;
-      userData19.userData.externalModelSharedMaterial = userData.userData.externalModelSharedMaterial === true;
-      userData19.userData.modelLayer = "items";
-      userData19.userData.exportRole = "plan";
-      userData19.userData.instanceItemType = list[0].item.type;
-      userData19.userData.instanceItemIds = list.map(({
+    const descriptorCount = batchEntries[0].descriptors.length;
+    for (let descriptorIndex = 0; descriptorIndex < descriptorCount; descriptorIndex += 1) {
+      const sourceMesh = batchEntries[0].descriptors[descriptorIndex].mesh;
+      const instanceMaterial = sourceMesh.userData.externalModelSharedMaterial ? sourceMesh.material : sourceMesh.material.clone();
+      const instancedMesh = new THREE.InstancedMesh(sourceMesh.geometry, instanceMaterial, batchEntries.length);
+      instancedMesh.name = "ha-bridge-instance-" + batchEntries[0].item.type + "-" + (descriptorIndex + 1);
+      instancedMesh.castShadow = sourceMesh.castShadow;
+      instancedMesh.receiveShadow = sourceMesh.receiveShadow;
+      instancedMesh.renderOrder = sourceMesh.renderOrder;
+      instancedMesh.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+      instancedMesh.userData.externalModelSharedGeometry = true;
+      instancedMesh.userData.externalModelSharedTextures = true;
+      instancedMesh.userData.externalModelSharedMaterial = sourceMesh.userData.externalModelSharedMaterial === true;
+      instancedMesh.userData.modelLayer = "items";
+      instancedMesh.userData.exportRole = "plan";
+      instancedMesh.userData.instanceItemType = batchEntries[0].item.type;
+      instancedMesh.userData.instanceItemIds = batchEntries.map(({
         item: id
       }) => id.id);
-      list.forEach(({
-        descriptors: argPrimary
-      }, argSecondary) => {
-        const localValue = new THREE.Matrix4().multiplyMatrices(value, argPrimary[zeroValue].mesh.matrixWorld);
-        userData19.setMatrixAt(argSecondary, localValue);
+      batchEntries.forEach(({
+        descriptors: descriptorList
+      }, instanceIndex) => {
+        const instanceMatrix = new THREE.Matrix4().multiplyMatrices(worldToLocal, descriptorList[descriptorIndex].mesh.matrixWorld);
+        instancedMesh.setMatrixAt(instanceIndex, instanceMatrix);
       });
-      userData19.instanceMatrix.needsUpdate = true;
-      userData19.computeBoundingBox();
-      userData19.computeBoundingSphere();
-      object3d.add(userData19);
+      instancedMesh.instanceMatrix.needsUpdate = true;
+      instancedMesh.computeBoundingBox();
+      instancedMesh.computeBoundingSphere();
+      rootGroup.add(instancedMesh);
     }
     for (const {
-      group: localValue
-    } of list) {
-      object3d.remove(localValue);
-      disposeObject3dResources(localValue);
+      group: removedGroup
+    } of batchEntries) {
+      rootGroup.remove(removedGroup);
+      disposeObject3dResources(removedGroup);
     }
-    reduceVar.push({
-      type: list[0].item.type,
-      instances: list.length,
-      before: list.length * item,
-      after: item
+    batchStats.push({
+      type: batchEntries[0].item.type,
+      instances: batchEntries.length,
+      before: batchEntries.length * descriptorCount,
+      after: descriptorCount
     });
   }
-  object3d.userData.instanceBatchStats = reduceVar;
+  rootGroup.userData.instanceBatchStats = batchStats;
   if (renderer?.domElement) {
-    renderer.domElement.dataset.instanceBatchCount = String(reduceVar.length);
-    renderer.domElement.dataset.instanceCount = String(reduceVar.reduce((argPrimary, beforeCount) => argPrimary + beforeCount.instances, 0));
-    renderer.domElement.dataset.instanceDrawCallsSaved = String(reduceVar.reduce((argPrimary, beforeCount) => argPrimary + beforeCount.before - beforeCount.after, 0));
+    renderer.domElement.dataset.instanceBatchCount = String(batchStats.length);
+    renderer.domElement.dataset.instanceCount = String(batchStats.reduce((totalSoFar, beforeCount) => totalSoFar + beforeCount.instances, 0));
+    renderer.domElement.dataset.instanceDrawCallsSaved = String(batchStats.reduce((savedSoFar, beforeCount) => savedSoFar + beforeCount.before - beforeCount.after, 0));
   }
-  return reduceVar;
+  return batchStats;
 }
-function buildCanvasPathFromPoints(updateMatrixWorld, item) {
+function buildCanvasPathFromPoints(rootGroup, batches) {
   const staticBatchGeometryMap = new Map();
-  const helperFn = material => {
-    const filterVar = Object.keys(material.geometry.attributes).filter(argPrimary => argPrimary !== "color" || material.material.vertexColors).sort();
-    if (!isStageEmbed || Object.values(material.material).some(isTexture => isTexture?.isTexture)) {
-      return filterVar;
+  const compatibleAttributes = mesh => {
+    const attributeNames = Object.keys(mesh.geometry.attributes).filter(keyName => keyName !== "color" || mesh.material.vertexColors).sort();
+    if (!isStageEmbed || Object.values(mesh.material).some(isTexture => isTexture?.isTexture)) {
+      return attributeNames;
     } else {
-      return filterVar.filter(argPrimary => argPrimary === "position" || argPrimary === "normal" || argPrimary === "color" && material.material.vertexColors);
+      return attributeNames.filter(name => name === "position" || name === "normal" || name === "color" && mesh.material.vertexColors);
     }
   };
-  updateMatrixWorld.updateMatrixWorld(true);
+  rootGroup.updateMatrixWorld(true);
   for (const {
-    item: type,
-    group: parent
-  } of item) {
-    if (parent.parent === updateMatrixWorld && !skipInstanceMergeTypes.has(type.type) && (!isStageEmbed || !["wallac", "floorac", "airoutlet", "curtain", "nas", "camera", "presence", "tv", "robotvacuum"].includes(type.type)) && !isSelected("item", type.id)) {
-      parent.traverse(geometry => {
-        if (!geometry.isMesh || geometry.isInstancedMesh || geometry.geometry.drawRange.start !== 0 || geometry.geometry.drawRange.count !== Infinity) {
+    item: batchItem,
+    group: batchGroup
+  } of batches) {
+    if (batchGroup.parent === rootGroup && !skipInstanceMergeTypes.has(batchItem.type) && (!isStageEmbed || !["wallac", "floorac", "airoutlet", "curtain", "nas", "camera", "presence", "tv", "robotvacuum"].includes(batchItem.type)) && !isSelected("item", batchItem.id)) {
+      batchGroup.traverse(candidateMesh => {
+        if (!candidateMesh.isMesh || candidateMesh.isInstancedMesh || candidateMesh.geometry.drawRange.start !== 0 || candidateMesh.geometry.drawRange.count !== Infinity) {
           return;
         }
-        for (let parent = geometry; parent && parent !== updateMatrixWorld; parent = parent.parent) {
-          if (!parent.visible) {
+        for (let ancestor = candidateMesh; ancestor && ancestor !== rootGroup; ancestor = ancestor.parent) {
+          if (!ancestor.visible) {
             return;
           }
         }
-        const computedValue = isStageEmbed && !geometry.material?.vertexColors;
-        const localValue = createGlassMaterial(geometry, isStageEmbed, computedValue);
-        if (!localValue || geometry.matrixWorld.determinant() < 0) {
+        const needsVertexColor = isStageEmbed && !candidateMesh.material?.vertexColors;
+        const glassMaterial = createGlassMaterial(candidateMesh, isStageEmbed, needsVertexColor);
+        if (!glassMaterial || candidateMesh.matrixWorld.determinant() < 0) {
           return;
         }
-        const pushTarget = helperFn(geometry).map(object3d => [object3d, geometry.geometry.attributes[object3d].itemSize]);
-        if (computedValue) {
-          pushTarget.push(["color", 3]);
+        const attributeSpecs = compatibleAttributes(candidateMesh).map(attributeName => [attributeName, candidateMesh.geometry.attributes[attributeName].itemSize]);
+        if (needsVertexColor) {
+          attributeSpecs.push(["color", 3]);
         }
-        const conditionalValue = isStageEmbed ? JSON.stringify(pushTarget) : meshMaterialSignature(geometry);
-        const value = localValue + ":" + conditionalValue + ":" + computedValue;
-        if (!staticBatchGeometryMap.has(value)) {
-          staticBatchGeometryMap.set(value, []);
+        const materialKey = isStageEmbed ? JSON.stringify(attributeSpecs) : meshMaterialSignature(candidateMesh);
+        const batchKey = glassMaterial + ":" + materialKey + ":" + needsVertexColor;
+        if (!staticBatchGeometryMap.has(batchKey)) {
+          staticBatchGeometryMap.set(batchKey, []);
         }
-        staticBatchGeometryMap.get(value).push(geometry);
+        staticBatchGeometryMap.get(batchKey).push(candidateMesh);
       });
     }
   }
-  const inverseWorldMatrix = updateMatrixWorld.matrixWorld.clone().invert();
+  const inverseWorldMatrix = rootGroup.matrixWorld.clone().invert();
   const staticBatchStats = [];
-  const add = new Set();
-  for (const length of staticBatchGeometryMap.values()) {
-    if (length.length < 2) {
+  const disposedMaterials = new Set();
+  for (const meshGroup of staticBatchGeometryMap.values()) {
+    if (meshGroup.length < 2) {
       continue;
     }
-    const forEach = length.map(geometry => {
-      const localMatrix = new THREE.Matrix4().multiplyMatrices(inverseWorldMatrix, geometry.matrixWorld);
-      const attributes = geometry.geometry.clone();
+    const preparedGeometries = meshGroup.map(sourceGeometry => {
+      const localMatrix = new THREE.Matrix4().multiplyMatrices(inverseWorldMatrix, sourceGeometry.matrixWorld);
+      const clonedGeometry = sourceGeometry.geometry.clone();
       if (isStageEmbed) {
-        const includesVar = helperFn(geometry);
-        for (const attrName of Object.keys(attributes.attributes)) {
-          if (!includesVar.includes(attrName)) {
-            attributes.deleteAttribute(attrName);
+        const keptAttributes = compatibleAttributes(sourceGeometry);
+        for (const attributeKey of Object.keys(clonedGeometry.attributes)) {
+          if (!keptAttributes.includes(attributeKey)) {
+            clonedGeometry.deleteAttribute(attributeKey);
           }
         }
-        for (const attrName of includesVar) {
-          const itemSize = geometry.geometry.attributes[attrName];
-          if (!itemSize.isInterleavedBufferAttribute && !itemSize.normalized && itemSize.array instanceof Float32Array) {
+        for (const keptAttribute of keptAttributes) {
+          const sourceAttribute = sourceGeometry.geometry.attributes[keptAttribute];
+          if (!sourceAttribute.isInterleavedBufferAttribute && !sourceAttribute.normalized && sourceAttribute.array instanceof Float32Array) {
             continue;
           }
-          const constructedFloat32Array = new Float32Array(itemSize.count * itemSize.itemSize);
-          const arrayValue = ["getX", "getY", "getZ", "getW"];
-          for (let vertexIndex = 0; vertexIndex < itemSize.count; vertexIndex++) {
-            for (let componentIndex = 0; componentIndex < itemSize.itemSize; componentIndex++) {
-              constructedFloat32Array[vertexIndex * itemSize.itemSize + componentIndex] = componentIndex < 4 ? itemSize[arrayValue[componentIndex]](vertexIndex) : itemSize.getComponent(vertexIndex, componentIndex);
+          const attributeValues = new Float32Array(sourceAttribute.count * sourceAttribute.itemSize);
+          const getters = ["getX", "getY", "getZ", "getW"];
+          for (let vertexIndex = 0; vertexIndex < sourceAttribute.count; vertexIndex++) {
+            for (let componentIndex = 0; componentIndex < sourceAttribute.itemSize; componentIndex++) {
+              attributeValues[vertexIndex * sourceAttribute.itemSize + componentIndex] = componentIndex < 4 ? sourceAttribute[getters[componentIndex]](vertexIndex) : sourceAttribute.getComponent(vertexIndex, componentIndex);
             }
           }
-          attributes.setAttribute(attrName, new THREE.BufferAttribute(constructedFloat32Array, itemSize.itemSize));
+          clonedGeometry.setAttribute(keptAttribute, new THREE.BufferAttribute(attributeValues, sourceAttribute.itemSize));
         }
-        if (!geometry.material.vertexColors) {
-          const vertexCount = attributes.attributes.position.count;
-          const constructedFloat32Array = new Float32Array(vertexCount * 3);
-          const r = geometry.material.color;
-          for (let zeroValue = 0; zeroValue < vertexCount; zeroValue++) {
-            constructedFloat32Array[zeroValue * 3] = r.r;
-            constructedFloat32Array[zeroValue * 3 + 1] = r.g;
-            constructedFloat32Array[zeroValue * 3 + 2] = r.b;
+        if (!sourceGeometry.material.vertexColors) {
+          const vertexTotal = clonedGeometry.attributes.position.count;
+          const vertexColorsArray = new Float32Array(vertexTotal * 3);
+          const baseColor = sourceGeometry.material.color;
+          for (let vertexCursor = 0; vertexCursor < vertexTotal; vertexCursor++) {
+            vertexColorsArray[vertexCursor * 3] = baseColor.r;
+            vertexColorsArray[vertexCursor * 3 + 1] = baseColor.g;
+            vertexColorsArray[vertexCursor * 3 + 2] = baseColor.b;
           }
-          attributes.setAttribute("color", new THREE.BufferAttribute(constructedFloat32Array, 3));
+          clonedGeometry.setAttribute("color", new THREE.BufferAttribute(vertexColorsArray, 3));
         }
-        if (!attributes.index) {
-          const vertexCount = attributes.attributes.position.count;
-          const conditionalValue = vertexCount <= 65536 ? new Uint16Array(vertexCount) : new Uint32Array(vertexCount);
-          for (let zeroValue = 0; zeroValue < vertexCount; zeroValue++) {
-            conditionalValue[zeroValue] = zeroValue;
+        if (!clonedGeometry.index) {
+          const indexedVertexCount = clonedGeometry.attributes.position.count;
+          const indexArray = indexedVertexCount <= 65536 ? new Uint16Array(indexedVertexCount) : new Uint32Array(indexedVertexCount);
+          for (let indexValue = 0; indexValue < indexedVertexCount; indexValue++) {
+            indexArray[indexValue] = indexValue;
           }
-          attributes.setIndex(new THREE.BufferAttribute(conditionalValue, 1));
+          clonedGeometry.setIndex(new THREE.BufferAttribute(indexArray, 1));
         }
       }
-      return attributes.applyMatrix4(localMatrix);
+      return clonedGeometry.applyMatrix4(localMatrix);
     });
-    const localValue = mergeGeometries(forEach);
-    forEach.forEach(dispose => dispose.dispose());
-    if (!localValue) {
+    const mergedGeometry = mergeGeometries(preparedGeometries);
+    preparedGeometries.forEach(preparedGeometry => preparedGeometry.dispose());
+    if (!mergedGeometry) {
       continue;
     }
-    const material = length[0];
-    const computedValue = isStageEmbed && !material.material.vertexColors;
-    const color = computedValue ? material.material.clone() : material.material;
-    if (computedValue) {
-      color.color.setRGB(1, 1, 1);
-      color.vertexColors = true;
+    const sourceMesh = meshGroup[0];
+    const recolorVertexColors = isStageEmbed && !sourceMesh.material.vertexColors;
+    const batchedMaterial = recolorVertexColors ? sourceMesh.material.clone() : sourceMesh.material;
+    if (recolorVertexColors) {
+      batchedMaterial.color.setRGB(1, 1, 1);
+      batchedMaterial.vertexColors = true;
     }
-    const userData = new THREE.Mesh(localValue, color);
-    userData.castShadow = material.castShadow;
-    userData.receiveShadow = material.receiveShadow;
-    userData.renderOrder = material.renderOrder;
-    userData.layers.mask = material.layers.mask;
-    userData.userData.externalModelSharedTextures = material.userData.externalModelSharedTextures === true;
-    userData.userData.externalModelSharedMaterial = !computedValue && material.userData.externalModelSharedMaterial === true;
-    userData.userData.reflectionSimplifiable = isStageEmbed;
-    userData.userData.modelLayer = "items";
-    userData.userData.exportRole = "plan";
-    for (const userData of length) {
-      userData.parent?.remove(userData);
-      if (!userData.userData.externalModelSharedGeometry) {
-        userData.geometry.dispose();
+    const batchedMesh = new THREE.Mesh(mergedGeometry, batchedMaterial);
+    batchedMesh.castShadow = sourceMesh.castShadow;
+    batchedMesh.receiveShadow = sourceMesh.receiveShadow;
+    batchedMesh.renderOrder = sourceMesh.renderOrder;
+    batchedMesh.layers.mask = sourceMesh.layers.mask;
+    batchedMesh.userData.externalModelSharedTextures = sourceMesh.userData.externalModelSharedTextures === true;
+    batchedMesh.userData.externalModelSharedMaterial = !recolorVertexColors && sourceMesh.userData.externalModelSharedMaterial === true;
+    batchedMesh.userData.reflectionSimplifiable = isStageEmbed;
+    batchedMesh.userData.modelLayer = "items";
+    batchedMesh.userData.exportRole = "plan";
+    for (const sourceItem of meshGroup) {
+      sourceItem.parent?.remove(sourceItem);
+      if (!sourceItem.userData.externalModelSharedGeometry) {
+        sourceItem.geometry.dispose();
       }
-      if (!userData.userData.externalModelSharedMaterial) {
-        add.add(userData.material);
+      if (!sourceItem.userData.externalModelSharedMaterial) {
+        disposedMaterials.add(sourceItem.material);
       }
     }
-    updateMatrixWorld.add(userData);
+    rootGroup.add(batchedMesh);
     staticBatchStats.push({
-      before: length.length,
+      before: meshGroup.length,
       after: 1
     });
   }
   for (const {
-    group: parent
-  } of item) {
-    if (parent.parent === updateMatrixWorld && collectDescendantMeshes(parent).length === 0) {
-      updateMatrixWorld.remove(parent);
+    group: orphanGroup
+  } of batches) {
+    if (orphanGroup.parent === rootGroup && collectDescendantMeshes(orphanGroup).length === 0) {
+      rootGroup.remove(orphanGroup);
     }
   }
-  const set = new Set();
-  updateMatrixWorld.traverse(material => {
-    for (const localValue of Array.isArray(material.material) ? material.material : material.material ? [material.material] : []) {
-      set.add(localValue);
+  const liveMaterials = new Set();
+  rootGroup.traverse(node => {
+    for (const materialEntry of Array.isArray(node.material) ? node.material : node.material ? [node.material] : []) {
+      liveMaterials.add(materialEntry);
     }
   });
-  for (const dispose of add) {
-    if (!set.has(dispose)) {
-      dispose.dispose?.();
+  for (const candidateMaterial of disposedMaterials) {
+    if (!liveMaterials.has(candidateMaterial)) {
+      candidateMaterial.dispose?.();
     }
   }
-  updateMatrixWorld.userData.staticItemBatchStats = staticBatchStats;
+  rootGroup.userData.staticItemBatchStats = staticBatchStats;
   if (renderer?.domElement) {
     renderer.domElement.dataset.staticItemBatchCount = String(staticBatchStats.length);
-    renderer.domElement.dataset.staticItemDrawCallsSaved = String(staticBatchStats.reduce((argPrimary, before) => argPrimary + before.before - before.after, 0));
+    renderer.domElement.dataset.staticItemDrawCallsSaved = String(staticBatchStats.reduce((saved, before) => saved + before.before - before.after, 0));
   }
   return staticBatchStats;
 }
@@ -12539,163 +14182,163 @@ function syncExternalModelDomStats() {
   renderer.domElement.dataset.externalPrecompilePassCount = String(cs);
   renderer.domElement.dataset.lightPrecompilePassCount = String(G);
 }
-function meshInstanceDescriptors(object3d) {
-  let value = 0;
-  let list = 0;
-  let flag = 0;
-  let zeroValue = 0;
-  for (const isSpotLight of object3d) {
-    if (isSpotLight.isSpotLight) {
-      value += 1;
-    } else if (isSpotLight.isRectAreaLight) {
-      list += 1;
-    } else if (isSpotLight.isPointLight) {
-      flag += 1;
+function meshInstanceDescriptors(lights) {
+  let spotCount = 0;
+  let rectAreaCount = 0;
+  let pointCount = 0;
+  let otherCount = 0;
+  for (const light of lights) {
+    if (light.isSpotLight) {
+      spotCount += 1;
+    } else if (light.isRectAreaLight) {
+      rectAreaCount += 1;
+    } else if (light.isPointLight) {
+      pointCount += 1;
     } else {
-      zeroValue += 1;
+      otherCount += 1;
     }
   }
-  return value + ":" + list + ":" + flag + ":" + zeroValue;
+  return spotCount + ":" + rectAreaCount + ":" + pointCount + ":" + otherCount;
 }
 function collectWorldExternalMeshes() {
   if (!worldGroup) {
     return [];
   }
-  const list = [];
-  const lookupMap = new Map();
-  worldGroup.traverse(object3d => {
-    if (!object3d.isLight || !object3d.userData?.lightItemId || !isStageEmbed && finite(object3d.userData.lightOnIntensity, 0) <= 0) {
+  const visibleLights = [];
+  const byGroup = new Map();
+  worldGroup.traverse(node => {
+    if (!node.isLight || !node.userData?.lightItemId || !isStageEmbed && finite(node.userData.lightOnIntensity, 0) <= 0) {
       return;
     }
-    if (object3d.visible !== false) {
-      list.push(object3d);
+    if (node.visible !== false) {
+      visibleLights.push(node);
     }
-    const flag = String(object3d.userData.lightGroupId || "");
-    if (flag) {
-      if (!lookupMap.has(flag)) {
-        lookupMap.set(flag, []);
+    const groupId = String(node.userData.lightGroupId || "");
+    if (groupId) {
+      if (!byGroup.has(groupId)) {
+        byGroup.set(groupId, []);
       }
-      lookupMap.get(flag).push(object3d);
+      byGroup.get(groupId).push(node);
     }
   });
-  const idSet = [...lookupMap.values()].flat();
-  const set = new Set();
-  const listCurrent = [];
-  const localValue = meshInstanceDescriptors(list);
-  const computedValue = worldGroup.uuid + ":" + cs;
-  if (materialTestTypeQuery !== computedValue) {
-    materialTestTypeQuery = computedValue;
+  const groupedLights = [...byGroup.values()].flat();
+  const seenSignatures = new Set();
+  const descriptors = [];
+  const baseSignature = meshInstanceDescriptors(visibleLights);
+  const meshSetKey = worldGroup.uuid + ":" + cs;
+  if (materialTestTypeQuery !== meshSetKey) {
+    materialTestTypeQuery = meshSetKey;
     instanceTestTypeQuery.clear();
   }
-  const helperFn = (argPrimary, filter, flag = false) => {
-    const signature = meshInstanceDescriptors(argPrimary);
-    if (!set.has(signature)) {
-      set.add(signature);
+  const recordDescriptor = (descriptor, lights, forceRecord = false) => {
+    const signature = meshInstanceDescriptors(descriptor);
+    if (!seenSignatures.has(signature)) {
+      seenSignatures.add(signature);
       if (!instanceTestTypeQuery.has(signature)) {
-        if (!!flag || signature === localValue || !(instanceTestTypeQuery.size + listCurrent.length >= qg)) {
-          listCurrent.push({
+        if (!!forceRecord || signature === baseSignature || !(instanceTestTypeQuery.size + descriptors.length >= qg)) {
+          descriptors.push({
             signature: signature,
-            lights: filter.filter(visible => visible.visible).map(light => light.light),
-            changes: filter
+            lights: lights.filter(lightCandidate => lightCandidate.visible).map(lightRef => lightRef.light),
+            changes: lights
           });
         }
       }
     }
   };
-  helperFn(list, [], true);
-  helperFn([], idSet.map(light => ({
-    light: light,
+  recordDescriptor(visibleLights, [], true);
+  recordDescriptor([], groupedLights.map(hiddenEntry => ({
+    light: hiddenEntry,
     visible: false
   })), true);
-  for (const listCurrent of lookupMap.values()) {
-    const lights = listCurrent.filter(object3d => object3d.visible === false);
+  for (const groupLights of byGroup.values()) {
+    const lights = groupLights.filter(groupNode => groupNode.visible === false);
     if (lights.length) {
-      helperFn([...list, ...lights], lights.map(light => ({
-        light: light,
+      recordDescriptor([...visibleLights, ...lights], lights.map(shownEntry => ({
+        light: shownEntry,
         visible: true
       })));
     }
-    const signature = listCurrent.filter(visible => visible.visible !== false);
+    const signature = groupLights.filter(visibleCandidate => visibleCandidate.visible !== false);
     if (signature.length) {
-      helperFn(list.filter(argPrimary => !signature.includes(argPrimary)), signature.map(light => ({
-        light: light,
+      recordDescriptor(visibleLights.filter(visibleNode => !signature.includes(visibleNode)), signature.map(inactiveEntry => ({
+        light: inactiveEntry,
         visible: false
       })));
     }
   }
   if (isStageEmbed) {
-    helperFn(idSet, idSet.map(light => ({
-      light: light,
+    recordDescriptor(groupedLights, groupedLights.map(embedEntry => ({
+      light: embedEntry,
       visible: true
     })), true);
   }
-  return listCurrent;
+  return descriptors;
 }
 const Xm = 4500;
-function countLightPrecompileWork(argPrimary, traverse, argTertiary, argN) {
-  const value = argPrimary.getContext();
-  if (!argN() || value.isContextLost() || argPrimary.extensions?.has("KHR_parallel_shader_compile") === false) {
+function countLightPrecompileWork(renderer, sceneRoot, camera, isStillActive) {
+  const glContext = renderer.getContext();
+  if (!isStillActive() || glContext.isContextLost() || renderer.extensions?.has("KHR_parallel_shader_compile") === false) {
     return Promise.resolve(false);
   }
-  argPrimary.compile(traverse, argTertiary);
-  let count = false;
-  traverse.traverse?.(material => {
+  renderer.compile(sceneRoot, camera);
+  let hasTransmission = false;
+  sceneRoot.traverse?.(material => {
     if ((Array.isArray(material.material) ? material.material : [material.material]).some(transmission => transmission?.transmission > 0)) {
-      count = true;
+      hasTransmission = true;
     }
   });
-  if (count) {
-    const localValue = argPrimary.getRenderTarget();
-    const face = argPrimary.getActiveCubeFace();
-    const level = argPrimary.getActiveMipmapLevel();
-    const dispose = new THREE.WebGLRenderTarget(1, 1);
+  if (hasTransmission) {
+    const savedRenderTarget = renderer.getRenderTarget();
+    const savedCubeFace = renderer.getActiveCubeFace();
+    const savedMipmapLevel = renderer.getActiveMipmapLevel();
+    const probeTarget = new THREE.WebGLRenderTarget(1, 1);
     try {
-      argPrimary.setRenderTarget(dispose);
-      argPrimary.compile(traverse, argTertiary);
+      renderer.setRenderTarget(probeTarget);
+      renderer.compile(sceneRoot, camera);
     } finally {
-      argPrimary.setRenderTarget(localValue, face, level);
-      dispose.dispose();
+      renderer.setRenderTarget(savedRenderTarget, savedCubeFace, savedMipmapLevel);
+      probeTarget.dispose();
     }
   }
-  const list = [...argPrimary.info.programs];
-  const countCurrent = performance.now() + Xm;
-  return new Promise((argPrimaryCurrent, argSecondary) => {
-    const helperFn = () => {
+  const programs = [...renderer.info.programs];
+  const retryDeadline = performance.now() + Xm;
+  return new Promise((resolve, reject) => {
+    const pollUntilReady = () => {
       try {
-        if (!argN() || argPrimary.getContext() !== value || value.isContextLost()) {
-          argPrimaryCurrent(false);
+        if (!isStillActive() || renderer.getContext() !== glContext || glContext.isContextLost()) {
+          resolve(false);
           return;
         }
-        const has = new Set(argPrimary.info.programs);
-        const helperFn = program => has.has(program) && program.program && value.isProgram(program.program);
-        if (list.some(argPrimary => !helperFn(argPrimary))) {
-          argPrimaryCurrent(false);
+        const knownPrograms = new Set(renderer.info.programs);
+        const isTrackedProgram = trackedProgram => knownPrograms.has(trackedProgram) && trackedProgram.program && glContext.isProgram(trackedProgram.program);
+        if (programs.some(candidateProgram => !isTrackedProgram(candidateProgram))) {
+          resolve(false);
           return;
         }
-        if (list.every(isReady => isReady.isReady())) {
-          for (const getUniforms of list) {
-            if (!helperFn(getUniforms)) {
-              argPrimaryCurrent(false);
+        if (programs.every(readyProgram => readyProgram.isReady())) {
+          for (const programEntry of programs) {
+            if (!isTrackedProgram(programEntry)) {
+              resolve(false);
               return;
             }
-            getUniforms.getUniforms();
-            if (!helperFn(getUniforms)) {
-              argPrimaryCurrent(false);
+            programEntry.getUniforms();
+            if (!isTrackedProgram(programEntry)) {
+              resolve(false);
               return;
             }
-            getUniforms.getAttributes();
+            programEntry.getAttributes();
           }
-          argPrimaryCurrent(true);
-        } else if (performance.now() >= countCurrent) {
-          argPrimaryCurrent(false);
+          resolve(true);
+        } else if (performance.now() >= retryDeadline) {
+          resolve(false);
         } else {
-          window.setTimeout(helperFn, 32);
+          window.setTimeout(pollUntilReady, 32);
         }
-      } catch (localValue) {
-        argSecondary(localValue);
+      } catch (error) {
+        reject(error);
       }
     };
-    window.setTimeout(helperFn, 0);
+    window.setTimeout(pollUntilReady, 0);
   });
 }
 function activeFloorContentBounds() {
@@ -12704,7 +14347,7 @@ function activeFloorContentBounds() {
 function createInvisibleMaterial() {
   return stageSession || previewOrbitLocked || isLeavingStudio || isBakingLightCache || isLightPrecompiling || isStageEmbed && (isStageWarmup || isCapturingFrame) || !isStageEmbed && isPreviewQualityReady();
 }
-function scheduleOrbitInteractionWarmup(numericParam = 360) {
+function scheduleOrbitInteractionWarmup(delayMs = 360) {
   if (!yt && !isAutoDiagramEmbedCurrent && !endBaseLightPanelDrag) {
     ORBIT_DOLLY_SPEED_SCALE = true;
     window.clearTimeout(endDetailsPanelResize);
@@ -12719,77 +14362,77 @@ function scheduleOrbitInteractionWarmup(numericParam = 360) {
           scheduleOrbitInteractionWarmup(240);
           return;
         }
-        const length = collectWorldExternalMeshes();
-        const uuid = worldGroup;
-        const localValue = previewSceneCurrent;
-        const domElement = renderer;
-        const text = [uuid.uuid, getPreviewFloorModeCurrent(), activeFloorId, cs, ...length.map(signature => signature.signature).sort()].join("|");
-        if (!length.length) {
+        const externalMeshes = collectWorldExternalMeshes();
+        const worldRoot = worldGroup;
+        const previewScene = previewSceneCurrent;
+        const rendererRef = renderer;
+        const cacheSignature = [worldRoot.uuid, getPreviewFloorModeCurrent(), activeFloorId, cs, ...externalMeshes.map(signature => signature.signature).sort()].join("|");
+        if (!externalMeshes.length) {
           ORBIT_DOLLY_SPEED_SCALE = false;
-          domElement.domElement.dataset.lightPrecompileState = "ready";
+          rendererRef.domElement.dataset.lightPrecompileState = "ready";
           syncExternalModelDomStats();
           return;
         }
         ORBIT_DOLLY_SPEED_MAX = true;
         ORBIT_DOLLY_SPEED_SCALE = false;
-        domElement.domElement.dataset.lightPrecompileState = "working";
-        domElement.domElement.dataset.lightPrecompilePlanCount = String(length.length);
-        const helperFn = () => worldGroup === uuid && previewSceneCurrent === localValue && renderer === domElement && !ORBIT_DOLLY_SPEED_SCALE && !activeFloorContentBounds() && !createInvisibleMaterial();
-        let boolTrue = true;
+        rendererRef.domElement.dataset.lightPrecompileState = "working";
+        rendererRef.domElement.dataset.lightPrecompilePlanCount = String(externalMeshes.length);
+        const isPrecompileTargetValid = () => worldGroup === worldRoot && previewSceneCurrent === previewScene && renderer === rendererRef && !ORBIT_DOLLY_SPEED_SCALE && !activeFloorContentBounds() && !createInvisibleMaterial();
+        let completed = true;
         try {
-          for (const changes of length) {
+          for (const meshBatch of externalMeshes) {
             await yieldToIdle();
-            if (!helperFn()) {
-              boolTrue = false;
+            if (!isPrecompileTargetValid()) {
+              completed = false;
               ORBIT_DOLLY_SPEED_SCALE = true;
               break;
             }
-            const localValue = changes.changes.map(({
-              light,
+            const restoreStates = meshBatch.changes.map(({
+              light: lightRef,
               visible: nextVisible
             }) => ({
-              light,
+              light: lightRef,
               nextVisible,
-              visible: light.visible,
-              intensity: light.intensity
+              visible: lightRef.visible,
+              intensity: lightRef.intensity
             }));
-            let localValueCurrent = null;
+            let precompileResult = null;
             try {
-              for (const light of localValue) {
-                light.light.intensity = 0;
-                light.light.visible = light.nextVisible;
+              for (const lightState of restoreStates) {
+                lightState.light.intensity = 0;
+                lightState.light.visible = lightState.nextVisible;
               }
-              syncSpotShadowCastingLights(uuid, {
+              syncSpotShadowCastingLights(worldRoot, {
                 rebuildAtlas: false
               });
-              localValueCurrent = countLightPrecompileWork(domElement, localValue, cameraCurrent, helperFn);
+              precompileResult = countLightPrecompileWork(rendererRef, restoreStates, cameraCurrent, isPrecompileTargetValid);
             } finally {
-              for (const light of localValue) {
-                light.light.visible = light.visible;
-                light.light.intensity = light.intensity;
+              for (const restoreState of restoreStates) {
+                restoreState.light.visible = restoreState.visible;
+                restoreState.light.intensity = restoreState.intensity;
               }
-              syncSpotShadowCastingLights(uuid, {
+              syncSpotShadowCastingLights(worldRoot, {
                 rebuildAtlas: false
               });
             }
-            if (!(await localValueCurrent) || !helperFn()) {
-              boolTrue = false;
-              domElement.domElement.dataset.lightPrecompileDeferred = "true";
-              ORBIT_DOLLY_SPEED_SCALE ||= !helperFn();
+            if (!(await precompileResult) || !isPrecompileTargetValid()) {
+              completed = false;
+              rendererRef.domElement.dataset.lightPrecompileDeferred = "true";
+              ORBIT_DOLLY_SPEED_SCALE ||= !isPrecompileTargetValid();
               break;
             }
             G += 1;
-            instanceTestTypeQuery.add(changes.signature);
+            instanceTestTypeQuery.add(meshBatch.signature);
           }
-          if (boolTrue) {
-            PRECOMPILE_TIMEOUT_MS = text;
-            delete domElement.domElement.dataset.lightPrecompileDeferred;
-            domElement.domElement.dataset.lightPrecompileState = "ready";
+          if (completed) {
+            PRECOMPILE_TIMEOUT_MS = cacheSignature;
+            delete rendererRef.domElement.dataset.lightPrecompileDeferred;
+            rendererRef.domElement.dataset.lightPrecompileState = "ready";
           } else {
-            domElement.domElement.dataset.lightPrecompileState = "deferred";
+            rendererRef.domElement.dataset.lightPrecompileState = "deferred";
           }
         } catch (error) {
-          domElement.domElement.dataset.lightPrecompileState = "fallback";
+          rendererRef.domElement.dataset.lightPrecompileState = "fallback";
           console.debug("3D first-light precompile skipped", error);
         } finally {
           ORBIT_DOLLY_SPEED_MAX = false;
@@ -12798,7 +14441,7 @@ function scheduleOrbitInteractionWarmup(numericParam = 360) {
             scheduleOrbitInteractionWarmup(240);
           }
         }
-      }, numericParam);
+      }, delayMs);
     }
   }
 }
@@ -12813,7 +14456,7 @@ window.addEventListener("pagehide", () => {
 }, {
   once: true
 });
-function scheduleLightPrecompile(numericParam = 0) {
+function scheduleLightPrecompile(delayMs = 0) {
   if (!yt) {
     lightPrecompileRequested = true;
     window.clearTimeout(lightPrecompileTimer);
@@ -12824,8 +14467,8 @@ function scheduleLightPrecompile(numericParam = 0) {
           scheduleLightPrecompile(240);
           return;
         }
-        const active = collectExternalSharedMeshes();
-        if (!active.length) {
+        const sharedMeshes = collectExternalSharedMeshes();
+        if (!sharedMeshes.length) {
           lightPrecompileRequested = false;
           syncExternalModelDomStats();
           scheduleOrbitInteractionWarmup();
@@ -12839,7 +14482,7 @@ function scheduleLightPrecompile(numericParam = 0) {
             rebuildAtlas: false
           });
           renderer.compile(previewSceneCurrent, cameraCurrent);
-          active.forEach(argPrimary => O.add(argPrimary));
+          sharedMeshes.forEach(mesh => O.add(mesh));
           cs += 1;
           renderer.domElement.dataset.externalPrecompileState = "ready";
         } catch (error) {
@@ -12854,25 +14497,25 @@ function scheduleLightPrecompile(numericParam = 0) {
             scheduleOrbitInteractionWarmup();
           }
         }
-      }, numericParam);
+      }, delayMs);
     }
   }
 }
 function rebuildPreviewMeshes(rebuildOptions = {}) {
-  const comparisonFlag = rebuildOptions.force === true;
-  const conditionalValue = ["items", "lights"].includes(rebuildOptions.scope) ? rebuildOptions.scope : "all";
-  if (!isLivePreviewEnabled() && !comparisonFlag) {
+  const forceRebuild = rebuildOptions.force === true;
+  const rebuildScope = ["items", "lights"].includes(rebuildOptions.scope) ? rebuildOptions.scope : "all";
+  if (!isLivePreviewEnabled() && !forceRebuild) {
     if (rebuildOptions.transient !== true) {
       previewNeedsRefresh = true;
     }
     syncLivePreviewButtons();
     return;
   }
-  if (comparisonFlag) {
+  if (forceRebuild) {
     planZoomAnchor = true;
     pendingRebuildReasons.add("all");
   } else {
-    pendingRebuildReasons.add(conditionalValue);
+    pendingRebuildReasons.add(rebuildScope);
   }
   if (rebuildOptions.precompile === true) {
     orbitAnimSettleTimer = true;
@@ -12887,37 +14530,37 @@ function rebuildPreviewMeshes(rebuildOptions = {}) {
       if (isLeavingStudio && !planZoomAnchor) {
         return;
       }
-      const computedValue = isLivePreviewEnabled() || planZoomAnchor;
+      const previewActive = isLivePreviewEnabled() || planZoomAnchor;
       planZoomAnchor = false;
-      if (!computedValue) {
+      if (!previewActive) {
         previewNeedsRefresh = true;
         syncLivePreviewButtons();
         return;
       }
-      const has = new Set(pendingRebuildReasons);
+      const rebuildReasons = new Set(pendingRebuildReasons);
       pendingRebuildReasons.clear();
       const preserveLightCache = !Ka;
       Ka = false;
-      if (getPreviewFloorModeCurrent() === "all" || has.has("all") || !floorSceneCurrent.walls.length) {
+      if (getPreviewFloorModeCurrent() === "all" || rebuildReasons.has("all") || !floorSceneCurrent.walls.length) {
         rebuildWorldPreviewCurrent({
           preserveLightCache
         });
       } else {
-        if (has.has("items")) {
+        if (rebuildReasons.has("items")) {
           rebuildPreviewLightMeshes({
             preserveLightCache
           });
         }
-        if (has.has("lights")) {
+        if (rebuildReasons.has("lights")) {
           rebuildPreviewLightMeshesCurrent({
             preserveLightCache
           });
         }
       }
-      const localValue = orbitAnimSettleTimer;
+      const settlePrecompile = orbitAnimSettleTimer;
       orbitAnimSettleTimer = false;
       syncExternalModelDomStats();
-      if (localValue || collectExternalSharedMeshes().length) {
+      if (settlePrecompile || collectExternalSharedMeshes().length) {
         scheduleLightPrecompile();
       }
       previewNeedsRefresh = false;
@@ -12942,52 +14585,52 @@ function getPreviewFloorMode() {
     return modelBounds(floorSceneCurrent);
   }
 }
-function extrudeWallSegmentShape(wall, wallCurrent, argTertiary, argN, wallNext = {}) {
-  const worldPoint = argN(wall.start);
-  const point = argN(wall.end);
-  const value = point.x - worldPoint.x;
-  const wallSegmentDeltaZ = point.z - worldPoint.z;
-  const hypot = Math.hypot(value, wallSegmentDeltaZ);
-  if (hypot <= 1e-7) {
+function extrudeWallSegmentShape(wall, wallCurrent, unusedThirdArg, toWorldCoord, wallNext = {}) {
+  const startWorld = toWorldCoord(wall.start);
+  const endWorld = toWorldCoord(wall.end);
+  const deltaX = endWorld.x - startWorld.x;
+  const deltaZ = endWorld.z - startWorld.z;
+  const segmentLength = Math.hypot(deltaX, deltaZ);
+  if (segmentLength <= 1e-7) {
     return null;
   }
-  const planPoint = {
-    x: value / hypot,
-    y: wallSegmentDeltaZ / hypot
+  const unitDirection = {
+    x: deltaX / segmentLength,
+    y: deltaZ / segmentLength
   };
-  const options = {
-    x: -planPoint.y,
-    y: planPoint.x
+  const normal = {
+    x: -unitDirection.y,
+    y: unitDirection.x
   };
-  const wallHalfThickness = wall.thickness / 2;
-  const maxValue = wallCurrent.start <= 0.000001 ? wallCurrent.start - Math.max(Number(wallNext.start) || 0, 0) : wallCurrent.start;
-  const maxValueCurrent = wallCurrent.end >= hypot - 0.000001 ? wallCurrent.end + Math.max(Number(wallNext.end) || 0, 0) : wallCurrent.end;
-  const planPointCurrent = {
-    x: worldPoint.x + planPoint.x * maxValue,
-    y: worldPoint.z + planPoint.y * maxValue
+  const halfThickness = wall.thickness / 2;
+  const startExtension = wallCurrent.start <= 0.000001 ? wallCurrent.start - Math.max(Number(wallNext.start) || 0, 0) : wallCurrent.start;
+  const endExtension = wallCurrent.end >= segmentLength - 0.000001 ? wallCurrent.end + Math.max(Number(wallNext.end) || 0, 0) : wallCurrent.end;
+  const startInPlan = {
+    x: startWorld.x + unitDirection.x * startExtension,
+    y: startWorld.z + unitDirection.y * startExtension
   };
-  const planPointNext = {
-    x: worldPoint.x + planPoint.x * maxValueCurrent,
-    y: worldPoint.z + planPoint.y * maxValueCurrent
+  const endInPlan = {
+    x: startWorld.x + unitDirection.x * endExtension,
+    y: startWorld.z + unitDirection.y * endExtension
   };
   return [{
-    x: planPointCurrent.x + options.x * wallHalfThickness,
-    y: planPointCurrent.y + options.y * wallHalfThickness
+    x: startInPlan.x + normal.x * halfThickness,
+    y: startInPlan.y + normal.y * halfThickness
   }, {
-    x: planPointCurrent.x - options.x * wallHalfThickness,
-    y: planPointCurrent.y - options.y * wallHalfThickness
+    x: startInPlan.x - normal.x * halfThickness,
+    y: startInPlan.y - normal.y * halfThickness
   }, {
-    x: planPointNext.x - options.x * wallHalfThickness,
-    y: planPointNext.y - options.y * wallHalfThickness
+    x: endInPlan.x - normal.x * halfThickness,
+    y: endInPlan.y - normal.y * halfThickness
   }, {
-    x: planPointNext.x + options.x * wallHalfThickness,
-    y: planPointNext.y + options.y * wallHalfThickness
+    x: endInPlan.x + normal.x * halfThickness,
+    y: endInPlan.y + normal.y * halfThickness
   }];
 }
-function polygonCentroid(list, argSecondary) {
-  const planPoint = new list();
-  argSecondary.forEach((worldPoint, argSecondary) => {
-    if (argSecondary === 0) {
+function polygonCentroid(PathClass, points) {
+  const planPoint = new PathClass();
+  points.forEach((worldPoint, pointIndex) => {
+    if (pointIndex === 0) {
       planPoint.moveTo(worldPoint.x, worldPoint.y);
     } else {
       planPoint.lineTo(worldPoint.x, worldPoint.y);
@@ -12996,68 +14639,68 @@ function polygonCentroid(list, argSecondary) {
   planPoint.closePath();
   return planPoint;
 }
-function splitFloorPolygonsByHoles(argPrimary) {
-  const flag = [];
-  const value = [];
-  for (const loop of argPrimary) {
-    const area = polygonArea(loop);
-    if (area > 0) {
-      flag.push({
-        loop: loop,
-        area: area,
+function splitFloorPolygonsByHoles(loops) {
+  const outerWalls = [];
+  const holeLoops = [];
+  for (const polygonLoop of loops) {
+    const signedArea = polygonArea(polygonLoop);
+    if (signedArea > 0) {
+      outerWalls.push({
+        loop: polygonLoop,
+        area: signedArea,
         holes: []
       });
-    } else if (area < 0) {
-      value.push(loop);
+    } else if (signedArea < 0) {
+      holeLoops.push(polygonLoop);
     }
   }
-  if (!flag.length) {
-    for (const localValue of value.splice(0)) {
-      const loop = [...localValue].reverse();
-      flag.push({
-        loop: loop,
-        area: Math.abs(polygonArea(loop)),
+  if (!outerWalls.length) {
+    for (const removedLoop of holeLoops.splice(0)) {
+      const reversedLoop = [...removedLoop].reverse();
+      outerWalls.push({
+        loop: reversedLoop,
+        area: Math.abs(polygonArea(reversedLoop)),
         holes: []
       });
     }
   }
-  for (const localValue of value) {
-    const holes = flag.filter(loop => pointInPolygon(localValue[0], loop.loop, 0.000001)).sort((area, areaRight) => area.area - areaRight.area)[0];
-    if (holes) {
-      holes.holes.push(localValue);
+  for (const holeLoop of holeLoops) {
+    const targetRegion = outerWalls.filter(candidateRegion => pointInPolygon(holeLoop[0], candidateRegion.loop, 0.000001)).sort((regionLeft, regionRight) => regionLeft.area - regionRight.area)[0];
+    if (targetRegion) {
+      targetRegion.holes.push(holeLoop);
     }
   }
-  return flag.map(loop => {
-    const holes = polygonCentroid(THREE.Shape, loop.loop);
-    for (const localValue of loop.holes) {
-      holes.holes.push(polygonCentroid(THREE.Path, localValue));
+  return outerWalls.map(region => {
+    const regionPath = polygonCentroid(THREE.Shape, region.loop);
+    for (const hole of region.holes) {
+      regionPath.holes.push(polygonCentroid(THREE.Path, hole));
     }
-    return holes;
+    return regionPath;
   });
 }
-function createGlassPhysicalMaterial(list, argSecondary, depthWrite = {}) {
-  const value = argSecondary >= 0.999;
-  const alphaWallBand = yt && !value;
+function createGlassPhysicalMaterial(baseColor, opacity, styleOptions = {}) {
+  const isOpaque = opacity >= 0.999;
+  const alphaWallBand = yt && !isOpaque;
   const material = createWallSideMaterial(THREE, {
-    color: list,
+    color: baseColor,
     roughness: 0.72,
     metalness: 0,
     clearcoat: 0.05,
     clearcoatRoughness: 0.82,
-    transmission: value || alphaWallBand ? 0 : 0.012,
+    transmission: isOpaque || alphaWallBand ? 0 : 0.012,
     thickness: 0.1,
     ior: 1.22,
-    transparent: !value,
-    opacity: argSecondary,
-    depthWrite: depthWrite.depthWrite ?? value,
-    depthFunc: depthWrite.depthFunc ?? (value ? THREE.LessEqualDepth : THREE.LessDepth),
-    polygonOffset: depthWrite.polygonOffset === true,
-    polygonOffsetFactor: depthWrite.polygonOffsetFactor ?? -2,
-    polygonOffsetUnits: depthWrite.polygonOffsetUnits ?? -4,
+    transparent: !isOpaque,
+    opacity: opacity,
+    depthWrite: styleOptions.depthWrite ?? isOpaque,
+    depthFunc: styleOptions.depthFunc ?? (isOpaque ? THREE.LessEqualDepth : THREE.LessDepth),
+    polygonOffset: styleOptions.polygonOffset === true,
+    polygonOffsetFactor: styleOptions.polygonOffsetFactor ?? -2,
+    polygonOffsetUnits: styleOptions.polygonOffsetUnits ?? -4,
     side: THREE.DoubleSide,
-    emissive: depthWrite.emissive ?? list,
-    emissiveIntensity: depthWrite.emissiveIntensity ?? 0.025
-  }, depthWrite.polygonOffset !== true, yt && typeof window < "u" ? new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile : "");
+    emissive: styleOptions.emissive ?? baseColor,
+    emissiveIntensity: styleOptions.emissiveIntensity ?? 0.025
+  }, styleOptions.polygonOffset !== true, yt && typeof window < "u" ? new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile : "");
   material.userData.alphaWallBand = alphaWallBand;
   return material;
 }
@@ -13066,199 +14709,199 @@ function createInvisibleBasicMaterial() {
   value.visible = false;
   return value;
 }
-function createFloorStandardMaterial(argPrimary, grid, topColor = {}) {
-  const value = grid >= 0.999;
-  const floorColor = new THREE.Color(topColor.topColor ?? argPrimary);
-  if (yt && (new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile).split(",").includes("shader") && topColor.polygonOffset !== true) {
+function createFloorStandardMaterial(baseColor, isWallBand, styleOptions = {}) {
+  const isOpaque = isWallBand >= 0.999;
+  const floorColor = new THREE.Color(styleOptions.topColor ?? baseColor);
+  if (yt && (new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile).split(",").includes("shader") && styleOptions.polygonOffset !== true) {
     floorColor.multiplyScalar(1.2);
   }
   return new THREE.MeshStandardMaterial({
     color: floorColor,
     roughness: 0.76,
     metalness: 0,
-    transparent: !value,
-    opacity: topColor.topOpacity ?? (value ? 1 : Math.min(grid * 1.08, 0.42)),
-    depthWrite: topColor.depthWrite ?? value,
-    depthFunc: topColor.depthFunc ?? (value ? THREE.LessEqualDepth : THREE.LessDepth),
-    polygonOffset: topColor.polygonOffset === true,
-    polygonOffsetFactor: topColor.polygonOffsetFactor ?? -2,
-    polygonOffsetUnits: topColor.polygonOffsetUnits ?? -4,
+    transparent: !isOpaque,
+    opacity: styleOptions.topOpacity ?? (isOpaque ? 1 : Math.min(isWallBand * 1.08, 0.42)),
+    depthWrite: styleOptions.depthWrite ?? isOpaque,
+    depthFunc: styleOptions.depthFunc ?? (isOpaque ? THREE.LessEqualDepth : THREE.LessDepth),
+    polygonOffset: styleOptions.polygonOffset === true,
+    polygonOffsetFactor: styleOptions.polygonOffsetFactor ?? -2,
+    polygonOffsetUnits: styleOptions.polygonOffsetUnits ?? -4,
     side: THREE.DoubleSide,
-    emissive: topColor.emissive ?? topColor.topColor ?? argPrimary,
-    emissiveIntensity: topColor.emissiveIntensity ? topColor.emissiveIntensity * 0.3 : 0.08
+    emissive: styleOptions.emissive ?? styleOptions.topColor ?? baseColor,
+    emissiveIntensity: styleOptions.emissiveIntensity ? styleOptions.emissiveIntensity * 0.3 : 0.08
   });
 }
-function addWallMeshBatch(list, argSecondary, argTertiary, color, opacity, light = {}) {
-  if (!list.length || argTertiary - argSecondary <= 0.000001) {
+function addWallMeshBatch(shapes, bottomY, topY, color, opacity, light = {}) {
+  if (!shapes.length || topY - bottomY <= 0.000001) {
     return;
   }
-  const loops = validatedUnionPolygonLoops(list, 0.000001);
-  const flag = loops.length > 0;
-  const value = splitFloorPolygonsByHoles(flag ? loops : list);
-  const depthWrite = !flag && opacity < 0.999 && light.depthWrite === undefined ? {
+  const loops = validatedUnionPolygonLoops(shapes, 0.000001);
+  const hasLoops = loops.length > 0;
+  const splitPolygons = splitFloorPolygonsByHoles(hasLoops ? loops : shapes);
+  const materialOptions = !hasLoops && opacity < 0.999 && light.depthWrite === undefined ? {
     ...light,
     depthWrite: true,
     depthFunc: THREE.LessDepth
   } : light;
-  for (const entry of value) {
-    const extrudeGeometry = new THREE.ExtrudeGeometry(entry, {
-      depth: argTertiary - argSecondary,
+  for (const polygon of splitPolygons) {
+    const geometry = new THREE.ExtrudeGeometry(polygon, {
+      depth: topY - bottomY,
       bevelEnabled: false,
       steps: 1,
       curveSegments: 1
     });
-    setWallGradientHeight(THREE, extrudeGeometry, "z", argTertiary, -1, floorSceneCurrent.settings.wallHeight);
+    setWallGradientHeight(THREE, geometry, "z", topY, -1, floorSceneCurrent.settings.wallHeight);
     if (yt && (new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile).split(",").includes("shader") && light.polygonOffset !== true) {
-      const wallPoints = entry.extractPoints(1);
-      setWallCornerDistances(THREE, extrudeGeometry, [wallPoints.shape, ...wallPoints.holes]);
+      const extractedPoints = polygon.extractPoints(1);
+      setWallCornerDistances(THREE, geometry, [extractedPoints.shape, ...extractedPoints.holes]);
     }
     const invisibleMaterial = createInvisibleBasicMaterial();
-    const glassMaterial = createGlassPhysicalMaterial(color, opacity, depthWrite);
-    const mesh = new THREE.Mesh(extrudeGeometry, [invisibleMaterial, glassMaterial]);
-    mesh.userData.hbMergeWallBand = light.polygonOffset !== true && (light.renderOrder ?? 4) === 4;
-    mesh.userData.reflectionRole = "wall";
-    mesh.rotation.x = Math.PI / 2;
-    mesh.position.y = argTertiary;
-    const isWallMaterialOpaque = opacity >= 0.999;
-    mesh.castShadow = light.castShadow === true;
+    const glassMaterial = createGlassPhysicalMaterial(color, opacity, materialOptions);
+    const wallMesh = new THREE.Mesh(geometry, [invisibleMaterial, glassMaterial]);
+    wallMesh.userData.hbMergeWallBand = light.polygonOffset !== true && (light.renderOrder ?? 4) === 4;
+    wallMesh.userData.reflectionRole = "wall";
+    wallMesh.rotation.x = Math.PI / 2;
+    wallMesh.position.y = topY;
+    const isOpaque = opacity >= 0.999;
+    wallMesh.castShadow = light.castShadow === true;
     if (light.lightOccluder) {
-      mesh.layers.set(HELPER_LAYER);
+      wallMesh.layers.set(HELPER_LAYER);
     }
-    mesh.receiveShadow = isWallMaterialOpaque;
-    mesh.renderOrder = light.renderOrder ?? 4;
+    wallMesh.receiveShadow = isOpaque;
+    wallMesh.renderOrder = light.renderOrder ?? 4;
+    worldGroup.add(wallMesh);
+  }
+}
+function addFloorPolygonMeshes(polygons, baseY, isWallBand, opacity, styleOptions = {}) {
+  if (!polygons.length) {
+    return;
+  }
+  const loops = validatedUnionPolygonLoops(polygons, 0.000001);
+  const hasLoops = loops.length > 0;
+  const splitPolygons = splitFloorPolygonsByHoles(hasLoops ? loops : polygons);
+  const materialOptions = !hasLoops && opacity < 0.999 && styleOptions.depthWrite === undefined ? {
+    ...styleOptions,
+    depthWrite: true,
+    depthFunc: THREE.LessDepth
+  } : styleOptions;
+  for (const polygon of splitPolygons) {
+    const geometry = new THREE.ShapeGeometry(polygon, 1);
+    const material = createFloorStandardMaterial(isWallBand, opacity, materialOptions);
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.rotation.x = Math.PI / 2;
+    mesh.position.y = baseY + 0.0005;
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.renderOrder = styleOptions.renderOrder ?? 4;
+    if (isStageEmbed && material.transparent) {
+      material.forceSinglePass = true;
+    }
     worldGroup.add(mesh);
   }
 }
-function addFloorPolygonMeshes(list, argSecondary, flagCurrent, value, depthWrite = {}) {
-  if (!list.length) {
-    return;
-  }
-  const loops = validatedUnionPolygonLoops(list, 0.000001);
-  const flag = loops.length > 0;
-  const splitFloorPolygonsByHolesResult = splitFloorPolygonsByHoles(flag ? loops : list);
-  const topColor = !flag && value < 0.999 && depthWrite.depthWrite === undefined ? {
-    ...depthWrite,
-    depthWrite: true,
-    depthFunc: THREE.LessDepth
-  } : depthWrite;
-  for (const entry of splitFloorPolygonsByHolesResult) {
-    const shapeGeometry = new THREE.ShapeGeometry(entry, 1);
-    const $0_ = createFloorStandardMaterial(flagCurrent, value, topColor);
-    const light = new THREE.Mesh(shapeGeometry, $0_);
-    light.rotation.x = Math.PI / 2;
-    light.position.y = argSecondary + 0.0005;
-    light.castShadow = false;
-    light.receiveShadow = false;
-    light.renderOrder = depthWrite.renderOrder ?? 4;
-    if (isStageEmbed && $0_.transparent) {
-      $0_.forceSinglePass = true;
-    }
-    worldGroup.add(light);
-  }
-}
-function resolvePlanSnap(argPrimary, anchor, argTertiary) {
-  const value = [];
-  const settings = [];
-  for (let zeroValue = 0; zeroValue < argPrimary.length; zeroValue += 1) {
-    const x36 = argPrimary[zeroValue];
-    const x37 = argPrimary[(zeroValue + 1) % argPrimary.length];
-    const computedValue = x37.x - x36.x;
-    const computedValueCurrent = x37.z - x36.z;
-    const localValue = Math.hypot(computedValue, computedValueCurrent);
-    if (localValue <= 0.001) {
+function resolvePlanSnap(polygon, outlineColor, baseHeight) {
+  const edgeGeometries = [];
+  const glowGeometries = [];
+  for (let index = 0; index < polygon.length; index += 1) {
+    const pointA = polygon[index];
+    const pointB = polygon[(index + 1) % polygon.length];
+    const dx = pointB.x - pointA.x;
+    const dz = pointB.z - pointA.z;
+    const edgeLength = Math.hypot(dx, dz);
+    if (edgeLength <= 0.001) {
       continue;
     }
-    const halfValue = (x36.x + x37.x) / 2;
-    const halfValueCurrent = (x36.z + x37.z) / 2;
-    const atan = -Math.atan2(computedValueCurrent, computedValue);
-    const compose = new THREE.Matrix4().compose(new THREE.Vector3(halfValue, argTertiary + 0.021, halfValueCurrent), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), atan), new THREE.Vector3(1, 1, 1));
-    const localValueCurrent = new THREE.Matrix4().compose(new THREE.Vector3(halfValue, argTertiary + 0.026, halfValueCurrent), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), atan), new THREE.Vector3(1, 1, 1));
-    value.push(new THREE.BoxGeometry(localValue, 0.042, 0.038).applyMatrix4(compose));
-    settings.push(new THREE.BoxGeometry(localValue + 0.025, 0.066, 0.078).applyMatrix4(localValueCurrent));
+    const midX = (pointA.x + pointB.x) / 2;
+    const midZ = (pointA.z + pointB.z) / 2;
+    const angle = -Math.atan2(dz, dx);
+    const edgeMatrix = new THREE.Matrix4().compose(new THREE.Vector3(midX, baseHeight + 0.021, midZ), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle), new THREE.Vector3(1, 1, 1));
+    const glowMatrix = new THREE.Matrix4().compose(new THREE.Vector3(midX, baseHeight + 0.026, midZ), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle), new THREE.Vector3(1, 1, 1));
+    edgeGeometries.push(new THREE.BoxGeometry(edgeLength, 0.042, 0.038).applyMatrix4(edgeMatrix));
+    glowGeometries.push(new THREE.BoxGeometry(edgeLength + 0.025, 0.066, 0.078).applyMatrix4(glowMatrix));
   }
-  const conditionalValue = value.length ? mergeGeometries(value) : null;
-  const geometries = settings.length ? mergeGeometries(settings) : null;
-  value.forEach(dispose => dispose.dispose());
-  settings.forEach(dispose => dispose.dispose());
-  if (conditionalValue) {
-    const userData = new THREE.Mesh(conditionalValue, new THREE.MeshBasicMaterial({
-      color: anchor,
+  const mergedEdges = edgeGeometries.length ? mergeGeometries(edgeGeometries) : null;
+  const mergedGlow = glowGeometries.length ? mergeGeometries(glowGeometries) : null;
+  edgeGeometries.forEach(edgeGeometry => edgeGeometry.dispose());
+  glowGeometries.forEach(glowGeometry => glowGeometry.dispose());
+  if (mergedEdges) {
+    const edgeMesh = new THREE.Mesh(mergedEdges, new THREE.MeshBasicMaterial({
+      color: outlineColor,
       transparent: true,
       opacity: 0.82,
       toneMapped: false
     }));
-    userData.renderOrder = 3;
-    userData.userData.exportRole = "outline";
-    userData.userData.batchedFloorEdgeCount = argPrimary.length;
-    worldGroup.add(userData);
+    edgeMesh.renderOrder = 3;
+    edgeMesh.userData.exportRole = "outline";
+    edgeMesh.userData.batchedFloorEdgeCount = polygon.length;
+    worldGroup.add(edgeMesh);
   }
-  if (geometries) {
-    const userData = new THREE.Mesh(geometries, new THREE.MeshBasicMaterial({
-      color: anchor,
+  if (mergedGlow) {
+    const glowMesh = new THREE.Mesh(mergedGlow, new THREE.MeshBasicMaterial({
+      color: outlineColor,
       transparent: true,
       opacity: 0.09,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
       toneMapped: false
     }));
-    userData.renderOrder = 2;
-    userData.userData.exportRole = "outline";
-    userData.userData.batchedFloorEdgeCount = argPrimary.length;
-    worldGroup.add(userData);
+    glowMesh.renderOrder = 2;
+    glowMesh.userData.exportRole = "outline";
+    glowMesh.userData.batchedFloorEdgeCount = polygon.length;
+    worldGroup.add(glowMesh);
   }
 }
-function splitFloorPolygonsByHolesCurrent(argPrimary, argSecondary, argTertiary) {
-  if (!Array.isArray(argPrimary) || argPrimary.length < 3) {
+function splitFloorPolygonsByHolesCurrent(polygon, glowColor, baseY) {
+  if (!Array.isArray(polygon) || polygon.length < 3) {
     return;
   }
-  const list = argPrimary.map(planPoint => ({
+  const planPoints = polygon.map(planPoint => ({
     x: planPoint.x,
     y: planPoint.z
   }));
-  const localValue = list.map((argPrimary, argSecondary) => distance(argPrimary, list[(argSecondary + 1) % list.length]));
-  const push = [0];
-  for (const loop of localValue) {
-    push.push(push.at(-1) + loop);
+  const edgeLengths = planPoints.map((samplePoint, pointIndex) => distance(samplePoint, planPoints[(pointIndex + 1) % planPoints.length]));
+  const cumulativeLengths = [0];
+  for (const edgeLength of edgeLengths) {
+    cumulativeLengths.push(cumulativeLengths.at(-1) + edgeLength);
   }
-  const helperFn = ({
-    distance: argPrimary,
-    innerAlpha: argPrimaryCurrent,
-    outerAlpha: argPrimaryNext,
-    columnStrength: localValue,
-    y: argPrimaryPrevious,
+  const addGlowLayer = ({
+    distance: cornerRadius,
+    innerAlpha: innerAlpha,
+    outerAlpha: outerAlpha,
+    columnStrength: columnStrength,
+    y: planeY,
     renderOrder
   }) => {
-    const meshes = addCeilingMeshes(list, argPrimary);
-    const pushCurrent = [];
-    const pushNext = [];
-    const pushPrevious = [];
-    const pushLocal = [];
-    for (let zeroValue = 0; zeroValue < list.length; zeroValue += 1) {
-      const computedValue = (zeroValue + 1) % list.length;
-      const x10 = list[zeroValue];
-      const x11 = list[computedValue];
-      const x12 = meshes[zeroValue];
-      const x13 = meshes[computedValue];
-      pushCurrent.push(x10.x, argPrimaryPrevious, x10.y, x12.x, argPrimaryPrevious, x12.y, x13.x, argPrimaryPrevious, x13.y, x10.x, argPrimaryPrevious, x10.y, x13.x, argPrimaryPrevious, x13.y, x11.x, argPrimaryPrevious, x11.y);
-      pushNext.push(argPrimaryCurrent, argPrimaryNext, argPrimaryNext, argPrimaryCurrent, argPrimaryNext, argPrimaryCurrent);
-      pushPrevious.push(0, 1, 1, 0, 1, 0);
-      const localValue = push[zeroValue];
-      const localValueCurrent = push[zeroValue + 1];
-      pushLocal.push(localValue, localValue, localValueCurrent, localValue, localValueCurrent, localValueCurrent);
+    const insetPoints = addCeilingMeshes(planPoints, cornerRadius);
+    const positions = [];
+    const glowAlpha = [];
+    const glowAcross = [];
+    const glowAlong = [];
+    for (let vertexIndex = 0; vertexIndex < planPoints.length; vertexIndex += 1) {
+      const nextPointIndex = (vertexIndex + 1) % planPoints.length;
+      const edgeStartPoint = planPoints[vertexIndex];
+      const edgeEndPoint = planPoints[nextPointIndex];
+      const insetStartPoint = insetPoints[vertexIndex];
+      const insetEndPoint = insetPoints[nextPointIndex];
+      positions.push(edgeStartPoint.x, planeY, edgeStartPoint.y, insetStartPoint.x, planeY, insetStartPoint.y, insetEndPoint.x, planeY, insetEndPoint.y, edgeStartPoint.x, planeY, edgeStartPoint.y, insetEndPoint.x, planeY, insetEndPoint.y, edgeEndPoint.x, planeY, edgeEndPoint.y);
+      glowAlpha.push(innerAlpha, outerAlpha, outerAlpha, innerAlpha, outerAlpha, innerAlpha);
+      glowAcross.push(0, 1, 1, 0, 1, 0);
+      const edgeStartLength = cumulativeLengths[vertexIndex];
+      const edgeEndLength = cumulativeLengths[vertexIndex + 1];
+      glowAlong.push(edgeStartLength, edgeStartLength, edgeEndLength, edgeStartLength, edgeEndLength, edgeEndLength);
     }
-    const glowLineGeometry = new THREE.BufferGeometry();
-    glowLineGeometry.setAttribute("position", new THREE.Float32BufferAttribute(pushCurrent, 3));
-    glowLineGeometry.setAttribute("glowAlpha", new THREE.Float32BufferAttribute(pushNext, 1));
-    glowLineGeometry.setAttribute("glowAcross", new THREE.Float32BufferAttribute(pushPrevious, 1));
-    glowLineGeometry.setAttribute("glowAlong", new THREE.Float32BufferAttribute(pushLocal, 1));
-    glowLineGeometry.computeVertexNormals();
-    const mesh = new THREE.Mesh(glowLineGeometry, new THREE.ShaderMaterial({
+    const glowGeometry = new THREE.BufferGeometry();
+    glowGeometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    glowGeometry.setAttribute("glowAlpha", new THREE.Float32BufferAttribute(glowAlpha, 1));
+    glowGeometry.setAttribute("glowAcross", new THREE.Float32BufferAttribute(glowAcross, 1));
+    glowGeometry.setAttribute("glowAlong", new THREE.Float32BufferAttribute(glowAlong, 1));
+    glowGeometry.computeVertexNormals();
+    const glowMesh = new THREE.Mesh(glowGeometry, new THREE.ShaderMaterial({
       uniforms: {
         glowColor: {
-          value: new THREE.Color(argSecondary)
+          value: new THREE.Color(glowColor)
         },
         glowColumnStrength: {
-          value: localValue
+          value: columnStrength
         }
       },
       vertexShader: "\n          attribute float glowAlpha;\n          attribute float glowAcross;\n          attribute float glowAlong;\n          varying float vGlowAlpha;\n          varying float vGlowAcross;\n          varying float vGlowAlong;\n          void main() {\n            vGlowAlpha = glowAlpha;\n            vGlowAcross = glowAcross;\n            vGlowAlong = glowAlong;\n            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);\n          }\n        ",
@@ -13269,65 +14912,65 @@ function splitFloorPolygonsByHolesCurrent(argPrimary, argSecondary, argTertiary)
       toneMapped: false,
       side: THREE.DoubleSide
     }));
-    mesh.renderOrder = renderOrder;
-    worldGroup.add(mesh);
+    glowMesh.renderOrder = renderOrder;
+    worldGroup.add(glowMesh);
   };
-  helperFn({
+  addGlowLayer({
     distance: 0.24,
     innerAlpha: 0.4,
     outerAlpha: 0.055,
     columnStrength: 0,
-    y: argTertiary + 0.008,
+    y: baseY + 0.008,
     renderOrder: 3
   });
-  helperFn({
+  addGlowLayer({
     distance: 1.25,
     innerAlpha: 0.3,
     outerAlpha: 0.008,
     columnStrength: 0.82,
-    y: argTertiary + 0.005,
+    y: baseY + 0.005,
     renderOrder: 2
   });
 }
-function addCeilingMeshes(list, argSecondary) {
-  const point = list.reduce((item, argSecondary) => ({
-    x: item.x + argSecondary.x / list.length,
-    y: item.y + argSecondary.y / list.length
+function addCeilingMeshes(points, offset) {
+  const center = points.reduce((item, listPoint) => ({
+    x: item.x + listPoint.x / points.length,
+    y: item.y + listPoint.y / points.length
   }), {
     x: 0,
     y: 0
   });
-  return list.map(item => {
-    const computedValue = item.x - point.x;
-    const value = item.y - point.y;
-    const localValue = Math.max(Math.hypot(computedValue, value), 0.000001);
+  return points.map(item => {
+    const dx = item.x - center.x;
+    const dy = item.y - center.y;
+    const distance = Math.max(Math.hypot(dx, dy), 0.000001);
     return {
-      x: item.x + computedValue / localValue * argSecondary,
-      y: item.y + value / localValue * argSecondary
+      x: item.x + dx / distance * offset,
+      y: item.y + dy / distance * offset
     };
   });
 }
-function addCeilingMeshesFromPolygons(list, argSecondary) {
-  if (!list.length) {
+function addCeilingMeshesFromPolygons(polygons, heightOffset) {
+  if (!polygons.length) {
     return;
   }
-  const mapped = list.map(worldPoint => {
-    const localValue = addCeilingMeshes(worldPoint, 0.028);
-    const conditionalValue = polygonArea(localValue) >= 0 ? localValue : [...localValue].reverse();
-    return polygonCentroid(THREE.Shape, conditionalValue);
+  const centroids = polygons.map(worldPoint => {
+    const insetPoints = addCeilingMeshes(worldPoint, 0.028);
+    const orientedPoints = polygonArea(insetPoints) >= 0 ? insetPoints : [...insetPoints].reverse();
+    return polygonCentroid(THREE.Shape, orientedPoints);
   });
-  const forEach = mapped.map(argPrimary => {
-    const rotateX = new THREE.ShapeGeometry(argPrimary, 1);
-    rotateX.rotateX(Math.PI / 2);
-    rotateX.translate(0, argSecondary, 0);
-    return rotateX;
+  const shapeGeometries = centroids.map(shapeOutline => {
+    const shapeGeometry = new THREE.ShapeGeometry(shapeOutline, 1);
+    shapeGeometry.rotateX(Math.PI / 2);
+    shapeGeometry.translate(0, heightOffset, 0);
+    return shapeGeometry;
   });
-  const localValue = mergeGeometries(forEach);
-  forEach.forEach(spread => spread.dispose());
-  if (!localValue) {
+  const ceilingGeometry = mergeGeometries(shapeGeometries);
+  shapeGeometries.forEach(shape => shape.dispose());
+  if (!ceilingGeometry) {
     return;
   }
-  const renderOrder = new THREE.Mesh(localValue, new THREE.MeshBasicMaterial({
+  const renderOrder = new THREE.Mesh(ceilingGeometry, new THREE.MeshBasicMaterial({
     color: 527122,
     transparent: true,
     opacity: 0.052,
@@ -13339,57 +14982,57 @@ function addCeilingMeshesFromPolygons(list, argSecondary) {
     side: THREE.DoubleSide
   }));
   renderOrder.renderOrder = 1;
-  renderOrder.userData.batchedWallContactShadowCount = mapped.length;
+  renderOrder.userData.batchedWallContactShadowCount = centroids.length;
   worldGroup.add(renderOrder);
 }
-function createGroundGridHelper(argPrimary, grid, argTertiary) {
-  const ppm = Math.max(Math.round(argPrimary / 1.25), 12);
-  const material = new THREE.GridHelper(argPrimary, ppm, grid.grid, grid.grid);
-  const bounds = new THREE.Vector3();
-  material.material.transparent = true;
-  material.material.opacity = 0.24;
-  material.material.depthWrite = false;
-  material.material.toneMapped = false;
-  material.material.onBeforeCompile = uniforms => {
-    uniforms.uniforms.gridFadeNear = {
-      value: argPrimary * 0.18
+function createGroundGridHelper(worldSize, theme, floorY) {
+  const ppm = Math.max(Math.round(worldSize / 1.25), 12);
+  const gridHelper = new THREE.GridHelper(worldSize, ppm, theme.grid, theme.grid);
+  const lookTarget = new THREE.Vector3();
+  gridHelper.material.transparent = true;
+  gridHelper.material.opacity = 0.24;
+  gridHelper.material.depthWrite = false;
+  gridHelper.material.toneMapped = false;
+  gridHelper.material.onBeforeCompile = shader => {
+    shader.uniforms.gridFadeNear = {
+      value: worldSize * 0.18
     };
-    uniforms.uniforms.gridFadeFar = {
-      value: argPrimary * 0.46
+    shader.uniforms.gridFadeFar = {
+      value: worldSize * 0.46
     };
-    uniforms.uniforms.gridDepthFadeNear = {
-      value: argPrimary * 0.18
+    shader.uniforms.gridDepthFadeNear = {
+      value: worldSize * 0.18
     };
-    uniforms.uniforms.gridDepthFadeFar = {
-      value: argPrimary * 0.36
+    shader.uniforms.gridDepthFadeFar = {
+      value: worldSize * 0.36
     };
-    uniforms.vertexShader = uniforms.vertexShader.replace("#include <common>", "#include <common>\nvarying vec2 vGridLocalPosition;\nvarying float vGridViewDepth;").replace("#include <project_vertex>", "#include <project_vertex>\nvGridLocalPosition = position.xz;\nvGridViewDepth = max(-mvPosition.z, 0.0);");
-    uniforms.fragmentShader = uniforms.fragmentShader.replace("#include <common>", "#include <common>\nuniform float gridFadeNear;\nuniform float gridFadeFar;\nuniform float gridDepthFadeNear;\nuniform float gridDepthFadeFar;\nvarying vec2 vGridLocalPosition;\nvarying float vGridViewDepth;").replace("vec4 diffuseColor = vec4( diffuse, opacity );", "vec4 diffuseColor = vec4( diffuse, opacity );\nfloat radialFade = 1.0 - smoothstep(gridFadeNear, gridFadeFar, length(vGridLocalPosition));\nfloat depthFade = 1.0 - smoothstep(gridDepthFadeNear, gridDepthFadeFar, vGridViewDepth);\ndiffuseColor.a *= radialFade * mix(0.28, 1.0, depthFade);");
-    material.material.userData.depthFadeShader = uniforms;
+    shader.vertexShader = shader.vertexShader.replace("#include <common>", "#include <common>\nvarying vec2 vGridLocalPosition;\nvarying float vGridViewDepth;").replace("#include <project_vertex>", "#include <project_vertex>\nvGridLocalPosition = position.xz;\nvGridViewDepth = max(-mvPosition.z, 0.0);");
+    shader.fragmentShader = shader.fragmentShader.replace("#include <common>", "#include <common>\nuniform float gridFadeNear;\nuniform float gridFadeFar;\nuniform float gridDepthFadeNear;\nuniform float gridDepthFadeFar;\nvarying vec2 vGridLocalPosition;\nvarying float vGridViewDepth;").replace("vec4 diffuseColor = vec4( diffuse, opacity );", "vec4 diffuseColor = vec4( diffuse, opacity );\nfloat radialFade = 1.0 - smoothstep(gridFadeNear, gridFadeFar, length(vGridLocalPosition));\nfloat depthFade = 1.0 - smoothstep(gridDepthFadeNear, gridDepthFadeFar, vGridViewDepth);\ndiffuseColor.a *= radialFade * mix(0.28, 1.0, depthFade);");
+    gridHelper.material.userData.depthFadeShader = shader;
   };
-  material.onBeforeRender = (argPrimary, argSecondary, position) => {
-    const uniforms = material.material.userData.depthFadeShader;
-    if (!uniforms) {
+  gridHelper.onBeforeRender = (renderer, scene, camera) => {
+    const depthFadeShader = gridHelper.material.userData.depthFadeShader;
+    if (!depthFadeShader) {
       return;
     }
-    material.getWorldPosition(bounds);
-    const localValue = Math.max(position.position.distanceTo(orbitControls?.target || bounds), 1);
-    const conditionalValue = position.isOrthographicCamera ? Math.abs(position.top - position.bottom) / Math.max(position.zoom, 0.001) : localValue * 2 * Math.tan(THREE.MathUtils.degToRad(position.fov * 0.5));
-    const max = Math.max(Math.hypot(conditionalValue * Math.max(position.aspect, 0.1), conditionalValue), 2);
-    const element = localValue + max * 0.2;
-    uniforms.uniforms.gridDepthFadeNear.value = element;
-    uniforms.uniforms.gridDepthFadeFar.value = Math.max(element + 1, localValue + max * 0.85);
+    gridHelper.getWorldPosition(lookTarget);
+    const cameraDistance = Math.max(camera.position.distanceTo(orbitControls?.target || lookTarget), 1);
+    const viewHeight = camera.isOrthographicCamera ? Math.abs(camera.top - camera.bottom) / Math.max(camera.zoom, 0.001) : cameraDistance * 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
+    const fadeExtent = Math.max(Math.hypot(viewHeight * Math.max(camera.aspect, 0.1), viewHeight), 2);
+    const depthFadeNear = cameraDistance + fadeExtent * 0.2;
+    depthFadeShader.uniforms.gridDepthFadeNear.value = depthFadeNear;
+    depthFadeShader.uniforms.gridDepthFadeFar.value = Math.max(depthFadeNear + 1, cameraDistance + fadeExtent * 0.85);
   };
-  material.position.y = argTertiary + 0.012;
-  material.renderOrder = 2;
-  material.userData.exportRole = "grid";
-  worldGroup.add(material);
+  gridHelper.position.y = floorY + 0.012;
+  gridHelper.renderOrder = 2;
+  gridHelper.userData.exportRole = "grid";
+  worldGroup.add(gridHelper);
 }
-function setPreviewFloorMode(argPrimary, argSecondary, length = []) {
-  if (!Array.isArray(argPrimary) || argPrimary.length < 3) {
+function setPreviewFloorMode(polygonPoints, baseY, holeLoops = []) {
+  if (!Array.isArray(polygonPoints) || polygonPoints.length < 3) {
     return;
   }
-  const localValue = argPrimary.map(polygon => ({
+  const footprint = polygonPoints.map(polygon => ({
     x: polygon.x,
     y: polygon.z
   }));
@@ -13408,300 +15051,144 @@ function setPreviewFloorMode(argPrimary, argSecondary, length = []) {
     offsetX: 0.24,
     offsetY: -0.19,
     opacity: 0.018
-  }].forEach((spread, item) => {
-    const mapped = addCeilingMeshes(localValue, spread.spread).map(door => ({
-      x: door.x + spread.offsetX,
-      y: door.y + spread.offsetY
+  }].forEach((layer, layerIndex) => {
+    const glowPoints = addCeilingMeshes(footprint, layer.spread).map(door => ({
+      x: door.x + layer.offsetX,
+      y: door.y + layer.offsetY
     }));
-    const conditionalValue = length.length ? splitFloorPolygonsByHoles(subtractPolygonLoops([mapped], length)) : polygonCentroid(THREE.Shape, mapped);
-    const rotation = new THREE.Mesh(new THREE.ShapeGeometry(conditionalValue, 1), new THREE.MeshBasicMaterial({
+    const shapeInput = holeLoops.length ? splitFloorPolygonsByHoles(subtractPolygonLoops([glowPoints], holeLoops)) : polygonCentroid(THREE.Shape, glowPoints);
+    const shadowMesh = new THREE.Mesh(new THREE.ShapeGeometry(shapeInput, 1), new THREE.MeshBasicMaterial({
       color: 329482,
       transparent: true,
-      opacity: spread.opacity,
+      opacity: layer.opacity,
       depthWrite: false,
       toneMapped: false,
       side: THREE.DoubleSide,
       forceSinglePass: isStageEmbed
     }));
-    rotation.rotation.x = Math.PI / 2;
-    rotation.position.y = argSecondary + 0.001 + item * 0.00015;
-    rotation.userData.floorPlanGroundShadow = true;
-    rotation.renderOrder = 1 + item;
-    worldGroup.add(rotation);
+    shadowMesh.rotation.x = Math.PI / 2;
+    shadowMesh.position.y = baseY + 0.001 + layerIndex * 0.00015;
+    shadowMesh.userData.floorPlanGroundShadow = true;
+    shadowMesh.renderOrder = 1 + layerIndex;
+    worldGroup.add(shadowMesh);
   });
 }
-function rebuildWorldPreview({
-  preserveLightCache = false
-} = {}) {
-  renderCache?.invalidate();
-  if (yt && worldGroup) {
-    worldGroup.userData.regionFloorId = activeFloorId;
-  }
-  if (!worldGroup) {
-    return;
-  }
-  applyPreviewEnvironment();
-  clearWorldGroupChildren();
-  requestRender({
-    shadows: true,
-    scene: true,
-    preserveLightCache
+// Build the world-point -> preview-local (x,z) projector for one floor.
+function makePreviewLocalWallPoint(centerX, centerZ, scale) {
+  const resolvePreviewLocalPoint = wall => ({
+    x: (wall.x - centerX) / scale,
+    z: (wall.y - centerZ) / scale
   });
-  const group = pixelsPerMeter();
-  if (!group) {
-    return;
-  }
-  const value = resolvedThemeColors();
-  const previewFloorWorldBounds = getPreviewFloorMode();
-  const previewFloorCenterX = Lo?.x ?? (previewFloorWorldBounds.minX + previewFloorWorldBounds.maxX) / 2;
-  const item = Lo?.y ?? (previewFloorWorldBounds.minY + previewFloorWorldBounds.maxY) / 2;
-  const toPreviewLocalWallPoint = wall => ({
-    x: (wall.x - previewFloorCenterX) / group,
-    z: (wall.y - item) / group
-  });
-  const localValue = Math.max(previewFloorWorldBounds.width / group + 1, 3);
-  const max = Math.max(previewFloorWorldBounds.height / group + 1, 3);
-  const localValueCurrent = -0.008;
-  const depth = 0.16;
-  const computedValue = localValueCurrent - depth;
-  const computedValueCurrent = computedValue - 0.035;
-  const localValueNext = Math.max(Math.max(localValue, max) * 16, 260);
-  const backgroundPlane = new THREE.Mesh(new THREE.PlaneGeometry(localValueNext, localValueNext), new THREE.MeshBasicMaterial({
-    color: value.ground,
-    toneMapped: false
-  }));
-  backgroundPlane.rotation.x = -Math.PI / 2;
-  backgroundPlane.position.y = computedValueCurrent;
-  backgroundPlane.receiveShadow = false;
-  backgroundPlane.userData.exportRole = "background";
-  worldGroup.add(backgroundPlane);
-  createGroundGridHelper(localValueNext, value, computedValueCurrent);
-  const dispose = new THREE.MeshStandardMaterial({
-    color: value.floor,
-    roughness: 0.96,
-    metalness: 0,
-    emissive: value.floor,
-    emissiveIntensity: 0.025
-  });
-  const length = getFloorPolygons(group);
-  const mapped = floorSceneCurrent.items.filter(type => type.type === "flooropening").map(argPrimary => floorOpeningPolygon(argPrimary, group).map(argPrimary => {
-    const x14 = toPreviewLocalWallPoint(argPrimary);
+  return resolvePreviewLocalPoint;
+}
+// Preview-local (x,z) loops of every floor-opening polygon of the active floor.
+function collectPreviewFloorOpeningLoops(scale, toLocal) {
+  const openingLoops = floorSceneCurrent.items.filter(type => type.type === "flooropening").map(openingPoint => floorOpeningPolygon(openingPoint, scale).map(openingPoint => {
+    const localPoint = toLocal(openingPoint);
     return {
-      x: x14.x,
-      y: x14.z
+      x: localPoint.x,
+      y: localPoint.z
     };
   }));
-  const helperFn = argPrimary => {
-    setPreviewFloorMode(argPrimary, computedValueCurrent);
+  return openingLoops;
+}
+// Outline pass for one preview floor polygon: mode plane plus optional edge snap.
+function makePreviewFloorOutlinePainter(baseY, themeColors, baseHeight) {
+  const paintFloorOutline = floorPolygon => {
+    setPreviewFloorMode(floorPolygon, baseY);
     if (floorSceneCurrent.settings.floorEdgeVisible !== false) {
-      resolvePlanSnap(argPrimary, value.floorEdge, computedValue);
+      resolvePlanSnap(floorPolygon, themeColors.floorEdge, baseHeight);
     }
   };
-  const callback = (argPrimary, argSecondary, argTertiary) => {
-    const userData = new THREE.Mesh(argSecondary, dispose);
-    userData.rotation.x = argTertiary ? Math.PI / 2 : 0;
-    userData.position.y = argTertiary ? localValueCurrent : localValueCurrent - depth / 2;
-    userData.castShadow = false;
-    userData.receiveShadow = true;
-    userData.userData.exportRole = "plan";
-    userData.userData.regionReceiverKind = "floor";
-    userData.userData.regionFloorId = activeFloorId;
-    worldGroup.add(userData);
-    if (!mapped.length) {
-      helperFn(argPrimary);
+  return paintFloorOutline;
+}
+// Add one preview floor surface (extruded plan polygon) to the world group.
+function makePreviewFloorAppender(material, topY, thickness, openingLoops, drawOutline) {
+  const appendFloorSurface = (floorId, geometry, isVertical) => {
+    const floorMesh = new THREE.Mesh(geometry, material);
+    floorMesh.rotation.x = isVertical ? Math.PI / 2 : 0;
+    floorMesh.position.y = isVertical ? topY : topY - thickness / 2;
+    floorMesh.castShadow = false;
+    floorMesh.receiveShadow = true;
+    floorMesh.userData.exportRole = "plan";
+    floorMesh.userData.regionReceiverKind = "floor";
+    floorMesh.userData.regionFloorId = activeFloorId;
+    worldGroup.add(floorMesh);
+    if (!openingLoops.length) {
+      drawOutline(floorId);
     }
   };
-  if (mapped.length) {
-    const conditionalValue = length.length ? length.map(footprint => footprint.map(argPrimary => {
-      const x2 = toPreviewLocalWallPoint(argPrimary);
-      return {
-        x: x2.x,
-        y: x2.z
-      };
-    })) : [[{
-      x: -localValue / 2,
-      y: -max / 2
-    }, {
-      x: localValue / 2,
-      y: -max / 2
-    }, {
-      x: localValue / 2,
-      y: max / 2
-    }, {
-      x: -localValue / 2,
-      y: max / 2
-    }]];
-    const filter = subtractPolygonLoops(conditionalValue, mapped);
-    const holes = splitFloorPolygonsByHoles(filter);
-    if (holes.length) {
-      callback([], new THREE.ExtrudeGeometry(holes, {
-        depth,
-        bevelEnabled: false,
-        steps: 1
-      }), true);
-    } else {
-      dispose.dispose();
-    }
-    for (const map of filter.filter(argPrimary => polygonArea(argPrimary) > 0)) {
-      const localValue = map.map(footprint => ({
-        x: footprint.x,
-        z: footprint.y
-      }));
-      setPreviewFloorMode(localValue, computedValueCurrent, mapped);
-      if (floorSceneCurrent.settings.floorEdgeVisible !== false) {
-        resolvePlanSnap(localValue, value.floorEdge, computedValue);
-      }
-    }
-  } else if (length.length) {
-    const map = length.map(map => map.map(toPreviewLocalWallPoint));
-    const localValue = map.map(forEachItem => {
-      const moveTo = new THREE.Shape();
-      forEachItem.forEach((floor, argSecondary) => {
-        if (argSecondary === 0) {
-          moveTo.moveTo(floor.x, floor.z);
-        } else {
-          moveTo.lineTo(floor.x, floor.z);
-        }
-      });
-      moveTo.closePath();
-      return moveTo;
-    });
-    callback(map[0], new THREE.ExtrudeGeometry(localValue, {
-      depth,
-      bevelEnabled: false,
-      steps: 1
-    }), true);
-    for (const localValue of map.slice(1)) {
-      helperFn(localValue);
-    }
-  } else {
-    const arrayValue = [{
-      x: -localValue / 2,
-      z: -max / 2
-    }, {
-      x: localValue / 2,
-      z: -max / 2
-    }, {
-      x: localValue / 2,
-      z: max / 2
-    }, {
-      x: -localValue / 2,
-      z: max / 2
-    }];
-    callback(arrayValue, new THREE.BoxGeometry(localValue, depth, max), false);
-  }
-  const arrayValue = [...floorSceneCurrent.windows, ...floorSceneCurrent.doors.map(argPrimary => ({
-    ...argPrimary,
+  return appendFloorSurface;
+}
+// Windows, door leafs and railings of the active floor, with their sill heights.
+function collectPreviewWallOpenings() {
+  const wallOpenings = [...floorSceneCurrent.windows, ...floorSceneCurrent.doors.map(opening => ({
+    ...opening,
     sill: 0
-  })), ...floorSceneCurrent.railings.map(wallId => {
-    const height = floorSceneCurrent.walls.find(item => item.id === wallId.wallId);
+  })), ...floorSceneCurrent.railings.map(railing => {
+    const height = floorSceneCurrent.walls.find(sourceWall => sourceWall.id === railing.wallId);
     return {
-      ...wallId,
+      ...railing,
       sill: 0,
       height: height?.height || floorSceneCurrent.settings.wallHeight
     };
   })];
-  const filter = [];
-  const has = new Set();
-  const extensions = getWallJoinExtensions(group);
+  return wallOpenings;
+}
+// Wall solid segments (shape plus height band) of the active floor, de-duplicated.
+function collectPreviewWallSegments(scale, openings, toLocal) {
+  const segments = [];
+  const seenKeys = new Set();
+  const extensions = getWallJoinExtensions(scale);
   for (const opacity of floorSceneCurrent.walls) {
-    const toFixed = opacity.opacity === null || opacity.opacity === undefined ? floorSceneCurrent.settings.wallOpacity : clamp(finite(opacity.opacity, floorSceneCurrent.settings.wallOpacity), 0, 1);
-    for (const bottom of wallSolidPieces(opacity, arrayValue, group, opacity.height)) {
-      const footprint = extrudeWallSegmentShape(opacity, bottom, group, toPreviewLocalWallPoint, extensions[opacity.id]);
+    const wallOpacity = opacity.opacity === null || opacity.opacity === undefined ? floorSceneCurrent.settings.wallOpacity : clamp(finite(opacity.opacity, floorSceneCurrent.settings.wallOpacity), 0, 1);
+    for (const bottom of wallSolidPieces(opacity, openings, scale, opacity.height)) {
+      const footprint = extrudeWallSegmentShape(opacity, bottom, scale, toLocal, extensions[opacity.id]);
       if (!footprint) {
         continue;
       }
-      const localValue = [canonicalPolygonKey(footprint, 4), bottom.bottom.toFixed(5), bottom.top.toFixed(5), toFixed.toFixed(4)].join("|");
-      if (!has.has(localValue)) {
-        has.add(localValue);
-        filter.push({
+      const segmentKey = [canonicalPolygonKey(footprint, 4), bottom.bottom.toFixed(5), bottom.top.toFixed(5), wallOpacity.toFixed(4)].join("|");
+      if (!seenKeys.has(segmentKey)) {
+        seenKeys.add(segmentKey);
+        segments.push({
           wallId: opacity.id,
           footprint: footprint,
           bottom: bottom.bottom,
           top: bottom.top,
-          opacity: toFixed
+          opacity: wallOpacity
         });
       }
     }
   }
-  const sorted = [...new Set(filter.flatMap(bottom => [bottom.bottom, bottom.top]).map(toFixed => toFixed.toFixed(6)))].map(Number).sort((argPrimary, argSecondary) => argPrimary - argSecondary);
-  addCeilingMeshesFromPolygons(filter.filter(bottom => bottom.bottom <= 0.000001).map(footprint => footprint.footprint), localValueCurrent + 0.0025);
-  for (let zeroValue = 0; zeroValue < sorted.length - 1; zeroValue += 1) {
-    const localValue = sorted[zeroValue];
-    const localValueCurrent = sorted[zeroValue + 1];
-    if (localValueCurrent - localValue <= 0.000001) {
-      continue;
-    }
-    const halfValue = (localValue + localValueCurrent) / 2;
-    const list = filter.filter(bottom => halfValue > bottom.bottom - 0.000001 && halfValue < bottom.top + 0.000001);
-    const has = new Map();
-    for (const opacity of list) {
-      const localValue = opacity.opacity.toFixed(4);
-      if (!has.has(localValue)) {
-        has.set(localValue, {
-          opacity: opacity.opacity,
-          volumes: []
-        });
-      }
-      has.get(localValue).volumes.push(opacity);
-    }
-    for (const volumes of has.values()) {
-      addWallMeshBatch(volumes.volumes.map(footprint => footprint.footprint), localValue, localValueCurrent, value.wall, volumes.opacity, {
-        castShadow: true,
-        lightOccluder: true
-      });
-      const mapped = volumes.volumes.filter(item => Math.abs(item.top - localValueCurrent) <= 0.000001).map(footprint => footprint.footprint);
-      addFloorPolygonMeshes(mapped, localValueCurrent, value.wall, volumes.opacity, {
-        topColor: value.wall
-      });
-    }
-    const length = list.filter(wallId => isSelected("wall", wallId.wallId)).map(footprint => footprint.footprint);
-    if (length.length) {
-      addWallMeshBatch(length, localValue, localValueCurrent, value.accent, 0.28, {
-        depthWrite: false,
-        depthFunc: THREE.LessEqualDepth,
-        polygonOffset: true,
-        emissive: value.accent,
-        emissiveIntensity: 0.12,
-        renderOrder: 5
-      });
-      const mapped = list.filter(wallId => isSelected("wall", wallId.wallId) && Math.abs(wallId.top - localValueCurrent) <= 0.000001).map(footprint => footprint.footprint);
-      addFloorPolygonMeshes(mapped, localValueCurrent, value.accent, 0.28, {
-        depthWrite: false,
-        depthFunc: THREE.LessEqualDepth,
-        polygonOffset: true,
-        emissive: value.accent,
-        emissiveIntensity: 0.12,
-        topOpacity: 0.12,
-        renderOrder: 6
-      });
-    }
-  }
+  return segments;
+}
+// Windows, railings and doors of every wall of the active floor, each anchored on its wall.
+function addPreviewWallMeshes(group, toPreviewLocalWallPoint, value, addSharedArchMesh, stairRiserMaterialOptions) {
   for (const start of floorSceneCurrent.walls) {
-    const computedValue = start.end.x - start.start.x;
-    const computedValueCurrent = start.end.y - start.start.y;
-    const localValue = Math.hypot(computedValue, computedValueCurrent);
-    if (!localValue) {
+    const wallDx = start.end.x - start.start.x;
+    const wallDy = start.end.y - start.start.y;
+    const wallLength = Math.hypot(wallDx, wallDy);
+    if (!wallLength) {
       continue;
     }
     const objectValue = {
-      x: computedValue / localValue,
-      y: computedValueCurrent / localValue
+      x: wallDx / wallLength,
+      y: wallDy / wallLength
     };
-    const y3 = -Math.atan2(computedValueCurrent, computedValue);
+    const y3 = -Math.atan2(wallDy, wallDx);
     for (const sill of floorSceneCurrent.windows.filter(wallId => wallId.wallId === start.id)) {
-      const localValue = clampWindowT(start, sill, group);
+      const windowT = clampWindowT(start, sill, group);
       const objectValue = {
-        x: start.start.x + computedValue * localValue,
-        y: start.start.y + computedValueCurrent * localValue
+        x: start.start.x + wallDx * windowT,
+        y: start.start.y + wallDy * windowT
       };
-      const x21 = toPreviewLocalWallPoint(objectValue);
+      const windowAnchor = toPreviewLocalWallPoint(objectValue);
       const position = new THREE.Group();
-      position.position.set(x21.x, 0, x21.z);
+      position.position.set(windowAnchor.x, 0, windowAnchor.z);
       position.rotation.y = y3;
       const min = Math.min(sill.width, wallLengthMeters(start, group));
-      const localValueCurrent = Math.min(sill.height, Math.max(start.height - sill.sill, 0.2));
-      const windowParts = windowGeometryParts(min, localValueCurrent, sill.sill, sill.hasDivider !== false);
+      const windowHeight = Math.min(sill.height, Math.max(start.height - sill.sill, 0.2));
+      const windowParts = windowGeometryParts(min, windowHeight, sill.sill, sill.hasDivider !== false);
       if (!windowParts) {
         continue;
       }
@@ -13732,22 +15219,22 @@ function rebuildWorldPreview({
       worldGroup.add(position);
     }
     for (const width of floorSceneCurrent.railings.filter(wallId => wallId.wallId === start.id)) {
-      const localValue = clampWindowT(start, width, group);
+      const railingT = clampWindowT(start, width, group);
       const objectValue = {
-        x: start.start.x + computedValue * localValue,
-        y: start.start.y + computedValueCurrent * localValue
+        x: start.start.x + wallDx * railingT,
+        y: start.start.y + wallDy * railingT
       };
-      const x22 = toPreviewLocalWallPoint(objectValue);
+      const railingAnchor = toPreviewLocalWallPoint(objectValue);
       const position = new THREE.Group();
-      position.position.set(x22.x, 0, x22.z);
+      position.position.set(railingAnchor.x, 0, railingAnchor.z);
       position.rotation.y = y3;
       const min = Math.min(width.width, wallLengthMeters(start, group));
-      const localValueCurrent = Math.min(width.height, start.height);
+      const railingHeight = Math.min(width.height, start.height);
       const conditionalValue = isSelected("railing", width.id) ? value.accent : value.frame;
-      const localValueNext = Math.min(Math.max(min * 0.012, 0.028), 0.05);
+      const barThickness = Math.min(Math.max(min * 0.012, 0.028), 0.05);
       const numericValue = 0.08;
-      const max = Math.max(localValueCurrent - numericValue - localValueNext * 1.4, 0.2);
-      addSharedArchMesh(position, [[Math.max(min - localValueNext * 2.4, 0.2), max, 0.018, 0, numericValue + max * 0.5, 0]], value.glass, {
+      const max = Math.max(railingHeight - numericValue - barThickness * 1.4, 0.2);
+      addSharedArchMesh(position, [[Math.max(min - barThickness * 2.4, 0.2), max, 0.018, 0, numericValue + max * 0.5, 0]], value.glass, {
         rounded: false,
         transparent: true,
         opacity: 0.24,
@@ -13766,35 +15253,35 @@ function rebuildWorldPreview({
         castShadow: false,
         receiveShadow: false
       };
-      const localValuePrevious = Math.max(2, Math.min(16, Math.ceil(min / 1.5) + 1));
-      const push = [[min, localValueNext, 0.055, 0, localValueCurrent, 0]];
+      const barCount = Math.max(2, Math.min(16, Math.ceil(min / 1.5) + 1));
+      const push = [[min, barThickness, 0.055, 0, railingHeight, 0]];
       const list = [];
-      for (let zeroValue = 0; zeroValue < localValuePrevious; zeroValue += 1) {
-        const halfValue = -min / 2 + min * zeroValue / (localValuePrevious - 1);
-        push.push([localValueNext, localValueCurrent, 0.055, halfValue, localValueCurrent * 0.5, 0]);
-        list.push([localValueNext * 2, localValueNext * 0.8, 0.08, halfValue, localValueNext * 0.4, 0]);
+      for (let barIndex = 0; barIndex < barCount; barIndex += 1) {
+        const halfValue = -min / 2 + min * barIndex / (barCount - 1);
+        push.push([barThickness, railingHeight, 0.055, halfValue, railingHeight * 0.5, 0]);
+        list.push([barThickness * 2, barThickness * 0.8, 0.08, halfValue, barThickness * 0.4, 0]);
       }
       addSharedArchMesh(position, push, conditionalValue, options);
       addSharedArchMesh(position, list, value.furnitureSoft, options);
       position.userData.optimizationStats = {
         type: "glass-railing",
-        before: 2 + localValuePrevious * 2,
+        before: 2 + barCount * 2,
         after: 3
       };
       worldGroup.add(position);
     }
     for (const swing of floorSceneCurrent.doors.filter(wallId => wallId.wallId === start.id)) {
-      const localValue = clampWindowT(start, swing, group);
+      const doorT = clampWindowT(start, swing, group);
       const objectValue = {
-        x: start.start.x + computedValue * localValue,
-        y: start.start.y + computedValueCurrent * localValue
+        x: start.start.x + wallDx * doorT,
+        y: start.start.y + wallDy * doorT
       };
-      const x23 = toPreviewLocalWallPoint(objectValue);
+      const doorAnchor = toPreviewLocalWallPoint(objectValue);
       const userData = new THREE.Group();
-      userData.position.set(x23.x, 0, x23.z);
+      userData.position.set(doorAnchor.x, 0, doorAnchor.z);
       userData.rotation.y = y3;
       const min = Math.min(swing.width, wallLengthMeters(start, group));
-      const localValueCurrent = Math.min(swing.height, start.height);
+      const doorHeight = Math.min(swing.height, start.height);
       const selected = isSelected("door", swing.id);
       const doorType = swing.doorType || "solid";
       const conditionalValue = selected ? value.accent : value.frame;
@@ -13805,10 +15292,10 @@ function rebuildWorldPreview({
         castShadow: false,
         receiveShadow: false
       };
-      const push = [[numericValue, localValueCurrent, 0.09, -min / 2, localValueCurrent / 2, 0], [numericValue, localValueCurrent, 0.09, min / 2, localValueCurrent / 2, 0], [min + numericValue, numericValue, 0.09, 0, localValueCurrent, 0]];
+      const push = [[numericValue, doorHeight, 0.09, -min / 2, doorHeight / 2, 0], [numericValue, doorHeight, 0.09, min / 2, doorHeight / 2, 0], [min + numericValue, numericValue, 0.09, 0, doorHeight, 0]];
       if (doorType === "roller-shutter") {
         const conditionalValue = swing.swing === -1 ? -1 : 1;
-        push.push([min + numericValue * 0.6, numericValue * 1.8, 0.13, 0, localValueCurrent - numericValue * 0.35, conditionalValue * 0.04]);
+        push.push([min + numericValue * 0.6, numericValue * 1.8, 0.13, 0, doorHeight - numericValue * 0.35, conditionalValue * 0.04]);
       }
       addSharedArchMesh(userData, push, conditionalValue, options);
       if (doorType === "frame-only") {
@@ -13821,23 +15308,24 @@ function rebuildWorldPreview({
         continue;
       }
       if (doorType === "sliding-glass") {
-        const height = Math.max(localValueCurrent - numericValue * 0.85, 0.4);
+        const height = Math.max(doorHeight - numericValue * 0.85, 0.4);
         const width = Math.max(min * 0.54, 0.28);
         const count = swing.hinge === "right" ? 1 : -1;
+        const doorFlipSign = swing.swing === -1 ? -1 : 1;
         const moving = slidingDoorPanelCenters(min, count);
         stairRiserMaterialOptions(userData, [{
           width,
           height: height,
           centerX: moving.fixed,
-          centerZ: -0.024
+          centerZ: -0.024 * doorFlipSign
         }, {
           width,
           height: height,
           centerX: moving.moving,
-          centerZ: 0.024
+          centerZ: 0.024 * doorFlipSign
         }], conditionalValue, value.glass);
         const scaledWidth = moving.moving - count * width * 0.36;
-        addSharedArchMesh(userData, [[0.026, 0.15, 0.055, scaledWidth, localValueCurrent * 0.52, -0.052], [0.026, 0.15, 0.055, scaledWidth, localValueCurrent * 0.52, 0.052]], value.furnitureDark, {
+        addSharedArchMesh(userData, [[0.026, 0.15, 0.055, scaledWidth, doorHeight * 0.52, -0.052], [0.026, 0.15, 0.055, scaledWidth, doorHeight * 0.52, 0.052]], value.furnitureDark, {
           rounded: false,
           metalness: 0.5,
           castShadow: false,
@@ -13852,21 +15340,21 @@ function rebuildWorldPreview({
         continue;
       }
       if (doorType === "roller-shutter") {
-        const localValue = Math.max(min - numericValue * 1.3, 0.4);
-        const max = Math.max(localValueCurrent - numericValue * 0.85, 0.8);
+        const panelWidth = Math.max(min - numericValue * 1.3, 0.4);
+        const max = Math.max(doorHeight - numericValue * 0.85, 0.8);
         const conditionalValue = swing.swing === -1 ? -1 : 1;
-        addSharedArchMesh(userData, [[localValue, max, 0.045, 0, max * 0.5, conditionalValue * 0.04]], selected ? value.accent : value.furnitureSoft, {
+        addSharedArchMesh(userData, [[panelWidth, max, 0.045, 0, max * 0.5, conditionalValue * 0.04]], selected ? value.accent : value.furnitureSoft, {
           rounded: false,
           metalness: 0.36,
           roughness: 0.42,
           castShadow: false,
           receiveShadow: false
         });
-        const localValueNext = Math.max(5, Math.min(36, Math.round(max / 0.12)));
+        const slatCount = Math.max(5, Math.min(36, Math.round(max / 0.12)));
         const push = [];
-        for (let oneValue = 1; oneValue < localValueNext; oneValue += 1) {
-          const computedValue = max * oneValue / localValueNext;
-          push.push([localValue * 0.98, 0.012, 0.052, 0, computedValue, conditionalValue * 0.052]);
+        for (let slatIndex = 1; slatIndex < slatCount; slatIndex += 1) {
+          const slatOffset = max * slatIndex / slatCount;
+          push.push([panelWidth * 0.98, 0.012, 0.052, 0, slatOffset, conditionalValue * 0.052]);
         }
         addSharedArchMesh(userData, push, value.furnitureDark, {
           rounded: false,
@@ -13877,31 +15365,32 @@ function rebuildWorldPreview({
         });
         userData.userData.optimizationStats = {
           type: "door-roller-shutter",
-          before: 5 + localValueNext,
+          before: 5 + slatCount,
           after: 3
         };
         worldGroup.add(userData);
         continue;
       }
       if (doorType === "entry") {
-        const localValue = Math.max(min - numericValue * 1.5, 0.4);
-        const max = Math.max(localValueCurrent - numericValue * 0.85, 0.8);
+        const leafWidth = Math.max(min - numericValue * 1.5, 0.4);
+        const max = Math.max(doorHeight - numericValue * 0.85, 0.8);
+        const doorFlipSign = swing.swing === -1 ? -1 : 1;
         const conditionalValue = selected ? value.accent : value.furnitureDark;
-        addSharedArchMesh(userData, [[localValue, max, 0.065, 0, max * 0.5, 0]], conditionalValue, {
+        addSharedArchMesh(userData, [[leafWidth, max, 0.065, 0, max * 0.5, 0]], conditionalValue, {
           rounded: false,
           roughness: 0.58,
           metalness: 0.1,
           castShadow: false,
           receiveShadow: false
         });
-        addSharedArchMesh(userData, [[localValue * 0.76, 0.022, 0.078, 0, localValueCurrent * 0.68, 0.012], [localValue * 0.76, 0.022, 0.078, 0, localValueCurrent * 0.34, 0.012]], value.furnitureSoft, {
+        addSharedArchMesh(userData, [[leafWidth * 0.76, 0.022, 0.078, 0, doorHeight * 0.68, 0.012 * doorFlipSign], [leafWidth * 0.76, 0.022, 0.078, 0, doorHeight * 0.34, 0.012 * doorFlipSign]], value.furnitureSoft, {
           rounded: false,
           roughness: 0.5,
           castShadow: false,
           receiveShadow: false
         });
-        const conditionalValueCurrent = swing.hinge === "right" ? -localValue * 0.34 : localValue * 0.34;
-        addSharedArchMesh(userData, [[0.035, 0.18, 0.085, conditionalValueCurrent, localValueCurrent * 0.5, 0.055]], value.furnitureLight, {
+        const conditionalValueCurrent = swing.hinge === "right" ? -leafWidth * 0.34 : leafWidth * 0.34;
+        addSharedArchMesh(userData, [[0.035, 0.18, 0.085, conditionalValueCurrent, doorHeight * 0.5, 0.055 * doorFlipSign]], value.furnitureLight, {
           rounded: false,
           metalness: 0.58,
           roughness: 0.24,
@@ -13918,45 +15407,45 @@ function rebuildWorldPreview({
       }
       if (doorType === "double") {
         const width = Math.max((min - numericValue * 1.8) / 2, 0.25);
-        const height = Math.max(localValueCurrent - numericValue * 0.8, 0.4);
-        const comparisonFlag = (swing.swing === -1 ? 1 : -1) * Math.PI * 0.42;
-        const push = [];
-        const list = [];
-        for (const localValue of [-1, 1]) {
-          const halfValue = localValue * (min / 2 - numericValue * 0.5);
-          const rotationY = localValue < 0 ? comparisonFlag : -comparisonFlag;
-          const conditionalValue = localValue < 0 ? width / 2 : -width / 2;
-          const x5 = {
-            x: halfValue + conditionalValue * Math.cos(rotationY),
-            z: -conditionalValue * Math.sin(rotationY)
+        const height = Math.max(doorHeight - numericValue * 0.8, 0.4);
+        const leafAngle = (swing.swing === -1 ? 1 : -1) * Math.PI * 0.42;
+        const leafSlabs = [];
+        const handleBars = [];
+        for (const side of [-1, 1]) {
+          const offsetX = side * (min / 2 - numericValue * 0.5);
+          const leafRotation = side < 0 ? leafAngle : -leafAngle;
+          const hingeOffset = side < 0 ? width / 2 : -width / 2;
+          const leafPos = {
+            x: offsetX + hingeOffset * Math.cos(leafRotation),
+            z: -hingeOffset * Math.sin(leafRotation)
           };
-          push.push({
+          leafSlabs.push({
             width: width,
             height: height,
             depth: 0.04,
-            x: x5.x,
+            x: leafPos.x,
             y: height / 2,
-            z: x5.z,
-            rotationY
+            z: leafPos.z,
+            leafRotation
           });
-          const value = localValue < 0 ? width * 0.42 : -width * 0.42;
-          list.push({
+          const handleOffset = side < 0 ? width * 0.42 : -width * 0.42;
+          handleBars.push({
             width: 0.035,
             height: 0.055,
             depth: 0.065,
-            x: halfValue + value * Math.cos(rotationY) + Math.sin(rotationY) * 0.04,
-            y: localValueCurrent * 0.5,
-            z: -value * Math.sin(rotationY) + Math.cos(rotationY) * 0.04,
-            rotationY
+            x: offsetX + handleOffset * Math.cos(leafRotation) + Math.sin(leafRotation) * 0.04,
+            y: doorHeight * 0.5,
+            z: -value * Math.sin(leafRotation) + Math.cos(leafRotation) * 0.04,
+            leafRotation
           });
         }
-        addSharedArchMesh(userData, push, selected ? value.accent : value.doorLeaf, {
+        addSharedArchMesh(userData, leafSlabs, selected ? value.accent : value.doorLeaf, {
           rounded: false,
           roughness: 0.66,
           castShadow: false,
           receiveShadow: false
         });
-        addSharedArchMesh(userData, list, value.furnitureDark, {
+        addSharedArchMesh(userData, handleBars, value.furnitureDark, {
           rounded: false,
           metalness: 0.45,
           castShadow: false,
@@ -13972,7 +15461,7 @@ function rebuildWorldPreview({
       }
       const hingeSign = swing.hinge === "right";
       const width = Math.max(min - numericValue * 1.4, 0.2);
-      const height = Math.max(localValueCurrent - numericValue * 0.8, 0.4);
+      const height = Math.max(doorHeight - numericValue * 0.8, 0.4);
       const position = new THREE.Group();
       position.position.x = hingeSign ? min / 2 - numericValue * 0.5 : -min / 2 + numericValue * 0.5;
       position.rotation.y = doorLeafRotation(swing, Math.PI * 0.42);
@@ -13994,7 +15483,7 @@ function rebuildWorldPreview({
         });
       }
       const conditionalValueCurrent = hingeSign ? -width * 0.42 : width * 0.42;
-      addSharedArchMesh(position, [[0.035, 0.055, 0.065, conditionalValueCurrent, localValueCurrent * 0.5, 0.04]], value.furnitureDark, {
+      addSharedArchMesh(position, [[0.035, 0.055, 0.065, conditionalValueCurrent, doorHeight * 0.5, 0.04]], value.furnitureDark, {
         rounded: false,
         metalness: 0.45,
         castShadow: false,
@@ -14008,14 +15497,15 @@ function rebuildWorldPreview({
       worldGroup.add(userData);
     }
   }
-  const localValuePrevious = shadowCastingLightIdSet();
-  const push = [];
+}
+// Furniture of the active floor: mesh group, environment tagging and static-instance collection.
+function addPreviewItemMeshes(toPreviewLocalWallPoint, shadowLightIdSet, staticItems) {
   for (const type of floorSceneCurrent.items) {
-    const x38 = toPreviewLocalWallPoint(type);
+    const anchorPoint = toPreviewLocalWallPoint(type);
     if (type.type === "flooropening") {
       continue;
     }
-    const userData = buildStudioItemMeshGroup(type, localValuePrevious);
+    const userData = buildStudioItemMeshGroup(type, shadowLightIdSet);
     if (yt && type.type === "smallcar") {
       userData.userData.preserveDetailedSurface = true;
     }
@@ -14024,18 +15514,211 @@ function rebuildWorldPreview({
       userData.userData.environmentModelType = type.type;
       userData.userData.environmentFloorId = activeFloorId;
     }
-    userData.position.set(x38.x, type.elevation || 0, x38.z);
+    userData.position.set(anchorPoint.x, type.elevation || 0, anchorPoint.z);
     instanceMergeIdenticalItems(userData, type);
     userData.userData.modelLayer = set.has(type.type) ? "lights" : "items";
     userData.userData.exportRole = type.type === "planlabel" ? "label" : "plan";
     worldGroup.add(userData);
     if (!set.has(type.type)) {
-      push.push({
+      staticItems.push({
         item: type,
         group: userData
       });
     }
   }
+}
+function rebuildWorldPreview({
+  preserveLightCache = false
+} = {}) {
+  renderCache?.invalidate();
+  if (yt && worldGroup) {
+    worldGroup.userData.regionFloorId = activeFloorId;
+  }
+  if (!worldGroup) {
+    return;
+  }
+  applyPreviewEnvironment();
+  clearWorldGroupChildren();
+  requestRender({
+    shadows: true,
+    scene: true,
+    preserveLightCache
+  });
+  const group = pixelsPerMeter();
+  if (!group) {
+    return;
+  }
+  const value = resolvedThemeColors();
+  const previewFloorWorldBounds = getPreviewFloorMode();
+  const previewFloorCenterX = Lo?.x ?? (previewFloorWorldBounds.minX + previewFloorWorldBounds.maxX) / 2;
+  const item = Lo?.y ?? (previewFloorWorldBounds.minY + previewFloorWorldBounds.maxY) / 2;
+  const toPreviewLocalWallPoint = makePreviewLocalWallPoint(previewFloorCenterX, item, group);
+  const planWidth = Math.max(previewFloorWorldBounds.width / group + 1, 3);
+  const max = Math.max(previewFloorWorldBounds.height / group + 1, 3);
+  const groundY = -0.008;
+  const depth = 0.16;
+  const floorSurfaceY = groundY - depth;
+  const backgroundY = floorSurfaceY - 0.035;
+  const groundPlaneSize = Math.max(Math.max(planWidth, max) * 16, 260);
+  const backgroundPlane = new THREE.Mesh(new THREE.PlaneGeometry(groundPlaneSize, groundPlaneSize), new THREE.MeshBasicMaterial({
+    color: value.ground,
+    toneMapped: false
+  }));
+  backgroundPlane.rotation.x = -Math.PI / 2;
+  backgroundPlane.position.y = backgroundY;
+  backgroundPlane.receiveShadow = false;
+  backgroundPlane.userData.exportRole = "background";
+  worldGroup.add(backgroundPlane);
+  createGroundGridHelper(groundPlaneSize, value, backgroundY);
+  const dispose = new THREE.MeshStandardMaterial({
+    color: value.floor,
+    roughness: 0.96,
+    metalness: 0,
+    emissive: value.floor,
+    emissiveIntensity: 0.025
+  });
+  const length = getFloorPolygons(group);
+  const mapped = collectPreviewFloorOpeningLoops(group, toPreviewLocalWallPoint);
+  const paintFloorOutline = makePreviewFloorOutlinePainter(backgroundY, value, floorSurfaceY);
+  const callback = makePreviewFloorAppender(dispose, groundY, depth, mapped, paintFloorOutline);
+  if (mapped.length) {
+    const conditionalValue = length.length ? length.map(footprint => footprint.map(outlinePoint => {
+      const localPoint = toPreviewLocalWallPoint(outlinePoint);
+      return {
+        x: localPoint.x,
+        y: localPoint.z
+      };
+    })) : [[{
+      x: -planWidth / 2,
+      y: -max / 2
+    }, {
+      x: planWidth / 2,
+      y: -max / 2
+    }, {
+      x: planWidth / 2,
+      y: max / 2
+    }, {
+      x: -planWidth / 2,
+      y: max / 2
+    }]];
+    const filter = subtractPolygonLoops(conditionalValue, mapped);
+    const holes = splitFloorPolygonsByHoles(filter);
+    if (holes.length) {
+      callback([], new THREE.ExtrudeGeometry(holes, {
+        depth,
+        bevelEnabled: false,
+        steps: 1
+      }), true);
+    } else {
+      dispose.dispose();
+    }
+    for (const map of filter.filter(polygon => polygonArea(polygon) > 0)) {
+      const outlinePoints = map.map(footprint => ({
+        x: footprint.x,
+        z: footprint.y
+      }));
+      setPreviewFloorMode(outlinePoints, backgroundY, mapped);
+      if (floorSceneCurrent.settings.floorEdgeVisible !== false) {
+        resolvePlanSnap(outlinePoints, value.floorEdge, floorSurfaceY);
+      }
+    }
+  } else if (length.length) {
+    const map = length.map(map => map.map(toPreviewLocalWallPoint));
+    const floorShapes = map.map(forEachItem => {
+      const moveTo = new THREE.Shape();
+      forEachItem.forEach((floor, pointIndex) => {
+        if (pointIndex === 0) {
+          moveTo.moveTo(floor.x, floor.z);
+        } else {
+          moveTo.lineTo(floor.x, floor.z);
+        }
+      });
+      moveTo.closePath();
+      return moveTo;
+    });
+    callback(map[0], new THREE.ExtrudeGeometry(floorShapes, {
+      depth,
+      bevelEnabled: false,
+      steps: 1
+    }), true);
+    for (const floorShape of map.slice(1)) {
+      paintFloorOutline(floorShape);
+    }
+  } else {
+    const arrayValue = [{
+      x: -planWidth / 2,
+      z: -max / 2
+    }, {
+      x: planWidth / 2,
+      z: -max / 2
+    }, {
+      x: planWidth / 2,
+      z: max / 2
+    }, {
+      x: -planWidth / 2,
+      z: max / 2
+    }];
+    callback(arrayValue, new THREE.BoxGeometry(planWidth, depth, max), false);
+  }
+  const arrayValue = collectPreviewWallOpenings();
+  const filter = collectPreviewWallSegments(group, arrayValue, toPreviewLocalWallPoint);
+  const sorted = [...new Set(filter.flatMap(bottom => [bottom.bottom, bottom.top]).map(toFixed => toFixed.toFixed(6)))].map(Number).sort((leftHeight, rightHeight) => leftHeight - rightHeight);
+  addCeilingMeshesFromPolygons(filter.filter(bottom => bottom.bottom <= 0.000001).map(footprint => footprint.footprint), groundY + 0.0025);
+  for (let bandIndex = 0; bandIndex < sorted.length - 1; bandIndex += 1) {
+    const bottomHeight = sorted[bandIndex];
+    const topHeight = sorted[bandIndex + 1];
+    if (topHeight - bottomHeight <= 0.000001) {
+      continue;
+    }
+    const midHeight = (bottomHeight + topHeight) / 2;
+    const coveringSegments = filter.filter(wallSegment => midHeight > wallSegment.bottom - 0.000001 && midHeight < wallSegment.top + 0.000001);
+    const byOpacity = new Map();
+    for (const opacityEntry of coveringSegments) {
+      const opacityKey = opacityEntry.opacity.toFixed(4);
+      if (!byOpacity.has(opacityKey)) {
+        byOpacity.set(opacityKey, {
+          opacity: opacityEntry.opacity,
+          volumes: []
+        });
+      }
+      byOpacity.get(opacityKey).volumes.push(opacityEntry);
+    }
+    for (const opacityGroup of byOpacity.values()) {
+      addWallMeshBatch(opacityGroup.volumes.map(footprint => footprint.footprint), bottomHeight, topHeight, value.wall, opacityGroup.opacity, {
+        castShadow: true,
+        lightOccluder: true
+      });
+      const mapped = opacityGroup.volumes.filter(item => Math.abs(item.top - topHeight) <= 0.000001).map(footprint => footprint.footprint);
+      addFloorPolygonMeshes(mapped, topHeight, value.wall, opacityGroup.opacity, {
+        topColor: value.wall
+      });
+    }
+    const length = coveringSegments.filter(wallId => isSelected("wall", wallId.wallId)).map(footprint => footprint.footprint);
+    if (length.length) {
+      addWallMeshBatch(length, bottomHeight, topHeight, value.accent, 0.28, {
+        depthWrite: false,
+        depthFunc: THREE.LessEqualDepth,
+        polygonOffset: true,
+        emissive: value.accent,
+        emissiveIntensity: 0.12,
+        renderOrder: 5
+      });
+      const mapped = coveringSegments.filter(wallId => isSelected("wall", wallId.wallId) && Math.abs(wallId.top - topHeight) <= 0.000001).map(footprint => footprint.footprint);
+      addFloorPolygonMeshes(mapped, topHeight, value.accent, 0.28, {
+        depthWrite: false,
+        depthFunc: THREE.LessEqualDepth,
+        polygonOffset: true,
+        emissive: value.accent,
+        emissiveIntensity: 0.12,
+        topOpacity: 0.12,
+        renderOrder: 6
+      });
+    }
+  }
+  addPreviewWallMeshes(group, toPreviewLocalWallPoint, value, addSharedArchMesh, stairRiserMaterialOptions);
+  const shadowCasterIds = shadowCastingLightIdSet();
+  const push = [];
+  addPreviewItemMeshes(toPreviewLocalWallPoint, shadowCasterIds, push);
   mergeStaticItemInstanceBatches(worldGroup, push);
   if (yt && (new URLSearchParams(window.location.search).get("wall-trial") ?? wallRuntimeProfile).split(",").includes("merge")) {
     mergeWallBands(THREE, worldGroup, mergeGeometries);
@@ -14061,6 +15744,50 @@ function rebuildWorldPreview({
   if (isStageEmbed) {
     cacheObjectTransforms(worldGroup, THREE.Object3D);
   }
+  window.__rwpProbe = (() => {
+    const fingerprint = source => {
+      let seed = 2166136261;
+      for (let index = 0; index < source.length; index += 1) {
+        seed ^= source.charCodeAt(index);
+        seed = Math.imul(seed, 16777619);
+      }
+      return (seed >>> 0).toString(16);
+    };
+    const parts = [];
+    let nan = 0;
+    worldGroup.traverse(object => {
+      if (!object.isMesh) {
+        return;
+      }
+      const position = object.geometry?.attributes?.position;
+      parts.push(object.userData.exportRole || "", object.userData.regionReceiverKind || "", String(position ? position.count : -1));
+      if (position) {
+        const array = position.array;
+        let total = 0;
+        for (let index = 0; index < array.length; index += 1) {
+          if (!Number.isFinite(array[index])) {
+            nan += 1;
+          }
+        }
+        for (let index = 0; index < array.length; index += 7) {
+          total += array[index];
+        }
+        parts.push(total.toFixed(3));
+      }
+      parts.push(object.position.x.toFixed(4), object.position.y.toFixed(4), object.position.z.toFixed(4));
+      parts.push(object.rotation.x.toFixed(4), object.rotation.y.toFixed(4), object.rotation.z.toFixed(4));
+      parts.push(object.scale.x.toFixed(4), object.scale.y.toFixed(4), object.scale.z.toFixed(4));
+    });
+    return {
+      n: ((window.__rwpProbe && window.__rwpProbe.n) || 0) + 1,
+      loops: length.length,
+      openings: mapped.length,
+      worldChildren: worldGroup.children.length,
+      parts: parts.length,
+      nan,
+      hash: fingerprint(parts.join("|"))
+    };
+  })();
 }
 function getPreviewFloorModeCurrent() {
   if (projectDocCurrent?.previewFloorMode === "all" && projectDocCurrent.floors.length > 1) {
@@ -14070,13 +15797,13 @@ function getPreviewFloorModeCurrent() {
   }
 }
 function syncPreviewFloorButtons() {
-  const value = getPreviewFloorModeCurrent();
-  const view = (projectDocCurrent?.floors.length || 0) > 1;
-  for (const entry of r0) {
-    const comparisonFlag = entry.dataset.previewFloor === value;
-    entry.classList.toggle("active", comparisonFlag);
-    entry.setAttribute("aria-pressed", String(comparisonFlag));
-    entry.disabled = entry.dataset.previewFloor === "all" && !view;
+  const previewFloorMode = getPreviewFloorModeCurrent();
+  const showFloorToggle = (projectDocCurrent?.floors.length || 0) > 1;
+  for (const button of r0) {
+    const isActive = button.dataset.previewFloor === previewFloorMode;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+    button.disabled = button.dataset.previewFloor === "all" && !showFloorToggle;
   }
 }
 function setPreviewFloorModeCurrent(floorEntry, {
@@ -14123,11 +15850,11 @@ function rebuildWorldPreviewCurrent({
   });
   const someVar = [...projectDocCurrent.floors].sort((elevation, elevationRight) => elevation.elevation - elevationRight.elevation);
   const conditionalValue = stageSession ? finite(projectDocCurrent.exportFloorGap, 3) : finite(projectDocCurrent.previewFloorGap, 3);
-  someVar.forEach((wall, argSecondary) => {
-    const name4 = new THREE.Group();
-    name4.name = "floor-" + wall.id;
-    name4.userData.floorId = wall.id;
-    worldGroup = name4;
+  someVar.forEach((wall, wallIndex) => {
+    const wallGroup = new THREE.Group();
+    wallGroup.name = "floor-" + wall.id;
+    wallGroup.userData.floorId = wall.id;
+    worldGroup = wallGroup;
     floorSceneCurrent = wall.scene;
     activeFloorId = wall.id;
     Lo = {
@@ -14137,22 +15864,22 @@ function rebuildWorldPreviewCurrent({
     rebuildWorldPreview({
       preserveLightCache: preserveLightCache
     });
-    if (argSecondary > 0) {
-      for (const userData of [...name4.children]) {
+    if (wallIndex > 0) {
+      for (const userData of [...wallGroup.children]) {
         if (["background", "grid"].includes(userData.userData?.exportRole)) {
           if (isStageEmbed) {
             userData.userData.floorBackgroundHidden = true;
             userData.visible = false;
             continue;
           }
-          name4.remove(userData);
+          wallGroup.remove(userData);
           disposeObject3dResources(userData);
         }
       }
     }
-    name4.position.set(finite(wall.offsetX, 0), argSecondary * conditionalValue, finite(wall.offsetZ, 0));
-    name4.rotation.y = -THREE.MathUtils.degToRad(finite(wall.rotation, 0));
-    object3d.add(name4);
+    wallGroup.position.set(finite(wall.offsetX, 0), wallIndex * conditionalValue, finite(wall.offsetZ, 0));
+    wallGroup.rotation.y = -THREE.MathUtils.degToRad(finite(wall.rotation, 0));
+    object3d.add(wallGroup);
   });
   worldGroup = object3d;
   floorSceneCurrent = value;
@@ -14168,51 +15895,51 @@ function rebuildWorldPreviewCurrent({
     preserveLightCache: preserveLightCache
   });
 }
-function removeWorldModelLayer(argPrimary) {
-  if (!argPrimary.size || !worldGroup) {
+function removeWorldModelLayer(removedFloorIds) {
+  if (!removedFloorIds.size || !worldGroup) {
     return;
   }
   if (getPreviewFloorModeCurrent() !== "all") {
-    if (argPrimary.has(activeFloorId)) {
+    if (removedFloorIds.has(activeFloorId)) {
       rebuildWorldPreviewCurrent();
     }
     return;
   }
-  const childNodes = worldGroup;
-  const localValue = floorSceneCurrent;
-  const localValueCurrent = activeFloorId;
-  const localValueNext = Lo;
-  const someFlag = [...projectDocCurrent.floors].sort((elevation, elevationRight) => elevation.elevation - elevationRight.elevation);
-  if (someFlag.some(kind => !childNodes.children.some(userData => userData.userData?.floorId === kind.id))) {
+  const rootGroup = worldGroup;
+  const savedScene = floorSceneCurrent;
+  const savedFloorId = activeFloorId;
+  const savedPlanOrigin = Lo;
+  const floorsByElevation = [...projectDocCurrent.floors].sort((elevation, elevationRight) => elevation.elevation - elevationRight.elevation);
+  if (floorsByElevation.some(kind => !rootGroup.children.some(layer => layer.userData?.floorId === kind.id))) {
     rebuildWorldPreviewCurrent();
     return;
   }
   try {
-    for (const [localValue, id] of someFlag.entries()) {
-      if (argPrimary.has(id.id) && (worldGroup = childNodes.children.find(userData => userData.userData?.floorId === id.id), floorSceneCurrent = id.scene, activeFloorId = id.id, Lo = {
-        x: finite(id.originX, 0),
-        y: finite(id.originY, 0)
-      }, worldGroup.position.set(finite(id.offsetX, 0), localValue * projectDocCurrent.previewFloorGap, finite(id.offsetZ, 0)), worldGroup.rotation.set(0, -THREE.MathUtils.degToRad(finite(id.rotation, 0)), 0), worldGroup.scale.set(1, 1, 1), rebuildWorldPreview(), localValue > 0)) {
-        for (const userData of [...worldGroup.children]) {
-          if (["background", "grid"].includes(userData.userData?.exportRole)) {
+    for (const [floorIndex, floorRecord] of floorsByElevation.entries()) {
+      if (removedFloorIds.has(floorRecord.id) && (worldGroup = rootGroup.children.find(foundLayer => foundLayer.userData?.floorId === floorRecord.id), floorSceneCurrent = floorRecord.scene, activeFloorId = floorRecord.id, Lo = {
+        x: finite(floorRecord.originX, 0),
+        y: finite(floorRecord.originY, 0)
+      }, worldGroup.position.set(finite(floorRecord.offsetX, 0), floorIndex * projectDocCurrent.previewFloorGap, finite(floorRecord.offsetZ, 0)), worldGroup.rotation.set(0, -THREE.MathUtils.degToRad(finite(floorRecord.rotation, 0)), 0), worldGroup.scale.set(1, 1, 1), rebuildWorldPreview(), floorIndex > 0)) {
+        for (const child of [...worldGroup.children]) {
+          if (["background", "grid"].includes(child.userData?.exportRole)) {
             if (isStageEmbed) {
-              userData.userData.floorBackgroundHidden = true;
-              userData.visible = false;
+              child.userData.floorBackgroundHidden = true;
+              child.visible = false;
               continue;
             }
-            worldGroup.remove(userData);
-            disposeObject3dResources(userData);
+            worldGroup.remove(child);
+            disposeObject3dResources(child);
           }
         }
       }
     }
   } finally {
-    worldGroup = childNodes;
-    floorSceneCurrent = localValue;
-    activeFloorId = localValueCurrent;
-    Lo = localValueNext;
+    worldGroup = rootGroup;
+    floorSceneCurrent = savedScene;
+    activeFloorId = savedFloorId;
+    Lo = savedPlanOrigin;
   }
-  syncSpotShadowCastingLights(childNodes);
+  syncSpotShadowCastingLights(rootGroup);
   flushPlanZoomFrame();
 }
 function flushPlanPanFrame() {
@@ -14233,70 +15960,70 @@ function flushPlanPanFrame() {
     })
   };
 }
-function rebuildPreviewItemMeshes(argPrimary) {
+function rebuildPreviewItemMeshes(modelLayer) {
   if (worldGroup) {
-    for (const userData of [...worldGroup.children]) {
-      if (userData.userData.modelLayer === argPrimary) {
-        worldGroup.remove(userData);
-        disposeObject3dResources(userData);
+    for (const child of [...worldGroup.children]) {
+      if (child.userData.modelLayer === modelLayer) {
+        worldGroup.remove(child);
+        disposeObject3dResources(child);
       }
     }
   }
 }
-function rebuildPreviewAfterPlanChange(argPrimary, {
+function rebuildPreviewAfterPlanChange(scope, {
   preserveLightCache: preserveLightCache = false
 } = {}) {
   if (!worldGroup) {
     return;
   }
-  const toWorld = flushPlanPanFrame();
-  if (!toWorld) {
+  const planToWorld = flushPlanPanFrame();
+  if (!planToWorld) {
     return;
   }
-  rebuildPreviewItemMeshes(argPrimary);
-  const comparisonFlag = argPrimary === "lights";
-  const conditionalValue = comparisonFlag ? shadowCastingLightIdSet() : null;
-  const push = [];
-  for (const type of floorSceneCurrent.items) {
-    if (set.has(type.type) !== comparisonFlag) {
+  rebuildPreviewItemMeshes(scope);
+  const lightsOnly = scope === "lights";
+  const shadowLightIds = lightsOnly ? shadowCastingLightIdSet() : null;
+  const staticBatches = [];
+  for (const item of floorSceneCurrent.items) {
+    if (set.has(item.type) !== lightsOnly) {
       continue;
     }
-    const x39 = toWorld.toWorld(type);
-    if (type.type === "flooropening") {
+    const worldPosition = planToWorld.toWorld(item);
+    if (item.type === "flooropening") {
       continue;
     }
-    const userData = buildStudioItemMeshGroup(type, conditionalValue);
-    if (yt && type.type === "smallcar") {
-      userData.userData.preserveDetailedSurface = true;
+    const meshGroup = buildStudioItemMeshGroup(item, shadowLightIds);
+    if (yt && item.type === "smallcar") {
+      meshGroup.userData.preserveDetailedSurface = true;
     }
-    if (isStageEmbed && ["wallac", "floorac", "airoutlet", "curtain", "nas", "camera", "presence", "tv", "robotvacuum"].includes(type.type)) {
-      userData.userData.environmentModelId = type.id;
-      userData.userData.environmentModelType = type.type;
-      userData.userData.environmentFloorId = activeFloorId;
+    if (isStageEmbed && ["wallac", "floorac", "airoutlet", "curtain", "nas", "camera", "presence", "tv", "robotvacuum"].includes(item.type)) {
+      meshGroup.userData.environmentModelId = item.id;
+      meshGroup.userData.environmentModelType = item.type;
+      meshGroup.userData.environmentFloorId = activeFloorId;
     }
-    userData.position.set(x39.x, type.elevation || 0, x39.z);
-    instanceMergeIdenticalItems(userData, type);
-    userData.userData.modelLayer = argPrimary;
-    worldGroup.add(userData);
-    if (!comparisonFlag) {
-      push.push({
-        item: type,
-        group: userData
+    meshGroup.position.set(worldPosition.x, item.elevation || 0, worldPosition.z);
+    instanceMergeIdenticalItems(meshGroup, item);
+    meshGroup.userData.modelLayer = scope;
+    worldGroup.add(meshGroup);
+    if (!lightsOnly) {
+      staticBatches.push({
+        item: item,
+        group: meshGroup
       });
     }
   }
-  if (!comparisonFlag) {
-    mergeStaticItemInstanceBatches(worldGroup, push);
+  if (!lightsOnly) {
+    mergeStaticItemInstanceBatches(worldGroup, staticBatches);
     if (isStageEmbed && new URLSearchParams(window.location.search).get("furniture-runtime") === "compact") {
-      compactRuntimeFurniture(worldGroup, push.filter(({
-        item: id
-      }) => !isSelected("item", id.id)), {
+      compactRuntimeFurniture(worldGroup, staticBatches.filter(({
+        item: selectedItem
+      }) => !isSelected("item", selectedItem.id)), {
         THREE,
         mergeGeometries,
         materialKey: createGlassMaterial
       });
     }
-    buildCanvasPathFromPoints(worldGroup, push);
+    buildCanvasPathFromPoints(worldGroup, staticBatches);
   }
   syncSpotShadowCastingLights(worldGroup, {
     rebuildAtlas: !preserveLightCache
@@ -14304,11 +16031,11 @@ function rebuildPreviewAfterPlanChange(argPrimary, {
   if (isStageEmbed) {
     cacheObjectTransforms(worldGroup, THREE.Object3D);
   }
-  if (comparisonFlag) {
+  if (lightsOnly) {
     syncOrbitControls();
   }
   requestRender({
-    shadows: !comparisonFlag && !preserveLightCache,
+    shadows: !lightsOnly && !preserveLightCache,
     preserveLightCache: preserveLightCache
   });
 }
@@ -14318,9 +16045,9 @@ function rebuildPreviewLightMeshes(preserveLightCache = {}) {
 function rebuildPreviewLightMeshesCurrent(options = {}) {
   rebuildPreviewAfterPlanChange("lights", options);
 }
-function applyCameraView(argPrimary, has) {
-  for (let parent = argPrimary; parent && parent !== worldGroup; parent = parent.parent) {
-    if (has.has(parent.userData?.modelLayer)) {
+function applyCameraView(startNode, modelLayers) {
+  for (let parent = startNode; parent && parent !== worldGroup; parent = parent.parent) {
+    if (modelLayers.has(parent.userData?.modelLayer)) {
       return true;
     }
   }
@@ -14352,42 +16079,42 @@ function flushPlanZoomFrame() {
   if (!shadowCameraExpanded || !previewSpotLight?.shadow?.camera || !worldGroup) {
     return false;
   }
-  const argPrimary = isWallCloseSnap();
-  if (argPrimary.isEmpty()) {
+  const wallSnapBounds = isWallCloseSnap();
+  if (wallSnapBounds.isEmpty()) {
     return false;
   }
   worldGroup.updateWorldMatrix(true, true);
   previewSpotLight.updateWorldMatrix(true, false);
   previewSpotLight.target.updateWorldMatrix(true, false);
-  const flag = previewSpotLight.shadow.camera;
-  const localValue = new THREE.Vector3().setFromMatrixPosition(previewSpotLight.matrixWorld);
+  const shadowCamera = previewSpotLight.shadow.camera;
+  const lightWorldPos = new THREE.Vector3().setFromMatrixPosition(previewSpotLight.matrixWorld);
   const position = new THREE.Vector3().setFromMatrixPosition(previewSpotLight.target.matrixWorld);
-  flag.position.copy(localValue);
-  flag.lookAt(position);
-  flag.updateMatrixWorld(true);
-  const x47 = new THREE.Vector3(Infinity, Infinity, Infinity);
-  const x48 = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
-  for (const localValueCurrent of [argPrimary.min.x, argPrimary.max.x]) {
-    for (const localValue of [argPrimary.min.y, argPrimary.max.y]) {
-      for (const localValue of [argPrimary.min.z, argPrimary.max.z]) {
-        const matrix = new THREE.Vector3(localValueCurrent, localValue, localValue).applyMatrix4(flag.matrixWorldInverse);
-        x47.min(matrix);
-        x48.max(matrix);
+  shadowCamera.position.copy(lightWorldPos);
+  shadowCamera.lookAt(position);
+  shadowCamera.updateMatrixWorld(true);
+  const boundsMin = new THREE.Vector3(Infinity, Infinity, Infinity);
+  const boundsMax = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+  for (const cornerX of [wallSnapBounds.min.x, wallSnapBounds.max.x]) {
+    for (const cornerY of [wallSnapBounds.min.y, wallSnapBounds.max.y]) {
+      for (const cornerZ of [wallSnapBounds.min.z, wallSnapBounds.max.z]) {
+        const matrix = new THREE.Vector3(cornerX, cornerZ, cornerZ).applyMatrix4(shadowCamera.matrixWorldInverse);
+        boundsMin.min(matrix);
+        boundsMax.max(matrix);
       }
     }
   }
-  const max = Math.max(x48.x - x47.x, x48.y - x47.y, 1);
-  const localValueCurrent = Math.max(sofaGeometryCache, max * 0.05);
-  const z = -x48.z;
-  const localValueNext = -x47.z;
-  const localValuePrevious = Math.max(sofaGeometryCache, (localValueNext - z) * 0.08);
-  flag.left = x47.x - localValueCurrent;
-  flag.right = x48.x + localValueCurrent;
-  flag.bottom = x47.y - localValueCurrent;
-  flag.top = x48.y + localValueCurrent;
-  flag.near = Math.max(0.1, z - localValuePrevious);
-  flag.far = Math.max(flag.near + 1, localValueNext + localValuePrevious);
-  flag.updateProjectionMatrix();
+  const max = Math.max(boundsMax.x - boundsMin.x, boundsMax.y - boundsMin.y, 1);
+  const padding = Math.max(sofaGeometryCache, max * 0.05);
+  const z = -boundsMax.z;
+  const nearZ = -boundsMin.z;
+  const depthPadding = Math.max(sofaGeometryCache, (nearZ - z) * 0.08);
+  shadowCamera.left = boundsMin.x - padding;
+  shadowCamera.right = boundsMax.x + padding;
+  shadowCamera.bottom = boundsMin.y - padding;
+  shadowCamera.top = boundsMax.y + padding;
+  shadowCamera.near = Math.max(0.1, z - depthPadding);
+  shadowCamera.far = Math.max(shadowCamera.near + 1, nearZ + depthPadding);
+  shadowCamera.updateProjectionMatrix();
   previewSpotLight.shadow.needsUpdate = true;
   return true;
 }
@@ -14397,56 +16124,56 @@ function applyCameraViewCurrent(forceOrthogonalAxis = {}) {
   }
   const cameraView = forceOrthogonalAxis.view === "top" ? "top" : forceOrthogonalAxis.view === "free" ? "free" : cameraViewMode();
   const currentTopViewRotation = topViewRotation();
-  const comparisonFlag = getPreviewFloorModeCurrent() === "all";
-  const computedValue = pixelsPerMeter() || 100;
+  const showsAllFloors = getPreviewFloorModeCurrent() === "all";
+  const pixelsPerMeterValue = pixelsPerMeter() || 100;
   const width = getPreviewFloorMode();
-  const isEmpty = isWallCloseSnap({
+  const wallSnap = isWallCloseSnap({
     excludeModelLayers: new Set(["items", "lights"])
   });
-  const x49 = comparisonFlag && !isEmpty.isEmpty() ? isEmpty.getSize(new THREE.Vector3()) : null;
-  const x50 = isEmpty.isEmpty() ? null : isEmpty.getCenter(new THREE.Vector3());
-  const conditionalValue = comparisonFlag && x49 ? clamp(Math.max(x49.x, x49.z), 5, 100) : clamp(Math.max(width.width, width.height) / computedValue, 5, 35);
-  const y = comparisonFlag && x49 ? x49.y : Math.max(0, ...floorSceneCurrent.walls.map(height => height.height || 0));
-  const frameSize = Math.max(conditionalValue * 1.18, conditionalValue + y * 0.32);
+  const allFloorsSize = showsAllFloors && !wallSnap.isEmpty() ? wallSnap.getSize(new THREE.Vector3()) : null;
+  const allFloorsCenter = wallSnap.isEmpty() ? null : wallSnap.getCenter(new THREE.Vector3());
+  const frameExtent = showsAllFloors && allFloorsSize ? clamp(Math.max(allFloorsSize.x, allFloorsSize.z), 5, 100) : clamp(Math.max(width.width, width.height) / pixelsPerMeterValue, 5, 35);
+  const wallTopHeight = showsAllFloors && allFloorsSize ? allFloorsSize.y : Math.max(0, ...floorSceneCurrent.walls.map(height => height.height || 0));
+  const frameSize = Math.max(frameExtent * 1.18, frameExtent + wallTopHeight * 0.32);
   cameraCurrent.userData.frameSize = frameSize;
   cameraCurrent.userData.cameraView = cameraView;
   cameraCurrent.userData.topRotation = currentTopViewRotation;
-  const x51 = x50 ? new THREE.Vector3(x50.x, x50.y, x50.z) : new THREE.Vector3(0, Math.min(0.78, conditionalValue * 0.055), 0);
-  let localValue;
+  const focusPoint = allFloorsCenter ? new THREE.Vector3(allFloorsCenter.x, allFloorsCenter.y, allFloorsCenter.z) : new THREE.Vector3(0, Math.min(0.78, frameExtent * 0.055), 0);
+  let cameraDistance;
   if (cameraCurrent.isPerspectiveCamera) {
     cameraCurrent.aspect = cameraCurrent.userData.viewportAspect || 1;
     applyCameraFocalLength();
     const axisLockedPoint = frameSize / (Math.tan(THREE.MathUtils.degToRad(cameraCurrent.getEffectiveFOV()) / 2) * 2);
-    localValue = Math.max(axisLockedPoint * 1.04, conditionalValue * 1.65, 8);
+    cameraDistance = Math.max(axisLockedPoint * 1.04, frameExtent * 1.65, 8);
   } else {
     focusCameraOnPoint(frameSize, cameraCurrent.userData.viewportAspect || 1);
-    localValue = Math.max(conditionalValue * 3.2, 18);
+    cameraDistance = Math.max(frameExtent * 3.2, 18);
   }
   if (cameraView === "top") {
     cameraCurrent.up.copy(topViewForwardVector(currentTopViewRotation));
-    cameraCurrent.position.set(x51.x, x51.y + localValue, x51.z);
+    cameraCurrent.position.set(focusPoint.x, focusPoint.y + cameraDistance, focusPoint.z);
   } else {
     cameraCurrent.up.set(0, 1, 0);
     const normalize = new THREE.Vector3(1.08, 1.7, 1.12).normalize();
-    cameraCurrent.position.copy(x51).addScaledVector(normalize, localValue);
+    cameraCurrent.position.copy(focusPoint).addScaledVector(normalize, cameraDistance);
   }
-  getCameraPose(cameraCurrent, x51);
+  getCameraPose(cameraCurrent, focusPoint);
   cameraCurrent.zoom = 1;
-  cameraCurrent.lookAt(x51);
+  cameraCurrent.lookAt(focusPoint);
   cameraCurrent.updateProjectionMatrix();
-  orbitControls.target.copy(x51);
+  orbitControls.target.copy(focusPoint);
   syncOrbitControls();
   orbitControls.update();
 }
 function onPlanPointerMove(event, anchor, forceOrthogonalAxis = false) {
-  const computedValue = pixelsPerMeter() || 100;
+  const scalePixels = pixelsPerMeter() || 100;
   if (!isSnapActive()) {
     if (forceOrthogonalAxis && anchor) {
-      const point = axisLockedPoint(event, anchor);
+      const axisPoint = axisLockedPoint(event, anchor);
       return {
-        ...point,
+        ...axisPoint,
         kind: "axis",
-        distance: distance(event, point.point)
+        distance: distance(event, axisPoint.point)
       };
     }
     return {
@@ -14458,22 +16185,22 @@ function onPlanPointerMove(event, anchor, forceOrthogonalAxis = false) {
       distance: 0
     };
   }
-  const snapOrthogonal = floorSceneCurrent.settings;
+  const snapSettings = floorSceneCurrent.settings;
   return snapPoint(event, floorSceneCurrent.walls, {
     zoom: planView.zoom,
-    screenTolerance: clamp(Math.round(finite(snapOrthogonal.snapTolerance, 13)), 6, 24),
+    screenTolerance: clamp(Math.round(finite(snapSettings.snapTolerance, 13)), 6, 24),
     anchor,
     forceOrthogonalAxis,
-    preferVerticalAxis: snapOrthogonal.snapOrthogonal !== false,
+    preferVerticalAxis: snapSettings.snapOrthogonal !== false,
     angleStepDegrees: 15,
-    gridSize: computedValue * 0.1,
-    intersections: snapOrthogonal.snapIntersections === false ? [] : getWallIntersections(computedValue),
-    snapEndpoints: snapOrthogonal.snapEndpoints !== false,
-    snapIntersections: snapOrthogonal.snapIntersections !== false,
-    snapSegments: snapOrthogonal.snapSegments !== false,
-    snapOrthogonal: snapOrthogonal.snapOrthogonal !== false,
-    snapAngles: snapOrthogonal.snapAngles !== false,
-    snapGrid: snapOrthogonal.snapGrid !== false
+    gridSize: scalePixels * 0.1,
+    intersections: snapSettings.snapIntersections === false ? [] : getWallIntersections(scalePixels),
+    snapEndpoints: snapSettings.snapEndpoints !== false,
+    snapIntersections: snapSettings.snapIntersections !== false,
+    snapSegments: snapSettings.snapSegments !== false,
+    snapOrthogonal: snapSettings.snapOrthogonal !== false,
+    snapAngles: snapSettings.snapAngles !== false,
+    snapGrid: snapSettings.snapGrid !== false
   });
 }
 function onPlanPointerDown(point = at) {
@@ -14483,43 +16210,43 @@ function onPlanPointerDown(point = at) {
   const visibleScreen = Math.max(1, (pixelsPerMeter() || 100) * 0.01);
   return point.kind === "endpoint" && distance(point.point, railingPlacementPreview) <= visibleScreen;
 }
-function updatePlanStatusChrome(argPrimary = zr) {
+function updatePlanStatusChrome(allowSnap = zr) {
   if (!Fi) {
     return;
   }
   no = {
     ...Fi
   };
-  const planPoint = pixelsPerMeter() || 100;
-  const text = Or ? "吸附：临时关闭" : "吸附：关闭";
-  if (activeTool === "scale" && wallDrawAnchorCurrent && argPrimary) {
-    const point = axisLockedPoint(Fi, wallDrawAnchorCurrent);
-    no = point.point;
+  const scalePixels = pixelsPerMeter() || 100;
+  const snapOffLabel = Or ? "吸附：临时关闭" : "吸附：关闭";
+  if (activeTool === "scale" && wallDrawAnchorCurrent && allowSnap) {
+    const axisPoint = axisLockedPoint(Fi, wallDrawAnchorCurrent);
+    no = axisPoint.point;
     at = null;
-    No.textContent = "吸附：" + point.label;
+    No.textContent = "吸附：" + axisPoint.label;
   } else if (activeTool === "scale") {
     at = null;
     No.textContent = "吸附：自由";
   }
-  referencePixels.textContent = "X " + (no.x / planPoint).toFixed(2) + " m · Y " + (no.y / planPoint).toFixed(2) + " m";
+  referencePixels.textContent = "X " + (no.x / scalePixels).toFixed(2) + " m · Y " + (no.y / scalePixels).toFixed(2) + " m";
   if (activeTool === "wall") {
-    at = onPlanPointerMove(Fi, Tt, argPrimary);
-    No.textContent = onPlanPointerDown(at) ? "闭合：点击闭合空间" : at.kind ? (!isSnapActive() && argPrimary ? "锁定" : "吸附") + "：" + at.label : isSnapActive() ? "吸附：自由" : text;
+    at = onPlanPointerMove(Fi, Tt, allowSnap);
+    No.textContent = onPlanPointerDown(at) ? "闭合：点击闭合空间" : at.kind ? (!isSnapActive() && allowSnap ? "锁定" : "吸附") + "：" + at.label : isSnapActive() ? "吸附：自由" : snapOffLabel;
   } else if (["window", "door", "railing"].includes(activeTool)) {
-    const wall = nearestWall(no, floorSceneCurrent.walls, 16 / planView.zoom);
-    if (wall) {
-      const width = yo[wallDrawAnchor] || yo.solid;
-      const objectValue = {
-        width: activeTool === "door" ? width.width : activeTool === "railing" ? 2 : 1.4,
-        t: wall.t
+    const hitWall = nearestWall(no, floorSceneCurrent.walls, 16 / planView.zoom);
+    if (hitWall) {
+      const openingWidth = yo[wallDrawAnchor] || yo.solid;
+      const openingSpec = {
+        width: activeTool === "door" ? openingWidth.width : activeTool === "railing" ? 2 : 1.4,
+        t: hitWall.t
       };
-      const options = {
-        wall: wall.wall,
-        t: clampWindowT(wall.wall, objectValue, planPoint)
+      const placementPreview = {
+        wall: hitWall.wall,
+        t: clampWindowT(hitWall.wall, openingSpec, scalePixels)
       };
-      Uo = activeTool === "window" ? options : null;
-      railingPlacementPreviewCurrent = activeTool === "door" ? options : null;
-      Ko = activeTool === "railing" ? options : null;
+      Uo = activeTool === "window" ? placementPreview : null;
+      railingPlacementPreviewCurrent = activeTool === "door" ? placementPreview : null;
+      Ko = activeTool === "railing" ? placementPreview : null;
       No.textContent = activeTool === "door" ? "吸附：墙体门洞" : activeTool === "railing" ? "吸附：墙体栏杆" : "吸附：墙体";
     } else {
       Uo = null;
@@ -14527,14 +16254,21 @@ function updatePlanStatusChrome(argPrimary = zr) {
       Ko = null;
       No.textContent = "吸附：未找到墙体";
     }
+  } else if (activeTool === "pan") {
+    at = null;
+    Uo = null;
+    railingPlacementPreviewCurrent = null;
+    Ko = null;
+    No.textContent = isSnapActive() ? "吸附：开启" : snapOffLabel;
+    element.style.cursor = "";
   } else if (activeTool !== "scale") {
     at = null;
     Uo = null;
     railingPlacementPreviewCurrent = null;
     Ko = null;
-    No.textContent = isSnapActive() ? "吸附：开启" : text;
-    const type = beginItemDrag(no);
-    element.style.cursor = type?.type === "rotate-item" ? "grab" : type?.type === "resize-item" ? "nwse-resize" : "";
+    No.textContent = isSnapActive() ? "吸附：开启" : snapOffLabel;
+    const dragTarget = beginItemDrag(no);
+    element.style.cursor = dragTarget?.type === "rotate-item" ? "grab" : dragTarget?.type === "resize-item" ? "nwse-resize" : "";
   }
 }
 function beginPlanPan(event) {
@@ -14551,7 +16285,7 @@ function handlePlanPointerDown(pointerId) {
   });
   const visibleScreen = pointerEventToCanvasPoint(pointerId);
   const start = screenToPlanWithView(visibleScreen);
-  if (pointerId.button === 1 || saveConflictState) {
+  if (pointerId.button === 1 || saveConflictState || activeTool === "pan") {
     pointerId.preventDefault();
     markLeavingStudio();
     dragState = {
@@ -14650,17 +16384,17 @@ function handlePlanPointerDown(pointerId) {
       drawPlan();
       return;
     }
-    const comparisonFlag = length.length !== 1 || distance(length[0].start, options.start) > pixelsPerMeterValue || distance(length[0].end, options.end) > pixelsPerMeterValue;
+    const wallsChanged = length.length !== 1 || distance(length[0].start, options.start) > pixelsPerMeterValue || distance(length[0].end, options.end) > pixelsPerMeterValue;
     pushHistory();
     const max = Math.max(1, pixelsPerMeter() * 0.01);
     const lengthValue = closedWallPolygons(floorSceneCurrent.walls, max).length;
-    const localValue = length.map((start, argSecondary) => ({
+    const newWalls = length.map((start, wallIndex) => ({
       ...options,
-      id: argSecondary === 0 ? options.id : makeId("wall"),
+      id: wallIndex === 0 ? options.id : makeId("wall"),
       start: start.start,
       end: start.end
     }));
-    floorSceneCurrent.walls.push(...localValue);
+    floorSceneCurrent.walls.push(...newWalls);
     cachedWallOpenings();
     Ar += 1;
     const element = closedWallPolygons(floorSceneCurrent.walls, max).length > lengthValue;
@@ -14671,13 +16405,13 @@ function handlePlanPointerDown(pointerId) {
         ...point.point
       };
     }
-    setSelection("wall", localValue[0].id);
+    setSelection("wall", newWalls[0].id);
     yr.hidden = element;
     refreshViews();
     scheduleSave();
     if (element) {
       showToast("空间已闭合，地面已生成。可继续绘制下一个空间。", "success");
-    } else if (comparisonFlag) {
+    } else if (wallsChanged) {
       showToast("已跳过与现有墙体重合的部分。", "success");
     }
     return;
@@ -14801,7 +16535,7 @@ function handlePlanPointerDown(pointerId) {
     element.setPointerCapture(pointerId.pointerId);
     return;
   }
-  const localValue = activeSelectionLightGroupFilter();
+  const lightGroupFilter = activeSelectionLightGroupFilter();
   const kind = placeCatalogItemAt(start);
   if (!kind) {
     markLeavingStudio();
@@ -14820,40 +16554,40 @@ function handlePlanPointerDown(pointerId) {
     drawPlan();
     ensureMeasureCanvas();
     if (!pointerId.shiftKey) {
-      rebuildPreviewForAssetFilters(localValue);
+      rebuildPreviewForAssetFilters(lightGroupFilter);
     }
     element.setPointerCapture(pointerId.pointerId);
     return;
   }
   markLeavingStudio();
   const before = kind.kind === "item" ? cloneFloorScene() : null;
-  const comparisonFlag = kind.kind === "item" && multiSelection.length > 0 && isSelected("item", kind.id);
+  const isSelectedSceneItem = kind.kind === "item" && multiSelection.length > 0 && isSelected("item", kind.id);
   let map = [];
   let copied = false;
   if (kind.kind === "item") {
-    if (comparisonFlag) {
+    if (isSelectedSceneItem) {
       const has = new Set(multiSelection.filter(kind => kind.kind === "item").map(named => named.id));
       map = floorSceneCurrent.items.filter(item => has.has(item.id));
     } else {
       setSelection("item", kind.id);
-      const localValue = floorSceneCurrent.items.find(item => item.id === kind.id);
-      if (localValue) {
-        map = [localValue];
+      const matchedItem = floorSceneCurrent.items.find(item => item.id === kind.id);
+      if (matchedItem) {
+        map = [matchedItem];
       }
     }
     if (pointerId.altKey && map.length) {
-      const length = map.map(argPrimary => ({
-        ...structuredClone(argPrimary),
+      const clonedItems = map.map(sceneItem => ({
+        ...structuredClone(sceneItem),
         id: makeId("item")
       }));
-      ensureItemLayerNames(length);
-      floorSceneCurrent.items.push(...length);
-      map = length;
-      if (length.length === 1) {
-        setSelection("item", length[0].id);
+      ensureItemLayerNames(clonedItems);
+      floorSceneCurrent.items.push(...clonedItems);
+      map = clonedItems;
+      if (clonedItems.length === 1) {
+        setSelection("item", clonedItems[0].id);
       } else {
         selection = null;
-        multiSelection = length.map(event => ({
+        multiSelection = clonedItems.map(event => ({
           kind: "item",
           id: event.id
         }));
@@ -14865,9 +16599,9 @@ function handlePlanPointerDown(pointerId) {
   }
   updateSelectionInspector();
   drawPlan();
-  rebuildPreviewForAssetFilters(localValue);
+  rebuildPreviewForAssetFilters(lightGroupFilter);
   const category = activeSelectionAssetCategory();
-  const previewScope = localValue === category ? category : "all";
+  const previewScope = lightGroupFilter === category ? category : "all";
   if (kind.kind === "item") {
     dragState = {
       type: "move-items",
@@ -14900,25 +16634,25 @@ function handlePlanPointerDown(pointerId) {
   }
 }
 function onPlanWheelZoom(event) {
-  const x52 = pointerEventToCanvasPoint(event);
-  const x53 = screenToPlanWithView(x52);
+  const canvasPoint = pointerEventToCanvasPoint(event);
+  const planPoint = screenToPlanWithView(canvasPoint);
   if (dragState?.pointerId === event.pointerId) {
     if (dragState.type === "draw-flooropening") {
       dragState.current = event.shiftKey ? (() => {
-        const computedValue = x53.x - dragState.start.x;
-        const value = x53.y - dragState.start.y;
-        const localValue = Math.max(Math.abs(computedValue), Math.abs(value));
+        const deltaX = planPoint.x - dragState.start.x;
+        const value = planPoint.y - dragState.start.y;
+        const dragExtent = Math.max(Math.abs(deltaX), Math.abs(value));
         return {
-          x: dragState.start.x + Math.sign(computedValue || 1) * localValue,
-          y: dragState.start.y + Math.sign(value || 1) * localValue
+          x: dragState.start.x + Math.sign(deltaX || 1) * dragExtent,
+          y: dragState.start.y + Math.sign(value || 1) * dragExtent
         };
-      })() : x53;
+      })() : planPoint;
       drawPlan();
       return;
     }
     if (dragState.type === "marquee") {
-      dragState.current = x53;
-      dragState.moved = distance(dragState.start, x53) * planView.zoom >= 4;
+      dragState.current = planPoint;
+      dragState.moved = distance(dragState.start, planPoint) * planView.zoom >= 4;
       if (blitMeasureOverlay()) {
         drawMarqueeSelection();
       } else {
@@ -14927,11 +16661,11 @@ function onPlanWheelZoom(event) {
       return;
     }
     if (dragState.type === "pan") {
-      const x25 = screenToPlan(x52);
-      planView.offsetX = dragState.offsetX + x25.x - dragState.screen.x;
-      planView.offsetY = dragState.offsetY + x25.y - dragState.screen.y;
-      const offsetX = x52.x - dragState.visibleScreen.x;
-      const offsetY = x52.y - dragState.visibleScreen.y;
+      const panPoint = screenToPlan(canvasPoint);
+      planView.offsetX = dragState.offsetX + panPoint.x - dragState.screen.x;
+      planView.offsetY = dragState.offsetY + panPoint.y - dragState.screen.y;
+      const offsetX = canvasPoint.x - dragState.visibleScreen.x;
+      const offsetY = canvasPoint.y - dragState.visibleScreen.y;
       if (!blitMeasureOverlay({
         offsetX,
         offsetY
@@ -14941,69 +16675,72 @@ function onPlanWheelZoom(event) {
       return;
     }
     if (dragState.type === "move-items") {
-      if (!dragState.moved && distance(x53, dragState.start) * planView.zoom < 3) {
+      if (!dragState.moved && distance(planPoint, dragState.start) * planView.zoom < 3) {
         return;
       }
-      const computedValue = pixelsPerMeter() * 0.05;
-      const comparisonFlag = isSnapActive() && floorSceneCurrent.settings.snapGrid !== false;
-      let value = x53.x - dragState.start.x;
-      let computedValueCurrent = x53.y - dragState.start.y;
+      const snapStep = pixelsPerMeter() * 0.05;
+      const snapToGrid = isSnapActive() && floorSceneCurrent.settings.snapGrid !== false;
+      let value = planPoint.x - dragState.start.x;
+      let dragDeltaY = planPoint.y - dragState.start.y;
       if (event.shiftKey) {
-        if (Math.abs(value) >= Math.abs(computedValueCurrent)) {
-          computedValueCurrent = 0;
+        if (Math.abs(value) >= Math.abs(dragDeltaY)) {
+          dragDeltaY = 0;
         } else {
           value = 0;
         }
       }
       const items = new Map(floorSceneCurrent.items.map(itemKey => [itemKey.id, itemKey]));
-      for (const x16 of dragState.originals) {
-        const x15 = items.get(x16.id);
-        if (x15) {
-          x15.x = comparisonFlag ? Math.round((x16.x + value) / computedValue) * computedValue : x16.x + value;
-          x15.y = comparisonFlag ? Math.round((x16.y + computedValueCurrent) / computedValue) * computedValue : x16.y + computedValueCurrent;
+      for (const originalSnapshot of dragState.originals) {
+        const targetCandidate = items.get(originalSnapshot.id);
+        if (targetCandidate) {
+          targetCandidate.x = snapToGrid ? Math.round((originalSnapshot.x + value) / snapStep) * snapStep : originalSnapshot.x + value;
+          targetCandidate.y = snapToGrid ? Math.round((originalSnapshot.y + dragDeltaY) / snapStep) * snapStep : originalSnapshot.y + dragDeltaY;
         }
       }
       dragState.moved = dragState.originals.some(event => {
-        const x6 = items.get(event.id);
-        return x6 && (Math.abs(x6.x - event.x) > 0.000001 || Math.abs(x6.y - event.y) > 0.000001);
+        const candidate = items.get(event.id);
+        return candidate && (Math.abs(candidate.x - event.x) > 0.000001 || Math.abs(candidate.y - event.y) > 0.000001);
       });
       drawPlan();
       return;
     }
     if (dragState.type === "resize-item") {
-      if (!dragState.moved && distance(x53, dragState.handle) * planView.zoom < 3) {
+      if (!dragState.moved && distance(planPoint, dragState.handle) * planView.zoom < 3) {
         return;
       }
-      const x26 = selectedEntity();
-      if (!x26) {
+      const resizeTarget = selectedEntity();
+      if (!resizeTarget) {
         return;
       }
-      const localValue = Math.max(finite(dragState.originalItem.height, 0.05), 0.001);
+      // A lying pillar resizes against its plan footprint (width x length), so run the resize against
+      // that footprint and fold the length back onto item.height.
+      const resizeSource = itemWithPlanFootprint(dragState.originalItem);
+      const baseHeight = Math.max(finite(resizeSource.height, 0.05), 0.001);
       const conditionalValue = event.shiftKey ? {
-        minimum: Math.max(0.1 / Math.max(dragState.originalItem.width, 0.1), 0.1 / Math.max(dragState.originalItem.depth, 0.1), itemMinimumHeight(dragState.originalItem.type) / localValue),
-        maximum: Math.min(8 / Math.max(dragState.originalItem.width, 0.1), 8 / Math.max(dragState.originalItem.depth, 0.1), 6 / localValue)
+        minimum: Math.max(0.1 / Math.max(resizeSource.width, 0.1), 0.1 / Math.max(resizeSource.depth, 0.1), itemMinimumHeight(resizeSource.type) / baseHeight),
+        maximum: Math.min(8 / Math.max(resizeSource.width, 0.1), 8 / Math.max(resizeSource.depth, 0.1), 6 / baseHeight)
       } : undefined;
-      const pixelsPerMeterValue = resizeRotatedItemFromCorner(dragState.originalItem, dragState.handle, dragState.anchor, x53, pixelsPerMeter() || 1, event.shiftKey, conditionalValue);
-      Object.assign(x26, pixelsPerMeterValue);
-      dragState.moved = Math.abs(x26.x - dragState.originalItem.x) > 0.000001 || Math.abs(x26.y - dragState.originalItem.y) > 0.000001 || Math.abs(x26.width - dragState.originalItem.width) > 0.000001 || Math.abs(x26.depth - dragState.originalItem.depth) > 0.000001 || Math.abs(x26.height - dragState.originalItem.height) > 0.000001;
+      const pixelsPerMeterValue = resizeRotatedItemFromCorner(resizeSource, dragState.handle, dragState.anchor, planPoint, pixelsPerMeter() || 1, event.shiftKey, conditionalValue);
+      Object.assign(resizeTarget, itemFromPlanFootprintResize(dragState.originalItem, pixelsPerMeterValue));
+      dragState.moved = Math.abs(resizeTarget.x - dragState.originalItem.x) > 0.000001 || Math.abs(resizeTarget.y - dragState.originalItem.y) > 0.000001 || Math.abs(resizeTarget.width - dragState.originalItem.width) > 0.000001 || Math.abs(resizeTarget.depth - dragState.originalItem.depth) > 0.000001 || Math.abs(resizeTarget.height - dragState.originalItem.height) > 0.000001;
       drawPlan();
       return;
     }
     if (dragState.type === "rotate-item") {
-      if (!dragState.moved && distance(x53, dragState.startPointer) * planView.zoom < 3) {
+      if (!dragState.moved && distance(planPoint, dragState.startPointer) * planView.zoom < 3) {
         return;
       }
       const rotation = selectedEntity();
       if (!rotation) {
         return;
       }
-      rotation.rotation = itemRotationFromPointers(dragState.originalItem.rotation, dragState.center, dragState.startPointer, x53, event.shiftKey ? 15 : 0);
+      rotation.rotation = itemRotationFromPointers(dragState.originalItem.rotation, dragState.center, dragState.startPointer, planPoint, event.shiftKey ? 15 : 0);
       dragState.moved = Math.abs(rotation.rotation - dragState.originalItem.rotation) > 0.000001;
       drawPlan();
       return;
     }
     if (dragState.type === "move-opening") {
-      if (!dragState.moved && distance(x53, dragState.start) * planView.zoom < 3) {
+      if (!dragState.moved && distance(planPoint, dragState.start) * planView.zoom < 3) {
         return;
       }
       const t = selectedEntity();
@@ -15013,7 +16750,7 @@ function onPlanWheelZoom(event) {
       }
       t.t = clampWindowT(start, {
         ...t,
-        t: projectPointToSegment(x53, start.start, start.end).t
+        t: projectPointToSegment(planPoint, start.start, start.end).t
       }, pixelsPerMeter());
       const t2 = dragState.before?.[selection?.kind + "s"]?.find?.(item => item.id === t.id);
       dragState.moved = !t2 || Math.abs(t.t - t2.t) > 0.000001;
@@ -15028,10 +16765,10 @@ function onPlanWheelZoom(event) {
 }
 function resetWallDrawing() {
   $r = 0;
-  const localValue = Gr;
+  const pendingZoom = Gr;
   Gr = null;
-  if (localValue) {
-    onPlanWheelZoom(localValue);
+  if (pendingZoom) {
+    onPlanWheelZoom(pendingZoom);
   }
 }
 function queuePlanPointerMoveFrame(pointer) {
@@ -15053,17 +16790,17 @@ function onPlanPointerCancel(pointer) {
 }
 function cancelWallDrawing() {
   previewScene = 0;
-  const localValue = defaultExportHeight;
-  const localValueCurrent = exportAspectRatio;
+  const previousExportHeight = defaultExportHeight;
+  const previousAspect = exportAspectRatio;
   defaultExportHeight = 1;
   exportAspectRatio = null;
-  if (localValueCurrent && Math.abs(localValue - 1) > 1e-8) {
-    zoomPlanViewAt(localValue, localValueCurrent);
+  if (previousAspect && Math.abs(previousExportHeight - 1) > 1e-8) {
+    zoomPlanViewAt(previousExportHeight, previousAspect);
   }
 }
-function applyInspectorFields(argPrimary) {
-  defaultExportHeight *= Math.exp(-argPrimary.deltaY * 0.0012);
-  exportAspectRatio = pointerEventToCanvasPoint(argPrimary);
+function applyInspectorFields(wheelEvent) {
+  defaultExportHeight *= Math.exp(-wheelEvent.deltaY * 0.0012);
+  exportAspectRatio = pointerEventToCanvasPoint(wheelEvent);
   markLeavingStudio();
   previewScene ||= requestAnimationFrame(cancelWallDrawing);
   window.clearTimeout(camera);
@@ -15082,23 +16819,23 @@ function setHoveredInspectorTarget(pointerEvent) {
   }
   if (dragState.type === "draw-flooropening") {
     const {
-      start: x40,
-      current: x41
+      start: startPoint,
+      current: currentPoint
     } = dragState;
     try {
       element.releasePointerCapture(pointerEvent.pointerId);
     } catch {}
     dragState = null;
     scheduleLeaveStudio();
-    const computedValue = Math.abs(x41.x - x40.x) / pixelsPerMeter();
-    const value = Math.abs(x41.y - x40.y) / pixelsPerMeter();
-    if (pointerEvent.type !== "pointercancel" && computedValue >= 0.1 && value >= 0.1) {
+    const widthMeters = Math.abs(currentPoint.x - startPoint.x) / pixelsPerMeter();
+    const depthMeters = Math.abs(currentPoint.y - startPoint.y) / pixelsPerMeter();
+    if (pointerEvent.type !== "pointercancel" && widthMeters >= 0.1 && depthMeters >= 0.1) {
       placeCatalogFurnitureItem("flooropening", {
-        x: (x40.x + x41.x) / 2,
-        y: (x40.y + x41.y) / 2
+        x: (startPoint.x + currentPoint.x) / 2,
+        y: (startPoint.y + currentPoint.y) / 2
       }, {
-        width: Math.min(20, computedValue),
-        depth: Math.min(20, value)
+        width: Math.min(20, widthMeters),
+        depth: Math.min(20, depthMeters)
       });
     } else {
       drawPlan();
@@ -15106,15 +16843,15 @@ function setHoveredInspectorTarget(pointerEvent) {
     return;
   }
   if (dragState.type === "marquee") {
-    const localValue = activeSelectionLightGroupFilter();
-    const conditionalValue = dragState.additive ? [...(selection ? [selection] : []), ...multiSelection] : [];
+    const previousLightGroupFilter = activeSelectionLightGroupFilter();
+    const preselected = dragState.additive ? [...(selection ? [selection] : []), ...multiSelection] : [];
     const hits = dragState.moved ? marqueeSelectHits(dragState.start, dragState.current) : [];
-    const length = [...new Map([...conditionalValue, ...hits].map(kind => [kind.kind + ":" + kind.id, kind])).values()];
-    if (length.length === 1) {
-      setSelection(length[0].kind, length[0].id);
+    const selectedTargets = [...new Map([...preselected, ...hits].map(target => [target.kind + ":" + target.id, target])).values()];
+    if (selectedTargets.length === 1) {
+      setSelection(selectedTargets[0].kind, selectedTargets[0].id);
     } else {
       selection = null;
-      multiSelection = length;
+      multiSelection = selectedTargets;
     }
     try {
       element.releasePointerCapture(pointerEvent.pointerId);
@@ -15122,27 +16859,27 @@ function setHoveredInspectorTarget(pointerEvent) {
     dragState = null;
     updateSelectionInspector();
     drawPlan();
-    rebuildPreviewForAssetFilters(localValue);
+    rebuildPreviewForAssetFilters(previousLightGroupFilter);
     scheduleLeaveStudio();
     return;
   }
-  const type = dragState;
-  const computedValue = type.moved || type.copied;
-  if (computedValue) {
+  const gesture = dragState;
+  const didMove = gesture.moved || gesture.copied;
+  if (didMove) {
     pushUndoSnapshot(dragState.before);
     scheduleSave();
   }
-  if (["move-items", "resize-item", "rotate-item", "move-opening"].includes(type.type)) {
+  if (["move-items", "resize-item", "rotate-item", "move-opening"].includes(gesture.type)) {
     updateSelectionInspector();
   }
-  if (computedValue && type.type === "move-opening") {
+  if (didMove && gesture.type === "move-opening") {
     rebuildPreviewMeshes({
       scope: "all"
     });
-  } else if (computedValue && ["move-items", "resize-item", "rotate-item"].includes(type.type)) {
-    const localValue = selectedEntity();
+  } else if (didMove && ["move-items", "resize-item", "rotate-item"].includes(gesture.type)) {
+    const entity = selectedEntity();
     rebuildPreviewMeshes({
-      scope: type.previewScope || (localValue ? itemPreviewScope(localValue) : activeSelectionAssetCategory())
+      scope: gesture.previewScope || (entity ? itemPreviewScope(entity) : activeSelectionAssetCategory())
     });
   }
   if (dragState.type === "pan") {
@@ -15152,7 +16889,7 @@ function setHoveredInspectorTarget(pointerEvent) {
     element.releasePointerCapture(pointerEvent.pointerId);
   } catch {}
   dragState = null;
-  if (type.type === "pan") {
+  if (gesture.type === "pan") {
     drawPlan();
   }
   scheduleLeaveStudio();
@@ -15161,102 +16898,115 @@ function scheduleClearInspectorHover(pointerId) {
   onPlanPointerCancel(pointerId.pointerId);
   setHoveredInspectorTarget(pointerId);
 }
-function applyInspectorFieldsCurrent(argPrimary) {
-  const value = selectedEntity();
-  if (!value || selection?.kind !== argPrimary) {
+function applyInspectorFieldsCurrent(selectionKind) {
+  const entity = selectedEntity();
+  if (!entity || selection?.kind !== selectionKind) {
     return;
   }
-  const activeSelectionLightGroupFilterResult = argPrimary === "item" ? itemPreviewScope(value) : "all";
+  const previewScope = selectionKind === "item" ? itemPreviewScope(entity) : "all";
   pushHistory();
-  if (argPrimary === "wall") {
-    value.height = clamp(finite(selectEl("#wall-height").value, value.height), 0.01, 6);
-    value.thickness = clamp(finite(selectEl("#wall-thickness").value, value.thickness), 0.01, 3);
-    value.opacity = selectEl("#wall-opacity-mode").value === "custom" ? clamp(finite(selectEl("#wall-opacity").value, floorSceneCurrent.settings.wallOpacity * 100), 0, 100) / 100 : null;
-    value.allowOpenEnd = selectEl("#wall-open-end-mode").value === "allowed";
-    floorSceneCurrent.settings.wallHeight = value.height;
-    floorSceneCurrent.settings.wallThickness = value.thickness;
-  } else if (argPrimary === "window") {
-    value.width = clamp(finite(selectEl("#window-width").value, value.width), 0.3, 20);
-    value.height = clamp(finite(selectEl("#window-height").value, value.height), 0.3, 20);
-    value.sill = clamp(finite(selectEl("#window-sill").value, value.sill), 0, 20);
-    value.hasDivider = selectEl("#window-divider").value !== "without";
-    const localValue = floorSceneCurrent.walls.find(item => item.id === value.wallId);
-    if (localValue) {
-      value.t = clampWindowT(localValue, value, pixelsPerMeter());
+  if (selectionKind === "wall") {
+    entity.height = clamp(finite(selectEl("#wall-height").value, entity.height), 0.01, 6);
+    entity.thickness = clamp(finite(selectEl("#wall-thickness").value, entity.thickness), 0.01, 3);
+    entity.opacity = selectEl("#wall-opacity-mode").value === "custom" ? clamp(finite(selectEl("#wall-opacity").value, floorSceneCurrent.settings.wallOpacity * 100), 0, 100) / 100 : null;
+    entity.allowOpenEnd = selectEl("#wall-open-end-mode").value === "allowed";
+    floorSceneCurrent.settings.wallHeight = entity.height;
+    floorSceneCurrent.settings.wallThickness = entity.thickness;
+  } else if (selectionKind === "window") {
+    entity.width = clamp(finite(selectEl("#window-width").value, entity.width), 0.3, 20);
+    entity.height = clamp(finite(selectEl("#window-height").value, entity.height), 0.3, 20);
+    entity.sill = clamp(finite(selectEl("#window-sill").value, entity.sill), 0, 20);
+    entity.hasDivider = selectEl("#window-divider").value !== "without";
+    const windowWall = floorSceneCurrent.walls.find(wall => wall.id === entity.wallId);
+    if (windowWall) {
+      entity.t = clampWindowT(windowWall, entity, pixelsPerMeter());
     }
-  } else if (argPrimary === "door") {
-    value.doorType = Object.hasOwn(yo, selectEl("#door-type").value) ? selectEl("#door-type").value : "solid";
-    value.width = clamp(finite(selectEl("#door-width").value, value.width), 0.55, 20);
-    value.height = clamp(finite(selectEl("#door-height").value, value.height), 1.8, 20);
-    const localValue = floorSceneCurrent.walls.find(kind => kind.id === value.wallId);
-    if (localValue) {
-      value.t = clampWindowT(localValue, value, pixelsPerMeter());
+  } else if (selectionKind === "door") {
+    entity.doorType = Object.hasOwn(yo, selectEl("#door-type").value) ? selectEl("#door-type").value : "solid";
+    entity.width = clamp(finite(selectEl("#door-width").value, entity.width), 0.55, 20);
+    entity.height = clamp(finite(selectEl("#door-height").value, entity.height), 1.8, 20);
+    const doorWall = floorSceneCurrent.walls.find(candidateWall => candidateWall.id === entity.wallId);
+    if (doorWall) {
+      entity.t = clampWindowT(doorWall, entity, pixelsPerMeter());
     }
-  } else if (argPrimary === "railing") {
-    value.width = clamp(finite(selectEl("#railing-width").value, value.width), 0.3, 20);
-    value.height = clamp(finite(selectEl("#railing-height").value, value.height), 0.5, 3);
-    const localValue = floorSceneCurrent.walls.find(floor => floor.id === value.wallId);
-    if (localValue) {
-      value.t = clampWindowT(localValue, value, pixelsPerMeter());
+  } else if (selectionKind === "railing") {
+    entity.width = clamp(finite(selectEl("#railing-width").value, entity.width), 0.3, 20);
+    entity.height = clamp(finite(selectEl("#railing-height").value, entity.height), 0.5, 3);
+    const railingWall = floorSceneCurrent.walls.find(railingWallRef => railingWallRef.id === entity.wallId);
+    if (railingWall) {
+      entity.t = clampWindowT(railingWall, entity, pixelsPerMeter());
     }
   } else {
-    const computedValue = pixelsPerMeter() || 1;
-    value.x = finite(selectEl("#item-x").value, value.x / computedValue) * computedValue;
-    value.y = finite(selectEl("#item-y").value, value.y / computedValue) * computedValue;
-    value.width = clamp(finite(selectEl("#item-width").value, value.width), 0.1, 8);
-    value.height = clamp(finite(selectEl("#item-height").value, value.height), itemMinimumHeight(value.type), 6);
-    value.depth = clamp(finite(selectEl("#item-depth").value, value.depth), 0.1, 8);
-    value.elevation = clamp(finite(selectEl("#item-elevation").value, value.elevation || 0), 0, 6);
-    value.rotation = value.type === "striplight" ? normalizeFullRotation(selectEl("#item-rotation").value, value.rotation) : finite(selectEl("#item-rotation").value, value.rotation);
-    if (value.type === "planlabel") {
-      value.title = normalizeLabelText(selectEl("#label-title").value, "家庭总览", 24);
-      value.subtitle = normalizeLabelText(selectEl("#label-subtitle").value, "HOME PLAN", 36);
-      value.titleSpacing = clamp(finite(selectEl("#label-title-spacing").value, 105) / 100, 0, 1.8);
-      value.subtitleSpacing = clamp(finite(selectEl("#label-subtitle-spacing").value, 8) / 100, 0, 0.6);
-      value.lineLength = clamp(finite(selectEl("#label-line-length").value, 86) / 100, 0.3, 1);
-      value.height = 0.01;
-      value.elevation = 0;
+    const scalePixels = pixelsPerMeter() || 1;
+    entity.x = finite(selectEl("#item-x").value, entity.x / scalePixels) * scalePixels;
+    entity.y = finite(selectEl("#item-y").value, entity.y / scalePixels) * scalePixels;
+    entity.width = clamp(finite(selectEl("#item-width").value, entity.width), 0.1, 8);
+    entity.height = clamp(finite(selectEl("#item-height").value, entity.height), itemMinimumHeight(entity.type), 6);
+    entity.depth = clamp(finite(selectEl("#item-depth").value, entity.depth), 0.1, 8);
+    entity.elevation = clamp(finite(selectEl("#item-elevation").value, entity.elevation || 0), 0, 6);
+    entity.rotation = entity.type === "striplight" ? normalizeFullRotation(selectEl("#item-rotation").value, entity.rotation) : finite(selectEl("#item-rotation").value, entity.rotation);
+    if (entity.type === "planlabel") {
+      entity.title = normalizeLabelText(selectEl("#label-title").value, "家庭总览", 24);
+      entity.subtitle = normalizeLabelText(selectEl("#label-subtitle").value, "HOME PLAN", 36);
+      entity.titleSpacing = clamp(finite(selectEl("#label-title-spacing").value, 105) / 100, 0, 1.8);
+      entity.subtitleSpacing = clamp(finite(selectEl("#label-subtitle-spacing").value, 8) / 100, 0, 0.6);
+      entity.lineLength = clamp(finite(selectEl("#label-line-length").value, 86) / 100, 0.3, 1);
+      entity.height = 0.01;
+      entity.elevation = 0;
     }
-    if (value.type === "curtain") {
-      value.curtainPosition = ["left", "right", "split"].includes(selectEl("#curtain-position").value) ? selectEl("#curtain-position").value : "split";
+    if (entity.type === "curtain") {
+      entity.curtainPosition = ["left", "right", "split"].includes(selectEl("#curtain-position").value) ? selectEl("#curtain-position").value : "split";
     }
-    if (roundTableTypes.has(value.type)) {
-      value.roundTableTurntable = selectEl("#round-table-turntable").value === "with";
+    if (entity.type === "mural") {
+      entity.muralStyle = normalizeMuralArtStyle(selectEl("#mural-style").value);
     }
-    if (stairItemTypes.has(value.type)) {
-      value.stairDirection = ["left", "right"].includes(selectEl("#stair-direction").value) ? selectEl("#stair-direction").value : "right";
+    if (entity.type === "featurewall") {
+      entity.wallStyle = normalizeFeatureWallStyle(selectEl("#feature-wall-style").value);
     }
-    if (value.type === "tv") {
-      const conditionalValue = tvMountStyles.has(value.tvMountStyle) ? value.tvMountStyle : "standard";
+    if (entity.type === "pillar") {
+      entity.pillarShape = normalizePillarShape(selectEl("#pillar-shape").value);
+      entity.pillarAxis = normalizePillarAxis(selectEl("#pillar-axis").value);
+    }
+    if (entity.type === "striplight") {
+      entity.stripAxis = normalizeStripAxis(selectEl("#strip-axis").value);
+    }
+    if (roundTableTypes.has(entity.type)) {
+      entity.roundTableTurntable = selectEl("#round-table-turntable").value === "with";
+    }
+    if (stairItemTypes.has(entity.type)) {
+      entity.stairDirection = ["left", "right"].includes(selectEl("#stair-direction").value) ? selectEl("#stair-direction").value : "right";
+    }
+    if (entity.type === "tv") {
+      const previousTvMountStyle = tvMountStyles.has(entity.tvMountStyle) ? entity.tvMountStyle : "standard";
       const tvMountStyle = tvMountStyles.has(selectEl("#tv-mount-style").value) ? selectEl("#tv-mount-style").value : "standard";
-      if (conditionalValue !== tvMountStyle && tvMountStyle === "mobile") {
-        value.height = Math.max(value.height, modelLoadStatusTimer.height);
-        value.depth = Math.max(value.depth, modelLoadStatusTimer.depth);
-        value.elevation = 0;
-      } else if (conditionalValue === "mobile" && tvMountStyle !== "mobile" && Math.abs(value.height - modelLoadStatusTimer.height) < 0.001 && Math.abs(value.depth - modelLoadStatusTimer.depth) < 0.001) {
-        value.height = furnitureCatalog.tv.height;
-        value.depth = furnitureCatalog.tv.depth;
+      if (previousTvMountStyle !== tvMountStyle && tvMountStyle === "mobile") {
+        entity.height = Math.max(entity.height, modelLoadStatusTimer.height);
+        entity.depth = Math.max(entity.depth, modelLoadStatusTimer.depth);
+        entity.elevation = 0;
+      } else if (previousTvMountStyle === "mobile" && tvMountStyle !== "mobile" && Math.abs(entity.height - modelLoadStatusTimer.height) < 0.001 && Math.abs(entity.depth - modelLoadStatusTimer.depth) < 0.001) {
+        entity.height = furnitureCatalog.tv.height;
+        entity.depth = furnitureCatalog.tv.depth;
       }
-      value.tvMountStyle = tvMountStyle;
+      entity.tvMountStyle = tvMountStyle;
     }
-    if (set.has(value.type)) {
-      const temperature = defaultLightPresets[value.type] || defaultLightPresets.downlight;
-      value.verticalRotation = value.type === "striplight" ? normalizeFullRotation(selectEl("#item-vertical-rotation").value, value.verticalRotation || 0) : clamp(finite(selectEl("#item-vertical-rotation").value, value.verticalRotation || 0), -90, 90);
-      if (value.type === "striplight") {
-        value.stripRollRotation = normalizeFullRotation(itemStripRoll.value, value.stripRollRotation || 0);
-        value.lightSourceVisible = zl.checked;
+    if (set.has(entity.type)) {
+      const lightPreset = defaultLightPresets[entity.type] || defaultLightPresets.downlight;
+      entity.verticalRotation = entity.type === "striplight" ? normalizeFullRotation(selectEl("#item-vertical-rotation").value, entity.verticalRotation || 0) : clamp(finite(selectEl("#item-vertical-rotation").value, entity.verticalRotation || 0), -90, 90);
+      if (entity.type === "striplight") {
+        entity.stripRollRotation = normalizeFullRotation(itemStripRoll.value, entity.stripRollRotation || 0);
+        entity.lightSourceVisible = zl.checked;
       }
-      value.lightGroupId = floorSceneCurrent.lightGroups.some(group => group.id === selectEl("#light-group").value) ? selectEl("#light-group").value : ensureDefaultLightGroup().id;
-      value.lightTemperature = clamp(finite(selectEl("#light-temperature").value, temperature.temperature), 2200, 6500);
-      value.lightBrightness = clamp(finite(selectEl("#light-brightness").value, temperature.brightness), 0, 100);
-      value.lightRange = clamp(finite(selectEl("#light-range").value, temperature.range), 0.5, 10);
-      value.lightAngle = clamp(finite(selectEl("#light-angle").value, temperature.angle), 15, defaultItemDepth(value.type));
-      value.height = furnitureCatalog[value.type].height;
-    } else if (value.type === "camera" || value.type === "presence") {
-      value.verticalRotation = clamp(finite(selectEl("#item-vertical-rotation").value, value.verticalRotation || 0), -180, 180);
+      entity.lightGroupId = floorSceneCurrent.lightGroups.some(group => group.id === selectEl("#light-group").value) ? selectEl("#light-group").value : ensureDefaultLightGroup().id;
+      entity.lightTemperature = clamp(finite(selectEl("#light-temperature").value, lightPreset.temperature), 2200, 6500);
+      entity.lightBrightness = clamp(finite(selectEl("#light-brightness").value, lightPreset.brightness), 0, 100);
+      entity.lightRange = clamp(finite(selectEl("#light-range").value, lightPreset.range), 0.5, 10);
+      entity.lightAngle = clamp(finite(selectEl("#light-angle").value, lightPreset.angle), 15, defaultItemDepth(entity.type));
+      entity.height = furnitureCatalog[entity.type].height;
+    } else if (entity.type === "camera" || entity.type === "presence") {
+      entity.verticalRotation = clamp(finite(selectEl("#item-vertical-rotation").value, entity.verticalRotation || 0), -180, 180);
     }
   }
-  refreshViews(activeSelectionLightGroupFilterResult);
+  refreshViews(previewScope);
   scheduleSave();
 }
 function resetWallDrawingCurrent() {
@@ -15345,13 +17095,13 @@ Ud.addEventListener("click", () => {
     showToast("底图引用已移除，现在可以在编辑器中删除这张图片。", "success");
   }
 });
-function beginOrSwitchWallSettingsEdit(argPrimary) {
-  if (exportPresetEditorOpen && exportPresetEditorOpen !== argPrimary) {
+function beginOrSwitchWallSettingsEdit(wallSettingsKey) {
+  if (exportPresetEditorOpen && exportPresetEditorOpen !== wallSettingsKey) {
     commitGlobalWallThickness();
   }
   if (!exportPresetEditorOpen) {
     pushHistory();
-    exportPresetEditorOpen = argPrimary;
+    exportPresetEditorOpen = wallSettingsKey;
     markLeavingStudio();
   }
 }
@@ -15376,9 +17126,9 @@ function commitGlobalWallThickness() {
     scheduleLeaveStudio();
   }
 }
-function scheduleClearInspectorHoverCurrent(numericParam = 80) {
+function scheduleClearInspectorHoverCurrent(delayMs = 80) {
   window.clearTimeout(exportUiDebounceTimer);
-  exportUiDebounceTimer = window.setTimeout(commitGlobalWallThickness, numericParam);
+  exportUiDebounceTimer = window.setTimeout(commitGlobalWallThickness, delayMs);
 }
 function commitGlobalWallHeightCurrent() {
   const value = clamp(finite(globalWallHeight.value, floorSceneCurrent.settings.wallHeight), 0.01, 6);
@@ -15426,33 +17176,33 @@ toggleFloorEdge.addEventListener("click", () => {
   scheduleSave();
 });
 function closeLightGroupRenameDialog() {
-  for (const hidden of itemCatalog) {
-    hidden.hidden = hidden.dataset.assetHeadingCategory !== assetCategory;
+  for (const entry of itemCatalog) {
+    entry.hidden = entry.dataset.assetHeadingCategory !== assetCategory;
   }
-  for (const dataset of w0) {
-    const localValue = dataset.dataset.itemType;
-    const present = set.has(localValue);
-    const localValueCurrent = RESERVED_TEXTURE_UNITS.has(localValue);
-    const conditionalValue = assetCategory === "light" ? present : assetCategory === "appliance" ? localValueCurrent : !localValueCurrent && !present;
-    dataset.hidden = !conditionalValue;
+  for (const optionEl of w0) {
+    const itemType = optionEl.dataset.itemType;
+    const present = set.has(itemType);
+    const isReservedUnit = RESERVED_TEXTURE_UNITS.has(itemType);
+    const visible = assetCategory === "light" ? present : assetCategory === "appliance" ? isReservedUnit : !isReservedUnit && !present;
+    optionEl.hidden = !visible;
   }
 }
-function setAssetCategoryFilter(argPrimary) {
-  const conditionalValue = ["home", "appliance", "light"].includes(argPrimary) ? argPrimary : "home";
-  const localValue = activeSelectionLightGroupFilter();
+function setAssetCategoryFilter(requested) {
+  const category = ["home", "appliance", "light"].includes(requested) ? requested : "home";
+  const previousLightGroupFilter = activeSelectionLightGroupFilter();
   hideLightGroupContextMenu();
-  assetCategory = conditionalValue;
-  for (const dataset of m0) {
-    const comparisonFlag = dataset.dataset.assetCategory === conditionalValue;
-    dataset.classList.toggle("active", comparisonFlag);
-    dataset.setAttribute("aria-pressed", String(comparisonFlag));
+  assetCategory = category;
+  for (const tabButton of m0) {
+    const isActiveCategory = tabButton.dataset.assetCategory === category;
+    tabButton.classList.toggle("active", isActiveCategory);
+    tabButton.setAttribute("aria-pressed", String(isActiveCategory));
   }
   closeLightGroupRenameDialog();
-  lightItemTypes.hidden = conditionalValue === "light";
-  stairLikeTypes.hidden = conditionalValue !== "light";
-  const type = selectedEntity();
-  const comparisonFlag = selection?.kind === "item" && type && set.has(type.type);
-  if (selection && conditionalValue === "light" != !!comparisonFlag) {
+  lightItemTypes.hidden = category === "light";
+  stairLikeTypes.hidden = category !== "light";
+  const entity = selectedEntity();
+  const hasLightSelection = selection?.kind === "item" && entity && set.has(entity.type);
+  if (selection && category === "light" != !!hasLightSelection) {
     clearSelection();
   }
   if (multiSelection.length) {
@@ -15462,8 +17212,8 @@ function setAssetCategoryFilter(argPrimary) {
   renderLightLayerPanel();
   updateSelectionInspector();
   drawPlan();
-  if (localValue !== activeSelectionLightGroupFilter()) {
-    rebuildPreviewForAssetFilters(localValue);
+  if (previousLightGroupFilter !== activeSelectionLightGroupFilter()) {
+    rebuildPreviewForAssetFilters(previousLightGroupFilter);
   }
 }
 for (const e of m0) {
@@ -15472,15 +17222,16 @@ for (const e of m0) {
 setAssetCategoryFilter("home");
 Tg.addEventListener("click", () => {
   pushHistory();
-  const has = new Set(floorSceneCurrent.lightGroups.map(name2 => name2.name));
-  let computedValue = floorSceneCurrent.lightGroups.length + 1;
-  while (has.has("灯组 " + computedValue)) {
-    computedValue += 1;
+  const has = new Set(floorSceneCurrent.lightGroups.map(lightGroup => lightGroup.name));
+  let nextGroupNumber = floorSceneCurrent.lightGroups.length + 1;
+  while (has.has("灯组 " + nextGroupNumber)) {
+    nextGroupNumber += 1;
   }
   const id = {
     id: makeId("light-group"),
-    name: "灯组 " + computedValue,
-    enabled: true
+    name: "灯组 " + nextGroupNumber,
+    enabled: true,
+    areaId: null
   };
   floorSceneCurrent.lightGroups.push(id);
   on = id.id;
@@ -15488,14 +17239,16 @@ Tg.addEventListener("click", () => {
   updateSelectionInspector();
   scheduleSave();
 });
-fridgeSize.addEventListener("click", () => setAllLightGroupsEnabled(false));
+fridgeSize.addEventListener("click", () => setCategoryLayersEnabled(false));
 for (const e of lightGroupContextMenu.querySelectorAll("[data-light-group-action]")) {
   e.addEventListener("click", () => {
     const lightGroup = floorSceneCurrent.lightGroups.find(item => item.id === lightGroupContextMenuId);
     const lightGroupAction = e.dataset.lightGroupAction;
     hideLightGroupContextMenu();
     if (lightGroup) {
-      if (lightGroupAction === "rename") {
+      if (lightGroupAction === "area") {
+        openLightGroupAreaDialog(lightGroup);
+      } else if (lightGroupAction === "rename") {
         _a = lightGroup.id;
         lightGroupRenameInput.value = lightGroup.name;
         Il.showModal();
@@ -15508,6 +17261,100 @@ for (const e of lightGroupContextMenu.querySelectorAll("[data-light-group-action
     }
   });
 }
+addAreaButton.addEventListener("click", () => openAreaCreateDialog());
+areaRenameForm.addEventListener("submit", event => {
+  event.preventDefault();
+  const name = normalizeAreaName(areaRenameInput.value);
+  if (!name) {
+    showToast("请输入区域名称。", "error");
+    return;
+  }
+  if (areaRenameMode === "rename") {
+    const area = (floorSceneCurrent.areas || []).find(item => item.id === areaRenameId);
+    if (!area) {
+      closeAreaRenameDialog();
+      return;
+    }
+    if (area.name === name) {
+      closeAreaRenameDialog();
+      return;
+    }
+    if (areaNameTaken(name, area.id)) {
+      showToast("已存在同名区域。", "error");
+      return;
+    }
+    pushHistory();
+    area.name = name;
+    renderLightLayerPanel();
+    scheduleSave();
+  } else {
+    if (areaNameTaken(name)) {
+      showToast("已存在同名区域。", "error");
+      return;
+    }
+    pushHistory();
+    const area = {
+      id: makeId("area"),
+      name
+    };
+    floorSceneCurrent.areas.push(area);
+    expandedAreaIds.add(area.id);
+    renderLightLayerPanel();
+    scheduleSave();
+  }
+  closeAreaRenameDialog();
+});
+selectEl("#area-rename-close").addEventListener("click", closeAreaRenameDialog);
+selectEl("#area-rename-cancel").addEventListener("click", closeAreaRenameDialog);
+areaRenameDialog.addEventListener("cancel", () => {
+  areaRenameMode = "create";
+  areaRenameId = "";
+});
+for (const e of areaContextMenu.querySelectorAll("[data-area-action]")) {
+  e.addEventListener("click", () => {
+    const area = (floorSceneCurrent.areas || []).find(item => item.id === areaContextMenuId);
+    const areaAction = e.dataset.areaAction;
+    hideAreaContextMenu();
+    if (area) {
+      if (areaAction === "rename") {
+        openAreaRenameDialog(area);
+      } else if (areaAction === "delete") {
+        deleteArea(area);
+      }
+    }
+  });
+}
+lightGroupAreaForm.addEventListener("submit", event => {
+  event.preventDefault();
+  const lightGroup = (floorSceneCurrent.lightGroups || []).find(item => item.id === areaAssignGroupId);
+  if (lightGroup) {
+    const next = lightGroupAreaSelect.value || null;
+    if (next === null || (floorSceneCurrent.areas || []).some(area => area.id === next)) {
+      if ((lightGroup.areaId || null) !== next) {
+        pushHistory();
+        lightGroup.areaId = next;
+        if (next) {
+          expandedAreaIds.add(next);
+        }
+        renderLightLayerPanel();
+        scheduleSave();
+      }
+    }
+  }
+  closeLightGroupAreaDialog();
+});
+selectEl("#light-group-area-close").addEventListener("click", closeLightGroupAreaDialog);
+selectEl("#light-group-area-cancel").addEventListener("click", closeLightGroupAreaDialog);
+lightGroupAreaDialog.addEventListener("cancel", () => {
+  areaAssignGroupId = "";
+});
+lightGroupAreaCreate.addEventListener("click", createAreaFromAssignDialog);
+lightGroupAreaNewName.addEventListener("keydown", event => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    createAreaFromAssignDialog();
+  }
+});
 for (const e of floorContextMenu.querySelectorAll("[data-floor-action]")) {
   e.addEventListener("click", () => {
     const id = projectDocCurrent.floors.find(item => item.id === contextFloorId);
@@ -15525,6 +17372,9 @@ for (const e of floorContextMenu.querySelectorAll("[data-floor-action]")) {
 document.addEventListener("pointerdown", target => {
   if (!lightGroupContextMenu.hidden && !lightGroupContextMenu.contains(target.target)) {
     hideLightGroupContextMenu();
+  }
+  if (!areaContextMenu.hidden && !areaContextMenu.contains(target.target)) {
+    hideAreaContextMenu();
   }
   if (!floorContextMenu.hidden && !floorContextMenu.contains(target.target)) {
     hideFloorContextMenu();
@@ -15544,14 +17394,14 @@ bl.addEventListener("cancel", () => {
 });
 toolEls.addEventListener("submit", domEvent => {
   domEvent.preventDefault();
-  const name5 = projectDocCurrent.floors.find(floor => floor.id === contextFloorId);
-  if (!name5) {
+  const renamedFloor = projectDocCurrent.floors.find(floor => floor.id === contextFloorId);
+  if (!renamedFloor) {
     closeLightPropertyApplyDialog();
     return;
   }
-  const name = uniqueFloorName(normalizeLabelText(floorRenameInputCurrent.value, name5.name, 24), name5.id);
-  if (name !== name5.name) {
-    name5.name = name;
+  const name = uniqueFloorName(normalizeLabelText(floorRenameInputCurrent.value, renamedFloor.name, 24), renamedFloor.id);
+  if (name !== renamedFloor.name) {
+    renamedFloor.name = name;
     renderFloorList();
     renderExportFileChecklist();
     scheduleSave();
@@ -15614,63 +17464,63 @@ function updateStageLightTargetSummary() {
     lightTargetGroupEl.querySelector("[data-light-target-group-toggle]").textContent = length.length && lengthValue === length.length ? "取消全选" : "全选";
   }
 }
-function renderLightPropertyTargetList(argPrimary) {
+function renderLightPropertyTargetList(propertyKey) {
   wallFields.replaceChildren();
-  let zeroValue = 0;
-  for (const id2 of floorSceneCurrent.lightGroups) {
-    const length = floorSceneCurrent.items.filter(type => set.has(type.type) && type.lightGroupId === id2.id);
-    if (!length.length) {
+  let targetCount = 0;
+  for (const lightGroup of floorSceneCurrent.lightGroups) {
+    const groupItems = floorSceneCurrent.items.filter(groupItem => set.has(groupItem.type) && groupItem.lightGroupId === lightGroup.id);
+    if (!groupItems.length) {
       continue;
     }
-    zeroValue += length.length;
-    const className = document.createElement("section");
-    className.className = "light-property-target-group";
-    className.dataset.lightTargetGroupId = id2.id;
-    const append = document.createElement("header");
-    const textContent = document.createElement("strong");
-    textContent.textContent = id2.name;
-    const dataset = document.createElement("span");
-    dataset.dataset.lightTargetGroupCount = "";
-    const type = document.createElement("button");
-    type.type = "button";
-    type.dataset.lightTargetGroupToggle = "";
-    type.textContent = "取消全选";
-    append.append(textContent, dataset, type);
-    const element = document.createElement("div");
-    element.className = "light-property-target-grid";
-    const get = new Map();
-    for (const type of length) {
-      get.set(type.type, (get.get(type.type) || 0) + 1);
+    targetCount += groupItems.length;
+    const sectionEl = document.createElement("section");
+    sectionEl.className = "light-property-target-group";
+    sectionEl.dataset.lightTargetGroupId = lightGroup.id;
+    const headerEl = document.createElement("header");
+    const groupNameEl = document.createElement("strong");
+    groupNameEl.textContent = lightGroup.name;
+    const countEl = document.createElement("span");
+    countEl.dataset.lightTargetGroupCount = "";
+    const toggleButton = document.createElement("button");
+    toggleButton.type = "button";
+    toggleButton.dataset.lightTargetGroupToggle = "";
+    toggleButton.textContent = "取消全选";
+    headerEl.append(groupNameEl, countEl, toggleButton);
+    const gridEl = document.createElement("div");
+    gridEl.className = "light-property-target-grid";
+    const typeCounts = new Map();
+    for (const item of groupItems) {
+      typeCounts.set(item.type, (typeCounts.get(item.type) || 0) + 1);
     }
-    const map = new Map();
-    for (const type of length) {
-      const name3 = furnitureCatalog[type.type] || furnitureCatalog.downlight;
-      const computedValue = (map.get(type.type) || 0) + 1;
-      map.set(type.type, computedValue);
-      const className = document.createElement("label");
-      className.className = "light-property-target-item";
-      const typeCurrent = document.createElement("input");
-      typeCurrent.type = "checkbox";
-      typeCurrent.checked = true;
-      typeCurrent.dataset.lightTargetItemId = type.id;
-      const appendEl = document.createElement("span");
-      const itemNameStrongEl = document.createElement("strong");
-      itemNameStrongEl.textContent = get.get(type.type) > 1 ? name3.name + " " + computedValue : name3.name;
-      const textContent = document.createElement("small");
-      const localValue = clampLightPropertyValue(argPrimary, type[argPrimary], type.type);
-      textContent.textContent = (type.id === selection?.id ? "当前灯 · " : "") + "当前 " + formatLightPropertyValue(argPrimary, localValue);
-      appendEl.append(itemNameStrongEl, textContent);
-      className.append(typeCurrent, appendEl);
-      element.append(className);
+    const typeOrdinals = new Map();
+    for (const itemEntry of groupItems) {
+      const catalogEntry = furnitureCatalog[itemEntry.type] || furnitureCatalog.downlight;
+      const typeIndex = (typeOrdinals.get(itemEntry.type) || 0) + 1;
+      typeOrdinals.set(itemEntry.type, typeIndex);
+      const rowEl = document.createElement("label");
+      rowEl.className = "light-property-target-item";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = true;
+      checkbox.dataset.lightTargetItemId = itemEntry.id;
+      const textWrap = document.createElement("span");
+      const nameEl = document.createElement("strong");
+      nameEl.textContent = typeCounts.get(itemEntry.type) > 1 ? catalogEntry.name + " " + typeIndex : catalogEntry.name;
+      const stateEl = document.createElement("small");
+      const propertyValue = clampLightPropertyValue(propertyKey, itemEntry[propertyKey], itemEntry.type);
+      stateEl.textContent = (itemEntry.id === selection?.id ? "当前灯 · " : "") + "当前 " + formatLightPropertyValue(propertyKey, propertyValue);
+      textWrap.append(nameEl, stateEl);
+      rowEl.append(checkbox, textWrap);
+      gridEl.append(rowEl);
     }
-    className.append(append, element);
-    wallFields.append(className);
+    sectionEl.append(headerEl, gridEl);
+    wallFields.append(sectionEl);
   }
-  if (!zeroValue) {
-    const className = document.createElement("p");
-    className.className = "light-property-target-empty";
-    className.textContent = "当前没有可应用的灯具。";
-    wallFields.append(className);
+  if (!targetCount) {
+    const emptyHint = document.createElement("p");
+    emptyHint.className = "light-property-target-empty";
+    emptyHint.textContent = "当前没有可应用的灯具。";
+    wallFields.append(emptyHint);
   }
   updateStageLightTargetSummary();
 }
@@ -15708,8 +17558,8 @@ wallFields.addEventListener("click", target => {
   if (!groupToggleEl) {
     return;
   }
-  const localValue = groupToggleEl.closest("[data-light-target-group-id]");
-  const every = buildStageReferenceScene(localValue);
+  const targetGroupEl = groupToggleEl.closest("[data-light-target-group-id]");
+  const every = buildStageReferenceScene(targetGroupEl);
   const element = !every.every(checked => checked.checked);
   for (const checked of every) {
     checked.checked = element;
@@ -15729,9 +17579,9 @@ Rf.addEventListener("submit", event => {
     return;
   }
   const {
-    property: localValue,
-    label: localValueCurrent,
-    value: localValueNext
+    property: propertyName,
+    label: propertyLabel,
+    value: propertyValue
   } = Dr;
   const has = new Set(buildStageReferenceScene().filter(checked => checked.checked).map(datasetVar => datasetVar.dataset.lightTargetItemId));
   const length = floorSceneCurrent.items.filter(type => set.has(type.type) && has.has(type.id));
@@ -15741,18 +17591,240 @@ Rf.addEventListener("submit", event => {
   }
   const filtered = length.map(item => ({
     item,
-    value: clampLightPropertyValue(localValue, localValueNext, item.type)
-  })).filter(item => Math.abs(finite(item.item[localValue]) - item.value) > 0.000001);
+    value: clampLightPropertyValue(propertyName, propertyValue, item.type)
+  })).filter(item => Math.abs(finite(item.item[propertyName]) - item.value) > 0.000001);
   if (filtered.length) {
     pushHistory();
     for (const value of filtered) {
-      value.item[localValue] = value.value;
+      value.item[propertyName] = value.value;
     }
     refreshViews("lights");
     scheduleSave();
   }
   postAutoDiagramBusy();
-  showToast("已将" + localValueCurrent + "应用到 " + length.length + " 盏灯。", "success");
+  showToast("已将" + propertyLabel + "应用到 " + length.length + " 盏灯。", "success");
+});
+function wallTargetCheckboxes(scopeEl = wallPropertyTargetList) {
+  return [...scopeEl.querySelectorAll("[data-wall-target-item-id]")];
+}
+function wallOpacityPercent(wall) {
+  const globalOpacity = floorSceneCurrent.settings.wallOpacity;
+  const custom = wall.opacity === null || wall.opacity === undefined ? null : clamp(finite(wall.opacity, globalOpacity), 0, 1);
+  return Math.round((custom === null ? globalOpacity : custom) * 100);
+}
+function wallPropertyCurrentText(wall, property) {
+  if (property === "height") {
+    return wall.height.toFixed(2) + " m";
+  }
+  if (property === "thickness") {
+    return wall.thickness.toFixed(2) + " m";
+  }
+  const custom = wall.opacity === null || wall.opacity === undefined ? null : clamp(finite(wall.opacity, floorSceneCurrent.settings.wallOpacity), 0, 1);
+  if (property === "opacityMode") {
+    return custom === null ? "跟随通用" : "单独设置 " + wallOpacityPercent(wall) + "%";
+  }
+  return (custom === null ? "跟随通用 " : "") + wallOpacityPercent(wall) + "%";
+}
+function updateWallPropertyTargetSummary() {
+  const boxes = wallTargetCheckboxes();
+  const checked = boxes.filter(box => box.checked).length;
+  wallPropertySelectionCount.textContent = checked + "/" + boxes.length + " 面墙";
+  wallPropertyToggleAll.disabled = !boxes.length;
+  wallPropertyToggleAll.textContent = boxes.length && checked === boxes.length ? "取消全选" : "全选";
+}
+function computeMultiFloorBoundsCenter(toWorldPoint) {
+  if (projectDocCurrent.floors.length < 2) {
+    return null;
+  }
+  const expandByPoint = new THREE.Box3();
+  let maxWallHeight = 0;
+  for (const scene of projectDocCurrent.floors) {
+    for (const start of scene.scene.walls || []) {
+      for (const endpoint of [start.start, start.end]) {
+        if (!endpoint || !Number.isFinite(endpoint.x) || !Number.isFinite(endpoint.y)) {
+          continue;
+        }
+        const worldP = planPointToWorldXZ(scene, endpoint);
+        expandByPoint.expandByPoint(new THREE.Vector3(worldP.x, 0, worldP.z));
+      }
+      maxWallHeight = Math.max(maxWallHeight, finite(start.height, scene.scene.settings?.wallHeight || 2.8));
+    }
+  }
+  if (expandByPoint.isEmpty()) {
+    return null;
+  }
+  const boundsCenter = expandByPoint.getCenter(new THREE.Vector3());
+  if (getPreviewFloorModeCurrent() === "all") {
+    boundsCenter.y = (projectDocCurrent.floors.length - 1) * projectDocCurrent.previewFloorGap / 2 + maxWallHeight / 2;
+    return boundsCenter;
+  }
+  const floorRecord = projectDocCurrent.floors.find(matchedFloor => matchedFloor.id === activeFloorId);
+  const planPoint = rotatePlanPointByFloor(floorRecord, boundsCenter);
+  return toWorldPoint(floorRecord.id, planPoint.x, planPoint.y, maxWallHeight / 2);
+}
+
+function renderWallPropertyTargetList(property) {
+  wallPropertyTargetList.replaceChildren();
+  const walls = floorSceneCurrent.walls || [];
+  if (!walls.length) {
+    const empty = document.createElement("p");
+    empty.className = "light-property-target-empty";
+    empty.textContent = "当前楼层没有可应用的墙体。";
+    wallPropertyTargetList.append(empty);
+    updateWallPropertyTargetSummary();
+    return;
+  }
+  const section = document.createElement("section");
+  section.className = "light-property-target-group";
+  const grid = document.createElement("div");
+  grid.className = "light-property-target-grid";
+  walls.forEach((wall, index) => {
+    const label = document.createElement("label");
+    label.className = "light-property-target-item";
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = true;
+    checkbox.dataset.wallTargetItemId = wall.id;
+    const column = document.createElement("span");
+    const title = document.createElement("strong");
+    title.textContent = "墙体 " + (index + 1);
+    const note = document.createElement("small");
+    note.textContent = (selection?.kind === "wall" && selection.id === wall.id ? "当前墙 · " : "") + "当前 " + wallPropertyCurrentText(wall, property);
+    column.append(title, note);
+    label.append(checkbox, column);
+    grid.append(label);
+  });
+  section.append(grid);
+  wallPropertyTargetList.append(section);
+  updateWallPropertyTargetSummary();
+}
+function closeWallPropertyApply() {
+  wallApplyState = null;
+  wallPropertyApplyDialog.close();
+}
+for (const e of wallApplyPropertyEls) {
+  e.addEventListener("click", () => {
+    if (selection?.kind !== "wall" || !selectedEntity()) {
+      return;
+    }
+    const property = e.dataset.applyWallProperty;
+    const mode = selectEl("#wall-opacity-mode").value === "custom" ? "custom" : "global";
+    const opacityPercent = clamp(finite(selectEl("#wall-opacity").value, floorSceneCurrent.settings.wallOpacity * 100), 0, 100);
+    if (property === "opacityMode") {
+      wallApplyState = {
+        property: "opacityMode",
+        mode,
+        opacity: clamp(opacityPercent / 100, 0, 1),
+        label: "透明度设置",
+        valueText: mode === "global" ? "跟随通用" : "单独设置（" + Math.round(opacityPercent) + "%）"
+      };
+    } else if (property === "opacity") {
+      wallApplyState = {
+        property: "opacity",
+        mode: "custom",
+        opacity: clamp(opacityPercent / 100, 0, 1),
+        label: "透明度",
+        valueText: Math.round(opacityPercent) + "%"
+      };
+    } else if (property === "height") {
+      const value = clamp(finite(selectEl("#wall-height").value, floorSceneCurrent.settings.wallHeight), 0.01, 6);
+      wallApplyState = {
+        property: "height",
+        value,
+        label: "墙高",
+        valueText: value.toFixed(2) + " m"
+      };
+    } else if (property === "thickness") {
+      const value = clamp(finite(selectEl("#wall-thickness").value, floorSceneCurrent.settings.wallThickness), 0.01, 3);
+      wallApplyState = {
+        property: "thickness",
+        value,
+        label: "厚度",
+        valueText: value.toFixed(2) + " m"
+      };
+    } else {
+      return;
+    }
+    wallPropertyApplyTitle.textContent = "应用" + wallApplyState.label;
+    wallPropertyApplyValue.textContent = wallApplyState.valueText;
+    renderWallPropertyTargetList(property);
+    wallPropertyApplyDialog.showModal();
+    requestAnimationFrame(() => wallPropertyToggleAll.focus());
+  });
+}
+wallPropertyToggleAll.addEventListener("click", () => {
+  const boxes = wallTargetCheckboxes();
+  const next = !boxes.length || !boxes.every(box => box.checked);
+  for (const box of boxes) {
+    box.checked = next;
+  }
+  updateWallPropertyTargetSummary();
+});
+wallPropertyTargetList.addEventListener("change", updateWallPropertyTargetSummary);
+selectEl("#wall-property-apply-close").addEventListener("click", closeWallPropertyApply);
+selectEl("#wall-property-apply-cancel").addEventListener("click", closeWallPropertyApply);
+wallPropertyApplyDialog.addEventListener("cancel", () => {
+  wallApplyState = null;
+});
+wallPropertyApplyForm.addEventListener("submit", event => {
+  event.preventDefault();
+  const state = wallApplyState;
+  if (!state) {
+    closeWallPropertyApply();
+    return;
+  }
+  const boxes = wallTargetCheckboxes().filter(box => box.checked);
+  if (!boxes.length) {
+    showToast("请至少选择一面墙体。", "error");
+    return;
+  }
+  const ids = new Set(boxes.map(box => box.dataset.wallTargetItemId));
+  const targets = [];
+  for (const wall of floorSceneCurrent.walls) {
+    if (!ids.has(wall.id)) {
+      continue;
+    }
+    if (state.property === "height") {
+      if (Math.abs(wall.height - state.value) < 1e-8) {
+        continue;
+      }
+      targets.push([wall, "height", state.value]);
+      continue;
+    }
+    if (state.property === "thickness") {
+      if (Math.abs(wall.thickness - state.value) < 1e-8) {
+        continue;
+      }
+      targets.push([wall, "thickness", state.value]);
+      continue;
+    }
+    const custom = wall.opacity === null || wall.opacity === undefined ? null : clamp(finite(wall.opacity, floorSceneCurrent.settings.wallOpacity), 0, 1);
+    const next = state.property === "opacityMode" && state.mode === "global" ? null : state.opacity;
+    if (next === null) {
+      if (custom === null) {
+        continue;
+      }
+    } else if (custom !== null && Math.abs(custom - next) < 1e-8) {
+      continue;
+    }
+    targets.push([wall, "opacity", next]);
+  }
+  if (targets.length) {
+    pushHistory();
+    for (const [wall, key, next] of targets) {
+      wall[key] = next;
+    }
+    if (state.property === "height") {
+      floorSceneCurrent.settings.wallHeight = state.value;
+    } else if (state.property === "thickness") {
+      floorSceneCurrent.settings.wallThickness = state.value;
+    }
+    refreshViews();
+    scheduleSave();
+  }
+  const count = boxes.length;
+  closeWallPropertyApply();
+  showToast("已将" + state.label + "应用到 " + count + " 面墙体。", "success");
 });
 for (const e of w0) {
   e.addEventListener("dragstart", dataTransfer => {
@@ -15787,9 +17859,9 @@ planStage.addEventListener("dragleave", relatedTarget => {
 planStage.addEventListener("drop", preventDefault => {
   preventDefault.preventDefault();
   planStage.classList.remove("dragging-item");
-  const localValue = preventDefault.dataTransfer.getData("application/x-ha-bridge-3d-item");
-  if (localValue) {
-    placeCatalogFurnitureItem(localValue, screenToPlanWithView(pointerEventToCanvasPoint(preventDefault)));
+  const itemId = preventDefault.dataTransfer.getData("application/x-ha-bridge-3d-item");
+  if (itemId) {
+    placeCatalogFurnitureItem(itemId, screenToPlanWithView(pointerEventToCanvasPoint(preventDefault)));
   }
 });
 element.addEventListener("pointerdown", handlePlanPointerDown);
@@ -15859,15 +17931,15 @@ exportPresetRenameDialog.addEventListener("cancel", preventDefault => {
 detailsPanelEl.addEventListener("submit", preventDefault => {
   preventDefault.preventDefault();
   const length = normalizeExportPresetSlots(projectDocCurrent?.exportPresets);
-  const localValue = normalizeActiveExportPresetSlot(projectDocCurrent?.activeExportPresetSlot, length.length);
-  const name7 = length[localValue];
-  if (!name7) {
+  const presetIndex = normalizeActiveExportPresetSlot(projectDocCurrent?.activeExportPresetSlot, length.length);
+  const preset = length[presetIndex];
+  if (!preset) {
     closeExportPresetRenameDialog();
     return;
   }
-  const label = defaultExportPresetLabel(name7, localValue);
-  const name = uniqueExportPresetLabel(exportPresetRenameInput.value, localValue);
-  name7.name = name;
+  const label = defaultExportPresetLabel(preset, presetIndex);
+  const name = uniqueExportPresetLabel(exportPresetRenameInput.value, presetIndex);
+  preset.name = name;
   projectDocCurrent.exportPresets = length;
   closeExportPresetRenameDialog();
   normalizeProjectExportPresets();
@@ -15907,11 +17979,11 @@ exportWidth.addEventListener("change", () => onExportDimensionInput("width", tru
 exportHeight.addEventListener("change", () => onExportDimensionInput("height", true));
 exportLockRatio.addEventListener("change", () => {
   const {
-    width: localValue,
+    width: widthPx,
     height: resolution
   } = readExportResolution();
   if (exportLockRatio.checked) {
-    Tn = localValue / resolution;
+    Tn = widthPx / resolution;
   }
   syncExportResolutionLabel();
 });
@@ -16081,42 +18153,42 @@ detailsResizer.addEventListener("pointermove", pointerId => {
     onDetailsResizePointerMove(pointerId);
   }
 });
-const callback = (pointerId, flag = true) => {
-  if (!detailsResizeDrag || pointerId?.pointerId !== undefined && detailsResizeDrag.pointerId !== pointerId.pointerId) {
+const callback = (downEvent, releaseCapture = true) => {
+  if (!detailsResizeDrag || downEvent?.pointerId !== undefined && detailsResizeDrag.pointerId !== downEvent.pointerId) {
     return;
   }
-  const pointerIdCurrent = detailsResizeDrag;
+  const dragSnapshot = detailsResizeDrag;
   detailsResizeDrag = null;
-  const comparisonFlag = Math.abs(floorSceneCurrent.settings.previewPanelRatio - pointerIdCurrent.startPreviewRatio) > 0.0001 || Math.abs(floorSceneCurrent.settings.detailsPanelWidthRatio - pointerIdCurrent.startWidthRatio) > 0.0001;
+  const layoutChanged = Math.abs(floorSceneCurrent.settings.previewPanelRatio - dragSnapshot.startPreviewRatio) > 0.0001 || Math.abs(floorSceneCurrent.settings.detailsPanelWidthRatio - dragSnapshot.startWidthRatio) > 0.0001;
   detailsPanelElCurrent.classList.remove("resizing");
   studioShellEl.classList.remove("resizing");
   delete detailsResizer.dataset.resizeAxis;
-  if (flag) {
+  if (releaseCapture) {
     try {
-      if (detailsResizer.hasPointerCapture(pointerIdCurrent.pointerId)) {
-        detailsResizer.releasePointerCapture(pointerIdCurrent.pointerId);
+      if (detailsResizer.hasPointerCapture(dragSnapshot.pointerId)) {
+        detailsResizer.releasePointerCapture(dragSnapshot.pointerId);
       }
     } catch {}
   }
-  if (comparisonFlag) {
+  if (layoutChanged) {
     scheduleSave();
   }
 };
 detailsResizer.addEventListener("pointerup", callback);
 detailsResizer.addEventListener("pointercancel", callback);
-detailsResizer.addEventListener("lostpointercapture", argPrimary => callback(argPrimary, false));
+detailsResizer.addEventListener("lostpointercapture", pointerUpEvent => callback(pointerUpEvent, false));
 window.addEventListener("pointerup", callback, true);
 window.addEventListener("pointercancel", callback, true);
 window.addEventListener("blur", () => callback());
 detailsResizer.addEventListener("keydown", signal => {
-  const conditionalValue = signal.key === "ArrowUp" ? -0.03 : signal.key === "ArrowDown" ? 0.03 : 0;
+  const verticalDelta = signal.key === "ArrowUp" ? -0.03 : signal.key === "ArrowDown" ? 0.03 : 0;
   const value = signal.key === "ArrowLeft" ? 0.03 : signal.key === "ArrowRight" ? -0.03 : 0;
-  if (!conditionalValue && !value) {
+  if (!verticalDelta && !value) {
     return;
   }
   signal.preventDefault();
   const minimumHeightRatio = studioLayoutMetrics();
-  floorSceneCurrent.settings.previewPanelRatio = clamp(floorSceneCurrent.settings.previewPanelRatio + conditionalValue, minimumHeightRatio.minimumHeightRatio, minimumHeightRatio.maximumHeightRatio);
+  floorSceneCurrent.settings.previewPanelRatio = clamp(floorSceneCurrent.settings.previewPanelRatio + verticalDelta, minimumHeightRatio.minimumHeightRatio, minimumHeightRatio.maximumHeightRatio);
   floorSceneCurrent.settings.detailsPanelWidthRatio = clamp(floorSceneCurrent.settings.detailsPanelWidthRatio + value, minimumHeightRatio.minimumWidthRatio, minimumHeightRatio.maximumWidthRatio);
   applyPreviewPaneWidth();
   applyDetailsPaneWidth();
@@ -16124,15 +18196,15 @@ detailsResizer.addEventListener("keydown", signal => {
 });
 for (const e of cameraModeEls) {
   e.addEventListener("click", () => {
-    const argPrimary = e.dataset.cameraMode === "perspective" ? "perspective" : "orthographic";
-    if (argPrimary !== getCameraProjectionMode()) {
+    const projectionMode = e.dataset.cameraMode === "perspective" ? "perspective" : "orthographic";
+    if (projectionMode !== getCameraProjectionMode()) {
       if (!stageSession) {
         pushHistory();
       }
-      activeCameraSettings().cameraMode = argPrimary;
-      setCameraProjectionMode(argPrimary);
+      activeCameraSettings().cameraMode = projectionMode;
+      setCameraProjectionMode(projectionMode);
       if (stageSession) {
-        exportStatus.textContent = argPrimary === "perspective" ? "已切换为透视构图" : "已切换为正交构图";
+        exportStatus.textContent = projectionMode === "perspective" ? "已切换为透视构图" : "已切换为正交构图";
       } else {
         scheduleSave();
       }
@@ -16141,15 +18213,15 @@ for (const e of cameraModeEls) {
 }
 for (const e of cameraViewEls) {
   e.addEventListener("click", () => {
-    const argPrimary = e.dataset.cameraView === "top" ? "top" : "free";
-    if (argPrimary !== cameraViewMode()) {
+    const viewMode = e.dataset.cameraView === "top" ? "top" : "free";
+    if (viewMode !== cameraViewMode()) {
       if (!stageSession) {
         pushHistory();
       }
-      activeCameraSettings().cameraView = argPrimary;
-      nudgeCamera(argPrimary);
+      activeCameraSettings().cameraView = viewMode;
+      nudgeCamera(viewMode);
       if (stageSession) {
-        exportStatus.textContent = argPrimary === "top" ? "已切换为顶视构图" : "已切换为自由构图";
+        exportStatus.textContent = viewMode === "top" ? "已切换为顶视构图" : "已切换为自由构图";
       } else {
         scheduleSave();
       }
@@ -16230,18 +18302,18 @@ baseLightControlsHeader?.addEventListener("pointermove", pointerId => {
   if (!lightCacheTileMap || pointerId.pointerId !== lightCacheTileMap.pointerId) {
     return;
   }
-  const computedValue = pointerId.clientX - lightCacheTileMap.startX;
+  const deltaX = pointerId.clientX - lightCacheTileMap.startX;
   const value = pointerId.clientY - lightCacheTileMap.startY;
-  if (!lightCacheTileMap.moved && Math.hypot(computedValue, value) < 4) {
+  if (!lightCacheTileMap.moved && Math.hypot(deltaX, value) < 4) {
     return;
   }
   lightCacheTileMap.moved = true;
   pointerId.preventDefault();
   const width = baseLightControls.getBoundingClientRect();
-  const localValue = Math.max(8, window.innerWidth - width.width - 8);
+  const maxLeft = Math.max(8, window.innerWidth - width.width - 8);
   const max = Math.max(8, window.innerHeight - width.height - 8);
   baseLightControls.style.right = "auto";
-  baseLightControls.style.left = clamp(lightCacheTileMap.startLeft + computedValue, 8, localValue) + "px";
+  baseLightControls.style.left = clamp(lightCacheTileMap.startLeft + deltaX, 8, maxLeft) + "px";
   baseLightControls.style.top = clamp(lightCacheTileMap.startTop + value, 8, max) + "px";
 });
 const fh = pointerId => {
@@ -16315,14 +18387,14 @@ lightPropertyApplyValue.addEventListener("submit", preventDefault => {
     return;
   }
   const meters = finite(toast.value, 0);
-  const localValue = distance(shiftKeyHeld.start, shiftKeyHeld.end);
-  if (meters <= 0 || localValue <= 0) {
+  const pixelLength = distance(shiftKeyHeld.start, shiftKeyHeld.end);
+  if (meters <= 0 || pixelLength <= 0) {
     showToast("请输入有效的真实长度。", "error");
     return;
   }
   pushHistory();
   floorSceneCurrent.calibration = {
-    pixelsPerMeter: localValue / meters,
+    pixelsPerMeter: pixelLength / meters,
     reference: {
       ...shiftKeyHeld,
       meters
@@ -16368,6 +18440,11 @@ selectEl("#curtain-position").addEventListener("change", () => applyInspectorFie
 selectEl("#round-table-turntable").addEventListener("change", () => applyInspectorFieldsCurrent("item"));
 selectEl("#stair-direction").addEventListener("change", () => applyInspectorFieldsCurrent("item"));
 selectEl("#tv-mount-style").addEventListener("change", () => applyInspectorFieldsCurrent("item"));
+selectEl("#mural-style").addEventListener("change", () => applyInspectorFieldsCurrent("item"));
+selectEl("#feature-wall-style").addEventListener("change", () => applyInspectorFieldsCurrent("item"));
+selectEl("#pillar-shape").addEventListener("change", () => applyInspectorFieldsCurrent("item"));
+selectEl("#pillar-axis").addEventListener("change", () => applyInspectorFieldsCurrent("item"));
+selectEl("#strip-axis").addEventListener("change", () => applyInspectorFieldsCurrent("item"));
 o0.addEventListener("click", () => {
   const door = selectedEntity();
   if (!!door && selection?.kind === "item" && door.type === "shoecabinet") {
@@ -16380,7 +18457,7 @@ o0.addEventListener("click", () => {
 selectionInspector.addEventListener("submit", preventDefault => preventDefault.preventDefault());
 selectEl("#door-hinge").addEventListener("click", () => {
   const flag = selectedEntity();
-  if (!!flag && selection?.kind === "door" && !["double", "entry", "sliding-glass", "roller-shutter"].includes(flag.doorType)) {
+  if (!!flag && selection?.kind === "door" && !["double", "roller-shutter"].includes(flag.doorType)) {
     pushHistory();
     flag.hinge = flag.hinge === "right" ? "left" : "right";
     refreshViews();
@@ -16389,7 +18466,7 @@ selectEl("#door-hinge").addEventListener("click", () => {
 });
 selectEl("#door-swing").addEventListener("click", () => {
   const swing = selectedEntity();
-  if (!!swing && selection?.kind === "door" && !["entry", "sliding-glass", "frame-only"].includes(swing.doorType)) {
+  if (!!swing && selection?.kind === "door" && swing.doorType !== "frame-only") {
     pushHistory();
     swing.swing = swing.swing === -1 ? 1 : -1;
     refreshViews();
@@ -16417,17 +18494,17 @@ window.addEventListener("keydown", key => {
     setSnapSettingsOpen(false);
     return;
   }
-  const computedValue = key.target instanceof HTMLInputElement || key.target instanceof HTMLTextAreaElement || lightPropertyApplyTitle.open;
-  if (key.code === "Space" && !computedValue) {
+  const editingTextField = key.target instanceof HTMLInputElement || key.target instanceof HTMLTextAreaElement || lightPropertyApplyTitle.open;
+  if (key.code === "Space" && !editingTextField) {
     saveConflictState = true;
     key.preventDefault();
   }
-  if (key.key.toLowerCase() === "s" && !computedValue) {
+  if (key.key.toLowerCase() === "s" && !editingTextField) {
     Or = true;
     updatePlanStatusChrome();
     drawPlan();
   }
-  if (computedValue) {
+  if (editingTextField) {
     return;
   }
   if (key.key === "Shift" && !dragState && (activeTool === "scale" || activeTool === "wall")) {
@@ -16465,7 +18542,7 @@ window.addEventListener("keydown", key => {
     deleteCurrentSelection();
     return;
   }
-  const x42 = {
+  const arrowDelta = {
     ArrowLeft: {
       x: -1,
       y: 0
@@ -16483,19 +18560,19 @@ window.addEventListener("keydown", key => {
       y: 1
     }
   }[key.key];
-  if (x42 && !metaKey) {
-    const length = selection?.kind === "item" ? [selection.id] : multiSelection.filter(kind => kind.kind === "item").map(id => id.id);
-    if (length.length) {
+  if (arrowDelta && !metaKey) {
+    const selectedIds = selection?.kind === "item" ? [selection.id] : multiSelection.filter(kind => kind.kind === "item").map(entry => entry.id);
+    if (selectedIds.length) {
       key.preventDefault();
       if (!key.repeat) {
         pushHistory();
       }
-      const computedValue = (key.altKey ? 0.01 : key.shiftKey ? 0.25 : 0.05) * (pixelsPerMeter() || 1);
-      const has = new Set(length);
-      for (const id of floorSceneCurrent.items) {
-        if (has.has(id.id)) {
-          id.x += x42.x * computedValue;
-          id.y += x42.y * computedValue;
+      const stepPixels = (key.altKey ? 0.01 : key.shiftKey ? 0.25 : 0.05) * (pixelsPerMeter() || 1);
+      const selectedIdSet = new Set(selectedIds);
+      for (const sceneItem of floorSceneCurrent.items) {
+        if (selectedIdSet.has(sceneItem.id)) {
+          sceneItem.x += arrowDelta.x * stepPixels;
+          sceneItem.y += arrowDelta.y * stepPixels;
         }
       }
       refreshViews(activeSelectionAssetCategory());
@@ -16523,11 +18600,11 @@ window.addEventListener("keydown", key => {
     }
     hideLightGroupContextMenu();
     schedulePlanRedraw();
-    const localValue = activeSelectionLightGroupFilter();
+    const previousLightFilter = activeSelectionLightGroupFilter();
     clearSelection();
     updateSelectionInspector();
     drawPlan();
-    rebuildPreviewForAssetFilters(localValue);
+    rebuildPreviewForAssetFilters(previousLightFilter);
   }
 });
 window.addEventListener("keyup", event => {
@@ -16768,8 +18845,8 @@ async function waitUntilPreviewQualityReady() {
     return;
   }
   scheduleAdaptiveQuality(0);
-  const computedValue = performance.now() + 1800;
-  while (isPreviewQualityReady() && (!lightCacheReady || previewQualityJustBecameReady || previewLightCache.hidden) && performance.now() < computedValue) {
+  const deadlineMs = performance.now() + 1800;
+  while (isPreviewQualityReady() && (!lightCacheReady || previewQualityJustBecameReady || previewLightCache.hidden) && performance.now() < deadlineMs) {
     await new Promise(requestAnimationFrame);
   }
 }
@@ -16777,8 +18854,8 @@ function bootstrapStudioFromLoadedProject() {
   if (renderer.debug) {
     renderer.debug.checkShaderErrors = false;
   }
-  const combinedFixedCameraView = normalizeProjectDocument(hasProjectLoadedCurrent.referenceScene || hasProjectLoadedCurrent.scene);
-  let localValue = null;
+  const combinedFixedCameraView = normalizeProjectDocument(currentStudioDocument.referenceScene || currentStudioDocument.scene);
+  let floorGapOverride = null;
   const entryMap = new Map();
   const reusedTransitions = {
     reusedTransitions: 0,
@@ -16787,19 +18864,19 @@ function bootstrapStudioFromLoadedProject() {
   };
   let emptyText = "";
   let cacheEpoch = 0;
-  const helperFn = node => {
+  const releaseCachedNode = node => {
     releaseRoot?.releaseRoot?.(node.node);
     studioReady?.releaseRoot?.(node.node);
     disposeObject3dResources(node.node);
   };
-  const callback = (has = null) => {
-    if (!has) {
+  const callback = (keyFilter = null) => {
+    if (!keyFilter) {
       cacheEpoch++;
     }
-    for (const [localValue, localValueCurrent] of entryMap) {
-      if (!has || !!has.has(localValue)) {
-        helperFn(localValueCurrent);
-        entryMap.delete(localValue);
+    for (const [cacheKey, cachedNodes] of entryMap) {
+      if (!keyFilter || !!keyFilter.has(cacheKey)) {
+        releaseCachedNode(cachedNodes);
+        entryMap.delete(cacheKey);
       }
     }
   };
@@ -16807,23 +18884,23 @@ function bootstrapStudioFromLoadedProject() {
     if (!node.cacheKey || node.cacheEpoch !== cacheEpoch) {
       return false;
     }
-    const idValue = node.id;
-    const entry = entryMap.get(idValue);
+    const nodeKey = node.id;
+    const entry = entryMap.get(nodeKey);
     if (entry && entry.node !== node.node) {
-      helperFn(entry);
+      releaseCachedNode(entry);
     }
     node.node.position.set(0, 0, 0);
     node.node.quaternion.identity();
     node.node.scale.set(1, 1, 1);
     node.node.updateMatrixWorld(true);
-    entryMap.delete(idValue);
-    entryMap.set(idValue, node);
+    entryMap.delete(nodeKey);
+    entryMap.set(nodeKey, node);
     studioReady?.retainRoot?.(node.node);
     releaseRoot?.retainRoot?.(node.node);
     while (entryMap.size > 8) {
-      const inputValue = entryMap.keys().next().value;
-      helperFn(entryMap.get(inputValue));
-      entryMap.delete(inputValue);
+      const oldestKey = entryMap.keys().next().value;
+      releaseCachedNode(entryMap.get(oldestKey));
+      entryMap.delete(oldestKey);
     }
     return true;
   }
@@ -16831,41 +18908,41 @@ function bootstrapStudioFromLoadedProject() {
   baseLightingChannel = null;
   let releaseRoot = null;
   let setRoot = null;
-  let localValueCurrent = null;
-  let boolFlag = false;
-  let localValueNext;
-  let localValuePrevious;
-  let push = [];
-  let list = [];
-  let arrayValue = [];
-  let arrayValueCurrent = [];
-  let boolTrue = true;
+  let curtainFrameWorkCallback = null;
+  let shadowVisibilityChanged = false;
+  let curtainScopeGroup;
+  let curtainScopeCanvas;
+  let shadowLights = [];
+  let shadowBounds = [];
+  let trackedLightKeys = [];
+  let previousLightKeys = [];
+  let floorBackgroundVisible = true;
   let enabled = false;
-  let localValueLocal;
-  let localValueItem;
-  let pushCurrent = [];
-  let localValueEntry;
-  let cloneCurrent;
-  let localValueList;
+  let shadowScopeGroup;
+  let shadowScopeChild;
+  let visibleMeshes = [];
+  let firstPresentPromise;
+  let orbitPivot;
+  let boundOrbitControls;
   let flag = false;
-  let localValueText;
-  let localValueValue;
-  let localValueSource = null;
+  let orbitBoundsSourceGroup;
+  let orbitBoundsSourceCanvas;
+  let orbitBoundsCenter = null;
   const excludeModelLayers = new Set(["items", "lights"]);
-  let stringValue = "free";
+  let orbitPanMode = "free";
   let enablePan = true;
   let enableZoom = true;
-  let boolFlagCurrent = false;
-  let boolFlagNext = false;
-  let zeroValue = 0;
-  let text = "";
+  let isLightCacheCaptureActive = false;
+  let orbitInteractionStarted = false;
+  let viewOffsetFraction = 0;
+  let lastRenderSizeKey = "";
   let height = null;
   const camera = new THREE.OrthographicCamera();
   const aspectCurrent = new THREE.PerspectiveCamera();
   const motion = {
     matrix: new THREE.Matrix4()
   };
-  const x54 = new THREE.Vector2();
+  const rendererSizeVector = new THREE.Vector2();
   function computeCameraViewHeight(zoom) {
     if (zoom.mode !== "perspective") {
       return Math.max(1, zoom.frameSize || 10) / zoom.zoom / Math.min(1, Math.max(0.1, cameraCurrent.userData.viewportAspect || 1));
@@ -16880,76 +18957,76 @@ function bootstrapStudioFromLoadedProject() {
     if (!height) {
       return;
     }
-    const distance = Math.max(0.000001, cameraCurrent.position.distanceTo(orbitControls.target));
-    const max = Math.max(0.000001, height.height);
-    const aspect = cameraCurrent.userData.viewportAspect || 1;
-    const weight = height.weight;
-    const enabled = cameraCurrent.view;
-    const rect = camera.view;
-    const comparisonFlag = enabled === rect || enabled && rect && enabled.enabled === rect.enabled && enabled.fullWidth === rect.fullWidth && enabled.fullHeight === rect.fullHeight && enabled.offsetX === rect.offsetX && enabled.offsetY === rect.offsetY && enabled.width === rect.width && enabled.height === rect.height;
-    if (motion.motion === height && motion.camera === cameraCurrent && motion.distance === distance && motion.height === max && motion.aspect === aspect && motion.weight === weight && motion.near === cameraCurrent.near && motion.far === cameraCurrent.far && comparisonFlag && motion.matrix.equals(cameraCurrent.projectionMatrix)) {
+    const cameraDistance = Math.max(0.000001, cameraCurrent.position.distanceTo(orbitControls.target));
+    const maxViewSize = Math.max(0.000001, height.height);
+    const viewportAspect = cameraCurrent.userData.viewportAspect || 1;
+    const blendWeight = height.weight;
+    const orthoView = cameraCurrent.view;
+    const perspectiveView = camera.view;
+    const viewsMatch = orthoView === perspectiveView || orthoView && perspectiveView && orthoView.enabled === perspectiveView.enabled && orthoView.fullWidth === perspectiveView.fullWidth && orthoView.fullHeight === perspectiveView.fullHeight && orthoView.offsetX === perspectiveView.offsetX && orthoView.offsetY === perspectiveView.offsetY && orthoView.width === perspectiveView.width && orthoView.height === perspectiveView.height;
+    if (motion.motion === height && motion.camera === cameraCurrent && motion.distance === cameraDistance && motion.height === maxViewSize && motion.aspect === viewportAspect && motion.weight === blendWeight && motion.near === cameraCurrent.near && motion.far === cameraCurrent.far && viewsMatch && motion.matrix.equals(cameraCurrent.projectionMatrix)) {
       return;
     }
     Object.assign(camera, {
-      left: -max * aspect / 2,
-      right: max * aspect / 2,
-      top: max / 2,
-      bottom: -max / 2,
+      left: -maxViewSize * viewportAspect / 2,
+      right: maxViewSize * viewportAspect / 2,
+      top: maxViewSize / 2,
+      bottom: -maxViewSize / 2,
       near: cameraCurrent.near,
       far: cameraCurrent.far,
       zoom: 1
     });
     Object.assign(aspectCurrent, {
-      fov: THREE.MathUtils.radToDeg(Math.atan(max / (distance * 2)) * 2),
-      aspect,
+      fov: THREE.MathUtils.radToDeg(Math.atan(maxViewSize / (cameraDistance * 2)) * 2),
+      aspect: viewportAspect,
       near: cameraCurrent.near,
       far: cameraCurrent.far,
       zoom: 1
     });
-    for (const view of [camera, aspectCurrent]) {
-      view.view = cameraCurrent.view ? {
+    for (const targetView of [camera, aspectCurrent]) {
+      targetView.view = cameraCurrent.view ? {
         ...cameraCurrent.view
       } : null;
-      view.updateProjectionMatrix();
+      targetView.updateProjectionMatrix();
     }
-    const localValue = camera.projectionMatrix.elements;
-    const elements = aspectCurrent.projectionMatrix.elements;
-    for (let zeroValue = 0; zeroValue < 16; zeroValue++) {
-      cameraCurrent.projectionMatrix.elements[zeroValue] = localValue[zeroValue] * (1 - weight) + elements[zeroValue] / distance * weight;
+    const orthoElements = camera.projectionMatrix.elements;
+    const perspectiveElements = aspectCurrent.projectionMatrix.elements;
+    for (let elementIndex = 0; elementIndex < 16; elementIndex++) {
+      cameraCurrent.projectionMatrix.elements[elementIndex] = orthoElements[elementIndex] * (1 - blendWeight) + perspectiveElements[elementIndex] / cameraDistance * blendWeight;
     }
     cameraCurrent.projectionMatrixInverse.copy(cameraCurrent.projectionMatrix).invert();
     motion.motion = height;
     motion.camera = cameraCurrent;
-    motion.distance = distance;
-    motion.height = max;
-    motion.aspect = aspect;
-    motion.weight = weight;
+    motion.distance = cameraDistance;
+    motion.height = maxViewSize;
+    motion.aspect = viewportAspect;
+    motion.weight = blendWeight;
     motion.near = cameraCurrent.near;
     motion.far = cameraCurrent.far;
     motion.matrix.copy(cameraCurrent.projectionMatrix);
   }
   const size = new Map();
-  const sizeCurrent = new Map();
-  let count = 0;
-  let zeroValueCurrent = 0;
-  let localValueTarget = null;
-  let boolFlagPrevious = false;
-  let boolFlagLocal = false;
-  let localValueDefault = null;
-  let localValueFallback;
-  let localValuePending;
-  let boolFlagItem = false;
+  const lightFadeCache = new Map();
+  let overlayFadeFrameHandle = 0;
+  let transitionFrameHandle = 0;
+  let captureFinishTimer = null;
+  let hasRunTransitionBefore = false;
+  let pagehideListenerBound = false;
+  let stageWarmupEndTimer = null;
+  let transitionScopeGroup;
+  let transitionScopeChild;
+  let lightKeysRebuilt = false;
   let get = new Map();
-  let getCurrent = new Map();
+  let lightRecordCache = new Map();
   const objectValue = {
     restore: () => tickLightTransitionStates(performance.now(), true)
   };
-  function setStageWarmupActive(argPrimary) {
-    if (localValueDefault !== null) {
-      window.clearTimeout(localValueDefault);
+  function setStageWarmupActive(active) {
+    if (stageWarmupEndTimer !== null) {
+      window.clearTimeout(stageWarmupEndTimer);
     }
-    localValueDefault = null;
-    if (argPrimary) {
+    stageWarmupEndTimer = null;
+    if (active) {
       if (isStageWarmup) {
         return;
       }
@@ -16959,8 +19036,8 @@ function bootstrapStudioFromLoadedProject() {
         preserveLightCache: true
       });
     } else if (isStageWarmup) {
-      localValueDefault = window.setTimeout(() => {
-        localValueDefault = null;
+      stageWarmupEndTimer = window.setTimeout(() => {
+        stageWarmupEndTimer = null;
         isStageWarmup = false;
         checkAdaptiveQuality();
         qualityProbeStartMs = 0;
@@ -16970,127 +19047,127 @@ function bootstrapStudioFromLoadedProject() {
       }, 140);
     }
   }
-  function normalizedLightBrightness(type, argSecondary) {
-    const computedValue = clamp(finite(argSecondary, 0), 0, 100) / 100;
+  function normalizedLightBrightness(type, rawBrightness) {
+    const normalized = clamp(finite(rawBrightness, 0), 0, 100) / 100;
     if (yt) {
-      return computedValue;
+      return normalized;
     } else if (type.type === "striplight") {
-      return Math.pow(computedValue, 0.82);
+      return Math.pow(normalized, 0.82);
     } else {
-      return spotLightBrightnessResponse(type.type, computedValue);
+      return spotLightBrightnessResponse(type.type, normalized);
     }
   }
   function estimateLightRenderIntensity(type) {
-    const range = defaultLightPresets[type.type] || defaultLightPresets.downlight;
-    const computedValue = deferExternalModels[type.type] || 1.1;
+    const preset = defaultLightPresets[type.type] || defaultLightPresets.downlight;
+    const typeMultiplier = deferExternalModels[type.type] || 1.1;
     if (type.type !== "striplight") {
-      return (type.type === "ceilinglight" ? 680 : 520) * computedValue;
+      return (type.type === "ceilinglight" ? 680 : 520) * typeMultiplier;
     }
-    const clampedValue = clamp(finite(type.lightRange, range.range), 0.5, 10);
-    const localValue = Math.max(finite(type.elevation, 2.7), 0.4);
-    return clamp(clampedValue / range.range, 0.45, 1.65) * 48 * clamp(Math.max(1, Math.pow(localValue / 2.7, 2)), 1, 4) * computedValue;
+    const lightRange = clamp(finite(type.lightRange, preset.range), 0.5, 10);
+    const elevation = Math.max(finite(type.elevation, 2.7), 0.4);
+    return clamp(lightRange / preset.range, 0.45, 1.65) * 48 * clamp(Math.max(1, Math.pow(elevation / 2.7, 2)), 1, 4) * typeMultiplier;
   }
   function applySampledLightState(intensity, intensityCurrent) {
     intensity.intensity = intensityCurrent.intensity;
     intensity.color.fromArray(intensityCurrent.color);
     intensity.visible = intensityCurrent.intensity > 0.000001 || !intensityCurrent.complete;
   }
-  function tickLightTransitionStates(argPrimary, flag = false) {
+  function tickLightTransitionStates(nowMs, forceRefresh = false) {
     if (isCapturingFrame === objectValue) {
-      if (localValueFallback !== worldGroup || localValuePending !== worldGroup?.children[0]) {
-        localValueFallback = worldGroup;
-        localValuePending = worldGroup?.children[0];
+      if (transitionScopeGroup !== worldGroup || transitionScopeChild !== worldGroup?.children[0]) {
+        transitionScopeGroup = worldGroup;
+        transitionScopeChild = worldGroup?.children[0];
         get = collectWorldItemKeys();
-        getCurrent = new Map(collectVisibleLights().map(itemKey => [itemKey.itemKey, itemKey]));
-        boolFlagItem = true;
+        lightRecordCache = new Map(collectVisibleLights().map(itemKey => [itemKey.itemKey, itemKey]));
+        lightKeysRebuilt = true;
       }
-      if (flag || boolFlagItem) {
-        for (const [localValue, localValueCurrent] of get) {
-          const entry = getCurrent.get(localValue);
+      if (forceRefresh || lightKeysRebuilt) {
+        for (const [lightKey, lightList] of get) {
+          const entry = lightRecordCache.get(lightKey);
           if (!entry) {
             continue;
           }
           const visible = entry.group?.enabled !== false && entry.item.lightBrightness > 0;
-          for (const intensity of localValueCurrent) {
+          for (const intensity of lightList) {
             intensity.intensity = visible ? finite(intensity.userData.lightOnIntensity, 0) : 0;
             intensity.visible = visible;
             intensity.color.setHex(lightEffectColorHex(entry.item.lightTemperature));
           }
         }
       }
-      boolFlagItem = false;
+      lightKeysRebuilt = false;
     }
-    for (const [localValue, localValueCurrent] of size) {
-      applySampledLightState(localValue, sampleLightTransition(localValueCurrent, argPrimary));
+    for (const [transitionKey, transitionList] of size) {
+      applySampledLightState(transitionKey, sampleLightTransition(transitionList, nowMs));
     }
   }
-  function smoothstepLerp(duration, argSecondary) {
-    const conditionalValue = duration.duration ? clamp((argSecondary - duration.started) / duration.duration, 0, 1) : 1;
-    return duration.from + (duration.to - duration.from) * conditionalValue * conditionalValue * (3 - conditionalValue * 2);
+  function smoothstepLerp(transition, nowMs) {
+    const progress = transition.duration ? clamp((nowMs - transition.started) / transition.duration, 0, 1) : 1;
+    return transition.from + (transition.to - transition.from) * progress * progress * (3 - progress * 2);
   }
   function stopOverlayFadeLoop() {
-    if (count) {
-      cancelAnimationFrame(count);
+    if (overlayFadeFrameHandle) {
+      cancelAnimationFrame(overlayFadeFrameHandle);
     }
-    count = 0;
-    sizeCurrent.clear();
+    overlayFadeFrameHandle = 0;
+    lightFadeCache.clear();
     rs = false;
   }
-  function tickOverlayFadeFrame(argPrimary) {
-    count = 0;
+  function tickOverlayFadeFrame(nowMs) {
+    overlayFadeFrameHandle = 0;
     if (!lightCacheReady || previewQualityJustBecameReady || previewLightCache.hidden || isCapturingFrame) {
       stopOverlayFadeLoop();
       return;
     }
-    for (const [localValue, started] of sizeCurrent) {
-      pendingModelLoads.set(localValue, smoothstepLerp(started, argPrimary));
-      if (argPrimary >= started.started + started.duration) {
-        sizeCurrent.delete(localValue);
+    for (const [fadeKey, started] of lightFadeCache) {
+      pendingModelLoads.set(fadeKey, smoothstepLerp(started, nowMs));
+      if (nowMs >= started.started + started.duration) {
+        lightFadeCache.delete(fadeKey);
       }
     }
-    rs = sizeCurrent.size > 0;
+    rs = lightFadeCache.size > 0;
     blitLightCacheToOverlay();
-    if (sizeCurrent.size) {
-      count = requestAnimationFrame(tickOverlayFadeFrame);
+    if (lightFadeCache.size) {
+      overlayFadeFrameHandle = requestAnimationFrame(tickOverlayFadeFrame);
     }
   }
-  function beginOverlayFade(valuesVar, immediate, argTertiary) {
-    if (!lightCacheReady || previewQualityJustBecameReady || isBakingLightCache || previewLightCache.hidden || isCapturingFrame || boolFlagCurrent || boolFlagNext) {
+  function beginOverlayFade(outgoingFloorEntries, immediate, fadeOptions) {
+    if (!lightCacheReady || previewQualityJustBecameReady || isBakingLightCache || previewLightCache.hidden || isCapturingFrame || isLightCacheCaptureActive || orbitInteractionStarted) {
       return false;
     }
-    const every = [...valuesVar.values()].filter(floorId => getPreviewFloorModeCurrent() === "all" || floorId.floorId === activeFloorId);
-    if (!every.every(item => item.previousBrightness === item.item.lightBrightness && item.previousKelvin === item.item.lightTemperature && map.has(previewScopedItemKey(item.floorId, item.item.lightGroupId)))) {
+    const fadeTargets = [...outgoingFloorEntries.values()].filter(modeTarget => getPreviewFloorModeCurrent() === "all" || modeTarget.floorId === activeFloorId);
+    if (!fadeTargets.every(targetItem => targetItem.previousBrightness === targetItem.item.lightBrightness && targetItem.previousKelvin === targetItem.item.lightTemperature && map.has(previewScopedItemKey(targetItem.floorId, targetItem.item.lightGroupId)))) {
       return false;
     }
-    const started = performance.now();
-    for (const wasOn of every) {
-      const localValue = previewScopedItemKey(wasOn.floorId, wasOn.item.lightGroupId);
-      const entry = sizeCurrent.get(localValue);
-      const from = entry ? smoothstepLerp(entry, started) : finite(pendingModelLoads.get(localValue), wasOn.wasOn ? 1 : 0);
-      sizeCurrent.set(localValue, {
-        from: from,
-        to: wasOn.isOn ? 1 : 0,
-        started: started,
-        duration: lightTransitionDurationMs(wasOn.wasOn, wasOn.isOn, wasOn.fadeDuration, {
-          ...argTertiary,
+    const startedAt = performance.now();
+    for (const fadeTarget of fadeTargets) {
+      const cacheKey = previewScopedItemKey(fadeTarget.floorId, fadeTarget.item.lightGroupId);
+      const cachedEntry = lightFadeCache.get(cacheKey);
+      const startValue = cachedEntry ? smoothstepLerp(cachedEntry, startedAt) : finite(pendingModelLoads.get(cacheKey), fadeTarget.wasOn ? 1 : 0);
+      lightFadeCache.set(cacheKey, {
+        from: startValue,
+        to: fadeTarget.isOn ? 1 : 0,
+        started: startedAt,
+        duration: lightTransitionDurationMs(fadeTarget.wasOn, fadeTarget.isOn, fadeTarget.fadeDuration, {
+          ...fadeOptions,
           immediate
         })
       });
     }
-    if (count) {
-      cancelAnimationFrame(count);
+    if (overlayFadeFrameHandle) {
+      cancelAnimationFrame(overlayFadeFrameHandle);
     }
-    tickOverlayFadeFrame(started);
+    tickOverlayFadeFrame(startedAt);
     return true;
   }
   function captureLightCacheFrame() {
-    const map = new Map(sizeCurrent);
+    const previousFadeState = new Map(lightFadeCache);
     stopOverlayFadeLoop();
     isCapturingFrame = objectValue;
-    if (localValueTarget !== null) {
-      window.clearTimeout(localValueTarget);
+    if (captureFinishTimer !== null) {
+      window.clearTimeout(captureFinishTimer);
     }
-    localValueTarget = null;
+    captureFinishTimer = null;
     window.clearTimeout(stageSessionEndTimer);
     stageSessionEndTimer = null;
     lightCacheEpoch += 1;
@@ -17099,42 +19176,42 @@ function bootstrapStudioFromLoadedProject() {
       showPreviewRenderShield();
     }
     setPreviewLightCacheVisible(false);
-    const list = collectVisibleLights();
-    get = ensureWorldItemsCached(list);
-    getCurrent = new Map(list.map(itemKey => [itemKey.itemKey, itemKey]));
-    localValueFallback = worldGroup;
-    localValuePending = worldGroup?.children[0];
-    boolFlagItem = true;
-    const timestampMs = performance.now();
-    for (const groupKey of list) {
-      const to = map.get(groupKey.groupKey);
-      if (!to) {
+    const visibleLights = collectVisibleLights();
+    get = ensureWorldItemsCached(visibleLights);
+    lightRecordCache = new Map(visibleLights.map(lightRecord => [lightRecord.itemKey, lightRecord]));
+    transitionScopeGroup = worldGroup;
+    transitionScopeChild = worldGroup?.children[0];
+    lightKeysRebuilt = true;
+    const capturedAt = performance.now();
+    for (const lightFilter of visibleLights) {
+      const fadeState = previousFadeState.get(lightFilter.groupKey);
+      if (!fadeState) {
         continue;
       }
-      const localValue = smoothstepLerp(to, timestampMs);
-      for (const userData of get.get(groupKey.itemKey) || []) {
-        const finiteValue = finite(userData.userData.lightOnIntensity, 0);
-        const color = userData.color.toArray();
-        size.set(userData, createLightTransition({
-          intensity: finiteValue * localValue,
-          color: color
+      const fadeFactor = smoothstepLerp(fadeState, capturedAt);
+      for (const lightTarget of get.get(lightFilter.itemKey) || []) {
+        const baseIntensity = finite(lightTarget.userData.lightOnIntensity, 0);
+        const lightColor = lightTarget.color.toArray();
+        size.set(lightTarget, createLightTransition({
+          intensity: baseIntensity * fadeFactor,
+          color: lightColor
         }, {
-          intensity: finiteValue * to.to,
-          color: color
-        }, timestampMs, Math.max(0, to.started + to.duration - timestampMs)));
+          intensity: baseIntensity * fadeState.to,
+          color: lightColor
+        }, capturedAt, Math.max(0, fadeState.started + fadeState.duration - capturedAt)));
       }
     }
-    if (size.size && !zeroValueCurrent) {
-      zeroValueCurrent = requestAnimationFrame(tickLightTransitionFrame);
+    if (size.size && !transitionFrameHandle) {
+      transitionFrameHandle = requestAnimationFrame(tickLightTransitionFrame);
     }
     syncOrbitControls();
     return get;
   }
   function finishLightCacheCapture() {
-    localValueTarget = null;
-    if (!floorSelectionQuery && !curtainMotionActive && !vacuumMotionActive && !boolFlagCurrent && !boolFlagNext && !size.size && isCapturingFrame === objectValue) {
+    captureFinishTimer = null;
+    if (!floorSelectionQuery && !curtainMotionActive && !vacuumMotionActive && !isLightCacheCaptureActive && !orbitInteractionStarted && !size.size && isCapturingFrame === objectValue) {
       if (isBakingLightCache || isStageWarmup) {
-        localValueTarget = window.setTimeout(finishLightCacheCapture, 60);
+        captureFinishTimer = window.setTimeout(finishLightCacheCapture, 60);
         return;
       }
       isCapturingFrame = null;
@@ -17144,19 +19221,19 @@ function bootstrapStudioFromLoadedProject() {
       }
     }
   }
-  function tickLightTransitionFrame(argPrimary) {
-    zeroValueCurrent = 0;
-    tickLightTransitionStates(argPrimary);
-    let boolFlag = false;
-    for (const [visible, started] of size) {
-      if (!(argPrimary - started.started < started.duration)) {
-        size.delete(visible);
-        if (!visible.visible) {
-          boolFlag = true;
+  function tickLightTransitionFrame(timestampMs) {
+    transitionFrameHandle = 0;
+    tickLightTransitionStates(timestampMs);
+    let needsShadowRefresh = false;
+    for (const [transition, transitionState] of size) {
+      if (!(timestampMs - transitionState.started < transitionState.duration)) {
+        size.delete(transition);
+        if (!transition.visible) {
+          needsShadowRefresh = true;
         }
       }
     }
-    if (boolFlag) {
+    if (needsShadowRefresh) {
       syncSpotShadowCastingLights(worldGroup, {
         rebuildAtlas: false
       });
@@ -17164,51 +19241,51 @@ function bootstrapStudioFromLoadedProject() {
     }
     updateLightPreview();
     if (size.size) {
-      zeroValueCurrent = requestAnimationFrame(tickLightTransitionFrame);
+      transitionFrameHandle = requestAnimationFrame(tickLightTransitionFrame);
     } else {
       setStageWarmupActive(false);
       if (isCapturingFrame === objectValue) {
-        localValueTarget = window.setTimeout(finishLightCacheCapture, 180);
+        captureFinishTimer = window.setTimeout(finishLightCacheCapture, 180);
       }
     }
   }
   function stopAllLightAnimations() {
     stopOverlayFadeLoop();
-    if (zeroValueCurrent) {
-      cancelAnimationFrame(zeroValueCurrent);
+    if (transitionFrameHandle) {
+      cancelAnimationFrame(transitionFrameHandle);
     }
-    if (localValueTarget !== null) {
-      window.clearTimeout(localValueTarget);
+    if (captureFinishTimer !== null) {
+      window.clearTimeout(captureFinishTimer);
     }
-    if (localValueDefault !== null) {
-      window.clearTimeout(localValueDefault);
+    if (stageWarmupEndTimer !== null) {
+      window.clearTimeout(stageWarmupEndTimer);
     }
-    zeroValueCurrent = 0;
-    localValueTarget = null;
-    localValueDefault = null;
+    transitionFrameHandle = 0;
+    captureFinishTimer = null;
+    stageWarmupEndTimer = null;
     isStageWarmup = false;
-    for (const [localValue, to] of size) {
-      applySampledLightState(localValue, {
-        ...to.to,
+    for (const [transitionKey, transitionEntry] of size) {
+      applySampledLightState(transitionKey, {
+        ...transitionEntry.to,
         complete: true
       });
     }
     size.clear();
-    boolFlagNext = false;
+    orbitInteractionStarted = false;
     get.clear();
-    getCurrent.clear();
+    lightRecordCache.clear();
     if (isCapturingFrame === objectValue) {
       isCapturingFrame = null;
     }
   }
   const has = new WeakMap();
-  const hasCurrent = new Map();
+  const lightGroupEnabledMap = new Map();
   function setLightStates(filter, editor = {}) {
     if (editor.editor) {
       const get = new Map(filter.filter(on => on.on).map(floorId => [layerScopedKey(floorId.floorId, floorId.groupId), floorId]));
       filter = projectDocCurrent.floors.flatMap(id => (id.scene.lightGroups || []).map(id => {
-        if (!hasCurrent.has(id)) {
-          hasCurrent.set(id, id.enabled !== false);
+        if (!lightGroupEnabledMap.has(id)) {
+          lightGroupEnabledMap.set(id, id.enabled !== false);
         }
         return get.get(layerScopedKey(id.id, id.id)) || {
           floorId: id.id,
@@ -17216,28 +19293,28 @@ function bootstrapStudioFromLoadedProject() {
           on: false
         };
       }));
-    } else if (hasCurrent.size) {
+    } else if (lightGroupEnabledMap.size) {
       const has = new Map(filter.map(floorId => [layerScopedKey(floorId.floorId, floorId.groupId), floorId]));
-      filter = [...projectDocCurrent.floors.flatMap(id => (id.scene.lightGroups || []).filter(id => hasCurrent.has(id) && !has.has(layerScopedKey(id.id, id.id))).map(id => ({
+      filter = [...projectDocCurrent.floors.flatMap(id => (id.scene.lightGroups || []).filter(id => lightGroupEnabledMap.has(id) && !has.has(layerScopedKey(id.id, id.id))).map(id => ({
         floorId: id.id,
         groupId: id.id,
-        on: hasCurrent.get(id),
+        on: lightGroupEnabledMap.get(id),
         brightnessSupported: false,
         temperatureSupported: false
       }))), ...filter];
-      hasCurrent.clear();
+      lightGroupEnabledMap.clear();
       editor = {
         ...editor,
         immediate: true
       };
     }
-    if (!boolFlagLocal) {
-      boolFlagLocal = true;
+    if (!pagehideListenerBound) {
+      pagehideListenerBound = true;
       window.addEventListener("pagehide", stopAllLightAnimations, {
         once: true
       });
     }
-    const immediate = editor.immediate === true || !boolFlagPrevious || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const immediate = editor.immediate === true || !hasRunTransitionBefore || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     const lookupMap = new Map();
     for (const floorId of filter) {
       const state = mapLightEffectState(floorId);
@@ -17285,7 +19362,7 @@ function bootstrapStudioFromLoadedProject() {
         }
       }
     }
-    boolFlagPrevious = true;
+    hasRunTransitionBefore = true;
     if (!lookupMap.size) {
       return;
     }
@@ -17297,27 +19374,27 @@ function bootstrapStudioFromLoadedProject() {
     const get = map;
     if (ready) {
       map = captureLightCacheFrame();
-    } else if ([...lookupMap.keys()].some(argPrimary => !map.has(argPrimary))) {
+    } else if ([...lookupMap.keys()].some(lookupKey => !map.has(lookupKey))) {
       map = ensureWorldItemsCached(collectVisibleLights().filter(itemKey => lookupMap.has(itemKey.itemKey)));
     }
-    let boolFlag = false;
+    let visibilityChanged = false;
     const timestampMs = performance.now();
-    for (const [localValue, value] of lookupMap) {
+    for (const [lightRecordKey, value] of lookupMap) {
       if (getPreviewFloorModeCurrent() !== "all" && value.floorId !== activeFloorId) {
         continue;
       }
-      const length = map.get(localValue);
+      const length = map.get(lightRecordKey);
       if (length?.length) {
         for (const userData of length) {
-          const localValue = size.get(userData);
+          const existingTransition = size.get(userData);
           const brightness = normalizedLightBrightness(value.item, value.previousBrightness);
-          const conditionalValue = get.get(localValue)?.includes(userData) && brightness > 1e-7 && userData.userData.lightOnIntensity > 0 ? userData.userData.lightOnIntensity / brightness : estimateLightRenderIntensity(value.item);
+          const conditionalValue = get.get(existingTransition)?.includes(userData) && brightness > 1e-7 && userData.userData.lightOnIntensity > 0 ? userData.userData.lightOnIntensity / brightness : estimateLightRenderIntensity(value.item);
           const lightOnIntensity = conditionalValue * normalizedLightBrightness(value.item, value.item.lightBrightness);
           const color = {
             intensity: value.isOn ? lightOnIntensity : 0,
             color: new THREE.Color(lightEffectColorHex(value.item.lightTemperature)).toArray()
           };
-          const intensity = localValue ? sampleLightTransition(localValue, timestampMs) : null;
+          const intensity = existingTransition ? sampleLightTransition(existingTransition, timestampMs) : null;
           const options = !value.wasOn && value.isOn && (!intensity || intensity.intensity <= 0.000001) ? {
             intensity: 0,
             color: color.color
@@ -17334,7 +19411,7 @@ function bootstrapStudioFromLoadedProject() {
           const transition = createLightTransition(options, color, timestampMs, ms);
           const visible = userData.visible;
           applySampledLightState(userData, sampleLightTransition(transition, timestampMs));
-          boolFlag ||= visible !== userData.visible;
+          visibilityChanged ||= visible !== userData.visible;
           if (ms) {
             size.set(userData, transition);
           } else {
@@ -17346,36 +19423,36 @@ function bootstrapStudioFromLoadedProject() {
     if (ready) {
       tickLightTransitionStates(timestampMs);
     }
-    if (boolFlag || ready) {
+    if (visibilityChanged || ready) {
       syncSpotShadowCastingLights(worldGroup, {
         rebuildAtlas: false
       });
     }
-    if (boolFlag) {
+    if (visibilityChanged) {
       scheduleOrbitInteractionWarmup();
     }
     setStageWarmupActive(size.size > 0);
     updateLightPreview();
-    if (!zeroValueCurrent) {
+    if (!transitionFrameHandle) {
       if (size.size) {
-        zeroValueCurrent = requestAnimationFrame(tickLightTransitionFrame);
+        transitionFrameHandle = requestAnimationFrame(tickLightTransitionFrame);
       } else if (ready) {
-        localValueTarget = window.setTimeout(finishLightCacheCapture, 100);
+        captureFinishTimer = window.setTimeout(finishLightCacheCapture, 100);
       }
     }
   }
   function syncRendererSizeCacheKey() {
-    renderer.getSize(x54);
-    const localValue = Math.max(x54.x || 1, 1);
-    const max = Math.max(x54.y || 1, 1);
-    const halfValue = localValue + "/" + max + "/" + zeroValue + "/" + cameraCurrent.uuid;
-    if (halfValue === text) {
+    renderer.getSize(rendererSizeVector);
+    const viewportWidth = Math.max(rendererSizeVector.x || 1, 1);
+    const viewportHeight = Math.max(rendererSizeVector.y || 1, 1);
+    const renderSizeKey = viewportWidth + "/" + viewportHeight + "/" + viewOffsetFraction + "/" + cameraCurrent.uuid;
+    if (renderSizeKey === lastRenderSizeKey) {
       blendCameraProjectionMatrices();
       return;
     }
-    text = halfValue;
-    if (zeroValue) {
-      cameraCurrent.setViewOffset(localValue, max, localValue * zeroValue / 2, 0, localValue, max);
+    lastRenderSizeKey = renderSizeKey;
+    if (viewOffsetFraction) {
+      cameraCurrent.setViewOffset(viewportWidth, viewportHeight, viewportWidth * viewOffsetFraction / 2, 0, viewportWidth, viewportHeight);
     } else {
       cameraCurrent.clearViewOffset();
     }
@@ -17384,173 +19461,143 @@ function bootstrapStudioFromLoadedProject() {
   function applyOrbitControlLimits() {
     orbitControls.enablePan = enablePan;
     orbitControls.enableZoom = enableZoom;
-    if (stringValue === "horizontal") {
+    if (orbitPanMode === "horizontal") {
       orbitControls.minPolarAngle = orbitControls.maxPolarAngle = orbitControls.getPolarAngle();
     }
-    if (stringValue === "vertical") {
+    if (orbitPanMode === "vertical") {
       orbitControls.minAzimuthAngle = orbitControls.maxAzimuthAngle = orbitControls.getAzimuthalAngle();
     }
   }
-  function worldPoint(argPrimary, x43, y4, argN = 0.1) {
-    const scene = projectDocCurrent.floors.find(id => id.id === argPrimary);
-    if (!scene) {
+  function worldPoint(floorId, planeX, planeY, heightOffset = 0.1) {
+    const floor = projectDocCurrent.floors.find(id => id.id === floorId);
+    if (!floor) {
       return null;
     }
-    const computedValue = scene.scene.calibration?.pixelsPerMeter || 1;
+    const planScale = floor.scene.calibration?.pixelsPerMeter || 1;
     if (getPreviewFloorModeCurrent() === "all") {
-      const indexOfVar = [...projectDocCurrent.floors].sort((elevation, elevationRight) => elevation.elevation - elevationRight.elevation);
-      const x27 = planPointToWorldXZ(scene, {
-        x: x43,
-        y: y4
+      const sortedFloors = [...projectDocCurrent.floors].sort((floorA, floorB) => floorA.elevation - floorB.elevation);
+      const projectedPoint = planPointToWorldXZ(floor, {
+        x: planeX,
+        y: planeY
       });
-      return new THREE.Vector3(x27.x, indexOfVar.indexOf(scene) * projectDocCurrent.previewFloorGap + argN, x27.z);
+      return new THREE.Vector3(projectedPoint.x, sortedFloors.indexOf(floor) * projectDocCurrent.previewFloorGap + heightOffset, projectedPoint.z);
     }
-    const localValue = floorSceneCurrent;
-    floorSceneCurrent = scene.scene;
-    const minX = getPreviewFloorMode();
-    floorSceneCurrent = localValue;
-    return new THREE.Vector3((x43 - (minX.minX + minX.maxX) / 2) / computedValue, argN, (y4 - (minX.minY + minX.maxY) / 2) / computedValue);
+    const previousFloorScene = floorSceneCurrent;
+    floorSceneCurrent = floor.scene;
+    const previewBounds = getPreviewFloorMode();
+    floorSceneCurrent = previousFloorScene;
+    return new THREE.Vector3((planeX - (previewBounds.minX + previewBounds.maxX) / 2) / planScale, heightOffset, (planeY - (previewBounds.minY + previewBounds.maxY) / 2) / planScale);
   }
-  function findFloorOrbitCenter(argPrimary) {
-    if (!projectDocCurrent.floors.some(id => id.id === argPrimary)) {
+  function findFloorOrbitCenter(floorId) {
+    if (!projectDocCurrent.floors.some(floor => floor.id === floorId)) {
       return null;
     }
-    const comparisonFlag = projectDocCurrent.floors.find(id => id.id === argPrimary)?.scene.calibration?.pixelsPerMeter || 1;
-    const localValue = worldPoint(argPrimary, 0, 0, 0);
-    return new THREE.Matrix4().makeBasis(worldPoint(argPrimary, comparisonFlag, 0, 0).sub(localValue), new THREE.Vector3(0, 1, 0), worldPoint(argPrimary, 0, comparisonFlag, 0).sub(localValue)).setPosition(localValue);
+    const planScale = projectDocCurrent.floors.find(floor => floor.id === floorId)?.scene.calibration?.pixelsPerMeter || 1;
+    const orbitCenter = worldPoint(floorId, 0, 0, 0);
+    return new THREE.Matrix4().makeBasis(worldPoint(floorId, planScale, 0, 0).sub(orbitCenter), new THREE.Vector3(0, 1, 0), worldPoint(floorId, 0, planScale, 0).sub(orbitCenter)).setPosition(orbitCenter);
   }
-  function computeMultiFloorBoundsCenter() {
-    if (projectDocCurrent.floors.length < 2) {
-      return null;
-    }
-    const expandByPoint = new THREE.Box3();
-    let zeroValue = 0;
-    for (const scene of projectDocCurrent.floors) {
-      for (const start of scene.scene.walls || []) {
-        for (const x8 of [start.start, start.end]) {
-          if (!x8 || !Number.isFinite(x8.x) || !Number.isFinite(x8.y)) {
-            continue;
-          }
-          const x7 = planPointToWorldXZ(scene, x8);
-          expandByPoint.expandByPoint(new THREE.Vector3(x7.x, 0, x7.z));
-        }
-        zeroValue = Math.max(zeroValue, finite(start.height, scene.scene.settings?.wallHeight || 2.8));
-      }
-    }
-    if (expandByPoint.isEmpty()) {
-      return null;
-    }
-    const y5 = expandByPoint.getCenter(new THREE.Vector3());
-    if (getPreviewFloorModeCurrent() === "all") {
-      y5.y = (projectDocCurrent.floors.length - 1) * projectDocCurrent.previewFloorGap / 2 + zeroValue / 2;
-      return y5;
-    }
-    const id = projectDocCurrent.floors.find(id => id.id === activeFloorId);
-    const x44 = rotatePlanPointByFloor(id, y5);
-    return worldPoint(id.id, x44.x, x44.y, zeroValue / 2);
-  }
-  function resolveOrbitPanTarget(argPrimary) {
-    if (localValueText !== worldGroup || localValueValue !== planCanvas) {
-      const localValue = computeMultiFloorBoundsCenter();
-      const isEmpty = localValue ? null : isWallCloseSnap({
+  function resolveOrbitPanTarget(fallbackTarget) {
+    if (orbitBoundsSourceGroup !== worldGroup || orbitBoundsSourceCanvas !== planCanvas) {
+      const boundsCenter = computeMultiFloorBoundsCenter(worldPoint);
+      const wallCloseSnap = boundsCenter ? null : isWallCloseSnap({
         excludeModelLayers
       });
-      localValueText = worldGroup;
-      localValueValue = planCanvas;
-      localValueSource = localValue || (isEmpty.isEmpty() ? null : isEmpty.getCenter(new THREE.Vector3()));
+      orbitBoundsSourceGroup = worldGroup;
+      orbitBoundsSourceCanvas = planCanvas;
+      orbitBoundsCenter = boundsCenter || (wallCloseSnap.isEmpty() ? null : wallCloseSnap.getCenter(new THREE.Vector3()));
     }
-    return (localValueSource || argPrimary).clone();
+    return (orbitBoundsCenter || fallbackTarget).clone();
   }
   function syncOrbitControlsBinding() {
-    cloneCurrent ||= resolveOrbitPanTarget(orbitControls.target);
-    if (localValueList === orbitControls) {
+    orbitPivot ||= resolveOrbitPanTarget(orbitControls.target);
+    if (boundOrbitControls === orbitControls) {
       return;
     }
-    const addEventListener = orbitControls;
-    const quaternion = cameraCurrent;
-    const bind = addEventListener.update.bind(addEventListener);
-    localValueList = addEventListener;
-    const helperFn = () => {
+    const controls = orbitControls;
+    const camera = cameraCurrent;
+    const baseUpdate = controls.update.bind(controls);
+    boundOrbitControls = controls;
+    const maybeFinishCapture = () => {
       if (isCapturingFrame === objectValue) {
-        if (localValueTarget !== null) {
-          window.clearTimeout(localValueTarget);
+        if (captureFinishTimer !== null) {
+          window.clearTimeout(captureFinishTimer);
         }
-        localValueTarget = null;
-        if (!boolFlagNext) {
-          localValueTarget = window.setTimeout(finishLightCacheCapture, 180);
+        captureFinishTimer = null;
+        if (!orbitInteractionStarted) {
+          captureFinishTimer = window.setTimeout(finishLightCacheCapture, 180);
         }
       }
     };
-    addEventListener.addEventListener("start", () => {
-      if (!boolFlagCurrent) {
-        boolFlagNext = true;
+    controls.addEventListener("start", () => {
+      if (!isLightCacheCaptureActive) {
+        orbitInteractionStarted = true;
       }
     });
-    addEventListener.addEventListener("change", () => {
-      if (!boolFlagCurrent) {
-        if (boolFlagNext && isPreviewQualityReady() && isCapturingFrame !== objectValue) {
+    controls.addEventListener("change", () => {
+      if (!isLightCacheCaptureActive) {
+        if (orbitInteractionStarted && isPreviewQualityReady() && isCapturingFrame !== objectValue) {
           captureLightCacheFrame();
           tickLightTransitionStates(performance.now());
           syncSpotShadowCastingLights(worldGroup, {
             rebuildAtlas: false
           });
         }
-        helperFn();
+        maybeFinishCapture();
       }
     });
-    addEventListener.addEventListener("end", () => {
-      if (!boolFlagCurrent) {
-        boolFlagNext = false;
-        helperFn();
+    controls.addEventListener("end", () => {
+      if (!isLightCacheCaptureActive) {
+        orbitInteractionStarted = false;
+        maybeFinishCapture();
       }
     });
-    let localValue = addEventListener.enabled;
-    Object.defineProperty(addEventListener, "enabled", {
+    let enabledFlag = controls.enabled;
+    Object.defineProperty(controls, "enabled", {
       configurable: true,
-      get: () => enabled && !boolFlagCurrent && localValue,
-      set: argPrimary => {
-        localValue = argPrimary === true;
+      get: () => enabled && !isLightCacheCaptureActive && enabledFlag,
+      set: nextEnabled => {
+        enabledFlag = nextEnabled === true;
       }
     });
-    Object.defineProperty(addEventListener, "enableRotate", {
+    Object.defineProperty(controls, "enableRotate", {
       configurable: true,
       get: () => true,
       set() {}
     });
-    addEventListener.update = argPrimary => {
-      if (boolFlagCurrent) {
+    controls.update = updateDelta => {
+      if (isLightCacheCaptureActive) {
         return false;
       }
-      const angleTo = quaternion.quaternion.clone();
-      const localValue = bind(argPrimary);
-      if (enabled && angleTo.angleTo(quaternion.quaternion) > 1e-7) {
-        const localValue = quaternion.quaternion.clone().multiply(angleTo.invert());
-        const clone = cloneCurrent.clone().sub(addEventListener.target);
-        const sub = clone.clone().sub(clone.applyQuaternion(localValue));
-        quaternion.position.add(sub);
-        addEventListener.target.add(sub);
-        quaternion.updateMatrixWorld();
-        addEventListener.dispatchEvent({
+      const startQuaternion = camera.quaternion.clone();
+      const updateResult = baseUpdate(updateDelta);
+      if (enabled && startQuaternion.angleTo(camera.quaternion) > 1e-7) {
+        const rotationDelta = camera.quaternion.clone().multiply(startQuaternion.invert());
+        const offsetVector = orbitPivot.clone().sub(controls.target);
+        const rotatedOffset = offsetVector.clone().sub(offsetVector.applyQuaternion(rotationDelta));
+        camera.position.add(rotatedOffset);
+        controls.target.add(rotatedOffset);
+        camera.updateMatrixWorld();
+        controls.dispatchEvent({
           type: "change"
         });
         return true;
       }
-      return localValue;
+      return updateResult;
     };
   }
   function collectShadowCastingLights() {
-    if (localValueLocal !== worldGroup || localValueItem !== worldGroup?.children[0]) {
-      localValueLocal = worldGroup;
-      localValueItem = worldGroup?.children[0];
-      pushCurrent = [];
+    if (shadowScopeGroup !== worldGroup || shadowScopeChild !== worldGroup?.children[0]) {
+      shadowScopeGroup = worldGroup;
+      shadowScopeChild = worldGroup?.children[0];
+      visibleMeshes = [];
       worldGroup?.traverse(userData => {
         if (["background", "grid"].includes(userData.userData?.exportRole)) {
-          pushCurrent.push(userData);
+          visibleMeshes.push(userData);
         }
       });
     }
-    for (const visible of pushCurrent) {
-      visible.visible = boolTrue && !visible.userData.floorBackgroundHidden;
+    for (const visible of visibleMeshes) {
+      visible.visible = floorBackgroundVisible && !visible.userData.floorBackgroundHidden;
     }
   }
   const detail = new URLSearchParams(globalThis.window?.location?.search || "").get("reflection-detail") === "low" ? createReflectionDetail({
@@ -17560,7 +19607,7 @@ function bootstrapStudioFromLoadedProject() {
       updateLightPreview();
     }
   }) : null;
-  const comparisonFlag = new URLSearchParams(globalThis.window?.location?.search || "").get("performance-diagnostics") === "1" && new URLSearchParams(window.location.search).get("reflection-work") === "baseline";
+  const reflectionBaseline = new URLSearchParams(globalThis.window?.location?.search || "").get("performance-diagnostics") === "1" && new URLSearchParams(window.location.search).get("reflection-work") === "baseline";
   const changed = createGroundReflections({
     detail: detail,
     THREE,
@@ -17569,20 +19616,20 @@ function bootstrapStudioFromLoadedProject() {
     getRoot: () => worldGroup,
     getSceneRevision: () => planCanvas,
     floorLighting: yt,
-    cull: !comparisonFlag,
+    cull: !reflectionBaseline,
     blur: false,
-    syncLighting: argPrimary => comparisonFlag ? studioReady?.sync(argPrimary, true) : studioReady?.syncCamera(argPrimary),
+    syncLighting: sceneState => reflectionBaseline ? studioReady?.sync(sceneState, true) : studioReady?.syncCamera(sceneState),
     requestFrame: () => updateLightPreview(),
     getStateKey: () => [planCanvas, floorSelectionQuery, yt ? "" : lightCacheEpoch, lightCacheReady, renderer.toneMappingExposure].join("|")
   });
   const entry = new URLSearchParams(globalThis.window?.location?.search || "").get("floorEffects");
-  let boolFlagEntry = false;
-  let boolFlagList = false;
+  let suspendedState = false;
+  let reflectionsActive = false;
   const motionPresentation = createMotionPresentation({
     reflections(active) {
-      boolFlagList = active;
-      changed.setSuspended?.(boolFlagEntry || boolFlagList, {
-        fade: !boolFlagEntry
+      reflectionsActive = active;
+      changed.setSuspended?.(suspendedState || reflectionsActive, {
+        fade: !suspendedState
       });
     },
     shadows(active) {
@@ -17590,91 +19637,91 @@ function bootstrapStudioFromLoadedProject() {
       renderCache?.setMotion?.(active);
     }
   });
-  function setEditorEffects(argPrimary, argSecondary) {
-    const computedValue = argPrimary && !argSecondary;
-    renderer.domElement.dataset.editorEffects = argPrimary ? argSecondary ? "light-preview" : "paused" : "runtime";
-    if (boolFlagEntry !== computedValue) {
-      boolFlagEntry = computedValue;
-      changed.setSuspended?.(boolFlagEntry || boolFlagList);
+  function setEditorEffects(effectsEnabled, lightPreview) {
+    const suspended = effectsEnabled && !lightPreview;
+    renderer.domElement.dataset.editorEffects = effectsEnabled ? lightPreview ? "light-preview" : "paused" : "runtime";
+    if (suspendedState !== suspended) {
+      suspendedState = suspended;
+      changed.setSuspended?.(suspendedState || reflectionsActive);
       updateLightPreview();
     }
   }
-  const comparisonFlagCurrent = (yt || entry === "follow") && entry !== "deferred";
-    let localValueRaw = null;
+  const followLiveEntry = (yt || entry === "follow") && entry !== "deferred";
+    let shadowMotionStartedAt = null;
   let autoUpdate = true;
   const hasNext = new Map();
-  function setShadowMapAutoUpdate(argPrimary) {
-    if (floorShadowMotionActive !== !!argPrimary) {
-      floorShadowMotionActive = !!argPrimary;
-      if (comparisonFlagCurrent) {
-        if (argPrimary) {
+  function setShadowMapAutoUpdate(active) {
+    if (floorShadowMotionActive !== !!active) {
+      floorShadowMotionActive = !!active;
+      if (followLiveEntry) {
+        if (active) {
           autoUpdate = renderer.shadowMap.autoUpdate;
         }
-        renderer.shadowMap.autoUpdate = argPrimary ? true : autoUpdate;
+        renderer.shadowMap.autoUpdate = active ? true : autoUpdate;
         renderer.shadowMap.needsUpdate = true;
-        studioReady?.setMotion?.(argPrimary, true);
+        studioReady?.setMotion?.(active, true);
         return;
       }
-      if (argPrimary) {
-        localValueRaw = null;
+      if (active) {
+        shadowMotionStartedAt = null;
         autoUpdate = renderer.shadowMap.autoUpdate;
         renderer.shadowMap.autoUpdate = false;
         renderer.shadowMap.needsUpdate = false;
         shadowAtlas?.setEnabled(false);
-        previewSceneCurrent.traverse(shadow => {
-          if (!!shadow.isLight && !!shadow.castShadow && !!shadow.shadow) {
-            if (!hasNext.has(shadow.shadow)) {
-              hasNext.set(shadow.shadow, shadow.shadow.intensity ?? 1);
+        previewSceneCurrent.traverse(light => {
+          if (!!light.isLight && !!light.castShadow && !!light.shadow) {
+            if (!hasNext.has(light.shadow)) {
+              hasNext.set(light.shadow, light.shadow.intensity ?? 1);
             }
-            shadow.shadow.intensity = 0;
+            light.shadow.intensity = 0;
           }
         });
       } else {
         renderer.shadowMap.autoUpdate = autoUpdate;
         renderer.shadowMap.needsUpdate = true;
-        localValueRaw = performance.now();
+        shadowMotionStartedAt = performance.now();
         shadowAtlas?.setEnabled(true);
       }
-      studioReady?.setMotion?.(argPrimary);
+      studioReady?.setMotion?.(active);
     }
   }
   function tickShadowIntensityFade() {
-    if (floorShadowMotionActive || localValueRaw === null) {
+    if (floorShadowMotionActive || shadowMotionStartedAt === null) {
       return;
     }
-    const nowMs = Math.min(1, (performance.now() - localValueRaw) / 280);
-    for (const [intensity, localValue] of hasNext) {
-      intensity.intensity = localValue * nowMs;
+    const nowMs = Math.min(1, (performance.now() - shadowMotionStartedAt) / 280);
+    for (const [shadowRef, targetIntensity] of hasNext) {
+      shadowRef.intensity = targetIntensity * nowMs;
     }
     if (nowMs < 1) {
       updateLightPreview();
     } else {
       hasNext.clear();
-      localValueRaw = null;
+      shadowMotionStartedAt = null;
     }
   }
-  const profileFrameWork = (argPrimary, argSecondary) => typeof fitCameraToSelectionCurrent == "function" ? fitCameraToSelectionCurrent(argPrimary, argSecondary) : argSecondary();
+  const profileFrameWork = (frameRequest, work) => typeof fitCameraToSelectionCurrent == "function" ? fitCameraToSelectionCurrent(frameRequest, work) : work();
   const finish = createFloorTransition({
     THREE,
     getRoot: () => worldGroup,
     dispose: disposeObject3dResources,
     release,
-    suspendReflections: argPrimary => {
-      motionPresentation.floor(argPrimary);
-      setShadowMapAutoUpdate(argPrimary);
+    suspendReflections: suspended => {
+      motionPresentation.floor(suspended);
+      setShadowMapAutoUpdate(suspended);
     },
-    invalidate: argPrimary => {
-      if (argPrimary) {
-        cloneCurrent = null;
-        localValueText = null;
-        localValueValue = undefined;
-        localValueSource = null;
+    invalidate: forceFull => {
+      if (forceFull) {
+        orbitPivot = null;
+        orbitBoundsSourceGroup = null;
+        orbitBoundsSourceCanvas = undefined;
+        orbitBoundsCenter = null;
         syncOrbitControlsBinding();
       }
-      if (comparisonFlagCurrent && !argPrimary) {
+      if (followLiveEntry && !forceFull) {
         flushPlanZoomFrame();
       }
-      requestRender(argPrimary ? {
+      requestRender(forceFull ? {
         scene: true,
         shadows: true
       } : {
@@ -17682,17 +19729,17 @@ function bootstrapStudioFromLoadedProject() {
       });
     }
   });
-  renderCache?.setFrameProvider?.(argPrimary => {
-    const node = finish.records.find(id => id.id === argPrimary);
+  renderCache?.setFrameProvider?.(frameIndex => {
+    const node = finish.records.find(id => id.id === frameIndex);
     if (node) {
       node.node.updateWorldMatrix(true, false);
       return node.node.matrixWorld.clone().multiply(node.baseFrame);
     } else {
-      return findFloorOrbitCenter(argPrimary);
+      return findFloorOrbitCenter(frameIndex);
     }
   });
-  studioReady?.setMotionTransformProvider?.(argPrimary => {
-    const node = finish.records.find(id => id.id === argPrimary);
+  studioReady?.setMotionTransformProvider?.(motionFrameIndex => {
+    const node = finish.records.find(id => id.id === motionFrameIndex);
     if (node) {
       node.node.updateWorldMatrix(true, false);
       return (node.lightingTransform ||= new THREE.Matrix4()).copy(node.node.matrixWorld).invert().premultiply(worldGroup.matrixWorld);
@@ -17710,68 +19757,68 @@ function bootstrapStudioFromLoadedProject() {
     once: true
   });
   const applyVar = previewSceneCurrent.onBeforeRender;
-  const name9 = new THREE.Mesh(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute([], 3)), new THREE.MeshBasicMaterial({
+  const curtainShadowRefreshMesh = new THREE.Mesh(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute([], 3)), new THREE.MeshBasicMaterial({
     colorWrite: false,
     depthWrite: false,
     depthTest: false
   }));
-  name9.name = "interaction3d-curtain-shadow-refresh";
-  name9.frustumCulled = false;
-  name9.renderOrder = -1000000000;
-  name9.layers.enableAll();
-  name9.onBeforeRender = () => {
-    if (boolFlag && !floorShadowMotionActive) {
+  curtainShadowRefreshMesh.name = "interaction3d-curtain-shadow-refresh";
+  curtainShadowRefreshMesh.frustumCulled = false;
+  curtainShadowRefreshMesh.renderOrder = -1000000000;
+  curtainShadowRefreshMesh.layers.enableAll();
+  curtainShadowRefreshMesh.onBeforeRender = () => {
+    if (shadowVisibilityChanged && !floorShadowMotionActive) {
       try {
-        boolFlag = shadowAtlas ? !shadowAtlas.refreshGeometry(worldGroup, list) : false;
+        shadowVisibilityChanged = shadowAtlas ? !shadowAtlas.refreshGeometry(worldGroup, shadowBounds) : false;
       } catch (error) {
         console.error(error);
-        boolFlag = true;
+        shadowVisibilityChanged = true;
       }
     }
   };
-  previewSceneCurrent.add(name9);
+  previewSceneCurrent.add(curtainShadowRefreshMesh);
   globalThis.window?.addEventListener("pagehide", () => {
-    name9.removeFromParent();
-    name9.geometry.dispose();
-    name9.material.dispose();
+    curtainShadowRefreshMesh.removeFromParent();
+    curtainShadowRefreshMesh.geometry.dispose();
+    curtainShadowRefreshMesh.material.dispose();
   }, {
     once: true
   });
-  previewSceneCurrent.onBeforeRender = function (...argPrimary) {
+  previewSceneCurrent.onBeforeRender = function (...renderArgs) {
     if (changed.stats.inCapture) {
-      if (comparisonFlag) {
-        studioReady?.sync(argPrimary[2], true);
+      if (reflectionBaseline) {
+        studioReady?.sync(renderArgs[2], true);
       }
       return;
     }
     tickShadowIntensityFade();
     if (!floorShadowMotionActive) {
-      profileFrameWork("curtains", () => localValueCurrent?.());
+      profileFrameWork("curtains", () => curtainFrameWorkCallback?.());
     }
-    if (boolFlag && !floorShadowMotionActive) {
-      if (localValueNext !== worldGroup || localValuePrevious !== planCanvas) {
-        localValueNext = worldGroup;
-        localValuePrevious = planCanvas;
-        push = [];
-        list = [];
+    if (shadowVisibilityChanged && !floorShadowMotionActive) {
+      if (curtainScopeGroup !== worldGroup || curtainScopeCanvas !== planCanvas) {
+        curtainScopeGroup = worldGroup;
+        curtainScopeCanvas = planCanvas;
+        shadowLights = [];
+        shadowBounds = [];
         worldGroup?.updateWorldMatrix(true, true);
         worldGroup?.traverse(userData => {
           if (userData.userData?.environmentModelType === "curtain") {
-            list.push(new THREE.Box3().setFromObject(userData));
+            shadowBounds.push(new THREE.Box3().setFromObject(userData));
           }
         });
         previewSceneCurrent.traverse(isLight => {
           if (isLight.isLight && isLight.castShadow && isLight.shadow) {
-            push.push(isLight);
+            shadowLights.push(isLight);
           }
         });
       }
-      for (const shadow of push) {
+      for (const shadow of shadowLights) {
         shadow.shadow.needsUpdate = true;
       }
-      renderCache?.invalidate(arrayValueCurrent, true);
+      renderCache?.invalidate(previousLightKeys, true);
     }
-    profileFrameWork("lighting-and-contact", () => applyVar?.apply(this, argPrimary));
+    profileFrameWork("lighting-and-contact", () => applyVar?.apply(this, renderArgs));
     if (!floorShadowMotionActive) {
       releaseRoot?.setRoot(worldGroup, planCanvas + ":" + importPlan);
       setRoot?.setRoot(worldGroup, planCanvas);
@@ -17779,7 +19826,7 @@ function bootstrapStudioFromLoadedProject() {
     collectShadowCastingLights();
     syncRendererSizeCacheKey();
     if (!renderer.getRenderTarget()) {
-      profileFrameWork("reflections", () => changed.render(argPrimary[2]));
+      profileFrameWork("reflections", () => changed.render(renderArgs[2]));
       const reflectionStats = JSON.stringify({
         ...changed.stats,
         detail: detail?.stats
@@ -17789,19 +19836,19 @@ function bootstrapStudioFromLoadedProject() {
       }
     }
   };
-  function recreateOrbitControlsAtTarget(domEvent = orbitControls.target.clone()) {
-    const distanceTo = cameraCurrent.position.clone();
+  function recreateOrbitControlsAtTarget(targetPoint = orbitControls.target.clone()) {
+    const cameraPosition = cameraCurrent.position.clone();
     orbitControls.dispose();
     orbitControls = createOrbitControls(cameraCurrent);
-    cameraCurrent.position.copy(distanceTo);
-    orbitControls.target.copy(domEvent);
-    const localValue = Math.max(distanceTo.distanceTo(domEvent), 0.001);
-    const to = distanceTo.clone().sub(domEvent).normalize().angleTo(cameraCurrent.up);
-    orbitControls.minDistance = Math.min(2, localValue);
-    orbitControls.maxDistance = Math.max(100, localValue * 2);
+    cameraCurrent.position.copy(cameraPosition);
+    orbitControls.target.copy(targetPoint);
+    const camDistance = Math.max(cameraPosition.distanceTo(targetPoint), 0.001);
+    const polarAngle = cameraPosition.clone().sub(targetPoint).normalize().angleTo(cameraCurrent.up);
+    orbitControls.minDistance = Math.min(2, camDistance);
+    orbitControls.maxDistance = Math.max(100, camDistance * 2);
     orbitControls.minZoom = Math.min(0.35, cameraCurrent.zoom);
     orbitControls.maxZoom = Math.max(6, cameraCurrent.zoom);
-    orbitControls.maxPolarAngle = Math.max(Math.PI * 0.49, to + 0.00001);
+    orbitControls.maxPolarAngle = Math.max(Math.PI * 0.49, polarAngle + 0.00001);
     orbitControls.enableRotate = true;
     orbitControls.enabled = enabled;
     orbitControls.update();
@@ -17809,15 +19856,15 @@ function bootstrapStudioFromLoadedProject() {
     syncOrbitControlsBinding();
   }
   return {
-    onCameraChange(argPrimary) {
+    onCameraChange(cameraFrameListener) {
       const rendererDomElement = renderer.domElement;
-      rendererDomElement.addEventListener("hb-i3d-camera-frame", argPrimary);
-      return () => rendererDomElement.removeEventListener("hb-i3d-camera-frame", argPrimary);
+      rendererDomElement.addEventListener("hb-i3d-camera-frame", cameraFrameListener);
+      return () => rendererDomElement.removeEventListener("hb-i3d-camera-frame", cameraFrameListener);
     },
-    createFrameLoop: argPrimary => createDemandFrameLoop(argPrimary),
-    setPresentedVisible(argPrimary) {
+    createFrameLoop: loop => createDemandFrameLoop(loop),
+    setPresentedVisible(presentedVisible) {
       renderer.domElement.dispatchEvent?.(new CustomEvent("hb-i3d-parent-visibility", {
-        detail: argPrimary === true
+        detail: presentedVisible === true
       }));
     },
     THREE,
@@ -17826,8 +19873,8 @@ function bootstrapStudioFromLoadedProject() {
     get groundReflections() {
       return changed;
     },
-    invalidateReflections(argPrimary) {
-      changed.changed(argPrimary);
+    invalidateReflections(invalidateReason) {
+      changed.changed(invalidateReason);
     },
     get modelRoot() {
       return worldGroup;
@@ -17841,66 +19888,66 @@ function bootstrapStudioFromLoadedProject() {
     get environmentRevision() {
       return planCanvas + ":" + importPlan;
     },
-    setEnvironmentScene(argPrimary) {
-      releaseRoot = argPrimary;
+    setEnvironmentScene(sceneDisposer) {
+      releaseRoot = sceneDisposer;
     },
-    setEnvironmentAirflow(argPrimary) {
-      setRoot = argPrimary;
+    setEnvironmentAirflow(airflowDisposer) {
+      setRoot = airflowDisposer;
     },
-    setCurtainSync(argPrimary) {
-      localValueCurrent = argPrimary;
+    setCurtainSync(frameWorkCallback) {
+      curtainFrameWorkCallback = frameWorkCallback;
     },
     curtainFrame({
-      key: argPrimary,
-      structure: argPrimaryCurrent,
-      floorIds: argPrimaryNext = [],
-      moving: argPrimaryPrevious
+      key: frameKey,
+      structure: structureKey,
+      floorIds: floorIds = [],
+      moving: moving
     }) {
-      const comparisonFlag = argPrimary !== saveState;
-      const localValue = curtainMotionActive;
-      if (!!comparisonFlag || localValue !== argPrimaryPrevious) {
-        if (comparisonFlag) {
+      const frameChanged = frameKey !== saveState;
+      const wasActive = curtainMotionActive;
+      if (!!frameChanged || wasActive !== moving) {
+        if (frameChanged) {
           try {
-            const helperFn = argPrimary => {
+            const parseFrameGroups = framesJson => {
               const lookupMap = new Map();
-              for (const localValue of JSON.parse(argPrimary)) {
-                const localValueCurrent = localValue[1];
-                if (!lookupMap.has(localValueCurrent)) {
-                  lookupMap.set(localValueCurrent, []);
+              for (const framePair of JSON.parse(framesJson)) {
+                const pairKey = framePair[1];
+                if (!lookupMap.has(pairKey)) {
+                  lookupMap.set(pairKey, []);
                 }
-                lookupMap.get(localValueCurrent).push(localValue);
+                lookupMap.get(pairKey).push(framePair);
               }
               return lookupMap;
             };
-            const keysVar = helperFn(saveState);
-            const keys = helperFn(argPrimary);
-            changed.changed([...new Set([...keysVar.keys(), ...keys.keys()])].filter(argPrimary => JSON.stringify(keysVar.get(argPrimary)) !== JSON.stringify(keys.get(argPrimary))));
+            const keysVar = parseFrameGroups(saveState);
+            const keys = parseFrameGroups(frameKey);
+            changed.changed([...new Set([...keysVar.keys(), ...keys.keys()])].filter(groupKey => JSON.stringify(keysVar.get(groupKey)) !== JSON.stringify(keys.get(groupKey))));
           } catch {
-            changed.changed(argPrimaryNext);
+            changed.changed(floorIds);
           }
         }
-        if (argPrimaryCurrent !== importPlan) {
+        if (structureKey !== importPlan) {
           shadowAtlas?.prepareRoot(worldGroup);
           studioReady?.invalidate();
         }
-        arrayValueCurrent = [...new Set([...arrayValue, ...argPrimaryNext])];
-        arrayValue = argPrimaryNext;
-        if (comparisonFlag || argPrimaryPrevious) {
-          if (!localValue) {
+        previousLightKeys = [...new Set([...trackedLightKeys, ...floorIds])];
+        trackedLightKeys = floorIds;
+        if (frameChanged || moving) {
+          if (!wasActive) {
             captureLightCacheFrame();
             tickLightTransitionStates(performance.now(), true);
           }
-          if (comparisonFlag) {
-            boolFlag = true;
+          if (frameChanged) {
+            shadowVisibilityChanged = true;
           }
           lightCacheEpoch += 1;
           previewQualityJustBecameReady = true;
           setPreviewLightCacheVisible(false);
         }
-        saveState = argPrimary;
-        curtainMotionActive = argPrimaryPrevious;
-        importPlan = argPrimaryCurrent;
-        if (!argPrimaryPrevious) {
+        saveState = frameKey;
+        curtainMotionActive = moving;
+        importPlan = structureKey;
+        if (!moving) {
           finishLightCacheCapture();
         }
         updateLightPreview();
@@ -17911,12 +19958,12 @@ function bootstrapStudioFromLoadedProject() {
         preserveLightCache: true
       });
     },
-    setVacuumMoving(argPrimary) {
-      const comparisonFlag = argPrimary === true;
-      if (comparisonFlag !== vacuumMotionActive) {
-        vacuumMotionActive = comparisonFlag;
+    setVacuumMoving(vacuumMoving) {
+      const movingChanged = vacuumMoving === true;
+      if (movingChanged !== vacuumMotionActive) {
+        vacuumMotionActive = movingChanged;
         canvasEmpty++;
-        if (comparisonFlag) {
+        if (movingChanged) {
           captureLightCacheFrame();
           tickLightTransitionStates(performance.now(), true);
         } else {
@@ -17927,10 +19974,10 @@ function bootstrapStudioFromLoadedProject() {
         updateLightPreview();
       }
     },
-    environmentModelPose(argPrimary, argSecondary) {
+    environmentModelPose(floorId, modelId) {
       let userData;
       worldGroup?.traverse(userDataCurrent => {
-        if (userDataCurrent.userData?.environmentFloorId === argPrimary && userDataCurrent.userData?.environmentModelId === argSecondary) {
+        if (userDataCurrent.userData?.environmentFloorId === floorId && userDataCurrent.userData?.environmentModelId === modelId) {
           userData = userDataCurrent;
         }
       });
@@ -17964,31 +20011,31 @@ function bootstrapStudioFromLoadedProject() {
         };
       }
     },
-    setEnvironmentActive(argPrimary) {
-      const comparisonFlag = argPrimary === true;
-      if (comparisonFlag !== floorSelectionQuery) {
-        if (comparisonFlag) {
+    setEnvironmentActive(environmentActive) {
+      const shouldBeActive = environmentActive === true;
+      if (shouldBeActive !== floorSelectionQuery) {
+        if (shouldBeActive) {
           captureLightCacheFrame();
           tickLightTransitionStates(performance.now(), true);
         }
-        floorSelectionQuery = comparisonFlag;
-        if (!comparisonFlag) {
+        floorSelectionQuery = shouldBeActive;
+        if (!shouldBeActive) {
           finishLightCacheCapture();
         }
         requestRender();
       }
     },
-    pickEnvironmentModel(argPrimary, argSecondary, length = [], numericParam = 0) {
-      if (!worldGroup || !length.length) {
+    pickEnvironmentModel(screenX, screenY, models = [], sampleRadius = 0) {
+      if (!worldGroup || !models.length) {
         return null;
       }
       const width = renderer.domElement.getBoundingClientRect();
       if (!width.width || !width.height) {
         return null;
       }
-      const has = new Set(length.map(floorId => JSON.stringify([floorId.floorId, floorId.modelId])));
-      const get = new Map();
-      const push = [];
+      const wantedModelKeys = new Set(models.map(floorId => JSON.stringify([floorId.floorId, floorId.modelId])));
+      const modelByMesh = new Map();
+      const materialList = [];
       const add = new Set();
       worldGroup.updateWorldMatrix(true, true);
       cameraCurrent.updateMatrixWorld();
@@ -18008,27 +20055,27 @@ function bootstrapStudioFromLoadedProject() {
             };
           }
         }
-        if (!!floorId && !!has.has(JSON.stringify([floorId.floorId, floorId.modelId])) && !!(Array.isArray(material.material) ? material.material : [material.material]).some(visible => visible && visible.visible !== false && visible.opacity !== 0)) {
-          get.set(material, floorId);
-          push.push(material);
+        if (!!floorId && !!wantedModelKeys.has(JSON.stringify([floorId.floorId, floorId.modelId])) && !!(Array.isArray(material.material) ? material.material : [material.material]).some(visible => visible && visible.visible !== false && visible.opacity !== 0)) {
+          modelByMesh.set(material, floorId);
+          materialList.push(material);
           if (material.userData?.curtainMotionPanel) {
             add.add(JSON.stringify([floorId.floorId, floorId.modelId]));
           }
         }
       });
-      const cacheKey = push.filter(userData => {
-        const floorId = get.get(userData);
+      const cacheKey = materialList.filter(userData => {
+        const floorId = modelByMesh.get(userData);
         return !add.has(JSON.stringify([floorId.floorId, floorId.modelId])) || userData.userData?.curtainMotionPanel;
       });
       const setFromCamera = new THREE.Raycaster();
-      const localValue = Math.max(0, Math.min(12, numericParam));
-      const arrayValue = [[0, 0], ...(localValue ? [[localValue, 0], [-localValue, 0], [0, localValue], [0, -localValue], [localValue * 0.7, localValue * 0.7], [-localValue * 0.7, localValue * 0.7], [localValue * 0.7, -localValue * 0.7], [-localValue * 0.7, -localValue * 0.7]] : [])];
-      for (const [localValue, localValueCurrent] of arrayValue) {
-        setFromCamera.setFromCamera(new THREE.Vector2((argPrimary + localValue - width.left) / width.width * 2 - 1, 1 - (argSecondary + localValueCurrent - width.top) / width.height * 2), cameraCurrent);
+      const radiusLimit = Math.max(0, Math.min(12, sampleRadius));
+      const sampleOffsets = [[0, 0], ...(radiusLimit ? [[radiusLimit, 0], [-radiusLimit, 0], [0, radiusLimit], [0, -radiusLimit], [radiusLimit * 0.7, radiusLimit * 0.7], [-radiusLimit * 0.7, radiusLimit * 0.7], [radiusLimit * 0.7, -radiusLimit * 0.7], [-radiusLimit * 0.7, -radiusLimit * 0.7]] : [])];
+      for (const [offsetX, sampleOffsetY] of sampleOffsets) {
+        setFromCamera.setFromCamera(new THREE.Vector2((screenX + offsetX - width.left) / width.width * 2 - 1, 1 - (screenY + sampleOffsetY - width.top) / width.height * 2), cameraCurrent);
         for (const object of setFromCamera.intersectObjects(cacheKey, false)) {
           const visible = Array.isArray(object.object.material) ? object.object.material[object.face?.materialIndex || 0] : object.object.material;
           if (visible?.visible !== false && visible?.opacity !== 0) {
-            return get.get(object.object);
+            return modelByMesh.get(object.object);
           }
         }
       }
@@ -18053,64 +20100,64 @@ function bootstrapStudioFromLoadedProject() {
       studioReady?.sync(cameraCurrent);
       updateLightPreview();
     },
-    transformCamera(argPrimary, argSecondary, flag = false) {
-      return transformSceneCamera(argPrimary, combinedFixedCameraView, projectDocCurrent, argSecondary, flag);
+    transformCamera(requestedPose, requestedFloorId, animate = false) {
+      return transformSceneCamera(requestedPose, combinedFixedCameraView, projectDocCurrent, requestedFloorId, animate);
     },
-    async readSceneUpdate(argPrimary) {
-      const get = new URLSearchParams(window.location.search);
+    async readSceneUpdate(abortSignal) {
+      const queryParams = new URLSearchParams(window.location.search);
       const constructedURLSearchParams = new URLSearchParams({
-        projectId: get.get("projectId") || "",
-        since: hasProjectLoadedCurrent.syncKey || ""
+        projectId: queryParams.get("projectId") || "",
+        since: currentStudioDocument.syncKey || ""
       });
       const scene = await withRequestTimeout(15000, async signal => {
-        const status = await fetch("/api/v1/modules/interaction3d/scenes/" + encodeURIComponent(get.get("sceneId") || "") + "/current?" + constructedURLSearchParams, {
+        const response = await fetch("/api/v1/modules/interaction3d/scenes/" + encodeURIComponent(queryParams.get("sceneId") || "") + "/current?" + constructedURLSearchParams, {
           credentials: "same-origin",
           signal
         });
-        if (status.status === 204) {
+        if (response.status === 204) {
           return null;
         }
-        if (!status.ok) {
+        if (!response.ok) {
           throw new Error("户型同步暂时不可用");
         }
-        return status.json();
-      }, argPrimary);
+        return response.json();
+      }, abortSignal);
       if (!scene) {
         return null;
       }
-      const full = sceneUpdatePlan(normalizeProjectDocument(hasProjectLoadedCurrent.scene), normalizeProjectDocument(scene.scene));
+      const full = sceneUpdatePlan(normalizeProjectDocument(currentStudioDocument.scene), normalizeProjectDocument(scene.scene));
       if (!full.full && !full.floors.length) {
         const baseLighting = normalizeProjectDocument(scene.scene);
         projectDocCurrent.baseLighting = baseLighting.baseLighting;
-        for (const id2 of baseLighting.floors) {
-          const name = projectDocCurrent.floors.find(id => id.id === id.id);
+        for (const incomingFloor of baseLighting.floors) {
+          const name = projectDocCurrent.floors.find(candidateFloor => candidateFloor.id === incomingFloor.id);
           if (name) {
-            name.name = id2.name;
+            name.name = incomingFloor.name;
           }
         }
         if (full.lighting && !flag) {
           callback();
           applyBaseLighting(baseLighting.baseLighting);
         }
-        hasProjectLoadedCurrent = scene;
+        currentStudioDocument = scene;
         return null;
       }
       return scene;
     },
     get savedScene() {
-      return hasProjectLoadedCurrent;
+      return currentStudioDocument;
     },
     async replaceScene(scene) {
       const document = normalizeProjectDocument(scene.scene);
-      const floors = sceneUpdatePlan(normalizeProjectDocument(hasProjectLoadedCurrent.scene), document);
+      const floors = sceneUpdatePlan(normalizeProjectDocument(currentStudioDocument.scene), document);
       finish.finish();
       callback(floors.full || floors.lighting ? null : new Set(floors.floors));
       stopAllLightAnimations();
-      localValueEntry = null;
-      cloneCurrent = null;
-      boolFlagPrevious = false;
-      localValueLocal = null;
-      localValueItem = null;
+      firstPresentPromise = null;
+      orbitPivot = null;
+      hasRunTransitionBefore = false;
+      shadowScopeGroup = null;
+      shadowScopeChild = null;
       if (!floors.full) {
         document.activeFloorId = activeFloorId;
         document.previewFloorMode = projectDocCurrent.previewFloorMode;
@@ -18119,7 +20166,7 @@ function bootstrapStudioFromLoadedProject() {
           const found = projectDocCurrent.floors.find(id => id.id === scene.id);
           if (found && !floors.floors.includes(scene.id)) {
             for (const id of scene.scene.lightGroups) {
-              const enabled = found.scene.lightGroups.find(id => id.id === id.id);
+              const enabled = found.scene.lightGroups.find(candidateGroup => candidateGroup.id === id.id);
               if (enabled) {
                 id.enabled = enabled.enabled;
               }
@@ -18137,7 +20184,7 @@ function bootstrapStudioFromLoadedProject() {
           }
         }
         projectDocCurrent = document;
-        hasProjectLoadedCurrent = scene;
+        currentStudioDocument = scene;
         floorSceneCurrent = activeFloor().scene;
         removeWorldModelLayer(new Set(floors.floors));
         Promise.allSettled(loadVisibleExternalModels());
@@ -18178,28 +20225,28 @@ function bootstrapStudioFromLoadedProject() {
       };
     },
     getOrbitCenter() {
-      return (computeMultiFloorBoundsCenter() || resolveOrbitPanTarget(orbitControls.target)).toArray();
+      return (computeMultiFloorBoundsCenter(worldPoint) || resolveOrbitPanTarget(orbitControls.target)).toArray();
     },
-    setOrbitPivot(argPrimary) {
-      cloneCurrent = argPrimary ? new THREE.Vector3().fromArray(argPrimary) : null;
+    setOrbitPivot(pivotArray) {
+      orbitPivot = pivotArray ? new THREE.Vector3().fromArray(pivotArray) : null;
       syncOrbitControlsBinding();
     },
-    orbitCameraPose(target, argSecondary) {
+    orbitCameraPose(target, yawAngle) {
       const up = structuredClone(target);
-      const computedValue = finite(argSecondary, 0) % (Math.PI * 2);
-      if (Math.abs(computedValue) < 1e-12 || Math.abs(Math.abs(computedValue) - Math.PI * 2) < 1e-12) {
+      const yawDelta = finite(yawAngle, 0) % (Math.PI * 2);
+      if (Math.abs(yawDelta) < 1e-12 || Math.abs(Math.abs(yawDelta) - Math.PI * 2) < 1e-12) {
         return up;
       }
-      cloneCurrent ||= resolveOrbitPanTarget(new THREE.Vector3().fromArray(target.target));
-      const angle = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), computedValue);
-      for (const localValue of ["position", "target"]) {
-        up[localValue] = new THREE.Vector3().fromArray(target[localValue]).sub(cloneCurrent).applyQuaternion(angle).add(cloneCurrent).toArray();
+      orbitPivot ||= resolveOrbitPanTarget(new THREE.Vector3().fromArray(target.target));
+      const angle = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yawDelta);
+      for (const poseKey of ["position", "target"]) {
+        up[poseKey] = new THREE.Vector3().fromArray(target[poseKey]).sub(orbitPivot).applyQuaternion(angle).add(orbitPivot).toArray();
       }
       let clone = new THREE.Vector3().fromArray(target.up || [0, 1, 0]);
       const sub = new THREE.Vector3().fromArray(target.position).sub(new THREE.Vector3().fromArray(target.target));
       if (clone.lengthSq() < 1e-12 || clone.clone().cross(sub).lengthSq() < 1e-12) {
-        const localValue = THREE.MathUtils.degToRad(finite(target.topRotation, 0));
-        clone = new THREE.Vector3(Math.sin(localValue), 0, -Math.cos(localValue));
+        const topRotationRad = THREE.MathUtils.degToRad(finite(target.topRotation, 0));
+        clone = new THREE.Vector3(Math.sin(topRotationRad), 0, -Math.cos(topRotationRad));
         if (clone.clone().cross(sub).lengthSq() < 1e-12) {
           clone.set(1, 0, 0);
         }
@@ -18207,27 +20254,27 @@ function bootstrapStudioFromLoadedProject() {
       up.up = clone.applyQuaternion(angle).toArray();
       return up;
     },
-    setFocusViewport(argPrimary) {
-      const clampedValue = clamp(finite(argPrimary, 0), 0, 0.7);
-      if (clampedValue !== zeroValue) {
-        zeroValue = clampedValue;
+    setFocusViewport(viewportFraction) {
+      const clampedValue = clamp(finite(viewportFraction, 0), 0, 0.7);
+      if (clampedValue !== viewOffsetFraction) {
+        viewOffsetFraction = clampedValue;
         syncRendererSizeCacheKey();
         requestRender({
           preserveLightCache: false
         });
       }
     },
-    beginCameraMotion(argPrimary, argSecondary, argTertiary = "focus") {
-      motionPresentation.camera(!!argSecondary, {
-        live: argTertiary === "focus"
+    beginCameraMotion(targetMode, targetHeight, presentation = "focus") {
+      motionPresentation.camera(!!targetHeight, {
+        live: presentation === "focus"
       });
       const mode = this.cameraState();
-      const comparisonFlag = argSecondary && (height || mode.mode !== argPrimary);
-      const fromHeight = comparisonFlag ? height?.height ?? resetOrbitTarget(cameraCurrent, orbitControls.target) : 0;
+      const needsHeightTransition = targetHeight && (height || mode.mode !== targetMode);
+      const fromHeight = needsHeightTransition ? height?.height ?? resetOrbitTarget(cameraCurrent, orbitControls.target) : 0;
       const fromWeight = height?.weight ?? (mode.mode === "perspective" ? 1 : 0);
       height = null;
-      boolFlagCurrent = true;
-      boolFlagNext = false;
+      isLightCacheCaptureActive = true;
+      orbitInteractionStarted = false;
       if (isPreviewQualityReady()) {
         captureLightCacheFrame();
         tickLightTransitionStates(performance.now());
@@ -18236,20 +20283,20 @@ function bootstrapStudioFromLoadedProject() {
         });
         updateLightPreview();
       }
-      setCameraProjectionMode(argPrimary, {
+      setCameraProjectionMode(targetMode, {
         preserveView: true,
         deferControlUpdate: true
       });
       recreateOrbitControlsAtTarget();
       syncOrbitControlsBinding();
       lockPreviewOrbit();
-      if (comparisonFlag) {
+      if (needsHeightTransition) {
         height = {
           fromHeight,
-          toHeight: computeCameraViewHeight(argSecondary),
+          toHeight: computeCameraViewHeight(targetHeight),
           height: fromHeight,
           fromWeight,
-          toWeight: argPrimary === "perspective" ? 1 : 0,
+          toWeight: targetMode === "perspective" ? 1 : 0,
           weight: fromWeight
         };
         return mode;
@@ -18257,20 +20304,20 @@ function bootstrapStudioFromLoadedProject() {
         return this.cameraState();
       }
     },
-    applyCameraFrame(argPrimary, argSecondary, argTertiary) {
-      const clampedValue = clamp(finite(argTertiary, 0), 0, 0.7);
-      const comparisonFlag = clampedValue === zeroValue;
-      zeroValue = clampedValue;
-      this.applyCameraPose(argPrimary, argSecondary, comparisonFlag);
-      motionPresentation.advance(argSecondary);
+    applyCameraFrame(cameraPose, frameProgress, frameViewportFraction) {
+      const clampedValue = clamp(finite(frameViewportFraction, 0), 0, 0.7);
+      const offsetUnchanged = clampedValue === viewOffsetFraction;
+      viewOffsetFraction = clampedValue;
+      this.applyCameraPose(cameraPose, frameProgress, offsetUnchanged);
+      motionPresentation.advance(frameProgress);
     },
-    applyCameraPose(view, numericParam = 1, preserveLightCache = true) {
+    applyCameraPose(view, heightBlend = 1, preserveLightCache = true) {
       if (height) {
-        if (numericParam >= 1) {
+        if (heightBlend >= 1) {
           height = null;
         } else {
-          height.height = height.fromHeight + (height.toHeight - height.fromHeight) * numericParam;
-          height.weight = height.fromWeight + (height.toWeight - height.fromWeight) * numericParam;
+          height.height = height.fromHeight + (height.toHeight - height.fromHeight) * heightBlend;
+          height.weight = height.fromWeight + (height.toWeight - height.fromWeight) * heightBlend;
         }
       }
       softLockPreviewOrbit();
@@ -18300,32 +20347,32 @@ function bootstrapStudioFromLoadedProject() {
     },
     endCameraMotion() {
       motionPresentation.camera(false);
-      boolFlagCurrent = false;
+      isLightCacheCaptureActive = false;
       recreateOrbitControlsAtTarget();
       unlockPreviewOrbit();
       requestRender();
       if (typeof isCapturingFrame !== "undefined" && isCapturingFrame === objectValue && !size.size) {
-        if (localValueTarget !== null) {
-          window.clearTimeout(localValueTarget);
+        if (captureFinishTimer !== null) {
+          window.clearTimeout(captureFinishTimer);
         }
-        localValueTarget = window.setTimeout(finishLightCacheCapture, 180);
+        captureFinishTimer = window.setTimeout(finishLightCacheCapture, 180);
       }
     },
-    setFloorGap(argPrimary) {
-      const conditionalValue = Number.isFinite(argPrimary) ? clamp(argPrimary, 0, 20) : null;
-      if (conditionalValue !== null || localValue !== null) {
-        const previewFloorGap = conditionalValue ?? normalizeProjectDocument(hasProjectLoadedCurrent.scene).previewFloorGap;
+    setFloorGap(gapValue) {
+      const normalizedGap = Number.isFinite(gapValue) ? clamp(gapValue, 0, 20) : null;
+      if (normalizedGap !== null || floorGapOverride !== null) {
+        const previewFloorGap = normalizedGap ?? normalizeProjectDocument(currentStudioDocument.scene).previewFloorGap;
         if (Math.abs(projectDocCurrent.previewFloorGap - previewFloorGap) > 0.000001) {
           finish.finish();
-          const comparisonFlag = getPreviewFloorModeCurrent() === "all";
-          const conditionalValue = comparisonFlag ? finish.take(projectDocCurrent.floors.map(id => id.id), findFloorOrbitCenter, true) : [];
+          const allFloorsPreview = getPreviewFloorModeCurrent() === "all";
+          const reusePlan = allFloorsPreview ? finish.take(projectDocCurrent.floors.map(id => id.id), findFloorOrbitCenter, true) : [];
           projectDocCurrent.previewFloorGap = previewFloorGap;
-          for (const id of conditionalValue) {
+          for (const id of reusePlan) {
             finish.reuse(id, findFloorOrbitCenter(id.id));
           }
-          if (comparisonFlag) {
-            cloneCurrent = null;
-            localValueText = null;
+          if (allFloorsPreview) {
+            orbitPivot = null;
+            orbitBoundsSourceGroup = null;
             flushPlanZoomFrame();
             requestRender({
               scene: true,
@@ -18334,7 +20381,7 @@ function bootstrapStudioFromLoadedProject() {
           }
         }
       }
-      localValue = conditionalValue;
+      floorGapOverride = normalizedGap;
     },
     appearance(baseLightingCurrent) {
       const cacheKey = JSON.stringify([baseLightingCurrent.baseLighting, baseLightingCurrent.lightingMode, baseLightingCurrent.lightRegionOverrides]);
@@ -18358,9 +20405,9 @@ function bootstrapStudioFromLoadedProject() {
         onPreviewContainerResize();
         requestRender();
       }
-      const comparisonFlag = boolTrue !== (baseLightingCurrent.backgroundVisible !== false);
-      boolTrue = baseLightingCurrent.backgroundVisible !== false;
-      document.body.classList.toggle("is-background-hidden", !boolTrue);
+      const backgroundVisibilityChanged = floorBackgroundVisible !== (baseLightingCurrent.backgroundVisible !== false);
+      floorBackgroundVisible = baseLightingCurrent.backgroundVisible !== false;
+      document.body.classList.toggle("is-background-hidden", !floorBackgroundVisible);
       collectShadowCastingLights();
       const floorBrightness = normalizeBaseLighting(baseLightingCurrent.baseLighting || projectDocCurrent.baseLighting);
       if (studioReady?.setFloorBrightness(floorBrightness.floorBrightness)) {
@@ -18369,50 +20416,50 @@ function bootstrapStudioFromLoadedProject() {
       if (JSON.stringify(floorBrightness) !== JSON.stringify(baseLighting)) {
         applyBaseLighting(floorBrightness);
       }
-      if (comparisonFlag) {
+      if (backgroundVisibilityChanged) {
         requestRender();
       }
     },
-    floorDefaultCamera(argPrimary) {
-      const position = argPrimary === "all" ? combinedFixedCameraView?.combinedFixedCameraView : combinedFixedCameraView?.floors.find(id => id.id === argPrimary)?.scene.settings?.fixedCameraView;
-      if (!position) {
+    floorDefaultCamera(floorId) {
+      const fixedView = floorId === "all" ? combinedFixedCameraView?.combinedFixedCameraView : combinedFixedCameraView?.floors.find(floor => floor.id === floorId)?.scene.settings?.fixedCameraView;
+      if (!fixedView) {
         return null;
       }
       const objectValue = {
-        mode: position.mode,
-        view: position.view,
-        topRotation: position.topRotation,
-        position: [position.position.x, position.position.y, position.position.z],
-        target: [position.target.x, position.target.y, position.target.z],
+        mode: fixedView.mode,
+        view: fixedView.view,
+        topRotation: fixedView.topRotation,
+        position: [fixedView.position.x, fixedView.position.y, fixedView.position.z],
+        target: [fixedView.target.x, fixedView.target.y, fixedView.target.z],
         zoom: 1,
-        frameSize: position.visibleHeight,
-        focalLength: position.focalLength || 50
+        frameSize: fixedView.visibleHeight,
+        focalLength: fixedView.focalLength || 50
       };
-      return transformSceneCamera(objectValue, combinedFixedCameraView, projectDocCurrent, argPrimary);
+      return transformSceneCamera(objectValue, combinedFixedCameraView, projectDocCurrent, floorId);
     },
     get floorTransitionActive() {
       return finish.active;
     },
-    advanceFloorTransition(argPrimary, argSecondary) {
-      const projections = argSecondary ? {
-        height: height ? height.fromHeight + (height.toHeight - height.fromHeight) * argPrimary : computeCameraViewHeight(argSecondary),
-        weight: height ? height.fromWeight + (height.toWeight - height.fromWeight) * argPrimary : argSecondary.mode === "perspective" ? 1 : 0,
-        distance: new THREE.Vector3().fromArray(argSecondary.position).distanceTo(new THREE.Vector3().fromArray(argSecondary.target))
+    advanceFloorTransition(transitionProgress, cameraSpec) {
+      const projections = cameraSpec ? {
+        height: height ? height.fromHeight + (height.toHeight - height.fromHeight) * transitionProgress : computeCameraViewHeight(cameraSpec),
+        weight: height ? height.fromWeight + (height.toWeight - height.fromWeight) * transitionProgress : cameraSpec.mode === "perspective" ? 1 : 0,
+        distance: new THREE.Vector3().fromArray(cameraSpec.position).distanceTo(new THREE.Vector3().fromArray(cameraSpec.target))
       } : null;
-      profileFrameWork("motion-and-settle", () => finish.sample(argPrimary, argSecondary, projections));
+      profileFrameWork("motion-and-settle", () => finish.sample(transitionProgress, cameraSpec, projections));
     },
-    setFloorSlideCameras(argPrimary, argSecondary) {
-      const viewDistance = view => new THREE.Vector3().fromArray(view.position).distanceTo(new THREE.Vector3().fromArray(view.target));
-      finish.setSlideCameras(argPrimary, argSecondary, {
+    setFloorSlideCameras(fromSpec, toSpec) {
+      const viewDistance = cameraSpec => new THREE.Vector3().fromArray(cameraSpec.position).distanceTo(new THREE.Vector3().fromArray(cameraSpec.target));
+      finish.setSlideCameras(fromSpec, toSpec, {
         from: {
-          height: height?.fromHeight ?? computeCameraViewHeight(argPrimary),
-          weight: height?.fromWeight ?? (argPrimary.mode === "perspective" ? 1 : 0),
-          distance: viewDistance(argPrimary)
+          height: height?.fromHeight ?? computeCameraViewHeight(fromSpec),
+          weight: height?.fromWeight ?? (fromSpec.mode === "perspective" ? 1 : 0),
+          distance: viewDistance(fromSpec)
         },
         to: {
-          height: computeCameraViewHeight(argSecondary),
-          weight: argSecondary.mode === "perspective" ? 1 : 0,
-          distance: viewDistance(argSecondary)
+          height: computeCameraViewHeight(toSpec),
+          weight: toSpec.mode === "perspective" ? 1 : 0,
+          distance: viewDistance(toSpec)
         }
       });
     },
@@ -18426,13 +20473,13 @@ function bootstrapStudioFromLoadedProject() {
       return entryMap.size;
     },
     profileFrameWork,
-    recordFloorFrame(argPrimary, argSecondary) {
+    recordFloorFrame(active, details) {
       if (typeof setPerfMotionActive == "function") {
-        setPerfMotionActive(argPrimary, argSecondary);
+        setPerfMotionActive(active, details);
       }
     },
     get floorEffectsFollow() {
-      return comparisonFlagCurrent;
+      return followLiveEntry;
     },
     transitionFloor(target) {
       if (typeof isPerfDiagnosticsEnabled !== "undefined" && isPerfDiagnosticsEnabled) {
@@ -18446,18 +20493,18 @@ function bootstrapStudioFromLoadedProject() {
           cpuMs: 0
         };
       }
-      const localValue = [...projectDocCurrent.floors].sort((elevation, elevationRight) => elevation.elevation - elevationRight.elevation).map(id => id.id);
-      const helperFn = argPrimary => {
-        const scene = projectDocCurrent.floors.find(id => id.id === argPrimary);
-        const computedValue = scene.scene.calibration?.pixelsPerMeter || 1;
-        const localValue = this.worldPoint(argPrimary, 0, 0, 0);
-        return new THREE.Matrix4().makeBasis(this.worldPoint(argPrimary, computedValue, 0, 0).sub(localValue), new THREE.Vector3(0, 1, 0), this.worldPoint(argPrimary, 0, computedValue, 0).sub(localValue)).setPosition(localValue);
+      const floorsByElevation = [...projectDocCurrent.floors].sort((elevation, elevationRight) => elevation.elevation - elevationRight.elevation).map(id => id.id);
+      const buildFloorBasis = floorId => {
+        const scene = projectDocCurrent.floors.find(id => id.id === floorId);
+        const pixelsPerMeter = scene.scene.calibration?.pixelsPerMeter || 1;
+        const originPoint = this.worldPoint(floorId, 0, 0, 0);
+        return new THREE.Matrix4().makeBasis(this.worldPoint(floorId, pixelsPerMeter, 0, 0).sub(originPoint), new THREE.Vector3(0, 1, 0), this.worldPoint(floorId, 0, pixelsPerMeter, 0).sub(originPoint)).setPosition(originPoint);
       };
-      const comparisonFlag = getPreviewFloorModeCurrent() === "all";
-      const text = comparisonFlag ? "all" : activeFloorId;
-      const findVar = profileFrameWork("detach-source", () => finish.take(comparisonFlag ? localValue : [activeFloorId], helperFn, comparisonFlag));
+      const previewingAllFloors = getPreviewFloorModeCurrent() === "all";
+      const scrollTargetFloorId = previewingAllFloors ? "all" : activeFloorId;
+      const findVar = profileFrameWork("detach-source", () => finish.take(previewingAllFloors ? floorsByElevation : [activeFloorId], releaseCachedNode, previewingAllFloors));
       for (const cacheKey of findVar) {
-        cacheKey.cacheKey ||= text;
+        cacheKey.cacheKey ||= scrollTargetFloorId;
         cacheKey.cacheEpoch ??= cacheEpoch;
       }
       const bounds = new THREE.Box3();
@@ -18472,23 +20519,23 @@ function bootstrapStudioFromLoadedProject() {
           }
         });
       }
-      const x32 = bounds.getSize(new THREE.Vector3());
-      const comparisonFlagCurrent = !comparisonFlag && target !== "all";
-      const conditionalValue = comparisonFlagCurrent ? new THREE.Vector3(0, 1, 0).applyQuaternion(cameraCurrent.quaternion).normalize() : null;
-      const value = comparisonFlagCurrent ? resetOrbitTarget(cameraCurrent, orbitControls.target) * 1.2 : Math.max(20, x32.x, x32.z) * 1.5;
-      const scrollFrom = findVar.find(record => Number.isFinite(record.scrollPosition))?.scrollPosition ?? localValue.indexOf(text);
-      const targetIndex = localValue.indexOf(target);
-      const handoffRange = comparisonFlagCurrent ? localValue.slice(Math.min(Math.floor(scrollFrom), targetIndex), Math.max(Math.ceil(scrollFrom), targetIndex) + 1) : [];
-      const map = target === "all" ? localValue : [target, ...handoffRange.filter(id => id !== target)];
-      const everyVar = map.map(argPrimary => findVar.find(id => id.id === argPrimary && id.cacheEpoch === cacheEpoch) || entryMap.get(argPrimary));
+      const floorBoundsSize = bounds.getSize(new THREE.Vector3());
+      const handoffNeeded = !previewingAllFloors && target !== "all";
+      const conditionalValue = handoffNeeded ? new THREE.Vector3(0, 1, 0).applyQuaternion(cameraCurrent.quaternion).normalize() : null;
+      const value = handoffNeeded ? resetOrbitTarget(cameraCurrent, orbitControls.target) * 1.2 : Math.max(20, floorBoundsSize.x, floorBoundsSize.z) * 1.5;
+      const scrollFrom = findVar.find(record => Number.isFinite(record.scrollPosition))?.scrollPosition ?? floorsByElevation.indexOf(scrollTargetFloorId);
+      const targetIndex = floorsByElevation.indexOf(target);
+      const handoffRange = handoffNeeded ? floorsByElevation.slice(Math.min(Math.floor(scrollFrom), targetIndex), Math.max(Math.ceil(scrollFrom), targetIndex) + 1) : [];
+      const map = target === "all" ? floorsByElevation : [target, ...handoffRange.filter(id => id !== target)];
+      const everyVar = map.map(floorId => findVar.find(id => id.id === floorId && id.cacheEpoch === cacheEpoch) || entryMap.get(floorId));
       const reusedCount = everyVar.filter(Boolean).length;
-      if (comparisonFlagCurrent) {
+      if (handoffNeeded) {
         for (let index = 0; index < map.length; index++) {
           if (everyVar[index]) {
             continue;
           }
           this.setFloor(map[index]);
-          const captured = finish.capture([map[index]], helperFn, false)[0];
+          const captured = finish.capture([map[index]], releaseCachedNode, false)[0];
           captured.frame = captured.baseFrame.clone();
           captured.cacheKey = map[index];
           captured.cacheEpoch = cacheEpoch;
@@ -18515,25 +20562,25 @@ function bootstrapStudioFromLoadedProject() {
       } else {
         callback(new Set(map));
       }
-      profileFrameWork("set-destination", () => this.setFloor(target, length, helperFn));
+      profileFrameWork("set-destination", () => this.setFloor(target, length, releaseCachedNode));
       const center = this.getOrbitCenter();
-      const work = profileFrameWork("capture-destination", () => finish.capture(map, helperFn, target === "all" || map.length > 1));
+      const work = profileFrameWork("capture-destination", () => finish.capture(map, releaseCachedNode, target === "all" || map.length > 1));
       for (const cacheKey of work) {
         cacheKey.cacheKey = target;
         cacheKey.cacheEpoch = cacheEpoch;
       }
-      profileFrameWork("begin-motion", () => finish.begin(findVar, work, localValue, value, comparisonFlagCurrent, conditionalValue, target));
-      localValueCurrent?.();
+      profileFrameWork("begin-motion", () => finish.begin(findVar, work, floorsByElevation, value, handoffNeeded, conditionalValue, target));
+      curtainFrameWorkCallback?.();
       return center;
     },
-    setFloor(floorEntry, optionalValue = null, argTertiary = findFloorOrbitCenter) {
+    setFloor(floorEntry, optionalValue = null, orbitCenterResolver = findFloorOrbitCenter) {
       const id = projectDocCurrent.floors.find(id => id.id === floorEntry) || projectDocCurrent.floors[0];
       const previewFloorMode = floorEntry === "all" && projectDocCurrent.floors.length > 1 ? "all" : "active";
       if (!!optionalValue || activeFloorId !== id.id || getPreviewFloorModeCurrent() !== previewFloorMode) {
         if (size.size || typeof isCapturingFrame !== "undefined" && isCapturingFrame === objectValue) {
           stopAllLightAnimations();
         }
-        boolFlagPrevious = false;
+        hasRunTransitionBefore = false;
         activeFloorId = id.id;
         projectDocCurrent.activeFloorId = id.id;
         floorSceneCurrent = id.scene;
@@ -18543,10 +20590,10 @@ function bootstrapStudioFromLoadedProject() {
           syncFloorCameraChrome();
           const idValue = [...projectDocCurrent.floors].sort((elevation, elevationRight) => elevation.elevation - elevationRight.elevation)[0].id;
           for (const id of optionalValue) {
-            finish.reuse(id, argTertiary(id.id)).traverse(userData => {
+            finish.reuse(id, orbitCenterResolver(id.id)).traverse(userData => {
               if (["background", "grid"].includes(userData.userData?.exportRole)) {
                 userData.userData.floorBackgroundHidden = previewFloorMode === "all" && id.id !== idValue;
-                userData.visible = boolTrue && !userData.userData.floorBackgroundHidden;
+                userData.visible = floorBackgroundVisible && !userData.userData.floorBackgroundHidden;
               }
             });
           }
@@ -18556,9 +20603,9 @@ function bootstrapStudioFromLoadedProject() {
               if (!userData.isLight || !userData.userData.lightItemId) {
                 return;
               }
-              const localValue = projectDocCurrent.floors.find(id => id.id === userData.userData.lightFloorId)?.scene.items.find(id => id.id === userData.userData.lightItemId);
-              if (localValue) {
-                studioReady.register(userData, localValue);
+              const lightFloor = projectDocCurrent.floors.find(id => id.id === userData.userData.lightFloorId)?.scene.items.find(id => id.id === userData.userData.lightItemId);
+              if (lightFloor) {
+                studioReady.register(userData, lightFloor);
               }
             });
           }
@@ -18577,7 +20624,7 @@ function bootstrapStudioFromLoadedProject() {
             persist: false
           });
         }
-        cloneCurrent = null;
+        orbitPivot = null;
       }
     },
     worldPoint,
@@ -18596,8 +20643,8 @@ function bootstrapStudioFromLoadedProject() {
     },
     setLightStates,
     setEditorEffects,
-    mapLightEffectState: argPrimary => mapLightEffectState(argPrimary),
-    lightEffectColorHex: argPrimary => lightEffectColorHex(argPrimary),
+    mapLightEffectState: lightEffectState => mapLightEffectState(lightEffectState),
+    lightEffectColorHex: lightEffectHex => lightEffectColorHex(lightEffectHex),
     cameraState(flag = false) {
       if (flag) {
         recreateOrbitControlsAtTarget();
@@ -18614,30 +20661,30 @@ function bootstrapStudioFromLoadedProject() {
         focalLength: getCameraFocalLength()
       };
     },
-    setCameraProjection(argPrimary) {
-      activeCameraSettings().cameraMode = argPrimary === "perspective" ? "perspective" : "orthographic";
+    setCameraProjection(cameraMode) {
+      activeCameraSettings().cameraMode = cameraMode === "perspective" ? "perspective" : "orthographic";
       setCameraProjectionMode(activeCameraSettings().cameraMode, {
         preserveView: true,
         deferControlUpdate: true
       });
       recreateOrbitControlsAtTarget();
     },
-    setCameraFocalLength(argPrimary) {
-      activeCameraSettings().cameraFocalLength = clamp(finite(argPrimary, 50), 18, 120);
+    setCameraFocalLength(requestedFocalLength) {
+      activeCameraSettings().cameraFocalLength = clamp(finite(requestedFocalLength, 50), 18, 120);
       applyCameraFocalLength();
       requestRender();
     },
     setCameraInteraction(rotationMode = {}) {
       const conditionalValue = ["horizontal", "vertical"].includes(rotationMode.rotationMode) ? rotationMode.rotationMode : "free";
       const value = rotationMode.enabled === true;
-      const comparisonFlag = rotationMode.panEnabled !== false;
-      const comparisonFlagCurrent = rotationMode.zoomEnabled !== false;
-      const comparisonFlagNext = enabled !== value || stringValue !== conditionalValue || enablePan !== comparisonFlag || enableZoom !== comparisonFlagCurrent;
+      const panInteractionEnabled = rotationMode.panEnabled !== false;
+      const zoomInteractionEnabled = rotationMode.zoomEnabled !== false;
+      const orbitSettingsChanged = enabled !== value || orbitPanMode !== conditionalValue || enablePan !== panInteractionEnabled || enableZoom !== zoomInteractionEnabled;
       enabled = value;
-      stringValue = conditionalValue;
-      enablePan = comparisonFlag;
-      enableZoom = comparisonFlagCurrent;
-      if (comparisonFlagNext) {
+      orbitPanMode = conditionalValue;
+      enablePan = panInteractionEnabled;
+      enableZoom = zoomInteractionEnabled;
+      if (orbitSettingsChanged) {
         recreateOrbitControlsAtTarget();
       } else {
         orbitControls.enabled = value;
@@ -18645,15 +20692,15 @@ function bootstrapStudioFromLoadedProject() {
       syncOrbitControlsBinding();
     },
     whenPresented() {
-      localValueEntry ||= (async () => {
-        const localValue = loadVisibleExternalModels();
-        let localValueCurrent;
+      firstPresentPromise ||= (async () => {
+        const externalModelLoads = loadVisibleExternalModels();
+        let fadeTimeoutHandle;
         try {
-          await Promise.race([Promise.allSettled(localValue), new Promise(argPrimary => {
-            localValueCurrent = window.setTimeout(argPrimary, 8000);
+          await Promise.race([Promise.allSettled(externalModelLoads), new Promise(resolve => {
+            fadeTimeoutHandle = window.setTimeout(resolve, 8000);
           })]);
         } finally {
-          window.clearTimeout(localValueCurrent);
+          window.clearTimeout(fadeTimeoutHandle);
         }
         refreshStudioChrome();
         await new Promise(requestAnimationFrame);
@@ -18663,10 +20710,10 @@ function bootstrapStudioFromLoadedProject() {
         renderer.render(previewSceneCurrent, cameraCurrent);
         await new Promise(requestAnimationFrame);
       })();
-      return localValueEntry;
+      return firstPresentPromise;
     },
-    setCameraView(argPrimary) {
-      activeCameraSettings().cameraView = argPrimary === "top" ? "top" : "free";
+    setCameraView(cameraView) {
+      activeCameraSettings().cameraView = cameraView === "top" ? "top" : "free";
       nudgeCamera(activeCameraSettings().cameraView, {
         force: true
       });

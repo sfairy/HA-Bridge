@@ -1,24 +1,24 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import shutil
 import tempfile
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from threading import RLock
 from urllib.parse import unquote
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Request, Response, status
-from sqlalchemy import select
-
 from dependencies import DatabaseSession, LicensedUser
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from global_popups import global_popups
 from models import Project, ProjectDraft
 from panel.document_walk import any_leaf
 from schemas import Studio3DDraftUpdate
+from sqlalchemy import select
 
 router = APIRouter(prefix='/studio3d', tags=['studio3d'])
 MAX_DRAFT_BYTES = 33554432
@@ -30,7 +30,7 @@ _storage_lock = RLock()
 
 
 def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _atomic_json_write(path: Path, payload: dict) -> None:
@@ -210,6 +210,59 @@ def check_studio3d_export(request: Request, _user: LicensedUser) -> dict:
         return {'folderName': folder_name, 'exists': target.exists()}
 
 
+def _materialize_export(
+    *,
+    temporary_archive: Path,
+    target: Path,
+    exports_dir: Path,
+    folder_name: str,
+    overwrite: bool,
+) -> tuple[list, bool]:
+    '''Validate the archive and swap the export folder into place. Runs off the event loop.'''
+    entries = _validate_archive(temporary_archive)
+    with _storage_lock:
+        target_exists = target.exists()
+        if target_exists and not overwrite:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    'code': 'STUDIO3D_EXPORT_EXISTS',
+                    'message': '该文件夹已存在，请确认覆盖或换一个文件夹名。',
+                    'folderName': folder_name,
+                },
+            )
+        staging = exports_dir / f'.export-{uuid4().hex}'
+        staging.mkdir(mode=448)
+        try:
+            with zipfile.ZipFile(temporary_archive) as archive:
+                for entry in entries:
+                    output_path = staging / entry.filename
+                    with archive.open(entry) as source, output_path.open('xb') as output:
+                        shutil.copyfileobj(source, output)
+                    output_path.chmod(384)
+            archive_name = f'{folder_name}.zip'
+            shutil.copyfile(temporary_archive, staging / archive_name)
+            (staging / archive_name).chmod(384)
+            if target_exists:
+                backup = exports_dir / f'.previous-{uuid4().hex}'
+                os.replace(target, backup)
+                try:
+                    os.replace(staging, target)
+                    shutil.rmtree(backup, ignore_errors=True)
+                except Exception:
+                    os.replace(backup, target)
+                    raise
+            else:
+                os.replace(staging, target)
+        except BaseException:
+            if staging.exists():
+                shutil.rmtree(staging)
+            raise
+        if staging.exists():
+            shutil.rmtree(staging)
+    return entries, target_exists
+
+
 @router.post('/exports', status_code=status.HTTP_201_CREATED)
 async def save_studio3d_export(request: Request, _user: LicensedUser) -> dict:
     folder_name = _folder_name(request)
@@ -232,48 +285,14 @@ async def save_studio3d_export(request: Request, _user: LicensedUser) -> dict:
         temporary_archive.chmod(384)
         if written == 0:
             raise HTTPException(status_code=422, detail='导出 ZIP 为空。')
-        entries = _validate_archive(temporary_archive)
-        with _storage_lock:
-            target_exists = target.exists()
-            if target_exists and not overwrite:
-                raise HTTPException(
-                    status_code=409,
-                    detail={
-                        'code': 'STUDIO3D_EXPORT_EXISTS',
-                        'message': '该文件夹已存在，请确认覆盖或换一个文件夹名。',
-                        'folderName': folder_name,
-                    },
-                )
-            staging = settings.studio3d_exports_dir / f'.export-{uuid4().hex}'
-            staging.mkdir(mode=448)
-            try:
-                with zipfile.ZipFile(temporary_archive) as archive:
-                    for entry in entries:
-                        output_path = staging / entry.filename
-                        with archive.open(entry) as source:
-                            with output_path.open('xb') as output:
-                                shutil.copyfileobj(source, output)
-                        output_path.chmod(384)
-                archive_name = f'{folder_name}.zip'
-                shutil.copyfile(temporary_archive, staging / archive_name)
-                (staging / archive_name).chmod(384)
-                if target_exists:
-                    backup = settings.studio3d_exports_dir / f'.previous-{uuid4().hex}'
-                    os.replace(target, backup)
-                    try:
-                        os.replace(staging, target)
-                        shutil.rmtree(backup, ignore_errors=True)
-                    except Exception:
-                        os.replace(backup, target)
-                        raise
-                else:
-                    os.replace(staging, target)
-            except BaseException:
-                if staging.exists():
-                    shutil.rmtree(staging)
-                raise
-            if staging.exists():
-                shutil.rmtree(staging)
+        entries, target_exists = await asyncio.to_thread(
+            _materialize_export,
+            temporary_archive=temporary_archive,
+            target=target,
+            exports_dir=settings.studio3d_exports_dir,
+            folder_name=folder_name,
+            overwrite=overwrite,
+        )
         catalog = getattr(request.app.state, 'asset_catalog', None)
         if catalog is not None:
             for entry in entries:

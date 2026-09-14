@@ -3,9 +3,8 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-
 from ha.client import HAClientError, normalize_base_url
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 CONTROL_CHARACTERS = re.compile('[\\x00-\\x1f\\x7f]')
 

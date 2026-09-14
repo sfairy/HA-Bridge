@@ -8,12 +8,11 @@ from datetime import datetime
 from typing import Annotated
 from urllib.parse import urlsplit
 
+from dependencies import CurrentUser, CurrentViewer, DatabaseSession, authenticated_viewer
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints
-
-from dependencies import CurrentUser, CurrentViewer, DatabaseSession, authenticated_viewer
 from global_log import event_context, safe_context
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 router = APIRouter(prefix='/logs', tags=['global-logs'])
 

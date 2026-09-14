@@ -2,17 +2,17 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Request, Response, status
-from sqlalchemy import and_, or_, select
-from sqlalchemy.orm import Session
 from display_access import active_display_device
+from fastapi import Depends, HTTPException, Request, Response, status
 from global_popups import hydrate_document_popups
 from models import DisplayDevice, HAConnection, HAEntity, LoginSession, ProjectDraft, User
 from panel.entity_refs import document_entity_ids
 from security import session_token_hash, set_display_cookie
+from sqlalchemy import and_, or_, select
+from sqlalchemy.orm import Session
 
 
 def get_database_session(request: Request):
@@ -23,7 +23,7 @@ DatabaseSession = Annotated[Session, Depends(get_database_session)]
 
 
 def _aware(value: datetime) -> datetime:
-    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
 
 
 def lookup_session_user(
@@ -38,7 +38,7 @@ def lookup_session_user(
     record = database.scalar(
         select(LoginSession).where(LoginSession.id_hash == session_token_hash(token))
     )
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if record is None or _aware(record.expires_at) <= now:
         if record is not None:
             database.delete(record)
@@ -84,7 +84,7 @@ def _admin_session(request: Request, response: Response, database: DatabaseSessi
     record = database.scalar(
         select(LoginSession).where(LoginSession.id_hash == session_token_hash(token))
     )
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     max_age = request.app.state.settings.session_max_age_seconds
     refresh_interval = min(300, max(1, max_age // 2))
     if record is not None and now - _aware(record.last_seen_at) >= timedelta(seconds=refresh_interval):
@@ -155,7 +155,7 @@ def _display_device(request: Request, response: Response, database: DatabaseSess
     device = active_display_device(database, token)
     if device is None:
         return None
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if now - _aware(device.last_seen_at) >= timedelta(minutes=5):
         device.last_seen_at = now
         database.commit()
@@ -254,6 +254,134 @@ def _document_bound_values(value, suffix: str) -> set[str]:
     return result
 
 
+_XIAOMI_PLATFORMS = frozenset({'xiaomi_home', 'xiaomi_miot'})
+_AUTO_LIGHT_SOURCE_DOMAINS = frozenset({'fan', 'climate'})
+_WATER_HEATER_TARGET_DOMAINS = frozenset({'button', 'number', 'select', 'switch'})
+_COVER_BINARY_TARGET_DOMAINS = frozenset({'select', 'switch'})
+_COVER_POSITION_TARGET_DOMAINS = frozenset({'number', 'sensor'})
+_VACUUM_STATE_TRANSLATION_KEYS = frozenset({'state', 'status', 'task_status'})
+_AIRER_MARKERS = ('airer', 'clothes rack', 'laundry rack', '晾衣机', '晾衣架')
+_AIRER_LIGHT_MARKERS = ('light', 'lamp', '灯光', '照明', '晾衣机 灯', '晾衣架 灯')
+_AIRER_POSITION_MARKERS = (
+    'set_position',
+    'set position',
+    'target_position',
+    'target position',
+    '设定位置',
+    '设置位置',
+    '目标位置',
+    'current_position',
+    'current position',
+    '当前位置',
+    '当前高度',
+)
+_MOTION_MARKERS = ('no_motion', 'no motion', '无移动', '无人移动')
+_XIAOMI_RELATED_DOMAINS = ('climate', 'cover', 'fan', 'light', 'switch', 'select', 'number', 'sensor')
+
+
+def _entity_identity(entity: HAEntity, *, include_icon: bool = False) -> str:
+    '''Case-folded, space-joined blob of an entity's identifying fields for marker matching.'''
+    fields = [entity.entity_id, entity.name, entity.original_name, entity.translation_key]
+    if include_icon:
+        fields.append(entity.icon)
+    return ' '.join(filter(None, fields)).casefold()
+
+
+def _has_marker(text: str, markers) -> bool:
+    return any(marker in text for marker in markers)
+
+
+def _is_auto_related_entity(source: HAEntity, candidate: HAEntity) -> bool:
+    '''Whether `candidate` looks like a second entity of the same physical device as `source`.
+
+    Home Assistant integrations expose one device as several entities (a light plus its
+    switch, a vacuum plus its battery sensor, ...). A dashboard usually binds only one of
+    them, so the rest of the device is allowed automatically to keep panels intact.
+    '''
+    if source.platform in _XIAOMI_PLATFORMS and candidate.platform != source.platform:
+        return False
+    candidate_domain = candidate.domain
+    identity = _entity_identity(candidate, include_icon=True)
+    source_identity = _entity_identity(source)
+    if source.domain in _AUTO_LIGHT_SOURCE_DOMAINS and candidate_domain == 'light':
+        return True
+    if source.domain == 'water_heater' and candidate_domain in _WATER_HEATER_TARGET_DOMAINS:
+        return True
+    if source.domain == 'vacuum':
+        if candidate_domain == 'select':
+            return candidate.translation_key == 'cleaning_mode' or 'cleaning_mode' in identity
+        if candidate_domain == 'sensor':
+            return (
+                candidate.translation_key == 'battery'
+                or 'battery' in identity
+                or '电量' in identity
+            )
+        return False
+    if source.domain == 'event' and candidate_domain == 'sensor':
+        return _has_marker(identity, _MOTION_MARKERS)
+    if source.domain == 'cover':
+        # Two cover clauses are OR-ed together: a binary target may be matched by the
+        # motor_reverse marker, or by the airer heuristic for light/switch targets.
+        if candidate_domain in _COVER_BINARY_TARGET_DOMAINS and (
+            'motor_reverse' in identity or '电机反向' in identity
+        ):
+            return True
+        if not _has_marker(source_identity, _AIRER_MARKERS):
+            return False
+        if candidate_domain in ('light', 'switch'):
+            return candidate_domain == 'light' or _has_marker(identity, _AIRER_LIGHT_MARKERS)
+        if candidate_domain in _COVER_POSITION_TARGET_DOMAINS:
+            return _has_marker(identity, _AIRER_POSITION_MARKERS)
+        return False
+    if source.domain == 'sensor' and candidate_domain == 'vacuum':
+        return source.translation_key in _VACUUM_STATE_TRANSLATION_KEYS
+    return False
+
+
+def _xiaomi_related_entity_ids(
+    database: DatabaseSession, active_connection_id, allowed: set[str]
+) -> set[str]:
+    '''Every active entity of the same Xiaomi device+platform as an already-allowed entity.
+
+    Xiaomi splits one device across many entities; binding one should keep its siblings visible.
+    '''
+    xiaomi_sources = database.scalars(
+        select(HAEntity).where(
+            HAEntity.connection_id == active_connection_id,
+            HAEntity.entity_id.in_(allowed),
+            HAEntity.platform.in_(tuple(_XIAOMI_PLATFORMS)),
+            HAEntity.device_id.is_not(None),
+        )
+    ).all()
+    xiaomi_pairs = {
+        (item.device_id, item.platform)
+        for item in xiaomi_sources
+        if item.device_id and item.platform
+    }
+    if not xiaomi_pairs:
+        return set()
+    related_filter = or_(
+        *(
+            and_(
+                HAEntity.connection_id == active_connection_id,
+                HAEntity.device_id == device_id,
+                HAEntity.platform == platform,
+            )
+            for device_id, platform in xiaomi_pairs
+        )
+    )
+    return set(
+        database.scalars(
+            select(HAEntity.entity_id).where(
+                related_filter,
+                HAEntity.domain.in_(_XIAOMI_RELATED_DOMAINS),
+                HAEntity.sync_status == 'active',
+                HAEntity.disabled_by.is_(None),
+            )
+        ).all()
+    )
+
+
 def viewer_entity_ids(database: DatabaseSession, viewer: ViewerPrincipal) -> set[str] | None:
     if viewer.project_id is None:
         return None
@@ -294,154 +422,9 @@ def viewer_entity_ids(database: DatabaseSession, viewer: ViewerPrincipal) -> set
             sources = sources_by_device.get((candidate.connection_id, candidate.device_id), [])
             if not sources or any(candidate.entity_id == source.entity_id for source in sources):
                 continue
-            candidate_domain = candidate.domain
-            identity = ' '.join(filter(None, (
-                candidate.entity_id,
-                candidate.name,
-                candidate.original_name,
-                candidate.translation_key,
-                candidate.icon,
-            ))).casefold()
-            automatic = any(
-                (
-                    source.platform not in frozenset({'xiaomi_home', 'xiaomi_miot'})
-                    or candidate.platform == source.platform
-                )
-                and (
-                    (source.domain in frozenset({'fan', 'climate'}) and candidate_domain == 'light')
-                    or (
-                        source.domain == 'water_heater'
-                        and candidate_domain in frozenset({'button', 'number', 'select', 'switch'})
-                    )
-                    or (
-                        source.domain == 'vacuum'
-                        and (
-                            (
-                                candidate_domain == 'select'
-                                and (
-                                    candidate.translation_key == 'cleaning_mode'
-                                    or 'cleaning_mode' in identity
-                                )
-                            )
-                            or (
-                                candidate_domain == 'sensor'
-                                and (
-                                    candidate.translation_key == 'battery'
-                                    or 'battery' in identity
-                                    or '电量' in identity
-                                )
-                            )
-                        )
-                    )
-                    or (
-                        source.domain == 'event'
-                        and candidate_domain == 'sensor'
-                        and (
-                            'no_motion' in identity
-                            or 'no motion' in identity
-                            or '无移动' in identity
-                            or '无人移动' in identity
-                        )
-                    )
-                    or (
-                        source.domain == 'cover'
-                        and candidate_domain in frozenset({'select', 'switch'})
-                        and ('motor_reverse' in identity or '电机反向' in identity)
-                    )
-                    or (
-                        source.domain == 'cover'
-                        and candidate_domain in frozenset({'light', 'switch'})
-                        and any(
-                            marker in ' '.join(filter(None, (
-                                source.entity_id,
-                                source.name,
-                                source.original_name,
-                                source.translation_key,
-                            ))).casefold()
-                            for marker in ('airer', 'clothes rack', 'laundry rack', '晾衣机', '晾衣架')
-                        )
-                        and (
-                            candidate_domain == 'light'
-                            or any(
-                                marker in identity
-                                for marker in ('light', 'lamp', '灯光', '照明', '晾衣机 灯', '晾衣架 灯')
-                            )
-                        )
-                    )
-                    or (
-                        source.domain == 'cover'
-                        and candidate_domain in frozenset({'number', 'sensor'})
-                        and any(
-                            marker in ' '.join(filter(None, (
-                                source.entity_id,
-                                source.name,
-                                source.original_name,
-                                source.translation_key,
-                            ))).casefold()
-                            for marker in ('airer', 'clothes rack', 'laundry rack', '晾衣机', '晾衣架')
-                        )
-                        and any(
-                            marker in identity
-                            for marker in (
-                                'set_position',
-                                'set position',
-                                'target_position',
-                                'target position',
-                                '设定位置',
-                                '设置位置',
-                                '目标位置',
-                                'current_position',
-                                'current position',
-                                '当前位置',
-                                '当前高度',
-                            )
-                        )
-                    )
-                    or (
-                        source.domain == 'sensor'
-                        and source.translation_key in frozenset({'state', 'status', 'task_status'})
-                        and candidate_domain == 'vacuum'
-                    )
-                )
-                for source in sources
-            )
-            if not automatic:
-                continue
-            allowed.add(candidate.entity_id)
-    xiaomi_sources = database.scalars(
-        select(HAEntity).where(
-            HAEntity.connection_id == active_connection_id,
-            HAEntity.entity_id.in_(allowed),
-            HAEntity.platform.in_(('xiaomi_home', 'xiaomi_miot')),
-            HAEntity.device_id.is_not(None),
-        )
-    ).all()
-    xiaomi_pairs = {
-        (item.device_id, item.platform)
-        for item in xiaomi_sources
-        if item.device_id and item.platform
-    }
-    if xiaomi_pairs:
-        related_filter = or_(
-            *(
-                and_(
-                    HAEntity.connection_id == active_connection_id,
-                    HAEntity.device_id == device_id,
-                    HAEntity.platform == platform,
-                )
-                for device_id, platform in xiaomi_pairs
-            )
-        )
-        allowed.update(
-            database.scalars(
-                select(HAEntity.entity_id).where(
-                    related_filter,
-                    HAEntity.domain.in_(('climate', 'cover', 'fan', 'light', 'switch', 'select', 'number', 'sensor')),
-                    HAEntity.sync_status == 'active',
-                    HAEntity.disabled_by.is_(None),
-                )
-            ).all()
-        )
+            if any(_is_auto_related_entity(source, candidate) for source in sources):
+                allowed.add(candidate.entity_id)
+    allowed.update(_xiaomi_related_entity_ids(database, active_connection_id, allowed))
     return allowed
 
 

@@ -1,10 +1,8 @@
+import { finite } from "./studio-normalization.js?v=20260903-studio-normalization-v2";
+
 export const DEFAULT_EXPORT_PRESET_COUNT = 4;
 export const MAX_EXPORT_PRESET_COUNT = 8;
 const ALLOWED_EXPORT_FILES = new Set(["background", "backgroundWithPlan", "televisionOn", "vehicleCharging", "floorPlan", "dataLights", "dataScene"]);
-function finite(value, fallback = 0) {
-  const numeric = Number(value);
-  return Number.isFinite(numeric) ? numeric : fallback;
-}
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }

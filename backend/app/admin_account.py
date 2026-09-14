@@ -6,10 +6,9 @@ import secrets
 from dataclasses import dataclass
 from pathlib import Path
 
-from sqlalchemy import delete, select
-
 from database import Database
 from models import LoginSession, User
+from sqlalchemy import delete, select
 
 ACCOUNT_FILE_SCHEMA_VERSION = 1
 EXTERNAL_PASSWORD_SENTINEL = '!external-admin-account-v1!'

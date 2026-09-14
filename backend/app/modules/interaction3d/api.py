@@ -8,21 +8,20 @@ import shutil
 from urllib.parse import urlencode
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
-from pydantic import Field
-from sqlalchemy import select
-from starlette.concurrency import run_in_threadpool
-
 from api.assets import UPLOAD_CONTENT_TYPES, user_asset_file
 from api.ha import active_connection, call_service
 from dependencies import DatabaseSession, LicensedUser, LicensedViewer, require_viewer_project
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from models import HAEntity, ProjectDraft
 from modules.interaction3d.access import access_grant, module_components, require_access
 from modules.interaction3d.climate import require_air_conditioner_model, validate_climate_command
 from modules.interaction3d.cover import require_curtain_model, validate_cover_command
 from modules.interaction3d.render_cache import MAX_ENTRY_BYTES, cache_path, read_cache, write_cache
+from pydantic import Field
 from schemas import HAServiceCallRequest
+from sqlalchemy import select
+from starlette.concurrency import run_in_threadpool
 
 router = APIRouter(prefix='/modules/interaction3d', tags=['3D interaction'])
 logger = logging.getLogger(__name__)
@@ -251,7 +250,7 @@ def get_current_scene(
         return JSONResponse(payload, headers={'Cache-Control': 'no-store'})
     except (OSError, ValueError, AttributeError) as exc:
         if since:
-            raise HTTPException(409, detail='户型保存尚未完成，稍后自动重试。')
+            raise HTTPException(409, detail='户型保存尚未完成，稍后自动重试。') from None
         logger.debug('场景 current 回退到快照 scene=%s: %s', scene_id, exc)
         payload = reference
         apply_background_urls(payload, scene_id, projectId)

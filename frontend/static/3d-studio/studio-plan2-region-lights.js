@@ -442,11 +442,11 @@ export function createRegionLightController({
         }
       }
       const receiverKind = inferReceiverKind(material);
-      const map = material.material;
+      const sourceMaterial = material.material;
       const preserveDetailed = findUserData(material, "preserveDetailedSurface") === true;
       const isFloorReceiver = findUserData(material, "regionReceiverKind") === "floor";
-      const some = Array.isArray(map) ? map.map(mat => wrapRegionMaterial(mat, meshFloorId, receiverKind, addNext, preserveDetailed, isFloorReceiver)) : wrapRegionMaterial(map, meshFloorId, receiverKind, addNext, preserveDetailed, isFloorReceiver);
-      if (Array.isArray(map) ? some.some((mat, index) => mat !== map[index]) : some !== map) {
+      const some = Array.isArray(sourceMaterial) ? sourceMaterial.map(mat => wrapRegionMaterial(mat, meshFloorId, receiverKind, addNext, preserveDetailed, isFloorReceiver)) : wrapRegionMaterial(sourceMaterial, meshFloorId, receiverKind, addNext, preserveDetailed, isFloorReceiver);
+      if (Array.isArray(sourceMaterial) ? some.some((mat, index) => mat !== sourceMaterial[index]) : some !== sourceMaterial) {
         material.material = some;
       }
       if (Array.isArray(some) ? some.some(mat => mapCurrent.has(mat)) : mapCurrent.has(some)) {

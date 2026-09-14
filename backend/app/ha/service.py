@@ -9,17 +9,16 @@ from collections import Counter
 from contextvars import copy_context
 from typing import Any
 
-from sqlalchemy import func, select
-
 from config import Settings
 from database import Database
-from models import HAArea, HAConnection, HADevice, HAEntity, HASyncState, ProjectDraft, utc_now
-from global_popups import global_popups
 from global_log import GlobalLogStore, _safe_text, event_context
-from panel.entity_refs import document_entity_ids
+from global_popups import global_popups
 from ha.client import HAClient, HAClientError, HASnapshot
 from ha.crypto import CredentialCipher
 from ha.state_hub import StateHub
+from models import HAArea, HAConnection, HADevice, HAEntity, HASyncState, ProjectDraft, utc_now
+from panel.entity_refs import document_entity_ids
+from sqlalchemy import func, select
 
 LOGGER = logging.getLogger(__name__)
 LIVE_EVENT_TYPES = ('state_changed', 'entity_registry_updated', 'device_registry_updated', 'area_registry_updated')
@@ -75,6 +74,7 @@ class HAConnectorService:
         self._history_fetches = {}
         self._history_cache_lock = asyncio.Lock()
         self._initial_sync_logged = False
+        self._clients: dict[str, tuple[tuple[str, bool, str], HAClient]] = {}
 
     def _log_event(self, level: str, category: str, message: str, *, details: str | None = None) -> None:
         if self.event_log is not None:
@@ -107,6 +107,7 @@ class HAConnectorService:
             task.cancel()
         if history_tasks:
             await asyncio.gather(*history_tasks, return_exceptions=True)
+        await self._close_clients()
         if self._runner is None:
             return None
         self._runner.cancel()
@@ -217,14 +218,44 @@ class HAConnectorService:
                 break
 
     def client_for(self, connection: HAConnection) -> HAClient:
+        cache_key = str(connection.id)
+        signature = (
+            str(connection.base_url),
+            bool(connection.verify_tls),
+            str(connection.encrypted_access_token or ''),
+        )
+        cached = self._clients.get(cache_key)
+        if cached is not None and cached[0] == signature:
+            return cached[1]
         token = self.cipher.decrypt(connection.encrypted_access_token)
-        return HAClient(
+        client = HAClient(
             connection.base_url,
             token,
             verify_tls=connection.verify_tls,
             timeout=self.settings.ha_request_timeout_seconds,
             websocket_max_size_bytes=self.settings.ha_websocket_max_size_bytes,
         )
+        self._clients[cache_key] = (signature, client)
+        if cached is not None:
+            self._discard_clients([cached[1]])
+        return client
+
+    def _discard_clients(self, clients: list[HAClient]) -> None:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
+        for client in clients:
+            loop.create_task(client.aclose())
+
+    async def _close_clients(self) -> None:
+        clients = [entry[1] for entry in self._clients.values()]
+        self._clients.clear()
+        for client in clients:
+            try:
+                await client.aclose()
+            except Exception:
+                continue
 
     async def fetch_history(self, connection: HAConnection, entity_id: str, start_time: str, hours: int) -> list[dict[str, Any]]:
         '''Limit and briefly cache history reads so charts cannot fan out to HA.'''

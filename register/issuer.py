@@ -4,7 +4,7 @@ import base64
 import hashlib
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -62,7 +62,7 @@ def public_key_payload(data_dir: Path) -> dict[str, str]:
 
 def sign_lease(data_dir: Path, *, order_id: str, instance_id: str, lease_sequence: int) -> dict[str, str | int]:
     private_key, _, _ = ensure_signing_keys(data_dir)
-    now = datetime.now(timezone.utc).replace(microsecond=0)
+    now = datetime.now(UTC).replace(microsecond=0)
     payload = {
         'activationCodeId': order_id,
         'expiresAt': (now + timedelta(days=3650)).isoformat().replace('+00:00', 'Z'),

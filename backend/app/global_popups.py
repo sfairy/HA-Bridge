@@ -4,11 +4,10 @@ import json
 from copy import deepcopy
 from uuid import uuid4
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from models import GlobalCustomPopupState, Project, ProjectDraft
 from panel.document_walk import walk
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 
 def _canonical(value) -> str:

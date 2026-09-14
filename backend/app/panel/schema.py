@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
 from panel.action_rules import POPUP_SOURCES, valid_entity_id, valid_ha_entity_id
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 IDENTIFIER = re.compile('^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$')
 
@@ -41,7 +41,7 @@ class UIPackReference(ExtensibleModel):
     version: str = Field(default='1.0.0', min_length=1, max_length=64)
 
     @model_validator(mode='after')
-    def validate_id(self) -> 'UIPackReference':
+    def validate_id(self) -> UIPackReference:
         if not IDENTIFIER.fullmatch(self.id):
             raise ValueError(f'无效 UI 方案 ID：{self.id}')
         return self
@@ -53,7 +53,7 @@ class TemplateReference(ExtensibleModel):
     version: int = Field(default=1, ge=1)
 
     @model_validator(mode='after')
-    def validate_ids(self) -> 'TemplateReference':
+    def validate_ids(self) -> TemplateReference:
         if not IDENTIFIER.fullmatch(self.ui_pack_id) or not IDENTIFIER.fullmatch(self.template_id):
             raise ValueError('控件或弹窗模板来源无效。')
         return self
@@ -74,7 +74,7 @@ class EntityBinding(ExtensibleModel):
     required: bool = False
 
     @model_validator(mode='after')
-    def validate_entity_id(self) -> 'EntityBinding':
+    def validate_entity_id(self) -> EntityBinding:
         if self.entity_id and not valid_entity_id(self.entity_id):
             raise ValueError(f'无效实体 ID：{self.entity_id}')
         return self
@@ -118,7 +118,7 @@ class CustomPopupModule(ExtensibleModel):
     height: int = Field(default=1, ge=1, le=8)
 
     @model_validator(mode='after')
-    def validate_module(self) -> 'CustomPopupModule':
+    def validate_module(self) -> CustomPopupModule:
         if not IDENTIFIER.fullmatch(self.id):
             raise ValueError(f'无效弹窗模块 ID：{self.id}')
         if not valid_ha_entity_id(self.entity_id):
@@ -134,7 +134,7 @@ class CustomPopup(ExtensibleModel):
     template_ref: TemplateReference | None = Field(default=None, alias='templateRef')
 
     @model_validator(mode='after')
-    def validate_popup(self) -> 'CustomPopup':
+    def validate_popup(self) -> CustomPopup:
         if not IDENTIFIER.fullmatch(self.id):
             raise ValueError(f'无效组合弹窗 ID：{self.id}')
         module_ids = [module.id for module in self.modules]
@@ -153,10 +153,10 @@ class PanelComponent(ExtensibleModel):
     properties: dict[str, Any] = Field(default_factory=dict)
     style: dict[str, Any] = Field(default_factory=dict)
     actions: dict[str, ComponentAction] = Field(default_factory=dict)
-    children: list['PanelComponent'] = Field(default_factory=list)
+    children: list[PanelComponent] = Field(default_factory=list)
 
     @model_validator(mode='after')
-    def validate_id(self) -> 'PanelComponent':
+    def validate_id(self) -> PanelComponent:
         if not IDENTIFIER.fullmatch(self.id):
             raise ValueError(f'无效组件 ID：{self.id}')
         return self
@@ -170,7 +170,7 @@ class PanelPage(ExtensibleModel):
     components: list[PanelComponent] = Field(default_factory=list)
 
     @model_validator(mode='after')
-    def validate_identifiers(self) -> 'PanelPage':
+    def validate_identifiers(self) -> PanelPage:
         if not IDENTIFIER.fullmatch(self.id) or not IDENTIFIER.fullmatch(self.path):
             raise ValueError(f'无效页面 ID 或路径：{self.id}/{self.path}')
         return self
@@ -190,7 +190,7 @@ class PanelDocument(ExtensibleModel):
     pages: list[PanelPage] = Field(default_factory=list)
 
     @model_validator(mode='after')
-    def validate_structure(self) -> 'PanelDocument':
+    def validate_structure(self) -> PanelDocument:
         def walk(items: list[PanelComponent]):
             for item in items:
                 yield item

@@ -10,7 +10,7 @@
     <title>户型图绘制</title>
     <link rel="icon" href="/bridge-static/assets/brand/ha-bridge-favicon-h5.svg" type="image/svg+xml">
     <link rel="stylesheet"
-        href="/bridge-static/3d-studio/studio.css?v=20260907-interaction3d-align-v1">
+        href="/bridge-static/3d-studio/studio.css?v=20260907-interaction3d-align-v1-light-areas-v1-area-ui-polish-v1-area-width-v1-layer-owner-v1">
 </head>
 
 <body>
@@ -91,7 +91,8 @@
                             aria-hidden="true"></span></button></div>
                 <section id="light-layer-panel" class="light-layer-panel" hidden>
                     <div class="light-layer-heading">
-                        <div><button id="light-groups-off" type="button">全关</button><button id="add-light-group"
+                        <div id="light-layer-actions"><button id="light-groups-off" type="button">全关</button><button
+                                id="add-area" type="button" title="新建区域">新建区域</button><button id="add-light-group"
                                 type="button" title="新建灯组">新建灯组</button></div>
                     </div>
                     <div id="light-group-list" class="light-group-list"></div>
@@ -112,6 +113,10 @@
                         data-asset-subcategory="living"><i>✦</i><span>绿植</span><small>0.75 × 0.75m</small></button>
                     <button class="asset-card" type="button" draggable="true" data-item-type="aquarium"
                         data-asset-subcategory="living"><i>▣</i><span>鱼缸</span><small>1.50 × 0.55m</small></button>
+                    <button class="asset-card" type="button" draggable="true" data-item-type="mural"
+                        data-asset-subcategory="living"><i>❐</i><span>壁画</span><small>1.20 × 0.80m</small></button>
+                    <button class="asset-card" type="button" draggable="true" data-item-type="featurewall"
+                        data-asset-subcategory="living"><i>❏</i><span>背景墙</span><small>3.00 × 2.40m</small></button>
                     <button class="asset-card" type="button" draggable="true" data-item-type="piano"
                         data-asset-subcategory="living"><i>▰</i><span>钢琴</span><small>1.80 × 1.80m</small></button>
                     <div class="asset-group-heading" data-asset-heading-category="home">卧室与书房</div> <button
@@ -260,6 +265,8 @@
             <div class="plan-toolbar">
                 <div class="tool-group" role="toolbar" aria-label="绘图工具"> <button class="tool-button active"
                         type="button" data-tool="select" title="选择与移动"><i>⌁</i><span>选择</span></button> <button
+                        class="tool-button" type="button" data-tool="pan"
+                        title="按住左键拖动平移画布"><i>✥</i><span>平移</span></button> <button
                         class="tool-button" type="button" data-tool="scale"
                         title="绘制参考线"><i>↔</i><span>参考线</span></button> <button class="tool-button" type="button"
                         data-tool="wall" title="连续画墙"><i>╱</i><span>墙体</span></button> <button class="tool-button"
@@ -446,14 +453,35 @@
                                 checked="checked"><span>显示光效范围</span></label></div>
                     <div id="wall-fields" class="field-section" hidden> <label>墙长<input id="wall-length"
                                 readonly="readonly"></label>
-                        <div class="field-grid"><label>墙高（m）<input id="wall-height" type="number" min="0.01" max="6"
-                                    step="0.01"></label><label>厚度（m）<input id="wall-thickness" type="number" min="0.01"
-                                    max="3" step="0.01"></label></div>
-                        <div class="field-grid wall-opacity-fields"><label>透明度设置<select id="wall-opacity-mode">
+                        <div class="field-grid">
+                            <div class="light-batch-control">
+                                <div><label for="wall-height">墙高（m）</label><button class="light-apply-button"
+                                        type="button" data-apply-wall-property="height">应用到所有</button></div><input
+                                    id="wall-height" type="number" min="0.01" max="6" step="0.01">
+                            </div>
+                            <div class="light-batch-control">
+                                <div><label for="wall-thickness">厚度（m）</label><button class="light-apply-button"
+                                        type="button" data-apply-wall-property="thickness">应用到所有</button></div><input
+                                    id="wall-thickness" type="number" min="0.01" max="3" step="0.01">
+                            </div>
+                        </div>
+                        <div class="field-grid wall-opacity-fields">
+                            <div class="light-batch-control">
+                                <div><label for="wall-opacity-mode">透明度设置</label><button
+                                        class="light-apply-button" type="button"
+                                        data-apply-wall-property="opacityMode">应用到所有</button></div><select
+                                    id="wall-opacity-mode">
                                     <option value="global">跟随通用</option>
                                     <option value="custom">单独设置</option>
-                                </select></label><label>透明度（%）<input id="wall-opacity" type="number" min="0" max="100"
-                                    step="1"></label></div> <label class="door-type-field"><span>开放端点提醒</span><select
+                                </select>
+                            </div>
+                            <div class="light-batch-control">
+                                <div><label for="wall-opacity">透明度（%）</label><button
+                                        class="light-apply-button" type="button"
+                                        data-apply-wall-property="opacity">应用到所有</button></div><input
+                                    id="wall-opacity" type="number" min="0" max="100" step="1">
+                            </div>
+                        </div> <label class="door-type-field"><span>开放端点提醒</span><select
                                 id="wall-open-end-mode">
                                 <option value="auto">自动判断</option>
                                 <option value="allowed">允许开放端点</option>
@@ -543,13 +571,45 @@
                                 <option value="standard">壁挂电视</option>
                                 <option value="tabletop">桌面底座</option>
                                 <option value="mobile">移动支架</option>
+                            </select></label> <label id="mural-style-field" class="door-type-field" hidden><span>画面风格</span><select
+                                id="mural-style">
+                                <option value="bauhaus">包豪斯几何</option>
+                                <option value="colorfield">柔和色域</option>
+                                <option value="linework">极简线条</option>
+                                <option value="blocks">硬边色块</option>
+                                <option value="ink">水墨意象</option>
+                                <option value="terrazzo">水磨石纹</option>
+                            </select></label> <label id="feature-wall-style-field" class="door-type-field" hidden><span>墙面材质</span><select
+                                id="feature-wall-style">
+                                <option value="marble">大理石</option>
+                                <option value="wood">木纹</option>
+                                <option value="slat">格栅条</option>
+                                <option value="stone">岩板</option>
+                                <option value="concrete">微水泥</option>
+                                <option value="fabric">布纹</option>
+                                <option value="metal">金属拉丝</option>
+                            </select></label> <label id="pillar-shape-field" class="door-type-field" hidden><span>形状</span><select
+                                id="pillar-shape">
+                                <option value="square">方形</option>
+                                <option value="round">圆形</option>
+                                <option value="semicircle">半圆形</option>
+                                <option value="quarter">1/4 圆形</option>
+                                <option value="quarterinner">1/4 圆形（内弧）</option>
+                            </select></label> <label id="strip-axis-field" class="door-type-field" hidden><span>布置方向</span><select
+                                id="strip-axis">
+                                <option value="vertical">垂直（站立）</option>
+                                <option value="horizontal">水平（躺放）</option>
+                            </select></label> <label id="pillar-axis-field" class="door-type-field" hidden><span>布置方向</span><select
+                                id="pillar-axis">
+                                <option value="vertical">垂直（站立）</option>
+                                <option value="horizontal">水平（躺放）</option>
                             </select></label>
                         <div class="field-grid"><label>X（m）<input id="item-x" type="number"
                                     step="0.05"></label><label>Y（m）<input id="item-y" type="number"
                                     step="0.05"></label><label><span id="item-width-label">宽（m）</span><input
                                     id="item-width" type="number" min="0.1" max="8" step="0.05"></label><label
-                                id="item-height-field">高（m）<input id="item-height" type="number" min="0.05" max="6"
-                                    step="0.05"></label><label><span id="item-depth-label">深（m）</span><input
+                                id="item-height-field"><span id="item-height-label">高（m）</span><input id="item-height"
+                                    type="number" min="0.05" max="6" step="0.05"></label><label><span id="item-depth-label">深（m）</span><input
                                     id="item-depth" type="number" min="0.1" max="8" step="0.05"></label>
                             <div id="shoe-cabinet-actions" class="shoe-cabinet-actions" hidden><button
                                     id="shoe-cabinet-mirror" type="button" aria-pressed="false">左右对调</button></div>
@@ -596,6 +656,30 @@
             <p>输入新的灯组名称，组内灯具不会发生变化。</p> <label class="light-group-rename-field">灯组名称<input id="light-group-rename-input"
                     maxlength="24" autocomplete="off" required></label>
             <div class="dialog-actions"><button id="light-group-rename-cancel" type="button">取消</button><button
+                    class="primary-action" type="submit">确认</button></div>
+        </form>
+    </dialog>
+    <dialog id="area-rename-dialog" class="scale-dialog light-group-rename-dialog">
+        <form id="area-rename-form" method="dialog"> <button id="area-rename-close" class="dialog-close"
+                type="button" aria-label="关闭">×</button> <span class="dialog-index">AREA</span>
+            <h2 id="area-rename-title">新建区域</h2>
+            <p>区域用于把灯组按房间或空间分类，可随时重命名或删除；删除区域不会删除灯组。</p> <label
+                class="light-group-rename-field">区域名称<input id="area-rename-input" maxlength="16"
+                    autocomplete="off" required></label>
+            <div class="dialog-actions"><button id="area-rename-cancel" type="button">取消</button><button
+                    class="primary-action" type="submit">确认</button></div>
+        </form>
+    </dialog>
+    <dialog id="light-group-area-dialog" class="scale-dialog light-group-rename-dialog">
+        <form id="light-group-area-form" method="dialog"> <button id="light-group-area-close" class="dialog-close"
+                type="button" aria-label="关闭">×</button> <span class="dialog-index">LIGHT GROUP AREA</span>
+            <h2>设置区域</h2>
+            <p>为“<strong id="light-group-area-name"></strong>”选择所属区域，选择“未分类”可移出区域。</p> <label
+                class="light-group-rename-field">所属区域<select id="light-group-area-select"></select></label>
+            <div class="light-group-area-new-row"><input id="light-group-area-new-name" maxlength="16"
+                    autocomplete="off" placeholder="输入新区域名称"><button id="light-group-area-create"
+                    type="button">新建并选中</button></div>
+            <div class="dialog-actions"><button id="light-group-area-cancel" type="button">取消</button><button
                     class="primary-action" type="submit">确认</button></div>
         </form>
     </dialog>
@@ -661,6 +745,22 @@
                 <div id="light-property-target-list" class="light-property-target-list"></div>
             </section>
             <div class="dialog-actions"><button id="light-property-apply-cancel" type="button">取消</button><button
+                    class="primary-action" type="submit">应用所选</button></div>
+        </form>
+    </dialog>
+    <dialog id="wall-property-apply-dialog" class="scale-dialog light-group-rename-dialog light-property-apply-dialog">
+        <form id="wall-property-apply-form" method="dialog"> <button id="wall-property-apply-close"
+                class="dialog-close" type="button" aria-label="关闭">×</button> <span class="dialog-index">APPLY TO
+                WALLS</span>
+            <h2 id="wall-property-apply-title">应用墙体属性</h2>
+            <p><strong id="wall-property-apply-value"></strong> 将应用到下方选中的墙体，其他属性不会改变。</p>
+            <section class="light-property-targets">
+                <div class="light-property-targets-heading"><strong>应用到墙体</strong><span
+                        id="wall-property-selection-count"></span><button id="wall-property-toggle-all"
+                        type="button">取消全选</button></div>
+                <div id="wall-property-target-list" class="light-property-target-list"></div>
+            </section>
+            <div class="dialog-actions"><button id="wall-property-apply-cancel" type="button">取消</button><button
                     class="primary-action" type="submit">应用所选</button></div>
         </form>
     </dialog>
@@ -797,13 +897,17 @@
     </dialog>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <div id="light-group-context-menu" class="light-group-context-menu" hidden><button type="button"
+            data-light-group-action="area">设置区域</button><button type="button"
             data-light-group-action="rename">重命名</button><button type="button"
             data-light-group-action="duplicate">复制灯组</button><button type="button"
             data-light-group-action="delete">删除</button></div>
+    <div id="area-context-menu" class="light-group-context-menu" hidden><button type="button"
+            data-area-action="rename">重命名区域</button><button type="button"
+            data-area-action="delete">删除区域</button></div>
     <div id="floor-context-menu" class="light-group-context-menu" hidden><button type="button"
             data-floor-action="rename">重命名</button><button type="button" data-floor-action="delete">删除楼层</button></div>
     <script type="module"
-        src="/bridge-static/3d-studio/studio-app.js?v=20260910-three-0186-compat-v1-20260911-studio-security-v1-floor-handoff-v1-reflection-visible-floor-v1-module-tabs-v1-20260912-presence-camera-fields-v1-glasscabinet-tdz-fix-v1-sha-export-fix-v1-overwrite-interaction-v1-shadow-atlas-skip-unbakeable-v2"></script>
+        src="/bridge-static/3d-studio/studio-app.js?v=20260910-three-0186-compat-v1-20260911-studio-security-v1-floor-handoff-v1-reflection-visible-floor-v1-module-tabs-v1-20260912-presence-camera-fields-v1-glasscabinet-tdz-fix-v1-sha-export-fix-v1-overwrite-interaction-v1-shadow-atlas-skip-unbakeable-v2-wall-opacity-apply-all-v1-wall-size-apply-all-v1-light-areas-v1-drag-into-area-v1-area-ui-polish-v1-area-width-v1-layer-owner-v1-mural-model-v6-pillar-shape-v4-pillar-glb-v2-pillar-axis-v2-pillar-lying-v2-strip-axis-v3-region-lights-map-shadow-v1"></script>
 </body>
 
 </html>

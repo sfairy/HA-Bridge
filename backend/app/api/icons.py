@@ -4,9 +4,8 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-from fastapi import APIRouter, Query, Request
-
 from dependencies import LicensedUser
+from fastapi import APIRouter, Query, Request
 
 router = APIRouter(prefix='/icons', tags=['icons'])
 

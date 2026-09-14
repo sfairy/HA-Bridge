@@ -8,11 +8,9 @@ upgrade-backups/
 .venv/
 __pycache__/
 *.py[cod]
+.ruff_cache/
 data/
 register/data/
 /app/
 app.tar.gz
 .deobf/
-
-# Session snapshots for the round-scoped differential guards (scripts/diff-*.mjs).
-scripts/.snapshots/

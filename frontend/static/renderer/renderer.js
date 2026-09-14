@@ -236,6 +236,11 @@ function lerpHexColor(fromHex, toHex, lerpAmount = 0) {
   const readHexByte = (hex, offset) => Number.parseInt(hex.slice(offset, offset + 2), 16);
   return "#" + [1, 3, 5].map(offset => Math.round(readHexByte(fromNormalized, offset) + (readHexByte(toNormalized, offset) - readHexByte(fromNormalized, offset)) * amount)).map(channel => channel.toString(16).padStart(2, "0")).join("");
 }
+const LIGHT_VISUAL_STATE_LIMIT = 200;
+const LIGHT_VISUAL_STORAGE_PREFIX = "ha-bridge:light-visual:";
+const LIGHT_VISUAL_STORAGE_LIMIT = 200;
+const LIGHT_VISUAL_STORAGE_TTL_MS = 2592000000;
+
 export class PanelRenderer {
   constructor(container, options = {}) {
     this.container = container;
@@ -1744,9 +1749,14 @@ export class PanelRenderer {
     if (state) {
       return state;
     }
+    const storageKey = LIGHT_VISUAL_STORAGE_PREFIX + entityId;
     try {
-      const parsedJson = JSON.parse(window.localStorage?.getItem("ha-bridge:light-visual:" + entityId) || "null");
-      if (!parsedJson?.attributes || Date.now() - Number(parsedJson.at || 0) > 2592000000) {
+      const raw = window.localStorage?.getItem(storageKey);
+      const parsedJson = JSON.parse(raw || "null");
+      if (!parsedJson?.attributes || Date.now() - Number(parsedJson.at || 0) > LIGHT_VISUAL_STORAGE_TTL_MS) {
+        if (raw) {
+          window.localStorage?.removeItem(storageKey);
+        }
         return null;
       }
       const state = {
@@ -1754,10 +1764,62 @@ export class PanelRenderer {
         state: "on",
         attributes: parsedJson.attributes
       };
-      this.confirmedLightVisualStates.set(entityId, state);
+      this.rememberConfirmedLightVisualState(entityId, state);
       return state;
     } catch {
       return null;
+    }
+  }
+  rememberConfirmedLightVisualState(entityId, state) {
+    this.confirmedLightVisualStates.delete(entityId);
+    this.confirmedLightVisualStates.set(entityId, state);
+    while (this.confirmedLightVisualStates.size > LIGHT_VISUAL_STATE_LIMIT) {
+      const oldest = this.confirmedLightVisualStates.keys().next().value;
+      this.confirmedLightVisualStates.delete(oldest);
+    }
+  }
+  persistLightVisualState(entityId, attributes) {
+    try {
+      const storage = window.localStorage;
+      if (!storage) {
+        return;
+      }
+      const storageKey = LIGHT_VISUAL_STORAGE_PREFIX + entityId;
+      storage.removeItem(storageKey);
+      storage.setItem(storageKey, JSON.stringify({
+        at: Date.now(),
+        attributes
+      }));
+      this.pruneLightVisualStorage(storage);
+    } catch {}
+  }
+  pruneLightVisualStorage(storage) {
+    const entries = [];
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+      if (!key || !key.startsWith(LIGHT_VISUAL_STORAGE_PREFIX)) {
+        continue;
+      }
+      let at = 0;
+      try {
+        at = Number(JSON.parse(storage.getItem(key) || "null")?.at || 0);
+      } catch {}
+      if (!at || Date.now() - at > LIGHT_VISUAL_STORAGE_TTL_MS) {
+        storage.removeItem(key);
+        index -= 1;
+        continue;
+      }
+      entries.push({
+        key,
+        at
+      });
+    }
+    if (entries.length <= LIGHT_VISUAL_STORAGE_LIMIT) {
+      return;
+    }
+    entries.sort((left, right) => left.at - right.at);
+    for (const entry of entries.slice(0, entries.length - LIGHT_VISUAL_STORAGE_LIMIT)) {
+      storage.removeItem(entry.key);
     }
   }
   rememberLightVisualState(entityIdCurrent, visual) {
@@ -1784,13 +1846,8 @@ export class PanelRenderer {
       state: "on",
       attributes: options
     };
-    this.confirmedLightVisualStates.set(entityId, state);
-    try {
-      window.localStorage?.setItem("ha-bridge:light-visual:" + entityId, JSON.stringify({
-        at: Date.now(),
-        attributes: options
-      }));
-    } catch {}
+    this.rememberConfirmedLightVisualState(entityId, state);
+    this.persistLightVisualState(entityId, options);
   }
   optimisticStateIsConfirmed(entityId, expected) {
     const state = this.pendingOptimisticStates.get(String(entityId || ""));
@@ -11386,7 +11443,7 @@ export class PanelRenderer {
     let pendingLightBrightness = null;
     let pendingLightColorTemp = null;
     let lightInteractionActive = false;
-    let climateTargetTemperature = null;
+    let climateDetailsPollTimer = null;
     let coverInteractionPhase = "idle";
     let statusMessageText = "";
     let toggleBathLight = null;
@@ -12134,15 +12191,15 @@ export class PanelRenderer {
       };
       if (isClimateEntity && syncClimateState?.querySelector(".hb-climate-details-loading")) {
         const openedAtMs = Date.now();
-        climateTargetTemperature = window.setInterval(() => {
+        climateDetailsPollTimer = window.setInterval(() => {
           const newState = this.states.get(detailsBoundEntityIdText);
           const incomingEntityState = newState?.newState || newState;
           if (incomingEntityState) {
             applyEntityDetailsState(incomingEntityState);
           }
           if (!syncClimateState?.querySelector(".hb-climate-details-loading") || Date.now() - openedAtMs >= 30000) {
-            window.clearInterval(climateTargetTemperature);
-            climateTargetTemperature = null;
+            window.clearInterval(climateDetailsPollTimer);
+            climateDetailsPollTimer = null;
           }
         }, 120);
       }
@@ -12179,8 +12236,8 @@ export class PanelRenderer {
     });
     entityDetailsDialogEl.addEventListener("close", () => {
       window.clearTimeout(detailsSyncTimer);
-      window.clearInterval(climateTargetTemperature);
-      climateTargetTemperature = null;
+      window.clearInterval(climateDetailsPollTimer);
+      climateDetailsPollTimer = null;
       syncClimateState?.cleanupLightDetails?.();
       syncClimateState?.cleanupClimateDetails?.();
       syncClimateState?.cleanupCoverDetails?.();
@@ -12362,31 +12419,31 @@ export class PanelRenderer {
         add.add(entityIdNext.entityId);
       }
       const coverMotorActions = relatedAirerMotorActionEntities(this.entityMetadata, coverEntityId);
-      for (const entityId of Object.values(coverMotorActions)) {
-        if (entityId?.entityId) {
-          add.add(entityId.entityId);
+      for (const motorAction of Object.values(coverMotorActions)) {
+        if (motorAction?.entityId) {
+          add.add(motorAction.entityId);
         }
       }
     }
-    for (const popupEntityIds of [...add]) {
-      const domain = this.entityMetadata.get(popupEntityIds);
+    for (const popupEntityId of [...add]) {
+      const domain = this.entityMetadata.get(popupEntityId);
       if (!["climate", "fan"].includes(String(domain?.domain || ""))) {
         continue;
       }
-      const entityId = relatedDeviceDomainEntity(this.entityMetadata, popupEntityIds, "light");
+      const entityId = relatedDeviceDomainEntity(this.entityMetadata, popupEntityId, "light");
       if (entityId?.entityId) {
         add.add(entityId.entityId);
       }
     }
-    for (const effectEntityIds of [...add]) {
-      if (this.entityMetadata.get(effectEntityIds)?.domain === "water_heater") {
-        for (const entityId of relatedWaterHeaterEntities(this.entityMetadata, effectEntityIds)) {
-          add.add(entityId.entityId);
+    for (const effectEntityId of [...add]) {
+      if (this.entityMetadata.get(effectEntityId)?.domain === "water_heater") {
+        for (const waterHeaterEntity of relatedWaterHeaterEntities(this.entityMetadata, effectEntityId)) {
+          add.add(waterHeaterEntity.entityId);
         }
       }
     }
-    for (const allRuntimeEntityIds of [...add]) {
-      const roles = this.deviceProfile(allRuntimeEntityIds);
+    for (const runtimeEntityId of [...add]) {
+      const roles = this.deviceProfile(runtimeEntityId);
       if (roles) {
         for (const roleKey of ["climate", "cover", "fan", "light", "power", "mode", "temperature", "humidity", "pm25", "hcho", "pm10", "filterLife", "filterLeftTime", "airQuality", "backrest", "leg", "waist", "memory1", "memory2"]) {
           const roleBoundEntityId = roles.roles?.[roleKey];
@@ -12416,13 +12473,41 @@ export class PanelRenderer {
     const runtimeSubscription = this.runtimeSubscription;
     const isSocketConnecting = this.socket?.readyState === WebSocket.CONNECTING;
     const isSocketOpen = this.socket?.readyState === WebSocket.OPEN;
-    if (!entityId && runtimeSubscription && (isSocketConnecting || isSocketOpen && runtimeSubscription.signature === signature)) {
+    if (!entityId && runtimeSubscription && isSocketConnecting) {
       runtimeSubscription.entityIds = length;
       runtimeSubscription.runtimeComponents = runtimeComponents;
       runtimeSubscription.signature = signature;
-      if (isSocketOpen) {
+      return;
+    }
+    if (!entityId && runtimeSubscription && isSocketOpen) {
+      if (runtimeSubscription.signature === signature) {
+        runtimeSubscription.entityIds = length;
+        runtimeSubscription.runtimeComponents = runtimeComponents;
         this.scheduleRuntimeHydrationRetry(runtimeSubscription, this.socketGeneration);
+        return;
       }
+      // Re-subscribe in place instead of tearing the socket down and reconnecting.
+      runtimeSubscription.entityIds = length;
+      runtimeSubscription.runtimeComponents = runtimeComponents;
+      runtimeSubscription.signature = signature;
+      try {
+        this.socket.send(JSON.stringify({
+          type: "subscribe",
+          entityIds: length
+        }));
+      } catch (error) {
+        window.HABridgeLog?.error(error, {
+          phase: "websocket-subscribe",
+          path: "/api/v1/ws/runtime"
+        }, "实时状态订阅更新失败，正在重连");
+        this.disconnectRuntime();
+        this.connectRuntime({
+          force: true
+        });
+        return;
+      }
+      this.runtimeHydrationRetryAttempt = 0;
+      this.scheduleRuntimeHydrationRetry(runtimeSubscription, this.socketGeneration);
       return;
     }
     if (runtimeSubscription?.signature !== signature) {
@@ -12599,7 +12684,9 @@ export class PanelRenderer {
         this.options.onError?.(new Error(disconnectReason));
         return;
       }
-      const reconnectDelayMs = Math.min(2 ** this.reconnectAttempt * 1000, 15000);
+      const reconnectBaseDelayMs = Math.min(2 ** this.reconnectAttempt * 1000, 15000);
+      // Jitter so many displays do not reconnect in lockstep after a server restart.
+      const reconnectDelayMs = Math.round(reconnectBaseDelayMs * (0.5 + Math.random() * 0.5));
       this.reconnectAttempt += 1;
       this.reconnectTimer = window.setTimeout(() => this.connectRuntime(), reconnectDelayMs);
     });

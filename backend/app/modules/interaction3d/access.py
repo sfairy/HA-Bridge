@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from fastapi import HTTPException, Request
-
 from modules.interaction3d.config import validate_config
 
 FEATURE = 'module.3d_interaction'

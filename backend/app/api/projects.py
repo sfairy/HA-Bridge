@@ -5,18 +5,24 @@ import re
 from contextlib import nullcontext
 from uuid import uuid4
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
-from sqlalchemy import select, update
-
 from dependencies import DatabaseSession, LicensedUser, LicensedViewer, require_viewer_project
-from global_popups import clear_popup_references, global_popup_state, global_popups, hydrate_document_popups, merge_document_popups, strip_document_popups
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from global_popups import (
+    clear_popup_references,
+    global_popup_state,
+    global_popups,
+    hydrate_document_popups,
+    merge_document_popups,
+    strip_document_popups,
+)
 from models import GlobalCustomPopupState, Project, ProjectDraft
-from panel.documents import create_blank_project
-from panel.document_walk import walk
-from panel.schema import validate_panel_document
 from modules.interaction3d.access import require_document_changes as require_interaction3d_changes
-from ui_packs import DEFAULT_UI_PACK_ID, get_ui_pack_for_asset_path, load_dashboard_template, require_ui_pack_access
+from panel.document_walk import walk
+from panel.documents import create_blank_project
+from panel.schema import validate_panel_document
 from schemas import ProjectCreateRequest, ProjectDeleteRequest, ProjectDraftUpdate, ProjectDuplicateRequest
+from sqlalchemy import select, update
+from ui_packs import DEFAULT_UI_PACK_ID, get_ui_pack_for_asset_path, load_dashboard_template, require_ui_pack_access
 
 router = APIRouter(prefix='/projects', tags=['projects'])
 
@@ -306,6 +312,91 @@ def get_project_revision(project_id: str, database: DatabaseSession, viewer: Lic
     }
 
 
+def _popup_ids(popups) -> set[str]:
+    '''Ids of the well-formed entries in a popup list, ignoring malformed ones.'''
+    return {
+        popup['id']
+        for popup in (popups or [])
+        if isinstance(popup, dict) and isinstance(popup.get('id'), str)
+    }
+
+
+def _apply_global_popup_changes(
+    database: DatabaseSession,
+    *,
+    project_id: str,
+    user_id: int,
+    submitted_popups: list,
+    expected_revision: int,
+    removed_popup_ids: set[str],
+) -> None:
+    '''Persist global custom popups under a CAS guard, then scrub removed ids from other drafts.
+
+    Runs on the caller's transaction: any conflict rolls back and raises so the whole save is
+    atomic. `removed_popup_ids` are popups this save deleted, which other dashboards may still
+    reference.
+    '''
+    popup_result = database.execute(
+        update(GlobalCustomPopupState)
+        .where(
+            GlobalCustomPopupState.id == 1,
+            GlobalCustomPopupState.revision == expected_revision,
+        )
+        .values(
+            popups_json=serialize_document(submitted_popups),
+            revision=GlobalCustomPopupState.revision + 1,
+            updated_by=user_id,
+        )
+        .execution_options(synchronize_session=False)
+    )
+    if popup_result.rowcount != 1:
+        database.rollback()
+        current_popup_revision = database.scalar(
+            select(GlobalCustomPopupState.revision).where(GlobalCustomPopupState.id == 1)
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                'code': 'GLOBAL_POPUP_REVISION_CONFLICT',
+                'message': '全局组合弹窗已在其他仪表盘中更新，请刷新后重试。',
+                'currentRevision': current_popup_revision,
+            },
+        )
+    if not removed_popup_ids:
+        return
+    for referenced_draft in database.scalars(
+        select(ProjectDraft).where(ProjectDraft.project_id != project_id)
+    ):
+        try:
+            referenced_document = json.loads(referenced_draft.document_json)
+        except (TypeError, json.JSONDecodeError):
+            continue
+        if not clear_popup_references(referenced_document, removed_popup_ids):
+            continue
+        referenced_result = database.execute(
+            update(ProjectDraft)
+            .where(
+                ProjectDraft.project_id == referenced_draft.project_id,
+                ProjectDraft.revision == referenced_draft.revision,
+            )
+            .values(
+                document_json=serialize_document(referenced_document),
+                revision=ProjectDraft.revision + 1,
+                updated_by=user_id,
+            )
+            .execution_options(synchronize_session=False)
+        )
+        if referenced_result.rowcount != 1:
+            database.rollback()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    'code': 'PROJECT_REVISION_CONFLICT',
+                    'message': '其他仪表盘正在更新，组合弹窗尚未删除，请重试。',
+                },
+            )
+
+
 @router.put('/{project_id}/draft')
 def update_project_draft(
     project_id: str,
@@ -333,19 +424,12 @@ def update_project_draft(
     stored_global_popups = global_popups(database)
     if not payload.global_popups_dirty:
         document_value['customPopups'] = stored_global_popups
-    submitted_popup_ids = {
-        popup.get('id')
-        for popup in (document_value.get('customPopups') or [])
-        if isinstance(popup, dict) and isinstance(popup.get('id'), str)
-    }
-    if payload.global_popups_dirty:
-        removed_popup_ids = {
-            popup.get('id')
-            for popup in stored_global_popups
-            if isinstance(popup, dict) and isinstance(popup.get('id'), str)
-        } - submitted_popup_ids
-    else:
-        removed_popup_ids = set()
+    submitted_popup_ids = _popup_ids(document_value.get('customPopups'))
+    removed_popup_ids = (
+        _popup_ids(stored_global_popups) - submitted_popup_ids
+        if payload.global_popups_dirty
+        else set()
+    )
     clear_popup_references(document_value, removed_popup_ids)
     document_value.pop('studio3d', None)
     try:
@@ -377,62 +461,14 @@ def update_project_draft(
         if user_asset_ids:
             validate_document_assets(request, document)
         if global_popups_changed:
-            popup_result = database.execute(
-                update(GlobalCustomPopupState)
-                .where(
-                    GlobalCustomPopupState.id == 1,
-                    GlobalCustomPopupState.revision == expected_global_popup_revision,
-                )
-                .values(
-                    popups_json=serialize_document(submitted_popups),
-                    revision=GlobalCustomPopupState.revision + 1,
-                    updated_by=user.id,
-                )
-                .execution_options(synchronize_session=False)
+            _apply_global_popup_changes(
+                database,
+                project_id=project_id,
+                user_id=user.id,
+                submitted_popups=submitted_popups,
+                expected_revision=expected_global_popup_revision,
+                removed_popup_ids=removed_popup_ids,
             )
-            if popup_result.rowcount != 1:
-                database.rollback()
-                current_popup_revision = database.scalar(
-                    select(GlobalCustomPopupState.revision).where(GlobalCustomPopupState.id == 1)
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail={
-                        'code': 'GLOBAL_POPUP_REVISION_CONFLICT',
-                        'message': '全局组合弹窗已在其他仪表盘中更新，请刷新后重试。',
-                        'currentRevision': current_popup_revision,
-                    },
-                )
-            if removed_popup_ids:
-                for referenced_draft in database.scalars(select(ProjectDraft).where(ProjectDraft.project_id != project_id)):
-                    try:
-                        referenced_document = json.loads(referenced_draft.document_json)
-                    except (TypeError, json.JSONDecodeError):
-                        continue
-                    if not clear_popup_references(referenced_document, removed_popup_ids):
-                        continue
-                    referenced_result = database.execute(
-                        update(ProjectDraft)
-                        .where(
-                            ProjectDraft.project_id == referenced_draft.project_id,
-                            ProjectDraft.revision == referenced_draft.revision,
-                        )
-                        .values(
-                            document_json=serialize_document(referenced_document),
-                            revision=ProjectDraft.revision + 1,
-                            updated_by=user.id,
-                        )
-                        .execution_options(synchronize_session=False)
-                    )
-                    if referenced_result.rowcount != 1:
-                        database.rollback()
-                        raise HTTPException(
-                            status_code=status.HTTP_409_CONFLICT,
-                            detail={
-                                'code': 'PROJECT_REVISION_CONFLICT',
-                                'message': '其他仪表盘正在更新，组合弹窗尚未删除，请重试。',
-                            },
-                        )
         result = database.execute(
             update(ProjectDraft)
             .where(ProjectDraft.project_id == project_id, ProjectDraft.revision == payload.revision)

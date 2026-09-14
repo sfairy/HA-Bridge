@@ -240,6 +240,34 @@ export const ALL_ITEM_MODELS = Object.freeze({
     scaleBasis: [0.45, 2.8, 0.45],
     preserveOrigin: true
   }),
+  // Shaped pillars need real assets: addExternalItemModel() swaps out the procedural solid for the
+  // loaded GLB, so a baked box would silently override every non-square shape. These meshes are
+  // exported from the same geometry studio-app.js builds (see gen-pillars.mjs) and share the pillar's
+  // scaleBasis, so the item keeps its 0.45 x 2.8 x 0.45 footprint and base-at-origin placement.
+  pillar_round: {
+    url: "/bridge-static/3d-studio/models/pillar-round-lite.glb?v=20260913-pillar-shapes-v1",
+    fallbackUrl: "/bridge-static/3d-studio/models/pillar-round.glb?v=20260913-pillar-shapes-v1",
+    scaleBasis: [0.45, 2.8, 0.45],
+    preserveOrigin: true
+  },
+  pillar_semicircle: {
+    url: "/bridge-static/3d-studio/models/pillar-semicircle-lite.glb?v=20260913-pillar-shapes-v1",
+    fallbackUrl: "/bridge-static/3d-studio/models/pillar-semicircle.glb?v=20260913-pillar-shapes-v1",
+    scaleBasis: [0.45, 2.8, 0.45],
+    preserveOrigin: true
+  },
+  pillar_quarter: {
+    url: "/bridge-static/3d-studio/models/pillar-quarter-lite.glb?v=20260913-pillar-shapes-v1",
+    fallbackUrl: "/bridge-static/3d-studio/models/pillar-quarter.glb?v=20260913-pillar-shapes-v1",
+    scaleBasis: [0.45, 2.8, 0.45],
+    preserveOrigin: true
+  },
+  pillar_quarterinner: {
+    url: "/bridge-static/3d-studio/models/pillar-quarterinner-lite.glb?v=20260913-pillar-shapes-v2",
+    fallbackUrl: "/bridge-static/3d-studio/models/pillar-quarterinner.glb?v=20260913-pillar-shapes-v2",
+    scaleBasis: [0.45, 2.8, 0.45],
+    preserveOrigin: true
+  },
   curtain_left: homeLiteModel("curtain_left", "20260901-all-home-furniture-v1", {
     scaleBasis: [1.8, 2.4, 0.18],
     preserveOrigin: true
@@ -345,7 +373,9 @@ export const ALL_ITEM_MODELS = Object.freeze({
     preserveOrigin: true
   })
 });
-const FURNITURE_MODEL_TYPES = new Set(["sofa", "coffeetable", "squarecoffeetable", "tvstand", "rug", "plant", "bed", "nightstand", "vanity", "desk", "bookcase", "aquarium", "table", "rounddiningtable", "chair", "bar", "sideboard", "shoecabinet", "cabinet", "glasscabinet", "shelf", "wallcabinet", "kitchenbase", "kitchensink", "kitchencooktop", "basin", "toilet", "squattoilet", "urinal", "shower", "bathtub", "glasspartition", "stairs", "pillar", "curtain_left", "curtain_right", "curtain_split", "rounddiningtable_turntable", "tv_standard", "tv_tabletop", "tv_mobile", "wallac", "floorac", "airpurifier", "robotvacuum", "floorlamp", "walllamp", "fridge", "rangehood", "dishwasher", "steamoven", "microwave", "ricecooker", "washer", "dryer", "storagewaterheater", "gaswaterheater", "desktop", "laptop", "nas"]);
+const FURNITURE_MODEL_TYPES = new Set(["sofa", "coffeetable", "squarecoffeetable", "tvstand", "rug", "plant", "bed", "nightstand", "vanity", "desk", "bookcase", "aquarium", "table", "rounddiningtable", "chair", "bar", "sideboard", "shoecabinet", "cabinet", "glasscabinet", "shelf", "wallcabinet", "kitchenbase", "kitchensink", "kitchencooktop", "basin", "toilet", "squattoilet", "urinal", "shower", "bathtub", "glasspartition", "stairs", "pillar", "pillar_round", "pillar_semicircle", "pillar_quarter", "pillar_quarterinner", "curtain_left", "curtain_right", "curtain_split", "rounddiningtable_turntable", "tv_standard", "tv_tabletop", "tv_mobile", "wallac", "floorac", "airpurifier", "robotvacuum", "floorlamp", "walllamp", "fridge", "rangehood", "dishwasher", "steamoven", "microwave", "ricecooker", "washer", "dryer", "storagewaterheater", "gaswaterheater", "desktop", "laptop", "nas"]);
+/** Pillar shapes with a dedicated GLB asset; see modelTypeForItem. */
+const PILLAR_ASSET_SHAPES = new Set(["round", "semicircle", "quarter", "quarterinner"]);
 const WOOD_TONE_MODEL_TYPES = new Set(["bed", "nightstand", "vanity", "desk", "bookcase", "table", "rounddiningtable", "chair", "bar", "sideboard", "shoecabinet", "cabinet", "glasscabinet", "shelf", "wallcabinet", "kitchenbase", "kitchensink", "kitchencooktop"]);
 const APPLIANCE_MODEL_TYPES = new Set(["tv_standard", "tv_tabletop", "tv_mobile", "wallac", "floorac", "airpurifier", "robotvacuum", "floorlamp", "walllamp", "fridge", "rangehood", "dishwasher", "steamoven", "microwave", "ricecooker", "washer", "dryer", "storagewaterheater", "gaswaterheater", "desktop", "laptop", "nas", "pipelinewaterpurifier", "tea_bar_machine", "airoutlet"]);
 const PALETTE_OVERRIDE_MODEL_TYPES = new Set(["sofa", "coffeetable", "squarecoffeetable", "tvstand", "rug", "plant", "bed", "nightstand", "vanity", "desk", "bookcase", "pipelinewaterpurifier", "tea_bar_machine", "elevator", "steelstairs", "glassstairs", "piano"]);
@@ -419,9 +449,15 @@ export function createExternalModelManager({
       return Promise.reject(new Error("模型 " + modelKey + " 没有可用资源"));
     }
   }
+  /**
+   * Pillar shapes that ship their own GLB asset. "square" keeps the original baked box, so it stays on
+   * the plain "pillar" model and the item is otherwise unchanged.
+   */
   function modelTypeForItem(item) {
     if (item.type === "curtain") {
       return "curtain_" + (["left", "right", "split"].includes(item.curtainPosition) ? item.curtainPosition : "split");
+    } else if (item.type === "pillar") {
+      return PILLAR_ASSET_SHAPES.has(item.pillarShape) ? "pillar_" + item.pillarShape : "pillar";
     } else if (item.type === "rounddiningtable" && (item.roundTableTurntable === true || item.type === "rounddiningtableturntable")) {
       return "rounddiningtable_turntable";
     } else if (item.type === "tv") {

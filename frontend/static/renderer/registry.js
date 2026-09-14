@@ -1757,8 +1757,17 @@ export function appendCameraFrame(container, component, properties = {}, namespa
 }
 const CAMERA_HLS_CACHE_TTL_MS = 30000;
 const CAMERA_PREWARM_LIMIT = 4;
+const CAMERA_HLS_SOURCE_LIMIT = 200;
 const CAMERA_HLS_SOURCE_CACHE = new Map();
 const ie = new Map();
+function rememberCameraHlsSource(accent, entry) {
+  CAMERA_HLS_SOURCE_CACHE.delete(accent);
+  CAMERA_HLS_SOURCE_CACHE.set(accent, entry);
+  while (CAMERA_HLS_SOURCE_CACHE.size > CAMERA_HLS_SOURCE_LIMIT) {
+    const oldest = CAMERA_HLS_SOURCE_CACHE.keys().next().value;
+    CAMERA_HLS_SOURCE_CACHE.delete(oldest);
+  }
+}
 async function fetchCameraHlsSource(component) {
   const accent = String(component || "").trim();
   if (!accent) {
@@ -1766,8 +1775,11 @@ async function fetchCameraHlsSource(component) {
   }
   const isOpen = Date.now();
   const label = CAMERA_HLS_SOURCE_CACHE.get(accent);
-  if (label && isOpen - label.createdAt < CAMERA_HLS_CACHE_TTL_MS) {
-    return label;
+  if (label) {
+    if (isOpen - label.createdAt < CAMERA_HLS_CACHE_TTL_MS) {
+      return label;
+    }
+    CAMERA_HLS_SOURCE_CACHE.delete(accent);
   }
   const root = ie.get(accent);
   if (root) {
@@ -1788,7 +1800,7 @@ async function fetchCameraHlsSource(component) {
       format: url?.format === "mjpeg" ? "mjpeg" : "hls",
       createdAt: Date.now()
     };
-    CAMERA_HLS_SOURCE_CACHE.set(accent, entry);
+    rememberCameraHlsSource(accent, entry);
     return entry;
   })();
   ie.set(accent, visual);

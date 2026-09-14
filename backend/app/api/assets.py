@@ -11,11 +11,6 @@ from urllib.parse import quote, unquote
 from uuid import uuid4
 from xml.etree import ElementTree
 
-from fastapi import APIRouter, HTTPException, Query, Request, Response, status
-from fastapi.responses import FileResponse
-from PIL import Image, UnidentifiedImageError
-from sqlalchemy import select
-
 from dependencies import (
     DatabaseSession,
     LicensedUser,
@@ -25,9 +20,13 @@ from dependencies import (
     require_viewer_user_asset,
     viewer_user_asset_ids,
 )
+from fastapi import APIRouter, HTTPException, Query, Request, Response, status
+from fastapi.responses import FileResponse
 from global_popups import global_popups
 from models import Project, ProjectDraft
 from panel.document_walk import any_leaf
+from PIL import Image, UnidentifiedImageError
+from sqlalchemy import select
 from ui_packs import UI_PACKS, get_ui_pack_for_asset_path, require_ui_pack_access
 
 router = APIRouter(prefix='/assets', tags=['assets'])
@@ -44,6 +43,7 @@ MAX_UPLOAD_PIXELS = 10000000
 MAX_UPLOAD_DIMENSION = 8192
 MAX_UPLOAD_SVG_BYTES = 5000000
 MAX_UPLOAD_SVG_ELEMENTS = 20000
+MAX_UPLOAD_BYTES = 25000000
 EFFECT_VARIANT_PADDING = 2
 EFFECT_VARIANT_MAX_AREA_RATIO = 0.98
 ASSET_ID = re.compile('^[0-9a-f]{32}$')
@@ -140,7 +140,7 @@ def effect_variant_payload(
     '''Build a non-destructive alpha-cropped PNG used only by the runtime renderer.'''
     if path.suffix.lower() not in {'.png', '.webp'}:
         return None
-    cache_key = hashlib.sha256(f'{full_asset_id}\x00{version}'.encode('utf-8')).hexdigest()
+    cache_key = hashlib.sha256(f'{full_asset_id}\x00{version}'.encode()).hexdigest()
     variant_path = cache_root / f'{cache_key}.png'
     metadata_path = cache_root / f'{cache_key}.json'
     variant_url = (
@@ -628,7 +628,6 @@ class AssetCatalog:
                     if user_asset_file(self.user_root, asset_id.removeprefix('user:')) is None:
                         stale_ids.append(asset_id)
                 elif source == 'studio3d-export' and self.studio3d_exports_root is not None:
-                    relative = str(item.get('relativePath') or '')
                     filename = Path(str(item.get('name') or '')).name
                     folder_name = str(item.get('folder') or '')
                     if studio3d_export_file(self.studio3d_exports_root, folder_name, filename) is None:
@@ -793,10 +792,14 @@ async def upload_user_asset(request: Request, _user: LicensedUser) -> dict:
     directory.mkdir(mode=448)
     path = directory / filename
     has_content = False
+    total_bytes = 0
     try:
         with path.open('xb') as descriptor:
             async for chunk in request.stream():
                 if chunk:
+                    total_bytes += len(chunk)
+                    if total_bytes > MAX_UPLOAD_BYTES:
+                        raise HTTPException(status_code=413, detail='图片文件过大，请压缩后重试。')
                     has_content = True
                     descriptor.write(chunk)
             descriptor.flush()

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from sqlalchemy import Engine, create_engine, event
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 
@@ -12,7 +12,14 @@ class Base(DeclarativeBase):
 
 class Database:
     def __init__(self, database_url: str) -> None:
-        self.engine = create_engine(database_url, connect_args={'check_same_thread': False})
+        self.engine = create_engine(
+            database_url,
+            connect_args={'check_same_thread': False, 'timeout': 30},
+            pool_pre_ping=True,
+            pool_size=10,
+            max_overflow=20,
+            pool_timeout=30,
+        )
         event.listen(self.engine, 'connect', self._configure_sqlite)
         self.session_factory = sessionmaker(bind=self.engine, autoflush=False, expire_on_commit=False)
 
@@ -21,6 +28,7 @@ class Database:
         cursor = connection.cursor()
         cursor.execute('PRAGMA foreign_keys=ON')
         cursor.execute('PRAGMA journal_mode=WAL')
+        cursor.execute('PRAGMA busy_timeout=30000')
         cursor.close()
 
     def sessions(self) -> Iterator[Session]:

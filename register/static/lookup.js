@@ -38,15 +38,16 @@ form.addEventListener("submit", async (event) => {
     }
     for (const order of payload.orders) {
       const item = document.createElement("li");
-      const link = document.createElement("a");
-      link.href = `/issued/${order.id}`;
-      link.textContent = order.activationCode;
+      const code = document.createElement("code");
+      code.textContent = order.activationCodeMasked;
       const stamp = document.createElement("span");
       stamp.textContent = `${order.productName} · ${order.createdAt}`;
-      item.append(link, stamp);
+      item.append(code, stamp);
       list.append(item);
     }
     list.hidden = false;
+    emptyNote.textContent = "为安全起见此处只显示部分激活码。请打开注册后跳转的“激活码已生成”页面，或重新注册获取完整激活码。";
+    emptyNote.hidden = false;
   } catch (error) {
     message.textContent = error.message;
     message.hidden = false;

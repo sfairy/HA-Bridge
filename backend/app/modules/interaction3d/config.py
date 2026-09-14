@@ -578,7 +578,7 @@ def validate_config(properties) -> None:
                 (point['x'] - origin['x']) * (following['y'] - origin['y'])
                 - (point['y'] - origin['y']) * (following['x'] - origin['x'])
             ) > 0.000001
-            for point, following in zip(route[1:], route[2:])
+            for point, following in zip(route[1:], route[2:], strict=False)
         ):
             fail()
 

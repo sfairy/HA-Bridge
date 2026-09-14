@@ -14,7 +14,9 @@ class StateHub:
         self._lock = asyncio.Lock()
 
     @staticmethod
-    def normalize(raw: dict[str, Any]) -> dict[str, Any]:
+    def normalize(raw: Any) -> dict[str, Any] | None:
+        if not isinstance(raw, dict):
+            return None
         entity_id = str(raw.get('entity_id', ''))
         state = str(raw.get('state', 'unknown'))
         return {
@@ -32,7 +34,7 @@ class StateHub:
         normalized = {
             item['entityId']: item
             for item in (self.normalize(raw) for raw in states)
-            if item['entityId']
+            if item and item['entityId']
         }
         async with self._lock:
             removed = sorted(set(self._states) - set(normalized))
@@ -44,14 +46,14 @@ class StateHub:
         normalized = {
             item['entityId']: item
             for item in (self.normalize(raw) for raw in states)
-            if item['entityId']
+            if item and item['entityId']
         }
         async with self._lock:
             self._states.update(normalized)
 
     async def update(self, raw: dict[str, Any]) -> dict[str, Any] | None:
         normalized = self.normalize(raw)
-        if not normalized['entityId']:
+        if not normalized or not normalized['entityId']:
             return None
         async with self._lock:
             self._states[normalized['entityId']] = normalized

@@ -1,17 +1,21 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query, Request, Response, status
-from sqlalchemy import select
-
 from dependencies import DatabaseSession, LicensedUser
+from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from ha.crypto import CredentialCipher, CredentialCipherError
 from models import DisplayDevice, DisplayPairingCode, Project, User
-from schemas import DisplayDeviceUpdateRequest, DisplayPairRequest, DisplayPairingCodeRequest, DisplayPairingCodeUpdateRequest
+from schemas import (
+    DisplayDeviceUpdateRequest,
+    DisplayPairingCodeRequest,
+    DisplayPairingCodeUpdateRequest,
+    DisplayPairRequest,
+)
 from security import new_session_token, session_token_hash, set_display_cookie
+from sqlalchemy import select
 
 router = APIRouter(prefix='/displays', tags=['displays'])
 
@@ -199,7 +203,7 @@ def update_pairing_code(
         pairing.project_id = project.id
     if payload.enabled is not None:
         pairing.is_enabled = payload.enabled
-    pairing.updated_at = datetime.now(timezone.utc)
+    pairing.updated_at = datetime.now(UTC)
     device = database.scalar(
         select(DisplayDevice).where(
             DisplayDevice.pairing_code_id == pairing.id,
@@ -240,6 +244,8 @@ def pair_display_device(
             detail='配对失败次数过多，请稍后再试。',
             headers={'Retry-After': str(limiter.block_seconds)},
         )
+    if not request.app.state.license_service.allows('display'):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='当前授权不允许添加中控设备。')
     pairing = database.scalar(
         select(DisplayPairingCode).where(DisplayPairingCode.code_hash == session_token_hash(payload.code))
     )
@@ -250,7 +256,7 @@ def pair_display_device(
     if project is None:
         limiter.record_failure(limiter_key)
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='配对的仪表盘已不存在。')
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     token = new_session_token()
     device = database.scalar(select(DisplayDevice).where(DisplayDevice.pairing_code_id == pairing.id))
     if device is None:
@@ -296,14 +302,14 @@ def update_display_device(
         device.project_id = project.id
         if pairing is not None:
             pairing.project_id = project.id
-            pairing.updated_at = datetime.now(timezone.utc)
+            pairing.updated_at = datetime.now(UTC)
     else:
         project = database.get(Project, device.project_id)
     if payload.name is not None:
         device.name = payload.name
         if pairing is not None:
             pairing.name = payload.name
-            pairing.updated_at = datetime.now(timezone.utc)
+            pairing.updated_at = datetime.now(UTC)
     database.commit()
     database.refresh(device)
     return device_payload(device, project)
@@ -315,5 +321,5 @@ def revoke_display_device(device_id: str, database: DatabaseSession, user: Licen
     device = database.get(DisplayDevice, device_id)
     if device is None or device.revoked_at is not None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='中控设备不存在。')
-    device.revoked_at = datetime.now(timezone.utc)
+    device.revoked_at = datetime.now(UTC)
     database.commit()

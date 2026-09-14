@@ -10,8 +10,8 @@ databases may already be stamped at revision 0011. Retaining the revision and
 normalising the harmless column lets both older and already-upgraded databases
 start without restoring any of the 0.3.3 editor behaviour.
 '''
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = '0011'
 down_revision = '0010'

@@ -4,16 +4,15 @@ import base64
 import hashlib
 import hmac
 import json
-from datetime import datetime, timezone
-from pathlib import Path
 from collections.abc import Mapping
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-
 from secure_key_file import load_or_create_fernet_key
 
 
@@ -27,8 +26,8 @@ def parse_timestamp(value: str) -> datetime:
     except (TypeError, ValueError) as error:
         raise LicenseCryptoError('租约时间格式无效。') from error
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def _decode(value: str) -> bytes:

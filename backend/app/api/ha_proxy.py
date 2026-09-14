@@ -7,14 +7,13 @@ from time import monotonic
 from urllib.parse import quote
 
 import httpx
-from fastapi import APIRouter, HTTPException, Request, status
-from fastapi.responses import JSONResponse, Response, StreamingResponse
-
+from api.ha import active_connection
 from database import Database
 from dependencies import ShortLivedLicensedViewer, ViewerPrincipal, require_viewer_entity
+from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from ha.client import HAClientError
 from ha.crypto import CredentialCipherError
-from api.ha import active_connection
 
 router = APIRouter(include_in_schema=False)
 ALLOWED_MEDIA_PROXY_PREFIXES = (

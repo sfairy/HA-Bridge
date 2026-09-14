@@ -14,41 +14,43 @@ if str(_APP_ROOT) not in sys.path:
     sys.path.insert(0, str(_APP_ROOT))
 
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import quote
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse, Response
-from fastapi.staticfiles import StaticFiles
-from sqlalchemy import select, text
-from starlette.exceptions import HTTPException as StarletteHTTPException
-
 from admin_account import AdminAccountStore
+from api.assets import AssetCatalog, read_builtin_asset
+from api.assets import router as assets_router
 from api.auth import router as auth_router
-from api.assets import AssetCatalog, read_builtin_asset, router as assets_router
 from api.displays import router as displays_router
-from api.ha import router as ha_router, runtime_router
-from api.ha_proxy import router as ha_proxy_router
 from api.global_logs import router as global_logs_router
+from api.ha import router as ha_router
+from api.ha import runtime_router
+from api.ha_proxy import router as ha_proxy_router
 from api.icons import router as icons_router
 from api.license import router as license_router
 from api.projects import router as projects_router
 from api.studio3d import router as studio3d_router
 from api.ui_packs import router as ui_packs_router
-from modules.interaction3d.api import router as interaction3d_router
 from auth_limiter import LoginAttemptLimiter
 from config import Settings, load_settings
 from database import Database
+from display_access import active_display_device, backfill_persistent_display_pairings
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import FileResponse, PlainTextResponse, RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
+from global_log import GlobalLogStore, _safe_text, event_context
 from ha.service import HAConnectorService
 from license import LicenseService
-from migrations import restore_upgrade_backup, run_migrations
-from display_access import active_display_device, backfill_persistent_display_pairings
-from global_log import GlobalLogStore, _safe_text, event_context
 from models import DisplayDevice, LoginSession, Project, User
+from modules.interaction3d.api import router as interaction3d_router
 from security import session_token_hash, set_display_cookie
+from sqlalchemy import select, text
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+from migrations import restore_upgrade_backup, run_migrations
 
 SLOW_REQUEST_MILLISECONDS = 2000
 
@@ -218,6 +220,7 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
             if shutdown_error is not None:
                 raise shutdown_error
             app.state.global_log.append('info', '系统后台', '系统', 'HA Bridge 已正常停止')
+            app.state.global_log.close()
 
     app = FastAPI(
         title='HA Bridge',
@@ -230,8 +233,24 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
     app.state.settings = app_settings
 
     @app.exception_handler(Exception)
-    async def unhandled_error_response(request: Request, _error: Exception):
+    async def unhandled_error_response(request: Request, error: Exception):
         context = getattr(request.state, 'log_context', {})
+        # The diagnostics middleware already logs a traceback for endpoint failures; only log here
+        # when the error escaped that middleware, so 500s are never silently unlogged.
+        if not getattr(request.state, 'error_logged', False):
+            log = getattr(request.app.state, 'global_log', None)
+            if log is not None:
+                try:
+                    log.append(
+                        'error',
+                        '系统后台',
+                        '接口',
+                        f'接口运行异常：{request.method} {request.url.path} · {error}',
+                        context=context or None,
+                        details=traceback.format_exc(),
+                    )
+                except Exception:
+                    pass
         return PlainTextResponse(
             'Internal Server Error',
             status_code=500,
@@ -313,6 +332,7 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
                     context=context,
                     details=traceback.format_exc(),
                 )
+            request.state.error_logged = True
             raise
         finally:
             event_context.reset(token)
@@ -349,7 +369,7 @@ def create_app(settings: Settings | None = None, license_transport=None) -> Fast
             record = database.scalar(
                 select(LoginSession).where(LoginSession.id_hash == session_token_hash(token))
             )
-            if record is None or record.expires_at.replace(tzinfo=timezone.utc) <= datetime.now(timezone.utc):
+            if record is None or record.expires_at.replace(tzinfo=UTC) <= datetime.now(UTC):
                 return False
             if record.user_id != account_user_id:
                 return False

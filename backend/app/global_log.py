@@ -7,12 +7,12 @@ import sys
 import threading
 from collections import deque
 from contextvars import ContextVar
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-event_context: ContextVar[dict[str, Any]] = ContextVar('global_log_context', default={})
+event_context: ContextVar[dict[str, Any] | None] = ContextVar('global_log_context', default=None)
 CONTEXT_KEYS = frozenset({
     'code',
     'line',
@@ -45,7 +45,7 @@ _SECRET_PATTERNS = (
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _storage_diagnostic(message: str) -> None:
@@ -92,12 +92,19 @@ class GlobalLogStore:
         self._lock = threading.RLock()
         self._last_pruned_at = None
         self._recent_events = {}
-        self._pending = deque(maxlen=200)
+        self._pending = deque(maxlen=2000)
         self._write_failures = 0
         self._dropped_events = 0
         self._last_error = None
         self._last_warning_at = None
         self._tail_checked = False
+        # In-memory state (self._lock) is never held across file I/O; self._io_lock serialises the
+        # file-mutating operations (flush, prune, clear) so the request path never blocks on disk.
+        self._io_lock = threading.Lock()
+        self._generation = 0
+        self._writer: threading.Thread | None = None
+        self._wake = threading.Event()
+        self._closed = False
         try:
             self._prepare_directory()
         except OSError as error:
@@ -110,13 +117,14 @@ class GlobalLogStore:
             os.chmod(self.path, 384)
 
     def _io_failure(self, error: OSError) -> None:
-        self._tail_checked = False
-        self._write_failures += 1
-        self._last_error = _safe_text(error, limit=500)
-        now = _utc_now()
-        if self._last_warning_at is None or now - self._last_warning_at >= timedelta(seconds=30):
-            _storage_diagnostic(f'全局日志存储不可用，暂存最近 200 条事件：{self._last_error}')
-            self._last_warning_at = now
+        with self._lock:
+            self._tail_checked = False
+            self._write_failures += 1
+            self._last_error = _safe_text(error, limit=500)
+            now = _utc_now()
+            if self._last_warning_at is None or now - self._last_warning_at >= timedelta(seconds=30):
+                _storage_diagnostic(f'全局日志存储不可用，暂存最近 2000 条事件：{self._last_error}')
+                self._last_warning_at = now
 
     def storage_status(self) -> dict[str, Any]:
         with self._lock:
@@ -151,7 +159,7 @@ class GlobalLogStore:
             'message': _safe_text(message, limit=1000) or '未提供说明',
             'repeatCount': 1,
         }
-        metadata = safe_context({**event_context.get(), **(context or {})})
+        metadata = safe_context({**(event_context.get() or {}), **(context or {})})
         if metadata:
             event['context'] = metadata
         if details:
@@ -197,7 +205,41 @@ class GlobalLogStore:
             if len(self._pending) == self._pending.maxlen:
                 self._dropped_events += 1
             self._pending.append(event)
-            try:
+        self._ensure_writer()
+        self._wake.set()
+        return event
+
+    def _ensure_writer(self) -> None:
+        if self._writer is not None or self._closed:
+            return
+        self._writer = threading.Thread(target=self._writer_loop, name='global-log-writer', daemon=True)
+        self._writer.start()
+
+    def _writer_loop(self) -> None:
+        while True:
+            self._wake.wait()
+            self._wake.clear()
+            self._flush_pending()
+            if self._closed:
+                # Drain anything buffered around shutdown, with a bounded number of retries so a
+                # broken disk cannot keep the thread alive.
+                for _ in range(3):
+                    with self._lock:
+                        if not self._pending:
+                            return
+                    self._flush_pending()
+                return
+
+    def _flush_pending(self) -> None:
+        '''Write buffered events to disk. Runs only on the writer thread, never on the event loop.'''
+        with self._lock:
+            if not self._pending:
+                return
+            batch = list(self._pending)
+            self._pending.clear()
+            generation = self._generation
+        try:
+            with self._io_lock:
                 self._prepare_directory()
                 separate_partial_line = False
                 if not self._tail_checked and self.path.exists() and self.path.stat().st_size:
@@ -208,21 +250,42 @@ class GlobalLogStore:
                 with os.fdopen(descriptor, 'ab') as output:
                     if separate_partial_line:
                         output.write(b'\n')
-                    for pending in self._pending:
+                    for pending in batch:
                         output.write(
                             (json.dumps(pending, ensure_ascii=False, separators=(',', ':')) + '\n').encode('utf-8')
                         )
                     output.flush()
-                self._pending.clear()
+        except OSError as error:
+            with self._lock:
+                # Re-buffer oldest-first so the deque keeps the newest events if it overflows.
+                self._pending = deque(list(batch) + list(self._pending), maxlen=self._pending.maxlen)
+            self._io_failure(error)
+            return
+        with self._lock:
+            stale = generation != self._generation
+            was_unavailable = False
+            if not stale:
                 self._tail_checked = True
                 was_unavailable = self._last_error is not None
                 self._last_error = None
-                self._prune_if_needed()
-                if was_unavailable:
-                    _storage_diagnostic(f'全局日志存储已恢复，已补写缓存事件；累计未能保留 {self._dropped_events} 条')
-            except OSError as error:
-                self._io_failure(error)
-        return event
+        if stale:
+            # Log was cleared while this batch was being written; drop it and truncate.
+            try:
+                with self._io_lock:
+                    self._write_events([])
+            except OSError:
+                pass
+            return
+        if was_unavailable:
+            _storage_diagnostic(f'全局日志存储已恢复，已补写缓存事件；累计未能保留 {self._dropped_events} 条')
+        self._prune_if_needed()
+
+    def close(self, timeout: float = 2.0) -> None:
+        self._closed = True
+        self._wake.set()
+        writer = self._writer
+        if writer is not None and writer.is_alive():
+            writer.join(timeout=timeout)
 
     def list_events(
         self,
@@ -242,7 +305,7 @@ class GlobalLogStore:
             try:
                 timestamp = datetime.fromisoformat(str(event.get('lastTimestamp') or event['timestamp']))
                 if timestamp.tzinfo is None:
-                    timestamp = timestamp.replace(tzinfo=timezone.utc)
+                    timestamp = timestamp.replace(tzinfo=UTC)
                 if timestamp < cutoff:
                     continue
             except (TypeError, ValueError, KeyError):
@@ -269,12 +332,14 @@ class GlobalLogStore:
         return result
 
     def clear(self) -> None:
-        with self._lock:
+        with self._io_lock:
+            with self._lock:
+                self._generation += 1
+                self._recent_events.clear()
+                self._pending.clear()
             self._write_events([])
-            self._recent_events.clear()
-            self._pending.clear()
 
-    def _read_events(self, *, strict: bool = False) -> list[dict[str, Any]]:
+    def _read_events(self, *, strict: bool = False, include_pending: bool = True) -> list[dict[str, Any]]:
         events = {}
 
         def collect(event: Any) -> None:
@@ -299,8 +364,11 @@ class GlobalLogStore:
             if strict:
                 raise
             self._io_failure(error)
-        for event in self._pending:
-            collect(event)
+        if include_pending:
+            with self._lock:
+                pending_snapshot = list(self._pending)
+            for event in pending_snapshot:
+                collect(event)
         return list(events.values())
 
     def _write_events(self, events: list[dict[str, Any]]) -> None:
@@ -317,26 +385,27 @@ class GlobalLogStore:
 
     def _prune_if_needed(self) -> None:
         now = _utc_now()
-        oversized = self.path.exists() and self.path.stat().st_size > self.max_bytes
-        if not oversized and self._last_pruned_at and now - self._last_pruned_at < timedelta(minutes=5):
-            return
-        cutoff = now - timedelta(days=self.retention_days)
-        retained = []
-        retained_bytes = 0
-        for event in reversed(self._read_events(strict=True)):
-            try:
-                timestamp = datetime.fromisoformat(str(event.get('lastTimestamp') or event.get('timestamp')))
-                if timestamp.tzinfo is None:
-                    timestamp = timestamp.replace(tzinfo=timezone.utc)
-            except (TypeError, ValueError):
-                continue
-            if timestamp < cutoff:
-                continue
-            event_bytes = len(json.dumps(event, ensure_ascii=False).encode('utf-8')) + 1
-            if retained and retained_bytes + event_bytes > self.max_bytes:
-                break
-            retained.append(event)
-            retained_bytes += event_bytes
-        retained.reverse()
-        self._write_events(retained)
-        self._last_pruned_at = now
+        with self._io_lock:
+            oversized = self.path.exists() and self.path.stat().st_size > self.max_bytes
+            if not oversized and self._last_pruned_at and now - self._last_pruned_at < timedelta(minutes=5):
+                return
+            cutoff = now - timedelta(days=self.retention_days)
+            retained = []
+            retained_bytes = 0
+            for event in reversed(self._read_events(strict=True, include_pending=False)):
+                try:
+                    timestamp = datetime.fromisoformat(str(event.get('lastTimestamp') or event.get('timestamp')))
+                    if timestamp.tzinfo is None:
+                        timestamp = timestamp.replace(tzinfo=UTC)
+                except (TypeError, ValueError):
+                    continue
+                if timestamp < cutoff:
+                    continue
+                event_bytes = len(json.dumps(event, ensure_ascii=False).encode('utf-8')) + 1
+                if retained and retained_bytes + event_bytes > self.max_bytes:
+                    break
+                retained.append(event)
+                retained_bytes += event_bytes
+            retained.reverse()
+            self._write_events(retained)
+            self._last_pruned_at = now

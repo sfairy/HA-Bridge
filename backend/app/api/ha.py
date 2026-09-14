@@ -4,13 +4,10 @@ import asyncio
 import json
 import time
 import traceback
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urlsplit
 from uuid import uuid4
-
-from fastapi import APIRouter, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
-from sqlalchemy import func, or_, select
 
 from database import Database
 from dependencies import (
@@ -23,12 +20,14 @@ from dependencies import (
     viewer_entity_ids,
 )
 from display_access import active_display_device
+from fastapi import APIRouter, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
 from global_log import event_context
 from ha.client import HAClient, HAClientError
 from ha.crypto import CredentialCipherError
-from models import DisplayDevice, HAArea, HAConnection, HADevice, HAEntity, HASyncState, User
+from models import HAArea, HAConnection, HADevice, HAEntity, HASyncState, User
 from panel.action_rules import TOGGLE_ENTITY_DOMAINS
 from schemas import HABrowseMediaRequest, HAConnectionInput, HAServiceCallRequest, HATestRequest
+from sqlalchemy import func, or_, select
 
 router = APIRouter(prefix='/ha', tags=['home-assistant'])
 runtime_router = APIRouter(tags=['runtime'])
@@ -227,6 +226,8 @@ async def test_connection(payload: HATestRequest, request: Request, user: Licens
         result = await client.test_connection()
     except HAClientError as error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
+    finally:
+        await client.aclose()
     return {'ok': True, **result}
 
 
@@ -260,6 +261,8 @@ async def save_connection(
         tested = await client.test_connection()
     except (HAClientError, CredentialCipherError) as error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
+    finally:
+        await client.aclose()
     encrypted = connector.cipher.encrypt(token)
     ha_version = tested.get('version')
     if connection is None:
@@ -390,7 +393,7 @@ async def entity_history(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='请先配置 Home Assistant 连接。')
     if not entity_exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='实体不存在、已禁用或已失联。')
-    start_time = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    start_time = (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
     try:
         history = await request.app.state.ha_connector.fetch_history(connection, entity_id, start_time, hours)
     except (HAClientError, CredentialCipherError) as error:

@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 from cryptography.fernet import Fernet, InvalidToken
-
 from secure_key_file import load_or_create_fernet_key
 
 

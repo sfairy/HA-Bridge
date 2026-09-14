@@ -1,6 +1,6 @@
 [project]
 name = "ha-bridge"
-version = "0.5.2"
+version = "0.5.2.1"
 description = "Home Assistant dashboard and control bridge"
 requires-python = ">=3.11"
 

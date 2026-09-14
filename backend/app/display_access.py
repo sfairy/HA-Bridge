@@ -3,14 +3,13 @@ from __future__ import annotations
 import secrets
 from uuid import uuid4
 
-from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
-
 from config import Settings
 from database import Database
 from ha.crypto import CredentialCipher
 from models import DisplayDevice, DisplayPairingCode, User
 from security import session_token_hash
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
 
 
 def active_display_device(database: Session, token: str) -> DisplayDevice | None:

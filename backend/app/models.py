@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
+from database import Base
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from database import Base
-
 
 def utc_now():
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class User(Base):
@@ -23,7 +22,7 @@ class User(Base):
     auth_externalized: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
-    sessions: Mapped[list['LoginSession']] = relationship(back_populates='user', cascade='all, delete-orphan')
+    sessions: Mapped[list[LoginSession]] = relationship(back_populates='user', cascade='all, delete-orphan')
 
 
 class LoginSession(Base):
@@ -49,7 +48,7 @@ class DisplayPairingCode(Base):
     is_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
-    device: Mapped['DisplayDevice | None'] = relationship(
+    device: Mapped[DisplayDevice | None] = relationship(
         back_populates='pairing_code',
         cascade='all, delete-orphan',
         passive_deletes=True,

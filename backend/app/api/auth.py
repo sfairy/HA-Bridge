@@ -1,15 +1,19 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-from fastapi import APIRouter, HTTPException, Request, Response, status
-from sqlalchemy import delete, select, text
-
 from admin_account import EXTERNAL_PASSWORD_SENTINEL
 from dependencies import CurrentUser, DatabaseSession
+from fastapi import APIRouter, HTTPException, Request, Response, status
 from models import LoginSession, User
 from schemas import LoginRequest, SetupAdminRequest, SetupStatusResponse, UserResponse
-from security import hash_password, new_session_token, session_expiry, session_token_hash, verify_password
+from security import (
+    DUMMY_PASSWORD_HASH,
+    hash_password,
+    new_session_token,
+    session_expiry,
+    session_token_hash,
+    verify_password,
+)
+from sqlalchemy import delete, select, text
 
 router = APIRouter(tags=['authentication'])
 
@@ -151,13 +155,17 @@ def login(
         )
     credentials = request.app.state.admin_account.credentials
     user = database.get(User, credentials.user_id) if credentials is not None else None
-    if (
-        credentials is None
-        or username != credentials.username
-        or user is None
-        or not user.is_active
-        or not verify_password(credentials.password_hash, payload.password)
-    ):
+    # Always run one argon2 verify (against a dummy hash when the account or username does not
+    # match) so the response time does not leak whether the username exists.
+    stored_hash = credentials.password_hash if credentials is not None else DUMMY_PASSWORD_HASH
+    password_ok = verify_password(stored_hash, payload.password)
+    identity_ok = (
+        credentials is not None
+        and username == credentials.username
+        and user is not None
+        and user.is_active
+    )
+    if not (identity_ok and password_ok):
         for key in limiter_keys:
             limiter.record_failure(key)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='账号或密码错误。')

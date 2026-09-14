@@ -6,19 +6,18 @@ import os
 import secrets
 import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
 from uuid import uuid4
 
 import httpx
-from sqlalchemy import select
-
 from config import Settings
 from database import Database
 from global_log import GlobalLogStore
-from models import LicenseState
 from license.crypto import LeaseVerifier, LicenseCryptoError, SecretCipher, parse_timestamp
+from models import LicenseState
+from sqlalchemy import select
 
 
 class LicenseClientError(RuntimeError):
@@ -46,7 +45,7 @@ BASE_FEATURES = {
 def aware(value: datetime | None) -> datetime | None:
     if value is None or value.tzinfo is not None:
         return value
-    return value.replace(tzinfo=timezone.utc)
+    return value.replace(tzinfo=UTC)
 
 
 class LicenseService:
@@ -211,6 +210,13 @@ class LicenseService:
         actual = hashlib.sha256(encoded).hexdigest()
         if actual != digest:
             raise LicenseClientError('本地授权商店公钥指纹不匹配。')
+        if path.is_file():
+            # Pinned on first trust: never let a network response rotate the trusted key.
+            pinned = hashlib.sha256(path.read_bytes()).hexdigest()
+            if pinned != digest:
+                raise LicenseClientError('本地授权商店公钥与已固定指纹不一致，已拒绝替换。')
+            self.verifier.trusted_keys[STORE_KEY_ID] = (path, pinned)
+            return
         path.write_bytes(encoded)
         os.chmod(path, 384)
         self.verifier.trusted_keys[STORE_KEY_ID] = (path, digest)
@@ -251,7 +257,13 @@ class LicenseService:
             raise LicenseClientError('本地授权商店未返回签名租约。')
         return parsed
 
-    def _instance_id(self, preferred_instance_id: str | None = None) -> str:
+    def _instance_id(self) -> str:
+        '''Return the device's install UUID, taking the on-disk file as the sole authority.
+
+        The database value is never adopted as the local identity: otherwise copying the
+        database plus a signed lease to another host would silently satisfy the
+        INSTANCE_MISMATCH check and defeat license binding.
+        '''
         if self._cached_instance_id:
             return self._cached_instance_id
         path = self.settings.instance_id_path
@@ -260,14 +272,10 @@ class LicenseService:
             saved = path.read_text(encoding='utf-8').strip()
         except OSError:
             saved = ''
-        preferred = (preferred_instance_id or '').strip()
-        if self._valid_instance_id(preferred):
-            value = preferred
-        elif self._valid_instance_id(saved):
+        if self._valid_instance_id(saved):
             value = saved
         else:
             value = str(uuid4())
-        if saved != value:
             temporary = path.with_name(f'.{path.name}.tmp')
             descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 384)
             with os.fdopen(descriptor, 'w', encoding='utf-8') as output:
@@ -279,7 +287,7 @@ class LicenseService:
 
     def _state(self, database) -> LicenseState:
         state = database.scalar(select(LicenseState).limit(1))
-        instance_id = self._instance_id(state.instance_id if state and state.license_id else None)
+        instance_id = self._instance_id()
         if state is None:
             state = LicenseState(id=1, instance_id=instance_id)
             database.add(state)
@@ -323,7 +331,7 @@ class LicenseService:
             if payload['leaseSequence'] != state.lease_sequence:
                 raise LicenseCryptoError('本地租约序号与签名租约不一致。')
             expires = parse_timestamp(payload['expiresAt'])
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             last_verified = aware(state.last_verified_at)
             if last_verified and now + timedelta(seconds=self.settings.license_clock_skew_seconds) < last_verified:
                 state.status = 'CLOCK_ROLLBACK'
@@ -364,7 +372,7 @@ class LicenseService:
             expires_at = parse_timestamp(payload['expiresAt'])
             issued_at = parse_timestamp(payload['issuedAt'])
             lease_sequence = payload['leaseSequence']
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             if issued_at > now + timedelta(seconds=self.settings.license_clock_skew_seconds):
                 state.status = 'CLOCK_ROLLBACK'
                 state.last_error = '授权商店时间明显晚于本机时间，请先校准系统时间。'
@@ -408,7 +416,7 @@ class LicenseService:
             state.last_error = None
             state.deactivated_at = None
             if state.activated_at is None:
-                state.activated_at = datetime.now(timezone.utc)
+                state.activated_at = datetime.now(UTC)
             if activation_code_hint:
                 state.activation_code_hint = activation_code_hint
             if response.get('sessionToken'):
@@ -456,7 +464,7 @@ class LicenseService:
     def _payload(self, state: LicenseState) -> dict:
         effective_status = state.status
         effective_error = state.last_error
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         last_verified = aware(state.last_verified_at)
         lease_expires = aware(state.lease_expires_at)
         if last_verified and now + timedelta(seconds=self.settings.license_clock_skew_seconds) < last_verified:
@@ -545,7 +553,7 @@ class LicenseService:
         except LicenseCryptoError as error:
             self._record_failure('本地校验', error, sensitive_values=(state.signed_lease,))
             return False
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         last_verified = aware(state.last_verified_at)
         if last_verified and now + timedelta(seconds=self.settings.license_clock_skew_seconds) < last_verified:
             self._record_failure('本地校验', '检测到系统时间回拨，请校准系统时间后重新验证授权。')
@@ -626,7 +634,7 @@ class LicenseService:
                     if not item.get('expiresAt'):
                         continue
                     deadlines.append(parse_timestamp(item['expiresAt']))
-                remaining = (min(deadlines) - datetime.now(timezone.utc)).total_seconds()
+                remaining = (min(deadlines) - datetime.now(UTC)).total_seconds()
                 return min(lifetime, remaining)
         except (LicenseCryptoError, KeyError, TypeError, ValueError) as error:
             self._record_failure('授权有效期', error, sensitive_values=())

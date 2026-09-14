@@ -5,7 +5,7 @@ import json
 import os
 import shutil
 import sqlite3
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -67,7 +67,7 @@ def create_upgrade_backup(settings: Settings, source_revision: str, target_revis
     backup_directory = settings.data_dir / 'upgrade-backups'
     backup_directory.mkdir(parents=True, exist_ok=True, mode=448)
     os.chmod(backup_directory, 448)
-    timestamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ')
+    timestamp = datetime.now(UTC).strftime('%Y%m%dT%H%M%S.%fZ')
     safe_source = ''.join(
         character for character in source_revision if character.isalnum() or character in '-_'
     )
@@ -91,7 +91,7 @@ def create_upgrade_backup(settings: Settings, source_revision: str, target_revis
         os.replace(temporary_path, backup_path)
         metadata = {
             'applicationVersion': settings.version,
-            'createdAt': datetime.now(timezone.utc).isoformat(),
+            'createdAt': datetime.now(UTC).isoformat(),
             'databaseFile': backup_path.name,
             'databaseSha256': _sha256(backup_path),
             'sourceRevision': source_revision,

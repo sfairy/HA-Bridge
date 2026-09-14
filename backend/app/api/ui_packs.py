@@ -1,9 +1,8 @@
 from __future__ import annotations
 
+from dependencies import LicensedViewer
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
-
-from dependencies import LicensedViewer
 from ui_packs import DEFAULT_UI_PACK_ID, UI_PACKS, require_ui_pack_access
 
 router = APIRouter(prefix='/ui-packs', tags=['ui-packs'])

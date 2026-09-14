@@ -4,7 +4,6 @@ import asyncio
 import json
 import ssl
 from dataclasses import dataclass
-from ipaddress import ip_address
 from typing import Any
 from urllib.parse import quote, urlparse, urlunparse
 
@@ -33,22 +32,6 @@ def websocket_url(base_url: str) -> str:
     path = f'{parsed.path.rstrip("/")}/api/websocket'
     return urlunparse((scheme, parsed.netloc, path, '', '', ''))
 
-
-def is_ipv6_literal(base_url: str) -> bool:
-    '''Return whether the URL points directly at an IPv6 address.
-
-    IPv6 literals cannot be reached through the IPv4-only proxy commonly used
-    by local deployments, so these targets must bypass environment proxies.
-    '''
-    hostname = urlparse(base_url).hostname
-    if not hostname:
-        return False
-    try:
-        return ip_address(hostname).version == 6
-    except ValueError:
-        return False
-
-
 @dataclass(slots=True)
 class HASnapshot:
     config: dict[str, Any]
@@ -73,7 +56,8 @@ class HAClient:
         self.verify_tls = verify_tls
         self.timeout = timeout
         self.websocket_max_size_bytes = max(int(websocket_max_size_bytes), 8388608)
-        self._is_ipv6_literal = is_ipv6_literal(self.base_url)
+        self._message_timeout = max(float(timeout), 30.0)
+        self._http: httpx.AsyncClient | None = None
 
     @property
     def headers(self) -> dict[str, str]:
@@ -82,17 +66,35 @@ class HAClient:
             'Content-Type': 'application/json',
         }
 
-    async def test_connection(self) -> dict[str, Any]:
-        try:
-            async with httpx.AsyncClient(
+    def _http_client(self) -> httpx.AsyncClient:
+        '''Return a long-lived client so repeated calls reuse pooled connections.'''
+        if self._http is None or self._http.is_closed:
+            self._http = httpx.AsyncClient(
                 verify=self.verify_tls,
                 timeout=self.timeout,
                 headers=self.headers,
                 trust_env=False,
-            ) as client:
-                response = await client.get(f'{self.base_url}/api/config')
-                response.raise_for_status()
-                config = response.json()
+                limits=httpx.Limits(max_connections=16, max_keepalive_connections=8),
+            )
+        return self._http
+
+    async def aclose(self) -> None:
+        client = self._http
+        self._http = None
+        if client is not None and not client.is_closed:
+            await client.aclose()
+
+    async def _recv(self, websocket, timeout: float | None = None):
+        try:
+            return await asyncio.wait_for(websocket.recv(), timeout=timeout or self._message_timeout)
+        except TimeoutError as error:
+            raise HAClientError('Home Assistant WebSocket 响应超时。') from error
+
+    async def test_connection(self) -> dict[str, Any]:
+        try:
+            response = await self._http_client().get(f'{self.base_url}/api/config')
+            response.raise_for_status()
+            config = response.json()
             return {
                 'version': str(config.get('version', '')),
                 'locationName': str(config.get('location_name', 'Home Assistant')),
@@ -110,31 +112,26 @@ class HAClient:
         if not requested:
             return []
         semaphore = asyncio.Semaphore(8)
+        client = self._http_client()
 
-        async with httpx.AsyncClient(
-            verify=self.verify_tls,
-            timeout=self.timeout,
-            headers=self.headers,
-            trust_env=False,
-        ) as client:
-            async def fetch_one(entity_id: str) -> dict[str, Any] | None:
-                async with semaphore:
-                    try:
-                        response = await client.get(f'{self.base_url}/api/states/{quote(entity_id, safe="")}')
-                        if response.status_code == 404:
-                            return None
-                        response.raise_for_status()
-                        payload = response.json()
-                    except httpx.HTTPStatusError as error:
-                        if error.response.status_code in frozenset({401, 403}):
-                            raise HAClientError('Home Assistant Token 无效或权限不足。') from error
-                        raise HAClientError(f'Home Assistant 返回 HTTP {error.response.status_code}。') from error
-                    except (httpx.HTTPError, ValueError) as error:
-                        raise HAClientError(f'无法获取 Home Assistant 实体 {entity_id}：{error}') from error
-                    return payload if isinstance(payload, dict) else None
+        async def fetch_one(entity_id: str) -> dict[str, Any] | None:
+            async with semaphore:
+                try:
+                    response = await client.get(f'{self.base_url}/api/states/{quote(entity_id, safe="")}')
+                    if response.status_code == 404:
+                        return None
+                    response.raise_for_status()
+                    payload = response.json()
+                except httpx.HTTPStatusError as error:
+                    if error.response.status_code in frozenset({401, 403}):
+                        raise HAClientError('Home Assistant Token 无效或权限不足。') from error
+                    raise HAClientError(f'Home Assistant 返回 HTTP {error.response.status_code}。') from error
+                except (httpx.HTTPError, ValueError) as error:
+                    raise HAClientError(f'无法获取 Home Assistant 实体 {entity_id}：{error}') from error
+                return payload if isinstance(payload, dict) else None
 
-            results = await asyncio.gather(*(fetch_one(entity_id) for entity_id in requested))
-        return [item for item in results if item is not None]
+        results = await asyncio.gather(*(fetch_one(entity_id) for entity_id in requested))
+        return [state for state in results if isinstance(state, dict)]
 
     def _ssl_context(self):
         if not websocket_url(self.base_url).startswith('wss://'):
@@ -143,11 +140,11 @@ class HAClient:
 
     async def _authenticate(self, websocket) -> None:
         try:
-            required = json.loads(await websocket.recv())
+            required = json.loads(await self._recv(websocket, timeout=self.timeout))
             if required.get('type') != 'auth_required':
                 raise HAClientError('Home Assistant WebSocket 未返回鉴权请求。')
             await websocket.send(json.dumps({'type': 'auth', 'access_token': self.access_token}))
-            result = json.loads(await websocket.recv())
+            result = json.loads(await self._recv(websocket, timeout=self.timeout))
         except (json.JSONDecodeError, websockets.WebSocketException) as error:
             raise HAClientError(f'Home Assistant WebSocket 鉴权失败：{error}') from error
         if result.get('type') != 'auth_ok':
@@ -163,7 +160,7 @@ class HAClient:
                 ping_interval=20,
                 ping_timeout=20,
                 max_size=self.websocket_max_size_bytes,
-                max_queue=4,
+                max_queue=32,
             )
             await self._authenticate(websocket)
             return websocket
@@ -181,7 +178,7 @@ class HAClient:
         await websocket.send(json.dumps({'id': message_id, 'type': command_type, **payload}))
         while True:
             try:
-                message = json.loads(await websocket.recv())
+                message = json.loads(await self._recv(websocket))
             except websockets.WebSocketException as error:
                 if (
                     getattr(error, 'code', None) == 1009
@@ -201,8 +198,8 @@ class HAClient:
             raise HAClientError(str(error.get('message') or f'HA 命令 {command_type} 执行失败。'))
         return message.get('result')
 
-    @staticmethod
     async def subscribe_events(
+        self,
         websocket,
         event_types: tuple[str, ...],
         start_id: int = 100,
@@ -217,7 +214,7 @@ class HAClient:
             )
         buffered_events = []
         while pending:
-            message = json.loads(await websocket.recv())
+            message = json.loads(await self._recv(websocket))
             if message.get('type') == 'event':
                 buffered_events.append(message)
                 continue
@@ -331,15 +328,11 @@ class HAClient:
     async def call_service(self, domain: str, service: str, entity_id: str, data: dict[str, Any]) -> Any:
         payload = {**data, 'entity_id': entity_id}
         try:
-            async with httpx.AsyncClient(
-                verify=self.verify_tls,
-                timeout=self.timeout,
-                headers=self.headers,
-                trust_env=False,
-            ) as client:
-                response = await client.post(f'{self.base_url}/api/services/{domain}/{service}', json=payload)
-                response.raise_for_status()
-                return response.json()
+            response = await self._http_client().post(
+                f'{self.base_url}/api/services/{domain}/{service}', json=payload
+            )
+            response.raise_for_status()
+            return response.json()
         except httpx.HTTPStatusError as error:
             raise HAClientError(f'Home Assistant 服务调用返回 HTTP {error.response.status_code}。') from error
         except (httpx.HTTPError, ValueError) as error:
@@ -367,18 +360,12 @@ class HAClient:
             'significant_changes_only': '1',
         }
         try:
-            async with httpx.AsyncClient(
-                verify=self.verify_tls,
-                timeout=self.timeout,
-                headers=self.headers,
-                trust_env=False,
-            ) as client:
-                response = await client.get(
-                    f'{self.base_url}/api/history/period/{encoded_start}',
-                    params=params,
-                )
-                response.raise_for_status()
-                payload = response.json()
+            response = await self._http_client().get(
+                f'{self.base_url}/api/history/period/{encoded_start}',
+                params=params,
+            )
+            response.raise_for_status()
+            payload = response.json()
             if not (isinstance(payload, list) and payload and isinstance(payload[0], list)):
                 return []
             return [item for item in payload[0] if isinstance(item, dict)]

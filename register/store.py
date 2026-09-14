@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from secrets import choice
 from uuid import uuid4
@@ -38,6 +40,7 @@ class LicenseOrder:
     created_at: str
 
     def payload(self) -> dict[str, str]:
+        '''Full order payload. Only safe to return where the caller already proved ownership.'''
         return {
             'id': self.id,
             'email': self.email,
@@ -49,11 +52,44 @@ class LicenseOrder:
             'createdAt': self.created_at,
         }
 
+    def public_payload(self) -> dict[str, str]:
+        '''Redacted payload for email enumeration: no order id and no usable activation code.
 
-def _connect(database_path: Path) -> sqlite3.Connection:
+        The order id is a capability for the issued page, so withholding it here breaks the
+        email -> order id -> activation code chain.
+        '''
+        return {
+            'email': self.email,
+            'contactName': self.contact_name,
+            'product': self.product,
+            'productName': self.product_name,
+            'productType': self.product_type,
+            'activationCodeMasked': mask_activation_code(self.activation_code),
+            'createdAt': self.created_at,
+        }
+
+
+_schema_ready = False
+
+
+@contextmanager
+def _connect(database_path: Path) -> Iterator[sqlite3.Connection]:
+    global _schema_ready
     database_path.parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(database_path)
+    connection = sqlite3.connect(database_path, timeout=10)
     connection.row_factory = sqlite3.Row
+    connection.execute('PRAGMA journal_mode=WAL')
+    connection.execute('PRAGMA busy_timeout=10000')
+    try:
+        if not _schema_ready:
+            _ensure_schema(connection)
+            _schema_ready = True
+        yield connection
+    finally:
+        connection.close()
+
+
+def _ensure_schema(connection: sqlite3.Connection) -> None:
     connection.execute(
         '''
         CREATE TABLE IF NOT EXISTS license_orders (
@@ -79,7 +115,7 @@ def _connect(database_path: Path) -> sqlite3.Connection:
         connection.execute('ALTER TABLE license_orders ADD COLUMN instance_id TEXT')
     if 'lease_sequence' not in columns:
         connection.execute('ALTER TABLE license_orders ADD COLUMN lease_sequence INTEGER NOT NULL DEFAULT 0')
-    return connection
+    connection.commit()
 
 
 def normalize_email(value: str) -> str:
@@ -91,6 +127,13 @@ def generate_activation_code() -> str:
     return f'HB-{"-".join(groups)}'
 
 
+def mask_activation_code(code: str) -> str:
+    '''Keep the 'HB' prefix and first group, mask the rest, so a user can recognise the code.'''
+    parts = str(code).split('-')
+    masked = [parts[0], parts[1] if len(parts) > 1 else '****'] + ['****'] * max(0, len(parts) - 2)
+    return '-'.join(masked)
+
+
 def create_order(database_path: Path, *, email: str, contact_name: str) -> LicenseOrder:
     normalized = normalize_email(email)
     if len(normalized) < 3 or '@' not in normalized:
@@ -100,7 +143,7 @@ def create_order(database_path: Path, *, email: str, contact_name: str) -> Licen
     name = contact_name.strip()
     if len(name) > 64:
         raise ValueError('联系人姓名不能超过 64 个字符。')
-    created_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    created_at = datetime.now(UTC).replace(microsecond=0).isoformat()
     with _connect(database_path) as connection:
         for _ in range(8):
             order = LicenseOrder(
@@ -152,14 +195,18 @@ def find_order(database_path: Path, *, email: str, activation_code: str) -> Lice
 
 def bind_order(database_path: Path, order_id: str, instance_id: str) -> int:
     with _connect(database_path) as connection:
+        # Serialise concurrent activations so two requests cannot claim the same lease sequence.
+        connection.execute('BEGIN IMMEDIATE')
         row = connection.execute(
             'SELECT instance_id, lease_sequence FROM license_orders WHERE id = ?',
             (order_id,),
         ).fetchone()
         if row is None:
+            connection.rollback()
             raise ValueError('激活码无效或已停用。')
         bound = str(row['instance_id'] or '')
         if bound and bound != instance_id:
+            connection.rollback()
             raise ValueError('该激活码已绑定其他安装。')
         sequence = int(row['lease_sequence'] or 0) + 1
         connection.execute(

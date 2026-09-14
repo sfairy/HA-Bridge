@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request, status
-
 from dependencies import CurrentUser
+from fastapi import APIRouter, HTTPException, Request, status
 from license import LicenseClientError
 from schemas import LicenseActivateRequest
 

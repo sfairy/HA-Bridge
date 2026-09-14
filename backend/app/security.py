@@ -2,15 +2,18 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
+from config import Settings
 from starlette.responses import Response
 
-from config import Settings
-
 password_hasher = PasswordHasher()
+
+# Used to keep login timing constant when the username does not match (or no account exists),
+# so a caller cannot enumerate usernames by response time.
+DUMMY_PASSWORD_HASH = password_hasher.hash('ha-bridge-dummy-password')
 
 
 def hash_password(password):
@@ -33,7 +36,7 @@ def session_token_hash(token):
 
 
 def session_expiry(max_age_seconds):
-    return datetime.now(timezone.utc) + timedelta(seconds=max_age_seconds)
+    return datetime.now(UTC) + timedelta(seconds=max_age_seconds)
 
 
 def set_display_cookie(response: Response, settings: Settings, token):
@@ -42,7 +45,7 @@ def set_display_cookie(response: Response, settings: Settings, token):
         key=settings.display_cookie_name,
         value=token,
         max_age=max_age,
-        expires=datetime.now(timezone.utc) + timedelta(seconds=max_age),
+        expires=datetime.now(UTC) + timedelta(seconds=max_age),
         httponly=True,
         secure=settings.cookie_secure,
         samesite='lax',

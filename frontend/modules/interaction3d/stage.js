@@ -36,6 +36,35 @@ const lightPresets = [{
   brightness: 100,
   temperaturePercent: 100
 }];
+function handleControlResult(queueControlCommand, reject, value, previewToken) {
+  const next = [...sceneUpdating.values()].find(entityId => entityId.entityId === value.entityId);
+  if (!next) {
+    return queueControlCommand(value, previewToken);
+  }
+  const service = next.next?.command || next.command;
+  if (service.service === "turn_on" && value.service === "turn_on") {
+    const brightness = {
+      ...service.data
+    };
+    if ("brightness" in value.data || "brightness_pct" in value.data) {
+      delete brightness.brightness;
+      delete brightness.brightness_pct;
+    }
+    value = {
+      ...value,
+      data: {
+        ...brightness,
+        ...value.data
+      }
+    };
+  }
+  next.next = {
+    command: value,
+    previewToken: previewToken
+  };
+  reject.hold(value.entityId, previewToken);
+}
+
 export function mountStage(options) {
   const {
     THREE,
@@ -116,50 +145,41 @@ export function mountStage(options) {
   let lightPanel = null;
   let lightPanelHeader = -Infinity;
   const transformCameraForFloor = (cameraState, floorId = properties.floorSelection, forTitle = false) => options.transformCamera?.(cameraState, floorId, forTitle) ?? cameraState;
+  // 解析楼层内的场景物件；deviceTypes 省略时不做类型过滤，也可传单个类型或类型数组。
+  // （原先这段 find 链在本文件里重复了 10 次，且内层 lambda 参数与外层 id 同名）
+  const findSceneItem = (floorId, modelId, deviceTypes) => {
+    const wanted = deviceTypes === undefined ? null : Array.isArray(deviceTypes) ? deviceTypes : [deviceTypes];
+    return options.document.floors
+      .find(floor => floor.id === floorId)
+      ?.scene.items.find(item => item.id === modelId && (wanted === null || wanted.includes(item.type)));
+  };
   const lightTitle = () => transformCameraForFloor(options.cameraState(true), properties.floorSelection, true);
   function transformProperties(nextProperties) {
     const clonedProperties = structuredClone(nextProperties);
     clonedProperties.camera = transformCameraForFloor(clonedProperties.floorCameras?.[clonedProperties.floorSelection] || clonedProperties.camera, clonedProperties.floorSelection);
-    clonedProperties.lights = (clonedProperties.lights || []).map(light => ({
-      ...light,
-      ...(light.focusCamera ? {
-        focusCamera: transformCameraForFloor(light.focusCamera, clonedProperties.floorSelection)
+    // 同一段 focusCamera 映射原先重复 5 次；`|| []` 与原实现逐处一致
+    // （presenceSensors/cameras/devices 那三处原本无兜底，但外层 if 已保证非空值）
+    const mapFocusCamera = collection => (collection || []).map(entry => ({
+      ...entry,
+      ...(entry.focusCamera ? {
+        focusCamera: transformCameraForFloor(entry.focusCamera, clonedProperties.floorSelection)
       } : {})
     }));
+    clonedProperties.lights = mapFocusCamera(clonedProperties.lights);
     if (clonedProperties.security?.presenceSensors) {
-      clonedProperties.security.presenceSensors = clonedProperties.security.presenceSensors.map(focusCamera => ({
-        ...focusCamera,
-        ...(focusCamera.focusCamera ? {
-          focusCamera: transformCameraForFloor(focusCamera.focusCamera, clonedProperties.floorSelection)
-        } : {})
-      }));
+      clonedProperties.security.presenceSensors = mapFocusCamera(clonedProperties.security.presenceSensors);
     }
     if (clonedProperties.security?.cameras) {
-      clonedProperties.security.cameras = clonedProperties.security.cameras.map(focusCamera => ({
-        ...focusCamera,
-        ...(focusCamera.focusCamera ? {
-          focusCamera: transformCameraForFloor(focusCamera.focusCamera, clonedProperties.floorSelection)
-        } : {})
-      }));
+      clonedProperties.security.cameras = mapFocusCamera(clonedProperties.security.cameras);
     }
     if (clonedProperties.environment) {
       for (const envKey of ["airConditioners", "curtains"]) {
-        clonedProperties.environment[envKey] = (clonedProperties.environment[envKey] || []).map(focusCamera => ({
-          ...focusCamera,
-          ...(focusCamera.focusCamera ? {
-            focusCamera: transformCameraForFloor(focusCamera.focusCamera, clonedProperties.floorSelection)
-          } : {})
-        }));
+        clonedProperties.environment[envKey] = mapFocusCamera(clonedProperties.environment[envKey]);
       }
     }
     for (const deviceCollectionKey of ["nas", "televisions", "vacuums"]) {
       if (clonedProperties.devices?.[deviceCollectionKey]) {
-        clonedProperties.devices[deviceCollectionKey] = clonedProperties.devices[deviceCollectionKey].map(focusCamera => ({
-          ...focusCamera,
-          ...(focusCamera.focusCamera ? {
-            focusCamera: transformCameraForFloor(focusCamera.focusCamera, clonedProperties.floorSelection)
-          } : {})
-        }));
+        clonedProperties.devices[deviceCollectionKey] = mapFocusCamera(clonedProperties.devices[deviceCollectionKey]);
       }
     }
     if (clonedProperties.devices?.vacuums) {
@@ -536,7 +556,7 @@ export function mountStage(options) {
       brightness
     };
     const bindings = (properties.security?.cameras || []).map(camera => {
-      const model = options.document.floors.find(floor => floor.id === camera.floorId)?.scene.items.find(item => item.id === camera.modelId && item.type === "camera");
+      const model = findSceneItem(camera.floorId, camera.modelId, "camera");
       return {
         ...camera,
         width: model?.width || 0.2,
@@ -615,45 +635,45 @@ export function mountStage(options) {
   container.append(focusVignetteEl, presentationRootEl);
   function syncIdleAvailability() {
     return (properties.environment?.airConditioners || []).map(event => {
-      const x5 = options.document.floors.find(id => id.id === event.floorId)?.scene.items.find(id => id.id === event.modelId && ["wallac", "floorac", "airoutlet"].includes(id.type));
+      const sceneItem = findSceneItem(event.floorId, event.modelId, ["wallac", "floorac", "airoutlet"]);
       return {
         ...event,
         deviceKind: "climate",
-        x: Number.isFinite(event.x) ? event.x : x5?.x ?? 0,
-        y: Number.isFinite(event.y) ? event.y : x5?.y ?? 0,
-        height: Number.isFinite(event.height) ? event.height : x5 ? (Number(x5.elevation) || 0) + (Number(x5.height) || 0.28) / 2 : 0,
-        modelAvailable: !!x5,
+        x: Number.isFinite(event.x) ? event.x : sceneItem?.x ?? 0,
+        y: Number.isFinite(event.y) ? event.y : sceneItem?.y ?? 0,
+        height: Number.isFinite(event.height) ? event.height : sceneItem ? (Number(sceneItem.elevation) || 0) + (Number(sceneItem.height) || 0.28) / 2 : 0,
+        modelAvailable: !!sceneItem,
         icon: event.icon || "mdi:air-conditioner"
       };
     });
   }
   function syncInputHold() {
     return (properties.environment?.curtains || []).map(event => {
-      const x7 = options.document.floors.find(floor => floor.id === event.floorId)?.scene.items.find(id => id.id === event.modelId && id.type === "curtain");
+      const sceneItem = findSceneItem(event.floorId, event.modelId, "curtain");
       return {
         ...event,
         deviceKind: "cover",
-        x: Number.isFinite(event.x) ? event.x : x7?.x ?? 0,
-        y: Number.isFinite(event.y) ? event.y : x7?.y ?? 0,
-        height: Number.isFinite(event.height) ? event.height : x7 ? (Number(x7.elevation) || 0) + (Number(x7.height) || 2.4) / 2 : 0,
-        curtainWidth: Number(x7?.width) || 1.8,
-        curtainPosition: x7?.curtainPosition || "split",
-        modelAvailable: !!x7,
+        x: Number.isFinite(event.x) ? event.x : sceneItem?.x ?? 0,
+        y: Number.isFinite(event.y) ? event.y : sceneItem?.y ?? 0,
+        height: Number.isFinite(event.height) ? event.height : sceneItem ? (Number(sceneItem.elevation) || 0) + (Number(sceneItem.height) || 2.4) / 2 : 0,
+        curtainWidth: Number(sceneItem?.width) || 1.8,
+        curtainPosition: sceneItem?.curtainPosition || "split",
+        modelAvailable: !!sceneItem,
         icon: event.icon || "mdi:curtains"
       };
     });
   }
   function clearInputHold() {
     return (properties.devices?.nas || []).map(event => {
-      const x9 = options.document.floors.find(floor => floor.id === event.floorId)?.scene.items.find(id => id.id === event.modelId && id.type === "nas");
+      const sceneItem = findSceneItem(event.floorId, event.modelId, "nas");
       return {
         ...event,
         clickAction: event.clickAction || "focus",
         deviceKind: "nas",
-        x: Number.isFinite(event.x) ? event.x : x9?.x ?? 0,
-        y: Number.isFinite(event.y) ? event.y : x9?.y ?? 0,
-        height: Number.isFinite(event.height) ? event.height : (Number(x9?.elevation) || 0) + (Number(x9?.height) || 0.34) / 2,
-        modelAvailable: !!x9,
+        x: Number.isFinite(event.x) ? event.x : sceneItem?.x ?? 0,
+        y: Number.isFinite(event.y) ? event.y : sceneItem?.y ?? 0,
+        height: Number.isFinite(event.height) ? event.height : (Number(sceneItem?.elevation) || 0) + (Number(sceneItem?.height) || 0.34) / 2,
+        modelAvailable: !!sceneItem,
         icon: event.icon || "mdi:nas"
       };
     });
@@ -815,8 +835,8 @@ export function mountStage(options) {
   document.addEventListener("visibilitychange", collectMetadata);
   function tickCameraMotion() {
     return (properties.devices?.vacuums || []).map(group => {
-      const x11 = options.document.floors.find(floor => floor.id === group.floorId)?.scene.items.find(id => id.id === group.modelId && id.type === "robotvacuum");
-      const x12 = !editing && hasTracking.offset(group.id) || {
+      const sceneItem = findSceneItem(group.floorId, group.modelId, "robotvacuum");
+      const trackingOffset = !editing && hasTracking.offset(group.id) || {
         x: 0,
         y: 0
       };
@@ -824,10 +844,10 @@ export function mountStage(options) {
         ...group,
         deviceKind: "vacuum",
         clickAction: group.clickAction || "focus-panel",
-        x: (Number.isFinite(group.x) ? group.x : x11?.x ?? 0) + x12.x,
-        y: (Number.isFinite(group.y) ? group.y : x11?.y ?? 0) + x12.y,
-        height: Number.isFinite(group.height) ? group.height : (Number(x11?.elevation) || 0) + (Number(x11?.height) || 0.85) + 0.25,
-        modelAvailable: !!x11,
+        x: (Number.isFinite(group.x) ? group.x : sceneItem?.x ?? 0) + trackingOffset.x,
+        y: (Number.isFinite(group.y) ? group.y : sceneItem?.y ?? 0) + trackingOffset.y,
+        height: Number.isFinite(group.height) ? group.height : (Number(sceneItem?.elevation) || 0) + (Number(sceneItem?.height) || 0.85) + 0.25,
+        modelAvailable: !!sceneItem,
         icon: group.icon || "mdi:robot-vacuum"
       };
     });
@@ -864,17 +884,17 @@ export function mountStage(options) {
     }
   }
   function startCameraMotion() {
-    return (properties.devices?.televisions || []).map(x13 => {
-      const x14 = options.document.floors.find(id => id.id === x13.floorId)?.scene.items.find(id => id.id === x13.modelId && id.type === "tv");
+    return (properties.devices?.televisions || []).map(group => {
+      const sceneItem = findSceneItem(group.floorId, group.modelId, "tv");
       return {
-        ...x13,
-        clickAction: x13.clickAction || "focus-panel",
+        ...group,
+        clickAction: group.clickAction || "focus-panel",
         deviceKind: "television",
-        x: Number.isFinite(x13.x) ? x13.x : x14?.x ?? 0,
-        y: Number.isFinite(x13.y) ? x13.y : x14?.y ?? 0,
-        height: Number.isFinite(x13.height) ? x13.height : (Number(x14?.elevation) || 0) + (Number(x14?.height) || 0.92) * 0.62,
-        modelAvailable: !!x14,
-        icon: x13.icon || "mdi:television"
+        x: Number.isFinite(group.x) ? group.x : sceneItem?.x ?? 0,
+        y: Number.isFinite(group.y) ? group.y : sceneItem?.y ?? 0,
+        height: Number.isFinite(group.height) ? group.height : (Number(sceneItem?.elevation) || 0) + (Number(sceneItem?.height) || 0.92) * 0.62,
+        modelAvailable: !!sceneItem,
+        icon: group.icon || "mdi:television"
       };
     });
   }
@@ -1151,7 +1171,7 @@ export function mountStage(options) {
     }
   }
   const cameraBindings = () => (properties.security?.cameras || []).map(camera => {
-    const model = options.document.floors.find(floor => floor.id === camera.floorId)?.scene.items.find(item => item.id === camera.modelId && item.type === "camera");
+    const model = findSceneItem(camera.floorId, camera.modelId, "camera");
     return {
       ...camera,
       buttonHidden: false,
@@ -1167,7 +1187,7 @@ export function mountStage(options) {
     };
   });
   const presenceBindings = () => (properties.security?.presenceSensors || []).map(route => {
-    const model = options.document.floors.find(floor => floor.id === route.floorId)?.scene.items.find(item => item.id === route.modelId && item.type === "presence");
+    const model = findSceneItem(route.floorId, route.modelId, "presence");
     return {
       ...route,
       modelAvailable: route.modelId ? !!model : undefined,
@@ -1187,7 +1207,7 @@ export function mountStage(options) {
     syncMarkers();
     presenceWaves.sync({
       bindings: (properties.security?.presenceSensors || []).filter(sensor => !editing || "presence:" + sensor.id === selectedId).map(sensor => {
-        const model = options.document.floors.find(floor => floor.id === sensor.floorId)?.scene.items.find(item => item.id === sensor.modelId);
+        const model = findSceneItem(sensor.floorId, sensor.modelId);
         return {
           ...sensor,
           width: model?.width,
@@ -2081,34 +2101,6 @@ export function mountStage(options) {
       command
     });
   }
-  function handleControlResult(value, previewToken) {
-    const next = [...sceneUpdating.values()].find(entityId => entityId.entityId === value.entityId);
-    if (!next) {
-      return queueControlCommand(value, previewToken);
-    }
-    const service = next.next?.command || next.command;
-    if (service.service === "turn_on" && value.service === "turn_on") {
-      const brightness = {
-        ...service.data
-      };
-      if ("brightness" in value.data || "brightness_pct" in value.data) {
-        delete brightness.brightness;
-        delete brightness.brightness_pct;
-      }
-      value = {
-        ...value,
-        data: {
-          ...brightness,
-          ...value.data
-        }
-      };
-    }
-    next.next = {
-      command: value,
-      previewToken: previewToken
-    };
-    reject.hold(value.entityId, previewToken);
-  }
   function finishControlRequest(controlRequestId, resultError = "", timedOut = false) {
     const entityId = sceneUpdating.get(controlRequestId);
     if (!entityId) {
@@ -2172,7 +2164,7 @@ export function mountStage(options) {
         syncEditorEffects({
           preview: commandName !== "power"
         });
-        handleControlResult(value, commandPreview);
+        handleControlResult(queueControlCommand, reject, value, commandPreview);
         controlErrorEl.textContent = "";
         pruneMarkerElements();
       } catch (error) {
@@ -2538,14 +2530,14 @@ export function mountStage(options) {
       y: Math.round(dot.dot(lengthSqCurrent) / lengthSqCurrent.lengthSq() * 100) / 100
     };
   }
-  function onMarkerPointerDown(pointerId, id) {
-    if (!editing || frameLoop || pointerId.button !== 0) {
+  function onMarkerPointerDown(pointerEvent, id) {
+    if (!editing || frameLoop || pointerEvent.button !== 0) {
       return;
     }
-    pointerId.preventDefault();
-    pointerId.stopPropagation();
-    const x15 = findBinding(id);
-    if (!x15) {
+    pointerEvent.preventDefault();
+    pointerEvent.stopPropagation();
+    const markerBinding = findBinding(id);
+    if (!markerBinding) {
       return;
     }
     selectedId = id;
@@ -2555,43 +2547,43 @@ export function mountStage(options) {
       action: "select",
       id: id
     });
-    const x16 = screenPointFromWorld(pointerId, x15);
+    const screenPoint = screenPointFromWorld(pointerEvent, markerBinding);
     dragState = {
       id: id,
-      pointerId: pointerId.pointerId,
-      clientX: pointerId.clientX,
-      clientY: pointerId.clientY,
+      pointerId: pointerEvent.pointerId,
+      clientX: pointerEvent.clientX,
+      clientY: pointerEvent.clientY,
       original: {
-        x: x15.x,
-        y: x15.y
+        x: markerBinding.x,
+        y: markerBinding.y
       },
       point: {
-        x: x15.x,
-        y: x15.y
+        x: markerBinding.x,
+        y: markerBinding.y
       },
-      height: x15.height,
-      offset: x16 ? {
-        x: x15.x - x16.x,
-        y: x15.y - x16.y
+      height: markerBinding.height,
+      offset: screenPoint ? {
+        x: markerBinding.x - screenPoint.x,
+        y: markerBinding.y - screenPoint.y
       } : {
         x: 0,
         y: 0
       },
       moved: false
     };
-    pointerId.currentTarget.setPointerCapture(pointerId.pointerId);
+    pointerEvent.currentTarget.setPointerCapture(pointerEvent.pointerId);
     options.controls.enabled = false;
   }
-  function onMarkerPointerMove(pointerId) {
-    if (!dragState || dragState.pointerId !== pointerId.pointerId || Math.hypot(pointerId.clientX - dragState.clientX, pointerId.clientY - dragState.clientY) < 4 && !dragState.moved) {
+  function onMarkerPointerMove(pointerEvent) {
+    if (!dragState || dragState.pointerId !== pointerEvent.pointerId || Math.hypot(pointerEvent.clientX - dragState.clientX, pointerEvent.clientY - dragState.clientY) < 4 && !dragState.moved) {
       return;
     }
-    const x17 = screenPointFromWorld(pointerId, findBinding(dragState.id));
-    if (x17) {
+    const screenPoint = screenPointFromWorld(pointerEvent, findBinding(dragState.id));
+    if (screenPoint) {
       dragState.moved = true;
       dragState.point = {
-        x: Math.round((x17.x + dragState.offset.x) * 100) / 100,
-        y: Math.round((x17.y + dragState.offset.y) * 100) / 100
+        x: Math.round((screenPoint.x + dragState.offset.x) * 100) / 100,
+        y: Math.round((screenPoint.y + dragState.offset.y) * 100) / 100
       };
       if (preFocusCamera === "light") {
         Object.assign(findBinding(dragState.id), dragState.point);
@@ -2599,10 +2591,10 @@ export function mountStage(options) {
       updateMarkerPositionsCurrent(true);
     }
   }
-  function onMarkerPointerUp(pointerId) {
-    if (!!dragState && dragState.pointerId === pointerId.pointerId) {
+  function onMarkerPointerUp(pointerEvent) {
+    if (!!dragState && dragState.pointerId === pointerEvent.pointerId) {
       if (dragState.moved) {
-        pointerId.currentTarget.dataset.dragged = "true";
+        pointerEvent.currentTarget.dataset.dragged = "true";
         const deviceKind = findBinding(dragState.id);
         const vacuumForRoom = deviceKind.deviceKind === "camera" ? properties.security?.cameras?.find(id => "camera:" + id.id === deviceKind.id) : deviceKind.deviceKind === "vacuum-room" ? properties.devices?.vacuums?.find(id => id.id === deviceKind.vacuumId)?.shortcuts?.find(id => id.id === deviceKind.shortcutId) : preFocusCamera === "light" ? deviceKind : (["nas", "television", "vacuum"].includes(preFocusCamera) ? properties.devices?.[preFocusCamera === "vacuum" ? "vacuums" : preFocusCamera === "television" ? "televisions" : "nas"] || [] : properties.environment?.[preFocusCamera === "cover" ? "curtains" : "airConditioners"] || []).find(id => id.id === dragState.id);
         if (vacuumForRoom) {
@@ -2897,18 +2889,18 @@ export function mountStage(options) {
         if (requestId.command === "presence-top-view") {
           const {
             floorId: presenceFloorId,
-            box: x2
+            box: presenceBox
           } = requestId.value || {};
-          if (!x2 || ![x2.x, x2.y, x2.w, x2.h].every(Number.isFinite) || x2.w <= 0 || x2.h <= 0) {
+          if (!presenceBox || ![presenceBox.x, presenceBox.y, presenceBox.w, presenceBox.h].every(Number.isFinite) || presenceBox.w <= 0 || presenceBox.h <= 0) {
             throw new Error("顶视图范围无效。");
           }
-          const x3 = options.worldPoint(presenceFloorId, x2.x + x2.w / 2, x2.y + x2.h / 2, 0);
-          const z = options.worldPoint(presenceFloorId, x2.x, x2.y, 0);
-          const z2 = options.worldPoint(presenceFloorId, x2.x + x2.w, x2.y + x2.h, 0);
-          if (!x3 || !z || !z2) {
+          const presenceCenter = options.worldPoint(presenceFloorId, presenceBox.x + presenceBox.w / 2, presenceBox.y + presenceBox.h / 2, 0);
+          const cornerMin = options.worldPoint(presenceFloorId, presenceBox.x, presenceBox.y, 0);
+          const cornerMax = options.worldPoint(presenceFloorId, presenceBox.x + presenceBox.w, presenceBox.y + presenceBox.h, 0);
+          if (!presenceCenter || !cornerMin || !cornerMax) {
             throw new Error("请选择有效楼层。");
           }
-          const frameSize = Math.max(Math.abs(z2.z - z.z), Math.abs(z2.x - z.x) / (canvas.clientWidth / Math.max(1, canvas.clientHeight)));
+          const frameSize = Math.max(Math.abs(cornerMax.z - cornerMin.z), Math.abs(cornerMax.x - cornerMin.x) / (canvas.clientWidth / Math.max(1, canvas.clientHeight)));
           clearFocus({
             immediate: true
           });
@@ -2916,8 +2908,8 @@ export function mountStage(options) {
             mode: "orthographic",
             view: "top",
             topRotation: 0,
-            position: [x3.x, x3.y + Math.max(20, frameSize * 2), x3.z],
-            target: x3.toArray(),
+            position: [presenceCenter.x, presenceCenter.y + Math.max(20, frameSize * 2), presenceCenter.z],
+            target: presenceCenter.toArray(),
             up: [0, 0, -1],
             zoom: 1,
             frameSize
@@ -3252,7 +3244,7 @@ export function mountStage(options) {
     sceneUpdating.clear();
   });
   function buildFloorHeightMap() {
-    const get = new Map(floorNavigationChoices(options.document.floors).filter(([floorChoiceId]) => floorChoiceId !== "all").map(([floorChoiceKey, slice]) => [floorChoiceKey, slice.startsWith("B") ? -Number(slice.slice(1)) : Number(slice.slice(0, -1))]));
+    const floorNumberById = new Map(floorNavigationChoices(options.document.floors).filter(([floorChoiceId]) => floorChoiceId !== "all").map(([floorChoiceKey, numberLabel]) => [floorChoiceKey, numberLabel.startsWith("B") ? -Number(numberLabel.slice(1)) : Number(numberLabel.slice(0, -1))]));
     options.regionLighting?.sync?.(options.camera);
     return {
       floorGap: options.document.previewFloorGap,
@@ -3262,84 +3254,84 @@ export function mountStage(options) {
       camera: transformCameraForFloor(options.cameraState(), properties.floorSelection || options.document.activeFloorId, true),
       baseLighting: options.document.baseLighting,
       defaults: options.defaults,
-      floors: options.document.floors.map(scene => {
-        const settingsWallHeight = scene.scene.settings?.wallHeight;
-        const wallHeights = scene.scene.walls.map(height => height.height).filter(wallHeight => Number.isFinite(wallHeight) && wallHeight > 0);
+      floors: options.document.floors.map(floor => {
+        const settingsWallHeight = floor.scene.settings?.wallHeight;
+        const wallHeights = floor.scene.walls.map(wall => wall.height).filter(wallHeight => Number.isFinite(wallHeight) && wallHeight > 0);
         const wallHeight = Math.max(0.01, Math.min(6, Number.isFinite(settingsWallHeight) && settingsWallHeight > 0 ? settingsWallHeight : Math.max(0, ...wallHeights) || 2.8));
         return {
-          id: scene.id,
-          name: scene.name,
-          elevation: scene.elevation,
-          number: get.get(scene.id),
+          id: floor.id,
+          name: floor.name,
+          elevation: floor.elevation,
+          number: floorNumberById.get(floor.id),
           wallHeight,
           plan: {
-            pixelsPerMeter: scene.scene.calibration?.pixelsPerMeter || 1,
-            walls: scene.scene.walls.map(start => ({
-              start: start.start,
-              end: start.end,
-              thickness: start.thickness
+            pixelsPerMeter: floor.scene.calibration?.pixelsPerMeter || 1,
+            walls: floor.scene.walls.map(wall => ({
+              start: wall.start,
+              end: wall.end,
+              thickness: wall.thickness
             }))
           },
-          cameras: scene.scene.items.filter(item => item.type === "camera").map((item, cameraIndex) => ({
+          cameras: floor.scene.items.filter(item => item.type === "camera").map((item, cameraIndex) => ({
             id: item.id,
             name: item.name || "摄像头 " + (cameraIndex + 1),
             x: item.x,
             y: item.y,
             height: (Number(item.elevation) || 0) + (Number(item.height) || 0.3) / 2
           })),
-          presenceSensors: scene.scene.items.filter(item => item.type === "presence").map((item, presenceIndex) => ({
+          presenceSensors: floor.scene.items.filter(item => item.type === "presence").map((item, presenceIndex) => ({
             id: item.id,
             name: item.name || "人体传感器 " + (presenceIndex + 1)
           })),
-          vacuums: scene.scene.items.filter(type => type.type === "robotvacuum").map((id7, vacuumIndex) => ({
-            id: id7.id,
-            name: id7.name || "扫地机 " + (vacuumIndex + 1),
-            x: id7.x,
-            y: id7.y,
-            height: (Number(id7.elevation) || 0) + (Number(id7.height) || 0.85) / 2
+          vacuums: floor.scene.items.filter(item => item.type === "robotvacuum").map((vacuum, vacuumIndex) => ({
+            id: vacuum.id,
+            name: vacuum.name || "扫地机 " + (vacuumIndex + 1),
+            x: vacuum.x,
+            y: vacuum.y,
+            height: (Number(vacuum.elevation) || 0) + (Number(vacuum.height) || 0.85) / 2
           })),
-          televisions: scene.scene.items.filter(type => type.type === "tv").map((id8, tvIndex) => ({
-            id: id8.id,
-            name: id8.name || "电视 " + (tvIndex + 1),
-            type: id8.type,
-            x: id8.x,
-            y: id8.y,
-            height: (Number(id8.elevation) || 0) + (Number(id8.height) || 0.92) * 0.62
+          televisions: floor.scene.items.filter(item => item.type === "tv").map((television, tvIndex) => ({
+            id: television.id,
+            name: television.name || "电视 " + (tvIndex + 1),
+            type: television.type,
+            x: television.x,
+            y: television.y,
+            height: (Number(television.elevation) || 0) + (Number(television.height) || 0.92) * 0.62
           })),
-          nas: scene.scene.items.filter(type => type.type === "nas").map((id9, nasIndex) => ({
-            id: id9.id,
-            name: id9.name || "NAS " + (nasIndex + 1),
-            type: id9.type,
-            x: id9.x,
-            y: id9.y,
-            height: (Number(id9.elevation) || 0) + (Number(id9.height) || 0.34) / 2
+          nas: floor.scene.items.filter(item => item.type === "nas").map((nas, nasIndex) => ({
+            id: nas.id,
+            name: nas.name || "NAS " + (nasIndex + 1),
+            type: nas.type,
+            x: nas.x,
+            y: nas.y,
+            height: (Number(nas.elevation) || 0) + (Number(nas.height) || 0.34) / 2
           })),
-          curtains: scene.scene.items.filter(type => type.type === "curtain").map((id10, curtainIndex) => ({
-            id: id10.id,
-            name: id10.name || "窗帘 " + (curtainIndex + 1),
-            type: id10.type,
-            x: id10.x,
-            y: id10.y,
-            height: (Number(id10.elevation) || 0) + (Number(id10.height) || 2.4) / 2,
-            curtainPosition: id10.curtainPosition || "split"
+          curtains: floor.scene.items.filter(item => item.type === "curtain").map((curtain, curtainIndex) => ({
+            id: curtain.id,
+            name: curtain.name || "窗帘 " + (curtainIndex + 1),
+            type: curtain.type,
+            x: curtain.x,
+            y: curtain.y,
+            height: (Number(curtain.elevation) || 0) + (Number(curtain.height) || 2.4) / 2,
+            curtainPosition: curtain.curtainPosition || "split"
           })),
-          airConditioners: scene.scene.items.filter(type => ["wallac", "floorac", "airoutlet"].includes(type.type)).map((type6, acIndex) => ({
-            id: type6.id,
-            name: type6.name || (type6.type === "airoutlet" ? "出风口" : type6.type === "wallac" ? "挂机空调" : "柜机空调") + " " + (acIndex + 1),
-            type: type6.type,
-            x: type6.x,
-            y: type6.y,
-            height: (Number(type6.elevation) || 0) + (Number(type6.height) || 0.28) / 2
+          airConditioners: floor.scene.items.filter(item => ["wallac", "floorac", "airoutlet"].includes(item.type)).map((airConditioner, acIndex) => ({
+            id: airConditioner.id,
+            name: airConditioner.name || (airConditioner.type === "airoutlet" ? "出风口" : airConditioner.type === "wallac" ? "挂机空调" : "柜机空调") + " " + (acIndex + 1),
+            type: airConditioner.type,
+            x: airConditioner.x,
+            y: airConditioner.y,
+            height: (Number(airConditioner.elevation) || 0) + (Number(airConditioner.height) || 0.28) / 2
           })),
-          groups: (scene.scene.lightGroups || []).map(id11 => {
-            const length = (scene.scene.items || []).filter(item => item.lightGroupId === id11.id);
-            const list = length.length ? length : (scene.scene.walls || []).map(wall => wall.start).filter(Boolean);
+          groups: (floor.scene.lightGroups || []).map(lightGroup => {
+            const groupItems = (floor.scene.items || []).filter(item => item.lightGroupId === lightGroup.id);
+            const memberPoints = groupItems.length ? groupItems : (floor.scene.walls || []).map(wall => wall.start).filter(Boolean);
             return {
-              id: id11.id,
-              name: id11.name,
+              id: lightGroup.id,
+              name: lightGroup.name,
               height: wallHeight,
-              x: list.length ? list.reduce((sum, x) => sum + x.x, 0) / list.length : 0,
-              y: list.length ? list.reduce((sum, y) => sum + y.y, 0) / list.length : 0
+              x: memberPoints.length ? memberPoints.reduce((sum, point) => sum + point.x, 0) / memberPoints.length : 0,
+              y: memberPoints.length ? memberPoints.reduce((sum, point) => sum + point.y, 0) / memberPoints.length : 0
             };
           })
         };

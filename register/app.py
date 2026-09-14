@@ -109,4 +109,6 @@ def search_orders(email: str = Query(min_length=3, max_length=255)) -> dict:
         orders = list_orders(DATABASE_PATH, email)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
-    return {'email': email.strip().lower(), 'orders': [item.payload() for item in orders]}
+    # Redacted: never expose order ids or usable activation codes to an unauthenticated
+    # email lookup, otherwise anyone could harvest codes by guessing an email address.
+    return {'email': email.strip().lower(), 'orders': [item.public_payload() for item in orders]}

@@ -7,6 +7,7 @@ import { countComponentsOutsideCanvas, resizeDashboardDocument } from "./dashboa
 import { copyComponentsAcrossDocuments, copyComponentTargets, copyComponentsToTarget } from "./component-page-copy.js?v=20260826-cross-dashboard-copy-v4";
 import { RELATED_ENTITY_DOMAIN_LABELS, legacyRelatedEntityIds, manualRelatedEntityConfig, relatedEntityIsAvailable, relatedEntityLabel, relatedEntityNeedsConfirmation, relatedPopupCandidates, relatedPopupContext, relatedPopupSelectionLimit, selectedRelatedEntityIds } from "./related-entities.js?v=20260825-bath-heater-primary-v1";
 import { createIconVisibilityVirtualEntity } from "./virtual-entities.js?v=20260822-icon-visibility-v1";
+import { withRequestTimeout } from "../../utils/request-timeout.js?v=20260907-browser-compat-v1";
 import { createButtonSound } from "../shared/sound-effects.js?v=20260826-button-sound-v2";
 import { deferHiddenEditorDialogs, installSettingsDialogBackdropGuard } from "./editor-dialogs.js?v=20260830-editor-dialogs-v1";
 import { createEditorPickerElements } from "./editor-picker-elements.js?v=20260902-asset-display-name-v1";
@@ -979,6 +980,8 @@ const virtualEntityStateCache = new Map();
 let editorMode = "edit";
 let projectList = [];
 let currentProject = null;
+// Bumped on every project load so a slower, superseded response cannot overwrite newer state.
+let projectLoadGeneration = 0;
 let componentAddScope = "shared";
 let projectDialogMode = "create";
 let projectResizeWarningResolve = null;
@@ -1095,45 +1098,53 @@ let colorCopyResetTimer = null;
 let colorPickerDraftHex = "";
 let svPointerCapture = null;
 async function apiFetch(value, fetchOptions = {}) {
-  const response = await fetch("/api/v1" + value, {
-    cache: "no-store",
-    ...fetchOptions,
-    headers: fetchOptions.body ? {
-      "Content-Type": "application/json",
-      ...(fetchOptions.headers || {})
-    } : fetchOptions.headers
-  });
-  const responseText = response.status === 204 ? "" : await response.text();
-  let temp = null;
-  if (responseText) {
-    try {
-      temp = JSON.parse(responseText);
-    } catch {
-      if (response.ok) {
-        throw new Error("接口返回格式异常：" + value.split("?")[0] + "（HTTP " + response.status + "）");
+  const {
+    signal: externalSignal,
+    timeoutMs = 30000,
+    ...options
+  } = fetchOptions;
+  return withRequestTimeout(timeoutMs, async signal => {
+    const response = await fetch("/api/v1" + value, {
+      cache: "no-store",
+      ...options,
+      signal,
+      headers: options.body ? {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      } : options.headers
+    });
+    const responseText = response.status === 204 ? "" : await response.text();
+    let temp = null;
+    if (responseText) {
+      try {
+        temp = JSON.parse(responseText);
+      } catch {
+        if (response.ok) {
+          throw new Error("接口返回格式异常：" + value.split("?")[0] + "（HTTP " + response.status + "）");
+        }
       }
     }
-  }
-  if (response.status === 401) {
-    window.location.assign("/login");
-    const error = new Error("登录状态已失效。");
-    throw window.HABridgeLog?.linkError(error, response) || error;
-  }
-  if (response.status === 403 && temp?.detail?.code === "LICENSE_RESTRICTED") {
-    window.location.replace("/license");
-    const error = new Error("授权已失效，请重新激活。");
-    throw window.HABridgeLog?.linkError(error, response) || error;
-  }
-  if (!response.ok) {
-    const detail = temp?.detail;
-    const sliced = responseText.trim().slice(0, 240);
-    const error = new Error(typeof detail == "string" ? detail : detail?.message || "请求失败：" + value.split("?")[0] + "（HTTP " + response.status + "）" + (sliced ? " · " + sliced : ""));
-    if (detail && typeof detail == "object" && detail.code) {
-      error.code = detail.code;
+    if (response.status === 401) {
+      window.location.assign("/login");
+      const error = new Error("登录状态已失效。");
+      throw window.HABridgeLog?.linkError(error, response) || error;
     }
-    throw window.HABridgeLog?.linkError(error, response) || error;
-  }
-  return temp;
+    if (response.status === 403 && temp?.detail?.code === "LICENSE_RESTRICTED") {
+      window.location.replace("/license");
+      const error = new Error("授权已失效，请重新激活。");
+      throw window.HABridgeLog?.linkError(error, response) || error;
+    }
+    if (!response.ok) {
+      const detail = temp?.detail;
+      const sliced = responseText.trim().slice(0, 240);
+      const error = new Error(typeof detail == "string" ? detail : detail?.message || "请求失败：" + value.split("?")[0] + "（HTTP " + response.status + "）" + (sliced ? " · " + sliced : ""));
+      if (detail && typeof detail == "object" && detail.code) {
+        error.code = detail.code;
+      }
+      throw window.HABridgeLog?.linkError(error, response) || error;
+    }
+    return temp;
+  }, externalSignal);
 }
 function setStatusMessage(element, value, className = "") {
   element.hidden = !value;
@@ -1305,14 +1316,26 @@ function enhanceSelect(select) {
     }
   });
   select.addEventListener("change", () => syncCustomSelect(select));
-  new MutationObserver(() => syncCustomSelect(select)).observe(select, {
+  value.observer = new MutationObserver(() => syncCustomSelect(select));
+  value.observer.observe(select, {
     childList: true,
     subtree: true,
     attributes: true,
     attributeFilter: ["disabled", "label", "selected"]
   });
 }
+function pruneCustomSelects() {
+  for (const [select, state] of customSelectStateByEl) {
+    if (select.isConnected) {
+      continue;
+    }
+    state.observer?.disconnect();
+    state.menu?.remove();
+    customSelectStateByEl.delete(select);
+  }
+}
 function enhanceSelectsIn(value = document) {
+  pruneCustomSelects();
   if (value instanceof HTMLSelectElement) {
     enhanceSelect(value);
   }
@@ -7483,31 +7506,36 @@ function captureHistorySnapshot() {
   };
 }
 async function loadProjectDraft(projectId, value = null) {
+  const generation = ++projectLoadGeneration;
   recoveryWriter.flush();
   window.HABridgeLog?.setContext({
     projectId
   });
-  currentProject = await apiFetch("/projects/" + projectId + "/draft");
-  colorPickerDraftHex = "";
-  let temp = currentUiPack(currentUiPackId(currentProject.document));
+  const loaded = await apiFetch("/projects/" + projectId + "/draft");
+  let temp = currentUiPack(currentUiPackId(loaded.document));
   if (!temp) {
     await loadUiPacks();
-    temp = currentUiPack(currentUiPackId(currentProject.document));
+    temp = currentUiPack(currentUiPackId(loaded.document));
   }
   if (!temp?.allowed) {
     throw new Error("当前授权尚未解锁该 UI 方案。");
   }
   await ensureUiPackRuntime(temp);
+  if (generation !== projectLoadGeneration) {
+    return;
+  }
+  currentProject = loaded;
+  colorPickerDraftHex = "";
   componentBoundsCache.clear();
   entityOptionCache.clear();
   iconOptionCache.clear();
   assetOptionCache.clear();
   popupEntityOptionCache.clear();
   relatedEntityOptionCache.clear();
-  autosaveTimer = cloneValue(currentProject.document);
-  lastSavedSignature = documentSignature(currentProject.document);
+  autosaveTimer = cloneValue(loaded.document);
+  lastSavedSignature = documentSignature(loaded.document);
   recoveredDraft = readRecoveredDraftCurrent(projectId);
-  if (recoveredDraft && (recoveredDraft.revision !== currentProject.revision || documentSignature(recoveredDraft.document) === lastSavedSignature)) {
+  if (recoveredDraft && (recoveredDraft.revision !== loaded.revision || documentSignature(recoveredDraft.document) === lastSavedSignature)) {
     readRecoveredDraft(projectId);
     recoveredDraft = null;
   }
@@ -7531,6 +7559,7 @@ async function loadProjectList(param = null) {
     editorRenderer?.destroy();
     editorRenderer = null;
     destroyDashboardPreview();
+    projectLoadGeneration += 1;
     currentProject = null;
     renderUiPackSummary();
     componentBoundsCache.clear();
@@ -8213,6 +8242,7 @@ async function loadLicenseStatus() {
     editorRenderer?.destroy();
     editorRenderer = null;
     destroyDashboardPreview();
+    projectLoadGeneration += 1;
     currentProject = null;
     clearSelection();
     setWorkspaceEmpty(false);
@@ -8675,6 +8705,7 @@ deleteProjectForm.addEventListener("submit", async preventDefault => {
     deleteProjectDialog.close();
     editorRenderer?.destroy();
     editorRenderer = null;
+    projectLoadGeneration += 1;
     currentProject = null;
     clearSelection();
     await loadProjectList();
