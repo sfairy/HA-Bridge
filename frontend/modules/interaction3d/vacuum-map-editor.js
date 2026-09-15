@@ -1,206 +1,265 @@
-import { mapCorners, mapSource } from "./vacuum-map.js?v=0.5.3";
+import { mapCorners, mapSource } from "./vacuum-map.js?v=20260909-curtain-action-v15";
 export function planFurniture(plan = {}) {
   const pixelsPerMeter = Number(plan.pixelsPerMeter) > 0 ? Number(plan.pixelsPerMeter) : 1;
-  const skipTypes = new Set(["downlight", "ceilinglight", "striplight", "camera", "presence", "flooropening", "label"]);
-  return (plan.items || []).filter(item => !skipTypes.has(item.type) && [item.x, item.y, item.width, item.depth].every(Number.isFinite) && item.width > 0 && item.depth > 0).map(item => ({
-    ...item,
-    width: item.width * pixelsPerMeter,
-    depth: item.depth * pixelsPerMeter,
-    rotation: Number(item.rotation) || 0
-  }));
+  const excludedFurnitureTypes = new Set([
+    "downlight",
+    "ceilinglight",
+    "striplight",
+    "camera",
+    "presence",
+    "flooropening",
+    "label"
+  ]);
+  return (plan.items || [])
+    .filter(
+      planItem =>
+        !excludedFurnitureTypes.has(planItem.type) &&
+        [planItem.x, planItem.y, planItem.width, planItem.depth].every(Number.isFinite) &&
+        planItem.width > 0 &&
+        planItem.depth > 0
+    )
+    .map(furniture => ({
+      ...furniture,
+      width: furniture.width * pixelsPerMeter,
+      depth: furniture.depth * pixelsPerMeter,
+      rotation: Number(furniture.rotation) || 0
+    }));
 }
-export function openVacuumMapEditor({
-  item,
-  floor: plan,
-  onSave
-}) {
-  const doc = window.document;
-  const SVG_NS = "http://www.w3.org/2000/svg";
-  const createEl = (tag, text) => {
-    const el = doc.createElement(tag);
-    if (text) {
-      el.textContent = text;
+export function openVacuumMapEditor({ item: vacuumItem, floor: floor, onSave: saveHandler }) {
+  const documentRef = window.document;
+  const SVG_NAMESPACE_URI = "http://www.w3.org/2000/svg";
+  const createHtmlElement = (tagName, textContent) => {
+    const createdElement = documentRef.createElement(tagName);
+    if (textContent) {
+      createdElement.textContent = textContent;
     }
-    return el;
+    return createdElement;
   };
-  const createSvg = (tag, attrs = {}) => {
-    const el = doc.createElementNS(SVG_NS, tag);
-    for (const [name, value] of Object.entries(attrs)) {
-      el.setAttribute(name, value);
+  const createSvgElement = (svgTagName, svgAttributes = {}) => {
+    const createdSvgElement = documentRef.createElementNS(SVG_NAMESPACE_URI, svgTagName);
+    for (const [attributeName, attributeValue] of Object.entries(svgAttributes)) {
+      createdSvgElement.setAttribute(attributeName, attributeValue);
     }
-    return el;
+    return createdSvgElement;
   };
-  const walls = plan?.plan?.walls || [];
-  const furniture = planFurniture(plan?.plan);
-  const wallPoints = [...walls.flatMap(wall => [wall.start, wall.end]), ...furniture.flatMap(mapCorners)];
-  const minX = wallPoints.length ? Math.min(...wallPoints.map(point => point.x)) : 0;
-  const minY = wallPoints.length ? Math.min(...wallPoints.map(point => point.y)) : 0;
-  const planWidth = Math.max(100, wallPoints.length ? Math.max(...wallPoints.map(point => point.x)) - minX : 1000);
-  const planDepth = Math.max(100, wallPoints.length ? Math.max(...wallPoints.map(point => point.y)) - minY : 1000);
-  const defaultMap = {
-    x: minX + planWidth / 2,
-    y: minY + planDepth / 2,
-    width: planWidth,
-    depth: planDepth,
+  const walls = floor?.plan?.walls || [];
+  const furnitureItems = planFurniture(floor?.plan);
+  const planPoints = [
+    ...walls.flatMap(wall => [wall.start, wall.end]),
+    ...furnitureItems.flatMap(mapCorners)
+  ];
+  const boundsMinX = planPoints.length ? Math.min(...planPoints.map(pointForX => pointForX.x)) : 0;
+  const boundsMinY = planPoints.length ? Math.min(...planPoints.map(pointForY => pointForY.y)) : 0;
+  const boundsWidth = Math.max(
+    100,
+    planPoints.length
+      ? Math.max(...planPoints.map(pointForWidth => pointForWidth.x)) - boundsMinX
+      : 1000
+  );
+  const boundsDepth = Math.max(
+    100,
+    planPoints.length
+      ? Math.max(...planPoints.map(pointForDepth => pointForDepth.y)) - boundsMinY
+      : 1000
+  );
+  const defaultMapConfig = {
+    x: boundsMinX + boundsWidth / 2,
+    y: boundsMinY + boundsDepth / 2,
+    width: boundsWidth,
+    depth: boundsDepth,
     rotation: 0,
     opacity: 45,
     visible: true
   };
-  const draft = {
+  const draftState = {
     map: {
-      ...defaultMap,
-      ...structuredClone(item.map || {})
+      ...defaultMapConfig,
+      ...structuredClone(vacuumItem.map || {})
     }
   };
-  const dialog = createEl("dialog");
-  dialog.className = "i3d-vacuum-map-editor";
-  dialog.setAttribute("aria-label", "底图对齐");
-  const header = createEl("header");
-  const titleEl = createEl("strong", (plan?.name || "当前楼层") + " · 底图对齐");
-  const statusEl = createEl("span");
-  statusEl.setAttribute("role", "status");
-  let closed = false;
-  let drag = null;
-  const close = () => {
-    if (!closed) {
-      closed = true;
+  const dialogElement = createHtmlElement("dialog");
+  dialogElement.className = "i3d-vacuum-map-editor";
+  dialogElement.setAttribute("aria-label", "底图对齐");
+  const headerElement = createHtmlElement("header");
+  const titleElement = createHtmlElement("strong", (floor?.name || "当前楼层") + " · 底图对齐");
+  const statusElement = createHtmlElement("span");
+  statusElement.setAttribute("role", "status");
+  let isClosed = false;
+  let dragState = null;
+  const closeEditor = () => {
+    if (!isClosed) {
+      isClosed = true;
       resizeObserver.disconnect();
-      dialog.close();
-      dialog.remove();
+      dialogElement.close();
+      dialogElement.remove();
     }
   };
-  const createButton = (label, onClick) => {
-    const button = createEl("button", label);
-    button.type = "button";
-    button.addEventListener("click", onClick);
-    return button;
+  const createButton = (buttonLabel, onClick) => {
+    const buttonElement = createHtmlElement("button", buttonLabel);
+    buttonElement.type = "button";
+    buttonElement.addEventListener("click", onClick);
+    return buttonElement;
   };
-  const saveButton = createButton("保存", () => {
-    onSave(structuredClone(draft));
-    statusEl.textContent = "已应用，最后保存扫地机配置";
+  const saveButtonElement = createButton("保存", () => {
+    saveHandler(structuredClone(draftState));
+    statusElement.textContent = "已应用，最后保存扫地机配置";
   });
-  saveButton.className = "primary";
-  const closeButton = createButton("×", close);
-  closeButton.setAttribute("aria-label", "关闭底图对齐");
-  header.append(titleEl, statusEl, saveButton, closeButton);
-  const body = createEl("div");
-  body.className = "i3d-vacuum-map-body";
-  const planPane = createEl("div");
-  planPane.className = "i3d-vacuum-plan";
-  const pad = Math.max(planWidth, planDepth) * 0.12;
-  const svg = createSvg("svg", {
-    viewBox: minX - pad + " " + (minY - pad) + " " + (planWidth + pad * 2) + " " + (planDepth + pad * 2),
+  saveButtonElement.className = "primary";
+  const closeButtonElement = createButton("×", closeEditor);
+  closeButtonElement.setAttribute("aria-label", "关闭底图对齐");
+  headerElement.append(titleElement, statusElement, saveButtonElement, closeButtonElement);
+  const bodyElement = createHtmlElement("div");
+  bodyElement.className = "i3d-vacuum-map-body";
+  const planElement = createHtmlElement("div");
+  planElement.className = "i3d-vacuum-plan";
+  const planPadding = Math.max(boundsWidth, boundsDepth) * 0.12;
+  const svgElement = createSvgElement("svg", {
+    viewBox:
+      boundsMinX -
+      planPadding +
+      " " +
+      (boundsMinY - planPadding) +
+      " " +
+      (boundsWidth + planPadding * 2) +
+      " " +
+      (boundsDepth + planPadding * 2),
     role: "img",
     "aria-label": "户型平面与扫地机地图"
   });
   let viewBox = {
-    x: minX - pad,
-    y: minY - pad,
-    width: planWidth + pad * 2,
-    height: planDepth + pad * 2
+    x: boundsMinX - planPadding,
+    y: boundsMinY - planPadding,
+    width: boundsWidth + planPadding * 2,
+    height: boundsDepth + planPadding * 2
   };
   const applyViewBox = () => {
-    svg.setAttribute("viewBox", viewBox.x + " " + viewBox.y + " " + viewBox.width + " " + viewBox.height);
-    render();
+    svgElement.setAttribute(
+      "viewBox",
+      viewBox.x + " " + viewBox.y + " " + viewBox.width + " " + viewBox.height
+    );
+    renderEditor();
   };
-  const scaleMap = factor => {
-    const map = draft.map;
-    const clamped = Math.max(0.01 / Math.min(map.width, map.depth), Math.min(1000000 / Math.max(map.width, map.depth), factor));
-    map.width *= clamped;
-    map.depth *= clamped;
-    render();
+  const scaleMap = scaleFactor => {
+    const draftMap = draftState.map;
+    const clampedScale = Math.max(
+      0.01 / Math.min(draftMap.width, draftMap.depth),
+      Math.min(1000000 / Math.max(draftMap.width, draftMap.depth), scaleFactor)
+    );
+    draftMap.width *= clampedScale;
+    draftMap.depth *= clampedScale;
+    renderEditor();
   };
-  const scaleView = factor => {
-    const nextWidth = Math.max(planWidth * 0.15, Math.min(planWidth * 10, viewBox.width * factor));
-    const ratio = nextWidth / viewBox.width;
+  const zoomView = zoomFactor => {
+    const nextViewWidth = Math.max(
+      boundsWidth * 0.15,
+      Math.min(boundsWidth * 10, viewBox.width * zoomFactor)
+    );
+    const viewScaleRatio = nextViewWidth / viewBox.width;
     viewBox = {
-      x: viewBox.x + (viewBox.width - nextWidth) / 2,
-      y: viewBox.y + viewBox.height * (1 - ratio) / 2,
-      width: nextWidth,
-      height: viewBox.height * ratio
+      x: viewBox.x + (viewBox.width - nextViewWidth) / 2,
+      y: viewBox.y + (viewBox.height * (1 - viewScaleRatio)) / 2,
+      width: nextViewWidth,
+      height: viewBox.height * viewScaleRatio
     };
     applyViewBox();
   };
-  const mapImage = createSvg("image", {
+  const mapImageElement = createSvgElement("image", {
     preserveAspectRatio: "none"
   });
-  const furnitureGroup = createSvg("g", {
+  const furnitureLayerElement = createSvgElement("g", {
     "pointer-events": "none",
     "data-layer": "furniture"
   });
-  const wallsGroup = createSvg("g");
-  const handlesGroup = createSvg("g");
+  const wallsLayerElement = createSvgElement("g");
+  const handlesLayerElement = createSvgElement("g");
   const furnitureLabels = [];
-  for (const piece of furniture) {
-    const width = piece.width;
-    const depth = piece.depth;
-    const group = createSvg("g", {
-      transform: "translate(" + piece.x + " " + piece.y + ") rotate(" + piece.rotation + ")",
-      "data-furniture-id": piece.id,
-      fill: /^#[0-9a-f]{6}$/i.test(piece.color || "") ? piece.color : "#91a4b5",
+  for (const furnitureEntry of furnitureItems) {
+    const furnitureWidth = furnitureEntry.width;
+    const furnitureDepth = furnitureEntry.depth;
+    const furnitureGroup = createSvgElement("g", {
+      transform:
+        "translate(" +
+        furnitureEntry.x +
+        " " +
+        furnitureEntry.y +
+        ") rotate(" +
+        furnitureEntry.rotation +
+        ")",
+      "data-furniture-id": furnitureEntry.id,
+      fill: /^#[0-9a-f]{6}$/i.test(furnitureEntry.color || "") ? furnitureEntry.color : "#91a4b5",
       "fill-opacity": 0.28,
       stroke: "#d0dae3",
       "stroke-width": 1,
       "stroke-opacity": 0.8
     });
-    const appendShape = (tag, attrs) => group.append(createSvg(tag, {
-      ...attrs,
-      "vector-effect": "non-scaling-stroke"
-    }));
-    const round = ["plant", "robotvacuum", "roundtable", "stool"].includes(piece.type);
-    appendShape(round ? "ellipse" : "rect", round ? {
-      cx: 0,
-      cy: 0,
-      rx: width / 2,
-      ry: depth / 2
-    } : {
-      x: -width / 2,
-      y: -depth / 2,
-      width,
-      height: depth,
-      rx: Math.min(width, depth) * 0.06
-    });
-    if (piece.type === "bed") {
-      appendShape("rect", {
-        x: -width * 0.42,
-        y: -depth * 0.43,
-        width: width * 0.36,
-        height: depth * 0.2,
-        rx: depth * 0.03
+    const appendFurnitureShape = (shapeTagName, shapeAttributes) =>
+      furnitureGroup.append(
+        createSvgElement(shapeTagName, {
+          ...shapeAttributes,
+          "vector-effect": "non-scaling-stroke"
+        })
+      );
+    const isRoundFurniture = ["plant", "robotvacuum", "roundtable", "stool"].includes(
+      furnitureEntry.type
+    );
+    appendFurnitureShape(
+      isRoundFurniture ? "ellipse" : "rect",
+      isRoundFurniture
+        ? {
+            cx: 0,
+            cy: 0,
+            rx: furnitureWidth / 2,
+            ry: furnitureDepth / 2
+          }
+        : {
+            x: -furnitureWidth / 2,
+            y: -furnitureDepth / 2,
+            width: furnitureWidth,
+            height: furnitureDepth,
+            rx: Math.min(furnitureWidth, furnitureDepth) * 0.06
+          }
+    );
+    if (furnitureEntry.type === "bed") {
+      appendFurnitureShape("rect", {
+        x: -furnitureWidth * 0.42,
+        y: -furnitureDepth * 0.43,
+        width: furnitureWidth * 0.36,
+        height: furnitureDepth * 0.2,
+        rx: furnitureDepth * 0.03
       });
-      appendShape("rect", {
-        x: width * 0.06,
-        y: -depth * 0.43,
-        width: width * 0.36,
-        height: depth * 0.2,
-        rx: depth * 0.03
+      appendFurnitureShape("rect", {
+        x: furnitureWidth * 0.06,
+        y: -furnitureDepth * 0.43,
+        width: furnitureWidth * 0.36,
+        height: furnitureDepth * 0.2,
+        rx: furnitureDepth * 0.03
       });
-      appendShape("line", {
-        x1: -width / 2,
-        x2: width / 2,
-        y1: -depth * 0.12,
-        y2: -depth * 0.12
+      appendFurnitureShape("line", {
+        x1: -furnitureWidth / 2,
+        x2: furnitureWidth / 2,
+        y1: -furnitureDepth * 0.12,
+        y2: -furnitureDepth * 0.12
       });
-    } else if (piece.type === "sofa") {
-      appendShape("rect", {
-        x: -width * 0.38,
-        y: -depth * 0.26,
-        width: width * 0.76,
-        height: depth * 0.65,
-        rx: depth * 0.04
+    } else if (furnitureEntry.type === "sofa") {
+      appendFurnitureShape("rect", {
+        x: -furnitureWidth * 0.38,
+        y: -furnitureDepth * 0.26,
+        width: furnitureWidth * 0.76,
+        height: furnitureDepth * 0.65,
+        rx: furnitureDepth * 0.04
       });
-      appendShape("line", {
+      appendFurnitureShape("line", {
         x1: 0,
         x2: 0,
-        y1: -depth * 0.26,
-        y2: depth * 0.39
+        y1: -furnitureDepth * 0.26,
+        y2: furnitureDepth * 0.39
       });
     }
-    furnitureGroup.append(group);
-    if (piece.name) {
-      const label = createSvg("text", {
-        x: piece.x,
-        y: piece.y,
+    furnitureLayerElement.append(furnitureGroup);
+    if (furnitureEntry.name) {
+      const furnitureLabelElement = createSvgElement("text", {
+        x: furnitureEntry.x,
+        y: furnitureEntry.y,
         fill: "#e0e7ed",
         "text-anchor": "middle",
         "dominant-baseline": "central",
@@ -209,307 +268,410 @@ export function openVacuumMapEditor({
         "paint-order": "stroke",
         "vector-effect": "non-scaling-stroke"
       });
-      label.textContent = piece.name;
-      furnitureGroup.append(label);
+      furnitureLabelElement.textContent = furnitureEntry.name;
+      furnitureLayerElement.append(furnitureLabelElement);
       furnitureLabels.push({
-        label,
-        item: piece
+        label: furnitureLabelElement,
+        item: furnitureEntry
       });
     }
   }
-  for (const wall of walls) {
-    wallsGroup.append(createSvg("line", {
-      x1: wall.start.x,
-      y1: wall.start.y,
-      x2: wall.end.x,
-      y2: wall.end.y,
-      stroke: "#9fa9bc",
-      "stroke-width": Math.max(2, wall.thickness || planWidth * 0.006),
-      "vector-effect": "non-scaling-stroke",
-      "pointer-events": "none"
-    }));
+  for (const wallSegment of walls) {
+    wallsLayerElement.append(
+      createSvgElement("line", {
+        x1: wallSegment.start.x,
+        y1: wallSegment.start.y,
+        x2: wallSegment.end.x,
+        y2: wallSegment.end.y,
+        stroke: "#9fa9bc",
+        "stroke-width": Math.max(2, wallSegment.thickness || boundsWidth * 0.006),
+        "vector-effect": "non-scaling-stroke",
+        "pointer-events": "none"
+      })
+    );
   }
-  svg.append(mapImage, furnitureGroup, wallsGroup, handlesGroup);
-  planPane.append(svg);
-  const viewTools = createEl("div");
-  viewTools.className = "i3d-vacuum-view-tools";
-  viewTools.append(createButton("地图 −", () => scaleMap(1 / 1.1)), createButton("地图 +", () => scaleMap(1.1)), createButton("视图 −", () => scaleView(1.2)), createButton("视图 +", () => scaleView(1 / 1.2)), createButton("显示全部", () => {
-    const points = [...wallPoints, ...mapCorners(draft.map)];
-    const margin = Math.max(planWidth, planDepth) * 0.15;
-    const fitMinX = Math.min(...points.map(point => point.x));
-    const fitMinY = Math.min(...points.map(point => point.y));
-    viewBox = {
-      x: fitMinX - margin,
-      y: fitMinY - margin,
-      width: Math.max(...points.map(point => point.x)) - fitMinX + margin * 2,
-      height: Math.max(...points.map(point => point.y)) - fitMinY + margin * 2
-    };
-    applyViewBox();
-  }));
-  planPane.append(viewTools);
-  svg.addEventListener("wheel", event => {
-    event.preventDefault();
-    if (event.target.closest("[data-drag]")) {
-      scaleMap(event.deltaY > 0 ? 1 / 1.08 : 1.08);
-    } else {
-      scaleView(event.deltaY > 0 ? 1.12 : 1 / 1.12);
+  svgElement.append(mapImageElement, furnitureLayerElement, wallsLayerElement, handlesLayerElement);
+  planElement.append(svgElement);
+  const viewToolsElement = createHtmlElement("div");
+  viewToolsElement.className = "i3d-vacuum-view-tools";
+  viewToolsElement.append(
+    createButton("地图 −", () => scaleMap(1 / 1.1)),
+    createButton("地图 +", () => scaleMap(1.1)),
+    createButton("视图 −", () => zoomView(1.2)),
+    createButton("视图 +", () => zoomView(1 / 1.2)),
+    createButton("显示全部", () => {
+      const visiblePoints = [...planPoints, ...mapCorners(draftState.map)];
+      const viewPadding = Math.max(boundsWidth, boundsDepth) * 0.15;
+      const viewMinX = Math.min(...visiblePoints.map(pointForViewMinX => pointForViewMinX.x));
+      const viewMinY = Math.min(...visiblePoints.map(pointForViewMinY => pointForViewMinY.y));
+      viewBox = {
+        x: viewMinX - viewPadding,
+        y: viewMinY - viewPadding,
+        width:
+          Math.max(...visiblePoints.map(pointForViewMaxX => pointForViewMaxX.x)) -
+          viewMinX +
+          viewPadding * 2,
+        height:
+          Math.max(...visiblePoints.map(pointForViewMaxY => pointForViewMaxY.y)) -
+          viewMinY +
+          viewPadding * 2
+      };
+      applyViewBox();
+    })
+  );
+  planElement.append(viewToolsElement);
+  svgElement.addEventListener(
+    "wheel",
+    wheelEvent => {
+      wheelEvent.preventDefault();
+      if (wheelEvent.target.closest("[data-drag]")) {
+        scaleMap(wheelEvent.deltaY > 0 ? 1 / 1.08 : 1.08);
+      } else {
+        zoomView(wheelEvent.deltaY > 0 ? 1.12 : 1 / 1.12);
+      }
+    },
+    {
+      passive: false
     }
-  }, {
-    passive: false
-  });
-  const aside = createEl("aside");
-  const noteEl = createEl("p", "拖动地图移动，拖角点缩放，拖圆点旋转；Shift 等比缩放。地图上滚轮或双指缩放地图，空白处滚轮缩放视图。");
-  noteEl.className = "i3d-note";
-  aside.append(noteEl);
-  const addNumberField = (label, target, key, min, max, step = 1, parent = aside) => {
-    const labelEl = createEl("label");
-    const caption = createEl("span", label);
-    const input = createEl("input");
-    Object.assign(input, {
+  );
+  const sidebarElement = createHtmlElement("aside");
+  const hintElement = createHtmlElement(
+    "p",
+    "拖动地图移动，拖角点缩放，拖圆点旋转；Shift 等比缩放。地图上滚轮或双指缩放地图，空白处滚轮缩放视图。"
+  );
+  hintElement.className = "i3d-note";
+  sidebarElement.append(hintElement);
+  const createNumberField = (
+    labelText,
+    boundObject,
+    boundKey,
+    minValue,
+    maxValue,
+    stepValue = 1,
+    fieldContainer = sidebarElement
+  ) => {
+    const fieldLabelElement = createHtmlElement("label");
+    const labelTextElement = createHtmlElement("span", labelText);
+    const inputElement = createHtmlElement("input");
+    Object.assign(inputElement, {
       type: "number",
-      min,
-      max,
+      min: minValue,
+      max: maxValue,
       step: "any",
-      value: target[key]
+      value: boundObject[boundKey]
     });
-    input.dataset.numberStep = String(step);
-    input.setAttribute("aria-label", label);
-    input.addEventListener("change", () => {
-      const next = Number(input.value);
-      if (!Number.isFinite(next) || input.value.trim() === "") {
-        input.value = target[key];
+    inputElement.dataset.numberStep = String(stepValue);
+    inputElement.setAttribute("aria-label", labelText);
+    inputElement.addEventListener("change", () => {
+      const inputValue = Number(inputElement.value);
+      if (!Number.isFinite(inputValue) || inputElement.value.trim() === "") {
+        inputElement.value = boundObject[boundKey];
         return;
       }
-      target[key] = Math.max(min, Math.min(max, next));
-      input.value = target[key];
-      render();
+      boundObject[boundKey] = Math.max(minValue, Math.min(maxValue, inputValue));
+      inputElement.value = boundObject[boundKey];
+      renderEditor();
     });
-    labelEl.append(caption, input);
-    parent.append(labelEl);
-    return input;
+    fieldLabelElement.append(labelTextElement, inputElement);
+    fieldContainer.append(fieldLabelElement);
+    return inputElement;
   };
-  const fieldInputs = new Map();
-  for (const [label, key, min, max] of [["位置 X", "x", -1000000, 1000000], ["位置 Y", "y", -1000000, 1000000], ["宽度", "width", 0.01, 1000000], ["高度", "depth", 0.01, 1000000], ["旋转角度", "rotation", -360, 360], ["地图显示强度（%）", "opacity", 0, 100]]) {
-    fieldInputs.set(key, addNumberField(label, draft.map, key, min, max, key === "rotation" ? 0.5 : 1));
+  const fieldsByProperty = new Map();
+  for (const [fieldLabel, propertyKey, minValueLimit, maxValueLimit] of [
+    ["位置 X", "x", -1000000, 1000000],
+    ["位置 Y", "y", -1000000, 1000000],
+    ["宽度", "width", 0.01, 1000000],
+    ["高度", "depth", 0.01, 1000000],
+    ["旋转角度", "rotation", -360, 360],
+    ["地图显示强度（%）", "opacity", 0, 100]
+  ]) {
+    fieldsByProperty.set(
+      propertyKey,
+      createNumberField(
+        fieldLabel,
+        draftState.map,
+        propertyKey,
+        minValueLimit,
+        maxValueLimit,
+        propertyKey === "rotation" ? 0.5 : 1
+      )
+    );
   }
-  const visibleLabel = createEl("label");
-  const visibleCheckbox = createEl("input");
-  visibleLabel.className = "i3d-setting-toggle";
-  visibleCheckbox.type = "checkbox";
-  visibleCheckbox.checked = draft.map.visible;
-  visibleCheckbox.setAttribute("aria-label", "显示地图");
-  visibleCheckbox.addEventListener("change", () => {
-    draft.map.visible = visibleCheckbox.checked;
-    render();
+  const visibilityToggleLabelElement = createHtmlElement("label");
+  const visibilityToggleElement = createHtmlElement("input");
+  visibilityToggleLabelElement.className = "i3d-setting-toggle";
+  visibilityToggleElement.type = "checkbox";
+  visibilityToggleElement.checked = draftState.map.visible;
+  visibilityToggleElement.setAttribute("aria-label", "显示地图");
+  visibilityToggleElement.addEventListener("change", () => {
+    draftState.map.visible = visibilityToggleElement.checked;
+    renderEditor();
   });
-  visibleLabel.append(createEl("span", "显示地图"), visibleCheckbox);
-  aside.append(visibleLabel);
-  const furnitureLabel = createEl("label");
-  const furnitureCheckbox = createEl("input");
-  furnitureLabel.className = "i3d-setting-toggle";
-  furnitureCheckbox.type = "checkbox";
-  furnitureCheckbox.checked = true;
-  furnitureCheckbox.setAttribute("aria-label", "显示家具参照");
-  furnitureCheckbox.addEventListener("change", () => {
-    furnitureGroup.style.display = furnitureCheckbox.checked ? "" : "none";
+  visibilityToggleLabelElement.append(
+    createHtmlElement("span", "显示地图"),
+    visibilityToggleElement
+  );
+  sidebarElement.append(visibilityToggleLabelElement);
+  const furnitureToggleLabelElement = createHtmlElement("label");
+  const furnitureToggleElement = createHtmlElement("input");
+  furnitureToggleLabelElement.className = "i3d-setting-toggle";
+  furnitureToggleElement.type = "checkbox";
+  furnitureToggleElement.checked = true;
+  furnitureToggleElement.setAttribute("aria-label", "显示家具参照");
+  furnitureToggleElement.addEventListener("change", () => {
+    furnitureLayerElement.style.display = furnitureToggleElement.checked ? "" : "none";
   });
-  furnitureLabel.append(createEl("span", "显示家具参照"), furnitureCheckbox);
-  aside.append(furnitureLabel);
-  aside.append(createButton("重置地图位置", () => {
-    Object.assign(draft.map, defaultMap);
-    visibleCheckbox.checked = true;
-    render();
-  }));
-  const mapNote = createEl("p", draft.map.entityId ? "" : "尚未选择地图；仍可放置房间快捷按钮。");
-  mapNote.className = "i3d-note";
-  mapImage.addEventListener("error", () => {
-    mapNote.textContent = "地图暂时无法载入，请检查地图实体；已保存的位置会保留。";
+  furnitureToggleLabelElement.append(
+    createHtmlElement("span", "显示家具参照"),
+    furnitureToggleElement
+  );
+  sidebarElement.append(furnitureToggleLabelElement);
+  sidebarElement.append(
+    createButton("重置地图位置", () => {
+      Object.assign(draftState.map, defaultMapConfig);
+      visibilityToggleElement.checked = true;
+      renderEditor();
+    })
+  );
+  const mapNoteElement = createHtmlElement(
+    "p",
+    draftState.map.entityId ? "" : "尚未选择地图；仍可放置房间快捷按钮。"
+  );
+  mapNoteElement.className = "i3d-note";
+  mapImageElement.addEventListener("error", () => {
+    mapNoteElement.textContent = "地图暂时无法载入，请检查地图实体；已保存的位置会保留。";
   });
-  if (draft.map.entityId) {
-    mapImage.setAttribute("href", mapSource(draft.map.entityId));
+  if (draftState.map.entityId) {
+    mapImageElement.setAttribute("href", mapSource(draftState.map.entityId));
   }
-  aside.append(mapNote);
+  sidebarElement.append(mapNoteElement);
   let lastLabelScale = null;
-  function render() {
-    const map = draft.map;
-    const handleRadius = 1 / Math.max(0.001, svg.getScreenCTM()?.a || 1);
-    for (const [key, input] of fieldInputs) {
-      if (doc.activeElement !== input) {
-        input.value = Number(map[key].toFixed(2));
+  function renderEditor() {
+    const currentMap = draftState.map;
+    const unitsPerPixel = 1 / Math.max(0.001, svgElement.getScreenCTM()?.a || 1);
+    for (const [fieldPropertyKey, fieldInputElement] of fieldsByProperty) {
+      if (documentRef.activeElement !== fieldInputElement) {
+        fieldInputElement.value = Number(currentMap[fieldPropertyKey].toFixed(2));
       }
     }
-    if (handleRadius !== lastLabelScale) {
-      lastLabelScale = handleRadius;
-      for (const {
-        label,
-        item: piece
-      } of furnitureLabels) {
-        label.setAttribute("font-size", Math.min(11 * handleRadius, piece.width * 0.85 / Math.max(1, [...piece.name].length)));
-        label.style.display = Math.min(piece.width, piece.depth) / handleRadius < 25 ? "none" : "";
+    if (unitsPerPixel !== lastLabelScale) {
+      lastLabelScale = unitsPerPixel;
+      for (const { label: labelElement, item: labelItem } of furnitureLabels) {
+        labelElement.setAttribute(
+          "font-size",
+          Math.min(
+            unitsPerPixel * 11,
+            (labelItem.width * 0.85) / Math.max(1, [...labelItem.name].length)
+          )
+        );
+        labelElement.style.display =
+          Math.min(labelItem.width, labelItem.depth) / unitsPerPixel < 25 ? "none" : "";
       }
     }
-    for (const [name, value] of Object.entries({
-      x: map.x - map.width / 2,
-      y: map.y - map.depth / 2,
-      width: map.width,
-      height: map.depth,
-      opacity: map.opacity / 100,
-      transform: "rotate(" + map.rotation + " " + map.x + " " + map.y + ")"
+    for (const [imageAttributeName, imageAttributeValue] of Object.entries({
+      x: currentMap.x - currentMap.width / 2,
+      y: currentMap.y - currentMap.depth / 2,
+      width: currentMap.width,
+      height: currentMap.depth,
+      opacity: currentMap.opacity / 100,
+      transform: "rotate(" + currentMap.rotation + " " + currentMap.x + " " + currentMap.y + ")"
     })) {
-      mapImage.setAttribute(name, value);
+      mapImageElement.setAttribute(imageAttributeName, imageAttributeValue);
     }
-    mapImage.style.display = map.visible === false ? "none" : "";
-    handlesGroup.replaceChildren();
-    const corners = mapCorners(map);
-    handlesGroup.append(createSvg("polygon", {
-      points: corners.map(point => point.x + "," + point.y).join(" "),
-      fill: "transparent",
-      stroke: "#73b3ff",
-      "stroke-width": 1.5,
-      "vector-effect": "non-scaling-stroke",
-      "data-drag": "map"
-    }));
-    corners.forEach((point, index) => handlesGroup.append(createSvg("circle", {
-      cx: point.x,
-      cy: point.y,
-      r: handleRadius * 8,
-      fill: "#73b3ff",
-      "data-drag": "corner:" + index
-    })));
-    const radians = map.rotation * Math.PI / 180;
-    const rotateOffset = map.depth / 2 + Math.max(planWidth, planDepth) * 0.055;
-    handlesGroup.append(createSvg("circle", {
-      cx: map.x + Math.sin(radians) * rotateOffset,
-      cy: map.y - Math.cos(radians) * rotateOffset,
-      r: handleRadius * 10,
-      fill: "#b8e77b",
-      "data-drag": "rotate"
-    }));
+    mapImageElement.style.display = currentMap.visible === false ? "none" : "";
+    handlesLayerElement.replaceChildren();
+    const mapCornerPoints = mapCorners(currentMap);
+    handlesLayerElement.append(
+      createSvgElement("polygon", {
+        points: mapCornerPoints.map(cornerPoint => cornerPoint.x + "," + cornerPoint.y).join(" "),
+        fill: "transparent",
+        stroke: "#73b3ff",
+        "stroke-width": 1.5,
+        "vector-effect": "non-scaling-stroke",
+        "data-drag": "map"
+      })
+    );
+    mapCornerPoints.forEach((draggedCorner, cornerIndex) =>
+      handlesLayerElement.append(
+        createSvgElement("circle", {
+          cx: draggedCorner.x,
+          cy: draggedCorner.y,
+          r: unitsPerPixel * 8,
+          fill: "#73b3ff",
+          "data-drag": "corner:" + cornerIndex
+        })
+      )
+    );
+    const rotationRad = (currentMap.rotation * Math.PI) / 180;
+    const rotateHandleDistance = currentMap.depth / 2 + Math.max(boundsWidth, boundsDepth) * 0.055;
+    handlesLayerElement.append(
+      createSvgElement("circle", {
+        cx: currentMap.x + Math.sin(rotationRad) * rotateHandleDistance,
+        cy: currentMap.y - Math.cos(rotationRad) * rotateHandleDistance,
+        r: unitsPerPixel * 10,
+        fill: "#b8e77b",
+        "data-drag": "rotate"
+      })
+    );
   }
-  const clientToSvg = event => {
-    const point = svg.createSVGPoint();
-    point.x = event.clientX;
-    point.y = event.clientY;
-    return point.matrixTransform(svg.getScreenCTM().inverse());
+  const toSvgPoint = pointerEvent => {
+    const svgPoint = svgElement.createSVGPoint();
+    svgPoint.x = pointerEvent.clientX;
+    svgPoint.y = pointerEvent.clientY;
+    return svgPoint.matrixTransform(svgElement.getScreenCTM().inverse());
   };
-  const pointers = new Map();
-  let pinch = null;
-  svg.addEventListener("pointerdown", event => {
-    pointers.set(event.pointerId, {
-      x: event.clientX,
-      y: event.clientY
+  const pointersById = new Map();
+  let pinchState = null;
+  svgElement.addEventListener("pointerdown", downEvent => {
+    pointersById.set(downEvent.pointerId, {
+      x: downEvent.clientX,
+      y: downEvent.clientY
     });
-    if (pointers.size === 2) {
-      event.preventDefault();
-      const [a, b] = [...pointers.values()];
-      pinch = {
-        distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
-        width: draft.map.width,
-        depth: draft.map.depth
+    if (pointersById.size === 2) {
+      downEvent.preventDefault();
+      const [pinchPointerA, pinchPointerB] = [...pointersById.values()];
+      pinchState = {
+        distance: Math.max(
+          1,
+          Math.hypot(pinchPointerA.x - pinchPointerB.x, pinchPointerA.y - pinchPointerB.y)
+        ),
+        width: draftState.map.width,
+        depth: draftState.map.depth
       };
-      drag = null;
-      svg.setPointerCapture(event.pointerId);
+      dragState = null;
+      svgElement.setPointerCapture(downEvent.pointerId);
       return;
     }
-    const dragKind = event.target.closest("[data-drag]")?.getAttribute("data-drag");
-    if (event.button === 0) {
-      event.preventDefault();
-      drag = {
+    const dragKind = downEvent.target.closest("[data-drag]")?.getAttribute("data-drag");
+    if (downEvent.button === 0) {
+      downEvent.preventDefault();
+      dragState = {
         kind: dragKind || "pan",
-        start: clientToSvg(event),
+        start: toSvgPoint(downEvent),
         viewBox: {
           ...viewBox
         },
-        clientX: event.clientX,
-        clientY: event.clientY,
+        clientX: downEvent.clientX,
+        clientY: downEvent.clientY,
         map: {
-          ...draft.map
+          ...draftState.map
         }
       };
-      svg.setPointerCapture(event.pointerId);
+      svgElement.setPointerCapture(downEvent.pointerId);
     }
   });
-  svg.addEventListener("pointermove", event => {
-    if (pointers.has(event.pointerId)) {
-      pointers.set(event.pointerId, {
-        x: event.clientX,
-        y: event.clientY
+  svgElement.addEventListener("pointermove", moveEvent => {
+    if (pointersById.has(moveEvent.pointerId)) {
+      pointersById.set(moveEvent.pointerId, {
+        x: moveEvent.clientX,
+        y: moveEvent.clientY
       });
     }
-    if (pinch && pointers.size === 2) {
-      const [a, b] = [...pointers.values()];
-      const scale = Math.max(0.01 / Math.min(pinch.width, pinch.depth), Math.min(1000000 / Math.max(pinch.width, pinch.depth), Math.hypot(a.x - b.x, a.y - b.y) / pinch.distance));
-      draft.map.width = pinch.width * scale;
-      draft.map.depth = pinch.depth * scale;
-      render();
+    if (pinchState && pointersById.size === 2) {
+      const [activePointerA, activePointerB] = [...pointersById.values()];
+      const pinchScale = Math.max(
+        0.01 / Math.min(pinchState.width, pinchState.depth),
+        Math.min(
+          1000000 / Math.max(pinchState.width, pinchState.depth),
+          Math.hypot(activePointerA.x - activePointerB.x, activePointerA.y - activePointerB.y) /
+            pinchState.distance
+        )
+      );
+      draftState.map.width = pinchState.width * pinchScale;
+      draftState.map.depth = pinchState.depth * pinchScale;
+      renderEditor();
       return;
     }
-    if (!drag) {
+    if (!dragState) {
       return;
     }
-    const point = clientToSvg(event);
-    const dx = point.x - drag.start.x;
-    const dy = point.y - drag.start.y;
-    const map = draft.map;
-    const startMap = drag.map;
-    if (drag.kind === "pan") {
-      const screenScale = svg.getScreenCTM().a;
+    const pointerPoint = toSvgPoint(moveEvent);
+    const dragDeltaX = pointerPoint.x - dragState.start.x;
+    const dragDeltaY = pointerPoint.y - dragState.start.y;
+    const dragMap = draftState.map;
+    const dragStartMap = dragState.map;
+    if (dragState.kind === "pan") {
+      const screenScale = svgElement.getScreenCTM().a;
       viewBox = {
-        ...drag.viewBox,
-        x: drag.viewBox.x - (event.clientX - drag.clientX) / screenScale,
-        y: drag.viewBox.y - (event.clientY - drag.clientY) / screenScale
+        ...dragState.viewBox,
+        x: dragState.viewBox.x - (moveEvent.clientX - dragState.clientX) / screenScale,
+        y: dragState.viewBox.y - (moveEvent.clientY - dragState.clientY) / screenScale
       };
       applyViewBox();
       return;
     }
-    if (drag.kind === "map") {
-      map.x = startMap.x + dx;
-      map.y = startMap.y + dy;
-    } else if (drag.kind === "rotate") {
-      map.rotation = Math.atan2(point.x - startMap.x, startMap.y - point.y) * 180 / Math.PI;
+    if (dragState.kind === "map") {
+      dragMap.x = dragStartMap.x + dragDeltaX;
+      dragMap.y = dragStartMap.y + dragDeltaY;
+    } else if (dragState.kind === "rotate") {
+      dragMap.rotation =
+        (Math.atan2(pointerPoint.x - dragStartMap.x, dragStartMap.y - pointerPoint.y) * 180) /
+        Math.PI;
     } else {
-      const cornerIndex = Number(drag.kind.split(":")[1]);
-      const cornerSign = [[-1, -1], [1, -1], [1, 1], [-1, 1]][cornerIndex];
-      const radians = startMap.rotation * Math.PI / 180;
-      const cos = Math.cos(radians);
-      const sin = Math.sin(radians);
-      let width = Math.max(0.01, startMap.width + (dx * cos + dy * sin) * cornerSign[0]);
-      let depth = Math.max(0.01, startMap.depth + (-dx * sin + dy * cos) * cornerSign[1]);
-      if (event.shiftKey) {
-        const uniform = Math.max(width / startMap.width, depth / startMap.depth);
-        width = startMap.width * uniform;
-        depth = startMap.depth * uniform;
+      const cornerHandleIndex = Number(dragState.kind.split(":")[1]);
+      const cornerSigns = [
+        [-1, -1],
+        [1, -1],
+        [1, 1],
+        [-1, 1]
+      ][cornerHandleIndex];
+      const dragRotationRad = (dragStartMap.rotation * Math.PI) / 180;
+      const cosRotation = Math.cos(dragRotationRad);
+      const sinRotation = Math.sin(dragRotationRad);
+      let nextWidth = Math.max(
+        0.01,
+        dragStartMap.width + (dragDeltaX * cosRotation + dragDeltaY * sinRotation) * cornerSigns[0]
+      );
+      let nextDepth = Math.max(
+        0.01,
+        dragStartMap.depth + (-dragDeltaX * sinRotation + dragDeltaY * cosRotation) * cornerSigns[1]
+      );
+      if (moveEvent.shiftKey) {
+        const uniformScale = Math.max(
+          nextWidth / dragStartMap.width,
+          nextDepth / dragStartMap.depth
+        );
+        nextWidth = dragStartMap.width * uniformScale;
+        nextDepth = dragStartMap.depth * uniformScale;
       }
-      map.width = width;
-      map.depth = depth;
-      map.x = startMap.x + ((width - startMap.width) * cornerSign[0] * cos - (depth - startMap.depth) * cornerSign[1] * sin) / 2;
-      map.y = startMap.y + ((width - startMap.width) * cornerSign[0] * sin + (depth - startMap.depth) * cornerSign[1] * cos) / 2;
+      dragMap.width = nextWidth;
+      dragMap.depth = nextDepth;
+      dragMap.x =
+        dragStartMap.x +
+        ((nextWidth - dragStartMap.width) * cornerSigns[0] * cosRotation -
+          (nextDepth - dragStartMap.depth) * cornerSigns[1] * sinRotation) /
+          2;
+      dragMap.y =
+        dragStartMap.y +
+        ((nextWidth - dragStartMap.width) * cornerSigns[0] * sinRotation +
+          (nextDepth - dragStartMap.depth) * cornerSigns[1] * cosRotation) /
+          2;
     }
-    render();
+    renderEditor();
   });
-  for (const eventName of ["pointerup", "pointercancel"]) {
-    svg.addEventListener(eventName, event => {
-      pointers.delete(event.pointerId);
-      pinch = null;
-      drag = null;
+  for (const releaseEventName of ["pointerup", "pointercancel"]) {
+    svgElement.addEventListener(releaseEventName, releaseEvent => {
+      pointersById.delete(releaseEvent.pointerId);
+      pinchState = null;
+      dragState = null;
     });
   }
   const resizeObserver = new ResizeObserver(() => {
-    if (!closed) {
-      render();
+    if (!isClosed) {
+      renderEditor();
     }
   });
-  body.append(planPane, aside);
-  dialog.append(header, body);
-  doc.body.append(dialog);
-  dialog.addEventListener("cancel", event => {
-    event.preventDefault();
-    close();
+  bodyElement.append(planElement, sidebarElement);
+  dialogElement.append(headerElement, bodyElement);
+  documentRef.body.append(dialogElement);
+  dialogElement.addEventListener("cancel", cancelEvent => {
+    cancelEvent.preventDefault();
+    closeEditor();
   });
-  dialog.showModal();
-  viewTools.lastElementChild.click();
-  resizeObserver.observe(svg);
+  dialogElement.showModal();
+  viewToolsElement.lastElementChild.click();
+  resizeObserver.observe(svgElement);
   return {
-    close
+    close: closeEditor
   };
 }

@@ -3,20 +3,22 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from ha.client import HAClientError, normalize_base_url
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from .ha.client import HAClientError, normalize_base_url
 
 CONTROL_CHARACTERS = re.compile('[\\x00-\\x1f\\x7f]')
 
 
 class SetupAdminRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+
     username: str = Field(min_length=3, max_length=64)
     password: str = Field(min_length=8, max_length=256)
     password_confirmation: str = Field(alias='passwordConfirmation', min_length=8, max_length=256)
 
     @model_validator(mode='after')
-    def validate_setup(self) -> SetupAdminRequest:
+    def validate_setup(self) -> 'SetupAdminRequest':
         self.username = self.username.strip()
         if len(self.username) < 3 or CONTROL_CHARACTERS.search(self.username):
             raise ValueError('账号长度至少为3个字符，且不能包含控制字符。')
@@ -32,6 +34,7 @@ class LoginRequest(BaseModel):
 
 class DisplayPairingCodeRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
+
     project_id: str = Field(alias='projectId', min_length=36, max_length=36)
     name: str | None = Field(default=None, min_length=1, max_length=128)
     code: str | None = Field(default=None, min_length=6, max_length=6, pattern='^\\d{6}$')
@@ -49,6 +52,7 @@ class DisplayPairingCodeRequest(BaseModel):
 
 class DisplayPairingCodeUpdateRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
+
     name: str | None = Field(default=None, min_length=1, max_length=128)
     project_id: str | None = Field(default=None, alias='projectId', min_length=36, max_length=36)
     enabled: bool | None = None
@@ -66,6 +70,7 @@ class DisplayPairingCodeUpdateRequest(BaseModel):
 
 class DisplayPairRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
+
     code: str = Field(min_length=6, max_length=6, pattern='^\\d{6}$')
     device_name: str | None = Field(default=None, alias='deviceName', min_length=1, max_length=128)
 
@@ -82,6 +87,7 @@ class DisplayPairRequest(BaseModel):
 
 class DisplayDeviceUpdateRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
+
     name: str | None = Field(default=None, min_length=1, max_length=128)
     project_id: str | None = Field(default=None, alias='projectId', min_length=36, max_length=36)
 
@@ -109,6 +115,7 @@ class SetupStatusResponse(BaseModel):
 
 class HAConnectionInput(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+
     base_url: str = Field(alias='baseUrl', min_length=8, max_length=512)
     access_token: str | None = Field(default=None, alias='accessToken', max_length=4096)
     verify_tls: bool = Field(default=True, alias='verifyTls')
@@ -137,6 +144,7 @@ class HATestRequest(HAConnectionInput):
 
 class HAServiceCallRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+
     domain: str = Field(min_length=1, max_length=64, pattern='^[a-z0-9_]+$')
     service: str = Field(min_length=1, max_length=64, pattern='^[a-z0-9_]+$')
     entity_id: str = Field(alias='entityId', min_length=3, max_length=255, pattern='^[a-z0-9_]+\\.[a-z0-9_]+$')
@@ -145,6 +153,7 @@ class HAServiceCallRequest(BaseModel):
 
 class HABrowseMediaRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
+
     entity_id: str = Field(alias='entityId', min_length=3, max_length=255, pattern='^[a-z0-9_]+\\.[a-z0-9_]+$')
     media_content_id: str = Field(default='media-source://', alias='mediaContentId', min_length=1, max_length=2048)
     media_content_type: str = Field(default='', alias='mediaContentType', max_length=128)
@@ -152,6 +161,7 @@ class HABrowseMediaRequest(BaseModel):
 
 class ProjectCreateRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
+
     name: str = Field(min_length=1, max_length=128)
     description: str = Field(default='', max_length=2000)
     canvas_width: int = Field(default=2778, alias='canvasWidth', ge=320, le=7680)
@@ -170,6 +180,7 @@ class ProjectCreateRequest(BaseModel):
 
 class ProjectDraftUpdate(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
+
     revision: int = Field(ge=1)
     global_popup_revision: int | None = Field(default=None, alias='globalPopupRevision', ge=1)
     global_popups_dirty: bool = Field(default=True, alias='globalPopupsDirty')
@@ -194,11 +205,13 @@ class ProjectDeleteRequest(BaseModel):
 
 class Studio3DDraftUpdate(BaseModel):
     model_config = ConfigDict(extra='forbid')
+
     revision: int = Field(ge=0)
     scene: dict[str, Any]
 
 
 class LicenseActivateRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
+
     activation_code: str = Field(alias='activationCode', min_length=8, max_length=128)
     email: str = Field(min_length=3, max_length=255)

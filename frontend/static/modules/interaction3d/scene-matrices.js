@@ -1,29 +1,41 @@
-const patched = new WeakSet();
-export function cacheObjectTransforms(root, Object3D) {
-  let count = 0;
-  root?.traverse(object => {
-    if (patched.has(object) || object.updateMatrix !== Object3D.prototype.updateMatrix) {
+const instrumentedObjects = new WeakSet();
+export function cacheObjectTransforms(rootObject, objectPrototype) {
+  let instrumentedCount = 0;
+  rootObject?.traverse(traversedObject => {
+    if (
+      instrumentedObjects.has(traversedObject) ||
+      traversedObject.updateMatrix !== objectPrototype.prototype.updateMatrix
+    ) {
       return;
     }
-    const originalUpdateMatrix = object.updateMatrix;
-    let px;
-    let py;
-    let pz;
-    let qx;
-    let qy;
-    let qz;
-    let qw;
-    let sx;
-    let sy;
-    let sz;
+    const originalUpdateMatrix = traversedObject.updateMatrix;
+    let lastPositionX;
+    let lastPositionY;
+    let lastPositionZ;
+    let lastQuaternionX;
+    let lastQuaternionY;
+    let lastQuaternionZ;
+    let lastQuaternionW;
+    let lastScaleX;
+    let lastScaleY;
+    let lastScaleZ;
     let lastParent;
-    object.updateMatrix = function () {
-      const {
-        position,
-        quaternion,
-        scale
-      } = this;
-      if (position.x === px && position.y === py && position.z === pz && quaternion.x === qx && quaternion.y === qy && quaternion.z === qz && quaternion.w === qw && scale.x === sx && scale.y === sy && scale.z === sz) {
+    traversedObject.updateMatrix = function () {
+      const position = this.position;
+      const quaternion = this.quaternion;
+      const scale = this.scale;
+      if (
+        position.x === lastPositionX &&
+        position.y === lastPositionY &&
+        position.z === lastPositionZ &&
+        quaternion.x === lastQuaternionX &&
+        quaternion.y === lastQuaternionY &&
+        quaternion.z === lastQuaternionZ &&
+        quaternion.w === lastQuaternionW &&
+        scale.x === lastScaleX &&
+        scale.y === lastScaleY &&
+        scale.z === lastScaleZ
+      ) {
         if (this.parent !== lastParent) {
           this.matrixWorldNeedsUpdate = true;
         }
@@ -32,19 +44,19 @@ export function cacheObjectTransforms(root, Object3D) {
       }
       originalUpdateMatrix.call(this);
       lastParent = this.parent;
-      px = position.x;
-      py = position.y;
-      pz = position.z;
-      qx = quaternion.x;
-      qy = quaternion.y;
-      qz = quaternion.z;
-      qw = quaternion.w;
-      sx = scale.x;
-      sy = scale.y;
-      sz = scale.z;
+      lastPositionX = position.x;
+      lastPositionY = position.y;
+      lastPositionZ = position.z;
+      lastQuaternionX = quaternion.x;
+      lastQuaternionY = quaternion.y;
+      lastQuaternionZ = quaternion.z;
+      lastQuaternionW = quaternion.w;
+      lastScaleX = scale.x;
+      lastScaleY = scale.y;
+      lastScaleZ = scale.z;
     };
-    patched.add(object);
-    count++;
+    instrumentedObjects.add(traversedObject);
+    instrumentedCount++;
   });
-  return count;
+  return instrumentedCount;
 }

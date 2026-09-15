@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 import asyncio
 import json
 import logging
@@ -8,18 +7,16 @@ import traceback
 from collections import Counter
 from contextvars import copy_context
 from typing import Any
-
-from config import Settings
-from database import Database
-from global_log import GlobalLogStore, _safe_text, event_context
-from global_popups import global_popups
-from ha.client import HAClient, HAClientError, HASnapshot
-from ha.crypto import CredentialCipher
-from ha.state_hub import StateHub
-from models import HAArea, HAConnection, HADevice, HAEntity, HASyncState, ProjectDraft, utc_now
-from panel.entity_refs import document_entity_ids
 from sqlalchemy import func, select
-
+from ..config import Settings
+from ..database import Database
+from ..models import HAArea, HAConnection, HADevice, HAEntity, HASyncState, ProjectDraft, utc_now
+from ..global_popups import global_popups
+from ..global_log import GlobalLogStore, _safe_text, event_context
+from ..panel.entity_refs import document_entity_ids
+from .client import HAClient, HAClientError, HASnapshot
+from .crypto import CredentialCipher
+from .state_hub import StateHub
 LOGGER = logging.getLogger(__name__)
 LIVE_EVENT_TYPES = ('state_changed', 'entity_registry_updated', 'device_registry_updated', 'area_registry_updated')
 INCREMENTAL_FLUSH_SECONDS = 10
@@ -35,10 +32,7 @@ STATE_FETCH_REQUIRED_ATTRIBUTES = {
         'temperature',
         'preset_modes',
         'supported_features',
-        'current_temperature',
-    }
-}
-
+        'current_temperature'} }
 
 def state_requires_fetch_retry(entity_id: str, state: dict | None) -> bool:
     domain = entity_id.partition('.')[0]
@@ -50,8 +44,8 @@ def state_requires_fetch_retry(entity_id: str, state: dict | None) -> bool:
     attributes = state.get('attributes') if isinstance(state, dict) else None
     return not isinstance(attributes, dict) or not required_attributes.intersection(attributes)
 
-
 class HAConnectorService:
+
     def __init__(self, settings: Settings, database: Database, event_log: GlobalLogStore | None = None) -> None:
         self.settings = settings
         self.database = database
@@ -64,21 +58,20 @@ class HAConnectorService:
         self._connected = False
         self._runtime_error = None
         self._known_entity_ids = set()
-        self._incremental_flushed_at = {}
+        self._incremental_flushed_at = { }
         self._persistent_entity_ids = set()
         self._runtime_entity_watch_counts = Counter()
         self._watch_lock = asyncio.Lock()
-        self._registry_refresh_tasks = {}
+        self._registry_refresh_tasks = { }
         self._history_semaphore = asyncio.Semaphore(HISTORY_FETCH_CONCURRENCY)
-        self._history_cache = {}
-        self._history_fetches = {}
+        self._history_cache = { }
+        self._history_fetches = { }
         self._history_cache_lock = asyncio.Lock()
         self._initial_sync_logged = False
-        self._clients: dict[str, tuple[tuple[str, bool, str], HAClient]] = {}
 
     def _log_event(self, level: str, category: str, message: str, *, details: str | None = None) -> None:
         if self.event_log is not None:
-            self.event_log.append(level, 'Home Assistant', category, message, details=details)
+            self.event_log.append(level, 'Home Assistant', category, message, details = details)
 
     @property
     def connected(self) -> bool:
@@ -89,10 +82,11 @@ class HAConnectorService:
         return self._runtime_error
 
     def start(self) -> None:
-        if self._runner is None or self._runner.done():
-            context = copy_context()
-            context.run(event_context.set, {})
-            self._runner = asyncio.create_task(self._run(), name='ha-connector', context=context)
+        if self._runner is not None and not self._runner.done():
+            return
+        context = copy_context()
+        context.run(event_context.set, { })
+        self._runner = asyncio.create_task(self._run(), name = 'ha-connector', context = context)
 
     async def stop(self) -> None:
         registry_tasks = list(self._registry_refresh_tasks.values())
@@ -100,16 +94,15 @@ class HAConnectorService:
         for task in registry_tasks:
             task.cancel()
         if registry_tasks:
-            await asyncio.gather(*registry_tasks, return_exceptions=True)
+            await asyncio.gather(*registry_tasks, return_exceptions = True)
         history_tasks = list(self._history_fetches.values())
         self._history_fetches.clear()
         for task in history_tasks:
             task.cancel()
         if history_tasks:
-            await asyncio.gather(*history_tasks, return_exceptions=True)
-        await self._close_clients()
+            await asyncio.gather(*history_tasks, return_exceptions = True)
         if self._runner is None:
-            return None
+            return
         self._runner.cancel()
         try:
             await self._runner
@@ -136,13 +129,14 @@ class HAConnectorService:
         result = set()
         with self.database.session_factory() as database:
             documents = database.scalars(select(ProjectDraft.document_json)).all()
-            popup_document = {'customPopups': global_popups(database)}
-        for document_json in documents:
-            try:
-                result.update(document_entity_ids(json.loads(document_json)))
-            except (TypeError, ValueError):
-                continue
-        result.update(document_entity_ids(popup_document))
+            popup_document = {
+                'customPopups': global_popups(database) }
+            for document_json in documents:
+                try:
+                    result.update(document_entity_ids(json.loads(document_json)))
+                except (TypeError, ValueError):
+                    continue
+            result.update(document_entity_ids(popup_document))
         return result
 
     async def watched_entity_ids(self) -> set[str]:
@@ -161,43 +155,44 @@ class HAConnectorService:
         return retained
 
     async def add_runtime_entity_watch(self, entity_ids: set[str], *, ensure_states: bool = True) -> None:
-        normalized = {str(value) for value in entity_ids if str(value)}
+        normalized = {
+            str(value) for value in entity_ids if str(value) }
         if not normalized:
-            return None
+            return
         async with self._watch_lock:
             self._runtime_entity_watch_counts.update(normalized)
         if ensure_states:
             await self.ensure_entity_states(normalized)
 
     async def remove_runtime_entity_watch(self, entity_ids: set[str]) -> None:
-        normalized = {str(value) for value in entity_ids if str(value)}
+        normalized = {
+            str(value) for value in entity_ids if str(value) }
         async with self._watch_lock:
             for entity_id in normalized:
                 remaining = self._runtime_entity_watch_counts.get(entity_id, 0) - 1
                 if remaining > 0:
                     self._runtime_entity_watch_counts[entity_id] = remaining
-                else:
-                    self._runtime_entity_watch_counts.pop(entity_id, None)
+                    continue
+                self._runtime_entity_watch_counts.pop(entity_id, None)
             retained = set(self._persistent_entity_ids) | set(self._runtime_entity_watch_counts)
         await self.state_hub.retain(retained)
 
     async def ensure_entity_states(self, entity_ids: set[str]) -> None:
-        normalized = {str(entity_id) for entity_id in entity_ids if str(entity_id)}
+        normalized = {
+            str(entity_id) for entity_id in entity_ids if str(entity_id) }
         existing = {
             str(state.get('entityId') or ''): state
             for state in await self.state_hub.snapshot(normalized)
-            if isinstance(state, dict)
-        }
+            if isinstance(state, dict) }
         pending = {
             entity_id
             for entity_id in normalized
-            if state_requires_fetch_retry(entity_id, existing.get(entity_id))
-        }
+            if state_requires_fetch_retry(entity_id, existing.get(entity_id)) }
         if not pending:
-            return None
+            return
         connection = await self._run_database(self.active_connection)
         if connection is None:
-            return None
+            return
         client = self.client_for(connection)
         for delay in (0, *STATE_FETCH_RETRY_DELAYS):
             if delay:
@@ -210,52 +205,15 @@ class HAConnectorService:
                 pending.update(
                     entity_id
                     for state in states
-                    if isinstance(state, dict)
-                    and (entity_id := str(state.get('entity_id') or '')) in requested
-                    and state_requires_fetch_retry(entity_id, state)
-                )
+                    if isinstance(state, dict) and
+                    (entity_id := str(state.get('entity_id') or '')) in requested and
+                    state_requires_fetch_retry(entity_id, state))
             if not pending:
                 break
 
     def client_for(self, connection: HAConnection) -> HAClient:
-        cache_key = str(connection.id)
-        signature = (
-            str(connection.base_url),
-            bool(connection.verify_tls),
-            str(connection.encrypted_access_token or ''),
-        )
-        cached = self._clients.get(cache_key)
-        if cached is not None and cached[0] == signature:
-            return cached[1]
         token = self.cipher.decrypt(connection.encrypted_access_token)
-        client = HAClient(
-            connection.base_url,
-            token,
-            verify_tls=connection.verify_tls,
-            timeout=self.settings.ha_request_timeout_seconds,
-            websocket_max_size_bytes=self.settings.ha_websocket_max_size_bytes,
-        )
-        self._clients[cache_key] = (signature, client)
-        if cached is not None:
-            self._discard_clients([cached[1]])
-        return client
-
-    def _discard_clients(self, clients: list[HAClient]) -> None:
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            return
-        for client in clients:
-            loop.create_task(client.aclose())
-
-    async def _close_clients(self) -> None:
-        clients = [entry[1] for entry in self._clients.values()]
-        self._clients.clear()
-        for client in clients:
-            try:
-                await client.aclose()
-            except Exception:
-                continue
+        return HAClient(connection.base_url, token, verify_tls = connection.verify_tls, timeout = self.settings.ha_request_timeout_seconds, websocket_max_size_bytes = self.settings.ha_websocket_max_size_bytes)
 
     async def fetch_history(self, connection: HAConnection, entity_id: str, start_time: str, hours: int) -> list[dict[str, Any]]:
         '''Limit and briefly cache history reads so charts cannot fan out to HA.'''
@@ -267,31 +225,22 @@ class HAConnectorService:
                 return list(cached[1])
             fetch = self._history_fetches.get(cache_key)
             if fetch is None:
-                fetch = asyncio.create_task(
-                    self._fetch_and_cache_history(connection, entity_id, start_time, cache_key),
-                    name=f'ha-history-{entity_id}',
-                )
+                fetch = asyncio.create_task(self._fetch_and_cache_history(connection, entity_id, start_time, cache_key), name = f'ha-history-{entity_id}')
                 self._history_fetches[cache_key] = fetch
-                fetch.add_done_callback(lambda completed, key=cache_key: self._discard_history_fetch(key, completed))
+                fetch.add_done_callback(lambda completed, key = cache_key: self._discard_history_fetch(key, completed))
         return list(await asyncio.shield(fetch))
 
     def _discard_history_fetch(self, cache_key: tuple[str, str, int], fetch: asyncio.Task[list[dict[str, Any]]]) -> None:
         if self._history_fetches.get(cache_key) is fetch:
             self._history_fetches.pop(cache_key, None)
 
-    async def _fetch_and_cache_history(
-        self,
-        connection: HAConnection,
-        entity_id: str,
-        start_time: str,
-        cache_key: tuple[str, str, int],
-    ) -> list[dict[str, Any]]:
+    async def _fetch_and_cache_history(self, connection: HAConnection, entity_id: str, start_time: str, cache_key: tuple[str, str, int]) -> list[dict[str, Any]]:
         async with self._history_semaphore:
             history = await self.client_for(connection).fetch_history(entity_id, start_time)
         async with self._history_cache_lock:
             self._history_cache[cache_key] = (time.monotonic(), list(history))
             if len(self._history_cache) > 256:
-                oldest_key = min(self._history_cache, key=lambda key: self._history_cache[key][0])
+                oldest_key = min(self._history_cache, key = lambda key: self._history_cache[key][0])
                 self._history_cache.pop(oldest_key, None)
         return history
 
@@ -306,7 +255,7 @@ class HAConnectorService:
                     await asyncio.sleep(3)
                     continue
                 connection_id = connection.id
-                await self.refresh_persistent_entity_ids(ensure_states=False)
+                await self.refresh_persistent_entity_ids(ensure_states = False)
                 await self.sync_once(connection_id)
                 await self._live_connection(connection_id)
                 backoff = 1
@@ -315,13 +264,8 @@ class HAConnectorService:
             except Exception as error:
                 self._connected = False
                 self._runtime_error = str(error)
-                self._log_event(
-                    'error',
-                    '连接',
-                    f'Home Assistant 连接异常：{error}',
-                    details=traceback.format_exc(),
-                )
-                LOGGER.error('HA connector cycle failed\n%s', _safe_text(traceback.format_exc(), limit=12000))
+                self._log_event('error', '连接', f'Home Assistant 连接异常：{error}', details = traceback.format_exc())
+                LOGGER.error('HA connector cycle failed\n%s', _safe_text(traceback.format_exc(), limit = 12000))
                 if connection_id:
                     await self._run_database(self._safe_record_error, connection_id, str(error))
                 await asyncio.sleep(backoff)
@@ -346,23 +290,19 @@ class HAConnectorService:
             await self._run_database(self._mark_sync_started, connection.id)
             try:
                 snapshot = await self.client_for(connection).fetch_snapshot()
-                counts = await self._run_database(self._apply_snapshot, connection.id, snapshot, reconciled=reconciled)
-                await self.refresh_persistent_entity_ids(ensure_states=False)
+                counts = await self._run_database(self._apply_snapshot, connection.id, snapshot, reconciled = reconciled)
+                await self.refresh_persistent_entity_ids(ensure_states = False)
                 watched = await self.watched_entity_ids()
                 await self.state_hub.replace(
-                    raw for raw in snapshot.states if str(raw.get('entity_id') or '') in watched
-                )
+                    raw
+                    for raw in snapshot.states
+                    if str(raw.get('entity_id') or '') in watched)
                 await self.state_hub.publish({
                     'type': 'entity_catalog_changed',
                     'operation': 'refreshed',
-                    'counts': counts,
-                })
+                    'counts': counts })
                 if not self._initial_sync_logged:
-                    self._log_event(
-                        'success',
-                        '实体同步',
-                        f'实体目录同步完成：{counts.get("entities", 0)} 个实体、{counts.get("devices", 0)} 个设备、{counts.get("areas", 0)} 个区域',
-                    )
+                    self._log_event('success', '实体同步', f'''实体目录同步完成：{counts.get('entities', 0)} 个实体、{counts.get('devices', 0)} 个设备、{counts.get('areas', 0)} 个区域''')
                     self._initial_sync_logged = True
                 return counts
             except Exception as error:
@@ -374,11 +314,7 @@ class HAConnectorService:
         client = self.client_for(connection)
         websocket = await client.connect_websocket()
         try:
-            buffered_events = await client.subscribe_events(
-                websocket,
-                LIVE_EVENT_TYPES,
-                required_event_types={'state_changed'},
-            )
+            buffered_events = await client.subscribe_events(websocket, LIVE_EVENT_TYPES, required_event_types={'state_changed'})
             await self._run_database(self._mark_connected, connection_id)
             self._connected = True
             self._runtime_error = None
@@ -389,13 +325,14 @@ class HAConnectorService:
             while True:
                 wait_seconds = max(0.1, reconcile_at - time.monotonic())
                 try:
-                    raw_message = await asyncio.wait_for(websocket.recv(), timeout=wait_seconds)
-                    await self._handle_live_event(connection_id, json.loads(raw_message))
-                    if time.monotonic() >= reconcile_at:
-                        await self.sync_once(connection_id, reconciled=True)
-                        reconcile_at = time.monotonic() + self.settings.ha_reconcile_interval_seconds
+                    raw_message = await asyncio.wait_for(websocket.recv(), timeout = wait_seconds)
                 except TimeoutError:
-                    await self.sync_once(connection_id, reconciled=True)
+                    await self.sync_once(connection_id, reconciled = True)
+                    reconcile_at = time.monotonic() + self.settings.ha_reconcile_interval_seconds
+                    continue
+                await self._handle_live_event(connection_id, json.loads(raw_message))
+                if time.monotonic() >= reconcile_at:
+                    await self.sync_once(connection_id, reconciled = True)
                     reconcile_at = time.monotonic() + self.settings.ha_reconcile_interval_seconds
         finally:
             self._connected = False
@@ -403,10 +340,10 @@ class HAConnectorService:
 
     async def _handle_live_event(self, connection_id: str, message: dict[str, Any]) -> None:
         if message.get('type') != 'event':
-            return None
-        event = message.get('event') or {}
+            return
+        event = message.get('event') or { }
         event_type = event.get('event_type')
-        event_data = event.get('data') or {}
+        event_data = event.get('data') or { }
         if event_type == 'state_changed':
             new_state = event_data.get('new_state')
             if isinstance(new_state, dict):
@@ -419,51 +356,42 @@ class HAConnectorService:
                     await self.state_hub.publish({
                         'type': 'entity_catalog_changed',
                         'operation': 'added',
-                        'counts': await self._run_database(self.catalog_counts, connection_id),
-                    })
+                        'counts': await self._run_database(self.catalog_counts, connection_id) })
             else:
                 entity_id = str(event_data.get('entity_id') or '')
                 if entity_id:
                     await self.state_hub.remove(entity_id)
-            return None
-        if event_type not in frozenset({'area_registry_updated', 'device_registry_updated', 'entity_registry_updated'}):
-            return None
-        operation = await self._run_database(self._apply_registry_event, connection_id, event_type, event_data)
-        if not operation:
-            return None
-        if event_type == 'entity_registry_updated':
-            action = str(event_data.get('action') or 'update')
-            entity_id = str(event_data.get('entity_id') or '')
-            changes = event_data.get('changes') if isinstance(event_data.get('changes'), dict) else {}
-            old_entity_id = str(changes.get('entity_id') or '')
-            removed_entity_ids = set()
-            if old_entity_id and old_entity_id != entity_id:
-                removed_entity_ids.add(old_entity_id)
-            if action == 'remove':
-                removed_entity_ids.add(entity_id)
-            elif 'disabled_by' in event_data:
-                if event_data.get('disabled_by'):
-                    removed_entity_ids.add(entity_id)
-            elif 'disabled_by' in changes:
-                if changes.get('disabled_by') is None:
-                    removed_entity_ids.add(entity_id)
-            for removed_entity_id in sorted(removed_entity_ids - {''}):
-                await self.state_hub.remove(removed_entity_id)
-        await self.state_hub.publish({
-            'type': 'entity_catalog_changed',
-            'operation': operation,
-            'counts': await self._run_database(self.catalog_counts, connection_id),
-        })
-        self._schedule_registry_refresh(connection_id)
+        elif event_type in frozenset({'entity_registry_updated', 'device_registry_updated', 'area_registry_updated'}):
+            operation = await self._run_database(self._apply_registry_event, connection_id, event_type, event_data)
+            if operation:
+                if event_type == 'entity_registry_updated':
+                    action = str(event_data.get('action') or 'update')
+                    entity_id = str(event_data.get('entity_id') or '')
+                    changes = event_data.get('changes') if isinstance(event_data.get('changes'), dict) else { }
+                    old_entity_id = str(changes.get('entity_id') or '')
+                    removed_entity_ids = set()
+                    if old_entity_id and old_entity_id != entity_id:
+                        removed_entity_ids.add(old_entity_id)
+                    if action == 'remove':
+                        removed_entity_ids.add(entity_id)
+                    elif 'disabled_by' in event_data:
+                        if event_data.get('disabled_by'):
+                            removed_entity_ids.add(entity_id)
+                    elif 'disabled_by' in changes and changes.get('disabled_by') is None:
+                        removed_entity_ids.add(entity_id)
+                    for removed_entity_id in sorted(removed_entity_ids - {''}):
+                        await self.state_hub.remove(removed_entity_id)
+                await self.state_hub.publish({
+                    'type': 'entity_catalog_changed',
+                    'operation': operation,
+                    'counts': await self._run_database(self.catalog_counts, connection_id) })
+                self._schedule_registry_refresh(connection_id)
 
     def _schedule_registry_refresh(self, connection_id: str) -> None:
         current = self._registry_refresh_tasks.get(connection_id)
         if current is not None and not current.done():
             current.cancel()
-        self._registry_refresh_tasks[connection_id] = asyncio.create_task(
-            self._debounced_registry_refresh(connection_id),
-            name=f'ha-registry-refresh-{connection_id}',
-        )
+        self._registry_refresh_tasks[connection_id] = asyncio.create_task(self._debounced_registry_refresh(connection_id), name = f'ha-registry-refresh-{connection_id}')
 
     async def _debounced_registry_refresh(self, connection_id: str) -> None:
         try:
@@ -476,18 +404,12 @@ class HAConnectorService:
                 await self.state_hub.publish({
                     'type': 'entity_catalog_changed',
                     'operation': 'metadata_refreshed',
-                    'counts': counts,
-                })
+                    'counts': counts })
         except asyncio.CancelledError:
             raise
         except Exception as error:
-            self._log_event(
-                'error',
-                '实体同步',
-                f'Home Assistant 实体目录刷新失败：{error}',
-                details=traceback.format_exc(),
-            )
-            LOGGER.error('HA registry metadata refresh failed\n%s', _safe_text(traceback.format_exc(), limit=12000))
+            self._log_event('error', '实体同步', f'Home Assistant 实体目录刷新失败：{error}', details = traceback.format_exc())
+            LOGGER.error('HA registry metadata refresh failed\n%s', _safe_text(traceback.format_exc(), limit = 12000))
         finally:
             current = self._registry_refresh_tasks.get(connection_id)
             if current is asyncio.current_task():
@@ -498,20 +420,16 @@ class HAConnectorService:
         if action not in frozenset({'create', 'remove', 'update'}):
             return None
         now = utc_now()
-        changes = event_data.get('changes') if isinstance(event_data.get('changes'), dict) else {}
+        changes = event_data.get('changes') if isinstance(event_data.get('changes'), dict) else { }
         with self.database.session_factory() as database:
             if event_type == 'entity_registry_updated':
                 entity_id = str(event_data.get('entity_id') or '')
                 if not entity_id:
                     return None
                 old_entity_id = str(changes.get('entity_id') or '')
-                record = database.scalar(
-                    select(HAEntity).where(HAEntity.connection_id == connection_id, HAEntity.entity_id == entity_id)
-                )
+                record = database.scalar(select(HAEntity).where(HAEntity.connection_id == connection_id, HAEntity.entity_id == entity_id))
                 if old_entity_id and old_entity_id != entity_id:
-                    old_record = database.scalar(
-                        select(HAEntity).where(HAEntity.connection_id == connection_id, HAEntity.entity_id == old_entity_id)
-                    )
+                    old_record = database.scalar(select(HAEntity).where(HAEntity.connection_id == connection_id, HAEntity.entity_id == old_entity_id))
                     if old_record is not None and record is None:
                         old_record.entity_id = entity_id
                         old_record.domain = entity_id.partition('.')[0]
@@ -521,7 +439,7 @@ class HAConnectorService:
                         old_record.missing_since = now
                     self._known_entity_ids.discard((connection_id, old_entity_id))
                 if record is None:
-                    record = HAEntity(connection_id=connection_id, entity_id=entity_id, domain=entity_id.partition('.')[0])
+                    record = HAEntity(connection_id = connection_id, entity_id = entity_id, domain = entity_id.partition('.')[0])
                     database.add(record)
                 if action == 'remove':
                     record.sync_status = 'missing'
@@ -546,11 +464,9 @@ class HAConnectorService:
                 device_id = str(event_data.get('device_id') or event_data.get('id') or '')
                 if not device_id:
                     return None
-                record = database.scalar(
-                    select(HADevice).where(HADevice.connection_id == connection_id, HADevice.device_id == device_id)
-                )
+                record = database.scalar(select(HADevice).where(HADevice.connection_id == connection_id, HADevice.device_id == device_id))
                 if record is None:
-                    record = HADevice(connection_id=connection_id, device_id=device_id)
+                    record = HADevice(connection_id = connection_id, device_id = device_id)
                     database.add(record)
                 if action == 'remove':
                     record.sync_status = 'missing'
@@ -566,15 +482,9 @@ class HAConnectorService:
                 area_id = str(event_data.get('area_id') or event_data.get('id') or '')
                 if not area_id:
                     return None
-                record = database.scalar(
-                    select(HAArea).where(HAArea.connection_id == connection_id, HAArea.area_id == area_id)
-                )
+                record = database.scalar(select(HAArea).where(HAArea.connection_id == connection_id, HAArea.area_id == area_id))
                 if record is None:
-                    record = HAArea(
-                        connection_id=connection_id,
-                        area_id=area_id,
-                        name=str(event_data.get('name') or area_id),
-                    )
+                    record = HAArea(connection_id = connection_id, area_id = area_id, name = str(event_data.get('name') or area_id))
                     database.add(record)
                 if action == 'remove':
                     record.sync_status = 'missing'
@@ -583,13 +493,13 @@ class HAConnectorService:
                     if 'name' in event_data:
                         record.name = str(event_data.get('name') or area_id)
                     if 'aliases' in event_data:
-                        record.aliases_json = json.dumps(event_data.get('aliases') or [], ensure_ascii=False)
+                        record.aliases_json = json.dumps(event_data.get('aliases') or [], ensure_ascii = False)
                     record.sync_status = 'active'
                     record.last_seen_at = now
                     record.missing_since = None
             database.flush()
             counts = self._active_catalog_counts(database, connection_id)
-            state = database.get(HASyncState, connection_id) or HASyncState(connection_id=connection_id)
+            state = database.get(HASyncState, connection_id) or HASyncState(connection_id = connection_id)
             state.status = 'connected'
             state.phase = None
             state.last_incremental_at = now
@@ -600,30 +510,23 @@ class HAConnectorService:
             state.last_error = None
             database.add(state)
             database.commit()
-            return action
+        return action
 
-    def _apply_registry_snapshot(
-        self,
-        connection_id: str,
-        entities: list[dict[str, Any]] | None,
-        devices: list[dict[str, Any]] | None,
-        areas: list[dict[str, Any]] | None,
-    ) -> dict[str, int] | None:
+    def _apply_registry_snapshot(self, connection_id: str, entities: list[dict[str, Any]] | None, devices: list[dict[str, Any]] | None, areas: list[dict[str, Any]] | None) -> dict[str, int] | None:
         if entities is None and devices is None and areas is None:
             return None
         now = utc_now()
         with self.database.session_factory() as database:
-            if entities:
-                existing_entities = {record.entity_id: record for record in database.scalars(select(HAEntity).where(HAEntity.connection_id == connection_id))}
-            else:
-                existing_entities = {}
+            existing_entities = {
+                record.entity_id: record
+                for record in database.scalars(select(HAEntity).where(HAEntity.connection_id == connection_id))} if entities else { }
             for item in entities or []:
                 entity_id = str(item.get('entity_id') or '')
                 if not entity_id:
                     continue
                 record = existing_entities.get(entity_id)
                 if record is None:
-                    record = HAEntity(connection_id=connection_id, entity_id=entity_id, domain=entity_id.partition('.')[0])
+                    record = HAEntity(connection_id = connection_id, entity_id = entity_id, domain = entity_id.partition('.')[0])
                     database.add(record)
                     existing_entities[entity_id] = record
                 record.domain = entity_id.partition('.')[0]
@@ -641,21 +544,21 @@ class HAConnectorService:
                 record.last_seen_at = now
                 record.missing_since = None
                 self._known_entity_ids.add((connection_id, entity_id))
-            if devices:
-                existing_devices = {record.device_id: record for record in database.scalars(select(HADevice).where(HADevice.connection_id == connection_id))}
-            else:
-                existing_devices = {}
+            existing_devices = {
+                record.device_id: record
+                for record in database.scalars(select(HADevice).where(HADevice.connection_id == connection_id))} if devices else { }
             for item in devices or []:
                 device_id = str(item.get('id') or '')
                 if not device_id:
                     continue
                 record = existing_devices.get(device_id)
                 if record is None:
-                    record = HADevice(connection_id=connection_id, device_id=device_id)
+                    record = HADevice(connection_id = connection_id, device_id = device_id)
                     database.add(record)
                     existing_devices[device_id] = record
                 record.name = item.get('name')
                 record.name_by_user = item.get('name_by_user')
+                record.registry_metadata_json = self._device_registry_metadata(item)
                 record.manufacturer = item.get('manufacturer')
                 record.model = item.get('model')
                 record.area_id = item.get('area_id')
@@ -663,27 +566,26 @@ class HAConnectorService:
                 record.sync_status = self._status(record.disabled_by)
                 record.last_seen_at = now
                 record.missing_since = None
-            if areas:
-                existing_areas = {record.area_id: record for record in database.scalars(select(HAArea).where(HAArea.connection_id == connection_id))}
-            else:
-                existing_areas = {}
+            existing_areas = {
+                record.area_id: record
+                for record in database.scalars(select(HAArea).where(HAArea.connection_id == connection_id))} if areas else { }
             for item in areas or []:
                 area_id = str(item.get('area_id') or item.get('id') or '')
                 if not area_id:
                     continue
                 record = existing_areas.get(area_id)
                 if record is None:
-                    record = HAArea(connection_id=connection_id, area_id=area_id, name=str(item.get('name') or area_id))
+                    record = HAArea(connection_id = connection_id, area_id = area_id, name = str(item.get('name') or area_id))
                     database.add(record)
                     existing_areas[area_id] = record
                 record.name = str(item.get('name') or area_id)
-                record.aliases_json = json.dumps(item.get('aliases') or [], ensure_ascii=False)
+                record.aliases_json = json.dumps(item.get('aliases') or [], ensure_ascii = False)
                 record.sync_status = 'active'
                 record.last_seen_at = now
                 record.missing_since = None
             database.flush()
             counts = self._active_catalog_counts(database, connection_id)
-            state = database.get(HASyncState, connection_id) or HASyncState(connection_id=connection_id)
+            state = database.get(HASyncState, connection_id) or HASyncState(connection_id = connection_id)
             state.status = 'connected'
             state.phase = None
             state.last_incremental_at = now
@@ -694,11 +596,11 @@ class HAConnectorService:
             state.last_error = None
             database.add(state)
             database.commit()
-            return counts
+        return counts
 
     def _mark_sync_started(self, connection_id: str) -> None:
         with self.database.session_factory() as database:
-            state = database.get(HASyncState, connection_id) or HASyncState(connection_id=connection_id)
+            state = database.get(HASyncState, connection_id) or HASyncState(connection_id = connection_id)
             state.status = 'syncing'
             state.phase = 'full_snapshot'
             state.last_started_at = utc_now()
@@ -712,7 +614,7 @@ class HAConnectorService:
             connection = database.get(HAConnection, connection_id)
             if connection:
                 connection.last_error = safe_message
-            state = database.get(HASyncState, connection_id) or HASyncState(connection_id=connection_id)
+            state = database.get(HASyncState, connection_id) or HASyncState(connection_id = connection_id)
             state.status = 'error'
             state.phase = None
             state.last_error = safe_message
@@ -723,7 +625,7 @@ class HAConnectorService:
         try:
             self._record_error(connection_id, message)
         except Exception:
-            LOGGER.error('Unable to persist HA connector error\n%s', _safe_text(traceback.format_exc(), limit=12000))
+            LOGGER.error('Unable to persist HA connector error\n%s', _safe_text(traceback.format_exc(), limit = 12000))
 
     def _mark_connected(self, connection_id: str) -> None:
         with self.database.session_factory() as database:
@@ -740,6 +642,18 @@ class HAConnectorService:
         self._runtime_error = None
 
     @staticmethod
+    def _device_registry_metadata(item: dict) -> str:
+        return json.dumps({
+            'integrations': sorted({
+                value[0] for value in item.get('identifiers') or []
+                if isinstance(value, (list, tuple)) and len(value) == 2 and isinstance(value[0], str)}),
+            'configEntryIds': sorted({
+                value for value in item.get('config_entries') or []
+                if isinstance(value, str)}),
+            'viaDeviceId': item.get('via_device_id'),
+            'entryType': item.get('entry_type') }, ensure_ascii = False)
+
+    @staticmethod
     def _status(disabled_by: str | None) -> str:
         return 'disabled' if disabled_by else 'active'
 
@@ -748,26 +662,22 @@ class HAConnectorService:
         state_by_id = {
             str(item.get('entity_id')): item
             for item in snapshot.states
-            if item.get('entity_id')
-        }
+            if item.get('entity_id') }
         registry_by_id = {
             str(item.get('entity_id')): item
-            for item in (snapshot.entities or [])
-            if item.get('entity_id')
-        }
+            for item in snapshot.entities or []
+            if item.get('entity_id') }
         seen_entities = set(state_by_id) | set(registry_by_id)
         with self.database.session_factory() as database:
             existing_entities = {
-                item.entity_id: item
-                for item in database.scalars(select(HAEntity).where(HAEntity.connection_id == connection_id))
-            }
+                item.entity_id: item for item in database.scalars(select(HAEntity).where(HAEntity.connection_id == connection_id))}
             for entity_id in seen_entities:
-                registry = registry_by_id.get(entity_id, {})
-                state = state_by_id.get(entity_id, {})
-                attributes = state.get('attributes') or {}
+                registry = registry_by_id.get(entity_id, { })
+                state = state_by_id.get(entity_id, { })
+                attributes = state.get('attributes') or { }
                 record = existing_entities.get(entity_id)
                 if record is None:
-                    record = HAEntity(connection_id=connection_id, entity_id=entity_id, domain=entity_id.partition('.')[0])
+                    record = HAEntity(connection_id = connection_id, entity_id = entity_id, domain = entity_id.partition('.')[0])
                     database.add(record)
                 record.domain = entity_id.partition('.')[0]
                 if registry:
@@ -788,21 +698,16 @@ class HAConnectorService:
                 record.last_seen_at = now
                 record.missing_since = None
             for entity_id, record in existing_entities.items():
-                if entity_id not in seen_entities and record.sync_status != 'missing':
-                    record.sync_status = 'missing'
-                    record.missing_since = now
+                if entity_id in seen_entities:
+                    continue
+                if record.sync_status == 'missing':
+                    continue
+                record.sync_status = 'missing'
+                record.missing_since = now
             existing_devices = {
-                item.device_id: item
-                for item in database.scalars(select(HADevice).where(HADevice.connection_id == connection_id))
-            }
-            if snapshot.devices is None:
-                seen_devices = {
-                    device_id
-                    for device_id, item in existing_devices.items()
-                    if item.sync_status != 'missing'
-                }
-            else:
-                seen_devices = set()
+                item.device_id: item for item in database.scalars(select(HADevice).where(HADevice.connection_id == connection_id))}
+            seen_devices = {
+                device_id for device_id, item in existing_devices.items() if item.sync_status != 'missing'} if snapshot.devices is None else set()
             for item in snapshot.devices or []:
                 device_id = str(item.get('id') or '')
                 if not device_id:
@@ -810,10 +715,11 @@ class HAConnectorService:
                 seen_devices.add(device_id)
                 record = existing_devices.get(device_id)
                 if record is None:
-                    record = HADevice(connection_id=connection_id, device_id=device_id)
+                    record = HADevice(connection_id = connection_id, device_id = device_id)
                     database.add(record)
                 record.name = item.get('name')
                 record.name_by_user = item.get('name_by_user')
+                record.registry_metadata_json = self._device_registry_metadata(item)
                 record.manufacturer = item.get('manufacturer')
                 record.model = item.get('model')
                 record.area_id = item.get('area_id')
@@ -823,21 +729,16 @@ class HAConnectorService:
                 record.missing_since = None
             if snapshot.devices is not None:
                 for device_id, record in existing_devices.items():
-                    if device_id not in seen_devices and record.sync_status != 'missing':
-                        record.sync_status = 'missing'
-                        record.missing_since = now
+                    if device_id in seen_devices:
+                        continue
+                    if record.sync_status == 'missing':
+                        continue
+                    record.sync_status = 'missing'
+                    record.missing_since = now
             existing_areas = {
-                item.area_id: item
-                for item in database.scalars(select(HAArea).where(HAArea.connection_id == connection_id))
-            }
-            if snapshot.areas is None:
-                seen_areas = {
-                    area_id
-                    for area_id, item in existing_areas.items()
-                    if item.sync_status != 'missing'
-                }
-            else:
-                seen_areas = set()
+                item.area_id: item for item in database.scalars(select(HAArea).where(HAArea.connection_id == connection_id))}
+            seen_areas = {
+                area_id for area_id, item in existing_areas.items() if item.sync_status != 'missing'} if snapshot.areas is None else set()
             for item in snapshot.areas or []:
                 area_id = str(item.get('area_id') or item.get('id') or '')
                 if not area_id:
@@ -845,24 +746,27 @@ class HAConnectorService:
                 seen_areas.add(area_id)
                 record = existing_areas.get(area_id)
                 if record is None:
-                    record = HAArea(connection_id=connection_id, area_id=area_id, name=str(item.get('name') or area_id))
+                    record = HAArea(connection_id = connection_id, area_id = area_id, name = str(item.get('name') or area_id))
                     database.add(record)
                 record.name = str(item.get('name') or area_id)
-                record.aliases_json = json.dumps(item.get('aliases') or [], ensure_ascii=False)
+                record.aliases_json = json.dumps(item.get('aliases') or [], ensure_ascii = False)
                 record.sync_status = 'active'
                 record.last_seen_at = now
                 record.missing_since = None
             if snapshot.areas is not None:
                 for area_id, record in existing_areas.items():
-                    if area_id not in seen_areas and record.sync_status != 'missing':
-                        record.sync_status = 'missing'
-                        record.missing_since = now
+                    if area_id in seen_areas:
+                        continue
+                    if record.sync_status == 'missing':
+                        continue
+                    record.sync_status = 'missing'
+                    record.missing_since = now
             connection = database.get(HAConnection, connection_id)
             if connection:
                 connection.ha_version = snapshot.config.get('version') or connection.ha_version
                 connection.last_connected_at = now
                 connection.last_error = None
-            sync_state = database.get(HASyncState, connection_id) or HASyncState(connection_id=connection_id)
+            sync_state = database.get(HASyncState, connection_id) or HASyncState(connection_id = connection_id)
             sync_state.status = 'connected'
             sync_state.phase = None
             sync_state.last_completed_at = now
@@ -876,13 +780,13 @@ class HAConnectorService:
             sync_state.last_error = None
             database.add(sync_state)
             database.commit()
-        self._known_entity_ids = {key for key in self._known_entity_ids if key[0] != connection_id}
+        self._known_entity_ids = {
+            key for key in self._known_entity_ids if key[0] != connection_id}
         self._known_entity_ids.update((connection_id, entity_id) for entity_id in seen_entities)
         return {
             'entities': len(seen_entities),
             'devices': len(seen_devices),
-            'areas': len(seen_areas),
-        }
+            'areas': len(seen_areas) }
 
     def _apply_incremental_state(self, connection_id: str, raw_state: dict[str, Any]) -> bool:
         entity_id = str(raw_state.get('entity_id') or '')
@@ -894,21 +798,13 @@ class HAConnectorService:
         flush_incremental = monotonic_now - self._incremental_flushed_at.get(connection_id, 0) >= INCREMENTAL_FLUSH_SECONDS
         if known and not flush_incremental:
             return False
-        attributes = raw_state.get('attributes') or {}
+        attributes = raw_state.get('attributes') or { }
         catalog_changed = False
         with self.database.session_factory() as database:
             if not known:
-                record = database.scalar(
-                    select(HAEntity).where(HAEntity.connection_id == connection_id, HAEntity.entity_id == entity_id)
-                )
+                record = database.scalar(select(HAEntity).where(HAEntity.connection_id == connection_id, HAEntity.entity_id == entity_id))
                 if record is None:
-                    record = HAEntity(
-                        connection_id=connection_id,
-                        entity_id=entity_id,
-                        domain=entity_id.partition('.')[0],
-                        name=attributes.get('friendly_name'),
-                        icon=attributes.get('icon'),
-                    )
+                    record = HAEntity(connection_id = connection_id, entity_id = entity_id, domain = entity_id.partition('.')[0], name = attributes.get('friendly_name'), icon = attributes.get('icon'))
                     database.add(record)
                     catalog_changed = True
                 elif record.sync_status == 'missing':
@@ -920,7 +816,7 @@ class HAConnectorService:
                 record.missing_since = None
                 self._known_entity_ids.add(key)
             if flush_incremental or catalog_changed:
-                state = database.get(HASyncState, connection_id) or HASyncState(connection_id=connection_id, status='connected')
+                state = database.get(HASyncState, connection_id) or HASyncState(connection_id = connection_id, status = 'connected')
                 if flush_incremental:
                     state.last_incremental_at = utc_now()
                 if catalog_changed:
@@ -930,7 +826,7 @@ class HAConnectorService:
             if flush_incremental:
                 self._incremental_flushed_at[connection_id] = monotonic_now
             database.commit()
-            return catalog_changed
+        return catalog_changed
 
     def catalog_counts(self, connection_id: str) -> dict[str, int]:
         with self.database.session_factory() as database:
@@ -939,28 +835,6 @@ class HAConnectorService:
     @staticmethod
     def _active_catalog_counts(database, connection_id: str) -> dict[str, int]:
         return {
-            'entities': int(
-                database.scalar(
-                    select(func.count()).select_from(HAEntity).where(
-                        HAEntity.connection_id == connection_id,
-                        HAEntity.sync_status != 'missing',
-                    )
-                ) or 0
-            ),
-            'devices': int(
-                database.scalar(
-                    select(func.count()).select_from(HADevice).where(
-                        HADevice.connection_id == connection_id,
-                        HADevice.sync_status != 'missing',
-                    )
-                ) or 0
-            ),
-            'areas': int(
-                database.scalar(
-                    select(func.count()).select_from(HAArea).where(
-                        HAArea.connection_id == connection_id,
-                        HAArea.sync_status != 'missing',
-                    )
-                ) or 0
-            ),
-        }
+            'entities': int(database.scalar(select(func.count()).select_from(HAEntity).where(HAEntity.connection_id == connection_id, HAEntity.sync_status != 'missing')) or 0),
+            'devices': int(database.scalar(select(func.count()).select_from(HADevice).where(HADevice.connection_id == connection_id, HADevice.sync_status != 'missing')) or 0),
+            'areas': int(database.scalar(select(func.count()).select_from(HAArea).where(HAArea.connection_id == connection_id, HAArea.sync_status != 'missing')) or 0) }

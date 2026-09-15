@@ -6,11 +6,15 @@
 *.db-shm
 upgrade-backups/
 .venv/
+.venv-store/
 __pycache__/
 *.py[cod]
 .ruff_cache/
 data/
 register/data/
+store/data/
+store/keys/local/
+*-private.pem
 /app/
 app.tar.gz
 .deobf/

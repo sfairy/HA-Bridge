@@ -1,264 +1,281 @@
-export function overviewFloorId(object) {
-  for (let node = object; node; node = node.parent) {
-    const floorId = node.userData?.floorId
-      || node.userData?.regionFloorId
-      || node.userData?.environmentFloorId
-      || node.userData?.lightFloorId;
-    if (floorId) {
-      return String(floorId);
+export function overviewFloorId(node) {
+  for (let currentNode = node; currentNode; currentNode = currentNode.parent) {
+    const resolvedFloorId =
+      currentNode.userData?.floorId ||
+      currentNode.userData?.regionFloorId ||
+      currentNode.userData?.environmentFloorId ||
+      currentNode.userData?.lightFloorId;
+    if (resolvedFloorId) {
+      return String(resolvedFloorId);
     }
   }
-  return '';
+  return "";
 }
-
-export function stackProjection(THREE, camera, floorHeight, screenOffset, target = new THREE.Matrix4()) {
-  const lift = new THREE.Matrix4().makeTranslation(0, screenOffset, 0);
-  return target
-    .copy(lift)
+export function stackProjection(
+  THREE,
+  camera,
+  stackedHeight,
+  projectionOffsetY,
+  targetMatrix = new THREE.Matrix4()
+) {
+  const translationMatrix = new THREE.Matrix4().makeTranslation(0, projectionOffsetY, 0);
+  return targetMatrix
+    .copy(translationMatrix)
     .multiply(camera.projectionMatrix)
     .multiply(camera.matrixWorldInverse)
-    .multiply(new THREE.Matrix4().makeTranslation(0, -floorHeight, 0))
+    .multiply(new THREE.Matrix4().makeTranslation(0, -stackedHeight, 0))
     .multiply(camera.matrixWorld);
 }
-
 export function createOverviewStack({
-  THREE,
-  renderer,
-  scene,
-  getCamera,
-  getLayout
+  THREE: three,
+  renderer: renderer,
+  scene: scene,
+  getCamera: getCamera,
+  getLayout: getLayout
 }) {
   const originalRenderBufferDirect = renderer.renderBufferDirect;
   const originalRender = renderer.render;
-  const floorCameras = new Map();
-  const frustumCulledBackup = new Map();
-  let activeRenderCamera = null;
-  let layoutSignature = '';
+  const stackByFloorId = new Map();
+  const savedFrustumCulled = new Map();
+  let stackedLayerCamera = null;
+  let lastLayoutSignature = "";
   let layout = null;
-  let preparationSerial = 0;
-  let preparedSerial = -1;
-  let cachedBounds = null;
-  let maxFloorHeight = 0;
-  const preparedProjection = new THREE.Matrix4();
-  const preparedViewInverse = new THREE.Matrix4();
-  const midPointView = new THREE.Vector3();
-  const screenShift = new THREE.Matrix4();
+  let renderRevision = 0;
+  let syncedRevision = -1;
+  let lastBounds = null;
+  let maxBoundHeight = 0;
+  const lastProjectionMatrix = new three.Matrix4();
+  const lastWorldInverse = new three.Matrix4();
+  const scratchViewPosition = new three.Vector3();
+  const scratchMatrix4 = new three.Matrix4();
   const stats = {
     active: false,
     floorCount: 0,
     preparations: 0
   };
-
-  function currentLayout() {
-    const next = getLayout();
-    if (!next.enabled || next.floors.length < 2 || next.amount <= 0) {
+  function getActiveLayout() {
+    const currentLayout = getLayout();
+    if (!currentLayout.enabled || currentLayout.floors.length < 2 || currentLayout.amount <= 0) {
       return null;
     }
-    const signature = JSON.stringify([
-      next.gap,
-      next.amount,
-      next.center,
-      next.floors.map(floor => [floor.id, floor.elevation])
+    const layoutSignature = JSON.stringify([
+      currentLayout.gap,
+      currentLayout.amount,
+      currentLayout.center,
+      currentLayout.floors.map(floor => [floor.id, floor.elevation])
     ]);
-    if (signature !== layoutSignature) {
-      layoutSignature = signature;
-      preparedSerial = -1;
+    if (layoutSignature !== lastLayoutSignature) {
+      lastLayoutSignature = layoutSignature;
+      syncedRevision = -1;
     }
-    layout = next;
-    return next;
+    layout = currentLayout;
+    return currentLayout;
   }
-
-  function restoreFrustumCulling() {
-    for (const [object, value] of frustumCulledBackup) {
-      object.frustumCulled = value;
+  function restoreFrustumCulled() {
+    for (const [culledNode, frustumCulled] of savedFrustumCulled) {
+      culledNode.frustumCulled = frustumCulled;
     }
-    frustumCulledBackup.clear();
+    savedFrustumCulled.clear();
   }
-
-  function prepareFloorCameras(camera) {
+  function syncFloorCameras(renderCamera) {
     if (
-      !layout
-      || preparedSerial === preparationSerial
-        && preparedProjection.equals(camera.projectionMatrix)
-        && preparedViewInverse.equals(camera.matrixWorldInverse)
+      !layout ||
+      (syncedRevision === renderRevision &&
+        lastProjectionMatrix.equals(renderCamera.projectionMatrix) &&
+        lastWorldInverse.equals(renderCamera.matrixWorldInverse))
     ) {
       return;
     }
-    preparedProjection.copy(camera.projectionMatrix);
-    preparedViewInverse.copy(camera.matrixWorldInverse);
-    preparedSerial = preparationSerial;
-    const floors = [...layout.floors].sort((a, b) => a.elevation - b.elevation);
-    if (cachedBounds !== layout.bounds) {
-      cachedBounds = layout.bounds;
-      maxFloorHeight = 0;
-      for (const entries of layout.bounds?.values() || []) {
-        for (const entry of entries) {
-          maxFloorHeight = Math.max(maxFloorHeight, entry[1]);
+    lastProjectionMatrix.copy(renderCamera.projectionMatrix);
+    lastWorldInverse.copy(renderCamera.matrixWorldInverse);
+    syncedRevision = renderRevision;
+    const sortedFloors = [...layout.floors].sort(
+      (floorA, floorB) => floorA.elevation - floorB.elevation
+    );
+    if (lastBounds !== layout.bounds) {
+      lastBounds = layout.bounds;
+      maxBoundHeight = 0;
+      for (const boundsList of layout.bounds?.values() || []) {
+        for (const boundsBox of boundsList) {
+          maxBoundHeight = Math.max(maxBoundHeight, boundsBox[1]);
         }
       }
     }
-    const layoutCenter = new THREE.Vector3(layout.center[0], maxFloorHeight / 2, layout.center[2]);
-    const midElevationPoint = layoutCenter.clone();
-    midElevationPoint.y += (floors.at(-1).elevation - floors[0].elevation) / 2;
-    midPointView.copy(midElevationPoint).applyMatrix4(camera.matrixWorldInverse);
-    const projection = camera.projectionMatrix.elements;
-    const clipW = projection[3] * midPointView.x
-      + projection[7] * midPointView.y
-      + projection[11] * midPointView.z
-      + projection[15];
-    const pixelsPerWorld = projection[5] / Math.max(Math.abs(clipW), 0.001);
-    const keepIds = new Set();
-    for (const [index, floor] of floors.entries()) {
-      keepIds.add(floor.id);
-      let entry = floorCameras.get(floor.id);
-      if (!entry || entry.camera.type !== camera.type) {
-        entry = {
-          camera: camera.clone(false),
-          reflection: camera.clone(false)
+    const stackCenter = new three.Vector3(layout.center[0], maxBoundHeight / 2, layout.center[2]);
+    const topCenter = stackCenter.clone();
+    topCenter.y += (sortedFloors.at(-1).elevation - sortedFloors[0].elevation) / 2;
+    scratchViewPosition.copy(topCenter).applyMatrix4(renderCamera.matrixWorldInverse);
+    const projectionElements = renderCamera.projectionMatrix.elements;
+    const projectedDepth =
+      projectionElements[3] * scratchViewPosition.x +
+      projectionElements[7] * scratchViewPosition.y +
+      projectionElements[11] * scratchViewPosition.z +
+      projectionElements[15];
+    const verticalScale = projectionElements[5] / Math.max(Math.abs(projectedDepth), 0.001);
+    const activeFloorIds = new Set();
+    for (const [floorIndex, floorEntry] of sortedFloors.entries()) {
+      activeFloorIds.add(floorEntry.id);
+      let stackRecord = stackByFloorId.get(floorEntry.id);
+      if (!stackRecord || stackRecord.camera.type !== renderCamera.type) {
+        stackRecord = {
+          camera: renderCamera.clone(false),
+          reflection: renderCamera.clone(false)
         };
-        floorCameras.set(floor.id, entry);
+        stackByFloorId.set(floorEntry.id, stackRecord);
       }
-      entry.height = index * layout.gap * layout.amount;
-      entry.camera.copy(camera, false);
-      stackProjection(THREE, camera, entry.height, 0, entry.camera.projectionMatrix);
-      entry.camera.projectionMatrixInverse.copy(entry.camera.projectionMatrix).invert();
-      entry.reflection.copy(camera, false);
-      entry.reflection.position.y += entry.height;
-      entry.reflection.updateMatrixWorld(true);
-    }
-    const gapPixels = Math.max(0, layout.gap) * Math.abs(pixelsPerWorld);
-    const midIndex = (floors.length - 1) / 2;
-    const centerProjected = layoutCenter.project(camera);
-    const midProjected = midElevationPoint.project(camera);
-    const shiftX = (midProjected.x - centerProjected.x) * layout.amount;
-    const shiftY = (midProjected.y - centerProjected.y) * layout.amount;
-    for (const [index, floor] of floors.entries()) {
-      const entry = floorCameras.get(floor.id);
-      const floorShiftY = (index - midIndex) * gapPixels * layout.amount;
-      entry.camera.projectionMatrix.premultiply(
-        screenShift.makeTranslation(shiftX, shiftY + floorShiftY, 0)
+      stackRecord.height = floorIndex * layout.gap * layout.amount;
+      stackRecord.camera.copy(renderCamera, false);
+      stackProjection(
+        three,
+        renderCamera,
+        stackRecord.height,
+        0,
+        stackRecord.camera.projectionMatrix
       );
-      entry.camera.projectionMatrixInverse.copy(entry.camera.projectionMatrix).invert();
+      stackRecord.camera.projectionMatrixInverse.copy(stackRecord.camera.projectionMatrix).invert();
+      stackRecord.reflection.copy(renderCamera, false);
+      stackRecord.reflection.position.y += stackRecord.height;
+      stackRecord.reflection.updateMatrixWorld(true);
     }
-    for (const floorId of floorCameras.keys()) {
-      if (!keepIds.has(floorId)) {
-        floorCameras.delete(floorId);
+    const layerOffset = Math.max(0, layout.gap) * Math.abs(verticalScale);
+    const middleIndex = (sortedFloors.length - 1) / 2;
+    const baseScreenPosition = stackCenter.project(renderCamera);
+    const topScreenPosition = topCenter.project(renderCamera);
+    const screenOffsetX = (topScreenPosition.x - baseScreenPosition.x) * layout.amount;
+    const screenOffsetY = (topScreenPosition.y - baseScreenPosition.y) * layout.amount;
+    for (const [layerIndex, layerFloor] of sortedFloors.entries()) {
+      const layerRecord = stackByFloorId.get(layerFloor.id);
+      const layerOffsetY = (layerIndex - middleIndex) * layerOffset * layout.amount;
+      layerRecord.camera.projectionMatrix.premultiply(
+        scratchMatrix4.makeTranslation(screenOffsetX, screenOffsetY + layerOffsetY, 0)
+      );
+      layerRecord.camera.projectionMatrixInverse.copy(layerRecord.camera.projectionMatrix).invert();
+    }
+    for (const staleFloorId of stackByFloorId.keys()) {
+      if (!activeFloorIds.has(staleFloorId)) {
+        stackByFloorId.delete(staleFloorId);
       }
     }
-    stats.preparations += 1;
-    stats.floorCount = floorCameras.size;
+    stats.preparations++;
+    stats.floorCount = stackByFloorId.size;
   }
-
-  function cameraForFloor(floorId, camera = getCamera()) {
-    if (!currentLayout()) {
-      return camera;
+  function cameraForFloor(floorId, sourceCamera = getCamera()) {
+    if (getActiveLayout()) {
+      sourceCamera.updateWorldMatrix(true, false);
+      syncFloorCameras(sourceCamera);
+      return stackByFloorId.get(floorId)?.camera || sourceCamera;
+    } else {
+      return sourceCamera;
     }
-    camera.updateWorldMatrix(true, false);
-    prepareFloorCameras(camera);
-    return floorCameras.get(floorId)?.camera || camera;
   }
-
-  renderer.render = function (renderScene, camera, ...rest) {
-    const previousActive = activeRenderCamera;
-    const isPrimary = renderScene === scene && camera === getCamera();
-    const previousOnBeforeRender = scene.onBeforeRender;
+  renderer.render = function (renderScene, layerCamera, ...renderRest) {
+    const previousLayerCamera = stackedLayerCamera;
+    const isStackedLayer = renderScene === scene && layerCamera === getCamera();
+    const originalOnBeforeRender = scene.onBeforeRender;
     let stackedOnBeforeRender;
-    if (isPrimary) {
-      stats.active = !!currentLayout();
-      preparationSerial += 1;
+    if (isStackedLayer) {
+      stats.active = !!getActiveLayout();
+      renderRevision++;
       if (stats.active) {
-        stackedOnBeforeRender = function (...args) {
-          previousOnBeforeRender?.apply(this, args);
-          if (args[2] === camera) {
-            prepareFloorCameras(camera);
-            scene.traverse(object => {
-              if (!(object.isMesh || object.isLine || object.isPoints || object.isSprite)) {
-                return;
+        stackedOnBeforeRender = function (...hookArgs) {
+          originalOnBeforeRender?.apply(this, hookArgs);
+          if (hookArgs[2] === layerCamera) {
+            syncFloorCameras(layerCamera);
+            scene.traverse(childNode => {
+              if (
+                (!!childNode.isMesh ||
+                  !!childNode.isLine ||
+                  !!childNode.isPoints ||
+                  !!childNode.isSprite) &&
+                !!overviewFloorId(childNode)
+              ) {
+                if (!savedFrustumCulled.has(childNode)) {
+                  savedFrustumCulled.set(childNode, childNode.frustumCulled);
+                }
+                childNode.frustumCulled = false;
               }
-              if (!overviewFloorId(object)) {
-                return;
-              }
-              if (!frustumCulledBackup.has(object)) {
-                frustumCulledBackup.set(object, object.frustumCulled);
-              }
-              object.frustumCulled = false;
             });
           }
         };
         scene.onBeforeRender = stackedOnBeforeRender;
       } else {
-        restoreFrustumCulling();
+        restoreFrustumCulled();
       }
     }
-    activeRenderCamera = isPrimary && stats.active ? camera : null;
+    stackedLayerCamera = isStackedLayer && stats.active ? layerCamera : null;
     try {
-      return originalRender.call(this, renderScene, camera, ...rest);
+      return originalRender.call(this, renderScene, layerCamera, ...renderRest);
     } finally {
-      activeRenderCamera = previousActive;
-      if (isPrimary) {
+      stackedLayerCamera = previousLayerCamera;
+      if (isStackedLayer) {
         if (scene.onBeforeRender === stackedOnBeforeRender) {
-          scene.onBeforeRender = previousOnBeforeRender;
+          scene.onBeforeRender = originalOnBeforeRender;
         }
-        restoreFrustumCulling();
+        restoreFrustumCulled();
       }
     }
   };
-
-  renderer.renderBufferDirect = function (camera, renderScene, geometry, material, object, group) {
-    if (activeRenderCamera === camera && renderScene === scene) {
-      prepareFloorCameras(camera);
-      camera = floorCameras.get(overviewFloorId(object))?.camera || camera;
+  renderer.renderBufferDirect = function (
+    drawCamera,
+    drawScene,
+    geometry,
+    material,
+    object,
+    group
+  ) {
+    if (stackedLayerCamera === drawCamera && drawScene === scene) {
+      syncFloorCameras(drawCamera);
+      drawCamera = stackByFloorId.get(overviewFloorId(object))?.camera || drawCamera;
     }
-    return originalRenderBufferDirect.call(this, camera, renderScene, geometry, material, object, group);
+    return originalRenderBufferDirect.call(
+      this,
+      drawCamera,
+      drawScene,
+      geometry,
+      material,
+      object,
+      group
+    );
   };
-
   return {
-    stats,
-    cameraForFloor,
-    rayForFloor(floorId, pointer, raycaster) {
-      const baseCamera = getCamera();
-      const floorCamera = cameraForFloor(floorId, baseCamera);
-      if (floorCamera === baseCamera) {
-        raycaster.setFromCamera(pointer, baseCamera);
-        return raycaster;
+    stats: stats,
+    cameraForFloor: cameraForFloor,
+    rayForFloor(rayFloorId, pointer, ray) {
+      const activeCamera = getCamera();
+      const targetCamera = cameraForFloor(rayFloorId, activeCamera);
+      if (targetCamera === activeCamera) {
+        ray.setFromCamera(pointer, activeCamera);
+        return ray;
       }
-      const origin = new THREE.Vector3(pointer.x, pointer.y, -1).unproject(floorCamera);
-      const direction = new THREE.Vector3(pointer.x, pointer.y, 1)
-        .unproject(floorCamera)
-        .sub(origin)
+      const nearPoint = new three.Vector3(pointer.x, pointer.y, -1).unproject(targetCamera);
+      const rayDirection = new three.Vector3(pointer.x, pointer.y, 1)
+        .unproject(targetCamera)
+        .sub(nearPoint)
         .normalize();
-      raycaster.set(origin, direction);
-      raycaster.camera = floorCamera;
-      return raycaster;
+      ray.set(nearPoint, rayDirection);
+      ray.camera = targetCamera;
+      return ray;
     },
-    reflectionCamera(camera, object) {
-      return this.captureCamera(camera, object);
-    },
-    captureCamera(camera, object) {
-      if (!currentLayout()) {
-        return camera;
+    reflectionCamera(baseCamera, objectRoot) {
+      if (baseCamera !== getCamera() || !getActiveLayout()) {
+        return baseCamera;
+      } else {
+        syncFloorCameras(baseCamera);
+        return stackByFloorId.get(overviewFloorId(objectRoot))?.reflection || baseCamera;
       }
-      const baseCamera = getCamera();
-      // Mirrored / off-axis cameras keep their own projection (e.g. ground reflection flips).
-      // Only the primary overview camera needs the stacked floor projection remap.
-      if (camera !== baseCamera) {
-        return camera;
-      }
-      baseCamera.updateWorldMatrix(true, false);
-      prepareFloorCameras(baseCamera);
-      return floorCameras.get(overviewFloorId(object))?.camera || camera;
     },
-    presentationPoint(floorId, point) {
-      const baseCamera = getCamera();
-      const floorCamera = cameraForFloor(floorId, baseCamera);
-      if (floorCamera === baseCamera) {
+    presentationPoint(projectFloorId, point) {
+      const referenceCamera = getCamera();
+      const floorCamera = cameraForFloor(projectFloorId, referenceCamera);
+      if (floorCamera === referenceCamera) {
         return point;
+      } else {
+        return point.project(floorCamera).unproject(referenceCamera);
       }
-      return point.project(floorCamera).unproject(baseCamera);
     },
     dispose() {
-      restoreFrustumCulling();
-      floorCameras.clear();
+      restoreFrustumCulled();
+      stackByFloorId.clear();
       renderer.render = originalRender;
       renderer.renderBufferDirect = originalRenderBufferDirect;
     }

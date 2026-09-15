@@ -1,1066 +1,1619 @@
-import { vacuumMapIdentity } from "./vacuum-map.js?v=0.5.3";
-import { openInteraction3dRangeEditor } from "./range-dialog.js?v=0.5.3";
-import { mountInteraction3d } from "./runtime.js?v=0.5.3";
-import { lightState } from "./light-state.js?v=0.5.3";
-import { openVacuumMapEditor } from "./vacuum-map-editor.js?v=0.5.3";
+import { vacuumMapIdentity } from "./vacuum-map.js?v=20260909-curtain-action-v15";
+import { openInteraction3dRangeEditor } from "./range-dialog.js?v=20260912-height-preview-v2";
+import { mountInteraction3d } from "./runtime.js?v=20260911-workspace-switch-v1";
+import { lightState } from "./light-state.js?v=20260906-i3d-render-recovery-v1";
+import { openVacuumMapEditor } from "./vacuum-map-editor.js?v=20260909-curtain-action-v15-furniture-plan-v1";
 import { nasGroups } from "./nas-panel.js";
-import { randomUuid } from "/bridge-static/utils/random-id.js?v=0.5.3";
-import { interaction3dPreviewSize } from "/bridge-static/modules/interaction3d/preview-layout.js?v=0.5.3";
-import { requestInteraction3dAccess, getInteraction3dEditorView, subscribeInteraction3dAccess } from "/bridge-static/modules/interaction3d/bridge.js?v=0.5.3";
-import { normalizeInteraction3dLightingMode } from "/bridge-static/modules/interaction3d/definition.js?v=0.5.3";
-const APPEARANCE_LIGHTING_SECTIONS = [["整体", [["曝光", "exposure", 0.5, 2, 0.05], ["半球光", "hemisphereIntensity", 0, 3, 0.05], ["环境光", "ambientIntensity", 0, 2, 0.05]]], ["主光与阴影", [["强度", "mainIntensity", 0, 5, 0.05], ["水平角", "mainAzimuth", -180, 180, 5], ["高度角", "mainElevation", 5, 89, 5], ["阴影浓度", "mainShadowIntensity", 0, 1, 0.05]]], ["侧面补光", [["强度", "fillIntensity", 0, 3, 0.05], ["水平角", "fillAzimuth", -180, 180, 5], ["高度角", "fillElevation", 0, 89, 5]]], ["顶部补光", [["强度", "topIntensity", 0, 3, 0.05], ["水平角", "topAzimuth", -180, 180, 5], ["高度角", "topElevation", 0, 89, 5]]]];
+import { randomUuid } from "/bridge-static/utils/random-id.js?v=20260724-revert-hold-popup-shield-v324";
+import { interaction3dPreviewSize } from "/bridge-static/modules/interaction3d/preview-layout.js?v=20260906-i3d-preview-layout-v1-20260908-curtains-v1";
+import {
+  requestInteraction3dAccess,
+  getInteraction3dEditorView,
+  subscribeInteraction3dAccess
+} from "/bridge-static/modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1";
+import { normalizeInteraction3dLightingMode } from "/bridge-static/modules/interaction3d/definition.js?v=20260909-curtain-action-v15";
+const APPEARANCE_GROUPS = [
+  [
+    "整体",
+    [
+      ["曝光", "exposure", 0.5, 2, 0.05],
+      ["半球光", "hemisphereIntensity", 0, 3, 0.05],
+      ["环境光", "ambientIntensity", 0, 2, 0.05]
+    ]
+  ],
+  [
+    "主光与阴影",
+    [
+      ["强度", "mainIntensity", 0, 5, 0.05],
+      ["水平角", "mainAzimuth", -180, 180, 5],
+      ["高度角", "mainElevation", 5, 89, 5],
+      ["阴影浓度", "mainShadowIntensity", 0, 1, 0.05]
+    ]
+  ],
+  [
+    "侧面补光",
+    [
+      ["强度", "fillIntensity", 0, 3, 0.05],
+      ["水平角", "fillAzimuth", -180, 180, 5],
+      ["高度角", "fillElevation", 0, 89, 5]
+    ]
+  ],
+  [
+    "顶部补光",
+    [
+      ["强度", "topIntensity", 0, 3, 0.05],
+      ["水平角", "topAzimuth", -180, 180, 5],
+      ["高度角", "topElevation", 0, 89, 5]
+    ]
+  ]
+];
 export async function openInteraction3dEditor({
-  component,
-  document: doc,
-  entities = [],
-  states,
-  pickers,
-  onSave,
-  deviceKind = "light",
-  startAdding = false,
-  vacuumId = "",
-  editingFloorId = ""
+  component: component,
+  document: documentApi,
+  entities: entities = [],
+  states: states,
+  pickers: pickers,
+  onSave: onSaveConfig,
+  deviceKind: deviceKind = "light",
+  startAdding: shouldStartAdding = false,
+  vacuumId: vacuumId = "",
+  editingFloorId: editingFloorId = ""
 }) {
   await requestInteraction3dAccess();
-  let deviceKindLocal = deviceKind;
-  if (deviceKindLocal === "environment") {
-    deviceKindLocal = "climate";
+  const isEnvironmentKind = ["environment", "climate", "cover"].includes(deviceKind);
+  if (deviceKind === "environment") {
+    deviceKind = "climate";
   }
-  if (deviceKindLocal === "devices") {
-    deviceKindLocal = "nas";
+  const isDeviceKind =
+    deviceKind === "devices" || deviceKind === "nas" || deviceKind === "television";
+  if (deviceKind === "devices") {
+    deviceKind = "nas";
   }
-  let isEnvironmentKind = false;
-  let isDeviceMode = false;
-  let isVacuumShortcut = false;
-  let isVacuum = false;
-  let isDeviceLike = false;
-  let isTelevision = false;
-  let isClimate = false;
-  let isCover = false;
-  let isNas = false;
-  let isNonLight = false;
-  let stageLabel = "灯光";
-  let dialogLabel = stageLabel;
-  let deviceCollectionKey = "airConditioners";
-  let emptyStateIcon = "mdi:lightbulb-outline";
-  let bindingIdField = "groupId";
-  function applyKindFlags() {
-    isEnvironmentKind = ["environment", "climate", "cover"].includes(deviceKindLocal);
-    isDeviceMode = deviceKindLocal === "devices" || deviceKindLocal === "nas" || deviceKindLocal === "television";
-    isVacuumShortcut = deviceKindLocal === "vacuum-shortcut";
-    isVacuum = deviceKindLocal === "vacuum";
-    isDeviceLike = isDeviceMode || isVacuum || isVacuumShortcut;
-    isTelevision = deviceKindLocal === "television";
-    isClimate = deviceKindLocal === "climate";
-    isCover = deviceKindLocal === "cover";
-    isNas = deviceKindLocal === "nas";
-    isNonLight = isClimate || isCover || isNas || isTelevision || isVacuum || isVacuumShortcut;
-    stageLabel = isVacuumShortcut ? "快捷指令" : isVacuum ? "扫地机" : isDeviceMode ? "设备" : isCover ? "窗帘" : isClimate ? "空调" : "灯光";
-    dialogLabel = isEnvironmentKind ? "环境" : isVacuumShortcut ? "扫地机" : stageLabel;
-    deviceCollectionKey = isVacuum || isVacuumShortcut ? "vacuums" : isTelevision ? "televisions" : isNas ? "nas" : isCover ? "curtains" : "airConditioners";
-    emptyStateIcon = isVacuumShortcut ? "mdi:broom" : isVacuum ? "mdi:robot-vacuum" : isTelevision ? "mdi:television" : isNas ? "mdi:nas" : isCover ? "mdi:curtains" : isClimate ? "mdi:air-conditioner" : "mdi:lightbulb-outline";
-    bindingIdField = isNonLight ? "modelId" : "groupId";
+  let isVacuumShortcutMode;
+  let isVacuumMode;
+  let usesStatusPanel;
+  let isTelevisionMode;
+  let isClimateMode;
+  let isCoverMode;
+  let isNasMode;
+  let usesModelBinding;
+  let kindLabel;
+  let editorKindTitle;
+  let collectionKey;
+  let defaultIcon;
+  let modelIdKey;
+  function applyKindFlags(nextKind) {
+    deviceKind = nextKind;
+    isVacuumShortcutMode = deviceKind === "vacuum-shortcut";
+    isVacuumMode = deviceKind === "vacuum";
+    usesStatusPanel = isDeviceKind || isVacuumMode || isVacuumShortcutMode;
+    isTelevisionMode = deviceKind === "television";
+    isClimateMode = deviceKind === "climate";
+    isCoverMode = deviceKind === "cover";
+    isNasMode = deviceKind === "nas";
+    usesModelBinding =
+      isClimateMode ||
+      isCoverMode ||
+      isNasMode ||
+      isTelevisionMode ||
+      isVacuumMode ||
+      isVacuumShortcutMode;
+    kindLabel = isVacuumShortcutMode
+      ? "快捷指令"
+      : isVacuumMode
+        ? "扫地机"
+        : isDeviceKind
+          ? "设备"
+          : isCoverMode
+            ? "窗帘"
+            : isClimateMode
+              ? "空调"
+              : "灯光";
+    editorKindTitle = isEnvironmentKind ? "环境" : isVacuumShortcutMode ? "扫地机" : kindLabel;
+    collectionKey =
+      isVacuumMode || isVacuumShortcutMode
+        ? "vacuums"
+        : isTelevisionMode
+          ? "televisions"
+          : isNasMode
+            ? "nas"
+            : isCoverMode
+              ? "curtains"
+              : "airConditioners";
+    defaultIcon = isVacuumShortcutMode
+      ? "mdi:broom"
+      : isVacuumMode
+        ? "mdi:robot-vacuum"
+        : isTelevisionMode
+          ? "mdi:television"
+          : isNasMode
+            ? "mdi:nas"
+            : isCoverMode
+              ? "mdi:curtains"
+              : isClimateMode
+                ? "mdi:air-conditioner"
+                : "mdi:lightbulb-outline";
+    modelIdKey = usesModelBinding ? "modelId" : "groupId";
   }
-  const deviceDisplayName = device => device.name || device.label || stageLabel;
-  const normalizeClickAction = clickActionValue => isDeviceLike ? ["focus", "focus-panel", "panel"].includes(clickActionValue) ? clickActionValue : "focus-panel" : isCover ? clickActionValue === "panel" ? "panel" : "focus" : ["turn-on-focus", "turn-on", "turn-on-panel"].includes(clickActionValue) ? clickActionValue : "focus";
-  applyKindFlags();
-  const rel = document.createElement("link");
-  rel.rel = "stylesheet";
-  rel.href = "/api/v1/modules/interaction3d/runtime.css?v=0.5.3";
-  document.head.append(rel);
-  const createEl = (tagName, elClassName, element) => {
-    const nodeEl = document.createElement(tagName);
-    nodeEl.className = elClassName || "";
-    if (element) {
-      nodeEl.textContent = element;
+  applyKindFlags(deviceKind);
+  const describeItem = describableItem =>
+    describableItem.name || describableItem.label || kindLabel;
+  const normalizeClickAction = rawClickAction =>
+    usesStatusPanel
+      ? ["focus", "focus-panel", "panel"].includes(rawClickAction)
+        ? rawClickAction
+        : "focus-panel"
+      : isCoverMode
+        ? rawClickAction === "panel"
+          ? "panel"
+          : "focus"
+        : ["turn-on-focus", "turn-on", "turn-on-panel"].includes(rawClickAction)
+          ? rawClickAction
+          : "focus";
+  const styleSheetLinkElement = document.createElement("link");
+  styleSheetLinkElement.rel = "stylesheet";
+  styleSheetLinkElement.href =
+    "/api/v1/modules/interaction3d/runtime.css?v=20260912-config-empty-layout-v2";
+  document.head.append(styleSheetLinkElement);
+  const createElement = (tagName, classNames, initialText) => {
+    const createdElement = document.createElement(tagName);
+    createdElement.className = classNames || "";
+    if (initialText) {
+      createdElement.textContent = initialText;
     }
-    return nodeEl;
+    return createdElement;
   };
-  const accessAllowed = (buttonLabel, onClick) => {
-    const type = createEl("button", "", buttonLabel);
-    type.type = "button";
-    type.addEventListener("click", onClick);
-    return type;
+  const createButton = (buttonLabel, onButtonClick) => {
+    const buttonElement = createElement("button", "", buttonLabel);
+    buttonElement.type = "button";
+    buttonElement.addEventListener("click", onButtonClick);
+    return buttonElement;
   };
-  const editorDialog = createEl("dialog", "i3d-editor");
-  editorDialog.setAttribute("aria-label", "3D " + dialogLabel + "配置");
-  editorDialog.setAttribute("data-i3d-preview-scope", "");
-  editorDialog.className += " i3d-unified-settings";
-  const focusBusy = createEl("header");
-  const editorBody = createEl("div", "i3d-editor-body");
-  const previewView = createEl("div", "i3d-editor-view");
-  const focusQueue = createEl("aside");
-  const previewAspect = createEl("div", "i3d-editor-aspect");
-  const previewHost = createEl("div", "i3d-editor-stage");
-  const accessStatusEl = createEl("p", "i3d-editor-status");
-  accessStatusEl.setAttribute("role", "status");
-  previewAspect.append(previewHost);
-  previewView.append(previewAspect, accessStatusEl);
-  const pickerGeneration = createEl("p", "i3d-error");
-  pickerGeneration.setAttribute("role", "status");
-  let effectRangeOpen = structuredClone(component.properties || {});
-  let saving = "";
-  let draftRevision = null;
-  let liveStates = null;
-  let refreshCapabilities = false;
-  let capabilityCache = true;
-  let syncPreviewSize = editingFloorId || (effectRangeOpen.floorSelection !== "all" ? effectRangeOpen.floorSelection : "");
-  effectRangeOpen.lightingMode = normalizeInteraction3dLightingMode(effectRangeOpen.lightingMode);
-  let resizeObserver = false;
-  let closeEditor = null;
-  let saveStatus = "focus";
-  let saveButton = false;
-  let unsubscribeAccess = false;
-  let mode = null;
-  let cameraCommandGeneration = 0;
-  let cameraCommandChain = Promise.resolve();
-  let close = null;
-  let closeCurrent = null;
-  let pickerSession = 0;
-  let open = false;
-  let isSavingConfig = false;
-  let dirtyRevision = 0;
-  let latestStatesByEntity = null;
-  let refreshEffectCapabilityUi = () => {};
-  const get = new Map();
-  function ensureKindContainers() {
-    if (isDeviceLike) {
-      effectRangeOpen.devices = {
-        ...effectRangeOpen.devices,
-        [deviceCollectionKey]: effectRangeOpen.devices?.[deviceCollectionKey] || []
+  const editorDialogElement = createElement("dialog", "i3d-editor");
+  editorDialogElement.setAttribute("aria-label", "3D " + editorKindTitle + "配置");
+  editorDialogElement.setAttribute("data-i3d-preview-scope", "");
+  editorDialogElement.className += " i3d-unified-settings";
+  const headerElement = createElement("header");
+  const bodyElement = createElement("div", "i3d-editor-body");
+  const viewElement = createElement("div", "i3d-editor-view");
+  const panelElement = createElement("aside");
+  const aspectBoxElement = createElement("div", "i3d-editor-aspect");
+  const stageHostElement = createElement("div", "i3d-editor-stage");
+  const statusElement = createElement("p", "i3d-editor-status");
+  statusElement.setAttribute("role", "status");
+  aspectBoxElement.append(stageHostElement);
+  viewElement.append(aspectBoxElement, statusElement);
+  const errorMessageElement = createElement("p", "i3d-error");
+  errorMessageElement.setAttribute("role", "status");
+  let draftProperties = structuredClone(component.properties || {});
+  let selectedItemId = "";
+  let sceneMetadata = null;
+  let editorRuntime = null;
+  let isDisposed = false;
+  let isAccessAllowed = true;
+  let selectedFloorId =
+    editingFloorId ||
+    (draftProperties.floorSelection !== "all" ? draftProperties.floorSelection : "");
+  draftProperties.lightingMode = normalizeInteraction3dLightingMode(draftProperties.lightingMode);
+  let isRangeEditorOpen = false;
+  let subEditorHandle = null;
+  let vacuumCameraMode = "focus";
+  let isCameraEditing = false;
+  let isCameraCommandPending = false;
+  let pendingCameraDraft = null;
+  let sceneReadyGeneration = 0;
+  let cameraCommandQueue = Promise.resolve();
+  let addDialogState = null;
+  let pickerHandle = null;
+  let pickerGeneration = 0;
+  let isEffectDetailsOpen = false;
+  let isSaving = false;
+  let changeRevisionCount = 0;
+  let latestStates = null;
+  let refreshEffectSettings = () => {};
+  const devicesByDeviceId = new Map();
+  const findVacuumModel = () =>
+    draftProperties.devices?.vacuums?.find(vacuumModelProbe => vacuumModelProbe.id === vacuumId);
+  const getItemList = () =>
+    isVacuumShortcutMode
+      ? findVacuumModel()?.shortcuts || []
+      : usesStatusPanel
+        ? draftProperties.devices[collectionKey]
+        : usesModelBinding
+          ? draftProperties.environment[collectionKey]
+          : draftProperties.lights;
+  const setItemList = nextItemList => {
+    if (isVacuumShortcutMode) {
+      if (findVacuumModel()) {
+        findVacuumModel().shortcuts = nextItemList;
+      }
+    } else if (usesStatusPanel) {
+      draftProperties.devices[collectionKey] = nextItemList;
+    } else if (usesModelBinding) {
+      draftProperties.environment[collectionKey] = nextItemList;
+    } else {
+      draftProperties.lights = nextItemList;
+    }
+  };
+  function ensureItemCollections() {
+    if (usesStatusPanel) {
+      draftProperties.devices = {
+        ...draftProperties.devices,
+        [collectionKey]: draftProperties.devices?.[collectionKey] || []
       };
     }
-    if (isNonLight && !isDeviceLike) {
-      effectRangeOpen.environment = {
-        ...effectRangeOpen.environment,
-        dimStrength: Number.isFinite(effectRangeOpen.environment?.dimStrength) ? Math.max(0, Math.min(100, effectRangeOpen.environment.dimStrength)) : 70,
-        [deviceCollectionKey]: effectRangeOpen.environment?.[deviceCollectionKey] || []
+    if (usesModelBinding && !usesStatusPanel) {
+      draftProperties.environment = {
+        ...draftProperties.environment,
+        dimStrength: Number.isFinite(draftProperties.environment?.dimStrength)
+          ? Math.max(0, Math.min(100, draftProperties.environment.dimStrength))
+          : 70,
+        [collectionKey]: draftProperties.environment?.[collectionKey] || []
       };
     }
-    if (isVacuumShortcut) {
-      for (const shortcuts of effectRangeOpen.devices?.vacuums || []) {
-        shortcuts.shortcuts = (shortcuts.shortcuts || []).map(visible => visible.visible === false ? {
-          ...visible,
-          visible: true,
-          buttonHidden: true,
-          hiddenClickable: false
-        } : visible);
+    if (isVacuumShortcutMode) {
+      for (const vacuumModelItem of draftProperties.devices.vacuums) {
+        vacuumModelItem.shortcuts = (vacuumModelItem.shortcuts || []).map(vacuumShortcutItem =>
+          vacuumShortcutItem.visible === false
+            ? {
+                ...vacuumShortcutItem,
+                visible: true,
+                buttonHidden: true,
+                hiddenClickable: false
+              }
+            : vacuumShortcutItem
+        );
       }
     }
-    vacuumId ||= effectRangeOpen.devices?.vacuums?.[0]?.id || "";
-  }
-  const getCurrentVacuum = () => effectRangeOpen.devices?.vacuums?.find(id => id.id === vacuumId);
-  const getCurrentItems = () => isVacuumShortcut ? getCurrentVacuum()?.shortcuts || [] : isDeviceLike ? effectRangeOpen.devices[deviceCollectionKey] : isNonLight ? effectRangeOpen.environment[deviceCollectionKey] : effectRangeOpen.lights;
-  const setCurrentItems = shortcuts => {
-    if (isVacuumShortcut) {
-      if (getCurrentVacuum()) {
-        getCurrentVacuum().shortcuts = shortcuts;
-      }
-    } else if (isDeviceLike) {
-      effectRangeOpen.devices[deviceCollectionKey] = shortcuts;
-    } else if (isNonLight) {
-      effectRangeOpen.environment[deviceCollectionKey] = shortcuts;
-    } else {
-      effectRangeOpen.lights = shortcuts;
+    vacuumId ||= draftProperties.devices?.vacuums?.[0]?.id || "";
+    if (isVacuumMode) {
+      selectedItemId = vacuumId;
     }
-  };
-  function normalizeCurrentItems() {
-    setCurrentItems((getCurrentItems() || []).filter(visible => isVacuumShortcut || visible.visible !== false).map(size => {
-      const sizeCurrent = Number.isFinite(size.size) && size.size > 0 ? size.size : 44;
+    setItemList(
+      (getItemList() || [])
+        .filter(visibleItemProbe => isVacuumShortcutMode || visibleItemProbe.visible !== false)
+        .map(normalizedItem => {
+          const resolvedButtonSize =
+            Number.isFinite(normalizedItem.size) && normalizedItem.size > 0
+              ? normalizedItem.size
+              : 44;
+          return {
+            ...normalizedItem,
+            size: resolvedButtonSize,
+            visible: isVacuumShortcutMode ? normalizedItem.visible !== false : true,
+            icon: normalizedItem.icon || defaultIcon,
+            ...(usesModelBinding
+              ? {}
+              : {
+                  fadeDuration: normalizedItem.fadeDuration ?? 0.3
+                }),
+            ...(isCoverMode
+              ? {
+                  coverKind: ["standard", "dream"].includes(normalizedItem.coverKind)
+                    ? normalizedItem.coverKind
+                    : "standard",
+                  coverDirection: ["left", "right", "split"].includes(normalizedItem.coverDirection)
+                    ? normalizedItem.coverDirection
+                    : "auto",
+                  curtainFabric: normalizedItem.curtainFabric === "sheer" ? "sheer" : "cloth",
+                  unboundPosition: Number.isFinite(normalizedItem.unboundPosition)
+                    ? Math.max(0, Math.min(100, normalizedItem.unboundPosition))
+                    : 0
+                }
+              : {}),
+            ...(isVacuumShortcutMode
+              ? {}
+              : {
+                  clickAction: normalizeClickAction(normalizedItem.clickAction)
+                }),
+            iconSize:
+              Number.isFinite(normalizedItem.iconSize) && normalizedItem.iconSize > 0
+                ? normalizedItem.iconSize
+                : Math.min(resolvedButtonSize, Math.max(4, resolvedButtonSize - 18))
+          };
+        })
+    );
+  }
+  ensureItemCollections();
+  const buildEditableFieldList = () =>
+    usesModelBinding
+      ? [
+          ...(isVacuumMode ? [] : [["icon", "图标", ""]]),
+          ["size", isVacuumMode ? "状态框缩放" : "按钮大小", isVacuumMode ? "%" : "px"],
+          ["iconSize", isVacuumMode ? "文字大小" : "图标大小", "px"],
+          ["hitSize", "点击范围", "px"],
+          ["buttonVisibility", "按钮显示", ""],
+          ...(isVacuumShortcutMode
+            ? [
+                ["fontSize", "文字大小", "px"],
+                ["iconHidden", "隐藏图标", ""],
+                ["labelHidden", "隐藏名称", ""]
+              ]
+            : [])
+        ]
+      : [
+          ["size", "按钮大小", "px"],
+          ["iconSize", "图标大小", "px"],
+          ["hitSize", "点击范围", "px"],
+          ["fadeDuration", "缓开缓灭", "秒"],
+          ["effectDefaults.brightness", "默认亮度", "%"],
+          ["effectDefaults.kelvin", "默认色温", "K"],
+          ["effectRange.brightnessMin", "最暗亮度", "%"],
+          ["effectRange.brightnessMax", "最亮亮度", "%"],
+          ["effectRange.temperatureMin", "最低色温", "K"],
+          ["effectRange.temperatureMax", "最高色温", "K"]
+        ];
+  let fieldDefs = buildEditableFieldList();
+  let baselineItemsById = new Map(
+    getItemList().map(baselinedItem => [baselinedItem.id, structuredClone(baselinedItem)])
+  );
+  const kindSessionsByKind = new Map();
+  let auxDialogElement = null;
+  let refreshBatchButtons = () => {};
+  function buildItemPayload(item, lightStatus = getLightStatus(item)) {
+    if (usesModelBinding) {
       return {
-        ...size,
-        size: sizeCurrent,
-        visible: isVacuumShortcut ? size.visible !== false : true,
-        icon: size.icon || emptyStateIcon,
-        ...(isNonLight ? {} : {
-          fadeDuration: size.fadeDuration ?? 0.3
-        }),
-        ...(isCover ? {
-          coverDirection: ["left", "right", "split"].includes(size.coverDirection) ? size.coverDirection : "auto",
-          curtainFabric: size.curtainFabric === "sheer" ? "sheer" : "cloth",
-          unboundPosition: Number.isFinite(size.unboundPosition) ? Math.max(0, Math.min(100, size.unboundPosition)) : 0
-        } : {}),
-        ...(isVacuumShortcut ? {} : {
-          clickAction: normalizeClickAction(size.clickAction)
-        }),
-        iconSize: Number.isFinite(size.iconSize) && size.iconSize > 0 ? size.iconSize : Math.min(sizeCurrent, Math.max(4, sizeCurrent - 18))
-      };
-    }));
-  }
-  function buildFilter() {
-    return isNonLight ? [...(isVacuum ? [] : [["icon", "图标", ""]]), ["size", isVacuum ? "状态框缩放" : "按钮大小", isVacuum ? "%" : "px"], ["iconSize", isVacuum ? "文字大小" : "图标大小", "px"], ["hitSize", "点击范围", "px"], ["buttonVisibility", "按钮显示", ""], ...(isVacuumShortcut ? [["fontSize", "文字大小", "px"], ["iconHidden", "隐藏图标", ""], ["labelHidden", "隐藏名称", ""]] : [])] : [["size", "按钮大小", "px"], ["iconSize", "图标大小", "px"], ["hitSize", "点击范围", "px"], ["fadeDuration", "缓开缓灭", "秒"], ["effectDefaults.brightness", "默认亮度", "%"], ["effectDefaults.kelvin", "默认色温", "K"], ["effectRange.brightnessMin", "最暗亮度", "%"], ["effectRange.brightnessMax", "最亮亮度", "%"], ["effectRange.temperatureMin", "最低色温", "K"], ["effectRange.temperatureMax", "最高色温", "K"]];
-  }
-  let filter = [];
-  const map = new Map();
-  const kindViewState = new Map();
-  function rebuildCapabilityCache() {
-    map.clear();
-    for (const id of getCurrentItems()) {
-      map.set(id.id, structuredClone(id));
-    }
-  }
-  ensureKindContainers();
-  normalizeCurrentItems();
-  filter = buildFilter();
-  rebuildCapabilityCache();
-  let closeNext = null;
-  let updateBatchApplyState = () => {};
-  function markDirty(size, minimum = resolveEntityLightState(size)) {
-    if (isNonLight) {
-      return {
-        icon: size.icon || emptyStateIcon,
-        size: size.size ?? 44,
-        iconSize: size.iconSize ?? 26,
-        hitSize: size.hitSize ?? Math.max(44, size.size ?? 44),
-        ...(isVacuumShortcut ? {
-          fontSize: size.fontSize ?? 12,
-          iconHidden: size.iconHidden === true,
-          labelHidden: size.labelHidden === true
-        } : {}),
-        buttonVisibility: size.buttonHidden === true ? "隐藏（不可点击）" : size.hiddenClickable === true ? "隐藏（可点击）" : "显示"
+        icon: item.icon || defaultIcon,
+        size: item.size ?? 44,
+        iconSize: item.iconSize ?? 26,
+        hitSize: item.hitSize ?? Math.max(44, item.size ?? 44),
+        ...(isVacuumShortcutMode
+          ? {
+              fontSize: item.fontSize ?? 12,
+              iconHidden: item.iconHidden === true,
+              labelHidden: item.labelHidden === true
+            }
+          : {}),
+        buttonVisibility:
+          item.buttonHidden === true
+            ? "隐藏（不可点击）"
+            : item.hiddenClickable === true
+              ? "隐藏（可点击）"
+              : "显示"
       };
     } else {
       return {
-        size: size.size ?? 44,
-        iconSize: size.iconSize ?? 26,
-        hitSize: size.hitSize ?? Math.max(44, size.size ?? 44),
-        fadeDuration: size.fadeDuration ?? 0.3,
-        effectDefaults: size.effectDefaults || {},
+        size: item.size ?? 44,
+        iconSize: item.iconSize ?? 26,
+        hitSize: item.hitSize ?? Math.max(44, item.size ?? 44),
+        fadeDuration: item.fadeDuration ?? 0.3,
+        effectDefaults: item.effectDefaults || {},
         effectRange: {
           brightnessMin: 1,
           brightnessMax: 100,
-          temperatureMin: minimum.minimum,
-          temperatureMax: minimum.maximum,
-          ...size.effectRange
+          temperatureMin: lightStatus.minimum,
+          temperatureMax: lightStatus.maximum,
+          ...item.effectRange
         }
       };
     }
   }
-  const getByPath = (pathObject, split) => split.split(".").reduce((pathAcc, pathKey) => pathAcc?.[pathKey], pathObject);
-  function resolveLightCapability(id) {
-    if (!map.has(id.id)) {
-      map.set(id.id, structuredClone(id));
+  const readNestedPath = (targetObject, dottedPath) =>
+    dottedPath
+      .split(".")
+      .reduce((pathAccumulator, pathSegment) => pathAccumulator?.[pathSegment], targetObject);
+  function listChangedFields(changedItem) {
+    if (!baselineItemsById.has(changedItem.id)) {
+      baselineItemsById.set(changedItem.id, structuredClone(changedItem));
     }
-    const entityId = resolveEntityLightState(id);
-    const entityState = markDirty(map.get(id.id), entityId);
-    const cachedCapability = markDirty(id, entityId);
-    return filter.filter(([diffFieldPath]) => getByPath(entityState, diffFieldPath) !== getByPath(cachedCapability, diffFieldPath));
+    const changedStatus = getLightStatus(changedItem);
+    const baselinePayload = buildItemPayload(baselineItemsById.get(changedItem.id), changedStatus);
+    const currentPayload = buildItemPayload(changedItem, changedStatus);
+    return fieldDefs.filter(
+      ([payloadFieldName]) =>
+        readNestedPath(baselinePayload, payloadFieldName) !==
+        readNestedPath(currentPayload, payloadFieldName)
+    );
   }
-  function appendLabeled(parent, fieldLabel, control) {
-    for (const split of control) {
-      if (split === "buttonVisibility") {
-        parent.buttonHidden = fieldLabel.buttonVisibility === "隐藏（不可点击）";
-        parent.hiddenClickable = fieldLabel.buttonVisibility === "隐藏（可点击）";
+  function applyFieldValues(targetItem, sourcePayload, fieldNames) {
+    for (const fieldKey of fieldNames) {
+      if (fieldKey === "buttonVisibility") {
+        targetItem.buttonHidden = sourcePayload.buttonVisibility === "隐藏（不可点击）";
+        targetItem.hiddenClickable = sourcePayload.buttonVisibility === "隐藏（可点击）";
         continue;
       }
-      const [fieldRootKey, fieldChildKey] = split.split(".");
-      if (!fieldChildKey) {
-        parent[fieldRootKey] = fieldLabel[fieldRootKey];
+      const [parentFieldKey, nestedFieldKey] = fieldKey.split(".");
+      if (!nestedFieldKey) {
+        targetItem[parentFieldKey] = sourcePayload[parentFieldKey];
         continue;
       }
-      parent[fieldRootKey] = {
-        ...(fieldRootKey === "effectRange" ? markDirty(parent).effectRange : parent[fieldRootKey])
+      targetItem[parentFieldKey] = {
+        ...(parentFieldKey === "effectRange"
+          ? buildItemPayload(targetItem).effectRange
+          : targetItem[parentFieldKey])
       };
-      if (fieldLabel[fieldRootKey][fieldChildKey] === undefined) {
-        delete parent[fieldRootKey][fieldChildKey];
+      if (sourcePayload[parentFieldKey][nestedFieldKey] === undefined) {
+        delete targetItem[parentFieldKey][nestedFieldKey];
       } else {
-        parent[fieldRootKey][fieldChildKey] = fieldLabel[fieldRootKey][fieldChildKey];
+        targetItem[parentFieldKey][nestedFieldKey] = sourcePayload[parentFieldKey][nestedFieldKey];
       }
-      if (!Object.keys(parent[fieldRootKey]).length) {
-        delete parent[fieldRootKey];
+      if (!Object.keys(targetItem[parentFieldKey]).length) {
+        delete targetItem[parentFieldKey];
       }
     }
   }
-  function renderSidebar() {
-    closeNext?.close();
-    closeNext?.remove();
-    closeNext = null;
+  function closeAuxDialog() {
+    auxDialogElement?.close();
+    auxDialogElement?.remove();
+    auxDialogElement = null;
   }
-  function appendSelect(selectParent) {
-    const select = selectParent.statusSource;
-    if (!select || refreshCapabilities || !capabilityCache || saveButton || unsubscribeAccess || closeNext) {
+  function openMetricsDialog(metricsTargetEntry) {
+    const statusSource = metricsTargetEntry.statusSource;
+    if (
+      !statusSource ||
+      isDisposed ||
+      !isAccessAllowed ||
+      isCameraEditing ||
+      isCameraCommandPending ||
+      auxDialogElement
+    ) {
       return;
     }
-    const has = new Set(select.visibleMetrics || select.metrics.map(entityId => entityId.entityId));
-    const push = [];
-    const nasFieldsDialog = createEl("dialog", "settings-dialog i3d-add-dialog i3d-nas-fields-dialog");
-    closeNext = nasFieldsDialog;
-    nasFieldsDialog.setAttribute("aria-label", "选择 NAS 显示内容");
-    const nasFieldsHeading = createEl("div", "dialog-heading");
-    const nasFieldsTitle = createEl("h2", "", "选择显示内容");
-    const closeButton = accessAllowed("×", renderSidebar);
-    closeButton.className = "icon-button";
-    closeButton.setAttribute("aria-label", "关闭显示内容选择");
-    nasFieldsHeading.append(nasFieldsTitle, closeButton);
-    const nasFieldsBody = createEl("div", "i3d-add-dialog-body");
-    const nasFieldsToolbar = createEl("div", "dialog-actions");
-    const nasFieldsCountEl = createEl("span", "i3d-note");
-    const updateNasFieldsCount = () => {
-      nasFieldsCountEl.textContent = "已选 " + has.size + " 项";
-      for (const checked of push) {
-        checked.checked = has.has(checked.value);
+    const visibleMetricIds = new Set(
+      statusSource.visibleMetrics || statusSource.metrics.map(metricEntry => metricEntry.entityId)
+    );
+    const metricCheckboxes = [];
+    const metricsDialogElement = createElement(
+      "dialog",
+      "settings-dialog i3d-add-dialog i3d-nas-fields-dialog"
+    );
+    auxDialogElement = metricsDialogElement;
+    metricsDialogElement.setAttribute("aria-label", "选择 NAS 显示内容");
+    const metricsHeadingElement = createElement("div", "dialog-heading");
+    const metricsTitleElement = createElement("h2", "", "选择显示内容");
+    const metricsCloseButton = createButton("×", closeAuxDialog);
+    metricsCloseButton.className = "icon-button";
+    metricsCloseButton.setAttribute("aria-label", "关闭显示内容选择");
+    metricsHeadingElement.append(metricsTitleElement, metricsCloseButton);
+    const metricsBodyElement = createElement("div", "i3d-add-dialog-body");
+    const metricsActionsElement = createElement("div", "dialog-actions");
+    const selectionSummaryElement = createElement("span", "i3d-note");
+    const syncMetricsSelection = () => {
+      selectionSummaryElement.textContent = "已选 " + visibleMetricIds.size + " 项";
+      for (const metricCheckboxItem of metricCheckboxes) {
+        metricCheckboxItem.checked = visibleMetricIds.has(metricCheckboxItem.value);
       }
     };
-    nasFieldsToolbar.append(accessAllowed("全选", () => {
-      select.metrics.forEach(entityId => has.add(entityId.entityId));
-      updateNasFieldsCount();
-    }), accessAllowed("全不选", () => {
-      has.clear();
-      updateNasFieldsCount();
-    }), nasFieldsCountEl);
-    const nasFieldsList = createEl("div", "i3d-nas-fields");
-    const options = nasGroups(select).filter(([nasGroupId]) => select.metrics.some(group => group.group === nasGroupId));
-    const get = new Map();
-    const rerenderNasFieldGroups = () => {
-      options.forEach(([nasGroupKey], nasGroupIndex) => {
+    metricsActionsElement.append(
+      createButton("全选", () => {
+        statusSource.metrics.forEach(selectableMetric =>
+          visibleMetricIds.add(selectableMetric.entityId)
+        );
+        syncMetricsSelection();
+      }),
+      createButton("全不选", () => {
+        visibleMetricIds.clear();
+        syncMetricsSelection();
+      }),
+      selectionSummaryElement
+    );
+    const nasFieldsContainerElement = createElement("div", "i3d-nas-fields");
+    const nasFieldGroups = nasGroups(statusSource).filter(([nasGroupKey]) =>
+      statusSource.metrics.some(nasGroupProbe => nasGroupProbe.group === nasGroupKey)
+    );
+    const groupControlsByKey = new Map();
+    const syncNasGroupOrder = () => {
+      nasFieldGroups.forEach(([orderedGroupKey], groupIndex) => {
         const {
-          section: nasGroupSectionEl,
-          up: disabled,
-          down: entry
-        } = get.get(nasGroupKey);
-        disabled.disabled = nasGroupIndex === 0;
-        entry.disabled = nasGroupIndex === options.length - 1;
-        nasFieldsList.append(nasGroupSectionEl);
+          section: mappedGroupSection,
+          up: mappedUpButton,
+          down: mappedDownButton
+        } = groupControlsByKey.get(orderedGroupKey);
+        mappedUpButton.disabled = groupIndex === 0;
+        mappedDownButton.disabled = groupIndex === nasFieldGroups.length - 1;
+        nasFieldsContainerElement.append(mappedGroupSection);
       });
     };
-    for (const [optValue, optLabel] of options) {
-      const option = select.metrics.filter(group => group.group === optValue);
-      const nasGroupSection = createEl("section");
-      const nasGroupHeading = createEl("div", "i3d-nas-fields-heading");
-      const moveNasGroup = nasGroupDelta => {
-        const nasGroupFromIndex = options.findIndex(([nasGroupMatchId]) => nasGroupMatchId === optValue);
-        const nasGroupToIndex = nasGroupFromIndex + nasGroupDelta;
-        if (!(nasGroupToIndex < 0) && !(nasGroupToIndex >= options.length)) {
-          [options[nasGroupFromIndex], options[nasGroupToIndex]] = [options[nasGroupToIndex], options[nasGroupFromIndex]];
-          rerenderNasFieldGroups();
+    for (const [fieldGroupKey, fieldGroupLabel] of nasFieldGroups) {
+      const groupMetrics = statusSource.metrics.filter(
+        fieldGroupProbe => fieldGroupProbe.group === fieldGroupKey
+      );
+      const fieldGroupSectionElement = createElement("section");
+      const fieldGroupHeadingElement = createElement("div", "i3d-nas-fields-heading");
+      const moveFieldGroup = groupOffset => {
+        const groupCurrentIndex = nasFieldGroups.findIndex(
+          ([candidateGroupKey]) => candidateGroupKey === fieldGroupKey
+        );
+        const groupTargetIndex = groupCurrentIndex + groupOffset;
+        if (!(groupTargetIndex < 0) && !(groupTargetIndex >= nasFieldGroups.length)) {
+          [nasFieldGroups[groupCurrentIndex], nasFieldGroups[groupTargetIndex]] = [
+            nasFieldGroups[groupTargetIndex],
+            nasFieldGroups[groupCurrentIndex]
+          ];
+          syncNasGroupOrder();
         }
       };
-      const nasGroupUpBtn = accessAllowed("↑", () => moveNasGroup(-1));
-      const nasGroupDownBtn = accessAllowed("↓", () => moveNasGroup(1));
-      nasGroupUpBtn.setAttribute("aria-label", "上移" + optLabel + "分组");
-      nasGroupDownBtn.setAttribute("aria-label", "下移" + optLabel + "分组");
-      nasGroupUpBtn.title = "上移分组";
-      nasGroupDownBtn.title = "下移分组";
-      nasGroupHeading.append(createEl("h4", "", optLabel), nasGroupUpBtn, nasGroupDownBtn);
-      nasGroupSection.append(nasGroupHeading);
-      get.set(optValue, {
-        section: nasGroupSection,
-        up: nasGroupUpBtn,
-        down: nasGroupDownBtn,
-        metrics: option
+      const groupUpButtonElement = createButton("↑", () => moveFieldGroup(-1));
+      const groupDownButtonElement = createButton("↓", () => moveFieldGroup(1));
+      groupUpButtonElement.setAttribute("aria-label", "上移" + fieldGroupLabel + "分组");
+      groupDownButtonElement.setAttribute("aria-label", "下移" + fieldGroupLabel + "分组");
+      groupUpButtonElement.title = "上移分组";
+      groupDownButtonElement.title = "下移分组";
+      fieldGroupHeadingElement.append(
+        createElement("h4", "", fieldGroupLabel),
+        groupUpButtonElement,
+        groupDownButtonElement
+      );
+      fieldGroupSectionElement.append(fieldGroupHeadingElement);
+      groupControlsByKey.set(fieldGroupKey, {
+        section: fieldGroupSectionElement,
+        up: groupUpButtonElement,
+        down: groupDownButtonElement,
+        metrics: groupMetrics
       });
-      const map = new Map();
-      const rerenderNasGroupRows = () => option.forEach((entityId, nasMetricIndex) => {
-        const up = map.get(entityId.entityId);
-        up.up.disabled = nasMetricIndex === 0;
-        up.down.disabled = nasMetricIndex === option.length - 1;
-        nasGroupSection.append(up.row);
-      });
-      for (const label of option) {
-        const row = createEl("div", "i3d-nas-fields-row");
-        const title = createEl("label");
-        const nasMetricCheckbox = createEl("input");
-        nasMetricCheckbox.type = "checkbox";
-        nasMetricCheckbox.value = label.entityId;
-        nasMetricCheckbox.setAttribute("aria-label", label.label);
-        title.title = label.entityId;
-        nasMetricCheckbox.addEventListener("change", () => {
-          if (nasMetricCheckbox.checked) {
-            has.add(nasMetricCheckbox.value);
-          } else {
-            has.delete(nasMetricCheckbox.value);
-          }
-          updateNasFieldsCount();
+      const metricControlsByEntityId = new Map();
+      const syncNasMetricOrder = () =>
+        groupMetrics.forEach((metricItem, metricIndex) => {
+          const metricControl = metricControlsByEntityId.get(metricItem.entityId);
+          metricControl.up.disabled = metricIndex === 0;
+          metricControl.down.disabled = metricIndex === groupMetrics.length - 1;
+          fieldGroupSectionElement.append(metricControl.row);
         });
-        const moveNasMetric = nasMetricDelta => {
-          const nasMetricFromIndex = option.indexOf(label);
-          const nasMetricToIndex = nasMetricFromIndex + nasMetricDelta;
-          if (!(nasMetricToIndex < 0) && !(nasMetricToIndex >= option.length)) {
-            [option[nasMetricFromIndex], option[nasMetricToIndex]] = [option[nasMetricToIndex], option[nasMetricFromIndex]];
-            rerenderNasGroupRows();
+      for (const nasMetric of groupMetrics) {
+        const metricRowElement = createElement("div", "i3d-nas-fields-row");
+        const metricLabelElement = createElement("label");
+        const metricCheckboxElement = createElement("input");
+        metricCheckboxElement.type = "checkbox";
+        metricCheckboxElement.value = nasMetric.entityId;
+        metricCheckboxElement.setAttribute("aria-label", nasMetric.label);
+        metricLabelElement.title = nasMetric.entityId;
+        metricCheckboxElement.addEventListener("change", () => {
+          if (metricCheckboxElement.checked) {
+            visibleMetricIds.add(metricCheckboxElement.value);
+          } else {
+            visibleMetricIds.delete(metricCheckboxElement.value);
+          }
+          syncMetricsSelection();
+        });
+        const moveNasMetric = metricOffset => {
+          const metricCurrentIndex = groupMetrics.indexOf(nasMetric);
+          const metricTargetIndex = metricCurrentIndex + metricOffset;
+          if (!(metricTargetIndex < 0) && !(metricTargetIndex >= groupMetrics.length)) {
+            [groupMetrics[metricCurrentIndex], groupMetrics[metricTargetIndex]] = [
+              groupMetrics[metricTargetIndex],
+              groupMetrics[metricCurrentIndex]
+            ];
+            syncNasMetricOrder();
           }
         };
-        const nasMetricUpBtn = accessAllowed("↑", () => moveNasMetric(-1));
-        const nasMetricDownBtn = accessAllowed("↓", () => moveNasMetric(1));
-        nasMetricUpBtn.setAttribute("aria-label", "上移" + label.label);
-        nasMetricDownBtn.setAttribute("aria-label", "下移" + label.label);
-        nasMetricUpBtn.title = "上移内容";
-        nasMetricDownBtn.title = "下移内容";
-        map.set(label.entityId, {
-          row,
-          up: nasMetricUpBtn,
-          down: nasMetricDownBtn
+        const metricUpButtonElement = createButton("↑", () => moveNasMetric(-1));
+        const metricDownButtonElement = createButton("↓", () => moveNasMetric(1));
+        metricUpButtonElement.setAttribute("aria-label", "上移" + nasMetric.label);
+        metricDownButtonElement.setAttribute("aria-label", "下移" + nasMetric.label);
+        metricUpButtonElement.title = "上移内容";
+        metricDownButtonElement.title = "下移内容";
+        metricControlsByEntityId.set(nasMetric.entityId, {
+          row: metricRowElement,
+          up: metricUpButtonElement,
+          down: metricDownButtonElement
         });
-        push.push(nasMetricCheckbox);
-        title.append(nasMetricCheckbox, createEl("span", "", label.label));
-        row.append(title, nasMetricUpBtn, nasMetricDownBtn);
-        nasGroupSection.append(row);
+        metricCheckboxes.push(metricCheckboxElement);
+        metricLabelElement.append(
+          metricCheckboxElement,
+          createElement("span", "", nasMetric.label)
+        );
+        metricRowElement.append(metricLabelElement, metricUpButtonElement, metricDownButtonElement);
+        fieldGroupSectionElement.append(metricRowElement);
       }
-      rerenderNasGroupRows();
-      nasFieldsList.append(nasGroupSection);
+      syncNasMetricOrder();
+      nasFieldsContainerElement.append(fieldGroupSectionElement);
     }
-    rerenderNasFieldGroups();
-    const nasFieldsActions = createEl("div", "dialog-actions");
-    const allowed = accessAllowed("确定", () => {
-      if (refreshCapabilities || !capabilityCache || selectParent.statusSource !== select || !getCurrentItems().includes(selectParent)) {
-        return renderSidebar();
+    syncNasGroupOrder();
+    const metricsDialogActionsElement = createElement("div", "dialog-actions");
+    const confirmMetricsButton = createButton("确定", () => {
+      if (
+        isDisposed ||
+        !isAccessAllowed ||
+        metricsTargetEntry.statusSource !== statusSource ||
+        !getItemList().includes(metricsTargetEntry)
+      ) {
+        return closeAuxDialog();
       }
-      select.metrics = options.flatMap(([nasConfirmGroupId]) => get.get(nasConfirmGroupId).metrics);
-      select.visibleMetrics = select.metrics.filter(entityId => has.has(entityId.entityId)).map(entityId => entityId.entityId);
-      select.groupOrder = options.map(([nasConfirmOrderId]) => nasConfirmOrderId);
-      renderSidebar();
-      mountRuntime();
-      rebuildConfigSidebar();
-      saveStatusEl.textContent = "显示内容已调整，待保存配置";
+      statusSource.metrics = nasFieldGroups.flatMap(
+        ([flatGroupKey]) => groupControlsByKey.get(flatGroupKey).metrics
+      );
+      statusSource.visibleMetrics = statusSource.metrics
+        .filter(metricVisibleProbe => visibleMetricIds.has(metricVisibleProbe.entityId))
+        .map(metricVisibleEntry => metricVisibleEntry.entityId);
+      statusSource.groupOrder = nasFieldGroups.map(([mapGroupKey]) => mapGroupKey);
+      closeAuxDialog();
+      refreshEditorPreview();
+      renderPanel();
+      saveStatusElement.textContent = "显示内容已调整，待保存配置";
     });
-    allowed.className = "primary";
-    nasFieldsActions.append(accessAllowed("取消", renderSidebar), allowed);
-    nasFieldsBody.append(nasFieldsToolbar, nasFieldsList, createEl("p", "i3d-note", "用 ↑ ↓ 调整分组和组内内容顺序；确定后点击“保存配置”保存。"), nasFieldsActions);
-    nasFieldsDialog.append(nasFieldsHeading, nasFieldsBody);
-    document.body.append(nasFieldsDialog);
-    updateNasFieldsCount();
-    nasFieldsDialog.addEventListener("cancel", preventDefault => {
-      preventDefault.preventDefault();
-      renderSidebar();
+    confirmMetricsButton.className = "primary";
+    metricsDialogActionsElement.append(createButton("取消", closeAuxDialog), confirmMetricsButton);
+    metricsBodyElement.append(
+      metricsActionsElement,
+      nasFieldsContainerElement,
+      createElement("p", "i3d-note", "用 ↑ ↓ 调整分组和组内内容顺序；确定后点击“保存配置”保存。"),
+      metricsDialogActionsElement
+    );
+    metricsDialogElement.append(metricsHeadingElement, metricsBodyElement);
+    document.body.append(metricsDialogElement);
+    syncMetricsSelection();
+    metricsDialogElement.addEventListener("cancel", metricsCancelEvent => {
+      metricsCancelEvent.preventDefault();
+      closeAuxDialog();
     });
-    nasFieldsDialog.showModal();
+    metricsDialogElement.showModal();
   }
-  function appendNumber(numParent) {
-    if (refreshCapabilities || !capabilityCache || saveButton || unsubscribeAccess || resizeObserver || closeNext) {
+  function openBatchApplyDialog(sourceItem) {
+    if (
+      isDisposed ||
+      !isAccessAllowed ||
+      isCameraEditing ||
+      isCameraCommandPending ||
+      isRangeEditorOpen ||
+      auxDialogElement
+    ) {
       return;
     }
-    const numInput = isNonLight ? stageLabel : "灯光";
-    const batchApplyTitle = isNonLight ? "图标设置" : "灯光设置";
-    const length = resolveLightCapability(numParent);
-    const filtered = getCurrentItems().filter(id => id.id !== numParent.id && (isVacuumShortcut || id.floorId === numParent.floorId));
-    if (!length.length) {
+    const itemKindLabel = usesModelBinding ? kindLabel : "灯光";
+    const settingsTitle = usesModelBinding ? "图标设置" : "灯光设置";
+    const changedFieldDefs = listChangedFields(sourceItem);
+    const otherItems = getItemList().filter(
+      otherItemProbe =>
+        otherItemProbe.id !== sourceItem.id &&
+        (isVacuumShortcutMode || otherItemProbe.floorId === sourceItem.floorId)
+    );
+    if (!changedFieldDefs.length) {
       return;
     }
-    const batchSourceSnapshot = structuredClone(markDirty(numParent));
-    const Object = createEl("dialog", "settings-dialog navigation-style-apply-dialog i3d-batch-dialog");
-    Object.setAttribute("aria-label", "应用" + batchApplyTitle);
-    closeNext = Object;
-    const batchHeading = createEl("div", "dialog-heading");
-    const batchHeadingText = createEl("div");
-    batchHeadingText.append(createEl("span", "", "BATCH APPLY"), createEl("h2", "", "应用" + batchApplyTitle));
-    const closeButton = accessAllowed("×", renderSidebar);
-    closeButton.className = "icon-button";
-    closeButton.setAttribute("aria-label", "关闭应用设置窗口");
-    batchHeading.append(batchHeadingText, closeButton);
-    const batchBody = createEl("div", "navigation-style-apply-body");
-    const batchColumns = createEl("div", "navigation-style-apply-columns");
-    const batchFieldsSection = createEl("section");
-    const batchTargetsSection = createEl("section");
-    const makeBatchSectionHeading = (batchHeadingTitle, batchHeadingHint) => {
-      const batchSectionHeadingEl = createEl("div", "navigation-style-apply-heading");
-      batchSectionHeadingEl.append(createEl("strong", "", batchHeadingTitle), createEl("span", "", batchHeadingHint));
-      return batchSectionHeadingEl;
+    const baselinePayloadSnapshot = structuredClone(buildItemPayload(sourceItem));
+    const batchDialogElement = createElement(
+      "dialog",
+      "settings-dialog navigation-style-apply-dialog i3d-batch-dialog"
+    );
+    batchDialogElement.setAttribute("aria-label", "应用" + settingsTitle);
+    auxDialogElement = batchDialogElement;
+    const batchHeadingElement = createElement("div", "dialog-heading");
+    const batchTitleWrapperElement = createElement("div");
+    batchTitleWrapperElement.append(
+      createElement("span", "", "BATCH APPLY"),
+      createElement("h2", "", "应用" + settingsTitle)
+    );
+    const batchDialogCloseButton = createButton("×", closeAuxDialog);
+    batchDialogCloseButton.className = "icon-button";
+    batchDialogCloseButton.setAttribute("aria-label", "关闭应用设置窗口");
+    batchHeadingElement.append(batchTitleWrapperElement, batchDialogCloseButton);
+    const batchBodyElement = createElement("div", "navigation-style-apply-body");
+    const batchColumnsElement = createElement("div", "navigation-style-apply-columns");
+    const changedColumnElement = createElement("section");
+    const targetsColumnElement = createElement("section");
+    const createBatchColumnHeading = (headingTitle, headingHint) => {
+      const columnHeadingElement = createElement("div", "navigation-style-apply-heading");
+      columnHeadingElement.append(
+        createElement("strong", "", headingTitle),
+        createElement("span", "", headingHint)
+      );
+      return columnHeadingElement;
     };
-    const batchFieldOptions = createEl("div", "navigation-style-apply-options");
-    const batchTargetOptions = createEl("div", "navigation-style-apply-options grouped-by-page");
-    const at = [];
-    const push = [];
-    const makeBatchOption = (element, batchOptionTitle, batchOptionHint, push) => {
-      const batchOptionLabel = createEl("label", "navigation-style-apply-option");
-      const type = createEl("input");
-      const batchOptionText = createEl("span", "", batchOptionTitle);
-      type.type = "checkbox";
-      type.checked = true;
-      type.value = element;
-      type.setAttribute("aria-label", batchOptionTitle);
-      push.push(type);
-      batchOptionText.append(createEl("small", "", batchOptionHint));
-      batchOptionLabel.append(type, batchOptionText);
-      return batchOptionLabel;
+    const changedOptionsElement = createElement("div", "navigation-style-apply-options");
+    const targetGroupsElement = createElement(
+      "div",
+      "navigation-style-apply-options grouped-by-page"
+    );
+    const batchFieldCheckboxes = [];
+    const batchTargetCheckboxes = [];
+    const createBatchOption = (optionValue, optionLabel, optionHint, optionCheckboxList) => {
+      const optionLabelElement = createElement("label", "navigation-style-apply-option");
+      const optionCheckboxElement = createElement("input");
+      const optionHintElement = createElement("span", "", optionLabel);
+      optionCheckboxElement.type = "checkbox";
+      optionCheckboxElement.checked = true;
+      optionCheckboxElement.value = optionValue;
+      optionCheckboxElement.setAttribute("aria-label", optionLabel);
+      optionCheckboxList.push(optionCheckboxElement);
+      optionHintElement.append(createElement("small", "", optionHint));
+      optionLabelElement.append(optionCheckboxElement, optionHintElement);
+      return optionLabelElement;
     };
-    const has = new Set(length.map(([batchFieldId]) => batchFieldId));
-    const add = new Set(has);
-    for (const replace of has) {
-      if (replace.startsWith("effectRange.")) {
-        add.add(replace.endsWith("Min") ? replace.replace(/Min$/, "Max") : replace.replace(/Max$/, "Min"));
+    const changedFieldNames = new Set(
+      changedFieldDefs.map(([changedFieldEntry]) => changedFieldEntry)
+    );
+    const linkedFieldNames = new Set(changedFieldNames);
+    for (const changedFieldName of changedFieldNames) {
+      if (changedFieldName.startsWith("effectRange.")) {
+        linkedFieldNames.add(
+          changedFieldName.endsWith("Min")
+            ? changedFieldName.replace(/Min$/, "Max")
+            : changedFieldName.replace(/Max$/, "Min")
+        );
       }
     }
-    for (const [batchFieldPath, batchFieldLabel, batchFieldUnit] of filter.filter(([batchFilterPath]) => add.has(batchFilterPath))) {
-      const batchFieldRaw = getByPath(batchSourceSnapshot, batchFieldPath);
-      const batchFieldDisplay = isVacuum && batchFieldPath === "size" ? Math.round(batchFieldRaw / 44 * 100) : isVacuum && batchFieldPath === "iconSize" ? batchFieldRaw / 2 : batchFieldRaw;
-      const element = has.has(batchFieldPath);
-      batchFieldOptions.append(makeBatchOption(batchFieldPath, batchFieldLabel, typeof batchFieldDisplay == "boolean" ? batchFieldDisplay ? "是" : "否" : batchFieldDisplay === undefined ? "跟随模型" : "" + (element ? "" : "配套上/下限 · ") + (typeof batchFieldDisplay == "number" ? Math.round(batchFieldDisplay * 1000) / 1000 : batchFieldDisplay) + " " + batchFieldUnit, at));
-      at.at(-1).checked = element;
+    for (const [applyFieldKey, applyFieldLabel, applyFieldUnit] of fieldDefs.filter(
+      ([linkedFieldProbe]) => linkedFieldNames.has(linkedFieldProbe)
+    )) {
+      const existingFieldValue = readNestedPath(baselinePayloadSnapshot, applyFieldKey);
+      const displayFieldValue =
+        isVacuumMode && applyFieldKey === "size"
+          ? Math.round((existingFieldValue / 44) * 100)
+          : isVacuumMode && applyFieldKey === "iconSize"
+            ? existingFieldValue / 2
+            : existingFieldValue;
+      const isInChangedSet = changedFieldNames.has(applyFieldKey);
+      changedOptionsElement.append(
+        createBatchOption(
+          applyFieldKey,
+          applyFieldLabel,
+          typeof displayFieldValue == "boolean"
+            ? displayFieldValue
+              ? "是"
+              : "否"
+            : displayFieldValue === undefined
+              ? "跟随模型"
+              : "" +
+                (isInChangedSet ? "" : "配套上/下限 · ") +
+                (typeof displayFieldValue == "number"
+                  ? Math.round(displayFieldValue * 1000) / 1000
+                  : displayFieldValue) +
+                " " +
+                applyFieldUnit,
+          batchFieldCheckboxes
+        )
+      );
+      batchFieldCheckboxes.at(-1).checked = isInChangedSet;
     }
-    const hasCurrent = new Map();
-    for (const floorId of filtered) {
-      const batchTargetFloorId = isVacuumShortcut ? getCurrentVacuum()?.floorId : floorId.floorId;
-      if (!hasCurrent.has(batchTargetFloorId)) {
-        hasCurrent.set(batchTargetFloorId, []);
+    const otherItemsByFloorId = new Map();
+    for (const otherFloorItem of otherItems) {
+      const itemFloorId = isVacuumShortcutMode
+        ? findVacuumModel()?.floorId
+        : otherFloorItem.floorId;
+      if (!otherItemsByFloorId.has(itemFloorId)) {
+        otherItemsByFloorId.set(itemFloorId, []);
       }
-      hasCurrent.get(batchTargetFloorId).push(floorId);
+      otherItemsByFloorId.get(itemFloorId).push(otherFloorItem);
     }
-    for (const [batchFloorId, batchFloorItems] of hasCurrent) {
-      const batchFloorGroup = createEl("section", "navigation-style-apply-page-group");
-      const batchFloorHeading = createEl("div", "navigation-style-apply-page-heading");
-      const batchFloorName = draftRevision?.floors.find(id => id.id === batchFloorId)?.name || "原楼层";
-      const batchFloorControls = createEl("div", "navigation-style-apply-page-controls");
-      const batchFloorCountEl = createEl("span");
-      const batchFloorOptions = createEl("div", "navigation-style-apply-page-options");
-      const length = [];
-      for (const id of batchFloorItems) {
-        batchFloorOptions.append(makeBatchOption(id.id, id.label || numInput, isNonLight ? "图标设置" : "灯光设置", length));
+    for (const [floorIdKey, floorOtherItems] of otherItemsByFloorId) {
+      const floorGroupElement = createElement("section", "navigation-style-apply-page-group");
+      const floorGroupHeadingElement = createElement("div", "navigation-style-apply-page-heading");
+      const floorDisplayName =
+        sceneMetadata?.floors.find(targetFloorRecord => targetFloorRecord.id === floorIdKey)
+          ?.name || "原楼层";
+      const floorGroupControlsElement = createElement(
+        "div",
+        "navigation-style-apply-page-controls"
+      );
+      const floorSelectionCountElement = createElement("span");
+      const floorOptionsElement = createElement("div", "navigation-style-apply-page-options");
+      const floorTargetCheckboxes = [];
+      for (const floorTargetItem of floorOtherItems) {
+        floorOptionsElement.append(
+          createBatchOption(
+            floorTargetItem.id,
+            floorTargetItem.label || itemKindLabel,
+            usesModelBinding ? "图标设置" : "灯光设置",
+            floorTargetCheckboxes
+          )
+        );
       }
-      push.push(...length);
-      const updateBatchFloorToggle = () => {
-        const batchFloorCheckedCount = length.filter(checked => checked.checked).length;
-        batchFloorCountEl.textContent = batchFloorCheckedCount + "/" + length.length + " 个" + numInput;
-        batchFloorToggleBtn.textContent = batchFloorCheckedCount === length.length ? "取消全选" : "全选";
+      batchTargetCheckboxes.push(...floorTargetCheckboxes);
+      const refreshFloorSelection = () => {
+        const checkedTargetCount = floorTargetCheckboxes.filter(
+          checkedTargetProbe => checkedTargetProbe.checked
+        ).length;
+        floorSelectionCountElement.textContent =
+          checkedTargetCount + "/" + floorTargetCheckboxes.length + " 个" + itemKindLabel;
+        floorToggleButton.textContent =
+          checkedTargetCount === floorTargetCheckboxes.length ? "取消全选" : "全选";
       };
-      const batchFloorToggleBtn = accessAllowed("", () => {
-        const element = !length.every(checked => checked.checked);
-        length.forEach(checked => {
-          checked.checked = element;
+      const floorToggleButton = createButton("", () => {
+        const shouldSelectAllTargets = !floorTargetCheckboxes.every(
+          selectableTargetProbe => selectableTargetProbe.checked
+        );
+        floorTargetCheckboxes.forEach(targetCheckbox => {
+          targetCheckbox.checked = shouldSelectAllTargets;
         });
-        updateBatchFloorToggle();
+        refreshFloorSelection();
       });
-      batchFloorToggleBtn.className = "navigation-style-apply-page-toggle";
-      batchFloorToggleBtn.setAttribute("aria-label", "全选或取消 " + batchFloorName + " 的" + numInput);
-      batchFloorOptions.addEventListener("change", updateBatchFloorToggle);
-      batchFloorControls.append(batchFloorCountEl, batchFloorToggleBtn);
-      batchFloorHeading.append(createEl("strong", "", batchFloorName), batchFloorControls);
-      batchFloorGroup.append(batchFloorHeading, batchFloorOptions);
-      batchTargetOptions.append(batchFloorGroup);
-      updateBatchFloorToggle();
+      floorToggleButton.className = "navigation-style-apply-page-toggle";
+      floorToggleButton.setAttribute(
+        "aria-label",
+        "全选或取消 " + floorDisplayName + " 的" + itemKindLabel
+      );
+      floorOptionsElement.addEventListener("change", refreshFloorSelection);
+      floorGroupControlsElement.append(floorSelectionCountElement, floorToggleButton);
+      floorGroupHeadingElement.append(
+        createElement("strong", "", floorDisplayName),
+        floorGroupControlsElement
+      );
+      floorGroupElement.append(floorGroupHeadingElement, floorOptionsElement);
+      targetGroupsElement.append(floorGroupElement);
+      refreshFloorSelection();
     }
-    batchFieldsSection.append(makeBatchSectionHeading("要应用的修改", "可单独取消"), batchFieldOptions);
-    batchTargetsSection.append(makeBatchSectionHeading("应用到其他" + numInput, "按楼层区分"), batchTargetOptions);
-    batchColumns.append(batchFieldsSection, batchTargetsSection);
-    const hidden = createEl("p", "navigation-style-apply-message");
-    hidden.hidden = filtered.length > 0;
-    if (!filtered.length) {
-      hidden.textContent = "当前配置中没有其他" + numInput + "可应用。";
+    changedColumnElement.append(
+      createBatchColumnHeading("要应用的修改", "可单独取消"),
+      changedOptionsElement
+    );
+    targetsColumnElement.append(
+      createBatchColumnHeading("应用到其他" + itemKindLabel, "按楼层区分"),
+      targetGroupsElement
+    );
+    batchColumnsElement.append(changedColumnElement, targetsColumnElement);
+    const batchMessageElement = createElement("p", "navigation-style-apply-message");
+    batchMessageElement.hidden = otherItems.length > 0;
+    if (!otherItems.length) {
+      batchMessageElement.textContent = "当前配置中没有其他" + itemKindLabel + "可应用。";
     }
-    hidden.setAttribute("role", "status");
-    const batchActions = createEl("div", "dialog-actions");
-    const disabled = accessAllowed("应用所选", async () => {
-      const length = at.filter(checked => checked.checked).map(batchCheckedFieldInput => batchCheckedFieldInput.value);
-      const size = new Set(push.filter(checked => checked.checked).map(batchCheckedTargetInput => batchCheckedTargetInput.value));
-      if (!length.length || !size.size) {
-        hidden.textContent = "请至少选择一项修改和一个目标" + numInput + "。";
-        hidden.hidden = false;
+    batchMessageElement.setAttribute("role", "status");
+    const batchActionsElement = createElement("div", "dialog-actions");
+    const applyBatchButton = createButton("应用所选", async () => {
+      const selectedFieldKeys = batchFieldCheckboxes
+        .filter(checkedFieldProbe => checkedFieldProbe.checked)
+        .map(checkedFieldCheckbox => checkedFieldCheckbox.value);
+      const selectedTargetIds = new Set(
+        batchTargetCheckboxes
+          .filter(targetCheckboxProbe => targetCheckboxProbe.checked)
+          .map(targetCheckboxEntry => targetCheckboxEntry.value)
+      );
+      if (!selectedFieldKeys.length || !selectedTargetIds.size) {
+        batchMessageElement.textContent = "请至少选择一项修改和一个目标" + itemKindLabel + "。";
+        batchMessageElement.hidden = false;
         return;
       }
-      disabled.disabled = true;
+      applyBatchButton.disabled = true;
       try {
         await requestInteraction3dAccess();
-        if (refreshCapabilities || !capabilityCache || closeNext !== Object) {
+        if (isDisposed || !isAccessAllowed || auxDialogElement !== batchDialogElement) {
           return;
         }
-        const list = getCurrentItems().filter(focalLength => size.has(focalLength.id) && focalLength.id !== numParent.id && (isVacuumShortcut || focalLength.floorId === numParent.floorId)).map(label => {
-          const effectRange = structuredClone(label);
-          appendLabeled(effectRange, batchSourceSnapshot, length);
-          const brightnessMin = effectRange.effectRange;
-          if (brightnessMin && (brightnessMin.brightnessMin > brightnessMin.brightnessMax || brightnessMin.temperatureMin > brightnessMin.temperatureMax)) {
-            throw new Error("“" + (label.label || "灯光") + "”的上下限会冲突，请同时勾选对应的最小值与最大值。");
-          }
-          return effectRange;
-        });
-        if (!list.length) {
-          throw new Error("目标" + numInput + "已不存在，请重新选择。");
+        const updatedTargetItems = getItemList()
+          .filter(
+            candidateTargetProbe =>
+              selectedTargetIds.has(candidateTargetProbe.id) &&
+              candidateTargetProbe.id !== sourceItem.id &&
+              (isVacuumShortcutMode || candidateTargetProbe.floorId === sourceItem.floorId)
+          )
+          .map(targetItemEntry => {
+            const targetItemClone = structuredClone(targetItemEntry);
+            applyFieldValues(targetItemClone, baselinePayloadSnapshot, selectedFieldKeys);
+            const targetEffectRange = targetItemClone.effectRange;
+            if (
+              targetEffectRange &&
+              (targetEffectRange.brightnessMin > targetEffectRange.brightnessMax ||
+                targetEffectRange.temperatureMin > targetEffectRange.temperatureMax)
+            ) {
+              throw new Error(
+                "“" +
+                  (targetItemEntry.label || "灯光") +
+                  "”的上下限会冲突，请同时勾选对应的最小值与最大值。"
+              );
+            }
+            return targetItemClone;
+          });
+        if (!updatedTargetItems.length) {
+          throw new Error("目标" + itemKindLabel + "已不存在，请重新选择。");
         }
-        const get = new Map(list.map(id => [id.id, id]));
-        setCurrentItems(getCurrentItems().map(id => get.get(id.id) || id));
-        for (const id of [numParent, ...list]) {
-          const batchTargetCached = map.get(id.id) || structuredClone(id);
-          appendLabeled(batchTargetCached, batchSourceSnapshot, length);
-          map.set(id.id, batchTargetCached);
+        const updatedTargetsById = new Map(
+          updatedTargetItems.map(clonedTargetProbe => [clonedTargetProbe.id, clonedTargetProbe])
+        );
+        setItemList(
+          getItemList().map(
+            existingTargetItem =>
+              updatedTargetsById.get(existingTargetItem.id) || existingTargetItem
+          )
+        );
+        for (const affectedItem of [sourceItem, ...updatedTargetItems]) {
+          const affectedBaseline =
+            baselineItemsById.get(affectedItem.id) || structuredClone(affectedItem);
+          applyFieldValues(affectedBaseline, baselinePayloadSnapshot, selectedFieldKeys);
+          baselineItemsById.set(affectedItem.id, affectedBaseline);
         }
-        renderSidebar();
-        mountRuntime();
-        rebuildConfigSidebar();
-        saveStatusEl.textContent = "已应用到 " + list.length + " 个" + numInput + "，待保存配置";
-      } catch (error) {
-        if (closeNext === Object) {
-          hidden.textContent = error.message;
-          hidden.hidden = false;
+        closeAuxDialog();
+        refreshEditorPreview();
+        renderPanel();
+        saveStatusElement.textContent =
+          "已应用到 " + updatedTargetItems.length + " 个" + itemKindLabel + "，待保存配置";
+      } catch (batchApplyError) {
+        if (auxDialogElement === batchDialogElement) {
+          batchMessageElement.textContent = batchApplyError.message;
+          batchMessageElement.hidden = false;
         }
       } finally {
-        disabled.disabled = false;
+        applyBatchButton.disabled = false;
       }
     });
-    disabled.className = "primary";
-    disabled.disabled = !filtered.length;
-    batchActions.append(accessAllowed("取消", renderSidebar), disabled);
-    batchBody.append(createEl("p", "navigation-style-apply-summary", isVacuumShortcut ? "将“" + (numParent.label || stageLabel) + "”的图标修改应用到勾选的快捷按钮，保留各自的指令绑定、名称、位置和高度。应用后点击“保存配置”。" : isNonLight ? "将“" + (numParent.label || stageLabel) + "”的图标修改应用到勾选的" + stageLabel + "。保留各自的模型、实体、位置、高度、点击行为、聚焦视角和状态内容。应用后点击“保存配置”完成保存。" : "将“" + (numParent.label || "灯光") + "”中选定的修改应用到勾选的灯光。保留各灯的实体、名称、位置、聚焦视角与照射范围。应用后点击“保存配置”完成保存。"), batchColumns, hidden, batchActions);
-    Object.append(batchHeading, batchBody);
-    document.body.append(Object);
-    Object.addEventListener("cancel", preventDefault => {
-      preventDefault.preventDefault();
-      renderSidebar();
+    applyBatchButton.className = "primary";
+    applyBatchButton.disabled = !otherItems.length;
+    batchActionsElement.append(createButton("取消", closeAuxDialog), applyBatchButton);
+    batchBodyElement.append(
+      createElement(
+        "p",
+        "navigation-style-apply-summary",
+        isVacuumShortcutMode
+          ? "将“" +
+              (sourceItem.label || kindLabel) +
+              "”的图标修改应用到勾选的快捷按钮，保留各自的指令绑定、名称、位置和高度。应用后点击“保存配置”。"
+          : usesModelBinding
+            ? "将“" +
+              (sourceItem.label || kindLabel) +
+              "”的图标修改应用到勾选的" +
+              kindLabel +
+              "。保留各自的模型、实体、位置、高度、点击行为、聚焦视角和状态内容。应用后点击“保存配置”完成保存。"
+            : "将“" +
+              (sourceItem.label || "灯光") +
+              "”中选定的修改应用到勾选的灯光。保留各灯的实体、名称、位置、聚焦视角与照射范围。应用后点击“保存配置”完成保存。"
+      ),
+      batchColumnsElement,
+      batchMessageElement,
+      batchActionsElement
+    );
+    batchDialogElement.append(batchHeadingElement, batchBodyElement);
+    document.body.append(batchDialogElement);
+    batchDialogElement.addEventListener("cancel", batchCancelEvent => {
+      batchCancelEvent.preventDefault();
+      closeAuxDialog();
     });
-    Object.showModal();
+    batchDialogElement.showModal();
   }
-  const fitPreviewAspect = () => {
-    const width = interaction3dPreviewSize(component, doc, previewView.clientWidth, previewView.clientHeight);
-    Object.assign(previewAspect.style, {
-      width: width.width + "px",
-      height: width.height + "px"
+  const syncPreviewSize = () => {
+    const previewSize = interaction3dPreviewSize(
+      component,
+      documentApi,
+      viewElement.clientWidth,
+      viewElement.clientHeight
+    );
+    Object.assign(aspectBoxElement.style, {
+      width: previewSize.width + "px",
+      height: previewSize.height + "px"
     });
   };
-  const header = new ResizeObserver(fitPreviewAspect);
-  header.observe(previewView);
-  const closeMainEditor = () => {
-    if (!refreshCapabilities) {
-      refreshCapabilities = true;
+  const previewResizeObserver = new ResizeObserver(syncPreviewSize);
+  previewResizeObserver.observe(viewElement);
+  const disposeEditor = () => {
+    if (!isDisposed) {
+      isDisposed = true;
       closeAddDialog();
-      renderSidebar();
-      closeEditor?.close();
-      header.disconnect();
-      pickerSession++;
-      closeCurrent?.close();
-      liveStates?.();
-      unsubscribeAccessWatch();
-      editorDialog.remove();
-      rel.remove();
+      closeAuxDialog();
+      subEditorHandle?.close();
+      previewResizeObserver.disconnect();
+      pickerGeneration++;
+      pickerHandle?.close();
+      editorRuntime?.();
+      accessUnsubscribe();
+      editorDialogElement.remove();
+      styleSheetLinkElement.remove();
       document.dispatchEvent(new Event("hb-i3d-preview-scope"));
     }
   };
-  const saveStatusEl = createEl("span", "i3d-save-status");
-  saveStatusEl.setAttribute("role", "status");
-  const disabled = accessAllowed("保存配置", async () => {
-    if (isSavingConfig || refreshCapabilities || !capabilityCache || saveButton || unsubscribeAccess) {
+  const saveStatusElement = createElement("span", "i3d-save-status");
+  saveStatusElement.setAttribute("role", "status");
+  const saveButtonElement = createButton("保存配置", async () => {
+    if (isSaving || isDisposed || !isAccessAllowed || isCameraEditing || isCameraCommandPending) {
       return;
     }
-    const pendingSaveSnapshot = structuredClone(effectRangeOpen);
-    const pendingSaveRevision = dirtyRevision;
-    isSavingConfig = true;
-    saveStatusEl.textContent = "保存中…";
-    disabled.disabled = true;
-    pickerGeneration.textContent = "";
+    const propertiesSnapshot = structuredClone(draftProperties);
+    const savedRevision = changeRevisionCount;
+    isSaving = true;
+    saveStatusElement.textContent = "保存中…";
+    saveButtonElement.disabled = true;
+    errorMessageElement.textContent = "";
     try {
       await requestInteraction3dAccess();
-      if (refreshCapabilities) {
+      if (isDisposed) {
         return;
       }
-      await onSave(pendingSaveSnapshot);
-      if (!refreshCapabilities) {
-        saveStatusEl.textContent = pendingSaveRevision === dirtyRevision ? "已保存" : "已保存，另有新修改";
+      await onSaveConfig(propertiesSnapshot);
+      if (!isDisposed) {
+        saveStatusElement.textContent =
+          savedRevision === changeRevisionCount ? "已保存" : "已保存，另有新修改";
       }
-    } catch (error) {
-      if (!refreshCapabilities) {
-        pickerGeneration.textContent = error.message;
-        saveStatusEl.textContent = "";
+    } catch (saveError) {
+      if (!isDisposed) {
+        errorMessageElement.textContent = saveError.message;
+        saveStatusElement.textContent = "";
       }
     } finally {
-      isSavingConfig = false;
-      if (!refreshCapabilities) {
-        disabled.disabled = !capabilityCache || saveButton || unsubscribeAccess;
+      isSaving = false;
+      if (!isDisposed) {
+        saveButtonElement.disabled = !isAccessAllowed || isCameraEditing || isCameraCommandPending;
       }
     }
   });
-  disabled.className = "primary";
-  focusBusy.append(createEl("strong", "", "3D " + dialogLabel + "配置"), saveStatusEl, disabled, accessAllowed("退出", closeMainEditor));
-  editorBody.append(previewView, focusQueue);
-  editorDialog.append(focusBusy, editorBody);
-  document.body.append(editorDialog);
-  editorDialog.addEventListener("cancel", preventDefault => {
-    preventDefault.preventDefault();
-    closeMainEditor();
+  saveButtonElement.className = "primary";
+  headerElement.append(
+    createElement("strong", "", "3D " + editorKindTitle + "配置"),
+    saveStatusElement,
+    saveButtonElement,
+    createButton("退出", disposeEditor)
+  );
+  bodyElement.append(viewElement, panelElement);
+  editorDialogElement.append(headerElement, bodyElement);
+  document.body.append(editorDialogElement);
+  editorDialogElement.addEventListener("cancel", editorCancelEvent => {
+    editorCancelEvent.preventDefault();
+    disposeEditor();
   });
-  const getPreviewProperties = () => {
-    const floorSelection = isVacuumShortcut && getCurrentVacuum() ? getCurrentVacuum().floorId : syncPreviewSize;
-    const camera = effectRangeOpen.floorCameras?.[floorSelection] || (floorSelection === effectRangeOpen.floorSelection ? effectRangeOpen.camera : null);
+  const buildRuntimeProperties = () => {
+    const runtimeFloorId =
+      isVacuumShortcutMode && findVacuumModel() ? findVacuumModel().floorId : selectedFloorId;
+    const runtimeCamera =
+      draftProperties.floorCameras?.[runtimeFloorId] ||
+      (runtimeFloorId === draftProperties.floorSelection ? draftProperties.camera : null);
     return {
-      ...effectRangeOpen,
-      floorSelection,
-      ...(camera === undefined ? {} : {
-        camera: camera
-      })
+      ...draftProperties,
+      floorSelection: runtimeFloorId,
+      ...(runtimeCamera === undefined
+        ? {}
+        : {
+            camera: runtimeCamera
+          })
     };
   };
-  function mountRuntime() {
-    dirtyRevision++;
-    if (!isSavingConfig) {
-      saveStatusEl.textContent = "";
+  function refreshEditorPreview() {
+    changeRevisionCount++;
+    if (!isSaving) {
+      saveStatusElement.textContent = "";
     }
-    liveStates?.update(getPreviewProperties(), isVacuumShortcut && saving ? "vacuum-room:" + vacuumId + ":" + saving : saving);
-    updateBatchApplyState();
+    editorRuntime?.update(
+      buildRuntimeProperties(),
+      isVacuumShortcutMode && selectedItemId
+        ? "vacuum-room:" + vacuumId + ":" + selectedItemId
+        : selectedItemId,
+      {
+        module: deviceKind,
+        vacuumId: isVacuumShortcutMode ? vacuumId : ""
+      }
+    );
+    refreshBatchButtons();
   }
-  function appendSetting(settingParent, lightItem, capabilityInfo) {
-    capabilityInfo.name = "i3d-" + deviceKindLocal + "-" + (saving || "scene") + "-" + lightItem;
-    const effectDetails = createEl("label", capabilityInfo.type === "checkbox" ? "i3d-setting-toggle" : "");
-    effectDetails.append(createEl("span", "", lightItem), capabilityInfo);
-    settingParent.append(effectDetails);
-    return capabilityInfo;
+  function createSettingRow(rowContainer, rowLabel, rowControl) {
+    rowControl.name = "i3d-" + deviceKind + "-" + (selectedItemId || "scene") + "-" + rowLabel;
+    const settingRowElement = createElement(
+      "label",
+      rowControl.type === "checkbox" ? "i3d-setting-toggle" : ""
+    );
+    settingRowElement.append(createElement("span", "", rowLabel), rowControl);
+    rowContainer.append(settingRowElement);
+    return rowControl;
   }
-  function appendPositiveNumber(posParent, posLabel, getValue, onPositive, onSelectChange) {
-    const posInput = createEl("select");
-    for (const [element, selectOptionLabel] of getValue) {
-      const selectOptionEl = createEl("option", "", selectOptionLabel);
-      selectOptionEl.value = element;
-      posInput.append(selectOptionEl);
+  function createSelectRow(
+    selectContainer,
+    selectLabel,
+    selectOptions,
+    selectValue,
+    onSelectChange
+  ) {
+    const selectElement = createElement("select");
+    for (const [optionValueKey, optionLabelText] of selectOptions) {
+      const optionElement = createElement("option", "", optionLabelText);
+      optionElement.value = optionValueKey;
+      selectElement.append(optionElement);
     }
-    posInput.value = onPositive;
-    posInput.addEventListener("change", () => onSelectChange(posInput.value));
-    return appendSetting(posParent, posLabel, posInput);
+    selectElement.value = selectValue;
+    selectElement.addEventListener("change", () => onSelectChange(selectElement.value));
+    return createSettingRow(selectContainer, selectLabel, selectElement);
   }
-  function appendBoundedInput(boundedParent, boundedLabel, boundedValue, boundedMin, boundedMax, boundedStep, onBoundedChange, type = "number") {
-    const boundedInputEl = createEl("input");
-    Object.assign(boundedInputEl, {
-      type: type,
-      min: String(boundedMin),
-      max: String(boundedMax),
-      step: String(boundedStep),
-      value: String(boundedValue)
+  function createNumberRow(
+    numberContainer,
+    numberLabel,
+    numberValue,
+    numberMin,
+    numberMax,
+    numberStep,
+    onNumberChange,
+    inputType = "number"
+  ) {
+    const numberInputElement = createElement("input");
+    Object.assign(numberInputElement, {
+      type: inputType,
+      min: String(numberMin),
+      max: String(numberMax),
+      step: String(numberStep),
+      value: String(numberValue)
     });
-    boundedInputEl.addEventListener(type === "range" ? "input" : "change", () => {
-      const boundedInputNumber = boundedInputEl.value.trim() === "" ? NaN : Number(boundedInputEl.value);
-      if (Number.isFinite(boundedInputNumber)) {
-        onBoundedChange(Math.max(boundedMin, Math.min(boundedMax, boundedInputNumber)));
+    numberInputElement.addEventListener(inputType === "range" ? "input" : "change", () => {
+      const parsedInputValue =
+        numberInputElement.value.trim() === "" ? NaN : Number(numberInputElement.value);
+      if (Number.isFinite(parsedInputValue)) {
+        onNumberChange(Math.max(numberMin, Math.min(numberMax, parsedInputValue)));
       }
     });
-    return appendSetting(boundedParent, boundedLabel, boundedInputEl);
+    return createSettingRow(numberContainer, numberLabel, numberInputElement);
   }
-  function appendPositiveInput(positiveParent, positiveLabel, getPositiveValue, onPositiveChange) {
-    const positiveInputEl = createEl("input");
-    Object.assign(positiveInputEl, {
+  function createSizeRow(sizeContainer, sizeLabel, readCurrentSize, onSizeChange) {
+    const sizeInputElement = createElement("input");
+    Object.assign(sizeInputElement, {
       type: "number",
       step: "any",
-      value: String(Number(getPositiveValue().toPrecision(12)))
+      value: String(Number(readCurrentSize().toPrecision(12)))
     });
-    positiveInputEl.addEventListener("change", () => {
-      const positiveInputNumber = positiveInputEl.value.trim() === "" ? NaN : Number(positiveInputEl.value);
-      if (Number.isFinite(positiveInputNumber) && positiveInputNumber > 0) {
-        positiveInputEl.value = String(positiveInputNumber);
-        onPositiveChange(positiveInputNumber);
+    sizeInputElement.addEventListener("change", () => {
+      const parsedSizeValue =
+        sizeInputElement.value.trim() === "" ? NaN : Number(sizeInputElement.value);
+      if (Number.isFinite(parsedSizeValue) && parsedSizeValue > 0) {
+        sizeInputElement.value = String(parsedSizeValue);
+        onSizeChange(parsedSizeValue);
       } else {
-        positiveInputEl.value = String(getPositiveValue());
+        sizeInputElement.value = String(readCurrentSize());
       }
     });
-    return appendSetting(positiveParent, positiveLabel, positiveInputEl);
+    return createSettingRow(sizeContainer, sizeLabel, sizeInputElement);
   }
-  function resolveEntityLightState(entityId) {
-    const startsWith = entityId.entityId || "";
-    const newState = latestStatesByEntity === null ? states?.get?.(startsWith) : latestStatesByEntity[startsWith];
-    const known = get.get(startsWith);
-    const supported_color_modes = (newState?.newState || newState)?.attributes || {};
-    const supportedFeaturesRaw = supported_color_modes.supported_features;
-    const hasSupportedFeatures = supportedFeaturesRaw != null && supportedFeaturesRaw !== "" && typeof supportedFeaturesRaw != "boolean" && Number.isFinite(Number(supportedFeaturesRaw));
-    const state = lightState(startsWith, newState, known);
-    state.known = startsWith.startsWith("switch.") || known?.known === true || Array.isArray(supported_color_modes.supported_color_modes) && supported_color_modes.supported_color_modes.some(colorMode => colorMode !== "unknown") || hasSupportedFeatures || state.brightnessSupported || state.temperatureSupported;
-    if (startsWith && state.known) {
-      get.set(startsWith, state);
+  function getLightStatus(statusItem) {
+    const entityId = statusItem.entityId || "";
+    const entityState = latestStates === null ? states?.get?.(entityId) : latestStates[entityId];
+    const cachedStatus = devicesByDeviceId.get(entityId);
+    const stateAttributes = (entityState?.newState || entityState)?.attributes || {};
+    const supportedFeatures = stateAttributes.supported_features;
+    const hasNumericSupportedFeatures =
+      supportedFeatures != null &&
+      supportedFeatures !== "" &&
+      typeof supportedFeatures != "boolean" &&
+      Number.isFinite(Number(supportedFeatures));
+    const resolvedLightStatus = lightState(entityId, entityState, cachedStatus);
+    resolvedLightStatus.known =
+      entityId.startsWith("switch.") ||
+      cachedStatus?.known === true ||
+      (Array.isArray(stateAttributes.supported_color_modes) &&
+        stateAttributes.supported_color_modes.some(colorMode => colorMode !== "unknown")) ||
+      hasNumericSupportedFeatures ||
+      resolvedLightStatus.brightnessSupported ||
+      resolvedLightStatus.temperatureSupported;
+    if (entityId && resolvedLightStatus.known) {
+      devicesByDeviceId.set(entityId, resolvedLightStatus);
     }
-    return state;
+    return resolvedLightStatus;
   }
-  function renderLightEffectPanel(effectPanelHost, effectDefaultsCurrent, known) {
-    effectPanelHost.replaceChildren();
-    if (effectDefaultsCurrent.entityId && !known.known) {
-      const effectDetectingNote = createEl("p", "i3d-note", "正在识别灯具能力…");
-      effectDetectingNote.setAttribute("role", "status");
-      effectPanelHost.append(effectDetectingNote);
+  function renderEffectSettings(containerElement, lightItem, lightCapabilities) {
+    containerElement.replaceChildren();
+    if (lightItem.entityId && !lightCapabilities.known) {
+      const probingNoteElement = createElement("p", "i3d-note", "正在识别灯具能力…");
+      probingNoteElement.setAttribute("role", "status");
+      containerElement.append(probingNoteElement);
     }
-    if (effectDefaultsCurrent.entityId && known.known && (!known.brightnessSupported || !known.temperatureSupported)) {
-      const defaultEffectSection = createEl("section", "i3d-focus-settings");
-      defaultEffectSection.append(createEl("h4", "", "默认效果"));
-      const defaultEffectGrid = createEl("div", "i3d-coordinate-grid");
-      defaultEffectSection.append(defaultEffectGrid);
-      for (const [defaultEffectLabel, defaultEffectKey, defaultEffectSupported, defaultEffectMin, defaultEffectMax, defaultEffectStep] of [["默认亮度（%）", "brightness", known.brightnessSupported, 0, 100, 1], ["默认色温（K）", "kelvin", known.temperatureSupported, 1000, 20000, 100]]) {
-        if (defaultEffectSupported) {
+    if (
+      lightItem.entityId &&
+      lightCapabilities.known &&
+      (!lightCapabilities.brightnessSupported || !lightCapabilities.temperatureSupported)
+    ) {
+      const defaultsSectionElement = createElement("section", "i3d-focus-settings");
+      defaultsSectionElement.append(createElement("h4", "", "默认效果"));
+      const defaultsGridElement = createElement("div", "i3d-coordinate-grid");
+      defaultsSectionElement.append(defaultsGridElement);
+      for (const [
+        defaultSettingLabel,
+        defaultSettingKey,
+        isUnsupportedSetting,
+        settingMin,
+        settingMax,
+        settingStep
+      ] of [
+        ["默认亮度（%）", "brightness", lightCapabilities.brightnessSupported, 0, 100, 1],
+        ["默认色温（K）", "kelvin", lightCapabilities.temperatureSupported, 1000, 20000, 100]
+      ]) {
+        if (isUnsupportedSetting) {
           continue;
         }
-        const defaultEffectInput = createEl("input");
-        Object.assign(defaultEffectInput, {
+        const defaultSettingInput = createElement("input");
+        Object.assign(defaultSettingInput, {
           type: "number",
-          min: String(defaultEffectMin),
-          max: String(defaultEffectMax),
-          step: String(defaultEffectStep),
-          value: Number.isFinite(effectDefaultsCurrent.effectDefaults?.[defaultEffectKey]) ? String(effectDefaultsCurrent.effectDefaults[defaultEffectKey]) : "",
+          min: String(settingMin),
+          max: String(settingMax),
+          step: String(settingStep),
+          value: Number.isFinite(lightItem.effectDefaults?.[defaultSettingKey])
+            ? String(lightItem.effectDefaults[defaultSettingKey])
+            : "",
           placeholder: "跟随模型"
         });
-        defaultEffectInput.addEventListener("change", () => {
-          const defaultEffectRaw = defaultEffectInput.value.trim();
-          const defaultEffectNumber = Number(defaultEffectRaw);
-          const effectDefaults = {
-            ...effectDefaultsCurrent.effectDefaults
+        defaultSettingInput.addEventListener("change", () => {
+          const rawDefaultText = defaultSettingInput.value.trim();
+          const parsedDefaultValue = Number(rawDefaultText);
+          const nextEffectDefaults = {
+            ...lightItem.effectDefaults
           };
-          if (defaultEffectRaw) {
-            if (Number.isFinite(defaultEffectNumber)) {
-              effectDefaults[defaultEffectKey] = Math.max(defaultEffectMin, Math.min(defaultEffectMax, defaultEffectNumber));
+          if (rawDefaultText) {
+            if (Number.isFinite(parsedDefaultValue)) {
+              nextEffectDefaults[defaultSettingKey] = Math.max(
+                settingMin,
+                Math.min(settingMax, parsedDefaultValue)
+              );
             }
           } else {
-            delete effectDefaults[defaultEffectKey];
+            delete nextEffectDefaults[defaultSettingKey];
           }
-          defaultEffectInput.value = Number.isFinite(effectDefaults[defaultEffectKey]) ? String(effectDefaults[defaultEffectKey]) : "";
-          if (Object.keys(effectDefaults).length) {
-            effectDefaultsCurrent.effectDefaults = effectDefaults;
+          defaultSettingInput.value = Number.isFinite(nextEffectDefaults[defaultSettingKey])
+            ? String(nextEffectDefaults[defaultSettingKey])
+            : "";
+          if (Object.keys(nextEffectDefaults).length) {
+            lightItem.effectDefaults = nextEffectDefaults;
           } else {
-            delete effectDefaultsCurrent.effectDefaults;
+            delete lightItem.effectDefaults;
           }
-          mountRuntime();
+          refreshEditorPreview();
         });
-        appendSetting(defaultEffectGrid, defaultEffectLabel, defaultEffectInput);
+        createSettingRow(defaultsGridElement, defaultSettingLabel, defaultSettingInput);
       }
-      const defaultEffectActions = createEl("div", "i3d-focus-actions");
-      defaultEffectSection.append(defaultEffectActions);
-      defaultEffectActions.append(accessAllowed("预览默认效果", async () => {
-        try {
-          await liveStates.focusCommand("preview-light-effect", effectDefaultsCurrent.id, "defaults");
-        } catch (error) {
-          pickerGeneration.textContent = error.message;
-        }
-      }), accessAllowed("跟随模型", () => {
-        delete effectDefaultsCurrent.effectDefaults;
-        mountRuntime();
-        rebuildConfigSidebar();
-      }));
-      effectPanelHost.append(defaultEffectSection);
+      const defaultsPreviewActions = createElement("div", "i3d-focus-actions");
+      defaultsSectionElement.append(defaultsPreviewActions);
+      defaultsPreviewActions.append(
+        createButton("预览默认效果", async () => {
+          try {
+            await editorRuntime.focusCommand("preview-light-effect", lightItem.id, "defaults");
+          } catch (previewDefaultsError) {
+            errorMessageElement.textContent = previewDefaultsError.message;
+          }
+        }),
+        createButton("跟随模型", () => {
+          delete lightItem.effectDefaults;
+          refreshEditorPreview();
+          renderPanel();
+        })
+      );
+      containerElement.append(defaultsSectionElement);
     }
-    const effectRangeDetails = createEl("details", "i3d-effect-settings");
-    effectRangeDetails.open = open;
-    effectRangeDetails.addEventListener("toggle", () => {
-      open = effectRangeDetails.open;
+    const effectRangeDetailsElement = createElement("details", "i3d-effect-settings");
+    effectRangeDetailsElement.open = isEffectDetailsOpen;
+    effectRangeDetailsElement.addEventListener("toggle", () => {
+      isEffectDetailsOpen = effectRangeDetailsElement.open;
     });
-    effectRangeDetails.append(createEl("summary", "", "效果范围"));
-    const effectRangeValues = {
+    effectRangeDetailsElement.append(createElement("summary", "", "效果范围"));
+    const effectRangeDraft = {
       brightnessMin: 1,
       brightnessMax: 100,
-      temperatureMin: known.minimum,
-      temperatureMax: known.maximum,
-      ...effectDefaultsCurrent.effectRange
+      temperatureMin: lightCapabilities.minimum,
+      temperatureMax: lightCapabilities.maximum,
+      ...lightItem.effectRange
     };
-    const effectRangeGrid = createEl("div", "i3d-effect-grid");
-    effectRangeDetails.append(effectRangeGrid);
-    for (const [effectRangeLabel, endsWith, effectRangeSiblingKey, effectRangeMin, effectRangeMax, effectRangeStep] of [["最暗亮度（%）", "brightnessMin", "brightnessMax", 0, 100, 1], ["最亮亮度（%）", "brightnessMax", "brightnessMin", 0, 100, 1], ["最低色温（K）", "temperatureMin", "temperatureMax", 1000, 20000, 100], ["最高色温（K）", "temperatureMax", "temperatureMin", 1000, 20000, 100]]) {
-      const effectRangeOption = createEl("div", "i3d-effect-option");
-      effectRangeGrid.append(effectRangeOption);
-      const effectRangeInput = appendBoundedInput(effectRangeOption, effectRangeLabel, effectRangeValues[endsWith], effectRangeMin, effectRangeMax, effectRangeStep, effectRangeNext => {
-        effectRangeValues[endsWith] = endsWith.endsWith("Min") ? Math.min(effectRangeNext, effectRangeValues[effectRangeSiblingKey]) : Math.max(effectRangeNext, effectRangeValues[effectRangeSiblingKey]);
-        effectRangeInput.value = String(effectRangeValues[endsWith]);
-        effectDefaultsCurrent.effectRange = {
-          ...effectRangeValues
-        };
-        mountRuntime();
-      });
-      const disabled = accessAllowed("预览", async () => {
+    const effectRangeGridElement = createElement("div", "i3d-effect-grid");
+    effectRangeDetailsElement.append(effectRangeGridElement);
+    for (const [
+      rangeSettingLabel,
+      rangeSettingKey,
+      rangeCounterKey,
+      rangeSettingMin,
+      rangeSettingMax,
+      rangeSettingStep
+    ] of [
+      ["最暗亮度（%）", "brightnessMin", "brightnessMax", 0, 100, 1],
+      ["最亮亮度（%）", "brightnessMax", "brightnessMin", 0, 100, 1],
+      ["最低色温（K）", "temperatureMin", "temperatureMax", 1000, 20000, 100],
+      ["最高色温（K）", "temperatureMax", "temperatureMin", 1000, 20000, 100]
+    ]) {
+      const rangeOptionElement = createElement("div", "i3d-effect-option");
+      effectRangeGridElement.append(rangeOptionElement);
+      const rangeInputElement = createNumberRow(
+        rangeOptionElement,
+        rangeSettingLabel,
+        effectRangeDraft[rangeSettingKey],
+        rangeSettingMin,
+        rangeSettingMax,
+        rangeSettingStep,
+        rangeSettingValue => {
+          effectRangeDraft[rangeSettingKey] = rangeSettingKey.endsWith("Min")
+            ? Math.min(rangeSettingValue, effectRangeDraft[rangeCounterKey])
+            : Math.max(rangeSettingValue, effectRangeDraft[rangeCounterKey]);
+          rangeInputElement.value = String(effectRangeDraft[rangeSettingKey]);
+          lightItem.effectRange = {
+            ...effectRangeDraft
+          };
+          refreshEditorPreview();
+        }
+      );
+      const previewEffectButton = createButton("预览", async () => {
         try {
-          await liveStates.focusCommand("preview-light-effect", effectDefaultsCurrent.id, endsWith);
-        } catch (error) {
-          pickerGeneration.textContent = error.message;
+          await editorRuntime.focusCommand("preview-light-effect", lightItem.id, rangeSettingKey);
+        } catch (previewEffectError) {
+          errorMessageElement.textContent = previewEffectError.message;
         }
       });
-      disabled.disabled = !effectDefaultsCurrent.entityId;
-      if (!effectDefaultsCurrent.entityId) {
-        disabled.title = "绑定实体后预览效果";
+      previewEffectButton.disabled = !lightItem.entityId;
+      if (!lightItem.entityId) {
+        previewEffectButton.title = "绑定实体后预览效果";
       }
-      disabled.setAttribute("aria-label", "预览" + effectRangeLabel);
-      effectRangeOption.append(disabled);
+      previewEffectButton.setAttribute("aria-label", "预览" + rangeSettingLabel);
+      rangeOptionElement.append(previewEffectButton);
     }
-    effectRangeDetails.append(accessAllowed("恢复默认效果", () => {
-      delete effectDefaultsCurrent.effectRange;
-      mountRuntime();
-      rebuildConfigSidebar();
-    }));
-    effectPanelHost.append(effectRangeDetails);
+    effectRangeDetailsElement.append(
+      createButton("恢复默认效果", () => {
+        delete lightItem.effectRange;
+        refreshEditorPreview();
+        renderPanel();
+      })
+    );
+    containerElement.append(effectRangeDetailsElement);
   }
-  function listFloorTargets() {
-    return (draftRevision?.floors || []).filter(floor => floor.id === syncPreviewSize).flatMap(floor => (isNonLight ? floor[deviceCollectionKey] || [] : floor.groups || []).map(group => ({
-      floor,
-      group,
-      key: JSON.stringify([floor.id, group.id])
-    })));
+  function listAddableModels() {
+    return (sceneMetadata?.floors || [])
+      .filter(candidateFloorEntry => candidateFloorEntry.id === selectedFloorId)
+      .flatMap(floorWithModels =>
+        (usesModelBinding ? floorWithModels[collectionKey] || [] : floorWithModels.groups || [])
+          .filter(
+            modelInFloor =>
+              !getItemList().some(
+                existingModelItem =>
+                  existingModelItem.floorId === floorWithModels.id &&
+                  existingModelItem[modelIdKey] === modelInFloor.id
+              )
+          )
+          .map(addableModel => ({
+            floor: floorWithModels,
+            group: addableModel,
+            key: JSON.stringify([floorWithModels.id, addableModel.id])
+          }))
+      );
   }
-  function listAvailableTargets() {
-    return listFloorTargets().filter(target => !getCurrentItems().some(item => item.floorId === target.floor.id && item[bindingIdField] === target.group.id));
-  }
-  function switchDeviceKind(nextKind, startAddingMode = false) {
-    if (refreshCapabilities || isSavingConfig || !capabilityCache || saveButton || unsubscribeAccess || nextKind === deviceKindLocal) {
+  async function switchEditorKind(nextDeviceKind, shouldOpenAddDialog = false) {
+    if (
+      isDisposed ||
+      isSaving ||
+      !isAccessAllowed ||
+      isCameraEditing ||
+      isCameraCommandPending ||
+      isRangeEditorOpen ||
+      nextDeviceKind === deviceKind ||
+      !(
+        isEnvironmentKind
+          ? ["climate", "cover"]
+          : isDeviceKind
+            ? ["nas", "television"]
+            : ["vacuum", "vacuum-shortcut"]
+      ).includes(nextDeviceKind)
+    ) {
       return;
     }
-    const previousKind = deviceKindLocal;
-    const previousSaving = saving;
-    kindViewState.set(previousKind, {
-      selectedId: saving,
-      scrollTop: focusQueue.scrollTop,
-      baselines: new Map(map)
+    kindSessionsByKind.set(deviceKind, {
+      selectedId: selectedItemId,
+      scrollTop: panelElement.scrollTop,
+      baselines: baselineItemsById
     });
-    deviceKindLocal = nextKind;
-    applyKindFlags();
-    if (previousKind === "vacuum" && isVacuumShortcut && previousSaving) {
-      vacuumId = previousSaving;
+    if (isVacuumMode) {
+      vacuumId = selectedItemId || vacuumId;
     }
-    ensureKindContainers();
-    normalizeCurrentItems();
-    filter = buildFilter();
-    const savedKindState = kindViewState.get(nextKind);
-    saving = isVacuumShortcut ? vacuumId : savedKindState?.selectedId || "";
-    if (isVacuumShortcut && getCurrentVacuum()) {
-      syncPreviewSize = getCurrentVacuum().floorId;
-    }
-    map.clear();
-    if (savedKindState?.baselines) {
-      for (const [key, value] of savedKindState.baselines) {
-        map.set(key, value);
-      }
-    } else {
-      rebuildCapabilityCache();
-    }
-    pickerSession++;
-    closeCurrent?.close();
     closeAddDialog();
-    liveStates?.setEditingModule?.(
-      isDeviceLike ? deviceKindLocal : isCover ? "cover" : isClimate ? "climate" : "light",
-      isVacuumShortcut && vacuumId ? vacuumId : ""
-    );
-    mountRuntime();
-    rebuildConfigSidebar();
-    focusQueue.scrollTop = savedKindState?.scrollTop || 0;
-    if (startAddingMode) {
-      queueMicrotask(openAddDialog);
+    closeAuxDialog();
+    pickerGeneration++;
+    pickerHandle?.close();
+    pickerHandle = null;
+    sceneReadyGeneration++;
+    isCameraEditing = false;
+    isCameraCommandPending = false;
+    pendingCameraDraft = null;
+    vacuumCameraMode = "focus";
+    applyKindFlags(nextDeviceKind);
+    ensureItemCollections();
+    const savedKindSession = kindSessionsByKind.get(nextDeviceKind);
+    selectedItemId = isVacuumMode ? vacuumId : savedKindSession?.selectedId || "";
+    if (isVacuumMode && findVacuumModel()) {
+      selectedFloorId = findVacuumModel().floorId;
+    }
+    fieldDefs = buildEditableFieldList();
+    baselineItemsById =
+      savedKindSession?.baselines ||
+      new Map(
+        getItemList().map(baselineListItem => [
+          baselineListItem.id,
+          structuredClone(baselineListItem)
+        ])
+      );
+    errorMessageElement.textContent = "";
+    renderPanel();
+    refreshEditorPreview();
+    panelElement.scrollTop = savedKindSession?.scrollTop || 0;
+    if (shouldOpenAddDialog) {
+      openAddDialog();
     }
   }
   function closeAddDialog() {
-    if (close) {
-      pickerSession++;
-      closeCurrent?.close();
-      closeCurrent = null;
+    if (addDialogState) {
+      pickerGeneration++;
+      pickerHandle?.close();
+      pickerHandle = null;
     }
-    close?.close();
-    close?.remove();
-    close = null;
+    addDialogState?.close();
+    addDialogState?.remove();
+    addDialogState = null;
   }
-  function openAddDialog(currentTarget) {
-    if (refreshCapabilities || !capabilityCache || saveButton || unsubscribeAccess || resizeObserver || close) {
+  function openAddDialog(addDialogTriggerEvent) {
+    if (
+      isDisposed ||
+      !isAccessAllowed ||
+      isCameraEditing ||
+      isCameraCommandPending ||
+      isRangeEditorOpen ||
+      addDialogState
+    ) {
       return;
     }
-    if (isVacuumShortcut) {
-      openAddShortcutEntityPicker(currentTarget?.currentTarget || currentTarget?.target);
+    if (isVacuumShortcutMode) {
+      openVacuumRoomPicker(addDialogTriggerEvent?.currentTarget || addDialogTriggerEvent?.target);
       return;
     }
-    const length = listAvailableTargets();
-    if (!length.length || getCurrentItems().length >= 128) {
+    const addableModels = listAddableModels();
+    if (!addableModels.length || getItemList().length >= 128) {
       return;
     }
-    pickerSession++;
-    closeCurrent?.close();
-    const addDialog = createEl("dialog", "settings-dialog i3d-add-dialog");
-    close = addDialog;
-    addDialog.setAttribute("aria-label", isDeviceMode ? "添加设备" : "添加" + stageLabel + "按钮");
-    const addDialogHeading = createEl("div", "dialog-heading");
-    const addDialogHeadingText = createEl("div");
-    addDialogHeadingText.append(createEl("span", "", "ADD BUTTON"), createEl("h2", "", isDeviceMode ? "添加设备" : "添加" + stageLabel + "按钮"));
-    const closeButton = accessAllowed("×", closeAddDialog);
-    closeButton.className = "icon-button";
-    closeButton.setAttribute("aria-label", "关闭添加按钮窗口");
-    addDialogHeading.append(addDialogHeadingText, closeButton);
-    const addDialogBody = createEl("div", "i3d-add-dialog-body");
-    const addDialogError = createEl("p", "i3d-error");
-    addDialogError.setAttribute("role", "status");
-    if (isDeviceMode) {
-      appendPositiveNumber(addDialogBody, "设备类型", [["nas", "NAS"], ["television", "电视"]], deviceKindLocal, deviceTypeChoice => {
-        if (deviceTypeChoice !== deviceKindLocal) {
-          switchDeviceKind(deviceTypeChoice, true);
+    pickerGeneration++;
+    pickerHandle?.close();
+    const addDialogElement = createElement("dialog", "settings-dialog i3d-add-dialog");
+    addDialogState = addDialogElement;
+    addDialogElement.setAttribute(
+      "aria-label",
+      isDeviceKind ? "添加设备" : "添加" + kindLabel + "按钮"
+    );
+    const addDialogHeadingElement = createElement("div", "dialog-heading");
+    const addDialogTitleWrapperElement = createElement("div");
+    addDialogTitleWrapperElement.append(
+      createElement("span", "", "ADD BUTTON"),
+      createElement("h2", "", isDeviceKind ? "添加设备" : "添加" + kindLabel + "按钮")
+    );
+    const addDialogCloseButton = createButton("×", closeAddDialog);
+    addDialogCloseButton.className = "icon-button";
+    addDialogCloseButton.setAttribute("aria-label", "关闭添加按钮窗口");
+    addDialogHeadingElement.append(addDialogTitleWrapperElement, addDialogCloseButton);
+    const addDialogBodyElement = createElement("div", "i3d-add-dialog-body");
+    const addDialogErrorElement = createElement("p", "i3d-error");
+    addDialogErrorElement.setAttribute("role", "status");
+    if (isDeviceKind) {
+      createSelectRow(
+        addDialogBodyElement,
+        "设备类型",
+        [
+          ["nas", "NAS"],
+          ["television", "电视"]
+        ],
+        deviceKind,
+        pickedDeviceKind => {
+          if (pickedDeviceKind !== deviceKind) {
+            switchEditorKind(pickedDeviceKind, true);
+          }
         }
-      }).setAttribute("aria-label", "设备类型");
+      ).setAttribute("aria-label", "设备类型");
     }
-    const disabled = appendPositiveNumber(addDialogBody, isNonLight ? "关联" + stageLabel + "模型" : "关联灯组", length.map(key => [key.key, deviceDisplayName(key.group)]), length[0].key, () => {
-      addDialogError.textContent = "";
-    });
-    disabled.setAttribute("aria-label", isNonLight ? "关联" + stageLabel + "模型" : "关联灯组");
-    const addDialogActions = createEl("div", "dialog-actions");
-    let isAddingItem = false;
-    const allowed = accessAllowed("确定添加", async () => {
-      if (isAddingItem || refreshCapabilities || !capabilityCache || close !== addDialog) {
+    const modelSelectElement = createSelectRow(
+      addDialogBodyElement,
+      usesModelBinding ? "关联" + kindLabel + "模型" : "关联灯组",
+      addableModels.map(addableModelEntry => [
+        addableModelEntry.key,
+        describeItem(addableModelEntry.group)
+      ]),
+      addableModels[0].key,
+      () => {
+        addDialogErrorElement.textContent = "";
+      }
+    );
+    modelSelectElement.setAttribute(
+      "aria-label",
+      usesModelBinding ? "关联" + kindLabel + "模型" : "关联灯组"
+    );
+    const addDialogActionsElement = createElement("div", "dialog-actions");
+    let isAdding = false;
+    const confirmAddButton = createButton("确定添加", async () => {
+      if (isAdding || isDisposed || !isAccessAllowed || addDialogState !== addDialogElement) {
         return;
       }
-      isAddingItem = true;
-      allowed.disabled = true;
-      disabled.disabled = true;
-      addDialogError.textContent = "";
-      const selectedAddTargetKey = disabled.value;
+      isAdding = true;
+      confirmAddButton.disabled = true;
+      modelSelectElement.disabled = true;
+      addDialogErrorElement.textContent = "";
+      const chosenModelKey = modelSelectElement.value;
       try {
         await requestInteraction3dAccess();
-        if (refreshCapabilities || !capabilityCache || close !== addDialog) {
+        if (isDisposed || !isAccessAllowed || addDialogState !== addDialogElement) {
           return;
         }
-        const group = listAvailableTargets().find(key => key.key === selectedAddTargetKey);
-        if (!group || getCurrentItems().length >= 128) {
+        const chosenModel = listAddableModels().find(
+          modelCandidateMatch => modelCandidateMatch.key === chosenModelKey
+        );
+        if (!chosenModel || getItemList().length >= 128) {
           throw new Error("该对象已添加或不再可用，请关闭窗口后重新选择。");
         }
-        const id = {
+        const newItem = {
           id: randomUuid(),
-          floorId: group.floor.id,
-          [bindingIdField]: group.group.id,
+          floorId: chosenModel.floor.id,
+          [modelIdKey]: chosenModel.group.id,
           entityId: "",
-          label: deviceDisplayName(group.group),
-          ...(isNonLight ? {} : {
-            x: group.group.x,
-            y: group.group.y,
-            height: group.group.height ?? group.floor.wallHeight ?? 2.8,
-            fadeDuration: 0.3
-          }),
-          ...(isCover ? {
-            coverDirection: "auto",
-            curtainFabric: "cloth",
-            unboundPosition: 0
-          } : {}),
+          label: describeItem(chosenModel.group),
+          ...(usesModelBinding
+            ? {}
+            : {
+                x: chosenModel.group.x,
+                y: chosenModel.group.y,
+                height: chosenModel.group.height ?? chosenModel.floor.wallHeight ?? 2.8,
+                fadeDuration: 0.3
+              }),
+          ...(isCoverMode
+            ? {
+                coverDirection: "auto",
+                curtainFabric: "cloth",
+                unboundPosition: 0
+              }
+            : {}),
           size: 44,
           iconSize: 26,
           visible: true,
-          icon: emptyStateIcon,
-          clickAction: isDeviceLike ? "focus-panel" : "focus"
+          icon: defaultIcon,
+          clickAction: usesStatusPanel ? "focus-panel" : "focus"
         };
-        getCurrentItems().push(id);
-        saving = id.id;
+        getItemList().push(newItem);
+        selectedItemId = newItem.id;
         closeAddDialog();
-        mountRuntime();
-        rebuildConfigSidebar();
-      } catch (error) {
-        if (close === addDialog) {
-          addDialogError.textContent = error.message;
+        refreshEditorPreview();
+        renderPanel();
+      } catch (addItemError) {
+        if (addDialogState === addDialogElement) {
+          addDialogErrorElement.textContent = addItemError.message;
         }
       } finally {
-        isAddingItem = false;
-        allowed.disabled = false;
-        disabled.disabled = false;
+        isAdding = false;
+        confirmAddButton.disabled = false;
+        modelSelectElement.disabled = false;
       }
     });
-    allowed.className = "primary";
-    addDialogActions.append(accessAllowed("取消", closeAddDialog), allowed);
-    addDialogBody.append(createEl("p", "i3d-note", "添加后可继续设置" + stageLabel + "按钮，最后点击“保存配置”完成保存。"), addDialogError, addDialogActions);
-    addDialog.append(addDialogHeading, addDialogBody);
-    document.body.append(addDialog);
-    addDialog.addEventListener("cancel", preventDefault => {
-      preventDefault.preventDefault();
+    confirmAddButton.className = "primary";
+    addDialogActionsElement.append(createButton("取消", closeAddDialog), confirmAddButton);
+    addDialogBodyElement.append(
+      createElement(
+        "p",
+        "i3d-note",
+        "添加后可继续设置" + kindLabel + "按钮，最后点击“保存配置”完成保存。"
+      ),
+      addDialogErrorElement,
+      addDialogActionsElement
+    );
+    addDialogElement.append(addDialogHeadingElement, addDialogBodyElement);
+    document.body.append(addDialogElement);
+    addDialogElement.addEventListener("cancel", addDialogCancelEvent => {
+      addDialogCancelEvent.preventDefault();
       closeAddDialog();
     });
-    addDialog.showModal();
+    addDialogElement.showModal();
   }
-  async function openAddShortcutEntityPicker(trigger) {
-    const floorId = getCurrentVacuum();
-    if (!floorId || getCurrentItems().length >= 64) {
+  async function openVacuumRoomPicker(roomPickerTriggerEvent) {
+    const vacuumModelRecord = findVacuumModel();
+    if (!vacuumModelRecord || getItemList().length >= 64) {
       return;
     }
-    const addShortcutPickerSession = ++pickerSession;
-    closeCurrent?.close();
+    const vacuumPickerGeneration = ++pickerGeneration;
+    pickerHandle?.close();
     try {
-      const close = await pickers.entity({
-        trigger: trigger,
+      const vacuumRoomPickerHandle = await pickers.entity({
+        trigger: roomPickerTriggerEvent,
         deviceKind: "vacuum-room",
         current: "",
-        onSelect(entityId) {
-          if (refreshCapabilities || !capabilityCache || addShortcutPickerSession !== pickerSession || getCurrentVacuum() !== floorId || getCurrentItems().length >= 64 || !entityId) {
+        onSelect(pickedRoomEntityId) {
+          if (
+            isDisposed ||
+            !isAccessAllowed ||
+            vacuumPickerGeneration !== pickerGeneration ||
+            findVacuumModel() !== vacuumModelRecord ||
+            getItemList().length >= 64 ||
+            !pickedRoomEntityId
+          ) {
             return;
           }
-          const name = entities.find(item => item.entityId === entityId);
-          const newState = states?.get?.(entityId);
-          const attributes = newState?.newState || newState;
-          const vacuums = draftRevision.floors.find(id => id.id === floorId.floorId);
-          const vacuumModelOnFloor = vacuums?.vacuums?.find(id => id.id === floorId.modelId);
-          const length = (vacuums?.plan?.walls || []).flatMap(start => [start.start, start.end]);
-          const averageWallCoord = wallCoordAxis => length.length ? length.reduce((wallCoordSum, wallCoordPoint) => wallCoordSum + wallCoordPoint[wallCoordAxis], 0) / length.length : vacuumModelOnFloor?.[wallCoordAxis] || 0;
-          const id = {
+          const entityMetadataEntry = entities.find(
+            entityMetadataProbe => entityMetadataProbe.entityId === pickedRoomEntityId
+          );
+          const pickedEntityState = states?.get?.(pickedRoomEntityId);
+          const normalizedEntityState = pickedEntityState?.newState || pickedEntityState;
+          const roomModelFloor = sceneMetadata.floors.find(
+            roomFloorRecord => roomFloorRecord.id === vacuumModelRecord.floorId
+          );
+          const roomVacuumModelData = roomModelFloor?.vacuums?.find(
+            roomVacuumModelProbe => roomVacuumModelProbe.id === vacuumModelRecord.modelId
+          );
+          const wallEndpoints = (roomModelFloor?.plan?.walls || []).flatMap(wallSegment => [
+            wallSegment.start,
+            wallSegment.end
+          ]);
+          const averageWallCoordinate = axisKey =>
+            wallEndpoints.length
+              ? wallEndpoints.reduce(
+                  (coordinateSum, wallPoint) => coordinateSum + wallPoint[axisKey],
+                  0
+                ) / wallEndpoints.length
+              : roomVacuumModelData?.[axisKey] || 0;
+          const roomShortcutItem = {
             id: randomUuid(),
-            entityId: entityId,
-            label: name?.name || attributes?.attributes?.friendly_name || entityId,
-            x: averageWallCoord("x"),
-            y: averageWallCoord("y"),
+            entityId: pickedRoomEntityId,
+            label:
+              entityMetadataEntry?.name ||
+              normalizedEntityState?.attributes?.friendly_name ||
+              pickedRoomEntityId,
+            x: averageWallCoordinate("x"),
+            y: averageWallCoordinate("y"),
             height: 0.08,
             size: 44,
             iconSize: 26,
@@ -1069,1252 +1622,2058 @@ export async function openInteraction3dEditor({
             icon: "mdi:broom",
             visible: true
           };
-          setCurrentItems([...getCurrentItems(), id]);
-          saving = id.id;
-          pickerSession++;
-          closeCurrent?.close();
-          closeCurrent = null;
-          rebuildConfigSidebar();
-          mountRuntime();
+          setItemList([...getItemList(), roomShortcutItem]);
+          selectedItemId = roomShortcutItem.id;
+          pickerGeneration++;
+          pickerHandle?.close();
+          pickerHandle = null;
+          renderPanel();
+          refreshEditorPreview();
         }
       });
-      if (refreshCapabilities || addShortcutPickerSession !== pickerSession) {
-        close?.close();
+      if (isDisposed || vacuumPickerGeneration !== pickerGeneration) {
+        vacuumRoomPickerHandle?.close();
       } else {
-        closeCurrent = close;
+        pickerHandle = vacuumRoomPickerHandle;
       }
-    } catch (error) {
-      if (!refreshCapabilities) {
-        pickerGeneration.textContent = error.message;
+    } catch (roomPickerError) {
+      if (!isDisposed) {
+        errorMessageElement.textContent = roomPickerError.message;
       }
     }
   }
-  function makeConfigSection(sectionLabel) {
-    const sectionEl = createEl("section", "i3d-config-section");
-    sectionEl.append(createEl("h4", "", sectionLabel));
-    focusQueue.append(sectionEl);
-    return sectionEl;
-  }
-  function makeConfigRow(rowParent) {
-    const rowEl = createEl("div", "i3d-config-row");
-    rowParent.append(rowEl);
-    return rowEl;
-  }
-  function renderVacuumShortcutSidebar() {
-    const scopeRow = makeConfigRow(makeConfigSection("配置范围"));
-    appendPositiveNumber(scopeRow, "配置内容", [["vacuum", "设备与地图"], ["vacuum-shortcut", "快捷指令"]], deviceKindLocal, sidebarContentKind => {
-      if (sidebarContentKind !== deviceKindLocal) {
-        switchDeviceKind(sidebarContentKind);
+  function renderVacuumShortcutPanel() {
+    const scopeSectionElement = createConfigRow(createConfigSection("配置范围"));
+    createSelectRow(
+      scopeSectionElement,
+      "配置内容",
+      [
+        ["vacuum", "设备与地图"],
+        ["vacuum-shortcut", "快捷指令"]
+      ],
+      deviceKind,
+      pickedScopeKey => {
+        if (pickedScopeKey !== deviceKind) {
+          switchEditorKind(pickedScopeKey);
+        }
       }
-    });
-    if (!draftRevision) {
+    );
+    if (!sceneMetadata) {
       return;
     }
-    const length = effectRangeOpen.devices?.vacuums || [];
-    if (!length.length) {
-      focusQueue.append(createEl("p", "i3d-note", "请先在扫地机配置中添加并绑定扫地机。"));
+    const vacuumModels = draftProperties.devices?.vacuums || [];
+    if (!vacuumModels.length) {
+      panelElement.append(createElement("p", "i3d-note", "请先在扫地机配置中添加并绑定扫地机。"));
       return;
     }
-    appendPositiveNumber(scopeRow, "所属扫地机", length.map(id => [id.id, id.label || id.deviceName || "扫地机"]), vacuumId, selectedVacuumId => {
-      vacuumId = selectedVacuumId;
-      saving = "";
-      map.clear();
-      liveStates?.();
-      liveStates = null;
-      mountPreviewRuntime();
-      rebuildConfigSidebar();
-    });
-    const shortcutListSection = makeConfigSection("快捷按钮");
-    shortcutListSection.className += " i3d-compact-list";
-    const shortcutListHeading = createEl("div", "i3d-config-list-row");
-    const disabled = accessAllowed("添加快捷指令", openAddDialog);
-    disabled.disabled = getCurrentItems().length >= 64;
-    shortcutListHeading.append(disabled);
-    shortcutListSection.append(shortcutListHeading);
-    if (!getCurrentItems().some(id => id.id === saving)) {
-      saving = getCurrentItems()[0]?.id || "";
+    createSelectRow(
+      scopeSectionElement,
+      "所属扫地机",
+      vacuumModels.map(vacuumModelOption => [
+        vacuumModelOption.id,
+        vacuumModelOption.label || vacuumModelOption.deviceName || "扫地机"
+      ]),
+      vacuumId,
+      pickedVacuumId => {
+        vacuumId = pickedVacuumId;
+        selectedItemId = "";
+        baselineItemsById.clear();
+        renderPanel();
+        refreshEditorPreview();
+      }
+    );
+    const shortcutSectionElement = createConfigSection("快捷按钮");
+    shortcutSectionElement.className += " i3d-compact-list";
+    const shortcutHeaderRowElement = createElement("div", "i3d-config-list-row");
+    const addShortcutButton = createButton("添加快捷指令", openAddDialog);
+    addShortcutButton.disabled = getItemList().length >= 64;
+    shortcutHeaderRowElement.append(addShortcutButton);
+    shortcutSectionElement.append(shortcutHeaderRowElement);
+    if (!getItemList().some(existingShortcutProbe => existingShortcutProbe.id === selectedItemId)) {
+      selectedItemId = getItemList()[0]?.id || "";
     }
-    if (!saving) {
-      focusQueue.append(createEl("p", "i3d-note", "添加按钮后，选择全部实体中的清扫指令，在户型中拖动按钮放置。"));
+    if (!selectedItemId) {
+      panelElement.append(
+        createElement(
+          "p",
+          "i3d-note",
+          "添加按钮后，选择全部实体中的清扫指令，在户型中拖动按钮放置。"
+        )
+      );
       return;
     }
-    appendPositiveNumber(shortcutListHeading, "当前按钮", getCurrentItems().map(id => [id.id, id.label]), saving, selectedShortcutId => {
-      saving = selectedShortcutId;
-      pickerSession++;
-      closeCurrent?.close();
-      rebuildConfigSidebar();
-      mountRuntime();
-    });
-    const binding = getCurrentItems().find(id => id.id === saving);
-    const removeShortcutButton = accessAllowed("删除此快捷按钮", () => {
-      pickerSession++;
-      closeCurrent?.close();
-      setCurrentItems(getCurrentItems().filter(shortcutItem => shortcutItem !== binding));
-      saving = "";
-      rebuildConfigSidebar();
-      mountRuntime();
+    createSelectRow(
+      shortcutHeaderRowElement,
+      "当前按钮",
+      getItemList().map(shortcutOptionItem => [shortcutOptionItem.id, shortcutOptionItem.label]),
+      selectedItemId,
+      pickedShortcutId => {
+        selectedItemId = pickedShortcutId;
+        pickerGeneration++;
+        pickerHandle?.close();
+        renderPanel();
+        refreshEditorPreview();
+      }
+    );
+    const selectedShortcut = getItemList().find(
+      matchedShortcut => matchedShortcut.id === selectedItemId
+    );
+    const removeShortcutButton = createButton("删除此快捷按钮", () => {
+      pickerGeneration++;
+      pickerHandle?.close();
+      setItemList(
+        getItemList().filter(removedShortcutProbe => removedShortcutProbe !== selectedShortcut)
+      );
+      selectedItemId = "";
+      renderPanel();
+      refreshEditorPreview();
     });
     removeShortcutButton.className = "i3d-remove-light";
-    const shortcutBaseSection = makeConfigSection("基础绑定");
-    const shortcutBaseRow = makeConfigRow(shortcutBaseSection);
-    const shortcutNameInput = createEl("input");
-    shortcutNameInput.value = binding.label;
+    const bindingSectionElement = createConfigRow(createConfigSection("基础绑定"));
+    const shortcutNameInput = createElement("input");
+    shortcutNameInput.value = selectedShortcut.label;
     shortcutNameInput.maxLength = 128;
     shortcutNameInput.onchange = () => {
-      binding.label = shortcutNameInput.value.trim() || "房间清扫";
-      rebuildConfigSidebar();
-      mountRuntime();
+      selectedShortcut.label = shortcutNameInput.value.trim() || "房间清扫";
+      renderPanel();
+      refreshEditorPreview();
     };
-    appendSetting(shortcutBaseRow, "名称", shortcutNameInput);
-    const openShortcutPicker = (shortcutPickerKind, trigger) => {
-      const shortcutPickerSession = ++pickerSession;
-      Promise.resolve(pickers[shortcutPickerKind]({
-        trigger: trigger,
-        deviceKind: "vacuum-room",
-        current: shortcutPickerKind === "icon" ? binding.icon : binding.entityId,
-        onSelect(icon) {
-          if (!refreshCapabilities && !!capabilityCache && shortcutPickerSession === pickerSession && !!getCurrentItems().includes(binding)) {
-            if (shortcutPickerKind === "icon") {
-              binding.icon = icon;
-            } else {
-              binding.entityId = icon;
+    createSettingRow(bindingSectionElement, "名称", shortcutNameInput);
+    const openShortcutPicker = (pickerName, shortcutPickerTrigger) => {
+      const shortcutPickerGeneration = ++pickerGeneration;
+      Promise.resolve(
+        pickers[pickerName]({
+          trigger: shortcutPickerTrigger,
+          deviceKind: "vacuum-room",
+          current: pickerName === "icon" ? selectedShortcut.icon : selectedShortcut.entityId,
+          onSelect(pickedShortcutValue) {
+            if (
+              !isDisposed &&
+              !!isAccessAllowed &&
+              shortcutPickerGeneration === pickerGeneration &&
+              !!getItemList().includes(selectedShortcut)
+            ) {
+              if (pickerName === "icon") {
+                selectedShortcut.icon = pickedShortcutValue;
+              } else {
+                selectedShortcut.entityId = pickedShortcutValue;
+              }
+              renderPanel();
+              refreshEditorPreview();
             }
-            rebuildConfigSidebar();
-            mountRuntime();
           }
-        }
-      })).then(close => {
-        if (refreshCapabilities || shortcutPickerSession !== pickerSession) {
-          close?.close();
-        } else {
-          closeCurrent = close;
-        }
-      }).catch(message => {
-        pickerGeneration.textContent = message.message;
-      });
+        })
+      )
+        .then(shortcutPickerHandle => {
+          if (isDisposed || shortcutPickerGeneration !== pickerGeneration) {
+            shortcutPickerHandle?.close();
+          } else {
+            pickerHandle = shortcutPickerHandle;
+          }
+        })
+        .catch(shortcutPickerError => {
+          errorMessageElement.textContent = shortcutPickerError.message;
+        });
     };
-    const allowed = accessAllowed(binding.entityId || "选择实体（全部）", () => openShortcutPicker("entity", allowed));
-    allowed.className = "i3d-picker-button";
-    appendSetting(shortcutBaseRow, "指令实体", allowed);
-    const shortcutAppearanceSection = makeConfigSection("按钮外观");
-    const shortcutAppearanceRow = makeConfigRow(shortcutAppearanceSection);
-    const classNameCurrent = accessAllowed("", () => openShortcutPicker("icon", classNameCurrent));
-    classNameCurrent.className = "i3d-picker-button i3d-icon-picker-button";
-    const style = createEl("i");
-    style.style.maskImage = "url('/bridge-static/vendor/mdi/7.4.47/svg/" + (binding.icon || emptyStateIcon).slice(4) + ".svg')";
-    style.style.webkitMaskImage = style.style.maskImage;
-    classNameCurrent.append(style, createEl("span", "", binding.icon || emptyStateIcon));
-    appendSetting(shortcutAppearanceRow, "图标", classNameCurrent);
-    const shortcutVisibilityRow = createEl("div", "i3d-button-visibility-row i3d-shortcut-visibility");
-    shortcutAppearanceSection.append(shortcutVisibilityRow);
-    for (const [shortcutVisKey, shortcutVisLabel] of [["hiddenClickable", "隐藏（可点击）"], ["buttonHidden", "隐藏（不可点击）"]]) {
-      const checked = createEl("input");
-      checked.type = "checkbox";
-      checked.checked = binding[shortcutVisKey] === true;
-      checked.onchange = () => {
-        binding[shortcutVisKey] = checked.checked;
-        if (checked.checked) {
-          binding[shortcutVisKey === "buttonHidden" ? "hiddenClickable" : "buttonHidden"] = false;
+    const entityPickerButton = createButton(selectedShortcut.entityId || "选择实体（全部）", () =>
+      openShortcutPicker("entity", entityPickerButton)
+    );
+    entityPickerButton.className = "i3d-picker-button";
+    entityPickerButton.title = selectedShortcut.entityId || "";
+    createSettingRow(bindingSectionElement, "指令实体", entityPickerButton);
+    const shortcutAppearanceSectionElement = createConfigSection("按钮外观");
+    const shortcutAppearanceRowElement = createConfigRow(shortcutAppearanceSectionElement);
+    const iconPickerButton = createButton("", () => openShortcutPicker("icon", iconPickerButton));
+    iconPickerButton.className = "i3d-picker-button i3d-icon-picker-button";
+    const iconPreviewElement = createElement("i");
+    iconPreviewElement.style.maskImage =
+      "url('/bridge-static/vendor/mdi/7.4.47/svg/" +
+      (selectedShortcut.icon || defaultIcon).slice(4) +
+      ".svg')";
+    iconPreviewElement.style.webkitMaskImage = iconPreviewElement.style.maskImage;
+    iconPickerButton.append(
+      iconPreviewElement,
+      createElement("span", "", selectedShortcut.icon || defaultIcon)
+    );
+    createSettingRow(shortcutAppearanceRowElement, "图标", iconPickerButton);
+    const shortcutVisibilityRowElement = createElement(
+      "div",
+      "i3d-button-visibility-row i3d-shortcut-visibility"
+    );
+    shortcutAppearanceSectionElement.append(shortcutVisibilityRowElement);
+    for (const [visibilityPropertyKey, visibilityToggleLabel] of [
+      ["hiddenClickable", "隐藏（可点击）"],
+      ["buttonHidden", "隐藏（不可点击）"]
+    ]) {
+      const visibilityCheckboxElement = createElement("input");
+      visibilityCheckboxElement.type = "checkbox";
+      visibilityCheckboxElement.checked = selectedShortcut[visibilityPropertyKey] === true;
+      visibilityCheckboxElement.onchange = () => {
+        selectedShortcut[visibilityPropertyKey] = visibilityCheckboxElement.checked;
+        if (visibilityCheckboxElement.checked) {
+          selectedShortcut[
+            visibilityPropertyKey === "buttonHidden" ? "hiddenClickable" : "buttonHidden"
+          ] = false;
         }
-        rebuildConfigSidebar();
-        mountRuntime();
+        renderPanel();
+        refreshEditorPreview();
       };
-      appendSetting(shortcutVisibilityRow, shortcutVisLabel, checked);
+      createSettingRow(
+        shortcutVisibilityRowElement,
+        visibilityToggleLabel,
+        visibilityCheckboxElement
+      );
     }
-    for (const [shortcutHideKey, shortcutHideLabel] of [["iconHidden", "隐藏图标"], ["labelHidden", "隐藏名称"]]) {
-      const checked = createEl("input");
-      checked.type = "checkbox";
-      checked.checked = binding[shortcutHideKey] === true;
-      checked.onchange = () => {
-        binding[shortcutHideKey] = checked.checked;
-        mountRuntime();
+    for (const [hiddenPropertyKey, hiddenToggleLabel] of [
+      ["iconHidden", "隐藏图标"],
+      ["labelHidden", "隐藏名称"]
+    ]) {
+      const hiddenCheckboxElement = createElement("input");
+      hiddenCheckboxElement.type = "checkbox";
+      hiddenCheckboxElement.checked = selectedShortcut[hiddenPropertyKey] === true;
+      hiddenCheckboxElement.onchange = () => {
+        selectedShortcut[hiddenPropertyKey] = hiddenCheckboxElement.checked;
+        refreshEditorPreview();
       };
-      appendSetting(shortcutVisibilityRow, shortcutHideLabel, checked);
+      createSettingRow(shortcutVisibilityRowElement, hiddenToggleLabel, hiddenCheckboxElement);
     }
-    const shortcutSizeGrid = createEl("div", "i3d-coordinate-grid i3d-size-grid i3d-shortcut-size-grid");
-    const shortcutSizeDetails = createEl("details");
-    shortcutSizeDetails.append(createEl("summary", "", "更多尺寸设置"), shortcutSizeGrid);
-    shortcutAppearanceSection.append(shortcutSizeDetails);
-    for (const [shortcutSizeKey, shortcutSizeLabel, shortcutSizeDefault] of [["size", "按钮大小（px）", 44], ["iconSize", "图标大小（px）", 26], ["fontSize", "文字大小（px）", 12], ["hitSize", "触控范围（px）", 44]]) {
-      appendPositiveInput(shortcutSizeKey === "size" ? shortcutAppearanceRow : shortcutSizeGrid, shortcutSizeLabel, () => binding[shortcutSizeKey] || shortcutSizeDefault, shortcutSizeValue => {
-        binding[shortcutSizeKey] = shortcutSizeValue;
-        mountRuntime();
-      });
+    const shortcutSizeGridElement = createElement(
+      "div",
+      "i3d-coordinate-grid i3d-size-grid i3d-shortcut-size-grid"
+    );
+    const shortcutAdvancedDetailsElement = createElement("details");
+    shortcutAdvancedDetailsElement.append(
+      createElement("summary", "", "更多尺寸设置"),
+      shortcutSizeGridElement
+    );
+    shortcutAppearanceSectionElement.append(shortcutAdvancedDetailsElement);
+    for (const [sizePropertyKey, sizeSettingLabel, sizeDefaultValue] of [
+      ["size", "按钮大小（px）", 44],
+      ["iconSize", "图标大小（px）", 26],
+      ["fontSize", "文字大小（px）", 12],
+      ["hitSize", "触控范围（px）", 44]
+    ]) {
+      createSizeRow(
+        sizePropertyKey === "size" ? shortcutAppearanceRowElement : shortcutSizeGridElement,
+        sizeSettingLabel,
+        () => selectedShortcut[sizePropertyKey] || sizeDefaultValue,
+        updatedShortcutSize => {
+          selectedShortcut[sizePropertyKey] = updatedShortcutSize;
+          refreshEditorPreview();
+        }
+      );
     }
-    const shortcutPositionSection = makeConfigSection("按钮位置");
-    const shortcutCoordGrid = createEl("div", "i3d-coordinate-grid");
-    shortcutPositionSection.append(shortcutCoordGrid);
-    for (const toUpperCase of ["x", "y"]) {
-      appendBoundedInput(shortcutCoordGrid, "位置 " + toUpperCase.toUpperCase(), binding[toUpperCase], -1000000, 1000000, 1, shortcutCoordValue => {
-        binding[toUpperCase] = shortcutCoordValue;
-        mountRuntime();
-      });
+    const shortcutPositionSectionElement = createConfigSection("按钮位置");
+    const shortcutPositionGridElement = createElement("div", "i3d-coordinate-grid");
+    shortcutPositionSectionElement.append(shortcutPositionGridElement);
+    for (const positionAxis of ["x", "y"]) {
+      createNumberRow(
+        shortcutPositionGridElement,
+        "位置 " + positionAxis.toUpperCase(),
+        selectedShortcut[positionAxis],
+        -1000000,
+        1000000,
+        1,
+        updatedShortcutPosition => {
+          selectedShortcut[positionAxis] = updatedShortcutPosition;
+          refreshEditorPreview();
+        }
+      );
     }
-    appendBoundedInput(shortcutCoordGrid, "高度（米）", binding.height ?? 0.08, 0, 20, 0.1, height => {
-      binding.height = height;
-      mountRuntime();
-    });
-    shortcutPositionSection.append(createEl("p", "i3d-note", "拖动按钮调整位置，拖动空白处旋转户型。点击只执行绑定指令，不弹窗、不聚焦。"));
-    const shortcutBatchSection = createEl("section", "navigation-batch-section i3d-light-batch");
-    const disabledCurrent = accessAllowed("一键应用到其他快捷按钮", () => appendNumber(binding));
-    shortcutBatchSection.append(createEl("h4", "", "图标设置一键应用"), disabledCurrent);
-    focusQueue.append(shortcutBatchSection);
-    updateBatchApplyState = () => {
-      disabledCurrent.disabled = !resolveLightCapability(binding).length || !capabilityCache;
+    createNumberRow(
+      shortcutPositionGridElement,
+      "高度（米）",
+      selectedShortcut.height ?? 0.08,
+      0,
+      20,
+      0.1,
+      updatedShortcutHeight => {
+        selectedShortcut.height = updatedShortcutHeight;
+        refreshEditorPreview();
+      }
+    );
+    shortcutPositionSectionElement.append(
+      createElement(
+        "p",
+        "i3d-note",
+        "拖动按钮调整位置，拖动空白处旋转户型。点击只执行绑定指令，不弹窗、不聚焦。"
+      )
+    );
+    const shortcutBatchSectionElement = createElement(
+      "section",
+      "navigation-batch-section i3d-light-batch"
+    );
+    const shortcutBatchApplyButton = createButton("一键应用到其他快捷按钮", () =>
+      openBatchApplyDialog(selectedShortcut)
+    );
+    shortcutBatchSectionElement.append(
+      createElement("h4", "", "图标设置一键应用"),
+      shortcutBatchApplyButton
+    );
+    panelElement.append(shortcutBatchSectionElement);
+    refreshBatchButtons = () => {
+      shortcutBatchApplyButton.disabled =
+        !listChangedFields(selectedShortcut).length || !isAccessAllowed;
     };
-    updateBatchApplyState();
-    makeConfigSection("绑定管理").append(removeShortcutButton);
+    refreshBatchButtons();
+    createConfigSection("绑定管理").append(removeShortcutButton);
   }
-  function rebuildConfigSidebar() {
-    refreshEffectCapabilityUi = () => {};
-    updateBatchApplyState = () => {};
-    focusQueue.replaceChildren();
-    if (isVacuumShortcut) {
-      renderVacuumShortcutSidebar();
+  function createConfigSection(sectionTitle) {
+    const configSectionElement = createElement("section", "i3d-config-section");
+    configSectionElement.append(createElement("h4", "", sectionTitle));
+    panelElement.append(configSectionElement);
+    return configSectionElement;
+  }
+  function createConfigRow(parentSectionElement) {
+    const configRowElement = createElement("div", "i3d-config-row");
+    parentSectionElement.append(configRowElement);
+    return configRowElement;
+  }
+  function renderPanel() {
+    refreshEffectSettings = () => {};
+    refreshBatchButtons = () => {};
+    panelElement.replaceChildren();
+    let currentContainer = panelElement;
+    if (isVacuumShortcutMode) {
+      renderVacuumShortcutPanel();
       return;
     }
-    if (!isNonLight && effectRangeOpen.lightingMode === "region") {
-      const rangeSection = makeConfigSection("照射范围");
-      const disabled = accessAllowed("编辑照射范围", async () => {
-        if (!resizeObserver) {
-          resizeObserver = true;
-          disabled.disabled = true;
-          try {
-            const close = await openInteraction3dRangeEditor({
-              component: {
-                ...component,
-                properties: structuredClone(getPreviewProperties())
-              },
-              document: doc,
-              states,
-              onSave(savedRegionOverrides) {
-                if (refreshCapabilities || !capabilityCache) {
-                  throw new Error("灯光配置已关闭，请重新打开。");
-                }
-                effectRangeOpen.lightRegionOverrides = structuredClone(savedRegionOverrides);
-                mountRuntime();
-              },
-              onClose() {
-                closeEditor = null;
-                resizeObserver = false;
-                if (!refreshCapabilities) {
-                  rebuildConfigSidebar();
-                }
-              }
-            });
-            if (refreshCapabilities || !capabilityCache) {
-              close.close();
-              return;
-            }
-            closeEditor = close;
-          } catch (error) {
-            resizeObserver = false;
-            if (!refreshCapabilities) {
-              pickerGeneration.textContent = error.message;
-            }
-          } finally {
-            if (!refreshCapabilities) {
-              rebuildConfigSidebar();
-            }
-          }
+    if (sceneMetadata) {
+      currentContainer = createConfigRow(createConfigSection("配置范围"));
+      createSelectRow(
+        currentContainer,
+        "配置楼层",
+        sceneMetadata.floors.map(floorOptionEntry => [floorOptionEntry.id, floorOptionEntry.name]),
+        selectedFloorId,
+        pickedFloorId => {
+          selectedFloorId = pickedFloorId;
+          refreshEditorPreview();
+          renderPanel();
         }
-      });
-      disabled.dataset.interaction3dRangeEditor = "true";
-      disabled.disabled = resizeObserver || !effectRangeOpen.sceneId;
-      rangeSection.append(disabled, createEl("p", "i3d-note", "在独立弹窗中拖动范围；保存范围后，再点击“保存配置”保存到当前控件。"));
-    }
-    if (draftRevision) {
-      const scopeRow = makeConfigRow(makeConfigSection("配置范围"));
-      appendPositiveNumber(scopeRow, "配置楼层", draftRevision.floors.map(id27 => [id27.id, id27.name]), syncPreviewSize, selectedFloorId => {
-        syncPreviewSize = selectedFloorId;
-        mountRuntime();
-        rebuildConfigSidebar();
-      });
-      if (isDeviceMode) {
-        appendPositiveNumber(scopeRow, "设备类别", [["nas", "NAS"], ["television", "电视"]], deviceKindLocal, sidebarDeviceKind => {
-          if (sidebarDeviceKind !== deviceKindLocal) {
-            switchDeviceKind(sidebarDeviceKind);
+      );
+      if (isDeviceKind) {
+        createSelectRow(
+          currentContainer,
+          "设备类别",
+          [
+            ["nas", "NAS"],
+            ["television", "电视"]
+          ],
+          deviceKind,
+          pickedDeviceCategory => {
+            if (pickedDeviceCategory !== deviceKind) {
+              switchEditorKind(pickedDeviceCategory);
+            }
           }
-        });
+        );
       }
       if (isEnvironmentKind) {
-        appendPositiveNumber(scopeRow, "环境类别", [["climate", "空调"], ["cover", "窗帘"]], deviceKindLocal, sidebarEnvironmentKind => {
-          if (sidebarEnvironmentKind !== deviceKindLocal) {
-            switchDeviceKind(sidebarEnvironmentKind);
-          }
-        });
-      }
-      if (isVacuum) {
-        appendPositiveNumber(scopeRow, "配置内容", [["vacuum", "设备与地图"], ["vacuum-shortcut", "快捷指令"]], deviceKindLocal, sidebarContentKind => {
-          if (sidebarContentKind !== deviceKindLocal) {
-            switchDeviceKind(sidebarContentKind);
-          }
-        });
-      }
-      const itemListSection = makeConfigSection(isNonLight ? "模型列表" : "灯光列表");
-      itemListSection.className += " i3d-compact-list";
-      const itemListHeading = createEl("div", "i3d-config-list-row");
-      const length = listAvailableTargets();
-      const disabled = accessAllowed("添加" + stageLabel, openAddDialog);
-      disabled.disabled = !length.length || getCurrentItems().length >= 128;
-      itemListHeading.append(disabled);
-      itemListSection.append(itemListHeading);
-      const some = getCurrentItems().filter(floorId => floorId.floorId === syncPreviewSize || isNonLight && !draftRevision.floors.some(id => id.id === floorId.floorId));
-      if (!some.some(id => id.id === saving)) {
-        saving = some[0]?.id || "";
-      }
-      if (some.length) {
-        appendPositiveNumber(itemListHeading, isDeviceMode ? "当前设备" : "当前按钮", some.map(id => [id.id, id.label]), saving, selectedItemId => {
-          pickerSession++;
-          closeCurrent?.close();
-          saving = selectedItemId;
-          mountRuntime();
-          rebuildConfigSidebar();
-        });
-      }
-      const statusSource = getCurrentItems().find(id => id.id === saving);
-      if (statusSource) {
-        const removeDeviceButton = accessAllowed(isDeviceMode ? "删除此设备" : "删除此" + stageLabel + "按钮", () => {
-          pickerSession++;
-          closeCurrent?.close();
-          setCurrentItems(getCurrentItems().filter(id => id.id !== statusSource.id));
-          saving = "";
-          mountRuntime();
-          rebuildConfigSidebar();
-        });
-        removeDeviceButton.className = "i3d-remove-light";
-        const baseSection = makeConfigSection("基础绑定");
-        const baseRow = makeConfigRow(baseSection);
-        if (isDeviceMode) {
-          const deviceTypeReadonly = createEl("input");
-          deviceTypeReadonly.value = isTelevision ? "电视" : "NAS";
-          deviceTypeReadonly.readOnly = true;
-          appendSetting(baseRow, "设备类型", deviceTypeReadonly);
-        }
-        const itemNameInput = createEl("input");
-        itemNameInput.value = statusSource.label;
-        itemNameInput.maxLength = 128;
-        itemNameInput.addEventListener("change", () => {
-          statusSource.label = itemNameInput.value.trim() || stageLabel;
-          mountRuntime();
-        });
-        appendSetting(baseRow, "名称", itemNameInput);
-        if (isNonLight) {
-          const some = draftRevision.floors.filter(id => id.id === syncPreviewSize).flatMap(id => (id[deviceCollectionKey] || []).filter(item => !getCurrentItems().some(floorId => floorId !== statusSource && floorId.floorId === id.id && floorId.modelId === item.id)).map(model => ({
-            floor: id,
-            model,
-            key: id.id + "/" + model.id
-          })));
-          const boundModelKey = statusSource.floorId + "/" + statusSource.modelId;
-          const boundModelStillExists = some.some(key => key.key === boundModelKey);
-          const unshift = some.map(key => [key.key, deviceDisplayName(key.model)]);
-          if (!boundModelStillExists) {
-            unshift.unshift([boundModelKey, "原模型已移除，请重新选择"]);
-          }
-          appendPositiveNumber(baseRow, "关联" + stageLabel + "模型", unshift, boundModelKey, selectedModelKey => {
-            const floor = some.find(key => key.key === selectedModelKey);
-            if (!!floor && selectedModelKey !== boundModelKey) {
-              statusSource.floorId = floor.floor.id;
-              statusSource.modelId = floor.model.id;
-              delete statusSource.focusCamera;
-              delete statusSource.followCamera;
-              mountRuntime();
-              rebuildConfigSidebar();
+        createSelectRow(
+          currentContainer,
+          "环境类别",
+          [
+            ["climate", "空调"],
+            ["cover", "窗帘"]
+          ],
+          deviceKind,
+          pickedEnvironmentCategory => {
+            if (pickedEnvironmentCategory !== deviceKind) {
+              switchEditorKind(pickedEnvironmentCategory);
             }
-          });
-          if (!boundModelStillExists) {
-            baseSection.append(createEl("p", "i3d-note", "原模型已移除，请重新选择。已保存的实体绑定和按钮设置仍然保留。"));
           }
-        }
-        if (isCover) {
-          appendPositiveNumber(baseSection, "帘布外观", [["cloth", "布帘"], ["sheer", "纱帘"]], statusSource.curtainFabric === "sheer" ? "sheer" : "cloth", fabricChoice => {
-            statusSource.curtainFabric = fabricChoice === "sheer" ? "sheer" : "cloth";
-            mountRuntime();
-          });
-          appendPositiveNumber(baseSection, "开合方向", [["auto", "继承模型"], ["left", "单开 · 向左收拢"], ["right", "单开 · 向右收拢"], ["split", "双开 · 向两侧收拢"]], statusSource.coverDirection, coverDirectionChoice => {
-            statusSource.coverDirection = ["left", "right", "split"].includes(coverDirectionChoice) ? coverDirectionChoice : "auto";
-            mountRuntime();
-          });
-          if (statusSource.entityId) {
-            baseSection.append(createEl("p", "i3d-note", "开合状态跟随绑定实体；解除绑定后恢复预设的展示状态。"));
-          } else {
-            const unboundOptions = [["0", "关闭"], ["50", "半开"], ["100", "全开"]];
-            if (![0, 50, 100].includes(statusSource.unboundPosition)) {
-              unboundOptions.push([String(statusSource.unboundPosition), "自定义 " + statusSource.unboundPosition + "%"]);
+        );
+      }
+      if (isVacuumMode) {
+        createSelectRow(
+          currentContainer,
+          "配置内容",
+          [
+            ["vacuum", "设备与地图"],
+            ["vacuum-shortcut", "快捷指令"]
+          ],
+          deviceKind,
+          pickedVacuumCategory => {
+            if (pickedVacuumCategory !== deviceKind) {
+              switchEditorKind(pickedVacuumCategory);
             }
-            appendPositiveNumber(baseSection, "未绑定时显示", unboundOptions, String(statusSource.unboundPosition ?? 0), unboundChoice => {
-              statusSource.unboundPosition = Number(unboundChoice);
-              mountRuntime();
-            });
           }
-          const iconStateToggleInput = createEl("input");
-          Object.assign(iconStateToggleInput, {
-            type: "checkbox",
-            checked: statusSource.iconStateReversed === true
-          });
-          iconStateToggleInput.addEventListener("change", () => {
-            statusSource.iconStateReversed = iconStateToggleInput.checked;
-            mountRuntime();
-          });
-          appendSetting(baseSection, "图标状态反向", iconStateToggleInput);
+        );
+      }
+      if (!usesModelBinding && draftProperties.lightingMode === "region") {
+        const rangeSectionElement = createConfigSection("照射范围");
+        const rangeEditorButton = createButton("编辑照射范围", async () => {
+          if (!isRangeEditorOpen) {
+            isRangeEditorOpen = true;
+            rangeEditorButton.disabled = true;
+            try {
+              const rangeEditorHandle = await openInteraction3dRangeEditor({
+                component: {
+                  ...component,
+                  properties: structuredClone(buildRuntimeProperties())
+                },
+                document: documentApi,
+                states: states,
+                onSave(savedLightRegion) {
+                  if (isDisposed || !isAccessAllowed) {
+                    throw new Error("灯光配置已关闭，请重新打开。");
+                  }
+                  draftProperties.lightRegionOverrides = structuredClone(savedLightRegion);
+                  refreshEditorPreview();
+                },
+                onClose() {
+                  subEditorHandle = null;
+                  isRangeEditorOpen = false;
+                  if (!isDisposed) {
+                    renderPanel();
+                  }
+                }
+              });
+              if (isDisposed || !isAccessAllowed) {
+                rangeEditorHandle.close();
+                return;
+              }
+              subEditorHandle = rangeEditorHandle;
+            } catch (rangeEditorError) {
+              isRangeEditorOpen = false;
+              if (!isDisposed) {
+                errorMessageElement.textContent = rangeEditorError.message;
+              }
+            } finally {
+              if (!isDisposed) {
+                renderPanel();
+              }
+            }
+          }
+        });
+        rangeEditorButton.dataset.interaction3dRangeEditor = "true";
+        rangeEditorButton.disabled = isRangeEditorOpen || !draftProperties.sceneId;
+        rangeSectionElement.append(
+          rangeEditorButton,
+          createElement(
+            "p",
+            "i3d-note",
+            "在独立弹窗中拖动范围；保存范围后，再点击“保存配置”保存到当前控件。"
+          )
+        );
+      }
+      currentContainer = createConfigSection(usesModelBinding ? "模型列表" : "灯光列表");
+      currentContainer.className += " i3d-compact-list";
+      const listHeadingElement = createElement("div", "i3d-light-heading");
+      const floorModels = listAddableModels();
+      const addItemButton = createButton("添加" + kindLabel, openAddDialog);
+      addItemButton.disabled = !floorModels.length || getItemList().length >= 128;
+      listHeadingElement.className = "i3d-config-list-row";
+      currentContainer.append(listHeadingElement);
+      listHeadingElement.append(addItemButton);
+      const floorItems = getItemList().filter(
+        floorItemProbe =>
+          floorItemProbe.floorId === selectedFloorId ||
+          (usesModelBinding &&
+            !sceneMetadata.floors.some(
+              sceneFloorProbe => sceneFloorProbe.id === floorItemProbe.floorId
+            ))
+      );
+      if (
+        !floorItems.some(existingFloorItemProbe => existingFloorItemProbe.id === selectedItemId)
+      ) {
+        selectedItemId = floorItems[0]?.id || "";
+      }
+      if (floorItems.length) {
+        createSelectRow(
+          listHeadingElement,
+          isDeviceKind ? "当前设备" : "当前按钮",
+          floorItems.map(itemOptionEntry => [itemOptionEntry.id, itemOptionEntry.label]),
+          selectedItemId,
+          pickedItemId => {
+            pickerGeneration++;
+            pickerHandle?.close();
+            selectedItemId = pickedItemId;
+            refreshEditorPreview();
+            renderPanel();
+          }
+        );
+      }
+      const selectedItem = getItemList().find(
+        matchedItemProbe => matchedItemProbe.id === selectedItemId
+      );
+      if (selectedItem) {
+        const removeItemButton = createButton(
+          isDeviceKind ? "删除此设备" : "删除此" + kindLabel + "按钮",
+          () => {
+            pickerGeneration++;
+            pickerHandle?.close();
+            setItemList(
+              getItemList().filter(removedItemProbe => removedItemProbe.id !== selectedItem.id)
+            );
+            selectedItemId = "";
+            refreshEditorPreview();
+            renderPanel();
+          }
+        );
+        removeItemButton.className = "i3d-remove-light";
+        currentContainer = createConfigSection("基础绑定");
+        const bindingContainer = currentContainer;
+        const bindingRowElement = createConfigRow(bindingContainer);
+        const nameInputElement = createElement("input");
+        nameInputElement.value = selectedItem.label;
+        nameInputElement.maxLength = 128;
+        nameInputElement.addEventListener("change", () => {
+          selectedItem.label = nameInputElement.value.trim() || kindLabel;
+          refreshEditorPreview();
+        });
+        createSettingRow(bindingRowElement, "名称", nameInputElement);
+        if (usesModelBinding) {
+          const modelCandidates = sceneMetadata.floors
+            .filter(candidateFloorProbe => candidateFloorProbe.id === selectedFloorId)
+            .flatMap(candidateFloor =>
+              (candidateFloor[collectionKey] || [])
+                .filter(
+                  candidateModel =>
+                    !getItemList().some(
+                      existingModelProbe =>
+                        existingModelProbe !== selectedItem &&
+                        existingModelProbe.floorId === candidateFloor.id &&
+                        existingModelProbe.modelId === candidateModel.id
+                    )
+                )
+                .map(modelCandidateEntry => ({
+                  floor: candidateFloor,
+                  model: modelCandidateEntry,
+                  key: candidateFloor.id + "/" + modelCandidateEntry.id
+                }))
+            );
+          const currentModelKey = selectedItem.floorId + "/" + selectedItem.modelId;
+          const hasCurrentModel = modelCandidates.some(
+            candidateKeyProbe => candidateKeyProbe.key === currentModelKey
+          );
+          const modelSelectOptions = modelCandidates.map(modelKeyEntry => [
+            modelKeyEntry.key,
+            describeItem(modelKeyEntry.model)
+          ]);
+          if (!hasCurrentModel) {
+            modelSelectOptions.unshift([currentModelKey, "原模型已移除，请重新选择"]);
+          }
+          createSelectRow(
+            bindingRowElement,
+            "关联" + kindLabel + "模型",
+            modelSelectOptions,
+            currentModelKey,
+            pickedModelKey => {
+              const matchedModel = modelCandidates.find(
+                matchedModelCandidate => matchedModelCandidate.key === pickedModelKey
+              );
+              if (!!matchedModel && pickedModelKey !== currentModelKey) {
+                selectedItem.floorId = matchedModel.floor.id;
+                selectedItem.modelId = matchedModel.model.id;
+                delete selectedItem.focusCamera;
+                delete selectedItem.followCamera;
+                refreshEditorPreview();
+                renderPanel();
+              }
+            }
+          );
+          if (!hasCurrentModel) {
+            currentContainer.append(
+              createElement(
+                "p",
+                "i3d-note",
+                "原模型已移除，请重新选择。已保存的实体绑定和按钮设置仍然保留。"
+              )
+            );
+          }
         }
-        const openItemPicker = async (itemPickerKind, trigger) => {
-          const itemPickerSession = ++pickerSession;
-          pickerGeneration.textContent = "";
+        currentContainer = bindingContainer;
+        const openItemPicker = async (targetField, itemPickerTrigger) => {
+          const itemPickerGeneration = ++pickerGeneration;
+          errorMessageElement.textContent = "";
           try {
-            const pickerOpener = pickers?.[itemPickerKind === "powerEntity" ? "entity" : itemPickerKind];
-            if (!pickerOpener) {
+            const pickerMethod = pickers?.[targetField === "powerEntity" ? "entity" : targetField];
+            if (!pickerMethod) {
               throw new Error("选择器尚未准备好，请保存后刷新页面。");
             }
-            const close = await pickerOpener({
-              trigger,
-              deviceKind: itemPickerKind === "powerEntity" ? "television-power" : deviceKindLocal,
-              current: itemPickerKind === "vacuum" ? statusSource.deviceId : itemPickerKind === "powerEntity" ? statusSource.powerEntityId : itemPickerKind === "nas" ? statusSource.statusSource?.deviceId : itemPickerKind === "icon" ? statusSource.icon : statusSource.entityId,
-              onSelect(deviceId) {
-                if (!refreshCapabilities && !!capabilityCache && itemPickerSession === pickerSession && !!getCurrentItems().includes(statusSource)) {
-                  if (itemPickerKind === "vacuum") {
-                    statusSource.deviceId = deviceId?.deviceId || "";
-                    statusSource.deviceName = deviceId?.name || "";
-                    statusSource.entityId = deviceId?.entities.length === 1 ? deviceId.entities[0].entityId : "";
-                    statusSource.relatedEntityIds = deviceId?.relatedEntityIds || [];
-                    statusSource.map = {
-                      entityId: deviceId?.maps.length === 1 ? deviceId.maps[0].entityId : ""
+            const itemPickerHandle = await pickerMethod({
+              trigger: itemPickerTrigger,
+              deviceKind: targetField === "powerEntity" ? "television-power" : deviceKind,
+              current:
+                targetField === "vacuum"
+                  ? selectedItem.deviceId
+                  : targetField === "powerEntity"
+                    ? selectedItem.powerEntityId
+                    : targetField === "nas"
+                      ? selectedItem.statusSource?.deviceId
+                      : targetField === "icon"
+                        ? selectedItem.icon
+                        : selectedItem.entityId,
+              onSelect(pickedFieldValue) {
+                if (
+                  !isDisposed &&
+                  !!isAccessAllowed &&
+                  itemPickerGeneration === pickerGeneration &&
+                  !!getItemList().includes(selectedItem)
+                ) {
+                  if (targetField === "vacuum") {
+                    selectedItem.deviceId = pickedFieldValue?.deviceId || "";
+                    selectedItem.deviceName = pickedFieldValue?.name || "";
+                    selectedItem.entityId =
+                      pickedFieldValue?.entities.length === 1
+                        ? pickedFieldValue.entities[0].entityId
+                        : "";
+                    selectedItem.relatedEntityIds = pickedFieldValue?.relatedEntityIds || [];
+                    selectedItem.map = {
+                      entityId:
+                        pickedFieldValue?.maps.length === 1 ? pickedFieldValue.maps[0].entityId : ""
                     };
-                    if (deviceId) {
-                      statusSource.label = deviceId.name;
-                      get.set(deviceId.deviceId, deviceId);
+                    if (pickedFieldValue) {
+                      selectedItem.label = pickedFieldValue.name;
+                      devicesByDeviceId.set(pickedFieldValue.deviceId, pickedFieldValue);
                     }
-                  } else if (itemPickerKind === "powerEntity") {
-                    if (deviceId) {
-                      statusSource.powerEntityId = deviceId;
+                  } else if (targetField === "powerEntity") {
+                    if (pickedFieldValue) {
+                      selectedItem.powerEntityId = pickedFieldValue;
                     } else {
-                      delete statusSource.powerEntityId;
+                      delete selectedItem.powerEntityId;
                     }
-                  } else if (itemPickerKind === "nas") {
-                    if (deviceId) {
-                      if (statusSource.statusSource?.deviceId === deviceId.deviceId) {
-                        const items = new Map(statusSource.statusSource.metrics.map((entityId, arg) => [entityId.entityId, arg]));
-                        deviceId.metrics.sort((entityId, entityIdRight) => (items.get(entityId.entityId) ?? Infinity) - (items.get(entityIdRight.entityId) ?? Infinity));
+                  } else if (targetField === "nas") {
+                    if (pickedFieldValue) {
+                      if (selectedItem.statusSource?.deviceId === pickedFieldValue.deviceId) {
+                        const metricOrderByEntityId = new Map(
+                          selectedItem.statusSource.metrics.map(
+                            (orderedMetricEntry, metricOrderIndex) => [
+                              orderedMetricEntry.entityId,
+                              metricOrderIndex
+                            ]
+                          )
+                        );
+                        pickedFieldValue.metrics.sort(
+                          (comparedMetricEntry, otherMetricEntry) =>
+                            (metricOrderByEntityId.get(comparedMetricEntry.entityId) ?? Infinity) -
+                            (metricOrderByEntityId.get(otherMetricEntry.entityId) ?? Infinity)
+                        );
                       }
-                      if (statusSource.statusSource?.deviceId === deviceId.deviceId && Array.isArray(statusSource.statusSource.groupOrder)) {
-                        deviceId.groupOrder = [...statusSource.statusSource.groupOrder];
+                      if (
+                        selectedItem.statusSource?.deviceId === pickedFieldValue.deviceId &&
+                        Array.isArray(selectedItem.statusSource.groupOrder)
+                      ) {
+                        pickedFieldValue.groupOrder = [...selectedItem.statusSource.groupOrder];
                       }
-                      if (statusSource.statusSource?.deviceId === deviceId.deviceId && Array.isArray(statusSource.statusSource.visibleMetrics)) {
-                        const has = new Set(statusSource.statusSource.visibleMetrics);
-                        deviceId.visibleMetrics = deviceId.metrics.filter(entityId => has.has(entityId.entityId)).map(entityId => entityId.entityId);
+                      if (
+                        selectedItem.statusSource?.deviceId === pickedFieldValue.deviceId &&
+                        Array.isArray(selectedItem.statusSource.visibleMetrics)
+                      ) {
+                        const previouslyVisibleMetrics = new Set(
+                          selectedItem.statusSource.visibleMetrics
+                        );
+                        pickedFieldValue.visibleMetrics = pickedFieldValue.metrics
+                          .filter(visibleMetricProbe =>
+                            previouslyVisibleMetrics.has(visibleMetricProbe.entityId)
+                          )
+                          .map(visibleMetricEntry => visibleMetricEntry.entityId);
                       }
-                      statusSource.statusSource = deviceId;
-                      statusSource.entityId = "";
-                      statusSource.clickAction = "focus-panel";
+                      selectedItem.statusSource = pickedFieldValue;
+                      selectedItem.entityId = "";
+                      selectedItem.clickAction = "focus-panel";
                     } else {
-                      delete statusSource.statusSource;
+                      delete selectedItem.statusSource;
                     }
-                  } else if (itemPickerKind === "icon") {
-                    statusSource.icon = deviceId;
+                  } else if (targetField === "icon") {
+                    selectedItem.icon = pickedFieldValue;
                   } else {
-                    statusSource.entityId = deviceId;
+                    selectedItem.entityId = pickedFieldValue;
                   }
-                  mountRuntime();
-                  rebuildConfigSidebar();
+                  refreshEditorPreview();
+                  renderPanel();
                 }
               }
             });
-            if (refreshCapabilities || !capabilityCache || itemPickerSession !== pickerSession) {
-              close?.close();
+            if (isDisposed || !isAccessAllowed || itemPickerGeneration !== pickerGeneration) {
+              itemPickerHandle?.close();
             } else {
-              closeCurrent = close;
+              pickerHandle = itemPickerHandle;
             }
-          } catch (error) {
-            if (!refreshCapabilities && itemPickerSession === pickerSession) {
-              pickerGeneration.textContent = error.message;
+          } catch (itemPickerError) {
+            if (!isDisposed && itemPickerGeneration === pickerGeneration) {
+              errorMessageElement.textContent = itemPickerError.message;
             }
           }
         };
-        const name2 = entities.find(entityId => entityId.entityId === statusSource.entityId);
-        if (isNas) {
-          const nasPickerButton = accessAllowed(statusSource.statusSource?.name || "选择飞牛或群晖", () => void openItemPicker("nas", nasPickerButton));
-          nasPickerButton.className = "i3d-picker-button";
-          appendSetting(baseSection, "NAS 数据来源", nasPickerButton);
-          if (statusSource.statusSource) {
-            const nasVisibleMetricCount = statusSource.statusSource.visibleMetrics?.length ?? statusSource.statusSource.metrics.length;
-            const metricPickerButton = accessAllowed("选择显示内容（" + nasVisibleMetricCount + " 项）", () => appendSelect(statusSource));
-            metricPickerButton.className = "i3d-picker-button";
-            baseSection.append(metricPickerButton);
+        const itemEntityMetadata = entities.find(
+          metadataLookupProbe => metadataLookupProbe.entityId === selectedItem.entityId
+        );
+        if (isNasMode) {
+          const nasSourceButton = createButton(
+            selectedItem.statusSource?.name || "选择飞牛或群晖",
+            () => void openItemPicker("nas", nasSourceButton)
+          );
+          nasSourceButton.className = "i3d-picker-button";
+          createSettingRow(currentContainer, "NAS 数据来源", nasSourceButton);
+          if (selectedItem.statusSource) {
+            const visibleMetricCount =
+              selectedItem.statusSource.visibleMetrics?.length ??
+              selectedItem.statusSource.metrics.length;
+            const openMetricsButton = createButton(
+              "选择显示内容（" + visibleMetricCount + " 项）",
+              () => openMetricsDialog(selectedItem)
+            );
+            openMetricsButton.className = "i3d-picker-button";
+            if (selectedItem.statusSource.metrics.length) {
+              currentContainer.append(openMetricsButton);
+            }
           }
-          baseSection.append(createEl("p", "i3d-note", statusSource.statusSource ? "已匹配 " + statusSource.statusSource.metrics.length + " 项状态。点击数据来源可重新匹配；弹窗只展示状态。" : "选择整台 NAS，自动匹配 CPU、内存、温度、存储和网络。无需逐个选择传感器。"));
+          currentContainer.append(
+            createElement(
+              "p",
+              "i3d-note",
+              selectedItem.statusSource
+                ? selectedItem.statusSource.metrics.length
+                  ? "已匹配 " +
+                    selectedItem.statusSource.metrics.length +
+                    " 项状态。点击数据来源可重新匹配；弹窗只展示状态。"
+                  : "已关联 NAS，暂未找到启用的状态指标。请在 Home Assistant 启用指标并同步目录，再点击数据来源重新匹配。"
+                : "选择整台 NAS，自动匹配 CPU、内存、温度、存储和网络。无需逐个选择传感器。"
+            )
+          );
         }
-        const allowed = accessAllowed("", () => void openItemPicker("entity", allowed));
-        allowed.className = "i3d-picker-button";
-        allowed.title = statusSource.entityId || (isNonLight ? "选择" + stageLabel + "实体" : "选择灯或开关");
-        allowed.append(createEl("span", "", name2?.name || statusSource.entityId || (isNonLight ? "选择" + stageLabel + "实体" : "选择灯或开关")));
-        if (!isVacuum && (!isNas || !statusSource.statusSource)) {
-          appendSetting(baseSection, isNas ? "原开启实体（未关联 NAS）" : "绑定实体", allowed);
+        const boundEntityButton = createButton(
+          "",
+          () => void openItemPicker("entity", boundEntityButton)
+        );
+        boundEntityButton.className = "i3d-picker-button";
+        boundEntityButton.title =
+          selectedItem.entityId ||
+          (usesModelBinding ? "选择" + kindLabel + "实体" : "选择灯或开关");
+        boundEntityButton.append(
+          createElement(
+            "span",
+            "",
+            itemEntityMetadata?.name ||
+              selectedItem.entityId ||
+              (usesModelBinding ? "选择" + kindLabel + "实体" : "选择灯或开关")
+          )
+        );
+        if (
+          !isVacuumMode &&
+          (!isNasMode || (!selectedItem.statusSource && selectedItem.entityId))
+        ) {
+          createSettingRow(
+            currentContainer,
+            isNasMode ? "指示灯状态实体（旧版兼容）" : "绑定实体",
+            boundEntityButton
+          );
         }
-        if (isVacuum) {
-          const mapSection = makeConfigSection("地图与移动");
-          const followOffsetInput = createEl("input");
+        if (isCoverMode) {
+          currentContainer = createConfigSection("帘布外观");
+          const curtainAppearanceRowElement = createConfigRow(currentContainer);
+          const curtainKindSelect = createSelectRow(
+            curtainAppearanceRowElement,
+            "窗帘类型",
+            [
+              ["standard", "普通窗帘"],
+              ["dream", "梦幻帘"]
+            ],
+            selectedItem.coverKind,
+            pickedCurtainKind => {
+              selectedItem.coverKind = pickedCurtainKind === "dream" ? "dream" : "standard";
+              refreshEditorPreview();
+            }
+          );
+          const curtainFabricRowElement = createConfigRow(currentContainer);
+          const floorCurtainModel = sceneMetadata.floors
+            .find(curtainFloorProbe => curtainFloorProbe.id === selectedItem.floorId)
+            ?.curtains?.find(curtainModelProbe => curtainModelProbe.id === selectedItem.modelId);
+          const curtainFabricSelect = createSelectRow(
+            curtainFabricRowElement,
+            "帘布类型",
+            [
+              ["cloth", "布帘"],
+              ["sheer", "纱帘"]
+            ],
+            floorCurtainModel?.curtainFabric || selectedItem.curtainFabric,
+            pickedCurtainFabric => {
+              selectedItem.curtainFabric = pickedCurtainFabric === "sheer" ? "sheer" : "cloth";
+              refreshEditorPreview();
+            }
+          );
+          curtainFabricSelect.disabled = !!floorCurtainModel?.curtainFabric;
+          if (floorCurtainModel?.curtainFabric) {
+            curtainFabricSelect.title = "帘布类型继承户型模型，请在3D户型图绘制中调整";
+          }
+          if (floorCurtainModel?.curtainTrack && floorCurtainModel.curtainTrack !== "straight") {
+            currentContainer.append(
+              createElement(
+                "p",
+                "i3d-note",
+                (floorCurtainModel.curtainTrack === "u" ? "U" : "L") +
+                  " 型轨道，尺寸和合拢位置继承户型模型。"
+              )
+            );
+          }
+          createSelectRow(
+            curtainFabricRowElement,
+            "开合方向",
+            [
+              ["auto", "继承模型"],
+              ["left", "向左收拢"],
+              ["right", "向右收拢"],
+              ["split", "双向收拢"]
+            ],
+            selectedItem.coverDirection,
+            pickedCurtainDirection => {
+              selectedItem.coverDirection = ["left", "right", "split"].includes(
+                pickedCurtainDirection
+              )
+                ? pickedCurtainDirection
+                : "auto";
+              refreshEditorPreview();
+            }
+          );
+          if (selectedItem.entityId) {
+            currentContainer.append(
+              createElement("p", "i3d-note", "开合状态跟随绑定实体；解除绑定后恢复预设的展示状态。")
+            );
+          } else {
+            const unboundPositionOptions = [
+              ["0", "关闭"],
+              ["50", "半开"],
+              ["100", "全开"]
+            ];
+            if (![0, 50, 100].includes(selectedItem.unboundPosition)) {
+              unboundPositionOptions.push([
+                String(selectedItem.unboundPosition),
+                "打开 " + selectedItem.unboundPosition + "%"
+              ]);
+            }
+            createSelectRow(
+              currentContainer,
+              "未绑定时显示",
+              unboundPositionOptions,
+              String(selectedItem.unboundPosition),
+              pickedUnboundPosition => {
+                selectedItem.unboundPosition = Number(pickedUnboundPosition);
+                refreshEditorPreview();
+              }
+            );
+            currentContainer.append(
+              createElement(
+                "p",
+                "i3d-note",
+                "仅设置 3D 帘布的展示状态；绑定实体后自动跟随实际开合。"
+              )
+            );
+          }
+        }
+        if (isVacuumMode) {
+          const vacuumDeviceButton = createButton(
+            selectedItem.deviceName || "选择扫地机设备",
+            () => void openItemPicker("vacuum", vacuumDeviceButton)
+          );
+          vacuumDeviceButton.className = "i3d-picker-button";
+          createSettingRow(currentContainer, "绑定设备", vacuumDeviceButton);
+          const cachedDeviceInfo = devicesByDeviceId.get(selectedItem.deviceId) || {
+            entities: entities.filter(
+              vacuumEntityProbe =>
+                /^vacuum\./.test(vacuumEntityProbe.entityId) &&
+                (vacuumEntityProbe.deviceId === selectedItem.deviceId ||
+                  vacuumEntityProbe.entityId === selectedItem.deviceId)
+            ),
+            maps: entities.filter(
+              mapEntityProbe =>
+                /^(camera|image)\./.test(mapEntityProbe.entityId) &&
+                mapEntityProbe.deviceId === selectedItem.deviceId
+            )
+          };
+          if (cachedDeviceInfo?.entities.length > 1) {
+            createSelectRow(
+              currentContainer,
+              "扫地机主实体",
+              [
+                ["", "请选择主实体"],
+                ...cachedDeviceInfo.entities.map(deviceEntityOption => [
+                  deviceEntityOption.entityId,
+                  deviceEntityOption.name || deviceEntityOption.entityId
+                ])
+              ],
+              selectedItem.entityId,
+              pickedMainEntity => {
+                selectedItem.entityId = pickedMainEntity;
+                refreshEditorPreview();
+              }
+            );
+          } else if (selectedItem.entityId) {
+            currentContainer.append(
+              createElement("p", "i3d-note", "已识别：" + selectedItem.entityId)
+            );
+          }
+          currentContainer = createConfigSection("地图与移动");
+          const followOffsetInput = createElement("input");
           Object.assign(followOffsetInput, {
             type: "number",
             min: "0",
             max: "300",
             step: "1",
-            value: String(effectRangeOpen.navigation?.followOffset ?? 16),
+            value: String(draftProperties.navigation?.followOffset ?? 16),
             title: "所有扫地机共用此标签偏移"
           });
           followOffsetInput.addEventListener("change", () => {
-            if (!capabilityCache || refreshCapabilities) {
+            if (!isAccessAllowed || isDisposed) {
               return;
             }
-            const followOffsetValue = followOffsetInput.value.trim() === "" ? NaN : Number(followOffsetInput.value);
-            if (Number.isFinite(followOffsetValue)) {
-              effectRangeOpen.navigation = {
-                ...effectRangeOpen.navigation,
-                followOffset: Math.max(0, Math.min(300, followOffsetValue))
+            const parsedOffsetValue =
+              followOffsetInput.value.trim() === "" ? NaN : Number(followOffsetInput.value);
+            if (Number.isFinite(parsedOffsetValue)) {
+              draftProperties.navigation = {
+                ...draftProperties.navigation,
+                followOffset: Math.max(0, Math.min(300, parsedOffsetValue))
               };
-              mountRuntime();
+              refreshEditorPreview();
             }
-            followOffsetInput.value = String(effectRangeOpen.navigation?.followOffset ?? 16);
+            followOffsetInput.value = String(draftProperties.navigation?.followOffset ?? 16);
           });
-          appendSetting(mapSection, "跟随标签上移（px）", followOffsetInput);
-          for (const [vacuumToggleKey, vacuumToggleLabel] of [["motionEnabled", "跟随真实位置移动"], ["funMessages", "工作时显示趣味短句"]]) {
-            const vacuumToggleInput = createEl("input");
-            Object.assign(vacuumToggleInput, {
+          createSettingRow(currentContainer, "跟随标签上移（px）", followOffsetInput);
+          for (const [vacuumToggleKey, vacuumToggleLabel] of [
+            ["motionEnabled", "跟随真实位置移动"],
+            ["funMessages", "工作时显示趣味短句"]
+          ]) {
+            const vacuumToggleCheckbox = createElement("input");
+            Object.assign(vacuumToggleCheckbox, {
               type: "checkbox",
-              checked: statusSource[vacuumToggleKey] !== false
+              checked: selectedItem[vacuumToggleKey] !== false
             });
-            vacuumToggleInput.addEventListener("change", () => {
-              statusSource[vacuumToggleKey] = vacuumToggleInput.checked;
-              mountRuntime();
+            vacuumToggleCheckbox.addEventListener("change", () => {
+              selectedItem[vacuumToggleKey] = vacuumToggleCheckbox.checked;
+              refreshEditorPreview();
             });
-            appendSetting(mapSection, vacuumToggleLabel, vacuumToggleInput);
+            createSettingRow(currentContainer, vacuumToggleLabel, vacuumToggleCheckbox);
           }
-          const vacuumPickerButton = accessAllowed(statusSource.deviceName || "选择扫地机设备", () => void openItemPicker("vacuum", vacuumPickerButton));
-          vacuumPickerButton.className = "i3d-picker-button";
-          appendSetting(baseSection, "绑定设备", vacuumPickerButton);
-          const entry = get.get(statusSource.deviceId) || {
-            entities: entities.filter(entityId => /^vacuum\./.test(entityId.entityId) && (entityId.deviceId === statusSource.deviceId || entityId.entityId === statusSource.deviceId)),
-            maps: entities.filter(entityId => /^(camera|image)\./.test(entityId.entityId) && entityId.deviceId === statusSource.deviceId)
-          };
-          if (entry?.entities.length > 1) {
-            appendPositiveNumber(baseSection, "扫地机主实体", [["", "请选择主实体"], ...entry.entities.map(entityId7 => [entityId7.entityId, entityId7.name || entityId7.entityId])], statusSource.entityId, entityId => {
-              statusSource.entityId = entityId;
-              mountRuntime();
-            });
-          } else if (statusSource.entityId) {
-            baseSection.append(createEl("p", "i3d-note", "已识别：" + statusSource.entityId));
+          if (cachedDeviceInfo?.maps.length > 1) {
+            createSelectRow(
+              currentContainer,
+              "已识别的地图",
+              [
+                ["", "请选择地图"],
+                ...cachedDeviceInfo.maps.map(mapOptionEntry => [
+                  mapOptionEntry.entityId,
+                  mapOptionEntry.name || mapOptionEntry.entityId
+                ])
+              ],
+              selectedItem.map?.entityId || "",
+              pickedMapEntityId => {
+                selectedItem.map = {
+                  ...selectedItem.map,
+                  entityId: pickedMapEntityId
+                };
+                refreshEditorPreview();
+                renderPanel();
+              }
+            );
           }
-          if (entry?.maps.length > 1) {
-            appendPositiveNumber(mapSection, "已识别的地图", [["", "请选择地图"], ...entry.maps.map(entityId8 => [entityId8.entityId, entityId8.name || entityId8.entityId])], statusSource.map?.entityId || "", entityId => {
-              statusSource.map = {
-                ...statusSource.map,
-                entityId: entityId
-              };
-              mountRuntime();
-              rebuildConfigSidebar();
-            });
-          }
-          const trigger = accessAllowed(statusSource.map?.entityId || "选择扫地机地图", async () => {
-            const mapPickerSession = ++pickerSession;
-            try {
-              closeCurrent = await pickers.entity({
-                trigger: trigger,
-                deviceKind: "vacuum-map",
-                current: statusSource.map?.entityId || "",
-                onSelect(entityId) {
-                  if (!refreshCapabilities && !!capabilityCache && mapPickerSession === pickerSession && !!getCurrentItems().includes(statusSource)) {
-                    statusSource.map = {
-                      ...statusSource.map,
-                      entityId: entityId
-                    };
-                    mountRuntime();
-                    rebuildConfigSidebar();
+          const mapPickerButton = createButton(
+            selectedItem.map?.entityId || "选择扫地机地图",
+            async () => {
+              const mapPickerGeneration = ++pickerGeneration;
+              try {
+                pickerHandle = await pickers.entity({
+                  trigger: mapPickerButton,
+                  deviceKind: "vacuum-map",
+                  current: selectedItem.map?.entityId || "",
+                  onSelect(pickedMapEntity) {
+                    if (
+                      !isDisposed &&
+                      !!isAccessAllowed &&
+                      mapPickerGeneration === pickerGeneration &&
+                      !!getItemList().includes(selectedItem)
+                    ) {
+                      selectedItem.map = {
+                        ...selectedItem.map,
+                        entityId: pickedMapEntity
+                      };
+                      refreshEditorPreview();
+                      renderPanel();
+                    }
                   }
-                }
-              });
-            } catch (message) {
-              pickerGeneration.textContent = message.message;
+                });
+              } catch (mapPickerError) {
+                errorMessageElement.textContent = mapPickerError.message;
+              }
             }
-          });
-          trigger.className = "i3d-picker-button";
-          appendSetting(mapSection, "地图来源", trigger);
-          const openMapAlignButton = accessAllowed("底图对齐", () => {
-            const mapEntityState = latestStatesByEntity === null ? states?.get?.(statusSource.map?.entityId) : latestStatesByEntity[statusSource.map?.entityId];
-            const vacuumEntityState = latestStatesByEntity === null ? states?.get?.(statusSource.entityId) : latestStatesByEntity[statusSource.entityId];
-            const sourceMapId = vacuumMapIdentity(mapEntityState, vacuumEntityState);
-            const map = {
-              ...statusSource,
+          );
+          mapPickerButton.className = "i3d-picker-button";
+          createSettingRow(currentContainer, "地图来源", mapPickerButton);
+          const alignMapButton = createButton("底图对齐", () => {
+            const mapEntityState =
+              latestStates === null
+                ? states?.get?.(selectedItem.map?.entityId)
+                : latestStates[selectedItem.map?.entityId];
+            const itemEntityState =
+              latestStates === null
+                ? states?.get?.(selectedItem.entityId)
+                : latestStates[selectedItem.entityId];
+            const mapIdentity = vacuumMapIdentity(mapEntityState, itemEntityState);
+            const editableItemForMapEditor = {
+              ...selectedItem,
               map: {
-                ...statusSource.map
+                ...selectedItem.map
               }
             };
-            if (sourceMapId) {
-              map.map.sourceMapId = sourceMapId;
+            if (mapIdentity) {
+              editableItemForMapEditor.map.sourceMapId = mapIdentity;
             } else {
-              delete map.map.sourceMapId;
+              delete editableItemForMapEditor.map.sourceMapId;
             }
-            closeEditor = openVacuumMapEditor({
-              item: map,
-              floor: draftRevision.floors.find(id => id.id === statusSource.floorId),
-              document: doc,
-              pickers,
-              onSave(map) {
-                if (!refreshCapabilities && capabilityCache && getCurrentItems().includes(statusSource)) {
-                  statusSource.map = map.map;
-                  mountRuntime();
-                  rebuildConfigSidebar();
+            subEditorHandle = openVacuumMapEditor({
+              item: editableItemForMapEditor,
+              floor: sceneMetadata.floors.find(
+                mapFloorProbe => mapFloorProbe.id === selectedItem.floorId
+              ),
+              document: documentApi,
+              pickers: pickers,
+              onSave(savedMapData) {
+                if (!isDisposed && isAccessAllowed && getItemList().includes(selectedItem)) {
+                  selectedItem.map = savedMapData.map;
+                  refreshEditorPreview();
+                  renderPanel();
                 }
               }
             });
           });
-          mapSection.append(openMapAlignButton);
+          currentContainer.append(alignMapButton);
         }
-        if (isTelevision) {
-          const powerEntityPickerButton = accessAllowed(statusSource.powerEntityId || "不单独绑定", () => void openItemPicker("powerEntity", powerEntityPickerButton));
-          powerEntityPickerButton.className = "i3d-picker-button";
-          appendSetting(baseSection, "电视电源状态（可选）", powerEntityPickerButton);
-          baseSection.append(createEl("p", "i3d-note", "可绑定任意能提供开关状态的实体：开启显示 HA BRIDGE 海报，关闭黑屏。上方绑定媒体播放器后，有节目封面时优先显示封面；不单独绑定电源时，跟随媒体播放器电源状态。"));
-          baseSection.append(createEl("p", "i3d-note", "绑定 Apple TV 的 media_player 实体，同步封面、应用、节目和播放状态。弹窗只读，不同步实际视频。"));
+        if (isTelevisionMode) {
+          const powerEntityButton = createButton(
+            selectedItem.powerEntityId || "不单独绑定",
+            () => void openItemPicker("powerEntity", powerEntityButton)
+          );
+          powerEntityButton.className = "i3d-picker-button";
+          createSettingRow(currentContainer, "电视电源实体（可选）", powerEntityButton);
+          currentContainer.append(
+            createElement(
+              "p",
+              "i3d-note",
+              "可绑定任意能提供开关状态的实体：开启显示 HA BRIDGE 海报，关闭黑屏。上方绑定媒体播放器后，有节目封面时优先显示封面；不单独绑定电源时，跟随媒体播放器的开关状态。"
+            )
+          );
         }
-        if (isNas) {
-          baseSection.append(createEl("p", "i3d-note", statusSource.statusSource ? "已选择 NAS 自身状态数据作为呼吸灯依据。安全状态只用于告警。" : "请先选择 NAS 数据来源。原来的试绑实体不会自动作为 NAS 数据来源。"));
+        if (isNasMode && !selectedItem.statusSource && selectedItem.entityId) {
+          currentContainer.append(
+            createElement(
+              "p",
+              "i3d-note",
+              "旧版绑定仅按 on/off 控制指示灯，不会开关 NAS 或关联整台设备。安全状态表示告警，不应作为开机依据；选择 NAS 数据来源后将替换旧绑定。"
+            )
+          );
         }
-        const interactionSection = makeConfigSection("交互行为");
-        appendPositiveNumber(interactionSection, "点击" + stageLabel, isDeviceLike ? [["focus-panel", "聚焦并显示状态"], ["panel", "仅显示状态"], ["focus", "仅聚焦"]] : isCover ? [["focus", "聚焦并显示控制"], ["panel", "仅显示控制"]] : isClimate ? [["focus", "聚焦并显示控制"], ["turn-on-focus", "聚焦并开启"], ["turn-on", "仅开关空调"], ["turn-on-panel", "开启并显示控制"]] : [["focus", "仅聚焦"], ["turn-on-focus", "聚焦并开灯"], ["turn-on", "仅开关灯"], ["turn-on-panel", "开灯并弹窗"]], statusSource.clickAction, clickActionChoice => {
-          statusSource.clickAction = normalizeClickAction(clickActionChoice);
-          mountRuntime();
-        });
-        const visibilityRow = createEl("div", "i3d-button-visibility-row");
-        interactionSection.append(visibilityRow);
-        const checked = createEl("input");
-        Object.assign(checked, {
-          type: "checkbox",
-          checked: statusSource.hiddenClickable === true && statusSource.buttonHidden !== true
-        });
-        checked.addEventListener("change", () => {
-          statusSource.hiddenClickable = checked.checked;
-          if (checked.checked) {
-            statusSource.buttonHidden = false;
-            el.checked = false;
+        if (isNasMode) {
+          currentContainer.append(
+            createElement(
+              "p",
+              "i3d-note",
+              selectedItem.statusSource
+                ? "已选择 NAS 自身状态数据作为呼吸灯依据。安全状态只用于告警。"
+                : "请先选择 NAS 数据来源，缺少 CPU 等个别指标也可绑定。"
+            )
+          );
+        }
+        currentContainer = createConfigSection("交互行为");
+        createSelectRow(
+          currentContainer,
+          "点击" + kindLabel,
+          usesStatusPanel
+            ? [
+                ["focus-panel", "聚焦并显示状态"],
+                ["panel", "仅显示状态"],
+                ["focus", "仅聚焦"]
+              ]
+            : isCoverMode
+              ? [
+                  ["focus", "聚焦并显示控制"],
+                  ["panel", "仅显示控制"]
+                ]
+              : isClimateMode
+                ? [
+                    ["focus", "聚焦并显示控制"],
+                    ["turn-on-focus", "聚焦并开启"],
+                    ["turn-on", "仅开关空调"],
+                    ["turn-on-panel", "开启并显示控制"]
+                  ]
+                : [
+                    ["focus", "仅聚焦"],
+                    ["turn-on-focus", "聚焦并开灯"],
+                    ["turn-on", "仅开关灯"],
+                    ["turn-on-panel", "开灯并弹窗"]
+                  ],
+          selectedItem.clickAction,
+          pickedClickAction => {
+            selectedItem.clickAction = normalizeClickAction(pickedClickAction);
+            refreshEditorPreview();
           }
-          mountRuntime();
-        });
-        appendSetting(visibilityRow, "隐藏（可点击）", checked).parentElement.className += " i3d-hidden-clickable-setting";
-        const el = createEl("input");
-        Object.assign(el, {
+        );
+        const clickActionVisibilityRow = createElement("div", "i3d-button-visibility-row");
+        currentContainer.append(clickActionVisibilityRow);
+        const hiddenClickableCheckbox = createElement("input");
+        Object.assign(hiddenClickableCheckbox, {
           type: "checkbox",
-          checked: statusSource.buttonHidden === true
+          checked: selectedItem.hiddenClickable === true && selectedItem.buttonHidden !== true
         });
-        el.addEventListener("change", () => {
-          statusSource.buttonHidden = el.checked;
-          if (el.checked) {
-            statusSource.hiddenClickable = false;
-            checked.checked = false;
+        hiddenClickableCheckbox.addEventListener("change", () => {
+          selectedItem.hiddenClickable = hiddenClickableCheckbox.checked;
+          if (hiddenClickableCheckbox.checked) {
+            selectedItem.buttonHidden = false;
+            buttonHiddenCheckbox.checked = false;
           }
-          mountRuntime();
+          refreshEditorPreview();
         });
-        appendSetting(visibilityRow, "隐藏（不可点击）", el).parentElement.className += " i3d-hidden-clickable-setting";
-        const appearanceSection = makeConfigSection(isVacuum ? "状态标签" : "按钮外观");
-        const appearanceRow = makeConfigRow(appearanceSection);
-        if (!isVacuum) {
-          const iconPickerButton = accessAllowed("", () => void openItemPicker("icon", iconPickerButton));
-          iconPickerButton.className = "i3d-picker-button i3d-icon-picker-button";
-          const style = createEl("i");
-          style.setAttribute("aria-hidden", "true");
-          const iconSvgUrl = "/bridge-static/vendor/mdi/7.4.47/svg/" + statusSource.icon.replace(/^mdi:/, "") + ".svg";
-          style.style.maskImage = "url(\"" + iconSvgUrl + "\")";
-          style.style.webkitMaskImage = "url(\"" + iconSvgUrl + "\")";
-          iconPickerButton.append(style, createEl("span", "", statusSource.icon));
-          appendSetting(appearanceRow, "图标", iconPickerButton);
-        }
-        const sizeGrid = createEl("div", "i3d-coordinate-grid i3d-size-grid");
-        const sizeDetails = createEl("details");
-        sizeDetails.append(createEl("summary", "", "更多尺寸设置"), sizeGrid);
-        appearanceSection.append(sizeDetails);
-        const resolveHitSize = () => Number.isFinite(statusSource.hitSize) && statusSource.hitSize > 0 ? statusSource.hitSize : Math.max(44, statusSource.size);
-        appendPositiveInput(appearanceRow, isVacuum ? "状态框缩放（%）" : "按钮大小（px）", () => isVacuum ? Math.round(statusSource.size / 44 * 100) : statusSource.size, sizeInputValue => {
-          statusSource.size = isVacuum ? sizeInputValue / 100 * 44 : sizeInputValue;
-          hitSizeInput.value = String(Number(resolveHitSize().toPrecision(12)));
-          mountRuntime();
+        createSettingRow(
+          clickActionVisibilityRow,
+          "隐藏（可点击）",
+          hiddenClickableCheckbox
+        ).parentElement.className += " i3d-hidden-clickable-setting";
+        const buttonHiddenCheckbox = createElement("input");
+        Object.assign(buttonHiddenCheckbox, {
+          type: "checkbox",
+          checked: selectedItem.buttonHidden === true
         });
-        appendPositiveInput(sizeGrid, isVacuum ? "文字大小（px）" : "图标大小（px）", () => isVacuum ? statusSource.iconSize / 2 : statusSource.iconSize, iconSizeInputValue => {
-          statusSource.iconSize = isVacuum ? iconSizeInputValue * 2 : iconSizeInputValue;
-          mountRuntime();
+        buttonHiddenCheckbox.addEventListener("change", () => {
+          selectedItem.buttonHidden = buttonHiddenCheckbox.checked;
+          if (buttonHiddenCheckbox.checked) {
+            selectedItem.hiddenClickable = false;
+            hiddenClickableCheckbox.checked = false;
+          }
+          refreshEditorPreview();
         });
-        const hitSizeInput = appendPositiveInput(sizeGrid, "触控范围（px）", resolveHitSize, hitSize => {
-          statusSource.hitSize = hitSize;
-          mountRuntime();
-        });
-        if (isNonLight) {
-          const positionSection = makeConfigSection(isVacuum ? "标签位置" : "按钮位置");
-          const elevation = draftRevision.floors.find(id => id.id === statusSource.floorId)?.[deviceCollectionKey]?.find(id => id.id === statusSource.modelId);
-          const modelCoordGrid = createEl("div", "i3d-coordinate-grid");
-          positionSection.append(modelCoordGrid);
-          const disabled = accessAllowed("恢复跟随模型", () => {
-            delete statusSource.x;
-            delete statusSource.y;
-            delete statusSource.height;
-            mountRuntime();
-            rebuildConfigSidebar();
+        createSettingRow(
+          clickActionVisibilityRow,
+          "隐藏（不可点击）",
+          buttonHiddenCheckbox
+        ).parentElement.className += " i3d-hidden-clickable-setting";
+        currentContainer = createConfigSection(isVacuumMode ? "状态标签" : "按钮外观");
+        if (isCoverMode) {
+          const iconStateReversedCheckbox = createElement("input");
+          Object.assign(iconStateReversedCheckbox, {
+            type: "checkbox",
+            checked: selectedItem.iconStateReversed === true
           });
-          disabled.disabled = !["x", "y", "height"].some(positionKey => Number.isFinite(statusSource[positionKey]));
-          for (const [coordKey, coordLabel, coordMin, coordMax, coordStep] of [["x", "位置 X", -1000000, 1000000, 1], ["y", "位置 Y", -1000000, 1000000, 1], ["height", "高度（米）", 0, 20, 0.1]]) {
-            const coordCurrent = Number.isFinite(statusSource[coordKey]) ? statusSource[coordKey] : isVacuum && coordKey === "height" ? (Number(elevation?.elevation) || 0) + (Number(elevation?.height) || 0.85) + 0.25 : Number.isFinite(elevation?.[coordKey]) ? elevation[coordKey] : 0;
-            appendBoundedInput(modelCoordGrid, isVacuum && coordKey === "height" ? "离地高度（米）" : coordLabel, coordCurrent, coordMin, coordMax, coordStep, positionValue => {
-              statusSource[coordKey] = positionValue;
-              disabled.disabled = false;
-              mountRuntime();
-            });
+          iconStateReversedCheckbox.addEventListener("change", () => {
+            selectedItem.iconStateReversed = iconStateReversedCheckbox.checked;
+            refreshEditorPreview();
+          });
+          createSettingRow(currentContainer, "图标状态反向", iconStateReversedCheckbox);
+        }
+        const itemAppearanceRowElement = createConfigRow(currentContainer);
+        if (!isVacuumMode) {
+          const itemIconPickerButton = createButton(
+            "",
+            () => void openItemPicker("icon", itemIconPickerButton)
+          );
+          itemIconPickerButton.className = "i3d-picker-button i3d-icon-picker-button";
+          const itemIconPreviewElement = createElement("i");
+          itemIconPreviewElement.setAttribute("aria-hidden", "true");
+          const iconMaskUrl =
+            "/bridge-static/vendor/mdi/7.4.47/svg/" +
+            selectedItem.icon.replace(/^mdi:/, "") +
+            ".svg";
+          itemIconPreviewElement.style.maskImage = 'url("' + iconMaskUrl + '")';
+          itemIconPreviewElement.style.webkitMaskImage = 'url("' + iconMaskUrl + '")';
+          itemIconPickerButton.append(
+            itemIconPreviewElement,
+            createElement("span", "", selectedItem.icon)
+          );
+          createSettingRow(itemAppearanceRowElement, "图标", itemIconPickerButton);
+        }
+        const sizeGridElement = createElement("div", "i3d-coordinate-grid i3d-size-grid");
+        const sizeDetailsElement = createElement("details");
+        sizeDetailsElement.append(createElement("summary", "", "更多尺寸设置"), sizeGridElement);
+        currentContainer.append(sizeDetailsElement);
+        const readHitSize = () =>
+          Number.isFinite(selectedItem.hitSize) && selectedItem.hitSize > 0
+            ? selectedItem.hitSize
+            : Math.max(44, selectedItem.size);
+        createSizeRow(
+          itemAppearanceRowElement,
+          isVacuumMode ? "状态框缩放（%）" : "按钮大小（px）",
+          () => (isVacuumMode ? Math.round((selectedItem.size / 44) * 100) : selectedItem.size),
+          pickedSizeValue => {
+            selectedItem.size = isVacuumMode ? (pickedSizeValue / 100) * 44 : pickedSizeValue;
+            hitSizeInputElement.value = String(Number(readHitSize().toPrecision(12)));
+            refreshEditorPreview();
           }
-          positionSection.append(disabled);
-          const append = createEl("section", "navigation-batch-section i3d-light-batch");
-          const batchSectionTitle = createEl("h4");
-          const textContent = createEl("span");
-          batchSectionTitle.append(createEl("span", "", "图标设置一键应用"), textContent);
-          const allowed = accessAllowed("一键应用到其他" + stageLabel, () => appendNumber(statusSource));
-          updateBatchApplyState = () => {
-            const nonLightDirtyCount = resolveLightCapability(statusSource).length;
-            textContent.textContent = nonLightDirtyCount + " 项修改";
-            allowed.disabled = !nonLightDirtyCount || !capabilityCache || saveButton || unsubscribeAccess;
+        );
+        createSizeRow(
+          sizeGridElement,
+          isVacuumMode ? "文字大小（px）" : "图标大小（px）",
+          () => (isVacuumMode ? selectedItem.iconSize / 2 : selectedItem.iconSize),
+          pickedIconSizeValue => {
+            selectedItem.iconSize = isVacuumMode ? pickedIconSizeValue * 2 : pickedIconSizeValue;
+            refreshEditorPreview();
+          }
+        );
+        const hitSizeInputElement = createSizeRow(
+          sizeGridElement,
+          "触控范围（px）",
+          readHitSize,
+          pickedHitSizeValue => {
+            selectedItem.hitSize = pickedHitSizeValue;
+            refreshEditorPreview();
+          }
+        );
+        if (usesModelBinding) {
+          currentContainer = createConfigSection(isVacuumMode ? "标签位置" : "按钮位置");
+          const modelBindingEntry = sceneMetadata.floors
+            .find(modelBindingFloorProbe => modelBindingFloorProbe.id === selectedItem.floorId)
+            ?.[collectionKey]?.find(
+              modelBindingModelProbe => modelBindingModelProbe.id === selectedItem.modelId
+            );
+          const positionGridElement = createElement("div", "i3d-coordinate-grid");
+          currentContainer.append(positionGridElement);
+          const resetPositionButton = createButton("恢复跟随模型", () => {
+            delete selectedItem.x;
+            delete selectedItem.y;
+            delete selectedItem.height;
+            refreshEditorPreview();
+            renderPanel();
+          });
+          resetPositionButton.disabled = !["x", "y", "height"].some(positionKeyProbe =>
+            Number.isFinite(selectedItem[positionKeyProbe])
+          );
+          for (const [
+            coordinateKey,
+            coordinateLabel,
+            coordinateMin,
+            coordinateMax,
+            coordinateStep
+          ] of [
+            ["x", "位置 X", -1000000, 1000000, 1],
+            ["y", "位置 Y", -1000000, 1000000, 1],
+            ["height", "高度（米）", 0, 20, 0.1]
+          ]) {
+            const coordinateValue = Number.isFinite(selectedItem[coordinateKey])
+              ? selectedItem[coordinateKey]
+              : isVacuumMode && coordinateKey === "height"
+                ? (Number(modelBindingEntry?.elevation) || 0) +
+                  (Number(modelBindingEntry?.height) || 0.85) +
+                  0.25
+                : Number.isFinite(modelBindingEntry?.[coordinateKey])
+                  ? modelBindingEntry[coordinateKey]
+                  : 0;
+            createNumberRow(
+              positionGridElement,
+              isVacuumMode && coordinateKey === "height" ? "离地高度（米）" : coordinateLabel,
+              coordinateValue,
+              coordinateMin,
+              coordinateMax,
+              coordinateStep,
+              pickedCoordinateValue => {
+                selectedItem[coordinateKey] = pickedCoordinateValue;
+                resetPositionButton.disabled = false;
+                refreshEditorPreview();
+              }
+            );
+          }
+          currentContainer.append(resetPositionButton);
+          const lightBatchSectionElement = createElement(
+            "section",
+            "navigation-batch-section i3d-light-batch"
+          );
+          const batchTitleElement = createElement("h4");
+          const batchCountElement = createElement("span");
+          batchTitleElement.append(
+            createElement("span", "", "图标设置一键应用"),
+            batchCountElement
+          );
+          const lightBatchApplyButton = createButton("一键应用到其他" + kindLabel, () =>
+            openBatchApplyDialog(selectedItem)
+          );
+          refreshBatchButtons = () => {
+            const lightChangeCount = listChangedFields(selectedItem).length;
+            batchCountElement.textContent = lightChangeCount + " 项修改";
+            lightBatchApplyButton.disabled =
+              !lightChangeCount || !isAccessAllowed || isCameraEditing || isCameraCommandPending;
           };
-          updateBatchApplyState();
-          append.append(batchSectionTitle, allowed);
-          positionSection.append(append);
+          refreshBatchButtons();
+          lightBatchSectionElement.append(batchTitleElement, lightBatchApplyButton);
+          currentContainer.append(lightBatchSectionElement);
         } else {
-          const positionSection = makeConfigSection("按钮位置");
-          const lightCoordGrid = createEl("div", "i3d-coordinate-grid");
-          positionSection.append(lightCoordGrid);
-          for (const toUpperCase of ["x", "y"]) {
-            appendBoundedInput(lightCoordGrid, "位置 " + toUpperCase.toUpperCase(), statusSource[toUpperCase], -1000000, 1000000, 1, lightPositionValue => {
-              statusSource[toUpperCase] = lightPositionValue;
-              mountRuntime();
-            });
+          currentContainer = createConfigSection("按钮位置");
+          const lightPositionGridElement = createElement("div", "i3d-coordinate-grid");
+          currentContainer.append(lightPositionGridElement);
+          for (const lightPositionAxis of ["x", "y"]) {
+            createNumberRow(
+              lightPositionGridElement,
+              "位置 " + lightPositionAxis.toUpperCase(),
+              selectedItem[lightPositionAxis],
+              -1000000,
+              1000000,
+              1,
+              pickedLightX => {
+                selectedItem[lightPositionAxis] = pickedLightX;
+                refreshEditorPreview();
+              }
+            );
           }
-          appendBoundedInput(lightCoordGrid, "高度（米）", statusSource.height, 0, 20, 0.1, height => {
-            statusSource.height = height;
-            mountRuntime();
-          });
-          appendBoundedInput(positionSection, "缓开缓灭（秒）", statusSource.fadeDuration, 0, 10, 0.1, fadeDuration => {
-            statusSource.fadeDuration = fadeDuration;
-            mountRuntime();
-          });
-          const effectsSection = makeConfigSection("灯光效果");
-          const contains = createEl("div");
-          effectsSection.append(contains);
-          const capabilitySignature = known => JSON.stringify([known.known, known.brightnessSupported, known.temperatureSupported, known.minimum, known.maximum]);
-          const itemLightCapability = resolveEntityLightState(statusSource);
-          let lastCapabilitySignature = capabilitySignature(itemLightCapability);
-          refreshEffectCapabilityUi = () => {
-            if (refreshCapabilities || !capabilityCache || saveButton || unsubscribeAccess || contains.contains?.(document.activeElement)) {
+          createNumberRow(
+            lightPositionGridElement,
+            "高度（米）",
+            selectedItem.height,
+            0,
+            20,
+            0.1,
+            pickedLightHeight => {
+              selectedItem.height = pickedLightHeight;
+              refreshEditorPreview();
+            }
+          );
+          createNumberRow(
+            currentContainer,
+            "缓开缓灭（秒）",
+            selectedItem.fadeDuration,
+            0,
+            10,
+            0.1,
+            pickedFadeDuration => {
+              selectedItem.fadeDuration = pickedFadeDuration;
+              refreshEditorPreview();
+            }
+          );
+          currentContainer = createConfigSection("灯光效果");
+          const lightEffectContainerElement = createElement("div");
+          currentContainer.append(lightEffectContainerElement);
+          const lightStatusSignature = statusSnapshot =>
+            JSON.stringify([
+              statusSnapshot.known,
+              statusSnapshot.brightnessSupported,
+              statusSnapshot.temperatureSupported,
+              statusSnapshot.minimum,
+              statusSnapshot.maximum
+            ]);
+          const initialLightStatus = getLightStatus(selectedItem);
+          let initialStatusSignature = lightStatusSignature(initialLightStatus);
+          refreshEffectSettings = () => {
+            if (
+              isDisposed ||
+              !isAccessAllowed ||
+              isCameraEditing ||
+              isCameraCommandPending ||
+              lightEffectContainerElement.contains?.(document.activeElement)
+            ) {
               return;
             }
-            const freshLightCapability = resolveEntityLightState(statusSource);
-            const freshCapabilitySignature = capabilitySignature(freshLightCapability);
-            if (freshCapabilitySignature !== lastCapabilitySignature) {
-              lastCapabilitySignature = freshCapabilitySignature;
-              renderLightEffectPanel(contains, statusSource, freshLightCapability);
+            const refreshedLightStatus = getLightStatus(selectedItem);
+            const refreshedStatusSignature = lightStatusSignature(refreshedLightStatus);
+            if (refreshedStatusSignature !== initialStatusSignature) {
+              initialStatusSignature = refreshedStatusSignature;
+              renderEffectSettings(lightEffectContainerElement, selectedItem, refreshedLightStatus);
             }
           };
-          contains.addEventListener("focusout", () => queueMicrotask(refreshEffectCapabilityUi));
-          renderLightEffectPanel(contains, statusSource, itemLightCapability);
-          const lightBatchSection = createEl("section", "navigation-batch-section i3d-light-batch");
-          const lightBatchTitle = createEl("h4");
-          const lightBatchCountEl = createEl("span");
-          lightBatchTitle.append(createEl("span", "", "灯光设置一键应用"), lightBatchCountEl);
-          const disabled = accessAllowed("一键应用到其他灯光", () => appendNumber(statusSource));
-          updateBatchApplyState = () => {
-            const lightDirtyCount = resolveLightCapability(statusSource).length;
-            lightBatchCountEl.textContent = lightDirtyCount + " 项修改";
-            disabled.disabled = !lightDirtyCount || !capabilityCache || saveButton || unsubscribeAccess || resizeObserver;
+          lightEffectContainerElement.addEventListener("focusout", () =>
+            queueMicrotask(refreshEffectSettings)
+          );
+          renderEffectSettings(lightEffectContainerElement, selectedItem, initialLightStatus);
+          const lightEffectBatchSectionElement = createElement(
+            "section",
+            "navigation-batch-section i3d-light-batch"
+          );
+          const effectBatchTitleElement = createElement("h4");
+          const effectBatchCountElement = createElement("span");
+          effectBatchTitleElement.append(
+            createElement("span", "", "灯光设置一键应用"),
+            effectBatchCountElement
+          );
+          const effectBatchApplyButton = createButton("一键应用到其他灯光", () =>
+            openBatchApplyDialog(selectedItem)
+          );
+          refreshBatchButtons = () => {
+            const effectChangeCount = listChangedFields(selectedItem).length;
+            effectBatchCountElement.textContent = effectChangeCount + " 项修改";
+            effectBatchApplyButton.disabled =
+              !effectChangeCount ||
+              !isAccessAllowed ||
+              isCameraEditing ||
+              isCameraCommandPending ||
+              isRangeEditorOpen;
           };
-          updateBatchApplyState();
-          lightBatchSection.append(lightBatchTitle, disabled);
-          effectsSection.append(lightBatchSection);
+          refreshBatchButtons();
+          lightEffectBatchSectionElement.append(effectBatchTitleElement, effectBatchApplyButton);
+          currentContainer.append(lightEffectBatchSectionElement);
         }
-        const focusSettingsSection = createEl("section", "i3d-focus-settings i3d-config-section");
-        focusQueue.append(focusSettingsSection);
-        const activeCameraKey = isVacuum && saveStatus === "follow" ? "followCamera" : "focusCamera";
-        focusSettingsSection.append(createEl("h4", "", activeCameraKey === "followCamera" ? "跟随视角" : "聚焦视角"));
-        if (isVacuum && !saveButton) {
-          const focusModeActions = createEl("div", "i3d-focus-actions");
-          for (const [focusModeKey, focusModeLabel] of [["focus", "聚焦视角"], ["follow", "跟随视角"]]) {
-            const setAttribute = accessAllowed(focusModeLabel, () => {
-              saveStatus = focusModeKey;
-              rebuildConfigSidebar();
+        const focusSectionElement = createElement(
+          "section",
+          "i3d-focus-settings i3d-config-section"
+        );
+        panelElement.append(focusSectionElement);
+        const cameraPropertyKey =
+          isVacuumMode && vacuumCameraMode === "follow" ? "followCamera" : "focusCamera";
+        focusSectionElement.append(
+          createElement("h4", "", cameraPropertyKey === "followCamera" ? "跟随视角" : "聚焦视角")
+        );
+        if (isVacuumMode && !isCameraEditing) {
+          const cameraModeActionsElement = createElement("div", "i3d-focus-actions");
+          for (const [cameraModeKey, cameraModeLabel] of [
+            ["focus", "聚焦视角"],
+            ["follow", "跟随视角"]
+          ]) {
+            const cameraModeButton = createButton(cameraModeLabel, () => {
+              vacuumCameraMode = cameraModeKey;
+              renderPanel();
             });
-            setAttribute.setAttribute("aria-pressed", String(saveStatus === focusModeKey));
-            setAttribute.disabled = unsubscribeAccess;
-            focusModeActions.append(setAttribute);
+            cameraModeButton.setAttribute(
+              "aria-pressed",
+              String(vacuumCameraMode === cameraModeKey)
+            );
+            cameraModeButton.disabled = isCameraCommandPending;
+            cameraModeActionsElement.append(cameraModeButton);
           }
-          focusSettingsSection.append(focusModeActions);
+          focusSectionElement.append(cameraModeActionsElement);
         }
-        if (activeCameraKey === "followCamera") {
-          focusSettingsSection.append(createEl("p", "i3d-note", "固定鸟瞰角度跟随机器人平移，不随机器人转向。调整角度和远近后保存；跟随时不弹出控制面板。"));
+        if (cameraPropertyKey === "followCamera") {
+          focusSectionElement.append(
+            createElement(
+              "p",
+              "i3d-note",
+              "固定鸟瞰角度跟随机器人平移，不随机器人转向。调整角度和远近后保存；跟随时不弹出控制面板。"
+            )
+          );
         }
-        const runFocusCameraCommand = async (focusCommandName, focusCommandPayload) => {
-          const focusCommandGen = cameraCommandGeneration;
-          const isFocalLengthCommand = focusCommandName === "focus-focal-length";
-          const priorCameraChain = cameraCommandChain;
-          let resolveCameraChain;
-          cameraCommandChain = new Promise(resolveCameraChainSettle => {
-            resolveCameraChain = resolveCameraChainSettle;
+        const runCameraCommand = async (cameraCommand, cameraPayload) => {
+          const sceneReadySnapshot = sceneReadyGeneration;
+          const isFocalLengthCommand = cameraCommand === "focus-focal-length";
+          const previousCameraQueue = cameraCommandQueue;
+          let cameraQueueResolve;
+          cameraCommandQueue = new Promise(resolveCameraQueuePromise => {
+            cameraQueueResolve = resolveCameraQueuePromise;
           });
           if (!isFocalLengthCommand) {
-            unsubscribeAccess = true;
-            pickerGeneration.textContent = "";
-            rebuildConfigSidebar();
+            isCameraCommandPending = true;
+            errorMessageElement.textContent = "";
+            renderPanel();
           }
           try {
-            await priorCameraChain;
-            if (refreshCapabilities || focusCommandGen !== cameraCommandGeneration) {
+            await previousCameraQueue;
+            if (isDisposed || sceneReadySnapshot !== sceneReadyGeneration) {
               return;
             }
-            const camera = await liveStates.focusCommand(activeCameraKey === "followCamera" && focusCommandName === "edit-light-camera" ? "edit-follow-camera" : focusCommandName, statusSource.id, focusCommandPayload);
-            if (refreshCapabilities || focusCommandGen !== cameraCommandGeneration) {
+            const cameraCommandResult = await editorRuntime.focusCommand(
+              cameraPropertyKey === "followCamera" && cameraCommand === "edit-light-camera"
+                ? "edit-follow-camera"
+                : cameraCommand,
+              selectedItem.id,
+              cameraPayload
+            );
+            if (isDisposed || sceneReadySnapshot !== sceneReadyGeneration) {
               return;
             }
-            if (focusCommandName === "save-light-camera") {
-              statusSource[activeCameraKey] = camera.camera;
-              saveButton = false;
-              mode = null;
-              mountRuntime();
-            } else if (focusCommandName === "cancel-light-camera") {
-              saveButton = false;
-              mode = null;
-            } else if (focusCommandName !== "preview-light-camera") {
-              saveButton = true;
-              mode = camera.camera;
+            if (cameraCommand === "save-light-camera") {
+              selectedItem[cameraPropertyKey] = cameraCommandResult.camera;
+              isCameraEditing = false;
+              pendingCameraDraft = null;
+              refreshEditorPreview();
+            } else if (cameraCommand === "cancel-light-camera") {
+              isCameraEditing = false;
+              pendingCameraDraft = null;
+            } else if (cameraCommand !== "preview-light-camera") {
+              isCameraEditing = true;
+              pendingCameraDraft = cameraCommandResult.camera;
             }
-          } catch (error) {
-            if (!refreshCapabilities && focusCommandGen === cameraCommandGeneration) {
-              pickerGeneration.textContent = error.message;
+          } catch (cameraCommandError) {
+            if (!isDisposed && sceneReadySnapshot === sceneReadyGeneration) {
+              errorMessageElement.textContent = cameraCommandError.message;
             }
           } finally {
-            resolveCameraChain();
-            if (!refreshCapabilities && focusCommandGen === cameraCommandGeneration && !isFocalLengthCommand) {
-              unsubscribeAccess = false;
-              rebuildConfigSidebar();
+            cameraQueueResolve();
+            if (
+              !isDisposed &&
+              sceneReadySnapshot === sceneReadyGeneration &&
+              !isFocalLengthCommand
+            ) {
+              isCameraCommandPending = false;
+              renderPanel();
             }
           }
         };
-        const focusActionsRow = createEl("div", "i3d-focus-actions");
-        focusSettingsSection.append(focusActionsRow);
-        if (saveButton) {
-          const saveViewButton = accessAllowed(isNonLight ? "保存此" + stageLabel + "视角" : "保存此灯视角", () => void runFocusCameraCommand("save-light-camera"));
-          saveViewButton.className = "primary";
-          focusActionsRow.append(saveViewButton, accessAllowed("取消调整", () => void runFocusCameraCommand("cancel-light-camera")));
-          const projectionGroup = createEl("div", "i3d-focus-actions");
-          projectionGroup.setAttribute("role", "group");
-          projectionGroup.setAttribute("aria-label", "聚焦投影");
-          focusSettingsSection.append(projectionGroup);
-          for (const [projectionMode, projectionLabel] of [["orthographic", "正交"], ["perspective", "透视"]]) {
-            const projectionButton = accessAllowed(projectionLabel, () => void runFocusCameraCommand("focus-projection", projectionMode));
-            projectionButton.setAttribute("aria-pressed", String((mode?.mode || "orthographic") === projectionMode));
-            projectionGroup.append(projectionButton);
+        const cameraActionsElement = createElement("div", "i3d-focus-actions");
+        focusSectionElement.append(cameraActionsElement);
+        if (isCameraEditing) {
+          const saveCameraButton = createButton(
+            usesModelBinding ? "保存此" + kindLabel + "视角" : "保存此灯视角",
+            () => void runCameraCommand("save-light-camera")
+          );
+          saveCameraButton.className = "primary";
+          cameraActionsElement.append(
+            saveCameraButton,
+            createButton("取消调整", () => void runCameraCommand("cancel-light-camera"))
+          );
+          const projectionGroupElement = createElement("div", "i3d-focus-actions");
+          projectionGroupElement.setAttribute("role", "group");
+          projectionGroupElement.setAttribute("aria-label", "聚焦投影");
+          focusSectionElement.append(projectionGroupElement);
+          for (const [projectionKey, projectionLabel] of [
+            ["orthographic", "正交"],
+            ["perspective", "透视"]
+          ]) {
+            const projectionButton = createButton(
+              projectionLabel,
+              () => void runCameraCommand("focus-projection", projectionKey)
+            );
+            projectionButton.setAttribute(
+              "aria-pressed",
+              String((pendingCameraDraft?.mode || "orthographic") === projectionKey)
+            );
+            projectionGroupElement.append(projectionButton);
           }
-          const disabled = appendBoundedInput(focusSettingsSection, "焦段（mm）", Math.round(mode?.focalLength || 50), 18, 120, 1, focalLengthValue => void runFocusCameraCommand("focus-focal-length", focalLengthValue));
-          disabled.disabled = mode?.mode !== "perspective";
+          const focalLengthInput = createNumberRow(
+            focusSectionElement,
+            "焦段（mm）",
+            Math.round(pendingCameraDraft?.focalLength || 50),
+            18,
+            120,
+            1,
+            pickedFocalLength => void runCameraCommand("focus-focal-length", pickedFocalLength)
+          );
+          focalLengthInput.disabled = pendingCameraDraft?.mode !== "perspective";
         } else {
-          focusActionsRow.append(accessAllowed(statusSource[activeCameraKey] ? "调整视角" : "设置视角", () => void runFocusCameraCommand("edit-light-camera")), ...(activeCameraKey === "followCamera" ? [] : [accessAllowed("预览聚焦", () => void runFocusCameraCommand("preview-light-camera"))]));
-          const disabled = accessAllowed(activeCameraKey === "followCamera" ? "恢复默认鸟瞰" : statusSource[activeCameraKey] ? "恢复自动聚焦" : "自动聚焦", async () => {
-            try {
-              await liveStates.focusCommand("cancel-light-camera", statusSource.id);
-              delete statusSource[activeCameraKey];
-              mountRuntime();
-              rebuildConfigSidebar();
-            } catch (error) {
-              pickerGeneration.textContent = error.message;
+          cameraActionsElement.append(
+            createButton(
+              selectedItem[cameraPropertyKey] ? "调整视角" : "设置视角",
+              () => void runCameraCommand("edit-light-camera")
+            ),
+            ...(cameraPropertyKey === "followCamera"
+              ? []
+              : [createButton("预览聚焦", () => void runCameraCommand("preview-light-camera"))])
+          );
+          const resetCameraButton = createButton(
+            cameraPropertyKey === "followCamera"
+              ? "恢复默认鸟瞰"
+              : selectedItem[cameraPropertyKey]
+                ? "恢复自动聚焦"
+                : "自动聚焦",
+            async () => {
+              try {
+                await editorRuntime.focusCommand("cancel-light-camera", selectedItem.id);
+                delete selectedItem[cameraPropertyKey];
+                refreshEditorPreview();
+                renderPanel();
+              } catch (resetCameraError) {
+                errorMessageElement.textContent = resetCameraError.message;
+              }
             }
-          });
-          disabled.disabled = !statusSource[activeCameraKey];
-          disabled.className = "i3d-focus-reset";
-          focusSettingsSection.append(disabled);
+          );
+          resetCameraButton.disabled = !selectedItem[cameraPropertyKey];
+          resetCameraButton.className = "i3d-focus-reset";
+          focusSectionElement.append(resetCameraButton);
         }
-        if (unsubscribeAccess) {
-          for (const disabled of focusSettingsSection.querySelectorAll("button, input")) {
-            disabled.disabled = true;
+        if (isCameraCommandPending) {
+          for (const focusSettingControl of focusSectionElement.querySelectorAll("button, input")) {
+            focusSettingControl.disabled = true;
           }
         }
-        makeConfigSection("绑定管理").append(removeDeviceButton);
+        createConfigSection("绑定管理").append(removeItemButton);
       } else {
-        const emptyListHint = length.length ? isVacuum ? "点击“添加扫地机”，选择模型后绑定扫地机设备。" : isTelevision || isNas ? "点击“添加设备”，选择" + (isTelevision ? "电视模型并绑定媒体播放器实体。" : "设备类型和模型，再绑定开启实体。") : isCover ? "点击“添加窗帘”，选择需要控制的窗帘模型。" : isClimate ? "点击“添加空调”，选择需要控制的空调模型。" : "点击“添加灯光”，选择需要控制的灯组。" : isVacuum ? "当前楼层暂无扫地机模型，请先在 3D 户型图绘制中添加扫地机器人后更新户型。" : isTelevision ? "当前楼层暂无电视模型，请先在 3D 户型图绘制中添加电视后更新户型。" : isNas ? "当前楼层暂无 NAS 模型，请先在 3D 户型图绘制中添加 NAS 模型后更新户型。" : isCover ? "当前楼层暂无窗帘模型，请先在 3D 户型图绘制中添加普通窗帘后更新户型。" : isClimate ? "当前楼层暂无空调模型，请先在 3D 户型图绘制中添加壁挂空调、柜机或出风口后更新户型。" : "当前楼层暂无灯组，请先在 3D 户型图绘制中添加灯组后更新户型。";
-        focusQueue.append(createEl("p", "i3d-note", emptyListHint));
+        currentContainer.append(
+          createElement(
+            "p",
+            "i3d-note",
+            isVacuumMode
+              ? floorModels.length
+                ? "点击“添加扫地机”，选择模型后绑定扫地机设备。"
+                : "当前楼层暂无扫地机模型，请先在 3D 户型图绘制中添加扫地机器人后更新户型。"
+              : isTelevisionMode
+                ? floorModels.length
+                  ? "点击“添加设备”，选择电视模型并绑定媒体播放器实体。"
+                  : "当前楼层暂无电视模型，请先在 3D 户型图绘制中添加电视后更新户型。"
+                : isNasMode
+                  ? floorModels.length
+                    ? "点击“添加设备”，选择设备类型和模型，再绑定开启实体。"
+                    : "当前楼层暂无 NAS 模型，请先在 3D 户型图绘制中添加 NAS 模型后更新户型。"
+                  : isCoverMode
+                    ? floorModels.length
+                      ? "点击“添加窗帘”，选择需要控制的窗帘模型。"
+                      : "当前楼层暂无窗帘模型，请先在 3D 户型图绘制中添加普通窗帘后更新户型。"
+                    : isClimateMode
+                      ? floorModels.length
+                        ? "点击“添加空调”，选择需要控制的空调模型。"
+                        : "当前楼层暂无空调模型，请先在 3D 户型图绘制中添加壁挂空调、柜机或出风口后更新户型。"
+                      : floorModels.length
+                        ? "点击“添加灯光”，选择需要控制的灯组。"
+                        : "当前楼层暂无灯组，请先在 3D 户型图绘制中添加灯组后更新户型。"
+          )
+        );
       }
     }
-    focusQueue.append(pickerGeneration);
-    disabled.disabled = isSavingConfig || !capabilityCache || saveButton || unsubscribeAccess;
-    if (saveButton || unsubscribeAccess) {
-      for (const closest of focusQueue.querySelectorAll("input, select, button")) {
-        if (!closest.closest(".i3d-focus-settings")) {
-          closest.disabled = true;
+    panelElement.append(errorMessageElement);
+    saveButtonElement.disabled =
+      isSaving || !isAccessAllowed || isCameraEditing || isCameraCommandPending;
+    if (isCameraEditing || isCameraCommandPending) {
+      for (const focusLockedControl of panelElement.querySelectorAll("input, select, button")) {
+        if (!focusLockedControl.closest(".i3d-focus-settings")) {
+          focusLockedControl.disabled = true;
         }
       }
     }
-    if (resizeObserver) {
-      for (const dataset of focusQueue.querySelectorAll("input, select, button")) {
-        if (dataset.dataset.interaction3dRangeEditor !== "true") {
-          dataset.disabled = true;
+    if (isRangeEditorOpen) {
+      for (const rangeLockedControl of panelElement.querySelectorAll("input, select, button")) {
+        if (rangeLockedControl.dataset.interaction3dRangeEditor !== "true") {
+          rangeLockedControl.disabled = true;
         }
       }
     }
   }
-  function mountPreviewRuntime() {
-    liveStates = mountInteraction3d(previewHost, {
+  function mountEditorRuntime() {
+    editorRuntime = mountInteraction3d(stageHostElement, {
       component: {
         ...component,
-        properties: getPreviewProperties()
+        properties: buildRuntimeProperties()
       },
       context: {
-        document: doc,
-        states
+        document: documentApi,
+        states: states,
+        entityMetadata: new Map(
+          entities.map(metadataEntryItem => [metadataEntryItem.entityId, metadataEntryItem])
+        )
       },
       editing: true,
-      editingVacuumId: isVacuumShortcut ? vacuumId : "",
-      editingModule: isDeviceLike ? deviceKindLocal : isCover ? "cover" : isClimate ? "climate" : "light",
-      onStates(incomingStates) {
-        if (!refreshCapabilities) {
-          latestStatesByEntity = incomingStates;
-          if (!isNonLight) {
-            for (const value of getCurrentItems()) {
-              resolveEntityLightState(value);
+      editingVacuumId: isVacuumShortcutMode ? vacuumId : "",
+      editingModule: usesStatusPanel
+        ? deviceKind
+        : isCoverMode
+          ? "cover"
+          : isClimateMode
+            ? "climate"
+            : "light",
+      onStates(statesSnapshot) {
+        if (!isDisposed) {
+          latestStates = statesSnapshot;
+          if (!usesModelBinding) {
+            for (const statusListItem of getItemList()) {
+              getLightStatus(statusListItem);
             }
           }
-          refreshEffectCapabilityUi();
+          refreshEffectSettings();
         }
       },
-      onReady(readyDraft) {
-        cameraCommandGeneration++;
-        saveButton = false;
-        unsubscribeAccess = false;
-        mode = null;
-        draftRevision = readyDraft;
-        if (!draftRevision.floors.some(id => id.id === syncPreviewSize)) {
-          syncPreviewSize = draftRevision.floors[0]?.id || "";
+      onReady(sceneMetadataPayload) {
+        sceneReadyGeneration++;
+        isCameraEditing = false;
+        isCameraCommandPending = false;
+        pendingCameraDraft = null;
+        sceneMetadata = sceneMetadataPayload;
+        if (
+          !sceneMetadata.floors.some(sceneFloorLookup => sceneFloorLookup.id === selectedFloorId)
+        ) {
+          selectedFloorId = sceneMetadata.floors[0]?.id || "";
         }
-        rebuildConfigSidebar();
-        mountRuntime();
-        if (startAdding) {
-          startAdding = false;
+        renderPanel();
+        refreshEditorPreview();
+        if (shouldStartAdding) {
+          shouldStartAdding = false;
           queueMicrotask(openAddDialog);
         }
       },
-      onEdit(action) {
-        if (!refreshCapabilities && !!capabilityCache && !close && !closeNext) {
-          if (action.action === "light-region-overrides") {
-            effectRangeOpen.lightRegionOverrides = structuredClone(action.overrides || {});
-            dirtyRevision++;
-            if (!isSavingConfig) {
-              saveStatusEl.textContent = "";
+      onEdit(editEvent) {
+        if (!isDisposed && !!isAccessAllowed && !addDialogState && !auxDialogElement) {
+          if (editEvent.action === "light-region-overrides") {
+            draftProperties.lightRegionOverrides = structuredClone(editEvent.overrides || {});
+            changeRevisionCount++;
+            if (!isSaving) {
+              saveStatusElement.textContent = "";
             }
           }
-          if (isVacuumShortcut) {
-            const id = getCurrentItems().find(id => "vacuum-room:" + vacuumId + ":" + id.id === action.id);
-            if (id) {
-              saving = id.id;
-              if (action.action === "position") {
-                id.x = action.x;
-                id.y = action.y;
-                mountRuntime();
+          if (isVacuumShortcutMode) {
+            const roomShortcut = getItemList().find(
+              roomShortcutProbe =>
+                "vacuum-room:" + vacuumId + ":" + roomShortcutProbe.id === editEvent.id
+            );
+            if (roomShortcut) {
+              selectedItemId = roomShortcut.id;
+              if (editEvent.action === "position") {
+                roomShortcut.x = editEvent.x;
+                roomShortcut.y = editEvent.y;
+                refreshEditorPreview();
               }
-              rebuildConfigSidebar();
-              if (action.action === "select") {
-                mountRuntime();
-              }
-            }
-            return;
-          }
-          if (isVacuum && action.id?.startsWith("vacuum-room:")) {
-            const id = getCurrentItems().find(shortcuts => (shortcuts.shortcuts || []).some(id => "vacuum-room:" + shortcuts.id + ":" + id.id === action.id));
-            const x = id?.shortcuts.find(item => "vacuum-room:" + id.id + ":" + item.id === action.id);
-            if (x) {
-              saving = id.id;
-              if (action.action === "position") {
-                x.x = action.x;
-                x.y = action.y;
-                mountRuntime();
-              }
-              if (action.action === "select") {
-                rebuildConfigSidebar();
+              renderPanel();
+              if (editEvent.action === "select") {
+                refreshEditorPreview();
               }
             }
             return;
           }
-          if (action.action === "focus-exited") {
-            saveButton = false;
-            mode = null;
-            rebuildConfigSidebar();
+          if (isVacuumMode && editEvent.id?.startsWith("vacuum-room:")) {
+            const shortcutOwner = getItemList().find(shortcutOwnerProbe =>
+              (shortcutOwnerProbe.shortcuts || []).some(
+                ownerShortcutProbe =>
+                  "vacuum-room:" + shortcutOwnerProbe.id + ":" + ownerShortcutProbe.id ===
+                  editEvent.id
+              )
+            );
+            const matchedShortcutItem = shortcutOwner?.shortcuts.find(
+              matchedOwnerShortcutProbe =>
+                "vacuum-room:" + shortcutOwner.id + ":" + matchedOwnerShortcutProbe.id ===
+                editEvent.id
+            );
+            if (matchedShortcutItem) {
+              selectedItemId = shortcutOwner.id;
+              if (editEvent.action === "position") {
+                matchedShortcutItem.x = editEvent.x;
+                matchedShortcutItem.y = editEvent.y;
+                refreshEditorPreview();
+              }
+              if (editEvent.action === "select") {
+                renderPanel();
+              }
+            }
+            return;
           }
-          if (action.action === "select") {
-            saving = action.id;
-            rebuildConfigSidebar();
-            mountRuntime();
+          if (editEvent.action === "focus-exited") {
+            isCameraEditing = false;
+            pendingCameraDraft = null;
+            renderPanel();
           }
-          if (action.action === "position") {
-            const x2 = getCurrentItems().find(id => id.id === action.id);
-            if (x2) {
-              x2.x = action.x;
-              x2.y = action.y;
-              rebuildConfigSidebar();
-              mountRuntime();
+          if (editEvent.action === "select") {
+            selectedItemId = editEvent.id;
+            renderPanel();
+            refreshEditorPreview();
+          }
+          if (editEvent.action === "position") {
+            const positionedItem = getItemList().find(
+              positionCandidateProbe => positionCandidateProbe.id === editEvent.id
+            );
+            if (positionedItem) {
+              positionedItem.x = editEvent.x;
+              positionedItem.y = editEvent.y;
+              refreshEditorPreview();
             }
           }
-          if (action.action === "camera") {
-            effectRangeOpen.floorCameras = {
-              ...effectRangeOpen.floorCameras,
-              [syncPreviewSize]: action.camera
+          if (editEvent.action === "camera") {
+            draftProperties.floorCameras = {
+              ...draftProperties.floorCameras,
+              [selectedFloorId]: editEvent.camera
             };
-            if (syncPreviewSize === effectRangeOpen.floorSelection) {
-              effectRangeOpen.camera = action.camera;
+            if (selectedFloorId === draftProperties.floorSelection) {
+              draftProperties.camera = editEvent.camera;
             }
-            pickerGeneration.textContent = "默认视角已记录，保存配置后生效。";
+            errorMessageElement.textContent = "默认视角已记录，保存配置后生效。";
           }
         }
       }
     });
   }
-  const unsubscribeAccessWatch = subscribeInteraction3dAccess(status => {
-    if (!refreshCapabilities) {
-      capabilityCache = status.allowed;
-      disabled.disabled = isSavingConfig || !capabilityCache || saveButton || unsubscribeAccess;
-      focusQueue.inert = !capabilityCache;
-      accessStatusEl.hidden = capabilityCache || !!liveStates && status.status !== "denied";
-      accessStatusEl.textContent = status.status === "denied" || status.status === "unavailable" ? status.message : "正在准备户型…";
-      if (capabilityCache) {
-        if (liveStates) {
-          liveStates.setAuthorized(true);
+  const accessUnsubscribe = subscribeInteraction3dAccess(accessState => {
+    if (!isDisposed) {
+      isAccessAllowed = accessState.allowed;
+      saveButtonElement.disabled =
+        isSaving || !isAccessAllowed || isCameraEditing || isCameraCommandPending;
+      panelElement.inert = !isAccessAllowed;
+      statusElement.hidden =
+        isAccessAllowed || (!!editorRuntime && accessState.status !== "denied");
+      statusElement.textContent =
+        accessState.status === "denied" || accessState.status === "unavailable"
+          ? accessState.message
+          : "正在准备户型…";
+      if (isAccessAllowed) {
+        if (editorRuntime) {
+          editorRuntime.setAuthorized(true);
         } else {
-          mountPreviewRuntime();
+          mountEditorRuntime();
         }
       } else {
         closeAddDialog();
-        renderSidebar();
-        closeEditor?.close();
-        pickerSession++;
-        closeCurrent?.close();
-        cameraCommandGeneration++;
-        saveButton = false;
-        unsubscribeAccess = false;
-        mode = null;
-        rebuildConfigSidebar();
-        liveStates?.setAuthorized(false);
-        if (status.status === "denied") {
-          liveStates?.();
-          liveStates = null;
-          rebuildConfigSidebar();
+        closeAuxDialog();
+        subEditorHandle?.close();
+        pickerGeneration++;
+        pickerHandle?.close();
+        sceneReadyGeneration++;
+        isCameraEditing = false;
+        isCameraCommandPending = false;
+        pendingCameraDraft = null;
+        renderPanel();
+        editorRuntime?.setAuthorized(false);
+        if (accessState.status === "denied") {
+          editorRuntime?.();
+          editorRuntime = null;
+          renderPanel();
         }
       }
     }
   });
-  rebuildConfigSidebar();
-  editorDialog.showModal();
+  renderPanel();
+  editorDialogElement.showModal();
   document.dispatchEvent(new Event("hb-i3d-preview-scope"));
-  fitPreviewAspect();
+  syncPreviewSize();
 }
 export async function openInteraction3dAppearanceEditor({
   component: appearanceComponent,
-  onSave: appearanceOnSave
+  onSave: onAppearanceSave
 }) {
   await requestInteraction3dAccess();
   const editorView = getInteraction3dEditorView(appearanceComponent.id);
   if (!editorView?.metadata) {
     throw new Error("户型还在加载，请稍候再打开进阶设置。");
   }
-  const appearanceProps = structuredClone(appearanceComponent.properties || {});
-  const baseLighting = normalizeInteraction3dLightingMode(appearanceProps.lightingMode) === "region";
-  let floorBrightness = {
+  const appearanceProperties = structuredClone(appearanceComponent.properties || {});
+  const isRegionLighting =
+    normalizeInteraction3dLightingMode(appearanceProperties.lightingMode) === "region";
+  let baseLightingDraft = {
     ...editorView.metadata.defaults,
-    ...structuredClone(appearanceProps.baseLighting || editorView.metadata.baseLighting)
+    ...structuredClone(appearanceProperties.baseLighting || editorView.metadata.baseLighting)
   };
-  let appearanceStylesheet = false;
-  if (baseLighting) {
-    floorBrightness.floorBrightness ??= 100;
+  let isAppearanceClosed = false;
+  if (isRegionLighting) {
+    baseLightingDraft.floorBrightness ??= 100;
   }
-  const rel = document.createElement("link");
-  rel.rel = "stylesheet";
-  rel.href = "/api/v1/modules/interaction3d/runtime.css?v=0.5.3";
-  document.head.append(rel);
-  const createEl = (appearanceTag, element = "") => {
-    const appearanceNode = document.createElement(appearanceTag);
-    appearanceNode.textContent = element;
-    return appearanceNode;
+  const appearanceStyleLinkElement = document.createElement("link");
+  appearanceStyleLinkElement.rel = "stylesheet";
+  appearanceStyleLinkElement.href =
+    "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15";
+  document.head.append(appearanceStyleLinkElement);
+  const createPlainElement = (plainTagName, plainText = "") => {
+    const plainElement = document.createElement(plainTagName);
+    plainElement.textContent = plainText;
+    return plainElement;
   };
-  const appearanceDialog = createEl("dialog");
-  appearanceDialog.className = "i3d-editor i3d-appearance-editor";
-  appearanceDialog.setAttribute("aria-label", "户型进阶设置");
-  const appearanceHeader = createEl("header");
-  const appearanceBody = createEl("div");
-  appearanceBody.className = "i3d-appearance-body";
-  const statusMessage = createEl("p");
-  statusMessage.className = "i3d-error";
-  statusMessage.setAttribute("role", "status");
-  let id;
-  const positionAppearanceDialog = (dialogLeft, dialogTop) => {
-    const currentRect = appearanceDialog.getBoundingClientRect();
-    Object.assign(appearanceDialog.style, {
+  const appearanceDialogElement = createPlainElement("dialog");
+  appearanceDialogElement.className = "i3d-editor i3d-appearance-editor";
+  appearanceDialogElement.setAttribute("aria-label", "户型进阶设置");
+  const appearanceHeaderElement = createPlainElement("header");
+  const appearanceBodyElement = createPlainElement("div");
+  appearanceBodyElement.className = "i3d-appearance-body";
+  const appearanceErrorElement = createPlainElement("p");
+  appearanceErrorElement.className = "i3d-error";
+  appearanceErrorElement.setAttribute("role", "status");
+  let dragState;
+  const positionAppearanceDialog = (targetLeft, targetTop) => {
+    const dialogRect = appearanceDialogElement.getBoundingClientRect();
+    Object.assign(appearanceDialogElement.style, {
       margin: "0",
       right: "auto",
       bottom: "auto",
-      left: Math.max(8, Math.min(dialogLeft, window.innerWidth - currentRect.width - 8)) + "px",
-      top: Math.max(8, Math.min(dialogTop, window.innerHeight - currentRect.height - 8)) + "px"
+      left: Math.max(8, Math.min(targetLeft, window.innerWidth - dialogRect.width - 8)) + "px",
+      top: Math.max(8, Math.min(targetTop, window.innerHeight - dialogRect.height - 8)) + "px"
     });
   };
-  const clampAppearanceDialog = () => {
-    const left = appearanceDialog.getBoundingClientRect();
-    positionAppearanceDialog(left.left, left.top);
+  const repositionAppearanceDialog = () => {
+    const currentRect = appearanceDialogElement.getBoundingClientRect();
+    positionAppearanceDialog(currentRect.left, currentRect.top);
   };
-  appearanceHeader.title = "按住标题栏拖动";
-  appearanceHeader.addEventListener("pointerdown", pointerEvent => {
-    if (pointerEvent.button !== 0 || pointerEvent.target.closest("button")) {
+  appearanceHeaderElement.title = "按住标题栏拖动";
+  appearanceHeaderElement.addEventListener("pointerdown", pointerDownEvent => {
+    if (pointerDownEvent.button !== 0 || pointerDownEvent.target.closest("button")) {
       return;
     }
-    pointerEvent.preventDefault();
-    const startRect = appearanceDialog.getBoundingClientRect();
-    id = {
-      id: pointerEvent.pointerId,
-      x: pointerEvent.clientX,
-      y: pointerEvent.clientY,
-      left: startRect.left,
-      top: startRect.top
+    pointerDownEvent.preventDefault();
+    const dragStartRect = appearanceDialogElement.getBoundingClientRect();
+    dragState = {
+      id: pointerDownEvent.pointerId,
+      x: pointerDownEvent.clientX,
+      y: pointerDownEvent.clientY,
+      left: dragStartRect.left,
+      top: dragStartRect.top
     };
-    appearanceHeader.setPointerCapture(pointerEvent.pointerId);
+    appearanceHeaderElement.setPointerCapture(pointerDownEvent.pointerId);
   });
-  appearanceHeader.addEventListener("pointermove", moveEvent => {
-    if (!!id && id.id === moveEvent.pointerId) {
-      positionAppearanceDialog(id.left + moveEvent.clientX - id.x, id.top + moveEvent.clientY - id.y);
+  appearanceHeaderElement.addEventListener("pointermove", pointerMoveEvent => {
+    if (!!dragState && dragState.id === pointerMoveEvent.pointerId) {
+      positionAppearanceDialog(
+        dragState.left + pointerMoveEvent.clientX - dragState.x,
+        dragState.top + pointerMoveEvent.clientY - dragState.y
+      );
     }
   });
-  for (const endEventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
-    appearanceHeader.addEventListener(endEventName, () => {
-      id = null;
+  for (const pointerEndEventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
+    appearanceHeaderElement.addEventListener(pointerEndEventName, () => {
+      dragState = null;
     });
   }
-  window.addEventListener("resize", clampAppearanceDialog);
-  const previewAppearanceLighting = () => editorView.update({
-    ...appearanceProps,
-    baseLighting: floorBrightness
-  });
-  const closeAppearanceEditor = (keepAppearancePreview = false) => {
-    if (!appearanceStylesheet) {
-      appearanceStylesheet = true;
-      if (!keepAppearancePreview) {
-        editorView.update(appearanceProps);
+  window.addEventListener("resize", repositionAppearanceDialog);
+  const applyAppearanceLighting = () =>
+    editorView.update({
+      ...appearanceProperties,
+      baseLighting: baseLightingDraft
+    });
+  const closeAppearanceEditor = (shouldKeepLighting = false) => {
+    if (!isAppearanceClosed) {
+      isAppearanceClosed = true;
+      if (!shouldKeepLighting) {
+        editorView.update(appearanceProperties);
       }
-      window.removeEventListener("resize", clampAppearanceDialog);
-      appearanceDialog.close();
-      appearanceDialog.remove();
-      rel.remove();
+      window.removeEventListener("resize", repositionAppearanceDialog);
+      appearanceDialogElement.close();
+      appearanceDialogElement.remove();
+      appearanceStyleLinkElement.remove();
     }
   };
-  const disabled = createEl("button", "完成");
-  disabled.type = "button";
-  disabled.addEventListener("click", async () => {
-    disabled.disabled = true;
-    try {
-      await requestInteraction3dAccess();
-      await appearanceOnSave(floorBrightness);
-      closeAppearanceEditor(true);
-    } catch (doneError) {
-      statusMessage.textContent = doneError.message;
-      disabled.disabled = false;
+  const appearanceSaveButton = createPlainElement("button", "完成");
+  appearanceSaveButton.type = "button";
+  appearanceSaveButton.addEventListener("click", async () => {
+    if (!isAppearanceClosed && !appearanceSaveButton.disabled) {
+      appearanceSaveButton.disabled = true;
+      try {
+        await requestInteraction3dAccess();
+        if (isAppearanceClosed) {
+          return;
+        }
+        await onAppearanceSave(baseLightingDraft);
+        closeAppearanceEditor(true);
+      } catch (appearanceSaveError) {
+        if (!isAppearanceClosed) {
+          appearanceErrorElement.textContent = appearanceSaveError.message;
+          appearanceSaveButton.disabled = false;
+        }
+      }
     }
   });
-  const type = createEl("button", "取消");
-  type.type = "button";
-  type.addEventListener("click", () => closeAppearanceEditor());
-  const el = createEl("span", "拖动");
-  el.className = "i3d-drag-hint";
-  appearanceHeader.append(createEl("strong", "户型进阶设置"), el, disabled, type);
-  const map = new Map();
-  const helpNote = [];
-  const lightingSections = baseLighting ? [["整体画面", APPEARANCE_LIGHTING_SECTIONS[0][1].filter(([, lightingFilterKey]) => lightingFilterKey === "exposure")]] : APPEARANCE_LIGHTING_SECTIONS;
-  for (const [sectionTitle, sectionFields] of lightingSections) {
-    const sectionEl = createEl("section");
-    const fieldsGrid = createEl("div");
-    fieldsGrid.className = "i3d-appearance-grid";
-    sectionEl.append(createEl("h4", sectionTitle), fieldsGrid);
-    for (const [fieldTitle, fieldKey, fieldMin, fieldMax, fieldStep] of sectionFields) {
-      const fieldLabelEl = createEl("label");
-      const fieldInput = createEl("input");
-      Object.assign(fieldInput, {
-        name: "i3d-base-light-" + fieldKey,
+  const appearanceCancelButton = createPlainElement("button", "取消");
+  appearanceCancelButton.type = "button";
+  appearanceCancelButton.addEventListener("click", () => closeAppearanceEditor());
+  const dragHintElement = createPlainElement("span", "拖动");
+  dragHintElement.className = "i3d-drag-hint";
+  appearanceHeaderElement.append(
+    createPlainElement("strong", "户型进阶设置"),
+    dragHintElement,
+    appearanceSaveButton,
+    appearanceCancelButton
+  );
+  const appearanceInputsByKey = new Map();
+  const floorBrightnessResetters = [];
+  const appearanceSections = isRegionLighting
+    ? [
+        [
+          "整体画面",
+          APPEARANCE_GROUPS[0][1].filter(
+            ([, appearanceFieldKey]) => appearanceFieldKey === "exposure"
+          )
+        ]
+      ]
+    : APPEARANCE_GROUPS;
+  for (const [sectionTitleText, sectionFields] of appearanceSections) {
+    const appearanceGroupSectionElement = createPlainElement("section");
+    const appearanceGridElement = createPlainElement("div");
+    appearanceGridElement.className = "i3d-appearance-grid";
+    appearanceGroupSectionElement.append(
+      createPlainElement("h4", sectionTitleText),
+      appearanceGridElement
+    );
+    for (const [
+      fieldLabelText,
+      appearanceFieldName,
+      fieldMinValue,
+      fieldMaxValue,
+      fieldStepValue
+    ] of sectionFields) {
+      const inputLabelElement = createPlainElement("label");
+      const fieldInputElement = createPlainElement("input");
+      Object.assign(fieldInputElement, {
+        name: "i3d-base-light-" + appearanceFieldName,
         type: "number",
-        min: String(fieldMin),
-        max: String(fieldMax),
-        step: String(fieldStep),
-        value: String(floorBrightness[fieldKey])
+        min: String(fieldMinValue),
+        max: String(fieldMaxValue),
+        step: String(fieldStepValue),
+        value: String(baseLightingDraft[appearanceFieldName])
       });
-      fieldInput.addEventListener("input", () => {
-        if (Number.isFinite(fieldInput.valueAsNumber)) {
-          floorBrightness[fieldKey] = Math.max(fieldMin, Math.min(fieldMax, fieldInput.valueAsNumber));
-          previewAppearanceLighting();
+      fieldInputElement.addEventListener("input", () => {
+        if (Number.isFinite(fieldInputElement.valueAsNumber)) {
+          baseLightingDraft[appearanceFieldName] = Math.max(
+            fieldMinValue,
+            Math.min(fieldMaxValue, fieldInputElement.valueAsNumber)
+          );
+          applyAppearanceLighting();
         }
       });
-      fieldLabelEl.append(createEl("span", fieldTitle), fieldInput);
-      fieldsGrid.append(fieldLabelEl);
-      map.set(fieldKey, fieldInput);
+      inputLabelElement.append(createPlainElement("span", fieldLabelText), fieldInputElement);
+      appearanceGridElement.append(inputLabelElement);
+      appearanceInputsByKey.set(appearanceFieldName, fieldInputElement);
     }
-    appearanceBody.append(sectionEl);
+    appearanceBodyElement.append(appearanceGroupSectionElement);
   }
-  if (baseLighting) {
-    const floorBrightnessSection = createEl("section");
-    const floorBrightnessLabel = createEl("label");
-    const floorBrightnessRow = createEl("div");
-    floorBrightnessSection.append(createEl("h4", "地面颜色"));
-    floorBrightnessRow.className = "i3d-floor-brightness";
-    const floorBrightnessRange = createEl("input");
-    const floorBrightnessNumber = createEl("input");
-    Object.assign(floorBrightnessRange, {
+  if (isRegionLighting) {
+    const floorColorSectionElement = createPlainElement("section");
+    const floorColorLabelElement = createPlainElement("label");
+    const floorColorControlsElement = createPlainElement("div");
+    floorColorSectionElement.append(createPlainElement("h4", "地面颜色"));
+    floorColorControlsElement.className = "i3d-floor-brightness";
+    const floorBrightnessRangeInput = createPlainElement("input");
+    const floorBrightnessNumberInput = createPlainElement("input");
+    Object.assign(floorBrightnessRangeInput, {
       type: "range",
       min: "50",
       max: "150",
       step: "1",
-      value: String(floorBrightness.floorBrightness)
+      value: String(baseLightingDraft.floorBrightness)
     });
-    Object.assign(floorBrightnessNumber, {
+    Object.assign(floorBrightnessNumberInput, {
       type: "number",
       name: "i3d-base-light-floorBrightness",
       min: "50",
       max: "150",
       step: "1",
-      value: floorBrightnessRange.value
+      value: floorBrightnessRangeInput.value
     });
-    floorBrightnessRange.setAttribute("aria-label", "地面颜色深浅");
-    floorBrightnessNumber.setAttribute("aria-label", "地面亮度百分比");
-    const syncFloorBrightness = valueAsNumber => {
-      if (Number.isFinite(valueAsNumber.valueAsNumber)) {
-        floorBrightness.floorBrightness = Math.max(50, Math.min(150, valueAsNumber.valueAsNumber));
-        floorBrightnessRange.value = floorBrightnessNumber.value = String(floorBrightness.floorBrightness);
-        previewAppearanceLighting();
+    floorBrightnessRangeInput.setAttribute("aria-label", "地面颜色深浅");
+    floorBrightnessNumberInput.setAttribute("aria-label", "地面亮度百分比");
+    const commitFloorBrightness = floorBrightnessInput => {
+      if (Number.isFinite(floorBrightnessInput.valueAsNumber)) {
+        baseLightingDraft.floorBrightness = Math.max(
+          50,
+          Math.min(150, floorBrightnessInput.valueAsNumber)
+        );
+        floorBrightnessRangeInput.value = floorBrightnessNumberInput.value = String(
+          baseLightingDraft.floorBrightness
+        );
+        applyAppearanceLighting();
       }
     };
-    floorBrightnessRange.addEventListener("input", () => syncFloorBrightness(floorBrightnessRange));
-    floorBrightnessNumber.addEventListener("input", () => syncFloorBrightness(floorBrightnessNumber));
-    floorBrightnessRow.append(createEl("span", "深"), floorBrightnessRange, createEl("span", "浅"), floorBrightnessNumber, createEl("span", "%"));
-    floorBrightnessLabel.append(floorBrightnessRow);
-    floorBrightnessSection.append(floorBrightnessLabel, createEl("p", "100% 为原色，仅调整户型地面，保留纹理与阴影。"));
-    appearanceBody.insertBefore(floorBrightnessSection, appearanceBody.children[1] || null);
-    map.set("floorBrightness", floorBrightnessNumber);
-    helpNote.push(() => {
-      floorBrightnessRange.value = "100";
+    floorBrightnessRangeInput.addEventListener("input", () =>
+      commitFloorBrightness(floorBrightnessRangeInput)
+    );
+    floorBrightnessNumberInput.addEventListener("input", () =>
+      commitFloorBrightness(floorBrightnessNumberInput)
+    );
+    floorColorControlsElement.append(
+      createPlainElement("span", "深"),
+      floorBrightnessRangeInput,
+      createPlainElement("span", "浅"),
+      floorBrightnessNumberInput,
+      createPlainElement("span", "%")
+    );
+    floorColorLabelElement.append(floorColorControlsElement);
+    floorColorSectionElement.append(
+      floorColorLabelElement,
+      createPlainElement("p", "100% 为原色，仅调整户型地面，保留纹理与阴影。")
+    );
+    appearanceBodyElement.insertBefore(
+      floorColorSectionElement,
+      appearanceBodyElement.children[1] || null
+    );
+    appearanceInputsByKey.set("floorBrightness", floorBrightnessNumberInput);
+    floorBrightnessResetters.push(() => {
+      floorBrightnessRangeInput.value = "100";
     });
   }
-  const resetLightingBtn = createEl("button", "恢复默认");
-  resetLightingBtn.type = "button";
-  resetLightingBtn.addEventListener("click", () => {
-    for (const [lightingFieldKey, lightingInput] of map) {
-      floorBrightness[lightingFieldKey] = lightingFieldKey === "floorBrightness" ? 100 : editorView.metadata.defaults[lightingFieldKey];
-      lightingInput.value = String(floorBrightness[lightingFieldKey]);
+  const restoreDefaultsButton = createPlainElement("button", "恢复默认");
+  restoreDefaultsButton.type = "button";
+  restoreDefaultsButton.addEventListener("click", () => {
+    for (const [defaultSettingName, appearanceInputElement] of appearanceInputsByKey) {
+      baseLightingDraft[defaultSettingName] =
+        defaultSettingName === "floorBrightness"
+          ? 100
+          : editorView.metadata.defaults[defaultSettingName];
+      appearanceInputElement.value = String(baseLightingDraft[defaultSettingName]);
     }
-    helpNote.forEach(resetFloorBrightnessHook => resetFloorBrightnessHook());
-    previewAppearanceLighting();
+    floorBrightnessResetters.forEach(resetFloorBrightness => resetFloorBrightness());
+    applyAppearanceLighting();
   });
-  const helpNoteCurrent = createEl("p", baseLighting ? "曝光影响整体画面，地面颜色深浅独立调整。完成后点击页面上方保存。" : "调整当前户型的整体光照与阴影。完成后点击页面上方保存，仅保存至当前 3D 控件。");
-  helpNoteCurrent.className = "i3d-note";
-  appearanceBody.append(resetLightingBtn, helpNoteCurrent, statusMessage);
-  appearanceDialog.append(appearanceHeader, appearanceBody);
-  document.body.append(appearanceDialog);
-  appearanceDialog.addEventListener("cancel", appearanceCancelEvent => {
+  const appearanceNoteElement = createPlainElement(
+    "p",
+    isRegionLighting
+      ? "曝光影响整体画面，地面颜色深浅独立调整。完成后点击页面上方保存。"
+      : "调整当前户型的整体光照与阴影。完成后点击页面上方保存，仅保存至当前 3D 控件。"
+  );
+  appearanceNoteElement.className = "i3d-note";
+  appearanceBodyElement.append(
+    restoreDefaultsButton,
+    appearanceNoteElement,
+    appearanceErrorElement
+  );
+  appearanceDialogElement.append(appearanceHeaderElement, appearanceBodyElement);
+  document.body.append(appearanceDialogElement);
+  appearanceDialogElement.addEventListener("cancel", appearanceCancelEvent => {
     appearanceCancelEvent.preventDefault();
     closeAppearanceEditor();
   });
-  appearanceDialog.showModal();
+  appearanceDialogElement.showModal();
 }

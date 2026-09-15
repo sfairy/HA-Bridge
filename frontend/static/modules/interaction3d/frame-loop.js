@@ -1,93 +1,92 @@
 export function createDemandFrameLoop({
-  step,
-  onWake = () => {},
-  now = () => performance.now(),
-  requestFrame = cb => requestAnimationFrame(cb),
-  cancelFrame = id => cancelAnimationFrame(id),
-  schedule = (cb, ms) => setTimeout(cb, ms),
-  cancel = id => clearTimeout(id)
+  step: step,
+  onWake: onWake = () => {},
+  now: now = () => performance.now(),
+  requestFrame: requestFrame = rafCallback => requestAnimationFrame(rafCallback),
+  cancelFrame: cancelFrame = rafHandle => cancelAnimationFrame(rafHandle),
+  schedule: schedule = (timerCallback, delayMs) => setTimeout(timerCallback, delayMs),
+  cancel: cancel = timerId => clearTimeout(timerId)
 }) {
-  let frameId = null;
-  let timerId = null;
-  let available = true;
-  let disposed = false;
-  let stepping = false;
-  let wakeDuringStep = false;
+  let frameHandle = null;
+  let deadlineTimerId = null;
+  let isAvailable = true;
+  let isDisposed = false;
+  let isStepping = false;
+  let wakeRequested = false;
   const stats = {
     frames: 0,
     deadlines: 0
   };
-  function clearPending() {
-    if (frameId !== null) {
-      cancelFrame(frameId);
+  function cancelScheduled() {
+    if (frameHandle !== null) {
+      cancelFrame(frameHandle);
     }
-    if (timerId !== null) {
-      cancel(timerId);
+    if (deadlineTimerId !== null) {
+      cancel(deadlineTimerId);
     }
-    frameId = timerId = null;
+    frameHandle = deadlineTimerId = null;
   }
   function wake() {
-    if (disposed || !available) {
-      return;
-    }
-    if (stepping) {
-      wakeDuringStep = true;
-      return;
-    }
-    if (timerId !== null) {
-      cancel(timerId);
-    }
-    timerId = null;
-    if (frameId === null) {
-      onWake();
-      frameId = requestFrame(onFrame);
+    if (!isDisposed && !!isAvailable) {
+      if (isStepping) {
+        wakeRequested = true;
+        return;
+      }
+      if (deadlineTimerId !== null) {
+        cancel(deadlineTimerId);
+      }
+      deadlineTimerId = null;
+      if (frameHandle === null) {
+        onWake();
+        frameHandle = requestFrame(handleFrame);
+      }
     }
   }
-  function onFrame(timestamp = now()) {
-    frameId = null;
-    if (disposed || !available) {
+  function handleFrame(timestamp = now()) {
+    frameHandle = null;
+    if (isDisposed || !isAvailable) {
       return;
     }
-    stepping = true;
-    wakeDuringStep = false;
+    isStepping = true;
+    wakeRequested = false;
     stats.frames++;
-    let delay = Infinity;
+    let nextDelayMs = Infinity;
     try {
-      delay = step(timestamp);
+      nextDelayMs = step(timestamp);
     } finally {
-      stepping = false;
+      isStepping = false;
     }
-    if (!disposed && available) {
-      if (wakeDuringStep || delay <= 0) {
-        frameId = requestFrame(onFrame);
-      } else if (Number.isFinite(delay)) {
-        timerId = schedule(() => {
-          timerId = null;
+    if (!isDisposed && !!isAvailable) {
+      if (wakeRequested || nextDelayMs <= 0) {
+        frameHandle = requestFrame(handleFrame);
+      } else if (Number.isFinite(nextDelayMs)) {
+        deadlineTimerId = schedule(() => {
+          deadlineTimerId = null;
           stats.deadlines++;
           wake();
-        }, delay);
+        }, nextDelayMs);
       }
     }
   }
   return {
-    wake,
-    stats,
-    setAvailable(next) {
-      if (!disposed && available !== !!next) {
-        available = !!next;
-        if (available) {
+    wake: wake,
+    stats: stats,
+    setAvailable(isAvailableNext) {
+      if (!isDisposed && isAvailable !== !!isAvailableNext) {
+        isAvailable = !!isAvailableNext;
+        if (isAvailable) {
           wake();
         } else {
-          clearPending();
+          cancelScheduled();
         }
       }
     },
     dispose() {
-      disposed = true;
-      clearPending();
+      isDisposed = true;
+      cancelScheduled();
     },
     get pending() {
-      return frameId !== null || timerId !== null;
+      return frameHandle !== null || deadlineTimerId !== null;
     }
   };
 }

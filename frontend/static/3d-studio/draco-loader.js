@@ -1,108 +1,75 @@
-import { DRACOLoader } from "/bridge-static/vendor/three/0.186.0/DRACOLoader.js?v=0.5.3";
-
-function workerStartError(error) {
-  const message = String(error?.message || "").trim();
-  return new Error(message || "Draco 同源解码 Worker 启动失败");
+import { DRACOLoader } from "/bridge-static/vendor/three/0.182.0/DRACOLoader.js?v=20260903-three-0182-draco-module-path-v1";
+function normalizeWorkerError(cause) {
+  const errorMessage = String(cause?.message || "").trim();
+  return new Error(errorMessage || "Draco 同源解码 Worker 启动失败");
 }
-
-function normalizeDecoderDirectory(path) {
-  const value = String(path || "").trim();
-  if (!value) {
-    return "";
-  }
-  return value.endsWith("/") ? value : `${value}/`;
-}
-
-function directoryFromDecoderUrl(url) {
-  const value = String(url || "").trim();
-  if (!value) {
-    return "";
-  }
-  const slash = value.lastIndexOf("/");
-  return slash >= 0 ? value.slice(0, slash + 1) : "";
-}
-
 export class SameOriginDRACOLoader extends DRACOLoader {
-  constructor(sameOriginWorkerUrl, manager) {
-    super(manager);
-    this.sameOriginWorkerUrl = sameOriginWorkerUrl;
-    this.decoderPath = directoryFromDecoderUrl(this.decoderPaths?.js);
+  constructor(workerUrl, decoderPath) {
+    super(decoderPath);
+    this.sameOriginWorkerUrl = workerUrl;
   }
-
-  setDecoderPath(path) {
-    if (typeof path === "string") {
-      this.decoderPath = normalizeDecoderDirectory(path);
-    } else if (path && typeof path === "object") {
-      this.decoderPath = directoryFromDecoderUrl(path.js || path.wasm);
-    }
-    return super.setDecoderPath(path);
-  }
-
   _initDecoder() {
     if (this.sameOriginWorkerUrl) {
       this.decoderPending ||= Promise.resolve();
       return this.decoderPending;
+    } else {
+      return super._initDecoder();
     }
-    return super._initDecoder();
   }
-
-  _getWorker(taskCostId, taskCost) {
-    if (!this.sameOriginWorkerUrl) {
-      return super._getWorker(taskCostId, taskCost);
-    }
-    return this._initDecoder().then(() => {
-      if (this.workerPool.length < this.workerLimit) {
-        let worker;
-        try {
-          worker = new Worker(this.sameOriginWorkerUrl, {
-            name: "ha-bridge-draco"
+  _getWorker(taskId, taskCost) {
+    if (this.sameOriginWorkerUrl) {
+      return this._initDecoder().then(() => {
+        if (this.workerPool.length < this.workerLimit) {
+          let worker;
+          try {
+            worker = new Worker(this.sameOriginWorkerUrl, {
+              name: "ha-bridge-draco"
+            });
+          } catch (startError) {
+            throw normalizeWorkerError(startError);
+          }
+          worker._callbacks = {};
+          worker._taskCosts = {};
+          worker._taskLoad = 0;
+          worker._fatalError = null;
+          worker.onmessage = messageEvent => {
+            const workerMessage = messageEvent.data;
+            const pendingTask = worker._callbacks[workerMessage?.id];
+            if (workerMessage?.type === "decode") {
+              pendingTask?.resolve(workerMessage);
+            } else if (workerMessage?.type === "error") {
+              pendingTask?.reject(new Error(workerMessage.error || "Draco 模型解码失败"));
+            }
+          };
+          worker.onerror = errorEvent => {
+            const fatalError = normalizeWorkerError(errorEvent);
+            worker._fatalError = fatalError;
+            for (const failingTask of Object.values(worker._callbacks)) {
+              failingTask.reject(fatalError);
+            }
+            errorEvent.preventDefault?.();
+          };
+          worker.postMessage({
+            type: "init",
+            decoderPath: this.decoderPath,
+            decoderConfig: this.decoderConfig
           });
-        } catch (error) {
-          throw workerStartError(error);
+          this.workerPool.push(worker);
+        } else {
+          this.workerPool.sort((workerA, workerB) =>
+            workerA._taskLoad > workerB._taskLoad ? -1 : 1
+          );
         }
-        worker._callbacks = {};
-        worker._taskCosts = {};
-        worker._taskLoad = 0;
-        worker._fatalError = null;
-        worker.onmessage = event => {
-          const data = event.data;
-          const callback = worker._callbacks[data?.id];
-          if (data?.type === "decode") {
-            callback?.resolve(data);
-          } else if (data?.type === "error") {
-            callback?.reject(new Error(data.error || "Draco 模型解码失败"));
-          }
-        };
-        worker.onerror = event => {
-          const error = workerStartError(event);
-          worker._fatalError = error;
-          for (const callback of Object.values(worker._callbacks)) {
-            callback.reject(error);
-          }
-          event.preventDefault?.();
-        };
-        const decoderPath =
-          normalizeDecoderDirectory(this.decoderPath) ||
-          directoryFromDecoderUrl(this.decoderPaths?.js);
-        if (!decoderPath) {
-          throw new Error("Draco decoderPath 未配置");
+        const selectedWorker = this.workerPool[this.workerPool.length - 1];
+        if (selectedWorker._fatalError) {
+          throw selectedWorker._fatalError;
         }
-        worker.postMessage({
-          type: "init",
-          decoderPath,
-          decoderConfig: this.decoderConfig
-        });
-        this.workerPool.push(worker);
-      } else {
-        this.workerPool.sort((a, b) => (a._taskLoad > b._taskLoad ? -1 : 1));
-      }
-      const worker = this.workerPool[this.workerPool.length - 1];
-      if (worker._fatalError) {
-        throw worker._fatalError;
-      }
-      worker._taskCosts[taskCostId] = taskCost;
-      worker._taskLoad += taskCost;
-      return worker;
-    });
+        selectedWorker._taskCosts[taskId] = taskCost;
+        selectedWorker._taskLoad += taskCost;
+        return selectedWorker;
+      });
+    } else {
+      return super._getWorker(taskId, taskCost);
+    }
   }
 }

@@ -1,203 +1,306 @@
 export function createCoverFeedback({
-  now = () => performance.now(),
-  travelTime = 2000
+  now: now = () => performance.now(),
+  smoothingTime: smoothingTime = 180,
+  commandPreview: commandPreview = false,
+  travelTime: travelTime = 6000
 } = {}) {
-  const items = new Map();
-  function advanceMotion(entry, nowMs) {
-    if (!entry.motion) {
+  const feedbackByEntityId = new Map();
+  const readLastUpdated = state =>
+    Date.parse(state.raw?.last_updated ?? state.raw?.updatedAt ?? "");
+  function advanceMotion(trackedEntry, timeMs) {
+    if (!trackedEntry.motion) {
       return false;
     }
     const {
-      from,
-      to,
-      start,
-      duration,
-      linear
-    } = entry.motion;
-    const progress = Math.max(0, Math.min(1, (nowMs - start) / duration));
-    const eased = linear ? progress : progress * progress * (3 - progress * 2);
-    entry.position = from + (to - from) * eased;
+      from: fromPosition,
+      to: toPosition,
+      start: startedAt,
+      duration: durationMs = smoothingTime
+    } = trackedEntry.motion;
+    const progress = Math.max(0, Math.min(1, (timeMs - startedAt) / durationMs));
+    trackedEntry.position = fromPosition + (toPosition - fromPosition) * progress;
     if (progress === 1) {
-      entry.motion = null;
+      trackedEntry.motion = null;
     }
     return true;
   }
-  function setMotionTo(entry, to, duration = 420, linear = false) {
-    advanceMotion(entry, now());
-    if (to === null) {
-      entry.motion = null;
-      entry.position = null;
-      return;
-    }
-    if (entry.position === null || entry.position === to) {
-      entry.position = to;
-      entry.motion = null;
-      return;
-    }
-    entry.motion = {
-      from: entry.position,
-      to,
-      start: now(),
-      duration,
-      linear
-    };
-  }
   function sync(entityId, nextState) {
-    let entry = items.get(entityId);
+    let entry = feedbackByEntityId.get(entityId);
     if (!entry) {
-      items.set(entityId, {
+      feedbackByEntityId.set(entityId, {
         actual: nextState,
         position: nextState.position,
         motion: null,
         intent: null,
         token: null,
         error: "",
-        draft: null
+        draft: null,
+        railUnconfirmed: false,
+        estimated: false,
+        lastAvailable: nextState.available ? nextState : null,
+        lastTimestamp: readLastUpdated(nextState)
       });
       return;
     }
-    const prevActual = entry.actual;
-    const parseUpdatedAt = cover => Date.parse(cover.raw.last_updated ?? cover.raw.updatedAt ?? "");
-    if (parseUpdatedAt(nextState) < parseUpdatedAt(prevActual)) {
+    const previousState = entry.actual;
+    if (readLastUpdated(nextState) < entry.lastTimestamp) {
       return;
     }
+    if (Number.isFinite(readLastUpdated(nextState))) {
+      entry.lastTimestamp = readLastUpdated(nextState);
+    }
+    if (
+      nextState.dream !== previousState.dream ||
+      nextState.overallFeedbackAvailable !== previousState.overallFeedbackAvailable
+    ) {
+      feedbackByEntityId.delete(entityId);
+      sync(entityId, nextState);
+      return;
+    }
+    const positionChanged = nextState.position !== previousState.position;
+    const stateChanged = nextState.state !== previousState.state;
+    const lastAvailableChanged =
+      !entry.lastAvailable ||
+      nextState.position !== entry.lastAvailable.position ||
+      nextState.state !== entry.lastAvailable.state;
     entry.actual = nextState;
-    if (!nextState.available) {
-      entry.intent = null;
-      entry.draft = null;
-      entry.error = "";
-      setMotionTo(entry, nextState.position);
-      return;
-    }
-    const positionChanged = nextState.position !== prevActual.position;
-    const stateChanged = nextState.state !== prevActual.state;
-    if (entry.intent) {
-      const confirmed = entry.intent;
-      const hasUpdate = positionChanged || stateChanged || nextState.raw.last_updated !== prevActual.raw.last_updated || nextState.raw.updatedAt !== prevActual.raw.updatedAt;
-      const stopConfirmed = confirmed.stop && hasUpdate && !nextState.moving;
-      const reachedTarget = hasUpdate && nextState.position !== null && nextState.position === confirmed.target;
-      const settledAfterConfirm = confirmed.confirmed && stateChanged && !nextState.moving;
-      const direction = confirmed.direction;
-      const movedToward = positionChanged && nextState.position !== null && (confirmed.initialPosition === null || (nextState.position - confirmed.initialPosition) * direction > 0);
-      const movingInDirection = stateChanged && (direction > 0 && nextState.opening || direction < 0 && nextState.closing);
-      if (movingInDirection) {
-        confirmed.expires = Infinity;
-        confirmed.confirmed = true;
-      }
-      if (!stopConfirmed && !settledAfterConfirm && !movedToward && !reachedTarget && (!movingInDirection || !positionChanged)) {
-        return;
-      }
-      entry.intent = null;
-      entry.error = "";
-    } else if (!positionChanged) {
-      return;
-    }
-    setMotionTo(entry, nextState.position);
-  }
-  function begin(service, token) {
-    const entry = items.get(service.entityId);
-    if (!entry) {
-      return;
-    }
     advanceMotion(entry, now());
-    entry.error = "";
-    entry.token = token;
-    if (entry.draft !== null) {
-      entry.position = entry.draft;
+    if (!nextState.available) {
       entry.motion = null;
+      entry.intent = null;
       entry.draft = null;
+      entry.railUnconfirmed = !!nextState.dream;
+      return;
     }
-    const stop = service.service === "stop_cover";
-    const target = stop ? entry.position : service.service === "open_cover" ? 100 : service.service === "close_cover" ? 0 : service.data.position;
-    const fromPosition = entry.position ?? 0;
-    entry.intent = {
-      stop,
-      target,
+    entry.lastAvailable = nextState;
+    if (
+      positionChanged ||
+      (entry.estimated &&
+        nextState.axis === "blade" &&
+        readLastUpdated(nextState) > readLastUpdated(previousState))
+    ) {
+      entry.estimated = false;
+      if (
+        nextState.position === null ||
+        entry.position === null ||
+        (!nextState.moving && nextState.axis !== "blade") ||
+        smoothingTime <= 0
+      ) {
+        entry.position = nextState.position;
+        entry.motion = null;
+      } else {
+        entry.motion = {
+          from: entry.position,
+          to: nextState.position,
+          start: now()
+        };
+      }
+    } else if (stateChanged && !nextState.moving) {
+      entry.estimated = false;
+      entry.position = nextState.position;
+      entry.motion = null;
+    }
+    if (
+      lastAvailableChanged &&
+      nextState.overallFeedbackAvailable !== false &&
+      ((entry.railUnconfirmed = false), entry.intent)
+    ) {
+      const reachedIntentTarget =
+        nextState.position !== null && nextState.position === entry.intent.target;
+      if (
+        (!nextState.moving &&
+          (reachedIntentTarget ||
+            entry.intent.service === "stop_cover" ||
+            entry.intent.confirmed)) ||
+        (positionChanged && !nextState.moving)
+      ) {
+        entry.intent = null;
+      } else if (nextState.moving) {
+        entry.intent.confirmed = true;
+        entry.intent.expires = Infinity;
+      }
+    }
+  }
+  function begin(command, token, { defer: defer = false } = {}) {
+    const commandEntry = feedbackByEntityId.get(command.entityId);
+    if (!commandEntry) {
+      return;
+    }
+    advanceMotion(commandEntry, now());
+    commandEntry.error = "";
+    commandEntry.token = token;
+    const draftPosition = commandEntry.draft;
+    commandEntry.draft = null;
+    const intentTarget =
+      command.service === "open_cover"
+        ? 100
+        : command.service === "close_cover"
+          ? 0
+          : command.service === "stop_cover"
+            ? null
+            : command.data.position;
+    if (
+      commandPreview &&
+      command.service === "set_cover_position" &&
+      draftPosition !== null &&
+      draftPosition === intentTarget
+    ) {
+      commandEntry.position = draftPosition;
+      commandEntry.motion = null;
+      commandEntry.estimated = true;
+    }
+    if (command.service === "stop_cover" || defer) {
+      commandEntry.motion = null;
+    }
+    commandEntry.intent = {
+      service: command.service,
+      target: intentTarget,
       confirmed: false,
-      direction: Math.sign((target ?? fromPosition) - (target === fromPosition ? entry.actual.position ?? fromPosition : fromPosition)),
-      initialPosition: entry.actual.position,
       expires: now() + 15000
     };
-    if (stop) {
-      entry.motion = null;
-    } else {
-      entry.position = fromPosition;
-      setMotionTo(entry, target, Math.max(420, Math.abs(target - fromPosition) / 100 * travelTime), true);
+    if (commandPreview && !defer && intentTarget !== null) {
+      startPreview(command.entityId, token);
+    }
+    if (
+      commandEntry.actual.dream &&
+      ["open_cover", "close_cover", "stop_cover"].includes(command.service)
+    ) {
+      commandEntry.railUnconfirmed =
+        commandEntry.railUnconfirmed ||
+        command.service === "open_cover" ||
+        !commandEntry.actual.closedConfirmed;
     }
   }
-  function fail(entityId, token, error) {
-    const entry = items.get(entityId);
-    if (!entry || entry.token !== token) {
+  function startPreview(previewEntityId, previewToken) {
+    const previewEntry = feedbackByEntityId.get(previewEntityId);
+    if (
+      !commandPreview ||
+      !previewEntry?.intent ||
+      previewEntry.token !== previewToken ||
+      previewEntry.intent.target === null
+    ) {
+      return false;
+    }
+    advanceMotion(previewEntry, now());
+    const startPosition = previewEntry.position ?? 0;
+    const targetPosition = previewEntry.intent.target;
+    previewEntry.position = startPosition;
+    previewEntry.estimated =
+      startPosition !== targetPosition ||
+      previewEntry.actual.position !== targetPosition ||
+      previewEntry.railUnconfirmed;
+    previewEntry.motion =
+      startPosition === targetPosition
+        ? null
+        : {
+            from: startPosition,
+            to: targetPosition,
+            start: now(),
+            duration: Math.max(180, (Math.abs(targetPosition - startPosition) / 100) * travelTime)
+          };
+    return true;
+  }
+  function fail(failedEntityId, failedToken, message) {
+    const failedEntry = feedbackByEntityId.get(failedEntityId);
+    if (!failedEntry || failedEntry.token !== failedToken) {
       return false;
     } else {
-      entry.intent = null;
-      entry.error = error;
-      setMotionTo(entry, entry.actual.position);
+      advanceMotion(failedEntry, now());
+      failedEntry.motion = null;
+      failedEntry.intent = null;
+      failedEntry.draft = null;
+      failedEntry.error = message;
+      if (failedEntry.actual.position !== null) {
+        failedEntry.position = failedEntry.actual.position;
+        failedEntry.estimated = false;
+      }
       return true;
     }
   }
-  function read(entityId, fallback) {
-    const entry = items.get(entityId);
-    if (!entry) {
-      return fallback;
+  function read(readEntityId, fallbackState) {
+    const snapshotEntry = feedbackByEntityId.get(readEntityId);
+    if (!snapshotEntry) {
+      return fallbackState;
     }
-    const actual = entry.actual;
-    const intent = entry.intent;
-    const isOpening = intent ? !intent.stop && intent.direction > 0 && !!entry.motion : actual.opening;
-    const closing = intent ? !intent.stop && intent.direction < 0 && !!entry.motion : actual.closing;
-    const state = entry.draft !== null ? entry.draft === 0 ? "closed" : "open" : intent ? isOpening ? "opening" : closing ? "closing" : entry.position === 0 ? "closed" : "open" : actual.state;
+    const hasMotionEstimate = !!snapshotEntry.estimated && !!snapshotEntry.motion;
+    const opening = hasMotionEstimate
+      ? snapshotEntry.motion.to > snapshotEntry.motion.from
+      : snapshotEntry.actual.opening;
+    const closing = hasMotionEstimate
+      ? snapshotEntry.motion.to < snapshotEntry.motion.from
+      : snapshotEntry.actual.closing;
     return {
-      ...actual,
-      state,
-      position: entry.draft ?? entry.position,
-      opening: isOpening,
-      closing,
-      moving: isOpening || closing,
-      on: actual.available && (isOpening || (entry.draft ?? entry.position ?? 0) > 0),
-      preview: !!intent,
-      error: entry.error
+      ...snapshotEntry.actual,
+      position: (commandPreview ? snapshotEntry.draft : null) ?? snapshotEntry.position,
+      estimated: snapshotEntry.estimated,
+      dragging: !!commandPreview && snapshotEntry.draft !== null,
+      state: hasMotionEstimate ? (opening ? "opening" : "closing") : snapshotEntry.actual.state,
+      opening: opening,
+      closing: closing,
+      moving: opening || closing,
+      closedConfirmed:
+        !!snapshotEntry.actual.closedConfirmed &&
+        !snapshotEntry.railUnconfirmed &&
+        !snapshotEntry.motion &&
+        !snapshotEntry.estimated,
+      awaitingArrival: snapshotEntry.railUnconfirmed,
+      targetPosition: snapshotEntry.draft ?? snapshotEntry.intent?.target ?? null,
+      pendingService: snapshotEntry.intent?.service || "",
+      preview: !!snapshotEntry.intent,
+      error: snapshotEntry.error
     };
   }
   function tick(nowMs = now()) {
     let changed = false;
-    for (const [entityId, entry] of items) {
-      if (entry.intent?.expires <= nowMs) {
-        changed = fail(entityId, entry.token, "") || changed;
+    for (const tickEntry of feedbackByEntityId.values()) {
+      if (tickEntry.intent?.expires <= nowMs) {
+        tickEntry.intent = null;
+        changed = true;
+        if (tickEntry.actual.axis === "blade") {
+          tickEntry.motion = null;
+          tickEntry.position = tickEntry.actual.position;
+          tickEntry.estimated = false;
+        }
       }
-      changed = advanceMotion(entry, nowMs) || changed;
+      changed = advanceMotion(tickEntry, nowMs) || changed;
     }
     return changed;
   }
-  function nextDelay(nowMs = now()) {
-    let delay = Infinity;
-    for (const entry of items.values()) {
-      delay = Math.min(delay, entry.motion ? 1000 / 30 : Infinity, entry.intent ? Math.max(0, entry.intent.expires - nowMs) : Infinity);
+  function nextDelay(currentTimeMs = now()) {
+    let delayMs = Infinity;
+    for (const delayEntry of feedbackByEntityId.values()) {
+      delayMs = Math.min(
+        delayMs,
+        delayEntry.motion ? 1000 / 30 : Infinity,
+        delayEntry.intent ? Math.max(0, delayEntry.intent.expires - currentTimeMs) : Infinity
+      );
     }
-    return delay;
+    return delayMs;
   }
   function retain(entityIds) {
-    const has = new Set(entityIds);
-    for (const entityId of items.keys()) {
-      if (!has.has(entityId)) {
-        items.delete(entityId);
+    const retainedEntityIds = new Set(entityIds);
+    for (const staleEntityId of feedbackByEntityId.keys()) {
+      if (!retainedEntityIds.has(staleEntityId)) {
+        feedbackByEntityId.delete(staleEntityId);
       }
     }
   }
-  function preview(entityId, position) {
-    const entry = items.get(entityId);
-    if (entry) {
-      entry.draft = Number.isFinite(position) ? Math.max(0, Math.min(100, position)) : null;
+  function preview(draftEntityId, position) {
+    const draftEntry = feedbackByEntityId.get(draftEntityId);
+    if (draftEntry) {
+      draftEntry.draft = Number.isFinite(position) ? Math.max(0, Math.min(100, position)) : null;
     }
   }
   return {
-    sync,
-    begin,
-    fail,
-    read,
-    tick,
-    nextDelay,
-    retain,
-    preview,
-    clear: () => items.clear()
+    sync: sync,
+    begin: begin,
+    startPreview: startPreview,
+    fail: fail,
+    read: read,
+    tick: tick,
+    nextDelay: nextDelay,
+    retain: retain,
+    preview: preview,
+    clear: () => feedbackByEntityId.clear()
   };
 }

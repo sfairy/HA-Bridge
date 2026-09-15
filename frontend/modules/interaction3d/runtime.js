@@ -1,792 +1,1281 @@
-import { createLightStream } from "./light-stream.js?v=0.5.3";
-const INTERACTION3D_API = "/api/v1/modules/interaction3d";
-export function mountInteraction3d(host, {
-  component,
-  context = {},
-  editing = false,
-  editingModule = "light",
-  editingVacuumId = "",
-  rangeEditorOnly = false,
-  onEdit = () => {},
-  onReady = () => {},
-  onStates = null,
-  onPresented = () => {},
-  onLoadError = () => {},
-  onFocusChange = () => {}
-}) {
-  host.className = "hb-interaction3d-runtime";
-  let properties = structuredClone(component.properties || {});
-  let disposed = false;
-  let authorized = true;
-  let selectedId = "";
-  let loadTimeoutId;
-  let modelMetadata;
-  let framePresented = false;
-  let viewEditing = false;
-  let viewRequestSerial = 0;
-  let configSerial = 0;
-  let stageCamera;
-  let viewCamera = properties.floorCameras?.[properties.floorSelection] || properties.camera;
-  let lastConfigJson = "";
-  let previewSuspended = false;
-  let focusUiActive = false;
-  let focusPanelOpen = false;
-  let streamPaused = false;
-  let reloadGeneration = false;
-  let pendingViewRequests = false;
-  let frame = 0;
-  let rangeEditingActive = false;
-  const viewRequestWaiters = new Map();
-  const rangeRequestWaiters = new Map();
-  const editSubscribers = new Set();
-  const normalizeLightingMode = lightingMode => lightingMode === "region" ? "region" : "standard";
-  function createFrameElement() {
-    const iframeEl = document.createElement("iframe");
-    iframeEl.title = "3D 交互户型";
-    iframeEl.className = "i3d-frame";
-    iframeEl.setAttribute("allow", "fullscreen");
-    if (context.editable && !editing && !viewEditing && !rangeEditingActive) {
-      iframeEl.style.pointerEvents = "none";
-    }
-    return iframeEl;
+import {
+  createPopupLayoutPreview,
+  createFocusDevicePopup
+} from "./popup-preview.js?v=20260914-popup-preview-v1";
+import { createLightStream } from "./light-stream.js?v=20260909-preview-sleep-v1";
+const INTERACTION3D_API_BASE = "/api/v1/modules/interaction3d";
+export function mountInteraction3d(
+  hostElement,
+  {
+    component: componentDescriptor,
+    context: runtimeContext = {},
+    editing: isEditing = false,
+    editingModule: editingModuleKind = "light",
+    editingVacuumId: editingVacuumId = "",
+    rangeEditorOnly: isRangeEditorOnly = false,
+    onEdit: onEdit = () => {},
+    onReady: onReady = () => {},
+    onStates: onStatesUpdate = null,
+    onPresented: onPresented = () => {},
+    onLoadError: onLoadError = () => {},
+    onFocusChange: onFocusChange = () => {}
   }
-  let frameEl = createFrameElement();
-  const loadingEl = document.createElement("p");
-  loadingEl.className = "i3d-loading";
-  loadingEl.setAttribute("role", "status");
-  host.replaceChildren(frameEl, loadingEl);
-  const documentProjectId = context.document?.projectId || "";
-  const postFrameMessage = payload => {
-    if (!disposed && frameEl.contentWindow) {
-      frameEl.contentWindow.postMessage({
-        channel: "hb-i3d-v1",
-        ...payload
-      }, location.origin);
+) {
+  hostElement.className = "hb-interaction3d-runtime";
+  let componentProperties = structuredClone(componentDescriptor.properties || {});
+  let isDisposed = false;
+  let isAuthorized = true;
+  let selectedId = "";
+  let loadingTimeoutId;
+  let componentMetadata;
+  let isPageHidden = false;
+  let popupLayoutPreview = null;
+  let focusDevicePopup = null;
+  function disposeFocusDevicePopup() {
+    focusDevicePopup?.dispose();
+    focusDevicePopup = null;
+  }
+  function openFocusDevicePopup(popupTargetId) {
+    disposeFocusDevicePopup();
+    const focusDeviceKind = popupTargetId?.startsWith("camera:")
+      ? "camera"
+      : popupTargetId?.startsWith("vacuum:") || editingModuleKind === "vacuum"
+        ? "vacuum"
+        : null;
+    const focusDeviceId = popupTargetId?.replace(/^(camera|vacuum):/, "");
+    const focusDeviceItem = (
+      focusDeviceKind === "camera"
+        ? componentProperties.security?.cameras
+        : focusDeviceKind === "vacuum"
+          ? componentProperties.devices?.vacuums
+          : []
+    )?.find(deviceCandidate => deviceCandidate.id === focusDeviceId);
+    if (!focusDeviceItem) {
+      return;
+    }
+    const createdFocusPopup = createFocusDevicePopup(hostElement, {
+      kind: focusDeviceKind,
+      item: focusDeviceItem,
+      getLayout: () => presentationLayout,
+      getSettings: () => ({
+        ...componentProperties.popupLayout,
+        opacity: componentProperties.popupOpacity
+      }),
+      getStates: getCurrentStates,
+      panelDocument: runtimeContext.document
+    });
+    focusDevicePopup = createdFocusPopup;
+    createdFocusPopup.ready.catch(popupReadyError => {
+      if (focusDevicePopup === createdFocusPopup) {
+        disposeFocusDevicePopup();
+        onLoadError(popupReadyError);
+      }
+    });
+  }
+  function closePopupLayoutPreview() {
+    disposeFocusDevicePopup();
+    popupLayoutPreview?.dispose();
+    popupLayoutPreview = null;
+  }
+  let isScenePresented = false;
+  let isViewEditing = false;
+  let requestIdCounter = 0;
+  let configIdCounter = 0;
+  let defaultCamera;
+  let activeCamera =
+    componentProperties.floorCameras?.[componentProperties.floorSelection] ||
+    componentProperties.camera;
+  let lastConfigJson = "";
+  let isPreviewSuspended = false;
+  let isFocusActive = false;
+  let isFocusPanelOpen = false;
+  let isStageReady = false;
+  let hasBeenConnected = false;
+  let hasLoadFailed = false;
+  let reloadGeneration = 0;
+  let isRangeEditing = false;
+  const pendingEditsByRequestId = new Map();
+  const pendingRangeRequestsByRequestId = new Map();
+  const editSubscribersSet = new Set();
+  const normalizeLightingMode = lightingMode => (lightingMode === "region" ? "region" : "standard");
+  function createStageFrameElement() {
+    const frameElement = document.createElement("iframe");
+    frameElement.title = "3D 交互户型";
+    frameElement.className = "i3d-frame";
+    frameElement.setAttribute("allow", "fullscreen");
+    if (runtimeContext.editable && !isEditing && !isViewEditing && !isRangeEditing) {
+      frameElement.style.pointerEvents = "none";
+    }
+    return frameElement;
+  }
+  let stageFrameElement = createStageFrameElement();
+  const loadingElement = document.createElement("p");
+  loadingElement.className = "i3d-loading";
+  loadingElement.setAttribute("role", "status");
+  hostElement.replaceChildren(stageFrameElement, loadingElement);
+  const projectId = runtimeContext.document?.projectId || "";
+  const postToStageFrame = outgoingMessage => {
+    if (!isDisposed && stageFrameElement.contentWindow) {
+      stageFrameElement.contentWindow.postMessage(
+        {
+          channel: "hb-i3d-v1",
+          ...outgoingMessage
+        },
+        location.origin
+      );
     }
   };
-  function notifyEditListeners(editPayload) {
-    onEdit(editPayload);
-    for (const listener of [...editSubscribers]) {
-      listener(editPayload);
+  function notifyEditSubscribers(editEvent) {
+    onEdit(editEvent);
+    for (const subscriber of [...editSubscribersSet]) {
+      subscriber(editEvent);
     }
   }
-  function setRangeEditingActive(event, error = "") {
-    const wasHeld = event === true;
-    if (wasHeld !== rangeEditingActive || !!error) {
-      rangeEditingActive = wasHeld;
-      host.classList.toggle("is-range-editing", wasHeld);
-      if (context.editable && !editing) {
-        frameEl.style.pointerEvents = wasHeld || viewEditing ? "auto" : "none";
+  function setRangeEditingState(requestedActive, errorMessage = "") {
+    const isRangeEditingActive = requestedActive === true;
+    if (isRangeEditingActive !== isRangeEditing || !!errorMessage) {
+      isRangeEditing = isRangeEditingActive;
+      hostElement.classList.toggle("is-range-editing", isRangeEditingActive);
+      if (runtimeContext.editable && !isEditing) {
+        stageFrameElement.style.pointerEvents =
+          isRangeEditingActive || isViewEditing ? "auto" : "none";
       }
-      notifyEditListeners({
+      notifyEditSubscribers({
         action: "range-editor-state",
-        active: wasHeld,
-        ...(error ? {
-          error
-        } : {})
+        active: isRangeEditingActive,
+        ...(errorMessage
+          ? {
+              error: errorMessage
+            }
+          : {})
       });
     }
   }
-  let activityGateOpen = false;
-  let awaitingPresented = false;
-  let frameActivityVisible;
-  let framePresentedVisible;
-  let pageHiddenPaused = false;
-  let lastActivityPostAt = -Infinity;
-  const heldPointerIds = new Set();
-  const heldKeyCodes = new Set();
-  const hasHeldActivity = () => heldPointerIds.size > 0 || heldKeyCodes.size > 0;
-  let hostIsIntersecting = typeof IntersectionObserver === "undefined";
-  function syncPreviewScopeSuspension() {
-    const wasHeld = [...(document.querySelectorAll?.("dialog[data-i3d-preview-scope][open]") || [])].at(-1);
-    const suspendedByDialog = !!wasHeld && !wasHeld.contains(host);
-    if (previewSuspended !== suspendedByDialog && !disposed) {
-      previewSuspended = suspendedByDialog;
-      host.setAttribute("data-preview-suspended", String(suspendedByDialog));
-      clearTimeout(loadTimeoutId);
-      if (!suspendedByDialog) {
-        if (!framePresented && properties.sceneId && !pendingViewRequests) {
+  let isSceneActive = false;
+  let isAwaitingPresentation = false;
+  let lastVisible;
+  let lastPresentedVisible;
+  let isPageHiddenByEvent = false;
+  let lastActivityAtMs = -Infinity;
+  const activePointerIdsSet = new Set();
+  const heldKeySet = new Set();
+  const hasHeldInput = () => activePointerIdsSet.size > 0 || heldKeySet.size > 0;
+  let isInViewport = typeof IntersectionObserver === "undefined";
+  function syncPreviewSuspension() {
+    const topmostScopedDialog = [
+      ...(document.querySelectorAll?.("dialog[data-i3d-preview-scope][open]") || [])
+    ].at(-1);
+    const isCoveredByDialog = !!topmostScopedDialog && !topmostScopedDialog.contains(hostElement);
+    if (isPreviewSuspended !== isCoveredByDialog && !isDisposed) {
+      isPreviewSuspended = isCoveredByDialog;
+      hostElement.setAttribute("data-preview-suspended", String(isCoveredByDialog));
+      clearTimeout(loadingTimeoutId);
+      if (!isCoveredByDialog) {
+        if (!isScenePresented && componentProperties.sceneId && !hasLoadFailed) {
           scheduleLoadTimeout();
         }
-        if (streamPaused) {
-          pushStatesToFrame();
+        if (isStageReady) {
+          publishStates();
         }
-        if (intersectionObserver) {
-          onStates?.(readStates());
+        if (lightStream) {
+          onStatesUpdate?.(getCurrentStates());
         }
-        vacuumPopup?.updateStates?.(readStates());
-        pushConfigToFrame();
+        focusDevicePopup?.updateStates?.();
+        vacuumDetailsPopup?.updateStates?.(getCurrentStates());
+        sendConfigUpdate();
       }
-      syncActivityVisibility();
+      refreshActivityState();
     }
   }
-  function isHostVisiblyConnected() {
-    if (host.isConnected === false || host.hidden || host.inert || frameEl.hidden || host.checkVisibility?.({
-      opacityProperty: true,
-      visibilityProperty: true,
-      contentVisibilityAuto: true
-    }) === false) {
+  function isHostActuallyVisible() {
+    if (
+      hostElement.isConnected === false ||
+      hostElement.hidden ||
+      hostElement.inert ||
+      stageFrameElement.hidden ||
+      hostElement.checkVisibility?.({
+        opacityProperty: true,
+        visibilityProperty: true,
+        contentVisibilityAuto: true
+      }) === false
+    ) {
       return false;
     }
-    for (let parentElement = host; parentElement; parentElement = parentElement.parentElement) {
-      if (parentElement.hidden || parentElement.inert || parentElement.getAttribute?.("aria-hidden") === "true") {
+    for (
+      let visibilityAncestorElement = hostElement;
+      visibilityAncestorElement;
+      visibilityAncestorElement = visibilityAncestorElement.parentElement
+    ) {
+      if (
+        visibilityAncestorElement.hidden ||
+        visibilityAncestorElement.inert ||
+        visibilityAncestorElement.getAttribute?.("aria-hidden") === "true"
+      ) {
         return false;
       }
-      const visibility = window.getComputedStyle?.(parentElement);
-      if (visibility && (visibility.display === "none" || visibility.visibility === "hidden" || visibility.visibility === "collapse" || Number(visibility.opacity) === 0)) {
+      const visibilityAncestorStyle = window.getComputedStyle?.(visibilityAncestorElement);
+      if (
+        visibilityAncestorStyle &&
+        (visibilityAncestorStyle.display === "none" ||
+          visibilityAncestorStyle.visibility === "hidden" ||
+          visibilityAncestorStyle.visibility === "collapse" ||
+          Number(visibilityAncestorStyle.opacity) === 0)
+      ) {
         return false;
       }
     }
-    const width = host.getBoundingClientRect();
-    const viewportWidth = document.documentElement?.clientWidth || window.innerWidth || Infinity;
-    const viewportHeight = document.documentElement?.clientHeight || window.innerHeight || Infinity;
-    return width.width > 0 && width.height > 0 && (width.left || 0) < viewportWidth && (width.top || 0) < viewportHeight && (width.right ?? (width.left || 0) + width.width) > 0 && (width.bottom ?? (width.top || 0) + width.height) > 0;
+    const hostBoundingRect = hostElement.getBoundingClientRect();
+    const viewportWidthPx = document.documentElement?.clientWidth || window.innerWidth || Infinity;
+    const viewportHeightPx =
+      document.documentElement?.clientHeight || window.innerHeight || Infinity;
+    return (
+      hostBoundingRect.width > 0 &&
+      hostBoundingRect.height > 0 &&
+      (hostBoundingRect.left || 0) < viewportWidthPx &&
+      (hostBoundingRect.top || 0) < viewportHeightPx &&
+      (hostBoundingRect.right ?? (hostBoundingRect.left || 0) + hostBoundingRect.width) > 0 &&
+      (hostBoundingRect.bottom ?? (hostBoundingRect.top || 0) + hostBoundingRect.height) > 0
+    );
   }
-  function syncActivityVisibility(force = false) {
-    if (disposed) {
+  function refreshActivityState(forceImmediate = false) {
+    if (isDisposed) {
       return;
     }
-    syncStreamActive();
-    const visible = activityGateOpen && framePresented && authorized && !editing && !context.editable && !viewEditing && !previewSuspended && !pageHiddenPaused && document.hidden !== true && document.visibilityState !== "hidden" && hostIsIntersecting && isHostVisiblyConnected();
-    const presentedVisible = authorized && !previewSuspended && !pageHiddenPaused && document.hidden !== true && document.visibilityState !== "hidden" && hostIsIntersecting && isHostVisiblyConnected();
-    if (!visible) {
-      heldPointerIds.clear();
-      heldKeyCodes.clear();
+    syncLightStreamActive();
+    const isPresentedVisible =
+      isAuthorized &&
+      !isPreviewSuspended &&
+      !isPageHiddenByEvent &&
+      !isPageHidden &&
+      document.hidden !== true &&
+      document.visibilityState !== "hidden" &&
+      isInViewport &&
+      isHostActuallyVisible();
+    const isVisible =
+      isSceneActive &&
+      isScenePresented &&
+      !isEditing &&
+      !runtimeContext.editable &&
+      !isViewEditing &&
+      isPresentedVisible;
+    if (!isVisible) {
+      activePointerIdsSet.clear();
+      heldKeySet.clear();
     }
-    if (force || visible !== frameActivityVisible || presentedVisible !== framePresentedVisible) {
-      frameActivityVisible = visible;
-      framePresentedVisible = presentedVisible;
-      lastActivityPostAt = -Infinity;
-      postFrameMessage({
+    if (
+      forceImmediate ||
+      isVisible !== lastVisible ||
+      isPresentedVisible !== lastPresentedVisible
+    ) {
+      lastVisible = isVisible;
+      lastPresentedVisible = isPresentedVisible;
+      lastActivityAtMs = -Infinity;
+      postToStageFrame({
         type: "activity-state",
-        visible,
-        presentedVisible
+        visible: isVisible,
+        presentedVisible: isPresentedVisible
       });
     }
   }
-  function onActivityPointerOrKey(next) {
-    if (disposed || next.isTrusted === false) {
+  function handleActivityInputEvent(inputEvent) {
+    if (isDisposed || inputEvent.isTrusted === false) {
       return;
     }
-    const wasHeldBefore = hasHeldActivity();
-    if (next.type === "pointerdown") {
-      heldPointerIds.add(next.pointerId);
+    const hadHeldInput = hasHeldInput();
+    if (inputEvent.type === "pointerdown") {
+      activePointerIdsSet.add(inputEvent.pointerId);
     }
-    if (next.type === "pointerup" || next.type === "pointercancel") {
-      heldPointerIds.delete(next.pointerId);
+    if (inputEvent.type === "pointerup" || inputEvent.type === "pointercancel") {
+      activePointerIdsSet.delete(inputEvent.pointerId);
     }
-    if (next.type === "keydown") {
-      heldKeyCodes.add(next.code || next.key);
+    if (inputEvent.type === "keydown") {
+      heldKeySet.add(inputEvent.code || inputEvent.key);
     }
-    if (next.type === "keyup") {
-      heldKeyCodes.delete(next.code || next.key);
+    if (inputEvent.type === "keyup") {
+      heldKeySet.delete(inputEvent.code || inputEvent.key);
     }
     const nowMs = globalThis.performance?.now?.() ?? Date.now();
-    if (hasHeldActivity() !== wasHeldBefore || !(nowMs - lastActivityPostAt < 200)) {
-      syncActivityVisibility();
-      if (frameActivityVisible) {
-        lastActivityPostAt = nowMs;
-        postFrameMessage({
+    if (hasHeldInput() !== hadHeldInput || !(nowMs - lastActivityAtMs < 200)) {
+      refreshActivityState();
+      lastActivityAtMs = nowMs;
+      if (lastVisible) {
+        postToStageFrame({
           type: "user-activity",
-          held: hasHeldActivity()
+          held: hasHeldInput()
         });
       }
     }
   }
-  function onWindowBlurClearHeld() {
-    if (disposed) {
+  function handleWindowBlur() {
+    if (isDisposed) {
       return;
     }
-    const hadHeldInput = hasHeldActivity();
-    heldPointerIds.clear();
-    heldKeyCodes.clear();
-    syncActivityVisibility();
-    if (hadHeldInput && frameActivityVisible) {
-      lastActivityPostAt = globalThis.performance?.now?.() ?? Date.now();
-      postFrameMessage({
+    const hadHeldInputBeforeBlur = hasHeldInput();
+    activePointerIdsSet.clear();
+    heldKeySet.clear();
+    refreshActivityState();
+    if (hadHeldInputBeforeBlur && lastVisible) {
+      lastActivityAtMs = globalThis.performance?.now?.() ?? Date.now();
+      postToStageFrame({
         type: "user-activity",
         held: false
       });
     }
   }
-  function onPageHidePause() {
-    pageHiddenPaused = true;
-    syncActivityVisibility();
+  function handlePageHide() {
+    closePopupLayoutPreview();
+    isPageHiddenByEvent = true;
+    refreshActivityState();
   }
-  function onPageShowResume(message) {
-    pageHiddenPaused = false;
-    if (message?.persisted && !disposed) {
-      reloadFrame();
+  function handlePageShow(pageShowEvent) {
+    isPageHiddenByEvent = false;
+    if (pageShowEvent?.persisted && !isDisposed) {
+      reloadStageFrame();
     } else {
-      syncActivityVisibility();
+      refreshActivityState();
     }
   }
-  function onVisibilityOrTransition() {
-    syncActivityVisibility();
-  }
-  let streamedStateMap = {};
-  let lastPushedStates = null;
-  let frameSupportsStatePatches = false;
-  const intersectionObserver = typeof window.WebSocket == "function" ? createLightStream({
-    onStates(nextStates) {
-      streamedStateMap = nextStates;
-      if (!previewSuspended) {
-        vacuumPopup?.updateStates?.(nextStates);
-        onStates?.(nextStates);
-        if (streamPaused) {
-          pushStatesToFrame();
-        }
-      }
-    },
-    onPatch(statePatch) {
-      streamedStateMap = {
-        ...streamedStateMap,
-        ...statePatch
-      };
-      if (!previewSuspended) {
-        vacuumPopup?.updateStates?.(streamedStateMap);
-        onStates?.(streamedStateMap);
-        if (streamPaused) {
-          pushStatesToFrame(statePatch);
-        }
-      }
+  function handleVisibilityChange() {
+    if (document.hidden) {
+      closePopupLayoutPreview();
     }
-  }) : null;
-  function syncStreamActive() {
-    if (!intersectionObserver || disposed) {
+    refreshActivityState();
+  }
+  let latestStates = {};
+  let lastPublishedStates = null;
+  let supportsStatePatches = false;
+  const lightStream =
+    typeof window.WebSocket == "function"
+      ? createLightStream({
+          onStates(states) {
+            latestStates = states;
+            if (!isPreviewSuspended) {
+              focusDevicePopup?.updateStates?.();
+              vacuumDetailsPopup?.updateStates?.(states);
+              onStatesUpdate?.(states);
+              if (isStageReady) {
+                publishStates();
+              }
+            }
+          },
+          onPatch(patch) {
+            latestStates = {
+              ...latestStates,
+              ...patch
+            };
+            if (!isPreviewSuspended) {
+              focusDevicePopup?.updateStates?.();
+              vacuumDetailsPopup?.updateStates?.(latestStates);
+              onStatesUpdate?.(latestStates);
+              if (isStageReady) {
+                publishStates(patch);
+              }
+            }
+          }
+        })
+      : null;
+  function syncLightStreamActive() {
+    if (!lightStream || isDisposed) {
       return;
     }
-    if (host.isConnected === true) {
-      reloadGeneration = true;
+    if (hostElement.isConnected === true) {
+      hasBeenConnected = true;
     }
-    let streamShouldBeActive = authorized && !pendingViewRequests && !!properties.sceneId && !pageHiddenPaused && document.hidden !== true && document.visibilityState !== "hidden" && (!reloadGeneration || host.isConnected !== false);
-    for (let parentElement = host; streamShouldBeActive && parentElement; parentElement = parentElement.parentElement) {
-      const display = window.getComputedStyle?.(parentElement);
-      if (parentElement.hidden || parentElement.inert || parentElement.getAttribute?.("aria-hidden") === "true" || display?.display === "none" || ["hidden", "collapse"].includes(display?.visibility)) {
-        streamShouldBeActive = false;
+    let isStreamActive =
+      isAuthorized &&
+      !hasLoadFailed &&
+      !!componentProperties.sceneId &&
+      !isPageHiddenByEvent &&
+      !isPageHidden &&
+      document.hidden !== true &&
+      document.visibilityState !== "hidden" &&
+      (!hasBeenConnected || hostElement.isConnected !== false);
+    for (
+      let ancestorElement = hostElement;
+      isStreamActive && ancestorElement;
+      ancestorElement = ancestorElement.parentElement
+    ) {
+      const ancestorStyle = window.getComputedStyle?.(ancestorElement);
+      if (
+        ancestorElement.hidden ||
+        ancestorElement.inert ||
+        ancestorElement.getAttribute?.("aria-hidden") === "true" ||
+        ancestorStyle?.display === "none" ||
+        ["hidden", "collapse"].includes(ancestorStyle?.visibility)
+      ) {
+        isStreamActive = false;
       }
     }
-    intersectionObserver.setActive(streamShouldBeActive);
+    lightStream.setActive(isStreamActive);
   }
-  const collectObservedEntities = () => [...(properties.security?.cameras || []), ...(properties.security?.presenceSensors || []), ...(properties.devices?.vacuums || []), ...(properties.devices?.vacuums || []).flatMap(relatedEntityIds => [...(relatedEntityIds.relatedEntityIds || []).map(entityId => ({
-    entityId: entityId
-  })), relatedEntityIds.map, ...(relatedEntityIds.shortcuts || [])].filter(Boolean)), ...(properties.lights || []), ...(properties.environment?.airConditioners || []), ...(properties.environment?.curtains || []), ...(properties.devices?.nas || []), ...(properties.devices?.televisions || []), ...(properties.devices?.televisions || []).filter(powerEntityId => powerEntityId.powerEntityId).map(powerEntityId => ({
-    entityId: powerEntityId.powerEntityId
-  })), ...(properties.devices?.nas || []).flatMap(statusSource => {
-    const visibleMetrics = statusSource.statusSource;
-    return (visibleMetrics?.metrics || []).filter(entityId => !visibleMetrics.visibleMetrics || visibleMetrics.visibleMetrics.includes(entityId.entityId) || entityId.entityId === visibleMetrics.primaryEntityId);
-  })];
-  function isFocusTargetId(focusId) {
-    if (typeof focusId != "string" || !focusId) {
+  function findCurtainMotorReverseEntities() {
+    const entityMetadata = runtimeContext.entityMetadata;
+    if (!entityMetadata?.get || !entityMetadata?.values) {
+      return [];
+    } else {
+      return (componentProperties.environment?.curtains || []).flatMap(curtain => {
+        const curtainMetadata = entityMetadata.get(curtain.entityId);
+        if (!curtainMetadata?.deviceId) {
+          return [];
+        }
+        const motorReverseCandidates = [...entityMetadata.values()].filter(
+          candidateMetadata =>
+            candidateMetadata.deviceId === curtainMetadata.deviceId &&
+            (!curtainMetadata.platform ||
+              !candidateMetadata.platform ||
+              candidateMetadata.platform === curtainMetadata.platform) &&
+            ["switch", "select"].includes(
+              candidateMetadata.domain || candidateMetadata.entityId?.split(".")[0]
+            ) &&
+            !candidateMetadata.disabledBy &&
+            !["disabled", "missing"].includes(candidateMetadata.status) &&
+            /motor_reverse|电机反向/i.test(
+              (candidateMetadata.entityId || "") +
+                " " +
+                (candidateMetadata.name || "") +
+                " " +
+                (candidateMetadata.translationKey || "")
+            )
+        );
+        if (motorReverseCandidates.length === 1) {
+          return [
+            {
+              entityId: motorReverseCandidates[0].entityId,
+              coverEntityId: curtain.entityId
+            }
+          ];
+        } else {
+          return [];
+        }
+      });
+    }
+  }
+  function mergeMotorReverseStates(statesMap, patchStates) {
+    const mergedStates = {
+      ...(patchStates || statesMap)
+    };
+    for (const motorReversePair of findCurtainMotorReverseEntities()) {
+      if (
+        patchStates &&
+        !(motorReversePair.entityId in patchStates) &&
+        !(motorReversePair.coverEntityId in patchStates)
+      ) {
+        continue;
+      }
+      const coverState = statesMap[motorReversePair.coverEntityId];
+      if (!coverState) {
+        continue;
+      }
+      const motorReverseEntityState =
+        statesMap[motorReversePair.entityId]?.newState || statesMap[motorReversePair.entityId];
+      const motorReverseStateText = String(motorReverseEntityState?.state || "")
+        .trim()
+        .toLowerCase();
+      const isMotorReverseEnabled =
+        motorReverseEntityState?.available === false
+          ? null
+          : ["on", "true", "1", "enabled", "开启", "打开", "reverse", "reversed", "反向"].includes(
+                motorReverseStateText
+              )
+            ? true
+            : ["off", "false", "0", "disabled", "关闭", "normal", "forward", "正向"].includes(
+                  motorReverseStateText
+                )
+              ? false
+              : null;
+      mergedStates[motorReversePair.coverEntityId] = {
+        ...(coverState.newState || coverState),
+        motorReverse: {
+          entityId: motorReversePair.entityId,
+          enabled: isMotorReverseEnabled
+        }
+      };
+    }
+    return mergedStates;
+  }
+  const collectTrackedEntities = () => [
+    ...findCurtainMotorReverseEntities(),
+    ...(componentProperties.security?.cameras || []),
+    ...(componentProperties.security?.presenceSensors || []),
+    ...(componentProperties.devices?.vacuums || []),
+    ...(componentProperties.devices?.vacuums || []).flatMap(vacuum =>
+      [
+        ...(vacuum.relatedEntityIds || []).map(relatedEntityId => ({
+          entityId: relatedEntityId
+        })),
+        vacuum.map,
+        ...(vacuum.shortcuts || [])
+      ].filter(Boolean)
+    ),
+    ...(componentProperties.lights || []),
+    ...(componentProperties.environment?.airConditioners || []),
+    ...(componentProperties.environment?.curtains || []),
+    ...(componentProperties.devices?.nas || []),
+    ...(componentProperties.devices?.televisions || []),
+    ...(componentProperties.devices?.televisions || [])
+      .filter(television => television.powerEntityId)
+      .map(televisionWithPower => ({
+        entityId: televisionWithPower.powerEntityId
+      })),
+    ...(componentProperties.devices?.nas || []).flatMap(nas => {
+      const nasStatusSource = nas.statusSource;
+      return (nasStatusSource?.metrics || []).filter(
+        nasMetric =>
+          !nasStatusSource.visibleMetrics ||
+          nasStatusSource.visibleMetrics.includes(nasMetric.entityId) ||
+          nasMetric.entityId === nasStatusSource.primaryEntityId
+      );
+    })
+  ];
+  function isKnownSelectionId(selectionId) {
+    if (typeof selectionId != "string" || !selectionId) {
       return false;
-    } else if ((properties.lights || []).some(controller => controller.id === focusId) || (properties.security?.cameras || []).some(camera => focusId === "camera:" + camera.id) || (properties.security?.presenceSensors || []).some(command => focusId === "presence:" + command.id)) {
+    } else if (
+      (componentProperties.lights || []).some(lightItem => lightItem.id === selectionId) ||
+      (componentProperties.security?.cameras || []).some(
+        cameraDevice => selectionId === "camera:" + cameraDevice.id
+      ) ||
+      (componentProperties.security?.presenceSensors || []).some(
+        presenceSensorDevice => selectionId === "presence:" + presenceSensorDevice.id
+      )
+    ) {
       return true;
     } else {
-      return [["climate", properties.environment?.airConditioners], ["cover", properties.environment?.curtains], ["nas", properties.devices?.nas], ["television", properties.devices?.televisions], ["vacuum", properties.devices?.vacuums]].some(([deviceKind, deviceList]) => (deviceList || []).some(id => typeof id.id == "string" && id.id && focusId === deviceKind + ":" + id.id));
+      return [
+        ["climate", componentProperties.environment?.airConditioners],
+        ["cover", componentProperties.environment?.curtains],
+        ["nas", componentProperties.devices?.nas],
+        ["television", componentProperties.devices?.televisions],
+        ["vacuum", componentProperties.devices?.vacuums]
+      ].some(([moduleKey, moduleItems]) =>
+        (moduleItems || []).some(
+          moduleItem =>
+            typeof moduleItem.id == "string" &&
+            moduleItem.id &&
+            selectionId === moduleKey + ":" + moduleItem.id
+        )
+      );
     }
   }
-  const readStates = () => intersectionObserver ? streamedStateMap : Object.fromEntries(collectObservedEntities().map(entityId => [entityId.entityId, context.states?.get(entityId.entityId) || null]));
-  const pushStatesToFrame = (patchStates = null) => {
-    if (previewSuspended || pageHiddenPaused) {
+  const getCurrentStates = () =>
+    lightStream
+      ? latestStates
+      : Object.fromEntries(
+          collectTrackedEntities().map(entityRef => [
+            entityRef.entityId,
+            runtimeContext.states?.get(entityRef.entityId) || null
+          ])
+        );
+  const publishStates = (statePatch = null) => {
+    if (isPreviewSuspended || isPageHidden) {
       return;
     }
-    const statesSnapshot = readStates();
-    if (intersectionObserver && statesSnapshot === lastPushedStates) {
+    const currentStates = getCurrentStates();
+    if (lightStream && currentStates === lastPublishedStates) {
       return;
     }
-    const isStatePatch = !!intersectionObserver && frameSupportsStatePatches && patchStates !== null;
-    postFrameMessage({
+    const shouldSendPatch = !!lightStream && supportsStatePatches && statePatch !== null;
+    postToStageFrame({
       type: "states",
-      states: isStatePatch ? patchStates : statesSnapshot,
-      ...(isStatePatch ? {
-        patch: true
-      } : {})
+      states: mergeMotorReverseStates(currentStates, shouldSendPatch ? statePatch : null),
+      ...(shouldSendPatch
+        ? {
+            patch: true
+          }
+        : {})
     });
-    lastPushedStates = statesSnapshot;
-    if (!intersectionObserver) {
-      onStates?.(statesSnapshot);
+    lastPublishedStates = currentStates;
+    if (!lightStream) {
+      focusDevicePopup?.updateStates?.();
+      onStatesUpdate?.(currentStates);
     }
   };
-  const registeredStateEntityIds = new Set();
-  function syncBackgroundVisibilityClass() {
-    if (intersectionObserver) {
-      intersectionObserver.configure(collectObservedEntities().map(entityId => entityId.entityId), {
-        additionalEntityIds: (properties.devices?.vacuums || []).flatMap(relatedEntityIds => [...(relatedEntityIds.relatedEntityIds || []), ...(relatedEntityIds.shortcuts || []).map(entityId => entityId.entityId)])
-      });
-      syncStreamActive();
+  const registeredEntityIdsSet = new Set();
+  function configureStateSubscriptions() {
+    if (lightStream) {
+      lightStream.configure(
+        collectTrackedEntities().map(primaryEntity => primaryEntity.entityId),
+        {
+          additionalEntityIds: [
+            ...findCurtainMotorReverseEntities().map(
+              motorReverseEntity => motorReverseEntity.entityId
+            ),
+            ...(componentProperties.lights || []).map(lightEntity => lightEntity.entityId),
+            ...(componentProperties.security?.presenceSensors || []).map(
+              presenceSensorEntity => presenceSensorEntity.entityId
+            ),
+            ...(componentProperties.devices?.televisions || []).map(
+              televisionEntity => televisionEntity.powerEntityId
+            ),
+            ...(componentProperties.devices?.vacuums || []).flatMap(vacuumEntity => [
+              ...(vacuumEntity.relatedEntityIds || []),
+              ...(vacuumEntity.shortcuts || []).map(vacuumShortcut => vacuumShortcut.entityId)
+            ])
+          ]
+        }
+      );
+      syncLightStreamActive();
       return;
     }
-    for (const entityId of collectObservedEntities()) {
-      if (entityId.entityId && !registeredStateEntityIds.has(entityId.entityId)) {
-        registeredStateEntityIds.add(entityId.entityId);
-        context.registerRuntimeStateHandler?.(entityId.entityId, pushStatesToFrame);
+    for (const trackedEntity of collectTrackedEntities()) {
+      if (trackedEntity.entityId && !registeredEntityIdsSet.has(trackedEntity.entityId)) {
+        registeredEntityIdsSet.add(trackedEntity.entityId);
+        runtimeContext.registerRuntimeStateHandler?.(trackedEntity.entityId, publishStates);
       }
     }
   }
-  function pushConfigToFrame() {
-    if (!streamPaused || disposed || previewSuspended) {
+  function sendConfigUpdate() {
+    if (!isStageReady || isDisposed || isPreviewSuspended) {
       return;
     }
     const configPayload = {
-      properties,
-      editing,
-      editingModule: editingModule,
+      properties: componentProperties,
+      editing: isEditing,
+      editingModule: editingModuleKind,
       editingVacuumId: editingVacuumId,
-      rangeEditorOnly: rangeEditorOnly,
-      viewEditing,
-      allowRangeEditing: authorized && (editing || !!context.editable),
-      interactive: !editing && !context.editable,
-      selectedId
+      rangeEditorOnly: isRangeEditorOnly,
+      viewEditing: isViewEditing,
+      editorCanvas: !!runtimeContext.editable && !isEditing,
+      allowRangeEditing: isAuthorized && (isEditing || !!runtimeContext.editable),
+      interactive: !isEditing && !runtimeContext.editable,
+      selectedId: selectedId
     };
     const configJson = JSON.stringify(configPayload);
     if (configJson === lastConfigJson) {
-      updatePresentationLayout();
-      syncActivityVisibility();
-      pushStatesToFrame();
+      syncFrameLayout();
+      refreshActivityState();
+      publishStates();
       return;
     }
     lastConfigJson = configJson;
-    activityGateOpen = false;
-    awaitingPresented = true;
-    syncActivityVisibility(true);
-    updatePresentationLayout(true);
-    postFrameMessage({
+    isSceneActive = false;
+    isAwaitingPresentation = true;
+    refreshActivityState(true);
+    syncFrameLayout(true);
+    postToStageFrame({
       type: "config",
-      configId: ++configSerial,
+      configId: ++configIdCounter,
       ...configPayload,
-      states: readStates()
+      states: mergeMotorReverseStates(getCurrentStates())
     });
-    lastPushedStates = readStates();
-    if (!framePresented) {
-      syncActivityVisibility(true);
+    lastPublishedStates = getCurrentStates();
+    if (!isScenePresented) {
+      refreshActivityState(true);
     }
   }
-  function applyBackgroundHiddenClass() {
-    host.classList.toggle("is-background-hidden", properties.backgroundVisible === false);
+  function syncBackgroundVisibility() {
+    hostElement.classList.toggle(
+      "is-background-hidden",
+      componentProperties.backgroundVisible === false
+    );
   }
-  function setFocusUiActive(event) {
-    if (focusUiActive !== event) {
-      focusUiActive = event;
-      onFocusChange(event);
+  function updateFocusActive(focusActive) {
+    if (isFocusActive !== focusActive) {
+      isFocusActive = focusActive;
+      onFocusChange(focusActive);
     }
   }
-  function rejectViewRequests(event) {
-    for (const timeout of viewRequestWaiters.values()) {
-      clearTimeout(timeout.timeout);
-      timeout.reject(new Error(event));
+  function rejectPendingEdits(reason) {
+    for (const pendingEditRequest of pendingEditsByRequestId.values()) {
+      clearTimeout(pendingEditRequest.timeout);
+      pendingEditRequest.reject(new Error(reason));
     }
-    viewRequestWaiters.clear();
+    pendingEditsByRequestId.clear();
   }
-  function rejectRangeRequests(message) {
-    for (const timeout of rangeRequestWaiters.values()) {
-      clearTimeout(timeout.timeout);
-      timeout.reject(new Error(message));
+  function rejectPendingRangeRequests(failureReason) {
+    for (const pendingRangeRequest of pendingRangeRequestsByRequestId.values()) {
+      clearTimeout(pendingRangeRequest.timeout);
+      pendingRangeRequest.reject(new Error(failureReason));
     }
-    rangeRequestWaiters.clear();
+    pendingRangeRequestsByRequestId.clear();
   }
-  function dismissFocusUi(immediate = false) {
-    closeCameraPopup();
-    focusedId = "";
-    closeVacuumPopup();
-    focusPanelOpen = false;
-    setFocusUiActive(false);
-    postFrameMessage({
+  function dismissFocus(immediate = false) {
+    activeFocusTargetId = "";
+    closeCameraPreviewPopup();
+    closeVacuumDetailsPopup();
+    isFocusPanelOpen = false;
+    updateFocusActive(false);
+    postToStageFrame({
       type: "dismiss-focus",
-      immediate
+      immediate: immediate
     });
   }
-  let vacuumPopup = null;
-  let vacuumFollowActive = false;
-  let cameraPopup = null;
-  let cameraPopupId = "";
-  let focusedId = "";
-  const closeCameraPopup = () => {
-    const close = cameraPopup;
-    cameraPopup = null;
-    cameraPopupId = "";
-    close?.close?.();
+  let cameraPreviewPopup = null;
+  let cameraPreviewTargetId = "";
+  let activeFocusTargetId = "";
+  const closeCameraPreviewPopup = () => {
+    const popupToClose = cameraPreviewPopup;
+    cameraPreviewPopup = null;
+    cameraPreviewTargetId = "";
+    popupToClose?.close?.();
   };
-  const closeVacuumPopup = () => {
-    const close = vacuumPopup;
-    vacuumPopup = null;
-    close?.close?.();
+  let vacuumDetailsPopup = null;
+  let isVacuumFollowActive = false;
+  const closeVacuumDetailsPopup = () => {
+    const vacuumPopupToClose = vacuumDetailsPopup;
+    vacuumDetailsPopup = null;
+    vacuumPopupToClose?.close?.();
   };
-  function onOutsidePointerDownDismiss(target) {
-    if (!vacuumPopup?.contains?.(target.target)) {
-      if ((focusUiActive || focusPanelOpen) && !host.contains(target.target)) {
-        dismissFocusUi();
+  function handleWindowPointerDown(pointerEvent) {
+    if (
+      !cameraPreviewPopup?.contains?.(pointerEvent.target) &&
+      !vacuumDetailsPopup?.contains?.(pointerEvent.target)
+    ) {
+      if ((isFocusActive || isFocusPanelOpen) && !hostElement.contains(pointerEvent.target)) {
+        dismissFocus();
       }
     }
   }
-  function onEscapeKeydown(message) {
-    if ((focusUiActive || focusPanelOpen) && message.key === "Escape") {
-      dismissFocusUi();
+  function handleWindowKeyDown(keyEvent) {
+    if (keyEvent.key === "Escape") {
+      closePopupLayoutPreview();
+    }
+    if ((isFocusActive || isFocusPanelOpen) && keyEvent.key === "Escape") {
+      dismissFocus();
     }
   }
-  function failFrameLoad(errorMessage) {
-    pendingViewRequests = true;
-    framePresented = false;
-    activityGateOpen = false;
-    awaitingPresented = false;
-    syncActivityVisibility(true);
-    rejectRangeRequests(errorMessage || "户型画面已关闭，请重新调整照射范围。");
-    postFrameMessage({
+  function handleStageLoadError(messageText) {
+    hasLoadFailed = true;
+    isScenePresented = false;
+    isSceneActive = false;
+    isAwaitingPresentation = false;
+    refreshActivityState(true);
+    rejectPendingRangeRequests(messageText || "户型画面已关闭，请重新调整照射范围。");
+    postToStageFrame({
       type: "range-editor",
       open: false
     });
-    setRangeEditingActive(false);
-    pendingControlAborts.forEach(abort => abort.abort());
-    rejectViewRequests("户型加载失败，请重新载入后调整视角。");
-    dismissFocusUi(true);
-    clearTimeout(loadTimeoutId);
-    host.classList.remove("is-loading");
-    host.classList.add("is-load-error");
-    loadingEl.hidden = false;
-    loadingEl.textContent = errorMessage || "3D 户型加载失败，请重新载入户型。";
-    onLoadError(new Error(loadingEl.textContent));
+    setRangeEditingState(false);
+    pendingAbortControllersSet.forEach(staleController => staleController.abort());
+    rejectPendingEdits("户型加载失败，请重新载入后调整视角。");
+    dismissFocus(true);
+    clearTimeout(loadingTimeoutId);
+    hostElement.classList.remove("is-loading");
+    hostElement.classList.add("is-load-error");
+    loadingElement.hidden = false;
+    loadingElement.textContent = messageText || "3D 户型加载失败，请重新载入户型。";
+    onLoadError(new Error(loadingElement.textContent));
   }
-  function reloadFrame() {
-    vacuumFollowActive = false;
-    closeVacuumPopup();
+  function reloadStageFrame() {
+    closePopupLayoutPreview();
+    isVacuumFollowActive = false;
+    activeFocusTargetId = "";
+    closeCameraPreviewPopup();
+    closeVacuumDetailsPopup();
     lastConfigJson = "";
-    if (frame++) {
-      frameEl.removeAttribute("src");
-      frameEl = createFrameElement();
-      host.replaceChildren(frameEl, loadingEl);
+    if (reloadGeneration++) {
+      stageFrameElement.removeAttribute("src");
+      stageFrameElement = createStageFrameElement();
+      hostElement.replaceChildren(stageFrameElement, loadingElement);
     }
-    setRangeEditingActive(false);
-    pendingControlAborts.forEach(abort => abort.abort());
-    rejectViewRequests("户型已切换，请在新户型中重新调整视角。");
-    rejectRangeRequests("户型已切换，请在新户型中重新调整照射范围。");
-    focusPanelOpen = false;
-    setFocusUiActive(false);
-    pendingViewRequests = false;
-    framePresented = false;
-    streamPaused = false;
-    activityGateOpen = false;
-    awaitingPresented = false;
-    syncActivityVisibility(true);
-    clearTimeout(loadTimeoutId);
-    host.classList.remove("is-ready", "is-load-error");
-    host.classList.toggle("is-loading", !!properties.sceneId);
-    host.setAttribute("aria-busy", String(!!properties.sceneId));
-    applyBackgroundHiddenClass();
-    syncBackgroundVisibilityClass();
-    if (!properties.sceneId) {
-      frameEl.hidden = true;
-      loadingEl.hidden = false;
-      loadingEl.textContent = "请在属性面板中配置 3D 户型";
+    setRangeEditingState(false);
+    pendingAbortControllersSet.forEach(replacementController => replacementController.abort());
+    rejectPendingEdits("户型已切换，请在新户型中重新调整视角。");
+    rejectPendingRangeRequests("户型已切换，请在新户型中重新调整照射范围。");
+    isFocusPanelOpen = false;
+    updateFocusActive(false);
+    hasLoadFailed = false;
+    isScenePresented = false;
+    isStageReady = false;
+    isSceneActive = false;
+    isAwaitingPresentation = false;
+    refreshActivityState(true);
+    clearTimeout(loadingTimeoutId);
+    hostElement.classList.remove("is-ready", "is-load-error");
+    hostElement.classList.toggle("is-loading", !!componentProperties.sceneId);
+    hostElement.setAttribute("aria-busy", String(!!componentProperties.sceneId));
+    syncBackgroundVisibility();
+    configureStateSubscriptions();
+    if (!componentProperties.sceneId) {
+      stageFrameElement.hidden = true;
+      loadingElement.hidden = false;
+      loadingElement.textContent = "请在属性面板中配置 3D 户型";
       return;
     }
-    frameEl.hidden = false;
-    loadingEl.hidden = false;
-    loadingEl.textContent = "";
-    loadingEl.setAttribute("aria-label", "正在准备 3D 户型");
-    const wallTrial = (new URLSearchParams(window.location.search).get("wall-trial") || "").split(",").filter(entry => ["shader", "single", "depth", "merge"].includes(entry)).join(",");
-    frameEl.src = INTERACTION3D_API + "/stage.html?" + new URLSearchParams({
-      sceneId: properties.sceneId,
-      projectId: documentProjectId,
-      lighting: normalizeLightingMode(properties.lightingMode),
-      ...(wallTrial ? {
-        "wall-trial": wallTrial
-      } : {}),
-      ...(new URLSearchParams(window.location.search).get("furniture-runtime") === "compact" ? {
-        "furniture-runtime": "compact"
-      } : {}),
-      ...(new URLSearchParams(window.location.search).get("reflection-detail") === "low" ? {
-        "reflection-detail": "low"
-      } : {}),
-      ...(new URLSearchParams(window.location.search).get("performance-diagnostics") === "1" ? {
-        "performance-diagnostics": "1",
-        ...(new URLSearchParams(window.location.search).get("reflection-work") === "baseline" ? {
-          "reflection-work": "baseline"
-        } : {})
-      } : {})
-    });
-    if (!previewSuspended) {
+    stageFrameElement.hidden = false;
+    loadingElement.hidden = false;
+    loadingElement.textContent = "";
+    loadingElement.setAttribute("aria-label", "正在准备 3D 户型");
+    const wallTrialParam = (new URLSearchParams(window.location.search).get("wall-trial") || "")
+      .split(",")
+      .filter(trialMode => ["shader", "single", "depth", "merge"].includes(trialMode))
+      .join(",");
+    stageFrameElement.src =
+      INTERACTION3D_API_BASE +
+      "/stage.html?" +
+      new URLSearchParams({
+        sceneId: componentProperties.sceneId,
+        projectId: projectId,
+        lighting: normalizeLightingMode(componentProperties.lightingMode),
+        ...(wallTrialParam
+          ? {
+              "wall-trial": wallTrialParam
+            }
+          : {}),
+        ...(new URLSearchParams(window.location.search).get("furniture-runtime") === "compact"
+          ? {
+              "furniture-runtime": "compact"
+            }
+          : {}),
+        ...(new URLSearchParams(window.location.search).get("reflection-detail") === "low"
+          ? {
+              "reflection-detail": "low"
+            }
+          : {}),
+        ...(new URLSearchParams(window.location.search).get("performance-diagnostics") === "1"
+          ? {
+              "performance-diagnostics": "1",
+              ...(new URLSearchParams(window.location.search).get("reflection-work") === "baseline"
+                ? {
+                    "reflection-work": "baseline"
+                  }
+                : {})
+            }
+          : {})
+      });
+    if (!isPreviewSuspended) {
       scheduleLoadTimeout();
     }
   }
   function scheduleLoadTimeout() {
-    loadTimeoutId = setTimeout(() => failFrameLoad("3D 户型加载较慢，请稍候；若一直没有画面，请重新载入户型。"), 45000);
+    loadingTimeoutId = setTimeout(
+      () => handleStageLoadError("3D 户型加载较慢，请稍候；若一直没有画面，请重新载入户型。"),
+      45000
+    );
   }
-  const pendingControlAborts = new Set();
-  async function handleFrameMessage(data) {
-    if (disposed || data.origin !== location.origin || data.source !== frameEl.contentWindow || data.data?.channel !== "hb-i3d-v1") {
+  const pendingAbortControllersSet = new Set();
+  async function handleStageMessage(messageEvent) {
+    if (
+      isDisposed ||
+      messageEvent.origin !== location.origin ||
+      messageEvent.source !== stageFrameElement.contentWindow ||
+      messageEvent.data?.channel !== "hb-i3d-v1"
+    ) {
       return;
     }
-    const type = data.data;
-    if (type.type === "vacuum-follow-state") {
-      vacuumFollowActive = type.active === true;
-      if (vacuumFollowActive) {
-        closeVacuumPopup();
+    const incomingMessage = messageEvent.data;
+    if (incomingMessage.type === "vacuum-follow-state") {
+      isVacuumFollowActive = incomingMessage.active === true;
+      if (isVacuumFollowActive) {
+        closeVacuumDetailsPopup();
       }
     }
-    if (type.type === "vacuum-popup-close") {
-      closeVacuumPopup();
+    if (incomingMessage.type === "vacuum-popup-close") {
+      closeVacuumDetailsPopup();
     }
-    if (type.type === "camera-popup-close") {
-      closeCameraPopup();
+    if (incomingMessage.type === "camera-popup-close") {
+      closeCameraPreviewPopup();
     }
-    if (type.type === "camera-popup" && authorized && framePresented && !editing && !context.editable && focusedId === type.id) {
-      const cameraBinding = (properties.security?.cameras || []).find(id => "camera:" + id.id === type.id && id.visible !== false && id.entityId);
-      if (cameraBinding && context.openCameraPreview && cameraPopupId !== type.id) {
-        closeCameraPopup();
-        closeVacuumPopup();
-        cameraPopupId = type.id;
-        cameraPopup = context.openCameraPreview(cameraBinding, () => {
-          cameraPopup = null;
-          cameraPopupId = "";
-          dismissFocusUi();
-        }, {
-          root: host,
-          frame: frameEl,
-          popupOpacity: properties.popupOpacity,
-          getPresentationLayout: () => presentationLayout
-        });
+    if (
+      incomingMessage.type === "camera-popup" &&
+      isAuthorized &&
+      isScenePresented &&
+      !isEditing &&
+      !runtimeContext.editable &&
+      activeFocusTargetId === incomingMessage.id
+    ) {
+      const cameraItem = (componentProperties.security?.cameras || []).find(
+        cameraCandidate =>
+          "camera:" + cameraCandidate.id === incomingMessage.id &&
+          cameraCandidate.visible !== false &&
+          cameraCandidate.entityId
+      );
+      if (
+        cameraItem &&
+        runtimeContext.openCameraPreview &&
+        cameraPreviewTargetId !== incomingMessage.id
+      ) {
+        closeCameraPreviewPopup();
+        closeVacuumDetailsPopup();
+        cameraPreviewTargetId = incomingMessage.id;
+        cameraPreviewPopup = runtimeContext.openCameraPreview(
+          cameraItem,
+          () => {
+            cameraPreviewPopup = null;
+            cameraPreviewTargetId = "";
+            dismissFocus();
+          },
+          {
+            root: hostElement,
+            frame: stageFrameElement,
+            popupOpacity: componentProperties.popupOpacity,
+            getPresentationLayout: () => presentationLayout,
+            getPopupLayout: () => componentProperties.popupLayout?.camera
+          }
+        );
       }
     }
-    if (type.type === "vacuum-popup" && !vacuumFollowActive && authorized && framePresented && !editing && !context.editable) {
-      const vacuumBinding = (properties.devices?.vacuums || []).find(id => "vacuum:" + id.id === type.id && id.visible !== false && id.entityId);
-      if (vacuumBinding && context.openVacuumDetails) {
-        closeVacuumPopup();
-        vacuumPopup = context.openVacuumDetails(vacuumBinding, () => {
-          vacuumPopup = null;
-          dismissFocusUi();
-        }, {
-          states: readStates(),
-          root: host,
-          frame: frameEl,
-          popupOpacity: properties.popupOpacity,
-          getPresentationLayout: () => presentationLayout
-        });
+    if (
+      incomingMessage.type === "vacuum-popup" &&
+      !isVacuumFollowActive &&
+      isAuthorized &&
+      isScenePresented &&
+      !isEditing &&
+      !runtimeContext.editable
+    ) {
+      const vacuumItem = (componentProperties.devices?.vacuums || []).find(
+        vacuumCandidate =>
+          "vacuum:" + vacuumCandidate.id === incomingMessage.id &&
+          vacuumCandidate.visible !== false &&
+          vacuumCandidate.entityId
+      );
+      if (vacuumItem && runtimeContext.openVacuumDetails) {
+        closeVacuumDetailsPopup();
+        vacuumDetailsPopup = runtimeContext.openVacuumDetails(
+          vacuumItem,
+          () => {
+            vacuumDetailsPopup = null;
+            dismissFocus();
+          },
+          {
+            states: getCurrentStates(),
+            root: hostElement,
+            frame: stageFrameElement,
+            popupOpacity: componentProperties.popupOpacity,
+            getPresentationLayout: () => presentationLayout,
+            getPopupLayout: () => componentProperties.popupLayout?.general
+          }
+        );
       }
     }
-    if (type.type === "vacuum-room" && authorized && framePresented && !editing && !context.editable) {
-      const shortcuts = (properties.devices?.vacuums || []).find(id => id.id === type.vacuumId && id.visible !== false && id.entityId);
-      const id = shortcuts?.shortcuts?.find(id => id.id === type.shortcutId && id.visible !== false && id.entityId);
-      if (!id || type.id !== "vacuum-room:" + shortcuts.id + ":" + id.id) {
+    if (
+      incomingMessage.type === "vacuum-room" &&
+      isAuthorized &&
+      isScenePresented &&
+      !isEditing &&
+      !runtimeContext.editable
+    ) {
+      const vacuumDevice = (componentProperties.devices?.vacuums || []).find(
+        vacuumDeviceCandidate =>
+          vacuumDeviceCandidate.id === incomingMessage.vacuumId &&
+          vacuumDeviceCandidate.visible !== false &&
+          vacuumDeviceCandidate.entityId
+      );
+      const vacuumShortcutItem = vacuumDevice?.shortcuts?.find(
+        shortcutCandidate =>
+          shortcutCandidate.id === incomingMessage.shortcutId &&
+          shortcutCandidate.visible !== false &&
+          shortcutCandidate.entityId
+      );
+      if (
+        !vacuumShortcutItem ||
+        incomingMessage.id !== "vacuum-room:" + vacuumDevice.id + ":" + vacuumShortcutItem.id
+      ) {
         return;
       }
       try {
-        if (!context.runVacuumRoom) {
+        if (!runtimeContext.runVacuumRoom) {
           throw new Error("清扫操作入口尚未准备好，请刷新页面。");
         }
-        await context.runVacuumRoom(id);
-        postFrameMessage({
+        await runtimeContext.runVacuumRoom(vacuumShortcutItem);
+        postToStageFrame({
           type: "vacuum-room-result",
-          id: type.id
+          id: incomingMessage.id
         });
-      } catch (message) {
-        postFrameMessage({
+      } catch (runRoomError) {
+        postToStageFrame({
           type: "vacuum-room-result",
-          id: type.id,
-          error: message.message
+          id: incomingMessage.id,
+          error: runRoomError.message
         });
       }
     }
-    if (type.type === "focus-state" && !editing && !context.editable) {
-      const focusAllowed = authorized && framePresented && isFocusTargetId(type.id);
-      focusedId = focusAllowed && type.active === true ? type.id : "";
-      if (cameraPopupId && cameraPopupId !== focusedId) {
-        closeCameraPopup();
+    if (incomingMessage.type === "focus-state" && !isEditing && !runtimeContext.editable) {
+      const canFocusSelection =
+        isAuthorized && isScenePresented && isKnownSelectionId(incomingMessage.id);
+      activeFocusTargetId =
+        canFocusSelection && incomingMessage.active === true ? incomingMessage.id : "";
+      if (cameraPreviewTargetId && cameraPreviewTargetId !== activeFocusTargetId) {
+        closeCameraPreviewPopup();
       }
-      focusPanelOpen = focusAllowed && type.panelOpen === true;
-      setFocusUiActive(focusAllowed && type.active === true);
+      isFocusPanelOpen = canFocusSelection && incomingMessage.panelOpen === true;
+      updateFocusActive(canFocusSelection && incomingMessage.active === true);
     }
-    if (type.type === "model-metadata") {
-      modelMetadata = type.metadata;
-      onReady(modelMetadata);
+    if (incomingMessage.type === "model-metadata") {
+      componentMetadata = incomingMessage.metadata;
+      onReady(componentMetadata);
     }
-    if (type.type === "ready") {
-      frameSupportsStatePatches = type.statePatches === true;
-      lastPushedStates = null;
+    if (incomingMessage.type === "ready") {
+      supportsStatePatches = incomingMessage.statePatches === true;
+      lastPublishedStates = null;
       lastConfigJson = "";
-      pendingViewRequests = false;
-      streamPaused = true;
-      modelMetadata = type.metadata;
-      stageCamera = type.metadata?.camera;
-      viewCamera = properties.floorCameras?.[properties.floorSelection] || properties.camera || stageCamera;
-      pushConfigToFrame();
-      if (previewSuspended) {
-        syncActivityVisibility(true);
+      hasLoadFailed = false;
+      isStageReady = true;
+      componentMetadata = incomingMessage.metadata;
+      defaultCamera = incomingMessage.metadata?.camera;
+      activeCamera =
+        componentProperties.floorCameras?.[componentProperties.floorSelection] ||
+        componentProperties.camera ||
+        defaultCamera;
+      sendConfigUpdate();
+      if (isPreviewSuspended) {
+        refreshActivityState(true);
       }
-      onReady(type.metadata);
+      onReady(incomingMessage.metadata);
     }
-    if (type.type === "presented" && type.configId === configSerial && awaitingPresented) {
-      awaitingPresented = false;
-      if (!framePresented) {
-        framePresented = true;
-        stageCamera = type.camera || stageCamera;
-        viewCamera = properties.floorCameras?.[properties.floorSelection] || properties.camera || stageCamera;
-        clearTimeout(loadTimeoutId);
-        host.classList.remove("is-loading", "is-load-error");
-        host.classList.add("is-ready");
-        host.setAttribute("aria-busy", "false");
+    if (
+      incomingMessage.type === "presented" &&
+      incomingMessage.configId === configIdCounter &&
+      isAwaitingPresentation
+    ) {
+      isAwaitingPresentation = false;
+      if (!isScenePresented) {
+        isScenePresented = true;
+        defaultCamera = incomingMessage.camera || defaultCamera;
+        activeCamera =
+          componentProperties.floorCameras?.[componentProperties.floorSelection] ||
+          componentProperties.camera ||
+          defaultCamera;
+        clearTimeout(loadingTimeoutId);
+        hostElement.classList.remove("is-loading", "is-load-error");
+        hostElement.classList.add("is-ready");
+        hostElement.setAttribute("aria-busy", "false");
         onPresented();
       }
-      activityGateOpen = true;
-      syncActivityVisibility();
+      isSceneActive = true;
+      refreshActivityState();
     }
-    if (type.type === "error") {
-      failFrameLoad(type.message);
+    if (incomingMessage.type === "error") {
+      handleStageLoadError(incomingMessage.message);
     }
-    const canEditRange = authorized && framePresented && (editing || context.editable) && normalizeLightingMode(properties.lightingMode) === "region";
-    if (type.type === "range-editor-state" && canEditRange) {
-      const timeout = rangeRequestWaiters.get(type.requestId);
-      if (type.requestId && !timeout) {
+    const isRangeEditingAvailable =
+      isAuthorized &&
+      isScenePresented &&
+      (isEditing || runtimeContext.editable) &&
+      normalizeLightingMode(componentProperties.lightingMode) === "region";
+    if (incomingMessage.type === "range-editor-state" && isRangeEditingAvailable) {
+      const rangeRequest = pendingRangeRequestsByRequestId.get(incomingMessage.requestId);
+      if (incomingMessage.requestId && !rangeRequest) {
         return;
       }
-      if (timeout) {
-        clearTimeout(timeout.timeout);
-        rangeRequestWaiters.delete(type.requestId);
-        if (type.active === timeout.open && !type.error) {
-          timeout.resolve();
+      if (rangeRequest) {
+        clearTimeout(rangeRequest.timeout);
+        pendingRangeRequestsByRequestId.delete(incomingMessage.requestId);
+        if (incomingMessage.active === rangeRequest.open && !incomingMessage.error) {
+          rangeRequest.resolve();
         } else {
-          timeout.reject(new Error(type.error || "照射范围编辑未能打开。"));
+          rangeRequest.reject(new Error(incomingMessage.error || "照射范围编辑未能打开。"));
         }
       }
-      setRangeEditingActive(type.active === true && !type.error, type.error || "");
+      setRangeEditingState(
+        incomingMessage.active === true && !incomingMessage.error,
+        incomingMessage.error || ""
+      );
     }
-    if (type.type === "range-overrides" && canEditRange && type.overrides && typeof type.overrides == "object" && !Array.isArray(type.overrides)) {
-      properties.lightRegionOverrides = structuredClone(type.overrides);
-      notifyEditListeners({
+    if (
+      incomingMessage.type === "range-overrides" &&
+      isRangeEditingAvailable &&
+      incomingMessage.overrides &&
+      typeof incomingMessage.overrides == "object" &&
+      !Array.isArray(incomingMessage.overrides)
+    ) {
+      componentProperties.lightRegionOverrides = structuredClone(incomingMessage.overrides);
+      notifyEditSubscribers({
         action: "light-region-overrides",
-        overrides: structuredClone(properties.lightRegionOverrides)
+        overrides: structuredClone(componentProperties.lightRegionOverrides)
       });
     }
-    if (type.type === "edit" && type.action === "camera" && context.editable && viewEditing) {
-      const timeout = viewRequestWaiters.get(type.requestId);
-      if (timeout) {
-        viewCamera = type.camera;
-        clearTimeout(timeout.timeout);
-        viewRequestWaiters.delete(type.requestId);
-        timeout.resolve(type.camera);
+    if (
+      incomingMessage.type === "edit" &&
+      incomingMessage.action === "camera" &&
+      runtimeContext.editable &&
+      isViewEditing
+    ) {
+      const cameraEditRequest = pendingEditsByRequestId.get(incomingMessage.requestId);
+      if (cameraEditRequest) {
+        activeCamera = incomingMessage.camera;
+        clearTimeout(cameraEditRequest.timeout);
+        pendingEditsByRequestId.delete(incomingMessage.requestId);
+        cameraEditRequest.resolve(incomingMessage.camera);
       }
     }
-    if (type.type === "edit" && editing && authorized && framePresented) {
-      if (type.action === "focus-camera") {
-        const timeout = viewRequestWaiters.get(type.requestId);
-        if (!timeout) {
+    if (incomingMessage.type === "edit" && isEditing && isAuthorized && isScenePresented) {
+      if (incomingMessage.action === "focus-exited") {
+        disposeFocusDevicePopup();
+      }
+      if (incomingMessage.action === "focus-camera") {
+        const focusEditRequest = pendingEditsByRequestId.get(incomingMessage.requestId);
+        if (!focusEditRequest) {
           return;
         }
-        if (timeout) {
-          clearTimeout(timeout.timeout);
-          viewRequestWaiters.delete(type.requestId);
-          if (type.error) {
-            timeout.reject(new Error(type.error));
+        if (focusEditRequest) {
+          clearTimeout(focusEditRequest.timeout);
+          pendingEditsByRequestId.delete(incomingMessage.requestId);
+          if (incomingMessage.error) {
+            focusEditRequest.reject(new Error(incomingMessage.error));
           } else {
-            timeout.resolve(type);
+            if (["edit-light-camera", "preview-light-camera"].includes(focusEditRequest.command)) {
+              openFocusDevicePopup(focusEditRequest.id);
+            }
+            if (
+              ["save-light-camera", "cancel-light-camera", "edit-follow-camera"].includes(
+                focusEditRequest.command
+              )
+            ) {
+              disposeFocusDevicePopup();
+            }
+            focusEditRequest.resolve(incomingMessage);
           }
         }
       }
-      notifyEditListeners(type);
+      notifyEditSubscribers(incomingMessage);
     }
-    if (type.type === "control" && authorized && framePresented && !editing && !context.editable) {
-      const controlEntityId = type.command?.entityId;
-      if (typeof controlEntityId != "string" || !controlEntityId.trim()) {
-        return;
-      }
-      if (![...(properties.lights || []), ...(properties.environment?.airConditioners || []), ...(properties.environment?.curtains || []), ...(properties.devices?.televisions || []), ...(properties.devices?.televisions || []).map(powerEntityId => ({
-        entityId: powerEntityId.powerEntityId || powerEntityId.entityId
-      }))].some(entityId => entityId.entityId === controlEntityId)) {
-        postFrameMessage({
+    if (
+      incomingMessage.type === "control" &&
+      isAuthorized &&
+      isScenePresented &&
+      !isEditing &&
+      !runtimeContext.editable
+    ) {
+      const controlEntityId = incomingMessage.command?.entityId;
+      if (
+        typeof controlEntityId != "string" ||
+        !controlEntityId.trim() ||
+        ![
+          ...(componentProperties.lights || []),
+          ...(componentProperties.environment?.airConditioners || []),
+          ...(componentProperties.environment?.curtains || []),
+          ...(componentProperties.devices?.televisions || []),
+          ...(componentProperties.devices?.televisions || []).map(televisionItem => ({
+            entityId: televisionItem.powerEntityId || televisionItem.entityId
+          }))
+        ].some(controlTarget => controlTarget.entityId === controlEntityId)
+      ) {
+        postToStageFrame({
           type: "control-result",
-          requestId: type.requestId,
+          requestId: incomingMessage.requestId,
           error: "此实体未绑定到当前 3D 控件，请检查设备配置。"
         });
         return;
       }
-      const frameGeneration = frame;
-      const postIfSameGeneration = resultMessage => {
-        if (frameGeneration === frame && framePresented && authorized) {
-          postFrameMessage(resultMessage);
+      const controlGeneration = reloadGeneration;
+      const sendControlResult = resultPayload => {
+        if (controlGeneration === reloadGeneration && isScenePresented && isAuthorized) {
+          postToStageFrame(resultPayload);
         }
       };
-      const abort = new AbortController();
-      pendingControlAborts.add(abort);
-      const controlTimeoutId = setTimeout(() => abort.abort(), 12000);
+      const controlAbortController = new AbortController();
+      pendingAbortControllersSet.add(controlAbortController);
+      const controlTimeoutId = setTimeout(() => controlAbortController.abort(), 12000);
       try {
-        const json = await fetch(INTERACTION3D_API + "/control", {
+        const controlResponse = await fetch(INTERACTION3D_API_BASE + "/control", {
           method: "POST",
           credentials: "same-origin",
           headers: {
             "content-type": "application/json"
           },
           body: JSON.stringify({
-            ...type.command,
-            ...(["climate", "cover"].includes(type.command?.domain) || type.command?.deviceKind === "television" ? {
-              projectId: documentProjectId,
-              componentId: component.id
-            } : {})
+            ...incomingMessage.command,
+            ...(["climate", "cover"].includes(incomingMessage.command?.domain) ||
+            incomingMessage.command?.deviceKind === "television"
+              ? {
+                  projectId: projectId,
+                  componentId: componentDescriptor.id
+                }
+              : {})
           }),
-          signal: abort.signal
+          signal: controlAbortController.signal
         });
-        const detail = await json.json().catch(() => ({}));
-        if (!json.ok) {
-          throw new Error(typeof detail.detail == "string" ? detail.detail : detail.detail?.message || "设备操作失败。");
+        const responseBody = await controlResponse.json().catch(() => ({}));
+        if (!controlResponse.ok) {
+          throw new Error(
+            typeof responseBody.detail == "string"
+              ? responseBody.detail
+              : responseBody.detail?.message || "设备操作失败。"
+          );
         }
-        postIfSameGeneration({
+        sendControlResult({
           type: "control-result",
-          requestId: type.requestId
+          requestId: incomingMessage.requestId
         });
-      } catch (name) {
-        postIfSameGeneration({
+      } catch (controlError) {
+        sendControlResult({
           type: "control-result",
-          requestId: type.requestId,
-          error: name.name === "AbortError" ? "请求超时，请检查设备状态。" : name.message,
-          timedOut: name.name === "AbortError"
+          requestId: incomingMessage.requestId,
+          error:
+            controlError.name === "AbortError"
+              ? "请求超时，请检查设备状态。"
+              : controlError.message,
+          timedOut: controlError.name === "AbortError"
         });
       } finally {
         clearTimeout(controlTimeoutId);
-        pendingControlAborts.delete(abort);
+        pendingAbortControllersSet.delete(controlAbortController);
       }
     }
   }
-  window.addEventListener("message", handleFrameMessage);
-  window.addEventListener("pointerdown", onOutsidePointerDownDismiss);
-  window.addEventListener("keydown", onEscapeKeydown);
-  const activityDoc = document.addEventListener ? document : window;
-  activityDoc.addEventListener("hb-i3d-preview-scope", syncPreviewScopeSuspension);
-  const activityEventTypes = ["pointerdown", "pointermove", "pointerup", "pointercancel", "wheel", "keydown", "keyup"];
-  const activityListenerOpts = {
+  window.addEventListener("message", handleStageMessage);
+  window.addEventListener("pointerdown", handleWindowPointerDown);
+  window.addEventListener("keydown", handleWindowKeyDown);
+  const activityEventTarget = document.addEventListener ? document : window;
+  activityEventTarget.addEventListener("hb-i3d-preview-scope", syncPreviewSuspension);
+  const ACTIVITY_EVENT_TYPES = [
+    "pointerdown",
+    "pointermove",
+    "pointerup",
+    "pointercancel",
+    "wheel",
+    "keydown",
+    "keyup"
+  ];
+  const ACTIVITY_LISTENER_OPTIONS = {
     capture: true,
     passive: true
   };
-  for (const eventType of activityEventTypes) {
-    activityDoc.addEventListener(eventType, onActivityPointerOrKey, activityListenerOpts);
+  for (const activityEventType of ACTIVITY_EVENT_TYPES) {
+    activityEventTarget.addEventListener(
+      activityEventType,
+      handleActivityInputEvent,
+      ACTIVITY_LISTENER_OPTIONS
+    );
   }
-  activityDoc.addEventListener("visibilitychange", onVisibilityOrTransition);
-  activityDoc.addEventListener("transitionend", onVisibilityOrTransition, true);
-  activityDoc.addEventListener("animationend", onVisibilityOrTransition, true);
-  window.addEventListener("pagehide", onPageHidePause);
-  window.addEventListener("pageshow", onPageShowResume);
-  window.addEventListener("blur", onWindowBlurClearHeld);
-  const hostIntersectionObserver = typeof IntersectionObserver === "undefined" ? null : new IntersectionObserver(entries => {
-    for (const target of entries) {
-      if (target.target === host) {
-        hostIsIntersecting = target.isIntersecting && target.intersectionRatio > 0;
-      }
-    }
-    syncActivityVisibility();
-  }, {
-    threshold: [0, 0.001]
-  });
-  hostIntersectionObserver?.observe(host);
-  let ancestorChain = [];
-  function syncAncestorMutationTargets() {
-    if (disposed) {
+  activityEventTarget.addEventListener("visibilitychange", handleVisibilityChange);
+  activityEventTarget.addEventListener("transitionend", handleVisibilityChange, true);
+  activityEventTarget.addEventListener("animationend", handleVisibilityChange, true);
+  window.addEventListener("pagehide", handlePageHide);
+  window.addEventListener("pageshow", handlePageShow);
+  window.addEventListener("blur", handleWindowBlur);
+  const intersectionObserver =
+    typeof IntersectionObserver === "undefined"
+      ? null
+      : new IntersectionObserver(
+          observerEntries => {
+            for (const observerEntry of observerEntries) {
+              if (observerEntry.target === hostElement) {
+                isInViewport = observerEntry.isIntersecting && observerEntry.intersectionRatio > 0;
+              }
+            }
+            refreshActivityState();
+          },
+          {
+            threshold: [0, 0.001]
+          }
+        );
+  intersectionObserver?.observe(hostElement);
+  let observedAncestorElements = [];
+  function observeAncestors() {
+    if (isDisposed) {
       return;
     }
-    const push = [];
-    for (let parentElement = host; parentElement; parentElement = parentElement.parentElement) {
-      push.push(parentElement);
+    const nextAncestorElements = [];
+    for (
+      let walkedAncestor = hostElement;
+      walkedAncestor;
+      walkedAncestor = walkedAncestor.parentElement
+    ) {
+      nextAncestorElements.push(walkedAncestor);
     }
-    if (push.length !== ancestorChain.length || !push.every((node, index) => node === ancestorChain[index])) {
-      ancestorChain = push;
+    if (
+      nextAncestorElements.length !== observedAncestorElements.length ||
+      !nextAncestorElements.every(
+        (ancestorCandidate, ancestorIndex) =>
+          ancestorCandidate === observedAncestorElements[ancestorIndex]
+      )
+    ) {
+      observedAncestorElements = nextAncestorElements;
       ancestorMutationObserver?.disconnect();
-      for (const ancestor of push) {
-        ancestorMutationObserver?.observe(ancestor, {
+      for (const observedAncestor of nextAncestorElements) {
+        ancestorMutationObserver?.observe(observedAncestor, {
           attributes: true,
           childList: true,
           attributeFilter: ["hidden", "inert", "aria-hidden", "style", "class"]
@@ -794,351 +1283,450 @@ export function mountInteraction3d(host, {
       }
     }
   }
-  const ancestorMutationObserver = typeof MutationObserver === "undefined" ? null : new MutationObserver(() => {
-    syncAncestorMutationTargets();
-    updatePresentationLayout();
-  });
-  syncAncestorMutationTargets();
+  const ancestorMutationObserver =
+    typeof MutationObserver === "undefined"
+      ? null
+      : new MutationObserver(() => {
+          observeAncestors();
+          syncFrameLayout();
+        });
+  observeAncestors();
   let lastLayoutJson = "";
   let presentationLayout = null;
-  function updatePresentationLayout(forcePost = false) {
-    syncActivityVisibility();
-    const width = host.getBoundingClientRect();
-    if (!width.width || !host.clientWidth) {
+  function syncFrameLayout(forceLayout = false) {
+    refreshActivityState();
+    const hostRect = hostElement.getBoundingClientRect();
+    if (!hostRect.width || !hostElement.clientWidth) {
       return;
     }
-    const scaleX = host.clientWidth / width.width;
-    const scaleY = host.clientHeight > 0 && width.height > 0 ? host.clientHeight / width.height : scaleX;
-    frameEl.style.width = width.width + "px";
-    frameEl.style.height = width.height + "px";
-    frameEl.style.transform = scaleX === scaleY ? "scale(" + scaleX + ")" : "scale(" + scaleX + "," + scaleY + ")";
-    const clientWidth = host.closest?.(".hb-renderer-canvas");
-    const rect = clientWidth?.getBoundingClientRect();
-    const position = properties.layoutMode === "fill" ? context.document?.canvas : component.position;
-    const styleScale = properties.layoutMode === "fill" ? 1 : Math.max(0.01, Math.min(5, Number(component.style?.scale) || 1));
-    const layoutWidth = rect?.width > 0 && clientWidth.clientWidth > 0 ? width.width * clientWidth.clientWidth / rect.width : Number(position?.width) * styleScale;
-    const layoutHeight = rect?.height > 0 && clientWidth.clientHeight > 0 ? width.height * clientWidth.clientHeight / rect.height : Number(position?.height) * styleScale;
-    const layoutPayload = {
+    const scaleX = hostElement.clientWidth / hostRect.width;
+    const scaleY =
+      hostElement.clientHeight > 0 && hostRect.height > 0
+        ? hostElement.clientHeight / hostRect.height
+        : scaleX;
+    stageFrameElement.style.width = hostRect.width + "px";
+    stageFrameElement.style.height = hostRect.height + "px";
+    stageFrameElement.style.transform =
+      scaleX === scaleY ? "scale(" + scaleX + ")" : "scale(" + scaleX + "," + scaleY + ")";
+    const rendererCanvasElement = hostElement.closest?.(".hb-renderer-canvas");
+    const canvasRect = rendererCanvasElement?.getBoundingClientRect();
+    const layoutReferenceSize =
+      componentProperties.layoutMode === "fill"
+        ? runtimeContext.document?.canvas
+        : componentDescriptor.position;
+    const componentScale =
+      componentProperties.layoutMode === "fill"
+        ? 1
+        : Math.max(0.01, Math.min(5, Number(componentDescriptor.style?.scale) || 1));
+    const layoutWidthPx =
+      canvasRect?.width > 0 && rendererCanvasElement.clientWidth > 0
+        ? (hostRect.width * rendererCanvasElement.clientWidth) / canvasRect.width
+        : Number(layoutReferenceSize?.width) * componentScale;
+    const layoutHeightPx =
+      canvasRect?.height > 0 && rendererCanvasElement.clientHeight > 0
+        ? (hostRect.height * rendererCanvasElement.clientHeight) / canvasRect.height
+        : Number(layoutReferenceSize?.height) * componentScale;
+    const layoutMessage = {
       type: "presentation-layout",
-      width: layoutWidth > 0 ? layoutWidth : width.width,
-      height: layoutHeight > 0 ? layoutHeight : width.height
+      width: layoutWidthPx > 0 ? layoutWidthPx : hostRect.width,
+      height: layoutHeightPx > 0 ? layoutHeightPx : hostRect.height
     };
-    presentationLayout = layoutPayload;
-    vacuumPopup?.updateLayout?.();
-    cameraPopup?.updateLayout?.();
-    const layoutJson = JSON.stringify(layoutPayload);
-    if (forcePost === true || layoutJson !== lastLayoutJson) {
+    presentationLayout = layoutMessage;
+    popupLayoutPreview?.resize();
+    focusDevicePopup?.resize();
+    vacuumDetailsPopup?.updateLayout?.();
+    cameraPreviewPopup?.updateLayout?.();
+    const layoutJson = JSON.stringify(layoutMessage);
+    if (forceLayout === true || layoutJson !== lastLayoutJson) {
       lastLayoutJson = layoutJson;
-      postFrameMessage(layoutPayload);
+      postToStageFrame(layoutMessage);
     }
   }
-  const hostResizeObserver = new ResizeObserver(updatePresentationLayout);
-  hostResizeObserver.observe(host);
-  window.addEventListener("resize", updatePresentationLayout);
-  syncPreviewScopeSuspension();
-  reloadFrame();
-  const layoutRafId = requestAnimationFrame(updatePresentationLayout);
+  const frameResizeObserver = new ResizeObserver(syncFrameLayout);
+  frameResizeObserver.observe(hostElement);
+  window.addEventListener("resize", syncFrameLayout);
+  syncPreviewSuspension();
+  reloadStageFrame();
+  const layoutFrameRequestId = requestAnimationFrame(syncFrameLayout);
   const runtimeApi = () => {
-    if (!disposed) {
-      activityGateOpen = false;
-      syncActivityVisibility(true);
-      setFocusUiActive(false);
-      closeVacuumPopup();
-      closeCameraPopup();
-      intersectionObserver?.dispose();
-      editSubscribers.clear();
-      rangeEditingActive = false;
-      host.classList.remove("is-range-editing");
-      disposed = true;
-      clearTimeout(loadTimeoutId);
-      cancelAnimationFrame(layoutRafId);
-      hostResizeObserver.disconnect();
-      hostIntersectionObserver?.disconnect();
+    if (!isDisposed) {
+      closePopupLayoutPreview();
+      isSceneActive = false;
+      refreshActivityState(true);
+      updateFocusActive(false);
+      closeCameraPreviewPopup();
+      closeVacuumDetailsPopup();
+      lightStream?.dispose();
+      editSubscribersSet.clear();
+      isRangeEditing = false;
+      hostElement.classList.remove("is-range-editing");
+      isDisposed = true;
+      clearTimeout(loadingTimeoutId);
+      cancelAnimationFrame(layoutFrameRequestId);
+      frameResizeObserver.disconnect();
+      intersectionObserver?.disconnect();
       ancestorMutationObserver?.disconnect();
-      rejectViewRequests("户型画面已关闭，请重新调整。");
-      rejectRangeRequests("户型画面已关闭，请重新调整照射范围。");
-      window.removeEventListener("resize", updatePresentationLayout);
-      window.removeEventListener("message", handleFrameMessage);
-      window.removeEventListener("pointerdown", onOutsidePointerDownDismiss);
-      window.removeEventListener("keydown", onEscapeKeydown);
-      for (const value of activityEventTypes) {
-        activityDoc.removeEventListener(value, onActivityPointerOrKey, activityListenerOpts);
+      rejectPendingEdits("户型画面已关闭，请重新调整。");
+      rejectPendingRangeRequests("户型画面已关闭，请重新调整照射范围。");
+      window.removeEventListener("resize", syncFrameLayout);
+      window.removeEventListener("message", handleStageMessage);
+      window.removeEventListener("pointerdown", handleWindowPointerDown);
+      window.removeEventListener("keydown", handleWindowKeyDown);
+      for (const activityEventTypeToRemove of ACTIVITY_EVENT_TYPES) {
+        activityEventTarget.removeEventListener(
+          activityEventTypeToRemove,
+          handleActivityInputEvent,
+          ACTIVITY_LISTENER_OPTIONS
+        );
       }
-      activityDoc.removeEventListener("visibilitychange", onVisibilityOrTransition);
-      activityDoc.removeEventListener("hb-i3d-preview-scope", syncPreviewScopeSuspension);
-      activityDoc.removeEventListener("transitionend", onVisibilityOrTransition, true);
-      activityDoc.removeEventListener("animationend", onVisibilityOrTransition, true);
-      window.removeEventListener("pagehide", onPageHidePause);
-      window.removeEventListener("pageshow", onPageShowResume);
-      window.removeEventListener("blur", onWindowBlurClearHeld);
-      pendingControlAborts.forEach(abort => abort.abort());
-      frameEl.removeAttribute("src");
-      host.replaceChildren();
+      activityEventTarget.removeEventListener("visibilitychange", handleVisibilityChange);
+      activityEventTarget.removeEventListener("hb-i3d-preview-scope", syncPreviewSuspension);
+      activityEventTarget.removeEventListener("transitionend", handleVisibilityChange, true);
+      activityEventTarget.removeEventListener("animationend", handleVisibilityChange, true);
+      window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("pageshow", handlePageShow);
+      window.removeEventListener("blur", handleWindowBlur);
+      pendingAbortControllersSet.forEach(pendingController => pendingController.abort());
+      stageFrameElement.removeAttribute("src");
+      hostElement.replaceChildren();
     }
   };
-  runtimeApi.update = (nextProperties, nextSelectedId = selectedId) => {
-    const prevSceneId = properties.sceneId;
-    const prevCameraJson = JSON.stringify(properties.camera);
-    const prevLightingMode = normalizeLightingMode(properties.lightingMode);
-    const prevFloorSelection = properties.floorSelection;
-    const prevCameraPopupJson = JSON.stringify((properties.security?.cameras || []).find(camera => "camera:" + camera.id === cameraPopupId));
-    properties = structuredClone(nextProperties);
+  runtimeApi.update = (
+    nextComponentProperties,
+    nextSelectedId = selectedId,
+    editContext = null
+  ) => {
+    if (isDisposed) {
+      return;
+    }
+    if (
+      isEditing &&
+      editContext &&
+      ["light", "climate", "cover", "nas", "television", "vacuum", "vacuum-shortcut"].includes(
+        editContext.module
+      )
+    ) {
+      editingModuleKind = editContext.module;
+      editingVacuumId =
+        editingModuleKind === "vacuum-shortcut" ? String(editContext.vacuumId || "") : "";
+    }
+    if (
+      nextSelectedId !== selectedId ||
+      nextComponentProperties.floorSelection !== componentProperties.floorSelection
+    ) {
+      disposeFocusDevicePopup();
+    }
+    const previousSceneId = componentProperties.sceneId;
+    const previousCameraJson = JSON.stringify(componentProperties.camera);
+    const previousLightingMode = normalizeLightingMode(componentProperties.lightingMode);
+    const previousPreviewCameraJson = JSON.stringify(
+      (componentProperties.security?.cameras || []).find(
+        previewCameraCandidate => "camera:" + previewCameraCandidate.id === cameraPreviewTargetId
+      )
+    );
+    const previousFloorSelection = componentProperties.floorSelection;
+    componentProperties = structuredClone(nextComponentProperties);
     selectedId = nextSelectedId;
-    syncBackgroundVisibilityClass();
-    applyBackgroundHiddenClass();
-    if (cameraPopup && (prevFloorSelection !== properties.floorSelection || prevCameraPopupJson !== JSON.stringify((properties.security?.cameras || []).find(camera => "camera:" + camera.id === cameraPopupId)))) {
-      dismissFocusUi(true);
+    configureStateSubscriptions();
+    syncBackgroundVisibility();
+    cameraPreviewPopup?.updateLayout?.();
+    vacuumDetailsPopup?.updateLayout?.();
+    if (
+      cameraPreviewPopup &&
+      (previousFloorSelection !== componentProperties.floorSelection ||
+        previousPreviewCameraJson !==
+          JSON.stringify(
+            (componentProperties.security?.cameras || []).find(
+              selectedPreviewCamera =>
+                "camera:" + selectedPreviewCamera.id === cameraPreviewTargetId
+            )
+          ))
+    ) {
+      dismissFocus(true);
     }
-    if (viewEditing && (prevSceneId !== properties.sceneId || prevLightingMode !== normalizeLightingMode(properties.lightingMode) || prevCameraJson !== JSON.stringify(properties.camera))) {
-      viewEditing = false;
-      viewCamera = properties.floorCameras?.[properties.floorSelection] || properties.camera || stageCamera;
-      host.classList.remove("is-view-editing");
-      frameEl.style.pointerEvents = "none";
+    if (
+      isViewEditing &&
+      (previousSceneId !== componentProperties.sceneId ||
+        previousLightingMode !== normalizeLightingMode(componentProperties.lightingMode) ||
+        previousCameraJson !== JSON.stringify(componentProperties.camera))
+    ) {
+      isViewEditing = false;
+      activeCamera =
+        componentProperties.floorCameras?.[componentProperties.floorSelection] ||
+        componentProperties.camera ||
+        defaultCamera;
+      hostElement.classList.remove("is-view-editing");
+      stageFrameElement.style.pointerEvents = "none";
     }
-    if (prevSceneId !== properties.sceneId || prevLightingMode !== normalizeLightingMode(properties.lightingMode)) {
-      reloadFrame();
+    if (
+      previousSceneId !== componentProperties.sceneId ||
+      previousLightingMode !== normalizeLightingMode(componentProperties.lightingMode)
+    ) {
+      reloadStageFrame();
     } else {
-      pushConfigToFrame();
+      sendConfigUpdate();
     }
   };
-  runtimeApi.setPageVisible = nextPageVisible => {
-    if (disposed || pageHiddenPaused === !nextPageVisible) {
-      return;
-    }
-    pageHiddenPaused = !nextPageVisible;
-    if (pageHiddenPaused) {
-      dismissFocusUi(true);
-    }
-    syncActivityVisibility(true);
-    if (!pageHiddenPaused) {
-      updatePresentationLayout();
-      if (!intersectionObserver) {
-        pushStatesToFrame();
+  runtimeApi.setPageVisible = pageVisible => {
+    if (!isDisposed && isPageHidden !== !pageVisible) {
+      isPageHidden = !pageVisible;
+      if (isPageHidden) {
+        closePopupLayoutPreview();
+        dismissFocus(true);
+      }
+      refreshActivityState(true);
+      if (!isPageHidden) {
+        syncFrameLayout();
+        if (!lightStream) {
+          publishStates();
+        }
       }
     }
   };
-  runtimeApi.setEditingModule = (nextEditingModule, nextEditingVacuumId = "") => {
-    if (disposed) {
-      return;
-    }
-    let module = editingModule;
-    let vacuumId = editingVacuumId;
-    if (editing && nextEditingModule && ["light", "climate", "cover", "nas", "television", "vacuum", "vacuum-shortcut"].includes(nextEditingModule)) {
-      module = nextEditingModule;
-      vacuumId = module === "vacuum-shortcut" ? String(nextEditingVacuumId || "") : "";
-    }
-    const changed = editingModule !== module || editingVacuumId !== vacuumId;
-    editingModule = module;
-    editingVacuumId = vacuumId;
-    if (changed) {
-      pushConfigToFrame();
-    }
-  };
-  runtimeApi.command = nextProperties => postFrameMessage({
-    type: "editor-command",
-    command: nextProperties
-  });
-  runtimeApi.subscribeEdit = command => disposed || typeof command != "function" ? () => {} : (editSubscribers.add(command), () => editSubscribers.delete(command));
+  runtimeApi.closePopupLayoutPreview = closePopupLayoutPreview;
+  runtimeApi.previewPopupLayout = (popupKind, previewOptions = {}) =>
+    isDisposed ||
+    !isAuthorized ||
+    !runtimeContext.editable ||
+    isPageHidden ||
+    document.hidden ||
+    isPreviewSuspended ||
+    isViewEditing ||
+    isRangeEditing ||
+    !["general", "camera"].includes(popupKind)
+      ? false
+      : (popupLayoutPreview ||
+          (dismissFocus(true),
+          (popupLayoutPreview = createPopupLayoutPreview(
+            hostElement,
+            () => presentationLayout,
+            closePopupLayoutPreview
+          ))),
+        popupLayoutPreview.update(popupKind, previewOptions),
+        true);
+  runtimeApi.command = commandName =>
+    postToStageFrame({
+      type: "editor-command",
+      command: commandName
+    });
+  runtimeApi.subscribeEdit = subscriberCallback =>
+    isDisposed || typeof subscriberCallback != "function"
+      ? () => {}
+      : (editSubscribersSet.add(subscriberCallback),
+        () => editSubscribersSet.delete(subscriberCallback));
   runtimeApi.openRangeEditor = () => {
-    if (disposed || !authorized || !editing && !context.editable) {
+    closePopupLayoutPreview();
+    if (isDisposed || !isAuthorized || (!isEditing && !runtimeContext.editable)) {
       return Promise.reject(new Error("请在已授权的控件编辑器中调整照射范围。"));
     }
-    if (!framePresented) {
+    if (!isScenePresented) {
       return Promise.reject(new Error("户型还在加载，请稍候再调整照射范围。"));
     }
-    if (normalizeLightingMode(properties.lightingMode) !== "region") {
+    if (normalizeLightingMode(componentProperties.lightingMode) !== "region") {
       return Promise.reject(new Error("请先选择轻量柔光模式。"));
     }
-    if (rangeEditingActive) {
+    if (isRangeEditing) {
       return Promise.resolve();
     }
-    const promise = rangeRequestWaiters.values().next().value;
-    if (promise) {
-      return promise.promise;
+    const activeRangeRequest = pendingRangeRequestsByRequestId.values().next().value;
+    if (activeRangeRequest) {
+      return activeRangeRequest.promise;
     }
-    if (viewEditing) {
+    if (isViewEditing) {
       runtimeApi.setViewEditing(false);
     }
-    const requestId = "range-" + ++viewRequestSerial;
-    let resolve;
-    let reject;
-    const promiseCurrent = new Promise((resolveOpen, rejectOpen) => {
-      resolve = resolveOpen;
-      reject = rejectOpen;
+    const rangeRequestId = "range-" + ++requestIdCounter;
+    let resolveRangeOpen;
+    let rejectRangeOpen;
+    const rangeOpenPromise = new Promise((resolveOpen, rejectOpen) => {
+      resolveRangeOpen = resolveOpen;
+      rejectRangeOpen = rejectOpen;
     });
-    const timeout = setTimeout(() => {
-      rangeRequestWaiters.delete(requestId);
-      postFrameMessage({
+    const rangeOpenTimeoutId = setTimeout(() => {
+      pendingRangeRequestsByRequestId.delete(rangeRequestId);
+      postToStageFrame({
         type: "range-editor",
         open: false
       });
-      setRangeEditingActive(false);
-      reject(new Error("打开照射范围编辑超时，请重试。"));
+      setRangeEditingState(false);
+      rejectRangeOpen(new Error("打开照射范围编辑超时，请重试。"));
     }, 5000);
-    rangeRequestWaiters.set(requestId, {
-      resolve: resolve,
-      reject: reject,
-      timeout: timeout,
-      promise: promiseCurrent,
+    pendingRangeRequestsByRequestId.set(rangeRequestId, {
+      resolve: resolveRangeOpen,
+      reject: rejectRangeOpen,
+      timeout: rangeOpenTimeoutId,
+      promise: rangeOpenPromise,
       open: true
     });
-    postFrameMessage({
+    postToStageFrame({
       type: "range-editor",
       open: true,
-      requestId: requestId
+      requestId: rangeRequestId
     });
-    return promiseCurrent;
+    return rangeOpenPromise;
   };
   runtimeApi.flushRangeEditor = () => {
-    if (disposed || !authorized || !framePresented || !rangeEditingActive) {
+    if (isDisposed || !isAuthorized || !isScenePresented || !isRangeEditing) {
       return Promise.reject(new Error("请先打开照射范围编辑。"));
     }
-    const requestId = "range-" + ++viewRequestSerial;
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        rangeRequestWaiters.delete(requestId);
-        reject(new Error("读取照射范围超时，请重试。"));
+    const flushRequestId = "range-" + ++requestIdCounter;
+    return new Promise((resolveFlush, rejectFlush) => {
+      const flushTimeoutId = setTimeout(() => {
+        pendingRangeRequestsByRequestId.delete(flushRequestId);
+        rejectFlush(new Error("读取照射范围超时，请重试。"));
       }, 5000);
-      rangeRequestWaiters.set(requestId, {
-        resolve,
-        reject,
-        timeout,
+      pendingRangeRequestsByRequestId.set(flushRequestId, {
+        resolve: resolveFlush,
+        reject: rejectFlush,
+        timeout: flushTimeoutId,
         open: true
       });
-      postFrameMessage({
+      postToStageFrame({
         type: "range-editor",
         flush: true,
-        requestId: requestId
+        requestId: flushRequestId
       });
     });
   };
-  runtimeApi.closeRangeEditor = ({
-    flush: shouldFlush = false
-  } = {}) => {
-    rejectRangeRequests("照射范围编辑已取消。");
+  runtimeApi.closeRangeEditor = ({ flush: shouldFlush = false } = {}) => {
+    rejectPendingRangeRequests("照射范围编辑已取消。");
     if (!shouldFlush) {
-      postFrameMessage({
+      postToStageFrame({
         type: "range-editor",
         open: false
       });
-      setRangeEditingActive(false);
+      setRangeEditingState(false);
       return;
     }
-    if (disposed || !authorized || !framePresented) {
+    if (isDisposed || !isAuthorized || !isScenePresented) {
       return Promise.reject(new Error("户型画面暂不可用，请重新打开照射范围。"));
     }
-    const requestId = "range-" + ++viewRequestSerial;
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        rangeRequestWaiters.delete(requestId);
-        reject(new Error("读取照射范围超时，请重试。"));
+    const closeRequestId = "range-" + ++requestIdCounter;
+    return new Promise((resolveClose, rejectClose) => {
+      const closeTimeoutId = setTimeout(() => {
+        pendingRangeRequestsByRequestId.delete(closeRequestId);
+        rejectClose(new Error("读取照射范围超时，请重试。"));
       }, 5000);
-      rangeRequestWaiters.set(requestId, {
-        resolve: resolve,
-        reject: reject,
-        timeout: timeout,
+      pendingRangeRequestsByRequestId.set(closeRequestId, {
+        resolve: resolveClose,
+        reject: rejectClose,
+        timeout: closeTimeoutId,
         open: false
       });
-      postFrameMessage({
+      postToStageFrame({
         type: "range-editor",
         open: false,
-        requestId: requestId
+        requestId: closeRequestId
       });
     });
   };
-  runtimeApi.setAuthorized = nextAuthorized => {
-    const authorizedChanged = authorized !== (nextAuthorized === true);
-    authorized = nextAuthorized === true;
-    host.inert = !authorized;
-    syncActivityVisibility();
-    if (!authorized) {
+  runtimeApi.setAuthorized = authorized => {
+    const hasAuthorizationChanged = isAuthorized !== (authorized === true);
+    isAuthorized = authorized === true;
+    hostElement.inert = !isAuthorized;
+    refreshActivityState();
+    if (!isAuthorized) {
+      closePopupLayoutPreview();
       runtimeApi.closeRangeEditor();
-      rejectViewRequests("授权验证暂不可用，请恢复后重新调整。");
-      dismissFocusUi(true);
-      pendingControlAborts.forEach(abort => abort.abort());
+      rejectPendingEdits("授权验证暂不可用，请恢复后重新调整。");
+      dismissFocus(true);
+      pendingAbortControllersSet.forEach(expiredController => expiredController.abort());
     }
-    if (authorizedChanged && (editing || context.editable)) {
-      pushConfigToFrame();
+    if (hasAuthorizationChanged && (isEditing || runtimeContext.editable)) {
+      sendConfigUpdate();
     }
   };
   Object.defineProperty(runtimeApi, "metadata", {
-    get: () => modelMetadata
+    get: () => componentMetadata
+  });
+  Object.defineProperty(runtimeApi, "presentationLayout", {
+    get: () => presentationLayout
   });
   Object.defineProperty(runtimeApi, "ready", {
-    get: () => framePresented && !disposed && authorized
+    get: () => isScenePresented && !isDisposed && isAuthorized
   });
   Object.defineProperty(runtimeApi, "viewEditing", {
-    get: () => viewEditing
+    get: () => isViewEditing
   });
   Object.defineProperty(runtimeApi, "viewCamera", {
-    get: () => viewCamera
+    get: () => activeCamera
   });
   Object.defineProperty(runtimeApi, "rangeEditing", {
-    get: () => rangeEditingActive && !disposed && authorized
+    get: () => isRangeEditing && !isDisposed && isAuthorized
   });
-  runtimeApi.setViewEditing = enabled => {
-    if (!context.editable || disposed) {
+  runtimeApi.setViewEditing = viewEditingEnabled => {
+    if (viewEditingEnabled) {
+      closePopupLayoutPreview();
+    }
+    if (!runtimeContext.editable || isDisposed) {
       throw new Error("请在编辑器中调整户型视角。");
     }
-    if (enabled && !framePresented) {
+    if (viewEditingEnabled && !isScenePresented) {
       throw new Error("户型还在加载，请稍候再调整视角。");
     }
-    if (enabled && (rangeEditingActive || rangeRequestWaiters.size)) {
+    if (viewEditingEnabled && (isRangeEditing || pendingRangeRequestsByRequestId.size)) {
       runtimeApi.closeRangeEditor();
     }
-    viewEditing = enabled === true;
-    if (!viewEditing) {
-      viewCamera = properties.floorCameras?.[properties.floorSelection] || properties.camera || stageCamera;
+    isViewEditing = viewEditingEnabled === true;
+    if (!isViewEditing) {
+      activeCamera =
+        componentProperties.floorCameras?.[componentProperties.floorSelection] ||
+        componentProperties.camera ||
+        defaultCamera;
     }
-    host.classList.toggle("is-view-editing", viewEditing);
-    frameEl.style.pointerEvents = viewEditing || rangeEditingActive ? "auto" : "none";
-    pushConfigToFrame();
+    hostElement.classList.toggle("is-view-editing", isViewEditing);
+    stageFrameElement.style.pointerEvents = isViewEditing || isRangeEditing ? "auto" : "none";
+    sendConfigUpdate();
   };
-  runtimeApi.viewCommand = (command, commandValue) => new Promise((resolve, reject) => {
-    if (!context.editable || !viewEditing || !framePresented || disposed) {
-      reject(new Error("请先进入户型视角调整。"));
-      return;
-    }
-    const requestId = "view-" + ++viewRequestSerial;
-    const timeout = setTimeout(() => {
-      viewRequestWaiters.delete(requestId);
-      reject(new Error("读取视角超时，请重试。"));
-    }, 5000);
-    viewRequestWaiters.set(requestId, {
-      resolve: resolve,
-      reject: reject,
-      timeout: timeout
+  runtimeApi.viewCommand = (viewCommandName, viewCommandValue) =>
+    new Promise((resolveView, rejectView) => {
+      if (!runtimeContext.editable || !isViewEditing || !isScenePresented || isDisposed) {
+        rejectView(new Error("请先进入户型视角调整。"));
+        return;
+      }
+      const viewRequestId = "view-" + ++requestIdCounter;
+      const viewTimeoutId = setTimeout(() => {
+        pendingEditsByRequestId.delete(viewRequestId);
+        rejectView(new Error("读取视角超时，请重试。"));
+      }, 5000);
+      pendingEditsByRequestId.set(viewRequestId, {
+        resolve: resolveView,
+        reject: rejectView,
+        timeout: viewTimeoutId
+      });
+      postToStageFrame({
+        type: "editor-command",
+        command: viewCommandName,
+        value: viewCommandValue,
+        requestId: viewRequestId
+      });
     });
-    postFrameMessage({
-      type: "editor-command",
-      command,
-      value: commandValue,
-      requestId
-    });
-  });
   runtimeApi.captureView = () => runtimeApi.viewCommand("save-camera");
-  runtimeApi.focusCommand = (command, id = selectedId, focusValue) => new Promise((resolve, reject) => {
-    if (!editing || !framePresented || disposed || !authorized) {
-      reject(new Error("户型还在加载，请稍候再设置聚焦视角。"));
-      return;
-    }
-    const requestId = "focus-" + ++viewRequestSerial;
-    const timeout = setTimeout(() => {
-      viewRequestWaiters.delete(requestId);
-      reject(new Error("读取聚焦视角超时，请重试。"));
-    }, 5000);
-    viewRequestWaiters.set(requestId, {
-      resolve: resolve,
-      reject: reject,
-      timeout: timeout
+  runtimeApi.focusCommand = (focusCommandName, focusTargetId = selectedId, focusCommandValue) =>
+    new Promise((resolveFocus, rejectFocus) => {
+      if (!isEditing || !isScenePresented || isDisposed || !isAuthorized) {
+        rejectFocus(new Error("户型还在加载，请稍候再设置聚焦视角。"));
+        return;
+      }
+      const focusRequestId = "focus-" + ++requestIdCounter;
+      const focusTimeoutId = setTimeout(() => {
+        pendingEditsByRequestId.delete(focusRequestId);
+        rejectFocus(new Error("读取聚焦视角超时，请重试。"));
+      }, 5000);
+      pendingEditsByRequestId.set(focusRequestId, {
+        resolve: resolveFocus,
+        reject: rejectFocus,
+        timeout: focusTimeoutId,
+        command: focusCommandName,
+        id: focusTargetId
+      });
+      postToStageFrame({
+        type: "editor-command",
+        command: focusCommandName,
+        id: focusTargetId,
+        value: focusCommandValue,
+        requestId: focusRequestId
+      });
     });
-    postFrameMessage({
-      type: "editor-command",
-      command: command,
-      id: id,
-      value: focusValue,
-      requestId: requestId
-    });
-  });
   return runtimeApi;
 }

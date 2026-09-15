@@ -1,57 +1,70 @@
-const Z_INDEX_PRESENCE_SENSOR_BASE = 500000000;
-const Z_INDEX_ICON_BUTTON_EFFECT_BASE = 1000000000;
+const PRESENCE_SENSOR_BASE_Z_INDEX = 500000000;
+const ICON_BUTTON_EFFECT_BASE_Z_INDEX = 1000000000;
 export function normalizeIconButtonEffectComponent(component) {
   if (component?.type !== "icon-button-effect") {
     return component;
   }
-  const properties = {
+  const nextProperties = {
     ...(component.properties || {})
   };
-  if (!Object.prototype.hasOwnProperty.call(properties, "buttonVisible")) {
-    properties.buttonVisible = true;
+  if (!Object.prototype.hasOwnProperty.call(nextProperties, "buttonVisible")) {
+    nextProperties.buttonVisible = true;
   }
-  if (!Object.prototype.hasOwnProperty.call(properties, "effectVisible")) {
-    properties.effectVisible = true;
+  if (!Object.prototype.hasOwnProperty.call(nextProperties, "effectVisible")) {
+    nextProperties.effectVisible = true;
   }
   return {
     ...component,
-    properties
+    properties: nextProperties
   };
 }
-export function componentHostZIndex(component, zIndex, applySpecialBases = true) {
-  const numeric = Number(zIndex || 0);
-  if (!applySpecialBases && component?.type !== "group") {
-    return numeric;
-  } else if (component?.type === "icon-button-effect" && (component.properties?.buttonVisible !== false || component.properties?.hiddenContentClickable === true)) {
-    return 1000000000 + numeric;
-  } else if (component?.type === "presence-sensor") {
-    return 500000000 + numeric;
+export function componentHostZIndex(hostComponent, baseZIndex, applyTypeBoost = true) {
+  const resolvedZIndex = Number(baseZIndex || 0);
+  if (!applyTypeBoost && hostComponent?.type !== "group") {
+    return resolvedZIndex;
+  } else if (
+    hostComponent?.type === "icon-button-effect" &&
+    (hostComponent.properties?.buttonVisible !== false ||
+      hostComponent.properties?.hiddenContentClickable === true)
+  ) {
+    return 1000000000 + resolvedZIndex;
+  } else if (hostComponent?.type === "presence-sensor") {
+    return 500000000 + resolvedZIndex;
   } else {
-    return numeric;
+    return resolvedZIndex;
   }
 }
-export function effectFadeDuration(component) {
-  const numeric = Number(component?.properties?.effectFadeDuration);
-  if (Number.isFinite(numeric)) {
-    return Math.max(0, Math.min(3, numeric));
+export function effectFadeDuration(effectComponent) {
+  const durationSeconds = Number(effectComponent?.properties?.effectFadeDuration);
+  if (Number.isFinite(durationSeconds)) {
+    return Math.max(0, Math.min(3, durationSeconds));
   } else {
     return 0.52;
   }
 }
-export function effectLayerDimensions(properties, imageElement, width, height) {
-  if (properties?.effectLayoutMode === "fill") {
+export function effectLayerDimensions(
+  layerComponent,
+  layerImageElement,
+  layerFallbackWidth,
+  layerFallbackHeight
+) {
+  if (layerComponent?.effectLayoutMode === "fill") {
     return {
-      width,
-      height,
+      width: layerFallbackWidth,
+      height: layerFallbackHeight,
       pendingNaturalSize: false
     };
   }
-  const storedWidth = Number(properties?.effectNaturalWidth || 0);
-  const storedHeight = Number(properties?.effectNaturalHeight || 0);
-  const elementWidth = Number(imageElement?.dataset?.effectOriginalWidth || imageElement?.naturalWidth || 0);
-  const elementHeight = Number(imageElement?.dataset?.effectOriginalHeight || imageElement?.naturalHeight || 0);
-  const resolvedWidth = storedWidth > 0 ? storedWidth : elementWidth;
-  const resolvedHeight = storedHeight > 0 ? storedHeight : elementHeight;
+  const declaredWidth = Number(layerComponent?.effectNaturalWidth || 0);
+  const declaredHeight = Number(layerComponent?.effectNaturalHeight || 0);
+  const layerOriginalWidth = Number(
+    layerImageElement?.dataset?.effectOriginalWidth || layerImageElement?.naturalWidth || 0
+  );
+  const layerOriginalHeight = Number(
+    layerImageElement?.dataset?.effectOriginalHeight || layerImageElement?.naturalHeight || 0
+  );
+  const resolvedWidth = declaredWidth > 0 ? declaredWidth : layerOriginalWidth;
+  const resolvedHeight = declaredHeight > 0 ? declaredHeight : layerOriginalHeight;
   if (resolvedWidth > 0 && resolvedHeight > 0) {
     return {
       width: resolvedWidth,
@@ -60,130 +73,185 @@ export function effectLayerDimensions(properties, imageElement, width, height) {
     };
   } else {
     return {
-      width: width * Math.max(0.001, Number(properties?.effectWidth ?? 100)) / 100,
-      height: height * Math.max(0.001, Number(properties?.effectHeight ?? 100)) / 100,
+      width:
+        (layerFallbackWidth * Math.max(0.001, Number(layerComponent?.effectWidth ?? 100))) / 100,
+      height:
+        (layerFallbackHeight * Math.max(0.001, Number(layerComponent?.effectHeight ?? 100))) / 100,
       pendingNaturalSize: true
     };
   }
 }
-export function effectSourceDimensions(properties, imageElement, width, height) {
-  const storedWidth = Number(properties?.effectNaturalWidth || 0);
-  const storedHeight = Number(properties?.effectNaturalHeight || 0);
-  const datasetWidth = Number(imageElement?.dataset?.effectOriginalWidth || 0);
-  const datasetHeight = Number(imageElement?.dataset?.effectOriginalHeight || 0);
-  const naturalWidth = Number(imageElement?.naturalWidth || 0);
-  const naturalHeight = Number(imageElement?.naturalHeight || 0);
-  const resolvedWidth = storedWidth > 0 ? storedWidth : datasetWidth > 0 ? datasetWidth : naturalWidth;
-  const resolvedHeight = storedHeight > 0 ? storedHeight : datasetHeight > 0 ? datasetHeight : naturalHeight;
-  if (resolvedWidth > 0 && resolvedHeight > 0) {
+export function effectSourceDimensions(
+  sourceComponent,
+  sourceImageElement,
+  containerWidth,
+  containerHeight
+) {
+  const componentNaturalWidth = Number(sourceComponent?.effectNaturalWidth || 0);
+  const componentNaturalHeight = Number(sourceComponent?.effectNaturalHeight || 0);
+  const datasetOriginalWidth = Number(sourceImageElement?.dataset?.effectOriginalWidth || 0);
+  const datasetOriginalHeight = Number(sourceImageElement?.dataset?.effectOriginalHeight || 0);
+  const elementNaturalWidth = Number(sourceImageElement?.naturalWidth || 0);
+  const elementNaturalHeight = Number(sourceImageElement?.naturalHeight || 0);
+  const sourceWidth =
+    componentNaturalWidth > 0
+      ? componentNaturalWidth
+      : datasetOriginalWidth > 0
+        ? datasetOriginalWidth
+        : elementNaturalWidth;
+  const sourceHeight =
+    componentNaturalHeight > 0
+      ? componentNaturalHeight
+      : datasetOriginalHeight > 0
+        ? datasetOriginalHeight
+        : elementNaturalHeight;
+  if (sourceWidth > 0 && sourceHeight > 0) {
     return {
-      width: resolvedWidth,
-      height: resolvedHeight,
+      width: sourceWidth,
+      height: sourceHeight,
       pendingNaturalSize: false
     };
-  } else if (properties?.effectLayoutMode === "fill") {
+  } else if (sourceComponent?.effectLayoutMode === "fill") {
     return {
-      width,
-      height,
+      width: containerWidth,
+      height: containerHeight,
       pendingNaturalSize: true
     };
   } else {
     return {
-      width: width * Math.max(0.001, Number(properties?.effectWidth ?? 100)) / 100,
-      height: height * Math.max(0.001, Number(properties?.effectHeight ?? 100)) / 100,
+      width: (containerWidth * Math.max(0.001, Number(sourceComponent?.effectWidth ?? 100))) / 100,
+      height:
+        (containerHeight * Math.max(0.001, Number(sourceComponent?.effectHeight ?? 100))) / 100,
       pendingNaturalSize: true
     };
   }
 }
-export function effectCropRectangle(imageElement, fallback) {
-  const originalWidth = Number(imageElement?.dataset?.effectOriginalWidth || 0);
-  const originalHeight = Number(imageElement?.dataset?.effectOriginalHeight || 0);
-  const cropX = Number(imageElement?.dataset?.effectCropX);
-  const cropY = Number(imageElement?.dataset?.effectCropY);
-  const cropWidth = Number(imageElement?.dataset?.effectCropWidth || 0);
-  const cropHeight = Number(imageElement?.dataset?.effectCropHeight || 0);
-  if (originalWidth > 0 && originalHeight > 0 && Number.isFinite(cropX) && Number.isFinite(cropY) && cropX >= 0 && cropY >= 0 && cropWidth > 0 && cropHeight > 0 && cropX + cropWidth <= originalWidth && cropY + cropHeight <= originalHeight) {
-    const scaleX = fallback.width / originalWidth;
-    const scaleY = fallback.height / originalHeight;
+export function effectCropRectangle(cropImageElement, targetDimensions) {
+  const datasetWidth = Number(cropImageElement?.dataset?.effectOriginalWidth || 0);
+  const datasetHeight = Number(cropImageElement?.dataset?.effectOriginalHeight || 0);
+  const datasetCropX = Number(cropImageElement?.dataset?.effectCropX);
+  const datasetCropY = Number(cropImageElement?.dataset?.effectCropY);
+  const datasetCropWidth = Number(cropImageElement?.dataset?.effectCropWidth || 0);
+  const datasetCropHeight = Number(cropImageElement?.dataset?.effectCropHeight || 0);
+  if (
+    datasetWidth > 0 &&
+    datasetHeight > 0 &&
+    Number.isFinite(datasetCropX) &&
+    Number.isFinite(datasetCropY) &&
+    datasetCropX >= 0 &&
+    datasetCropY >= 0 &&
+    datasetCropWidth > 0 &&
+    datasetCropHeight > 0 &&
+    datasetCropX + datasetCropWidth <= datasetWidth &&
+    datasetCropY + datasetCropHeight <= datasetHeight
+  ) {
+    const scaleX = targetDimensions.width / datasetWidth;
+    const scaleY = targetDimensions.height / datasetHeight;
     return {
-      x: cropX * scaleX,
-      y: cropY * scaleY,
-      width: cropWidth * scaleX,
-      height: cropHeight * scaleY
+      x: datasetCropX * scaleX,
+      y: datasetCropY * scaleY,
+      width: datasetCropWidth * scaleX,
+      height: datasetCropHeight * scaleY
     };
   }
   return {
     x: 0,
     y: 0,
-    width: fallback.width,
-    height: fallback.height
+    width: targetDimensions.width,
+    height: targetDimensions.height
   };
 }
 export function effectCroppedLayerGeometry({
-  centerX,
-  centerY,
-  originalWidth,
-  originalHeight,
-  cropX,
-  cropY,
-  cropWidth,
-  cropHeight,
-  scale: inputScale = 1,
-  rotation = 0
+  centerX: centerX,
+  centerY: centerY,
+  originalWidth: originalWidth,
+  originalHeight: originalHeight,
+  cropX: cropX,
+  cropY: cropY,
+  cropWidth: cropWidth,
+  cropHeight: cropHeight,
+  scale: scale = 1,
+  rotation: rotation = 0
 }) {
-  const rotationRad = Number(rotation || 0) * Math.PI / 180;
-  const scale = Math.max(0.0001, Number(inputScale || 1));
-  const offsetX = (Number(cropX || 0) + Number(cropWidth || 0) / 2 - Number(originalWidth || 0) / 2) * scale;
-  const offsetY = (Number(cropY || 0) + Number(cropHeight || 0) / 2 - Number(originalHeight || 0) / 2) * scale;
-  const rotatedX = offsetX * Math.cos(rotationRad) - offsetY * Math.sin(rotationRad);
-  const rotatedY = offsetX * Math.sin(rotationRad) + offsetY * Math.cos(rotationRad);
-  const layerCenterX = Number(centerX || 0) + rotatedX;
-  const layerCenterY = Number(centerY || 0) + rotatedY;
+  const rotationRad = (Number(rotation || 0) * Math.PI) / 180;
+  const scaleFactor = Math.max(0.0001, Number(scale || 1));
+  const offsetX =
+    (Number(cropX || 0) + Number(cropWidth || 0) / 2 - Number(originalWidth || 0) / 2) *
+    scaleFactor;
+  const offsetY =
+    (Number(cropY || 0) + Number(cropHeight || 0) / 2 - Number(originalHeight || 0) / 2) *
+    scaleFactor;
+  const rotatedOffsetX = offsetX * Math.cos(rotationRad) - offsetY * Math.sin(rotationRad);
+  const rotatedOffsetY = offsetX * Math.sin(rotationRad) + offsetY * Math.cos(rotationRad);
+  const rotatedCenterX = Number(centerX || 0) + rotatedOffsetX;
+  const rotatedCenterY = Number(centerY || 0) + rotatedOffsetY;
   return {
-    left: layerCenterX - Number(cropWidth || 0) / 2,
-    top: layerCenterY - Number(cropHeight || 0) / 2,
+    left: rotatedCenterX - Number(cropWidth || 0) / 2,
+    top: rotatedCenterY - Number(cropHeight || 0) / 2,
     width: Number(cropWidth || 0),
     height: Number(cropHeight || 0),
-    scale,
+    scale: scaleFactor,
     rotation: Number(rotation || 0)
   };
 }
-export function effectReferenceImageTransform(page, component, naturalWidth, naturalHeight, hostWidth, hostHeight) {
-  if (!(naturalWidth > 0) || !(naturalHeight > 0)) {
+export function effectReferenceImageTransform(
+  project,
+  referenceComponent,
+  targetWidth,
+  targetHeight,
+  fillWidth,
+  fillHeight
+) {
+  if (!(targetWidth > 0) || !(targetHeight > 0)) {
     return null;
   }
-  const componentZIndex = Number(component?.position?.zIndex || 1);
-  const referenceImageId = String(component?.properties?.effectReferenceImageId || "");
-  const exactMatches = [];
-  const sizeMatches = [];
-  const visit = components => {
-    for (const child of components || []) {
-      if (child.type === "image") {
-        const properties = child.properties || {};
-        const imageNaturalWidth = Number(properties.naturalWidth || 0);
-        const imageNaturalHeight = Number(properties.naturalHeight || 0);
-        const zIndex = Number(child.position?.zIndex || 1);
-        const isExactReference = referenceImageId && child.id === referenceImageId;
-        const isSizeMatch = !referenceImageId && child.style?.visible !== false && imageNaturalWidth === naturalWidth && imageNaturalHeight === naturalHeight && zIndex < componentZIndex;
-        if (isExactReference || isSizeMatch) {
-          const fillLayout = properties.layoutMode === "fill";
-          const position = child.position || {};
-          const displayWidth = fillLayout ? hostWidth : Number(position.width || naturalWidth);
-          const displayHeight = fillLayout ? hostHeight : Number(position.height || naturalHeight);
-          const match = {
-            zIndex,
-            scale: Math.min(displayWidth / naturalWidth, displayHeight / naturalHeight)
+  const referenceZIndex = Number(referenceComponent?.position?.zIndex || 1);
+  const referenceImageId = String(referenceComponent?.properties?.effectReferenceImageId || "");
+  const referencedCandidates = [];
+  const fallbackCandidates = [];
+  const collectCandidates = componentList => {
+    for (const childComponent of componentList || []) {
+      if (childComponent.type === "image") {
+        const childProperties = childComponent.properties || {};
+        const childNaturalWidth = Number(childProperties.naturalWidth || 0);
+        const childNaturalHeight = Number(childProperties.naturalHeight || 0);
+        const childZIndex = Number(childComponent.position?.zIndex || 1);
+        const isReferenceImage = referenceImageId && childComponent.id === referenceImageId;
+        const isBestSizeMatch =
+          !referenceImageId &&
+          childComponent.style?.visible !== false &&
+          childNaturalWidth === targetWidth &&
+          childNaturalHeight === targetHeight &&
+          childZIndex < referenceZIndex;
+        if (isReferenceImage || isBestSizeMatch) {
+          const isFillLayout = childProperties.layoutMode === "fill";
+          const childPosition = childComponent.position || {};
+          const candidateWidth = isFillLayout
+            ? fillWidth
+            : Number(childPosition.width || targetWidth);
+          const candidateHeight = isFillLayout
+            ? fillHeight
+            : Number(childPosition.height || targetHeight);
+          const candidate = {
+            zIndex: childZIndex,
+            scale: Math.min(candidateWidth / targetWidth, candidateHeight / targetHeight)
           };
-          if (isExactReference) {
-            exactMatches.push(match);
+          if (isReferenceImage) {
+            referencedCandidates.push(candidate);
           } else {
-            sizeMatches.push(match);
+            fallbackCandidates.push(candidate);
           }
         }
       }
-      visit(child.children);
+      collectCandidates(childComponent.children);
     }
   };
-  visit(page?.components);
-  return exactMatches[0] || sizeMatches.sort((zIndex, zIndexRight) => zIndexRight.zIndex - zIndex.zIndex)[0] || null;
+  collectCandidates(project?.components);
+  return (
+    referencedCandidates[0] ||
+    fallbackCandidates.sort(
+      (leftCandidate, rightCandidate) => rightCandidate.zIndex - leftCandidate.zIndex
+    )[0] ||
+    null
+  );
 }

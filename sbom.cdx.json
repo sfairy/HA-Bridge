@@ -3,9 +3,9 @@
   "components": [
     {
       "name": "alembic",
-      "purl": "pkg:pypi/alembic@1.19.2",
+      "purl": "pkg:pypi/alembic@1.18.5",
       "type": "library",
-      "version": "1.19.2"
+      "version": "1.18.5"
     },
     {
       "name": "annotated-doc",
@@ -57,15 +57,15 @@
     },
     {
       "name": "cryptography",
-      "purl": "pkg:pypi/cryptography@50.0.1",
+      "purl": "pkg:pypi/cryptography@46.0.7",
       "type": "library",
-      "version": "50.0.1"
+      "version": "46.0.7"
     },
     {
       "name": "fastapi",
-      "purl": "pkg:pypi/fastapi@0.141.1",
+      "purl": "pkg:pypi/fastapi@0.139.2",
       "type": "library",
-      "version": "0.141.1"
+      "version": "0.139.2"
     },
     {
       "name": "greenlet",
@@ -135,9 +135,9 @@
     },
     {
       "name": "pydantic",
-      "purl": "pkg:pypi/pydantic@2.13.5",
+      "purl": "pkg:pypi/pydantic@2.13.4",
       "type": "library",
-      "version": "2.13.5"
+      "version": "2.13.4"
     },
     {
       "name": "pydantic-core",
@@ -147,9 +147,9 @@
     },
     {
       "name": "python-dotenv",
-      "purl": "pkg:pypi/python-dotenv@1.2.3",
+      "purl": "pkg:pypi/python-dotenv@1.2.2",
       "type": "library",
-      "version": "1.2.3"
+      "version": "1.2.2"
     },
     {
       "name": "pyyaml",
@@ -159,9 +159,9 @@
     },
     {
       "name": "sqlalchemy",
-      "purl": "pkg:pypi/sqlalchemy@2.0.52",
+      "purl": "pkg:pypi/sqlalchemy@2.0.51",
       "type": "library",
-      "version": "2.0.52"
+      "version": "2.0.51"
     },
     {
       "name": "starlette",
@@ -183,9 +183,9 @@
     },
     {
       "name": "uvicorn",
-      "purl": "pkg:pypi/uvicorn@0.52.4",
+      "purl": "pkg:pypi/uvicorn@0.51.0",
       "type": "library",
-      "version": "0.52.4"
+      "version": "0.51.0"
     },
     {
       "name": "uvloop",
@@ -201,16 +201,16 @@
     },
     {
       "name": "websockets",
-      "purl": "pkg:pypi/websockets@17.1",
+      "purl": "pkg:pypi/websockets@16.1.1",
       "type": "library",
-      "version": "17.1"
+      "version": "16.1.1"
     }
   ],
   "metadata": {
     "component": {
       "name": "ha-bridge",
       "type": "application",
-      "version": "0.5.3"
+      "version": "0.5.4"
     },
     "properties": [
       {
@@ -228,7 +228,7 @@
       ]
     }
   },
-  "serialNumber": "urn:uuid:6eabe913-a31c-543a-9961-8d183d5c8aec",
+  "serialNumber": "urn:uuid:f47c1965-d2b7-5609-802a-9366d12c1d1a",
   "specVersion": "1.5",
   "version": 1
 }

@@ -1,257 +1,320 @@
-const pageBehaviorModuleUrl = new URL(import.meta.url.startsWith("file:") ? "../../static/modules/interaction3d/page-behavior.js?v=0.5.3" : "/bridge-static/modules/interaction3d/page-behavior.js?v=0.5.3", import.meta.url);
-export const {
-  resolvePageBehavior
-} = await import(pageBehaviorModuleUrl.href);
+const pageBehaviorModuleUrl = new URL(
+  import.meta.url.startsWith("file:")
+    ? "../../static/modules/interaction3d/page-behavior.js?v=20260911-page-behavior-light-v2"
+    : "/bridge-static/modules/interaction3d/page-behavior.js?v=20260911-page-behavior-light-v2",
+  import.meta.url
+);
+export const { resolvePageBehavior } = await import(pageBehaviorModuleUrl.href);
 export function createIdleRotation({
-  now = () => performance.now(),
-  returnToBase,
-  start,
-  rotate,
-  stop
+  now: now = () => performance.now(),
+  returnToBase: returnToBase,
+  start: startRotation,
+  rotate: applyRotationStep,
+  stop: stopRotation
 }) {
-  let config = {
+  let rotationConfig = {
     enabled: false,
     idleSeconds: 30,
     speed: 6,
     direction: "clockwise"
   };
-  let available = false;
-  let held = false;
-  let currentPhase = "waiting";
-  let idleSince = now();
-  let lastTickAt = 0;
-  let angle = 0;
-  let rampElapsed = 0;
-  let generation = 0;
-  function activity(at = now()) {
-    const wasActive = currentPhase === "returning" || currentPhase === "rotating";
-    generation++;
-    currentPhase = "waiting";
-    idleSince = at;
-    lastTickAt = 0;
-    angle = 0;
-    rampElapsed = 0;
-    if (wasActive) {
-      stop();
+  let isRotationAvailable = false;
+  let isRotationHeld = false;
+  let rotationPhase = "waiting";
+  let waitingSinceMs = now();
+  let lastRotationMs = 0;
+  let rotationAngleRad = 0;
+  let rotationElapsedS = 0;
+  let rotationActivityRevision = 0;
+  function resetRotationState(activityTimestampMs = now()) {
+    const wasRotating = rotationPhase === "returning" || rotationPhase === "rotating";
+    rotationActivityRevision++;
+    rotationPhase = "waiting";
+    waitingSinceMs = activityTimestampMs;
+    lastRotationMs = 0;
+    rotationAngleRad = 0;
+    rotationElapsedS = 0;
+    if (wasRotating) {
+      stopRotation();
     }
   }
   return {
-    configure(nextConfig = {}, at = now()) {
-      const normalized = {
-        enabled: nextConfig?.enabled === true,
-        direction: nextConfig?.direction === "counterclockwise" ? "counterclockwise" : "clockwise",
-        idleSeconds: Number.isInteger(nextConfig?.idleSeconds) ? Math.max(1, Math.min(3600, nextConfig.idleSeconds)) : 30,
-        speed: Number.isFinite(nextConfig?.speed) ? Math.max(0.5, Math.min(30, nextConfig.speed)) : 6
+    configure(configureOptions = {}, configureTimestampMs = now()) {
+      const nextRotationConfig = {
+        enabled: configureOptions?.enabled === true,
+        direction:
+          configureOptions?.direction === "counterclockwise" ? "counterclockwise" : "clockwise",
+        idleSeconds: Number.isInteger(configureOptions?.idleSeconds)
+          ? Math.max(1, Math.min(3600, configureOptions.idleSeconds))
+          : 30,
+        speed: Number.isFinite(configureOptions?.speed)
+          ? Math.max(0.5, Math.min(30, configureOptions.speed))
+          : 6
       };
-      if (JSON.stringify(normalized) !== JSON.stringify(config)) {
-        config = normalized;
-        activity(at);
+      if (JSON.stringify(nextRotationConfig) !== JSON.stringify(rotationConfig)) {
+        rotationConfig = nextRotationConfig;
+        resetRotationState(configureTimestampMs);
       }
     },
-    setAvailable(nextAvailable, at = now()) {
-      if (available !== !!nextAvailable) {
-        available = !!nextAvailable;
-        activity(at);
+    setAvailable(availableTimestampMs, availableFlag = now()) {
+      if (isRotationAvailable !== !!availableTimestampMs) {
+        isRotationAvailable = !!availableTimestampMs;
+        resetRotationState(availableFlag);
       }
     },
-    hold(nextHeld, at = now()) {
-      held = !!nextHeld;
-      activity(at);
+    hold(heldFlag, holdTimestampMs = now()) {
+      isRotationHeld = !!heldFlag;
+      resetRotationState(holdTimestampMs);
     },
-    activity,
-    tick(at = now()) {
-      if (!!config.enabled && !!available && !held) {
-        if (currentPhase === "waiting" && at - idleSince >= config.idleSeconds * 1000) {
-          currentPhase = "returning";
-          const token = ++generation;
+    activity: resetRotationState,
+    tick(tickTimestampMs = now()) {
+      if (!!rotationConfig.enabled && !!isRotationAvailable && !isRotationHeld) {
+        if (
+          rotationPhase === "waiting" &&
+          tickTimestampMs - waitingSinceMs >= rotationConfig.idleSeconds * 1000
+        ) {
+          rotationPhase = "returning";
+          const returnRevision = ++rotationActivityRevision;
           returnToBase(() => {
-            if (token === generation && currentPhase === "returning" && !!available && !held && !!config.enabled) {
-              currentPhase = "rotating";
-              lastTickAt = now();
-              angle = 0;
-              rampElapsed = 0;
-              start();
+            if (
+              returnRevision === rotationActivityRevision &&
+              rotationPhase === "returning" &&
+              !!isRotationAvailable &&
+              !isRotationHeld &&
+              !!rotationConfig.enabled
+            ) {
+              rotationPhase = "rotating";
+              lastRotationMs = now();
+              rotationAngleRad = 0;
+              rotationElapsedS = 0;
+              startRotation();
             }
           });
-        } else if (currentPhase === "rotating") {
-          const deltaSeconds = Math.max(0, Math.min(0.1, (at - lastTickAt) / 1000));
-          lastTickAt = at;
-          const rampFactor = Math.min(1, rampElapsed / 0.6);
-          rampElapsed += deltaSeconds;
-          angle = (angle + deltaSeconds * config.speed * Math.PI / 180 * (rampFactor + Math.min(1, rampElapsed / 0.6)) / 2) % (Math.PI * 2);
-          rotate(config.direction === "counterclockwise" ? -angle : angle);
+        } else if (rotationPhase === "rotating") {
+          const deltaSeconds = Math.max(
+            0,
+            Math.min(0.1, (tickTimestampMs - lastRotationMs) / 1000)
+          );
+          lastRotationMs = tickTimestampMs;
+          const rampProgress = Math.min(1, rotationElapsedS / 0.6);
+          rotationElapsedS += deltaSeconds;
+          rotationAngleRad =
+            (rotationAngleRad +
+              (((deltaSeconds * rotationConfig.speed * Math.PI) / 180) *
+                (rampProgress + Math.min(1, rotationElapsedS / 0.6))) /
+                2) %
+            (Math.PI * 2);
+          applyRotationStep(
+            rotationConfig.direction === "counterclockwise" ? -rotationAngleRad : rotationAngleRad
+          );
         }
       }
     },
     dispose() {
-      available = false;
-      activity();
+      isRotationAvailable = false;
+      resetRotationState();
     },
-    nextDelay(at = now()) {
-      if (!config.enabled || !available || held) {
+    nextDelay(delayTimestampMs = now()) {
+      if (!rotationConfig.enabled || !isRotationAvailable || isRotationHeld) {
         return Infinity;
-      } else if (currentPhase === "rotating") {
+      } else if (rotationPhase === "rotating") {
         return 0;
-      } else if (currentPhase === "waiting") {
-        return Math.max(0, idleSince + config.idleSeconds * 1000 - at);
+      } else if (rotationPhase === "waiting") {
+        return Math.max(0, waitingSinceMs + rotationConfig.idleSeconds * 1000 - delayTimestampMs);
       } else {
         return Infinity;
       }
     },
     get phase() {
-      return currentPhase;
+      return rotationPhase;
     }
   };
 }
 export function createIdleFocusExit({
-  now = () => performance.now(),
-  onExit
+  now: focusExitNow = () => performance.now(),
+  onExit: onIdleExit
 } = {}) {
-  let config = {
+  let focusExitConfig = {
     enabled: false,
     idleSeconds: 30
   };
-  let available = false;
-  let held = false;
-  let disposed = false;
-  let exited = false;
-  let lastActivityAt = now();
-  function noteActivity(at = now()) {
-    if (!disposed) {
-      lastActivityAt = at;
-      exited = false;
+  let isFocusExitAvailable = false;
+  let isFocusExitHeld = false;
+  let isFocusExitDisposed = false;
+  let hasFocusIdleExited = false;
+  let focusExitActivityMs = focusExitNow();
+  function restartFocusIdleTimer(focusExitTimestampMs = focusExitNow()) {
+    if (!isFocusExitDisposed) {
+      focusExitActivityMs = focusExitTimestampMs;
+      hasFocusIdleExited = false;
     }
   }
   return {
-    configure(nextConfig = {}, at = now()) {
-      if (disposed) {
+    configure(focusExitOptions = {}, focusExitConfigureMs = focusExitNow()) {
+      if (isFocusExitDisposed) {
         return;
       }
-      const normalized = {
-        enabled: nextConfig?.enabled === true,
-        idleSeconds: Number.isInteger(nextConfig?.idleSeconds) ? Math.max(1, Math.min(3600, nextConfig.idleSeconds)) : 30
+      const nextFocusExitConfig = {
+        enabled: focusExitOptions?.enabled === true,
+        idleSeconds: Number.isInteger(focusExitOptions?.idleSeconds)
+          ? Math.max(1, Math.min(3600, focusExitOptions.idleSeconds))
+          : 30
       };
-      if (normalized.enabled !== config.enabled || normalized.idleSeconds !== config.idleSeconds) {
-        config = normalized;
-        noteActivity(at);
+      if (
+        nextFocusExitConfig.enabled !== focusExitConfig.enabled ||
+        nextFocusExitConfig.idleSeconds !== focusExitConfig.idleSeconds
+      ) {
+        focusExitConfig = nextFocusExitConfig;
+        restartFocusIdleTimer(focusExitConfigureMs);
       }
     },
-    setAvailable(nextAvailable, at = now()) {
-      if (!disposed && available !== !!nextAvailable) {
-        available = !!nextAvailable;
-        if (!available) {
-          held = false;
+    setAvailable(focusExitAvailableFlag, focusExitAvailableMs = focusExitNow()) {
+      if (!isFocusExitDisposed && isFocusExitAvailable !== !!focusExitAvailableFlag) {
+        isFocusExitAvailable = !!focusExitAvailableFlag;
+        if (!isFocusExitAvailable) {
+          isFocusExitHeld = false;
         }
-        noteActivity(at);
+        restartFocusIdleTimer(focusExitAvailableMs);
       }
     },
-    hold(nextHeld, at = now()) {
-      if (!disposed) {
-        held = !!nextHeld;
-        noteActivity(at);
+    hold(focusExitHeldFlag, focusExitHoldMs = focusExitNow()) {
+      if (!isFocusExitDisposed) {
+        isFocusExitHeld = !!focusExitHeldFlag;
+        restartFocusIdleTimer(focusExitHoldMs);
       }
     },
-    activity: noteActivity,
-    tick(at = now()) {
-      if (!disposed && !!config.enabled && !!available && !held && !exited) {
-        if (at - lastActivityAt >= config.idleSeconds * 1000) {
-          exited = true;
-          onExit();
+    activity: restartFocusIdleTimer,
+    tick(focusExitTickMs = focusExitNow()) {
+      if (
+        !isFocusExitDisposed &&
+        !!focusExitConfig.enabled &&
+        !!isFocusExitAvailable &&
+        !isFocusExitHeld &&
+        !hasFocusIdleExited
+      ) {
+        if (focusExitTickMs - focusExitActivityMs >= focusExitConfig.idleSeconds * 1000) {
+          hasFocusIdleExited = true;
+          onIdleExit();
         }
       }
     },
-    nextDelay(at = now()) {
-      if (disposed || !config.enabled || !available || held || exited) {
+    nextDelay(focusExitDelayMs = focusExitNow()) {
+      if (
+        isFocusExitDisposed ||
+        !focusExitConfig.enabled ||
+        !isFocusExitAvailable ||
+        isFocusExitHeld ||
+        hasFocusIdleExited
+      ) {
         return Infinity;
       } else {
-        return Math.max(0, lastActivityAt + config.idleSeconds * 1000 - at);
+        return Math.max(
+          0,
+          focusExitActivityMs + focusExitConfig.idleSeconds * 1000 - focusExitDelayMs
+        );
       }
     },
     dispose() {
-      disposed = true;
-      available = false;
-      held = false;
+      isFocusExitDisposed = true;
+      isFocusExitAvailable = false;
+      isFocusExitHeld = false;
     }
   };
 }
 export function createIdleIconVisibility({
-  now = () => performance.now(),
-  onChange = () => {}
+  now: iconVisibilityNow = () => performance.now(),
+  onChange: onVisibilityChange = () => {}
 } = {}) {
-  let config = {
+  let iconVisibilityConfig = {
     enabled: false,
     idleSeconds: 30
   };
-  let available = false;
-  let held = false;
-  let hidden = false;
-  let disposed = false;
-  let lastActivityAt = now();
-  function setHidden(nextHidden) {
-    if (hidden !== nextHidden) {
-      hidden = nextHidden;
-      onChange(hidden);
+  let isIconVisibilityAvailable = false;
+  let isIconVisibilityHeld = false;
+  let areIconsHidden = false;
+  let isIconVisibilityDisposed = false;
+  let iconActivityMs = iconVisibilityNow();
+  function setIconsHidden(hiddenFlag) {
+    if (areIconsHidden !== hiddenFlag) {
+      areIconsHidden = hiddenFlag;
+      onVisibilityChange(areIconsHidden);
     }
   }
-  function noteActivity(at = now()) {
-    if (!disposed) {
-      lastActivityAt = at;
-      setHidden(false);
+  function restartIconIdleTimer(iconResetTimestampMs = iconVisibilityNow()) {
+    if (!isIconVisibilityDisposed) {
+      iconActivityMs = iconResetTimestampMs;
+      setIconsHidden(false);
     }
   }
   return {
-    configure(nextConfig = {}, at = now()) {
-      if (disposed) {
+    configure(iconVisibilityOptions = {}, iconConfigureMs = iconVisibilityNow()) {
+      if (isIconVisibilityDisposed) {
         return;
       }
-      const normalized = {
-        enabled: nextConfig?.enabled === true,
-        idleSeconds: Number.isInteger(nextConfig?.idleSeconds) ? Math.max(1, Math.min(3600, nextConfig.idleSeconds)) : 30
+      const nextIconVisibilityConfig = {
+        enabled: iconVisibilityOptions?.enabled === true,
+        idleSeconds: Number.isInteger(iconVisibilityOptions?.idleSeconds)
+          ? Math.max(1, Math.min(3600, iconVisibilityOptions.idleSeconds))
+          : 30
       };
-      if (normalized.enabled !== config.enabled || normalized.idleSeconds !== config.idleSeconds) {
-        config = normalized;
-        noteActivity(at);
+      if (
+        nextIconVisibilityConfig.enabled !== iconVisibilityConfig.enabled ||
+        nextIconVisibilityConfig.idleSeconds !== iconVisibilityConfig.idleSeconds
+      ) {
+        iconVisibilityConfig = nextIconVisibilityConfig;
+        restartIconIdleTimer(iconConfigureMs);
       }
     },
-    setAvailable(nextAvailable, at = now()) {
-      if (!disposed && available !== !!nextAvailable) {
-        available = !!nextAvailable;
-        if (!available) {
-          held = false;
+    setAvailable(iconAvailableFlag, iconAvailableMs = iconVisibilityNow()) {
+      if (!isIconVisibilityDisposed && isIconVisibilityAvailable !== !!iconAvailableFlag) {
+        isIconVisibilityAvailable = !!iconAvailableFlag;
+        if (!isIconVisibilityAvailable) {
+          isIconVisibilityHeld = false;
         }
-        noteActivity(at);
+        restartIconIdleTimer(iconAvailableMs);
       }
     },
-    hold(nextHeld, at = now()) {
-      if (!disposed) {
-        held = !!nextHeld;
-        noteActivity(at);
+    hold(iconHeldFlag, iconHoldMs = iconVisibilityNow()) {
+      if (!isIconVisibilityDisposed) {
+        isIconVisibilityHeld = !!iconHeldFlag;
+        restartIconIdleTimer(iconHoldMs);
       }
     },
-    activity: noteActivity,
-    tick(at = now()) {
-      if (!disposed && !!config.enabled && !!available && !held) {
-        if (at - lastActivityAt >= config.idleSeconds * 1000) {
-          setHidden(true);
+    activity: restartIconIdleTimer,
+    tick(iconTickMs = iconVisibilityNow()) {
+      if (
+        !isIconVisibilityDisposed &&
+        !!iconVisibilityConfig.enabled &&
+        !!isIconVisibilityAvailable &&
+        !isIconVisibilityHeld
+      ) {
+        if (iconTickMs - iconActivityMs >= iconVisibilityConfig.idleSeconds * 1000) {
+          setIconsHidden(true);
         }
       }
     },
     dispose() {
-      if (!disposed) {
-        disposed = true;
-        available = false;
-        held = false;
-        setHidden(false);
+      if (!isIconVisibilityDisposed) {
+        isIconVisibilityDisposed = true;
+        isIconVisibilityAvailable = false;
+        isIconVisibilityHeld = false;
+        setIconsHidden(false);
       }
     },
     get hidden() {
-      return hidden;
+      return areIconsHidden;
     },
-    nextDelay(at = now()) {
-      if (disposed || !config.enabled || !available || held || hidden) {
+    nextDelay(iconDelayMs = iconVisibilityNow()) {
+      if (
+        isIconVisibilityDisposed ||
+        !iconVisibilityConfig.enabled ||
+        !isIconVisibilityAvailable ||
+        isIconVisibilityHeld ||
+        areIconsHidden
+      ) {
         return Infinity;
       } else {
-        return Math.max(0, lastActivityAt + config.idleSeconds * 1000 - at);
+        return Math.max(0, iconActivityMs + iconVisibilityConfig.idleSeconds * 1000 - iconDelayMs);
       }
     }
   };

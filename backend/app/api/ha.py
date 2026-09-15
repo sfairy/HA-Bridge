@@ -4,33 +4,25 @@ import asyncio
 import json
 import time
 import traceback
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import urlsplit
 from uuid import uuid4
 
-from database import Database
-from dependencies import (
-    DatabaseSession,
-    LicensedUser,
-    LicensedViewer,
-    ViewerPrincipal,
-    require_viewer_entity,
-    resolve_viewer_principal,
-    viewer_entity_ids,
-)
-from dependencies import (
-    require_admin as _require_admin,
-)
-from display_access import active_display_device
+from anyio import create_task_group
 from fastapi import APIRouter, HTTPException, Query, Request, WebSocket, WebSocketDisconnect, status
-from global_log import event_context
-from ha.client import HAClient, HAClientError
-from ha.crypto import CredentialCipherError
-from models import HAArea, HAConnection, HADevice, HAEntity, HASyncState, User
-from panel.action_rules import TOGGLE_ENTITY_DOMAINS
-from schemas import HABrowseMediaRequest, HAConnectionInput, HAServiceCallRequest, HATestRequest
 from sqlalchemy import func, or_, select
+
+from ..database import Database
+from ..dependencies import DatabaseSession, LicensedUser, LicensedViewer, ViewerPrincipal, require_viewer_entity, viewer_entity_ids
+from ..display_access import active_display_device
+from ..global_log import event_context
+from ..ha.client import HAClient, HAClientError
+from ..ha.crypto import CredentialCipherError
+from ..models import DisplayDevice, HAArea, HAConnection, HADevice, HAEntity, HASyncState, LoginSession, User
+from ..panel.action_rules import TOGGLE_ENTITY_DOMAINS
+from ..schemas import HABrowseMediaRequest, HAConnectionInput, HAServiceCallRequest, HATestRequest
+from ..security import session_token_hash
 
 router = APIRouter(prefix='/ha', tags=['home-assistant'])
 runtime_router = APIRouter(tags=['runtime'])
@@ -40,13 +32,7 @@ ALLOWED_SERVICES: dict[tuple[str, str], set[str]] = {
     ('homeassistant', 'toggle'): set(),
     ('button', 'press'): set(),
     ('script', 'turn_on'): set(),
-    ('light', 'turn_on'): {
-        'rgb_color',
-        'brightness',
-        'transition',
-        'brightness_pct',
-        'color_temp_kelvin',
-    },
+    ('light', 'turn_on'): {'rgb_color', 'brightness', 'transition', 'brightness_pct', 'color_temp_kelvin'},
     ('light', 'turn_off'): {'transition'},
     ('switch', 'turn_on'): set(),
     ('switch', 'turn_off'): set(),
@@ -77,25 +63,29 @@ ALLOWED_SERVICES: dict[tuple[str, str], set[str]] = {
     ('media_player', 'media_play'): set(),
     ('media_player', 'media_pause'): set(),
     ('media_player', 'media_stop'): set(),
-    ('media_player', 'media_previous_track'): set(),
-    ('media_player', 'media_next_track'): set(),
-    ('media_player', 'volume_set'): {'volume_level'},
-    ('media_player', 'volume_mute'): {'is_volume_muted'},
-    ('media_player', 'select_source'): {'source'},
-    ('media_player', 'select_sound_mode'): {'sound_mode'},
-    ('media_player', 'play_media'): {'media_content_id', 'media_content_type'},
-    ('media_player', 'turn_on'): set(),
-    ('media_player', 'turn_off'): set(),
-    ('vacuum', 'start'): set(),
-    ('vacuum', 'pause'): set(),
-    ('vacuum', 'return_to_base'): set(),
-    ('vacuum', 'set_fan_speed'): {'fan_speed'},
-    ('select', 'select_option'): {'option'},
+    **{
+        ('media_player', 'media_previous_track'): set(),
+        ('media_player', 'media_next_track'): set(),
+        ('media_player', 'volume_set'): {'volume_level'},
+        ('media_player', 'volume_mute'): {'is_volume_muted'},
+        ('media_player', 'select_source'): {'source'},
+        ('media_player', 'select_sound_mode'): {'sound_mode'},
+        ('media_player', 'play_media'): {'media_content_id', 'media_content_type'},
+        ('media_player', 'turn_on'): set(),
+        ('media_player', 'turn_off'): set(),
+        ('vacuum', 'start'): set(),
+        ('vacuum', 'pause'): set(),
+        ('vacuum', 'return_to_base'): set(),
+        ('vacuum', 'set_fan_speed'): {'fan_speed'},
+        ('select', 'select_option'): {'option'},
+    },
 }
 
 
 def require_admin(user: User) -> None:
-    _require_admin(user, detail='仅管理员可以修改 Home Assistant 连接。')
+    if user.role != 'admin':
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='仅管理员可以修改 Home Assistant 连接。')
+    return None
 
 
 def active_connection(database: DatabaseSession) -> HAConnection | None:
@@ -114,7 +104,7 @@ def load_translation_context(database_manager: Database) -> tuple[HAConnection |
     with database_manager.session_factory() as database:
         connection = active_connection(database)
         if connection is None:
-            return (None, set())
+            return None, set()
         integrations = set(
             database.scalars(
                 select(HAEntity.platform)
@@ -128,7 +118,7 @@ def load_translation_context(database_manager: Database) -> tuple[HAConnection |
             )
         )
         database.expunge(connection)
-        return (connection, integrations)
+        return connection, integrations
 
 
 def load_authorized_entity_context(
@@ -140,7 +130,7 @@ def load_authorized_entity_context(
         require_viewer_entity(database, viewer, entity_id)
         connection = active_connection(database)
         if connection is None:
-            return (None, False)
+            return None, False
         entity_exists = (
             database.scalar(
                 select(HAEntity.id).where(
@@ -152,7 +142,7 @@ def load_authorized_entity_context(
             is not None
         )
         database.expunge(connection)
-        return (connection, entity_exists)
+        return connection, entity_exists
 
 
 def connection_payload(connection: HAConnection | None, request: Request) -> dict[str, Any]:
@@ -209,10 +199,11 @@ async def delete_connection(request: Request, database: DatabaseSession, user: L
         )
     except Exception:
         database.rollback()
-        await connector.restart()
         raise
-    await connector.restart()
+    finally:
+        await connector.restart()
     request.app.state.global_log.append('warning', 'Home Assistant', '连接', 'Home Assistant 连接配置已删除')
+    return None
 
 
 @router.post('/test')
@@ -228,8 +219,6 @@ async def test_connection(payload: HATestRequest, request: Request, user: Licens
         result = await client.test_connection()
     except HAClientError as error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
-    finally:
-        await client.aclose()
     return {'ok': True, **result}
 
 
@@ -245,44 +234,41 @@ async def save_connection(
     require_admin(user)
     connector = request.app.state.ha_connector
     connection = active_connection(database)
-    token = payload.access_token
-    if not token:
-        if connection is None:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail='首次连接必须输入 Home Assistant Token。')
-        try:
-            token = connector.cipher.decrypt(connection.encrypted_access_token)
-        except CredentialCipherError as error:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
-    client = HAClient(
-        payload.base_url,
-        token,
-        verify_tls=payload.verify_tls,
-        timeout=request.app.state.settings.ha_request_timeout_seconds,
-    )
     try:
-        tested = await client.test_connection()
+        if payload.access_token:
+            token = payload.access_token
+        elif connection is not None:
+            token = connector.cipher.decrypt(connection.encrypted_access_token)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail='首次连接必须输入 Home Assistant Token。',
+            )
+        tested = await HAClient(
+            payload.base_url,
+            token,
+            verify_tls=payload.verify_tls,
+            timeout=request.app.state.settings.ha_request_timeout_seconds,
+        ).test_connection()
     except (HAClientError, CredentialCipherError) as error:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)) from error
-    finally:
-        await client.aclose()
-    encrypted = connector.cipher.encrypt(token)
-    ha_version = tested.get('version')
     if connection is None:
         connection = HAConnection(
             name=payload.name.strip(),
             base_url=payload.base_url,
-            encrypted_access_token=encrypted,
+            encrypted_access_token=connector.cipher.encrypt(token),
             verify_tls=payload.verify_tls,
-            ha_version=ha_version,
+            ha_version=tested.get('version'),
         )
         database.add(connection)
     else:
         connection.name = payload.name.strip()
         connection.base_url = payload.base_url
-        connection.encrypted_access_token = encrypted
         connection.verify_tls = payload.verify_tls
-        connection.ha_version = ha_version
-    connection.last_error = None
+        connection.ha_version = tested.get('version')
+        connection.last_error = None
+        if payload.access_token:
+            connection.encrypted_access_token = connector.cipher.encrypt(token)
     database.commit()
     database.refresh(connection)
     await connector.restart()
@@ -292,19 +278,19 @@ async def save_connection(
         '连接',
         f'Home Assistant 连接配置已保存（{connection.name}，版本 {connection.ha_version or "未知"}）',
     )
-    return connection_payload(connection, request)
+    return {**connection_payload(connection, request), 'test': tested}
 
 
 @router.get('/entities')
 def list_entities(
     database: DatabaseSession,
     viewer: LicensedViewer,
-    search: str | None = Query(default=None, max_length=128),
-    domain: str | None = Query(default=None, max_length=64),
-    area_id: str | None = Query(default=None, alias='areaId', max_length=255),
-    sync_status: str | None = Query(default=None, alias='status', max_length=32),
-    limit: int = Query(default=200, ge=1, le=500),
-    offset: int = Query(default=0, ge=0),
+    search: str | None = Query(None, max_length=128),
+    domain: str | None = Query(None, max_length=64),
+    area_id: str | None = Query(None, alias='areaId', max_length=255),
+    sync_status: str | None = Query(None, alias='status', max_length=32),
+    limit: int = Query(200, ge=1, le=500),
+    offset: int = Query(0, ge=0),
 ) -> dict[str, Any]:
     connection = active_connection(database)
     if connection is None:
@@ -312,8 +298,10 @@ def list_entities(
     filters = [HAEntity.connection_id == connection.id]
     allowed_entity_ids = viewer_entity_ids(database, viewer)
     if allowed_entity_ids is not None:
+        if not allowed_entity_ids:
+            return {'items': [], 'total': 0, 'limit': limit, 'offset': offset}
         filters.append(HAEntity.entity_id.in_(allowed_entity_ids))
-    if search and search.strip():
+    if search:
         pattern = f'%{search.strip()}%'
         filters.append(or_(HAEntity.entity_id.ilike(pattern), HAEntity.name.ilike(pattern)))
     if domain:
@@ -322,21 +310,19 @@ def list_entities(
         filters.append(HAEntity.area_id == area_id)
     if sync_status:
         filters.append(HAEntity.sync_status == sync_status)
-    rows = database.execute(
-        select(HAEntity, func.count().over().label('total_count'))
-        .where(*filters)
-        .order_by(HAEntity.entity_id)
-        .offset(offset)
-        .limit(limit)
-    ).all()
-    if not rows:
-        total = database.scalar(select(func.count()).select_from(HAEntity).where(*filters)) or 0
-        return {'items': [], 'total': int(total), 'limit': limit, 'offset': offset}
-    total = int(rows[0].total_count)
-    items = []
-    for row in rows:
-        item = row[0]
-        items.append(
+    rows = (
+        database.execute(
+            select(HAEntity, func.count().over().label('total_count'))
+            .where(*filters)
+            .order_by(HAEntity.domain, HAEntity.entity_id)
+            .offset(offset)
+            .limit(limit)
+        ).all()
+    )
+    items = [row[0] for row in rows]
+    total = int(rows[0][1]) if rows else int(database.scalar(select(func.count()).select_from(HAEntity).where(*filters)) or 0)
+    return {
+        'items': [
             {
                 'entityId': item.entity_id,
                 'domain': item.domain,
@@ -354,8 +340,12 @@ def list_entities(
                 'lastSeenAt': item.last_seen_at,
                 'missingSince': item.missing_since,
             }
-        )
-    return {'items': items, 'total': total, 'limit': limit, 'offset': offset}
+            for item in items
+        ],
+        'total': total,
+        'limit': limit,
+        'offset': offset,
+    }
 
 
 @router.get('/translations')
@@ -383,7 +373,7 @@ async def entity_history(
     _database: DatabaseSession,
     viewer: LicensedViewer,
     entity_id: str = Query(alias='entityId', min_length=3, max_length=255),
-    hours: int = Query(default=24, ge=1, le=168),
+    hours: int = Query(24, ge=1, le=168),
 ) -> dict[str, Any]:
     connection, entity_exists = await asyncio.to_thread(
         load_authorized_entity_context,
@@ -395,7 +385,7 @@ async def entity_history(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='请先配置 Home Assistant 连接。')
     if not entity_exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='实体不存在、已禁用或已失联。')
-    start_time = (datetime.now(UTC) - timedelta(hours=hours)).isoformat()
+    start_time = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
     try:
         history = await request.app.state.ha_connector.fetch_history(connection, entity_id, start_time, hours)
     except (HAClientError, CredentialCipherError) as error:
@@ -403,12 +393,15 @@ async def entity_history(
     points = []
     for item in history:
         value = history_state_value(item.get('state'))
+        if value is None:
+            continue
         timestamp = item.get('last_updated') or item.get('last_changed')
-        if timestamp:
-            points.append({'timestamp': timestamp, 'value': value})
+        if not timestamp:
+            continue
+        points.append({'timestamp': str(timestamp), 'value': value})
     if len(points) > 480:
-        step = max(1, int(len(points) / 480))
-        points = [points[index] for index in range(0, len(points), step)][:480]
+        step = len(points) / 480
+        points = [points[min(len(points) - 1, int(index * step))] for index in range(480)]
     return {'entityId': entity_id, 'hours': hours, 'points': points}
 
 
@@ -425,24 +418,18 @@ def list_areas(database: DatabaseSession, _user: LicensedUser) -> dict[str, Any]
     connection = active_connection(database)
     if connection is None:
         return {'items': []}
-    areas = database.scalars(
-        select(HAArea).where(HAArea.connection_id == connection.id).order_by(HAArea.name, HAArea.area_id)
-    )
-    items = []
-    for item in areas:
-        try:
-            aliases = json.loads(item.aliases_json)
-        except (TypeError, json.JSONDecodeError):
-            aliases = []
-        items.append(
+    areas = database.scalars(select(HAArea).where(HAArea.connection_id == connection.id).order_by(HAArea.name))
+    return {
+        'items': [
             {
                 'areaId': item.area_id,
                 'name': item.name,
-                'aliases': aliases if isinstance(aliases, list) else [],
+                'aliases': json.loads(item.aliases_json),
                 'status': item.sync_status,
             }
-        )
-    return {'items': items}
+            for item in areas
+        ]
+    }
 
 
 @router.get('/devices')
@@ -453,17 +440,17 @@ def list_devices(database: DatabaseSession, viewer: LicensedViewer) -> dict[str,
     filters = [HADevice.connection_id == connection.id]
     allowed_entity_ids = viewer_entity_ids(database, viewer)
     if allowed_entity_ids is not None:
-        allowed_device_ids = set(
-            database.scalars(
-                select(HAEntity.device_id).where(
-                    HAEntity.connection_id == connection.id,
-                    HAEntity.entity_id.in_(allowed_entity_ids),
-                    HAEntity.device_id.is_not(None),
-                )
-            )
+        if not allowed_entity_ids:
+            return {'items': []}
+        allowed_device_ids = select(HAEntity.device_id).where(
+            HAEntity.connection_id == connection.id,
+            HAEntity.entity_id.in_(allowed_entity_ids),
+            HAEntity.device_id.is_not(None),
         )
         filters.append(HADevice.device_id.in_(allowed_device_ids))
-    devices = database.scalars(select(HADevice).where(*filters).order_by(HADevice.name_by_user, HADevice.name, HADevice.device_id))
+    devices = database.scalars(
+        select(HADevice).where(*filters).order_by(HADevice.name_by_user, HADevice.name)
+    )
     return {
         'items': [
             {
@@ -471,6 +458,7 @@ def list_devices(database: DatabaseSession, viewer: LicensedViewer) -> dict[str,
                 'name': item.name_by_user or item.name,
                 'manufacturer': item.manufacturer,
                 'model': item.model,
+                **({'registryMetadata': json.loads(item.registry_metadata_json)} if item.registry_metadata_json else {}),
                 'areaId': item.area_id,
                 'status': item.sync_status,
             }
@@ -485,12 +473,9 @@ def sync_status(request: Request, database: DatabaseSession, _viewer: LicensedVi
     if connection is None:
         return {'configured': False, 'status': 'not_configured', 'connected': False}
     state = database.get(HASyncState, connection.id)
-    connector = request.app.state.ha_connector
-    connected = connector.connected
-    last_error = None if connected else (connector.runtime_error or (state.last_error if state else None))
     return {
         'configured': True,
-        'connected': connected,
+        'connected': request.app.state.ha_connector.connected,
         'status': state.status if state else 'idle',
         'phase': state.phase if state else None,
         'lastFullSyncAt': state.last_full_sync_at if state else None,
@@ -502,7 +487,11 @@ def sync_status(request: Request, database: DatabaseSession, _viewer: LicensedVi
             'devices': state.device_count if state else 0,
             'areas': state.area_count if state else 0,
         },
-        'lastError': last_error,
+        'lastError': None
+        if request.app.state.ha_connector.connected
+        else (
+            request.app.state.ha_connector.runtime_error or (state.last_error if state else None)
+        ),
     }
 
 
@@ -525,14 +514,14 @@ async def run_sync(request: Request, _database: DatabaseSession, user: LicensedU
 def ha_health(request: Request, database: DatabaseSession, _viewer: LicensedViewer) -> dict[str, Any]:
     connection = active_connection(database)
     connected = request.app.state.ha_connector.connected
-    if connected:
-        last_error = None
-    else:
-        last_error = request.app.state.ha_connector.runtime_error or (connection.last_error if connection else None)
     return {
         'configured': connection is not None,
         'connected': connected,
-        'lastError': last_error,
+        'lastError': None
+        if connected
+        else (
+            request.app.state.ha_connector.runtime_error or (connection.last_error if connection else None)
+        ),
     }
 
 
@@ -547,18 +536,27 @@ async def call_service(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='当前授权不允许控制 Home Assistant。')
     allowed_fields = ALLOWED_SERVICES.get((payload.domain, payload.service))
     if allowed_fields is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='该 Home Assistant 服务不在允许列表中。')
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail='该 Home Assistant 服务不在允许列表中。',
+        )
     unknown_fields = set(payload.data) - allowed_fields
     if unknown_fields:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            detail='服务参数不允许：' + ', '.join(sorted(unknown_fields)),
+            detail=f'服务参数不允许：{", ".join(sorted(unknown_fields))}',
         )
     entity_domain = payload.entity_id.partition('.')[0]
     if payload.domain == 'homeassistant' and payload.service == 'toggle' and entity_domain not in TOGGLE_ENTITY_DOMAINS:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail='该实体类型不支持切换动作。')
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail='该实体类型不支持切换动作。',
+        )
     if payload.domain != 'homeassistant' and entity_domain != payload.domain:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail='服务域与实体域不匹配。')
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail='服务域与实体域不匹配。',
+        )
     connection, entity_exists = await asyncio.to_thread(
         load_authorized_entity_context,
         request.app.state.database,
@@ -569,7 +567,6 @@ async def call_service(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='请先配置 Home Assistant 连接。')
     if not entity_exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='实体不存在、已禁用或已失联。')
-    actor = '仪表盘编辑器' if viewer.is_admin_session else '展示设备'
     try:
         result = await request.app.state.ha_connector.client_for(connection).call_service(
             payload.domain,
@@ -578,21 +575,29 @@ async def call_service(
             payload.data,
         )
     except (HAClientError, CredentialCipherError) as error:
+        request.state.diagnostic_error_logged = True
         request.app.state.global_log.append(
             'error',
-            actor,
+            '仪表盘编辑器' if viewer.is_admin_session else '展示设备',
             '设备操作',
-            f'操作失败：{payload.entity_id} · {payload.domain}.{payload.service}',
-            context={'entityId': payload.entity_id, 'service': f'{payload.domain}.{payload.service}', 'status': 502},
+            f'操作失败：{payload.entity_id} · {payload.domain}.{payload.service} · {error}',
+            context={
+                'entityId': payload.entity_id,
+                'service': f'{payload.domain}.{payload.service}',
+                'status': 502,
+            },
             details=traceback.format_exc(),
         )
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
     request.app.state.global_log.append(
         'success',
-        actor,
+        '仪表盘编辑器' if viewer.is_admin_session else '展示设备',
         '设备操作',
         f'操作成功：{payload.entity_id} · {payload.domain}.{payload.service}',
-        context={'entityId': payload.entity_id, 'service': f'{payload.domain}.{payload.service}'},
+        context={
+            'entityId': payload.entity_id,
+            'service': f'{payload.domain}.{payload.service}',
+        },
     )
     return {'ok': True, 'result': result}
 
@@ -608,7 +613,10 @@ async def browse_media(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='当前授权不允许控制 Home Assistant。')
     entity_domain = payload.entity_id.partition('.')[0]
     if entity_domain != 'media_player':
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail='媒体浏览只能用于媒体播放器实体。')
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail='媒体浏览只能用于媒体播放器实体。',
+        )
     connection, entity_exists = await asyncio.to_thread(
         load_authorized_entity_context,
         request.app.state.database,
@@ -623,7 +631,7 @@ async def browse_media(
         result = await request.app.state.ha_connector.client_for(connection).browse_media(
             payload.entity_id,
             payload.media_content_id,
-            payload.media_content_type,
+            payload.media_content_type or None,
         )
     except (HAClientError, CredentialCipherError) as error:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
@@ -632,20 +640,24 @@ async def browse_media(
 
 def websocket_viewer(websocket: WebSocket) -> ViewerPrincipal | None:
     settings = websocket.app.state.settings
+    token = websocket.cookies.get(settings.cookie_name, '')
     with websocket.app.state.database.session_factory() as database:
-        viewer = resolve_viewer_principal(
-            database,
-            session_token=websocket.cookies.get(settings.cookie_name, ''),
-            display_token=websocket.cookies.get(settings.display_cookie_name, ''),
-            account_user_id=websocket.app.state.admin_account.user_id,
-        )
-        if viewer is None:
+        if token:
+            record = database.scalar(select(LoginSession).where(LoginSession.id_hash == session_token_hash(token)))
+            now = datetime.now(timezone.utc)
+            if record is not None and record.expires_at.replace(tzinfo=timezone.utc) > now:
+                user = database.get(User, record.user_id)
+                if user is not None and user.is_active:
+                    database.expunge(user)
+                    return ViewerPrincipal(user=user)
+        display_token = websocket.cookies.get(settings.display_cookie_name, '')
+        if not display_token:
             return None
-        if viewer.user is not None:
-            database.expunge(viewer.user)
-        if viewer.display is not None:
-            database.expunge(viewer.display)
-        return viewer
+        device = active_display_device(database, display_token)
+        if device is None:
+            return None
+        database.expunge(device)
+        return ViewerPrincipal(display=device)
 
 
 def websocket_origin_allowed(websocket: WebSocket) -> bool:
@@ -656,7 +668,11 @@ def websocket_origin_allowed(websocket: WebSocket) -> bool:
     configured_base_url = websocket.app.state.settings.app_base_url
     if configured_base_url:
         parsed = urlsplit(configured_base_url)
-        expected_origin = f'{parsed.scheme}://{parsed.netloc}' if parsed.scheme in {'http', 'https'} and parsed.netloc else ''
+        expected_origin = (
+            f'{parsed.scheme}://{parsed.netloc}'
+            if parsed.scheme in {'http', 'https'} and parsed.netloc
+            else ''
+        )
         return bool(expected_origin) and origin == expected_origin
     parsed_origin = urlsplit(origin)
     host = websocket.headers.get('host', '').strip()
@@ -683,19 +699,19 @@ async def runtime_websocket(websocket: WebSocket) -> None:
     }
     token = event_context.set(context)
     try:
-        try:
-            await _runtime_websocket(websocket, context)
-        except Exception as error:
-            _runtime_log(
-                websocket,
-                'error',
-                f'实时连接异常：{error}',
-                context,
-                details=traceback.format_exc(),
-            )
-            raise
+        await _runtime_websocket(websocket, context)
+    except Exception as error:
+        _runtime_log(
+            websocket,
+            'error',
+            f'实时连接异常：{error}',
+            context,
+            details=traceback.format_exc(),
+        )
+        raise
     finally:
         event_context.reset(token)
+    return None
 
 
 def _runtime_log(
@@ -706,12 +722,29 @@ def _runtime_log(
     *,
     details: str | None = None,
 ) -> None:
-    log = getattr(getattr(websocket, 'app', None), 'state', None)
-    log = getattr(log, 'global_log', None) if log is not None else None
-    if log is None:
-        return
-    source = '展示设备' if context.get('displayId') else ('仪表盘编辑器' if context.get('actor') else '系统后台')
-    log.append(level, source, '实时连接', message, context=context, details=details)
+    log = getattr(websocket.app.state, 'global_log', None)
+    if log is not None:
+        source = (
+            '展示设备'
+            if context.get('displayId')
+            else ('仪表盘编辑器' if context.get('actor') else '系统后台')
+        )
+        log.append(level, source, '实时连接', message, context=context, details=details)
+    return None
+
+
+async def _runtime_send_json(websocket: WebSocket, payload: dict) -> None:
+    try:
+        await websocket.send_json(payload)
+    except RuntimeError as error:
+        if str(error) in {
+            'Cannot call "send" once a close message has been sent.',
+            "Unexpected ASGI message 'websocket.send', after sending 'websocket.close'.",
+            "Unexpected ASGI message 'websocket.send', after sending 'websocket.close' or response already completed.",
+        }:
+            raise WebSocketDisconnect(code=1006) from error
+        raise
+    return None
 
 
 async def _runtime_websocket(websocket: WebSocket, context: dict) -> None:
@@ -723,33 +756,34 @@ async def _runtime_websocket(websocket: WebSocket, context: dict) -> None:
             {**context, 'code': str(code), 'phase': 'rejected'},
         )
         await websocket.close(code=code, reason=reason if send_reason else None)
+        return None
 
     if not websocket_origin_allowed(websocket):
         await close_with_log(4403, 'origin not allowed')
-        return
+        return None
     viewer = await asyncio.to_thread(websocket_viewer, websocket)
     if viewer is None:
-        await close_with_log(4401, 'authentication required')
-        return
+        await close_with_log(4401, 'authentication required', send_reason=False)
+        return None
     if viewer.user is not None:
-        context['actor'] = viewer.user.username
+        context['actor'] = getattr(viewer.user, 'username', None)
     if viewer.display is not None:
         context.update(
             displayId=viewer.display.id,
-            displayName=viewer.display.name,
+            displayName=getattr(viewer.display, 'name', None),
             projectId=viewer.display.project_id,
         )
-    if not websocket.app.state.license_service.allows('runtime.websocket'):
-        await close_with_log(4403, 'license restricted')
-        return
+    if not await asyncio.to_thread(websocket.app.state.license_service.allows, 'runtime.websocket'):
+        await close_with_log(4403, 'license restricted', send_reason=False)
+        return None
     await websocket.accept()
-    context['phase'] = 'accepted'
-    _runtime_log(websocket, 'info', '实时连接已建立', context)
-
+    _runtime_log(websocket, 'info', '实时连接已建立', {**context, 'phase': 'accepted'})
+    queue = websocket.app.state.ha_connector.state_hub.subscribe()
+    entity_ids = set()
+    watching = False
     display_binding_cache = None
 
     async def display_binding_matches() -> bool:
-        nonlocal display_binding_cache
         if viewer.display is None:
             return True
         now = time.monotonic()
@@ -758,78 +792,108 @@ async def _runtime_websocket(websocket: WebSocket, context: dict) -> None:
 
         def load_binding_match() -> bool:
             with websocket.app.state.database.session_factory() as database:
-                device = active_display_device(
+                current_display = active_display_device(
                     database,
                     websocket.cookies.get(websocket.app.state.settings.display_cookie_name, ''),
                 )
-                return bool(device and viewer.display is not None and device.id == viewer.display.id)
+                return bool(
+                    current_display is not None
+                    and current_display.id == viewer.display.id
+                    and current_display.project_id == viewer.display.project_id
+                )
 
         matches = await asyncio.to_thread(load_binding_match)
         display_binding_cache = (time.monotonic(), matches)
         return matches
 
-    def load_allowed_entity_ids():
-        with websocket.app.state.database.session_factory() as database:
-            allowed = viewer_entity_ids(database, viewer)
-            return set(allowed) if allowed is not None else None
-
-    queue = websocket.app.state.ha_connector.state_hub.subscribe()
-    entity_ids: set[str] = set()
-    watching = False
     try:
-        while True:
-            if not await display_binding_matches():
-                await close_with_log(4401, 'authentication required')
-                return
-            try:
-                event = await asyncio.wait_for(websocket.receive_json(), timeout=30)
-            except TimeoutError:
-                continue
-            except WebSocketDisconnect:
-                return
-            if not isinstance(event, dict) or event.get('type') != 'subscribe':
-                await close_with_log(4400, 'subscribe message required')
-                return
-            value = event.get('entityIds')
-            if not isinstance(value, list):
-                await close_with_log(4400, 'subscribe message required')
-                return
-            next_ids = {str(item) for item in value if item}
+        subscribe = await asyncio.wait_for(websocket.receive_json(), timeout=30)
+        if subscribe.get('type') != 'subscribe' or not isinstance(subscribe.get('entityIds'), list):
+            await close_with_log(4400, 'subscribe message required')
+            return None
+        entity_ids = {str(value) for value in subscribe['entityIds'] if isinstance(value, str)}
+        if viewer.project_id is not None:
+
+            def load_allowed_entity_ids() -> set[str]:
+                with websocket.app.state.database.session_factory() as database:
+                    return viewer_entity_ids(database, viewer) or set()
+
             allowed_entity_ids = await asyncio.to_thread(load_allowed_entity_ids)
-            if allowed_entity_ids is not None:
-                next_ids.intersection_update(allowed_entity_ids)
-            if len(next_ids) > MAX_RUNTIME_ENTITIES:
-                next_ids = set(list(next_ids)[:MAX_RUNTIME_ENTITIES])
-            if watching:
-                await websocket.app.state.ha_connector.remove_runtime_entity_watch(entity_ids)
-            entity_ids = next_ids
-            websocket.app.state.ha_connector.state_hub.set_subscription_entities(queue, entity_ids)
-            await websocket.app.state.ha_connector.add_runtime_entity_watch(entity_ids)
-            watching = True
+            entity_ids.intersection_update(allowed_entity_ids)
+        if len(entity_ids) > MAX_RUNTIME_ENTITIES:
+            await close_with_log(4400, 'too many entities')
+            return None
+        websocket.app.state.ha_connector.state_hub.set_subscription_entities(queue, entity_ids)
+        await websocket.app.state.ha_connector.add_runtime_entity_watch(entity_ids, ensure_states=False)
+        watching = True
+
+        async def send_updates() -> None:
             initial_snapshot = await websocket.app.state.ha_connector.state_hub.snapshot(entity_ids)
-            await websocket.send_json({'type': 'snapshot', 'states': initial_snapshot})
+            await _runtime_send_json(websocket, {'type': 'snapshot', 'states': initial_snapshot})
             await websocket.app.state.ha_connector.ensure_entity_states(entity_ids)
             hydrated_snapshot = await websocket.app.state.ha_connector.state_hub.snapshot(entity_ids)
             if hydrated_snapshot != initial_snapshot:
-                await websocket.send_json({'type': 'snapshot', 'states': hydrated_snapshot})
+                await _runtime_send_json(websocket, {'type': 'snapshot', 'states': hydrated_snapshot})
             while True:
                 if not await display_binding_matches():
-                    await close_with_log(4401, 'authentication required')
-                    return
-                receive_task = asyncio.create_task(websocket.receive_json())
-                event_task = asyncio.create_task(queue.get())
-                done, pending = await asyncio.wait({receive_task, event_task}, return_when=asyncio.FIRST_COMPLETED)
-                for task in pending:
-                    task.cancel()
-                if receive_task in done:
-                    try:
-                        event = receive_task.result()
-                    except WebSocketDisconnect:
-                        return
-                    break
-                event = event_task.result()
-                await websocket.send_json(event)
+                    await close_with_log(4401, 'display pairing changed')
+                    return None
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=5 if viewer.display else 25)
+                except TimeoutError:
+                    if not await display_binding_matches():
+                        await close_with_log(4401, 'display pairing changed')
+                        return None
+                    await _runtime_send_json(websocket, {'type': 'ping'})
+                    continue
+                if not await display_binding_matches():
+                    await close_with_log(4401, 'display pairing changed')
+                    return None
+                await _runtime_send_json(websocket, event)
+            return None
+
+        async def receive_disconnect() -> None:
+            while True:
+                message = await websocket.receive()
+                if message['type'] == 'websocket.disconnect':
+                    raise WebSocketDisconnect(code=message.get('code', 1000))
+
+        failure = None
+        async with create_task_group() as tasks:
+
+            async def run_until_closed(operation) -> None:
+                try:
+                    await operation()
+                except Exception as error:
+                    if failure is None or not isinstance(error, WebSocketDisconnect):
+                        failure = error
+                finally:
+                    tasks.cancel_scope.cancel()
+                return None
+
+            tasks.start_soon(run_until_closed, receive_disconnect)
+            tasks.start_soon(run_until_closed, send_updates)
+        if failure is not None:
+            raise failure
+    except WebSocketDisconnect as error:
+        if error.code not in {1000, 1001, 1005}:
+            _runtime_log(
+                websocket,
+                'warning',
+                '实时连接异常断开',
+                {**context, 'code': str(error.code), 'phase': 'disconnected'},
+            )
+    except TimeoutError:
+        _runtime_log(
+            websocket,
+            'warning',
+            '实时连接等待订阅超时',
+            {**context, 'code': 'SUBSCRIBE_TIMEOUT', 'phase': 'subscribe'},
+        )
     finally:
-        websocket.app.state.ha_connector.state_hub.unsubscribe(queue)
-        if watching:
-            await websocket.app.state.ha_connector.remove_runtime_entity_watch(entity_ids)
+        try:
+            if watching:
+                await websocket.app.state.ha_connector.remove_runtime_entity_watch(entity_ids)
+        finally:
+            websocket.app.state.ha_connector.state_hub.unsubscribe(queue)
+    return None

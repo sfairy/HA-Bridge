@@ -1,180 +1,210 @@
 import { mountInteraction3d } from "./runtime.js";
-import { interaction3dPreviewSize } from "/bridge-static/modules/interaction3d/preview-layout.js?v=0.5.3";
+import { interaction3dPreviewSize } from "/bridge-static/modules/interaction3d/preview-layout.js?v=20260906-i3d-preview-layout-v1-20260908-curtains-v1";
 export function openPresenceFocusEditor({
-  component,
-  properties,
-  item,
-  panelDocument,
-  onSave
+  component: component,
+  properties: properties,
+  item: item,
+  panelDocument: panelDocument,
+  onSave: onSave
 }) {
-  const doc = window.document;
-  const el = (tag, text) => {
-    const node = doc.createElement(tag);
-    if (text) {
-      node.textContent = text;
+  const editorDocument = window.document;
+  const createElement = (tagName, initialText) => {
+    const createdElement = editorDocument.createElement(tagName);
+    if (initialText) {
+      createdElement.textContent = initialText;
     }
-    return node;
+    return createdElement;
   };
-  const dialog = el("dialog");
-  dialog.className = "i3d-editor";
-  dialog.setAttribute("aria-label", "人在传感器聚焦视角");
-  dialog.dataset.i3dPreviewScope = "presence-focus";
-  const header = el("header");
-  const body = el("div");
-  body.className = "i3d-editor-body";
-  const view = el("div");
-  const aside = el("aside");
-  const status = el("p", "正在加载户型…");
-  view.className = "i3d-editor-view";
-  const aspect = el("div");
-  const stage = el("div");
-  aspect.className = "i3d-editor-aspect";
-  stage.className = "i3d-editor-stage";
-  aspect.append(stage);
-  view.append(aspect);
-  const syncAspectSize = () => {
-    const size = interaction3dPreviewSize(component, panelDocument, view.clientWidth, view.clientHeight);
-    Object.assign(aspect.style, {
-      width: size.width + "px",
-      height: size.height + "px"
+  const dialogElement = createElement("dialog");
+  dialogElement.className = "i3d-editor";
+  dialogElement.setAttribute("aria-label", "人在传感器聚焦视角");
+  dialogElement.dataset.i3dPreviewScope = "presence-focus";
+  const headerElement = createElement("header");
+  const bodyElement = createElement("div");
+  bodyElement.className = "i3d-editor-body";
+  const viewElement = createElement("div");
+  const panelElement = createElement("aside");
+  const statusElement = createElement("p", "正在加载户型…");
+  viewElement.className = "i3d-editor-view";
+  const aspectBoxElement = createElement("div");
+  const stageHostElement = createElement("div");
+  aspectBoxElement.className = "i3d-editor-aspect";
+  stageHostElement.className = "i3d-editor-stage";
+  aspectBoxElement.append(stageHostElement);
+  viewElement.append(aspectBoxElement);
+  const updatePreviewSize = () => {
+    const previewSize = interaction3dPreviewSize(
+      component,
+      panelDocument,
+      viewElement.clientWidth,
+      viewElement.clientHeight
+    );
+    Object.assign(aspectBoxElement.style, {
+      width: previewSize.width + "px",
+      height: previewSize.height + "px"
     });
   };
-  const resizeObserver = new ResizeObserver(syncAspectSize);
-  resizeObserver.observe(view);
-  let focusCommand;
-  let presented = false;
-  let closed = false;
-  let busy = false;
+  const previewResizeObserver = new ResizeObserver(updatePreviewSize);
+  previewResizeObserver.observe(viewElement);
+  let editorRuntime;
+  let isReady = false;
+  let isClosed = false;
+  let isBusy = false;
   let cameraState = null;
   let commandQueue = Promise.resolve();
   const actionButtons = [];
-  const button = (label, onClick) => {
-    const btn = el("button", label);
-    btn.type = "button";
-    btn.addEventListener("click", onClick);
-    actionButtons.push(btn);
-    return btn;
+  const createButton = (buttonLabel, onButtonClick) => {
+    const buttonElement = createElement("button", buttonLabel);
+    buttonElement.type = "button";
+    buttonElement.addEventListener("click", onButtonClick);
+    actionButtons.push(buttonElement);
+    return buttonElement;
   };
-  const close = () => {
-    if (!closed) {
-      closed = true;
-      resizeObserver.disconnect();
-      focusCommand?.();
-      dialog.close();
-      dialog.remove();
-      doc.dispatchEvent(new Event("hb-i3d-preview-scope"));
+  const closeEditor = () => {
+    if (!isClosed) {
+      isClosed = true;
+      previewResizeObserver.disconnect();
+      editorRuntime?.();
+      dialogElement.close();
+      dialogElement.remove();
+      editorDocument.dispatchEvent(new Event("hb-i3d-preview-scope"));
     }
   };
   const syncControls = () => {
-    actionButtons.forEach(btn => {
-      btn.disabled = !presented || busy;
+    actionButtons.forEach(actionButton => {
+      actionButton.disabled = !isReady || isBusy;
     });
-    focalInput.disabled = !presented || busy || cameraState?.mode !== "perspective";
-    if (doc.activeElement !== focalInput) {
-      focalInput.value = String(Math.round(cameraState?.focalLength || 50));
+    focalLengthInputElement.disabled = !isReady || isBusy || cameraState?.mode !== "perspective";
+    if (editorDocument.activeElement !== focalLengthInputElement) {
+      focalLengthInputElement.value = String(Math.round(cameraState?.focalLength || 50));
     }
-    for (const [mode, btn] of projectionButtons) {
-      btn.setAttribute("aria-pressed", String((cameraState?.mode || "orthographic") === mode));
+    for (const [projectionMode, projectionButtonElement] of projectionButtonsByMode) {
+      projectionButtonElement.setAttribute(
+        "aria-pressed",
+        String((cameraState?.mode || "orthographic") === projectionMode)
+      );
     }
   };
-  const runCommand = async (command, payload) => {
-    if (!presented || busy || closed) {
+  const runFocusCommand = async (commandName, commandPayload) => {
+    if (!isReady || isBusy || isClosed) {
       return;
     }
-    const isFocalLength = command === "focus-focal-length";
-    const previous = commandQueue;
-    let release;
-    commandQueue = new Promise(resolve => {
-      release = resolve;
+    const isFocalLengthCommand = commandName === "focus-focal-length";
+    const previousQueuePromise = commandQueue;
+    let releaseQueueGate;
+    commandQueue = new Promise(resolveQueueGate => {
+      releaseQueueGate = resolveQueueGate;
     });
-    if (!isFocalLength) {
-      busy = true;
+    if (!isFocalLengthCommand) {
+      isBusy = true;
       syncControls();
     }
     try {
-      await previous;
-      if (closed) {
+      await previousQueuePromise;
+      if (isClosed) {
         return;
       }
-      const result = await focusCommand.focusCommand(command, "presence:" + item.id, payload);
-      if (closed) {
+      const commandResult = await editorRuntime.focusCommand(
+        commandName,
+        "presence:" + item.id,
+        commandPayload
+      );
+      if (isClosed) {
         return;
       }
-      result?.camera && (cameraState = result.camera);
-      if (command === "save-light-camera") {
-        onSave(result.camera);
-        close();
+      if (commandResult?.camera) {
+        cameraState = commandResult.camera;
+      }
+      if (commandName === "save-light-camera") {
+        onSave(commandResult.camera);
+        closeEditor();
       } else {
-        status.textContent = "拖动旋转，滚轮缩放；调整完成后保存此视角。";
+        statusElement.textContent = "拖动旋转，滚轮缩放；调整完成后保存此视角。";
       }
-    } catch (error) {
-      if (!closed) {
-        status.textContent = error.message;
+    } catch (commandError) {
+      if (!isClosed) {
+        statusElement.textContent = commandError.message;
       }
     } finally {
-      release();
-      if (!isFocalLength) {
-        busy = false;
+      releaseQueueGate();
+      if (!isFocalLengthCommand) {
+        isBusy = false;
       }
-      if (!closed) {
+      if (!isClosed) {
         syncControls();
       }
     }
   };
-  const saveBtn = button("保存此视角", () => runCommand("save-light-camera"));
-  saveBtn.className = "primary";
-  header.append(el("strong", "人在传感器 · 聚焦视角"), saveBtn, button("取消", close));
-  const projectionActions = el("div");
-  projectionActions.className = "i3d-focus-actions";
-  projectionActions.setAttribute("role", "group");
-  projectionActions.setAttribute("aria-label", "聚焦投影");
-  const projectionButtons = new Map();
-  for (const [mode, label] of [["orthographic", "正交"], ["perspective", "透视"]]) {
-    const projectionBtn = button(label, () => runCommand("focus-projection", mode));
-    projectionButtons.set(mode, projectionBtn);
-    projectionActions.append(projectionBtn);
+  const saveButtonElement = createButton("保存此视角", () => runFocusCommand("save-light-camera"));
+  saveButtonElement.className = "primary";
+  headerElement.append(
+    createElement("strong", "人在传感器 · 聚焦视角"),
+    saveButtonElement,
+    createButton("取消", closeEditor)
+  );
+  const projectionGroupElement = createElement("div");
+  projectionGroupElement.className = "i3d-focus-actions";
+  projectionGroupElement.setAttribute("role", "group");
+  projectionGroupElement.setAttribute("aria-label", "聚焦投影");
+  const projectionButtonsByMode = new Map();
+  for (const [modeId, modeLabel] of [
+    ["orthographic", "正交"],
+    ["perspective", "透视"]
+  ]) {
+    const modeButtonElement = createButton(modeLabel, () =>
+      runFocusCommand("focus-projection", modeId)
+    );
+    projectionButtonsByMode.set(modeId, modeButtonElement);
+    projectionGroupElement.append(modeButtonElement);
   }
-  const focalInput = el("input");
-  Object.assign(focalInput, {
+  const focalLengthInputElement = createElement("input");
+  Object.assign(focalLengthInputElement, {
     type: "number",
     min: "18",
     max: "120",
     step: "1",
     value: "50"
   });
-  focalInput.setAttribute("aria-label", "焦段（mm）");
-  focalInput.addEventListener("change", () => {
-    const value = Number(focalInput.value);
-    if (!focalInput.value.trim() || !Number.isFinite(value)) {
-      focalInput.value = String(cameraState?.focalLength || 50);
+  focalLengthInputElement.setAttribute("aria-label", "焦段（mm）");
+  focalLengthInputElement.addEventListener("change", () => {
+    const typedFocalLength = Number(focalLengthInputElement.value);
+    if (!focalLengthInputElement.value.trim() || !Number.isFinite(typedFocalLength)) {
+      focalLengthInputElement.value = String(cameraState?.focalLength || 50);
       return;
     }
-    focalInput.value = String(Math.max(18, Math.min(120, value)));
-    runCommand("focus-focal-length", Number(focalInput.value));
+    focalLengthInputElement.value = String(Math.max(18, Math.min(120, typedFocalLength)));
+    runFocusCommand("focus-focal-length", Number(focalLengthInputElement.value));
   });
-  const focalField = el("label");
-  focalField.append(el("span", "焦段（mm）"), focalInput);
+  const focalLengthFieldElement = createElement("label");
+  focalLengthFieldElement.append(createElement("span", "焦段（mm）"), focalLengthInputElement);
   syncControls();
-  aside.append(status, projectionActions, focalField, el("p", "此视角用于点击小人后的聚焦展示，不弹出控制面板。"));
-  body.append(view, aside);
-  dialog.append(header, body);
-  doc.body.append(dialog);
-  dialog.addEventListener("cancel", event => {
-    event.preventDefault();
-    close();
+  panelElement.append(
+    statusElement,
+    projectionGroupElement,
+    focalLengthFieldElement,
+    createElement("p", "此视角用于点击小人后的聚焦展示，不弹出控制面板。")
+  );
+  bodyElement.append(viewElement, panelElement);
+  dialogElement.append(headerElement, bodyElement);
+  editorDocument.body.append(dialogElement);
+  dialogElement.addEventListener("cancel", cancelEvent => {
+    cancelEvent.preventDefault();
+    closeEditor();
   });
-  dialog.showModal();
-  syncAspectSize();
-  const security = structuredClone(properties);
-  security.security = {
+  dialogElement.showModal();
+  updatePreviewSize();
+  const draftProperties = structuredClone(properties);
+  draftProperties.security = {
     presenceSensors: [structuredClone(item)]
   };
-  security.floorSelection = item.floorId;
-  security.camera = security.floorCameras?.[item.floorId] || (properties.floorSelection === item.floorId ? properties.camera : null);
-  focusCommand = mountInteraction3d(stage, {
+  draftProperties.floorSelection = item.floorId;
+  draftProperties.camera =
+    draftProperties.floorCameras?.[item.floorId] ||
+    (properties.floorSelection === item.floorId ? properties.camera : null);
+  editorRuntime = mountInteraction3d(stageHostElement, {
     component: {
       ...component,
-      properties: security
+      properties: draftProperties
     },
     context: {
       document: panelDocument,
@@ -183,14 +213,14 @@ export function openPresenceFocusEditor({
     editing: true,
     editingModule: "security",
     onPresented: () => {
-      if (!presented && !closed) {
-        presented = true;
-        runCommand("edit-light-camera");
+      if (!isReady && !isClosed) {
+        isReady = true;
+        runFocusCommand("edit-light-camera");
       }
     },
-    onLoadError: error => {
-      status.textContent = error.message || String(error);
+    onLoadError: loadError => {
+      statusElement.textContent = loadError.message || String(loadError);
     }
   });
-  doc.dispatchEvent(new Event("hb-i3d-preview-scope"));
+  editorDocument.dispatchEvent(new Event("hb-i3d-preview-scope"));
 }

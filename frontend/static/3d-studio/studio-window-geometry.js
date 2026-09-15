@@ -1,16 +1,50 @@
-export function windowGeometryParts(width, height, sillHeight, divided = true) {
-  if (![width, height, sillHeight].every(Number.isFinite) || width <= 0 || height <= 0) {
+export function windowGeometryParts(windowWidth, windowHeight, sillHeight, allowDivided = true) {
+  if (
+    ![windowWidth, windowHeight, sillHeight].every(Number.isFinite) ||
+    windowWidth <= 0 ||
+    windowHeight <= 0
+  ) {
     return null;
   }
-  const frameWidth = Math.min(0.045, width / 4, height / 4);
-  const centerY = sillHeight + height / 2;
-  const glass = [[width - frameWidth, height - frameWidth, 0.025, 0, centerY, 0]];
-  const frames = [[width, frameWidth, 0.06, 0, sillHeight + frameWidth / 2, 0], [width, frameWidth, 0.06, 0, sillHeight + height - frameWidth / 2, 0], [frameWidth, height - 2 * frameWidth, 0.06, -(width - frameWidth) / 2, centerY, 0], [frameWidth, height - 2 * frameWidth, 0.06, (width - frameWidth) / 2, centerY, 0]];
-  const isDivided = divided && width > 1.2;
-  isDivided && frames.push([frameWidth * 0.7, height - 2 * frameWidth, 0.055, 0, centerY, 0]);
+  const frameThickness = Math.min(0.045, windowWidth / 4, windowHeight / 4);
+  const centerY = sillHeight + windowHeight / 2;
+  const glassParts = [
+    [windowWidth - frameThickness, windowHeight - frameThickness, 0.025, 0, centerY, 0]
+  ];
+  const frameParts = [
+    [windowWidth, frameThickness, 0.06, 0, sillHeight + frameThickness / 2, 0],
+    [windowWidth, frameThickness, 0.06, 0, sillHeight + windowHeight - frameThickness / 2, 0],
+    [
+      frameThickness,
+      windowHeight - frameThickness * 2,
+      0.06,
+      -(windowWidth - frameThickness) / 2,
+      centerY,
+      0
+    ],
+    [
+      frameThickness,
+      windowHeight - frameThickness * 2,
+      0.06,
+      (windowWidth - frameThickness) / 2,
+      centerY,
+      0
+    ]
+  ];
+  const isDivided = allowDivided && windowWidth > 1.2;
+  if (isDivided) {
+    frameParts.push([
+      frameThickness * 0.7,
+      windowHeight - frameThickness * 2,
+      0.055,
+      0,
+      centerY,
+      0
+    ]);
+  }
   return {
-    glass,
-    frames,
+    glass: glassParts,
+    frames: frameParts,
     divided: isDivided
   };
 }

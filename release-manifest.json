@@ -1,39 +1,39 @@
 {
   "artifacts": {
     "alembic_runtime": {
-      "files": 14,
-      "sha256": "66fafb0a0b7536e972cc80c9d63f97c26d25102a4e99c26b1e970f0a8dfbb5e8"
+      "files": 15,
+      "sha256": "f425a26948ac620eff76491b3c0c639b2c3b5d3d567dcdb3dafdf870588fef5e"
     },
     "backend": {
-      "files": 50,
-      "sha256": "624fd92d441eb021b77f7af132d77fdaaaf72addad5fb5bdc37ce42a1de8f44e"
+      "files": 53,
+      "sha256": "d2aa88a723036d801fcf840b8379bf5505d624980130250a4765369873df9f25"
     },
     "frontend": {
-      "files": 7852,
-      "sha256": "34526273ad4d3aa90e5d5adb4c8896f4cc13a2bad3ce962b9008d684832fe047"
+      "files": 7864,
+      "sha256": "93ce2c2b1b174b93258cd0720c73230a06ed3e642f67d582f65951c44efb1579"
     },
     "image": {
       "files": 61,
-      "sha256": "00337a8a2c14257c0f40d964f4628691212b8715cfff94c9b80e9f187d4be856"
+      "sha256": "c7d3345d531893c3d527980c84039a8e693bcceef5ef09a7f857478f14f9bc94"
     },
     "keys": {
       "files": 2,
       "sha256": "e49c95142588cc1db35b3db14d6a900bf1f13ea2b00a3b60267abe0e0479c7c1"
     },
     "migrations": {
-      "files": 14,
-      "sha256": "61f1019d71fe75ae0cdf38707653e323d65123b28b9e6adcdf15e7728fecf61a"
+      "files": 15,
+      "sha256": "0757157ea6d05d443fedb2f957dd1228f81de6ca82cacae0d532b6f589bda142"
     }
   },
   "customerFingerprintSha256": "1c332cd11682bcc51255b498d1ec0b977d475db58cc7409b8f390c2fcf3500a5",
   "files": {
-    "VERSION": "26e0ab83aa1ff6bd0ae3882787a92663aa19db128e1241ffc99375fb9ca0c121",
-    "alembic.ini": "2eb6b83f889d9449a1345d691697bc9f1e76eb7c331277544c671de455417696",
-    "sbom.cdx.json": "21fc1899b4f31cb1ed1acd529c2b9c7d2da9cb7079093deced210e4a34035147"
+    "VERSION": "a7711142bc1fc55c16b9147a1503a4f2c4717be5c1e4437772a047f52ef81db2",
+    "alembic.ini": "20b40e325f79c624b08d7467e454420d2d867e7ebbe0aacb18a41f8eebf1abea",
+    "sbom.cdx.json": "c953a7804b755fabc6cc0071db6e3c1fecc97e46480a4837d2abcafeb7a51979"
   },
   "product": "ha-bridge",
   "releaseBatch": "2026-09-a",
-  "releaseId": "8b3528fb02ef4fb48b30643ae9e57797",
+  "releaseId": "b8b761498e26327c91fefcb50cbaaa0b",
   "schemaVersion": 1,
-  "version": "0.5.3"
+  "version": "0.5.4"
 }

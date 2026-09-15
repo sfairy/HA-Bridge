@@ -1,104 +1,166 @@
 const REGION_LIGHT_LAYER = 30;
-const RECEIVER_KINDS = ["floor", "wall", "furniture"];
-const finiteNumber = (n, fallback = 0) => Number.isFinite(Number(n)) ? Number(n) : fallback;
-const clamp = (n, min, max) => Math.min(max, Math.max(min, n));
-const alignCapacity = count => Math.max(16, Math.ceil(count / 16) * 16);
-export const regionLightKey = (floorId, lightId) => JSON.stringify([String(floorId), String(lightId)]);
-function isRegionLightKey(key) {
+const REGION_KINDS = ["floor", "wall", "furniture"];
+const toFiniteNumber = (candidateValue, fallbackValue = 0) =>
+  Number.isFinite(Number(candidateValue)) ? Number(candidateValue) : fallbackValue;
+const clamp = (targetValue, minValue, maxValue) =>
+  Math.min(maxValue, Math.max(minValue, targetValue));
+const alignTo16 = sizeValue => Math.max(16, Math.ceil(sizeValue / 16) * 16);
+export const regionLightKey = (floorKeyId, lightKeyId) =>
+  JSON.stringify([String(floorKeyId), String(lightKeyId)]);
+function isRegionLightKey(keyString) {
   try {
-    const length = JSON.parse(key);
-    return Array.isArray(length) && length.length === 2 && length.every(part => typeof part == "string") && regionLightKey(...length) === key;
+    const parsedKey = JSON.parse(keyString);
+    return (
+      Array.isArray(parsedKey) &&
+      parsedKey.length === 2 &&
+      parsedKey.every(keyPart => typeof keyPart == "string") &&
+      regionLightKey(...parsedKey) === keyString
+    );
   } catch {
     return false;
   }
 }
-function normalizeOverrides(raw) {
-  const normalized = Object.create(null);
-  if (!raw || typeof raw != "object" || Array.isArray(raw)) {
-    return normalized;
+function sanitizeRegionOverrides(rawOverrides) {
+  const normalizedOverrides = Object.create(null);
+  if (!rawOverrides || typeof rawOverrides != "object" || Array.isArray(rawOverrides)) {
+    return normalizedOverrides;
   }
-  for (const [overrideKey, override] of Object.entries(raw)) {
-    if (!isRegionLightKey(overrideKey) || !override || typeof override != "object" || Array.isArray(override) || !["circle", "square", "ellipse", "strip"].includes(override.shape) || !["width", "depth"].every(prop => typeof override[prop] == "number" && Number.isFinite(override[prop])) || ["rotation", "softness"].some(prop => override[prop] !== undefined && (typeof override[prop] != "number" || !Number.isFinite(override[prop]))) || ["offsetX", "offsetZ"].some(prop => override[prop] !== undefined && (typeof override[prop] != "number" || !Number.isFinite(override[prop]))) || ["heightAbove", "heightBelow", "heightMin", "heightMax"].some(prop => override[prop] !== undefined && (typeof override[prop] != "number" || !Number.isFinite(override[prop]))) || override.heightMin !== undefined && override.heightMax !== undefined && override.heightMin > override.heightMax || override.moveCenterEnabled !== undefined && typeof override.moveCenterEnabled != "boolean") {
+  for (const [regionKey, override] of Object.entries(rawOverrides)) {
+    if (
+      !isRegionLightKey(regionKey) ||
+      !override ||
+      typeof override != "object" ||
+      Array.isArray(override) ||
+      !["circle", "square", "ellipse", "strip"].includes(override.shape) ||
+      !["width", "depth"].every(
+        dimensionField =>
+          typeof override[dimensionField] == "number" && Number.isFinite(override[dimensionField])
+      ) ||
+      ["rotation", "softness"].some(
+        numericField =>
+          override[numericField] !== undefined &&
+          (typeof override[numericField] != "number" || !Number.isFinite(override[numericField]))
+      ) ||
+      ["offsetX", "offsetZ"].some(
+        offsetField =>
+          override[offsetField] !== undefined &&
+          (typeof override[offsetField] != "number" || !Number.isFinite(override[offsetField]))
+      ) ||
+      ["heightAbove", "heightBelow", "heightMin", "heightMax"].some(
+        heightField =>
+          override[heightField] !== undefined &&
+          (typeof override[heightField] != "number" || !Number.isFinite(override[heightField]))
+      ) ||
+      (override.heightMin !== undefined &&
+        override.heightMax !== undefined &&
+        override.heightMin > override.heightMax) ||
+      (override.moveCenterEnabled !== undefined && typeof override.moveCenterEnabled != "boolean")
+    ) {
       continue;
     }
-    const rotation = override.rotation ?? 0;
-    const width = clamp(override.width, 0.5, 20);
-    normalized[overrideKey] = {
-      width: width,
+    const rotationDeg = override.rotation ?? 0;
+    const clampedWidth = clamp(override.width, 0.5, 20);
+    normalizedOverrides[regionKey] = {
+      width: clampedWidth,
       depth: clamp(override.depth, 0.5, 20),
-      rotation: (rotation % 360 + 540) % 360 - 180,
+      rotation: (((rotationDeg % 360) + 540) % 360) - 180,
       softness: clamp(override.softness ?? 1, 0.05, 1),
       shape: override.shape,
-      ...(override.heightMin !== undefined ? {
-        heightMin: clamp(override.heightMin, 0, 20)
-      } : {}),
-      ...(override.heightMax !== undefined ? {
-        heightMax: clamp(override.heightMax, 0, 20)
-      } : {}),
-      ...(override.heightAbove !== undefined ? {
-        heightAbove: clamp(override.heightAbove, 0, 20)
-      } : {}),
-      ...(override.heightBelow !== undefined ? {
-        heightBelow: clamp(override.heightBelow, 0, 20)
-      } : {}),
-      ...(override.offsetX !== undefined ? {
-        offsetX: clamp(override.offsetX, -100, 100)
-      } : {}),
-      ...(override.offsetZ !== undefined ? {
-        offsetZ: clamp(override.offsetZ, -100, 100)
-      } : {}),
-      ...(override.moveCenterEnabled !== undefined ? {
-        moveCenterEnabled: override.moveCenterEnabled
-      } : {})
+      ...(override.heightMin !== undefined
+        ? {
+            heightMin: clamp(override.heightMin, 0, 20)
+          }
+        : {}),
+      ...(override.heightMax !== undefined
+        ? {
+            heightMax: clamp(override.heightMax, 0, 20)
+          }
+        : {}),
+      ...(override.heightAbove !== undefined
+        ? {
+            heightAbove: clamp(override.heightAbove, 0, 20)
+          }
+        : {}),
+      ...(override.heightBelow !== undefined
+        ? {
+            heightBelow: clamp(override.heightBelow, 0, 20)
+          }
+        : {}),
+      ...(override.offsetX !== undefined
+        ? {
+            offsetX: clamp(override.offsetX, -100, 100)
+          }
+        : {}),
+      ...(override.offsetZ !== undefined
+        ? {
+            offsetZ: clamp(override.offsetZ, -100, 100)
+          }
+        : {}),
+      ...(override.moveCenterEnabled !== undefined
+        ? {
+            moveCenterEnabled: override.moveCenterEnabled
+          }
+        : {})
     };
   }
-  return normalized;
+  return normalizedOverrides;
 }
-function findUserData(object, key) {
-  for (let userData = object; userData; userData = userData.parent) {
-    if (userData.userData?.[key] !== undefined) {
-      return userData.userData[key];
+function findAncestorUserData(startObject, userDataKey) {
+  for (let ancestorObject = startObject; ancestorObject; ancestorObject = ancestorObject.parent) {
+    if (ancestorObject.userData?.[userDataKey] !== undefined) {
+      return ancestorObject.userData[userDataKey];
     }
   }
 }
-function isLitMaterial(material) {
-  return material && (material.userData?.hbDedicatedWall || material.isMeshStandardMaterial || material.isMeshPhysicalMaterial || material.isMeshPhongMaterial || material.isMeshLambertMaterial);
+function isRegionReceiverMaterial(materialCandidate) {
+  return (
+    materialCandidate &&
+    (materialCandidate.userData?.hbDedicatedWall ||
+      materialCandidate.isMeshStandardMaterial ||
+      materialCandidate.isMeshPhysicalMaterial ||
+      materialCandidate.isMeshPhongMaterial ||
+      materialCandidate.isMeshLambertMaterial)
+  );
 }
-function isUnderRoot(object, root) {
-  for (let parent = object; parent; parent = parent.parent) {
-    if (parent.visible === false) {
+function isVisibleWithin(startNode, rootNode) {
+  for (let currentNode = startNode; currentNode; currentNode = currentNode.parent) {
+    if (currentNode.visible === false) {
       return false;
     }
-    if (parent === root) {
+    if (currentNode === rootNode) {
       return true;
     }
   }
   return false;
 }
-function inferReceiverKind(mesh) {
-  const kindHint = findUserData(mesh, "regionReceiverKind");
-  if (RECEIVER_KINDS.includes(kindHint)) {
-    return kindHint;
+function classifyReceiverKind(candidateMesh) {
+  const declaredKind = findAncestorUserData(candidateMesh, "regionReceiverKind");
+  if (REGION_KINDS.includes(declaredKind)) {
+    return declaredKind;
   }
-  const modelLayer = findUserData(mesh, "modelLayer");
+  const modelLayer = findAncestorUserData(candidateMesh, "modelLayer");
   if (modelLayer === "items" || modelLayer === "lights") {
     return "furniture";
   }
-  if (modelLayer === "walls" || /wall/i.test(mesh.name || "")) {
+  if (modelLayer === "walls" || /wall/i.test(candidateMesh.name || "")) {
     return "wall";
   }
-  if (/floor/i.test(mesh.name || "")) {
+  if (/floor/i.test(candidateMesh.name || "")) {
     return "floor";
   }
-  const geometry = mesh.geometry;
+  const geometry = candidateMesh.geometry;
   if (geometry) {
     if (!geometry.boundingBox) {
       geometry.computeBoundingBox?.();
     }
-    const box = geometry.boundingBox;
-    if (box) {
-      const dims = [box.max.x - box.min.x, box.max.y - box.min.y, box.max.z - box.min.z].sort((a, b) => a - b);
-      if (!modelLayer && dims[0] < 0.18 && dims[1] > 1.5) {
+    const boundingBox = geometry.boundingBox;
+    if (boundingBox) {
+      const sortedExtent = [
+        boundingBox.max.x - boundingBox.min.x,
+        boundingBox.max.y - boundingBox.min.y,
+        boundingBox.max.z - boundingBox.min.z
+      ].sort((sizeA, sizeB) => sizeA - sizeB);
+      if (!modelLayer && sortedExtent[0] < 0.18 && sortedExtent[1] > 1.5) {
         return "floor";
       }
     }
@@ -109,81 +171,116 @@ function inferReceiverKind(mesh) {
     return "wall";
   }
 }
-function setVector4Changed(target, nextX, nextY, nextZ, nextW) {
-  const changed = target.x !== nextX || target.y !== nextY || target.z !== nextZ || target.w !== nextW;
-  target.set(nextX, nextY, nextZ, nextW);
-  return changed;
+function setVector4IfChanged(targetVector, xComponent, yComponent, zComponent, wComponent) {
+  const didChange =
+    targetVector.x !== xComponent ||
+    targetVector.y !== yComponent ||
+    targetVector.z !== zComponent ||
+    targetVector.w !== wComponent;
+  targetVector.set(xComponent, yComponent, zComponent, wComponent);
+  return didChange;
 }
-function regionLightShaderPrelude(capacity) {
-  return "\n#define PLAN2_LIGHT_CAPACITY " + capacity.capacity + "\n#define PLAN2_TEXTURE_DATA " + (capacity.textureMode ? 1 : 0) + "\nuniform int plan2LightCount;\nuniform float plan2Gain;\nuniform float plan2SunShadowStrength;\nuniform mat4 plan2MotionToLayout;\nvarying vec3 vPlan2WorldPosition;\n#if PLAN2_TEXTURE_DATA\nuniform sampler2D plan2LightData;\nvec4 plan2ReadData(int slot, float column) {\n  return texture2D(plan2LightData, vec2((column + 0.5) / 4.0, (float(slot) + 0.5) / float(PLAN2_LIGHT_CAPACITY)));\n}\n#else\nuniform vec4 plan2Centers[PLAN2_LIGHT_CAPACITY];\nuniform vec4 plan2Extents[PLAN2_LIGHT_CAPACITY];\nuniform vec4 plan2Colors[PLAN2_LIGHT_CAPACITY];\nuniform vec4 plan2Axes[PLAN2_LIGHT_CAPACITY];\n#endif\nvec3 plan2SurfaceLight(vec3 worldPoint) {\n  worldPoint = (plan2MotionToLayout * vec4(worldPoint, 1.0)).xyz;\n  vec3 weightedColor = vec3(0.0);\n  float totalWeight = 0.0;\n  float coverage = 0.0;\n  for (int slot = 0; slot < PLAN2_LIGHT_CAPACITY; slot++) {\n    if (slot >= plan2LightCount) break;\n    #if PLAN2_TEXTURE_DATA\n      vec4 center = plan2ReadData(slot, 0.0);\n    #else\n      vec4 center = plan2Centers[slot];\n    #endif\n    if (center.w < 0.00001) continue;\n    #if PLAN2_TEXTURE_DATA\n      vec4 extent = plan2ReadData(slot, 1.0);\n      vec4 axis = plan2ReadData(slot, 3.0);\n    #else\n      vec4 extent = plan2Extents[slot];\n      vec4 axis = plan2Axes[slot];\n    #endif\n    vec3 offset = worldPoint - center.xyz;\n    vec3 localPoint = vec3(dot(offset.xz, axis.xy), offset.y, dot(offset.xz, vec2(-axis.y, axis.x)));\n    float verticalDistance = max(abs(localPoint.y) - extent.y, 0.0);\n    if (verticalDistance >= extent.w) continue;\n    float fadeStart = axis.z > 1.5 ? 1.0 - clamp(axis.w, 0.05, 1.0) : 0.0;\n    float squareFalloff = 1.0;\n    float radialDistance;\n    if (axis.z > 3.5) {\n      // Retain straight zero-light edges, but fade each axis independently.\n      // Using max(x,z) for brightness changes derivatives on the diagonals,\n      // making four visible triangular wedges. max is only a bounds check.\n      vec2 fromCenter = abs(localPoint.xz) / max(extent.xz, vec2(0.001));\n      radialDistance = max(fromCenter.x, fromCenter.y);\n      vec2 edgeFade = vec2(1.0) - smoothstep(vec2(fadeStart), vec2(1.0), fromCenter);\n      squareFalloff = edgeFade.x * edgeFade.y;\n    } else if (axis.z > 2.5) {\n      // Edited strips are rounded rectangles with their zero-light boundary\n      // exactly at the requested width/depth, including both rounded ends.\n      float radius = max(min(extent.x, extent.z), 0.001);\n      vec2 fromCore = max(abs(localPoint.xz) - (extent.xz - vec2(radius)), vec2(0.0));\n      radialDistance = length(fromCore) / radius;\n    } else if (axis.z > 0.5 && axis.z < 1.5) {\n      // A strip is a line source. Brightness falls away from the line, rather\n      // than remaining constant throughout a wide rectangular room volume.\n      vec2 fromSegment = vec2(max(abs(localPoint.x) - extent.x, 0.0), localPoint.z);\n      radialDistance = length(fromSegment) / max(extent.z, 0.001);\n    } else {\n      radialDistance = length(localPoint.xz / max(extent.xz, vec2(0.001)));\n    }\n    if (radialDistance >= 1.0) continue;\n    float horizontalFalloff = axis.z > 3.5 ? squareFalloff : 1.0 - smoothstep(fadeStart, 1.0, radialDistance);\n    float influence = horizontalFalloff\n      * (1.0 - smoothstep(0.0, extent.w, verticalDistance)) * clamp(center.w, 0.0, 1.0);\n    #if PLAN2_TEXTURE_DATA\n      vec3 lightColor = plan2ReadData(slot, 2.0).rgb;\n    #else\n      vec3 lightColor = plan2Colors[slot].rgb;\n    #endif\n    weightedColor += lightColor * influence;\n    totalWeight += influence;\n    coverage += (1.0 - coverage) * influence;\n  }\n  // Smooth bounded union: max() produced a derivative crease wherever two\n  // lamps exchanged dominance. This preserves single-lamp falloff and blends\n  // overlaps continuously, with coverage capped at one rather than added HDR.\n  return weightedColor / max(totalWeight, 0.00001) * coverage;\n}\n";
+function buildShaderChunk(volumeGroup) {
+  return (
+    "\n#define PLAN2_LIGHT_CAPACITY " +
+    volumeGroup.capacity +
+    "\n#define PLAN2_TEXTURE_DATA " +
+    (volumeGroup.textureMode ? 1 : 0) +
+    "\nuniform int plan2LightCount;\nuniform float plan2Gain;\nuniform float plan2SunShadowStrength;\nuniform mat4 plan2MotionToLayout;\nvarying vec3 vPlan2WorldPosition;\n#if PLAN2_TEXTURE_DATA\nuniform sampler2D plan2LightData;\nvec4 plan2ReadData(int slot, float column) {\n  return texture2D(plan2LightData, vec2((column + 0.5) / 4.0, (float(slot) + 0.5) / float(PLAN2_LIGHT_CAPACITY)));\n}\n#else\nuniform vec4 plan2Centers[PLAN2_LIGHT_CAPACITY];\nuniform vec4 plan2Extents[PLAN2_LIGHT_CAPACITY];\nuniform vec4 plan2Colors[PLAN2_LIGHT_CAPACITY];\nuniform vec4 plan2Axes[PLAN2_LIGHT_CAPACITY];\n#endif\nvec3 plan2SurfaceLight(vec3 worldPoint) {\n  worldPoint = (plan2MotionToLayout * vec4(worldPoint, 1.0)).xyz;\n  vec3 weightedColor = vec3(0.0);\n  float totalWeight = 0.0;\n  float coverage = 0.0;\n  for (int slot = 0; slot < PLAN2_LIGHT_CAPACITY; slot++) {\n    if (slot >= plan2LightCount) break;\n    #if PLAN2_TEXTURE_DATA\n      vec4 center = plan2ReadData(slot, 0.0);\n    #else\n      vec4 center = plan2Centers[slot];\n    #endif\n    if (center.w < 0.00001) continue;\n    #if PLAN2_TEXTURE_DATA\n      vec4 extent = plan2ReadData(slot, 1.0);\n      vec4 axis = plan2ReadData(slot, 3.0);\n    #else\n      vec4 extent = plan2Extents[slot];\n      vec4 axis = plan2Axes[slot];\n    #endif\n    vec3 offset = worldPoint - center.xyz;\n    vec3 localPoint = vec3(dot(offset.xz, axis.xy), offset.y, dot(offset.xz, vec2(-axis.y, axis.x)));\n    float verticalDistance = max(abs(localPoint.y) - extent.y, 0.0);\n    if (verticalDistance >= extent.w) continue;\n    float fadeStart = axis.z > 1.5 ? 1.0 - clamp(axis.w, 0.05, 1.0) : 0.0;\n    float squareFalloff = 1.0;\n    float radialDistance;\n    if (axis.z > 3.5) {\n      // Retain straight zero-light edges, but fade each axis independently.\n      // Using max(x,z) for brightness changes derivatives on the diagonals,\n      // making four visible triangular wedges. max is only a bounds check.\n      vec2 fromCenter = abs(localPoint.xz) / max(extent.xz, vec2(0.001));\n      radialDistance = max(fromCenter.x, fromCenter.y);\n      vec2 edgeFade = vec2(1.0) - smoothstep(vec2(fadeStart), vec2(1.0), fromCenter);\n      squareFalloff = edgeFade.x * edgeFade.y;\n    } else if (axis.z > 2.5) {\n      // Edited strips are rounded rectangles with their zero-light boundary\n      // exactly at the requested width/depth, including both rounded ends.\n      float radius = max(min(extent.x, extent.z), 0.001);\n      vec2 fromCore = max(abs(localPoint.xz) - (extent.xz - vec2(radius)), vec2(0.0));\n      radialDistance = length(fromCore) / radius;\n    } else if (axis.z > 0.5 && axis.z < 1.5) {\n      // A strip is a line source. Brightness falls away from the line, rather\n      // than remaining constant throughout a wide rectangular room volume.\n      vec2 fromSegment = vec2(max(abs(localPoint.x) - extent.x, 0.0), localPoint.z);\n      radialDistance = length(fromSegment) / max(extent.z, 0.001);\n    } else {\n      radialDistance = length(localPoint.xz / max(extent.xz, vec2(0.001)));\n    }\n    if (radialDistance >= 1.0) continue;\n    float horizontalFalloff = axis.z > 3.5 ? squareFalloff : 1.0 - smoothstep(fadeStart, 1.0, radialDistance);\n    float influence = horizontalFalloff\n      * (1.0 - smoothstep(0.0, extent.w, verticalDistance)) * clamp(center.w, 0.0, 1.0);\n    #if PLAN2_TEXTURE_DATA\n      vec3 lightColor = plan2ReadData(slot, 2.0).rgb;\n    #else\n      vec3 lightColor = plan2Colors[slot].rgb;\n    #endif\n    weightedColor += lightColor * influence;\n    totalWeight += influence;\n    coverage += (1.0 - coverage) * influence;\n  }\n  // Smooth bounded union: max() produced a derivative crease wherever two\n  // lamps exchanged dominance. This preserves single-lamp falloff and blends\n  // overlaps continuously, with coverage capped at one rather than added HDR.\n  return weightedColor / max(totalWeight, 0.00001) * coverage;\n}\n"
+  );
 }
 export function sampleRegionVolumes(volumes, worldPoint, gain = 1) {
   let coverage = 0;
-  let weightSum = 0;
-  const colorSum = [0, 0, 0];
+  let totalWeight = 0;
+  const accumulatedColor = [0, 0, 0];
   for (const volume of volumes) {
-    const {
-      center,
-      extent,
-      color,
-      axis
-    } = volume;
+    const { center: center, extent: extent, color: color, axis: axis } = volume;
     if (center.w <= 0) {
       continue;
     }
-    const deltaX = worldPoint.x - center.x;
-    const deltaY = worldPoint.y - center.y;
-    const deltaZ = worldPoint.z - center.z;
-    const localX = deltaX * axis.x + deltaZ * axis.y;
-    const localZ = -deltaX * axis.y + deltaZ * axis.x;
+    const offsetX = worldPoint.x - center.x;
+    const offsetY = worldPoint.y - center.y;
+    const offsetZ = worldPoint.z - center.z;
+    const localX = offsetX * axis.x + offsetZ * axis.y;
+    const localZ = -offsetX * axis.y + offsetZ * axis.x;
     const cornerRadius = Math.max(Math.min(extent.x, extent.z), 0.001);
-    const radialDistance = axis.z > 3.5 ? Math.max(Math.abs(localX) / Math.max(extent.x, 0.001), Math.abs(localZ) / Math.max(extent.z, 0.001)) : axis.z > 2.5 ? Math.hypot(Math.max(Math.abs(localX) - (extent.x - cornerRadius), 0), Math.max(Math.abs(localZ) - (extent.z - cornerRadius), 0)) / cornerRadius : axis.z > 0.5 && axis.z < 1.5 ? Math.hypot(Math.max(Math.abs(localX) - extent.x, 0), localZ) / Math.max(extent.z, 0.001) : Math.hypot(localX / Math.max(extent.x, 0.001), localZ / Math.max(extent.z, 0.001));
-    const fadeStartShape = axis.z > 1.5 ? 1 - clamp(axis.w, 0.05, 1) : 0;
-    const radialT = clamp((radialDistance - fadeStartShape) / (1 - fadeStartShape), 0, 1);
-    const verticalT = clamp(Math.max(Math.abs(deltaY) - extent.y, 0) / extent.w, 0, 1);
-    let horizontalFalloff = 1 - radialT * radialT * (3 - radialT * 2);
+    const radialDistance =
+      axis.z > 3.5
+        ? Math.max(
+            Math.abs(localX) / Math.max(extent.x, 0.001),
+            Math.abs(localZ) / Math.max(extent.z, 0.001)
+          )
+        : axis.z > 2.5
+          ? Math.hypot(
+              Math.max(Math.abs(localX) - (extent.x - cornerRadius), 0),
+              Math.max(Math.abs(localZ) - (extent.z - cornerRadius), 0)
+            ) / cornerRadius
+          : axis.z > 0.5 && axis.z < 1.5
+            ? Math.hypot(Math.max(Math.abs(localX) - extent.x, 0), localZ) /
+              Math.max(extent.z, 0.001)
+            : Math.hypot(localX / Math.max(extent.x, 0.001), localZ / Math.max(extent.z, 0.001));
+    const fadeStart = axis.z > 1.5 ? 1 - clamp(axis.w, 0.05, 1) : 0;
+    const normalizedDistance = clamp((radialDistance - fadeStart) / (1 - fadeStart), 0, 1);
+    const verticalRatio = clamp(Math.max(Math.abs(offsetY) - extent.y, 0) / extent.w, 0, 1);
+    let horizontalFalloff =
+      1 - normalizedDistance * normalizedDistance * (3 - normalizedDistance * 2);
     if (axis.z > 3.5) {
-      const edgeXT = clamp((Math.abs(localX) / Math.max(extent.x, 0.001) - fadeStartShape) / (1 - fadeStartShape), 0, 1);
-      const edgeZT = clamp((Math.abs(localZ) / Math.max(extent.z, 0.001) - fadeStartShape) / (1 - fadeStartShape), 0, 1);
-      horizontalFalloff = (1 - edgeXT * edgeXT * (3 - edgeXT * 2)) * (1 - edgeZT * edgeZT * (3 - edgeZT * 2));
+      const xEdgeRatio = clamp(
+        (Math.abs(localX) / Math.max(extent.x, 0.001) - fadeStart) / (1 - fadeStart),
+        0,
+        1
+      );
+      const zEdgeRatio = clamp(
+        (Math.abs(localZ) / Math.max(extent.z, 0.001) - fadeStart) / (1 - fadeStart),
+        0,
+        1
+      );
+      horizontalFalloff =
+        (1 - xEdgeRatio * xEdgeRatio * (3 - xEdgeRatio * 2)) *
+        (1 - zEdgeRatio * zEdgeRatio * (3 - zEdgeRatio * 2));
     }
-    const influence = horizontalFalloff * (1 - verticalT * verticalT * (3 - verticalT * 2)) * clamp(center.w, 0, 1);
-    weightSum += influence;
+    const influence =
+      horizontalFalloff *
+      (1 - verticalRatio * verticalRatio * (3 - verticalRatio * 2)) *
+      clamp(center.w, 0, 1);
+    totalWeight += influence;
     coverage += (1 - coverage) * influence;
-    colorSum[0] += color.x * influence;
-    colorSum[1] += color.y * influence;
-    colorSum[2] += color.z * influence;
+    accumulatedColor[0] += color.x * influence;
+    accumulatedColor[1] += color.y * influence;
+    accumulatedColor[2] += color.z * influence;
   }
-  return colorSum.map(channel => weightSum > 0 ? channel / weightSum * coverage * gain : 0);
+  return accumulatedColor.map(channelValue =>
+    totalWeight > 0 ? (channelValue / totalWeight) * coverage * gain : 0
+  );
 }
 export function createRegionLightController({
-  THREE,
-  renderer,
-  scene,
-  getRoot,
-  contactShadows: getUniforms = null,
-  requestFrame = () => {}
+  THREE: THREE,
+  renderer: renderer,
+  scene: scene,
+  getRoot: getRoot,
+  contactShadows: contactShadows = null,
+  requestFrame: requestFrame = () => {}
 }) {
-  const values = new Map();
-  const set = new Set();
-  const map = new Map();
-  const mapCurrent = new WeakMap();
-  const get = new Map();
-  const getCurrent = new Map();
-  const clear = new Set();
-  const y = new THREE.Vector3();
-  const setFromMatrixPosition = new THREE.Vector3();
-  const copy = new THREE.Vector3();
-  const elements = new THREE.Matrix4();
+  const registrationsByLight = new Map();
+  const listenedNodes = new Set();
+  const assignmentsByMesh = new Map();
+  const sourceMaterialByClone = new WeakMap();
+  const clonesByMaterial = new Map();
+  const groupsByKey = new Map();
+  const retainedRoots = new Set();
+  const lightWorldPosition = new THREE.Vector3();
+  const floorRootPosition = new THREE.Vector3();
+  const sampleWorldPoint = new THREE.Vector3();
+  const lightWorldMatrix = new THREE.Matrix4();
   let motionTransformProvider = null;
-  const plan2ViewToWorld = {
+  const viewToWorldUniform = {
     value: new THREE.Matrix4()
   };
-  const floorBrightness = {
+  const floorBrightnessUniform = {
     value: 1
   };
-  const length = [];
-  const rangeScale = {
+  const volumeInputsScratch = [];
+  const settings = {
     gain: 3,
     floorGain: 1,
     wallGain: 0.9,
@@ -191,7 +288,7 @@ export function createRegionLightController({
     rangeScale: 0.8,
     sunShadowStrength: 0.6
   };
-  const structureScans = {
+  const stats = {
     mode: "region",
     registered: 0,
     slotCount: 0,
@@ -209,28 +306,28 @@ export function createRegionLightController({
     textureFloors: 0,
     disposed: false
   };
-  let traverse = null;
-  let dirty = true;
-  let disposed = false;
-  let push = [];
-  let setCurrent = new Map();
+  let rootObject = null;
+  let shouldRescanStructure = true;
+  let isDisposed = false;
+  let nativeLights = [];
+  let registrationsByFloorId = new Map();
   let overrides = Object.create(null);
-  let has = null;
-  let inMotion = false;
-  let motionKeepLit = false;
-  let fadeStart = null;
-  const invalidate = () => {
-    dirty = true;
+  let previewKeys = null;
+  let isMotionEnabled = false;
+  let isMotionInstant = false;
+  let motionFadeStartMs = null;
+  const markStructureDirty = () => {
+    shouldRescanStructure = true;
   };
-  const apply = scene.onBeforeRender;
-  function ensureUniformGroup(floorId, kind, lightCount) {
-    const key = floorId + "\0" + kind;
-    let texture = getCurrent.get(key);
-    if (!texture) {
-      texture = {
-        key,
-        floorId: floorId,
-        kind,
+  const originalOnBeforeRender = scene.onBeforeRender;
+  function ensureLightGroup(groupFloorId, requestedKind, lightCount) {
+    const groupKey = groupFloorId + "\0" + requestedKind;
+    let lightGroup = groupsByKey.get(groupKey);
+    if (!lightGroup) {
+      lightGroup = {
+        key: groupKey,
+        floorId: groupFloorId,
+        kind: requestedKind,
         capacity: 0,
         textureMode: false,
         slots: [],
@@ -257,7 +354,7 @@ export function createRegionLightController({
           plan2Axes: {
             value: []
           },
-          plan2ViewToWorld,
+          plan2ViewToWorld: viewToWorldUniform,
           plan2MotionToLayout: {
             value: new THREE.Matrix4()
           },
@@ -266,386 +363,591 @@ export function createRegionLightController({
           }
         }
       };
-      if (kind !== "wall" && getUniforms) {
-        Object.assign(texture.uniforms, getUniforms.getUniforms(floorId));
+      if (requestedKind !== "wall" && contactShadows) {
+        Object.assign(lightGroup.uniforms, contactShadows.getUniforms(groupFloorId));
       }
-      getCurrent.set(key, texture);
+      groupsByKey.set(groupKey, lightGroup);
     }
-    const length = alignCapacity(lightCount);
-    if (texture.capacity !== length) {
-      texture.capacity = length;
-      const maxFragmentUniforms = finiteNumber(renderer?.capabilities?.maxFragmentUniforms, 1024);
-      texture.textureMode = length * 4 + 128 > maxFragmentUniforms;
-      texture.texture?.dispose();
-      texture.texture = null;
-      texture.slots = Array.from({
-        length: length
-      }, () => ({
-        center: new THREE.Vector4(),
-        extent: new THREE.Vector4(),
-        color: new THREE.Vector4(),
-        axis: new THREE.Vector4()
-      }));
-      for (const [uniformName, slotProp] of [["plan2Centers", "center"], ["plan2Extents", "extent"], ["plan2Colors", "color"], ["plan2Axes", "axis"]]) {
-        texture.uniforms[uniformName].value = texture.slots.map(slot => slot[slotProp]);
+    const capacity = alignTo16(lightCount);
+    if (lightGroup.capacity !== capacity) {
+      lightGroup.capacity = capacity;
+      const maxFragmentUniforms = toFiniteNumber(renderer?.capabilities?.maxFragmentUniforms, 1024);
+      lightGroup.textureMode = capacity * 4 + 128 > maxFragmentUniforms;
+      lightGroup.texture?.dispose();
+      lightGroup.texture = null;
+      lightGroup.slots = Array.from(
+        {
+          length: capacity
+        },
+        () => ({
+          center: new THREE.Vector4(),
+          extent: new THREE.Vector4(),
+          color: new THREE.Vector4(),
+          axis: new THREE.Vector4()
+        })
+      );
+      for (const [uniformName, slotProperty] of [
+        ["plan2Centers", "center"],
+        ["plan2Extents", "extent"],
+        ["plan2Colors", "color"],
+        ["plan2Axes", "axis"]
+      ]) {
+        lightGroup.uniforms[uniformName].value = lightGroup.slots.map(slot => slot[slotProperty]);
       }
-      if (texture.textureMode) {
-        const maxTextureSize = finiteNumber(renderer?.capabilities?.maxTextureSize, 4096);
-        if (length > maxTextureSize) {
-          throw new RangeError("区域灯数量 " + lightCount + " 超出本机数据纹理容量 " + maxTextureSize);
+      if (lightGroup.textureMode) {
+        const maxTextureSize = toFiniteNumber(renderer?.capabilities?.maxTextureSize, 4096);
+        if (capacity > maxTextureSize) {
+          throw new RangeError(
+            "区域灯数量 " + lightCount + " 超出本机数据纹理容量 " + maxTextureSize
+          );
         }
-        texture.texture = new THREE.DataTexture(new Float32Array(length * 16), 4, length, THREE.RGBAFormat, THREE.FloatType);
-        texture.texture.minFilter = texture.texture.magFilter = THREE.NearestFilter;
-        texture.texture.generateMipmaps = false;
-        texture.texture.needsUpdate = true;
+        lightGroup.texture = new THREE.DataTexture(
+          new Float32Array(capacity * 16),
+          4,
+          capacity,
+          THREE.RGBAFormat,
+          THREE.FloatType
+        );
+        lightGroup.texture.minFilter = lightGroup.texture.magFilter = THREE.NearestFilter;
+        lightGroup.texture.generateMipmaps = false;
+        lightGroup.texture.needsUpdate = true;
       }
-      texture.uniforms.plan2LightData.value = texture.texture;
-      for (const needsUpdate of texture.materials) {
-        needsUpdate.needsUpdate = true;
+      lightGroup.uniforms.plan2LightData.value = lightGroup.texture;
+      for (const cachedMaterial of lightGroup.materials) {
+        cachedMaterial.needsUpdate = true;
       }
     }
-    texture.uniforms.plan2LightCount.value = lightCount;
-    return texture;
+    lightGroup.uniforms.plan2LightCount.value = lightCount;
+    return lightGroup;
   }
-  function wrapRegionMaterial(transmission, floorId, kind, add, plan2DetailedSurface = false, floorTone = false) {
-    const sourceMaterial = transmission?.environmentSourceMaterial;
-    if (sourceMaterial && mapCurrent.has(sourceMaterial)) {
-      add.add(sourceMaterial);
-      return transmission;
+  function getRegionMaterial(
+    sourceMaterial,
+    materialFloorId,
+    materialKind,
+    resultMaterials,
+    isDetailedSurface = false,
+    isFloorTone = false
+  ) {
+    const environmentSourceMaterial = sourceMaterial?.environmentSourceMaterial;
+    if (environmentSourceMaterial && sourceMaterialByClone.has(environmentSourceMaterial)) {
+      resultMaterials.add(environmentSourceMaterial);
+      return sourceMaterial;
     }
-    transmission = mapCurrent.get(transmission) || transmission;
-    if (!isLitMaterial(transmission)) {
-      return transmission;
+    sourceMaterial = sourceMaterialByClone.get(sourceMaterial) || sourceMaterial;
+    if (!isRegionReceiverMaterial(sourceMaterial)) {
+      return sourceMaterial;
     }
-    let items = get.get(transmission);
-    if (!items) {
-      items = new Map();
-      get.set(transmission, items);
+    let materialClones = clonesByMaterial.get(sourceMaterial);
+    if (!materialClones) {
+      materialClones = new Map();
+      clonesByMaterial.set(sourceMaterial, materialClones);
     }
-    const groupKey = floorId + "\0" + kind;
-    const variantKey = groupKey + "\0" + (plan2DetailedSurface ? "detailed" : "simple") + (floorTone ? "-floor-tone" : "");
-    let userData3 = items.get(variantKey);
-    const uniforms = getCurrent.get(groupKey);
-    if (!userData3) {
-      userData3 = transmission.clone();
-      transmission.userData.hbDedicatedWall && (userData3.color = transmission.color.clone());
-      userData3.name = (transmission.name || transmission.type || "material") + " / region " + kind;
-      const call = transmission.onBeforeCompile;
-      userData3.onBeforeCompile = function (fragmentShader, rendererRef) {
-        call?.call(this, fragmentShader, rendererRef);
-        Object.assign(fragmentShader.uniforms, uniforms.uniforms);
-        if (floorTone) {
-          fragmentShader.uniforms.plan2FloorBrightness = floorBrightness;
-          fragmentShader.fragmentShader = "uniform float plan2FloorBrightness;\n" + fragmentShader.fragmentShader;
-          fragmentShader.fragmentShader = fragmentShader.fragmentShader.replace("#include <color_fragment>", "#include <color_fragment>\ndiffuseColor.rgb *= plan2FloorBrightness;");
+    const materialGroupKey = materialFloorId + "\0" + materialKind;
+    const variantKey =
+      materialGroupKey +
+      "\0" +
+      (isDetailedSurface ? "detailed" : "simple") +
+      (isFloorTone ? "-floor-tone" : "");
+    let cloneMaterial = materialClones.get(variantKey);
+    const materialGroup = groupsByKey.get(materialGroupKey);
+    if (!cloneMaterial) {
+      cloneMaterial = sourceMaterial.clone();
+      if (sourceMaterial.userData.hbDedicatedWall) {
+        cloneMaterial.color = sourceMaterial.color.clone();
+      }
+      cloneMaterial.name =
+        (sourceMaterial.name || sourceMaterial.type || "material") + " / region " + materialKind;
+      const originalOnBeforeCompile = sourceMaterial.onBeforeCompile;
+      cloneMaterial.onBeforeCompile = function (shader, webglRenderer) {
+        originalOnBeforeCompile?.call(this, shader, webglRenderer);
+        Object.assign(shader.uniforms, materialGroup.uniforms);
+        if (isFloorTone) {
+          shader.uniforms.plan2FloorBrightness = floorBrightnessUniform;
+          shader.fragmentShader = "uniform float plan2FloorBrightness;\n" + shader.fragmentShader;
+          shader.fragmentShader = shader.fragmentShader.replace(
+            "#include <color_fragment>",
+            "#include <color_fragment>\ndiffuseColor.rgb *= plan2FloorBrightness;"
+          );
         }
-        fragmentShader.uniforms.plan2ContactViewToWorld = uniforms.uniforms.plan2ViewToWorld;
-        fragmentShader.vertexShader = "uniform mat4 plan2ViewToWorld;\nvarying vec3 vPlan2WorldPosition;\n" + fragmentShader.vertexShader;
-        const projectVertexInclude = "#include <project_vertex>";
-        if (!fragmentShader.vertexShader.includes(projectVertexInclude)) {
+        shader.uniforms.plan2ContactViewToWorld = materialGroup.uniforms.plan2ViewToWorld;
+        shader.vertexShader =
+          "uniform mat4 plan2ViewToWorld;\nvarying vec3 vPlan2WorldPosition;\n" +
+          shader.vertexShader;
+        const PROJECT_VERTEX_INCLUDE = "#include <project_vertex>";
+        if (!shader.vertexShader.includes(PROJECT_VERTEX_INCLUDE)) {
           throw new Error("区域灯材质缺少 project_vertex");
         }
-        fragmentShader.vertexShader = fragmentShader.vertexShader.replace(projectVertexInclude, projectVertexInclude + "\nvPlan2WorldPosition = (plan2ViewToWorld * mvPosition).xyz;");
-        fragmentShader.fragmentShader = regionLightShaderPrelude(uniforms) + fragmentShader.fragmentShader;
-        if (transmission.userData.hbDedicatedWall) {
-          fragmentShader.uniforms.diffuse = {
-            value: userData3.color
+        shader.vertexShader = shader.vertexShader.replace(
+          PROJECT_VERTEX_INCLUDE,
+          PROJECT_VERTEX_INCLUDE + "\nvPlan2WorldPosition = (plan2ViewToWorld * mvPosition).xyz;"
+        );
+        shader.fragmentShader = buildShaderChunk(materialGroup) + shader.fragmentShader;
+        if (sourceMaterial.userData.hbDedicatedWall) {
+          shader.uniforms.diffuse = {
+            value: cloneMaterial.color
           };
-          fragmentShader.uniforms.opacity = {
+          shader.uniforms.opacity = {
             get value() {
-              return userData3.opacity;
+              return cloneMaterial.opacity;
             }
           };
-          structureScans.shaderCompiles += 1;
+          stats.shaderCompiles += 1;
           return;
         }
-        const lightsFragmentEnd = "#include <lights_fragment_end>";
-        if (!fragmentShader.fragmentShader.includes(lightsFragmentEnd)) {
+        const LIGHTS_FRAGMENT_END_INCLUDE = "#include <lights_fragment_end>";
+        if (!shader.fragmentShader.includes(LIGHTS_FRAGMENT_END_INCLUDE)) {
           throw new Error("区域灯材质缺少 lights_fragment_end");
         }
-        const sunShadowSnippet = kind === "wall" ? "" : "\n          #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0\n            if (receiveShadow && plan2SunShadowStrength > 0.0 && directionalLightShadows[0].shadowIntensity > 0.0) {\n              // The studio's single shadow-casting directional light is the\n              // first shadow slot. Reuse its resident VSM map; no new capture.\n              DirectionalLightShadow plan2SunShadow = directionalLightShadows[0];\n              plan2ShadowMask = getShadow(directionalShadowMap[0], plan2SunShadow.shadowMapSize,\n                min(1.0, plan2SunShadow.shadowIntensity * plan2SunShadowStrength / 0.18),\n                plan2SunShadow.shadowBias, plan2SunShadow.shadowRadius, vDirectionalShadowCoord[0]);\n            }\n          #endif";
-        fragmentShader.fragmentShader = fragmentShader.fragmentShader.replace(lightsFragmentEnd, lightsFragmentEnd + "\nvec3 plan2ReceivingColor = mix(diffuseColor.rgb, sqrt(max(diffuseColor.rgb, vec3(0.0))), 0.6);\n          float plan2ShadowMask = 1.0;" + sunShadowSnippet + "\n          reflectedLight.indirectDiffuse += plan2ReceivingColor * plan2SurfaceLight(vPlan2WorldPosition) * plan2Gain * plan2ShadowMask;");
-        if (kind !== "wall" && getUniforms) {
-          fragmentShader.fragmentShader = "uniform sampler2D plan2ContactMap;\n            uniform mat4 plan2ContactTransform;\n            uniform vec4 plan2ContactBounds;\n            uniform float plan2ContactY, plan2ContactOpacity;\n            uniform sampler2D plan2SurfaceMap;\n            uniform vec4 plan2SurfaceBounds;\n            uniform sampler2D plan2SurfaceLookup;\n            uniform vec2 plan2SurfaceLayout;\n            uniform mat4 plan2ContactViewToWorld;\n            uniform float plan2SurfaceOpacity;\n" + fragmentShader.fragmentShader;
-          fragmentShader.fragmentShader = fragmentShader.fragmentShader.replace("#include <opaque_fragment>", "\n            vec3 contactPosition = (plan2ContactTransform * vec4(vPlan2WorldPosition, 1.0)).xyz;\n            vec2 contactUv = (contactPosition.xz - plan2ContactBounds.xy) / plan2ContactBounds.zw;\n            float contactHeight = contactPosition.y - plan2ContactY;\n            if (contactHeight >= -0.015 && contactHeight < 0.12\n                && all(greaterThanEqual(contactUv, vec2(0.0))) && all(lessThanEqual(contactUv, vec2(1.0)))) {\n              // Rugs and the lowest furniture surfaces also receive contact\n              // shading. Fade it over the first 12cm; upper surfaces stay lit.\n              float contactWeight = 1.0 - smoothstep(0.035, 0.12, max(contactHeight, 0.0));\n              outgoingLight *= 1.0 - texture2D(plan2ContactMap, contactUv).r * plan2ContactOpacity * contactWeight;\n            }\n            if (contactHeight > 0.12 && plan2SurfaceOpacity > 0.0) {\n              // These are already baked shadow pixels, not an occluder depth\n              // map. No shadow comparison or light-space projection per frame.\n              vec4 tile = texture2D(plan2SurfaceLookup, vec2(clamp(contactHeight / plan2SurfaceLayout.y, 0.0, 1.0), 0.5));\n              vec2 localUv = (contactPosition.xz - plan2SurfaceBounds.xy) / plan2SurfaceBounds.zw;\n              if (tile.b > 0.5 && all(greaterThanEqual(localUv, vec2(0.0))) && all(lessThanEqual(localUv, vec2(1.0)))) {\n                float upward = smoothstep(0.8, 0.98, normalize(mat3(plan2ContactTransform) * mat3(plan2ContactViewToWorld) * normal).y);\n                vec2 tileOrigin = floor(tile.rg * 255.0 + 0.5);\n                vec2 surfaceUv = (tileOrigin + clamp(localUv, vec2(0.002), vec2(0.998))) / plan2SurfaceLayout.x;\n                outgoingLight *= 1.0 - texture2D(plan2SurfaceMap, surfaceUv).r * plan2SurfaceOpacity * upward;\n              }\n            }\n            #include <opaque_fragment>");
+        const sunShadowSnippet =
+          materialKind === "wall"
+            ? ""
+            : "\n          #if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0\n            if (receiveShadow && plan2SunShadowStrength > 0.0 && directionalLightShadows[0].shadowIntensity > 0.0) {\n              // The studio's single shadow-casting directional light is the\n              // first shadow slot. Reuse its resident VSM map; no new capture.\n              DirectionalLightShadow plan2SunShadow = directionalLightShadows[0];\n              plan2ShadowMask = getShadow(directionalShadowMap[0], plan2SunShadow.shadowMapSize,\n                min(1.0, plan2SunShadow.shadowIntensity * plan2SunShadowStrength / 0.18),\n                plan2SunShadow.shadowBias, plan2SunShadow.shadowRadius, vDirectionalShadowCoord[0]);\n            }\n          #endif";
+        shader.fragmentShader = shader.fragmentShader.replace(
+          LIGHTS_FRAGMENT_END_INCLUDE,
+          LIGHTS_FRAGMENT_END_INCLUDE +
+            "\nvec3 plan2ReceivingColor = mix(diffuseColor.rgb, sqrt(max(diffuseColor.rgb, vec3(0.0))), 0.6);\n          #ifdef HB_CAR_GLASS_FINISH\n            // Keep moderate fill on glass while avoiding the full furniture\n            // albedo lift, which exaggerates the atlas' photographed lighting.\n            plan2ReceivingColor = mix(plan2ReceivingColor, diffuseColor.rgb, hbCarGlass * 0.6);\n          #endif\n          float plan2ShadowMask = 1.0;" +
+            sunShadowSnippet +
+            "\n          reflectedLight.indirectDiffuse += plan2ReceivingColor * plan2SurfaceLight(vPlan2WorldPosition) * plan2Gain * plan2ShadowMask;"
+        );
+        if (materialKind !== "wall" && contactShadows) {
+          shader.fragmentShader =
+            "uniform sampler2D plan2ContactMap;\n            uniform mat4 plan2ContactTransform;\n            uniform vec4 plan2ContactBounds;\n            uniform float plan2ContactY, plan2ContactOpacity;\n            uniform sampler2D plan2SurfaceMap;\n            uniform vec4 plan2SurfaceBounds;\n            uniform sampler2D plan2SurfaceLookup;\n            uniform vec2 plan2SurfaceLayout;\n            uniform mat4 plan2ContactViewToWorld;\n            uniform float plan2SurfaceOpacity;\n" +
+            shader.fragmentShader;
+          shader.fragmentShader = shader.fragmentShader.replace(
+            "#include <opaque_fragment>",
+            "\n            vec3 contactPosition = (plan2ContactTransform * vec4(vPlan2WorldPosition, 1.0)).xyz;\n            vec2 contactUv = (contactPosition.xz - plan2ContactBounds.xy) / plan2ContactBounds.zw;\n            float contactHeight = contactPosition.y - plan2ContactY;\n            if (contactHeight >= -0.015 && contactHeight < 0.12\n                && all(greaterThanEqual(contactUv, vec2(0.0))) && all(lessThanEqual(contactUv, vec2(1.0)))) {\n              // Rugs and the lowest furniture surfaces also receive contact\n              // shading. Fade it over the first 12cm; upper surfaces stay lit.\n              float contactWeight = 1.0 - smoothstep(0.035, 0.12, max(contactHeight, 0.0));\n              outgoingLight *= 1.0 - texture2D(plan2ContactMap, contactUv).r * plan2ContactOpacity * contactWeight;\n            }\n            " +
+              (sourceMaterial.userData?.plan2SurfaceContact === false
+                ? ""
+                : "if (contactHeight > 0.12 && plan2SurfaceOpacity > 0.0) {\n              // These are already baked shadow pixels, not an occluder depth\n              // map. No shadow comparison or light-space projection per frame.\n              vec4 tile = texture2D(plan2SurfaceLookup, vec2(clamp(contactHeight / plan2SurfaceLayout.y, 0.0, 1.0), 0.5));\n              vec2 localUv = (contactPosition.xz - plan2SurfaceBounds.xy) / plan2SurfaceBounds.zw;\n              if (tile.b > 0.5 && all(greaterThanEqual(localUv, vec2(0.0))) && all(lessThanEqual(localUv, vec2(1.0)))) {\n                float upward = smoothstep(0.8, 0.98, normalize(mat3(plan2ContactTransform) * mat3(plan2ContactViewToWorld) * normal).y);\n                vec2 tileOrigin = floor(tile.rg * 255.0 + 0.5);\n                vec2 surfaceUv = (tileOrigin + clamp(localUv, vec2(0.002), vec2(0.998))) / plan2SurfaceLayout.x;\n                outgoingLight *= 1.0 - texture2D(plan2SurfaceMap, surfaceUv).r * plan2SurfaceOpacity * upward;\n              }\n            }") +
+              "\n            #include <opaque_fragment>"
+          );
         }
-        if (!plan2DetailedSurface && !transmission.userData.alphaWallBand && (transmission.transmission == null || transmission.transmission === 0)) {
-          fragmentShader.fragmentShader = "uniform mat4 plan2ViewToWorld;\n" + fragmentShader.fragmentShader;
-          fragmentShader.fragmentShader = fragmentShader.fragmentShader.replace("#include <lights_fragment_begin>", "\n              vec3 simpleNormal = normalize(mat3(plan2MotionToLayout) * mat3(plan2ViewToWorld) * normal);\n              float simpleUp = simpleNormal.y * 0.5 + 0.5;\n              float simpleKey = max(dot(simpleNormal, normalize(vec3(-0.4, 0.85, 0.32))), 0.0);\n              vec3 simpleTint = mix(vec3(0.82, 0.85, 0.91), vec3(1.0, 1.0, 1.0), simpleUp);\n              reflectedLight.indirectDiffuse = diffuseColor.rgb * simpleTint * (0.30 + 0.40 * simpleUp + 0.18 * simpleKey);\n            ").replace("#include <lights_fragment_maps>", "").replace("#include <lights_fragment_end>", "");
+        if (
+          !isDetailedSurface &&
+          !sourceMaterial.userData.alphaWallBand &&
+          (sourceMaterial.transmission == null || sourceMaterial.transmission === 0)
+        ) {
+          shader.fragmentShader = "uniform mat4 plan2ViewToWorld;\n" + shader.fragmentShader;
+          shader.fragmentShader = shader.fragmentShader
+            .replace(
+              "#include <lights_fragment_begin>",
+              "\n              vec3 simpleNormal = normalize(mat3(plan2MotionToLayout) * mat3(plan2ViewToWorld) * normal);\n              float simpleUp = simpleNormal.y * 0.5 + 0.5;\n              float simpleKey = max(dot(simpleNormal, normalize(vec3(-0.4, 0.85, 0.32))), 0.0);\n              vec3 simpleTint = mix(vec3(0.82, 0.85, 0.91), vec3(1.0, 1.0, 1.0), simpleUp);\n              reflectedLight.indirectDiffuse = diffuseColor.rgb * simpleTint * (0.30 + 0.40 * simpleUp + 0.18 * simpleKey);\n            "
+            )
+            .replace("#include <lights_fragment_maps>", "")
+            .replace("#include <lights_fragment_end>", "");
         }
-        structureScans.shaderCompiles += 1;
+        stats.shaderCompiles += 1;
       };
-      const baseCacheKey = transmission.customProgramCacheKey?.call(transmission) || "";
-      userData3.customProgramCacheKey = () => baseCacheKey + "|plan2-baked-surface-v7-wall-alpha|" + Number(!!transmission.userData.alphaWallBand) + "|" + Number(plan2DetailedSurface) + "|" + Number(floorTone) + "|" + kind + "|" + uniforms.capacity + "|" + Number(uniforms.textureMode) + "|" + !!getUniforms;
-      userData3.userData.plan2RegionMaterial = true;
-      userData3.userData.plan2DetailedSurface = plan2DetailedSurface;
-      mapCurrent.set(userData3, transmission);
-      items.set(variantKey, userData3);
-      uniforms.materials.add(userData3);
+      const baseProgramCacheKey = sourceMaterial.customProgramCacheKey?.call(sourceMaterial) || "";
+      cloneMaterial.customProgramCacheKey = () =>
+        baseProgramCacheKey +
+        "|plan2-baked-surface-v10-glass-albedo|" +
+        +(sourceMaterial.userData?.plan2SurfaceContact !== false) +
+        "|" +
+        +!!sourceMaterial.userData.alphaWallBand +
+        "|" +
+        Number(isDetailedSurface) +
+        "|" +
+        Number(isFloorTone) +
+        "|" +
+        materialKind +
+        "|" +
+        materialGroup.capacity +
+        "|" +
+        Number(materialGroup.textureMode) +
+        "|" +
+        !!contactShadows;
+      cloneMaterial.userData.plan2RegionMaterial = true;
+      cloneMaterial.userData.plan2DetailedSurface = isDetailedSurface;
+      sourceMaterialByClone.set(cloneMaterial, sourceMaterial);
+      materialClones.set(variantKey, cloneMaterial);
+      materialGroup.materials.add(cloneMaterial);
     }
-    add.add(userData3);
-    return userData3;
+    resultMaterials.add(cloneMaterial);
+    return cloneMaterial;
   }
   function rebuildStructure() {
-    structureScans.structureScans += 1;
-    const add = new Set();
-    const list = [];
-    const addCurrent = new Set();
-    traverse?.traverse(isMesh => {
-      add.add(isMesh);
-      if (values.has(isMesh)) {
-        addCurrent.add(isMesh);
+    stats.structureScans += 1;
+    const currentNodes = new Set();
+    const meshList = [];
+    const registeredLights = new Set();
+    rootObject?.traverse(node => {
+      currentNodes.add(node);
+      if (registrationsByLight.has(node)) {
+        registeredLights.add(node);
       }
-      if (isMesh.isMesh) {
-        list.push(isMesh);
+      if (node.isMesh) {
+        meshList.push(node);
       }
     });
-    for (const removeEventListener of set) {
-      if (!add.has(removeEventListener)) {
-        removeEventListener.removeEventListener("childadded", invalidate);
-        removeEventListener.removeEventListener("childremoved", invalidate);
-        set.delete(removeEventListener);
+    for (const staleNode of listenedNodes) {
+      if (!currentNodes.has(staleNode)) {
+        staleNode.removeEventListener("childadded", markStructureDirty);
+        staleNode.removeEventListener("childremoved", markStructureDirty);
+        listenedNodes.delete(staleNode);
       }
     }
-    for (const addEventListener of add) {
-      if (!set.has(addEventListener)) {
-        addEventListener.addEventListener("childadded", invalidate);
-        addEventListener.addEventListener("childremoved", invalidate);
-        set.add(addEventListener);
+    for (const newNode of currentNodes) {
+      if (!listenedNodes.has(newNode)) {
+        newNode.addEventListener("childadded", markStructureDirty);
+        newNode.addEventListener("childremoved", markStructureDirty);
+        listenedNodes.add(newNode);
       }
     }
-    for (const [layers, originalLayers] of values) {
-      if (!addCurrent.has(layers)) {
-        layers.layers.mask = originalLayers.originalLayers;
-        values.delete(layers);
+    for (const [registeredLight, registrationRecord] of registrationsByLight) {
+      if (!registeredLights.has(registeredLight)) {
+        registeredLight.layers.mask = registrationRecord.originalLayers;
+        registrationsByLight.delete(registeredLight);
       }
     }
-    setCurrent = new Map();
-    for (const light of values.values()) {
-      light.floorId = String(light.light.userData?.regionFloorId ?? light.light.userData?.lightFloorId ?? findUserData(light.light, "regionFloorId") ?? findUserData(light.light, "floorId") ?? "default");
-      light.id = String(light.item.id ?? light.light.uuid);
-      light.key = regionLightKey(light.floorId, light.id);
-      let floorRoot = traverse;
-      for (let userData = light.light.parent; userData && userData !== traverse; userData = userData.parent) {
-        if (userData.userData?.regionFloorId !== undefined || userData.userData?.floorId !== undefined) {
-          floorRoot = userData;
+    registrationsByFloorId = new Map();
+    for (const registration of registrationsByLight.values()) {
+      registration.floorId = String(
+        registration.light.userData?.regionFloorId ??
+          registration.light.userData?.lightFloorId ??
+          findAncestorUserData(registration.light, "regionFloorId") ??
+          findAncestorUserData(registration.light, "floorId") ??
+          "default"
+      );
+      registration.id = String(registration.item.id ?? registration.light.uuid);
+      registration.key = regionLightKey(registration.floorId, registration.id);
+      let floorRoot = rootObject;
+      for (
+        let ancestor = registration.light.parent;
+        ancestor && ancestor !== rootObject;
+        ancestor = ancestor.parent
+      ) {
+        if (
+          ancestor.userData?.regionFloorId !== undefined ||
+          ancestor.userData?.floorId !== undefined
+        ) {
+          floorRoot = ancestor;
           break;
         }
       }
-      light.floorRoot = floorRoot;
-      const push = setCurrent.get(light.floorId) || [];
-      push.push(light);
-      setCurrent.set(light.floorId, push);
+      registration.floorRoot = floorRoot;
+      const floorRecords = registrationsByFloorId.get(registration.floorId) || [];
+      floorRecords.push(registration);
+      registrationsByFloorId.set(registration.floorId, floorRecords);
     }
-    const defaultFloorId = setCurrent.size === 1 ? setCurrent.keys().next().value : "default";
-    if (!setCurrent.size) {
-      setCurrent.set(defaultFloorId, []);
+    const defaultFloorId =
+      registrationsByFloorId.size === 1 ? registrationsByFloorId.keys().next().value : "default";
+    if (!registrationsByFloorId.size) {
+      registrationsByFloorId.set(defaultFloorId, []);
     }
-    for (const [floorId, length] of setCurrent) {
-      for (const kind of RECEIVER_KINDS) {
-        ensureUniformGroup(floorId, kind, length.length);
+    for (const [entryFloorId, floorRegistrations] of registrationsByFloorId) {
+      for (const groupKindName of REGION_KINDS) {
+        ensureLightGroup(entryFloorId, groupKindName, floorRegistrations.length);
       }
     }
-    const addNext = new Set();
-    const addPrevious = new Set();
-    for (const material of list) {
-      if (["background", "grid", "outline", "light-source-preview"].includes(findUserData(material, "exportRole"))) {
+    const liveMaterials = new Set();
+    const swappedMeshes = new Set();
+    for (const mesh of meshList) {
+      if (
+        ["background", "grid", "outline", "light-source-preview"].includes(
+          findAncestorUserData(mesh, "exportRole")
+        )
+      ) {
         continue;
       }
-      const meshFloorId = String(findUserData(material, "regionFloorId") ?? findUserData(material, "floorId") ?? defaultFloorId);
-      if (!setCurrent.has(meshFloorId)) {
-        setCurrent.set(meshFloorId, []);
-        for (const emptyKind of RECEIVER_KINDS) {
-          ensureUniformGroup(meshFloorId, emptyKind, 0);
+      const meshFloorId = String(
+        findAncestorUserData(mesh, "regionFloorId") ??
+          findAncestorUserData(mesh, "floorId") ??
+          defaultFloorId
+      );
+      if (!registrationsByFloorId.has(meshFloorId)) {
+        registrationsByFloorId.set(meshFloorId, []);
+        for (const emptyKindName of REGION_KINDS) {
+          ensureLightGroup(meshFloorId, emptyKindName, 0);
         }
       }
-      const receiverKind = inferReceiverKind(material);
-      const sourceMaterial = material.material;
-      const preserveDetailed = findUserData(material, "preserveDetailedSurface") === true;
-      const isFloorReceiver = findUserData(material, "regionReceiverKind") === "floor";
-      const some = Array.isArray(sourceMaterial) ? sourceMaterial.map(mat => wrapRegionMaterial(mat, meshFloorId, receiverKind, addNext, preserveDetailed, isFloorReceiver)) : wrapRegionMaterial(sourceMaterial, meshFloorId, receiverKind, addNext, preserveDetailed, isFloorReceiver);
-      if (Array.isArray(sourceMaterial) ? some.some((mat, index) => mat !== sourceMaterial[index]) : some !== sourceMaterial) {
-        material.material = some;
+      const receiverKind = classifyReceiverKind(mesh);
+      const material = mesh.material;
+      const shouldPreserveDetailed = findAncestorUserData(mesh, "preserveDetailedSurface") === true;
+      const isFloorReceiver = findAncestorUserData(mesh, "regionReceiverKind") === "floor";
+      const assignedMaterial = Array.isArray(material)
+        ? material.map(sourceMaterialItem =>
+            getRegionMaterial(
+              sourceMaterialItem,
+              meshFloorId,
+              receiverKind,
+              liveMaterials,
+              shouldPreserveDetailed,
+              isFloorReceiver
+            )
+          )
+        : getRegionMaterial(
+            material,
+            meshFloorId,
+            receiverKind,
+            liveMaterials,
+            shouldPreserveDetailed,
+            isFloorReceiver
+          );
+      if (
+        Array.isArray(material)
+          ? assignedMaterial.some(
+              (swappedMaterial, materialIndex) => swappedMaterial !== material[materialIndex]
+            )
+          : assignedMaterial !== material
+      ) {
+        mesh.material = assignedMaterial;
       }
-      if (Array.isArray(some) ? some.some(mat => mapCurrent.has(mat)) : mapCurrent.has(some)) {
-        addPrevious.add(material);
-        map.set(material, {
-          assigned: material.material
+      if (
+        Array.isArray(assignedMaterial)
+          ? assignedMaterial.some(regionMaterial => sourceMaterialByClone.has(regionMaterial))
+          : sourceMaterialByClone.has(assignedMaterial)
+      ) {
+        swappedMeshes.add(mesh);
+        assignmentsByMesh.set(mesh, {
+          assigned: mesh.material
         });
       }
     }
-    const addLocal = new Set();
-    for (const traverse of clear) {
-      traverse.traverse(material => {
-        if (map.has(material)) {
-          addLocal.add(material);
-          for (const environmentSourceMaterial of Array.isArray(material.material) ? material.material : [material.material]) {
-            const resolved = environmentSourceMaterial?.environmentSourceMaterial || environmentSourceMaterial;
-            if (mapCurrent.has(resolved)) {
-              addNext.add(resolved);
+    const stillAssignedMeshes = new Set();
+    for (const trackedRoot of retainedRoots) {
+      trackedRoot.traverse(traversedNode => {
+        if (assignmentsByMesh.has(traversedNode)) {
+          stillAssignedMeshes.add(traversedNode);
+          for (const meshMaterial of Array.isArray(traversedNode.material)
+            ? traversedNode.material
+            : [traversedNode.material]) {
+            const environmentMaterial = meshMaterial?.environmentSourceMaterial || meshMaterial;
+            if (sourceMaterialByClone.has(environmentMaterial)) {
+              liveMaterials.add(environmentMaterial);
             }
           }
         }
       });
     }
-    for (const [mesh, assignment] of map) {
-      if (!addPrevious.has(mesh) && !addLocal.has(mesh)) {
-        restoreOriginalMaterial(mesh, assignment);
-        map.delete(mesh);
+    for (const [assignedMesh, meshAssignment] of assignmentsByMesh) {
+      if (!swappedMeshes.has(assignedMesh) && !stillAssignedMeshes.has(assignedMesh)) {
+        restoreMeshMaterial(assignedMesh, meshAssignment);
+        assignmentsByMesh.delete(assignedMesh);
       }
     }
-    for (const [sourceMat, entryMap] of get) {
-      for (const [slice, dispose] of entryMap) {
-        if (!addNext.has(dispose)) {
-          getCurrent.get(slice.slice(0, slice.lastIndexOf("\0")))?.materials.delete(dispose);
-          dispose.dispose();
-          entryMap.delete(slice);
+    for (const [cloneSourceMaterial, cloneMap] of clonesByMaterial) {
+      for (const [staleVariantKey, staleClone] of cloneMap) {
+        if (!liveMaterials.has(staleClone)) {
+          groupsByKey
+            .get(staleVariantKey.slice(0, staleVariantKey.lastIndexOf("\0")))
+            ?.materials.delete(staleClone);
+          staleClone.dispose();
+          cloneMap.delete(staleVariantKey);
         }
       }
-      if (!entryMap.size) {
-        get.delete(sourceMat);
+      if (!cloneMap.size) {
+        clonesByMaterial.delete(cloneSourceMaterial);
       }
     }
-    for (const [groupEntryKey, floorId] of getCurrent) {
-      if (!setCurrent.has(floorId.floorId) && !floorId.materials.size) {
-        floorId.texture?.dispose();
-        getCurrent.delete(groupEntryKey);
+    for (const [staleGroupKey, staleGroup] of groupsByKey) {
+      if (!registrationsByFloorId.has(staleGroup.floorId) && !staleGroup.materials.size) {
+        staleGroup.texture?.dispose();
+        groupsByKey.delete(staleGroupKey);
       }
     }
-    push = [];
-    scene.traverse(isLight => {
-      if (isLight.isLight && !values.has(isLight)) {
-        push.push(isLight);
+    nativeLights = [];
+    scene.traverse(sceneNode => {
+      if (sceneNode.isLight && !registrationsByLight.has(sceneNode)) {
+        nativeLights.push(sceneNode);
       }
     });
-    structureScans.registered = structureScans.slotCount = values.size;
-    structureScans.materials = addNext.size;
-    structureScans.meshCount = addPrevious.size;
-    structureScans.floorCount = setCurrent.size;
-    structureScans.detailedMaterials = [...addNext].filter(userData => userData.userData.plan2DetailedSurface || userData.userData.alphaWallBand || userData.transmission > 0).length;
-    structureScans.capacity = [...setCurrent].reduce((total, [, length]) => total + alignCapacity(length.length), 0);
-    structureScans.textureFloors = [...setCurrent.keys()].filter(floorId => getCurrent.get(floorId + "\0floor")?.textureMode).length;
-    dirty = false;
+    stats.registered = stats.slotCount = registrationsByLight.size;
+    stats.materials = liveMaterials.size;
+    stats.meshCount = swappedMeshes.size;
+    stats.floorCount = registrationsByFloorId.size;
+    stats.detailedMaterials = [...liveMaterials].filter(
+      surfaceMaterial =>
+        surfaceMaterial.userData.plan2DetailedSurface ||
+        surfaceMaterial.userData.alphaWallBand ||
+        surfaceMaterial.transmission > 0
+    ).length;
+    stats.capacity = [...registrationsByFloorId].reduce(
+      (totalCapacity, [, floorEntryList]) => totalCapacity + alignTo16(floorEntryList.length),
+      0
+    );
+    stats.textureFloors = [...registrationsByFloorId.keys()].filter(
+      floorKey => groupsByKey.get(floorKey + "\0floor")?.textureMode
+    ).length;
+    shouldRescanStructure = false;
   }
-  function restoreOriginalMaterial(material, assigned) {
-    if (material.material === assigned.assigned) {
-      material.material = Array.isArray(material.material) ? material.material.map(mat => mapCurrent.get(mat) || mat) : mapCurrent.get(material.material) || material.material;
+  function restoreMeshMaterial(swappedMesh, assignmentRecord) {
+    if (swappedMesh.material === assignmentRecord.assigned) {
+      swappedMesh.material = Array.isArray(swappedMesh.material)
+        ? swappedMesh.material.map(
+            restoredMaterial => sourceMaterialByClone.get(restoredMaterial) || restoredMaterial
+          )
+        : sourceMaterialByClone.get(swappedMesh.material) || swappedMesh.material;
     }
   }
-  function register(layers, item = {}) {
-    if (disposed || !layers?.isLight) {
+  function registerLight(lightObject, lightConfig = {}) {
+    if (isDisposed || !lightObject?.isLight) {
       return;
     }
-    if (!values.get(layers)) {
-      values.set(layers, {
-        light: layers,
+    if (!registrationsByLight.get(lightObject)) {
+      registrationsByLight.set(lightObject, {
+        light: lightObject,
         item: {
-          ...item
+          ...lightConfig
         },
-        originalLayers: layers.layers.mask,
-        fullIntensity: Math.max(0.00001, finiteNumber(layers.userData?.regionFullIntensity, finiteNumber(layers.userData?.lightOnIntensity, layers.intensity) || 1))
+        originalLayers: lightObject.layers.mask,
+        fullIntensity: Math.max(
+          0.00001,
+          toFiniteNumber(
+            lightObject.userData?.regionFullIntensity,
+            toFiniteNumber(lightObject.userData?.lightOnIntensity, lightObject.intensity) || 1
+          )
+        )
       });
     }
-    layers.layers.set(REGION_LIGHT_LAYER);
-    layers.castShadow = false;
-    dirty = true;
+    lightObject.layers.set(30);
+    lightObject.castShadow = false;
+    shouldRescanStructure = true;
   }
-  function syncCamera(matrixWorld) {
-    if (!disposed && matrixWorld?.matrixWorld) {
-      plan2ViewToWorld.value = matrixWorld.matrixWorld;
+  function syncCamera(camera) {
+    if (!isDisposed && camera?.matrixWorld) {
+      viewToWorldUniform.value = camera.matrixWorld;
     }
   }
-  function sync(layersCurrent, skipStructure = false) {
-    if (disposed) {
+  function sync(activeCamera, skipStructureScan = false) {
+    if (isDisposed) {
       return;
     }
-    if (!skipStructure) {
-      getUniforms?.sync();
-      const nextRoot = getRoot?.() || null;
-      if (nextRoot !== traverse) {
-        traverse = nextRoot;
-        dirty = true;
+    if (!skipStructureScan) {
+      contactShadows?.sync();
+      const nextRootObject = getRoot?.() || null;
+      if (nextRootObject !== rootObject) {
+        rootObject = nextRootObject;
+        shouldRescanStructure = true;
       }
-      if (dirty && (!inMotion || motionKeepLit)) {
+      if (shouldRescanStructure && (!isMotionEnabled || isMotionInstant)) {
         rebuildStructure();
       }
     }
-    syncCamera(layersCurrent);
-    if (inMotion && !motionKeepLit) {
+    syncCamera(activeCamera);
+    if (isMotionEnabled && !isMotionInstant) {
       return;
     }
-    const fade = fadeStart === null ? 1 : Math.min(1, Math.max(0, (performance.now() - fadeStart) / 280));
-    if (fade < 1) {
+    const motionFadeProgress =
+      motionFadeStartMs === null
+        ? 1
+        : Math.min(1, Math.max(0, (performance.now() - motionFadeStartMs) / 280));
+    if (motionFadeProgress < 1) {
       requestFrame();
     } else {
-      fadeStart = null;
+      motionFadeStartMs = null;
     }
-    structureScans.active = 0;
-    let uniformsChanged = false;
-    for (const [floorId, forEach] of setCurrent) {
-      const uniformGroups = RECEIVER_KINDS.map(kind => getCurrent.get(floorId + "\0" + kind));
-      const motionMatrix = inMotion && motionKeepLit ? motionTransformProvider?.(floorId) : null;
-      for (const uniforms of uniformGroups) {
+    stats.active = 0;
+    let shouldUpdateUniforms = false;
+    for (const [loopFloorId, loopRegistrations] of registrationsByFloorId) {
+      const loopGroups = REGION_KINDS.map(groupKind =>
+        groupsByKey.get(loopFloorId + "\0" + groupKind)
+      );
+      const motionMatrix =
+        isMotionEnabled && isMotionInstant ? motionTransformProvider?.(loopFloorId) : null;
+      for (const activeLightGroup of loopGroups) {
         if (motionMatrix) {
-          uniforms.uniforms.plan2MotionToLayout.value.copy(motionMatrix);
+          activeLightGroup.uniforms.plan2MotionToLayout.value.copy(motionMatrix);
         } else {
-          uniforms.uniforms.plan2MotionToLayout.value.identity();
+          activeLightGroup.uniforms.plan2MotionToLayout.value.identity();
         }
-        const element = rangeScale.gain * rangeScale[uniforms.kind + "Gain"] * fade;
-        uniformsChanged ||= uniforms.uniforms.plan2Gain.value !== element;
-        uniforms.uniforms.plan2Gain.value = element;
-        const count = uniforms.kind === "wall" ? 0 : clamp(finiteNumber(rangeScale.sunShadowStrength, 0.6), 0, 1) * fade;
-        uniformsChanged ||= uniforms.uniforms.plan2SunShadowStrength.value !== count;
-        uniforms.uniforms.plan2SunShadowStrength.value = count;
-        uniforms.changed = false;
+        const gainValue =
+          settings.gain * settings[activeLightGroup.kind + "Gain"] * motionFadeProgress;
+        shouldUpdateUniforms ||= activeLightGroup.uniforms.plan2Gain.value !== gainValue;
+        activeLightGroup.uniforms.plan2Gain.value = gainValue;
+        const sunShadowStrength =
+          activeLightGroup.kind === "wall"
+            ? 0
+            : clamp(toFiniteNumber(settings.sunShadowStrength, 0.6), 0, 1) * motionFadeProgress;
+        shouldUpdateUniforms ||=
+          activeLightGroup.uniforms.plan2SunShadowStrength.value !== sunShadowStrength;
+        activeLightGroup.uniforms.plan2SunShadowStrength.value = sunShadowStrength;
+        activeLightGroup.changed = false;
       }
-      forEach.forEach((floorRoot, slotIndex) => {
-        const {
-          light: color,
-          item: type
-        } = floorRoot;
-        color.updateWorldMatrix(true, false);
-        elements.copy(color.matrixWorld);
+      loopRegistrations.forEach((floorEntry, slotIndex) => {
+        const { light: light, item: lightItem } = floorEntry;
+        light.updateWorldMatrix(true, false);
+        lightWorldMatrix.copy(light.matrixWorld);
         if (motionMatrix) {
-          elements.premultiply(motionMatrix);
+          lightWorldMatrix.premultiply(motionMatrix);
         }
-        y.setFromMatrixPosition(elements);
-        if (floorRoot.floorRoot) {
-          floorRoot.floorRoot.updateWorldMatrix(true, false);
-          setFromMatrixPosition.setFromMatrixPosition(floorRoot.floorRoot.matrixWorld);
+        lightWorldPosition.setFromMatrixPosition(lightWorldMatrix);
+        if (floorEntry.floorRoot) {
+          floorEntry.floorRoot.updateWorldMatrix(true, false);
+          floorRootPosition.setFromMatrixPosition(floorEntry.floorRoot.matrixWorld);
         }
         if (motionMatrix) {
-          setFromMatrixPosition.applyMatrix4(motionMatrix);
+          floorRootPosition.applyMatrix4(motionMatrix);
         }
-        const floorY = floorRoot.floorRoot ? setFromMatrixPosition.y : 0;
-        const realAmount = isUnderRoot(color, traverse) ? clamp(finiteNumber(color.intensity) / floorRoot.fullIntensity, 0, 1) : 0;
-        const amount = has === null ? realAmount : has.has(floorRoot.key) ? Math.max(0.6, realAmount) : 0;
-        if (amount > 0.00001) {
-          structureScans.active += 1;
+        const floorElevation = floorEntry.floorRoot ? floorRootPosition.y : 0;
+        const actualAmount = isVisibleWithin(light, rootObject)
+          ? clamp(toFiniteNumber(light.intensity) / floorEntry.fullIntensity, 0, 1)
+          : 0;
+        const effectiveAmount =
+          previewKeys === null
+            ? actualAmount
+            : previewKeys.has(floorEntry.key)
+              ? Math.max(0.6, actualAmount)
+              : 0;
+        if (effectiveAmount > 0.00001) {
+          stats.active += 1;
         }
-        length.length = 0;
-        length.push(...elements.elements, floorY, amount, realAmount, rangeScale.rangeScale, type.type, type.lightRange, type.width, type.depth, color.width, color.height, color.color.r, color.color.g, color.color.b, overrides[floorRoot.key], structureScans.structureScans);
-        if (floorRoot.volumeInputs && length.every((prev, index) => prev === floorRoot.volumeInputs[index])) {
-          structureScans.volumeCacheHits++;
+        volumeInputsScratch.length = 0;
+        volumeInputsScratch.push(
+          ...lightWorldMatrix.elements,
+          floorElevation,
+          effectiveAmount,
+          actualAmount,
+          settings.rangeScale,
+          lightItem.type,
+          lightItem.lightRange,
+          lightItem.width,
+          lightItem.depth,
+          light.width,
+          light.height,
+          light.color.r,
+          light.color.g,
+          light.color.b,
+          overrides[floorEntry.key],
+          stats.structureScans
+        );
+        if (
+          floorEntry.volumeInputs &&
+          volumeInputsScratch.every(
+            (signatureValue, signatureIndex) =>
+              signatureValue === floorEntry.volumeInputs[signatureIndex]
+          )
+        ) {
+          stats.volumeCacheHits++;
           return;
         }
-        floorRoot.volumeInputs = length.slice();
-        const lightRange = clamp(finiteNumber(type.lightRange, 3.5), 0.5, 10) * clamp(finiteNumber(rangeScale.rangeScale, 1), 0.2, 3);
-        const isStrip = type.type === "striplight" || color.isRectAreaLight;
-        const ellipseRadius = lightRange * (type.type === "ceilinglight" ? 0.45 : 0.33);
-        const halfWidth = Math.max(0.05, finiteNumber(type.width, color.width || 2) / 2);
-        const halfDepth = Math.max(0.025, finiteNumber(type.depth, color.height || 0.2) / 2);
-        const matrixElements = elements.elements;
-        const forwardLen = Math.hypot(matrixElements[0], matrixElements[2]);
-        const forwardX = forwardLen > 0.00001 ? matrixElements[0] / forwardLen : 1;
-        const forwardZ = forwardLen > 0.00001 ? matrixElements[2] / forwardLen : 0;
-        const shape = overrides[floorRoot.key];
-        const shapeRadians = (shape?.rotation || 0) * Math.PI / 180;
-        const axisX = shapeRadians ? forwardX * Math.cos(shapeRadians) - forwardZ * Math.sin(shapeRadians) : forwardX;
-        const axisY = shapeRadians ? forwardX * Math.sin(shapeRadians) + forwardZ * Math.cos(shapeRadians) : forwardZ;
-        const softPad = Math.max(0.3, lightRange * 0.23);
-        const halfExtent = isStrip ? halfDepth + lightRange * 0.07 + softPad : ellipseRadius + softPad;
-        const centerCurrent = floorRoot.region ||= {
+        floorEntry.volumeInputs = volumeInputsScratch.slice();
+        const scaledRange =
+          clamp(toFiniteNumber(lightItem.lightRange, 3.5), 0.5, 10) *
+          clamp(toFiniteNumber(settings.rangeScale, 1), 0.2, 3);
+        const isStripLight = lightItem.type === "striplight" || light.isRectAreaLight;
+        const defaultRadius = scaledRange * (lightItem.type === "ceilinglight" ? 0.45 : 0.33);
+        const halfWidth = Math.max(0.05, toFiniteNumber(lightItem.width, light.width || 2) / 2);
+        const halfDepth = Math.max(0.025, toFiniteNumber(lightItem.depth, light.height || 0.2) / 2);
+        const matrixElements = lightWorldMatrix.elements;
+        const horizontalDistance = Math.hypot(matrixElements[0], matrixElements[2]);
+        const directionX =
+          horizontalDistance > 0.00001 ? matrixElements[0] / horizontalDistance : 1;
+        const directionZ =
+          horizontalDistance > 0.00001 ? matrixElements[2] / horizontalDistance : 0;
+        const lightOverride = overrides[floorEntry.key];
+        const rotationRad = ((lightOverride?.rotation || 0) * Math.PI) / 180;
+        const rotatedDirectionX = rotationRad
+          ? directionX * Math.cos(rotationRad) - directionZ * Math.sin(rotationRad)
+          : directionX;
+        const rotatedDirectionZ = rotationRad
+          ? directionX * Math.sin(rotationRad) + directionZ * Math.cos(rotationRad)
+          : directionZ;
+        const softEdgeSize = Math.max(0.3, scaledRange * 0.23);
+        const baseRadius = isStripLight
+          ? halfDepth + scaledRange * 0.07 + softEdgeSize
+          : defaultRadius + softEdgeSize;
+        const region = (floorEntry.region ||= {
           center: [0, 0, 0],
           lampCenter: [0, 0, 0],
           axis: [1, 0],
@@ -654,248 +956,347 @@ export function createRegionLightController({
             rotation: 0,
             softness: 1
           }
-        };
-        const width = centerCurrent.defaults;
-        width.width = (isStrip ? halfWidth + halfExtent : halfExtent) * 2;
-        width.depth = halfExtent * 2;
-        width.shape = isStrip ? "strip" : "ellipse";
-        width.axis[0] = forwardX;
-        width.axis[1] = forwardZ;
-        centerCurrent.floorId = floorId;
-        centerCurrent.id = floorRoot.id;
-        centerCurrent.key = floorRoot.key;
-        centerCurrent.type = type.type;
-        centerCurrent.lampCenter[0] = y.x;
-        centerCurrent.lampCenter[1] = y.y;
-        centerCurrent.lampCenter[2] = y.z;
-        centerCurrent.offsetX = shape?.offsetX ?? 0;
-        centerCurrent.offsetZ = shape?.offsetZ ?? 0;
-        centerCurrent.moveCenterEnabled = shape?.moveCenterEnabled === true;
-        centerCurrent.center[0] = y.x + centerCurrent.offsetX;
-        centerCurrent.center[1] = y.y;
-        centerCurrent.center[2] = y.z + centerCurrent.offsetZ;
-        centerCurrent.axis[0] = axisX;
-        centerCurrent.axis[1] = axisY;
-        centerCurrent.width = shape?.width ?? width.width;
-        centerCurrent.depth = shape?.depth ?? width.depth;
-        centerCurrent.rotation = shape?.rotation ?? 0;
-        centerCurrent.softness = shape?.softness ?? 1;
-        centerCurrent.shape = shape?.shape ?? width.shape;
-        centerCurrent.overridden = !!shape;
-        centerCurrent.amount = amount;
-        centerCurrent.realAmount = realAmount;
-        centerCurrent.heightAbove = shape?.heightAbove;
-        centerCurrent.heightBelow = shape?.heightBelow;
-        centerCurrent.lampHeight = y.y - floorY;
-        centerCurrent.heightMin = shape?.heightMin ?? (shape?.heightBelow === undefined ? undefined : centerCurrent.lampHeight - shape.heightBelow);
-        centerCurrent.heightMax = shape?.heightMax ?? (shape?.heightAbove === undefined ? undefined : centerCurrent.lampHeight + shape.heightAbove);
-        for (const texture of uniformGroups) {
-          const center = texture.slots[slotIndex];
-          const slotKind = texture.kind;
-          let bottomY = floorY - (slotKind === "floor" ? 0.18 : 0.1);
-          let topY = Math.max(floorY + 0.2, y.y + (slotKind === "wall" ? 0.55 : 0.2));
-          let verticalPad = Math.max(0.3, lightRange * (slotKind === "floor" ? 0.23 : slotKind === "wall" ? 0.18 : 0.2));
-          let slotAmount = amount;
-          if (shape?.heightAbove !== undefined || shape?.heightBelow !== undefined || shape?.heightMin !== undefined || shape?.heightMax !== undefined) {
-            const rangeBottom = shape.heightMin !== undefined ? shape.heightMin === 0 ? floorY - 0.18 - verticalPad : floorY + shape.heightMin : shape.heightBelow === undefined ? bottomY - verticalPad : y.y - shape.heightBelow;
-            const rangeTop = shape.heightMax !== undefined ? floorY + shape.heightMax : shape.heightAbove === undefined ? topY + verticalPad : y.y + shape.heightAbove;
-            const span = Math.max(0, rangeTop - rangeBottom);
-            verticalPad = Math.max(0.00001, Math.min(verticalPad, span / 2));
-            bottomY = rangeBottom + verticalPad;
-            topY = Math.max(bottomY, rangeTop - verticalPad);
-            if (span <= 0.00001) {
+        });
+        const regionDefaults = region.defaults;
+        regionDefaults.width = (isStripLight ? halfWidth + baseRadius : baseRadius) * 2;
+        regionDefaults.depth = baseRadius * 2;
+        regionDefaults.shape = isStripLight ? "strip" : "ellipse";
+        regionDefaults.axis[0] = directionX;
+        regionDefaults.axis[1] = directionZ;
+        region.floorId = loopFloorId;
+        region.id = floorEntry.id;
+        region.key = floorEntry.key;
+        region.type = lightItem.type;
+        region.lampCenter[0] = lightWorldPosition.x;
+        region.lampCenter[1] = lightWorldPosition.y;
+        region.lampCenter[2] = lightWorldPosition.z;
+        region.offsetX = lightOverride?.offsetX ?? 0;
+        region.offsetZ = lightOverride?.offsetZ ?? 0;
+        region.moveCenterEnabled = lightOverride?.moveCenterEnabled === true;
+        region.center[0] = lightWorldPosition.x + region.offsetX;
+        region.center[1] = lightWorldPosition.y;
+        region.center[2] = lightWorldPosition.z + region.offsetZ;
+        region.axis[0] = rotatedDirectionX;
+        region.axis[1] = rotatedDirectionZ;
+        region.width = lightOverride?.width ?? regionDefaults.width;
+        region.depth = lightOverride?.depth ?? regionDefaults.depth;
+        region.rotation = lightOverride?.rotation ?? 0;
+        region.softness = lightOverride?.softness ?? 1;
+        region.shape = lightOverride?.shape ?? regionDefaults.shape;
+        region.overridden = !!lightOverride;
+        region.amount = effectiveAmount;
+        region.realAmount = actualAmount;
+        region.heightAbove = lightOverride?.heightAbove;
+        region.heightBelow = lightOverride?.heightBelow;
+        region.lampHeight = lightWorldPosition.y - floorElevation;
+        region.heightMin =
+          lightOverride?.heightMin ??
+          (lightOverride?.heightBelow === undefined
+            ? undefined
+            : region.lampHeight - lightOverride.heightBelow);
+        region.heightMax =
+          lightOverride?.heightMax ??
+          (lightOverride?.heightAbove === undefined
+            ? undefined
+            : region.lampHeight + lightOverride.heightAbove);
+        for (const loopLightGroup of loopGroups) {
+          const loopSlot = loopLightGroup.slots[slotIndex];
+          const loopKind = loopLightGroup.kind;
+          let bottomY = floorElevation - (loopKind === "floor" ? 0.18 : 0.1);
+          let topY = Math.max(
+            floorElevation + 0.2,
+            lightWorldPosition.y + (loopKind === "wall" ? 0.55 : 0.2)
+          );
+          let edgeFade = Math.max(
+            0.3,
+            scaledRange * (loopKind === "floor" ? 0.23 : loopKind === "wall" ? 0.18 : 0.2)
+          );
+          let slotAmount = effectiveAmount;
+          if (
+            lightOverride?.heightAbove !== undefined ||
+            lightOverride?.heightBelow !== undefined ||
+            lightOverride?.heightMin !== undefined ||
+            lightOverride?.heightMax !== undefined
+          ) {
+            const bottomLimit =
+              lightOverride.heightMin !== undefined
+                ? lightOverride.heightMin === 0
+                  ? floorElevation - 0.18 - edgeFade
+                  : floorElevation + lightOverride.heightMin
+                : lightOverride.heightBelow === undefined
+                  ? bottomY - edgeFade
+                  : lightWorldPosition.y - lightOverride.heightBelow;
+            const topLimit =
+              lightOverride.heightMax !== undefined
+                ? floorElevation + lightOverride.heightMax
+                : lightOverride.heightAbove === undefined
+                  ? topY + edgeFade
+                  : lightWorldPosition.y + lightOverride.heightAbove;
+            const heightSpan = Math.max(0, topLimit - bottomLimit);
+            edgeFade = Math.max(0.00001, Math.min(edgeFade, heightSpan / 2));
+            bottomY = bottomLimit + edgeFade;
+            topY = Math.max(bottomY, topLimit - edgeFade);
+            if (heightSpan <= 0.00001) {
               slotAmount = 0;
             }
           }
-          const extentX = shape ? shape.width / 2 : isStrip ? halfWidth : ellipseRadius + verticalPad;
-          const extentZ = shape ? shape.depth / 2 : isStrip ? halfDepth + lightRange * 0.07 + verticalPad : ellipseRadius + verticalPad;
-          let changed = setVector4Changed(center.center, centerCurrent.center[0], (bottomY + topY) / 2, centerCurrent.center[2], slotAmount);
-          changed = setVector4Changed(center.extent, extentX, (topY - bottomY) / 2, extentZ, verticalPad) || changed;
-          changed = setVector4Changed(center.color, color.color.r, color.color.g, color.color.b, 0) || changed;
-          changed = setVector4Changed(center.axis, axisX, axisY, shape ? shape.shape === "square" ? 4 : shape.shape === "strip" ? 3 : 2 : isStrip ? 1 : 0, shape?.softness ?? 0) || changed;
-          texture.changed ||= changed;
-          if (changed && texture.texture) {
-            const textureData = texture.texture.image.data;
-            const dataOffset = slotIndex * 16;
-            center.center.toArray(textureData, dataOffset);
-            center.extent.toArray(textureData, dataOffset + 4);
-            center.color.toArray(textureData, dataOffset + 8);
-            center.axis.toArray(textureData, dataOffset + 12);
+          const slotHalfWidth = lightOverride
+            ? lightOverride.width / 2
+            : isStripLight
+              ? halfWidth
+              : defaultRadius + edgeFade;
+          const slotHalfDepth = lightOverride
+            ? lightOverride.depth / 2
+            : isStripLight
+              ? halfDepth + scaledRange * 0.07 + edgeFade
+              : defaultRadius + edgeFade;
+          let slotChanged = setVector4IfChanged(
+            loopSlot.center,
+            region.center[0],
+            (bottomY + topY) / 2,
+            region.center[2],
+            slotAmount
+          );
+          slotChanged =
+            setVector4IfChanged(
+              loopSlot.extent,
+              slotHalfWidth,
+              (topY - bottomY) / 2,
+              slotHalfDepth,
+              edgeFade
+            ) || slotChanged;
+          slotChanged =
+            setVector4IfChanged(loopSlot.color, light.color.r, light.color.g, light.color.b, 0) ||
+            slotChanged;
+          slotChanged =
+            setVector4IfChanged(
+              loopSlot.axis,
+              rotatedDirectionX,
+              rotatedDirectionZ,
+              lightOverride
+                ? lightOverride.shape === "square"
+                  ? 4
+                  : lightOverride.shape === "strip"
+                    ? 3
+                    : 2
+                : isStripLight
+                  ? 1
+                  : 0,
+              lightOverride?.softness ?? 0
+            ) || slotChanged;
+          loopLightGroup.changed ||= slotChanged;
+          if (slotChanged && loopLightGroup.texture) {
+            const textureData = loopLightGroup.texture.image.data;
+            const slotByteOffset = slotIndex * 16;
+            loopSlot.center.toArray(textureData, slotByteOffset);
+            loopSlot.extent.toArray(textureData, slotByteOffset + 4);
+            loopSlot.color.toArray(textureData, slotByteOffset + 8);
+            loopSlot.axis.toArray(textureData, slotByteOffset + 12);
           }
         }
       });
-      for (const changed of uniformGroups) {
-        if (changed.changed && changed.texture) {
-          changed.texture.needsUpdate = true;
+      for (const dirtyLightGroup of loopGroups) {
+        if (dirtyLightGroup.changed && dirtyLightGroup.texture) {
+          dirtyLightGroup.texture.needsUpdate = true;
         }
-        uniformsChanged ||= changed.changed;
+        shouldUpdateUniforms ||= dirtyLightGroup.changed;
       }
     }
-    if (uniformsChanged) {
-      structureScans.uniformUpdates += 1;
+    if (shouldUpdateUniforms) {
+      stats.uniformUpdates += 1;
     }
-    structureScans.nativeLights = push.filter(layers => isUnderRoot(layers, scene) && (!layersCurrent || layers.layers.test(layersCurrent.layers))).length;
+    stats.nativeLights = nativeLights.filter(
+      sceneLight =>
+        isVisibleWithin(sceneLight, scene) &&
+        (!activeCamera || sceneLight.layers.test(activeCamera.layers))
+    ).length;
   }
   function inspect() {
     return {
-      ...structureScans,
+      ...stats,
       settings: {
-        ...rangeScale
+        ...settings
       },
       overrides: getOverrides(),
-      previewKeys: has ? [...has] : null,
+      previewKeys: previewKeys ? [...previewKeys] : null,
       regions: listRegions(),
-      floors: [...setCurrent].map(([floorId, length]) => ({
-        floorId,
-        slots: length.length,
-        capacity: getCurrent.get(floorId + "\0floor")?.capacity,
-        lights: length.map(light => ({
-          id: light.item.id || light.light.uuid,
-          type: light.item.type,
-          intensity: light.light.intensity,
-          fullIntensity: light.fullIntensity,
-          amount: clamp(finiteNumber(light.light.intensity) / light.fullIntensity, 0, 1),
-          effectiveAmount: light.region?.amount ?? 0,
-          regionKey: light.key,
-          visible: isUnderRoot(light.light, traverse)
+      floors: [...registrationsByFloorId].map(([inspectFloorId, inspectRegistrations]) => ({
+        floorId: inspectFloorId,
+        slots: inspectRegistrations.length,
+        capacity: groupsByKey.get(inspectFloorId + "\0floor")?.capacity,
+        lights: inspectRegistrations.map(inspectEntry => ({
+          id: inspectEntry.item.id || inspectEntry.light.uuid,
+          type: inspectEntry.item.type,
+          intensity: inspectEntry.light.intensity,
+          fullIntensity: inspectEntry.fullIntensity,
+          amount: clamp(
+            toFiniteNumber(inspectEntry.light.intensity) / inspectEntry.fullIntensity,
+            0,
+            1
+          ),
+          effectiveAmount: inspectEntry.region?.amount ?? 0,
+          regionKey: inspectEntry.key,
+          visible: isVisibleWithin(inspectEntry.light, rootObject)
         }))
       }))
     };
   }
-  function setOverrides(nextOverrides) {
-    overrides = normalizeOverrides(nextOverrides);
+  function setOverrides(rawOverrideInput) {
+    overrides = sanitizeRegionOverrides(rawOverrideInput);
     sync(undefined, true);
     return getOverrides();
   }
   function getOverrides() {
-    return Object.fromEntries(Object.entries(overrides).map(([key, override]) => [key, {
-      ...override
-    }]));
+    return Object.fromEntries(
+      Object.entries(overrides).map(([overrideKey, overrideValue]) => [
+        overrideKey,
+        {
+          ...overrideValue
+        }
+      ])
+    );
   }
   function listRegions() {
-    return [...values.values()].filter(region => region.region).map(({
-      region: defaults
-    }) => ({
-      ...defaults,
-      center: [...defaults.center],
-      lampCenter: [...defaults.lampCenter],
-      axis: [...defaults.axis],
-      defaults: {
-        ...defaults.defaults,
-        axis: [...defaults.defaults.axis]
-      }
-    }));
+    return [...registrationsByLight.values()]
+      .filter(regionEntry => regionEntry.region)
+      .map(({ region: regionRecord }) => ({
+        ...regionRecord,
+        center: [...regionRecord.center],
+        lampCenter: [...regionRecord.lampCenter],
+        axis: [...regionRecord.axis],
+        defaults: {
+          ...regionRecord.defaults,
+          axis: [...regionRecord.defaults.axis]
+        }
+      }));
   }
-  function setPreview(filter) {
-    has = Array.isArray(filter) ? new Set(filter.filter(key => typeof key == "string" && isRegionLightKey(key))) : null;
+  function setPreview(previewKeyList) {
+    previewKeys = Array.isArray(previewKeyList)
+      ? new Set(
+          previewKeyList.filter(
+            previewKey => typeof previewKey == "string" && isRegionLightKey(previewKey)
+          )
+        )
+      : null;
     sync(undefined, true);
   }
-  function sample(point, floorId = setCurrent.keys().next().value, kind = "floor") {
-    const uniforms = getCurrent.get(floorId + "\0" + kind);
-    if (uniforms) {
-      return sampleRegionVolumes(uniforms.slots.slice(0, uniforms.uniforms.plan2LightCount.value), copy.copy(point).applyMatrix4(uniforms.uniforms.plan2MotionToLayout.value), uniforms.uniforms.plan2Gain.value);
+  function sampleFloorVolume(
+    samplePoint,
+    sampleFloorId = registrationsByFloorId.keys().next().value,
+    sampleKind = "floor"
+  ) {
+    const sampleGroup = groupsByKey.get(sampleFloorId + "\0" + sampleKind);
+    if (sampleGroup) {
+      return sampleRegionVolumes(
+        sampleGroup.slots.slice(0, sampleGroup.uniforms.plan2LightCount.value),
+        sampleWorldPoint
+          .copy(samplePoint)
+          .applyMatrix4(sampleGroup.uniforms.plan2MotionToLayout.value),
+        sampleGroup.uniforms.plan2Gain.value
+      );
     } else {
       return [0, 0, 0];
     }
   }
-  function disposeController() {
-    if (!disposed) {
-      disposed = true;
-      structureScans.disposed = true;
+  function dispose() {
+    if (!isDisposed) {
+      isDisposed = true;
+      stats.disposed = true;
       if (scene.onBeforeRender === onBeforeRender) {
-        scene.onBeforeRender = apply;
+        scene.onBeforeRender = originalOnBeforeRender;
       }
-      for (const removeEventListener of set) {
-        removeEventListener.removeEventListener("childadded", invalidate);
-        removeEventListener.removeEventListener("childremoved", invalidate);
+      for (const listenedNode of listenedNodes) {
+        listenedNode.removeEventListener("childadded", markStructureDirty);
+        listenedNode.removeEventListener("childremoved", markStructureDirty);
       }
-      for (const [assignedMesh, assignmentState] of map) {
-        restoreOriginalMaterial(assignedMesh, assignmentState);
+      for (const [swappedMeshEntry, meshAssignmentRecord] of assignmentsByMesh) {
+        restoreMeshMaterial(swappedMeshEntry, meshAssignmentRecord);
       }
-      for (const values of get.values()) {
-        for (const dispose of values.values()) {
-          dispose.dispose();
+      for (const cloneMapToDispose of clonesByMaterial.values()) {
+        for (const cloneToDispose of cloneMapToDispose.values()) {
+          cloneToDispose.dispose();
         }
       }
-      for (const texture of getCurrent.values()) {
-        texture.texture?.dispose();
+      for (const disposedLightGroup of groupsByKey.values()) {
+        disposedLightGroup.texture?.dispose();
       }
-      for (const light of values.values()) {
-        light.light.layers.mask = light.originalLayers;
+      for (const restoredLight of registrationsByLight.values()) {
+        restoredLight.light.layers.mask = restoredLight.originalLayers;
       }
-      set.clear();
-      map.clear();
-      get.clear();
-      values.clear();
-      getCurrent.clear();
-      clear.clear();
-      if (typeof window !== "undefined" && window.__plan2Region === __plan2Region) {
+      listenedNodes.clear();
+      assignmentsByMesh.clear();
+      clonesByMaterial.clear();
+      registrationsByLight.clear();
+      groupsByKey.clear();
+      retainedRoots.clear();
+      if (typeof window !== "undefined" && window.__plan2Region === controller) {
         delete window.__plan2Region;
       }
     }
   }
-  function onBeforeRender(...args) {
-    apply?.apply(this, args);
-    sync(args[2]);
+  function onBeforeRender(...renderArgs) {
+    originalOnBeforeRender?.apply(this, renderArgs);
+    sync(renderArgs[2]);
   }
-  const setFloorBrightness = percent => {
-    const element = clamp(finiteNumber(percent, 100), 50, 150) / 100;
-    if (element === floorBrightness.value) {
+  const setFloorBrightness = brightnessPercent => {
+    const brightnessRatio = clamp(toFiniteNumber(brightnessPercent, 100), 50, 150) / 100;
+    if (brightnessRatio === floorBrightnessUniform.value) {
       return false;
     } else {
-      floorBrightness.value = element;
-      structureScans.uniformUpdates += 1;
+      floorBrightnessUniform.value = brightnessRatio;
+      stats.uniformUpdates += 1;
       return true;
     }
   };
-  function setMotion(nextMotion, keepLit = false) {
-    if (inMotion === (nextMotion === true) && motionKeepLit === keepLit) {
+  function setMotion(motionEnabled, motionInstant = false) {
+    if (isMotionEnabled === (motionEnabled === true) && isMotionInstant === motionInstant) {
       return;
     }
-    const wasKeepLit = motionKeepLit;
-    motionKeepLit = keepLit;
-    inMotion = nextMotion === true;
-    fadeStart = inMotion || keepLit || wasKeepLit ? null : performance.now();
-    if (inMotion && !motionKeepLit) {
-      for (const uniforms of getCurrent.values()) {
-        uniforms.uniforms.plan2Gain.value = 0;
-        uniforms.uniforms.plan2SunShadowStrength.value = 0;
+    const previousMotionInstant = isMotionInstant;
+    isMotionInstant = motionInstant;
+    isMotionEnabled = motionEnabled === true;
+    motionFadeStartMs =
+      isMotionEnabled || motionInstant || previousMotionInstant ? null : performance.now();
+    if (isMotionEnabled && !isMotionInstant) {
+      for (const frozenLightGroup of groupsByKey.values()) {
+        frozenLightGroup.uniforms.plan2Gain.value = 0;
+        frozenLightGroup.uniforms.plan2SunShadowStrength.value = 0;
       }
     }
-    dirty = true;
+    shouldRescanStructure = true;
     requestFrame();
   }
-  const __plan2Region = {
-    register,
-    sync,
-    syncCamera,
-    dispose: disposeController,
-    stats: structureScans,
-    settings: rangeScale,
-    inspect,
-    sample,
-    invalidate,
-    setFloorBrightness,
-    setMotion,
+  const controller = {
+    register: registerLight,
+    sync: sync,
+    syncCamera: syncCamera,
+    dispose: dispose,
+    stats: stats,
+    settings: settings,
+    inspect: inspect,
+    sample: sampleFloorVolume,
+    invalidate: markStructureDirty,
+    setFloorBrightness: setFloorBrightness,
+    setMotion: setMotion,
     setMotionTransformProvider(provider) {
       motionTransformProvider = provider;
     },
-    setOverrides,
-    getOverrides,
-    listRegions,
-    setPreview,
-    retainRoot(root) {
-      clear.add(root);
-      invalidate();
+    setOverrides: setOverrides,
+    getOverrides: getOverrides,
+    listRegions: listRegions,
+    setPreview: setPreview,
+    retainRoot(retainedRoot) {
+      retainedRoots.add(retainedRoot);
+      markStructureDirty();
     },
-    releaseRoot(root) {
-      clear.delete(root);
-      invalidate();
+    releaseRoot(releasedRoot) {
+      retainedRoots.delete(releasedRoot);
+      markStructureDirty();
     }
   };
   scene.onBeforeRender = onBeforeRender;
   if (typeof window !== "undefined") {
-    window.__plan2Region = __plan2Region;
+    window.__plan2Region = controller;
   }
-  return __plan2Region;
+  return controller;
 }

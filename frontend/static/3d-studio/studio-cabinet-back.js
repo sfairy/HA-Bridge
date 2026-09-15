@@ -1,181 +1,183 @@
-export function repairGlassCabinetBack(THREE, root, modelType = 'glasscabinet') {
+export function repairGlassCabinetBack(THREE, root, cabinetKind = "glasscabinet") {
   root.updateMatrixWorld(true);
-  let backMesh;
-  let shelfMesh;
-  root.traverse(node => {
-    if (!node.isMesh || Array.isArray(node.material)) {
-      return;
-    }
-    if (node.material?.name === modelType + '-material-0') {
-      backMesh = node;
-    }
-    if (node.material?.name === modelType + '-material-' + (modelType === 'bookcase' ? 7 : 10)) {
-      shelfMesh = node;
+  let panelMesh;
+  let frameMesh;
+  root.traverse(child => {
+    if (!!child.isMesh && !Array.isArray(child.material)) {
+      if (child.material?.name === cabinetKind + "-material-0") {
+        panelMesh = child;
+      }
+      if (
+        child.material?.name ===
+        cabinetKind + "-material-" + (cabinetKind === "bookcase" ? 7 : 10)
+      ) {
+        frameMesh = child;
+      }
     }
   });
-  if (!backMesh || !shelfMesh) {
+  if (!panelMesh || !frameMesh) {
     return false;
   }
-  backMesh.geometry.computeBoundingBox();
-  shelfMesh.geometry.computeBoundingBox();
-  const backBox = backMesh.geometry.boundingBox;
-  const shelfBox = shelfMesh.geometry.boundingBox.clone().applyMatrix4(
-    new THREE.Matrix4().copy(backMesh.matrixWorld).invert().multiply(shelfMesh.matrixWorld)
+  panelMesh.geometry.computeBoundingBox();
+  frameMesh.geometry.computeBoundingBox();
+  const panelBounds = panelMesh.geometry.boundingBox;
+  const frameBounds = frameMesh.geometry.boundingBox
+    .clone()
+    .applyMatrix4(
+      new THREE.Matrix4().copy(panelMesh.matrixWorld).invert().multiply(frameMesh.matrixWorld)
+    );
+  const backFaceZ = Math.min(panelBounds.min.z, frameBounds.min.z) - 0.004;
+  const repairGeometry = new THREE.BoxGeometry(
+    frameBounds.max.x - frameBounds.min.x,
+    frameBounds.max.y - frameBounds.min.y,
+    panelBounds.max.z - backFaceZ
   );
-  const backMinZ = Math.min(backBox.min.z, shelfBox.min.z) - 0.004;
-  const geometry = new THREE.BoxGeometry(
-    shelfBox.max.x - shelfBox.min.x,
-    shelfBox.max.y - shelfBox.min.y,
-    backBox.max.z - backMinZ
+  repairGeometry.translate(
+    (frameBounds.min.x + frameBounds.max.x) / 2,
+    (frameBounds.min.y + frameBounds.max.y) / 2,
+    (backFaceZ + panelBounds.max.z) / 2
   );
-  geometry.translate(
-    (shelfBox.min.x + shelfBox.max.x) / 2,
-    (shelfBox.min.y + shelfBox.max.y) / 2,
-    (backMinZ + backBox.max.z) / 2
-  );
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  const previousGeometry = backMesh.geometry;
-  backMesh.geometry = geometry;
-  let geometryShared = false;
-  root.traverse(node => {
-    if (node !== backMesh && node.geometry === previousGeometry) {
-      geometryShared = true;
+  repairGeometry.computeBoundingBox();
+  repairGeometry.computeBoundingSphere();
+  const originalGeometry = panelMesh.geometry;
+  panelMesh.geometry = repairGeometry;
+  let isShared = false;
+  root.traverse(traversedNode => {
+    if (traversedNode !== panelMesh && traversedNode.geometry === originalGeometry) {
+      isShared = true;
     }
   });
-  if (!geometryShared) {
-    previousGeometry.dispose();
+  if (!isShared) {
+    originalGeometry.dispose();
   }
   return true;
 }
-
-function mergeBoxGeometries(THREE, boxes) {
+function buildBoxGeometry(three, boxes) {
   const positions = [];
   const normals = [];
   const uvs = [];
-  for (const [width, height, depth, x, y, z] of boxes) {
-    const box = new THREE.BoxGeometry(width, height, depth);
-    const nonIndexed = box.toNonIndexed();
-    box.dispose();
-    nonIndexed.translate(x, y, z);
+  for (const [boxWidth, boxHeight, boxDepth, offsetX, offsetY, offsetZ] of boxes) {
+    const boxGeometry = new three.BoxGeometry(boxWidth, boxHeight, boxDepth);
+    const nonIndexed = boxGeometry.toNonIndexed();
+    boxGeometry.dispose();
+    nonIndexed.translate(offsetX, offsetY, offsetZ);
     positions.push(...nonIndexed.attributes.position.array);
     normals.push(...nonIndexed.attributes.normal.array);
     uvs.push(...nonIndexed.attributes.uv.array);
     nonIndexed.dispose();
   }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  const geometry = new three.BufferGeometry();
+  geometry.setAttribute("position", new three.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new three.Float32BufferAttribute(normals, 3));
+  geometry.setAttribute("uv", new three.Float32BufferAttribute(uvs, 2));
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return geometry;
 }
-
-export function repairWallCabinetSides(THREE, root) {
-  const meshByMaterial = new Map();
-  root.traverse(node => {
-    if (node.isMesh && !Array.isArray(node.material)) {
-      meshByMaterial.set(node.material?.name, node);
+export function repairWallCabinetSides(threeLib, meshRoot) {
+  const meshByMaterialName = new Map();
+  meshRoot.traverse(mesh => {
+    if (mesh.isMesh && !Array.isArray(mesh.material)) {
+      meshByMaterialName.set(mesh.material?.name, mesh);
     }
   });
-  const carcassMesh = meshByMaterial.get('wallcabinet-material-0');
-  const sideMesh = meshByMaterial.get('wallcabinet-material-1');
-  const trimMesh = meshByMaterial.get('wallcabinet-material-2');
-  if (!carcassMesh || !sideMesh || !trimMesh) {
+  const leftPanelMesh = meshByMaterialName.get("wallcabinet-material-0");
+  const sidePanelMesh = meshByMaterialName.get("wallcabinet-material-1");
+  const topPanelMesh = meshByMaterialName.get("wallcabinet-material-2");
+  if (!leftPanelMesh || !sidePanelMesh || !topPanelMesh) {
     return false;
   }
-  for (const mesh of [carcassMesh, sideMesh, trimMesh]) {
-    mesh.geometry.computeBoundingBox();
+  for (const panelMeshEntry of [leftPanelMesh, sidePanelMesh, topPanelMesh]) {
+    panelMeshEntry.geometry.computeBoundingBox();
   }
-  const carcassBox = carcassMesh.geometry.boundingBox;
-  const sideBox = sideMesh.geometry.boundingBox;
-  const trimBox = trimMesh.geometry.boundingBox;
-  const carcassWidth = carcassBox.max.x - carcassBox.min.x;
-  const sideDepth = sideBox.max.z - sideBox.min.z;
-  const panelThickness = carcassBox.max.z - carcassBox.min.z;
-  const centerX = (carcassBox.min.x + carcassBox.max.x) / 2;
-  const centerZ = (sideBox.min.z + sideBox.max.z) / 2;
-  const trimMinY = trimBox.min.y;
-  const sideMaxY = sideBox.max.y;
-  const trimMaxY = trimBox.max.y;
-  const innerWidth = carcassWidth - panelThickness * 2;
-  const replacements = [
+  const leftBounds = leftPanelMesh.geometry.boundingBox;
+  const sideBounds = sidePanelMesh.geometry.boundingBox;
+  const topBounds = topPanelMesh.geometry.boundingBox;
+  const leftPanelWidth = leftBounds.max.x - leftBounds.min.x;
+  const sidePanelDepth = sideBounds.max.z - sideBounds.min.z;
+  const leftPanelDepth = leftBounds.max.z - leftBounds.min.z;
+  const leftPanelCenterX = (leftBounds.min.x + leftBounds.max.x) / 2;
+  const sidePanelCenterZ = (sideBounds.min.z + sideBounds.max.z) / 2;
+  const bottomY = topBounds.min.y;
+  const topY = sideBounds.max.y;
+  const innerTopY = topBounds.max.y;
+  const innerPanelWidth = leftPanelWidth - leftPanelDepth * 2;
+  const repairs = [
     [
-      sideMesh,
-      mergeBoxGeometries(THREE, [
+      sidePanelMesh,
+      buildBoxGeometry(threeLib, [
         [
-          panelThickness,
-          sideMaxY - trimMinY,
-          sideDepth,
-          centerX - (carcassWidth - panelThickness) / 2,
-          (trimMinY + sideMaxY) / 2,
-          centerZ
+          leftPanelDepth,
+          topY - bottomY,
+          sidePanelDepth,
+          leftPanelCenterX - (leftPanelWidth - leftPanelDepth) / 2,
+          (bottomY + topY) / 2,
+          sidePanelCenterZ
         ],
         [
-          panelThickness,
-          sideMaxY - trimMinY,
-          sideDepth,
-          centerX + (carcassWidth - panelThickness) / 2,
-          (trimMinY + sideMaxY) / 2,
-          centerZ
+          leftPanelDepth,
+          topY - bottomY,
+          sidePanelDepth,
+          leftPanelCenterX + (leftPanelWidth - leftPanelDepth) / 2,
+          (bottomY + topY) / 2,
+          sidePanelCenterZ
         ],
         [
-          innerWidth,
-          sideMaxY - trimMaxY,
-          sideDepth,
-          centerX,
-          (trimMaxY + sideMaxY) / 2,
-          centerZ
+          innerPanelWidth,
+          topY - innerTopY,
+          sidePanelDepth,
+          leftPanelCenterX,
+          (innerTopY + topY) / 2,
+          sidePanelCenterZ
         ]
       ])
     ],
     [
-      trimMesh,
-      mergeBoxGeometries(THREE, [
+      topPanelMesh,
+      buildBoxGeometry(threeLib, [
         [
-          innerWidth,
-          panelThickness,
-          sideDepth,
-          centerX,
-          trimMinY + panelThickness / 2,
-          centerZ
+          innerPanelWidth,
+          leftPanelDepth,
+          sidePanelDepth,
+          leftPanelCenterX,
+          bottomY + leftPanelDepth / 2,
+          sidePanelCenterZ
         ],
         [
-          innerWidth,
-          panelThickness,
-          sideDepth,
-          centerX,
-          trimMaxY - panelThickness / 2,
-          centerZ
+          innerPanelWidth,
+          leftPanelDepth,
+          sidePanelDepth,
+          leftPanelCenterX,
+          innerTopY - leftPanelDepth / 2,
+          sidePanelCenterZ
         ]
       ])
     ],
     [
-      carcassMesh,
-      mergeBoxGeometries(THREE, [
+      leftPanelMesh,
+      buildBoxGeometry(threeLib, [
         [
-          innerWidth,
-          trimMaxY - trimMinY - panelThickness * 2,
-          panelThickness,
-          centerX,
-          (trimMinY + trimMaxY) / 2,
-          sideBox.min.z + panelThickness / 2
+          innerPanelWidth,
+          innerTopY - bottomY - leftPanelDepth * 2,
+          leftPanelDepth,
+          leftPanelCenterX,
+          (bottomY + innerTopY) / 2,
+          sideBounds.min.z + leftPanelDepth / 2
         ]
       ])
     ]
   ];
-  for (const [mesh, geometry] of replacements) {
-    const previousGeometry = mesh.geometry;
-    mesh.geometry = geometry;
-    let geometryShared = false;
-    root.traverse(node => {
-      if (node !== mesh && node.geometry === previousGeometry) {
-        geometryShared = true;
+  for (const [targetMesh, replacementGeometry] of repairs) {
+    const savedGeometry = targetMesh.geometry;
+    targetMesh.geometry = replacementGeometry;
+    let isReferenced = false;
+    meshRoot.traverse(otherNode => {
+      if (otherNode !== targetMesh && otherNode.geometry === savedGeometry) {
+        isReferenced = true;
       }
     });
-    if (!geometryShared) {
-      previousGeometry.dispose();
+    if (!isReferenced) {
+      savedGeometry.dispose();
     }
   }
   return true;

@@ -1,66 +1,71 @@
-const ALLOWED_CLIMATE_DEVICE_TYPES = new Set(["auto", "air-conditioner", "bath-heater"]);
-function normalizeStringList(stringList) {
-  if (Array.isArray(stringList)) {
-    return [...new Set(stringList.map(entry => String(entry ?? "").trim()).filter(Boolean))];
+const CLIMATE_DEVICE_TYPES = new Set(["auto", "air-conditioner", "bath-heater"]);
+function normalizeStringList(values) {
+  if (Array.isArray(values)) {
+    return [...new Set(values.map(entry => String(entry ?? "").trim()).filter(Boolean))];
   } else {
     return [];
   }
 }
-function toFiniteNumber(value, fallback = null) {
+function toNumberOrDefault(value, fallbackValue = null) {
   if (value == null || value === "") {
-    return fallback;
+    return fallbackValue;
   }
-  const numeric = Number(value);
-  if (Number.isFinite(numeric)) {
-    return numeric;
+  const parsedNumber = Number(value);
+  if (Number.isFinite(parsedNumber)) {
+    return parsedNumber;
   } else {
-    return fallback;
+    return fallbackValue;
   }
 }
 export function configuredClimateDeviceType(component) {
-  const text = String(component?.properties?.deviceType || "auto");
-  if (ALLOWED_CLIMATE_DEVICE_TYPES.has(text)) {
-    return text;
+  const configuredType = String(component?.properties?.deviceType || "auto");
+  if (CLIMATE_DEVICE_TYPES.has(configuredType)) {
+    return configuredType;
   } else {
     return "auto";
   }
 }
-export function normalizeClimateCapabilities(climateCapabilities) {
-  const attributes = climateCapabilities?.attributes && typeof climateCapabilities.attributes == "object" ? climateCapabilities.attributes : {};
-  const hvacModes = normalizeStringList(attributes.hvac_modes);
-  const fanModes = normalizeStringList(attributes.fan_modes);
-  const swingModes = normalizeStringList(attributes.swing_modes);
-  const horizontalSwingModes = normalizeStringList(attributes.swing_horizontal_modes);
-  const presetModes = normalizeStringList(attributes.preset_modes);
-  const operationModes = normalizeStringList(attributes.operation_list);
-  const fanPercentage = toFiniteNumber(attributes.percentage);
-  const fanPercentageStep = Math.max(1, toFiniteNumber(attributes.percentage_step, 1));
-  const targetTemperature = toFiniteNumber(attributes.temperature);
-  const currentTemperature = toFiniteNumber(attributes.current_temperature);
-  let minimumTemperature = toFiniteNumber(attributes.min_temp, 16);
-  let maximumTemperature = toFiniteNumber(attributes.max_temp, 30);
+export function normalizeClimateCapabilities(sourceState) {
+  const stateAttributes =
+    sourceState?.attributes && typeof sourceState.attributes == "object"
+      ? sourceState.attributes
+      : {};
+  const hvacModes = normalizeStringList(stateAttributes.hvac_modes);
+  const fanModes = normalizeStringList(stateAttributes.fan_modes);
+  const swingModes = normalizeStringList(stateAttributes.swing_modes);
+  const horizontalSwingModes = normalizeStringList(stateAttributes.swing_horizontal_modes);
+  const presetModes = normalizeStringList(stateAttributes.preset_modes);
+  const operationModes = normalizeStringList(stateAttributes.operation_list);
+  const fanPercentage = toNumberOrDefault(stateAttributes.percentage);
+  const fanPercentageStep = Math.max(1, toNumberOrDefault(stateAttributes.percentage_step, 1));
+  const targetTemperature = toNumberOrDefault(stateAttributes.temperature);
+  const currentTemperature = toNumberOrDefault(stateAttributes.current_temperature);
+  let minimumTemperature = toNumberOrDefault(stateAttributes.min_temp, 16);
+  let maximumTemperature = toNumberOrDefault(stateAttributes.max_temp, 30);
   if (maximumTemperature <= minimumTemperature) {
     minimumTemperature = 16;
     maximumTemperature = 30;
   }
-  const temperatureStep = Math.max(0.1, toFiniteNumber(attributes.target_temp_step, 0.5));
+  const temperatureStep = Math.max(0.1, toNumberOrDefault(stateAttributes.target_temp_step, 0.5));
   return {
-    attributes,
-    hvacModes,
-    fanModes,
-    swingModes,
-    horizontalSwingModes,
-    presetModes,
-    operationModes,
-    fanPercentage,
-    fanPercentageStep,
-    targetTemperature,
-    currentTemperature,
-    minimumTemperature,
-    maximumTemperature,
-    temperatureStep,
+    attributes: stateAttributes,
+    hvacModes: hvacModes,
+    fanModes: fanModes,
+    swingModes: swingModes,
+    horizontalSwingModes: horizontalSwingModes,
+    presetModes: presetModes,
+    operationModes: operationModes,
+    fanPercentage: fanPercentage,
+    fanPercentageStep: fanPercentageStep,
+    targetTemperature: targetTemperature,
+    currentTemperature: currentTemperature,
+    minimumTemperature: minimumTemperature,
+    maximumTemperature: maximumTemperature,
+    temperatureStep: temperatureStep,
     supportsTargetTemperature: targetTemperature !== null,
-    hasModeControl: hvacModes.some(mode => mode !== "off") || operationModes.some(mode => !["off", "空"].includes(mode.toLowerCase())),
+    hasModeControl:
+      hvacModes.some(mode => mode !== "off") ||
+      operationModes.some(operationMode => !["off", "空"].includes(operationMode.toLowerCase())),
     hasFanControl: fanModes.length > 0,
     hasSwingControl: swingModes.length > 0,
     hasHorizontalSwingControl: horizontalSwingModes.length > 0,
@@ -68,86 +73,133 @@ export function normalizeClimateCapabilities(climateCapabilities) {
     supportsFanPercentage: fanPercentage !== null
   };
 }
-export function climateOperationModeValues(entityOrEvent, deviceType = "air-conditioner") {
-  const climateCapabilities = normalizeClimateCapabilities(entityOrEvent);
+export function climateOperationModeValues(stateEntity, deviceType = "air-conditioner") {
+  const capabilities = normalizeClimateCapabilities(stateEntity);
   if (deviceType === "water-heater") {
-    return climateCapabilities.operationModes.filter(mode => !["off", "空"].includes(String(mode).trim().toLowerCase()));
+    return capabilities.operationModes.filter(
+      operationModeKey => !["off", "空"].includes(String(operationModeKey).trim().toLowerCase())
+    );
   } else {
-    return climateCapabilities.hvacModes;
+    return capabilities.hvacModes;
   }
 }
-export function reconcileClimateTargetTemperature(temperature, reportedTemperature, pending, temperatureStep = 0.5) {
-  const reported = toFiniteNumber(reportedTemperature);
-  const pendingTemperature = toFiniteNumber(pending);
-  if (reported === null) {
+export function reconcileClimateTargetTemperature(
+  componentTargetTemperature,
+  confirmedTemperature,
+  pendingTemperature,
+  stepOverride = 0.5
+) {
+  const confirmedValue = toNumberOrDefault(confirmedTemperature);
+  const pendingValue = toNumberOrDefault(pendingTemperature);
+  if (confirmedValue === null) {
     return {
-      temperature,
-      pending,
+      temperature: componentTargetTemperature,
+      pending: pendingTemperature,
       confirmed: false
     };
   }
-  if (pendingTemperature === null) {
+  if (pendingValue === null) {
     return {
-      temperature: reported,
+      temperature: confirmedValue,
       pending: null,
       confirmed: false
     };
   }
-  const tolerance = Math.max(0.001, Math.abs(toFiniteNumber(temperatureStep, 0.5)) / 2);
-  if (Math.abs(reported - pendingTemperature) <= tolerance) {
+  const tolerance = Math.max(0.001, Math.abs(toNumberOrDefault(stepOverride, 0.5)) / 2);
+  if (Math.abs(confirmedValue - pendingValue) <= tolerance) {
     return {
-      temperature: reported,
+      temperature: confirmedValue,
       pending: null,
       confirmed: true
     };
   } else {
     return {
-      temperature,
-      pending,
+      temperature: componentTargetTemperature,
+      pending: pendingTemperature,
       confirmed: false
     };
   }
 }
-export function climateControlStructureKey(entityId, entityOrEvent, deviceType = "air-conditioner") {
-  const climateCapabilities = normalizeClimateCapabilities(entityOrEvent);
-  const domain = String(entityId || "").split(".", 1)[0];
-  const supportsTemperatureControl = ["climate", "water_heater"].includes(domain) && climateCapabilities.supportsTargetTemperature;
+export function climateControlStructureKey(
+  entityId,
+  structureState,
+  deviceTypeHint = "air-conditioner"
+) {
+  const structureCapabilities = normalizeClimateCapabilities(structureState);
+  const entityDomain = String(entityId || "").split(".", 1)[0];
+  const supportsTemperature =
+    ["climate", "water_heater"].includes(entityDomain) &&
+    structureCapabilities.supportsTargetTemperature;
   return JSON.stringify({
-    temperature: supportsTemperatureControl ? [climateCapabilities.minimumTemperature, climateCapabilities.maximumTemperature, climateCapabilities.temperatureStep] : null,
-    modes: climateOperationModeValues(entityOrEvent, deviceType),
-    fanModes: domain === "climate" ? climateCapabilities.fanModes : [],
-    fanPercentageStep: domain === "fan" && climateCapabilities.supportsFanPercentage ? climateCapabilities.fanPercentageStep : null,
-    swingModes: climateCapabilities.swingModes,
-    horizontalSwingModes: climateCapabilities.horizontalSwingModes,
-    presetModes: climateCapabilities.presetModes
+    temperature: supportsTemperature
+      ? [
+          structureCapabilities.minimumTemperature,
+          structureCapabilities.maximumTemperature,
+          structureCapabilities.temperatureStep
+        ]
+      : null,
+    modes: climateOperationModeValues(structureState, deviceTypeHint),
+    fanModes: entityDomain === "climate" ? structureCapabilities.fanModes : [],
+    fanPercentageStep:
+      entityDomain === "fan" && structureCapabilities.supportsFanPercentage
+        ? structureCapabilities.fanPercentageStep
+        : null,
+    swingModes: structureCapabilities.swingModes,
+    horizontalSwingModes: structureCapabilities.horizontalSwingModes,
+    presetModes: structureCapabilities.presetModes
   });
 }
-export function resolveClimateDeviceType(component, entityOrEvent, entityId = "") {
-  const configuredType = configuredClimateDeviceType(component);
-  if (configuredType !== "auto") {
-    return configuredType;
+export function resolveClimateDeviceType(deviceComponent, deviceState, friendlyName = "") {
+  const configuredDeviceType = configuredClimateDeviceType(deviceComponent);
+  if (configuredDeviceType !== "auto") {
+    return configuredDeviceType;
   }
-  const climateCapabilities = normalizeClimateCapabilities(entityOrEvent);
-  const searchText = [component?.properties?.label, entityOrEvent?.attributes?.friendly_name, entityId].map(part => String(part || "").toLowerCase()).join(" ");
-  if (/(浴霸|风暖|暖风|浴室取暖|bath.?heater)/i.test(searchText)) {
+  const resolvedCapabilities = normalizeClimateCapabilities(deviceState);
+  const nameSearchText = [
+    deviceComponent?.properties?.label,
+    deviceState?.attributes?.friendly_name,
+    friendlyName
+  ]
+    .map(namePart => String(namePart || "").toLowerCase())
+    .join(" ");
+  if (/(浴霸|风暖|暖风|浴室取暖|bath.?heater)/i.test(nameSearchText)) {
     return "bath-heater";
   }
-  const hvacModeKeys = climateCapabilities.hvacModes.map(normalizeClimateModeKey);
-  const presetModeKeys = climateCapabilities.presetModes.map(normalizeClimateModeKey);
-  if ([...hvacModeKeys, ...presetModeKeys].some(modeKey => ["vent", "ventilate", "ventilation", "exhaust", "air_exchange", "defog", "quick_heat", "quick_defog", "drying", "取暖", "吹风", "换气", "除雾", "干燥"].includes(modeKey))) {
+  const hvacModeKeys = resolvedCapabilities.hvacModes.map(normalizeClimateModeKey);
+  const presetModeKeys = resolvedCapabilities.presetModes.map(normalizeClimateModeKey);
+  if (
+    [...hvacModeKeys, ...presetModeKeys].some(bathHeaterModeKey =>
+      [
+        "vent",
+        "ventilate",
+        "ventilation",
+        "exhaust",
+        "air_exchange",
+        "defog",
+        "quick_heat",
+        "quick_defog",
+        "drying",
+        "取暖",
+        "吹风",
+        "换气",
+        "除雾",
+        "干燥"
+      ].includes(bathHeaterModeKey)
+    )
+  ) {
     return "bath-heater";
   }
-  if (hvacModeKeys.some(modeKey => ["cool", "heat_cool"].includes(modeKey))) {
+  if (hvacModeKeys.some(coolModeKey => ["cool", "heat_cool"].includes(coolModeKey))) {
     return "air-conditioner";
   }
-  const nonOffModes = hvacModeKeys.filter(modeKey => modeKey !== "off");
-  if (nonOffModes.length === 1 && nonOffModes[0] === "heat") {
+  const activeHeatModes = hvacModeKeys.filter(heatModeKey => heatModeKey !== "off");
+  if (activeHeatModes.length === 1 && activeHeatModes[0] === "heat") {
     return "bath-heater";
   } else {
     return "air-conditioner";
   }
 }
-const AC_PRESET_LABELS = {
+const CLIMATE_MODE_LABELS = {
   off: "关闭",
   cool: "制冷",
   heat: "制热",
@@ -235,7 +287,7 @@ const WATER_HEATER_MODE_LABELS = {
   加热: "加热",
   保温: "保温"
 };
-const SWING_MODE_LABELS = {
+const VERTICAL_SWING_LABELS = {
   off: "关闭",
   auto: "自动",
   default: "默认",
@@ -254,7 +306,7 @@ const SWING_MODE_LABELS = {
   swing_lower_middle: "中下摆动",
   swing_lower: "下方摆动"
 };
-const HORIZONTAL_SWING_MODE_LABELS = {
+const HORIZONTAL_SWING_LABELS = {
   off: "关闭",
   auto: "自动",
   default: "默认",
@@ -271,319 +323,442 @@ const HORIZONTAL_POSITION_LABELS = {
   horizontal_middle_right: "固定右中",
   horizontal_rightmost: "固定最右"
 };
-export function normalizeClimateModeKey(climateModeKey) {
-  return String(climateModeKey || "").normalize("NFKC").trim().replace(/([a-z\d])([A-Z])/g, "$1_$2").replace(/[+&]/g, "_and_").toLowerCase().replace(/[\s./-]+/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+export function normalizeClimateModeKey(rawModeKey) {
+  return String(rawModeKey || "")
+    .normalize("NFKC")
+    .trim()
+    .replace(/([a-z\d])([A-Z])/g, "$1_$2")
+    .replace(/[+&]/g, "_and_")
+    .toLowerCase()
+    .replace(/[\s./-]+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
 }
-function estimateTextWidth(text, fontSize) {
-  return Array.from(String(text || "")).reduce((width, character) => /\s/u.test(character) ? width + fontSize * 0.35 : /[\x00-\x7f]/u.test(character) ? /[ilI1.,:;'|!]/u.test(character) ? width + fontSize * 0.32 : /[mwMW@#%&]/u.test(character) ? width + fontSize * 0.82 : width + fontSize * 0.58 : width + fontSize, 0);
+function measureTextWidth(text, fontSizePx) {
+  return Array.from(String(text || "")).reduce(
+    (accumulatedWidth, character) =>
+      /\s/u.test(character)
+        ? accumulatedWidth + fontSizePx * 0.35
+        : /[\x00-\x7f]/u.test(character)
+          ? /[ilI1.,:;'|!]/u.test(character)
+            ? accumulatedWidth + fontSizePx * 0.32
+            : /[mwMW@#%&]/u.test(character)
+              ? accumulatedWidth + fontSizePx * 0.82
+              : accumulatedWidth + fontSizePx * 0.58
+          : accumulatedWidth + fontSizePx,
+    0
+  );
 }
-export function climateOptionPresentation(options, labels = {}, {
-  availableWidth = 380,
-  buttonGap = 5,
-  minimumButtonWidth = 36,
-  horizontalPadding = 8,
-  iconWidth = 20,
-  inlineIcon = false,
-  inlineIconGap = 4,
-  fontSize = 11
-} = {}) {
-  const stringList = normalizeStringList(options);
-  if (stringList.length && stringList.map(option => String(labels?.[option] || option).trim()).reduce((totalWidth, label) => {
-    const textWidth = estimateTextWidth(label, fontSize);
-    const contentWidth = inlineIcon ? iconWidth + inlineIconGap + textWidth : Math.max(iconWidth, textWidth);
-    return totalWidth + Math.max(minimumButtonWidth, contentWidth + horizontalPadding);
-  }, Math.max(0, stringList.length - 1) * buttonGap) > availableWidth) {
+export function climateOptionPresentation(
+  modes,
+  labelLookup = {},
+  {
+    availableWidth: availableWidth = 380,
+    buttonGap: buttonGap = 5,
+    minimumButtonWidth: minimumButtonWidth = 36,
+    horizontalPadding: horizontalPadding = 8,
+    iconWidth: iconWidth = 20,
+    inlineIcon: inlineIcon = false,
+    inlineIconGap: inlineIconGap = 4,
+    fontSize: fontSize = 11
+  } = {}
+) {
+  const modeList = normalizeStringList(modes);
+  if (
+    modeList.length &&
+    modeList
+      .map(modeLabelKey => String(labelLookup?.[modeLabelKey] || modeLabelKey).trim())
+      .reduce(
+        (totalWidth, label) => {
+          const labelWidth = measureTextWidth(label, fontSize);
+          const buttonWidth = inlineIcon
+            ? iconWidth + inlineIconGap + labelWidth
+            : Math.max(iconWidth, labelWidth);
+          return totalWidth + Math.max(minimumButtonWidth, buttonWidth + horizontalPadding);
+        },
+        Math.max(0, modeList.length - 1) * buttonGap
+      ) > availableWidth
+  ) {
     return "select";
   } else {
     return "buttons";
   }
 }
-export function climateModeTranslation(mode, {
-  entityId = "",
-  entityMetadata = null,
-  entityTranslations = null,
-  attributes = null
-} = {}) {
+export function climateModeTranslation(
+  modeInput,
+  {
+    entityId: translationEntityId = "",
+    entityMetadata: entityMetadata = null,
+    entityTranslations: entityTranslations = null,
+    attributes: attributeOverride = null
+  } = {}
+) {
   if (!entityTranslations || typeof entityTranslations != "object") {
     return "";
   }
-  const metadata = entityMetadata?.get?.(entityId) || {};
+  const metadata = entityMetadata?.get?.(translationEntityId) || {};
   const platform = String(metadata.platform || "").trim();
-  const domain = String(metadata.domain || String(entityId).split(".")[0] || "").trim();
+  const metadataDomain = String(
+    metadata.domain || String(translationEntityId).split(".")[0] || ""
+  ).trim();
   const translationKey = String(metadata.translationKey || "").trim();
-  const climateModeKey = normalizeClimateModeKey(mode);
-  if (!platform || !domain || !translationKey || !climateModeKey) {
+  const modeKey = normalizeClimateModeKey(modeInput);
+  if (!platform || !metadataDomain || !translationKey || !modeKey) {
     return "";
   }
-  const translationPrefix = "component." + platform + ".entity." + domain + "." + translationKey;
-  const attributeKeys = Array.isArray(attributes) && attributes.length ? attributes : ["preset_mode", "hvac_mode", "operation_mode", "fan_mode"];
-  const rawMode = String(mode || "").trim();
-  const modeVariants = [...new Set([rawMode, rawMode.toLowerCase(), climateModeKey].filter(Boolean))];
-  const translationPaths = attributeKeys.flatMap(attributeKey => modeVariants.flatMap(modeVariant => [translationPrefix + ".state_attributes." + attributeKey + ".state." + modeVariant, translationPrefix + ".state_attributes." + attributeKey + ".options." + modeVariant, translationPrefix + ".state_attributes." + attributeKey + "." + modeVariant]));
-  for (const path of translationPaths) {
-    const translated = String(entityTranslations[path] || "").trim();
-    if (translated) {
-      return translated;
+  const translationPrefix =
+    "component." + platform + ".entity." + metadataDomain + "." + translationKey;
+  const attributeNames =
+    Array.isArray(attributeOverride) && attributeOverride.length
+      ? attributeOverride
+      : ["preset_mode", "hvac_mode", "operation_mode", "fan_mode"];
+  const trimmedMode = String(modeInput || "").trim();
+  const modeCandidates = [
+    ...new Set([trimmedMode, trimmedMode.toLowerCase(), modeKey].filter(Boolean))
+  ];
+  const translationKeyCandidates = attributeNames.flatMap(attributeName =>
+    modeCandidates.flatMap(candidate => [
+      translationPrefix + ".state_attributes." + attributeName + ".state." + candidate,
+      translationPrefix + ".state_attributes." + attributeName + ".options." + candidate,
+      translationPrefix + ".state_attributes." + attributeName + "." + candidate
+    ])
+  );
+  for (const candidateTranslationKey of translationKeyCandidates) {
+    const translation = String(entityTranslations[candidateTranslationKey] || "").trim();
+    if (translation) {
+      return translation;
     }
   }
   return "";
 }
-export function climateModeLabel(mode, deviceType = "air-conditioner", translationOptions = {}) {
-  const rawMode = String(mode || "").trim();
+export function climateModeLabel(
+  requestedMode,
+  labelModeDeviceType = "air-conditioner",
+  modeLabelOptions = {}
+) {
+  const rawMode = String(requestedMode || "").trim();
   if (!rawMode) {
     return "等待实体状态";
   }
-  const climateModeKey = normalizeClimateModeKey(rawMode);
-  const labelTable = deviceType === "bath-heater" ? BATH_HEATER_MODE_LABELS : deviceType === "water-heater" ? WATER_HEATER_MODE_LABELS : AC_PRESET_LABELS;
-  const translated = climateModeTranslation(rawMode, translationOptions);
-  if (translated && /[^\x00-\x7f]/u.test(translated)) {
-    return translated;
+  const normalizedModeKey = normalizeClimateModeKey(rawMode);
+  const modeLabelTable =
+    labelModeDeviceType === "bath-heater"
+      ? BATH_HEATER_MODE_LABELS
+      : labelModeDeviceType === "water-heater"
+        ? WATER_HEATER_MODE_LABELS
+        : CLIMATE_MODE_LABELS;
+  const candidateTranslation = climateModeTranslation(rawMode, modeLabelOptions);
+  if (candidateTranslation && /[^\x00-\x7f]/u.test(candidateTranslation)) {
+    return candidateTranslation;
   } else {
-    return labelTable[climateModeKey] || translated || rawMode;
+    return modeLabelTable[normalizedModeKey] || candidateTranslation || rawMode;
   }
 }
-export function climateSwingModeLabel(mode, orientation = "vertical", translationOptions = {}) {
-  const rawMode = String(mode || "").trim();
-  if (!rawMode) {
+export function climateSwingModeLabel(
+  swingModeInput,
+  swingDirection = "vertical",
+  swingLabelOptions = {}
+) {
+  const swingModeName = String(swingModeInput || "").trim();
+  if (!swingModeName) {
     return "等待实体状态";
   }
-  const climateModeKey = normalizeClimateModeKey(rawMode);
-  const labelTable = orientation === "horizontal" ? HORIZONTAL_SWING_MODE_LABELS : SWING_MODE_LABELS;
-  if (labelTable[climateModeKey]) {
-    return labelTable[climateModeKey];
+  const normalizedSwingKey = normalizeClimateModeKey(swingModeName);
+  const swingLabelTable =
+    swingDirection === "horizontal" ? HORIZONTAL_SWING_LABELS : VERTICAL_SWING_LABELS;
+  if (swingLabelTable[normalizedSwingKey]) {
+    return swingLabelTable[normalizedSwingKey];
   }
-  if (orientation === "vertical") {
-    const combinedMatch = climateModeKey.match(/^(horizontal_(?:leftmost|middle_left|middle_right|rightmost))(?:_and_)?vertical_swing$/);
-    if (combinedMatch) {
-      const horizontalLabel = HORIZONTAL_POSITION_LABELS[combinedMatch[1]];
-      if (horizontalLabel) {
-        return horizontalLabel + "＋上下摆动";
+  if (swingDirection === "vertical") {
+    const positionMatch = normalizedSwingKey.match(
+      /^(horizontal_(?:leftmost|middle_left|middle_right|rightmost))(?:_and_)?vertical_swing$/
+    );
+    if (positionMatch) {
+      const positionLabel = HORIZONTAL_POSITION_LABELS[positionMatch[1]];
+      if (positionLabel) {
+        return positionLabel + "＋上下摆动";
       }
     }
-    if (HORIZONTAL_POSITION_LABELS[climateModeKey]) {
-      return HORIZONTAL_POSITION_LABELS[climateModeKey];
+    if (HORIZONTAL_POSITION_LABELS[normalizedSwingKey]) {
+      return HORIZONTAL_POSITION_LABELS[normalizedSwingKey];
     }
   }
-  return climateModeTranslation(rawMode, {
-    ...translationOptions,
-    attributes: [orientation === "horizontal" ? "swing_horizontal_mode" : "swing_mode"]
-  }) || rawMode;
+  return (
+    climateModeTranslation(swingModeName, {
+      ...swingLabelOptions,
+      attributes: [swingDirection === "horizontal" ? "swing_horizontal_mode" : "swing_mode"]
+    }) || swingModeName
+  );
 }
-export function bathHeaterModeUsesAirflow(mode) {
-  const climateModeKey = normalizeClimateModeKey(mode);
-  if (climateModeKey) {
-    return !["off", "idle", "standby", "unknown", "unavailable", "待机", "关闭"].includes(climateModeKey);
+export function bathHeaterModeUsesAirflow(airflowModeInput) {
+  const normalizedAirflowKey = normalizeClimateModeKey(airflowModeInput);
+  if (normalizedAirflowKey) {
+    return !["off", "idle", "standby", "unknown", "unavailable", "待机", "关闭"].includes(
+      normalizedAirflowKey
+    );
   } else {
     return false;
   }
 }
-export function climatePresentationMode(entityOrEvent, deviceType = "air-conditioner") {
-  const state = String(entityOrEvent?.state || "off").trim();
-  if (deviceType === "water-heater") {
-    if (["off", "unknown", "unavailable"].includes(state.toLowerCase())) {
-      return state;
+export function climatePresentationMode(
+  presentationState,
+  presentationDeviceType = "air-conditioner"
+) {
+  const rawStateName = String(presentationState?.state || "off").trim();
+  if (presentationDeviceType === "water-heater") {
+    if (["off", "unknown", "unavailable"].includes(rawStateName.toLowerCase())) {
+      return rawStateName;
     } else {
-      return String(entityOrEvent?.attributes?.operation_mode || state).trim();
+      return String(presentationState?.attributes?.operation_mode || rawStateName).trim();
     }
   }
-  if (deviceType !== "bath-heater" || ["unknown", "unavailable"].includes(state.toLowerCase())) {
-    return state;
+  if (
+    presentationDeviceType !== "bath-heater" ||
+    ["unknown", "unavailable"].includes(rawStateName.toLowerCase())
+  ) {
+    return rawStateName;
   }
-  if (state.toLowerCase() === "off") {
-    const presetOrMode = String(entityOrEvent?.attributes?.preset_mode || entityOrEvent?.attributes?.mode || "").trim();
-    if (bathHeaterModeUsesAirflow(presetOrMode)) {
-      return presetOrMode;
+  if (rawStateName.toLowerCase() === "off") {
+    const presetMode = String(
+      presentationState?.attributes?.preset_mode || presentationState?.attributes?.mode || ""
+    ).trim();
+    if (bathHeaterModeUsesAirflow(presetMode)) {
+      return presetMode;
     } else {
       return "off";
     }
   }
-  return String(entityOrEvent?.attributes?.preset_mode || entityOrEvent?.attributes?.mode || entityOrEvent?.attributes?.fan_mode || state).trim();
+  return String(
+    presentationState?.attributes?.preset_mode ||
+      presentationState?.attributes?.mode ||
+      presentationState?.attributes?.fan_mode ||
+      rawStateName
+  ).trim();
 }
-export function climateIsPoweredOn(entityOrEvent, deviceType = "air-conditioner") {
-  const state = String(entityOrEvent?.state || "off").trim().toLowerCase();
-  if (deviceType === "bath-heater") {
-    if (!state || ["unknown", "unavailable"].includes(state)) {
+export function climateIsPoweredOn(powerState, powerDeviceType = "air-conditioner") {
+  const lowercasedState = String(powerState?.state || "off")
+    .trim()
+    .toLowerCase();
+  if (powerDeviceType === "bath-heater") {
+    if (!lowercasedState || ["unknown", "unavailable"].includes(lowercasedState)) {
       return false;
     }
-    const climateModeKey = normalizeClimateModeKey(climatePresentationMode(entityOrEvent, deviceType));
-    if (["off", "idle", "standby", "待机", "关闭"].includes(climateModeKey)) {
+    const presentationMode = normalizeClimateModeKey(
+      climatePresentationMode(powerState, powerDeviceType)
+    );
+    if (["off", "idle", "standby", "待机", "关闭"].includes(presentationMode)) {
       return false;
-    } else if (state === "off") {
-      return bathHeaterModeUsesAirflow(climateModeKey);
+    } else if (lowercasedState === "off") {
+      return bathHeaterModeUsesAirflow(presentationMode);
     } else {
       return true;
     }
   }
-  return !["off", "unknown", "unavailable"].includes(state);
+  return !["off", "unknown", "unavailable"].includes(lowercasedState);
 }
-export function climateIsRunning(entityOrEvent, deviceType = "air-conditioner") {
-  if (!climateIsPoweredOn(entityOrEvent, deviceType)) {
+export function climateIsRunning(runState, runDeviceType = "air-conditioner") {
+  if (!climateIsPoweredOn(runState, runDeviceType)) {
     return false;
   }
-  if (deviceType === "water-heater") {
-    const currentTemperature = toFiniteNumber(entityOrEvent?.attributes?.current_temperature);
-    const targetTemperature = toFiniteNumber(entityOrEvent?.attributes?.temperature);
-    if (currentTemperature !== null && targetTemperature !== null) {
-      return currentTemperature < targetTemperature - 0.4;
+  if (runDeviceType === "water-heater") {
+    const measuredTemperature = toNumberOrDefault(runState?.attributes?.current_temperature);
+    const targetTemperatureValue = toNumberOrDefault(runState?.attributes?.temperature);
+    if (measuredTemperature !== null && targetTemperatureValue !== null) {
+      return measuredTemperature < targetTemperatureValue - 0.4;
     } else {
       return true;
     }
   }
-  if (deviceType === "bath-heater") {
-    return bathHeaterModeUsesAirflow(climatePresentationMode(entityOrEvent, deviceType));
+  if (runDeviceType === "bath-heater") {
+    return bathHeaterModeUsesAirflow(climatePresentationMode(runState, runDeviceType));
   }
-  const hvacAction = String(entityOrEvent?.attributes?.hvac_action || "").trim().toLowerCase();
+  const hvacAction = String(runState?.attributes?.hvac_action || "")
+    .trim()
+    .toLowerCase();
   return !["idle", "off"].includes(hvacAction);
 }
-export function climateEffectMode(entityOrEvent, deviceType = "air-conditioner") {
-  if (!climateIsPoweredOn(entityOrEvent, deviceType)) {
+export function climateEffectMode(effectState, effectDeviceType = "air-conditioner") {
+  if (!climateIsPoweredOn(effectState, effectDeviceType)) {
     return "off";
   }
-  if (deviceType === "water-heater") {
+  if (effectDeviceType === "water-heater") {
     return "heat";
   }
-  const climateModeKey = normalizeClimateModeKey(climatePresentationMode(entityOrEvent, deviceType));
-  const hvacAction = String(entityOrEvent?.attributes?.hvac_action || "").trim().toLowerCase();
-  if (deviceType === "bath-heater") {
-    if (["fan", "fan_only", "吹风"].includes(climateModeKey)) {
+  const effectModeKey = normalizeClimateModeKey(
+    climatePresentationMode(effectState, effectDeviceType)
+  );
+  const hvacActionName = String(effectState?.attributes?.hvac_action || "")
+    .trim()
+    .toLowerCase();
+  if (effectDeviceType === "bath-heater") {
+    if (["fan", "fan_only", "吹风"].includes(effectModeKey)) {
       return "cool";
-    } else if (["heat", "heating", "quick_heat", "rapid_heat", "fast_heat", "quick_defog", "rapid_defog", "fast_defog", "取暖", "暖风", "制热"].includes(climateModeKey)) {
+    } else if (
+      [
+        "heat",
+        "heating",
+        "quick_heat",
+        "rapid_heat",
+        "fast_heat",
+        "quick_defog",
+        "rapid_defog",
+        "fast_defog",
+        "取暖",
+        "暖风",
+        "制热"
+      ].includes(effectModeKey)
+    ) {
       return "heat";
     } else {
       return "other";
     }
-  } else if (["cooling", "cool"].includes(hvacAction) || climateModeKey === "cool") {
+  } else if (["cooling", "cool"].includes(hvacActionName) || effectModeKey === "cool") {
     return "cool";
-  } else if (["heating", "heat"].includes(hvacAction) || ["heat", "heating"].includes(climateModeKey)) {
+  } else if (
+    ["heating", "heat"].includes(hvacActionName) ||
+    ["heat", "heating"].includes(effectModeKey)
+  ) {
     return "heat";
   } else {
     return "other";
   }
 }
-export function climateModeIcon(mode, deviceType = "air-conditioner") {
-  const climateModeKey = normalizeClimateModeKey(mode);
-  if (deviceType === "water-heater") {
-    return {
-      normal: "♨",
-      standard: "♨",
-      eco: "♢",
-      adaptive: "A",
-      auto: "A",
-      heat_pump: "↻",
-      electric: "↯",
-      gas: "◈",
-      performance: "↯",
-      vacation: "⌂",
-      普通: "♨",
-      自适温: "A",
-      节能: "♢",
-      加热: "♨",
-      保温: "○"
-    }[climateModeKey] || "•";
-  } else if (deviceType === "bath-heater") {
-    return {
-      heat: "♨",
-      heating: "♨",
-      quick_heat: "♨",
-      rapid_heat: "♨",
-      fast_heat: "♨",
-      fan_only: "✾",
-      fan: "✾",
-      ventilation: "↥",
-      ventilate: "↥",
-      vent: "↥",
-      exhaust: "↥",
-      air_exchange: "↥",
-      defog: "◈",
-      defogging: "◈",
-      demist: "◈",
-      anti_fog: "◈",
-      quick_defog: "♨",
-      rapid_defog: "♨",
-      fast_defog: "♨",
-      dry: "◇",
-      drying: "◇",
-      auto: "A",
-      idle: "○",
-      standby: "○",
-      制热: "♨",
-      暖风: "♨",
-      取暖: "♨",
-      吹风: "✾",
-      换气: "↥",
-      除雾: "◈",
-      干燥: "◇",
-      待机: "○"
-    }[climateModeKey] || "•";
+export function climateModeIcon(iconModeInput, iconDeviceType = "air-conditioner") {
+  const iconModeKey = normalizeClimateModeKey(iconModeInput);
+  if (iconDeviceType === "water-heater") {
+    return (
+      {
+        normal: "♨",
+        standard: "♨",
+        eco: "♢",
+        adaptive: "A",
+        auto: "A",
+        heat_pump: "↻",
+        electric: "↯",
+        gas: "◈",
+        performance: "↯",
+        vacation: "⌂",
+        普通: "♨",
+        自适温: "A",
+        节能: "♢",
+        加热: "♨",
+        保温: "○"
+      }[iconModeKey] || "•"
+    );
+  } else if (iconDeviceType === "bath-heater") {
+    return (
+      {
+        heat: "♨",
+        heating: "♨",
+        quick_heat: "♨",
+        rapid_heat: "♨",
+        fast_heat: "♨",
+        fan_only: "✾",
+        fan: "✾",
+        ventilation: "↥",
+        ventilate: "↥",
+        vent: "↥",
+        exhaust: "↥",
+        air_exchange: "↥",
+        defog: "◈",
+        defogging: "◈",
+        demist: "◈",
+        anti_fog: "◈",
+        quick_defog: "♨",
+        rapid_defog: "♨",
+        fast_defog: "♨",
+        dry: "◇",
+        drying: "◇",
+        auto: "A",
+        idle: "○",
+        standby: "○",
+        制热: "♨",
+        暖风: "♨",
+        取暖: "♨",
+        吹风: "✾",
+        换气: "↥",
+        除雾: "◈",
+        干燥: "◇",
+        待机: "○"
+      }[iconModeKey] || "•"
+    );
   } else {
-    return {
-      cool: "❄",
-      heat: "☀",
-      dry: "◊",
-      fan_only: "✾",
-      fan: "✾",
-      auto: "A",
-      heat_cool: "◐",
-      none: "○",
-      comfort: "♧",
-      eco: "♢",
-      boost: "↯",
-      sleep: "☾",
-      away: "⌂",
-      mold_prev: "◌",
-      eco_and_mold_prev: "♢",
-      eco_mold_prev: "♢"
-    }[climateModeKey] || "•";
+    return (
+      {
+        cool: "❄",
+        heat: "☀",
+        dry: "◊",
+        fan_only: "✾",
+        fan: "✾",
+        auto: "A",
+        heat_cool: "◐",
+        none: "○",
+        comfort: "♧",
+        eco: "♢",
+        boost: "↯",
+        sleep: "☾",
+        away: "⌂",
+        mold_prev: "◌",
+        eco_and_mold_prev: "♢",
+        eco_mold_prev: "♢"
+      }[iconModeKey] || "•"
+    );
   }
 }
-export function climateDeviceLabel(deviceType) {
-  if (deviceType === "bath-heater") {
+export function climateDeviceLabel(deviceLabelType) {
+  if (deviceLabelType === "bath-heater") {
     return "浴霸";
-  } else if (deviceType === "water-heater") {
+  } else if (deviceLabelType === "water-heater") {
     return "热水器";
   } else {
     return "空调";
   }
 }
-export function climateDialogTitle(title, fallbackLabel = "", deviceType = "air-conditioner") {
+export function climateDialogTitle(title, fallbackTitle = "", titleDeviceType = "air-conditioner") {
   const trimmedTitle = String(title || "").trim();
-  const deviceLabel = String(fallbackLabel || "").trim() || climateDeviceLabel(deviceType);
+  const defaultTitle = String(fallbackTitle || "").trim() || climateDeviceLabel(titleDeviceType);
   if (trimmedTitle) {
-    if (deviceType === "bath-heater" && trimmedTitle === "空调") {
-      return deviceLabel;
+    if (titleDeviceType === "bath-heater" && trimmedTitle === "空调") {
+      return defaultTitle;
     } else {
       return trimmedTitle;
     }
   } else {
-    return deviceLabel;
+    return defaultTitle;
   }
 }
-export function climatePowerCommand(entityId, entityOrEvent, turnOn, deviceType = "air-conditioner", preferredMode = "") {
-  const domain = String(entityId || "").split(".", 1)[0];
-  if (domain === "water_heater") {
+export function climatePowerCommand(
+  commandEntityId,
+  commandState,
+  isTurningOn,
+  commandDeviceType = "air-conditioner",
+  preferredMode = ""
+) {
+  const commandDomain = String(commandEntityId || "").split(".", 1)[0];
+  if (commandDomain === "water_heater") {
     return {
       domain: "water_heater",
-      service: turnOn ? "turn_on" : "turn_off",
+      service: isTurningOn ? "turn_on" : "turn_off",
       data: {}
     };
   }
-  if (domain === "fan") {
+  if (commandDomain === "fan") {
     return {
       domain: "fan",
-      service: turnOn ? "turn_on" : "turn_off",
+      service: isTurningOn ? "turn_on" : "turn_off",
       data: {}
     };
   }
-  if (domain !== "climate") {
+  if (commandDomain !== "climate") {
     return {
       domain: "homeassistant",
       service: "toggle",
       data: {}
     };
   }
-  const climateCapabilities = normalizeClimateCapabilities(entityOrEvent);
-  if (!turnOn) {
-    if (climateCapabilities.hvacModes.includes("off")) {
+  const powerCapabilities = normalizeClimateCapabilities(commandState);
+  if (!isTurningOn) {
+    if (powerCapabilities.hvacModes.includes("off")) {
       return {
         domain: "climate",
         service: "set_hvac_mode",
@@ -599,15 +774,23 @@ export function climatePowerCommand(entityId, entityOrEvent, turnOn, deviceType 
       };
     }
   }
-  const availableModes = climateCapabilities.hvacModes.filter(mode => mode !== "off");
-  const preferredModes = deviceType === "bath-heater" ? ["heat", "auto", "fan_only", "ventilation", "dry", "idle"] : ["auto", "cool", "heat_cool", "heat", "fan_only", "dry", "idle"];
-  const hvac_mode = availableModes.includes(preferredMode) ? preferredMode : preferredModes.find(mode => availableModes.includes(mode)) || availableModes[0];
-  if (hvac_mode) {
+  const availableModes = powerCapabilities.hvacModes.filter(
+    availableMode => availableMode !== "off"
+  );
+  const preferredModes =
+    commandDeviceType === "bath-heater"
+      ? ["heat", "auto", "fan_only", "ventilation", "dry", "idle"]
+      : ["auto", "cool", "heat_cool", "heat", "fan_only", "dry", "idle"];
+  const selectedMode = availableModes.includes(preferredMode)
+    ? preferredMode
+    : preferredModes.find(candidateMode => availableModes.includes(candidateMode)) ||
+      availableModes[0];
+  if (selectedMode) {
     return {
       domain: "climate",
       service: "set_hvac_mode",
       data: {
-        hvac_mode
+        hvac_mode: selectedMode
       }
     };
   } else {
@@ -618,24 +801,26 @@ export function climatePowerCommand(entityId, entityOrEvent, turnOn, deviceType 
     };
   }
 }
-export function climateDefaultIcon(deviceType) {
-  if (deviceType === "bath-heater") {
+export function climateDefaultIcon(defaultIconDeviceType) {
+  if (defaultIconDeviceType === "bath-heater") {
     return "mdi:radiator";
-  } else if (deviceType === "water-heater") {
+  } else if (defaultIconDeviceType === "water-heater") {
     return "mdi:water-boiler";
   } else {
     return "mdi:air-conditioner";
   }
 }
-export function waterHeaterStatusLabel(entityOrEvent) {
-  const state = String(entityOrEvent?.state || "").trim().toLowerCase();
-  if (state === "unavailable") {
+export function waterHeaterStatusLabel(waterHeaterState) {
+  const rawState = String(waterHeaterState?.state || "")
+    .trim()
+    .toLowerCase();
+  if (rawState === "unavailable") {
     return "当前不可用";
-  } else if (!state || state === "unknown") {
+  } else if (!rawState || rawState === "unknown") {
     return "状态未知";
-  } else if (state === "off") {
+  } else if (rawState === "off") {
     return "已关闭";
-  } else if (climateIsRunning(entityOrEvent, "water-heater")) {
+  } else if (climateIsRunning(waterHeaterState, "water-heater")) {
     return "正在加热";
   } else {
     return "保温中";

@@ -1,270 +1,375 @@
 const EPSILON = 1e-7;
-export function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
+export function clamp(value, lowerBound, upperBound) {
+  return Math.min(upperBound, Math.max(lowerBound, value));
 }
-export function spotLightBrightnessResponse(lightType = "downlight", brightness = 0) {
-  const clampedBrightness = clamp(Number(brightness) || 0, 0, 1);
-  const squared = clampedBrightness * clampedBrightness;
-  if (lightType !== "ceilinglight" || clampedBrightness <= 0 || clampedBrightness >= 0.35) {
-    return squared;
+export function spotLightBrightnessResponse(lightType = "downlight", brightnessInput = 0) {
+  const brightnessRatio = clamp(Number(brightnessInput) || 0, 0, 1);
+  const baseResponse = brightnessRatio * brightnessRatio;
+  if (lightType !== "ceilinglight" || brightnessRatio <= 0 || brightnessRatio >= 0.35) {
+    return baseResponse;
   }
-  const boost = clampedBrightness * 0.08 * (1 - clampedBrightness / 0.35);
-  return squared + boost;
+  const downlightBoost = brightnessRatio * 0.08 * (1 - brightnessRatio / 0.35);
+  return baseResponse + downlightBoost;
 }
-export function stripLightProjection(elevationInput = 2.7, rangeInput = 3.5, coreScaleInput = 2) {
-  const elevation = clamp(Number.isFinite(Number(elevationInput)) ? Number(elevationInput) : 2.7, 0.05, 6);
-  const rangeBase = clamp(Number.isFinite(Number(rangeInput)) ? Number(rangeInput) : 3.5, 0.5, 10);
-  const coreScaleBase = clamp(Number.isFinite(Number(coreScaleInput)) ? Number(coreScaleInput) : 2, 0.2, 8);
-  const elevationFactor = clamp(elevation / 2.7, 0.2, 2.2);
-  const coreScaleFactor = clamp(coreScaleBase / 2, 0.1, 4);
+export function stripLightProjection(elevationInput = 2.7, rangeInput = 3.5, lengthInput = 2) {
+  const elevationMeters = clamp(
+    Number.isFinite(Number(elevationInput)) ? Number(elevationInput) : 2.7,
+    0.05,
+    6
+  );
+  const rangeMeters = clamp(
+    Number.isFinite(Number(rangeInput)) ? Number(rangeInput) : 3.5,
+    0.5,
+    10
+  );
+  const lengthMeters = clamp(
+    Number.isFinite(Number(lengthInput)) ? Number(lengthInput) : 2,
+    0.2,
+    8
+  );
+  const elevationRatio = clamp(elevationMeters / 2.7, 0.2, 2.2);
+  const lengthRatio = clamp(lengthMeters / 2, 0.1, 4);
   return {
-    elevation,
-    range: rangeBase * clamp(0.5 + elevationFactor * 0.5, 0.6, 1.6) * clamp(0.82 + coreScaleFactor * 0.18, 0.75, 1.5),
-    coreScale: clamp(0.55 + elevationFactor * 0.45, 0.65, 1.55),
-    intensity: clamp(1 / elevationFactor, 0.5, 2.2)
+    elevation: elevationMeters,
+    range:
+      rangeMeters *
+      clamp(0.5 + elevationRatio * 0.5, 0.6, 1.6) *
+      clamp(0.82 + lengthRatio * 0.18, 0.75, 1.5),
+    coreScale: clamp(0.55 + elevationRatio * 0.45, 0.65, 1.55),
+    intensity: clamp(1 / elevationRatio, 0.5, 2.2)
   };
 }
 export function adaptiveLightRenderCost(lights = []) {
-  return lights.reduce((cost, light) => light?.enabled === false || Math.max(0, Number(light?.brightness) || 0) <= 0 ? cost : light?.type === "striplight" ? cost + 0.3 : light?.type === "ceilinglight" ? cost + (Number(light?.angle) >= 140 ? 1.65 : 1.1) : light?.type === "downlight" ? cost + 1 : cost, 0);
+  return lights.reduce(
+    (totalCost, light) =>
+      light?.enabled === false || Math.max(0, Number(light?.brightness) || 0) <= 0
+        ? totalCost
+        : light?.type === "striplight"
+          ? totalCost + 0.3
+          : light?.type === "ceilinglight"
+            ? totalCost + (Number(light?.angle) >= 140 ? 1.65 : 1.1)
+            : light?.type === "downlight"
+              ? totalCost + 1
+              : totalCost,
+    0
+  );
 }
 export function adaptiveDeviceLightBudget({
-  hardwareConcurrency = 4,
-  deviceMemory = 8,
-  previewPixels = 500000
+  hardwareConcurrency: hardwareConcurrency = 4,
+  deviceMemory: deviceMemory = 8,
+  previewPixels: previewPixels = 500000
 } = {}) {
-  const cores = clamp(Number(hardwareConcurrency) || 4, 2, 24);
+  const coreCount = clamp(Number(hardwareConcurrency) || 4, 2, 24);
   const memoryGb = clamp(Number(deviceMemory) || 8, 2, 32);
-  const pixels = clamp(Number(previewPixels) || 500000, 120000, 4000000);
-  const baseBudget = 4.5 + Math.min(cores, 16) * 0.55;
+  const previewPixelCount = clamp(Number(previewPixels) || 500000, 120000, 4000000);
+  const baseBudget = 4.5 + Math.min(coreCount, 16) * 0.55;
   const memoryFactor = memoryGb <= 4 ? 0.78 : memoryGb < 8 ? 0.88 : memoryGb >= 16 ? 1.1 : 1;
-  const pixelFactor = clamp(Math.sqrt(500000 / pixels), 0.72, 1.2);
+  const pixelFactor = clamp(Math.sqrt(500000 / previewPixelCount), 0.72, 1.2);
   return clamp(baseBudget * memoryFactor * pixelFactor, 4, 16);
 }
-export function assessAdaptiveRenderFrames(frameSamplesMs = []) {
-  const samples = frameSamplesMs.map(Number).filter(sampleMs => Number.isFinite(sampleMs) && sampleMs >= 8 && sampleMs <= 120);
-  if (samples.length < 12) {
+export function assessAdaptiveRenderFrames(frameTimes = []) {
+  const validFrameTimesMs = frameTimes
+    .map(Number)
+    .filter(frameTime => Number.isFinite(frameTime) && frameTime >= 8 && frameTime <= 120);
+  if (validFrameTimesMs.length < 12) {
     return {
       sufficient: false,
-      sampleCount: samples.length
+      sampleCount: validFrameTimesMs.length
     };
   }
-  const sorted = [...samples].sort((a, b) => a - b);
-  const percentile = ratio => sorted[Math.min(Math.floor((sorted.length - 1) * ratio), sorted.length - 1)];
-  const averageFrameMs = samples.reduce((sum, ms) => sum + ms, 0) / samples.length;
-  const p75FrameMs = percentile(0.75);
-  const p90FrameMs = percentile(0.9);
+  const sortedFrameTimesMs = [...validFrameTimesMs].sort(
+    (frameTimeLeft, frameTimeRight) => frameTimeLeft - frameTimeRight
+  );
+  const frameTimeAtPercentile = percentile =>
+    sortedFrameTimesMs[
+      Math.min(
+        Math.floor((sortedFrameTimesMs.length - 1) * percentile),
+        sortedFrameTimesMs.length - 1
+      )
+    ];
+  const averageFrameMs =
+    validFrameTimesMs.reduce((sum, frameTimeSample) => sum + frameTimeSample, 0) /
+    validFrameTimesMs.length;
+  const p75FrameMs = frameTimeAtPercentile(0.75);
+  const p90FrameMs = frameTimeAtPercentile(0.9);
   return {
     sufficient: true,
-    sampleCount: samples.length,
-    averageFrameMs,
-    p75FrameMs,
-    p90FrameMs,
+    sampleCount: validFrameTimesMs.length,
+    averageFrameMs: averageFrameMs,
+    p75FrameMs: p75FrameMs,
+    p90FrameMs: p90FrameMs,
     fps: 1000 / averageFrameMs,
     severe: averageFrameMs >= 45 || p75FrameMs >= 50 || p90FrameMs >= 68,
     slow: averageFrameMs >= 34 || p75FrameMs >= 38 || p90FrameMs >= 55,
     smooth: averageFrameMs <= 24 && p90FrameMs <= 32
   };
 }
-export function planLabelProjectionMetrics(width, height, baselineRatio = 0.86) {
-  const safeWidth = Math.max(0, Number(width) || 0);
-  const safeHeight = Math.max(0, Number(height) || 0);
-  const safeBaselineRatio = clamp(Number.isFinite(Number(baselineRatio)) ? Number(baselineRatio) : 0.86, 0.3, 1);
+export function planLabelProjectionMetrics(widthPx, heightPx, baselineScaleInput = 0.86) {
+  const safeWidthPx = Math.max(0, Number(widthPx) || 0);
+  const safeHeightPx = Math.max(0, Number(heightPx) || 0);
+  const baselineScaleRatio = clamp(
+    Number.isFinite(Number(baselineScaleInput)) ? Number(baselineScaleInput) : 0.86,
+    0.3,
+    1
+  );
   return {
-    titleStartX: -safeWidth * (0.5 - 115 / 2048),
-    titleY: safeHeight * (130 / 640 - 0.5),
-    titleFontSize: safeHeight * 184 / 640,
-    titleMaxWidth: safeWidth * 1340 / 2048,
-    iconX: safeWidth * (1580 / 2048 - 0.5),
-    iconY: safeHeight * (130 / 640 - 0.5),
-    iconSize: safeHeight * 170 / 640,
-    subtitleStartX: -safeWidth * (0.5 - 72 / 2048),
-    subtitleY: safeHeight * (410 / 640 - 0.5),
-    subtitleFontSize: safeHeight * 310 / 640,
-    subtitleMaxWidth: safeWidth * 1880 / 2048,
-    baselineY: safeHeight * (590 / 640 - 0.5),
-    baselineStartX: -safeWidth * (0.5 - 74 / 2048),
-    baselineLength: safeWidth * 1880 / 2048 * safeBaselineRatio,
-    baselineLineWidth: safeHeight * 16 / 640,
-    baselineCapHalfHeight: safeHeight * 24 / 640
+    titleStartX: -safeWidthPx * (0.5 - 115 / 2048),
+    titleY: safeHeightPx * (130 / 640 - 0.5),
+    titleFontSize: (safeHeightPx * 184) / 640,
+    titleMaxWidth: (safeWidthPx * 1340) / 2048,
+    iconX: safeWidthPx * (1580 / 2048 - 0.5),
+    iconY: safeHeightPx * (130 / 640 - 0.5),
+    iconSize: (safeHeightPx * 170) / 640,
+    subtitleStartX: -safeWidthPx * (0.5 - 72 / 2048),
+    subtitleY: safeHeightPx * (410 / 640 - 0.5),
+    subtitleFontSize: (safeHeightPx * 310) / 640,
+    subtitleMaxWidth: (safeWidthPx * 1880) / 2048,
+    baselineY: safeHeightPx * (590 / 640 - 0.5),
+    baselineStartX: -safeWidthPx * (0.5 - 74 / 2048),
+    baselineLength: ((safeWidthPx * 1880) / 2048) * baselineScaleRatio,
+    baselineLineWidth: (safeHeightPx * 16) / 640,
+    baselineCapHalfHeight: (safeHeightPx * 24) / 640
   };
 }
-export function selectShadowCastingLightIds(lights = [], budget = 8) {
-  const limit = Math.max(0, Math.floor(Number(budget) || 0));
-  if (limit === 0) {
+export function selectShadowCastingLightIds(lightList = [], maxCount = 8) {
+  const lightLimit = Math.max(0, Math.floor(Number(maxCount) || 0));
+  if (lightLimit === 0) {
     return [];
   }
-  const candidates = lights.map((light, index) => ({
-    id: String(light?.id || ""),
-    groupId: String(light?.groupId || ""),
-    type: String(light?.type || ""),
-    brightness: Math.max(0, Number(light?.brightness) || 0),
-    enabled: light?.enabled !== false,
-    index
-  })).filter(candidate => candidate.id && candidate.enabled && candidate.brightness > 0 && candidate.type !== "striplight").map(entry => ({
-    ...entry,
-    score: entry.brightness * (entry.type === "ceilinglight" ? 1.08 : 1)
-  }));
-  if (candidates.length <= limit) {
-    return candidates.map(selected => selected.id);
+  const scoredLights = lightList
+    .map((lightRecord, lightIndex) => ({
+      id: String(lightRecord?.id || ""),
+      groupId: String(lightRecord?.groupId || ""),
+      type: String(lightRecord?.type || ""),
+      brightness: Math.max(0, Number(lightRecord?.brightness) || 0),
+      enabled: lightRecord?.enabled !== false,
+      index: lightIndex
+    }))
+    .filter(
+      candidate =>
+        candidate.id &&
+        candidate.enabled &&
+        candidate.brightness > 0 &&
+        candidate.type !== "striplight"
+    )
+    .map(scoredCandidate => ({
+      ...scoredCandidate,
+      score: scoredCandidate.brightness * (scoredCandidate.type === "ceilinglight" ? 1.08 : 1)
+    }));
+  if (scoredLights.length <= lightLimit) {
+    return scoredLights.map(rankedLight => rankedLight.id);
   }
-  const compareScore = (left, right) => right.score - left.score || left.index - right.index;
-  const bestByGroup = new Map();
-  for (const item of candidates) {
-    const groupKey = item.groupId || "__ungrouped-" + item.index;
-    const currentBest = bestByGroup.get(groupKey);
-    if (!currentBest || compareScore(item, currentBest) < 0) {
-      bestByGroup.set(groupKey, item);
+  const compareLightsByScore = (leftLight, rightLight) =>
+    rightLight.score - leftLight.score || leftLight.index - rightLight.index;
+  const bestCandidateByGroupId = new Map();
+  for (const groupCandidate of scoredLights) {
+    const groupId = groupCandidate.groupId || "__ungrouped-" + groupCandidate.index;
+    const currentBest = bestCandidateByGroupId.get(groupId);
+    if (!currentBest || compareLightsByScore(groupCandidate, currentBest) < 0) {
+      bestCandidateByGroupId.set(groupId, groupCandidate);
     }
   }
-  const picked = [...bestByGroup.values()].sort(compareScore).slice(0, limit);
-  if (picked.length < limit) {
-    const pickedIds = new Set(picked.map(pickedItem => pickedItem.id));
-    const remaining = candidates.filter(rest => !pickedIds.has(rest.id)).sort(compareScore);
-    picked.push(...remaining.slice(0, limit - picked.length));
+  const selectedLights = [...bestCandidateByGroupId.values()]
+    .sort(compareLightsByScore)
+    .slice(0, lightLimit);
+  if (selectedLights.length < lightLimit) {
+    const selectedIdSet = new Set(selectedLights.map(selectedLight => selectedLight.id));
+    const remainingLights = scoredLights
+      .filter(remainingLight => !selectedIdSet.has(remainingLight.id))
+      .sort(compareLightsByScore);
+    selectedLights.push(...remainingLights.slice(0, lightLimit - selectedLights.length));
   }
-  return picked.map(finalItem => finalItem.id);
+  return selectedLights.map(finalLight => finalLight.id);
 }
 export function spotShadowTextureUnitLimit({
-  maxTextureUnits = 16,
-  materialTextureUnits = 0,
-  nonSpotShadowTextureUnits = 1,
-  rectAreaLightTextureUnits = 0,
-  reservedTextureUnits = 1,
-  hardLimit = 8
+  maxTextureUnits: maxTextureUnits = 16,
+  materialTextureUnits: materialTextureUnits = 0,
+  nonSpotShadowTextureUnits: nonSpotShadowTextureUnits = 1,
+  rectAreaLightTextureUnits: rectAreaLightTextureUnits = 0,
+  reservedTextureUnits: reservedTextureUnits = 1,
+  hardLimit: hardLimit = 8
 } = {}) {
-  const maxUnits = Math.max(0, Math.floor(Number(maxTextureUnits) || 0));
-  const usedUnits = [materialTextureUnits, nonSpotShadowTextureUnits, rectAreaLightTextureUnits, reservedTextureUnits].reduce((sum, units) => sum + Math.max(0, Math.floor(Number(units) || 0)), 0);
-  const hardCap = Math.max(0, Math.floor(Number(hardLimit) || 0));
-  const softCap = maxUnits <= 16 ? 3 : maxUnits <= 24 ? 6 : hardCap;
-  return Math.min(hardCap, softCap, Math.max(0, maxUnits - usedUnits));
+  const unitCapacity = Math.max(0, Math.floor(Number(maxTextureUnits) || 0));
+  const unitsInUse = [
+    materialTextureUnits,
+    nonSpotShadowTextureUnits,
+    rectAreaLightTextureUnits,
+    reservedTextureUnits
+  ].reduce((unitSum, unitGroup) => unitSum + Math.max(0, Math.floor(Number(unitGroup) || 0)), 0);
+  const hardLimitUnits = Math.max(0, Math.floor(Number(hardLimit) || 0));
+  const adaptiveLimitUnits = unitCapacity <= 16 ? 3 : unitCapacity <= 24 ? 6 : hardLimitUnits;
+  return Math.min(hardLimitUnits, adaptiveLimitUnits, Math.max(0, unitCapacity - unitsInUse));
 }
-export function localSpotShadowSettings(lightType = "downlight", rangeInput = 3.5, angleInput = 90) {
-  const range = clamp(Number.isFinite(Number(rangeInput)) ? Number(rangeInput) : 3.5, 0.5, 10);
-  const angle = clamp(Number.isFinite(Number(angleInput)) ? Number(angleInput) : 90, 15, 180);
-  const wideCeilingLight = lightType === "ceilinglight" && angle >= 140;
+export function localSpotShadowSettings(
+  shadowLightType = "downlight",
+  shadowRangeInput = 3.5,
+  angleInput = 90
+) {
+  const shadowRangeMeters = clamp(
+    Number.isFinite(Number(shadowRangeInput)) ? Number(shadowRangeInput) : 3.5,
+    0.5,
+    10
+  );
+  const angleDeg = clamp(Number.isFinite(Number(angleInput)) ? Number(angleInput) : 90, 15, 180);
+  const isWideCeilingLight = shadowLightType === "ceilinglight" && angleDeg >= 140;
   return {
-    mapSize: wideCeilingLight ? 512 : 256,
-    radius: wideCeilingLight ? 1.25 : 1,
-    blurSamples: wideCeilingLight ? 8 : 4,
+    mapSize: isWideCeilingLight ? 512 : 256,
+    radius: isWideCeilingLight ? 1.25 : 1,
+    blurSamples: isWideCeilingLight ? 8 : 4,
     normalBias: 0.018,
-    wideCeilingLight,
-    range,
-    angle
+    wideCeilingLight: isWideCeilingLight,
+    range: shadowRangeMeters,
+    angle: angleDeg
   };
 }
-export function distance(a, b) {
-  return Math.hypot(b.x - a.x, b.y - a.y);
+export function distance(firstPoint, secondPoint) {
+  return Math.hypot(secondPoint.x - firstPoint.x, secondPoint.y - firstPoint.y);
 }
-export function slidingDoorPanelCenters(openingWidth, swing = -1, openRatio = 2 / 3) {
-  const fixedCenter = (swing >= 0 ? 1 : -1) * openingWidth * 0.23;
-  const closedMovingCenter = -fixedCenter;
+export function slidingDoorPanelCenters(panelWidth, handleSide = -1, openRatio = 2 / 3) {
+  const fixedOffset = (handleSide >= 0 ? 1 : -1) * panelWidth * 0.23;
+  const movingBaseOffset = -fixedOffset;
   return {
-    fixed: fixedCenter,
-    moving: closedMovingCenter + (fixedCenter - closedMovingCenter) * clamp(openRatio, 0, 1)
+    fixed: fixedOffset,
+    moving: movingBaseOffset + (fixedOffset - movingBaseOffset) * clamp(openRatio, 0, 1)
   };
 }
-export function projectPointToSegment(point, start, end) {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq <= 1e-7) {
+export function projectPointToSegment(point, segmentStart, segmentEnd) {
+  const segmentDirX = segmentEnd.x - segmentStart.x;
+  const segmentDirY = segmentEnd.y - segmentStart.y;
+  const segmentLengthSquared = segmentDirX * segmentDirX + segmentDirY * segmentDirY;
+  if (segmentLengthSquared <= 1e-7) {
     return {
       point: {
-        ...start
+        ...segmentStart
       },
       t: 0,
-      distance: distance(point, start)
+      distance: distance(point, segmentStart)
     };
   }
-  const param = clamp(((point.x - start.x) * dx + (point.y - start.y) * dy) / lenSq, 0, 1);
-  const projected = {
-    x: start.x + dx * param,
-    y: start.y + dy * param
+  const projectionT = clamp(
+    ((point.x - segmentStart.x) * segmentDirX + (point.y - segmentStart.y) * segmentDirY) /
+      segmentLengthSquared,
+    0,
+    1
+  );
+  const closestPoint = {
+    x: segmentStart.x + segmentDirX * projectionT,
+    y: segmentStart.y + segmentDirY * projectionT
   };
   return {
-    point: projected,
-    t: param,
-    distance: distance(point, projected)
+    point: closestPoint,
+    t: projectionT,
+    distance: distance(point, closestPoint)
   };
 }
-export function segmentIntersection(aStart, aEnd, bStart, bEnd) {
-  const adx = aEnd.x - aStart.x;
-  const ady = aEnd.y - aStart.y;
-  const bdx = bEnd.x - bStart.x;
-  const bdy = bEnd.y - bStart.y;
-  const denom = adx * bdy - ady * bdx;
-  if (Math.abs(denom) <= 1e-7) {
+export function segmentIntersection(firstStart, firstEnd, secondStart, secondEnd) {
+  const firstDirX = firstEnd.x - firstStart.x;
+  const firstDirY = firstEnd.y - firstStart.y;
+  const secondDirX = secondEnd.x - secondStart.x;
+  const secondDirY = secondEnd.y - secondStart.y;
+  const crossDenominator = firstDirX * secondDirY - firstDirY * secondDirX;
+  if (Math.abs(crossDenominator) <= 1e-7) {
     return null;
   }
-  const ox = bStart.x - aStart.x;
-  const oy = bStart.y - aStart.y;
-  const paramA = (ox * bdy - oy * bdx) / denom;
-  const paramB = (ox * ady - oy * adx) / denom;
-  if (paramA < -1e-7 || paramA > 1.0000001 || paramB < -1e-7 || paramB > 1.0000001) {
+  const startDeltaX = secondStart.x - firstStart.x;
+  const startDeltaY = secondStart.y - firstStart.y;
+  const firstT = (startDeltaX * secondDirY - startDeltaY * secondDirX) / crossDenominator;
+  const secondT = (startDeltaX * firstDirY - startDeltaY * firstDirX) / crossDenominator;
+  if (firstT < -1e-7 || firstT > 1.0000001 || secondT < -1e-7 || secondT > 1.0000001) {
     return null;
   } else {
     return {
-      x: aStart.x + adx * clamp(paramA, 0, 1),
-      y: aStart.y + ady * clamp(paramA, 0, 1)
+      x: firstStart.x + firstDirX * clamp(firstT, 0, 1),
+      y: firstStart.y + firstDirY * clamp(firstT, 0, 1)
     };
   }
 }
-export function wallIntersections(walls) {
-  const points = [];
-  for (let i = 0; i < walls.length; i += 1) {
-    for (let buildWallGraph = i + 1; buildWallGraph < walls.length; buildWallGraph += 1) {
-      const hit = segmentIntersection(walls[i].start, walls[i].end, walls[buildWallGraph].start, walls[buildWallGraph].end);
-      if (!!hit && !points.some(existing => distance(existing, hit) <= 1e-7)) {
-        points.push(hit);
+export function wallIntersections(wallList) {
+  const intersectionPoints = [];
+  for (let wallIndex = 0; wallIndex < wallList.length; wallIndex += 1) {
+    for (
+      let otherWallIndex = wallIndex + 1;
+      otherWallIndex < wallList.length;
+      otherWallIndex += 1
+    ) {
+      const intersection = segmentIntersection(
+        wallList[wallIndex].start,
+        wallList[wallIndex].end,
+        wallList[otherWallIndex].start,
+        wallList[otherWallIndex].end
+      );
+      if (
+        !!intersection &&
+        !intersectionPoints.some(existingPoint => distance(existingPoint, intersection) <= 1e-7)
+      ) {
+        intersectionPoints.push(intersection);
       }
     }
   }
-  return points;
+  return intersectionPoints;
 }
-export function splitWallSegments(walls, epsilonInput = 0.000001) {
-  const epsilon = Math.max(Number(epsilonInput) || 0, 1e-7);
-  const cutParams = walls.map(() => [0, 1]);
-  for (let i = 0; i < walls.length; i += 1) {
-    for (let buildWallGraph = i + 1; buildWallGraph < walls.length; buildWallGraph += 1) {
-      const wallA = walls[i];
-      const wallB = walls[buildWallGraph];
-      const hit = segmentIntersection(wallA.start, wallA.end, wallB.start, wallB.end);
-      if (!hit) {
+export function splitWallSegments(inputWalls, minGap = 0.000001) {
+  const gapTolerance = Math.max(Number(minGap) || 0, 1e-7);
+  const cutTsByWall = inputWalls.map(() => [0, 1]);
+  for (let splitWallIndex = 0; splitWallIndex < inputWalls.length; splitWallIndex += 1) {
+    for (
+      let splitOtherWallIndex = splitWallIndex + 1;
+      splitOtherWallIndex < inputWalls.length;
+      splitOtherWallIndex += 1
+    ) {
+      const wall = inputWalls[splitWallIndex];
+      const otherWall = inputWalls[splitOtherWallIndex];
+      const wallIntersection = segmentIntersection(
+        wall.start,
+        wall.end,
+        otherWall.start,
+        otherWall.end
+      );
+      if (!wallIntersection) {
         continue;
       }
-      const projA = projectPointToSegment(hit, wallA.start, wallA.end);
-      const projB = projectPointToSegment(hit, wallB.start, wallB.end);
-      if (projA.t > epsilon && projA.t < 1 - epsilon) {
-        cutParams[i].push(projA.t);
+      const selfProjection = projectPointToSegment(wallIntersection, wall.start, wall.end);
+      const otherProjection = projectPointToSegment(
+        wallIntersection,
+        otherWall.start,
+        otherWall.end
+      );
+      if (selfProjection.t > gapTolerance && selfProjection.t < 1 - gapTolerance) {
+        cutTsByWall[splitWallIndex].push(selfProjection.t);
       }
-      if (projB.t > epsilon && projB.t < 1 - epsilon) {
-        cutParams[buildWallGraph].push(projB.t);
+      if (otherProjection.t > gapTolerance && otherProjection.t < 1 - gapTolerance) {
+        cutTsByWall[splitOtherWallIndex].push(otherProjection.t);
       }
     }
   }
   const pieces = [];
-  walls.forEach((wall, wallIndex) => {
-    const dx = wall.end.x - wall.start.x;
-    const dy = wall.end.y - wall.start.y;
-    const params = [...cutParams[wallIndex]].sort((pa, pb) => pa - pb).filter((param, paramIndex, allParams) => paramIndex === 0 || param - allParams[paramIndex - 1] > epsilon);
-    for (let pieceIndex = 0; pieceIndex < params.length - 1; pieceIndex += 1) {
-      const startT = params[pieceIndex];
-      const endT = params[pieceIndex + 1];
-      if (!(endT - startT <= epsilon)) {
+  inputWalls.forEach((sourceWall, sourceWallIndex) => {
+    const sourceDirX = sourceWall.end.x - sourceWall.start.x;
+    const sourceDirY = sourceWall.end.y - sourceWall.start.y;
+    const sortedCutTs = [...cutTsByWall[sourceWallIndex]]
+      .sort((cutTLeft, cutTRight) => cutTLeft - cutTRight)
+      .filter(
+        (currentT, currentIndex, tsList) =>
+          currentIndex === 0 || currentT - tsList[currentIndex - 1] > gapTolerance
+      );
+    for (let pieceIndex = 0; pieceIndex < sortedCutTs.length - 1; pieceIndex += 1) {
+      const pieceStartT = sortedCutTs[pieceIndex];
+      const pieceEndT = sortedCutTs[pieceIndex + 1];
+      if (!(pieceEndT - pieceStartT <= gapTolerance)) {
         pieces.push({
-          sourceWall: wall,
-          sourceIndex: wallIndex,
-          pieceIndex,
-          pieceCount: params.length - 1,
-          startT,
-          endT,
+          sourceWall: sourceWall,
+          sourceIndex: sourceWallIndex,
+          pieceIndex: pieceIndex,
+          pieceCount: sortedCutTs.length - 1,
+          startT: pieceStartT,
+          endT: pieceEndT,
           start: {
-            x: wall.start.x + dx * startT,
-            y: wall.start.y + dy * startT
+            x: sourceWall.start.x + sourceDirX * pieceStartT,
+            y: sourceWall.start.y + sourceDirY * pieceStartT
           },
           end: {
-            x: wall.start.x + dx * endT,
-            y: wall.start.y + dy * endT
+            x: sourceWall.start.x + sourceDirX * pieceEndT,
+            y: sourceWall.start.y + sourceDirY * pieceEndT
           }
         });
       }
@@ -272,261 +377,338 @@ export function splitWallSegments(walls, epsilonInput = 0.000001) {
   });
   return pieces;
 }
-export function uncoveredCollinearWallSegments(wall, otherWalls, toleranceInput = 0.001) {
-  if (!wall?.start || !wall?.end) {
+export function uncoveredCollinearWallSegments(referenceWall, otherWalls, minLength = 0.001) {
+  if (!referenceWall?.start || !referenceWall?.end) {
     return [];
   }
-  const tolerance = Math.max(Number(toleranceInput) || 0, 1e-7);
-  const dx = wall.end.x - wall.start.x;
-  const dy = wall.end.y - wall.start.y;
-  const length = Math.hypot(dx, dy);
-  if (length <= tolerance) {
+  const lengthTolerance = Math.max(Number(minLength) || 0, 1e-7);
+  const dirX = referenceWall.end.x - referenceWall.start.x;
+  const dirY = referenceWall.end.y - referenceWall.start.y;
+  const wallLength = Math.hypot(dirX, dirY);
+  if (wallLength <= lengthTolerance) {
     return [];
   }
-  const direction = {
-    x: dx / length,
-    y: dy / length
+  const unitDirection = {
+    x: dirX / wallLength,
+    y: dirY / wallLength
   };
-  const paramTolerance = tolerance / length;
-  const coverIntervals = [];
-  for (const other of otherWalls || []) {
-    if (!other?.start || !other?.end || other.id === wall.id) {
+  const normalizedTolerance = lengthTolerance / wallLength;
+  const coveredRanges = [];
+  for (const overlappingWall of otherWalls || []) {
+    if (
+      !overlappingWall?.start ||
+      !overlappingWall?.end ||
+      overlappingWall.id === referenceWall.id
+    ) {
       continue;
     }
-    const odx = other.end.x - other.start.x;
-    const ody = other.end.y - other.start.y;
-    const otherLength = Math.hypot(odx, ody);
-    if (otherLength <= tolerance || Math.abs(direction.x * ody / otherLength - direction.y * odx / otherLength) > paramTolerance) {
+    const otherDirX = overlappingWall.end.x - overlappingWall.start.x;
+    const otherDirY = overlappingWall.end.y - overlappingWall.start.y;
+    const otherLength = Math.hypot(otherDirX, otherDirY);
+    if (
+      otherLength <= lengthTolerance ||
+      Math.abs(
+        (unitDirection.x * otherDirY) / otherLength - (unitDirection.y * otherDirX) / otherLength
+      ) > normalizedTolerance
+    ) {
       continue;
     }
-    const startOffset = {
-      x: other.start.x - wall.start.x,
-      y: other.start.y - wall.start.y
+    const startOffsetVector = {
+      x: overlappingWall.start.x - referenceWall.start.x,
+      y: overlappingWall.start.y - referenceWall.start.y
     };
-    const endOffset = {
-      x: other.end.x - wall.start.x,
-      y: other.end.y - wall.start.y
+    const endOffsetVector = {
+      x: overlappingWall.end.x - referenceWall.start.x,
+      y: overlappingWall.end.y - referenceWall.start.y
     };
-    const startCross = Math.abs(startOffset.x * direction.y - startOffset.y * direction.x);
-    const endCross = Math.abs(endOffset.x * direction.y - endOffset.y * direction.x);
-    if (Math.max(startCross, endCross) > tolerance) {
+    const startOffset = Math.abs(
+      startOffsetVector.x * unitDirection.y - startOffsetVector.y * unitDirection.x
+    );
+    const endOffset = Math.abs(
+      endOffsetVector.x * unitDirection.y - endOffsetVector.y * unitDirection.x
+    );
+    if (Math.max(startOffset, endOffset) > lengthTolerance) {
       continue;
     }
-    const startParam = (startOffset.x * direction.x + startOffset.y * direction.y) / length;
-    const endParam = (endOffset.x * direction.x + endOffset.y * direction.y) / length;
-    const intervalStart = clamp(Math.min(startParam, endParam), 0, 1);
-    const intervalEnd = clamp(Math.max(startParam, endParam), 0, 1);
-    if (intervalEnd - intervalStart > paramTolerance) {
-      coverIntervals.push([intervalStart, intervalEnd]);
+    const startProjection =
+      (startOffsetVector.x * unitDirection.x + startOffsetVector.y * unitDirection.y) / wallLength;
+    const endProjection =
+      (endOffsetVector.x * unitDirection.x + endOffsetVector.y * unitDirection.y) / wallLength;
+    const rangeStart = clamp(Math.min(startProjection, endProjection), 0, 1);
+    const rangeEnd = clamp(Math.max(startProjection, endProjection), 0, 1);
+    if (rangeEnd - rangeStart > normalizedTolerance) {
+      coveredRanges.push([rangeStart, rangeEnd]);
     }
   }
-  if (!coverIntervals.length) {
-    return [{
-      start: {
-        ...wall.start
-      },
-      end: {
-        ...wall.end
+  if (!coveredRanges.length) {
+    return [
+      {
+        start: {
+          ...referenceWall.start
+        },
+        end: {
+          ...referenceWall.end
+        }
       }
-    }];
+    ];
   }
-  coverIntervals.sort((left, right) => left[0] - right[0]);
-  const merged = [];
-  for (const interval of coverIntervals) {
-    const last = merged.at(-1);
-    if (last && interval[0] <= last[1] + paramTolerance) {
-      last[1] = Math.max(last[1], interval[1]);
+  coveredRanges.sort((rangeLeft, rangeRight) => rangeLeft[0] - rangeRight[0]);
+  const mergedRanges = [];
+  for (const range of coveredRanges) {
+    const lastRange = mergedRanges.at(-1);
+    if (lastRange && range[0] <= lastRange[1] + normalizedTolerance) {
+      lastRange[1] = Math.max(lastRange[1], range[1]);
     } else {
-      merged.push([...interval]);
+      mergedRanges.push([...range]);
     }
   }
-  const gaps = [];
+  const gapRanges = [];
   let cursor = 0;
-  for (const [coverStart, coverEnd] of merged) {
-    if (coverStart - cursor > paramTolerance) {
-      gaps.push([cursor, coverStart]);
+  for (const [mergedRangeStart, mergedRangeEnd] of mergedRanges) {
+    if (mergedRangeStart - cursor > normalizedTolerance) {
+      gapRanges.push([cursor, mergedRangeStart]);
     }
-    cursor = Math.max(cursor, coverEnd);
+    cursor = Math.max(cursor, mergedRangeEnd);
   }
-  if (1 - cursor > paramTolerance) {
-    gaps.push([cursor, 1]);
+  if (1 - cursor > normalizedTolerance) {
+    gapRanges.push([cursor, 1]);
   }
-  return gaps.map(([gapStart, gapEnd]) => ({
+  return gapRanges.map(([startT, endT]) => ({
     start: {
-      x: wall.start.x + dx * gapStart,
-      y: wall.start.y + dy * gapStart
+      x: referenceWall.start.x + dirX * startT,
+      y: referenceWall.start.y + dirY * startT
     },
     end: {
-      x: wall.start.x + dx * gapEnd,
-      y: wall.start.y + dy * gapEnd
+      x: referenceWall.start.x + dirX * endT,
+      y: referenceWall.start.y + dirY * endT
     }
   }));
 }
-export function canonicalPolygonKey(polygon, precisionInput = 5) {
-  if (!Array.isArray(polygon) || !polygon.length) {
+export function canonicalPolygonKey(points, precision = 5) {
+  if (!Array.isArray(points) || !points.length) {
     return "";
   }
-  const precision = clamp(Math.round(Number(precisionInput) || 0), 0, 12);
-  const coords = polygon.map(vertex => {
-    const x = Math.abs(Number(vertex?.x) || 0) < 10 ** -precision / 2 ? 0 : Number(vertex?.x) || 0;
-    const y = Math.abs(Number(vertex?.y) || 0) < 10 ** -precision / 2 ? 0 : Number(vertex?.y) || 0;
-    return x.toFixed(precision) + "," + y.toFixed(precision);
+  const decimals = clamp(Math.round(Number(precision) || 0), 0, 12);
+  const coordinateKeys = points.map(polygonPoint => {
+    const roundedX =
+      Math.abs(Number(polygonPoint?.x) || 0) < 10 ** -decimals / 2
+        ? 0
+        : Number(polygonPoint?.x) || 0;
+    const roundedY =
+      Math.abs(Number(polygonPoint?.y) || 0) < 10 ** -decimals / 2
+        ? 0
+        : Number(polygonPoint?.y) || 0;
+    return roundedX.toFixed(decimals) + "," + roundedY.toFixed(decimals);
   });
-  const rotations = [];
-  for (const sequence of [coords, [...coords].reverse()]) {
-    for (let offset = 0; offset < sequence.length; offset += 1) {
-      rotations.push([...sequence.slice(offset), ...sequence.slice(0, offset)].join(";"));
+  const rotationKeys = [];
+  for (const sequence of [coordinateKeys, [...coordinateKeys].reverse()]) {
+    for (let offsetIndex = 0; offsetIndex < sequence.length; offsetIndex += 1) {
+      rotationKeys.push(
+        [...sequence.slice(offsetIndex), ...sequence.slice(0, offsetIndex)].join(";")
+      );
     }
   }
-  return rotations.sort()[0];
+  return rotationKeys.sort()[0];
 }
-function findWallEndpointJunction(firstWall, secondWall, tolerance) {
-  const matches = [{
-    firstKey: "start",
-    secondKey: "start"
-  }, {
-    firstKey: "start",
-    secondKey: "end"
-  }, {
-    firstKey: "end",
-    secondKey: "start"
-  }, {
-    firstKey: "end",
-    secondKey: "end"
-  }].filter(({
-    firstKey,
-    secondKey
-  }) => distance(firstWall[firstKey], secondWall[secondKey]) <= tolerance);
-  if (matches.length !== 1) {
+function matchWallEndpoints(wallA, wallB, endpointTolerance) {
+  const matchingPairs = [
+    {
+      firstKey: "start",
+      secondKey: "start"
+    },
+    {
+      firstKey: "start",
+      secondKey: "end"
+    },
+    {
+      firstKey: "end",
+      secondKey: "start"
+    },
+    {
+      firstKey: "end",
+      secondKey: "end"
+    }
+  ].filter(
+    ({ firstKey: wallAEndpointKey, secondKey: wallBEndpointKey }) =>
+      distance(wallA[wallAEndpointKey], wallB[wallBEndpointKey]) <= endpointTolerance
+  );
+  if (matchingPairs.length !== 1) {
     return null;
   }
-  const match = matches[0];
+  const matchedPair = matchingPairs[0];
   return {
     point: {
-      x: (firstWall[match.firstKey].x + secondWall[match.secondKey].x) / 2,
-      y: (firstWall[match.firstKey].y + secondWall[match.secondKey].y) / 2
+      x: (wallA[matchedPair.firstKey].x + wallB[matchedPair.secondKey].x) / 2,
+      y: (wallA[matchedPair.firstKey].y + wallB[matchedPair.secondKey].y) / 2
     },
-    firstKey: match.firstKey,
-    secondKey: match.secondKey,
-    firstOuter: firstWall[match.firstKey === "start" ? "end" : "start"],
-    secondOuter: secondWall[match.secondKey === "start" ? "end" : "start"]
+    firstKey: matchedPair.firstKey,
+    secondKey: matchedPair.secondKey,
+    firstOuter: wallA[matchedPair.firstKey === "start" ? "end" : "start"],
+    secondOuter: wallB[matchedPair.secondKey === "start" ? "end" : "start"]
   };
 }
-function wallsHaveMatchingProps(firstWall, secondWall, tolerance) {
-  const firstOpacity = firstWall.opacity === null || firstWall.opacity === undefined ? null : Number(firstWall.opacity);
-  const secondOpacity = secondWall.opacity === null || secondWall.opacity === undefined ? null : Number(secondWall.opacity);
-  const opacityMatches = firstOpacity === null || secondOpacity === null ? firstOpacity === secondOpacity : Math.abs(firstOpacity - secondOpacity) <= tolerance;
-  return Math.abs((Number(firstWall.height) || 0) - (Number(secondWall.height) || 0)) <= tolerance && Math.abs((Number(firstWall.thickness) || 0) - (Number(secondWall.thickness) || 0)) <= tolerance && opacityMatches && firstWall.allowOpenEnd === true == (secondWall.allowOpenEnd === true);
+function canMergeWalls(firstWall, secondWall, compatibilityTolerance) {
+  const firstOpacity =
+    firstWall.opacity === null || firstWall.opacity === undefined
+      ? null
+      : Number(firstWall.opacity);
+  const secondOpacity =
+    secondWall.opacity === null || secondWall.opacity === undefined
+      ? null
+      : Number(secondWall.opacity);
+  const isOpacityCompatible =
+    firstOpacity === null || secondOpacity === null
+      ? firstOpacity === secondOpacity
+      : Math.abs(firstOpacity - secondOpacity) <= compatibilityTolerance;
+  return (
+    Math.abs((Number(firstWall.height) || 0) - (Number(secondWall.height) || 0)) <=
+      compatibilityTolerance &&
+    Math.abs((Number(firstWall.thickness) || 0) - (Number(secondWall.thickness) || 0)) <=
+      compatibilityTolerance &&
+    isOpacityCompatible &&
+    (firstWall.allowOpenEnd === true) == (secondWall.allowOpenEnd === true)
+  );
 }
-function countWallEndpointsNear(entries, point, tolerance) {
-  return entries.reduce((count, entry) => count + (distance(entry.wall.start, point) <= tolerance ? 1 : 0) + (distance(entry.wall.end, point) <= tolerance ? 1 : 0), 0);
+function countEndpointsNearPoint(incidentWallEntries, probePoint, proximityTolerance) {
+  return incidentWallEntries.reduce(
+    (count, nearbyWall) =>
+      count +
+      (distance(nearbyWall.wall.start, probePoint) <= proximityTolerance ? 1 : 0) +
+      (distance(nearbyWall.wall.end, probePoint) <= proximityTolerance ? 1 : 0),
+    0
+  );
 }
-function isCollinearOppositeJunction(junction, tolerance) {
-  const firstVec = subtractPoints(junction.firstOuter, junction.point);
-  const secondVec = subtractPoints(junction.secondOuter, junction.point);
-  const firstLen = Math.hypot(firstVec.x, firstVec.y);
-  const secondLen = Math.hypot(secondVec.x, secondVec.y);
-  if (firstLen <= tolerance || secondLen <= tolerance) {
+function isHairpinJoin(endpointMatch, hairpinTolerance) {
+  const firstOuterVector = subtractPoints(endpointMatch.firstOuter, endpointMatch.point);
+  const secondOuterVector = subtractPoints(endpointMatch.secondOuter, endpointMatch.point);
+  const firstOuterLength = Math.hypot(firstOuterVector.x, firstOuterVector.y);
+  const secondOuterLength = Math.hypot(secondOuterVector.x, secondOuterVector.y);
+  if (firstOuterLength <= hairpinTolerance || secondOuterLength <= hairpinTolerance) {
     return false;
   }
-  const crossAbs = Math.abs(cross2d(firstVec, secondVec));
-  return firstVec.x * secondVec.x + firstVec.y * secondVec.y < 0 && crossAbs <= tolerance * Math.max(firstLen, secondLen, 1);
+  const crossMagnitude = Math.abs(crossProduct(firstOuterVector, secondOuterVector));
+  return (
+    firstOuterVector.x * secondOuterVector.x + firstOuterVector.y * secondOuterVector.y < 0 &&
+    crossMagnitude <= hairpinTolerance * Math.max(firstOuterLength, secondOuterLength, 1)
+  );
 }
-export function mergeCollinearWallSegments(walls, epsilonInput = 0.000001) {
-  const epsilon = Math.max(Number(epsilonInput) || 0, 1e-7);
-  const entries = (walls || []).filter(wall => wall?.start && wall?.end && distance(wall.start, wall.end) > epsilon).map(source => ({
-    wall: {
-      ...source,
-      start: {
-        ...source.start
+export function mergeCollinearWallSegments(sourceWalls, mergeDistanceTolerance = 0.000001) {
+  const mergeTolerance = Math.max(Number(mergeDistanceTolerance) || 0, 1e-7);
+  const workList = (sourceWalls || [])
+    .filter(
+      rawWall =>
+        rawWall?.start && rawWall?.end && distance(rawWall.start, rawWall.end) > mergeTolerance
+    )
+    .map(clonedWall => ({
+      wall: {
+        ...clonedWall,
+        start: {
+          ...clonedWall.start
+        },
+        end: {
+          ...clonedWall.end
+        }
       },
-      end: {
-        ...source.end
-      }
-    },
-    sourceIds: new Set([source.id])
-  }));
-  let merged = true;
-  while (merged) {
-    merged = false;
-    for (let i = 0; i < entries.length && !merged; i += 1) {
-      for (let buildWallGraph = i + 1; buildWallGraph < entries.length; buildWallGraph += 1) {
-        const entryA = entries[i];
-        const entryB = entries[buildWallGraph];
-        if (!wallsHaveMatchingProps(entryA.wall, entryB.wall, epsilon)) {
+      sourceIds: new Set([clonedWall.id])
+    }));
+  let didMerge = true;
+  while (didMerge) {
+    didMerge = false;
+    for (let leftIndex = 0; leftIndex < workList.length && !didMerge; leftIndex += 1) {
+      for (let rightIndex = leftIndex + 1; rightIndex < workList.length; rightIndex += 1) {
+        const leftEntry = workList[leftIndex];
+        const rightEntry = workList[rightIndex];
+        if (!canMergeWalls(leftEntry.wall, rightEntry.wall, mergeTolerance)) {
           continue;
         }
-        const junction = findWallEndpointJunction(entryA.wall, entryB.wall, epsilon);
-        if (!junction || countWallEndpointsNear(entries, junction.point, epsilon) !== 2 || !isCollinearOppositeJunction(junction, epsilon)) {
+        const mergeMatch = matchWallEndpoints(leftEntry.wall, rightEntry.wall, mergeTolerance);
+        if (
+          !mergeMatch ||
+          countEndpointsNearPoint(workList, mergeMatch.point, mergeTolerance) !== 2 ||
+          !isHairpinJoin(mergeMatch, mergeTolerance)
+        ) {
           continue;
         }
         const mergedWall = {
-          ...entryA.wall,
-          start: junction.firstKey === "end" ? {
-            ...junction.firstOuter
-          } : {
-            ...junction.secondOuter
-          },
-          end: junction.firstKey === "end" ? {
-            ...junction.secondOuter
-          } : {
-            ...junction.firstOuter
-          }
+          ...leftEntry.wall,
+          start:
+            mergeMatch.firstKey === "end"
+              ? {
+                  ...mergeMatch.firstOuter
+                }
+              : {
+                  ...mergeMatch.secondOuter
+                },
+          end:
+            mergeMatch.firstKey === "end"
+              ? {
+                  ...mergeMatch.secondOuter
+                }
+              : {
+                  ...mergeMatch.firstOuter
+                }
         };
-        entries[i] = {
+        workList[leftIndex] = {
           wall: mergedWall,
-          sourceIds: new Set([...entryA.sourceIds, ...entryB.sourceIds])
+          sourceIds: new Set([...leftEntry.sourceIds, ...rightEntry.sourceIds])
         };
-        entries.splice(buildWallGraph, 1);
-        merged = true;
+        workList.splice(rightIndex, 1);
+        didMerge = true;
         break;
       }
     }
   }
-  const wallIdMap = new Map();
-  for (const entry of entries) {
-    for (const sourceId of entry.sourceIds) {
-      wallIdMap.set(sourceId, entry.wall.id);
+  const wallIdBySourceId = new Map();
+  for (const mergedEntry of workList) {
+    for (const sourceId of mergedEntry.sourceIds) {
+      wallIdBySourceId.set(sourceId, mergedEntry.wall.id);
     }
   }
   return {
-    walls: entries.map(finalEntry => finalEntry.wall),
-    wallIdMap
+    walls: workList.map(resultEntry => resultEntry.wall),
+    wallIdMap: wallIdBySourceId
   };
 }
-export function remapWallAttachment(attachment, fromWall, toWall) {
-  if (!attachment || !fromWall || !toWall) {
+export function remapWallAttachment(attachment, fromWall, destinationWall) {
+  if (!attachment || !fromWall || !destinationWall) {
     return attachment;
   }
-  const param = clamp(Number(attachment.t) || 0, 0, 1);
-  const worldPoint = lerpPoint(fromWall.start, fromWall.end, param);
+  const attachmentT = clamp(Number(attachment.t) || 0, 0, 1);
+  const pointOnSourceWall = lerpPoint(fromWall.start, fromWall.end, attachmentT);
   return {
     ...attachment,
-    wallId: toWall.id,
-    t: clamp(projectPointToSegment(worldPoint, toWall.start, toWall.end).t, 0, 1)
+    wallId: destinationWall.id,
+    t: clamp(
+      projectPointToSegment(pointOnSourceWall, destinationWall.start, destinationWall.end).t,
+      0,
+      1
+    )
   };
 }
-function nearestSnapCandidate(point, candidates, tolerance) {
-  let best = null;
-  for (const candidate of candidates) {
-    const dist = distance(point, candidate.point);
-    if (!(dist > tolerance) && (!best || !(dist >= best.distance))) {
-      best = {
-        ...candidate,
-        distance: dist
+function findNearestCandidate(queryPoint, candidates, maxDistance) {
+  let bestCandidate = null;
+  for (const snapCandidate of candidates) {
+    const candidateDistance = distance(queryPoint, snapCandidate.point);
+    if (
+      !(candidateDistance > maxDistance) &&
+      (!bestCandidate || !(candidateDistance >= bestCandidate.distance))
+    ) {
+      bestCandidate = {
+        ...snapCandidate,
+        distance: candidateDistance
       };
     }
   }
-  return best;
+  return bestCandidate;
 }
-export function axisLockedPoint(point, anchor) {
-  const dx = point.x - anchor.x;
-  const dy = point.y - anchor.y;
-  if (Math.abs(dx) > Math.abs(dy)) {
+export function axisLockedPoint(freePoint, lockedAnchor) {
+  const deltaX = freePoint.x - lockedAnchor.x;
+  const deltaY = freePoint.y - lockedAnchor.y;
+  if (Math.abs(deltaX) > Math.abs(deltaY)) {
     return {
       point: {
-        x: point.x,
-        y: anchor.y
+        x: freePoint.x,
+        y: lockedAnchor.y
       },
       axis: "horizontal",
       label: "水平轴"
@@ -534,1045 +716,1389 @@ export function axisLockedPoint(point, anchor) {
   } else {
     return {
       point: {
-        x: anchor.x,
-        y: point.y
+        x: lockedAnchor.x,
+        y: freePoint.y
       },
       axis: "vertical",
       label: "垂直轴"
     };
   }
 }
-function snapAlongAxisToWall(point, axisPoint, walls, tolerance, axis) {
-  let best = null;
-  for (const wall of walls) {
-    const fixedAxis = axis === "vertical" ? "x" : "y";
-    const freeAxis = axis === "vertical" ? "y" : "x";
-    const axisDelta = wall.end[fixedAxis] - wall.start[fixedAxis];
-    if (Math.abs(axisDelta) <= 1e-7) {
-      if (Math.abs(wall.start[fixedAxis] - axisPoint[fixedAxis]) > 1e-7) {
+function findAxisSnapOnWalls(snapQueryPoint, snapAnchor, targetWalls, snapDistanceLimit, axis) {
+  let bestSnap = null;
+  for (const snapWall of targetWalls) {
+    const axisKey = axis === "vertical" ? "x" : "y";
+    const crossAxisKey = axis === "vertical" ? "y" : "x";
+    const wallDelta = snapWall.end[axisKey] - snapWall.start[axisKey];
+    if (Math.abs(wallDelta) <= 1e-7) {
+      if (Math.abs(snapWall.start[axisKey] - snapAnchor[axisKey]) > 1e-7) {
         continue;
       }
-      const projection = projectPointToSegment(point, wall.start, wall.end);
-      if (projection.distance > tolerance || best && projection.distance >= best.distance) {
+      const snapProjection = projectPointToSegment(snapQueryPoint, snapWall.start, snapWall.end);
+      if (
+        snapProjection.distance > snapDistanceLimit ||
+        (bestSnap && snapProjection.distance >= bestSnap.distance)
+      ) {
         continue;
       }
-      best = {
+      bestSnap = {
         point: {
-          ...projection.point,
-          [fixedAxis]: axisPoint[fixedAxis]
+          ...snapProjection.point,
+          [axisKey]: snapAnchor[axisKey]
         },
         kind: "segment",
-        targetId: wall.id,
+        targetId: snapWall.id,
         label: (axis === "vertical" ? "垂直" : "水平") + " · 墙线",
-        distance: projection.distance
+        distance: snapProjection.distance
       };
       continue;
     }
-    const param = (axisPoint[fixedAxis] - wall.start[fixedAxis]) / axisDelta;
-    if (param < -1e-7 || param > 1.0000001) {
+    const wallT = (snapAnchor[axisKey] - snapWall.start[axisKey]) / wallDelta;
+    if (wallT < -1e-7 || wallT > 1.0000001) {
       continue;
     }
-    const snapAt = {
-      ...axisPoint
+    const lockedPoint = {
+      ...snapAnchor
     };
-    snapAt[freeAxis] = wall.start[freeAxis] + (wall.end[freeAxis] - wall.start[freeAxis]) * clamp(param, 0, 1);
-    const dist = distance(point, snapAt);
-    if (!(dist > tolerance) && (!best || !(dist >= best.distance))) {
-      best = {
-        point: snapAt,
+    lockedPoint[crossAxisKey] =
+      snapWall.start[crossAxisKey] +
+      (snapWall.end[crossAxisKey] - snapWall.start[crossAxisKey]) * clamp(wallT, 0, 1);
+    const lockedDistance = distance(snapQueryPoint, lockedPoint);
+    if (
+      !(lockedDistance > snapDistanceLimit) &&
+      (!bestSnap || !(lockedDistance >= bestSnap.distance))
+    ) {
+      bestSnap = {
+        point: lockedPoint,
         kind: "segment",
-        targetId: wall.id,
+        targetId: snapWall.id,
         label: (axis === "vertical" ? "垂直" : "水平") + " · 墙线",
-        distance: dist
+        distance: lockedDistance
       };
     }
   }
-  return best;
+  return bestSnap;
 }
-function preferVerticalAxisSnap(point, anchor, walls, tolerance) {
-  if (!anchor || Math.abs(point.x - anchor.x) > tolerance) {
+function findVerticalAxisSnap(pointInput, verticalAnchor, wallSegments, verticalSnapDistance) {
+  if (!verticalAnchor || Math.abs(pointInput.x - verticalAnchor.x) > verticalSnapDistance) {
     return null;
   }
-  const segmentSnap = snapAlongAxisToWall(point, anchor, walls, tolerance, "vertical");
-  return segmentSnap || {
-    point: {
-      x: anchor.x,
-      y: point.y
-    },
-    kind: "axis",
-    label: "垂直轴",
-    distance: Math.abs(point.x - anchor.x)
-  };
-}
-function snapOrthogonalFromAnchor(point, anchor, walls, tolerance, intersections = wallIntersections(walls), options = {}) {
-  const locked = axisLockedPoint(point, anchor);
-  const fixedAxis = locked.axis === "vertical" ? "x" : "y";
-  const axisTolerance = Math.max(1e-7, tolerance * 0.000001);
-  const axisLabel = locked.axis === "vertical" ? "垂直" : "水平";
-  const candidates = [...(options.snapEndpoints === false ? [] : walls.flatMap(wall => [{
-    point: wall.start,
-    kind: "endpoint",
-    targetId: wall.id,
-    label: axisLabel + " · 端点"
-  }, {
-    point: wall.end,
-    kind: "endpoint",
-    targetId: wall.id,
-    label: axisLabel + " · 端点"
-  }])), ...(options.snapIntersections === false ? [] : intersections.map(intersection => ({
-    point: intersection,
-    kind: "intersection",
-    label: axisLabel + " · 交点"
-  })))].filter(candidate => Math.abs(candidate.point[fixedAxis] - anchor[fixedAxis]) <= axisTolerance);
-  const nearest = nearestSnapCandidate(point, candidates, tolerance);
-  if (nearest) {
-    return nearest;
-  }
-  if (options.snapSegments !== false) {
-    const segmentSnap = snapAlongAxisToWall(point, anchor, walls, tolerance, locked.axis);
-    if (segmentSnap) {
-      return segmentSnap;
+  const verticalSnap = findAxisSnapOnWalls(
+    pointInput,
+    verticalAnchor,
+    wallSegments,
+    verticalSnapDistance,
+    "vertical"
+  );
+  return (
+    verticalSnap || {
+      point: {
+        x: verticalAnchor.x,
+        y: pointInput.y
+      },
+      kind: "axis",
+      label: "垂直轴",
+      distance: Math.abs(pointInput.x - verticalAnchor.x)
     }
-  }
-  return {
-    ...locked,
-    kind: "axis",
-    distance: distance(point, locked.point)
-  };
+  );
 }
-export function snapPoint(point, walls, options = {}) {
-  const zoom = Math.max(Number(options.zoom) || 1, 1e-7);
-  const tolerance = (Number(options.screenTolerance) || 12) / zoom;
-  const cachedIntersections = Array.isArray(options.intersections) ? options.intersections : null;
-  if (options.forceOrthogonalAxis === true && options.anchor) {
-    const orthogonalIntersections = options.snapIntersections === false ? [] : cachedIntersections || wallIntersections(walls);
-    return snapOrthogonalFromAnchor(point, options.anchor, walls, tolerance, orthogonalIntersections, options);
-  }
-  const endpointCandidates = [];
-  if (options.snapEndpoints !== false) {
-    for (const wall of walls) {
-      endpointCandidates.push({
-        point: wall.start,
-        kind: "endpoint",
-        targetId: wall.id,
-        label: "端点"
-      }, {
-        point: wall.end,
-        kind: "endpoint",
-        targetId: wall.id,
-        label: "端点"
-      });
-    }
-  }
-  const endpointSnap = nearestSnapCandidate(point, endpointCandidates, tolerance);
+function findOrthogonalAxisSnap(
+  cursorPoint,
+  orthogonalAnchor,
+  wallGeometry,
+  orthogonalSnapDistance,
+  knownIntersections = wallIntersections(wallGeometry),
+  options = {}
+) {
+  const axisLock = axisLockedPoint(cursorPoint, orthogonalAnchor);
+  const lockAxisKey = axisLock.axis === "vertical" ? "x" : "y";
+  const coordinateTolerance = Math.max(1e-7, orthogonalSnapDistance * 0.000001);
+  const axisLabel = axisLock.axis === "vertical" ? "垂直" : "水平";
+  const orthoCandidates = [
+    ...(options.snapEndpoints === false
+      ? []
+      : wallGeometry.flatMap(endpointCandidateWall => [
+          {
+            point: endpointCandidateWall.start,
+            kind: "endpoint",
+            targetId: endpointCandidateWall.id,
+            label: axisLabel + " · 端点"
+          },
+          {
+            point: endpointCandidateWall.end,
+            kind: "endpoint",
+            targetId: endpointCandidateWall.id,
+            label: axisLabel + " · 端点"
+          }
+        ])),
+    ...(options.snapIntersections === false
+      ? []
+      : knownIntersections.map(intersectionPoint => ({
+          point: intersectionPoint,
+          kind: "intersection",
+          label: axisLabel + " · 交点"
+        })))
+  ].filter(
+    orthoCandidate =>
+      Math.abs(orthoCandidate.point[lockAxisKey] - orthogonalAnchor[lockAxisKey]) <=
+      coordinateTolerance
+  );
+  const endpointSnap = findNearestCandidate(cursorPoint, orthoCandidates, orthogonalSnapDistance);
   if (endpointSnap) {
     return endpointSnap;
   }
-  if (options.snapIntersections !== false) {
-    const intersectionSnap = nearestSnapCandidate(point, (cachedIntersections || wallIntersections(walls)).map(intersection => ({
-      point: intersection,
-      kind: "intersection",
-      label: "交点"
-    })), tolerance);
+  if (options.snapSegments !== false) {
+    const orthogonalSnap = findAxisSnapOnWalls(
+      cursorPoint,
+      orthogonalAnchor,
+      wallGeometry,
+      orthogonalSnapDistance,
+      axisLock.axis
+    );
+    if (orthogonalSnap) {
+      return orthogonalSnap;
+    }
+  }
+  return {
+    ...axisLock,
+    kind: "axis",
+    distance: distance(cursorPoint, axisLock.point)
+  };
+}
+export function snapPoint(pointToSnap, wallShapes, snapOptions = {}) {
+  const zoomScale = Math.max(Number(snapOptions.zoom) || 1, 1e-7);
+  const worldTolerance = (Number(snapOptions.screenTolerance) || 12) / zoomScale;
+  const intersections = Array.isArray(snapOptions.intersections) ? snapOptions.intersections : null;
+  if (snapOptions.forceOrthogonalAxis === true && snapOptions.anchor) {
+    const orthogonalIntersections =
+      snapOptions.snapIntersections === false ? [] : intersections || wallIntersections(wallShapes);
+    return findOrthogonalAxisSnap(
+      pointToSnap,
+      snapOptions.anchor,
+      wallShapes,
+      worldTolerance,
+      orthogonalIntersections,
+      snapOptions
+    );
+  }
+  const endpointCandidates = [];
+  if (snapOptions.snapEndpoints !== false) {
+    for (const endpointSourceWall of wallShapes) {
+      endpointCandidates.push(
+        {
+          point: endpointSourceWall.start,
+          kind: "endpoint",
+          targetId: endpointSourceWall.id,
+          label: "端点"
+        },
+        {
+          point: endpointSourceWall.end,
+          kind: "endpoint",
+          targetId: endpointSourceWall.id,
+          label: "端点"
+        }
+      );
+    }
+  }
+  const endpointSnapResult = findNearestCandidate(pointToSnap, endpointCandidates, worldTolerance);
+  if (endpointSnapResult) {
+    return endpointSnapResult;
+  }
+  if (snapOptions.snapIntersections !== false) {
+    const intersectionSnap = findNearestCandidate(
+      pointToSnap,
+      (intersections || wallIntersections(wallShapes)).map(snapIntersection => ({
+        point: snapIntersection,
+        kind: "intersection",
+        label: "交点"
+      })),
+      worldTolerance
+    );
     if (intersectionSnap) {
       return intersectionSnap;
     }
   }
-  if (options.preferVerticalAxis === true && options.snapOrthogonal !== false && options.anchor) {
-    const verticalSnap = preferVerticalAxisSnap(point, options.anchor, walls, tolerance);
-    if (verticalSnap) {
-      return verticalSnap;
+  if (
+    snapOptions.preferVerticalAxis === true &&
+    snapOptions.snapOrthogonal !== false &&
+    snapOptions.anchor
+  ) {
+    const verticalAxisSnap = findVerticalAxisSnap(
+      pointToSnap,
+      snapOptions.anchor,
+      wallShapes,
+      worldTolerance
+    );
+    if (verticalAxisSnap) {
+      return verticalAxisSnap;
     }
   }
-  if (options.snapSegments !== false) {
-    const segmentSnap = walls.map(segWall => {
-      const projection = projectPointToSegment(point, segWall.start, segWall.end);
-      return {
-        point: projection.point,
-        kind: "segment",
-        targetId: segWall.id,
-        label: "墙线",
-        distance: projection.distance
-      };
-    }).filter(candidate => candidate.distance <= tolerance).sort((a, b) => a.distance - b.distance)[0];
+  if (snapOptions.snapSegments !== false) {
+    const segmentSnap = wallShapes
+      .map(segmentWall => {
+        const segmentProjection = projectPointToSegment(
+          pointToSnap,
+          segmentWall.start,
+          segmentWall.end
+        );
+        return {
+          point: segmentProjection.point,
+          kind: "segment",
+          targetId: segmentWall.id,
+          label: "墙线",
+          distance: segmentProjection.distance
+        };
+      })
+      .filter(segmentCandidate => segmentCandidate.distance <= worldTolerance)
+      .sort(
+        (leftSegCandidate, rightSegCandidate) =>
+          leftSegCandidate.distance - rightSegCandidate.distance
+      )[0];
     if (segmentSnap) {
       return segmentSnap;
     }
   }
-  if (options.snapAngles !== false && options.anchor) {
-    const dx = point.x - options.anchor.x;
-    const dy = point.y - options.anchor.y;
-    const radius = Math.hypot(dx, dy);
-    if (radius > 1e-7) {
-      const stepRadians = (Number(options.angleStepDegrees) || 15) * Math.PI / 180;
-      const rawAngle = Math.atan2(dy, dx);
-      const snappedAngle = Math.round(rawAngle / stepRadians) * stepRadians;
-      const angledPoint = {
-        x: options.anchor.x + Math.cos(snappedAngle) * radius,
-        y: options.anchor.y + Math.sin(snappedAngle) * radius
+  if (snapOptions.snapAngles !== false && snapOptions.anchor) {
+    const anchorDeltaX = pointToSnap.x - snapOptions.anchor.x;
+    const anchorDeltaY = pointToSnap.y - snapOptions.anchor.y;
+    const anchorDistance = Math.hypot(anchorDeltaX, anchorDeltaY);
+    if (anchorDistance > 1e-7) {
+      const angleStepRad = ((Number(snapOptions.angleStepDegrees) || 15) * Math.PI) / 180;
+      const pointerAngleRad = Math.atan2(anchorDeltaY, anchorDeltaX);
+      const snappedAngleRad = Math.round(pointerAngleRad / angleStepRad) * angleStepRad;
+      const angleSnapPoint = {
+        x: snapOptions.anchor.x + Math.cos(snappedAngleRad) * anchorDistance,
+        y: snapOptions.anchor.y + Math.sin(snappedAngleRad) * anchorDistance
       };
-      const angleDistance = distance(point, angledPoint);
-      if (angleDistance <= tolerance) {
-        const degrees = (snappedAngle * 180 / Math.PI + 360) % 360;
+      const angleSnapDistance = distance(pointToSnap, angleSnapPoint);
+      if (angleSnapDistance <= worldTolerance) {
+        const snappedAngleDeg = ((snappedAngleRad * 180) / Math.PI + 360) % 360;
         return {
-          point: angledPoint,
+          point: angleSnapPoint,
           kind: "angle",
-          label: Math.round(degrees) + "°",
-          distance: angleDistance
+          label: Math.round(snappedAngleDeg) + "°",
+          distance: angleSnapDistance
         };
       }
     }
   }
-  const gridSize = Number(options.gridSize) || 0;
-  if (options.snapGrid !== false && gridSize > 1e-7) {
+  const gridSize = Number(snapOptions.gridSize) || 0;
+  if (snapOptions.snapGrid !== false && gridSize > 1e-7) {
     const gridPoint = {
-      x: Math.round(point.x / gridSize) * gridSize,
-      y: Math.round(point.y / gridSize) * gridSize
+      x: Math.round(pointToSnap.x / gridSize) * gridSize,
+      y: Math.round(pointToSnap.y / gridSize) * gridSize
     };
-    const gridDistance = distance(point, gridPoint);
-    if (gridDistance <= tolerance) {
+    const gridSnapDistance = distance(pointToSnap, gridPoint);
+    if (gridSnapDistance <= worldTolerance) {
       return {
         point: gridPoint,
         kind: "grid",
         label: "网格",
-        distance: gridDistance
+        distance: gridSnapDistance
       };
     }
   }
   return {
     point: {
-      ...point
+      ...pointToSnap
     },
     kind: null,
     label: "",
     distance: 0
   };
 }
-export function nearestWall(point, walls, maxDistance = Infinity) {
-  let best = null;
-  for (const wall of walls) {
-    const projection = projectPointToSegment(point, wall.start, wall.end);
-    if (!(projection.distance > maxDistance) && (!best || !(projection.distance >= best.distance))) {
-      best = {
-        wall,
-        ...projection
+export function nearestWall(referencePoint, wallCandidates, maxWallDistance = Infinity) {
+  let nearestHit = null;
+  for (const hitWall of wallCandidates) {
+    const wallProjection = projectPointToSegment(referencePoint, hitWall.start, hitWall.end);
+    if (
+      !(wallProjection.distance > maxWallDistance) &&
+      (!nearestHit || !(wallProjection.distance >= nearestHit.distance))
+    ) {
+      nearestHit = {
+        wall: hitWall,
+        ...wallProjection
       };
     }
   }
-  return best;
+  return nearestHit;
 }
-export function wallLengthMeters(wall, pixelsPerMeter) {
-  return distance(wall.start, wall.end) / Math.max(Number(pixelsPerMeter) || 1, 1e-7);
+export function wallLengthMeters(measuredWall, pixelsPerMeter) {
+  return (
+    distance(measuredWall.start, measuredWall.end) / Math.max(Number(pixelsPerMeter) || 1, 1e-7)
+  );
 }
-export function clampWindowT(wall, windowItem, pixelsPerMeter) {
-  const wallLength = wallLengthMeters(wall, pixelsPerMeter);
-  if (wallLength <= 1e-7) {
+export function clampWindowT(openingWall, windowOpening, pixelsPerMeterReference) {
+  const openingWallLength = wallLengthMeters(openingWall, pixelsPerMeterReference);
+  if (openingWallLength <= 1e-7) {
     return 0.5;
   }
-  const halfWidthMeters = Math.min(Math.max(Number(windowItem.width) || 0, 0) / 2, wallLength / 2);
-  return clamp(Number(windowItem.t) || 0, halfWidthMeters / wallLength, 1 - halfWidthMeters / wallLength);
+  const halfWidth = Math.min(
+    Math.max(Number(windowOpening.width) || 0, 0) / 2,
+    openingWallLength / 2
+  );
+  return clamp(
+    Number(windowOpening.t) || 0,
+    halfWidth / openingWallLength,
+    1 - halfWidth / openingWallLength
+  );
 }
-export function doorLeafRotation(door, openAngle = Math.PI / 2) {
-  return -(door?.swing === -1 ? -1 : 1) * openAngle;
+export function doorLeafRotation(door, maxAngleRad = Math.PI / 2) {
+  return -(door?.swing === -1 ? -1 : 1) * maxAngleRad;
 }
-export function wallJoinExtensions(walls, toleranceInput = 0.001, extensionFactor = 4) {
-  const tolerance = Math.max(Number(toleranceInput) || 0, 1e-7);
-  const factor = Math.max(Number(extensionFactor) || 0, 1);
-  const extensions = Object.fromEntries((walls || []).map(wall => [wall.id, {
-    start: 0,
-    end: 0
-  }]));
-  const nodes = [];
-  const getOrCreateNode = point => {
-    let node = nodes.find(existing => distance(existing.point, point) <= tolerance);
-    if (!node) {
-      node = {
+export function wallJoinExtensions(wallEntries, junctionTolerance = 0.001, maxExtensionRatio = 4) {
+  const joinTolerance = Math.max(Number(junctionTolerance) || 0, 1e-7);
+  const extensionRatioLimit = Math.max(Number(maxExtensionRatio) || 0, 1);
+  const extensionsByWallId = Object.fromEntries(
+    (wallEntries || []).map(wallEntry => [
+      wallEntry.id,
+      {
+        start: 0,
+        end: 0
+      }
+    ])
+  );
+  const junctions = [];
+  const getJunction = endpointPoint => {
+    let junction = junctions.find(
+      matchingJunction => distance(matchingJunction.point, endpointPoint) <= joinTolerance
+    );
+    if (!junction) {
+      junction = {
         point: {
-          ...point
+          ...endpointPoint
         },
         incidents: []
       };
-      nodes.push(node);
+      junctions.push(junction);
     }
-    return node;
+    return junction;
   };
-  for (const joinWall of walls || []) {
-    const dx = joinWall.end.x - joinWall.start.x;
-    const dy = joinWall.end.y - joinWall.start.y;
-    const length = Math.hypot(dx, dy);
-    if (length <= tolerance) {
+  for (const extendedWallEntry of wallEntries || []) {
+    const wallDirX = extendedWallEntry.end.x - extendedWallEntry.start.x;
+    const wallDirY = extendedWallEntry.end.y - extendedWallEntry.start.y;
+    const wallSpanLength = Math.hypot(wallDirX, wallDirY);
+    if (wallSpanLength <= joinTolerance) {
       continue;
     }
-    const halfThickness = Math.max(Number(joinWall.thickness) || 0, 0) / 2;
-    getOrCreateNode(joinWall.start).incidents.push({
-      wallId: joinWall.id,
+    const halfThickness = Math.max(Number(extendedWallEntry.thickness) || 0, 0) / 2;
+    getJunction(extendedWallEntry.start).incidents.push({
+      wallId: extendedWallEntry.id,
       endpoint: "start",
-      x: dx / length,
-      y: dy / length,
-      halfThickness
+      x: wallDirX / wallSpanLength,
+      y: wallDirY / wallSpanLength,
+      halfThickness: halfThickness
     });
-    getOrCreateNode(joinWall.end).incidents.push({
-      wallId: joinWall.id,
+    getJunction(extendedWallEntry.end).incidents.push({
+      wallId: extendedWallEntry.id,
       endpoint: "end",
-      x: -dx / length,
-      y: -dy / length,
-      halfThickness
+      x: -wallDirX / wallSpanLength,
+      y: -wallDirY / wallSpanLength,
+      halfThickness: halfThickness
     });
   }
-  const angleEpsilon = 0.0001;
-  for (const joinNode of nodes) {
-    if (joinNode.incidents.length < 2) {
+  const SIN_TOLERANCE = 0.0001;
+  for (const incidentJunction of junctions) {
+    if (incidentJunction.incidents.length < 2) {
       continue;
     }
-    const incidents = joinNode.incidents.map(incident => ({
-      ...incident,
-      angle: Math.atan2(incident.y, incident.x)
-    })).sort((a, b) => a.angle - b.angle);
-    for (let i = 0; i < incidents.length; i += 1) {
-      const left = incidents[i];
-      const right = incidents[(i + 1) % incidents.length];
-      const angleDelta = (right.angle - left.angle + Math.PI * 2) % (Math.PI * 2);
-      if (angleDelta <= angleEpsilon || angleDelta >= Math.PI - angleEpsilon) {
+    const sortedIncidents = incidentJunction.incidents
+      .map(incident => ({
+        ...incident,
+        angle: Math.atan2(incident.y, incident.x)
+      }))
+      .sort((incidentLeft, incidentRight) => incidentLeft.angle - incidentRight.angle);
+    for (let incidentIndex = 0; incidentIndex < sortedIncidents.length; incidentIndex += 1) {
+      const currentIncident = sortedIncidents[incidentIndex];
+      const nextIncident = sortedIncidents[(incidentIndex + 1) % sortedIncidents.length];
+      const gapAngleRad =
+        (nextIncident.angle - currentIncident.angle + Math.PI * 2) % (Math.PI * 2);
+      if (gapAngleRad <= SIN_TOLERANCE || gapAngleRad >= Math.PI - SIN_TOLERANCE) {
         continue;
       }
-      const sinDelta = Math.sin(angleDelta);
-      const cosDelta = Math.cos(angleDelta);
-      if (sinDelta <= angleEpsilon) {
+      const sinGap = Math.sin(gapAngleRad);
+      const cosGap = Math.cos(gapAngleRad);
+      if (sinGap <= SIN_TOLERANCE) {
         continue;
       }
-      const maxExtension = Math.max(left.halfThickness, right.halfThickness, 0.000001) * factor;
-      const leftExtension = clamp((right.halfThickness + left.halfThickness * cosDelta) / sinDelta, 0, maxExtension);
-      const rightExtension = clamp((left.halfThickness + right.halfThickness * cosDelta) / sinDelta, 0, maxExtension);
-      extensions[left.wallId][left.endpoint] = Math.max(extensions[left.wallId][left.endpoint], leftExtension);
-      extensions[right.wallId][right.endpoint] = Math.max(extensions[right.wallId][right.endpoint], rightExtension);
+      const maxExtension =
+        Math.max(currentIncident.halfThickness, nextIncident.halfThickness, 0.000001) *
+        extensionRatioLimit;
+      const incidentExtension = clamp(
+        (nextIncident.halfThickness + currentIncident.halfThickness * cosGap) / sinGap,
+        0,
+        maxExtension
+      );
+      const nextExtension = clamp(
+        (currentIncident.halfThickness + nextIncident.halfThickness * cosGap) / sinGap,
+        0,
+        maxExtension
+      );
+      extensionsByWallId[currentIncident.wallId][currentIncident.endpoint] = Math.max(
+        extensionsByWallId[currentIncident.wallId][currentIncident.endpoint],
+        incidentExtension
+      );
+      extensionsByWallId[nextIncident.wallId][nextIncident.endpoint] = Math.max(
+        extensionsByWallId[nextIncident.wallId][nextIncident.endpoint],
+        nextExtension
+      );
     }
   }
-  return extensions;
+  return extensionsByWallId;
 }
-export function wallSolidPieces(wall, openings, pixelsPerMeter, wallHeight) {
-  const wallLength = wallLengthMeters(wall, pixelsPerMeter);
-  const height = Math.max(Number(wallHeight) || 0, 0);
-  if (wallLength <= 1e-7 || height <= 1e-7) {
+export function wallSolidPieces(targetWall, openings, pixelsPerMeterScale, wallHeightMeters) {
+  const wallLengthValue = wallLengthMeters(targetWall, pixelsPerMeterScale);
+  const wallHeight = Math.max(Number(wallHeightMeters) || 0, 0);
+  if (wallLengthValue <= 1e-7 || wallHeight <= 1e-7) {
     return [];
   }
-  const openingBoxes = openings.filter(opening => opening.wallId === wall.id).map(item => {
-    const width = clamp(Number(item.width) || 0, 0, wallLength);
-    const centerAlong = clampWindowT(wall, item, pixelsPerMeter) * wallLength;
-    const bottom = clamp(Number(item.sill) || 0, 0, height);
-    const top = clamp(bottom + Math.max(Number(item.height) || 0, 0), bottom, height);
-    return {
-      start: clamp(centerAlong - width / 2, 0, wallLength),
-      end: clamp(centerAlong + width / 2, 0, wallLength),
-      bottom,
-      top
-    };
-  }).filter(box => box.end - box.start > 1e-7 && box.top - box.bottom > 1e-7);
-  const splits = [...new Set([0, wallLength, ...openingBoxes.flatMap(splitBox => [splitBox.start, splitBox.end])])].sort((a, b) => a - b);
-  const pieces = [];
-  for (let i = 0; i < splits.length - 1; i += 1) {
-    const segStart = splits[i];
-    const segEnd = splits[i + 1];
-    if (segEnd - segStart <= 1e-7) {
+  const openingSpans = openings
+    .filter(opening => opening.wallId === targetWall.id)
+    .map(mappedOpening => {
+      const openingWidth = clamp(Number(mappedOpening.width) || 0, 0, wallLengthValue);
+      const openingCenter =
+        clampWindowT(targetWall, mappedOpening, pixelsPerMeterScale) * wallLengthValue;
+      const openingSill = clamp(Number(mappedOpening.sill) || 0, 0, wallHeight);
+      const openingTop = clamp(
+        openingSill + Math.max(Number(mappedOpening.height) || 0, 0),
+        openingSill,
+        wallHeight
+      );
+      return {
+        start: clamp(openingCenter - openingWidth / 2, 0, wallLengthValue),
+        end: clamp(openingCenter + openingWidth / 2, 0, wallLengthValue),
+        bottom: openingSill,
+        top: openingTop
+      };
+    })
+    .filter(
+      openingSpan =>
+        openingSpan.end - openingSpan.start > 1e-7 && openingSpan.top - openingSpan.bottom > 1e-7
+    );
+  const boundaries = [
+    ...new Set([
+      0,
+      wallLengthValue,
+      ...openingSpans.flatMap(boundarySpan => [boundarySpan.start, boundarySpan.end])
+    ])
+  ].sort((boundaryLeft, boundaryRight) => boundaryLeft - boundaryRight);
+  const solidPieces = [];
+  for (let boundaryIndex = 0; boundaryIndex < boundaries.length - 1; boundaryIndex += 1) {
+    const spanStart = boundaries[boundaryIndex];
+    const spanEnd = boundaries[boundaryIndex + 1];
+    if (spanEnd - spanStart <= 1e-7) {
       continue;
     }
-    const mid = (segStart + segEnd) / 2;
-    const verticalGaps = openingBoxes.filter(covering => mid > covering.start - 1e-7 && mid < covering.end + 1e-7).map(coveringBox => [coveringBox.bottom, coveringBox.top]).sort((ga, gb) => ga[0] - gb[0]);
-    if (!verticalGaps.length) {
-      pieces.push({
-        start: segStart,
-        end: segEnd,
+    const spanMidpoint = (spanStart + spanEnd) / 2;
+    const overlappingSpans = openingSpans
+      .filter(
+        overlapSpan =>
+          spanMidpoint > overlapSpan.start - 1e-7 && spanMidpoint < overlapSpan.end + 1e-7
+      )
+      .map(mappedOverlap => [mappedOverlap.bottom, mappedOverlap.top])
+      .sort((spanLeft, spanRight) => spanLeft[0] - spanRight[0]);
+    if (!overlappingSpans.length) {
+      solidPieces.push({
+        start: spanStart,
+        end: spanEnd,
         bottom: 0,
-        top: height
+        top: wallHeight
       });
       continue;
     }
-    const mergedGaps = [];
-    for (const gap of verticalGaps) {
-      const last = mergedGaps.at(-1);
-      if (last && gap[0] <= last[1] + 1e-7) {
-        last[1] = Math.max(last[1], gap[1]);
+    const mergedVerticalSpans = [];
+    for (const verticalSpan of overlappingSpans) {
+      const lastVerticalSpan = mergedVerticalSpans.at(-1);
+      if (lastVerticalSpan && verticalSpan[0] <= lastVerticalSpan[1] + 1e-7) {
+        lastVerticalSpan[1] = Math.max(lastVerticalSpan[1], verticalSpan[1]);
       } else {
-        mergedGaps.push([...gap]);
+        mergedVerticalSpans.push([...verticalSpan]);
       }
     }
-    let cursor = 0;
-    for (const [gapBottom, gapTop] of mergedGaps) {
-      if (gapBottom - cursor > 1e-7) {
-        pieces.push({
-          start: segStart,
-          end: segEnd,
-          bottom: cursor,
-          top: gapBottom
+    let verticalCursor = 0;
+    for (const [verticalSpanStart, verticalSpanEnd] of mergedVerticalSpans) {
+      if (verticalSpanStart - verticalCursor > 1e-7) {
+        solidPieces.push({
+          start: spanStart,
+          end: spanEnd,
+          bottom: verticalCursor,
+          top: verticalSpanStart
         });
       }
-      cursor = Math.max(cursor, gapTop);
+      verticalCursor = Math.max(verticalCursor, verticalSpanEnd);
     }
-    if (height - cursor > 1e-7) {
-      pieces.push({
-        start: segStart,
-        end: segEnd,
-        bottom: cursor,
-        top: height
+    if (wallHeight - verticalCursor > 1e-7) {
+      solidPieces.push({
+        start: spanStart,
+        end: spanEnd,
+        bottom: verticalCursor,
+        top: wallHeight
       });
     }
   }
-  return pieces;
+  return solidPieces;
 }
-export function pointInRotatedRectangle(point, item, pixelsPerMeter) {
-  const negRotation = -(Number(item.rotation) || 0) * Math.PI / 180;
-  const dx = point.x - item.x;
-  const dy = point.y - item.y;
-  const localX = dx * Math.cos(negRotation) - dy * Math.sin(negRotation);
-  const localY = dx * Math.sin(negRotation) + dy * Math.cos(negRotation);
-  const halfWidth = Math.max(Number(item.width) || 0, 0) * pixelsPerMeter / 2;
-  const halfDepth = Math.max(Number(item.depth) || 0, 0) * pixelsPerMeter / 2;
-  return Math.abs(localX) <= halfWidth && Math.abs(localY) <= halfDepth;
+export function pointInRotatedRectangle(worldPoint, rect, scale) {
+  const inverseRotationRad = (-(Number(rect.rotation) || 0) * Math.PI) / 180;
+  const localDeltaX = worldPoint.x - rect.x;
+  const localDeltaY = worldPoint.y - rect.y;
+  const alignedX =
+    localDeltaX * Math.cos(inverseRotationRad) - localDeltaY * Math.sin(inverseRotationRad);
+  const alignedY =
+    localDeltaX * Math.sin(inverseRotationRad) + localDeltaY * Math.cos(inverseRotationRad);
+  const halfBoxWidth = (Math.max(Number(rect.width) || 0, 0) * scale) / 2;
+  const halfBoxDepth = (Math.max(Number(rect.depth) || 0, 0) * scale) / 2;
+  return Math.abs(alignedX) <= halfBoxWidth && Math.abs(alignedY) <= halfBoxDepth;
 }
-export function resizeRotatedItemFromCorner(item, cornerSign, fixedCorner, pointer, pixelsPerMeter, uniformScale = false, scaleLimits = {}) {
-  const ppm = Math.max(Number(pixelsPerMeter) || 0, 1e-7);
+export function resizeRotatedItemFromCorner(
+  item,
+  cornerSign,
+  anchorPoint,
+  pointerPoint,
+  cornerPixelsPerMeter,
+  isUniformScale = false,
+  resizeOptions = {}
+) {
+  const pixelScale = Math.max(Number(cornerPixelsPerMeter) || 0, 1e-7);
   const signX = cornerSign?.x < 0 ? -1 : 1;
   const signY = cornerSign?.y < 0 ? -1 : 1;
-  const negRotation = -(Number(item.rotation) || 0) * Math.PI / 180;
-  const dx = pointer.x - fixedCorner.x;
-  const dy = pointer.y - fixedCorner.y;
-  const localX = dx * Math.cos(negRotation) - dy * Math.sin(negRotation);
-  const localY = dx * Math.sin(negRotation) + dy * Math.cos(negRotation);
-  const rawWidth = signX * localX / ppm;
-  const rawDepth = signY * localY / ppm;
-  const baseWidth = Math.max(Number(item.width) || 0.1, 0.1);
-  const baseDepth = Math.max(Number(item.depth) || 0.1, 0.1);
-  const baseHeight = Number(item.height);
-  let width = clamp(rawWidth, 0.1, 8);
-  let depth = clamp(rawDepth, 0.1, 8);
-  let scale = 1;
-  if (uniformScale) {
-    const minScale = Math.max(Number(scaleLimits.minimum) || 0, 1e-7);
-    const maxScale = Math.max(Number(scaleLimits.maximum) || Number.POSITIVE_INFINITY, minScale);
-    scale = clamp(Math.max(rawWidth / baseWidth, rawDepth / baseDepth), minScale, maxScale);
-    width = baseWidth * scale;
-    depth = baseDepth * scale;
+  const itemInverseRotationRad = (-(Number(item.rotation) || 0) * Math.PI) / 180;
+  const pointerDeltaX = pointerPoint.x - anchorPoint.x;
+  const pointerDeltaY = pointerPoint.y - anchorPoint.y;
+  const rotatedDeltaX =
+    pointerDeltaX * Math.cos(itemInverseRotationRad) -
+    pointerDeltaY * Math.sin(itemInverseRotationRad);
+  const rotatedDeltaY =
+    pointerDeltaX * Math.sin(itemInverseRotationRad) +
+    pointerDeltaY * Math.cos(itemInverseRotationRad);
+  const deltaWidthMeters = (signX * rotatedDeltaX) / pixelScale;
+  const deltaDepthMeters = (signY * rotatedDeltaY) / pixelScale;
+  const minDimension = Math.max(Number(resizeOptions.minimumDimension) || 0.1, 1e-7);
+  const itemWidth = Math.max(Number(item.width) || minDimension, minDimension);
+  const itemDepth = Math.max(Number(item.depth) || minDimension, minDimension);
+  const itemHeight = Number(item.height);
+  let newWidth = clamp(deltaWidthMeters, minDimension, 8);
+  let newDepth = clamp(deltaDepthMeters, minDimension, 8);
+  let uniformScale = 1;
+  if (isUniformScale) {
+    const minScale = Math.max(Number(resizeOptions.minimum) || 0, 1e-7);
+    const maxScale = Math.max(Number(resizeOptions.maximum) || Number.POSITIVE_INFINITY, minScale);
+    uniformScale = clamp(
+      Math.max(deltaWidthMeters / itemWidth, deltaDepthMeters / itemDepth),
+      minScale,
+      maxScale
+    );
+    newWidth = itemWidth * uniformScale;
+    newDepth = itemDepth * uniformScale;
   }
-  const offsetX = signX * width * ppm / 2;
-  const offsetY = signY * depth * ppm / 2;
-  const rotation = (Number(item.rotation) || 0) * Math.PI / 180;
-  const result = {
-    x: fixedCorner.x + offsetX * Math.cos(rotation) - offsetY * Math.sin(rotation),
-    y: fixedCorner.y + offsetX * Math.sin(rotation) + offsetY * Math.cos(rotation),
-    width,
-    depth
+  const offsetX = (signX * newWidth * pixelScale) / 2;
+  const offsetY = (signY * newDepth * pixelScale) / 2;
+  const rotationRad = ((Number(item.rotation) || 0) * Math.PI) / 180;
+  const resizedItem = {
+    x: anchorPoint.x + offsetX * Math.cos(rotationRad) - offsetY * Math.sin(rotationRad),
+    y: anchorPoint.y + offsetX * Math.sin(rotationRad) + offsetY * Math.cos(rotationRad),
+    width: newWidth,
+    depth: newDepth
   };
-  if (Number.isFinite(baseHeight) && baseHeight > 0) {
-    result.height = uniformScale ? baseHeight * scale : baseHeight;
+  if (Number.isFinite(itemHeight) && itemHeight > 0) {
+    resizedItem.height = isUniformScale ? itemHeight * uniformScale : itemHeight;
   }
-  return result;
+  return resizedItem;
 }
-export function itemRotationFromPointers(baseRotation, center, startPointer, endPointer, snapDegrees = 0) {
-  const startAngle = Math.atan2(startPointer.y - center.y, startPointer.x - center.x);
-  const endAngle = Math.atan2(endPointer.y - center.y, endPointer.x - center.x);
-  let rotation = (Number(baseRotation) || 0) + (endAngle - startAngle) * 180 / Math.PI;
-  const step = Math.max(Number(snapDegrees) || 0, 0);
-  if (step > 0) {
-    rotation = Math.round(rotation / step) * step;
+export function itemRotationFromPointers(
+  baseRotationDeg,
+  pivotPoint,
+  firstPointer,
+  secondPointer,
+  angleStepDeg = 0
+) {
+  const firstAngleRad = Math.atan2(firstPointer.y - pivotPoint.y, firstPointer.x - pivotPoint.x);
+  const secondAngleRad = Math.atan2(secondPointer.y - pivotPoint.y, secondPointer.x - pivotPoint.x);
+  let rotationDeg =
+    (Number(baseRotationDeg) || 0) + ((secondAngleRad - firstAngleRad) * 180) / Math.PI;
+  const stepDeg = Math.max(Number(angleStepDeg) || 0, 0);
+  if (stepDeg > 0) {
+    rotationDeg = Math.round(rotationDeg / stepDeg) * stepDeg;
   }
-  return (rotation % 360 + 360) % 360;
+  return ((rotationDeg % 360) + 360) % 360;
 }
 export function polygonArea(polygon) {
-  let area = 0;
-  for (let i = 0; i < polygon.length; i += 1) {
-    const current = polygon[i];
-    const next = polygon[(i + 1) % polygon.length];
-    area += current.x * next.y - next.x * current.y;
+  let doubleArea = 0;
+  for (let vertexIndex = 0; vertexIndex < polygon.length; vertexIndex += 1) {
+    const vertex = polygon[vertexIndex];
+    const nextVertex = polygon[(vertexIndex + 1) % polygon.length];
+    doubleArea += vertex.x * nextVertex.y - nextVertex.x * vertex.y;
   }
-  return area / 2;
+  return doubleArea / 2;
 }
-export function pointInPolygon(point, polygon, toleranceInput = 1e-7) {
-  if (!Array.isArray(polygon) || polygon.length < 3) {
+export function pointInPolygon(testPoint, polygonOutline, edgeTolerance = 1e-7) {
+  if (!Array.isArray(polygonOutline) || polygonOutline.length < 3) {
     return false;
   }
-  const tolerance = Math.max(Number(toleranceInput) || 0, 1e-7);
-  let inside = false;
-  for (let i = 0; i < polygon.length; i += 1) {
-    const a = polygon[i];
-    const b = polygon[(i + 1) % polygon.length];
-    if (projectPointToSegment(point, a, b).distance <= tolerance) {
+  const polygonEdgeTolerance = Math.max(Number(edgeTolerance) || 0, 1e-7);
+  let isInside = false;
+  for (let polygonEdgeIndex = 0; polygonEdgeIndex < polygonOutline.length; polygonEdgeIndex += 1) {
+    const edgeStartVertex = polygonOutline[polygonEdgeIndex];
+    const edgeEndVertex = polygonOutline[(polygonEdgeIndex + 1) % polygonOutline.length];
+    if (
+      projectPointToSegment(testPoint, edgeStartVertex, edgeEndVertex).distance <=
+      polygonEdgeTolerance
+    ) {
       return true;
     }
-    if (a.y > point.y == b.y > point.y) {
+    if (edgeStartVertex.y > testPoint.y == edgeEndVertex.y > testPoint.y) {
       continue;
     }
-    if (a.x + (point.y - a.y) * (b.x - a.x) / (b.y - a.y) > point.x) {
-      inside = !inside;
+    if (
+      edgeStartVertex.x +
+        ((testPoint.y - edgeStartVertex.y) * (edgeEndVertex.x - edgeStartVertex.x)) /
+          (edgeEndVertex.y - edgeStartVertex.y) >
+      testPoint.x
+    ) {
+      isInside = !isInside;
     }
   }
-  return inside;
+  return isInside;
 }
-function cross2d(a, b) {
-  return a.x * b.y - a.y * b.x;
+function crossProduct(vectorA, vectorB) {
+  return vectorA.x * vectorB.y - vectorA.y * vectorB.x;
 }
-function subtractPoints(a, b) {
+function subtractPoints(pointA, pointB) {
   return {
-    x: a.x - b.x,
-    y: a.y - b.y
+    x: pointA.x - pointB.x,
+    y: pointA.y - pointB.y
   };
 }
-function lerpPoint(start, end, t) {
+function lerpPoint(startPoint, endPoint, factor) {
   return {
-    x: start.x + (end.x - start.x) * t,
-    y: start.y + (end.y - start.y) * t
+    x: startPoint.x + (endPoint.x - startPoint.x) * factor,
+    y: startPoint.y + (endPoint.y - startPoint.y) * factor
   };
 }
-function pushParamIfInRange(cutParams, index, param, tolerance) {
-  if (!(param < -tolerance) && !(param > 1 + tolerance)) {
-    cutParams[index].push(clamp(param, 0, 1));
+function pushCutT(cutLists, edgeIndex, cutT, cutTolerance) {
+  if (!(cutT < -cutTolerance) && !(cutT > 1 + cutTolerance)) {
+    cutLists[edgeIndex].push(clamp(cutT, 0, 1));
   }
 }
-function simplifyCollinearRing(ring, tolerance) {
-  const points = ring.filter((point, index) => index === 0 || distance(point, ring[index - 1]) > tolerance);
-  if (points.length > 1 && distance(points[0], points.at(-1)) <= tolerance) {
-    points.pop();
+function simplifyPolygon(polygonPoints, simplifyTolerance) {
+  const simplifiedPoints = polygonPoints.filter(
+    (dedupePoint, pointIndex) =>
+      pointIndex === 0 || distance(dedupePoint, polygonPoints[pointIndex - 1]) > simplifyTolerance
+  );
+  if (
+    simplifiedPoints.length > 1 &&
+    distance(simplifiedPoints[0], simplifiedPoints.at(-1)) <= simplifyTolerance
+  ) {
+    simplifiedPoints.pop();
   }
-  if (points.length < 3) {
+  if (simplifiedPoints.length < 3) {
     return [];
   }
-  let removed = true;
-  while (removed && points.length >= 3) {
-    removed = false;
-    for (let i = 0; i < points.length; i += 1) {
-      const prev = points[(i - 1 + points.length) % points.length];
-      const curr = points[i];
-      const next = points[(i + 1) % points.length];
-      const incoming = subtractPoints(curr, prev);
-      const outgoing = subtractPoints(next, curr);
-      const scale = Math.max(Math.hypot(incoming.x, incoming.y) * Math.hypot(outgoing.x, outgoing.y), 1);
-      if (!(Math.abs(cross2d(incoming, outgoing)) > tolerance * scale)) {
-        points.splice(i, 1);
-        removed = true;
+  let didChange = true;
+  while (didChange && simplifiedPoints.length >= 3) {
+    didChange = false;
+    for (let simplifyIndex = 0; simplifyIndex < simplifiedPoints.length; simplifyIndex += 1) {
+      const previousPoint =
+        simplifiedPoints[(simplifyIndex - 1 + simplifiedPoints.length) % simplifiedPoints.length];
+      const currentPoint = simplifiedPoints[simplifyIndex];
+      const nextPoint = simplifiedPoints[(simplifyIndex + 1) % simplifiedPoints.length];
+      const incomingVector = subtractPoints(currentPoint, previousPoint);
+      const outgoingVector = subtractPoints(nextPoint, currentPoint);
+      const lengthProduct = Math.max(
+        Math.hypot(incomingVector.x, incomingVector.y) *
+          Math.hypot(outgoingVector.x, outgoingVector.y),
+        1
+      );
+      if (
+        !(
+          Math.abs(crossProduct(incomingVector, outgoingVector)) >
+          simplifyTolerance * lengthProduct
+        )
+      ) {
+        simplifiedPoints.splice(simplifyIndex, 1);
+        didChange = true;
         break;
       }
     }
   }
-  return points;
+  return simplifiedPoints;
 }
-export function unionPolygonLoops(loops, epsilonInput = 0.000001, holeLoops = []) {
-  const epsilon = Math.max(Number(epsilonInput) || 0, 1e-7);
-  const polygons = (loops || []).filter(rawLoop => Array.isArray(rawLoop) && rawLoop.length >= 3).map(loop => loop.map(vertex => ({
-    x: Number(vertex.x) || 0,
-    y: Number(vertex.y) || 0
-  }))).filter(areaPolygon => Math.abs(polygonArea(areaPolygon)) > epsilon * epsilon);
-  if (!polygons.length) {
+export function subtractPolygonLoops(baseLoops, holeLoops, loopTolerance = 0.000001) {
+  return unionPolygonLoops(baseLoops, loopTolerance, holeLoops);
+}
+export function unionPolygonLoops(loops, loopMergeTolerance = 0.000001, holesToSubtract = []) {
+  const epsilon = Math.max(Number(loopMergeTolerance) || 0, 1e-7);
+  const normalizedLoops = (loops || [])
+    .filter(rawLoop => Array.isArray(rawLoop) && rawLoop.length >= 3)
+    .map(loopPoints =>
+      loopPoints.map(rawPoint => ({
+        x: Number(rawPoint.x) || 0,
+        y: Number(rawPoint.y) || 0
+      }))
+    )
+    .filter(cleanedLoop => Math.abs(polygonArea(cleanedLoop)) > epsilon * epsilon);
+  if (!normalizedLoops.length) {
     return [];
   }
-  const holes = (holeLoops || []).filter(rawLoop => Array.isArray(rawLoop) && rawLoop.length >= 3 && rawLoop.every(vertex => Number.isFinite(vertex.x) && Number.isFinite(vertex.y)) && Math.abs(polygonArea(rawLoop)) > epsilon * epsilon).map(loop => loop.map(vertex => ({
-    x: Number(vertex.x) || 0,
-    y: Number(vertex.y) || 0
-  })));
-  const edges = [];
-  for (const edgePolygon of [...polygons, ...holes]) {
-    for (let vi = 0; vi < edgePolygon.length; vi += 1) {
-      const start = edgePolygon[vi];
-      const end = edgePolygon[(vi + 1) % edgePolygon.length];
-      if (distance(start, end) > epsilon) {
-        edges.push({
-          start,
-          end
+  const normalizedHoles = holesToSubtract.filter(
+    rawHole =>
+      Array.isArray(rawHole) &&
+      rawHole.length >= 3 &&
+      rawHole.every(holePoint => Number.isFinite(holePoint.x) && Number.isFinite(holePoint.y)) &&
+      Math.abs(polygonArea(rawHole)) > epsilon * epsilon
+  );
+  const sourceEdges = [];
+  for (const sourceLoop of [...normalizedLoops, ...normalizedHoles]) {
+    for (let loopVertexIndex = 0; loopVertexIndex < sourceLoop.length; loopVertexIndex += 1) {
+      const edgeStart = sourceLoop[loopVertexIndex];
+      const edgeEnd = sourceLoop[(loopVertexIndex + 1) % sourceLoop.length];
+      if (distance(edgeStart, edgeEnd) > epsilon) {
+        sourceEdges.push({
+          start: edgeStart,
+          end: edgeEnd
         });
       }
     }
   }
-  const cutParams = edges.map(() => [0, 1]);
-  for (let i = 0; i < edges.length; i += 1) {
-    const edgeA = edges[i];
-    const dirA = subtractPoints(edgeA.end, edgeA.start);
-    const lenSqA = dirA.x * dirA.x + dirA.y * dirA.y;
-    for (let buildWallGraph = i + 1; buildWallGraph < edges.length; buildWallGraph += 1) {
-      const edgeB = edges[buildWallGraph];
-      const dirB = subtractPoints(edgeB.end, edgeB.start);
-      const lenSqB = dirB.x * dirB.x + dirB.y * dirB.y;
-      const originOffset = subtractPoints(edgeB.start, edgeA.start);
-      const cross = cross2d(dirA, dirB);
-      const crossTol = epsilon * Math.max(Math.sqrt(lenSqA * lenSqB), 1);
-      if (Math.abs(cross) > crossTol) {
-        const paramA = cross2d(originOffset, dirB) / cross;
-        const paramB = cross2d(originOffset, dirA) / cross;
-        if (paramA < -epsilon || paramA > 1 + epsilon || paramB < -epsilon || paramB > 1 + epsilon) {
+  const edgeCutTs = sourceEdges.map(() => [0, 1]);
+  for (let firstEdgeIndex = 0; firstEdgeIndex < sourceEdges.length; firstEdgeIndex += 1) {
+    const firstEdge = sourceEdges[firstEdgeIndex];
+    const firstEdgeVector = subtractPoints(firstEdge.end, firstEdge.start);
+    const firstEdgeLengthSquared =
+      firstEdgeVector.x * firstEdgeVector.x + firstEdgeVector.y * firstEdgeVector.y;
+    for (
+      let secondEdgeIndex = firstEdgeIndex + 1;
+      secondEdgeIndex < sourceEdges.length;
+      secondEdgeIndex += 1
+    ) {
+      const secondEdge = sourceEdges[secondEdgeIndex];
+      const secondEdgeVector = subtractPoints(secondEdge.end, secondEdge.start);
+      const secondEdgeLengthSquared =
+        secondEdgeVector.x * secondEdgeVector.x + secondEdgeVector.y * secondEdgeVector.y;
+      const originOffset = subtractPoints(secondEdge.start, firstEdge.start);
+      const edgeCross = crossProduct(firstEdgeVector, secondEdgeVector);
+      const crossTolerance =
+        epsilon * Math.max(Math.sqrt(firstEdgeLengthSquared * secondEdgeLengthSquared), 1);
+      if (Math.abs(edgeCross) > crossTolerance) {
+        const intersectionTFirst = crossProduct(originOffset, secondEdgeVector) / edgeCross;
+        const intersectionTSecond = crossProduct(originOffset, firstEdgeVector) / edgeCross;
+        if (
+          intersectionTFirst < -epsilon ||
+          intersectionTFirst > 1 + epsilon ||
+          intersectionTSecond < -epsilon ||
+          intersectionTSecond > 1 + epsilon
+        ) {
           continue;
         }
-        pushParamIfInRange(cutParams, i, paramA, epsilon);
-        pushParamIfInRange(cutParams, buildWallGraph, paramB, epsilon);
+        pushCutT(edgeCutTs, firstEdgeIndex, intersectionTFirst, epsilon);
+        pushCutT(edgeCutTs, secondEdgeIndex, intersectionTSecond, epsilon);
         continue;
       }
-      if (Math.abs(cross2d(originOffset, dirA)) > epsilon * Math.max(Math.sqrt(lenSqA), 1)) {
+      if (
+        Math.abs(crossProduct(originOffset, firstEdgeVector)) >
+        epsilon * Math.max(Math.sqrt(firstEdgeLengthSquared), 1)
+      ) {
         continue;
       }
-      const startParamOnA = (originOffset.x * dirA.x + originOffset.y * dirA.y) / lenSqA;
-      const endOffset = subtractPoints(edgeB.end, edgeA.start);
-      const endParamOnA = (endOffset.x * dirA.x + endOffset.y * dirA.y) / lenSqA;
-      pushParamIfInRange(cutParams, i, startParamOnA, epsilon);
-      pushParamIfInRange(cutParams, i, endParamOnA, epsilon);
-      const startOffsetOnB = subtractPoints(edgeA.start, edgeB.start);
-      const startParamOnB = (startOffsetOnB.x * dirB.x + startOffsetOnB.y * dirB.y) / lenSqB;
-      const endOffsetOnB = subtractPoints(edgeA.end, edgeB.start);
-      const endParamOnB = (endOffsetOnB.x * dirB.x + endOffsetOnB.y * dirB.y) / lenSqB;
-      pushParamIfInRange(cutParams, buildWallGraph, startParamOnB, epsilon);
-      pushParamIfInRange(cutParams, buildWallGraph, endParamOnB, epsilon);
+      const projectedStartT =
+        (originOffset.x * firstEdgeVector.x + originOffset.y * firstEdgeVector.y) /
+        firstEdgeLengthSquared;
+      const secondEndOffset = subtractPoints(secondEdge.end, firstEdge.start);
+      const projectedSecondEndT =
+        (secondEndOffset.x * firstEdgeVector.x + secondEndOffset.y * firstEdgeVector.y) /
+        firstEdgeLengthSquared;
+      pushCutT(edgeCutTs, firstEdgeIndex, projectedStartT, epsilon);
+      pushCutT(edgeCutTs, firstEdgeIndex, projectedSecondEndT, epsilon);
+      const secondStartOffset = subtractPoints(firstEdge.start, secondEdge.start);
+      const projectedSecondStartT =
+        (secondStartOffset.x * secondEdgeVector.x + secondStartOffset.y * secondEdgeVector.y) /
+        secondEdgeLengthSquared;
+      const firstEndOffset = subtractPoints(firstEdge.end, secondEdge.start);
+      const projectedFirstEndT =
+        (firstEndOffset.x * secondEdgeVector.x + firstEndOffset.y * secondEdgeVector.y) /
+        secondEdgeLengthSquared;
+      pushCutT(edgeCutTs, secondEdgeIndex, projectedSecondStartT, epsilon);
+      pushCutT(edgeCutTs, secondEdgeIndex, projectedFirstEndT, epsilon);
     }
   }
-  const isInsideAny = testPoint => polygons.some(testPolygon => pointInPolygon(testPoint, testPolygon, epsilon));
-  const quantizeStep = epsilon * 8;
-  const nodeMap = new Map();
-  const quantizeNode = point => {
-    const qx = Math.round(point.x / quantizeStep) * quantizeStep;
-    const qy = Math.round(point.y / quantizeStep) * quantizeStep;
-    const key = Math.round(qx / quantizeStep) + "," + Math.round(qy / quantizeStep);
-    if (!nodeMap.has(key)) {
-      nodeMap.set(key, {
-        key,
+  const isInteriorPoint = samplePoint =>
+    normalizedLoops.some(loop => pointInPolygon(samplePoint, loop, epsilon)) &&
+    !normalizedHoles.some(hole => pointInPolygon(samplePoint, hole, epsilon));
+  const snapStep = epsilon * 8;
+  const snappedPointByKey = new Map();
+  const snapSamplePoint = snapInputPoint => {
+    const snappedX = Math.round(snapInputPoint.x / snapStep) * snapStep;
+    const snappedY = Math.round(snapInputPoint.y / snapStep) * snapStep;
+    const snapKey = Math.round(snappedX / snapStep) + "," + Math.round(snappedY / snapStep);
+    if (!snappedPointByKey.has(snapKey)) {
+      snappedPointByKey.set(snapKey, {
+        key: snapKey,
         point: {
-          x: qx,
-          y: qy
+          x: snappedX,
+          y: snappedY
         }
       });
     }
-    return nodeMap.get(key);
+    return snappedPointByKey.get(snapKey);
   };
   const boundaryEdges = [];
-  const seenEdges = new Set();
-  edges.forEach((edge, edgeIndex) => {
-    const params = [...cutParams[edgeIndex]].sort((pa, pb) => pa - pb).filter((param, paramIndex, allParams) => paramIndex === 0 || param - allParams[paramIndex - 1] > epsilon);
-    for (let pieceIndex = 0; pieceIndex < params.length - 1; pieceIndex += 1) {
-      const pieceStart = lerpPoint(edge.start, edge.end, params[pieceIndex]);
-      const pieceEnd = lerpPoint(edge.start, edge.end, params[pieceIndex + 1]);
-      const pieceLength = distance(pieceStart, pieceEnd);
+  const seenEdgeKeys = new Set();
+  sourceEdges.forEach((edge, sourceEdgeIndex) => {
+    const edgeSortedCutTs = [...edgeCutTs[sourceEdgeIndex]]
+      .sort((pieceCutTLeft, pieceCutTRight) => pieceCutTLeft - pieceCutTRight)
+      .filter(
+        (filteredT, filteredIndex, cutTsList) =>
+          filteredIndex === 0 || filteredT - cutTsList[filteredIndex - 1] > epsilon
+      );
+    for (let edgePieceIndex = 0; edgePieceIndex < edgeSortedCutTs.length - 1; edgePieceIndex += 1) {
+      const pieceStartPoint = lerpPoint(edge.start, edge.end, edgeSortedCutTs[edgePieceIndex]);
+      const pieceEndPoint = lerpPoint(edge.start, edge.end, edgeSortedCutTs[edgePieceIndex + 1]);
+      const pieceLength = distance(pieceStartPoint, pieceEndPoint);
       if (pieceLength <= epsilon) {
         continue;
       }
-      const direction = {
-        x: (pieceEnd.x - pieceStart.x) / pieceLength,
-        y: (pieceEnd.y - pieceStart.y) / pieceLength
+      const pieceDirection = {
+        x: (pieceEndPoint.x - pieceStartPoint.x) / pieceLength,
+        y: (pieceEndPoint.y - pieceStartPoint.y) / pieceLength
       };
-      const midpoint = lerpPoint(pieceStart, pieceEnd, 0.5);
-      const offsetDist = Math.min(pieceLength * 0.2, Math.max(epsilon * 32, 0.00001));
-      const leftSample = {
-        x: midpoint.x - direction.y * offsetDist,
-        y: midpoint.y + direction.x * offsetDist
+      const pieceMidpoint = lerpPoint(pieceStartPoint, pieceEndPoint, 0.5);
+      const probeOffset = Math.min(pieceLength * 0.2, Math.max(epsilon * 32, 0.00001));
+      const leftProbePoint = {
+        x: pieceMidpoint.x - pieceDirection.y * probeOffset,
+        y: pieceMidpoint.y + pieceDirection.x * probeOffset
       };
-      const rightSample = {
-        x: midpoint.x + direction.y * offsetDist,
-        y: midpoint.y - direction.x * offsetDist
+      const rightProbePoint = {
+        x: pieceMidpoint.x + pieceDirection.y * probeOffset,
+        y: pieceMidpoint.y - pieceDirection.x * probeOffset
       };
-      const leftInside = isInsideAny(leftSample);
-      const rightInside = isInsideAny(rightSample);
-      if (leftInside === rightInside) {
+      const isLeftInside = isInteriorPoint(leftProbePoint);
+      const isRightInside = isInteriorPoint(rightProbePoint);
+      if (isLeftInside === isRightInside) {
         continue;
       }
-      const fromNode = quantizeNode(leftInside ? pieceStart : pieceEnd);
-      const toNode = quantizeNode(leftInside ? pieceEnd : pieceStart);
-      if (fromNode.key === toNode.key) {
+      const startNode = snapSamplePoint(isLeftInside ? pieceStartPoint : pieceEndPoint);
+      const endNode = snapSamplePoint(isLeftInside ? pieceEndPoint : pieceStartPoint);
+      if (startNode.key === endNode.key) {
         continue;
       }
-      const edgeKey = [fromNode.key, toNode.key].sort().join("|");
-      if (!seenEdges.has(edgeKey)) {
-        seenEdges.add(edgeKey);
+      const edgeKey = [startNode.key, endNode.key].sort().join("|");
+      if (!seenEdgeKeys.has(edgeKey)) {
+        seenEdgeKeys.add(edgeKey);
         boundaryEdges.push({
-          start: fromNode,
-          end: toNode
+          start: startNode,
+          end: endNode
         });
       }
     }
   });
-  const adjacency = new Map();
-  boundaryEdges.forEach((boundaryEdge, adjEdgeIndex) => {
-    if (!adjacency.has(boundaryEdge.start.key)) {
-      adjacency.set(boundaryEdge.start.key, []);
+  const edgeIndicesByStartKey = new Map();
+  boundaryEdges.forEach((listedEdge, listedEdgeIndex) => {
+    if (!edgeIndicesByStartKey.has(listedEdge.start.key)) {
+      edgeIndicesByStartKey.set(listedEdge.start.key, []);
     }
-    adjacency.get(boundaryEdge.start.key).push(adjEdgeIndex);
+    edgeIndicesByStartKey.get(listedEdge.start.key).push(listedEdgeIndex);
   });
-  const unused = new Set(boundaryEdges.map((unusedEdge, unusedIndex) => unusedIndex));
-  const resultLoops = [];
-  while (unused.size) {
-    const startEdgeIndex = unused.values().next().value;
+  const unvisitedEdges = new Set(
+    boundaryEdges.map((mappedEdge, mappedEdgeIndex) => mappedEdgeIndex)
+  );
+  const resultPolygons = [];
+  while (unvisitedEdges.size) {
+    const startEdgeIndex = unvisitedEdges.values().next().value;
     const startEdge = boundaryEdges[startEdgeIndex];
-    const path = [startEdge.start.point];
+    const walkPoints = [startEdge.start.point];
     let currentEdgeIndex = startEdgeIndex;
-    let closed = false;
-    for (let step = 0; step <= boundaryEdges.length; step += 1) {
+    let isClosed = false;
+    for (let stepIndex = 0; stepIndex <= boundaryEdges.length; stepIndex += 1) {
       const currentEdge = boundaryEdges[currentEdgeIndex];
-      unused.delete(currentEdgeIndex);
+      unvisitedEdges.delete(currentEdgeIndex);
       if (currentEdge.end.key === startEdge.start.key) {
-        closed = true;
+        isClosed = true;
         break;
       }
-      path.push(currentEdge.end.point);
-      const nextCandidates = (adjacency.get(currentEdge.end.key) || []).filter(candidateIndex => unused.has(candidateIndex));
-      if (!nextCandidates.length) {
+      walkPoints.push(currentEdge.end.point);
+      const nextEdgeIndices = (edgeIndicesByStartKey.get(currentEdge.end.key) || []).filter(
+        candidateEdgeIndex => unvisitedEdges.has(candidateEdgeIndex)
+      );
+      if (!nextEdgeIndices.length) {
         break;
       }
-      if (nextCandidates.length === 1) {
-        currentEdgeIndex = nextCandidates[0];
+      if (nextEdgeIndices.length === 1) {
+        currentEdgeIndex = nextEdgeIndices[0];
         continue;
       }
-      const incoming = subtractPoints(currentEdge.end.point, currentEdge.start.point);
-      currentEdgeIndex = nextCandidates.map(branchIndex => {
-        const candidateEdge = boundaryEdges[branchIndex];
-        const outgoing = subtractPoints(candidateEdge.end.point, candidateEdge.start.point);
-        return {
-          index: branchIndex,
-          turn: Math.atan2(cross2d(incoming, outgoing), incoming.x * outgoing.x + incoming.y * outgoing.y)
-        };
-      }).sort((turnA, turnB) => turnB.turn - turnA.turn)[0].index;
+      const incomingDirection = subtractPoints(currentEdge.end.point, currentEdge.start.point);
+      currentEdgeIndex = nextEdgeIndices
+        .map(candidateIndex => {
+          const candidateEdge = boundaryEdges[candidateIndex];
+          const outgoingDirection = subtractPoints(
+            candidateEdge.end.point,
+            candidateEdge.start.point
+          );
+          return {
+            index: candidateIndex,
+            turn: Math.atan2(
+              crossProduct(incomingDirection, outgoingDirection),
+              incomingDirection.x * outgoingDirection.x + incomingDirection.y * outgoingDirection.y
+            )
+          };
+        })
+        .sort((candidateLeft, candidateRight) => candidateRight.turn - candidateLeft.turn)[0].index;
     }
-    if (!closed) {
+    if (!isClosed) {
       continue;
     }
-    const simplified = simplifyCollinearRing(path, epsilon * 8);
-    if (simplified.length >= 3 && Math.abs(polygonArea(simplified)) > epsilon * epsilon) {
-      resultLoops.push(simplified);
+    const walkPolygon = simplifyPolygon(walkPoints, epsilon * 8);
+    if (walkPolygon.length >= 3 && Math.abs(polygonArea(walkPolygon)) > epsilon * epsilon) {
+      resultPolygons.push(walkPolygon);
     }
   }
-  return resultLoops.sort((loopA, loopB) => Math.abs(polygonArea(loopB)) - Math.abs(polygonArea(loopA)));
+  return resultPolygons.sort(
+    (loopLeft, loopRight) => Math.abs(polygonArea(loopRight)) - Math.abs(polygonArea(loopLeft))
+  );
 }
-export function subtractPolygonLoops(loops, holeLoops, epsilonInput = 0.000001) {
-  return unionPolygonLoops(loops, epsilonInput, holeLoops);
-}
-export function validatedUnionPolygonLoops(loops, epsilonInput = 0.000001) {
-  const epsilon = Math.max(Number(epsilonInput) || 0, 1e-7);
-  const polygons = (loops || []).filter(rawLoop => Array.isArray(rawLoop) && rawLoop.length >= 3).filter(areaLoop => Math.abs(polygonArea(areaLoop)) > epsilon * epsilon);
-  if (!polygons.length) {
+export function validatedUnionPolygonLoops(inputLoops, validationTolerance = 0.000001) {
+  const epsilonValue = Math.max(Number(validationTolerance) || 0, 1e-7);
+  const validLoops = (inputLoops || [])
+    .filter(checkedLoop => Array.isArray(checkedLoop) && checkedLoop.length >= 3)
+    .filter(areaLoop => Math.abs(polygonArea(areaLoop)) > epsilonValue * epsilonValue);
+  if (!validLoops.length) {
     return [];
   }
-  const unioned = unionPolygonLoops(polygons, epsilon);
-  if (!unioned.length) {
+  const mergedLoops = unionPolygonLoops(validLoops, epsilonValue);
+  if (!mergedLoops.length) {
     return [];
   }
-  const inputArea = polygons.reduce((inputSum, inputPolygon) => inputSum + Math.abs(polygonArea(inputPolygon)), 0);
-  const unionArea = unioned.reduce((unionSum, unionPolygon) => unionSum + polygonArea(unionPolygon), 0);
-  const areaTolerance = Math.max(inputArea * 0.001, epsilon * epsilon * 1024);
-  if (unionArea <= areaTolerance || unionArea > inputArea + areaTolerance) {
+  const sourceTotalArea = validLoops.reduce(
+    (areaSum, sourceLoopItem) => areaSum + Math.abs(polygonArea(sourceLoopItem)),
+    0
+  );
+  const mergedTotalArea = mergedLoops.reduce(
+    (mergedAreaSum, mergedLoop) => mergedAreaSum + polygonArea(mergedLoop),
+    0
+  );
+  const areaTolerance = Math.max(sourceTotalArea * 0.001, epsilonValue * epsilonValue * 1024);
+  if (mergedTotalArea <= areaTolerance || mergedTotalArea > sourceTotalArea + areaTolerance) {
     return [];
   } else {
-    return unioned;
+    return mergedLoops;
   }
 }
-function buildWallGraph(walls, tolerance) {
+function buildWallGraph(graphWalls, nodeTolerance) {
   const nodes = [];
-  const endpointWalls = [];
-  const spatialIndex = new Map();
-  const addNode = point => {
-    const cellX = Math.floor(point.x / tolerance);
-    const cellY = Math.floor(point.y / tolerance);
-    let bestIndex = -1;
-    for (let dx = -1; dx <= 1; dx += 1) {
-      for (let dy = -1; dy <= 1; dy += 1) {
-        for (const nodeIndex of spatialIndex.get(cellX + dx + "," + (cellY + dy)) || []) {
-          if ((bestIndex < 0 || nodeIndex < bestIndex) && distance(nodes[nodeIndex], point) <= tolerance) {
-            bestIndex = nodeIndex;
+  const endpointWallsByNode = [];
+  const nodeIndicesByCell = new Map();
+  const getNodeIndex = nodePoint => {
+    const cellX = Math.floor(nodePoint.x / nodeTolerance);
+    const cellY = Math.floor(nodePoint.y / nodeTolerance);
+    let bestNodeIndex = -1;
+    for (let cellOffsetX = -1; cellOffsetX <= 1; cellOffsetX += 1) {
+      for (let cellOffsetY = -1; cellOffsetY <= 1; cellOffsetY += 1) {
+        for (const candidateNodeIndex of nodeIndicesByCell.get(
+          cellX + cellOffsetX + "," + (cellY + cellOffsetY)
+        ) || []) {
+          if (
+            (bestNodeIndex < 0 || candidateNodeIndex < bestNodeIndex) &&
+            distance(nodes[candidateNodeIndex], nodePoint) <= nodeTolerance
+          ) {
+            bestNodeIndex = candidateNodeIndex;
           }
         }
       }
     }
-    if (bestIndex >= 0) {
-      return bestIndex;
+    if (bestNodeIndex >= 0) {
+      return bestNodeIndex;
     }
-    const newIndex = nodes.length;
+    const newNodeIndex = nodes.length;
     nodes.push({
-      x: point.x,
-      y: point.y
+      x: nodePoint.x,
+      y: nodePoint.y
     });
-    endpointWalls.push([]);
+    endpointWallsByNode.push([]);
     const cellKey = cellX + "," + cellY;
-    if (!spatialIndex.has(cellKey)) {
-      spatialIndex.set(cellKey, []);
+    if (!nodeIndicesByCell.has(cellKey)) {
+      nodeIndicesByCell.set(cellKey, []);
     }
-    spatialIndex.get(cellKey).push(newIndex);
-    return newIndex;
+    nodeIndicesByCell.get(cellKey).push(newNodeIndex);
+    return newNodeIndex;
   };
-  const edgeKey = (a, b) => a < b ? a + "," + b : b + "," + a;
-  const rawEdges = [];
-  const seenEdgeKeys = new Set();
-  for (const wall of walls || []) {
-    if (![wall?.start?.x, wall?.start?.y, wall?.end?.x, wall?.end?.y].every(Number.isFinite)) {
+  const makeNodePairKey = (nodeIndexA, nodeIndexB) =>
+    nodeIndexA < nodeIndexB ? nodeIndexA + "," + nodeIndexB : nodeIndexB + "," + nodeIndexA;
+  const graphEdges = [];
+  const seenNodePairs = new Set();
+  for (const inputWall of graphWalls || []) {
+    if (
+      ![inputWall?.start?.x, inputWall?.start?.y, inputWall?.end?.x, inputWall?.end?.y].every(
+        Number.isFinite
+      )
+    ) {
       continue;
     }
-    const startNode = addNode(wall.start);
-    const endNode = addNode(wall.end);
-    if (startNode === endNode) {
+    const startNodeIndex = getNodeIndex(inputWall.start);
+    const endNodeIndex = getNodeIndex(inputWall.end);
+    if (startNodeIndex === endNodeIndex) {
       continue;
     }
-    endpointWalls[startNode].push(wall);
-    endpointWalls[endNode].push(wall);
-    const key = edgeKey(startNode, endNode);
-    if (seenEdgeKeys.has(key)) {
+    endpointWallsByNode[startNodeIndex].push(inputWall);
+    endpointWallsByNode[endNodeIndex].push(inputWall);
+    const nodePairKey = makeNodePairKey(startNodeIndex, endNodeIndex);
+    if (seenNodePairs.has(nodePairKey)) {
       continue;
     }
-    seenEdgeKeys.add(key);
-    const startPoint = nodes[startNode];
-    const endPoint = nodes[endNode];
-    rawEdges.push({
-      start: startNode,
-      end: endNode,
-      minX: Math.min(startPoint.x, endPoint.x),
-      maxX: Math.max(startPoint.x, endPoint.x),
-      minY: Math.min(startPoint.y, endPoint.y),
-      maxY: Math.max(startPoint.y, endPoint.y),
-      cuts: [{
-        t: 0,
-        node: startNode
-      }, {
-        t: 1,
-        node: endNode
-      }]
+    seenNodePairs.add(nodePairKey);
+    const startNodePoint = nodes[startNodeIndex];
+    const endNodePoint = nodes[endNodeIndex];
+    graphEdges.push({
+      start: startNodeIndex,
+      end: endNodeIndex,
+      minX: Math.min(startNodePoint.x, endNodePoint.x),
+      maxX: Math.max(startNodePoint.x, endNodePoint.x),
+      minY: Math.min(startNodePoint.y, endNodePoint.y),
+      maxY: Math.max(startNodePoint.y, endNodePoint.y),
+      cuts: [
+        {
+          t: 0,
+          node: startNodeIndex
+        },
+        {
+          t: 1,
+          node: endNodeIndex
+        }
+      ]
     });
   }
-  const addCutFromNode = (edge, cutNodeIndex) => {
-    if (cutNodeIndex === edge.start || cutNodeIndex === edge.end) {
+  const addGraphEdgeCut = (graphEdge, intersectionNodeIndex) => {
+    if (intersectionNodeIndex === graphEdge.start || intersectionNodeIndex === graphEdge.end) {
       return;
     }
-    const projection = projectPointToSegment(nodes[cutNodeIndex], nodes[edge.start], nodes[edge.end]);
-    if (projection.t > 0 && projection.t < 1 && projection.distance <= tolerance) {
-      edge.cuts.push({
-        t: projection.t,
-        node: cutNodeIndex
+    const cutProjection = projectPointToSegment(
+      nodes[intersectionNodeIndex],
+      nodes[graphEdge.start],
+      nodes[graphEdge.end]
+    );
+    if (cutProjection.t > 0 && cutProjection.t < 1 && cutProjection.distance <= nodeTolerance) {
+      graphEdge.cuts.push({
+        t: cutProjection.t,
+        node: intersectionNodeIndex
       });
     }
   };
-  rawEdges.sort((sortA, sortB) => sortA.minX - sortB.minX);
-  for (let i = 0; i < rawEdges.length; i += 1) {
-    const edgeA = rawEdges[i];
-    for (let buildWallGraph = i + 1; buildWallGraph < rawEdges.length; buildWallGraph += 1) {
-      const edgeB = rawEdges[buildWallGraph];
-      if (edgeB.minX > edgeA.maxX + tolerance) {
+  graphEdges.sort((graphEdgeLeft, graphEdgeRight) => graphEdgeLeft.minX - graphEdgeRight.minX);
+  for (let outerEdgeIndex = 0; outerEdgeIndex < graphEdges.length; outerEdgeIndex += 1) {
+    const outerEdge = graphEdges[outerEdgeIndex];
+    for (
+      let innerEdgeIndex = outerEdgeIndex + 1;
+      innerEdgeIndex < graphEdges.length;
+      innerEdgeIndex += 1
+    ) {
+      const innerEdge = graphEdges[innerEdgeIndex];
+      if (innerEdge.minX > outerEdge.maxX + nodeTolerance) {
         break;
       }
-      if (edgeB.minY > edgeA.maxY + tolerance || edgeB.maxY < edgeA.minY - tolerance) {
+      if (
+        innerEdge.minY > outerEdge.maxY + nodeTolerance ||
+        innerEdge.maxY < outerEdge.minY - nodeTolerance
+      ) {
         continue;
       }
-      addCutFromNode(edgeA, edgeB.start);
-      addCutFromNode(edgeA, edgeB.end);
-      addCutFromNode(edgeB, edgeA.start);
-      addCutFromNode(edgeB, edgeA.end);
-      const hit = segmentIntersection(nodes[edgeA.start], nodes[edgeA.end], nodes[edgeB.start], nodes[edgeB.end]);
-      if (hit) {
-        const hitNode = addNode(hit);
-        addCutFromNode(edgeA, hitNode);
-        addCutFromNode(edgeB, hitNode);
+      addGraphEdgeCut(outerEdge, innerEdge.start);
+      addGraphEdgeCut(outerEdge, innerEdge.end);
+      addGraphEdgeCut(innerEdge, outerEdge.start);
+      addGraphEdgeCut(innerEdge, outerEdge.end);
+      const crossingPoint = segmentIntersection(
+        nodes[outerEdge.start],
+        nodes[outerEdge.end],
+        nodes[innerEdge.start],
+        nodes[innerEdge.end]
+      );
+      if (crossingPoint) {
+        const crossingNodeIndex = getNodeIndex(crossingPoint);
+        addGraphEdgeCut(outerEdge, crossingNodeIndex);
+        addGraphEdgeCut(innerEdge, crossingNodeIndex);
       }
     }
   }
-  const splitEdges = [];
-  const seenSplitKeys = new Set();
-  for (const splitEdge of rawEdges) {
-    splitEdge.cuts.sort((cutA, cutB) => cutA.t - cutB.t);
-    let prevNode = splitEdge.cuts[0].node;
-    for (const cut of splitEdge.cuts.slice(1)) {
-      const nextNode = cut.node;
-      const splitKey = edgeKey(prevNode, nextNode);
-      if (prevNode !== nextNode && !seenSplitKeys.has(splitKey)) {
-        seenSplitKeys.add(splitKey);
-        splitEdges.push({
-          start: prevNode,
-          end: nextNode
+  const subEdges = [];
+  const seenSubEdgeKeys = new Set();
+  for (const subEdgeSource of graphEdges) {
+    subEdgeSource.cuts.sort((cutLeft, cutRight) => cutLeft.t - cutRight.t);
+    let previousNodeIndex = subEdgeSource.cuts[0].node;
+    for (const cut of subEdgeSource.cuts.slice(1)) {
+      const cutNodeIndex = cut.node;
+      const subEdgeKey = makeNodePairKey(previousNodeIndex, cutNodeIndex);
+      if (previousNodeIndex !== cutNodeIndex && !seenSubEdgeKeys.has(subEdgeKey)) {
+        seenSubEdgeKeys.add(subEdgeKey);
+        subEdges.push({
+          start: previousNodeIndex,
+          end: cutNodeIndex
         });
       }
-      prevNode = nextNode;
+      previousNodeIndex = cutNodeIndex;
     }
   }
   return {
-    nodes,
-    edges: splitEdges,
-    endpointWalls
+    nodes: nodes,
+    edges: subEdges,
+    endpointWalls: endpointWallsByNode
   };
 }
-function findClosedWallFaces(walls, tolerance) {
-  const {
-    nodes,
-    edges
-  } = buildWallGraph(walls, tolerance);
-  const outgoing = Array.from({
-    length: nodes.length
-  }, () => []);
+function extractClosedFaces(faceWalls, faceTolerance) {
+  const { nodes: graphNodes, edges: faceGraphEdges } = buildWallGraph(faceWalls, faceTolerance);
+  const halfEdgeIndicesByNode = Array.from(
+    {
+      length: graphNodes.length
+    },
+    () => []
+  );
   const halfEdges = [];
-  for (const edge of edges) {
-    const halfIndex = halfEdges.length;
-    halfEdges.push({
-      start: edge.start,
-      end: edge.end
-    }, {
-      start: edge.end,
-      end: edge.start
-    });
-    outgoing[edge.start].push(halfIndex);
-    outgoing[edge.end].push(halfIndex + 1);
+  for (const baseEdge of faceGraphEdges) {
+    const forwardHalfEdgeIndex = halfEdges.length;
+    halfEdges.push(
+      {
+        start: baseEdge.start,
+        end: baseEdge.end
+      },
+      {
+        start: baseEdge.end,
+        end: baseEdge.start
+      }
+    );
+    halfEdgeIndicesByNode[baseEdge.start].push(forwardHalfEdgeIndex);
+    halfEdgeIndicesByNode[baseEdge.end].push(forwardHalfEdgeIndex + 1);
   }
-  const slotIndex = new Int32Array(halfEdges.length);
-  outgoing.forEach((halfIndices, nodeIndex) => {
-    const angleOf = angleHalf => Math.atan2(nodes[halfEdges[angleHalf].end].y - nodes[nodeIndex].y, nodes[halfEdges[angleHalf].end].x - nodes[nodeIndex].x);
-    halfIndices.sort((ha, hb) => angleOf(ha) - angleOf(hb));
-    halfIndices.forEach((slotHalf, slot) => {
-      slotIndex[slotHalf] = slot;
+  const sortedOrderByHalfEdge = new Int32Array(halfEdges.length);
+  halfEdgeIndicesByNode.forEach((nodeHalfEdges, nodeIndex) => {
+    const halfEdgeAngle = halfEdgeIndex =>
+      Math.atan2(
+        graphNodes[halfEdges[halfEdgeIndex].end].y - graphNodes[nodeIndex].y,
+        graphNodes[halfEdges[halfEdgeIndex].end].x - graphNodes[nodeIndex].x
+      );
+    nodeHalfEdges.sort(
+      (halfEdgeLeft, halfEdgeRight) => halfEdgeAngle(halfEdgeLeft) - halfEdgeAngle(halfEdgeRight)
+    );
+    nodeHalfEdges.forEach((sortedHalfEdgeIndex, sortedOrder) => {
+      sortedOrderByHalfEdge[sortedHalfEdgeIndex] = sortedOrder;
     });
   });
-  const nextHalf = halfEdges.map((halfEdge, nextHalfIndex) => {
-    const atEnd = outgoing[halfEdge.end];
-    return atEnd[(slotIndex[nextHalfIndex ^ 1] + atEnd.length - 1) % atEnd.length];
+  const nextHalfEdgeIndices = halfEdges.map((forwardHalfEdge, forwardIndex) => {
+    const adjacentHalfEdges = halfEdgeIndicesByNode[forwardHalfEdge.end];
+    return adjacentHalfEdges[
+      (sortedOrderByHalfEdge[forwardIndex ^ 1] + adjacentHalfEdges.length - 1) %
+        adjacentHalfEdges.length
+    ];
   });
-  const visited = new Uint8Array(halfEdges.length);
-  const faceMap = new Map();
-  const registerFace = nodePath => {
-    if (nodePath.length < 3) {
+  const visitedHalfEdges = new Uint8Array(halfEdges.length);
+  const facesByCycleKey = new Map();
+  const recordFace = cycleHalfEdges => {
+    if (cycleHalfEdges.length < 3) {
       return;
     }
-    const points = nodePath.map(pathNode => nodes[pathNode]);
-    const origin = points[0];
-    const signedArea = polygonArea(points.map(areaPoint => subtractPoints(areaPoint, origin)));
-    if (Math.abs(signedArea) <= tolerance * tolerance) {
+    const cyclePoints = cycleHalfEdges.map(cycleHalfEdgeIndex => graphNodes[cycleHalfEdgeIndex]);
+    const originPoint = cyclePoints[0];
+    const signedArea = polygonArea(
+      cyclePoints.map(cyclePoint => subtractPoints(cyclePoint, originPoint))
+    );
+    if (Math.abs(signedArea) <= faceTolerance * faceTolerance) {
       return;
     }
-    const ordered = signedArea > 0 ? nodePath : [...nodePath].reverse();
-    let minIndex = 0;
-    for (let i = 1; i < ordered.length; i += 1) {
-      if (ordered[i] < ordered[minIndex]) {
-        minIndex = i;
+    const orientedCycle = signedArea > 0 ? cycleHalfEdges : [...cycleHalfEdges].reverse();
+    let minVertexIndex = 0;
+    for (let scanIndex = 1; scanIndex < orientedCycle.length; scanIndex += 1) {
+      if (orientedCycle[scanIndex] < orientedCycle[minVertexIndex]) {
+        minVertexIndex = scanIndex;
       }
     }
-    const canonicalKey = [...ordered.slice(minIndex), ...ordered.slice(0, minIndex)].join(",");
-    const existing = faceMap.get(canonicalKey);
-    if (existing) {
-      existing.outer ||= signedArea < 0;
+    const cycleKey = [
+      ...orientedCycle.slice(minVertexIndex),
+      ...orientedCycle.slice(0, minVertexIndex)
+    ].join(",");
+    const existingFace = facesByCycleKey.get(cycleKey);
+    if (existingFace) {
+      existingFace.outer ||= signedArea < 0;
       return;
     }
-    const simplified = simplifyCollinearRing(ordered.map(orderedNode => ({
-      ...nodes[orderedNode]
-    })), 1e-7);
-    if (simplified.length >= 3) {
-      faceMap.set(canonicalKey, {
-        polygon: simplified,
+    const facePolygon = simplifyPolygon(
+      orientedCycle.map(polygonNodeIndex => ({
+        ...graphNodes[polygonNodeIndex]
+      })),
+      1e-7
+    );
+    if (facePolygon.length >= 3) {
+      facesByCycleKey.set(cycleKey, {
+        polygon: facePolygon,
         area: Math.abs(signedArea),
         outer: signedArea < 0
       });
     }
   };
-  for (let startHalf = 0; startHalf < halfEdges.length; startHalf += 1) {
-    if (visited[startHalf]) {
+  for (
+    let walkStartHalfEdgeIndex = 0;
+    walkStartHalfEdgeIndex < halfEdges.length;
+    walkStartHalfEdgeIndex += 1
+  ) {
+    if (visitedHalfEdges[walkStartHalfEdgeIndex]) {
       continue;
     }
-    const path = [];
-    const pathIndex = new Map();
-    let walkHalf = startHalf;
-    const pushNode = pushNodeIndex => {
-      const existingIndex = pathIndex.get(pushNodeIndex);
-      if (existingIndex !== undefined) {
-        for (registerFace(path.slice(existingIndex)); path.length > existingIndex + 1;) {
-          pathIndex.delete(path.pop());
+    const faceWalk = [];
+    const walkPositions = new Map();
+    let currentWalkHalfEdge = walkStartHalfEdgeIndex;
+    const pushFaceWalk = walkHalfEdgeIndex => {
+      const existingPosition = walkPositions.get(walkHalfEdgeIndex);
+      if (existingPosition !== undefined) {
+        for (
+          recordFace(faceWalk.slice(existingPosition));
+          faceWalk.length > existingPosition + 1;
+        ) {
+          walkPositions.delete(faceWalk.pop());
         }
       } else {
-        pathIndex.set(pushNodeIndex, path.length);
-        path.push(pushNodeIndex);
+        walkPositions.set(walkHalfEdgeIndex, faceWalk.length);
+        faceWalk.push(walkHalfEdgeIndex);
       }
     };
-    while (!visited[walkHalf]) {
-      visited[walkHalf] = 1;
-      pushNode(halfEdges[walkHalf].start);
-      walkHalf = nextHalf[walkHalf];
+    while (!visitedHalfEdges[currentWalkHalfEdge]) {
+      visitedHalfEdges[currentWalkHalfEdge] = 1;
+      pushFaceWalk(halfEdges[currentWalkHalfEdge].start);
+      currentWalkHalfEdge = nextHalfEdgeIndices[currentWalkHalfEdge];
     }
-    if (walkHalf === startHalf) {
-      pushNode(halfEdges[startHalf].start);
+    if (currentWalkHalfEdge === walkStartHalfEdgeIndex) {
+      pushFaceWalk(halfEdges[walkStartHalfEdgeIndex].start);
     }
   }
-  return [...faceMap.values()].sort((faceA, faceB) => faceB.area - faceA.area);
+  return [...facesByCycleKey.values()].sort(
+    (faceLeft, faceRight) => faceRight.area - faceLeft.area
+  );
 }
-export function closedWallPolygons(walls, toleranceInput = 1) {
-  const tolerance = Math.max(Number(toleranceInput) || 0, 1e-7);
-  return findClosedWallFaces(walls, tolerance).map(face => face.polygon);
+export function closedWallPolygons(loopWalls, polygonTolerance = 1) {
+  const polygonToleranceValue = Math.max(Number(polygonTolerance) || 0, 1e-7);
+  return extractClosedFaces(loopWalls, polygonToleranceValue).map(face => face.polygon);
 }
-function findDegreeOneEndpoints(walls, toleranceInput = 1) {
-  const tolerance = Math.max(Number(toleranceInput) || 0, 1e-7);
+function collectOpenEndpoints(degreeWalls, degreeTolerance = 1) {
+  const endpointToleranceValue = Math.max(Number(degreeTolerance) || 0, 1e-7);
   const {
-    nodes,
-    edges,
-    endpointWalls
-  } = buildWallGraph(walls, tolerance);
-  const degree = new Uint32Array(nodes.length);
-  for (const edge of edges) {
-    degree[edge.start] += 1;
-    degree[edge.end] += 1;
+    nodes: degreeNodes,
+    edges: degreeEdges,
+    endpointWalls: endpointWallGroups
+  } = buildWallGraph(degreeWalls, endpointToleranceValue);
+  const degreeByNode = new Uint32Array(degreeNodes.length);
+  for (const degreeEdge of degreeEdges) {
+    degreeByNode[degreeEdge.start] += 1;
+    degreeByNode[degreeEdge.end] += 1;
   }
-  return nodes.flatMap((point, nodeIndex) => degree[nodeIndex] === 1 ? [{
-    point,
-    walls: endpointWalls[nodeIndex]
-  }] : []);
+  return degreeNodes.flatMap((node, degreeNodeIndex) =>
+    degreeByNode[degreeNodeIndex] === 1
+      ? [
+          {
+            point: node,
+            walls: endpointWallGroups[degreeNodeIndex]
+          }
+        ]
+      : []
+  );
 }
-export function openWallEndpoints(walls, toleranceInput = 1) {
-  return findDegreeOneEndpoints(walls, toleranceInput).map(endpoint => ({
+export function openWallEndpoints(endpointWalls, openEndpointTolerance = 1) {
+  return collectOpenEndpoints(endpointWalls, openEndpointTolerance).map(endpoint => ({
     ...endpoint.point
   }));
 }
-function isStrictlyInsidePolygon(point, polygon, tolerance) {
-  if (pointInPolygon(point, polygon, tolerance)) {
-    return polygon.every((vertex, i) => projectPointToSegment(point, vertex, polygon[(i + 1) % polygon.length]).distance > tolerance);
+function isStrictlyInsidePolygon(boundaryPolygon, enclosingPolygon, loopEdgeTolerance) {
+  if (pointInPolygon(boundaryPolygon, enclosingPolygon, loopEdgeTolerance)) {
+    return enclosingPolygon.every(
+      (boundaryVertex, boundaryVertexIndex) =>
+        projectPointToSegment(
+          boundaryPolygon,
+          boundaryVertex,
+          enclosingPolygon[(boundaryVertexIndex + 1) % enclosingPolygon.length]
+        ).distance > loopEdgeTolerance
+    );
   } else {
     return false;
   }
 }
-export function unclosedWallEndpoints(walls, toleranceInput = 1, floorPolygons = null) {
-  const tolerance = Math.max(Number(toleranceInput) || 0, 1e-7);
-  const polygons = Array.isArray(floorPolygons) ? floorPolygons : closedWallFloorPolygons(walls, tolerance);
-  return findDegreeOneEndpoints(walls, tolerance).filter(endpoint => !endpoint.walls.length || endpoint.walls.some(wall => wall.allowOpenEnd !== true)).filter(openEndpoint => !polygons.some(polygon => isStrictlyInsidePolygon(openEndpoint.point, polygon, tolerance))).map(mappedEndpoint => ({
-    ...mappedEndpoint.point
-  }));
+export function unclosedWallEndpoints(unclosedWalls, unclosedTolerance = 1, floorPolygons = null) {
+  const wallToleranceValue = Math.max(Number(unclosedTolerance) || 0, 1e-7);
+  const checkedFloorPolygons = Array.isArray(floorPolygons)
+    ? floorPolygons
+    : closedWallFloorPolygons(unclosedWalls, wallToleranceValue);
+  return collectOpenEndpoints(unclosedWalls, wallToleranceValue)
+    .filter(
+      openEndpoint =>
+        !openEndpoint.walls.length ||
+        openEndpoint.walls.some(endpointWall => endpointWall.allowOpenEnd !== true)
+    )
+    .filter(
+      testedEndpoint =>
+        !checkedFloorPolygons.some(floorPolygon =>
+          isStrictlyInsidePolygon(testedEndpoint.point, floorPolygon, wallToleranceValue)
+        )
+    )
+    .map(mappedEndpoint => ({
+      ...mappedEndpoint.point
+    }));
 }
-function isPolygonStrictlyInside(inner, outer, tolerance) {
-  const areaTolSq = tolerance * tolerance;
-  const areaFromOrigin = polygon => Math.abs(polygonArea(polygon.map(point => subtractPoints(point, polygon[0]))));
-  if (areaFromOrigin(outer) <= areaFromOrigin(inner) + areaTolSq) {
+function isLoopEngulfedByLoop(innerLoop, outerLoop, engulfTolerance) {
+  const toleranceSquared = engulfTolerance * engulfTolerance;
+  const absolutePolygonArea = measuredLoop =>
+    Math.abs(
+      polygonArea(measuredLoop.map(loopPoint => subtractPoints(loopPoint, measuredLoop[0])))
+    );
+  if (absolutePolygonArea(outerLoop) <= absolutePolygonArea(innerLoop) + toleranceSquared) {
     return false;
   } else {
-    return inner.every((vertex, i) => {
-      if (!pointInPolygon(vertex, outer, tolerance)) {
+    return innerLoop.every((innerVertex, cornerIndex) => {
+      if (!pointInPolygon(innerVertex, outerLoop, engulfTolerance)) {
         return false;
       }
-      const next = inner[(i + 1) % inner.length];
-      const midpoint = {
-        x: (vertex.x + next.x) / 2,
-        y: (vertex.y + next.y) / 2
+      const nextInnerVertex = innerLoop[(cornerIndex + 1) % innerLoop.length];
+      const edgeMidpoint = {
+        x: (innerVertex.x + nextInnerVertex.x) / 2,
+        y: (innerVertex.y + nextInnerVertex.y) / 2
       };
-      return pointInPolygon(midpoint, outer, tolerance);
+      return pointInPolygon(edgeMidpoint, outerLoop, engulfTolerance);
     });
   }
 }
-export function closedWallFloorPolygons(walls, toleranceInput = 1) {
-  const tolerance = Math.max(Number(toleranceInput) || 0, 1e-7);
-  const floors = [];
-  for (const {
-    polygon,
-    outer
-  } of findClosedWallFaces(walls, tolerance)) {
-    if (!!outer && !floors.some(existing => isPolygonStrictlyInside(polygon, existing, tolerance))) {
-      floors.push(polygon);
+export function closedWallFloorPolygons(floorWalls, floorTolerance = 1) {
+  const floorToleranceValue = Math.max(Number(floorTolerance) || 0, 1e-7);
+  const outerFloorPolygons = [];
+  for (const { polygon: outerFacePolygon, outer: isOuterFace } of extractClosedFaces(
+    floorWalls,
+    floorToleranceValue
+  )) {
+    if (
+      !!isOuterFace &&
+      !outerFloorPolygons.some(candidateFloor =>
+        isLoopEngulfedByLoop(outerFacePolygon, candidateFloor, floorToleranceValue)
+      )
+    ) {
+      outerFloorPolygons.push(outerFacePolygon);
     }
   }
-  return floors;
+  return outerFloorPolygons;
 }
 export function modelBounds(model) {
-  const points = [];
+  const boundPoints = [];
   if (model.background?.width && model.background?.height) {
-    points.push({
-      x: 0,
-      y: 0
-    }, {
-      x: model.background.width,
-      y: model.background.height
+    boundPoints.push(
+      {
+        x: 0,
+        y: 0
+      },
+      {
+        x: model.background.width,
+        y: model.background.height
+      }
+    );
+  }
+  for (const boundWall of model.walls || []) {
+    boundPoints.push(boundWall.start, boundWall.end);
+  }
+  for (const boundItem of model.items || []) {
+    boundPoints.push({
+      x: boundItem.x,
+      y: boundItem.y
     });
   }
-  for (const wall of model.walls || []) {
-    points.push(wall.start, wall.end);
-  }
-  for (const item of model.items || []) {
-    points.push({
-      x: item.x,
-      y: item.y
-    });
-  }
-  if (!points.length) {
+  if (!boundPoints.length) {
     return {
       minX: 0,
       minY: 0,
@@ -1582,13 +2108,13 @@ export function modelBounds(model) {
       height: 800
     };
   }
-  const minX = Math.min(...points.map(p => p.x));
-  const minY = Math.min(...points.map(p => p.y));
-  const maxX = Math.max(...points.map(p => p.x));
-  const maxY = Math.max(...points.map(p => p.y));
+  const minX = Math.min(...boundPoints.map(minXPoint => minXPoint.x));
+  const minY = Math.min(...boundPoints.map(minYPoint => minYPoint.y));
+  const maxX = Math.max(...boundPoints.map(maxXPoint => maxXPoint.x));
+  const maxY = Math.max(...boundPoints.map(maxYPoint => maxYPoint.y));
   return {
-    minX,
-    minY,
+    minX: minX,
+    minY: minY,
     maxX: Math.max(maxX, minX + 1),
     maxY: Math.max(maxY, minY + 1),
     width: Math.max(maxX - minX, 1),

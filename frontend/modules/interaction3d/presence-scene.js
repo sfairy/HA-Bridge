@@ -1,31 +1,41 @@
 import { createWalker, animateWalker, disposeWalker } from "./presence-character.js";
-import { validPresenceRoute, createPresenceTriggers, closedPath, sampleClosedPath, presenceVisibleOnPage } from "./presence-motion.js?v=0.5.3";
-export function createPresenceScene(api, wake = () => {}, getNow) {
-  const walkers = new Map();
-  const progressCache = new Map();
-  let elapsed = 0;
-  const triggers = createPresenceTriggers(getNow);
-  const footWorld = new api.THREE.Vector3();
+import {
+  validPresenceRoute,
+  createPresenceTriggers,
+  closedPath,
+  sampleClosedPath,
+  presenceVisibleOnPage
+} from "./presence-motion.js?v=20260911-presence-pages-v2-detection-triggers-v1";
+export function createPresenceScene(sceneOptions, wakeFrameLoop = () => {}, nowProvider) {
+  const actorsByBindingId = new Map();
+  const progressByBindingId = new Map();
+  let elapsedSeconds = 0;
+  const triggers = createPresenceTriggers(nowProvider);
+  const dirtyFloorIds = new Set();
   let footShadowAssets = null;
-
   function createFootShadow() {
     if (!footShadowAssets) {
-      const data = new Uint8Array(64 * 64 * 4);
-      for (let row = 0; row < 64; row++) {
-        for (let col = 0; col < 64; col++) {
-          const radius = Math.hypot((col + 0.5) / 64 * 2 - 1, (row + 0.5) / 64 * 2 - 1);
-          data[(row * 64 + col) * 4 + 3] = Math.round(255 * Math.max(0, 1 - radius * radius) ** 2);
+      const shadowPixels = new Uint8Array(16384);
+      for (let pixelY = 0; pixelY < 64; pixelY++) {
+        for (let pixelX = 0; pixelX < 64; pixelX++) {
+          const radialDistance = Math.hypot(
+            ((pixelX + 0.5) / 64) * 2 - 1,
+            ((pixelY + 0.5) / 64) * 2 - 1
+          );
+          shadowPixels[(pixelY * 64 + pixelX) * 4 + 3] = Math.round(
+            Math.max(0, 1 - radialDistance * radialDistance) ** 2 * 255
+          );
         }
       }
-      const texture = new api.THREE.DataTexture(data, 64, 64);
-      texture.magFilter = texture.minFilter = api.THREE.LinearFilter;
-      texture.needsUpdate = true;
+      const shadowTexture = new sceneOptions.THREE.DataTexture(shadowPixels, 64, 64);
+      shadowTexture.magFilter = shadowTexture.minFilter = sceneOptions.THREE.LinearFilter;
+      shadowTexture.needsUpdate = true;
       footShadowAssets = {
-        texture,
-        geometry: new api.THREE.PlaneGeometry(1.05, 0.8)
+        texture: shadowTexture,
+        geometry: new sceneOptions.THREE.PlaneGeometry(1.05, 0.8)
       };
     }
-    const material = new api.THREE.MeshBasicMaterial({
+    const shadowMaterial = new sceneOptions.THREE.MeshBasicMaterial({
       map: footShadowAssets.texture,
       transparent: true,
       opacity: 0.62,
@@ -35,412 +45,614 @@ export function createPresenceScene(api, wake = () => {}, getNow) {
       polygonOffsetUnits: -1,
       toneMapped: false
     });
-    const shadow = new api.THREE.Mesh(footShadowAssets.geometry, material);
-    shadow.name = "presence-foot-shadow";
-    shadow.rotation.x = -Math.PI / 2;
-    shadow.renderOrder = 2;
-    shadow.userData.environmentEffect = true;
-    shadow.raycast = () => {};
-    return shadow;
+    const shadowMesh = new sceneOptions.THREE.Mesh(footShadowAssets.geometry, shadowMaterial);
+    shadowMesh.name = "presence-foot-shadow";
+    shadowMesh.rotation.x = -Math.PI / 2;
+    shadowMesh.renderOrder = 2;
+    shadowMesh.userData.environmentEffect = true;
+    shadowMesh.raycast = () => {};
+    return shadowMesh;
   }
-
-  function walkerBounds(entry) {
-    const box = new api.THREE.Box3();
-    entry.root.updateWorldMatrix(true, true);
-    for (const child of entry.root.children) {
-      if (child !== entry.shadow) {
-        box.expandByObject(child);
+  function flushReflectionFloors() {
+    if (dirtyFloorIds.size) {
+      sceneOptions.invalidateReflections?.([...dirtyFloorIds]);
+      dirtyFloorIds.clear();
+      sceneOptions.requestRender?.();
+    }
+  }
+  function applyActorOpacity(actor, targetOpacity) {
+    actor.opacity = targetOpacity;
+    for (const [material, originalMaterialState] of actor.materials) {
+      material.opacity = originalMaterialState.opacity * targetOpacity;
+      material.depthWrite = targetOpacity < 1 ? false : originalMaterialState.depthWrite;
+      const shouldBeTransparent = originalMaterialState.transparent || targetOpacity < 1;
+      if (material.transparent !== shouldBeTransparent) {
+        material.transparent = shouldBeTransparent;
+        material.needsUpdate = true;
       }
     }
-    return box;
+    actor.shadow.material.opacity = targetOpacity * 0.62;
+    dirtyFloorIds.add(actor.floorId);
   }
-
-  const removeWalker = id => {
-    const entry = walkers.get(id);
-    progressCache.set(id, {
-      key: entry.progressKey,
-      distance: entry.distance
-    });
-    entry.shadow.removeFromParent();
-    entry.shadow.material.dispose();
-    disposeWalker(entry.root);
-    if (entry.routeLine) {
-      entry.routeLine.geometry.dispose();
-      entry.routeLine.material.dispose();
-      entry.routeLine.removeFromParent();
+  function measureActorBounds(measuredActor) {
+    const bounds = new sceneOptions.THREE.Box3();
+    measuredActor.root.updateWorldMatrix(true, true);
+    for (const childObject of measuredActor.root.children) {
+      if (childObject !== measuredActor.shadow) {
+        bounds.expandByObject(childObject);
+      }
     }
-    walkers.delete(id);
+    return bounds;
+  }
+  const scratchFootPosition = new sceneOptions.THREE.Vector3();
+  const removeActor = removalBindingId => {
+    const removedActor = actorsByBindingId.get(removalBindingId);
+    progressByBindingId.set(removalBindingId, {
+      key: removedActor.progressKey,
+      distance: removedActor.distance
+    });
+    dirtyFloorIds.add(removedActor.floorId);
+    removedActor.shadow.removeFromParent();
+    removedActor.shadow.material.dispose();
+    disposeWalker(removedActor.root);
+    if (removedActor.routeLine) {
+      removedActor.routeLine.geometry.dispose();
+      removedActor.routeLine.material.dispose();
+      removedActor.routeLine.removeFromParent();
+    }
+    actorsByBindingId.delete(removalBindingId);
   };
-  function placeWalker(entry) {
-    const sample = sampleClosedPath(entry.path, entry.distance);
-    if (!sample) {
+  function placeActor(placedActor) {
+    const pathSample = sampleClosedPath(placedActor.path, placedActor.distance);
+    if (!pathSample) {
       return;
     }
-    entry.root.position.set(sample.x, sample.y, sample.z);
-    entry.root.rotation.y = sample.heading;
-    animateWalker(entry.root, entry.distance / entry.size * 12, entry.preview ? 0 : 1, elapsed);
-    entry.root.updateMatrixWorld(true);
-    const lowestFootY = Math.min(...entry.root.userData.parts.legs.map(leg => {
-      leg.foot.getWorldPosition(footWorld);
-      return footWorld.y - entry.root.userData.soleHeight * entry.size;
-    }));
-    entry.root.position.y += sample.y + entry.size * 0.014 - lowestFootY;
-    entry.shadow.position.y = (sample.y + 0.008 - entry.root.position.y) / entry.size;
+    placedActor.root.position.set(pathSample.x, pathSample.y, pathSample.z);
+    placedActor.root.rotation.y = pathSample.heading;
+    animateWalker(
+      placedActor.root,
+      (placedActor.distance / placedActor.size) * 12,
+      placedActor.preview ? 0 : 1,
+      elapsedSeconds
+    );
+    placedActor.root.updateMatrixWorld(true);
+    const groundOffsetY = Math.min(
+      ...placedActor.root.userData.parts.legs.map(legRig => {
+        legRig.foot.getWorldPosition(scratchFootPosition);
+        return scratchFootPosition.y - placedActor.root.userData.soleHeight * placedActor.size;
+      })
+    );
+    placedActor.root.position.y += pathSample.y + placedActor.size * 0.014 - groundOffsetY;
+    placedActor.shadow.position.y =
+      (pathSample.y + 0.008 - placedActor.root.position.y) / placedActor.size;
   }
-  function hitRects(camera, canvas, sensors) {
-    const rect = canvas.getBoundingClientRect();
-    const results = [];
-    for (const [id, entry] of walkers) {
-      const sensor = sensors.find(item => item.id === id);
-      if (!sensor?.clickToFocus) {
+  function computeHitRects(renderCamera, hitCanvasElement, sensorBindings) {
+    const hitCanvasRect = hitCanvasElement.getBoundingClientRect();
+    const hitRects = [];
+    for (const [hitBindingId, hitActor] of actorsByBindingId) {
+      const hitBinding = sensorBindings.find(hitProbe => hitProbe.id === hitBindingId);
+      if (!hitBinding?.clickToFocus || hitActor.exiting || hitActor.opacity <= 0) {
         continue;
       }
-      const box = walkerBounds(entry);
-      const projected = [];
-      for (const x of [box.min.x, box.max.x]) {
-        for (const y of [box.min.y, box.max.y]) {
-          for (const z of [box.min.z, box.max.z]) {
-            projected.push(new api.THREE.Vector3(x, y, z).project(camera));
+      const actorBounds = measureActorBounds(hitActor);
+      const projectedCorners = [];
+      for (const boundX of [actorBounds.min.x, actorBounds.max.x]) {
+        for (const boundY of [actorBounds.min.y, actorBounds.max.y]) {
+          for (const boundZ of [actorBounds.min.z, actorBounds.max.z]) {
+            projectedCorners.push(
+              new sceneOptions.THREE.Vector3(boundX, boundY, boundZ).project(renderCamera)
+            );
           }
         }
       }
-      if (projected.every(point => point.z < -1 || point.z > 1)) {
+      if (projectedCorners.every(cornerPoint => cornerPoint.z < -1 || cornerPoint.z > 1)) {
         continue;
       }
-      const screenXs = projected.map(point => rect.left + (point.x + 1) * rect.width / 2);
-      const screenYs = projected.map(point => rect.top + (1 - point.y) * rect.height / 2);
-      const left = Math.min(...screenXs);
-      const top = Math.min(...screenYs);
-      const width = Math.max(...screenXs) - left;
-      const height = Math.max(...screenYs) - top;
-      const padding = sensor.hitPadding ?? 8;
-      results.push({
-        id,
-        left,
-        top,
-        width,
-        height,
-        padding
+      const screenXList = projectedCorners.map(
+        cornerForX => hitCanvasRect.left + ((cornerForX.x + 1) * hitCanvasRect.width) / 2
+      );
+      const screenYList = projectedCorners.map(
+        cornerForY => hitCanvasRect.top + ((1 - cornerForY.y) * hitCanvasRect.height) / 2
+      );
+      const leftPx = Math.min(...screenXList);
+      const topPx = Math.min(...screenYList);
+      const widthPx = Math.max(...screenXList) - leftPx;
+      const heightPx = Math.max(...screenYList) - topPx;
+      const paddingPx = hitBinding.hitPadding ?? 8;
+      hitRects.push({
+        id: hitBindingId,
+        left: leftPx,
+        top: topPx,
+        width: widthPx,
+        height: heightPx,
+        padding: paddingPx
       });
     }
-    return results;
+    return hitRects;
   }
   return {
-    sync(sensors = [], states = {}, visible = false, floorId = "all", simulated = false, previewWalk = false, page = "light") {
-      triggers.sync(sensors, states);
-      const keepIds = new Set();
-      let changed = false;
-      if (api.overlayScene && api.worldPoint) {
-        for (const sensor of sensors) {
-          if (sensor.routeClosed === false || !simulated && !sensor.entityId || !validPresenceRoute(sensor.route) || !visible || floorId !== "all" && sensor.floorId !== floorId || !simulated && (!triggers.visible(sensor.id) || !presenceVisibleOnPage(sensor, page))) {
+    sync(
+      bindings = [],
+      states = {},
+      enabled = false,
+      floorId = "all",
+      isEditing = false,
+      isPreviewWalk = false,
+      activeModule = "light"
+    ) {
+      triggers.sync(bindings, states);
+      const liveBindingIds = new Set();
+      let didChange = false;
+      if (sceneOptions.overlayScene && sceneOptions.worldPoint) {
+        for (const binding of bindings) {
+          if (
+            binding.routeClosed === false ||
+            (!isEditing && !binding.entityId) ||
+            !validPresenceRoute(binding.route) ||
+            !enabled ||
+            (floorId !== "all" && binding.floorId !== floorId) ||
+            (!isEditing &&
+              (!triggers.visible(binding.id) || !presenceVisibleOnPage(binding, activeModule)))
+          ) {
             continue;
           }
-          const worldRoute = sensor.route.map(point => api.worldPoint(sensor.floorId, point.x, point.y, 0));
-          if (worldRoute.some(point => !point || ![point.x, point.y, point.z].every(Number.isFinite))) {
+          const worldPoints = binding.route.map(routePoint =>
+            sceneOptions.worldPoint(binding.floorId, routePoint.x, routePoint.y, 0)
+          );
+          if (
+            worldPoints.some(
+              pointProbe =>
+                !pointProbe || ![pointProbe.x, pointProbe.y, pointProbe.z].every(Number.isFinite)
+            )
+          ) {
             continue;
           }
-          const signature = JSON.stringify([sensor, worldRoute, simulated, previewWalk]);
-          let entry = walkers.get(sensor.id);
-          if (entry && entry.signature !== signature) {
-            removeWalker(sensor.id);
-            entry = null;
+          const actorSignature = JSON.stringify([binding, worldPoints, isEditing, isPreviewWalk]);
+          let actorRecord = actorsByBindingId.get(binding.id);
+          if (actorRecord && actorRecord.signature !== actorSignature) {
+            removeActor(binding.id);
+            actorRecord = null;
           }
-          if (!entry) {
-            const root = createWalker(api.THREE, sensor.color === "orange" ? 15376452 : 5421233, sensor.character);
-            const materials = new Set();
-            root.traverse(object => {
-              if (object.isMesh) {
-                materials.add(object.material);
+          if (!actorRecord) {
+            const walkerRoot = createWalker(
+              sceneOptions.THREE,
+              binding.color === "orange" ? 15376452 : 5421233,
+              binding.character
+            );
+            const actorMaterialSet = new Set();
+            walkerRoot.traverse(meshObject => {
+              if (meshObject.isMesh) {
+                actorMaterialSet.add(meshObject.material);
               }
             });
-            for (const material of materials) {
-              if (!material.emissive?.getHex()) {
-                material.emissive.copy(material.color);
-                material.emissiveIntensity = 0.55;
+            for (const actorMaterial of actorMaterialSet) {
+              if (!actorMaterial.emissive?.getHex()) {
+                actorMaterial.emissive.copy(actorMaterial.color);
+                actorMaterial.emissiveIntensity = 0.55;
               }
             }
-            const size = sensor.size ?? 1;
-            root.scale.setScalar(size);
-            root.userData.presenceId = sensor.id;
-            root.userData.environmentFloorId = sensor.floorId;
-            api.overlayScene.add(root);
-            const progressKey = JSON.stringify([sensor.entityId, sensor.floorId, sensor.route, simulated]);
-            const cached = progressCache.get(sensor.id);
-            entry = {
-              root,
-              size,
+            const walkerSize = binding.size ?? 1;
+            walkerRoot.scale.setScalar(walkerSize);
+            walkerRoot.userData.presenceId = binding.id;
+            walkerRoot.userData.environmentFloorId = binding.floorId;
+            sceneOptions.overlayScene.add(walkerRoot);
+            const progressSignature = JSON.stringify([
+              binding.entityId,
+              binding.floorId,
+              binding.route,
+              isEditing
+            ]);
+            const savedProgress = progressByBindingId.get(binding.id);
+            actorRecord = {
+              root: walkerRoot,
+              size: walkerSize,
+              floorId: binding.floorId,
               shadow: createFootShadow(),
-              path: closedPath(worldRoute),
-              distance: cached?.key === progressKey ? cached.distance : 0,
-              progressKey,
-              speed: sensor.speed ?? 0.45,
-              signature,
-              simulated,
-              preview: simulated && !previewWalk
+              materials: new Map(
+                [...actorMaterialSet].map(materialItem => [
+                  materialItem,
+                  {
+                    opacity: materialItem.opacity,
+                    transparent: materialItem.transparent,
+                    depthWrite: materialItem.depthWrite
+                  }
+                ])
+              ),
+              opacity: 1,
+              exiting: false,
+              path: closedPath(worldPoints),
+              distance: savedProgress?.key === progressSignature ? savedProgress.distance : 0,
+              progressKey: progressSignature,
+              speed: binding.speed ?? 0.45,
+              signature: actorSignature,
+              simulated: isEditing,
+              preview: isEditing && !isPreviewWalk
             };
-            root.add(entry.shadow);
-            if (simulated) {
-              const linePoints = [...worldRoute, worldRoute[0]].map(point => new api.THREE.Vector3(point.x, point.y + 0.025, point.z));
-              entry.routeLine = new api.THREE.Line(new api.THREE.BufferGeometry().setFromPoints(linePoints), new api.THREE.LineBasicMaterial({
-                color: sensor.color === "orange" ? 15376452 : 5421233,
-                depthTest: true
-              }));
-              entry.routeLine.name = "presence-route-preview";
-              entry.routeLine.userData.environmentFloorId = sensor.floorId;
-              entry.routeLine.userData.environmentEffect = true;
-              api.overlayScene.add(entry.routeLine);
+            walkerRoot.add(actorRecord.shadow);
+            applyActorOpacity(actorRecord, isEditing ? 1 : 0);
+            if (isEditing) {
+              const routeLinePoints = [...worldPoints, worldPoints[0]].map(
+                linePoint =>
+                  new sceneOptions.THREE.Vector3(linePoint.x, linePoint.y + 0.025, linePoint.z)
+              );
+              actorRecord.routeLine = new sceneOptions.THREE.Line(
+                new sceneOptions.THREE.BufferGeometry().setFromPoints(routeLinePoints),
+                new sceneOptions.THREE.LineBasicMaterial({
+                  color: binding.color === "orange" ? 15376452 : 5421233,
+                  depthTest: true
+                })
+              );
+              actorRecord.routeLine.name = "presence-route-preview";
+              actorRecord.routeLine.userData.environmentFloorId = binding.floorId;
+              actorRecord.routeLine.userData.environmentEffect = true;
+              sceneOptions.overlayScene.add(actorRecord.routeLine);
             }
-            walkers.set(sensor.id, entry);
-            placeWalker(entry);
-            changed = true;
+            actorsByBindingId.set(binding.id, actorRecord);
+            placeActor(actorRecord);
+            didChange = true;
           }
-          keepIds.add(sensor.id);
+          if (actorRecord.exiting) {
+            actorRecord.exiting = false;
+            didChange = true;
+          }
+          liveBindingIds.add(binding.id);
         }
       }
-      for (const id of walkers.keys()) {
-        if (!keepIds.has(id)) {
-          removeWalker(id);
-          changed = true;
+      for (const [staleBindingId, staleActor] of actorsByBindingId) {
+        if (!liveBindingIds.has(staleBindingId)) {
+          const bindingMatch = bindings.find(bindingProbe => bindingProbe.id === staleBindingId);
+          if (
+            !isEditing &&
+            enabled &&
+            bindingMatch &&
+            triggers.visible(staleBindingId) &&
+            (floorId === "all" || staleActor.floorId === floorId) &&
+            !presenceVisibleOnPage(bindingMatch, activeModule)
+          ) {
+            if (!staleActor.exiting) {
+              staleActor.exiting = true;
+              didChange = true;
+            }
+          } else {
+            removeActor(staleBindingId);
+            didChange = true;
+          }
         }
       }
-      for (const id of progressCache.keys()) {
-        if (!sensors.some(sensor => sensor.id === id) || !simulated && !triggers.visible(id)) {
-          progressCache.delete(id);
+      for (const progressBindingId of progressByBindingId.keys()) {
+        if (
+          !bindings.some(bindingEntry => bindingEntry.id === progressBindingId) ||
+          (!isEditing && !triggers.visible(progressBindingId))
+        ) {
+          progressByBindingId.delete(progressBindingId);
         }
       }
-      if (changed) {
-        api.requestRender?.();
-        wake();
+      flushReflectionFloors();
+      if (didChange) {
+        sceneOptions.requestRender?.();
+        wakeFrameLoop();
       }
     },
-    tick(dt) {
-      const delta = Math.max(0, Math.min(0.1, Number(dt) || 0));
-      elapsed += delta;
-      let removed = false;
-      for (const id of walkers.keys()) {
-        if (!walkers.get(id).simulated && !triggers.visible(id)) {
-          removeWalker(id);
-          progressCache.delete(id);
-          removed = true;
+    tick(deltaSeconds) {
+      const stepSeconds = Math.max(0, Math.min(0.1, Number(deltaSeconds) || 0));
+      elapsedSeconds += stepSeconds;
+      let needsRender = false;
+      for (const trackedBindingId of actorsByBindingId.keys()) {
+        if (
+          !actorsByBindingId.get(trackedBindingId).simulated &&
+          !triggers.visible(trackedBindingId)
+        ) {
+          removeActor(trackedBindingId);
+          progressByBindingId.delete(trackedBindingId);
+          needsRender = true;
         }
       }
-      for (const entry of walkers.values()) {
-        if (!entry.preview) {
-          entry.distance = (entry.distance + delta * entry.speed) % entry.path.length;
-          placeWalker(entry);
+      for (const [actorBindingId, tickedActor] of actorsByBindingId) {
+        const fadeTargetOpacity = tickedActor.exiting ? 0 : 1;
+        if (tickedActor.opacity !== fadeTargetOpacity && stepSeconds > 0) {
+          applyActorOpacity(
+            tickedActor,
+            fadeTargetOpacity > tickedActor.opacity
+              ? Math.min(1, tickedActor.opacity + stepSeconds / 0.22)
+              : Math.max(0, tickedActor.opacity - stepSeconds / 0.22)
+          );
+        }
+        if (tickedActor.exiting) {
+          if (tickedActor.opacity === 0) {
+            removeActor(actorBindingId);
+          }
+          continue;
+        }
+        if (!tickedActor.preview && stepSeconds !== 0) {
+          tickedActor.distance =
+            (tickedActor.distance + stepSeconds * tickedActor.speed) % tickedActor.path.length;
+          placeActor(tickedActor);
+          dirtyFloorIds.add(tickedActor.floorId);
         }
       }
-      const hasLive = [...walkers.values()].some(entry => !entry.preview);
-      if (hasLive || removed) {
-        api.requestRender?.();
+      const isAnimating = [...actorsByBindingId.values()].some(
+        trackedActor => !trackedActor.preview || trackedActor.opacity !== 1
+      );
+      flushReflectionFloors();
+      if (isAnimating || needsRender) {
+        sceneOptions.requestRender?.();
       }
-      return hasLive;
+      return isAnimating;
     },
-    anchor(id) {
-      const entry = walkers.get(id);
-      if (entry) {
+    anchor(bindingId) {
+      const anchoredActor = actorsByBindingId.get(bindingId);
+      if (anchoredActor) {
         return {
-          center: [entry.root.position.x, entry.root.position.y + entry.size * 0.7, entry.root.position.z]
+          center: [
+            anchoredActor.root.position.x,
+            anchoredActor.root.position.y + anchoredActor.size * 0.7,
+            anchoredActor.root.position.z
+          ]
         };
       } else {
         return null;
       }
     },
-    hitRects,
-    pick(clientX, clientY, camera, canvas, sensors) {
-      const rect = canvas.getBoundingClientRect();
-      if (!rect.width || !rect.height) {
+    hitRects: computeHitRects,
+    pick(clientX, clientY, camera, canvasElement, pickBindings) {
+      const pickCanvasRect = canvasElement.getBoundingClientRect();
+      if (!pickCanvasRect.width || !pickCanvasRect.height) {
         return null;
       }
-      const focusable = [...walkers.entries()].filter(([id]) => sensors.find(sensor => sensor.id === id)?.clickToFocus === true);
-      const raycaster = new api.THREE.Raycaster();
-      raycaster.setFromCamera(new api.THREE.Vector2((clientX - rect.left) / rect.width * 2 - 1, 1 - (clientY - rect.top) / rect.height * 2), camera);
-      for (const [, entry] of focusable) {
-        entry.root.updateMatrixWorld(true);
+      const clickableActors = [...actorsByBindingId.entries()].filter(
+        ([pickBindingId, entryActor]) =>
+          !entryActor.exiting &&
+          entryActor.opacity > 0 &&
+          pickBindings.find(clickBinding => clickBinding.id === pickBindingId)?.clickToFocus ===
+            true
+      );
+      const raycaster = new sceneOptions.THREE.Raycaster();
+      raycaster.setFromCamera(
+        new sceneOptions.THREE.Vector2(
+          ((clientX - pickCanvasRect.left) / pickCanvasRect.width) * 2 - 1,
+          1 - ((clientY - pickCanvasRect.top) / pickCanvasRect.height) * 2
+        ),
+        camera
+      );
+      for (const [, clickableActor] of clickableActors) {
+        clickableActor.root.updateMatrixWorld(true);
       }
-      const hits = raycaster.intersectObjects(focusable.map(([, entry]) => entry.root), true);
-      if (hits.length) {
-        return focusable.find(([, entry]) => {
-          let parent = hits[0].object;
-          while (parent) {
-            if (parent === entry.root) {
-              return true;
+      const intersections = raycaster.intersectObjects(
+        clickableActors.map(([, raycastActor]) => raycastActor.root),
+        true
+      );
+      if (intersections.length) {
+        return (
+          clickableActors.find(([, candidateActor]) => {
+            let sceneNode = intersections[0].object;
+            while (sceneNode) {
+              if (sceneNode === candidateActor.root) {
+                return true;
+              }
+              sceneNode = sceneNode.parent;
             }
-            parent = parent.parent;
-          }
-          return false;
-        })?.[0] || null;
+            return false;
+          })?.[0] || null
+        );
       }
-      const paddedHits = [];
+      const paddingHits = [];
       for (const {
-        id,
-        left,
-        top,
-        width,
-        height,
-        padding
-      } of hitRects(camera, canvas, sensors)) {
-        if (!padding) {
+        id: rectId,
+        left: rectLeft,
+        top: rectTop,
+        width: rectWidth,
+        height: rectHeight,
+        padding: rectPadding
+      } of computeHitRects(camera, canvasElement, pickBindings)) {
+        if (!rectPadding) {
           continue;
         }
-        const dx = Math.max(left - clientX, 0, clientX - left - width);
-        const dy = Math.max(top - clientY, 0, clientY - top - height);
-        if (Math.hypot(dx, dy) <= padding) {
-          paddedHits.push({
-            id,
-            distance: Math.hypot(dx, dy)
+        const dxPx = Math.max(rectLeft - clientX, 0, clientX - rectLeft - rectWidth);
+        const dyPx = Math.max(rectTop - clientY, 0, clientY - rectTop - rectHeight);
+        if (Math.hypot(dxPx, dyPx) <= rectPadding) {
+          paddingHits.push({
+            id: rectId,
+            distance: Math.hypot(dxPx, dyPx)
           });
         }
       }
-      return paddedHits.sort((a, b) => a.distance - b.distance)[0]?.id || null;
+      return (
+        paddingHits.sort((firstHit, secondHit) => firstHit.distance - secondHit.distance)[0]?.id ||
+        null
+      );
     },
     dispose() {
-      for (const id of walkers.keys()) {
-        removeWalker(id);
+      for (const disposedBindingId of actorsByBindingId.keys()) {
+        removeActor(disposedBindingId);
       }
-      progressCache.clear();
+      progressByBindingId.clear();
+      flushReflectionFloors();
       footShadowAssets?.geometry.dispose();
       footShadowAssets?.texture.dispose();
       footShadowAssets = null;
     }
   };
 }
-export function createPresenceWaves(api) {
-  const { THREE } = api;
-  const waveGroups = new Map();
+export function createPresenceWaves(waveOptions) {
+  const { THREE: THREE } = waveOptions;
+  const waveRecordsByBindingId = new Map();
   const ringGeometry = new THREE.RingGeometry(0.965, 1, 48);
   ringGeometry.rotateX(-Math.PI / 2);
-  let modelRootRef;
-  let revisionRef;
-  let bindingsKey = "";
-  let disposed = false;
-  let hasVisible = false;
-  const removeWaveGroup = entry => {
-    entry.group.removeFromParent();
-    entry.rings.forEach(ring => ring.material.dispose());
+  let cachedModelRoot;
+  let cachedRevision;
+  let cachedSignature = "";
+  let isDisposed = false;
+  let hasVisibleWave = false;
+  const removeWaveRecord = removedWave => {
+    removedWave.group.removeFromParent();
+    removedWave.rings.forEach(disposedRing => disposedRing.material.dispose());
   };
-  function sync({
-    bindings = [],
-    states = {},
-    enabled = false,
-    floorId = "",
-    preview = false
+  function syncWaves({
+    bindings: waveBindings = [],
+    states: waveStates = {},
+    enabled: wavesEnabled = false,
+    floorId: waveFloorId = "",
+    preview: wavePreview = false
   }) {
-    if (disposed) {
+    if (isDisposed) {
       return;
     }
-    const revision = api.environmentRevision ?? api.sceneRevision;
-    const nextBindingsKey = JSON.stringify(bindings.map(binding => [binding.id, binding.floorId, binding.modelId, binding.width, binding.height, binding.depth]));
-    if (modelRootRef !== api.modelRoot || revisionRef !== revision || bindingsKey !== nextBindingsKey) {
-      modelRootRef = api.modelRoot;
-      revisionRef = revision;
-      bindingsKey = nextBindingsKey;
-      const modelNodes = new Map();
-      modelRootRef?.traverse(node => {
-        if (node.userData?.environmentModelType === "presence") {
-          modelNodes.set(JSON.stringify([node.userData.environmentFloorId, node.userData.environmentModelId]), node);
+    const revision = waveOptions.environmentRevision ?? waveOptions.sceneRevision;
+    const bindingSignature = JSON.stringify(
+      waveBindings.map(waveBinding => [
+        waveBinding.id,
+        waveBinding.floorId,
+        waveBinding.modelId,
+        waveBinding.width,
+        waveBinding.height,
+        waveBinding.depth
+      ])
+    );
+    if (
+      cachedModelRoot !== waveOptions.modelRoot ||
+      cachedRevision !== revision ||
+      cachedSignature !== bindingSignature
+    ) {
+      cachedModelRoot = waveOptions.modelRoot;
+      cachedRevision = revision;
+      cachedSignature = bindingSignature;
+      const presenceModelsByKey = new Map();
+      cachedModelRoot?.traverse(modelNode => {
+        if (modelNode.userData?.environmentModelType === "presence") {
+          presenceModelsByKey.set(
+            JSON.stringify([
+              modelNode.userData.environmentFloorId,
+              modelNode.userData.environmentModelId
+            ]),
+            modelNode
+          );
         }
       });
-      const keepIds = new Set();
-      for (const binding of bindings) {
-        const modelNode = modelNodes.get(JSON.stringify([binding.floorId, binding.modelId]));
-        if (!modelNode || !api.overlayScene) {
+      const visibleBindingIds = new Set();
+      for (const waveBindingItem of waveBindings) {
+        const matchedModelNode = presenceModelsByKey.get(
+          JSON.stringify([waveBindingItem.floorId, waveBindingItem.modelId])
+        );
+        if (!matchedModelNode || !waveOptions.overlayScene) {
           continue;
         }
-        keepIds.add(binding.id);
-        let entry = waveGroups.get(binding.id);
-        if (entry?.model !== modelNode) {
-          if (entry) {
-            removeWaveGroup(entry);
+        visibleBindingIds.add(waveBindingItem.id);
+        let waveRecord = waveRecordsByBindingId.get(waveBindingItem.id);
+        if (waveRecord?.model !== matchedModelNode) {
+          if (waveRecord) {
+            removeWaveRecord(waveRecord);
           }
-          const group = new THREE.Group();
-          group.name = "presence-waves-" + binding.id;
-          group.matrixAutoUpdate = false;
-          group.userData.environmentEffect = true;
-          const rings = Array.from({
-            length: 3
-          }, () => {
-            const ring = new THREE.Mesh(ringGeometry, new THREE.MeshBasicMaterial({
-              color: 12838102,
-              transparent: true,
-              opacity: 0,
-              side: THREE.DoubleSide,
-              depthWrite: false,
-              toneMapped: false
-            }));
-            ring.raycast = () => {};
-            group.add(ring);
-            return ring;
-          });
-          api.overlayScene.add(group);
-          entry = {
-            group,
-            rings,
-            model: modelNode
+          const waveGroup = new THREE.Group();
+          waveGroup.name = "presence-waves-" + waveBindingItem.id;
+          waveGroup.matrixAutoUpdate = false;
+          waveGroup.userData.environmentEffect = true;
+          const ringMeshes = Array.from(
+            {
+              length: 3
+            },
+            () => {
+              const createdRingMesh = new THREE.Mesh(
+                ringGeometry,
+                new THREE.MeshBasicMaterial({
+                  color: 12838102,
+                  transparent: true,
+                  opacity: 0,
+                  side: THREE.DoubleSide,
+                  depthWrite: false,
+                  toneMapped: false
+                })
+              );
+              createdRingMesh.raycast = () => {};
+              waveGroup.add(createdRingMesh);
+              return createdRingMesh;
+            }
+          );
+          waveOptions.overlayScene.add(waveGroup);
+          waveRecord = {
+            group: waveGroup,
+            rings: ringMeshes,
+            model: matchedModelNode
           };
-          waveGroups.set(binding.id, entry);
+          waveRecordsByBindingId.set(waveBindingItem.id, waveRecord);
         }
-        entry.radius = Math.max(0.02, (binding.width || 0.16) * 0.5);
-        entry.depthRatio = (binding.depth || binding.width || 0.16) / (binding.width || 0.16);
-        for (const ring of entry.rings) {
-          ring.position.y = (binding.height || 0.2) * 0.755;
+        waveRecord.radius = Math.max(0.02, (waveBindingItem.width || 0.16) * 0.5);
+        waveRecord.depthRatio =
+          (waveBindingItem.depth || waveBindingItem.width || 0.16) /
+          (waveBindingItem.width || 0.16);
+        for (const ringMesh of waveRecord.rings) {
+          ringMesh.position.y = (waveBindingItem.height || 0.2) * 0.755;
         }
       }
-      for (const [id, entry] of waveGroups) {
-        if (!keepIds.has(id)) {
-          removeWaveGroup(entry);
-          waveGroups.delete(id);
+      for (const [waveBindingId, staleWave] of waveRecordsByBindingId) {
+        if (!visibleBindingIds.has(waveBindingId)) {
+          removeWaveRecord(staleWave);
+          waveRecordsByBindingId.delete(waveBindingId);
         }
       }
     }
-    hasVisible = false;
-    for (const binding of bindings) {
-      const entry = waveGroups.get(binding.id);
-      if (!entry) {
+    hasVisibleWave = false;
+    for (const waveBindingEntry of waveBindings) {
+      const activeWaveRecord = waveRecordsByBindingId.get(waveBindingEntry.id);
+      if (!activeWaveRecord) {
         continue;
       }
-      entry.scale = Number.isFinite(binding.waveScale) ? Math.max(0.25, Math.min(3, binding.waveScale)) : 1;
-      entry.opacity = Number.isFinite(binding.waveOpacity) ? Math.max(0, Math.min(100, binding.waveOpacity)) / 100 : 0.68;
-      const state = states?.get?.(binding.entityId) ?? states[binding.entityId];
-      const resolved = state?.newState || state;
-      const active = resolved?.available !== false && !!resolved?.state && !["unknown", "unavailable"].includes(resolved.state);
-      entry.group.visible = enabled && binding.waveEnabled !== false && entry.opacity > 0 && (preview || active) && binding.floorId === floorId;
-      hasVisible ||= entry.group.visible;
+      activeWaveRecord.scale = Number.isFinite(waveBindingEntry.waveScale)
+        ? Math.max(0.25, Math.min(3, waveBindingEntry.waveScale))
+        : 1;
+      activeWaveRecord.opacity = Number.isFinite(waveBindingEntry.waveOpacity)
+        ? Math.max(0, Math.min(100, waveBindingEntry.waveOpacity)) / 100
+        : 0.68;
+      const stateEntry =
+        waveStates?.get?.(waveBindingEntry.entityId) ?? waveStates[waveBindingEntry.entityId];
+      const stateData = stateEntry?.newState || stateEntry;
+      const isActiveState =
+        stateData?.available !== false &&
+        !!stateData?.state &&
+        !["unknown", "unavailable"].includes(stateData.state);
+      activeWaveRecord.group.visible =
+        wavesEnabled &&
+        waveBindingEntry.waveEnabled !== false &&
+        activeWaveRecord.opacity > 0 &&
+        (wavePreview || isActiveState) &&
+        waveBindingEntry.floorId === waveFloorId;
+      hasVisibleWave ||= activeWaveRecord.group.visible;
     }
-    api.requestRender?.();
+    waveOptions.requestRender?.();
   }
-  function tick(now) {
-    if (disposed || !hasVisible) {
+  function tickWaves(elapsedMs) {
+    if (isDisposed || !hasVisibleWave) {
       return false;
     }
-    const reducedMotion = globalThis.window?.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
-    for (const entry of waveGroups.values()) {
-      if (entry.group.visible) {
-        entry.model.updateWorldMatrix(true, false);
-        entry.group.matrix.copy(entry.model.matrixWorld);
-        entry.group.matrixWorldNeedsUpdate = true;
-        for (let ringIndex = 0; ringIndex < entry.rings.length; ringIndex++) {
-          const phase = reducedMotion ? 0.35 : (now / 2400 + ringIndex / 3) % 1;
-          const ringScale = entry.radius * (1.05 + phase * 20) * entry.scale;
-          entry.rings[ringIndex].visible = !reducedMotion || ringIndex === 0;
-          entry.rings[ringIndex].scale.set(ringScale, 1, ringScale * entry.depthRatio);
-          entry.rings[ringIndex].material.opacity = entry.opacity * Math.pow(1 - phase, 0.7);
+    const prefersReducedMotion =
+      globalThis.window?.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+    for (const visibleWave of waveRecordsByBindingId.values()) {
+      if (visibleWave.group.visible) {
+        visibleWave.model.updateWorldMatrix(true, false);
+        visibleWave.group.matrix.copy(visibleWave.model.matrixWorld);
+        visibleWave.group.matrixWorldNeedsUpdate = true;
+        for (let ringIndex = 0; ringIndex < visibleWave.rings.length; ringIndex++) {
+          const ringPhase = prefersReducedMotion ? 0.35 : (elapsedMs / 2400 + ringIndex / 3) % 1;
+          const ringScale = visibleWave.radius * (1.05 + ringPhase * 20) * visibleWave.scale;
+          visibleWave.rings[ringIndex].visible = !prefersReducedMotion || ringIndex === 0;
+          visibleWave.rings[ringIndex].scale.set(ringScale, 1, ringScale * visibleWave.depthRatio);
+          visibleWave.rings[ringIndex].material.opacity =
+            visibleWave.opacity * Math.pow(1 - ringPhase, 0.7);
         }
       }
     }
-    api.requestRender?.();
-    return !reducedMotion;
+    waveOptions.requestRender?.();
+    return !prefersReducedMotion;
   }
   return {
-    sync,
-    tick,
+    sync: syncWaves,
+    tick: tickWaves,
     dispose() {
-      if (!disposed) {
-        disposed = true;
-        for (const entry of waveGroups.values()) {
-          removeWaveGroup(entry);
+      if (!isDisposed) {
+        isDisposed = true;
+        for (const disposedWave of waveRecordsByBindingId.values()) {
+          removeWaveRecord(disposedWave);
         }
-        waveGroups.clear();
+        waveRecordsByBindingId.clear();
         ringGeometry.dispose();
       }
     }

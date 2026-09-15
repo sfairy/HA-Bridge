@@ -31,13 +31,12 @@ def cache_path(data_dir: Path, scene_id: str, project_id: str, key: str) -> Path
 @contextmanager
 def cache_lock(root: Path):
     root.mkdir(parents=True, exist_ok=True)
-    lock_path = root / '.lock'
-    with open(lock_path, 'a+', encoding='utf-8') as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+    with (root / '.lock').open('a+b') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
         try:
             yield
         finally:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            fcntl.flock(lock, fcntl.LOCK_UN)
 
 
 def read_cache(path: Path) -> bytes | None:
@@ -47,70 +46,60 @@ def read_cache(path: Path) -> bytes | None:
     with cache_lock(root):
         try:
             stat = path.stat()
+            if time.time() - stat.st_mtime > MAX_AGE_SECONDS or stat.st_size > MAX_ENTRY_BYTES:
+                path.unlink(missing_ok=True)
+                return None
+            content = path.read_bytes()
+            if time.time() - stat.st_mtime > 60:
+                os.utime(path, None)
+            return content
         except FileNotFoundError:
             return None
-        if time.time() - stat.st_mtime > MAX_AGE_SECONDS or stat.st_size > MAX_ENTRY_BYTES:
-            path.unlink(missing_ok=True)
-            return None
-        content = path.read_bytes()
-        if time.time() - stat.st_mtime > 60:
-            os.utime(path, None)
-        return content
 
 
 def write_cache(path: Path, content: bytes) -> None:
     if not content or len(content) > MAX_ENTRY_BYTES:
         raise HTTPException(413, detail='缓存图层过大。')
     try:
-        image = Image.open(io.BytesIO(content))
-        if image.format != 'PNG' or image.width * image.height > MAX_PIXELS or getattr(image, 'is_animated', False):
-            raise ValueError('invalid cache image')
-        image.verify()
+        with Image.open(io.BytesIO(content)) as image:
+            if image.format != 'PNG' or image.width * image.height > MAX_PIXELS or getattr(image, 'is_animated', False):
+                raise ValueError('invalid cache image')
+            image.verify()
     except (ValueError, OSError, UnidentifiedImageError, Image.DecompressionBombError) as error:
         raise HTTPException(422, detail='缓存图层无效。') from error
     root = path.parent.parent
-    temporary = path.with_suffix(f'.{uuid4().hex}.tmp')
-    try:
-        with cache_lock(root):
-            path.parent.mkdir(parents=True, exist_ok=True)
+    with cache_lock(root):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(f'.{uuid4().hex}.tmp')
+        try:
             with temporary.open('xb') as output:
                 output.write(content)
             temporary.chmod(384)
             os.replace(temporary, path)
-            now = time.time()
-            for candidate in root.glob('*/*.tmp'):
-                try:
-                    if now - candidate.stat().st_mtime > 3600:
-                        candidate.unlink(missing_ok=True)
-                except OSError:
-                    continue
-            entries = []
-            for candidate in root.glob('*/*.png'):
-                try:
-                    stat = candidate.stat()
-                except FileNotFoundError:
-                    continue
-                if now - stat.st_mtime > MAX_AGE_SECONDS:
-                    candidate.unlink(missing_ok=True)
-                    continue
-                entries.append((stat.st_mtime, stat.st_size, candidate))
-            count = len(entries)
-            total = sum(size for _, size, _ in entries)
-            for _, size, candidate in sorted(entries):
-                if total <= MAX_CACHE_BYTES and count <= MAX_ENTRIES:
-                    break
+        finally:
+            temporary.unlink(missing_ok=True)
+        now = time.time()
+        for candidate in root.glob('*/*.tmp'):
+            if now - candidate.stat().st_mtime > 3600:
                 candidate.unlink(missing_ok=True)
-                total -= size
-                count -= 1
-            for directory in root.iterdir():
-                if directory.is_dir():
-                    try:
-                        directory.rmdir()
-                    except OSError:
-                        continue
-    except HTTPException:
-        temporary.unlink(missing_ok=True)
-        raise
-    except OSError as error:
-        temporary.unlink(missing_ok=True)
-        raise HTTPException(422, detail='缓存图层无效。') from error
+        entries = []
+        for candidate in root.glob('*/*.png'):
+            stat = candidate.stat()
+            if now - stat.st_mtime > MAX_AGE_SECONDS:
+                candidate.unlink(missing_ok=True)
+                continue
+            entries.append((stat.st_mtime, stat.st_size, candidate))
+        total, count = sum(item[1] for item in entries), len(entries)
+        for _, size, candidate in sorted(entries):
+            if total <= MAX_CACHE_BYTES and count <= MAX_ENTRIES:
+                break
+            candidate.unlink(missing_ok=True)
+            total -= size
+            count -= 1
+        for directory in root.iterdir():
+            if not directory.is_dir():
+                continue
+            try:
+                directory.rmdir()
+            except OSError:
+                continue

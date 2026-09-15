@@ -1,93 +1,124 @@
-import { selectedRelatedEntityIds } from "../js/editor/related-entities.js?v=0.5.3";
-import { isVirtualEntityId } from "../js/editor/virtual-entities.js?v=0.5.3";
-export function lineChartRuntimeStateNeedsHydration(state) {
-  const current = state?.newState || state;
-  if (!current) {
+import { selectedRelatedEntityIds } from "../related-entities.js?v=20260825-bath-heater-primary-v1";
+import { isVirtualEntityId } from "../virtual-entities.js?v=20260822-icon-visibility-v1";
+export function lineChartRuntimeStateNeedsHydration(stateOrChange) {
+  const stateObject = stateOrChange?.newState || stateOrChange;
+  if (!stateObject) {
     return true;
   }
-  const status = String(current.state ?? "").trim().toLowerCase();
-  return status === "" || status === "unknown" || status === "unavailable";
+  const normalizedState = String(stateObject.state ?? "")
+    .trim()
+    .toLowerCase();
+  return (
+    normalizedState === "" || normalizedState === "unknown" || normalizedState === "unavailable"
+  );
 }
-export function collectEntityIds(components, entityIds = new Set()) {
+export function collectEntityIds(components, entityIdSet = new Set()) {
   for (const component of components || []) {
     for (const binding of Object.values(component.bindings || {})) {
       if (binding?.entityId && !isVirtualEntityId(binding.entityId)) {
-        entityIds.add(binding.entityId);
+        entityIdSet.add(binding.entityId);
       }
     }
     if (component.type === "interaction3d") {
-      for (const entityId of component.properties?.devices?.vacuums || []) {
-        for (const value of [entityId.entityId, entityId.map?.entityId, ...(entityId.relatedEntityIds || []), ...(entityId.shortcuts || []).map(entityId => entityId.entityId)]) {
-          if (value && !isVirtualEntityId(value)) {
-            entityIds.add(value);
+      for (const vacuum of component.properties?.devices?.vacuums || []) {
+        for (const entityIdCandidate of [
+          vacuum.entityId,
+          vacuum.map?.entityId,
+          ...(vacuum.relatedEntityIds || []),
+          ...(vacuum.shortcuts || []).map(shortcut => shortcut.entityId)
+        ]) {
+          if (entityIdCandidate && !isVirtualEntityId(entityIdCandidate)) {
+            entityIdSet.add(entityIdCandidate);
           }
         }
       }
     }
     if (component.type === "interaction3d") {
-      for (const entityId of component.properties?.security?.presenceSensors || []) {
-        if (entityId.entityId && !isVirtualEntityId(entityId.entityId)) {
-          entityIds.add(entityId.entityId);
+      for (const presenceSensor of component.properties?.security?.presenceSensors || []) {
+        if (presenceSensor.entityId && !isVirtualEntityId(presenceSensor.entityId)) {
+          entityIdSet.add(presenceSensor.entityId);
         }
       }
     }
     if (component.type === "light-statistics") {
-      for (const lightStatisticsEntityId of Array.isArray(component.properties?.entityIds) ? component.properties.entityIds : []) {
-        if (lightStatisticsEntityId && !isVirtualEntityId(lightStatisticsEntityId)) {
-          entityIds.add(String(lightStatisticsEntityId));
+      for (const configuredEntityId of Array.isArray(component.properties?.entityIds)
+        ? component.properties.entityIds
+        : []) {
+        if (configuredEntityId && !isVirtualEntityId(configuredEntityId)) {
+          entityIdSet.add(String(configuredEntityId));
         }
       }
     }
     if (component.type === "weather") {
-      entityIds.add(component.bindings?.sun?.entityId || "sun.sun");
+      entityIdSet.add(component.bindings?.sun?.entityId || "sun.sun");
     }
     for (const action of Object.values(component.actions || {})) {
-      if (action?.type === "more-info" && action.data?.popupSource === "entity" && action.data?.entityId && !isVirtualEntityId(action.data.entityId)) {
-        entityIds.add(action.data.entityId);
+      if (
+        action?.type === "more-info" &&
+        action.data?.popupSource === "entity" &&
+        action.data?.entityId &&
+        !isVirtualEntityId(action.data.entityId)
+      ) {
+        entityIdSet.add(action.data.entityId);
       }
     }
-    for (const entityId of selectedRelatedEntityIds(component) || []) {
-      entityIds.add(entityId);
+    for (const relatedEntityId of selectedRelatedEntityIds(component) || []) {
+      entityIdSet.add(relatedEntityId);
     }
-    collectEntityIds(component.children, entityIds);
+    collectEntityIds(component.children, entityIdSet);
   }
-  return entityIds;
+  return entityIdSet;
 }
-export function collectComponents(components, match, matches = []) {
-  for (const component of components || []) {
-    if (match(component)) {
-      matches.push(component);
+export function collectComponents(inputComponents, predicate, matches = []) {
+  for (const currentComponent of inputComponents || []) {
+    if (predicate(currentComponent)) {
+      matches.push(currentComponent);
     }
-    collectComponents(component.children, match, matches);
+    collectComponents(currentComponent.children, predicate, matches);
   }
   return matches;
 }
-export function matchingLineChartComponent(document, page, entityId) {
-  const isMatch = component => component.type === "line-chart" && component.bindings?.entity?.entityId === entityId;
-  const onPage = collectComponents(page?.components || [], isMatch)[0];
-  if (onPage) {
-    return onPage;
+export function matchingLineChartComponent(documentModel, page, entityId) {
+  const isLineChartForEntity = candidateComponent =>
+    candidateComponent.type === "line-chart" &&
+    candidateComponent.bindings?.entity?.entityId === entityId;
+  const directMatch = collectComponents(page?.components || [], isLineChartForEntity)[0];
+  if (directMatch) {
+    return directMatch;
   }
-  const sharedById = new Map((document?.sharedComponents || []).map(component => [component.id, component]));
-  const pageShared = (page?.sharedComponentIds || []).map(componentId => sharedById.get(componentId)).filter(Boolean);
-  const onPageShared = collectComponents(pageShared, isMatch)[0];
-  if (onPageShared) {
-    return onPageShared;
+  const sharedComponentsById = new Map(
+    (documentModel?.sharedComponents || []).map(sharedComponent => [
+      sharedComponent.id,
+      sharedComponent
+    ])
+  );
+  const sharedComponents = (page?.sharedComponentIds || [])
+    .map(sharedComponentId => sharedComponentsById.get(sharedComponentId))
+    .filter(Boolean);
+  const sharedMatch = collectComponents(sharedComponents, isLineChartForEntity)[0];
+  if (sharedMatch) {
+    return sharedMatch;
   }
-  for (const otherPage of document?.pages || []) {
-    if (otherPage === page) {
+  for (const candidatePage of documentModel?.pages || []) {
+    if (candidatePage === page) {
       continue;
     }
-    const found = collectComponents(otherPage.components || [], isMatch)[0];
-    if (found) {
-      return found;
+    const pageMatch = collectComponents(candidatePage.components || [], isLineChartForEntity)[0];
+    if (pageMatch) {
+      return pageMatch;
     }
   }
-  return collectComponents(document?.sharedComponents || [], isMatch)[0] || null;
+  return collectComponents(documentModel?.sharedComponents || [], isLineChartForEntity)[0] || null;
 }
-export function syncedLineChartProperties(document, page, entityId, overrides = {}) {
+export function syncedLineChartProperties(
+  documentSnapshot,
+  currentPage,
+  targetEntityId,
+  overrides = {}
+) {
   return {
-    ...(matchingLineChartComponent(document, page, entityId)?.properties || {}),
+    ...(matchingLineChartComponent(documentSnapshot, currentPage, targetEntityId)?.properties ||
+      {}),
     ...(overrides || {})
   };
 }

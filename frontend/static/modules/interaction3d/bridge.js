@@ -1,238 +1,269 @@
-import { createAccessMonitor } from "./access-monitor.js?v=0.5.3";
-import { createInteraction3dCover } from "./cover.js?v=0.5.3";
-import { createInteraction3dFocusLayout } from "./focus-layout.js?v=0.5.3";
+import { createAccessMonitor } from "./access-monitor.js?v=20260905-interaction3d-v1-20260905-i3d-polish-v1-20260906-access-state-v2";
+import { createInteraction3dCover } from "./cover.js?v=20260905-interaction3d-cover-v1-20260908-access-lock-v1";
+import { createInteraction3dFocusLayout } from "./focus-layout.js?v=20260911-navigation-light-v14";
 export async function requestInteraction3dAccess() {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  const abortController = new AbortController();
+  const abortTimeoutId = setTimeout(() => abortController.abort(), 5000);
   try {
-    const response = await fetch("/api/v1/modules/interaction3d/access", {
+    const accessResponse = await fetch("/api/v1/modules/interaction3d/access", {
       cache: "no-store",
       credentials: "same-origin",
-      signal: controller.signal
+      signal: abortController.signal
     });
-    if (!response.ok) {
-      const error = new Error(response.status === 403 ? "3D 交互授权不可用，请在授权信息中查看。" : response.status === 401 ? "登录状态已失效，请重新登录。" : "暂时无法验证 3D 交互授权，请稍候重试。");
-      error.status = response.status;
-      throw error;
+    if (!accessResponse.ok) {
+      const accessError = new Error(
+        accessResponse.status === 403
+          ? "3D 交互授权不可用，请在授权信息中查看。"
+          : accessResponse.status === 401
+            ? "登录状态已失效，请重新登录。"
+            : "暂时无法验证 3D 交互授权，请稍候重试。"
+      );
+      accessError.status = accessResponse.status;
+      throw accessError;
     }
-    const allowed = await response.json();
-    if (allowed?.allowed !== true || !Number.isFinite(Number(allowed.validForSeconds)) || Number(allowed.validForSeconds) <= 0) {
-      const status = new Error("暂时无法验证 3D 交互授权，请稍候重试。");
-      status.status = allowed?.allowed === false ? 403 : 502;
-      throw status;
+    const accessGrant = await accessResponse.json();
+    if (
+      accessGrant?.allowed !== true ||
+      !Number.isFinite(Number(accessGrant.validForSeconds)) ||
+      Number(accessGrant.validForSeconds) <= 0
+    ) {
+      const grantError = new Error("暂时无法验证 3D 交互授权，请稍候重试。");
+      grantError.status = accessGrant?.allowed === false ? 403 : 502;
+      throw grantError;
     }
-    return allowed;
+    return accessGrant;
   } finally {
-    clearTimeout(timeoutId);
+    clearTimeout(abortTimeoutId);
   }
 }
 let accessMonitor;
-const editorViews = new Map();
-const viewWaiters = new Map();
-function notifyViewWaiters(componentId, error) {
-  for (const listener of viewWaiters.get(componentId) || []) {
-    listener(error);
+const editorViewByComponentId = new Map();
+const waitersByComponentId = new Map();
+function notifyViewReady(componentId, error) {
+  for (const waiter of waitersByComponentId.get(componentId) || []) {
+    waiter(error);
   }
 }
-export function getInteraction3dEditorView(componentId) {
-  return editorViews.get(componentId);
+export function getInteraction3dEditorView(requestedComponentId) {
+  return editorViewByComponentId.get(requestedComponentId);
 }
-export function waitInteraction3dEditorView(componentId) {
+export function waitInteraction3dEditorView(pendingComponentId) {
   return new Promise((resolve, reject) => {
     const cleanup = () => {
       clearTimeout(timeoutId);
-      viewWaiters.get(componentId)?.delete(onNotify);
-      if (!viewWaiters.get(componentId)?.size) {
-        viewWaiters.delete(componentId);
+      waitersByComponentId.get(pendingComponentId)?.delete(handleViewReady);
+      if (!waitersByComponentId.get(pendingComponentId)?.size) {
+        waitersByComponentId.delete(pendingComponentId);
       }
     };
-    const onNotify = error => {
-      const view = editorViews.get(componentId);
-      if (error) {
+    const handleViewReady = viewError => {
+      const editorView = editorViewByComponentId.get(pendingComponentId);
+      if (viewError) {
         cleanup();
-        reject(error);
-      } else if (view?.ready && view.metadata) {
+        reject(viewError);
+      } else if (editorView?.ready && editorView.metadata) {
         cleanup();
-        resolve(view);
+        resolve(editorView);
       }
     };
     const timeoutId = setTimeout(() => {
       cleanup();
       reject(new Error("户型准备较慢，请稍候重试。"));
     }, 25000);
-    if (!viewWaiters.has(componentId)) {
-      viewWaiters.set(componentId, new Set());
+    if (!waitersByComponentId.has(pendingComponentId)) {
+      waitersByComponentId.set(pendingComponentId, new Set());
     }
-    viewWaiters.get(componentId).add(onNotify);
-    onNotify();
+    waitersByComponentId.get(pendingComponentId).add(handleViewReady);
+    handleViewReady();
   });
 }
-export function cancelOtherInteraction3dViews(keepId) {
-  for (const [componentId, view] of editorViews) {
-    if (componentId !== keepId && view.viewEditing) {
-      view.setViewEditing(false);
+export function cancelOtherInteraction3dViews(activeComponentId) {
+  for (const [viewComponentId, otherView] of editorViewByComponentId) {
+    if (viewComponentId !== activeComponentId && otherView.viewEditing) {
+      otherView.setViewEditing(false);
     }
-    if (componentId !== keepId && view.rangeEditing) {
-      view.closeRangeEditor?.();
+    if (viewComponentId !== activeComponentId) {
+      otherView.closePopupLayoutPreview?.();
+    }
+    if (viewComponentId !== activeComponentId && otherView.rangeEditing) {
+      otherView.closeRangeEditor?.();
     }
   }
 }
 function getAccessMonitor() {
-  return accessMonitor || (accessMonitor = createAccessMonitor({
-    requestGrant: requestInteraction3dAccess
-  }), document.addEventListener("visibilitychange", () => document.hidden ? accessMonitor.suspend() : accessMonitor.resume()), window.addEventListener("pagehide", () => accessMonitor.suspend()), window.addEventListener("pageshow", () => {
-    if (!document.hidden) {
-      accessMonitor.resume();
-    }
-  }), document.hidden && accessMonitor.suspend(), accessMonitor);
+  return (
+    accessMonitor ||
+    ((accessMonitor = createAccessMonitor({
+      requestGrant: requestInteraction3dAccess
+    })),
+    document.addEventListener("visibilitychange", () =>
+      document.hidden ? accessMonitor.suspend() : accessMonitor.resume()
+    ),
+    window.addEventListener("pagehide", () => accessMonitor.suspend()),
+    window.addEventListener("pageshow", () => {
+      if (!document.hidden) {
+        accessMonitor.resume();
+      }
+    }),
+    document.hidden && accessMonitor.suspend(),
+    accessMonitor)
+  );
 }
-export function subscribeInteraction3dAccess(listener) {
-  return getAccessMonitor().subscribe(listener);
+export function subscribeInteraction3dAccess(onAccessChange) {
+  return getAccessMonitor().subscribe(onAccessChange);
 }
 export function renderInteraction3d(component, context = {}) {
-  const host = document.createElement("section");
-  host.className = "hb-interaction3d-host";
-  host.setAttribute("aria-label", "3D 交互");
-  let disposed = false;
-  let loading = false;
-  let mounted = false;
-  let loadGeneration = 0;
-  let runtimeView;
-  let pageVisible = true;
-  host.setInteraction3dPageVisible = nextPageVisible => {
-    pageVisible = nextPageVisible !== false;
-    runtimeView?.setPageVisible?.(pageVisible);
+  const hostElement = document.createElement("section");
+  hostElement.className = "hb-interaction3d-host";
+  hostElement.setAttribute("aria-label", "3D 交互");
+  let isDisposed = false;
+  let isLoading = false;
+  let isMounted = false;
+  let loadToken = 0;
+  let runtime;
+  let isPageVisible = true;
+  hostElement.setInteraction3dPageVisible = isVisible => {
+    isPageVisible = isVisible !== false;
+    runtime?.setPageVisible?.(isPageVisible);
   };
-  let stylesheetLink;
-  const focusLayout = createInteraction3dFocusLayout(host, context);
-  host.classList.toggle("is-background-hidden", component.properties?.backgroundVisible === false);
-  host.updateInteraction3d = (nextComponent, documentRef) => {
+  let stylesheetElement;
+  const focusLayout = createInteraction3dFocusLayout(hostElement, context);
+  hostElement.classList.toggle(
+    "is-background-hidden",
+    component.properties?.backgroundVisible === false
+  );
+  hostElement.updateInteraction3d = (nextComponent, nextContext) => {
     component = nextComponent;
-    context.document = documentRef;
-    host.classList.toggle("is-background-hidden", component.properties?.backgroundVisible === false);
-    runtimeView?.update(component.properties || {});
+    context.document = nextContext;
+    hostElement.classList.toggle(
+      "is-background-hidden",
+      component.properties?.backgroundVisible === false
+    );
+    runtime?.update(component.properties || {});
     focusLayout.refresh();
   };
-  function lockView() {
+  function handleAccessLost() {
     focusLayout.setActive(false);
-    loadGeneration += 1;
-    loading = false;
-    mounted = false;
-    if (editorViews.get(component.id) === runtimeView) {
-      editorViews.delete(component.id);
+    loadToken += 1;
+    isLoading = false;
+    isMounted = false;
+    if (editorViewByComponentId.get(component.id) === runtime) {
+      editorViewByComponentId.delete(component.id);
     }
-    if (!disposed) {
-      notifyViewWaiters(component.id, new Error("3D 户型暂不可用，请检查授权或重新载入。"));
+    if (!isDisposed) {
+      notifyViewReady(component.id, new Error("3D 户型暂不可用，请检查授权或重新载入。"));
     }
-    runtimeView?.();
-    runtimeView = null;
-    stylesheetLink?.remove();
-    stylesheetLink = null;
-    if (host.dataset.access !== "locked") {
-      host.replaceChildren(createInteraction3dCover());
+    runtime?.();
+    runtime = null;
+    stylesheetElement?.remove();
+    stylesheetElement = null;
+    if (hostElement.dataset.access !== "locked") {
+      hostElement.replaceChildren(createInteraction3dCover());
     }
-    host.dataset.access = "locked";
-    host.setAttribute("aria-busy", "false");
+    hostElement.dataset.access = "locked";
+    hostElement.setAttribute("aria-busy", "false");
   }
-  const unsubscribeAccess = subscribeInteraction3dAccess(async grant => {
-    if (disposed) {
+  const unsubscribeAccess = subscribeInteraction3dAccess(async accessState => {
+    if (isDisposed) {
       return;
     }
-    if (!grant.allowed) {
-      if (grant.status === "denied") {
-        return lockView(grant.message);
+    if (!accessState.allowed) {
+      if (accessState.status === "denied") {
+        return handleAccessLost(accessState.message);
       }
-      runtimeView?.setAuthorized(false);
-      if (host.dataset.access === "locked") {
-        host.setAttribute("aria-busy", grant.status === "checking" ? "true" : "false");
+      runtime?.setAuthorized(false);
+      if (hostElement.dataset.access === "locked") {
+        hostElement.setAttribute("aria-busy", accessState.status === "checking" ? "true" : "false");
         return;
       }
-      host.dataset.access = "pending";
-      host.setAttribute("aria-busy", "true");
-      if (!mounted) {
-        loadGeneration += 1;
-        loading = false;
-        const setAttribute = document.createElement("div");
-        setAttribute.className = "i3d-access-pending";
-        setAttribute.setAttribute("role", "status");
-        setAttribute.setAttribute("aria-label", "正在准备 3D 户型");
-        host.replaceChildren(setAttribute);
+      hostElement.dataset.access = "pending";
+      hostElement.setAttribute("aria-busy", "true");
+      if (!isMounted) {
+        loadToken += 1;
+        isLoading = false;
+        const pendingElement = document.createElement("div");
+        pendingElement.className = "i3d-access-pending";
+        pendingElement.setAttribute("role", "status");
+        pendingElement.setAttribute("aria-label", "正在准备 3D 户型");
+        hostElement.replaceChildren(pendingElement);
       }
       return;
     }
-    if (mounted) {
-      runtimeView?.setAuthorized(true);
-      host.dataset.access = "allowed";
-      host.setAttribute("aria-busy", "false");
+    if (isMounted) {
+      runtime?.setAuthorized(true);
+      hostElement.dataset.access = "allowed";
+      hostElement.setAttribute("aria-busy", "false");
       if (context.editable) {
-        notifyViewWaiters(component.id);
+        notifyViewReady(component.id);
       }
       return;
     }
-    if (loading) {
+    if (isLoading) {
       return;
     }
-    loading = true;
-    const generation = ++loadGeneration;
+    isLoading = true;
+    const currentLoadToken = ++loadToken;
     try {
-      const runtime = await import("/api/v1/modules/interaction3d/runtime.js?v=0.5.3");
-      if (disposed || generation !== loadGeneration || document.hidden) {
+      const runtimeModule =
+        await import("/api/v1/modules/interaction3d/runtime.js?v=20260914-popup-preview-v1");
+      if (isDisposed || currentLoadToken !== loadToken || document.hidden) {
         return;
       }
-      stylesheetLink = document.createElement("link");
-      stylesheetLink.rel = "stylesheet";
-      stylesheetLink.href = "/api/v1/modules/interaction3d/runtime.css?v=0.5.3";
-      host.append(stylesheetLink);
-      const mountRoot = document.createElement("div");
-      host.replaceChildren(stylesheetLink, mountRoot);
-      runtimeView = runtime.mountInteraction3d(mountRoot, {
-        component,
-        context,
+      stylesheetElement = document.createElement("link");
+      stylesheetElement.rel = "stylesheet";
+      stylesheetElement.href =
+        "/api/v1/modules/interaction3d/runtime.css?v=20260914-popup-preview-v1";
+      hostElement.append(stylesheetElement);
+      const runtimeContainerElement = document.createElement("div");
+      hostElement.replaceChildren(stylesheetElement, runtimeContainerElement);
+      runtime = runtimeModule.mountInteraction3d(runtimeContainerElement, {
+        component: component,
+        context: context,
         onPresented: () => {
           focusLayout.refresh();
           if (context.editable) {
-            notifyViewWaiters(component.id);
+            notifyViewReady(component.id);
           }
         },
-        onLoadError: error => {
+        onLoadError: loadError => {
           if (context.editable) {
-            notifyViewWaiters(component.id, error);
+            notifyViewReady(component.id, loadError);
           }
         },
-        onFocusChange: focused => focusLayout.setActive(focused)
+        onFocusChange: isFocused => focusLayout.setActive(isFocused)
       });
-      runtimeView.setPageVisible?.(pageVisible);
+      runtime.setPageVisible?.(isPageVisible);
       if (context.editable) {
-        editorViews.set(component.id, runtimeView);
+        editorViewByComponentId.set(component.id, runtime);
       }
-      host.dataset.access = "allowed";
-      host.setAttribute("aria-busy", "false");
-      mounted = true;
+      hostElement.dataset.access = "allowed";
+      hostElement.setAttribute("aria-busy", "false");
+      isMounted = true;
     } catch {
-      if (!disposed && generation === loadGeneration) {
-        stylesheetLink?.remove();
-        stylesheetLink = null;
-        const pending = document.createElement("div");
-        pending.className = "i3d-access-pending";
-        pending.textContent = "户型暂时无法载入，请稍候重试。";
-        pending.setAttribute("role", "status");
-        host.replaceChildren(pending);
-        host.dataset.access = "pending";
+      if (!isDisposed && currentLoadToken === loadToken) {
+        stylesheetElement?.remove();
+        stylesheetElement = null;
+        const loadFailureElement = document.createElement("div");
+        loadFailureElement.className = "i3d-access-pending";
+        loadFailureElement.textContent = "户型暂时无法载入，请稍候重试。";
+        loadFailureElement.setAttribute("role", "status");
+        hostElement.replaceChildren(loadFailureElement);
+        hostElement.dataset.access = "pending";
         if (context.editable) {
-          notifyViewWaiters(component.id, new Error(pending.textContent));
+          notifyViewReady(component.id, new Error(loadFailureElement.textContent));
         }
       }
     } finally {
-      if (generation === loadGeneration) {
-        loading = false;
+      if (currentLoadToken === loadToken) {
+        isLoading = false;
       }
     }
   });
   context.cleanup?.(() => {
-    disposed = true;
+    isDisposed = true;
     unsubscribeAccess();
-    lockView("3D 交互已停止。");
+    handleAccessLost("3D 交互已停止。");
     focusLayout.dispose();
   });
-  return host;
+  return hostElement;
 }

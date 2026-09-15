@@ -1,37 +1,44 @@
-const s = ["请移步商店购买3D交互包", "购买后请重启本项目"];
-export function updateInteraction3dCoverMessage(a, c = s) {
-  const e = a?.querySelector?.(".interaction3d-cover-message");
-  if (e) {
-    e.replaceChildren(...c.map(t => {
-      const n = document.createElement("span");
-      n.textContent = t;
-      return n;
-    }));
-  }
+const DEFAULT_COVER_MESSAGES = [
+  "\u8BF7\u79FB\u6B65\u5546\u5E97\u8D2D\u4E703D\u4EA4\u4E92\u5305",
+  "\u8D2D\u4E70\u540E\u8BF7\u91CD\u542F\u672C\u9879\u76EE"
+];
+export function updateInteraction3dCoverMessage(
+  coverTitleElement,
+  messages = DEFAULT_COVER_MESSAGES
+) {
+  const messageElement = coverTitleElement?.querySelector?.(".interaction3d-cover-message");
+  messageElement &&
+    messageElement.replaceChildren(
+      ...messages.map(messageText => {
+        const messageSpanElement = document.createElement("span");
+        return ((messageSpanElement.textContent = messageText), messageSpanElement);
+      })
+    );
 }
-export function createInteraction3dCover({
-  showTitle: a = true
-} = {}) {
-  const c = document.createElement("span");
-  c.className = "interaction3d-cover";
-  const e = document.createElement("img");
-  e.src = "/bridge-static/component-thumbnails/interaction3d.jpg?v=0.5.3";
-  e.alt = "";
-  e.decoding = "async";
-  const t = document.createElement("span");
-  t.className = "interaction3d-cover-title";
-  const n = document.createElement("span");
-  n.className = "interaction3d-cover-lock";
-  n.setAttribute("aria-hidden", "true");
-  const o = document.createElement("span");
-  o.className = "interaction3d-cover-message";
-  for (const i of s) {
-    const r = document.createElement("span");
-    r.textContent = i;
-    o.append(r);
+export function createInteraction3dCover({ showTitle: isTitleVisible = !0 } = {}) {
+  const coverElement = document.createElement("span");
+  coverElement.className = "interaction3d-cover";
+  const coverImageElement = document.createElement("img");
+  ((coverImageElement.src =
+    "/bridge-static/component-thumbnails/interaction3d.png?v=20260905-interaction3d-cover-v2-20260908-curtains-v1"),
+    (coverImageElement.alt = ""),
+    (coverImageElement.decoding = "async"));
+  const titleElement = document.createElement("span");
+  titleElement.className = "interaction3d-cover-title";
+  const lockIconElement = document.createElement("span");
+  ((lockIconElement.className = "interaction3d-cover-lock"),
+    lockIconElement.setAttribute("aria-hidden", "true"));
+  const messageContainerElement = document.createElement("span");
+  messageContainerElement.className = "interaction3d-cover-message";
+  for (const coverMessageText of DEFAULT_COVER_MESSAGES) {
+    const textSpanElement = document.createElement("span");
+    ((textSpanElement.textContent = coverMessageText),
+      messageContainerElement.append(textSpanElement));
   }
-  t.append(n, o);
-  t.hidden = !a;
-  c.append(e, t);
-  return c;
+  return (
+    titleElement.append(lockIconElement, messageContainerElement),
+    (titleElement.hidden = !isTitleVisible),
+    coverElement.append(coverImageElement, titleElement),
+    coverElement
+  );
 }

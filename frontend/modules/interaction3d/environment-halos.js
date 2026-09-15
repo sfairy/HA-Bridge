@@ -1,519 +1,691 @@
-export function outlineHull(points) {
-  const sorted = points.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  const cross = (origin, a, b) => (a[0] - origin[0]) * (b[1] - origin[1]) - (a[1] - origin[1]) * (b[0] - origin[0]);
-  const buildHull = list => {
-    const hull = [];
-    for (const point of list) {
-      while (hull.length > 1 && cross(hull.at(-2), hull.at(-1), point) <= 0) {
-        hull.pop();
+export function outlineHull(hullInput) {
+  const sortedPoints = hullInput
+    .slice()
+    .sort((leftPoint, rightPoint) => leftPoint[0] - rightPoint[0] || leftPoint[1] - rightPoint[1]);
+  const crossProduct = (originPoint, secondPoint, thirdPoint) =>
+    (secondPoint[0] - originPoint[0]) * (thirdPoint[1] - originPoint[1]) -
+    (secondPoint[1] - originPoint[1]) * (thirdPoint[0] - originPoint[0]);
+  const buildHullSide = sortedInput => {
+    const stack = [];
+    for (const stackPoint of sortedInput) {
+      while (stack.length > 1 && crossProduct(stack.at(-2), stack.at(-1), stackPoint) <= 0) {
+        stack.pop();
       }
-      hull.push(point);
+      stack.push(stackPoint);
     }
-    return hull;
+    return stack;
   };
-  return [...buildHull(sorted).slice(0, -1), ...buildHull(sorted.reverse()).slice(0, -1)];
+  return [
+    ...buildHullSide(sortedPoints).slice(0, -1),
+    ...buildHullSide(sortedPoints.reverse()).slice(0, -1)
+  ];
 }
 export function createScreenOutlines({
-  THREE,
-  container,
-  camera,
-  getCamera
+  THREE: three,
+  container: container,
+  camera: camera,
+  getCamera: getCamera,
+  getObjectCamera: getObjectCamera
 }) {
-  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  const strokePath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  const glowPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  const softPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-  svg.setAttribute("class", "i3d-model-outlines");
-  svg.setAttribute("aria-hidden", "true");
-  for (const [path, width, opacity] of [[glowPath, 10, 0.14], [softPath, 6, 0.22], [strokePath, 2.6, 0.48]]) {
-    path.setAttribute("fill", "none");
-    path.setAttribute("stroke", "#d5dedb");
-    path.setAttribute("stroke-width", String(width));
-    path.setAttribute("stroke-opacity", String(opacity));
-    path.setAttribute("stroke-linejoin", "round");
-    path.setAttribute("stroke-linecap", "round");
+  const svgElement = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  const coreOutlineElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  const outerGlowElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  const innerGlowElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  svgElement.setAttribute("class", "i3d-model-outlines");
+  svgElement.setAttribute("aria-hidden", "true");
+  for (const [outlinePathElement, outlineWidth, outlineOpacity] of [
+    [outerGlowElement, 10, 0.14],
+    [innerGlowElement, 6, 0.22],
+    [coreOutlineElement, 2.6, 0.48]
+  ]) {
+    outlinePathElement.setAttribute("fill", "none");
+    outlinePathElement.setAttribute("stroke", "#d5dedb");
+    outlinePathElement.setAttribute("stroke-width", String(outlineWidth));
+    outlinePathElement.setAttribute("stroke-opacity", String(outlineOpacity));
+    outlinePathElement.setAttribute("stroke-linejoin", "round");
+    outlinePathElement.setAttribute("stroke-linecap", "round");
   }
-  glowPath.style.filter = "blur(2px)";
-  softPath.style.filter = "blur(.8px)";
-  svg.append(glowPath);
-  svg.append(softPath);
-  svg.append(strokePath);
-  container.append(svg);
-  let lastRoot;
-  let lastCamera;
-  let lastBindingsSignature = "";
+  outerGlowElement.style.filter = "blur(2px)";
+  innerGlowElement.style.filter = "blur(.8px)";
+  svgElement.append(outerGlowElement);
+  svgElement.append(innerGlowElement);
+  svgElement.append(coreOutlineElement);
+  container.append(svgElement);
+  let cachedModelRoot;
+  let cachedSceneRevision;
+  let cachedModelKey = "";
   let outlineModels = [];
-  let active = false;
-  let lastViewKey = "";
-  let resumeAt = 0;
-  let lastCameraSignature = "";
-  let pointCache = new WeakMap();
-  const pulseAnimations = globalThis.window?.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true ? [] : [glowPath, softPath, strokePath].map(path => path.animate?.([{
-    opacity: 1
-  }, {
-    opacity: 0.3
-  }, {
-    opacity: 1
-  }], {
-    duration: 2200,
-    iterations: 1 / 0,
-    easing: "ease-in-out"
-  })).filter(Boolean);
-  let pulsePlaying = false;
-  pulseAnimations.forEach(animation => animation.pause());
-  function setPulsePlaying(nextPlaying) {
-    if (pulsePlaying !== nextPlaying) {
-      pulsePlaying = nextPlaying;
-      for (const animation of pulseAnimations) {
-        if (nextPlaying) {
-          animation.currentTime = 0;
-          animation.play();
+  let isOutlineActive = false;
+  let cachedRenderKey = "";
+  let resumeAtTimestamp = 0;
+  let cachedCameraKey = "";
+  let pointsByModel = new WeakMap();
+  const pulseAnimations =
+    globalThis.window?.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true
+      ? []
+      : [outerGlowElement, innerGlowElement, coreOutlineElement]
+          .map(animatedElement =>
+            animatedElement.animate?.(
+              [
+                {
+                  opacity: 1
+                },
+                {
+                  opacity: 0.3
+                },
+                {
+                  opacity: 1
+                }
+              ],
+              {
+                duration: 2200,
+                iterations: Infinity,
+                easing: "ease-in-out"
+              }
+            )
+          )
+          .filter(Boolean);
+  let isPulsing = false;
+  pulseAnimations.forEach(pulseAnimation => pulseAnimation.pause());
+  function setPulseActive(shouldPulse) {
+    if (isPulsing !== shouldPulse) {
+      isPulsing = shouldPulse;
+      for (const animationInstance of pulseAnimations) {
+        if (shouldPulse) {
+          animationInstance.currentTime = 0;
+          animationInstance.play();
         } else {
-          animation.pause();
+          animationInstance.pause();
         }
       }
     }
   }
-  const modelKey = binding => JSON.stringify([binding.floorId, binding.modelId]);
-  const hullDirections = [];
-  for (const x of [-1, 0, 1]) {
-    for (const y of [-1, 0, 1]) {
-      for (const z of [-1, 0, 1]) {
-        if (x || y || z) {
-          hullDirections.push(new THREE.Vector3(x, y, z));
+  const modelKey = modelRef => JSON.stringify([modelRef.floorId, modelRef.modelId]);
+  const directionVectors = [];
+  for (const xIndex of [-1, 0, 1]) {
+    for (const yIndex of [-1, 0, 1]) {
+      for (const zIndex of [-1, 0, 1]) {
+        if (xIndex || yIndex || zIndex) {
+          directionVectors.push(new three.Vector3(xIndex, yIndex, zIndex));
         }
       }
     }
   }
-  function computeOutlinePoints(modelNode) {
-    const bestPerDirection = hullDirections.map(() => ({
-      score: -1 / 0,
+  function computeSilhouettePoints(modelRoot) {
+    const extremePoints = directionVectors.map(() => ({
+      score: -Infinity,
       point: null
     }));
-    const point = new THREE.Vector3();
-    function accumulate(node, worldMatrix) {
-      if (node.userData?.environmentEffect || node === modelNode.userData?.vacuumMobileRoot || node !== modelNode && node.visible === false || node !== modelNode && node.userData?.environmentModelId != null) {
+    const scratchVector = new three.Vector3();
+    function walkMeshes(object3d, parentMatrix) {
+      if (
+        object3d.userData?.environmentEffect ||
+        object3d === modelRoot.userData?.vacuumMobileRoot ||
+        (object3d !== modelRoot && object3d.visible === false) ||
+        (object3d !== modelRoot && object3d.userData?.environmentModelId != null)
+      ) {
         return;
       }
-      const position = node.isMesh && node.geometry?.attributes?.position;
-      if (position) {
-        for (let index = 0; index < position.count; index++) {
-          point.fromBufferAttribute(position, index).applyMatrix4(worldMatrix);
-          hullDirections.forEach((direction, directionIndex) => {
-            const score = point.dot(direction);
-            if (score > bestPerDirection[directionIndex].score) {
-              bestPerDirection[directionIndex] = {
-                score,
-                point: point.clone()
+      const positionAttribute = object3d.isMesh && object3d.geometry?.attributes?.position;
+      if (positionAttribute) {
+        for (let vertexIndex = 0; vertexIndex < positionAttribute.count; vertexIndex++) {
+          scratchVector
+            .fromBufferAttribute(positionAttribute, vertexIndex)
+            .applyMatrix4(parentMatrix);
+          directionVectors.forEach((direction, directionIndex) => {
+            const projectionDot = scratchVector.dot(direction);
+            if (projectionDot > extremePoints[directionIndex].score) {
+              extremePoints[directionIndex] = {
+                score: projectionDot,
+                point: scratchVector.clone()
               };
             }
           });
         }
       }
-      for (const child of node.children || []) {
-        if (child.matrixAutoUpdate) {
-          child.updateMatrix();
+      for (const childObject of object3d.children || []) {
+        if (childObject.matrixAutoUpdate) {
+          childObject.updateMatrix();
         }
-        accumulate(child, new THREE.Matrix4().multiplyMatrices(worldMatrix, child.matrix));
+        walkMeshes(
+          childObject,
+          new three.Matrix4().multiplyMatrices(parentMatrix, childObject.matrix)
+        );
       }
     }
-    accumulate(modelNode, new THREE.Matrix4());
-    return bestPerDirection.filter(entry => entry.point).map(entry => entry.point);
+    walkMeshes(modelRoot, new three.Matrix4());
+    return extremePoints
+      .filter(candidatePoint => candidatePoint.point)
+      .map(extremePoint => extremePoint.point);
   }
-  function sync(nextRoot, nextCamera, bindings, nextActive) {
-    active = nextActive;
-    const shouldResume = nextActive && performance.now() >= resumeAt;
-    svg.style.opacity = shouldResume ? "1" : "0";
-    setPulsePlaying(shouldResume);
-    const bindingsSignature = JSON.stringify(bindings.map(modelKey));
-    if (lastRoot === nextRoot && lastCamera === nextCamera && lastBindingsSignature === bindingsSignature) {
+  function syncOutlines(syncModelRoot, sceneRevision, modelList, shouldShowOutlines) {
+    isOutlineActive = shouldShowOutlines;
+    const shouldShow = shouldShowOutlines && performance.now() >= resumeAtTimestamp;
+    svgElement.style.opacity = shouldShow ? "1" : "0";
+    setPulseActive(shouldShow);
+    const modelKeyList = JSON.stringify(modelList.map(modelKey));
+    if (
+      cachedModelRoot === syncModelRoot &&
+      cachedSceneRevision === sceneRevision &&
+      cachedModelKey === modelKeyList
+    ) {
       return;
     }
-    if (lastRoot !== nextRoot || lastCamera !== nextCamera) {
-      pointCache = new WeakMap();
+    if (cachedModelRoot !== syncModelRoot || cachedSceneRevision !== sceneRevision) {
+      pointsByModel = new WeakMap();
     }
-    lastRoot = nextRoot;
-    lastCamera = nextCamera;
-    lastBindingsSignature = bindingsSignature;
-    lastViewKey = "";
-    const nodesByKey = new Map();
-    lastRoot?.traverse(node => {
-      if (!["wallac", "floorac", "airoutlet", "curtain", "nas", "tv", "robotvacuum", "camera", "presence"].includes(node.userData?.environmentModelType)) {
+    cachedModelRoot = syncModelRoot;
+    cachedSceneRevision = sceneRevision;
+    cachedModelKey = modelKeyList;
+    cachedRenderKey = "";
+    const modelsByKey = new Map();
+    cachedModelRoot?.traverse(traversedObject => {
+      if (
+        ![
+          "wallac",
+          "floorac",
+          "airoutlet",
+          "curtain",
+          "nas",
+          "tv",
+          "robotvacuum",
+          "camera",
+          "presence"
+        ].includes(traversedObject.userData?.environmentModelType)
+      ) {
         return;
       }
-      let floorId = node.userData.environmentFloorId;
-      for (let parent = node.parent; floorId == null && parent; parent = parent.parent) {
-        floorId = parent.userData.environmentFloorId;
+      let floorId = traversedObject.userData.environmentFloorId;
+      for (
+        let ancestor = traversedObject.parent;
+        floorId == null && ancestor;
+        ancestor = ancestor.parent
+      ) {
+        floorId = ancestor.userData.environmentFloorId;
       }
-      nodesByKey.set(modelKey({
-        floorId,
-        modelId: node.userData.environmentModelId
-      }), node);
+      modelsByKey.set(
+        modelKey({
+          floorId: floorId,
+          modelId: traversedObject.userData.environmentModelId
+        }),
+        traversedObject
+      );
     });
-    outlineModels = bindings.flatMap(binding => {
-      const modelNode = nodesByKey.get(modelKey(binding));
-      return modelNode ? [modelNode] : [];
+    outlineModels = modelList.flatMap(outlineModelRef => {
+      const outlineModelObject = modelsByKey.get(modelKey(outlineModelRef));
+      if (outlineModelObject) {
+        return [outlineModelObject];
+      } else {
+        return [];
+      }
     });
   }
-  function outlineTargets(modelNode) {
-    if (modelNode.userData.environmentModelType === "curtain") {
-      const panels = [];
-      modelNode.traverse(child => {
-        if (child.userData?.curtainMotionPanel) {
-          panels.push(child);
+  function collectOutlineRoots(sceneModelRoot) {
+    if (sceneModelRoot.userData.environmentModelType === "curtain") {
+      const curtainPanels = [];
+      sceneModelRoot.traverse(panel => {
+        if (panel.userData?.curtainMotionPanel) {
+          curtainPanels.push(panel);
         }
       });
-      if (panels.length) {
-        return panels;
+      if (curtainPanels.length) {
+        return curtainPanels;
       }
     }
-    return modelNode.userData.vacuumMobileRoot ? [modelNode, modelNode.userData.vacuumMobileRoot] : [modelNode];
-  }
-  function cachedOutlinePoints(node) {
-    const geometry = node.geometry;
-    const mobile = node.userData?.vacuumMobileRoot;
-    const cached = pointCache.get(node);
-    if (cached && cached.geometry === geometry && cached.mobile === mobile) {
-      return cached.points;
+    if (sceneModelRoot.userData.vacuumMobileRoot) {
+      return [sceneModelRoot, sceneModelRoot.userData.vacuumMobileRoot];
+    } else {
+      return [sceneModelRoot];
     }
-    const points = computeOutlinePoints(node);
-    pointCache.set(node, {
-      geometry,
-      mobile,
-      points
-    });
-    return points;
   }
-  function update() {
-    if (!active || performance.now() < resumeAt) {
+  function resolveSilhouettePoints(targetModel) {
+    const geometry = targetModel.geometry;
+    const vacuumMobileRoot = targetModel.userData?.vacuumMobileRoot;
+    const cachedEntry = pointsByModel.get(targetModel);
+    if (
+      cachedEntry &&
+      cachedEntry.geometry === geometry &&
+      cachedEntry.mobile === vacuumMobileRoot
+    ) {
+      return cachedEntry.points;
+    }
+    const silhouettePoints = computeSilhouettePoints(targetModel);
+    pointsByModel.set(targetModel, {
+      geometry: geometry,
+      mobile: vacuumMobileRoot,
+      points: silhouettePoints
+    });
+    return silhouettePoints;
+  }
+  function renderOutlines() {
+    if (!isOutlineActive || performance.now() < resumeAtTimestamp) {
       return;
     }
-    svg.style.transition = "opacity .18s linear";
-    svg.style.opacity = "1";
-    setPulsePlaying(true);
+    svgElement.style.transition = "opacity .18s linear";
+    svgElement.style.opacity = "1";
+    setPulseActive(true);
     const activeCamera = getCamera?.() || camera;
     activeCamera.updateMatrixWorld();
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-    const visibleTargets = outlineModels.flatMap(outlineTargets).filter(node => {
-      for (let current = node; current; current = current.parent) {
-        if (current.visible === false) {
-          return false;
+    const widthPx = container.clientWidth;
+    const heightPx = container.clientHeight;
+    const outlineEntries = outlineModels
+      .flatMap(collectOutlineRoots)
+      .filter(outlineRoot => {
+        for (
+          let visibleAncestor = outlineRoot;
+          visibleAncestor;
+          visibleAncestor = visibleAncestor.parent
+        ) {
+          if (visibleAncestor.visible === false) {
+            return false;
+          }
         }
-      }
-      return true;
-    }).map(node => ({
-      model: node,
-      points: cachedOutlinePoints(node)
-    }));
-    for (const target of visibleTargets) {
-      target.model.updateWorldMatrix(true, false);
+        return true;
+      })
+      .map(outlineModel => ({
+        model: outlineModel,
+        points: resolveSilhouettePoints(outlineModel)
+      }));
+    for (const outlineEntry of outlineEntries) {
+      outlineEntry.model.updateWorldMatrix(true, false);
+      outlineEntry.camera = getObjectCamera?.(outlineEntry.model) || activeCamera;
     }
-    const viewKey = width + ":" + height + ":" + activeCamera.matrixWorld.elements + ":" + activeCamera.projectionMatrix.elements + ":" + visibleTargets.map(target => target.model.uuid + ":" + (target.model.geometry?.uuid || "") + ":" + target.model.matrixWorld.elements).join("|");
-    if (viewKey === lastViewKey) {
+    const renderKey =
+      widthPx +
+      ":" +
+      heightPx +
+      ":" +
+      activeCamera.matrixWorld.elements +
+      ":" +
+      activeCamera.projectionMatrix.elements +
+      ":" +
+      outlineEntries
+        .map(
+          entryForKey =>
+            entryForKey.model.uuid +
+            ":" +
+            (entryForKey.model.geometry?.uuid || "") +
+            ":" +
+            entryForKey.model.matrixWorld.elements +
+            ":" +
+            entryForKey.camera.projectionMatrix.elements
+        )
+        .join("|");
+    if (renderKey === cachedRenderKey) {
       return;
     }
-    lastViewKey = viewKey;
-    svg.setAttribute("viewBox", "0 0 " + width + " " + height);
-    const projectedPoint = new THREE.Vector3();
-    const pathData = visibleTargets.map(target => {
-      const projected = target.points.map(point => {
-        projectedPoint.copy(point).applyMatrix4(target.model.matrixWorld).project(activeCamera);
-        return [(projectedPoint.x + 1) * width / 2, (1 - projectedPoint.y) * height / 2, projectedPoint.z];
-      });
-      if (projected.some(point => point[2] < -1 || point[2] > 1)) {
-        return "";
-      }
-      const hull = outlineHull(projected);
-      return hull.length > 2 ? "M" + hull.map(point => point[0].toFixed(1) + "," + point[1].toFixed(1)).join("L") + "Z" : "";
-    }).join("");
-    for (const path of [glowPath, softPath, strokePath]) {
-      path.setAttribute("d", pathData);
+    cachedRenderKey = renderKey;
+    svgElement.setAttribute("viewBox", "0 0 " + widthPx + " " + heightPx);
+    const projectedVector = new three.Vector3();
+    const outlinePathData = outlineEntries
+      .map(outlineData => {
+        const projectedPoints = outlineData.points.map(screenPoint => {
+          projectedVector
+            .copy(screenPoint)
+            .applyMatrix4(outlineData.model.matrixWorld)
+            .project(outlineData.camera);
+          return [
+            ((projectedVector.x + 1) * widthPx) / 2,
+            ((1 - projectedVector.y) * heightPx) / 2,
+            projectedVector.z
+          ];
+        });
+        if (
+          projectedPoints.some(projectedPoint => projectedPoint[2] < -1 || projectedPoint[2] > 1)
+        ) {
+          return "";
+        }
+        const hullPoints = outlineHull(projectedPoints);
+        if (hullPoints.length > 2) {
+          return (
+            "M" +
+            hullPoints
+              .map(hullPoint => hullPoint[0].toFixed(1) + "," + hullPoint[1].toFixed(1))
+              .join("L") +
+            "Z"
+          );
+        } else {
+          return "";
+        }
+      })
+      .join("");
+    for (const pathElement of [outerGlowElement, innerGlowElement, coreOutlineElement]) {
+      pathElement.setAttribute("d", outlinePathData);
     }
   }
-  function pause() {
-    setPulsePlaying(false);
-    resumeAt = performance.now() + 120;
-    svg.style.transition = "none";
-    svg.style.opacity = "0";
+  function pauseOutlines() {
+    setPulseActive(false);
+    resumeAtTimestamp = performance.now() + 120;
+    svgElement.style.transition = "none";
+    svgElement.style.opacity = "0";
   }
   return {
-    sync,
-    update,
-    pause,
+    sync: syncOutlines,
+    update: renderOutlines,
+    pause: pauseOutlines,
     cameraChanged() {
-      if (!active) {
+      if (!isOutlineActive) {
         return false;
       }
-      const currentCamera = getCamera?.() || camera;
-      const signature = currentCamera.matrixWorld.elements + ":" + currentCamera.projectionMatrix.elements;
-      if (signature === lastCameraSignature) {
+      const cameraRef = getCamera?.() || camera;
+      const cameraKey = cameraRef.matrixWorld.elements + ":" + cameraRef.projectionMatrix.elements;
+      if (cameraKey === cachedCameraKey) {
         return false;
+      } else {
+        cachedCameraKey = cameraKey;
+        pauseOutlines();
+        return true;
       }
-      lastCameraSignature = signature;
-      pause();
-      return true;
     },
     nextDelay() {
-      return active && performance.now() < resumeAt ? Math.max(1, resumeAt - performance.now()) : 1 / 0;
+      if (isOutlineActive && performance.now() < resumeAtTimestamp) {
+        return Math.max(1, resumeAtTimestamp - performance.now());
+      } else {
+        return Infinity;
+      }
     },
     dispose() {
       pulseAnimations.forEach(animation => animation.cancel());
-      svg.remove();
+      svgElement.remove();
       outlineModels = [];
     }
   };
 }
-export function createEnvironmentHalos({
-  THREE,
-  modeAmount: haloMode
-}) {
-  const entries = new Map();
-  let root;
-  let sceneRevision;
-  let bindingsSignature;
-  let visible = false;
-  const modelKey = (floorId, modelId) => JSON.stringify([String(floorId ?? ""), String(modelId ?? "")]);
-  const sharedGeometry = new THREE.PlaneGeometry(1, 1);
-  function modelBounds(modelNode) {
-    const box = new THREE.Box3();
-    function accumulate(node, worldMatrix) {
-      if (!node.userData?.environmentEffect && !node.userData?.curtainMotionRig && (node === modelNode || node.userData?.environmentModelId == null)) {
-        if (node.isMesh && node.geometry?.attributes?.position) {
-          if (!node.geometry.boundingBox) {
-            node.geometry.computeBoundingBox();
+export function createEnvironmentHalos({ THREE: threeNamespace, modeAmount: modeAmount }) {
+  const halosById = new Map();
+  let cachedHaloRoot;
+  let cachedHaloRevision;
+  let cachedHalosKey;
+  let isHaloActive = false;
+  const haloModelKey = (keyFloorId, keyModelId) =>
+    JSON.stringify([String(keyFloorId ?? ""), String(keyModelId ?? "")]);
+  const planeGeometry = new threeNamespace.PlaneGeometry(1, 1);
+  function computeModelBounds(boundsModelRoot) {
+    const accumulatedBounds = new threeNamespace.Box3();
+    function accumulateBounds(boundObject, boundsMatrix) {
+      if (
+        !boundObject.userData?.environmentEffect &&
+        !boundObject.userData?.curtainMotionRig &&
+        (boundObject === boundsModelRoot || boundObject.userData?.environmentModelId == null)
+      ) {
+        if (boundObject.isMesh && boundObject.geometry?.attributes?.position) {
+          if (!boundObject.geometry.boundingBox) {
+            boundObject.geometry.computeBoundingBox();
           }
-          box.union(node.geometry.boundingBox.clone().applyMatrix4(worldMatrix));
+          accumulatedBounds.union(
+            boundObject.geometry.boundingBox.clone().applyMatrix4(boundsMatrix)
+          );
         }
-        for (const child of node.children || []) {
-          if (child.matrixAutoUpdate) {
-            child.updateMatrix();
+        for (const childMesh of boundObject.children || []) {
+          if (childMesh.matrixAutoUpdate) {
+            childMesh.updateMatrix();
           }
-          accumulate(child, new THREE.Matrix4().multiplyMatrices(worldMatrix, child.matrix));
+          accumulateBounds(
+            childMesh,
+            new threeNamespace.Matrix4().multiplyMatrices(boundsMatrix, childMesh.matrix)
+          );
         }
       }
     }
-    accumulate(modelNode, new THREE.Matrix4());
-    if (box.isEmpty()) {
+    accumulateBounds(boundsModelRoot, new threeNamespace.Matrix4());
+    if (accumulatedBounds.isEmpty()) {
       return null;
     } else {
-      return box;
+      return accumulatedBounds;
     }
   }
-  function disposeEntry(entry) {
-    entry.mesh.removeFromParent();
-    entry.mesh.material.dispose();
+  function disposeHalo(haloRecord) {
+    haloRecord.mesh.removeFromParent();
+    haloRecord.mesh.material.dispose();
   }
-  function sync(nextRoot, bindings, revision, modelNodeMap) {
-    const nextBindingsSignature = JSON.stringify(bindings.map(binding => [binding.id, binding.floorId, binding.modelId, binding.visible, binding.deviceKind]));
-    if (root === nextRoot && sceneRevision === revision && bindingsSignature === nextBindingsSignature) {
+  function syncHalos(haloModelRoot, haloItems, haloSceneRevision, modelMap) {
+    const haloKey = JSON.stringify(
+      haloItems.map(haloItem => [
+        haloItem.id,
+        haloItem.floorId,
+        haloItem.modelId,
+        haloItem.visible,
+        haloItem.deviceKind
+      ])
+    );
+    if (
+      cachedHaloRoot === haloModelRoot &&
+      cachedHaloRevision === haloSceneRevision &&
+      cachedHalosKey === haloKey
+    ) {
       return;
     }
-    root = nextRoot;
-    sceneRevision = revision;
-    bindingsSignature = nextBindingsSignature;
-    const nodesByKey = modelNodeMap || new Map();
-    if (!modelNodeMap && bindings.length) {
-      root?.traverse(node => {
-        if (node.userData?.environmentModelId == null) {
+    cachedHaloRoot = haloModelRoot;
+    cachedHaloRevision = haloSceneRevision;
+    cachedHalosKey = haloKey;
+    const resolvedModelByKey = modelMap || new Map();
+    if (!modelMap && haloItems.length) {
+      cachedHaloRoot?.traverse(object3dEntry => {
+        if (object3dEntry.userData?.environmentModelId == null) {
           return;
         }
-        let floorId = node.userData.environmentFloorId;
-        for (let parent = node.parent; floorId == null && parent; parent = parent.parent) {
-          floorId = parent.userData.environmentFloorId;
+        let haloFloorId = object3dEntry.userData.environmentFloorId;
+        for (
+          let haloAncestor = object3dEntry.parent;
+          haloFloorId == null && haloAncestor;
+          haloAncestor = haloAncestor.parent
+        ) {
+          haloFloorId = haloAncestor.userData.environmentFloorId;
         }
-        nodesByKey.set(modelKey(floorId, node.userData.environmentModelId), node);
+        resolvedModelByKey.set(
+          haloModelKey(haloFloorId, object3dEntry.userData.environmentModelId),
+          object3dEntry
+        );
       });
     }
-    const activeIds = new Set();
-    for (const binding of bindings) {
-      if (binding.visible === false) {
+    const visibleHaloIds = new Set();
+    for (const syncHaloItem of haloItems) {
+      if (syncHaloItem.visible === false) {
         continue;
       }
-      const modelNode = nodesByKey.get(modelKey(binding.floorId, binding.modelId));
-      if (!modelNode) {
+      const haloModel = resolvedModelByKey.get(
+        haloModelKey(syncHaloItem.floorId, syncHaloItem.modelId)
+      );
+      if (!haloModel) {
         continue;
       }
-      const bounds = modelBounds(modelNode);
-      if (!bounds) {
+      const modelBounds = computeModelBounds(haloModel);
+      if (!modelBounds) {
         continue;
       }
-      const size = bounds.getSize(new THREE.Vector3());
-      const center = bounds.getCenter(new THREE.Vector3());
-      const rotateForOutlet = modelNode.userData.environmentModelType === "airoutlet" && size.z > size.x;
-      const width = rotateForOutlet ? size.z : size.x;
-      const height = size.y;
-      if (!(width > 0) || !(height > 0)) {
+      const modelSize = modelBounds.getSize(new threeNamespace.Vector3());
+      const modelCenter = modelBounds.getCenter(new threeNamespace.Vector3());
+      const isVerticalHalo =
+        haloModel.userData.environmentModelType === "airoutlet" && modelSize.z > modelSize.x;
+      const haloWidth = isVerticalHalo ? modelSize.z : modelSize.x;
+      const haloHeight = modelSize.y;
+      if (!(haloWidth > 0) || !(haloHeight > 0)) {
         continue;
       }
-      activeIds.add(binding.id);
-      let entry = entries.get(binding.id);
-      if (entry && entry.model !== modelNode) {
-        disposeEntry(entry);
-        entries.delete(binding.id);
-        entry = null;
+      visibleHaloIds.add(syncHaloItem.id);
+      let halo = halosById.get(syncHaloItem.id);
+      if (halo && halo.model !== haloModel) {
+        disposeHalo(halo);
+        halosById.delete(syncHaloItem.id);
+        halo = null;
       }
-      if (!entry) {
-        const material = new THREE.ShaderMaterial({
+      if (!halo) {
+        const haloMaterial = new threeNamespace.ShaderMaterial({
           uniforms: {
-            haloMode,
+            haloMode: modeAmount,
             haloColor: {
-              value: new THREE.Color(0, 0, 0)
+              value: new threeNamespace.Color(0, 0, 0)
             },
             haloSize: {
-              value: new THREE.Vector2()
+              value: new threeNamespace.Vector2()
             },
             haloFeather: {
               value: 0
             },
             haloRects: {
-              value: Array.from({
-                length: 3
-              }, () => new THREE.Vector4())
+              value: Array.from(
+                {
+                  length: 3
+                },
+                () => new threeNamespace.Vector4()
+              )
             },
             haloRectCount: {
               value: 1
             }
           },
-          vertexShader: "varying vec2 vHaloUv; void main(){ vHaloUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }",
-          fragmentShader: "varying vec2 vHaloUv;\n            uniform float haloMode, haloFeather;\n            uniform vec2 haloSize;\n            uniform vec3 haloColor;\n            uniform vec4 haloRects[3];\n            uniform int haloRectCount;\n            void main() {\n              vec2 p = (vHaloUv - 0.5) * (haloSize + vec2(haloFeather * 2.0));\n              float d = 10000.0;\n              for (int i = 0; i < 3; i++) {\n                if (i >= haloRectCount) break;\n                vec4 rect = haloRects[i];\n                float radius = min(rect.z, rect.w) * 0.18;\n                vec2 q = abs(p - rect.xy) - rect.zw + vec2(radius);\n                d = min(d, length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius);\n              }\n              float outer = 1.0 - smoothstep(0.0, haloFeather, max(d, 0.0));\n              // Fade monotonically away from the surface. A bright peak at\n              // the bounding edge reads as an illuminated frame, not soft spill.\n              float alpha = outer * outer * haloMode * 0.025;\n              if (alpha < 0.001) discard;\n              gl_FragColor = vec4(haloColor, alpha);\n              #include <colorspace_fragment>\n            }",
+          vertexShader:
+            "varying vec2 vHaloUv; void main(){ vHaloUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }",
+          fragmentShader:
+            "varying vec2 vHaloUv;\n            uniform float haloMode, haloFeather;\n            uniform vec2 haloSize;\n            uniform vec3 haloColor;\n            uniform vec4 haloRects[3];\n            uniform int haloRectCount;\n            void main() {\n              vec2 p = (vHaloUv - 0.5) * (haloSize + vec2(haloFeather * 2.0));\n              float d = 10000.0;\n              for (int i = 0; i < 3; i++) {\n                if (i >= haloRectCount) break;\n                vec4 rect = haloRects[i];\n                float radius = min(rect.z, rect.w) * 0.18;\n                vec2 q = abs(p - rect.xy) - rect.zw + vec2(radius);\n                d = min(d, length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius);\n              }\n              float outer = 1.0 - smoothstep(0.0, haloFeather, max(d, 0.0));\n              float alpha = outer * outer * haloMode * 0.025;\n              if (alpha < 0.001) discard;\n              gl_FragColor = vec4(haloColor, alpha);\n              #include <colorspace_fragment>\n            }",
           transparent: true,
-          blending: THREE.AdditiveBlending,
+          blending: threeNamespace.AdditiveBlending,
           depthTest: true,
           depthWrite: false,
-          side: THREE.DoubleSide,
+          side: threeNamespace.DoubleSide,
           forceSinglePass: true,
           toneMapped: false
         });
-        const mesh = new THREE.Mesh(sharedGeometry, material);
-        mesh.name = "environment-halo-" + binding.id;
-        Object.assign(mesh.userData, {
+        const haloMesh = new threeNamespace.Mesh(planeGeometry, haloMaterial);
+        haloMesh.name = "environment-halo-" + syncHaloItem.id;
+        Object.assign(haloMesh.userData, {
           environmentEffect: true,
           environmentHalo: true,
           externalModelSharedGeometry: true,
           externalModelSharedMaterial: true
         });
-        mesh.raycast = () => {};
-        mesh.visible = false;
-        modelNode.add(mesh);
-        entry = {
-          model: modelNode,
-          mesh
+        haloMesh.raycast = () => {};
+        haloMesh.visible = false;
+        haloModel.add(haloMesh);
+        halo = {
+          model: haloModel,
+          mesh: haloMesh
         };
-        entries.set(binding.id, entry);
+        halosById.set(syncHaloItem.id, halo);
       }
-      const feather = Math.max(0.025, Math.min(0.07, Math.min(width, height) * 0.15));
-      entry.mesh.material.uniforms.haloSize.value.set(width, height);
-      entry.mesh.material.uniforms.haloFeather.value = feather;
-      entry.mesh.scale.set(width + feather * 2, height + feather * 2, 1);
-      entry.mesh.position.copy(center);
-      entry.mesh.rotation.y = rotateForOutlet ? Math.PI / 2 : 0;
-      if (rotateForOutlet) {
-        entry.mesh.position.x = bounds.max.x + 0.006;
+      const haloFeather = Math.max(0.025, Math.min(0.07, Math.min(haloWidth, haloHeight) * 0.15));
+      halo.mesh.material.uniforms.haloSize.value.set(haloWidth, haloHeight);
+      halo.mesh.material.uniforms.haloFeather.value = haloFeather;
+      halo.mesh.scale.set(haloWidth + haloFeather * 2, haloHeight + haloFeather * 2, 1);
+      halo.mesh.position.copy(modelCenter);
+      halo.mesh.rotation.y = isVerticalHalo ? Math.PI / 2 : 0;
+      if (isVerticalHalo) {
+        halo.mesh.position.x = modelBounds.max.x + 0.006;
       } else {
-        entry.mesh.position.z = bounds.max.z + 0.006;
+        halo.mesh.position.z = modelBounds.max.z + 0.006;
       }
-      entry.mesh.updateMatrix();
-      entry.center = center;
-      entry.bounds = bounds;
-      entry.width = width;
-      entry.height = height;
-      entry.panels = [];
-      if (modelNode.userData.environmentModelType === "curtain") {
-        modelNode.traverse(child => {
-          if (child.userData.curtainMotionPanel) {
-            entry.panels.push(child);
+      halo.mesh.updateMatrix();
+      halo.center = modelCenter;
+      halo.bounds = modelBounds;
+      halo.width = haloWidth;
+      halo.height = haloHeight;
+      halo.panels = [];
+      if (haloModel.userData.environmentModelType === "curtain") {
+        haloModel.traverse(curtainPanel => {
+          if (curtainPanel.userData.curtainMotionPanel) {
+            halo.panels.push(curtainPanel);
           }
         });
       }
-      entry.pose = null;
-      syncPanelRects(entry);
+      halo.pose = null;
+      updateHaloPanels(halo);
     }
-    for (const [id, entry] of entries) {
-      if (!activeIds.has(id)) {
-        disposeEntry(entry);
-        entries.delete(id);
+    for (const [staleHaloId, staleHalo] of halosById) {
+      if (!visibleHaloIds.has(staleHaloId)) {
+        disposeHalo(staleHalo);
+        halosById.delete(staleHaloId);
       }
     }
   }
-  function syncPanelRects(entry) {
-    const pose = entry.panels.map(panel => panel.visible + ":" + panel.scale.x).join("|");
-    if (pose === entry.pose) {
+  function updateHaloPanels(targetHalo) {
+    const panelPoseKey = targetHalo.panels
+      .map(panelRef => panelRef.visible + ":" + panelRef.scale.x)
+      .join("|");
+    if (panelPoseKey === targetHalo.pose) {
       return;
     }
-    entry.pose = pose;
-    const uniforms = entry.mesh.material.uniforms;
-    const rects = uniforms.haloRects.value;
-    const visiblePanels = entry.panels.filter(panel => panel.visible);
+    targetHalo.pose = panelPoseKey;
+    const uniforms = targetHalo.mesh.material.uniforms;
+    const haloRects = uniforms.haloRects.value;
+    const visiblePanels = targetHalo.panels.filter(visiblePanel => visiblePanel.visible);
     if (!visiblePanels.length) {
       uniforms.haloRectCount.value = 1;
-      rects[0].set(0, 0, entry.width / 2, entry.height / 2);
+      haloRects[0].set(0, 0, targetHalo.width / 2, targetHalo.height / 2);
       return;
     }
     let rectIndex = 0;
-    for (const panel of visiblePanels.slice(0, 2)) {
-      const ancestors = [];
-      for (let node = panel; node && node !== entry.model; node = node.parent) {
-        ancestors.unshift(node);
+    for (const panelNode of visiblePanels.slice(0, 2)) {
+      const panelAncestry = [];
+      for (
+        let panelAncestor = panelNode;
+        panelAncestor && panelAncestor !== targetHalo.model;
+        panelAncestor = panelAncestor.parent
+      ) {
+        panelAncestry.unshift(panelAncestor);
       }
-      const localMatrix = new THREE.Matrix4();
-      for (const ancestor of ancestors) {
-        if (ancestor.matrixAutoUpdate) {
-          ancestor.updateMatrix();
+      const panelMatrix = new threeNamespace.Matrix4();
+      for (const ancestryNode of panelAncestry) {
+        if (ancestryNode.matrixAutoUpdate) {
+          ancestryNode.updateMatrix();
         }
-        localMatrix.multiply(ancestor.matrix);
+        panelMatrix.multiply(ancestryNode.matrix);
       }
-      if (!panel.geometry.boundingBox) {
-        panel.geometry.computeBoundingBox();
+      if (!panelNode.geometry.boundingBox) {
+        panelNode.geometry.computeBoundingBox();
       }
-      const panelBounds = panel.geometry.boundingBox.clone().applyMatrix4(localMatrix);
-      const panelCenter = panelBounds.getCenter(new THREE.Vector3());
-      const panelSize = panelBounds.getSize(new THREE.Vector3());
-      rects[rectIndex++].set(panelCenter.x - entry.center.x, panelCenter.y - entry.center.y, panelSize.x / 2, panelSize.y / 2);
+      const panelBounds = panelNode.geometry.boundingBox.clone().applyMatrix4(panelMatrix);
+      const panelCenter = panelBounds.getCenter(new threeNamespace.Vector3());
+      const panelSize = panelBounds.getSize(new threeNamespace.Vector3());
+      haloRects[rectIndex++].set(
+        panelCenter.x - targetHalo.center.x,
+        panelCenter.y - targetHalo.center.y,
+        panelSize.x / 2,
+        panelSize.y / 2
+      );
     }
     uniforms.haloRectCount.value = rectIndex;
   }
-  function update() {
-    if (visible) {
-      for (const entry of entries.values()) {
-        if (entry.panels.length) {
-          syncPanelRects(entry);
+  function updateHalos() {
+    if (isHaloActive) {
+      for (const updatedHalo of halosById.values()) {
+        if (updatedHalo.panels.length) {
+          updateHaloPanels(updatedHalo);
         }
       }
     }
   }
-  function setColor(id, color) {
-    const entry = entries.get(id);
-    if (entry) {
-      entry.mesh.material.uniforms.haloColor.value.copy(color);
-      entry.mesh.visible = visible && color.r + color.g + color.b > 0;
+  function setHaloColor(itemId, color) {
+    const colorHalo = halosById.get(itemId);
+    if (colorHalo) {
+      colorHalo.mesh.material.uniforms.haloColor.value.copy(color);
+      colorHalo.mesh.visible = isHaloActive && color.r + color.g + color.b > 0;
     }
   }
-  function setVisible(nextVisible) {
-    visible = nextVisible;
-    for (const entry of entries.values()) {
-      const color = entry.mesh.material.uniforms.haloColor.value;
-      entry.mesh.visible = visible && color.r + color.g + color.b > 0;
+  function setHalosVisible(shouldShowHalos) {
+    isHaloActive = shouldShowHalos;
+    for (const visibilityHalo of halosById.values()) {
+      const haloColor = visibilityHalo.mesh.material.uniforms.haloColor.value;
+      visibilityHalo.mesh.visible = isHaloActive && haloColor.r + haloColor.g + haloColor.b > 0;
     }
   }
-  function clear() {
-    for (const entry of entries.values()) {
-      disposeEntry(entry);
+  function clearHalos() {
+    for (const clearedHalo of halosById.values()) {
+      disposeHalo(clearedHalo);
     }
-    entries.clear();
-    root = null;
-    sceneRevision = undefined;
-    bindingsSignature = undefined;
+    halosById.clear();
+    cachedHaloRoot = null;
+    cachedHaloRevision = undefined;
+    cachedHalosKey = undefined;
   }
   return {
-    sync,
-    setColor,
-    setVisible,
-    clear,
-    update,
+    sync: syncHalos,
+    setColor: setHaloColor,
+    setVisible: setHalosVisible,
+    clear: clearHalos,
+    update: updateHalos,
     dispose() {
-      clear();
-      sharedGeometry.dispose();
+      clearHalos();
+      planeGeometry.dispose();
     }
   };
 }

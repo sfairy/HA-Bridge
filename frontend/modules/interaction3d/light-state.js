@@ -1,436 +1,584 @@
-const isFiniteNumber = value => value != null && value !== "" && Number.isFinite(Number(value));
-const colorModes = new Set(["hs", "xy", "rgb", "rgbw", "rgbww", "white", "brightness", "onoff"]);
-export function lightState(entityId, eventOrState, previous) {
-  const statePayload = eventOrState?.newState || eventOrState || {};
-  const attributes = statePayload.attributes || {};
-  const supportedColorModes = Array.isArray(attributes.supported_color_modes) ? attributes.supported_color_modes : [];
-  const isLightEntity = entityId.startsWith("light.");
-  const colorMode = isLightEntity && (attributes.color_mode === "color_temp" || colorModes.has(attributes.color_mode)) ? attributes.color_mode : previous?.colorMode ?? null;
-  const brightnessSupported = isLightEntity && (supportedColorModes.length ? supportedColorModes.some(mode => !["onoff", "unknown"].includes(mode)) : isFiniteNumber(attributes.brightness) || (Number(attributes.supported_features) & 1) !== 0 || previous?.brightnessSupported === true);
-  const temperatureSupported = isLightEntity && (supportedColorModes.length ? supportedColorModes.includes("color_temp") : isFiniteNumber(attributes.color_temp_kelvin) || isFiniteNumber(attributes.color_temp) || isFiniteNumber(attributes.min_color_temp_kelvin) || isFiniteNumber(attributes.max_color_temp_kelvin) || (Number(attributes.supported_features) & 2) !== 0 || previous?.temperatureSupported === true);
-  const minimumKelvin = isFiniteNumber(attributes.min_color_temp_kelvin) ? Number(attributes.min_color_temp_kelvin) : Number(attributes.max_mireds) > 0 ? 1000000 / Number(attributes.max_mireds) : previous?.minimum ?? 2000;
-  const maximumKelvin = isFiniteNumber(attributes.max_color_temp_kelvin) ? Number(attributes.max_color_temp_kelvin) : Number(attributes.min_mireds) > 0 ? 1000000 / Number(attributes.min_mireds) : previous?.maximum ?? 6500;
-  const kelvinRaw = isFiniteNumber(attributes.color_temp_kelvin) && Number(attributes.color_temp_kelvin) > 0 ? Number(attributes.color_temp_kelvin) : isFiniteNumber(attributes.color_temp) && Number(attributes.color_temp) > 0 ? 1000000 / Number(attributes.color_temp) : previous?.kelvin ?? null;
-  const brightnessByte = isFiniteNumber(attributes.brightness) ? Math.max(0, Math.min(255, Number(attributes.brightness))) : null;
-  const brightnessPercent = brightnessByte !== null && (statePayload.state !== "off" || brightnessByte !== 0) ? brightnessByte > 0 ? Math.max(1, Math.round(brightnessByte / 255 * 100)) : 0 : previous?.brightness > 0 ? previous.brightness : null;
+const isNumericValue = candidateValue =>
+  candidateValue != null && candidateValue !== "" && Number.isFinite(Number(candidateValue));
+const COLOR_MODE_SET = new Set([
+  "hs",
+  "xy",
+  "rgb",
+  "rgbw",
+  "rgbww",
+  "white",
+  "brightness",
+  "onoff"
+]);
+export function lightState(entityId, entityState, fallbackState) {
+  const stateObject = entityState?.newState || entityState || {};
+  const attributes = stateObject.attributes || {};
+  const supportedColorModes = Array.isArray(attributes.supported_color_modes)
+    ? attributes.supported_color_modes
+    : [];
+  const isLightDomain = entityId.startsWith("light.");
+  const colorMode =
+    isLightDomain &&
+    (attributes.color_mode === "color_temp" || COLOR_MODE_SET.has(attributes.color_mode))
+      ? attributes.color_mode
+      : (fallbackState?.colorMode ?? null);
+  const brightnessSupported =
+    isLightDomain &&
+    (supportedColorModes.length
+      ? supportedColorModes.some(supportedMode => !["onoff", "unknown"].includes(supportedMode))
+      : isNumericValue(attributes.brightness) ||
+        (Number(attributes.supported_features) & 1) !== 0 ||
+        fallbackState?.brightnessSupported === true);
+  const temperatureSupported =
+    isLightDomain &&
+    (supportedColorModes.length
+      ? supportedColorModes.includes("color_temp")
+      : isNumericValue(attributes.color_temp_kelvin) ||
+        isNumericValue(attributes.color_temp) ||
+        isNumericValue(attributes.min_color_temp_kelvin) ||
+        isNumericValue(attributes.max_color_temp_kelvin) ||
+        (Number(attributes.supported_features) & 2) !== 0 ||
+        fallbackState?.temperatureSupported === true);
+  const minimumKelvin = isNumericValue(attributes.min_color_temp_kelvin)
+    ? Number(attributes.min_color_temp_kelvin)
+    : Number(attributes.max_mireds) > 0
+      ? 1000000 / Number(attributes.max_mireds)
+      : (fallbackState?.minimum ?? 2000);
+  const maximumKelvin = isNumericValue(attributes.max_color_temp_kelvin)
+    ? Number(attributes.max_color_temp_kelvin)
+    : Number(attributes.min_mireds) > 0
+      ? 1000000 / Number(attributes.min_mireds)
+      : (fallbackState?.maximum ?? 6500);
+  const kelvinValue =
+    isNumericValue(attributes.color_temp_kelvin) && Number(attributes.color_temp_kelvin) > 0
+      ? Number(attributes.color_temp_kelvin)
+      : isNumericValue(attributes.color_temp) && Number(attributes.color_temp) > 0
+        ? 1000000 / Number(attributes.color_temp)
+        : (fallbackState?.kelvin ?? null);
+  const rawBrightness = isNumericValue(attributes.brightness)
+    ? Math.max(0, Math.min(255, Number(attributes.brightness)))
+    : null;
+  const brightnessPercent =
+    rawBrightness !== null && (stateObject.state !== "off" || rawBrightness !== 0)
+      ? rawBrightness > 0
+        ? Math.max(1, Math.round((rawBrightness / 255) * 100))
+        : 0
+      : fallbackState?.brightness > 0
+        ? fallbackState.brightness
+        : null;
   return {
-    on: statePayload.state === "on",
-    available: ["on", "off"].includes(statePayload.state),
-    name: attributes.friendly_name || previous?.name || entityId,
-    brightnessSupported,
-    temperatureSupported,
-    colorMode,
+    on: stateObject.state === "on",
+    available: ["on", "off"].includes(stateObject.state),
+    name: attributes.friendly_name || fallbackState?.name || entityId,
+    brightnessSupported: brightnessSupported,
+    temperatureSupported: temperatureSupported,
+    colorMode: colorMode,
     brightness: brightnessSupported ? brightnessPercent : null,
-    kelvin: temperatureSupported && isFiniteNumber(kelvinRaw) ? Math.round(kelvinRaw) : null,
+    kelvin: temperatureSupported && isNumericValue(kelvinValue) ? Math.round(kelvinValue) : null,
     minimum: Math.round(Math.max(1000, Math.min(minimumKelvin, maximumKelvin))),
     maximum: Math.round(Math.min(20000, Math.max(minimumKelvin, maximumKelvin)))
   };
 }
-export function lightRenderState(state) {
-  const missingBrightness = state.brightnessSupported && !Number.isFinite(state.brightness);
-  const missingKelvin = state.temperatureSupported && !colorModes.has(state.colorMode) && !Number.isFinite(state.kelvin);
+export function lightRenderState(stateSnapshot) {
+  const hasMissingBrightness =
+    stateSnapshot.brightnessSupported && !Number.isFinite(stateSnapshot.brightness);
+  const hasMissingKelvin =
+    stateSnapshot.temperatureSupported &&
+    !COLOR_MODE_SET.has(stateSnapshot.colorMode) &&
+    !Number.isFinite(stateSnapshot.kelvin);
   return {
-    ...state,
-    on: state.on && !missingBrightness && !missingKelvin
+    ...stateSnapshot,
+    on: stateSnapshot.on && !hasMissingBrightness && !hasMissingKelvin
   };
 }
-const HISTORY_TTL_MS = 604800000;
-const HISTORY_MAX_ENTITIES = 256;
-const isLightOrSwitchEntity = entityId => /^(light|switch)\.[a-z0-9_]+$/.test(entityId);
-const isPresentNumber = value => typeof value != "boolean" && isFiniteNumber(value);
-const fieldValidators = {
-  brightness: value => Number.isFinite(value) && value > 0 && value <= 100,
-  kelvin: value => Number.isFinite(value) && value > 0,
-  minimum: value => Number.isFinite(value) && value >= 1000 && value <= 20000,
-  maximum: value => Number.isFinite(value) && value >= 1000 && value <= 20000,
-  colorMode: value => value === "color_temp" || colorModes.has(value),
-  brightnessSupported: value => typeof value == "boolean",
-  temperatureSupported: value => typeof value == "boolean"
+const HISTORY_MAX_AGE_MS = 604800000;
+const MAX_TRACKED_ENTITIES = 256;
+const isLightEntityId = entityIdCandidate => /^(light|switch)\.[a-z0-9_]+$/.test(entityIdCandidate);
+const isNumericAttribute = attributeValue =>
+  typeof attributeValue != "boolean" && isNumericValue(attributeValue);
+const LIGHT_ATTRIBUTE_VALIDATORS = {
+  brightness: brightnessValue =>
+    Number.isFinite(brightnessValue) && brightnessValue > 0 && brightnessValue <= 100,
+  kelvin: kelvinCandidate => Number.isFinite(kelvinCandidate) && kelvinCandidate > 0,
+  minimum: minimumCandidate =>
+    Number.isFinite(minimumCandidate) && minimumCandidate >= 1000 && minimumCandidate <= 20000,
+  maximum: maximumCandidate =>
+    Number.isFinite(maximumCandidate) && maximumCandidate >= 1000 && maximumCandidate <= 20000,
+  colorMode: colorModeCandidate =>
+    colorModeCandidate === "color_temp" || COLOR_MODE_SET.has(colorModeCandidate),
+  brightnessSupported: brightnessSupportedFlag => typeof brightnessSupportedFlag == "boolean",
+  temperatureSupported: temperatureSupportedFlag => typeof temperatureSupportedFlag == "boolean"
 };
-function extractHistoryPatch(entityId, eventOrState) {
-  const statePayload = eventOrState?.newState || eventOrState || {};
-  const attributes = statePayload.attributes || {};
-  const resolved = lightState(entityId, eventOrState);
-  const patch = {};
-  const supportedColorModes = Array.isArray(attributes.supported_color_modes) ? attributes.supported_color_modes : [];
-  const hasBrightness = isPresentNumber(attributes.brightness) && Number(attributes.brightness) > 0;
-  const hasKelvin = isPresentNumber(attributes.color_temp_kelvin) && Number(attributes.color_temp_kelvin) > 0 || isPresentNumber(attributes.color_temp) && Number(attributes.color_temp) > 0;
-  const hasMinimum = isPresentNumber(attributes.min_color_temp_kelvin) && Number(attributes.min_color_temp_kelvin) > 0 || isPresentNumber(attributes.max_mireds) && Number(attributes.max_mireds) > 0;
-  const hasMaximum = isPresentNumber(attributes.max_color_temp_kelvin) && Number(attributes.max_color_temp_kelvin) > 0 || isPresentNumber(attributes.min_mireds) && Number(attributes.min_mireds) > 0;
-  const supportedFeatures = isPresentNumber(attributes.supported_features) ? Number(attributes.supported_features) : 0;
-  if (supportedColorModes.length || hasBrightness || supportedFeatures & 1) {
-    patch.brightnessSupported = resolved.brightnessSupported;
+function computeAttributePatch(patchEntityId, patchEntityState) {
+  const entityStateBody = patchEntityState?.newState || patchEntityState || {};
+  const entityAttributes = entityStateBody.attributes || {};
+  const resolvedLightState = lightState(patchEntityId, patchEntityState);
+  const attributePatch = {};
+  const patchSupportedColorModes = Array.isArray(entityAttributes.supported_color_modes)
+    ? entityAttributes.supported_color_modes
+    : [];
+  const hasReportedBrightness =
+    isNumericAttribute(entityAttributes.brightness) && Number(entityAttributes.brightness) > 0;
+  const hasReportedKelvin =
+    (isNumericAttribute(entityAttributes.color_temp_kelvin) &&
+      Number(entityAttributes.color_temp_kelvin) > 0) ||
+    (isNumericAttribute(entityAttributes.color_temp) && Number(entityAttributes.color_temp) > 0);
+  const hasReportedMinKelvin =
+    (isNumericAttribute(entityAttributes.min_color_temp_kelvin) &&
+      Number(entityAttributes.min_color_temp_kelvin) > 0) ||
+    (isNumericAttribute(entityAttributes.max_mireds) && Number(entityAttributes.max_mireds) > 0);
+  const hasReportedMaxKelvin =
+    (isNumericAttribute(entityAttributes.max_color_temp_kelvin) &&
+      Number(entityAttributes.max_color_temp_kelvin) > 0) ||
+    (isNumericAttribute(entityAttributes.min_mireds) && Number(entityAttributes.min_mireds) > 0);
+  const reportedSupportedFeatures = isNumericAttribute(entityAttributes.supported_features)
+    ? Number(entityAttributes.supported_features)
+    : 0;
+  if (patchSupportedColorModes.length || hasReportedBrightness || reportedSupportedFeatures & 1) {
+    attributePatch.brightnessSupported = resolvedLightState.brightnessSupported;
   }
-  if (supportedColorModes.length || hasKelvin || hasMinimum || hasMaximum || supportedFeatures & 2) {
-    patch.temperatureSupported = resolved.temperatureSupported;
+  if (
+    patchSupportedColorModes.length ||
+    hasReportedKelvin ||
+    hasReportedMinKelvin ||
+    hasReportedMaxKelvin ||
+    reportedSupportedFeatures & 2
+  ) {
+    attributePatch.temperatureSupported = resolvedLightState.temperatureSupported;
   }
-  if (hasBrightness && resolved.brightnessSupported) {
-    patch.brightness = resolved.brightness;
+  if (hasReportedBrightness && resolvedLightState.brightnessSupported) {
+    attributePatch.brightness = resolvedLightState.brightness;
   }
-  if (hasKelvin && resolved.temperatureSupported) {
-    patch.kelvin = resolved.kelvin;
+  if (hasReportedKelvin && resolvedLightState.temperatureSupported) {
+    attributePatch.kelvin = resolvedLightState.kelvin;
   }
-  if (hasMinimum) {
-    patch.minimum = resolved.minimum;
+  if (hasReportedMinKelvin) {
+    attributePatch.minimum = resolvedLightState.minimum;
   }
-  if (hasMaximum) {
-    patch.maximum = resolved.maximum;
+  if (hasReportedMaxKelvin) {
+    attributePatch.maximum = resolvedLightState.maximum;
   }
-  if (attributes.color_mode === "color_temp" || colorModes.has(attributes.color_mode)) {
-    patch.colorMode = resolved.colorMode;
+  if (
+    entityAttributes.color_mode === "color_temp" ||
+    COLOR_MODE_SET.has(entityAttributes.color_mode)
+  ) {
+    attributePatch.colorMode = resolvedLightState.colorMode;
   }
-  return Object.fromEntries(Object.entries(patch).filter(([field, value]) => fieldValidators[field](value)));
+  return Object.fromEntries(
+    Object.entries(attributePatch).filter(([patchKey, patchValue]) =>
+      LIGHT_ATTRIBUTE_VALIDATORS[patchKey](patchValue)
+    )
+  );
 }
 function createLightHistoryStore(storage, scope, now, schedule, cancel) {
   if (!storage || typeof scope != "string" || !scope.trim()) {
     return null;
   }
   const storageKey = "hb-i3d:light-history:v1:" + scope;
-  const entities = new Map();
-  const lastPatchJson = new Map();
-  let writable = true;
-  let flushTimer = null;
-  let dirty = false;
-  let nextExpiryAt = 0;
-  const latestStamp = fields => Math.max(0, ...Object.values(fields).map(entry => entry.at));
-  function prune(nowMs) {
-    if (nowMs < nextExpiryAt && entities.size <= HISTORY_MAX_ENTITIES) {
+  const historyByEntityId = new Map();
+  const signatureByEntityId = new Map();
+  let isStorageUsable = true;
+  let flushTimerId = null;
+  let hasPendingWrites = false;
+  let nextPruneMs = 0;
+  const latestRecordTimestamp = attributeRecords =>
+    Math.max(0, ...Object.values(attributeRecords).map(attributeRecord => attributeRecord.at));
+  function pruneExpiredRecords(nowMs) {
+    if (nowMs < nextPruneMs && historyByEntityId.size <= MAX_TRACKED_ENTITIES) {
       return false;
     }
-    let changed = false;
-    nextExpiryAt = Infinity;
-    for (const [entityId, fields] of entities) {
-      for (const [field, entry] of Object.entries(fields)) {
-        if (nowMs - entry.at >= HISTORY_TTL_MS) {
-          delete fields[field];
-          changed = true;
+    let didPrune = false;
+    nextPruneMs = Infinity;
+    for (const [storedEntityId, storedAttributes] of historyByEntityId) {
+      for (const [attributeKey, record] of Object.entries(storedAttributes)) {
+        if (nowMs - record.at >= HISTORY_MAX_AGE_MS) {
+          delete storedAttributes[attributeKey];
+          didPrune = true;
         } else {
-          nextExpiryAt = Math.min(nextExpiryAt, entry.at + HISTORY_TTL_MS);
+          nextPruneMs = Math.min(nextPruneMs, record.at + HISTORY_MAX_AGE_MS);
         }
       }
-      if (!Object.keys(fields).length) {
-        entities.delete(entityId);
+      if (!Object.keys(storedAttributes).length) {
+        historyByEntityId.delete(storedEntityId);
       }
     }
-    if (entities.size > HISTORY_MAX_ENTITIES) {
-      const ranked = [...entities].sort((left, right) => latestStamp(left[1]) - latestStamp(right[1]));
-      for (const [entityId] of ranked.slice(0, entities.size - HISTORY_MAX_ENTITIES)) {
-        entities.delete(entityId);
+    if (historyByEntityId.size > MAX_TRACKED_ENTITIES) {
+      const entitiesByAge = [...historyByEntityId].sort(
+        (leftEntity, rightEntity) =>
+          latestRecordTimestamp(leftEntity[1]) - latestRecordTimestamp(rightEntity[1])
+      );
+      for (const [evictedEntityId] of entitiesByAge.slice(
+        0,
+        historyByEntityId.size - MAX_TRACKED_ENTITIES
+      )) {
+        historyByEntityId.delete(evictedEntityId);
       }
-      changed = true;
+      didPrune = true;
     }
-    return changed;
+    return didPrune;
   }
-  function loadFromStorage() {
-    const loaded = new Map();
-    const raw = storage.getItem(storageKey);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      const nowMs = now();
-      if (parsed?.version !== 1 || !parsed.entities || typeof parsed.entities != "object" || Array.isArray(parsed.entities)) {
+  function readStoredHistory() {
+    const storedHistoryByEntityId = new Map();
+    const storedJSON = storage.getItem(storageKey);
+    if (storedJSON) {
+      const parsedHistory = JSON.parse(storedJSON);
+      const readAtMs = now();
+      if (
+        parsedHistory?.version !== 1 ||
+        !parsedHistory.entities ||
+        typeof parsedHistory.entities != "object" ||
+        Array.isArray(parsedHistory.entities)
+      ) {
         throw new Error("Invalid light history");
       }
-      for (const [entityId, fields] of Object.entries(parsed.entities)) {
-        if (!isLightOrSwitchEntity(entityId) || !fields || typeof fields != "object" || Array.isArray(fields)) {
+      for (const [entityIdFromStorage, attributesFromStorage] of Object.entries(
+        parsedHistory.entities
+      )) {
+        if (
+          !isLightEntityId(entityIdFromStorage) ||
+          !attributesFromStorage ||
+          typeof attributesFromStorage != "object" ||
+          Array.isArray(attributesFromStorage)
+        ) {
           continue;
         }
-        const kept = {};
-        for (const [field, entry] of Object.entries(fields)) {
-          if (Object.hasOwn(fieldValidators, field) && fieldValidators[field](entry?.value) && Number.isFinite(entry.at) && entry.at >= 0 && entry.at <= nowMs && nowMs - entry.at < HISTORY_TTL_MS) {
-            kept[field] = {
-              value: entry.value,
-              at: entry.at
+        const validAttributeRecords = {};
+        for (const [recordKey, storedRecord] of Object.entries(attributesFromStorage)) {
+          if (
+            Object.hasOwn(LIGHT_ATTRIBUTE_VALIDATORS, recordKey) &&
+            LIGHT_ATTRIBUTE_VALIDATORS[recordKey](storedRecord?.value) &&
+            Number.isFinite(storedRecord.at) &&
+            storedRecord.at >= 0 &&
+            storedRecord.at <= readAtMs &&
+            readAtMs - storedRecord.at < HISTORY_MAX_AGE_MS
+          ) {
+            validAttributeRecords[recordKey] = {
+              value: storedRecord.value,
+              at: storedRecord.at
             };
           }
         }
-        if (Object.keys(kept).length) {
-          loaded.set(entityId, kept);
+        if (Object.keys(validAttributeRecords).length) {
+          storedHistoryByEntityId.set(entityIdFromStorage, validAttributeRecords);
         }
       }
     }
-    return loaded;
+    return storedHistoryByEntityId;
   }
   try {
-    for (const [entityId, fields] of loadFromStorage()) {
-      entities.set(entityId, fields);
+    for (const [restoredEntityId, restoredAttributes] of readStoredHistory()) {
+      historyByEntityId.set(restoredEntityId, restoredAttributes);
     }
-    prune(now());
+    pruneExpiredRecords(now());
   } catch {
     return null;
   }
-  const serialize = () => JSON.stringify({
-    version: 1,
-    entities: Object.fromEntries(entities)
-  });
-  function flush() {
-    if (flushTimer !== null) {
-      cancel(flushTimer);
-      flushTimer = null;
+  const serializeHistory = () =>
+    JSON.stringify({
+      version: 1,
+      entities: Object.fromEntries(historyByEntityId)
+    });
+  function flushHistory() {
+    if (flushTimerId !== null) {
+      cancel(flushTimerId);
+      flushTimerId = null;
     }
-    if (!!writable && !!dirty) {
-      dirty = false;
+    if (!!isStorageUsable && !!hasPendingWrites) {
+      hasPendingWrites = false;
       try {
-        for (const [entityId, storedFields] of loadFromStorage()) {
-          const merged = entities.get(entityId) || {};
-          for (const [field, entry] of Object.entries(storedFields)) {
-            if (!merged[field] || merged[field].at < entry.at) {
-              merged[field] = entry;
+        for (const [persistedEntityId, persistedAttributes] of readStoredHistory()) {
+          const mergedRecords = historyByEntityId.get(persistedEntityId) || {};
+          for (const [mergedKey, newerRecord] of Object.entries(persistedAttributes)) {
+            if (!mergedRecords[mergedKey] || mergedRecords[mergedKey].at < newerRecord.at) {
+              mergedRecords[mergedKey] = newerRecord;
             }
           }
-          if (merged.brightnessSupported?.value === false) {
-            delete merged.brightness;
+          if (mergedRecords.brightnessSupported?.value === false) {
+            delete mergedRecords.brightness;
           }
-          if (merged.temperatureSupported?.value === false) {
-            delete merged.kelvin;
+          if (mergedRecords.temperatureSupported?.value === false) {
+            delete mergedRecords.kelvin;
           }
-          entities.set(entityId, merged);
+          historyByEntityId.set(persistedEntityId, mergedRecords);
         }
-        nextExpiryAt = 0;
-        prune(now());
-        storage.setItem(storageKey, serialize());
+        nextPruneMs = 0;
+        pruneExpiredRecords(now());
+        storage.setItem(storageKey, serializeHistory());
       } catch {
-        writable = false;
+        isStorageUsable = false;
       }
     }
   }
-  function scheduleFlush() {
-    if (!!writable && flushTimer === null && !!dirty) {
-      flushTimer = schedule(() => {
-        flushTimer = null;
-        flush();
+  function scheduleHistoryFlush() {
+    if (!!isStorageUsable && flushTimerId === null && !!hasPendingWrites) {
+      flushTimerId = schedule(() => {
+        flushTimerId = null;
+        flushHistory();
       });
     }
   }
   return {
-    resolve(entityId, eventOrState) {
-      const nowMs = now();
-      dirty = prune(nowMs) || dirty;
-      if (isLightOrSwitchEntity(entityId)) {
-        const patch = extractHistoryPatch(entityId, eventOrState);
-        const patchJson = JSON.stringify(patch);
-        if (lastPatchJson.get(entityId) !== patchJson) {
-          lastPatchJson.delete(entityId);
-          lastPatchJson.set(entityId, patchJson);
-          const fields = entities.get(entityId) || {};
-          for (const [field, value] of Object.entries(patch)) {
-            if (fields[field]?.value !== value) {
-              fields[field] = {
-                value,
-                at: nowMs
+    resolve(resolveEntityId, resolveEntityState) {
+      const resolveNowMs = now();
+      hasPendingWrites = pruneExpiredRecords(resolveNowMs) || hasPendingWrites;
+      if (isLightEntityId(resolveEntityId)) {
+        const resolvedPatch = computeAttributePatch(resolveEntityId, resolveEntityState);
+        const patchSignature = JSON.stringify(resolvedPatch);
+        if (signatureByEntityId.get(resolveEntityId) !== patchSignature) {
+          signatureByEntityId.delete(resolveEntityId);
+          signatureByEntityId.set(resolveEntityId, patchSignature);
+          const entityHistory = historyByEntityId.get(resolveEntityId) || {};
+          for (const [historyAttributeKey, historyAttributeValue] of Object.entries(
+            resolvedPatch
+          )) {
+            if (entityHistory[historyAttributeKey]?.value !== historyAttributeValue) {
+              entityHistory[historyAttributeKey] = {
+                value: historyAttributeValue,
+                at: resolveNowMs
               };
-              nextExpiryAt = Math.min(nextExpiryAt, nowMs + HISTORY_TTL_MS);
-              dirty = true;
+              nextPruneMs = Math.min(nextPruneMs, resolveNowMs + HISTORY_MAX_AGE_MS);
+              hasPendingWrites = true;
             }
           }
-          if (patch.brightnessSupported === false && fields.brightness) {
-            delete fields.brightness;
-            dirty = true;
+          if (resolvedPatch.brightnessSupported === false && entityHistory.brightness) {
+            delete entityHistory.brightness;
+            hasPendingWrites = true;
           }
-          if (patch.temperatureSupported === false && fields.kelvin) {
-            delete fields.kelvin;
-            dirty = true;
+          if (resolvedPatch.temperatureSupported === false && entityHistory.kelvin) {
+            delete entityHistory.kelvin;
+            hasPendingWrites = true;
           }
-          if (Object.keys(fields).length) {
-            entities.set(entityId, fields);
+          if (Object.keys(entityHistory).length) {
+            historyByEntityId.set(resolveEntityId, entityHistory);
           }
-          while (lastPatchJson.size > HISTORY_MAX_ENTITIES) {
-            lastPatchJson.delete(lastPatchJson.keys().next().value);
+          while (signatureByEntityId.size > MAX_TRACKED_ENTITIES) {
+            signatureByEntityId.delete(signatureByEntityId.keys().next().value);
           }
         }
       }
-      dirty = prune(nowMs) || dirty;
-      scheduleFlush();
-      const remembered = Object.fromEntries(Object.entries(entities.get(entityId) || {}).map(([field, entry]) => [field, entry.value]));
-      remembered.brightnessSupported ??= Number.isFinite(remembered.brightness) || !!remembered.colorMode && remembered.colorMode !== "onoff";
-      remembered.temperatureSupported ??= Number.isFinite(remembered.kelvin) || Number.isFinite(remembered.minimum) || Number.isFinite(remembered.maximum) || remembered.colorMode === "color_temp";
-      return remembered;
+      hasPendingWrites = pruneExpiredRecords(resolveNowMs) || hasPendingWrites;
+      scheduleHistoryFlush();
+      const mergedAttributes = Object.fromEntries(
+        Object.entries(historyByEntityId.get(resolveEntityId) || {}).map(
+          ([mergedKeyName, mergedRecord]) => [mergedKeyName, mergedRecord.value]
+        )
+      );
+      mergedAttributes.brightnessSupported ??=
+        Number.isFinite(mergedAttributes.brightness) ||
+        (!!mergedAttributes.colorMode && mergedAttributes.colorMode !== "onoff");
+      mergedAttributes.temperatureSupported ??=
+        Number.isFinite(mergedAttributes.kelvin) ||
+        Number.isFinite(mergedAttributes.minimum) ||
+        Number.isFinite(mergedAttributes.maximum) ||
+        mergedAttributes.colorMode === "color_temp";
+      return mergedAttributes;
     },
-    flush,
+    flush: flushHistory,
     clear() {
-      if (flushTimer !== null) {
-        cancel(flushTimer);
-        flushTimer = null;
+      if (flushTimerId !== null) {
+        cancel(flushTimerId);
+        flushTimerId = null;
       }
-      entities.clear();
-      lastPatchJson.clear();
-      dirty = false;
-      nextExpiryAt = Infinity;
-      if (writable) {
+      historyByEntityId.clear();
+      signatureByEntityId.clear();
+      hasPendingWrites = false;
+      nextPruneMs = Infinity;
+      if (isStorageUsable) {
         try {
           storage.removeItem(storageKey);
         } catch {
-          writable = false;
+          isStorageUsable = false;
         }
       }
     }
   };
 }
 export function createLightStateCache({
-  storage,
-  scope,
-  now = () => Date.now(),
-  schedule = callback => setTimeout(callback, 50),
-  cancel = timer => clearTimeout(timer)
+  storage: cacheStorage,
+  scope: cacheScope,
+  now: cacheNow = () => Date.now(),
+  schedule: cacheSchedule = scheduledCallback => setTimeout(scheduledCallback, 50),
+  cancel: cacheCancel = scheduledTimerId => clearTimeout(scheduledTimerId)
 } = {}) {
-  const liveStates = new Map();
-  const history = createLightHistoryStore(storage, scope, now, schedule, cancel);
+  const lastStateByEntityId = new Map();
+  const historyStore = createLightHistoryStore(
+    cacheStorage,
+    cacheScope,
+    cacheNow,
+    cacheSchedule,
+    cacheCancel
+  );
   return {
-    resolve(entityId, eventOrState) {
-      const previous = history ? {
-        name: liveStates.get(entityId)?.name,
-        ...history.resolve(entityId, eventOrState)
-      } : liveStates.get(entityId);
-      const resolved = lightState(entityId, eventOrState, previous);
-      liveStates.set(entityId, resolved.brightness === 0 ? {
-        ...resolved,
-        brightness: previous?.brightness > 0 ? previous.brightness : null
-      } : resolved);
-      return resolved;
+    resolve(cacheEntityId, cacheEntityState) {
+      const cachedAttributes = historyStore
+        ? {
+            name: lastStateByEntityId.get(cacheEntityId)?.name,
+            ...historyStore.resolve(cacheEntityId, cacheEntityState)
+          }
+        : lastStateByEntityId.get(cacheEntityId);
+      const computedState = lightState(cacheEntityId, cacheEntityState, cachedAttributes);
+      lastStateByEntityId.set(
+        cacheEntityId,
+        computedState.brightness === 0
+          ? {
+              ...computedState,
+              brightness: cachedAttributes?.brightness > 0 ? cachedAttributes.brightness : null
+            }
+          : computedState
+      );
+      return computedState;
     },
     flush() {
-      history?.flush();
+      historyStore?.flush();
     },
     clear() {
-      liveStates.clear();
-      history?.clear();
+      lastStateByEntityId.clear();
+      historyStore?.clear();
     }
   };
 }
-export function lightCommand(entityId, kind, value, state) {
-  if (!/^(light|switch)\.[a-z0-9_]+$/.test(entityId) || !state.available) {
+export function lightCommand(commandEntityId, commandName, commandValue, capabilities) {
+  if (!/^(light|switch)\.[a-z0-9_]+$/.test(commandEntityId) || !capabilities.available) {
     throw new Error("设备不可用。");
   }
-  const domain = entityId.split(".")[0];
-  if (kind === "power") {
+  const entityDomain = commandEntityId.split(".")[0];
+  if (commandName === "power") {
     return {
-      domain,
-      service: value ? "turn_on" : "turn_off",
-      entityId,
+      domain: entityDomain,
+      service: commandValue ? "turn_on" : "turn_off",
+      entityId: commandEntityId,
       data: {}
     };
   }
-  if (!Number.isFinite(Number(value))) {
+  if (!Number.isFinite(Number(commandValue))) {
     throw new Error("灯光参数无效。");
   }
-  if (kind === "brightness" && state.brightnessSupported) {
+  if (commandName === "brightness" && capabilities.brightnessSupported) {
     return {
-      domain,
+      domain: entityDomain,
       service: "turn_on",
-      entityId,
+      entityId: commandEntityId,
       data: {
-        brightness: Math.round(Math.max(1, Math.min(100, Number(value))) * 255 / 100)
+        brightness: Math.round((Math.max(1, Math.min(100, Number(commandValue))) * 255) / 100)
       }
     };
   }
-  if (kind === "temperature" && state.temperatureSupported) {
+  if (commandName === "temperature" && capabilities.temperatureSupported) {
     return {
-      domain,
+      domain: entityDomain,
       service: "turn_on",
-      entityId,
+      entityId: commandEntityId,
       data: {
-        color_temp_kelvin: Math.round(Math.max(state.minimum, Math.min(state.maximum, Number(value))))
+        color_temp_kelvin: Math.round(
+          Math.max(capabilities.minimum, Math.min(capabilities.maximum, Number(commandValue)))
+        )
       }
     };
   }
   throw new Error("此设备不支持该灯光调节。");
 }
-export function createLightPreview({
-  now = () => performance.now()
-} = {}) {
-  const previews = new Map();
+export function createLightPreview({ now: previewNow = () => performance.now() } = {}) {
+  const previewsByEntityId = new Map();
   let revisionCounter = 0;
   return {
-    set(entityId, kind, value, committed = false) {
-      const values = {
-        ...previews.get(entityId)?.values,
-        on: kind === "power" ? value === true : true
+    set(previewEntityId, previewCommand, previewValue, isCommitted = false) {
+      const previewValues = {
+        ...previewsByEntityId.get(previewEntityId)?.values,
+        on: previewCommand === "power" ? previewValue === true : true
       };
-      if (kind === "brightness") {
-        values.brightness = value;
+      if (previewCommand === "brightness") {
+        previewValues.brightness = previewValue;
       }
-      if (kind === "temperature") {
-        values.kelvin = value;
+      if (previewCommand === "temperature") {
+        previewValues.kelvin = previewValue;
       }
-      if (kind === "preset") {
-        if (Number.isFinite(value?.brightness)) {
-          values.brightness = value.brightness;
+      if (previewCommand === "preset") {
+        if (Number.isFinite(previewValue?.brightness)) {
+          previewValues.brightness = previewValue.brightness;
         }
-        if (Number.isFinite(value?.kelvin)) {
-          values.kelvin = value.kelvin;
+        if (Number.isFinite(previewValue?.kelvin)) {
+          previewValues.kelvin = previewValue.kelvin;
         }
       }
-      if (kind === "power" && !value) {
-        delete values.brightness;
-        delete values.kelvin;
+      if (previewCommand === "power" && !previewValue) {
+        delete previewValues.brightness;
+        delete previewValues.kelvin;
       }
-      const entry = {
-        values,
+      const previewEntry = {
+        values: previewValues,
         revision: ++revisionCounter,
-        committed,
-        expires: now() + 15000
+        committed: isCommitted,
+        expires: previewNow() + 15000
       };
-      previews.set(entityId, entry);
-      return entry.revision;
+      previewsByEntityId.set(previewEntityId, previewEntry);
+      return previewEntry.revision;
     },
-    state(entityId, baseState) {
+    state(stateEntityId, serverState) {
       return {
-        ...baseState,
-        ...previews.get(entityId)?.values
+        ...serverState,
+        ...previewsByEntityId.get(stateEntityId)?.values
       };
     },
-    reconcile(entityId, liveState) {
-      const entry = previews.get(entityId);
-      if (!entry) {
+    reconcile(reconcileEntityId, serverEntityState) {
+      const pendingPreview = previewsByEntityId.get(reconcileEntityId);
+      if (!pendingPreview) {
         return;
       }
-      const matched = Object.entries(entry.values).every(([field, expected]) => field === "on" ? liveState.on === expected : Number.isFinite(liveState[field]) && Math.abs(liveState[field] - expected) <= (field === "kelvin" ? 15 : 1));
-      if (!liveState.available || entry.committed && matched) {
-        previews.delete(entityId);
+      const isSettled = Object.entries(pendingPreview.values).every(
+        ([previewKey, expectedValue]) =>
+          previewKey === "on"
+            ? serverEntityState.on === expectedValue
+            : Number.isFinite(serverEntityState[previewKey]) &&
+              Math.abs(serverEntityState[previewKey] - expectedValue) <=
+                (previewKey === "kelvin" ? 15 : 1)
+      );
+      if (!serverEntityState.available || (pendingPreview.committed && isSettled)) {
+        previewsByEntityId.delete(reconcileEntityId);
       }
     },
-    hold(entityId, revision) {
-      const entry = previews.get(entityId);
-      if (entry?.revision === revision) {
-        entry.committed = false;
+    hold(holdEntityId, holdRevision) {
+      const heldPreview = previewsByEntityId.get(holdEntityId);
+      if (heldPreview?.revision === holdRevision) {
+        heldPreview.committed = false;
       }
     },
-    retain(entityId, revision) {
-      const entry = previews.get(entityId);
-      if (entry?.revision === revision) {
-        entry.committed = true;
-        entry.expires = now() + 15000;
+    retain(retainEntityId, retainRevision) {
+      const retainedPreview = previewsByEntityId.get(retainEntityId);
+      if (retainedPreview?.revision === retainRevision) {
+        retainedPreview.committed = true;
+        retainedPreview.expires = previewNow() + 15000;
       }
     },
-    acknowledge(entityId, revision) {
-      const entry = previews.get(entityId);
-      if (entry?.revision === revision) {
-        entry.expires = now() + 8000;
+    acknowledge(acknowledgeEntityId, acknowledgeRevision) {
+      const acknowledgedPreview = previewsByEntityId.get(acknowledgeEntityId);
+      if (acknowledgedPreview?.revision === acknowledgeRevision) {
+        acknowledgedPreview.expires = previewNow() + 8000;
       }
     },
-    reject(entityId, revision) {
-      if (previews.get(entityId)?.revision === revision) {
-        previews.delete(entityId);
+    reject(rejectEntityId, rejectRevision) {
+      if (previewsByEntityId.get(rejectEntityId)?.revision === rejectRevision) {
+        previewsByEntityId.delete(rejectEntityId);
       }
     },
     expire() {
-      let removed = false;
-      for (const [entityId, entry] of previews) {
-        if (entry.expires <= now()) {
-          previews.delete(entityId);
-          removed = true;
+      let didExpire = false;
+      for (const [expiredEntityId, expiredPreview] of previewsByEntityId) {
+        if (expiredPreview.expires <= previewNow()) {
+          previewsByEntityId.delete(expiredEntityId);
+          didExpire = true;
         }
       }
-      return removed;
+      return didExpire;
     },
     clear() {
-      previews.clear();
+      previewsByEntityId.clear();
     },
-    nextDelay(at = now()) {
-      let soonest = Infinity;
-      for (const entry of previews.values()) {
-        soonest = Math.min(soonest, entry.expires);
+    nextDelay(atMs = previewNow()) {
+      let earliestExpiryMs = Infinity;
+      for (const previewRecord of previewsByEntityId.values()) {
+        earliestExpiryMs = Math.min(earliestExpiryMs, previewRecord.expires);
       }
-      return Math.max(0, soonest - at);
+      return Math.max(0, earliestExpiryMs - atMs);
     }
   };
 }

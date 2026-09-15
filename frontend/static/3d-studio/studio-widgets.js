@@ -1,236 +1,253 @@
-const selectRegistry = new Map();
-let openSelectState = null;
-function closeStudioSelect(state = openSelectState) {
-  if (state) {
-    state.wrapper.classList.remove("open");
-    state.trigger.setAttribute("aria-expanded", "false");
-    state.menu.hidden = true;
-    if (openSelectState === state) {
-      openSelectState = null;
+const controllersBySelect = new Map();
+let openController = null;
+function closeStudioSelect(targetController = openController) {
+  if (targetController) {
+    targetController.wrapper.classList.remove("open");
+    targetController.trigger.setAttribute("aria-expanded", "false");
+    targetController.menu.hidden = true;
+    if (openController === targetController) {
+      openController = null;
     }
   }
 }
-export function syncStudioSelect(select) {
-  const state = selectRegistry.get(select);
-  if (!state) {
+export function syncStudioSelect(selectElement) {
+  const selectController = controllersBySelect.get(selectElement);
+  if (!selectController) {
     return;
   }
-  const selectedOption = select.selectedOptions?.[0] || select.options[select.selectedIndex] || select.options[0];
-  state.trigger.textContent = selectedOption?.textContent || "请选择";
-  state.trigger.disabled = select.disabled;
-  state.trigger.setAttribute("aria-disabled", String(select.disabled));
-  state.menu.replaceChildren(...[...select.options].map(option => {
-    const optionButton = document.createElement("button");
-    optionButton.type = "button";
-    optionButton.className = "studio-select-option";
-    optionButton.textContent = option.textContent;
-    optionButton.dataset.value = option.value;
-    optionButton.disabled = option.disabled;
-    optionButton.setAttribute("role", "option");
-    optionButton.setAttribute("aria-selected", String(option.value === select.value));
-    optionButton.classList.toggle("selected", option.value === select.value);
-    optionButton.addEventListener("click", event => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (!option.disabled) {
-        select.value = option.value;
-        syncStudioSelect(select);
-        closeStudioSelect(state);
-        select.dispatchEvent(new Event("change", {
-          bubbles: true
-        }));
-        state.trigger.focus();
-      }
-    });
-    return optionButton;
-  }));
-  if (select.disabled) {
-    closeStudioSelect(state);
+  const selectedOptionElement =
+    selectElement.selectedOptions?.[0] ||
+    selectElement.options[selectElement.selectedIndex] ||
+    selectElement.options[0];
+  selectController.trigger.textContent = selectedOptionElement?.textContent || "请选择";
+  selectController.trigger.disabled = selectElement.disabled;
+  selectController.trigger.setAttribute("aria-disabled", String(selectElement.disabled));
+  selectController.menu.replaceChildren(
+    ...[...selectElement.options].map(optionElement => {
+      const optionButtonElement = document.createElement("button");
+      optionButtonElement.type = "button";
+      optionButtonElement.className = "studio-select-option";
+      optionButtonElement.textContent = optionElement.textContent;
+      optionButtonElement.dataset.value = optionElement.value;
+      optionButtonElement.disabled = optionElement.disabled;
+      optionButtonElement.setAttribute("role", "option");
+      optionButtonElement.setAttribute(
+        "aria-selected",
+        String(optionElement.value === selectElement.value)
+      );
+      optionButtonElement.classList.toggle("selected", optionElement.value === selectElement.value);
+      optionButtonElement.addEventListener("click", optionClickEvent => {
+        optionClickEvent.preventDefault();
+        optionClickEvent.stopPropagation();
+        if (!optionElement.disabled) {
+          selectElement.value = optionElement.value;
+          syncStudioSelect(selectElement);
+          closeStudioSelect(selectController);
+          selectElement.dispatchEvent(
+            new Event("change", {
+              bubbles: true
+            })
+          );
+          selectController.trigger.focus();
+        }
+      });
+      return optionButtonElement;
+    })
+  );
+  if (selectElement.disabled) {
+    closeStudioSelect(selectController);
   }
 }
-export function enhanceStudioSelect(select) {
-  if (!select || selectRegistry.has(select)) {
+export function enhanceStudioSelect(hostSelectElement) {
+  if (!hostSelectElement || controllersBySelect.has(hostSelectElement)) {
     return;
   }
-  const wrapper = document.createElement("div");
-  wrapper.className = "studio-select";
-  select.before(wrapper);
-  wrapper.append(select);
-  select.classList.add("studio-native-select");
-  select.tabIndex = -1;
-  select.setAttribute("aria-hidden", "true");
-  const trigger = document.createElement("button");
-  trigger.type = "button";
-  trigger.className = "studio-select-trigger";
-  trigger.setAttribute("aria-haspopup", "listbox");
-  trigger.setAttribute("aria-expanded", "false");
-  const menu = document.createElement("div");
-  menu.className = "studio-select-menu";
-  menu.id = (select.id || "studio-select-" + (selectRegistry.size + 1)) + "-menu";
-  menu.setAttribute("role", "listbox");
-  menu.hidden = true;
-  trigger.setAttribute("aria-controls", menu.id);
-  wrapper.append(trigger, menu);
-  const state = {
-    select,
-    wrapper,
-    trigger,
-    menu
+  const wrapperElement = document.createElement("div");
+  wrapperElement.className = "studio-select";
+  hostSelectElement.before(wrapperElement);
+  wrapperElement.append(hostSelectElement);
+  hostSelectElement.classList.add("studio-native-select");
+  hostSelectElement.tabIndex = -1;
+  hostSelectElement.setAttribute("aria-hidden", "true");
+  const triggerElement = document.createElement("button");
+  triggerElement.type = "button";
+  triggerElement.className = "studio-select-trigger";
+  triggerElement.setAttribute("aria-haspopup", "listbox");
+  triggerElement.setAttribute("aria-expanded", "false");
+  const menuElement = document.createElement("div");
+  menuElement.className = "studio-select-menu";
+  menuElement.id =
+    (hostSelectElement.id || "studio-select-" + (controllersBySelect.size + 1)) + "-menu";
+  menuElement.setAttribute("role", "listbox");
+  menuElement.hidden = true;
+  triggerElement.setAttribute("aria-controls", menuElement.id);
+  wrapperElement.append(triggerElement, menuElement);
+  const controllerRecord = {
+    select: hostSelectElement,
+    wrapper: wrapperElement,
+    trigger: triggerElement,
+    menu: menuElement
   };
-  selectRegistry.set(select, state);
-  trigger.addEventListener("click", event => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (!select.disabled) {
-      if (openSelectState === state) {
-        closeStudioSelect(state);
+  controllersBySelect.set(hostSelectElement, controllerRecord);
+  triggerElement.addEventListener("click", triggerClickEvent => {
+    triggerClickEvent.preventDefault();
+    triggerClickEvent.stopPropagation();
+    if (!hostSelectElement.disabled) {
+      if (openController === controllerRecord) {
+        closeStudioSelect(controllerRecord);
         return;
       }
       closeStudioSelect();
-      syncStudioSelect(select);
-      wrapper.classList.add("open");
-      trigger.setAttribute("aria-expanded", "true");
-      menu.hidden = false;
-      openSelectState = state;
+      syncStudioSelect(hostSelectElement);
+      wrapperElement.classList.add("open");
+      triggerElement.setAttribute("aria-expanded", "true");
+      menuElement.hidden = false;
+      openController = controllerRecord;
     }
   });
-  select.addEventListener("change", () => syncStudioSelect(select));
-  new MutationObserver(() => syncStudioSelect(select)).observe(select, {
+  hostSelectElement.addEventListener("change", () => syncStudioSelect(hostSelectElement));
+  new MutationObserver(() => syncStudioSelect(hostSelectElement)).observe(hostSelectElement, {
     childList: true,
     subtree: true,
     attributes: true
   });
-  syncStudioSelect(select);
+  syncStudioSelect(hostSelectElement);
 }
-export function initializeStudioSelects(root = document) {
-  for (const select of root.querySelectorAll("select")) {
-    enhanceStudioSelect(select);
+export function initializeStudioSelects(rootElement = document) {
+  for (const discoveredSelect of rootElement.querySelectorAll("select")) {
+    enhanceStudioSelect(discoveredSelect);
   }
-  root.addEventListener("pointerdown", event => {
-    if (openSelectState && !openSelectState.wrapper.contains(event.target)) {
+  rootElement.addEventListener("pointerdown", pointerEvent => {
+    if (openController && !openController.wrapper.contains(pointerEvent.target)) {
       closeStudioSelect();
     }
   });
-  root.addEventListener("keydown", event => {
-    if (event.key !== "Escape" || !openSelectState) {
+  rootElement.addEventListener("keydown", keydownEvent => {
+    if (keydownEvent.key !== "Escape" || !openController) {
       return;
     }
-    event.preventDefault();
-    event.stopPropagation();
-    const trigger = openSelectState.trigger;
+    keydownEvent.preventDefault();
+    keydownEvent.stopPropagation();
+    const triggerToFocus = openController.trigger;
     closeStudioSelect();
-    trigger.focus();
+    triggerToFocus.focus();
   });
 }
-function syncStepperDisabled(input, buttons) {
-  const isDisabled = input.disabled || input.readOnly;
-  for (const button of buttons) {
-    button.disabled = isDisabled;
+function syncStepperButtonsDisabled(stepperInput, stepperButtons) {
+  const isStepperDisabled = stepperInput.disabled || stepperInput.readOnly;
+  for (const stepperButton of stepperButtons) {
+    stepperButton.disabled = isStepperDisabled;
   }
-  input.closest(".number-stepper")?.classList.toggle("is-disabled", isDisabled);
+  stepperInput.closest(".number-stepper")?.classList.toggle("is-disabled", isStepperDisabled);
 }
-export function enhanceNumberInput(input) {
-  if (!input || input.closest(".number-stepper")) {
+export function enhanceNumberInput(numberInput) {
+  if (!numberInput || numberInput.closest(".number-stepper")) {
     return;
   }
-  const stepper = document.createElement("span");
-  stepper.className = "number-stepper";
-  input.before(stepper);
-  stepper.append(input);
-  const buttonGroup = document.createElement("span");
-  buttonGroup.className = "number-stepper-buttons";
-  const buttons = [{
-    direction: "up",
-    label: "增加数值"
-  }, {
-    direction: "down",
-    label: "减小数值"
-  }].map(({
-    direction,
-    label
-  }) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "number-stepper-button number-stepper-" + direction;
-    button.setAttribute("aria-label", label);
-    button.title = label;
+  const stepperWrapperElement = document.createElement("span");
+  stepperWrapperElement.className = "number-stepper";
+  numberInput.before(stepperWrapperElement);
+  stepperWrapperElement.append(numberInput);
+  const stepperButtonsContainer = document.createElement("span");
+  stepperButtonsContainer.className = "number-stepper-buttons";
+  const stepperButtonDefinitions = [
+    {
+      direction: "up",
+      label: "增加数值"
+    },
+    {
+      direction: "down",
+      label: "减小数值"
+    }
+  ].map(({ direction: stepDirection, label: buttonLabel }) => {
+    const stepperButtonElement = document.createElement("button");
+    stepperButtonElement.type = "button";
+    stepperButtonElement.className = "number-stepper-button number-stepper-" + stepDirection;
+    stepperButtonElement.setAttribute("aria-label", buttonLabel);
+    stepperButtonElement.title = buttonLabel;
     const stepOnce = () => {
-      if (input.disabled || input.readOnly) {
+      if (numberInput.disabled || numberInput.readOnly) {
         return false;
       }
-      const previousValue = input.value;
+      const previousValue = numberInput.value;
       try {
-        if (direction === "up") {
-          input.stepUp();
+        if (stepDirection === "up") {
+          numberInput.stepUp();
         } else {
-          input.stepDown();
+          numberInput.stepDown();
         }
       } catch {
         return false;
       }
-      if (input.value === previousValue) {
+      if (numberInput.value === previousValue) {
         return false;
       } else {
-        input.dispatchEvent(new Event("input", {
-          bubbles: true
-        }));
+        numberInput.dispatchEvent(
+          new Event("input", {
+            bubbles: true
+          })
+        );
         return true;
       }
     };
-    button.addEventListener("click", event => {
-      event.preventDefault();
-      event.stopPropagation();
+    stepperButtonElement.addEventListener("click", buttonClickEvent => {
+      buttonClickEvent.preventDefault();
+      buttonClickEvent.stopPropagation();
     });
-    button.addEventListener("pointerdown", event => {
-      if (event.button !== 0 || input.disabled || input.readOnly) {
+    stepperButtonElement.addEventListener("pointerdown", pointerDownEvent => {
+      if (pointerDownEvent.button !== 0 || numberInput.disabled || numberInput.readOnly) {
         return;
       }
-      event.preventDefault();
-      event.stopPropagation();
-      input.focus({
+      pointerDownEvent.preventDefault();
+      pointerDownEvent.stopPropagation();
+      numberInput.focus({
         preventScroll: true
       });
       let didStep = stepOnce();
-      let released = false;
-      let repeatTimer = window.setTimeout(() => {
-        repeatTimer = window.setInterval(() => {
+      let isPointerReleased = false;
+      let repeatTimerId = window.setTimeout(() => {
+        repeatTimerId = window.setInterval(() => {
           didStep = stepOnce() || didStep;
         }, 55);
       }, 320);
-      const release = () => {
-        if (!released) {
-          released = true;
-          window.clearTimeout(repeatTimer);
-          window.clearInterval(repeatTimer);
-          button.removeEventListener("pointerup", release);
-          button.removeEventListener("pointercancel", release);
-          button.removeEventListener("lostpointercapture", release);
+      const handleRepeatEnd = () => {
+        if (!isPointerReleased) {
+          isPointerReleased = true;
+          window.clearTimeout(repeatTimerId);
+          window.clearInterval(repeatTimerId);
+          stepperButtonElement.removeEventListener("pointerup", handleRepeatEnd);
+          stepperButtonElement.removeEventListener("pointercancel", handleRepeatEnd);
+          stepperButtonElement.removeEventListener("lostpointercapture", handleRepeatEnd);
           if (didStep) {
-            input.dispatchEvent(new Event("change", {
-              bubbles: true
-            }));
+            numberInput.dispatchEvent(
+              new Event("change", {
+                bubbles: true
+              })
+            );
           }
         }
       };
-      button.addEventListener("pointerup", release);
-      button.addEventListener("pointercancel", release);
-      button.addEventListener("lostpointercapture", release);
+      stepperButtonElement.addEventListener("pointerup", handleRepeatEnd);
+      stepperButtonElement.addEventListener("pointercancel", handleRepeatEnd);
+      stepperButtonElement.addEventListener("lostpointercapture", handleRepeatEnd);
       try {
-        button.setPointerCapture(event.pointerId);
+        stepperButtonElement.setPointerCapture(pointerDownEvent.pointerId);
       } catch {}
     });
-    buttonGroup.append(button);
-    return button;
+    stepperButtonsContainer.append(stepperButtonElement);
+    return stepperButtonElement;
   });
-  stepper.append(buttonGroup);
-  new MutationObserver(() => syncStepperDisabled(input, buttons)).observe(input, {
+  stepperWrapperElement.append(stepperButtonsContainer);
+  new MutationObserver(() =>
+    syncStepperButtonsDisabled(numberInput, stepperButtonDefinitions)
+  ).observe(numberInput, {
     attributes: true,
     attributeFilter: ["disabled", "readonly"]
   });
-  syncStepperDisabled(input, buttons);
+  syncStepperButtonsDisabled(numberInput, stepperButtonDefinitions);
 }
-export function initializeNumberInputs(root = document) {
-  for (const input of root.querySelectorAll('input[type="number"]')) {
-    enhanceNumberInput(input);
+export function initializeNumberInputs(containerElement = document) {
+  for (const numberInputElement of containerElement.querySelectorAll('input[type="number"]')) {
+    enhanceNumberInput(numberInputElement);
   }
 }

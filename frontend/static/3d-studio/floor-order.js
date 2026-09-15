@@ -1,29 +1,46 @@
-function positiveGap(value) {
-  const numeric = Number(value);
-  if (Number.isFinite(numeric) && numeric > 0) {
-    return numeric;
+function toPositiveNumber(value) {
+  const parsedValue = Number(value);
+  if (Number.isFinite(parsedValue) && parsedValue > 0) {
+    return parsedValue;
+  } else {
+    return 3;
   }
-  return 3;
 }
-export function reorderFloors(floors, sourceId, targetId, placeAfter = false, gap = 3) {
-  if (!Array.isArray(floors) || floors.length < 2 || !sourceId || !targetId || sourceId === targetId) {
+export function reorderFloors(
+  floors,
+  draggedFloorId,
+  targetFloorId,
+  placeAfter = false,
+  defaultFloorSpacing = 3
+) {
+  if (
+    !Array.isArray(floors) ||
+    floors.length < 2 ||
+    !draggedFloorId ||
+    !targetFloorId ||
+    draggedFloorId === targetFloorId
+  ) {
     return floors;
   }
-  const sourceIndex = floors.findIndex(floor => floor?.id === sourceId);
-  const targetIndex = floors.findIndex(floor => floor?.id === targetId);
-  if (sourceIndex < 0 || targetIndex < 0) {
+  const draggedIndex = floors.findIndex(floorEntry => floorEntry?.id === draggedFloorId);
+  const targetIndex = floors.findIndex(candidateFloor => candidateFloor?.id === targetFloorId);
+  if (draggedIndex < 0 || targetIndex < 0) {
     return floors;
   }
-  const next = [...floors];
-  const [moved] = next.splice(sourceIndex, 1);
-  const insertAt = next.findIndex(floor => floor?.id === targetId);
-  next.splice(insertAt + (placeAfter ? 1 : 0), 0, moved);
-  if (next.every((floor, index) => floor?.id === floors[index]?.id)) {
+  const reorderedFloors = [...floors];
+  const [movedFloor] = reorderedFloors.splice(draggedIndex, 1);
+  const insertIndex = reorderedFloors.findIndex(
+    remainingFloor => remainingFloor?.id === targetFloorId
+  );
+  reorderedFloors.splice(insertIndex + (placeAfter ? 1 : 0), 0, movedFloor);
+  if (
+    reorderedFloors.every((orderedFloor, floorIndex) => orderedFloor?.id === floors[floorIndex]?.id)
+  ) {
     return floors;
   }
-  const elevationGap = positiveGap(gap);
-  return next.map((floor, index) => ({
-    ...floor,
-    elevation: index * elevationGap
+  const floorSpacing = toPositiveNumber(defaultFloorSpacing);
+  return reorderedFloors.map((floorRecord, stackIndex) => ({
+    ...floorRecord,
+    elevation: stackIndex * floorSpacing
   }));
 }

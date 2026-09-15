@@ -1,39 +1,86 @@
-const VISUAL_SETTINGS_KEYS = ["planViewRotation", "cameraView", "cameraTopRotation", "cameraMode", "cameraFocalLength", "fixedCameraView", "livePreviewEnabled", "backgroundVisible", "snapEnabled", "snapEndpoints", "snapIntersections", "snapSegments", "snapOrthogonal", "snapAngles", "snapGrid", "snapTolerance", "previewPanelRatio", "detailsPanelWidthRatio"];
-const DOCUMENT_META_KEYS = ["activeFloorId", "previewFloorMode", "combinedCameraSettings", "combinedFixedCameraView", "exportFloorGap", "exportPresets", "activeExportPresetSlot"];
-function omitKeys(value, keys) {
-  const next = {
-    ...value
+const IGNORED_SETTING_KEYS = [
+  "planViewRotation",
+  "cameraView",
+  "cameraTopRotation",
+  "cameraMode",
+  "cameraFocalLength",
+  "fixedCameraView",
+  "livePreviewEnabled",
+  "backgroundVisible",
+  "snapEnabled",
+  "snapEndpoints",
+  "snapIntersections",
+  "snapSegments",
+  "snapOrthogonal",
+  "snapAngles",
+  "snapGrid",
+  "snapTolerance",
+  "previewPanelRatio",
+  "detailsPanelWidthRatio"
+];
+const IGNORED_PROJECT_KEYS = [
+  "activeFloorId",
+  "previewFloorMode",
+  "combinedCameraSettings",
+  "combinedFixedCameraView",
+  "exportFloorGap",
+  "exportPresets",
+  "activeExportPresetSlot"
+];
+function omitKeys(source, keys) {
+  const result = {
+    ...source
   };
-  for (const key of keys) {
-    delete next[key];
+  for (const omittedKey of keys) {
+    delete result[omittedKey];
   }
-  return next;
+  return result;
 }
-function sortDeep(value) {
-  if (Array.isArray(value)) {
-    return value.map(sortDeep);
+function sortDeep(node) {
+  if (Array.isArray(node)) {
+    return node.map(sortDeep);
+  } else if (node && typeof node == "object") {
+    return Object.fromEntries(
+      Object.keys(node)
+        .sort()
+        .map(sortKey => [sortKey, sortDeep(node[sortKey])])
+    );
+  } else {
+    return node;
   }
-  if (value && typeof value == "object") {
-    return Object.fromEntries(Object.keys(value).sort().map(key => [key, sortDeep(value[key])]));
-  }
-  return value;
 }
 const stableStringify = value => JSON.stringify(sortDeep(value));
-const floorSceneSignature = floor => ({
-  ...floor.scene,
-  settings: omitKeys(floor.scene?.settings, VISUAL_SETTINGS_KEYS)
+const sceneSignature = floorRecord => ({
+  ...floorRecord.scene,
+  settings: omitKeys(floorRecord.scene?.settings, IGNORED_SETTING_KEYS)
 });
-const floorMetaSignature = floor => omitKeys(floor, ["scene", "name", "aligned", "alignmentPending"]);
-export function sceneUpdatePlan(previous, next) {
-  const previousById = new Map(previous.floors.map(floor => [floor.id, floor]));
-  const documentCore = doc => omitKeys(doc, [...DOCUMENT_META_KEYS, "floors", "baseLighting"]);
-  const full = stableStringify(documentCore(previous)) !== stableStringify(documentCore(next)) || stableStringify(previous.floors.map(floorMetaSignature)) !== stableStringify(next.floors.map(floorMetaSignature));
-  const floors = next.floors.filter(floor => !previousById.has(floor.id) || stableStringify(floorSceneSignature(previousById.get(floor.id))) !== stableStringify(floorSceneSignature(floor))).map(floor => floor.id);
-  const lighting = stableStringify(previous.baseLighting) !== stableStringify(next.baseLighting);
+const floorSignature = floorEntry =>
+  omitKeys(floorEntry, ["scene", "name", "aligned", "alignmentPending"]);
+export function sceneUpdatePlan(previousProject, nextProject) {
+  const floorsById = new Map(
+    previousProject.floors.map(existingFloor => [existingFloor.id, existingFloor])
+  );
+  const projectSignature = project =>
+    omitKeys(project, [...IGNORED_PROJECT_KEYS, "floors", "baseLighting"]);
+  const structureChanged =
+    stableStringify(projectSignature(previousProject)) !==
+      stableStringify(projectSignature(nextProject)) ||
+    stableStringify(previousProject.floors.map(floorSignature)) !==
+      stableStringify(nextProject.floors.map(floorSignature));
+  const changedFloorIds = nextProject.floors
+    .filter(
+      candidateFloor =>
+        !floorsById.has(candidateFloor.id) ||
+        stableStringify(sceneSignature(floorsById.get(candidateFloor.id))) !==
+          stableStringify(sceneSignature(candidateFloor))
+    )
+    .map(floor => floor.id);
+  const lightingChanged =
+    stableStringify(previousProject.baseLighting) !== stableStringify(nextProject.baseLighting);
   return {
-    full,
-    floors,
-    lighting,
-    visual: full || floors.length > 0 || lighting
+    full: structureChanged,
+    floors: changedFloorIds,
+    lighting: lightingChanged,
+    visual: structureChanged || changedFloorIds.length > 0 || lightingChanged
   };
 }

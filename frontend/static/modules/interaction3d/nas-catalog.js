@@ -1,5 +1,10 @@
-const I = {
+const METRIC_DEFINITIONS = {
   cpu_total_load: ["CPU 使用率", "system"],
+  cpu_user_load: ["CPU 用户使用率", "system"],
+  cpu_system_load: ["CPU 系统使用率", "system"],
+  cpu_other_load: ["CPU 其他使用率", "system"],
+  cpu_1min_load: ["平均负载 · 1 分钟", "system"],
+  cpu_15min_load: ["平均负载 · 15 分钟", "system"],
   memory_real_usage: ["内存使用率", "system"],
   temperature: ["系统温度", "system"],
   cpu_temperature: ["CPU 温度", "system"],
@@ -20,47 +25,241 @@ const I = {
   disk_exceed_bad_sector_thr: ["坏道告警", "health", "problem"],
   disk_below_remain_life_thr: ["寿命告警", "health", "problem"]
 };
-const f = disabledBy => !disabledBy.disabledBy && !["disabled", "missing"].includes(disabledBy.status);
-const b = platform => ["fnos", "synology_dsm"].includes(platform) ? platform : null;
-export function nasProfiles(filter = [], list = []) {
-  const filtered = filter.filter(entityId => f(entityId) && /^(sensor|binary_sensor)\./.test(entityId.entityId) && b(entityId.platform));
-  const items = new Map(list.filter(f).map(deviceId => [deviceId.deviceId, deviceId]));
-  const filterCurrent = filtered.filter(deviceId => deviceId.translationKey === "cpu_total_load" && deviceId.deviceId && items.has(deviceId.deviceId));
-  const has = new Set();
-  return filterCurrent.filter(deviceId => !has.has(deviceId.deviceId) && has.add(deviceId.deviceId)).map(entityId3 => {
-    const deviceId5 = items.get(entityId3.deviceId);
-    const entityIdStem = entityId3.entityId.split(".")[1].replace(/_cpu_utilization_total$/, "");
-    const metrics = {
-      deviceId: deviceId5.deviceId,
-      name: deviceId5.name || entityId3.name || "NAS",
-      platform: entityId3.platform,
-      primaryEntityId: entityId3.entityId,
-      metrics: []
+const isUsableEntity = entity =>
+  !entity.disabledBy && !["disabled", "missing"].includes(entity.status);
+const normalizeNasPlatform = platform =>
+  ["fnos", "synology_dsm"].includes(platform) ? platform : null;
+const METRIC_KEYS_BY_LENGTH = Object.keys(METRIC_DEFINITIONS).sort(
+  (keyA, keyB) => keyB.length - keyA.length
+);
+function resolveMetricIdentity(sourceEntity) {
+  const uniqueId = sourceEntity.uniqueId || "";
+  if (sourceEntity.platform === "synology_dsm") {
+    const hostMatch = uniqueId.match(/^(.+)_[^:]+:([^:]+)$/);
+    const synologyMetricKey =
+      hostMatch &&
+      METRIC_KEYS_BY_LENGTH.find(
+        longestKey => hostMatch[2] === longestKey || hostMatch[2].startsWith(longestKey + "_")
+      );
+    return {
+      key: sourceEntity.translationKey || synologyMetricKey,
+      host: synologyMetricKey ? hostMatch[1] : null
     };
-    for (const deviceIdCurrent of filtered) {
-      if (deviceIdCurrent.platform !== entityId3.platform) {
-        continue;
+  }
+  const metricKey = METRIC_KEYS_BY_LENGTH.find(candidateKey =>
+    uniqueId.endsWith("_" + candidateKey)
+  );
+  return {
+    key: sourceEntity.translationKey || metricKey,
+    prefix: metricKey ? uniqueId.slice(0, -metricKey.length - 1) : null
+  };
+}
+const metricDefinition = metric =>
+  METRIC_DEFINITIONS[metric.key] || [
+    metric.name || metric.originalName || metric.entityId,
+    "system",
+    metric.entityId.startsWith("binary_sensor.") ? "status" : "number"
+  ];
+const isSystemMetric = checkedMetric =>
+  Object.hasOwn(METRIC_DEFINITIONS, checkedMetric.key) &&
+  (METRIC_DEFINITIONS[checkedMetric.key][1] === "system" ||
+    checkedMetric.key === "status" ||
+    (checkedMetric.platform === "synology_dsm" &&
+      METRIC_DEFINITIONS[checkedMetric.key][1] === "network"));
+export function nasProfiles(entities = [], devices = []) {
+  const devicesByDeviceId = new Map(
+    devices.filter(isUsableEntity).map(device => [device.deviceId, device])
+  );
+  const platformsByDeviceId = new Map(
+    [...devicesByDeviceId.values()].map(deviceEntry => [
+      deviceEntry.deviceId,
+      new Set((deviceEntry.registryMetadata?.integrations || []).filter(normalizeNasPlatform))
+    ])
+  );
+  for (const entityRecord of entities) {
+    if (entityRecord.status !== "missing" && normalizeNasPlatform(entityRecord.platform)) {
+      platformsByDeviceId.get(entityRecord.deviceId)?.add(entityRecord.platform);
+    }
+  }
+  const platformsOfDevice = sourceDevice => [
+    ...(platformsByDeviceId.get(sourceDevice.deviceId) || [])
+  ];
+  const profilesByIdentity = new Map();
+  const profilesByEntityKey = new Map();
+  for (const chainDevice of devicesByDeviceId.values()) {
+    if (!chainDevice.registryMetadata || chainDevice.registryMetadata.entryType === "service") {
+      continue;
+    }
+    const platforms = platformsOfDevice(chainDevice);
+    if (platforms.length !== 1) {
+      continue;
+    }
+    const devicePlatform = platforms[0];
+    const visitedDeviceIds = new Set();
+    let currentDevice = chainDevice;
+    let isChainValid = true;
+    while (currentDevice.registryMetadata?.viaDeviceId) {
+      if (visitedDeviceIds.has(currentDevice.deviceId)) {
+        isChainValid = false;
+        break;
       }
-      const name = items.get(deviceIdCurrent.deviceId);
-      const belongsToNas = deviceIdCurrent.deviceId === deviceId5.deviceId || name?.name?.startsWith(deviceId5.name + " (") || entityIdStem !== entityId3.entityId.split(".")[1] && deviceIdCurrent.entityId.split(".")[1].startsWith(entityIdStem + "_") && !filterCurrent.some(deviceId => deviceId.deviceId !== deviceId5.deviceId && deviceId.deviceId === deviceIdCurrent.deviceId);
-      const metricMeta = I[deviceIdCurrent.translationKey];
-      if (!belongsToNas || !metricMeta || metricMeta[2] === "problem" && !deviceIdCurrent.entityId.startsWith("binary_sensor.")) {
-        continue;
+      visitedDeviceIds.add(currentDevice.deviceId);
+      const parentDevice = devicesByDeviceId.get(currentDevice.registryMetadata.viaDeviceId);
+      const configEntryIds = currentDevice.registryMetadata.configEntryIds || [];
+      const parentConfigEntryIds = parentDevice?.registryMetadata?.configEntryIds || [];
+      if (
+        !parentDevice?.registryMetadata ||
+        parentDevice.registryMetadata.entryType === "service" ||
+        platformsOfDevice(parentDevice).length !== 1 ||
+        platformsOfDevice(parentDevice)[0] !== devicePlatform ||
+        (configEntryIds.length &&
+          parentConfigEntryIds.length &&
+          !configEntryIds.some(configEntryId => parentConfigEntryIds.includes(configEntryId)))
+      ) {
+        isChainValid = false;
+        break;
       }
-      const volumeLabel = name?.name?.match(/\(([^)]+)\)$/)?.[1] || "";
-      metrics.metrics.push({
-        entityId: deviceIdCurrent.entityId,
-        label: "" + (volumeLabel ? volumeLabel + " · " : "") + metricMeta[0],
-        group: metricMeta[1],
-        kind: metricMeta[2] || "number"
+      currentDevice = parentDevice;
+    }
+    if (!isChainValid) {
+      continue;
+    }
+    const profileKey = devicePlatform + ":" + currentDevice.deviceId;
+    if (!profilesByIdentity.has(profileKey)) {
+      profilesByIdentity.set(profileKey, {
+        device: currentDevice,
+        platform: devicePlatform,
+        identities: new Set(),
+        metrics: [],
+        registry: true
       });
     }
-    const indexOf = Object.keys(I);
-    metrics.metrics.sort((label, labelRight) => {
-      const value = entityIdCurrent => filtered.find(entityId => entityId.entityId === entityIdCurrent.entityId)?.translationKey;
-      return indexOf.indexOf(value(label)) - indexOf.indexOf(value(labelRight)) || label.label.localeCompare(labelRight.label);
-    });
-    metrics.metrics = metrics.metrics.slice(0, 48);
-    return metrics;
-  }).sort((name2, name3) => name2.name.localeCompare(name3.name));
+    profilesByEntityKey.set(
+      devicePlatform + ":" + chainDevice.deviceId,
+      profilesByIdentity.get(profileKey)
+    );
+  }
+  const metricEntities = entities
+    .filter(
+      candidateEntity =>
+        /^(sensor|binary_sensor)\./.test(candidateEntity.entityId) &&
+        normalizeNasPlatform(candidateEntity.platform) &&
+        devicesByDeviceId.has(candidateEntity.deviceId) &&
+        candidateEntity.status !== "missing"
+    )
+    .map(mappedEntity => ({
+      ...mappedEntity,
+      ...resolveMetricIdentity(mappedEntity)
+    }))
+    .filter(
+      metricCandidate =>
+        metricDefinition(metricCandidate)[2] !== "problem" ||
+        metricCandidate.entityId.startsWith("binary_sensor.")
+    );
+  for (const legacyEntity of metricEntities.filter(
+    legacyMetricEntity =>
+      !devicesByDeviceId.get(legacyMetricEntity.deviceId).registryMetadata &&
+      isSystemMetric(legacyMetricEntity)
+  )) {
+    const identityKey = legacyEntity.platform + ":" + legacyEntity.deviceId;
+    if (!profilesByIdentity.has(identityKey)) {
+      profilesByIdentity.set(identityKey, {
+        device: devicesByDeviceId.get(legacyEntity.deviceId),
+        platform: legacyEntity.platform,
+        identities: new Set(),
+        metrics: []
+      });
+    }
+    const identityProfile = profilesByIdentity.get(identityKey);
+    const hostIdentity = legacyEntity.host || legacyEntity.prefix;
+    if (hostIdentity) {
+      identityProfile.identities.add(hostIdentity);
+    }
+  }
+  const profiles = [...profilesByIdentity.values()];
+  for (const entityProfile of metricEntities.filter(isUsableEntity)) {
+    let targetProfile = profilesByEntityKey.get(
+      entityProfile.platform + ":" + entityProfile.deviceId
+    );
+    if (devicesByDeviceId.get(entityProfile.deviceId).registryMetadata) {
+      if (targetProfile) {
+        targetProfile.metrics.push(entityProfile);
+      }
+      continue;
+    }
+    if (!Object.hasOwn(METRIC_DEFINITIONS, entityProfile.key)) {
+      continue;
+    }
+    const platformProfiles = profiles.filter(
+      profile => !profile.registry && profile.platform === entityProfile.platform
+    );
+    targetProfile = platformProfiles.find(
+      matchedProfile => matchedProfile.device.deviceId === entityProfile.deviceId
+    );
+    if (!targetProfile) {
+      const identityMatches = platformProfiles.filter(candidateProfile =>
+        [...candidateProfile.identities].some(hostValue =>
+          entityProfile.host
+            ? entityProfile.host === hostValue
+            : entityProfile.prefix &&
+              (entityProfile.prefix === hostValue ||
+                entityProfile.prefix.startsWith(hostValue + "_"))
+        )
+      );
+      if (identityMatches.length === 1) {
+        targetProfile = identityMatches[0];
+      } else if (!identityMatches.length) {
+        const deviceName = devicesByDeviceId.get(entityProfile.deviceId)?.name;
+        const deviceNameMatches = platformProfiles.filter(
+          parentProfile =>
+            (!parentProfile.identities.size || (!entityProfile.host && !entityProfile.prefix)) &&
+            parentProfile.device.name &&
+            deviceName?.startsWith(parentProfile.device.name + " (")
+        );
+        if (deviceNameMatches.length === 1) {
+          targetProfile = deviceNameMatches[0];
+        }
+      }
+    }
+    if (targetProfile) {
+      targetProfile.metrics.push(entityProfile);
+    }
+  }
+  const metricKeyOrder = Object.keys(METRIC_DEFINITIONS);
+  const metricRank = rankedMetric =>
+    metricKeyOrder.includes(rankedMetric.key)
+      ? metricKeyOrder.indexOf(rankedMetric.key)
+      : metricKeyOrder.length;
+  return profiles
+    .filter(keptProfile => keptProfile.registry || keptProfile.metrics.length)
+    .map(profileEntry => {
+      profileEntry.metrics.sort(
+        (metricA, metricB) =>
+          metricRank(metricA) - metricRank(metricB) ||
+          metricA.entityId.localeCompare(metricB.entityId)
+      );
+      const selectedMetrics = profileEntry.metrics.slice(0, 48);
+      const primaryMetric = selectedMetrics.find(isSystemMetric) || selectedMetrics[0];
+      return {
+        deviceId: profileEntry.device.deviceId,
+        name: profileEntry.device.name || primaryMetric?.name || "NAS",
+        platform: profileEntry.platform,
+        primaryEntityId: primaryMetric?.entityId || "",
+        metrics: selectedMetrics.map(metricEntity => {
+          const definition = metricDefinition(metricEntity);
+          const metricDevice = devicesByDeviceId.get(metricEntity.deviceId);
+          const deviceLabel =
+            metricEntity.deviceId === profileEntry.device.deviceId
+              ? ""
+              : metricDevice?.name?.match(/\(([^)]+)\)$/)?.[1] || metricDevice?.name || "";
+          return {
+            entityId: metricEntity.entityId,
+            label: "" + (deviceLabel ? deviceLabel + " · " : "") + definition[0],
+            group: definition[1],
+            kind: definition[2] || "number"
+          };
+        })
+      };
+    })
+    .sort((leftProfile, rightProfile) => leftProfile.name.localeCompare(rightProfile.name));
 }

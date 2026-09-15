@@ -1,489 +1,800 @@
-const COVER_DIRECTIONS = new Set(["left", "right", "split"]);
-const CLOTH_PARTS = new Set(["cloth", "band"]);
-const CURTAIN_PARTS = new Set(["rod", "cap", ...CLOTH_PARTS]);
+const {
+  normalizeCurtainTrack: normalizeTrack,
+  createCurtainTrack: createTrack,
+  createTrackClothGeometry: buildTrackClothGeometry,
+  poseTrackCloth: poseClothGeometry,
+  curtainPanelRanges: samplePanelRanges,
+  createDreamBladeGeometry: createBladeGeometry,
+  poseDreamBlades: poseBladeGeometry
+} = await (import.meta.url.startsWith("file:")
+  ? import(
+      new URL(
+        "../../static/3d-studio/studio-curtain-track.js?v=20260914-dream-blades-v2",
+        import.meta.url
+      )
+    )
+  : import("/bridge-static/3d-studio/studio-curtain-track.js?v=20260914-dream-blades-v2"));
+const DIRECTION_SET = new Set(["left", "right", "split"]);
+const CLOTH_PART_SET = new Set(["cloth", "band"]);
+const TRACK_PART_SET = new Set(["rod", "cap", ...CLOTH_PART_SET]);
 const FRAME_INTERVAL_MS = 1000 / 30;
-// Built-in easing is available for callers that omit { immediate: true }.
-// Stage runtime owns travel timing in cover-feedback and pushes poses here with
-// immediate:true each tick, so MOTION_DURATION_MS rarely drives stage animation.
 const MOTION_DURATION_MS = 420;
 const MIN_PANEL_SCALE = 0.12;
-const FOLD_WIDTH = 0.15;
-const SHEER_FOLD_WIDTH = 0.1;
-const resolveCurtainFabric = binding => binding?.curtainFabric === "sheer" ? "sheer" : "cloth";
-const resolveUnboundPosition = binding => !binding?.entityId && Number.isFinite(binding?.unboundPosition) ? Math.max(0, Math.min(100, binding.unboundPosition)) : 0;
-const foldCountForBinding = binding => Math.max(4, Math.min(96, Math.round((Number(binding.curtainWidth) || 1.8) / (resolveCoverDirection(binding) === "split" ? 2 : 1) / (resolveCurtainFabric(binding) === "sheer" ? SHEER_FOLD_WIDTH : FOLD_WIDTH))));
-const modelKey = (floorId, modelId) => JSON.stringify([String(floorId ?? ""), String(modelId ?? "")]);
-const resolveCoverDirection = binding => COVER_DIRECTIONS.has(binding.coverDirection) ? binding.coverDirection : COVER_DIRECTIONS.has(binding.curtainPosition) ? binding.curtainPosition : "split";
-const clampPosition = state => typeof state?.position == "number" && Number.isFinite(state.position) ? Math.max(0, Math.min(100, state.position)) : null;
-const rigBasis = node => Array.isArray(node.userData?.curtainRigBasis) && node.userData.curtainRigBasis.length === 3 && node.userData.curtainRigBasis.every(n => typeof n == "number" && Number.isFinite(n) && n > 0) ? [...node.userData.curtainRigBasis] : [1.8, 2.4, 0.18];
-function buildFoldGeometry(THREE, folds, fabric = "cloth") {
+const CLOTH_FOLD_SPACING_METERS = 0.15;
+const resolveCurtainFabric = fabricBinding =>
+  fabricBinding.curtainFabric === "sheer" ? "sheer" : "cloth";
+const resolveUnboundPosition = unboundBinding =>
+  !unboundBinding.entityId && Number.isFinite(unboundBinding.unboundPosition)
+    ? Math.max(0, Math.min(100, unboundBinding.unboundPosition))
+    : 0;
+const resolveFoldCount = widthBinding =>
+  Math.max(
+    4,
+    Math.min(
+      96,
+      Math.round(
+        (Number(widthBinding.curtainWidth) || 1.8) /
+          (resolveCurtainDirection(widthBinding) === "split" ? 2 : 1) /
+          (resolveCurtainFabric(widthBinding) === "sheer" ? 0.1 : CLOTH_FOLD_SPACING_METERS)
+      )
+    )
+  );
+const locationKey = (floorId, modelId) =>
+  JSON.stringify([String(floorId ?? ""), String(modelId ?? "")]);
+const resolveCurtainDirection = directionBinding =>
+  DIRECTION_SET.has(directionBinding.coverDirection)
+    ? directionBinding.coverDirection
+    : DIRECTION_SET.has(directionBinding.curtainPosition)
+      ? directionBinding.curtainPosition
+      : "split";
+const resolveStatePosition = receivedState =>
+  typeof receivedState?.position == "number" && Number.isFinite(receivedState.position)
+    ? Math.max(0, Math.min(100, receivedState.position))
+    : null;
+const resolveRigBasis = rigAnchor =>
+  Array.isArray(rigAnchor.userData?.curtainRigBasis) &&
+  rigAnchor.userData.curtainRigBasis.length === 3 &&
+  rigAnchor.userData.curtainRigBasis.every(
+    basisComponent =>
+      typeof basisComponent == "number" && Number.isFinite(basisComponent) && basisComponent > 0
+  )
+    ? [...rigAnchor.userData.curtainRigBasis]
+    : [1.8, 2.4, 0.18];
+function createClothGeometry(three, folds, fabric) {
   const isSheer = fabric === "sheer";
-  const segments = Math.max(64, folds * 6);
-  const height = 2.28168;
-  const waveAmp = isSheer ? 0.023 : 0.046;
-  const thickness = 0.003;
-  const positions = [];
-  const normals = [];
-  const uvs = [];
-  const indices = [];
-  const waveAt = t => waveAmp * Math.sin(t * folds * Math.PI * 2);
-  const waveDerivAt = t => waveAmp * folds * Math.PI * 2 * Math.cos(t * folds * Math.PI * 2);
-  const pushVertex = (x, y, z, nx, ny, nz, u, v) => {
-    positions.push(x, y, z);
-    normals.push(nx, ny, nz);
-    uvs.push(u, v);
+  const segmentCount = Math.max(64, folds * 6);
+  const panelHeight = 2.28168;
+  const foldAmplitude = isSheer ? 0.023 : 0.046;
+  const clothThickness = 0.003;
+  const positionArray = [];
+  const normalArray = [];
+  const uvArray = [];
+  const indexArray = [];
+  const foldDisplacement = seamRatio => foldAmplitude * Math.sin(seamRatio * folds * Math.PI * 2);
+  const foldSlope = seamSlopeRatio =>
+    foldAmplitude * folds * Math.PI * 2 * Math.cos(seamSlopeRatio * folds * Math.PI * 2);
+  const pushVertex = (
+    positionX,
+    positionY,
+    positionZ,
+    normalX,
+    normalY,
+    normalZ,
+    textureU,
+    textureV
+  ) => {
+    positionArray.push(positionX, positionY, positionZ);
+    normalArray.push(normalX, normalY, normalZ);
+    uvArray.push(textureU, textureV);
   };
   for (const face of isSheer ? ["front"] : ["front", "back", "top", "bottom"]) {
-    const baseIndex = positions.length / 3;
-    for (let i = 0; i <= segments; i++) {
-      const t = i / segments;
-      const wave = waveAt(t);
-      const deriv = waveDerivAt(t);
-      const hyp = Math.hypot(deriv, 1);
+    const faceVertexOffset = positionArray.length / 3;
+    for (let segmentIndex = 0; segmentIndex <= segmentCount; segmentIndex++) {
+      const alongRatio = segmentIndex / segmentCount;
+      const foldOffset = foldDisplacement(alongRatio);
+      const foldSlopeSample = foldSlope(alongRatio);
+      const normalLength = Math.hypot(foldSlopeSample, 1);
       if (face === "front" || face === "back") {
-        const side = face === "front" ? 1 : -1;
-        for (const y of [0, height]) {
-          pushVertex(t, y, wave + side * thickness / 2, -side * deriv / hyp, 0, side / hyp, t, y / height);
+        const outwardSign = face === "front" ? 1 : -1;
+        for (const vertexHeight of [0, panelHeight]) {
+          pushVertex(
+            alongRatio,
+            vertexHeight,
+            foldOffset + (outwardSign * clothThickness) / 2,
+            (-outwardSign * foldSlopeSample) / normalLength,
+            0,
+            outwardSign / normalLength,
+            alongRatio,
+            vertexHeight / panelHeight
+          );
         }
       } else {
-        const side = face === "top" ? 1 : -1;
-        for (const z of [-thickness / 2, thickness / 2]) {
-          pushVertex(t, side > 0 ? height : 0, wave + z, 0, side, 0, t, z > 0 ? 1 : 0);
+        const verticalSign = face === "top" ? 1 : -1;
+        for (const thicknessOffset of [-clothThickness / 2, clothThickness / 2]) {
+          pushVertex(
+            alongRatio,
+            verticalSign > 0 ? panelHeight : 0,
+            foldOffset + thicknessOffset,
+            0,
+            verticalSign,
+            0,
+            alongRatio,
+            thicknessOffset > 0 ? 1 : 0
+          );
         }
       }
-      if (i < segments) {
-        const idx = baseIndex + i * 2;
+      if (segmentIndex < segmentCount) {
+        const segmentVertexIndex = faceVertexOffset + segmentIndex * 2;
         if (face === "front" || face === "bottom") {
-          indices.push(idx, idx + 2, idx + 1, idx + 1, idx + 2, idx + 3);
+          indexArray.push(
+            segmentVertexIndex,
+            segmentVertexIndex + 2,
+            segmentVertexIndex + 1,
+            segmentVertexIndex + 1,
+            segmentVertexIndex + 2,
+            segmentVertexIndex + 3
+          );
         } else {
-          indices.push(idx, idx + 1, idx + 2, idx + 1, idx + 3, idx + 2);
+          indexArray.push(
+            segmentVertexIndex,
+            segmentVertexIndex + 1,
+            segmentVertexIndex + 2,
+            segmentVertexIndex + 1,
+            segmentVertexIndex + 3,
+            segmentVertexIndex + 2
+          );
         }
       }
     }
   }
-  for (const end of isSheer ? [] : [0, 1]) {
-    const baseIndex = positions.length / 3;
-    const nx = end === 0 ? -1 : 1;
-    for (const y of [0, height]) {
-      for (const z of [-thickness / 2, thickness / 2]) {
-        pushVertex(end, y, waveAt(end) + z, nx, 0, 0, z > 0 ? 1 : 0, y / height);
+  for (const edgeX of isSheer ? [] : [0, 1]) {
+    const capVertexOffset = positionArray.length / 3;
+    const edgeNormalSign = edgeX === 0 ? -1 : 1;
+    for (const edgeHeight of [0, panelHeight]) {
+      for (const edgeThicknessOffset of [-clothThickness / 2, clothThickness / 2]) {
+        pushVertex(
+          edgeX,
+          edgeHeight,
+          foldDisplacement(edgeX) + edgeThicknessOffset,
+          edgeNormalSign,
+          0,
+          0,
+          edgeThicknessOffset > 0 ? 1 : 0,
+          edgeHeight / panelHeight
+        );
       }
     }
-    if (nx > 0) {
-      indices.push(baseIndex, baseIndex + 2, baseIndex + 1, baseIndex + 1, baseIndex + 2, baseIndex + 3);
+    if (edgeNormalSign > 0) {
+      indexArray.push(
+        capVertexOffset,
+        capVertexOffset + 2,
+        capVertexOffset + 1,
+        capVertexOffset + 1,
+        capVertexOffset + 2,
+        capVertexOffset + 3
+      );
     } else {
-      indices.push(baseIndex, baseIndex + 1, baseIndex + 2, baseIndex + 1, baseIndex + 3, baseIndex + 2);
+      indexArray.push(
+        capVertexOffset,
+        capVertexOffset + 1,
+        capVertexOffset + 2,
+        capVertexOffset + 1,
+        capVertexOffset + 3,
+        capVertexOffset + 2
+      );
     }
   }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
-  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
-  geometry.setIndex(indices);
+  const geometry = new three.BufferGeometry();
+  geometry.setAttribute("position", new three.Float32BufferAttribute(positionArray, 3));
+  geometry.setAttribute("normal", new three.Float32BufferAttribute(normalArray, 3));
+  geometry.setAttribute("uv", new three.Float32BufferAttribute(uvArray, 2));
+  geometry.setIndex(indexArray);
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
   return geometry;
 }
-function isDescendantOf(node, ancestor) {
-  for (let current = node; current; current = current.parent) {
-    if (current === ancestor) {
+function isDescendantOf(descendant, ancestor) {
+  for (let walkedNode = descendant; walkedNode; walkedNode = walkedNode.parent) {
+    if (walkedNode === ancestor) {
       return true;
     }
   }
   return false;
 }
-function locateCurtainRig(modelNode) {
-  const parts = [];
-  const roots = [];
-  function visit(node) {
-    if (!node.userData?.curtainMotionRig && !node.userData?.curtainMotionPanel && (node === modelNode || node.userData?.environmentModelId == null)) {
-      if (node.userData?.curtainRigRoot === true) {
-        roots.push(node);
+function locateCurtainRig(environmentRoot) {
+  const curtainParts = [];
+  const rigRoots = [];
+  function collectRigParts(visitedNode) {
+    if (
+      !visitedNode.userData?.curtainMotionRig &&
+      !visitedNode.userData?.curtainMotionPanel &&
+      (visitedNode === environmentRoot || visitedNode.userData?.environmentModelId == null)
+    ) {
+      if (visitedNode.userData?.curtainRigRoot === true) {
+        rigRoots.push(visitedNode);
       }
-      if (node.isMesh && CURTAIN_PARTS.has(node.userData?.curtainPart)) {
-        parts.push(node);
+      if (visitedNode.isMesh && TRACK_PART_SET.has(visitedNode.userData?.curtainPart)) {
+        curtainParts.push(visitedNode);
       }
-      for (const child of node.children || []) {
-        visit(child);
+      for (const child of visitedNode.children || []) {
+        collectRigParts(child);
       }
     }
   }
-  visit(modelNode);
-  if (!parts.some(part => CLOTH_PARTS.has(part.userData.curtainPart))) {
+  collectRigParts(environmentRoot);
+  if (
+    !curtainParts.some(curtainPartNode => CLOTH_PART_SET.has(curtainPartNode.userData.curtainPart))
+  ) {
     return null;
   }
-  let anchor = roots.find(root => parts.every(part => isDescendantOf(part, root)));
+  let anchor = rigRoots.find(anchorCandidate =>
+    curtainParts.every(partNode => isDescendantOf(partNode, anchorCandidate))
+  );
   if (!anchor) {
-    for (anchor = parts[0].parent; anchor && !parts.every(part => isDescendantOf(part, anchor));) {
+    for (
+      anchor = curtainParts[0].parent;
+      anchor && !curtainParts.every(candidatePart => isDescendantOf(candidatePart, anchor));
+    ) {
       anchor = anchor.parent;
     }
   }
-  if (anchor && isDescendantOf(anchor, modelNode)) {
+  if (anchor && isDescendantOf(anchor, environmentRoot)) {
     return {
-      anchor,
-      parts
+      anchor: anchor,
+      parts: curtainParts
     };
   } else {
     return null;
   }
 }
 export function createCurtainMotion({
-  THREE,
-  requestRender = () => {}
+  THREE: THREE,
+  requestRender: requestRender = () => {}
 } = {}) {
-  let root = null;
-  let sceneRevision;
-  let bindingsSignature = "";
-  let disposed = false;
-  const geometryCache = new Map();
-  function geometryForFolds(folds, fabric) {
-    const cacheKey = fabric + ":" + folds;
-    if (!geometryCache.has(cacheKey)) {
-      geometryCache.set(cacheKey, buildFoldGeometry(THREE, folds, fabric));
+  let syncedModelRoot = null;
+  let syncedSceneRevision;
+  let syncedBindingsSignature = "";
+  let isDisposed = false;
+  const clothGeometryCache = new Map();
+  function getClothGeometry(foldCount, fabricName) {
+    const cacheKey = fabricName + ":" + foldCount;
+    if (!clothGeometryCache.has(cacheKey)) {
+      clothGeometryCache.set(cacheKey, createClothGeometry(THREE, foldCount, fabricName));
     }
-    return geometryCache.get(cacheKey);
+    return clothGeometryCache.get(cacheKey);
   }
-  let entries = new Map();
-  let pendingStates = new Map();
-  let lastFrameAt = -Infinity;
-  let poseDirty = true;
+  let rigsByBindingId = new Map();
+  let coverStatesByEntityId = new Map();
+  let lastUpdateMs = -Infinity;
+  let isPoseKeyDirty = true;
   let cachedPoseKey = "";
-  let entityById = new Map();
-  let nextGeneration = 1;
-  let structureDirty = true;
+  let previousEntityIdByBindingId = new Map();
+  let generationCounter = 1;
+  let isStructureKeyDirty = true;
   let cachedStructureKey = "";
-  function markDirty() {
-    poseDirty = true;
+  function markPoseDirty() {
+    isPoseKeyDirty = true;
     requestRender();
   }
-  function createEntry(modelNode, binding, located) {
-    const clothParts = located.parts.filter(part => CLOTH_PARTS.has(part.userData.curtainPart));
-    const sourceMaterials = clothParts.filter(part => part.userData.curtainPart === "cloth").flatMap(mesh => Array.isArray(mesh.material) ? mesh.material : [mesh.material]).filter(Boolean);
-    const colorSum = material => material.color ? material.color.r + material.color.g + material.color.b : 0;
-    const sourceMaterial = sourceMaterials.reduce((best, candidate) => !best || colorSum(candidate) > colorSum(best) ? candidate : best, null);
-    const fabric = resolveCurtainFabric(binding);
-    const isSheer = fabric === "sheer";
-    const material = isSheer ? new THREE.MeshStandardMaterial({
-      color: 0xf5f3ee,
-      roughness: 1,
-      metalness: 0,
-      transparent: true,
-      opacity: 0.48,
-      depthWrite: false
-    }) : sourceMaterial?.clone?.() || new THREE.MeshStandardMaterial({
-      color: 0xc7cdd2,
-      roughness: 0.94,
-      metalness: 0
-    });
-    material.color?.lerp(new THREE.Color(0xffffff), 0.2);
-    material.side = THREE.DoubleSide;
-    material.forceSinglePass = true;
-    const folds = foldCountForBinding(binding);
-    const geometry = geometryForFolds(folds, fabric);
-    const rig = new THREE.Group();
-    const basis = rigBasis(located.anchor);
-    rig.name = "curtain-motion-" + binding.id;
-    rig.userData.curtainMotionRig = true;
-    rig.scale.set(basis[0] / 1.8, basis[1] / 2.4, basis[2] / 0.18);
-    located.anchor.add(rig);
-    const panels = ["left", "right"].map(curtainSide => {
-      const panel = new THREE.Mesh(geometry, material);
-      panel.name = "curtain-motion-" + binding.id + "-" + curtainSide;
-      panel.userData.curtainMotionPanel = true;
-      panel.userData.curtainSide = curtainSide;
-      panel.userData.externalModelSharedGeometry = true;
-      panel.userData.externalModelSharedTextures = true;
-      panel.userData.externalModelSharedMaterial = true;
-      panel.position.set(curtainSide === "left" ? -0.9 : 0.9, 0.06, 0);
-      panel.castShadow = !isSheer && clothParts.some(part => part.castShadow);
-      panel.receiveShadow = clothParts.some(part => part.receiveShadow);
-      panel.visible = false;
-      rig.add(panel);
-      return panel;
+  function createRig(model, binding, located) {
+    const coveredParts = located.parts.filter(coveredPart =>
+      CLOTH_PART_SET.has(coveredPart.userData.curtainPart)
+    );
+    const clothMaterials = coveredParts
+      .filter(clothOnlyPart => clothOnlyPart.userData.curtainPart === "cloth")
+      .flatMap(partMesh =>
+        Array.isArray(partMesh.material) ? partMesh.material : [partMesh.material]
+      )
+      .filter(Boolean);
+    const materialBrightness = material =>
+      material.color ? material.color.r + material.color.g + material.color.b : 0;
+    const brightestMaterial = clothMaterials.reduce(
+      (bestMaterial, candidateMaterial) =>
+        !bestMaterial || materialBrightness(candidateMaterial) > materialBrightness(bestMaterial)
+          ? candidateMaterial
+          : bestMaterial,
+      null
+    );
+    const fabricKind = resolveCurtainFabric(binding);
+    const isSheerPanel = fabricKind === "sheer";
+    const panelMaterial = isSheerPanel
+      ? new THREE.MeshStandardMaterial({
+          color: 16118766,
+          roughness: 1,
+          metalness: 0,
+          transparent: true,
+          opacity: 0.48,
+          depthWrite: false
+        })
+      : brightestMaterial?.clone?.() ||
+        new THREE.MeshStandardMaterial({
+          color: 13094354,
+          roughness: 0.94,
+          metalness: 0
+        });
+    panelMaterial.color?.lerp(new THREE.Color(16777215), 0.2);
+    panelMaterial.side = THREE.DoubleSide;
+    panelMaterial.forceSinglePass = true;
+    const isDream = binding.coverKind === "dream";
+    const trackModel =
+      located.anchor.userData.curtainTrackModel || isDream ? createTrack(binding) : null;
+    const rigFolds = resolveFoldCount(binding);
+    const sharedGeometry = trackModel ? null : getClothGeometry(rigFolds, fabricKind);
+    const rigGroup = new THREE.Group();
+    const basis = resolveRigBasis(located.anchor);
+    rigGroup.name = "curtain-motion-" + binding.id;
+    rigGroup.userData.curtainMotionRig = true;
+    rigGroup.scale.set(
+      ...(trackModel ? [1, 1, 1] : [basis[0] / 1.8, basis[1] / 2.4, basis[2] / 0.18])
+    );
+    located.anchor.add(rigGroup);
+    const panels = ["left", "right"].map(side => {
+      const panelMesh = new THREE.Mesh(
+        isDream
+          ? createBladeGeometry(THREE, trackModel, basis[1])
+          : trackModel
+            ? buildTrackClothGeometry(THREE, trackModel, basis[1], fabricKind)
+            : sharedGeometry,
+        panelMaterial
+      );
+      panelMesh.name = "curtain-motion-" + binding.id + "-" + side;
+      panelMesh.userData.curtainMotionPanel = true;
+      panelMesh.userData.curtainSide = side;
+      panelMesh.userData.externalModelSharedGeometry = true;
+      panelMesh.userData.externalModelSharedTextures = true;
+      panelMesh.userData.externalModelSharedMaterial = true;
+      if (!trackModel) {
+        panelMesh.position.set(side === "left" ? -0.9 : 0.9, 0.06, 0);
+      }
+      panelMesh.castShadow =
+        !isSheerPanel && coveredParts.some(shadowCastingPart => shadowCastingPart.castShadow);
+      panelMesh.receiveShadow = coveredParts.some(
+        shadowReceivingPart => shadowReceivingPart.receiveShadow
+      );
+      panelMesh.visible = false;
+      rigGroup.add(panelMesh);
+      return panelMesh;
     });
     return {
-      model: modelNode,
-      binding,
-      fabric,
-      folds,
+      model: model,
+      binding: binding,
+      dream: isDream,
+      fabric: fabricKind,
+      folds: rigFolds,
+      track: trackModel,
       anchor: located.anchor,
       parts: located.parts,
-      rig,
-      basis,
-      generation: nextGeneration++,
-      panels,
-      material,
-      originals: new Map(clothParts.map(part => [part, part.visible])),
-      direction: resolveCoverDirection(binding),
+      rig: rigGroup,
+      basis: basis,
+      generation: generationCounter++,
+      panels: panels,
+      material: panelMaterial,
+      originals: new Map(coveredParts.map(sourcePart => [sourcePart, sourcePart.visible])),
+      direction: resolveCurtainDirection(binding),
       position: null,
       target: null,
       motionFrom: null,
       motionStart: null
     };
   }
-  function disposeEntry(entry) {
-    for (const [part, wasVisible] of entry.originals) {
-      part.visible = wasVisible;
+  function disposeRig(discardedRig) {
+    for (const [restoredPart, wasVisible] of discardedRig.originals) {
+      restoredPart.visible = wasVisible;
     }
-    entry.rig.removeFromParent();
-    entry.material.dispose();
-  }
-  function resetMotion(entry) {
-    entry.position = null;
-    entry.target = null;
-    entry.motionFrom = null;
-    entry.motionStart = null;
-    applyPose(entry);
-  }
-  function applyPose(entry) {
-    // Unbound curtains use unboundPosition; bound unknown position previews closed until state arrives.
-    const position = entry.position ?? resolveUnboundPosition(entry.binding);
-    const isSplit = entry.direction === "split";
-    const fullWidth = isSplit ? entry.fabric === "sheer" ? 0.9 : 0.906 : 1.8;
-    const scaleX = 1 - (1 - MIN_PANEL_SCALE) * position / 100;
-    for (const part of entry.originals.keys()) {
-      part.visible = false;
-    }
-    for (const panel of entry.panels) {
-      const isLeft = panel.userData.curtainSide === "left";
-      panel.visible = isSplit || entry.direction === (isLeft ? "left" : "right");
-      panel.scale.x = (isLeft ? 1 : -1) * fullWidth * scaleX;
-      panel.updateMatrix();
-    }
-    poseDirty = true;
-  }
-  function setEntryTarget(entry, state, immediate = false) {
-    const nextPosition = clampPosition(state);
-    if (nextPosition === null) {
-      const changed = entry.target !== entry.position;
-      entry.target = entry.position;
-      entry.motionStart = null;
-      return changed;
-    }
-    if (entry.position === null || immediate) {
-      const changed = entry.position !== nextPosition || entry.target !== nextPosition;
-      entry.position = nextPosition;
-      entry.target = nextPosition;
-      entry.motionStart = null;
-      if (changed) {
-        applyPose(entry);
+    discardedRig.rig.removeFromParent();
+    if (discardedRig.track) {
+      for (const panelToDispose of discardedRig.panels) {
+        panelToDispose.geometry.dispose();
       }
-      return changed;
     }
-    if (entry.target === nextPosition) {
-      return false;
+    discardedRig.material.dispose();
+  }
+  function resetRigMotion(resetTargetRig) {
+    resetTargetRig.position = null;
+    resetTargetRig.target = null;
+    resetTargetRig.motionFrom = null;
+    resetTargetRig.motionStart = null;
+    resetTargetRig.bladePosition = null;
+    applyRigPose(resetTargetRig);
+  }
+  function applyRigPose(posedRig) {
+    const positionRatio = posedRig.position ?? resolveUnboundPosition(posedRig.binding);
+    if (posedRig.track) {
+      for (const originalPart of posedRig.originals.keys()) {
+        originalPart.visible = false;
+      }
+      samplePanelRanges(posedRig.track, positionRatio, posedRig.direction).forEach(
+        (panelRange, sideIndex) => {
+          const panel = posedRig.panels[sideIndex];
+          panel.visible = panelRange.visible;
+          const panelPose = {
+            ...panelRange,
+            side: sideIndex,
+            split: posedRig.direction === "split"
+          };
+          if (posedRig.dream) {
+            poseBladeGeometry(
+              panel.geometry,
+              posedRig.track,
+              panelPose,
+              posedRig.bladePosition ?? 50
+            );
+          } else {
+            poseClothGeometry(panel.geometry, posedRig.track, panelPose);
+          }
+        }
+      );
+      isPoseKeyDirty = true;
+      return;
+    }
+    const isSplit = posedRig.direction === "split";
+    const panelWidth = isSplit ? (posedRig.fabric === "sheer" ? 0.9 : 0.906) : 1.8;
+    const clothScale = 1 - ((1 - MIN_PANEL_SCALE) * positionRatio) / 100;
+    for (const hiddenPart of posedRig.originals.keys()) {
+      hiddenPart.visible = false;
+    }
+    for (const posedPanel of posedRig.panels) {
+      const isLeftPanel = posedPanel.userData.curtainSide === "left";
+      posedPanel.visible = isSplit || posedRig.direction === (isLeftPanel ? "left" : "right");
+      posedPanel.scale.x = (isLeftPanel ? 1 : -1) * panelWidth * clothScale;
+      posedPanel.updateMatrix();
+    }
+    isPoseKeyDirty = true;
+  }
+  function updateRigTarget(motionRig, receivedMotionState, immediate = false) {
+    const incomingPosition = resolveStatePosition(receivedMotionState);
+    const bladeChanged = motionRig.bladePosition !== receivedMotionState.bladePosition;
+    motionRig.bladePosition = receivedMotionState.bladePosition;
+    if (bladeChanged && motionRig.dream) {
+      applyRigPose(motionRig);
+    }
+    if (incomingPosition === null) {
+      const hadPendingMotion = motionRig.target !== motionRig.position;
+      motionRig.target = motionRig.position;
+      motionRig.motionStart = null;
+      return hadPendingMotion || bladeChanged;
+    }
+    if (motionRig.position === null || immediate) {
+      const positionChanged =
+        motionRig.position !== incomingPosition || motionRig.target !== incomingPosition;
+      motionRig.position = incomingPosition;
+      motionRig.target = incomingPosition;
+      motionRig.motionStart = null;
+      if (positionChanged) {
+        applyRigPose(motionRig);
+      }
+      return positionChanged || bladeChanged;
+    }
+    if (motionRig.target === incomingPosition) {
+      return bladeChanged;
     } else {
-      entry.target = nextPosition;
-      entry.motionFrom = entry.position;
-      entry.motionStart = null;
+      motionRig.target = incomingPosition;
+      motionRig.motionFrom = motionRig.position;
+      motionRig.motionStart = null;
       return true;
     }
   }
-  function setBindings(nextRoot, rawBindings = [], revision) {
-    if (disposed) {
+  function setBindings(modelRoot, bindings = [], sceneRevision) {
+    if (isDisposed) {
       return;
     }
-    const seenIds = new Set();
+    const seenBindingIds = new Set();
     const seenModelKeys = new Set();
-    const bindings = (Array.isArray(rawBindings) ? rawBindings : []).filter(binding => {
-      if (!binding || binding.id == null || binding.modelId == null) {
-        return false;
-      }
-      const id = String(binding.id);
-      const key = modelKey(binding.floorId, binding.modelId);
-      if (seenIds.has(id) || seenModelKeys.has(key)) {
-        return false;
-      } else {
-        seenIds.add(id);
-        seenModelKeys.add(key);
-        return true;
-      }
-    }).map(binding => ({
-      id: String(binding.id),
-      entityId: String(binding.entityId ?? ""),
-      floorId: String(binding.floorId ?? ""),
-      modelId: String(binding.modelId),
-      curtainWidth: Number(binding.curtainWidth) > 0 ? Number(binding.curtainWidth) : 1.8,
-      coverDirection: binding.coverDirection || "auto",
-      curtainPosition: binding.curtainPosition || "split",
-      curtainFabric: resolveCurtainFabric(binding),
-      unboundPosition: resolveUnboundPosition(binding)
-    }));
-    const nextSignature = JSON.stringify(bindings);
-    if (root === nextRoot && sceneRevision === revision && bindingsSignature === nextSignature) {
+    const normalizedBindings = (Array.isArray(bindings) ? bindings : [])
+      .filter(candidateBinding => {
+        if (!candidateBinding || candidateBinding.id == null || candidateBinding.modelId == null) {
+          return false;
+        }
+        const bindingIdKey = String(candidateBinding.id);
+        const rawLocationKey = locationKey(candidateBinding.floorId, candidateBinding.modelId);
+        if (seenBindingIds.has(bindingIdKey) || seenModelKeys.has(rawLocationKey)) {
+          return false;
+        } else {
+          seenBindingIds.add(bindingIdKey);
+          seenModelKeys.add(rawLocationKey);
+          return true;
+        }
+      })
+      .map(rawBinding => ({
+        id: String(rawBinding.id),
+        entityId: String(rawBinding.entityId ?? ""),
+        floorId: String(rawBinding.floorId ?? ""),
+        modelId: String(rawBinding.modelId),
+        curtainWidth: Number(rawBinding.curtainWidth) > 0 ? Number(rawBinding.curtainWidth) : 1.8,
+        coverDirection: rawBinding.coverDirection || "auto",
+        curtainPosition: rawBinding.curtainPosition || "split",
+        coverKind: rawBinding.coverKind === "dream" ? "dream" : "standard",
+        ...normalizeTrack(rawBinding),
+        curtainFabric: resolveCurtainFabric(rawBinding),
+        unboundPosition: resolveUnboundPosition(rawBinding)
+      }));
+    const bindingsSignature = JSON.stringify(normalizedBindings);
+    if (
+      syncedModelRoot === modelRoot &&
+      syncedSceneRevision === sceneRevision &&
+      syncedBindingsSignature === bindingsSignature
+    ) {
       return;
     }
-    const nextEntityById = new Map(bindings.map(binding => [binding.id, binding.entityId]));
-    for (const id of pendingStates.keys()) {
-      if (!nextEntityById.has(id) || entityById.has(id) && entityById.get(id) !== nextEntityById.get(id)) {
-        pendingStates.delete(id);
+    const entityIdByBindingId = new Map(
+      normalizedBindings.map(normalizedEntry => [normalizedEntry.id, normalizedEntry.entityId])
+    );
+    for (const staleBindingId of coverStatesByEntityId.keys()) {
+      if (
+        !entityIdByBindingId.has(staleBindingId) ||
+        (previousEntityIdByBindingId.has(staleBindingId) &&
+          previousEntityIdByBindingId.get(staleBindingId) !==
+            entityIdByBindingId.get(staleBindingId))
+      ) {
+        coverStatesByEntityId.delete(staleBindingId);
       }
     }
-    entityById = nextEntityById;
-    root = nextRoot || null;
-    sceneRevision = revision;
-    bindingsSignature = nextSignature;
-    const modelNodes = new Map();
-    if (bindings.length) {
-      root?.traverse?.(node => {
-        if (node.userData?.environmentModelType !== "curtain" || node.userData?.environmentModelId == null) {
+    previousEntityIdByBindingId = entityIdByBindingId;
+    syncedModelRoot = modelRoot || null;
+    syncedSceneRevision = sceneRevision;
+    syncedBindingsSignature = bindingsSignature;
+    const modelsByLocationKey = new Map();
+    if (normalizedBindings.length) {
+      syncedModelRoot?.traverse?.(sceneNode => {
+        if (
+          sceneNode.userData?.environmentModelType !== "curtain" ||
+          sceneNode.userData?.environmentModelId == null
+        ) {
           return;
         }
-        let floorId = node.userData.environmentFloorId;
-        for (let parent = node.parent; floorId == null && parent; parent = parent.parent) {
-          floorId = parent.userData?.environmentFloorId;
+        let nodeFloorId = sceneNode.userData.environmentFloorId;
+        for (
+          let parentNode = sceneNode.parent;
+          nodeFloorId == null && parentNode;
+          parentNode = parentNode.parent
+        ) {
+          nodeFloorId = parentNode.userData?.environmentFloorId;
         }
-        modelNodes.set(modelKey(floorId, node.userData.environmentModelId), node);
+        modelsByLocationKey.set(
+          locationKey(nodeFloorId, sceneNode.userData.environmentModelId),
+          sceneNode
+        );
       });
     }
-    const locatedBindings = bindings.map(binding => {
-      const modelNode = modelNodes.get(modelKey(binding.floorId, binding.modelId));
-      const located = modelNode ? locateCurtainRig(modelNode) : null;
-      if (located) {
-        return {
-          binding,
-          model: modelNode,
-          located
-        };
-      } else {
-        return null;
-      }
-    }).filter(Boolean);
-    const reused = new Map();
-    for (const item of locatedBindings) {
-      const existing = entries.get(item.binding.id);
-      if (existing && existing.model === item.model && existing.anchor === item.located.anchor && existing.fabric === item.binding.curtainFabric && existing.parts.length === item.located.parts.length && existing.parts.every((part, index) => part === item.located.parts[index])) {
-        reused.set(item.binding.id, existing);
+    const locatedEntries = normalizedBindings
+      .map(locatedBinding => {
+        const environmentModel = modelsByLocationKey.get(
+          locationKey(locatedBinding.floorId, locatedBinding.modelId)
+        );
+        const locatedRig = environmentModel ? locateCurtainRig(environmentModel) : null;
+        if (locatedRig) {
+          return {
+            binding: locatedBinding,
+            model: environmentModel,
+            located: locatedRig
+          };
+        } else {
+          return null;
+        }
+      })
+      .filter(Boolean);
+    const reusedRigsByBindingId = new Map();
+    for (const entry of locatedEntries) {
+      const existingRig = rigsByBindingId.get(entry.binding.id);
+      if (
+        existingRig &&
+        existingRig.dream === (entry.binding.coverKind === "dream") &&
+        (!existingRig.track ||
+          JSON.stringify([
+            normalizeTrack(existingRig.binding),
+            existingRig.binding.curtainWidth
+          ]) === JSON.stringify([normalizeTrack(entry.binding), entry.binding.curtainWidth])) &&
+        existingRig.fabric === resolveCurtainFabric(entry.binding) &&
+        existingRig.model === entry.model &&
+        existingRig.anchor === entry.located.anchor &&
+        existingRig.parts.length === entry.located.parts.length &&
+        existingRig.parts.every((part, partIndex) => part === entry.located.parts[partIndex])
+      ) {
+        reusedRigsByBindingId.set(entry.binding.id, existingRig);
       }
     }
-    for (const [id, entry] of entries) {
-      if (!reused.has(id)) {
-        disposeEntry(entry);
+    for (const [removedBindingId, removedRig] of rigsByBindingId) {
+      if (!reusedRigsByBindingId.has(removedBindingId)) {
+        disposeRig(removedRig);
       }
     }
-    entries = new Map();
+    const previousRigsByBindingId = rigsByBindingId;
+    rigsByBindingId = new Map();
     for (const {
-      binding,
-      model: modelNode,
-      located
-    } of locatedBindings) {
-      const entry = reused.get(binding.id) || createEntry(modelNode, binding, located);
-      const direction = resolveCoverDirection(binding);
-      if (entry.binding.entityId !== binding.entityId) {
-        resetMotion(entry);
+      binding: entryBinding,
+      model: entryModel,
+      located: entryLocated
+    } of locatedEntries) {
+      const nextRig =
+        reusedRigsByBindingId.get(entryBinding.id) ||
+        createRig(entryModel, entryBinding, entryLocated);
+      const previousRig = previousRigsByBindingId.get(entryBinding.id);
+      if (
+        previousRig &&
+        previousRig !== nextRig &&
+        previousRig.model === entryModel &&
+        previousRig.binding.entityId === entryBinding.entityId
+      ) {
+        for (const motionFieldName of [
+          "position",
+          "target",
+          "motionFrom",
+          "motionStart",
+          "bladePosition"
+        ]) {
+          nextRig[motionFieldName] = previousRig[motionFieldName];
+        }
+        applyRigPose(nextRig);
       }
-      const unboundChanged = entry.binding.unboundPosition !== binding.unboundPosition;
-      entry.binding = binding;
-      entry.fabric = binding.curtainFabric;
-      const folds = foldCountForBinding(binding);
-      if (entry.folds !== folds) {
-        entry.folds = folds;
-        for (const panel of entry.panels) {
-          panel.geometry = geometryForFolds(folds, binding.curtainFabric);
+      const nextDirection = resolveCurtainDirection(entryBinding);
+      if (nextRig.binding.entityId !== entryBinding.entityId) {
+        resetRigMotion(nextRig);
+      }
+      nextRig.binding = entryBinding;
+      const nextFolds = resolveFoldCount(entryBinding);
+      if (!nextRig.track && nextRig.folds !== nextFolds) {
+        nextRig.folds = nextFolds;
+        for (const panelToRefold of nextRig.panels) {
+          panelToRefold.geometry = getClothGeometry(nextFolds, nextRig.fabric);
         }
       }
-      entry.basis = rigBasis(entry.anchor);
-      entry.rig.scale.set(entry.basis[0] / 1.8, entry.basis[1] / 2.4, entry.basis[2] / 0.18);
-      if (entry.direction !== direction) {
-        entry.direction = direction;
-        applyPose(entry);
-      } else if (unboundChanged && entry.position === null) {
-        applyPose(entry);
+      nextRig.basis = resolveRigBasis(nextRig.anchor);
+      nextRig.rig.scale.set(
+        ...(nextRig.track
+          ? [1, 1, 1]
+          : [nextRig.basis[0] / 1.8, nextRig.basis[1] / 2.4, nextRig.basis[2] / 0.18])
+      );
+      if (nextRig.direction !== nextDirection) {
+        nextRig.direction = nextDirection;
+        applyRigPose(nextRig);
       }
-      entries.set(binding.id, entry);
-      if (pendingStates.has(binding.id)) {
-        setEntryTarget(entry, pendingStates.get(binding.id));
+      rigsByBindingId.set(entryBinding.id, nextRig);
+      if (coverStatesByEntityId.has(entryBinding.id)) {
+        updateRigTarget(nextRig, coverStatesByEntityId.get(entryBinding.id));
       }
-      if (entry.position === null) {
-        applyPose(entry);
+      if (nextRig.position === null) {
+        applyRigPose(nextRig);
       }
     }
-    structureDirty = true;
-    markDirty();
+    isStructureKeyDirty = true;
+    markPoseDirty();
   }
-  function setState(id, state, {
-    immediate = false
-  } = {}) {
-    if (disposed || id == null) {
+  function setState(
+    coverBindingId,
+    receivedCoverState,
+    { immediate: immediateState = false } = {}
+  ) {
+    if (isDisposed || coverBindingId == null) {
       return;
     }
-    const key = String(id);
-    const nextState = {
-      position: clampPosition(state)
+    const coverBindingIdKey = String(coverBindingId);
+    const nextMotionState = {
+      position: resolveStatePosition(receivedCoverState),
+      bladePosition: Number.isFinite(receivedCoverState?.tiltPosition)
+        ? receivedCoverState.tiltPosition
+        : null
     };
-    pendingStates.set(key, nextState);
-    const entry = entries.get(key);
-    if (entry && setEntryTarget(entry, nextState, immediate)) {
-      markDirty();
+    coverStatesByEntityId.set(coverBindingIdKey, nextMotionState);
+    const boundRig = rigsByBindingId.get(coverBindingIdKey);
+    if (boundRig && updateRigTarget(boundRig, nextMotionState, immediateState)) {
+      markPoseDirty();
     }
   }
   function isMoving() {
-    return !disposed && [...entries.values()].some(entry => entry.position !== null && entry.target !== entry.position);
+    return (
+      !isDisposed &&
+      [...rigsByBindingId.values()].some(
+        pendingRig => pendingRig.position !== null && pendingRig.target !== pendingRig.position
+      )
+    );
   }
-  function update(nowMs) {
-    if (!isMoving() || (Number.isFinite(nowMs) || (nowMs = globalThis.performance?.now() ?? Date.now()), nowMs >= lastFrameAt && nowMs - lastFrameAt < FRAME_INTERVAL_MS)) {
+  function update(timestampMs) {
+    if (
+      !isMoving() ||
+      (Number.isFinite(timestampMs) || (timestampMs = globalThis.performance?.now() ?? Date.now()),
+      timestampMs >= lastUpdateMs && timestampMs - lastUpdateMs < FRAME_INTERVAL_MS)
+    ) {
       return false;
     }
-    lastFrameAt = Number.isFinite(lastFrameAt) && nowMs >= lastFrameAt ? nowMs - (nowMs - lastFrameAt) % FRAME_INTERVAL_MS : nowMs;
-    let changed = false;
-    for (const entry of entries.values()) {
-      if (entry.position === null || entry.target === entry.position) {
+    lastUpdateMs =
+      Number.isFinite(lastUpdateMs) && timestampMs >= lastUpdateMs
+        ? timestampMs - ((timestampMs - lastUpdateMs) % FRAME_INTERVAL_MS)
+        : timestampMs;
+    let didAnimate = false;
+    for (const movingRig of rigsByBindingId.values()) {
+      if (movingRig.position === null || movingRig.target === movingRig.position) {
         continue;
       }
-      if (entry.motionStart === null || nowMs < entry.motionStart) {
-        entry.motionStart = nowMs;
+      if (movingRig.motionStart === null || timestampMs < movingRig.motionStart) {
+        movingRig.motionStart = timestampMs;
       }
-      const progress = Math.min(1, (nowMs - entry.motionStart) / MOTION_DURATION_MS);
-      const eased = progress * progress * (3 - progress * 2);
-      const nextPosition = progress === 1 ? entry.target : entry.motionFrom + (entry.target - entry.motionFrom) * eased;
-      if (nextPosition !== entry.position) {
-        entry.position = nextPosition;
-        applyPose(entry);
-        changed = true;
+      const progressRatio = Math.min(1, (timestampMs - movingRig.motionStart) / MOTION_DURATION_MS);
+      const easingFactor = progressRatio * progressRatio * (3 - progressRatio * 2);
+      const nextPosition =
+        progressRatio === 1
+          ? movingRig.target
+          : movingRig.motionFrom + (movingRig.target - movingRig.motionFrom) * easingFactor;
+      if (nextPosition !== movingRig.position) {
+        movingRig.position = nextPosition;
+        applyRigPose(movingRig);
+        didAnimate = true;
       }
     }
-    return changed;
+    return didAnimate;
   }
   function poseKey() {
-    if (poseDirty) {
-      cachedPoseKey = JSON.stringify([...entries.values()].map(entry => [entry.binding.id, entry.binding.floorId, entry.binding.modelId, entry.binding.entityId, entry.binding.curtainFabric, entry.binding.unboundPosition, entry.generation, entry.direction, entry.basis, entry.folds, entry.position === null ? "preview-closed" : Math.round(entry.position * 100) / 100]).sort((a, b) => a[0].localeCompare(b[0])));
-      poseDirty = false;
+    if (isPoseKeyDirty) {
+      cachedPoseKey = JSON.stringify(
+        [...rigsByBindingId.values()]
+          .map(poseRig => [
+            poseRig.binding.id,
+            poseRig.binding.floorId,
+            poseRig.binding.modelId,
+            poseRig.binding.entityId,
+            poseRig.generation,
+            poseRig.direction,
+            poseRig.basis,
+            poseRig.folds,
+            poseRig.bladePosition,
+            poseRig.position === null
+              ? "preview-" + resolveUnboundPosition(poseRig.binding)
+              : Math.round(poseRig.position * 100) / 100
+          ])
+          .sort((leftPoseEntry, rightPoseEntry) =>
+            leftPoseEntry[0].localeCompare(rightPoseEntry[0])
+          )
+      );
+      isPoseKeyDirty = false;
     }
     return cachedPoseKey;
   }
   function structureKey() {
-    if (structureDirty) {
-      cachedStructureKey = JSON.stringify([...entries.values()].map(entry => [entry.binding.id, entry.binding.floorId, entry.binding.modelId, entry.binding.curtainFabric, entry.generation, entry.direction, entry.basis, entry.folds]).sort((a, b) => a[0].localeCompare(b[0])));
-      structureDirty = false;
+    if (isStructureKeyDirty) {
+      cachedStructureKey = JSON.stringify(
+        [...rigsByBindingId.values()]
+          .map(structureRig => [
+            structureRig.binding.id,
+            structureRig.binding.floorId,
+            structureRig.binding.modelId,
+            structureRig.generation,
+            structureRig.direction,
+            structureRig.basis,
+            structureRig.folds
+          ])
+          .sort((leftStructureEntry, rightStructureEntry) =>
+            leftStructureEntry[0].localeCompare(rightStructureEntry[0])
+          )
+      );
+      isStructureKeyDirty = false;
     }
     return cachedStructureKey;
   }
   function dispose() {
-    if (!disposed) {
-      disposed = true;
-      for (const entry of entries.values()) {
-        disposeEntry(entry);
+    if (!isDisposed) {
+      isDisposed = true;
+      for (const disposedRig of rigsByBindingId.values()) {
+        disposeRig(disposedRig);
       }
-      entries.clear();
-      pendingStates.clear();
-      entityById.clear();
-      for (const geometry of geometryCache.values()) {
-        geometry.dispose();
+      rigsByBindingId.clear();
+      coverStatesByEntityId.clear();
+      previousEntityIdByBindingId.clear();
+      for (const cachedGeometry of clothGeometryCache.values()) {
+        cachedGeometry.dispose();
       }
-      geometryCache.clear();
-      root = null;
-      poseDirty = true;
-      structureDirty = true;
+      clothGeometryCache.clear();
+      syncedModelRoot = null;
+      isPoseKeyDirty = true;
+      isStructureKeyDirty = true;
       requestRender();
     }
   }
   return {
-    setBindings,
-    setState,
-    update,
-    isMoving,
-    poseKey,
-    structureKey,
-    dispose
+    setBindings: setBindings,
+    setState: setState,
+    update: update,
+    isMoving: isMoving,
+    poseKey: poseKey,
+    structureKey: structureKey,
+    dispose: dispose
   };
 }

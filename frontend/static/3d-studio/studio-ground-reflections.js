@@ -1,19 +1,19 @@
 import { normalizeGroundReflection } from "../modules/interaction3d/reflection-settings.js";
-import { createReflectionCulling } from "./studio-reflection-culling.js?v=0.5.3";
+import { createReflectionCulling } from "./studio-reflection-culling.js?v=20260910-reflection-shared-v20";
 export function createGroundReflections({
-  THREE,
-  renderer,
-  scene,
-  getRoot,
-  syncLighting,
-  getStateKey = () => "",
-  getSceneRevision = () => "",
-  floorLighting = false,
-  detail = null,
-  cull = true,
-  blur = true,
-  requestFrame = () => {},
-  getReflectionCamera = null
+  THREE: THREE,
+  renderer: renderer,
+  scene: scene,
+  getRoot: getRoot,
+  syncLighting: syncLighting,
+  getFloorCamera: getFloorCamera = fallbackCamera => fallbackCamera,
+  getStateKey: getStateKey = () => "",
+  getSceneRevision: getSceneRevision = () => "",
+  floorLighting: floorLighting = false,
+  detail: detail = null,
+  cull: cull = true,
+  blur: blur = true,
+  requestFrame: requestFrame = () => {}
 }) {
   const settings = {
     ...normalizeGroundReflection(),
@@ -31,153 +31,217 @@ export function createGroundReflections({
     cachedBytes: 0,
     inCapture: false
   };
-  const transmissionClones = new WeakMap();
-  const transmissionDisposers = new Map();
-  const materialArrayClones = new WeakMap();
-  const mirrorCameras = new WeakMap();
-  const positionVector = new THREE.Vector3();
-  const directionVector = new THREE.Vector3();
-  const lookTargetVector = new THREE.Vector3();
-  const scissorsPlane = new THREE.Plane();
-  const vector = new THREE.Vector4();
-  const clipQVector = new THREE.Vector4();
-  const scratchMatrix = new THREE.Matrix4();
-  function withoutTransmission(material) {
-    if (!material || (!(material.transmission > 0) && !material.userData?.alphaWallBand)) {
+  const refractionFreeMaterialBySource = new WeakMap();
+  const disposeHandlerByClone = new Map();
+  const materialArrayEntryByInput = new WeakMap();
+  const reflectionCameraBySource = new WeakMap();
+  const scratchWorldPosition = new THREE.Vector3();
+  const scratchWorldNormal = new THREE.Vector3();
+  const scratchLookTarget = new THREE.Vector3();
+  const scratchPlane = new THREE.Plane();
+  const scratchPlaneVector = new THREE.Vector4();
+  const scratchSignVector = new THREE.Vector4();
+  const scratchProjectionMatrix = new THREE.Matrix4();
+  function getRefractionFreeMaterial(material) {
+    if (!material || (!(material.transmission > 0) && !material.userData.alphaWallBand)) {
       return material;
     }
-    if (!transmissionClones.has(material)) {
-      const clone = material.clone();
-      clone.transmission = 0;
-      clone.forceSinglePass = true;
-      clone.onBeforeCompile = material.onBeforeCompile;
-      clone.customProgramCacheKey = () => material.customProgramCacheKey() + "|reflection-no-refraction";
-      const onDispose = () => {
-        material.removeEventListener("dispose", onDispose);
-        transmissionClones.delete(material);
-        transmissionDisposers.delete(clone);
-        clone.dispose();
+    if (!refractionFreeMaterialBySource.has(material)) {
+      const refractionFreeMaterial = material.clone();
+      refractionFreeMaterial.transmission = 0;
+      refractionFreeMaterial.forceSinglePass = true;
+      refractionFreeMaterial.onBeforeCompile = material.onBeforeCompile;
+      refractionFreeMaterial.customProgramCacheKey = () =>
+        material.customProgramCacheKey() + "|reflection-no-refraction";
+      const handleMaterialDispose = () => {
+        material.removeEventListener("dispose", handleMaterialDispose);
+        refractionFreeMaterialBySource.delete(material);
+        disposeHandlerByClone.delete(refractionFreeMaterial);
+        refractionFreeMaterial.dispose();
       };
-      material.addEventListener("dispose", onDispose);
-      transmissionClones.set(material, clone);
-      transmissionDisposers.set(clone, onDispose);
+      material.addEventListener("dispose", handleMaterialDispose);
+      refractionFreeMaterialBySource.set(material, refractionFreeMaterial);
+      disposeHandlerByClone.set(refractionFreeMaterial, handleMaterialDispose);
     }
-    return transmissionClones.get(material);
+    return refractionFreeMaterialBySource.get(material);
   }
-  function withoutTransmissionMaterial(material) {
-    if (!Array.isArray(material)) {
-      return withoutTransmission(material);
+  function getRefractionFreeMaterials(materialInput) {
+    if (!Array.isArray(materialInput)) {
+      return getRefractionFreeMaterial(materialInput);
     }
-    let record = materialArrayClones.get(material);
-    record || (record = {
-      next: []
-    }, materialArrayClones.set(material, record));
-    record.next.length = material.length;
-    let changed = false;
-    for (let index = 0; index < material.length; index++) {
-      record.next[index] = withoutTransmission(material[index]);
-      changed ||= record.next[index] !== material[index];
+    let cachedArrayEntry = materialArrayEntryByInput.get(materialInput);
+    if (!cachedArrayEntry) {
+      cachedArrayEntry = {
+        next: []
+      };
+      materialArrayEntryByInput.set(materialInput, cachedArrayEntry);
     }
-    return changed ? record.next : material;
+    cachedArrayEntry.next.length = materialInput.length;
+    let materialArrayChanged = false;
+    for (let materialIndex = 0; materialIndex < materialInput.length; materialIndex++) {
+      cachedArrayEntry.next[materialIndex] = getRefractionFreeMaterial(
+        materialInput[materialIndex]
+      );
+      materialArrayChanged ||=
+        cachedArrayEntry.next[materialIndex] !== materialInput[materialIndex];
+    }
+    if (materialArrayChanged) {
+      return cachedArrayEntry.next;
+    } else {
+      return materialInput;
+    }
   }
-  let overlays = [];
-  let root = null;
-  let firstChild = null;
-  let dirty = true;
-  let lastCaptureTime = -Infinity;
-  let lastCameraKey = "";
-  let lastLightingKey = "";
-  let disposed = false;
-  let globalRevision = 0;
-  let sceneRevision;
-  let suspended = false;
-  let resumeFade = false;
-  let fadeStart = null;
-  let fadeOutStart = null;
-  const FADE_DURATION = 240;
+  let recordList = [];
+  let currentRoot = null;
+  let rootFirstChild = null;
+  let needsUpdate = true;
+  let lastRenderTimeMs = -Infinity;
+  let lastCameraSignature = "";
+  let lastLightingSignature = "";
+  let isDisposed = false;
+  let changeRevisionCount = 0;
+  let lastSceneRevision;
+  let isSuspended = false;
+  let pendingResume = false;
+  let resumeStartedAtMs = null;
+  let suspendStartedAtMs = null;
+  const FADE_DURATION_MS = 240;
   let throttleTimer = null;
   let outsideFloorId = null;
   let visibleFloorId = null;
-  let useCounter = 0;
-  const overlayBySource = new Map();
-  const floorRevision = new Map();
-  const maxCacheBytes = 33554432;
-  let floorMaxHeight = new Map();
-  let lightsByFloor = new Map();
-  function floorIdOf(object) {
-    for (let node = object; node; node = node.parent) {
-      const floorId = node.userData?.floorId || node.userData?.regionFloorId || node.userData?.environmentFloorId || node.userData?.lightFloorId;
-      if (floorId) {
-        return String(floorId);
+  let usageCounter = 0;
+  const recordsBySource = new Map();
+  const floorChangeCounts = new Map();
+  const CACHE_BYTE_BUDGET = 33554432;
+  let heightByFloorId = new Map();
+  let lightsByFloorId = new Map();
+  function resolveFloorId(startObject) {
+    for (let currentObject = startObject; currentObject; currentObject = currentObject.parent) {
+      const userDataFloorId =
+        currentObject.userData?.floorId ||
+        currentObject.userData?.regionFloorId ||
+        currentObject.userData?.environmentFloorId ||
+        currentObject.userData?.lightFloorId;
+      if (userDataFloorId) {
+        return String(userDataFloorId);
       }
     }
     return "";
   }
-  const attributeIds = new WeakMap();
-  let nextAttributeId = 0;
-  function attributeId(attribute) {
-    if (attribute) {
-      if (!attributeIds.has(attribute)) {
-        attributeIds.set(attribute, ++nextAttributeId);
+  const objectIdByObject = new WeakMap();
+  let objectIdSequence = 0;
+  function getObjectId(targetObject) {
+    if (targetObject) {
+      if (!objectIdByObject.has(targetObject)) {
+        objectIdByObject.set(targetObject, ++objectIdSequence);
       }
-      return attributeIds.get(attribute);
+      return objectIdByObject.get(targetObject);
     } else {
       return 0;
     }
   }
-  function geometryKey(mesh) {
+  function geometrySignature(mesh) {
     const geometry = mesh.geometry;
-    return [geometry.uuid, attributeId(geometry.index), geometry.index?.version, ...Object.entries(geometry.attributes).flatMap(([name, attribute]) => [name, attributeId(attribute), attribute.version, attribute.data?.version, attribute.count]), geometry.drawRange.start, geometry.drawRange.count].join("|");
+    return [
+      geometry.uuid,
+      getObjectId(geometry.index),
+      geometry.index?.version,
+      ...Object.entries(geometry.attributes).flatMap(([attributeName, attribute]) => [
+        attributeName,
+        getObjectId(attribute),
+        attribute.version,
+        attribute.data?.version,
+        attribute.count
+      ]),
+      geometry.drawRange.start,
+      geometry.drawRange.count
+    ].join("|");
   }
-  function disposeOverlay(entry) {
-    entry.geometry.removeEventListener("dispose", entry.onSourceDispose);
-    entry.overlay.removeFromParent();
-    entry.overlay.geometry.dispose();
-    entry.overlay.material.dispose();
-    entry.map.dispose();
-    entry.scratch?.dispose();
-    overlayBySource.delete(entry.source);
+  function disposeRecord(recordToDispose) {
+    recordToDispose.geometry.removeEventListener("dispose", recordToDispose.onSourceDispose);
+    recordToDispose.overlay.removeFromParent();
+    recordToDispose.overlay.geometry.dispose();
+    recordToDispose.overlay.material.dispose();
+    recordToDispose.map.dispose();
+    recordToDispose.scratch?.dispose();
+    recordsBySource.delete(recordToDispose.source);
   }
-  function pruneCache() {
-    const active = new Set(overlays);
-    const cached = [...overlayBySource.values()].filter(entry => !active.has(entry)).sort((a, b) => b.used - a.used);
-    let cachedBytes = 0;
-    let cachedRecords = 0;
-    for (const entry of cached) {
-      const bytes = entry.map.width * entry.map.height * (12 * (1 + entry.map.samples) + (entry.scratch ? 8 : 0));
-      if (entry.dead || cachedRecords >= 4 || cachedBytes + bytes > maxCacheBytes) {
-        disposeOverlay(entry);
+  function trimRecordCache() {
+    const activeRecords = new Set(recordList);
+    const reclaimCandidates = [...recordsBySource.values()]
+      .filter(candidateRecord => !activeRecords.has(candidateRecord))
+      .sort((recordA, recordB) => recordB.used - recordA.used);
+    let totalBytes = 0;
+    let keptCount = 0;
+    for (const candidate of reclaimCandidates) {
+      const candidateBytes =
+        candidate.map.width *
+        candidate.map.height *
+        ((1 + candidate.map.samples) * 12 + (candidate.scratch ? 8 : 0));
+      if (candidate.dead || keptCount >= 4 || totalBytes + candidateBytes > CACHE_BYTE_BUDGET) {
+        disposeRecord(candidate);
         continue;
       }
-      cachedBytes += bytes;
-      cachedRecords++;
+      totalBytes += candidateBytes;
+      keptCount++;
     }
-    stats.cachedRecords = cachedRecords;
-    stats.cachedBytes = cachedBytes;
+    stats.cachedRecords = keptCount;
+    stats.cachedBytes = totalBytes;
   }
-  function lightsSignature(lights) {
-    return lights.map(light => [light.uuid, isVisibleInHierarchy(light), light.intensity, light.color?.r, light.color?.g, light.color?.b, light.distance, light.decay, light.angle, light.penumbra, ...light.matrixWorld.elements, ...(light.target?.matrixWorld.elements || [])].join(",")).join(";");
+  function buildLightingSignature(lights) {
+    return lights
+      .map(light =>
+        [
+          light.uuid,
+          isVisibleWithin(light),
+          light.intensity,
+          light.color?.r,
+          light.color?.g,
+          light.color?.b,
+          light.distance,
+          light.decay,
+          light.angle,
+          light.penumbra,
+          ...light.matrixWorld.elements,
+          ...(light.target?.matrixWorld.elements || [])
+        ].join(",")
+      )
+      .join(";");
   }
-  function floorStateKey(entry, floorKeys) {
-    return [...floorMaxHeight].filter(([floorId, height]) => (visibleFloorId === null || !floorId || floorId === visibleFloorId) && (!floorLighting || !floorId || height >= entry.height - 0.1)).map(([floorId]) => floorKeys.get(floorId)).join("|");
+  function recordStateKey(targetRecord, floorLightingSignatures) {
+    const effectiveFloorId =
+      visibleFloorId ?? (targetRecord.kind === "outside" ? outsideFloorId : null);
+    return [...heightByFloorId]
+      .filter(
+        ([floorKey, floorHeight]) =>
+          (effectiveFloorId === null || !floorKey || floorKey === effectiveFloorId) &&
+          (!floorLighting || !floorKey || floorHeight >= targetRecord.height - 0.1)
+      )
+      .map(([mapFloorKey]) => floorLightingSignatures.get(mapFloorKey))
+      .join("|");
   }
-  const matchesVisibleFloor = object => visibleFloorId === null || floorIdOf(object) === visibleFloorId;
-  function isFloorTransitionLeaving(object) {
-    for (let node = object; node; node = node.parent) {
-      if (node.userData?.floorTransitionLeaving) {
+  const isOnVisibleFloor = object =>
+    visibleFloorId === null || resolveFloorId(object) === visibleFloorId;
+  function isFloorTransitionLeaving(transitionSource) {
+    for (
+      let transitionNode = transitionSource;
+      transitionNode;
+      transitionNode = transitionNode.parent
+    ) {
+      if (transitionNode.userData?.floorTransitionLeaving) {
         return true;
       }
     }
     return false;
   }
-  function matchesOutsideFloor(object) {
+  function isOnOutsideFloor(outsideSource) {
     if (outsideFloorId === null) {
       return true;
     }
-    for (let node = object; node; node = node.parent) {
-      const floorId = node.userData?.floorId || node.userData?.regionFloorId;
-      if (floorId) {
-        return floorId === outsideFloorId;
+    for (let outsideNode = outsideSource; outsideNode; outsideNode = outsideNode.parent) {
+      const ancestorFloorId = outsideNode.userData?.floorId || outsideNode.userData?.regionFloorId;
+      if (ancestorFloorId) {
+        return ancestorFloorId === outsideFloorId;
       }
     }
     return false;
@@ -196,103 +260,129 @@ export function createGroundReflections({
       }
     },
     vertexShader: "varying vec2 vUv; void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}",
-    fragmentShader: "uniform sampler2D source; uniform vec2 step; varying vec2 vUv;\n      void main(){ gl_FragColor=texture2D(source,vUv)*.227027;\n      gl_FragColor+=(texture2D(source,vUv+step*1.384615)+texture2D(source,vUv-step*1.384615))*.316216;\n      gl_FragColor+=(texture2D(source,vUv+step*3.230769)+texture2D(source,vUv-step*3.230769))*.070270; }"
+    fragmentShader:
+      "uniform sampler2D source; uniform vec2 step; varying vec2 vUv;\n      void main(){ gl_FragColor=texture2D(source,vUv)*.227027;\n      gl_FragColor+=(texture2D(source,vUv+step*1.384615)+texture2D(source,vUv-step*1.384615))*.316216;\n      gl_FragColor+=(texture2D(source,vUv+step*3.230769)+texture2D(source,vUv-step*3.230769))*.070270; }"
   });
-  const blurQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), blurMaterial);
-  blurScene.add(blurQuad);
-  const createTarget = (size, colorOnly = false) => new THREE.WebGLRenderTarget(size, size, {
-    type: THREE.HalfFloatType,
-    depthBuffer: !colorOnly,
-    samples: colorOnly ? 0 : Math.min(2, renderer.capabilities.maxSamples)
-  });
-  function clearOverlays() {
-    for (const entry of [...overlayBySource.values()]) {
-      disposeOverlay(entry);
+  const blurMesh = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), blurMaterial);
+  blurScene.add(blurMesh);
+  const createReflectionTarget = (resolutionPx, forBlurPass = false) =>
+    new THREE.WebGLRenderTarget(resolutionPx, resolutionPx, {
+      type: THREE.HalfFloatType,
+      depthBuffer: !forBlurPass,
+      samples: forBlurPass ? 0 : Math.min(2, renderer.capabilities.maxSamples)
+    });
+  function disposeAllRecords() {
+    for (const existingRecord of [...recordsBySource.values()]) {
+      disposeRecord(existingRecord);
     }
-    overlays = [];
+    recordList = [];
     stats.cachedRecords = stats.cachedBytes = 0;
   }
-  function rebuildOverlays(revision) {
-    const nextRoot = getRoot();
-    if (!nextRoot) {
-      clearOverlays();
-      root = firstChild = null;
+  function rebuildRecords(sceneRevision) {
+    const resolvedRoot = getRoot();
+    if (!resolvedRoot) {
+      disposeAllRecords();
+      currentRoot = rootFirstChild = null;
       return;
     }
-    if (sceneRevision === revision && root === nextRoot && firstChild === nextRoot.children[0] && overlays.every(entry => entry.source.parent && !entry.dead)) {
+    if (
+      lastSceneRevision === sceneRevision &&
+      currentRoot === resolvedRoot &&
+      rootFirstChild === resolvedRoot.children[0] &&
+      recordList.every(knownRecord => knownRecord.source.parent && !knownRecord.dead)
+    ) {
       return;
     }
-    for (const entry of overlays) {
-      entry.overlay.visible = false;
-      entry.overlay.removeFromParent();
+    for (const staleRecord of recordList) {
+      staleRecord.overlay.visible = false;
+      staleRecord.overlay.removeFromParent();
     }
-    overlays = [];
-    sceneRevision = revision;
-    root = nextRoot;
-    firstChild = nextRoot.children[0];
-    root.updateWorldMatrix(true, true);
-    floorMaxHeight = new Map();
-    lightsByFloor = new Map();
-    const worldBox = new THREE.Box3();
-    root.traverse(object => {
-      if (object.userData?.reflectionOverlay || object.userData?.environmentEffect) {
+    recordList = [];
+    lastSceneRevision = sceneRevision;
+    currentRoot = resolvedRoot;
+    rootFirstChild = resolvedRoot.children[0];
+    currentRoot.updateWorldMatrix(true, true);
+    heightByFloorId = new Map();
+    lightsByFloorId = new Map();
+    const heightBox = new THREE.Box3();
+    currentRoot.traverse(traversedNode => {
+      if (traversedNode.userData?.reflectionOverlay || traversedNode.userData?.environmentEffect) {
         return;
       }
-      const floorId = floorIdOf(object);
-      if (object.isLight) {
-        if (!lightsByFloor.has(floorId)) {
-          lightsByFloor.set(floorId, []);
+      const nodeFloorId = resolveFloorId(traversedNode);
+      if (traversedNode.isLight) {
+        if (!lightsByFloorId.has(nodeFloorId)) {
+          lightsByFloorId.set(nodeFloorId, []);
         }
-        lightsByFloor.get(floorId).push(object);
+        lightsByFloorId.get(nodeFloorId).push(traversedNode);
       }
-      if (!object.isMesh || !object.geometry) {
+      if (!traversedNode.isMesh || !traversedNode.geometry) {
         return;
       }
-      if (!object.geometry.boundingBox) {
-        object.geometry.computeBoundingBox();
+      if (!traversedNode.geometry.boundingBox) {
+        traversedNode.geometry.computeBoundingBox();
       }
-      if (object.isInstancedMesh) {
-        object.computeBoundingBox();
+      if (traversedNode.isInstancedMesh) {
+        traversedNode.computeBoundingBox();
       }
-      const localBox = object.isInstancedMesh ? object.boundingBox : object.geometry.boundingBox;
-      const maxY = object.isSkinnedMesh || object.morphTargetInfluences?.length ? Infinity : localBox ? worldBox.copy(localBox).applyMatrix4(object.matrixWorld).max.y : Infinity;
-      floorMaxHeight.set(floorId, Math.max(floorMaxHeight.get(floorId) ?? -Infinity, maxY));
+      const localBounds = traversedNode.isInstancedMesh
+        ? traversedNode.boundingBox
+        : traversedNode.geometry.boundingBox;
+      const topWorldY =
+        traversedNode.isSkinnedMesh || traversedNode.morphTargetInfluences?.length
+          ? Infinity
+          : localBounds
+            ? heightBox.copy(localBounds).applyMatrix4(traversedNode.matrixWorld).max.y
+            : Infinity;
+      heightByFloorId.set(
+        nodeFloorId,
+        Math.max(heightByFloorId.get(nodeFloorId) ?? -Infinity, topWorldY)
+      );
     });
-    const floorMeshes = [];
-    root.traverse(object => {
-      if (object.isMesh && (object.userData.regionReceiverKind === "floor" || object.userData.exportRole === "background")) {
-        floorMeshes.push(object);
+    const receiverMeshes = [];
+    currentRoot.traverse(receiverNode => {
+      if (
+        receiverNode.isMesh &&
+        (receiverNode.userData.regionReceiverKind === "floor" ||
+          receiverNode.userData.exportRole === "background")
+      ) {
+        receiverMeshes.push(receiverNode);
       }
     });
-    for (const mesh of floorMeshes) {
-      const kind = mesh.userData.exportRole === "background" ? "outside" : "inside";
-      if (isFloorTransitionLeaving(mesh) || !matchesVisibleFloor(mesh) || settings.mode !== "all" && kind !== settings.mode || kind === "outside" && !matchesOutsideFloor(mesh)) {
+    for (const sourceMesh of receiverMeshes) {
+      const receiverKind = sourceMesh.userData.exportRole === "background" ? "outside" : "inside";
+      if (
+        isFloorTransitionLeaving(sourceMesh) ||
+        !isOnVisibleFloor(sourceMesh) ||
+        (settings.mode !== "all" && receiverKind !== settings.mode) ||
+        (receiverKind === "outside" && !isOnOutsideFloor(sourceMesh))
+      ) {
         continue;
       }
-      const bounds = new THREE.Box3().setFromObject(mesh);
-      const height = bounds.max.y;
-      const key = geometryKey(mesh);
-      let entry = overlayBySource.get(mesh);
-      if (entry && (entry.dead || entry.key !== key)) {
-        disposeOverlay(entry);
-        entry = null;
+      const sourceBounds = new THREE.Box3().setFromObject(sourceMesh);
+      const sourceHeight = sourceBounds.max.y;
+      const sourceKey = geometrySignature(sourceMesh);
+      let record = recordsBySource.get(sourceMesh);
+      if (record && (record.dead || record.key !== sourceKey)) {
+        disposeRecord(record);
+        record = null;
       }
-      if (entry) {
-        entry.height = height;
-        entry.used = ++useCounter;
-        entry.hasCapture = false;
-        entry.overlay.position.copy(mesh.position);
-        entry.overlay.quaternion.copy(mesh.quaternion);
-        entry.overlay.scale.copy(mesh.scale);
-        mesh.parent.add(entry.overlay);
-        overlays.push(entry);
+      if (record) {
+        record.height = sourceHeight;
+        record.used = ++usageCounter;
+        record.hasCapture = false;
+        record.overlay.position.copy(sourceMesh.position);
+        record.overlay.quaternion.copy(sourceMesh.quaternion);
+        record.overlay.scale.copy(sourceMesh.scale);
+        sourceMesh.parent.add(record.overlay);
+        recordList.push(record);
         stats.reuses++;
         continue;
       }
-      const map = createTarget(settings.resolution);
-      const scratch = blur ? createTarget(settings.resolution, true) : null;
+      const reflectionTarget = createReflectionTarget(settings.resolution);
+      const blurTarget = blur ? createReflectionTarget(settings.resolution, true) : null;
       const reflectionMatrix = new THREE.Matrix4();
-      const overlayMaterial = new THREE.ShaderMaterial({
+      const reflectionMaterial = new THREE.ShaderMaterial({
         transparent: true,
         depthWrite: false,
         polygonOffset: true,
@@ -300,7 +390,7 @@ export function createGroundReflections({
         polygonOffsetUnits: -2,
         uniforms: {
           reflection: {
-            value: map.texture
+            value: reflectionTarget.texture
           },
           reflectionMatrix: {
             value: reflectionMatrix
@@ -309,228 +399,362 @@ export function createGroundReflections({
             value: settings.strength
           }
         },
-        vertexShader: "uniform mat4 reflectionMatrix; varying vec4 reflected; varying float up;\n          void main(){vec4 world=modelMatrix*vec4(position,1.);reflected=reflectionMatrix*world;\n          up=normalize(mat3(modelMatrix)*normal).y;gl_Position=projectionMatrix*viewMatrix*world;}",
-        fragmentShader: "uniform sampler2D reflection; uniform float strength; varying vec4 reflected; varying float up;\n          void main(){if(up<.9||reflected.w<=0.)discard;vec2 uv=reflected.xy/reflected.w;\n          if(any(lessThan(uv,vec2(0.)))||any(greaterThan(uv,vec2(1.))))discard;\n          vec4 value=texture2D(reflection,uv);gl_FragColor=vec4(value.rgb/max(value.a,.001),clamp(value.a*strength,0.,.7));\n          #include <tonemapping_fragment>\n          #include <colorspace_fragment>\n          }"
+        vertexShader:
+          "uniform mat4 reflectionMatrix; varying vec4 reflected; varying float up;\n          void main(){vec4 world=modelMatrix*vec4(position,1.);reflected=reflectionMatrix*world;\n          up=normalize(mat3(modelMatrix)*normal).y;gl_Position=projectionMatrix*viewMatrix*world;}",
+        fragmentShader:
+          "uniform sampler2D reflection; uniform float strength; varying vec4 reflected; varying float up;\n          void main(){if(up<.9||reflected.w<=0.)discard;vec2 uv=reflected.xy/reflected.w;\n          if(any(lessThan(uv,vec2(0.)))||any(greaterThan(uv,vec2(1.))))discard;\n          vec4 value=texture2D(reflection,uv);gl_FragColor=vec4(value.rgb/max(value.a,.001),clamp(value.a*strength,0.,.7));\n          #include <tonemapping_fragment>\n          #include <colorspace_fragment>\n          }"
       });
-      const overlayMesh = new THREE.Mesh(mesh.geometry.clone(), overlayMaterial);
-      overlayMesh.position.copy(mesh.position);
-      overlayMesh.quaternion.copy(mesh.quaternion);
-      overlayMesh.scale.copy(mesh.scale);
+      const overlayMesh = new THREE.Mesh(sourceMesh.geometry.clone(), reflectionMaterial);
+      overlayMesh.position.copy(sourceMesh.position);
+      overlayMesh.quaternion.copy(sourceMesh.quaternion);
+      overlayMesh.scale.copy(sourceMesh.scale);
       overlayMesh.renderOrder = 1;
       overlayMesh.userData.environmentEffect = true;
       overlayMesh.userData.reflectionOverlay = true;
-      overlayMesh.userData.externalModelSharedGeometry = overlayMesh.userData.externalModelSharedMaterial = overlayMesh.userData.externalModelSharedTextures = true;
-      entry = {
-        source: mesh,
-        geometry: mesh.geometry,
-        kind,
-        height,
+      overlayMesh.userData.externalModelSharedGeometry =
+        overlayMesh.userData.externalModelSharedMaterial =
+        overlayMesh.userData.externalModelSharedTextures =
+          true;
+      record = {
+        source: sourceMesh,
+        geometry: sourceMesh.geometry,
+        kind: receiverKind,
+        height: sourceHeight,
         overlay: overlayMesh,
-        map,
-        scratch,
+        map: reflectionTarget,
+        scratch: blurTarget,
         matrix: reflectionMatrix,
-        key,
-        used: ++useCounter,
+        key: sourceKey,
+        used: ++usageCounter,
         state: "",
         dead: false,
         hasCapture: false
       };
-      entry.onSourceDispose = () => {
-        entry.dead = true;
+      record.onSourceDispose = () => {
+        record.dead = true;
         overlayMesh.visible = false;
       };
-      mesh.geometry.addEventListener("dispose", entry.onSourceDispose);
-      overlayBySource.set(mesh, entry);
+      sourceMesh.geometry.addEventListener("dispose", record.onSourceDispose);
+      recordsBySource.set(sourceMesh, record);
       stats.allocations++;
-      mesh.parent.add(overlayMesh);
-      overlays.push(entry);
+      sourceMesh.parent.add(overlayMesh);
+      recordList.push(record);
     }
-    detail?.prepare(root);
-    pruneCache();
-    dirty = true;
+    detail?.prepare(currentRoot);
+    trimRecordCache();
+    needsUpdate = true;
   }
-  function isVisibleInHierarchy(object) {
-    for (let node = object; node; node = node.parent) {
-      if (!node.visible) {
+  function isVisibleWithin(startNode) {
+    for (let visibilityNode = startNode; visibilityNode; visibilityNode = visibilityNode.parent) {
+      if (!visibilityNode.visible) {
         return false;
       }
     }
     return true;
   }
-  function overlayAllowed(entry) {
-    return matchesVisibleFloor(entry.source) && (settings.mode === "all" || settings.mode === entry.kind) && (entry.kind !== "outside" || matchesOutsideFloor(entry.source));
+  function shouldShowRecord(recordToCheck) {
+    return (
+      isOnVisibleFloor(recordToCheck.source) &&
+      (settings.mode === "all" || settings.mode === recordToCheck.kind) &&
+      (recordToCheck.kind !== "outside" || isOnOutsideFloor(recordToCheck.source))
+    );
   }
-  function configure(options) {
-    const next = normalizeGroundReflection(options);
-    if (next.mode === settings.mode && next.resolution === settings.resolution && next.strength === settings.strength) {
+  function configure(nextSettings) {
+    const normalizedSettings = normalizeGroundReflection(nextSettings);
+    if (
+      normalizedSettings.mode === settings.mode &&
+      normalizedSettings.resolution === settings.resolution &&
+      normalizedSettings.strength === settings.strength
+    ) {
       return false;
     }
-    const resolutionChanged = settings.resolution !== next.resolution;
-    const modeChanged = settings.mode !== next.mode;
-    Object.assign(settings, next);
-    if (resolutionChanged || next.mode === "off" || next.strength === 0) {
-      clearOverlays();
-      firstChild = null;
+    const resolutionChanged = settings.resolution !== normalizedSettings.resolution;
+    const modeChanged = settings.mode !== normalizedSettings.mode;
+    Object.assign(settings, normalizedSettings);
+    if (
+      resolutionChanged ||
+      normalizedSettings.mode === "off" ||
+      normalizedSettings.strength === 0
+    ) {
+      disposeAllRecords();
+      rootFirstChild = null;
     }
     if (modeChanged) {
-      firstChild = null;
+      rootFirstChild = null;
     }
-    dirty ||= resolutionChanged || modeChanged;
+    needsUpdate ||= resolutionChanged || modeChanged;
     requestFrame();
     return true;
   }
-  function mirrorCamera(camera, plane, reflectionMatrix) {
-    let mirrored = mirrorCameras.get(camera);
-    if (!mirrored) {
-      mirrored = camera.clone(false);
-      mirrorCameras.set(camera, mirrored);
+  function updateReflectionCamera(sourceCamera, mirrorPlane, textureMatrix) {
+    let reflectionCamera = reflectionCameraBySource.get(sourceCamera);
+    if (!reflectionCamera) {
+      reflectionCamera = sourceCamera.clone(false);
+      reflectionCameraBySource.set(sourceCamera, reflectionCamera);
     }
-    mirrored.layers.mask = camera.layers.mask;
-    for (const key of ["near", "far", "zoom", "fov", "aspect", "focus", "filmGauge", "filmOffset", "left", "right", "top", "bottom", "coordinateSystem"]) {
-      if (key in camera) {
-        mirrored[key] = camera[key];
+    reflectionCamera.layers.mask = sourceCamera.layers.mask;
+    for (const propertyName of [
+      "near",
+      "far",
+      "zoom",
+      "fov",
+      "aspect",
+      "focus",
+      "filmGauge",
+      "filmOffset",
+      "left",
+      "right",
+      "top",
+      "bottom",
+      "coordinateSystem"
+    ]) {
+      if (propertyName in sourceCamera) {
+        reflectionCamera[propertyName] = sourceCamera[propertyName];
       }
     }
-    const position = positionVector.setFromMatrixPosition(camera.matrixWorld);
-    const direction = directionVector.setFromMatrixColumn(camera.matrixWorld, 2).negate().normalize();
-    position.addScaledVector(plane.normal, -2 * plane.distanceToPoint(position));
-    direction.reflect(plane.normal);
-    mirrored.position.copy(position);
-    mirrored.up.setFromMatrixColumn(camera.matrixWorld, 1).normalize().reflect(plane.normal);
-    mirrored.lookAt(lookTargetVector.copy(position).add(direction));
-    mirrored.updateMatrixWorld(true);
-    mirrored.projectionMatrix.copy(camera.projectionMatrix);
-    mirrored.projectionMatrix.elements[8] *= -1;
-    mirrored.projectionMatrix.elements[12] *= -1;
-    reflectionMatrix.set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1).multiply(mirrored.projectionMatrix).multiply(mirrored.matrixWorldInverse);
-    const clipPlane = scissorsPlane.copy(plane).applyMatrix4(mirrored.matrixWorldInverse);
-    const clipVector = vector.set(clipPlane.normal.x, clipPlane.normal.y, clipPlane.normal.z, clipPlane.constant);
-    const projection = mirrored.projectionMatrix.elements;
-    const q = clipQVector.set(Math.sign(clipVector.x), Math.sign(clipVector.y), 1, 1).applyMatrix4(scratchMatrix.copy(mirrored.projectionMatrix).invert());
-    clipVector.multiplyScalar(2 / clipVector.dot(q));
-    projection[2] = clipVector.x - projection[3];
-    projection[6] = clipVector.y - projection[7];
-    projection[10] = clipVector.z - projection[11];
-    projection[14] = clipVector.w - projection[15];
-    mirrored.projectionMatrixInverse.copy(mirrored.projectionMatrix).invert();
-    return mirrored;
+    const cameraWorldPosition = scratchWorldPosition.setFromMatrixPosition(
+      sourceCamera.matrixWorld
+    );
+    const cameraForward = scratchWorldNormal
+      .setFromMatrixColumn(sourceCamera.matrixWorld, 2)
+      .negate()
+      .normalize();
+    cameraWorldPosition.addScaledVector(
+      mirrorPlane.normal,
+      mirrorPlane.distanceToPoint(cameraWorldPosition) * -2
+    );
+    cameraForward.reflect(mirrorPlane.normal);
+    reflectionCamera.position.copy(cameraWorldPosition);
+    reflectionCamera.up
+      .setFromMatrixColumn(sourceCamera.matrixWorld, 1)
+      .normalize()
+      .reflect(mirrorPlane.normal);
+    reflectionCamera.lookAt(scratchLookTarget.copy(cameraWorldPosition).add(cameraForward));
+    reflectionCamera.updateMatrixWorld(true);
+    reflectionCamera.projectionMatrix.copy(sourceCamera.projectionMatrix);
+    reflectionCamera.projectionMatrix.elements[8] *= -1;
+    reflectionCamera.projectionMatrix.elements[12] *= -1;
+    textureMatrix
+      .set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1)
+      .multiply(reflectionCamera.projectionMatrix)
+      .multiply(reflectionCamera.matrixWorldInverse);
+    const planeInCameraSpace = scratchPlane
+      .copy(mirrorPlane)
+      .applyMatrix4(reflectionCamera.matrixWorldInverse);
+    const clipPlaneVector = scratchPlaneVector.set(
+      planeInCameraSpace.normal.x,
+      planeInCameraSpace.normal.y,
+      planeInCameraSpace.normal.z,
+      planeInCameraSpace.constant
+    );
+    const projectionElements = reflectionCamera.projectionMatrix.elements;
+    const signVector = scratchSignVector
+      .set(Math.sign(clipPlaneVector.x), Math.sign(clipPlaneVector.y), 1, 1)
+      .applyMatrix4(scratchProjectionMatrix.copy(reflectionCamera.projectionMatrix).invert());
+    clipPlaneVector.multiplyScalar(2 / clipPlaneVector.dot(signVector));
+    projectionElements[2] = clipPlaneVector.x - projectionElements[3];
+    projectionElements[6] = clipPlaneVector.y - projectionElements[7];
+    projectionElements[10] = clipPlaneVector.z - projectionElements[11];
+    projectionElements[14] = clipPlaneVector.w - projectionElements[15];
+    reflectionCamera.projectionMatrixInverse.copy(reflectionCamera.projectionMatrix).invert();
+    return reflectionCamera;
   }
-  function render(camera, { worldMatricesCurrent = false } = {}) {
-    if (disposed || stats.inCapture || !camera) {
+  function render(camera, { worldMatricesCurrent: worldMatricesCurrent = false } = {}) {
+    if (isDisposed || stats.inCapture || !camera) {
       return;
     }
-    if (suspended) {
-      if (fadeOutStart === null) {
+    if (isSuspended) {
+      if (suspendStartedAtMs === null) {
         return;
       }
-      const fadeOut = Math.min(1, Math.max(0, (performance.now() - fadeOutStart) / FADE_DURATION));
-      for (const entry of overlays) {
-        let attachedToRoot = false;
-        for (let node = entry.source; node; node = node.parent) {
-          if (node === getRoot()) {
-            attachedToRoot = true;
+      const fadeOutProgress = Math.min(
+        1,
+        Math.max(0, (performance.now() - suspendStartedAtMs) / FADE_DURATION_MS)
+      );
+      for (const fadingRecord of recordList) {
+        let isUnderRoot = false;
+        for (
+          let ancestorNode = fadingRecord.source;
+          ancestorNode;
+          ancestorNode = ancestorNode.parent
+        ) {
+          if (ancestorNode === getRoot()) {
+            isUnderRoot = true;
             break;
           }
         }
-        if (fadeOut === 1 || !attachedToRoot || entry.dead || !entry.hasCapture || !entry.fadeOutStrength) {
-          entry.overlay.visible = false;
-          entry.overlay.removeFromParent();
+        if (
+          fadeOutProgress === 1 ||
+          !isUnderRoot ||
+          fadingRecord.dead ||
+          !fadingRecord.hasCapture ||
+          !fadingRecord.fadeOutStrength
+        ) {
+          fadingRecord.overlay.visible = false;
+          fadingRecord.overlay.removeFromParent();
           continue;
         }
-        entry.source.updateWorldMatrix(true, false);
-        entry.matrix.copy(entry.fadeOutMatrix).multiply(entry.fadeOutFrame).multiply(new THREE.Matrix4().copy(entry.source.matrixWorld).invert());
-        entry.overlay.position.copy(entry.source.position);
-        entry.overlay.quaternion.copy(entry.source.quaternion);
-        entry.overlay.scale.copy(entry.source.scale);
-        if (entry.overlay.parent !== entry.source.parent) {
-          entry.source.parent.add(entry.overlay);
+        fadingRecord.source.updateWorldMatrix(true, false);
+        fadingRecord.matrix
+          .copy(fadingRecord.fadeOutMatrix)
+          .multiply(fadingRecord.fadeOutFrame)
+          .multiply(new THREE.Matrix4().copy(fadingRecord.source.matrixWorld).invert());
+        fadingRecord.overlay.position.copy(fadingRecord.source.position);
+        fadingRecord.overlay.quaternion.copy(fadingRecord.source.quaternion);
+        fadingRecord.overlay.scale.copy(fadingRecord.source.scale);
+        if (fadingRecord.overlay.parent !== fadingRecord.source.parent) {
+          fadingRecord.source.parent.add(fadingRecord.overlay);
         }
-        entry.overlay.updateWorldMatrix(true, false);
-        entry.overlay.material.uniforms.strength.value = entry.fadeOutStrength * (1 - fadeOut);
-        entry.overlay.visible = isVisibleInHierarchy(entry.kind === "outside" ? entry.source.parent : entry.source);
+        fadingRecord.overlay.updateWorldMatrix(true, false);
+        fadingRecord.overlay.material.uniforms.strength.value =
+          fadingRecord.fadeOutStrength * (1 - fadeOutProgress);
+        fadingRecord.overlay.visible = isVisibleWithin(
+          fadingRecord.kind === "outside" ? fadingRecord.source.parent : fadingRecord.source
+        );
       }
-      if (fadeOut < 1) {
+      if (fadeOutProgress < 1) {
         requestFrame();
       } else {
-        fadeOutStart = null;
+        suspendStartedAtMs = null;
       }
       return;
     }
-    if (settings.mode === "off" || settings.strength === 0 || (worldMatricesCurrent || (scene.matrixWorldAutoUpdate && scene.updateMatrixWorld(), camera.updateWorldMatrix(true, false)), rebuildOverlays(getSceneRevision()), !root)) {
+    if (
+      settings.mode === "off" ||
+      settings.strength === 0 ||
+      (worldMatricesCurrent ||
+        (scene.matrixWorldAutoUpdate && scene.updateMatrixWorld(),
+        camera.updateWorldMatrix(true, false)),
+      rebuildRecords(getSceneRevision()),
+      !currentRoot)
+    ) {
       return;
     }
-    const fade = resumeFade ? 0 : fadeStart === null ? 1 : Math.min(1, (performance.now() - fadeStart) / FADE_DURATION);
-    if (fade < 1) {
+    const resumeProgress = pendingResume
+      ? 0
+      : resumeStartedAtMs === null
+        ? 1
+        : Math.min(1, (performance.now() - resumeStartedAtMs) / FADE_DURATION_MS);
+    if (resumeProgress < 1) {
       requestFrame();
     } else {
-      fadeStart = null;
+      resumeStartedAtMs = null;
     }
-    for (const entry of overlays) {
-      if (!entry.sourceFrame?.equals(entry.source.matrixWorld)) {
-        entry.sourceFrame = (entry.sourceFrame || new THREE.Matrix4()).copy(entry.source.matrixWorld);
-        entry.source.geometry.boundingBox || entry.source.geometry.computeBoundingBox();
-        const geometryBox = entry.source.geometry.boundingBox;
-        const size = geometryBox.getSize(new THREE.Vector3());
-        const axis = size.x <= size.y && size.x <= size.z ? "x" : size.y <= size.z ? "y" : "z";
-        const normal = new THREE.Vector3();
-        normal[axis] = 1;
-        normal.applyMatrix3(new THREE.Matrix3().getNormalMatrix(entry.sourceFrame)).normalize();
-        const center = geometryBox.getCenter(new THREE.Vector3());
-        center[axis] = normal.y < 0 ? geometryBox.min[axis] : geometryBox.max[axis];
-        if (normal.y < 0) {
-          normal.negate();
+    for (const activeRecord of recordList) {
+      if (!activeRecord.sourceFrame?.equals(activeRecord.source.matrixWorld)) {
+        activeRecord.sourceFrame = (activeRecord.sourceFrame || new THREE.Matrix4()).copy(
+          activeRecord.source.matrixWorld
+        );
+        if (!activeRecord.source.geometry.boundingBox) {
+          activeRecord.source.geometry.computeBoundingBox();
         }
-        entry.plane = (entry.plane || new THREE.Plane()).setFromNormalAndCoplanarPoint(normal, center.applyMatrix4(entry.sourceFrame));
-        entry.height = new THREE.Box3().copy(geometryBox).applyMatrix4(entry.sourceFrame).max.y;
-        dirty = true;
+        const geometryBounds = activeRecord.source.geometry.boundingBox;
+        const geometrySize = geometryBounds.getSize(new THREE.Vector3());
+        const thinAxis =
+          geometrySize.x <= geometrySize.y && geometrySize.x <= geometrySize.z
+            ? "x"
+            : geometrySize.y <= geometrySize.z
+              ? "y"
+              : "z";
+        const planeNormal = new THREE.Vector3();
+        planeNormal[thinAxis] = 1;
+        planeNormal
+          .applyMatrix3(new THREE.Matrix3().getNormalMatrix(activeRecord.sourceFrame))
+          .normalize();
+        const planeCenter = geometryBounds.getCenter(new THREE.Vector3());
+        planeCenter[thinAxis] =
+          planeNormal.y < 0 ? geometryBounds.min[thinAxis] : geometryBounds.max[thinAxis];
+        if (planeNormal.y < 0) {
+          planeNormal.negate();
+        }
+        activeRecord.plane = (
+          activeRecord.plane || new THREE.Plane()
+        ).setFromNormalAndCoplanarPoint(
+          planeNormal,
+          planeCenter.applyMatrix4(activeRecord.sourceFrame)
+        );
+        activeRecord.height = new THREE.Box3()
+          .copy(geometryBounds)
+          .applyMatrix4(activeRecord.sourceFrame).max.y;
+        needsUpdate = true;
       }
-      entry.eligible = !isFloorTransitionLeaving(entry.source) && isVisibleInHierarchy(entry.kind === "outside" ? entry.source.parent : entry.source) && overlayAllowed(entry) && entry.plane.distanceToPoint(camera.position) > 0;
-      entry.overlay.visible = entry.eligible && entry.hasCapture;
-      entry.overlay.material.uniforms.strength.value = settings.strength * fade;
+      activeRecord.eligible =
+        !isFloorTransitionLeaving(activeRecord.source) &&
+        isVisibleWithin(
+          activeRecord.kind === "outside" ? activeRecord.source.parent : activeRecord.source
+        ) &&
+        shouldShowRecord(activeRecord) &&
+        activeRecord.plane.distanceToPoint(getFloorCamera(camera, activeRecord.source).position) >
+          0;
+      activeRecord.overlay.visible = activeRecord.eligible && activeRecord.hasCapture;
+      activeRecord.overlay.material.uniforms.strength.value = settings.strength * resumeProgress;
     }
-    if (settings.mode === "off" || !overlays.length) {
+    if (settings.mode === "off" || !recordList.length) {
       return;
     }
-    const now = performance.now();
-    const cameraKey = camera.matrixWorld.elements.join(",") + camera.projectionMatrix.elements.join(",");
-    const cameraChanged = cameraKey !== lastCameraKey;
-    const resolution = settings.resolution;
-    for (const entry of overlays) {
-      if (entry.map.width !== resolution) {
-        entry.map.setSize(resolution, resolution);
-        entry.scratch?.setSize(resolution, resolution);
-        dirty = true;
+    const frameStartMs = performance.now();
+    const cameraSignature =
+      camera.matrixWorld.elements.join(",") + camera.projectionMatrix.elements.join(",");
+    const cameraChanged = cameraSignature !== lastCameraSignature;
+    const currentResolution = settings.resolution;
+    for (const resizedRecord of recordList) {
+      if (resizedRecord.map.width !== currentResolution) {
+        resizedRecord.map.setSize(currentResolution, currentResolution);
+        resizedRecord.scratch?.setSize(currentResolution, currentResolution);
+        needsUpdate = true;
       }
     }
-    const lightingKey = getStateKey() + "|" + globalRevision + "|" + lightsSignature(lightsByFloor.get("") || []) + "|" + (floorLighting ? "" : lightsSignature([...lightsByFloor.values()].flat()));
-    const contentChanged = dirty || cameraChanged || lightingKey !== lastLightingKey;
-    const floorKeys = new Map([...floorMaxHeight.keys()].map(floorId => [floorId, floorId + ":" + (floorRevision.get(floorId) || 0) + ":" + (floorLighting ? lightsSignature(lightsByFloor.get(floorId) || []) : "")]));
-    const entryStateKeys = new Map();
-    const dirtyOverlays = overlays.filter(entry => {
-      if (!entry.eligible) {
+    const lightingSignature =
+      getStateKey() +
+      "|" +
+      changeRevisionCount +
+      "|" +
+      buildLightingSignature(lightsByFloorId.get("") || []) +
+      "|" +
+      (floorLighting ? "" : buildLightingSignature([...lightsByFloorId.values()].flat()));
+    const stateChanged =
+      needsUpdate || cameraChanged || lightingSignature !== lastLightingSignature;
+    const lightingSignatureByFloor = new Map(
+      [...heightByFloorId.keys()].map(signatureFloorKey => [
+        signatureFloorKey,
+        signatureFloorKey +
+          ":" +
+          (floorChangeCounts.get(signatureFloorKey) || 0) +
+          ":" +
+          (floorLighting
+            ? buildLightingSignature(lightsByFloorId.get(signatureFloorKey) || [])
+            : "")
+      ])
+    );
+    const stateKeyByRecord = new Map();
+    const dirtyRecords = recordList.filter(eligibleRecord => {
+      if (!eligibleRecord.eligible) {
         return false;
       }
-      const stateKey = floorStateKey(entry, floorKeys);
-      entryStateKeys.set(entry, stateKey);
-      return contentChanged || entry.state !== stateKey;
+      const stateKey = recordStateKey(eligibleRecord, lightingSignatureByFloor);
+      stateKeyByRecord.set(eligibleRecord, stateKey);
+      return stateChanged || eligibleRecord.state !== stateKey;
     });
-    if (!dirtyOverlays.length) {
+    if (!dirtyRecords.length) {
       return;
     }
-    if (!dirty && !cameraChanged && now - lastCaptureTime < 1000 / settings.fps) {
+    if (!needsUpdate && !cameraChanged && frameStartMs - lastRenderTimeMs < 1000 / settings.fps) {
       if (throttleTimer === null) {
-        throttleTimer = setTimeout(() => {
-          throttleTimer = null;
-          requestFrame();
-        }, 1000 / settings.fps - (now - lastCaptureTime));
+        throttleTimer = setTimeout(
+          () => {
+            throttleTimer = null;
+            requestFrame();
+          },
+          1000 / settings.fps - (frameStartMs - lastRenderTimeMs)
+        );
       }
       return;
     }
-    const previous = {
+    const rendererState = {
       target: renderer.getRenderTarget(),
       cubeFace: renderer.getActiveCubeFace(),
       mipmap: renderer.getActiveMipmapLevel(),
-      webxrEnabled: renderer.xr.enabled,
+      xr: renderer.xr.enabled,
       shadow: renderer.shadowMap.autoUpdate,
       alpha: renderer.getClearAlpha(),
       color: renderer.getClearColor(new THREE.Color()),
@@ -541,261 +765,283 @@ export function createGroundReflections({
       autoClear: renderer.autoClear,
       matrixWorldAutoUpdate: scene.matrixWorldAutoUpdate
     };
-    const hiddenVisibility = [];
-    const swappedMaterials = [];
-    const swappedGeometries = [];
-    const wallNodes = [];
-    const captureAllInside = dirtyOverlays.every(entry => entry.kind === "inside");
+    const hiddenObjects = [];
+    const materialRestores = [];
+    const geometryRestores = [];
+    const wallMeshes = [];
+    const allInside = dirtyRecords.every(checkedRecord => checkedRecord.kind === "inside");
     culling.reset();
-    const hideForCapture = object => {
-      if (!object.visible) {
-        return;
-      }
-      if (object !== root && visibleFloorId !== null && floorIdOf(object) && floorIdOf(object) !== visibleFloorId || object.userData.floorTransitionLeaving || object.name === "interaction3d-curtain-shadow-refresh" || object.userData.reflectionOverlay || ["background", "grid", "outline"].includes(object.userData.exportRole) || object.userData.regionReceiverKind === "floor" || object.userData.environmentEffect || captureAllInside && object.userData.reflectionRole === "wall") {
-        hiddenVisibility.push([object, object.visible]);
-        object.visible = false;
-        return;
-      }
-      if (object.userData.reflectionRole === "wall") {
-        wallNodes.push(object);
-      }
-      if (cull) {
-        culling.add(object, !floorLighting);
-      }
-      const simplified = detail?.get(object);
-      if (simplified) {
-        swappedGeometries.push([object, object.geometry]);
-        object.geometry = simplified;
-      }
-      if (object.isMesh && object.material) {
-        const original = object.material;
-        const replacement = withoutTransmissionMaterial(original);
-        if (replacement !== original) {
-          swappedMaterials.push([object, original]);
-          object.material = replacement;
-        }
-      }
-      for (const child of object.children) {
-        hideForCapture(child);
-      }
-    };
-    hideForCapture(scene);
-    scene.matrixWorldAutoUpdate = false;
-    const captureStart = performance.now();
+    const captureStartMs = performance.now();
     stats.inCapture = true;
     stats.lastDrawCalls = stats.lastTriangles = 0;
     try {
+      const prepareNode = candidateNode => {
+        if (!candidateNode.visible) {
+          return;
+        }
+        if (
+          (candidateNode !== currentRoot &&
+            visibleFloorId !== null &&
+            resolveFloorId(candidateNode) &&
+            resolveFloorId(candidateNode) !== visibleFloorId) ||
+          candidateNode.userData.floorTransitionLeaving ||
+          candidateNode.name === "interaction3d-curtain-shadow-refresh" ||
+          candidateNode.userData.reflectionOverlay ||
+          ["background", "grid", "outline"].includes(candidateNode.userData.exportRole) ||
+          candidateNode.userData.regionReceiverKind === "floor" ||
+          candidateNode.userData.environmentEffect ||
+          (allInside && candidateNode.userData.reflectionRole === "wall")
+        ) {
+          hiddenObjects.push([candidateNode, candidateNode.visible]);
+          candidateNode.visible = false;
+          return;
+        }
+        if (candidateNode.userData.reflectionRole === "wall") {
+          wallMeshes.push(candidateNode);
+        }
+        if (cull) {
+          culling.add(candidateNode, !floorLighting);
+        }
+        const replacementGeometry = detail?.get(candidateNode);
+        if (replacementGeometry) {
+          geometryRestores.push([candidateNode, candidateNode.geometry]);
+          candidateNode.geometry = replacementGeometry;
+        }
+        if (candidateNode.isMesh && candidateNode.material) {
+          const originalMaterial = candidateNode.material;
+          const materialForRender = getRefractionFreeMaterials(originalMaterial);
+          if (materialForRender !== originalMaterial) {
+            materialRestores.push([candidateNode, originalMaterial]);
+            candidateNode.material = materialForRender;
+          }
+        }
+        for (const childNode of candidateNode.children) {
+          prepareNode(childNode);
+        }
+      };
+      prepareNode(scene);
+      scene.matrixWorldAutoUpdate = false;
       renderer.xr.enabled = false;
       renderer.shadowMap.autoUpdate = false;
       renderer.autoClear = true;
       scene.background = null;
       renderer.setClearColor(0, 0);
       renderer.setScissorTest(false);
-      for (const entry of dirtyOverlays) {
-        entry.hasCapture = false;
-        const mirrored = mirrorCamera(camera, entry.plane, entry.matrix);
-        const captureCamera = typeof getReflectionCamera === "function"
-          ? getReflectionCamera(mirrored, entry.source) || mirrored
-          : mirrored;
-        syncLighting(captureCamera);
-        const hiddenWalls = [];
-        const hiddenOtherFloors = [];
-        const captureFloorId = visibleFloorId === null ? floorIdOf(entry.source) : "";
+      for (const captureRecord of dirtyRecords) {
+        captureRecord.hasCapture = false;
+        const capturedCamera = updateReflectionCamera(
+          getFloorCamera(camera, captureRecord.source),
+          captureRecord.plane,
+          captureRecord.matrix
+        );
+        syncLighting(capturedCamera);
+        const temporarilyHidden = [];
         try {
-          if (captureFloorId) {
-            scene.traverse(object => {
-              if (!object.visible) {
-                return;
-              }
-              const objectFloorId = floorIdOf(object);
-              if (objectFloorId && objectFloorId !== captureFloorId) {
-                hiddenOtherFloors.push(object);
-                object.visible = false;
+          if (cull && !culling.begin(captureRecord, capturedCamera)) {
+            captureRecord.state = stateKeyByRecord.get(captureRecord);
+            continue;
+          }
+          if (captureRecord.kind === "outside" && outsideFloorId !== null) {
+            scene.traverse(sceneNode => {
+              const traversedFloorId = resolveFloorId(sceneNode);
+              if (
+                sceneNode !== currentRoot &&
+                sceneNode.visible &&
+                traversedFloorId &&
+                traversedFloorId !== outsideFloorId
+              ) {
+                temporarilyHidden.push(sceneNode);
+                sceneNode.visible = false;
               }
             });
           }
-          if (cull && !culling.begin(entry, captureCamera)) {
-            entry.state = entryStateKeys.get(entry);
-            continue;
-          }
-          if (entry.kind === "inside") {
-            for (const wall of wallNodes) {
-              if (wall.visible) {
-                hiddenWalls.push(wall);
-                wall.visible = false;
+          if (captureRecord.kind === "inside") {
+            for (const wallMesh of wallMeshes) {
+              if (wallMesh.visible) {
+                temporarilyHidden.push(wallMesh);
+                wallMesh.visible = false;
               }
             }
           }
-          renderer.setRenderTarget(entry.map);
+          renderer.setRenderTarget(captureRecord.map);
           renderer.clear();
-          renderer.render(scene, captureCamera);
+          renderer.render(scene, capturedCamera);
           stats.renders++;
           stats.lastDrawCalls += renderer.info?.render.calls || 0;
           stats.lastTriangles += renderer.info?.render.triangles || 0;
         } finally {
           culling.restore();
-          for (const wall of hiddenWalls) {
-            wall.visible = true;
-          }
-          for (const object of hiddenOtherFloors) {
-            object.visible = true;
+          for (const restoredObject of temporarilyHidden) {
+            restoredObject.visible = true;
           }
         }
-        if (entry.scratch) {
-          for (const [source, destination, stepX, stepY] of [[entry.map, entry.scratch, 1, 0], [entry.scratch, entry.map, 0, 1]]) {
-            blurMaterial.uniforms.source.value = source.texture;
-            blurMaterial.uniforms.step.value.set(stepX * 2 / 512, stepY * 2 / 512);
-            renderer.setRenderTarget(destination);
+        if (captureRecord.scratch) {
+          for (const [blurSource, blurDestination, sourceScale, destinationScale] of [
+            [captureRecord.map, captureRecord.scratch, 1, 0],
+            [captureRecord.scratch, captureRecord.map, 0, 1]
+          ]) {
+            blurMaterial.uniforms.source.value = blurSource.texture;
+            blurMaterial.uniforms.step.value.set(
+              (sourceScale * 2) / 512,
+              (destinationScale * 2) / 512
+            );
+            renderer.setRenderTarget(blurDestination);
             renderer.clear();
             renderer.render(blurScene, blurCamera);
           }
         }
         stats.captures++;
-        entry.hasCapture = true;
-        entry.state = entryStateKeys.get(entry);
+        captureRecord.hasCapture = true;
+        captureRecord.state = stateKeyByRecord.get(captureRecord);
       }
-      if (resumeFade) {
-        resumeFade = false;
-        fadeStart = performance.now();
+      if (pendingResume) {
+        pendingResume = false;
+        resumeStartedAtMs = performance.now();
         requestFrame();
       }
-      dirty = false;
-      lastCaptureTime = now;
-      lastCameraKey = cameraKey;
-      lastLightingKey = lightingKey;
+      needsUpdate = false;
+      lastRenderTimeMs = frameStartMs;
+      lastCameraSignature = cameraSignature;
+      lastLightingSignature = lightingSignature;
     } finally {
-      scene.matrixWorldAutoUpdate = previous.matrixWorldAutoUpdate;
+      scene.matrixWorldAutoUpdate = rendererState.matrixWorldAutoUpdate;
       culling.restore();
       stats.culling = {
         ...culling.stats
       };
-      for (const [object, geometry] of swappedGeometries) {
-        object.geometry = geometry;
+      for (const [restoredMesh, savedGeometry] of geometryRestores) {
+        restoredMesh.geometry = savedGeometry;
       }
-      for (const [object, visible] of hiddenVisibility) {
-        object.visible = visible;
+      for (const [visibilityObject, previousVisible] of hiddenObjects) {
+        visibilityObject.visible = previousVisible;
       }
-      for (const [object, material] of swappedMaterials) {
-        object.material = material;
+      for (const [materialMesh, savedMaterial] of materialRestores) {
+        materialMesh.material = savedMaterial;
       }
-      for (const entry of overlays) {
-        entry.overlay.visible = entry.eligible && entry.hasCapture;
+      for (const restoredRecord of recordList) {
+        restoredRecord.overlay.visible = restoredRecord.eligible && restoredRecord.hasCapture;
       }
-      scene.background = previous.background;
-      renderer.setClearColor(previous.color, previous.alpha);
-      renderer.setRenderTarget(previous.target, previous.cubeFace, previous.mipmap);
-      renderer.setViewport(previous.viewport);
-      renderer.setScissor(previous.scissor);
-      renderer.setScissorTest(previous.scissorTest);
-      renderer.xr.enabled = previous.webxrEnabled;
-      renderer.shadowMap.autoUpdate = previous.shadow;
-      renderer.autoClear = previous.autoClear;
+      scene.background = rendererState.background;
+      renderer.setClearColor(rendererState.color, rendererState.alpha);
+      renderer.setRenderTarget(rendererState.target, rendererState.cubeFace, rendererState.mipmap);
+      renderer.setViewport(rendererState.viewport);
+      renderer.setScissor(rendererState.scissor);
+      renderer.setScissorTest(rendererState.scissorTest);
+      renderer.xr.enabled = rendererState.xr;
+      renderer.shadowMap.autoUpdate = rendererState.shadow;
+      renderer.autoClear = rendererState.autoClear;
       syncLighting(camera);
       stats.inCapture = false;
-      stats.lastMs = performance.now() - captureStart;
+      stats.lastMs = performance.now() - captureStartMs;
       stats.totalMs += stats.lastMs;
     }
   }
   return {
-    settings,
-    stats,
-    render,
-    configure,
-    setVisibleFloor(floorId) {
-      const next = floorId == null ? null : String(floorId);
-      if (next !== visibleFloorId) {
-        visibleFloorId = next;
-        for (const entry of overlays) {
-          if (!matchesVisibleFloor(entry.source)) {
-            entry.overlay.visible = false;
-            entry.overlay.removeFromParent();
+    settings: settings,
+    stats: stats,
+    render: render,
+    configure: configure,
+    setVisibleFloor(nextFloorId) {
+      const normalizedFloorId = nextFloorId == null ? null : String(nextFloorId);
+      if (normalizedFloorId !== visibleFloorId) {
+        visibleFloorId = normalizedFloorId;
+        for (const floorRecord of recordList) {
+          if (!isOnVisibleFloor(floorRecord.source)) {
+            floorRecord.overlay.visible = false;
+            floorRecord.overlay.removeFromParent();
           }
         }
-        firstChild = null;
-        dirty = true;
+        rootFirstChild = null;
+        needsUpdate = true;
         requestFrame();
       }
     },
-    setOutsideFloor(floorId) {
-      const next = floorId == null ? null : String(floorId);
-      if (next !== outsideFloorId) {
-        outsideFloorId = next;
-        for (const entry of overlays) {
-          if (entry.kind === "outside" && !matchesOutsideFloor(entry.source)) {
-            entry.overlay.visible = false;
+    setOutsideFloor(nextOutsideFloorId) {
+      const normalizedOutsideFloorId =
+        nextOutsideFloorId == null ? null : String(nextOutsideFloorId);
+      if (normalizedOutsideFloorId !== outsideFloorId) {
+        outsideFloorId = normalizedOutsideFloorId;
+        for (const outsideRecord of recordList) {
+          if (outsideRecord.kind === "outside" && !isOnOutsideFloor(outsideRecord.source)) {
+            outsideRecord.overlay.visible = false;
           }
         }
-        firstChild = null;
-        dirty = true;
+        rootFirstChild = null;
+        needsUpdate = true;
         requestFrame();
       }
     },
-    setSuspended(nextSuspended, { fade = false } = {}) {
-      const next = nextSuspended === true;
-      if (suspended === next) {
-        if (next) {
-          for (const entry of overlays) {
-            entry.overlay.visible = false;
-            entry.overlay.removeFromParent();
+    setSuspended(suspended, { fade: fade = false } = {}) {
+      const nextSuspended = suspended === true;
+      if (isSuspended === nextSuspended) {
+        if (nextSuspended) {
+          for (const hiddenRecord of recordList) {
+            hiddenRecord.overlay.visible = false;
+            hiddenRecord.overlay.removeFromParent();
           }
         }
-        if (next && !fade) {
-          fadeOutStart = null;
+        if (nextSuspended && !fade) {
+          suspendStartedAtMs = null;
         }
         return;
       }
-      suspended = next;
-      fadeStart = null;
-      resumeFade = !suspended;
-      fadeOutStart = suspended && fade ? performance.now() : null;
-      for (const entry of overlays) {
-        if (suspended && fade) {
-          entry.fadeOutStrength = entry.overlay.visible ? entry.overlay.material.uniforms.strength.value : 0;
-          entry.fadeOutMatrix = entry.matrix.clone();
-          entry.source.updateWorldMatrix(true, false);
-          entry.fadeOutFrame = entry.source.matrixWorld.clone();
+      isSuspended = nextSuspended;
+      resumeStartedAtMs = null;
+      pendingResume = !isSuspended;
+      suspendStartedAtMs = isSuspended && fade ? performance.now() : null;
+      for (const suspendRecord of recordList) {
+        if (isSuspended && fade) {
+          suspendRecord.fadeOutStrength = suspendRecord.overlay.visible
+            ? suspendRecord.overlay.material.uniforms.strength.value
+            : 0;
+          suspendRecord.fadeOutMatrix = suspendRecord.matrix.clone();
+          suspendRecord.source.updateWorldMatrix(true, false);
+          suspendRecord.fadeOutFrame = suspendRecord.source.matrixWorld.clone();
         }
-        entry.overlay.visible = false;
-        entry.overlay.removeFromParent();
+        suspendRecord.overlay.visible = false;
+        suspendRecord.overlay.removeFromParent();
       }
-      dirty = true;
-      if (!suspended) {
-        firstChild = null;
+      needsUpdate = true;
+      if (!isSuspended) {
+        rootFirstChild = null;
       }
       requestFrame();
     },
     get records() {
-      return overlays;
+      return recordList;
     },
     invalidate() {
-      dirty = true;
+      needsUpdate = true;
     },
-    changed(floorIds) {
-      if (floorIds == null) {
-        globalRevision++;
+    changed(changedFloorIds) {
+      if (changedFloorIds == null) {
+        changeRevisionCount++;
       } else {
-        for (const floorId of new Set(floorIds)) {
-          if (!floorId || !floorMaxHeight.has(String(floorId))) {
-            globalRevision++;
+        for (const changedFloorId of new Set(changedFloorIds)) {
+          if (!changedFloorId || !heightByFloorId.has(String(changedFloorId))) {
+            changeRevisionCount++;
             continue;
           }
-          floorRevision.set(String(floorId), (floorRevision.get(String(floorId)) || 0) + 1);
+          floorChangeCounts.set(
+            String(changedFloorId),
+            (floorChangeCounts.get(String(changedFloorId)) || 0) + 1
+          );
         }
       }
     },
     dispose() {
-      disposed = true;
+      isDisposed = true;
       detail?.dispose();
       clearTimeout(throttleTimer);
-      clearOverlays();
-      blurQuad.geometry.dispose();
+      disposeAllRecords();
+      blurMesh.geometry.dispose();
       blurMaterial.dispose();
-      for (const disposeClone of [...transmissionDisposers.values()]) {
-        disposeClone();
+      for (const disposeListener of [...disposeHandlerByClone.values()]) {
+        disposeListener();
       }
-      floorRevision.clear();
-      floorMaxHeight.clear();
-      lightsByFloor.clear();
+      floorChangeCounts.clear();
+      heightByFloorId.clear();
+      lightsByFloorId.clear();
     }
   };
 }

@@ -1,41 +1,44 @@
 export function startSceneSync({
-  eligible,
-  read,
-  apply,
-  interval = 5000,
-  schedule = setTimeout,
-  cancel = clearTimeout
+  eligible: isEligible,
+  read: readSceneUpdate,
+  apply: applySceneUpdate,
+  interval: intervalMs = 5000,
+  schedule: scheduleTimeout = setTimeout,
+  cancel: cancelTimeout = clearTimeout
 }) {
-  let stopped = false;
-  let timer;
-  let controller;
-  let failures = 0;
-  async function tick() {
-    if (!stopped) {
+  let isStopped = false;
+  let timerId;
+  let abortController;
+  let failureCount = 0;
+  async function runSync() {
+    if (!isStopped) {
       try {
-        if (!eligible()) {
+        if (!isEligible()) {
           return;
         }
-        controller = new AbortController();
-        const value = await read(controller.signal);
-        if (!stopped && value && eligible()) {
-          await apply(value);
+        abortController = new AbortController();
+        const sceneUpdatePayload = await readSceneUpdate(abortController.signal);
+        if (!isStopped && sceneUpdatePayload && isEligible()) {
+          await applySceneUpdate(sceneUpdatePayload);
         }
-        failures = 0;
+        failureCount = 0;
       } catch {
-        failures++;
+        failureCount++;
       } finally {
-        controller = null;
-        if (!stopped) {
-          timer = schedule(tick, Math.min(60000, interval * 2 ** Math.min(failures, 4)));
+        abortController = null;
+        if (!isStopped) {
+          timerId = scheduleTimeout(
+            runSync,
+            Math.min(60000, intervalMs * 2 ** Math.min(failureCount, 4))
+          );
         }
       }
     }
   }
-  timer = schedule(tick, interval);
+  timerId = scheduleTimeout(runSync, intervalMs);
   return () => {
-    stopped = true;
-    cancel(timer);
-    controller?.abort();
+    isStopped = true;
+    cancelTimeout(timerId);
+    abortController?.abort();
   };
 }

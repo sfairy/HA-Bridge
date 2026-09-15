@@ -4,8 +4,9 @@ import json
 from functools import lru_cache
 from pathlib import Path
 
-from dependencies import LicensedUser
 from fastapi import APIRouter, Query, Request
+
+from ..dependencies import LicensedUser
 
 router = APIRouter(prefix='/icons', tags=['icons'])
 
@@ -29,19 +30,19 @@ def icons(
     request: Request,
     _user: LicensedUser,
     query: str = '',
-    limit: int = Query(default=160, ge=1, le=240),
-    offset: int = Query(default=0, ge=0),
+    limit: int = Query(160, ge=1, le=240),
+    offset: int = Query(0, ge=0),
 ) -> dict:
     version = '7.4.47'
     root = request.app.state.settings.frontend_dir / 'static' / 'vendor' / 'mdi' / version
     normalized = query.strip().lower().removeprefix('mdi:')
     matches = []
     for item in _mdi_metadata(str(root / 'meta.json')):
-        haystack = (
-            [item['name']]
-            + [str(value).lower() for value in item['aliases']]
-            + [str(value).lower() for value in item['tags']]
-        )
+        haystack = [
+            item['name'],
+            *(str(value).lower() for value in item['aliases']),
+            *(str(value).lower() for value in item['tags']),
+        ]
         if normalized and not any(normalized in value for value in haystack):
             continue
         matches.append(item)
@@ -59,8 +60,8 @@ def icons(
         'offset': offset,
         'items': [
             {
-                'name': f"mdi:{item['name']}",
-                'slug': item['name'],
+                'name': item['name'],
+                'slug': f"mdi:{item['name']}",
                 'previewUrl': f"/bridge-static/vendor/mdi/{version}/svg/{item['name']}.svg",
             }
             for item in page

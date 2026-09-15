@@ -6,181 +6,229 @@ export const PRESENCE_PAGES = [
   ["vacuum", "扫地机"],
   ["security", "安防"]
 ];
-
-export function presenceVisibleOnPage(sensor, pageId) {
-  const includes = sensor.displayPages ?? ["overview", "light", "security"];
-  return PRESENCE_PAGES.some(([id]) => id === pageId) && (includes === "all" || Array.isArray(includes) && includes.includes(pageId));
+export function presenceVisibleOnPage(presenceBinding, pageId) {
+  const displayPages = presenceBinding.displayPages ?? ["overview", "light", "security"];
+  return (
+    PRESENCE_PAGES.some(([pageKey]) => pageKey === pageId) &&
+    (displayPages === "all" || (Array.isArray(displayPages) && displayPages.includes(pageId)))
+  );
 }
-
 export function validPresenceRoute(route) {
-  if (!Array.isArray(route) || route.length < 3 || route.length > 128 || route.some(point => !point || !Number.isFinite(point.x) || !Number.isFinite(point.y) || Math.abs(point.x) > 1000000 || Math.abs(point.y) > 1000000)) {
+  if (
+    !Array.isArray(route) ||
+    route.length < 3 ||
+    route.length > 128 ||
+    route.some(
+      point =>
+        !point ||
+        !Number.isFinite(point.x) ||
+        !Number.isFinite(point.y) ||
+        Math.abs(point.x) > 1000000 ||
+        Math.abs(point.y) > 1000000
+    )
+  ) {
     return false;
   }
-  const first = route[0];
-  if (new Set(route.map(point => point.x + "," + point.y)).size !== route.length) {
+  const firstPoint = route[0];
+  if (
+    new Set(route.map(candidatePoint => candidatePoint.x + "," + candidatePoint.y)).size !==
+    route.length
+  ) {
     return false;
+  } else {
+    return route.slice(1, -1).some((middlePoint, pointIndex) => {
+      const nextPoint = route[pointIndex + 2];
+      return (
+        Math.abs(
+          (middlePoint.x - firstPoint.x) * (nextPoint.y - firstPoint.y) -
+            (middlePoint.y - firstPoint.y) * (nextPoint.x - firstPoint.x)
+        ) > 0.000001
+      );
+    });
   }
-  return route.slice(1, -1).some((point, index) => {
-    const next = route[index + 2];
-    return Math.abs((point.x - first.x) * (next.y - first.y) - (point.y - first.y) * (next.x - first.x)) > 0.000001;
-  });
 }
-
-export function snapsToPresenceStart(route, point, scale, threshold = 16) {
-  return validPresenceRoute(route) && !!point && Math.hypot(point.x - route[0].x, point.y - route[0].y) * Math.abs(scale) <= threshold;
+export function snapsToPresenceStart(routePoints, probePoint, screenScale, tolerancePx = 16) {
+  return (
+    validPresenceRoute(routePoints) &&
+    !!probePoint &&
+    Math.hypot(probePoint.x - routePoints[0].x, probePoint.y - routePoints[0].y) *
+      Math.abs(screenScale) <=
+      tolerancePx
+  );
 }
-
-export function presenceIsActive(newState) {
-  const available = newState?.newState || newState;
-  return available?.available !== false && available?.state === "on";
+export function presenceIsActive(entityState) {
+  const resolvedState = entityState?.newState || entityState;
+  return resolvedState?.available !== false && resolvedState?.state === "on";
 }
-
 export const PRESENCE_TRIGGER_MODES = [
   ["auto", "自动识别"],
   ["threshold", "数值大于阈值"],
   ["equals", "变为指定值"],
   ["change", "状态值变化"]
 ];
-
-export function presenceTriggerIsTimed(sensor) {
-  return ["equals", "change"].includes(sensor.triggerMode) ||
-    (!sensor.triggerMode || sensor.triggerMode === "auto") && sensor.entityId?.startsWith("event.");
+export function presenceTriggerIsTimed(triggerBinding) {
+  return (
+    ["equals", "change"].includes(triggerBinding.triggerMode) ||
+    ((!triggerBinding.triggerMode || triggerBinding.triggerMode === "auto") &&
+      triggerBinding.entityId?.startsWith("event."))
+  );
 }
-
-const PEOPLE_COUNT_RE = /person_count|people_count|occupancy_count|human_count|人数|人员数量|人体数量/i;
-
-export function createPresenceTriggers(getNow = () => Date.now()) {
-  const triggers = new Map();
+export function createPresenceTriggers(nowProvider = () => Date.now()) {
+  const triggersByBindingId = new Map();
   return {
-    sync(sensors, states) {
-      const keepIds = new Set(sensors.map(sensor => sensor.id));
-      for (const id of triggers.keys()) {
-        if (!keepIds.has(id)) {
-          triggers.delete(id);
+    sync(bindings, states) {
+      const presentIds = new Set(bindings.map(bindingEntry => bindingEntry.id));
+      for (const staleId of triggersByBindingId.keys()) {
+        if (!presentIds.has(staleId)) {
+          triggersByBindingId.delete(staleId);
         }
       }
-      for (const sensor of sensors) {
-        const state = states[sensor.entityId]?.newState || states[sensor.entityId];
-        const stateValue = typeof state?.state === "string" ? state.state.trim() : "";
-        const available = state?.available !== false && !!stateValue && !["unknown", "unavailable"].includes(stateValue.toLowerCase());
-        let mode = sensor.triggerMode || "auto";
-        if (mode === "auto") {
-          const looksLikePeopleCount = PEOPLE_COUNT_RE.test(
-            sensor.entityId + " " + (state?.attributes?.friendly_name || "")
-          );
-          mode = sensor.entityId?.startsWith("event.")
+      for (const binding of bindings) {
+        const state = states[binding.entityId]?.newState || states[binding.entityId];
+        const stateText = typeof state?.state == "string" ? state.state.trim() : "";
+        const isAvailable =
+          state?.available !== false &&
+          !!stateText &&
+          !["unknown", "unavailable"].includes(stateText.toLowerCase());
+        let triggerMode = binding.triggerMode || "auto";
+        if (triggerMode === "auto") {
+          const looksLikePeopleCount =
+            /person_count|people_count|occupancy_count|human_count|人数|人员数量|人体数量/i.test(
+              binding.entityId + " " + (state?.attributes?.friendly_name || "")
+            );
+          triggerMode = binding.entityId?.startsWith("event.")
             ? "event"
-            : looksLikePeopleCount && Number.isFinite(Number(stateValue))
+            : looksLikePeopleCount && Number.isFinite(Number(stateText))
               ? "threshold"
               : "state";
         }
-        const key = JSON.stringify([
-          sensor.entityId,
-          sensor.triggerMode || "auto",
-          sensor.triggerValue ?? "on",
-          sensor.triggerThreshold ?? 0
+        const configKey = JSON.stringify([
+          binding.entityId,
+          binding.triggerMode || "auto",
+          binding.triggerValue ?? "on",
+          binding.triggerThreshold ?? 0
         ]);
-        let previous = triggers.get(sensor.id);
-        if (previous?.key !== key) {
-          previous = null;
+        let previousRecord = triggersByBindingId.get(binding.id);
+        if (previousRecord?.key !== configKey) {
+          previousRecord = null;
         }
-        const parsed = Date.parse(state?.lastChanged || state?.last_changed || "");
-        const timestamp = Number.isFinite(parsed) ? Math.min(parsed, getNow()) : null;
-        const duration = ["equals", "change", "event"].includes(mode)
-          ? sensor.displayDuration > 0 ? sensor.displayDuration : 30
-          : sensor.displayDuration ?? 0;
-
-        if (mode === "event") {
-          const started = /^\d{4}-\d{2}-\d{2}T/.test(stateValue) ? Date.parse(stateValue) : NaN;
-          triggers.set(sensor.id, {
-            key,
-            on: available && Number.isFinite(started),
-            started,
-            duration
+        const changedAtMs = Date.parse(state?.lastChanged || state?.last_changed || "");
+        const timestampMs = Number.isFinite(changedAtMs)
+          ? Math.min(changedAtMs, nowProvider())
+          : null;
+        const durationSeconds = ["equals", "change", "event"].includes(triggerMode)
+          ? binding.displayDuration > 0
+            ? binding.displayDuration
+            : 30
+          : (binding.displayDuration ?? 0);
+        if (triggerMode === "event") {
+          const eventTimestampMs = /^\d{4}-\d{2}-\d{2}T/.test(stateText)
+            ? Date.parse(stateText)
+            : NaN;
+          triggersByBindingId.set(binding.id, {
+            key: configKey,
+            on: isAvailable && Number.isFinite(eventTimestampMs),
+            started: eventTimestampMs,
+            duration: durationSeconds
           });
           continue;
         }
-
-        if (mode === "equals" || mode === "change") {
-          const changed = available && previous?.available && stateValue !== previous.value;
-          const newer = timestamp === null || previous?.timestamp == null || timestamp > previous.timestamp;
-          const triggered = changed && newer && (
-            mode === "change" || stateValue === String(sensor.triggerValue ?? "on").trim()
-          );
-          triggers.set(sensor.id, {
-            key,
-            value: stateValue,
-            available,
-            timestamp,
-            duration,
-            on: available && (triggered || !!previous?.on),
-            started: triggered ? timestamp ?? getNow() : previous?.started ?? getNow()
+        if (triggerMode === "equals" || triggerMode === "change") {
+          const changedForMode =
+            isAvailable && previousRecord?.available && stateText !== previousRecord.value;
+          const isNewerTimestamp =
+            timestampMs === null ||
+            previousRecord?.timestamp == null ||
+            timestampMs > previousRecord.timestamp;
+          const shouldTrigger =
+            changedForMode &&
+            isNewerTimestamp &&
+            (triggerMode === "change" || stateText === String(binding.triggerValue ?? "on").trim());
+          triggersByBindingId.set(binding.id, {
+            key: configKey,
+            value: stateText,
+            available: isAvailable,
+            timestamp: timestampMs,
+            duration: durationSeconds,
+            on: isAvailable && (shouldTrigger || !!previousRecord?.on),
+            started: shouldTrigger
+              ? (timestampMs ?? nowProvider())
+              : (previousRecord?.started ?? nowProvider())
           });
           continue;
         }
-
-        const on = available && (
-          mode === "threshold"
-            ? Number.isFinite(Number(stateValue)) && Number(stateValue) > (
-              sensor.triggerMode === "threshold" ? sensor.triggerThreshold ?? 0 : 0
-            )
-            : presenceIsActive(state)
-        );
-        const valueChanged = previous?.value !== stateValue;
-        const started = !previous || on && (!previous.on || valueChanged)
-          ? timestamp ?? getNow()
-          : previous.started;
-        triggers.set(sensor.id, {
-          key,
-          value: stateValue,
-          on,
-          timestamp,
-          started,
-          duration
+        const isOn =
+          isAvailable &&
+          (triggerMode === "threshold"
+            ? Number.isFinite(Number(stateText)) &&
+              Number(stateText) >
+                (binding.triggerMode === "threshold" ? (binding.triggerThreshold ?? 0) : 0)
+            : presenceIsActive(state));
+        const valueChanged = previousRecord?.value !== stateText;
+        const startedMs =
+          !previousRecord || (isOn && (!previousRecord.on || valueChanged))
+            ? (timestampMs ?? nowProvider())
+            : previousRecord.started;
+        triggersByBindingId.set(binding.id, {
+          key: configKey,
+          value: stateText,
+          on: isOn,
+          timestamp: timestampMs,
+          started: startedMs,
+          duration: durationSeconds
         });
       }
     },
-    visible(id) {
-      const trigger = triggers.get(id);
-      return !!trigger?.on && getNow() >= trigger.started && (!trigger.duration || getNow() - trigger.started < trigger.duration * 1000);
+    visible(bindingId) {
+      const record = triggersByBindingId.get(bindingId);
+      return (
+        !!record?.on &&
+        nowProvider() >= record.started &&
+        (!record.duration || nowProvider() - record.started < record.duration * 1000)
+      );
     }
   };
 }
-
 export function closedPath(points) {
   const segments = [];
-  let offset = 0;
-  for (let i = 0; i < points.length; i++) {
-    const from = points[i];
-    const to = points[(i + 1) % points.length];
-    const length = Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
-    if (length > 1e-8) {
+  let totalLength = 0;
+  for (let edgeIndex = 0; edgeIndex < points.length; edgeIndex++) {
+    const fromPoint = points[edgeIndex];
+    const toPoint = points[(edgeIndex + 1) % points.length];
+    const segmentLength = Math.hypot(
+      toPoint.x - fromPoint.x,
+      toPoint.y - fromPoint.y,
+      toPoint.z - fromPoint.z
+    );
+    if (segmentLength > 1e-8) {
       segments.push({
-        a: from,
-        b: to,
-        start: offset,
-        length
+        a: fromPoint,
+        b: toPoint,
+        start: totalLength,
+        length: segmentLength
       });
-      offset += length;
+      totalLength += segmentLength;
     }
   }
   return {
-    length: offset,
-    segments
+    length: totalLength,
+    segments: segments
   };
 }
-
 export function sampleClosedPath(path, distance) {
   if (!(path.length > 0)) {
     return null;
   }
-  const wrapped = (distance % path.length + path.length) % path.length;
-  const segment = path.segments.find(entry => wrapped < entry.start + entry.length) || path.segments.at(-1);
-  const t = (wrapped - segment.start) / segment.length;
+  const wrappedDistance = ((distance % path.length) + path.length) % path.length;
+  const segment =
+    path.segments.find(
+      candidateSegment => wrappedDistance < candidateSegment.start + candidateSegment.length
+    ) || path.segments.at(-1);
+  const segmentRatio = (wrappedDistance - segment.start) / segment.length;
   return {
-    x: segment.a.x + (segment.b.x - segment.a.x) * t,
-    y: segment.a.y + (segment.b.y - segment.a.y) * t,
-    z: segment.a.z + (segment.b.z - segment.a.z) * t,
+    x: segment.a.x + (segment.b.x - segment.a.x) * segmentRatio,
+    y: segment.a.y + (segment.b.y - segment.a.y) * segmentRatio,
+    z: segment.a.z + (segment.b.z - segment.a.z) * segmentRatio,
     heading: Math.atan2(segment.b.x - segment.a.x, segment.b.z - segment.a.z)
   };
 }

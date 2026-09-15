@@ -1,11 +1,16 @@
-export function syncControlValue(control, value, activeElement = globalThis.document?.activeElement) {
-  if (!control || activeElement === control) {
+export function syncControlValue(
+  controlElement,
+  nextValue,
+  activeElement = globalThis.document?.activeElement
+) {
+  if (!controlElement || activeElement === controlElement) {
     return false;
   }
-  const next = String(value);
-  if (control.value === next) {
+  const stringValue = String(nextValue);
+  if (controlElement.value === stringValue) {
     return false;
+  } else {
+    controlElement.value = stringValue;
+    return true;
   }
-  control.value = next;
-  return true;
 }

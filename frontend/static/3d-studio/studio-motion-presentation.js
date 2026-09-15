@@ -1,32 +1,44 @@
 export function createMotionPresentation({
-  reflections,
-  shadows,
-  liveCameraReflections = false
+  reflections: setReflections,
+  shadows: setShadows,
+  liveCameraReflections: liveCameraReflectionsEnabled = false
 }) {
-  let floorActive = false;
-  let cameraActive = false;
-  let advanced = false;
-  let liveReflections = liveCameraReflections;
-  function syncPresentation() {
-    reflections((floorActive || cameraActive && !liveReflections) && !advanced);
-    shadows(floorActive && !advanced);
+  let isFloorMotionActive = false;
+  let isCameraMotionActive = false;
+  let isMotionSettled = false;
+  let shouldReflectLiveCamera = liveCameraReflectionsEnabled;
+  function publishMotionState() {
+    setReflections(
+      (isFloorMotionActive || (isCameraMotionActive && !shouldReflectLiveCamera)) &&
+        !isMotionSettled
+    );
+    setShadows(isFloorMotionActive && !isMotionSettled);
   }
   return {
-    floor(active) {
-      floorActive = !!active;
-      floorActive && (advanced = false);
-      syncPresentation();
+    floor(isFloorActive) {
+      isFloorMotionActive = !!isFloorActive;
+      if (isFloorMotionActive) {
+        isMotionSettled = false;
+      }
+      publishMotionState();
     },
-    camera(active, {
-      live = liveCameraReflections
-    } = {}) {
-      cameraActive = !!active;
-      liveReflections = live;
-      cameraActive && (advanced = false);
-      syncPresentation();
+    camera(isCameraActive, { live: liveReflections = liveCameraReflectionsEnabled } = {}) {
+      isCameraMotionActive = !!isCameraActive;
+      shouldReflectLiveCamera = liveReflections;
+      if (isCameraMotionActive) {
+        isMotionSettled = false;
+      }
+      publishMotionState();
     },
-    advance(delta) {
-      !(floorActive || cameraActive) || advanced || delta < 0.9 || (advanced = true, syncPresentation());
+    advance(progress) {
+      if (
+        (!!isFloorMotionActive || !!isCameraMotionActive) &&
+        !isMotionSettled &&
+        !(progress < 0.9)
+      ) {
+        isMotionSettled = true;
+        publishMotionState();
+      }
     }
   };
 }

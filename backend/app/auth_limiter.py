@@ -6,7 +6,12 @@ from time import monotonic
 
 
 class LoginAttemptLimiter:
-    def __init__(self, max_failures: int = 5, window_seconds: int = 300, block_seconds: int = 600) -> None:
+    def __init__(
+        self,
+        max_failures: int = 5,
+        window_seconds: int = 300,
+        block_seconds: int = 600,
+    ) -> None:
         self.max_failures = max_failures
         self.window_seconds = window_seconds
         self.block_seconds = block_seconds
@@ -14,7 +19,7 @@ class LoginAttemptLimiter:
         self._blocked_until = {}
         self._lock = Lock()
 
-    def blocked(self, key):
+    def blocked(self, key: str) -> bool:
         now = monotonic()
         with self._lock:
             blocked_until = self._blocked_until.get(key, 0)
@@ -24,7 +29,7 @@ class LoginAttemptLimiter:
             self._prune(key, now)
             return False
 
-    def record_failure(self, key):
+    def record_failure(self, key: str) -> None:
         now = monotonic()
         with self._lock:
             self._prune(key, now)
@@ -34,12 +39,12 @@ class LoginAttemptLimiter:
                 self._blocked_until[key] = now + self.block_seconds
                 failures.clear()
 
-    def reset(self, key):
+    def reset(self, key: str) -> None:
         with self._lock:
             self._failures.pop(key, None)
             self._blocked_until.pop(key, None)
 
-    def _prune(self, key, now):
+    def _prune(self, key: str, now: float) -> None:
         failures = self._failures.get(key)
         if failures is None:
             return

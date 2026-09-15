@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from dependencies import LicensedViewer
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse
-from ui_packs import DEFAULT_UI_PACK_ID, UI_PACKS, require_ui_pack_access
+
+from ..dependencies import LicensedViewer
+from ..ui_packs import DEFAULT_UI_PACK_ID, UI_PACKS, require_ui_pack_access
 
 router = APIRouter(prefix='/ui-packs', tags=['ui-packs'])
 
@@ -26,11 +27,7 @@ def list_ui_packs(request: Request, _viewer: LicensedViewer) -> dict:
 
 
 @router.get('/{ui_pack_id}/runtime.js')
-def read_ui_pack_runtime(
-    ui_pack_id: str,
-    request: Request,
-    _viewer: LicensedViewer,
-) -> FileResponse:
+def read_ui_pack_runtime(ui_pack_id: str, request: Request, _viewer: LicensedViewer) -> FileResponse:
     ui_pack = require_ui_pack_access(request, ui_pack_id)
     root = (request.app.state.settings.frontend_dir / 'ui-packs').resolve()
     path = (root / ui_pack.runtime_module).resolve()

@@ -1,205 +1,294 @@
-const canvasSessions = new WeakMap();
-const animationMsPerUnit = 580;
-const minSlideDistance = 24;
-const interactiveHostSelector = ".hb-interaction3d-host, iframe, video, audio, object, embed";
-const animatedStyleProps = ["translate", "opacity", "transition", "willChange", "pointerEvents"];
-const focusableSelector = "a[href], area[href], button, input, select, textarea, [tabindex], [contenteditable], summary";
-const guardEvents = ["pointerdown", "click", "dblclick", "contextmenu", "keydown", "focusin"];
-function sharedComponentIdsForOwner(owner) {
-  return (owner.context.document?.pages?.find(page => page.id === owner.context.page?.id) || owner.context.page)?.sharedComponentIds || [];
+const layoutStateByCanvas = new WeakMap();
+const ANIMATION_MS_PER_UNIT = 580;
+const BASE_DISTANCE_PX = 24;
+const EXCLUDED_CONTENT_SELECTOR = ".hb-interaction3d-host, iframe, video, audio, object, embed";
+const TRACKED_STYLE_PROPS = ["translate", "opacity", "transition", "willChange", "pointerEvents"];
+function getSharedComponentIds(layoutClient) {
+  return (
+    (
+      layoutClient.context.document?.pages?.find(
+        contextPage => contextPage.id === layoutClient.context.page?.id
+      ) || layoutClient.context.page
+    )?.sharedComponentIds || []
+  );
 }
-function easeAmount(value) {
-  let guess = value;
-  for (let index = 0; index < 8; index++) {
-    guess = Math.max(0, Math.min(1, guess - (0.6 * guess - 0.6 * guess * guess + guess * guess * guess - value) / (0.6 - 1.2 * guess + 3 * guess * guess)));
+function easeProgress(progress) {
+  let curveParam = progress;
+  for (let iterationIndex = 0; iterationIndex < 8; iterationIndex++) {
+    curveParam = Math.max(
+      0,
+      Math.min(
+        1,
+        curveParam -
+          (curveParam * 0.6 -
+            curveParam * 0.6 * curveParam +
+            curveParam * curveParam * curveParam -
+            progress) /
+            (0.6 - curveParam * 1.2 + curveParam * 3 * curveParam)
+      )
+    );
   }
-  return guess * guess * (3 - 2 * guess);
+  return curveParam * curveParam * (3 - curveParam * 2);
 }
-function splitTranslate(value) {
-  return !value || value === "none" ? ["0px", "0px"] : value.match(/(?:calc\([^)]*\)|[^\s])+/g) || ["0px", "0px"];
-}
-function addTabStops(element, record) {
-  for (const node of [element, ...element.querySelectorAll(focusableSelector)]) {
-    if (node.tabIndex >= 0 && !record.tabStops.has(node)) {
-      record.tabStops.set(node, node.getAttribute("tabindex"));
-      node.setAttribute("tabindex", "-1");
-    }
-  }
-}
-function applyHidden(element, record, hidden) {
-  if (record.hidden === hidden) {
-    return;
-  }
-  record.hidden = hidden;
-  if (hidden) {
-    addTabStops(element, record);
-    if (element.contains(element.ownerDocument.activeElement)) {
-      element.ownerDocument.activeElement.blur();
-    }
-    element.style.pointerEvents = "none";
+function parseTranslateValue(translateValue) {
+  if (!translateValue || translateValue === "none") {
+    return ["0px", "0px"];
   } else {
-    for (const [node, tabindex] of record.tabStops) {
-      tabindex === null ? node.removeAttribute("tabindex") : node.setAttribute("tabindex", tabindex);
-    }
-    record.tabStops.clear();
-    element.style.pointerEvents = record.style.pointerEvents;
-  }
-  const ariaHidden = hidden ? "true" : record.ariaHidden;
-  if (element.getAttribute("aria-hidden") !== ariaHidden) {
-    ariaHidden === null ? element.removeAttribute("aria-hidden") : element.setAttribute("aria-hidden", ariaHidden);
+    return translateValue.match(/(?:calc\([^)]*\)|[^\s])+/g) || ["0px", "0px"];
   }
 }
-function applyTransform(session, element, record, amount) {
-  const [translateX, translateY = "0px", translateZ] = record.translate;
-  element.style.translate = "calc(" + translateX + " - " + session.distance * amount + "px) " + translateY + (translateZ ? " " + translateZ : "");
-  element.style.opacity = String(record.opacity * (1 - amount));
-  applyHidden(element, record, amount > 0 || session.owners.size > 0 && session.targets.has(element));
-}
-function resetRecord(session, element, record) {
-  for (const prop of animatedStyleProps) {
-    element.style[prop] = record.style[prop];
-  }
-  applyHidden(element, record, false);
-  session.members.delete(element);
-  session.targets.delete(element);
-}
-function cancelFrame(session) {
-  if (session.frame !== null) {
-    session.view.cancelAnimationFrame(session.frame);
-  }
-  session.frame = null;
-}
-function paintTargets(session) {
-  for (const element of session.targets) {
-    const record = session.members.get(element);
-    if (record) {
-      applyTransform(session, element, record, session.amount);
+const FOCUSABLE_SELECTOR =
+  "a[href], area[href], button, input, select, textarea, [tabindex], [contenteditable], summary";
+const GUARD_EVENT_TYPES = ["pointerdown", "click", "dblclick", "contextmenu", "keydown", "focusin"];
+function suspendTabStops(subtreeRootElement, memberState) {
+  const tabbableElements = [
+    subtreeRootElement,
+    ...subtreeRootElement.querySelectorAll(FOCUSABLE_SELECTOR)
+  ];
+  for (const tabbableElement of tabbableElements) {
+    if (tabbableElement.tabIndex >= 0 && !memberState.tabStops.has(tabbableElement)) {
+      memberState.tabStops.set(tabbableElement, tabbableElement.getAttribute("tabindex"));
+      tabbableElement.setAttribute("tabindex", "-1");
     }
   }
 }
-function animateAmount(session, to, animate = true) {
-  if (session.to === to && (animate && session.frame !== null || session.amount === to)) {
-    paintTargets(session);
+function applyHiddenState(memberElement, memberRecord, isHidden) {
+  if (memberRecord.hidden === isHidden) {
     return;
   }
-  cancelFrame(session);
-  const from = session.amount;
-  session.to = to;
-  if (!animate || session.view.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-    session.amount = to;
-    paintTargets(session);
+  memberRecord.hidden = isHidden;
+  if (isHidden) {
+    suspendTabStops(memberElement, memberRecord);
+    if (memberElement.contains(memberElement.ownerDocument.activeElement)) {
+      memberElement.ownerDocument.activeElement.blur();
+    }
+    memberElement.style.pointerEvents = "none";
+  } else {
+    for (const [tabStopElement, previousTabIndex] of memberRecord.tabStops) {
+      if (previousTabIndex === null) {
+        tabStopElement.removeAttribute("tabindex");
+      } else {
+        tabStopElement.setAttribute("tabindex", previousTabIndex);
+      }
+    }
+    memberRecord.tabStops.clear();
+    memberElement.style.pointerEvents = memberRecord.style.pointerEvents;
+  }
+  const ariaHiddenValue = isHidden ? "true" : memberRecord.ariaHidden;
+  if (memberElement.getAttribute("aria-hidden") !== ariaHiddenValue) {
+    if (ariaHiddenValue === null) {
+      memberElement.removeAttribute("aria-hidden");
+    } else {
+      memberElement.setAttribute("aria-hidden", ariaHiddenValue);
+    }
+  }
+}
+function applyMemberMotion(layoutState, motionElement, memberSnapshot, amount) {
+  const [translateX, translateY = "0px", translateZ] = memberSnapshot.translate;
+  motionElement.style.translate =
+    "calc(" +
+    translateX +
+    " - " +
+    layoutState.distance * amount +
+    "px) " +
+    translateY +
+    (translateZ ? " " + translateZ : "");
+  motionElement.style.opacity = String(memberSnapshot.opacity * (1 - amount));
+  applyHiddenState(
+    motionElement,
+    memberSnapshot,
+    amount > 0 || (layoutState.owners.size > 0 && layoutState.targets.has(motionElement))
+  );
+}
+function detachMember(layout, detachedElement, detachedMemberState) {
+  for (const styleProperty of TRACKED_STYLE_PROPS) {
+    detachedElement.style[styleProperty] = detachedMemberState.style[styleProperty];
+  }
+  applyHiddenState(detachedElement, detachedMemberState, false);
+  layout.members.delete(detachedElement);
+  layout.targets.delete(detachedElement);
+}
+function cancelMotionFrame(frameOwner) {
+  if (frameOwner.frame !== null) {
+    frameOwner.view.cancelAnimationFrame(frameOwner.frame);
+  }
+  frameOwner.frame = null;
+}
+function renderMembers(renderingLayout) {
+  for (const renderedElement of renderingLayout.targets) {
+    const renderedMemberState = renderingLayout.members.get(renderedElement);
+    if (renderedMemberState) {
+      applyMemberMotion(
+        renderingLayout,
+        renderedElement,
+        renderedMemberState,
+        renderingLayout.amount
+      );
+    }
+  }
+}
+function animateAmount(animatingLayout, targetAmount, shouldAnimate = true) {
+  if (
+    animatingLayout.to === targetAmount &&
+    ((shouldAnimate && animatingLayout.frame !== null) || animatingLayout.amount === targetAmount)
+  ) {
+    renderMembers(animatingLayout);
     return;
   }
-  const startedAt = session.view.performance.now();
-  const duration = animationMsPerUnit * Math.abs(to - from);
-  const step = now => {
-    session.frame = null;
-    const progress = duration ? Math.max(0, Math.min(1, (now - startedAt) / duration)) : 1;
-    session.amount = from + (to - from) * easeAmount(progress);
-    paintTargets(session);
-    if (progress < 1) {
-      session.frame = session.view.requestAnimationFrame(step);
+  cancelMotionFrame(animatingLayout);
+  const fromAmount = animatingLayout.amount;
+  animatingLayout.to = targetAmount;
+  if (
+    !shouldAnimate ||
+    animatingLayout.view.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+  ) {
+    animatingLayout.amount = targetAmount;
+    renderMembers(animatingLayout);
+    return;
+  }
+  const startTimeMs = animatingLayout.view.performance.now();
+  const durationMs = ANIMATION_MS_PER_UNIT * Math.abs(targetAmount - fromAmount);
+  const advanceMotion = timestampMs => {
+    animatingLayout.frame = null;
+    const elapsedFraction = durationMs
+      ? Math.max(0, Math.min(1, (timestampMs - startTimeMs) / durationMs))
+      : 1;
+    animatingLayout.amount =
+      fromAmount + (targetAmount - fromAmount) * easeProgress(elapsedFraction);
+    renderMembers(animatingLayout);
+    if (elapsedFraction < 1) {
+      animatingLayout.frame = animatingLayout.view.requestAnimationFrame(advanceMotion);
     }
   };
-  session.frame = session.view.requestAnimationFrame(step);
+  animatingLayout.frame = animatingLayout.view.requestAnimationFrame(advanceMotion);
 }
-function syncSession(session) {
-  const clients = [...session.clients];
-  const sharedIds = new Set(clients.flatMap(sharedComponentIdsForOwner));
-  const ownerIds = new Set([...session.owners].flatMap(sharedComponentIdsForOwner));
-  const candidates = [...session.canvas.children].filter(child => {
-    const componentId = child.dataset?.componentId || child.dataset?.effectFor || child.dataset?.airflowFor;
-    return sharedIds.has(componentId) && !clients.some(client => child.contains(client.root)) && !child.matches?.(interactiveHostSelector) && !child.querySelector?.(interactiveHostSelector);
+function updateLayout(canvasLayout) {
+  const clientList = [...canvasLayout.clients];
+  const clientComponentIds = new Set(clientList.flatMap(getSharedComponentIds));
+  const ownerComponentIds = new Set([...canvasLayout.owners].flatMap(getSharedComponentIds));
+  const componentElements = [...canvasLayout.canvas.children].filter(canvasChild => {
+    const componentId =
+      canvasChild.dataset?.componentId ||
+      canvasChild.dataset?.effectFor ||
+      canvasChild.dataset?.airflowFor;
+    return (
+      clientComponentIds.has(componentId) &&
+      !clientList.some(clientEntry => canvasChild.contains(clientEntry.root)) &&
+      !canvasChild.matches?.(EXCLUDED_CONTENT_SELECTOR) &&
+      !canvasChild.querySelector?.(EXCLUDED_CONTENT_SELECTOR)
+    );
   });
-  const nextTargets = new Set(candidates);
-  for (const [element, record] of session.members) {
-    if (!nextTargets.has(element)) {
-      resetRecord(session, element, record);
+  const componentElementSet = new Set(componentElements);
+  for (const [trackedElement, trackedMemberState] of canvasLayout.members) {
+    if (!componentElementSet.has(trackedElement)) {
+      detachMember(canvasLayout, trackedElement, trackedMemberState);
     }
   }
-  const canvasRect = session.canvas.getBoundingClientRect();
-  const scale = canvasRect.width / session.canvas.clientWidth || 1;
-  let distance = minSlideDistance;
-  for (const element of candidates) {
-    let record = session.members.get(element);
-    const rect = element.getBoundingClientRect();
-    distance = Math.max(distance, (rect.right - canvasRect.left) / scale + minSlideDistance + (record && session.targets.has(element) ? session.distance * session.amount : 0));
-    if (!record) {
-      const computed = session.view.getComputedStyle(element);
-      record = {
-        style: Object.fromEntries(animatedStyleProps.map(prop => [prop, element.style[prop] || ""])),
-        opacity: Number(computed.opacity),
-        translate: splitTranslate(computed.translate),
+  const canvasRect = canvasLayout.canvas.getBoundingClientRect();
+  const canvasScale = canvasRect.width / canvasLayout.canvas.clientWidth || 1;
+  let distancePx = BASE_DISTANCE_PX;
+  for (const childElement of componentElements) {
+    let childMemberState = canvasLayout.members.get(childElement);
+    const childRect = childElement.getBoundingClientRect();
+    distancePx = Math.max(
+      distancePx,
+      (childRect.right - canvasRect.left) / canvasScale +
+        BASE_DISTANCE_PX +
+        (childMemberState && canvasLayout.targets.has(childElement)
+          ? canvasLayout.distance * canvasLayout.amount
+          : 0)
+    );
+    if (!childMemberState) {
+      const computedStyle = canvasLayout.view.getComputedStyle(childElement);
+      childMemberState = {
+        style: Object.fromEntries(
+          TRACKED_STYLE_PROPS.map(trackedProperty => [
+            trackedProperty,
+            childElement.style[trackedProperty] || ""
+          ])
+        ),
+        opacity: Number(computedStyle.opacity),
+        translate: parseTranslateValue(computedStyle.translate),
         hidden: false,
         tabStops: new Map(),
-        ariaHidden: element.getAttribute("aria-hidden")
+        ariaHidden: childElement.getAttribute("aria-hidden")
       };
-      session.members.set(element, record);
-      element.style.transition = "none";
-      element.style.willChange = [record.style.willChange, "opacity", "translate"].filter(value => value && value !== "auto").join(",");
-      applyTransform(session, element, record, 0);
+      canvasLayout.members.set(childElement, childMemberState);
+      childElement.style.transition = "none";
+      childElement.style.willChange = [childMemberState.style.willChange, "opacity", "translate"]
+        .filter(styleValue => styleValue && styleValue !== "auto")
+        .join(",");
+      applyMemberMotion(canvasLayout, childElement, childMemberState, 0);
     }
   }
-  session.distance = distance;
-  if (session.owners.size) {
-    const ownerTargets = new Set(candidates.filter(element => ownerIds.has(element.dataset.componentId || element.dataset.effectFor || element.dataset.airflowFor)));
-    for (const element of session.targets) {
-      if (!ownerTargets.has(element) && session.members.has(element)) {
-        session.targets.delete(element);
-        applyTransform(session, element, session.members.get(element), 0);
+  canvasLayout.distance = distancePx;
+  if (canvasLayout.owners.size) {
+    const newTargetSet = new Set(
+      componentElements.filter(ownerComponentElement =>
+        ownerComponentIds.has(
+          ownerComponentElement.dataset.componentId ||
+            ownerComponentElement.dataset.effectFor ||
+            ownerComponentElement.dataset.airflowFor
+        )
+      )
+    );
+    for (const staleTarget of canvasLayout.targets) {
+      if (!newTargetSet.has(staleTarget) && canvasLayout.members.has(staleTarget)) {
+        canvasLayout.targets.delete(staleTarget);
+        applyMemberMotion(canvasLayout, staleTarget, canvasLayout.members.get(staleTarget), 0);
       }
     }
-    session.targets = ownerTargets;
+    canvasLayout.targets = newTargetSet;
   }
-  paintTargets(session);
+  renderMembers(canvasLayout);
 }
-function detachSession(session, owner) {
-  session.owners.delete(owner);
-  session.clients.delete(owner);
-  if (session.clients.size) {
-    syncSession(session);
-    animateAmount(session, session.owners.size ? 1 : 0, false);
+function releaseLayout(releasedLayout, clientRegistration) {
+  releasedLayout.owners.delete(clientRegistration);
+  releasedLayout.clients.delete(clientRegistration);
+  if (releasedLayout.clients.size) {
+    updateLayout(releasedLayout);
+    animateAmount(releasedLayout, releasedLayout.owners.size ? 1 : 0, false);
   } else {
-    cancelFrame(session);
-    session.observer.disconnect();
-    for (const eventName of guardEvents) {
-      session.canvas.removeEventListener(eventName, session.guard, true);
+    cancelMotionFrame(releasedLayout);
+    releasedLayout.observer.disconnect();
+    for (const eventName of GUARD_EVENT_TYPES) {
+      releasedLayout.canvas.removeEventListener(eventName, releasedLayout.guard, true);
     }
-    for (const [element, record] of session.members) {
-      resetRecord(session, element, record);
+    for (const [releasedElement, releasedMemberState] of releasedLayout.members) {
+      detachMember(releasedLayout, releasedElement, releasedMemberState);
     }
-    if (canvasSessions.get(session.canvas) === session) {
-      canvasSessions.delete(session.canvas);
+    if (layoutStateByCanvas.get(releasedLayout.canvas) === releasedLayout) {
+      layoutStateByCanvas.delete(releasedLayout.canvas);
     }
   }
 }
-export function createInteraction3dFocusLayout(root, context = {}) {
-  const owner = {
-    root,
-    context
+export function createInteraction3dFocusLayout(rootElement, context = {}) {
+  const registration = {
+    root: rootElement,
+    context: context
   };
-  let session = null;
-  let active = false;
-  let disposed = false;
-  const refresh = () => {
-    if (disposed || context.editable) {
+  let activeLayout = null;
+  let isActive = false;
+  let isDisposed = false;
+  const refreshLayout = () => {
+    if (isDisposed || context.editable) {
       return;
     }
-    const canvas = root.closest(".hb-renderer-canvas");
-    if (session?.canvas !== canvas) {
-      if (session) {
-        detachSession(session, owner);
+    const canvasElement = rootElement.closest(".hb-renderer-canvas");
+    if (activeLayout?.canvas !== canvasElement) {
+      if (activeLayout) {
+        releaseLayout(activeLayout, registration);
       }
-      session = null;
-      if (!canvas) {
+      activeLayout = null;
+      if (!canvasElement) {
         return;
       }
-      session = canvasSessions.get(canvas);
-      if (!session) {
-        const view = canvas.ownerDocument.defaultView;
-        session = {
-          canvas,
-          view,
+      activeLayout = layoutStateByCanvas.get(canvasElement);
+      if (!activeLayout) {
+        const canvasView = canvasElement.ownerDocument.defaultView;
+        activeLayout = {
+          canvas: canvasElement,
+          view: canvasView,
           clients: new Set(),
           owners: new Set(),
           members: new Map(),
@@ -207,12 +296,12 @@ export function createInteraction3dFocusLayout(root, context = {}) {
           frame: null,
           amount: 0,
           to: 0,
-          distance: minSlideDistance
+          distance: BASE_DISTANCE_PX
         };
-        const capturedSession = session;
-        session.guard = event => {
-          for (const [element, record] of capturedSession.members) {
-            if (record.hidden && element.contains(event.target)) {
+        const capturedLayout = activeLayout;
+        activeLayout.guard = event => {
+          for (const [blockedElement, blockingMemberState] of capturedLayout.members) {
+            if (blockingMemberState.hidden && blockedElement.contains(event.target)) {
               event.preventDefault();
               event.stopImmediatePropagation();
               if (event.type === "focusin") {
@@ -222,48 +311,52 @@ export function createInteraction3dFocusLayout(root, context = {}) {
             }
           }
         };
-        for (const eventName of guardEvents) {
-          canvas.addEventListener(eventName, session.guard, true);
+        for (const eventType of GUARD_EVENT_TYPES) {
+          canvasElement.addEventListener(eventType, activeLayout.guard, true);
         }
-        session.observer = new view.MutationObserver(records => {
-          if (records.some(record => record.target === canvas)) {
-            syncSession(capturedSession);
+        activeLayout.observer = new canvasView.MutationObserver(mutationRecords => {
+          if (mutationRecords.some(mutationRecord => mutationRecord.target === canvasElement)) {
+            updateLayout(capturedLayout);
           }
-          for (const [element, record] of capturedSession.members) {
-            if (record.hidden) {
-              addTabStops(element, record);
+          for (const [hiddenElement, hiddenMemberState] of capturedLayout.members) {
+            if (hiddenMemberState.hidden) {
+              suspendTabStops(hiddenElement, hiddenMemberState);
             }
           }
         });
-        session.observer.observe(canvas, {
+        activeLayout.observer.observe(canvasElement, {
           childList: true,
           subtree: true
         });
-        canvasSessions.set(canvas, session);
+        layoutStateByCanvas.set(canvasElement, activeLayout);
       }
-      session.clients.add(owner);
+      activeLayout.clients.add(registration);
     }
-    if (session) {
-      active ? session.owners.add(owner) : session.owners.delete(owner);
-      syncSession(session);
-      animateAmount(session, session.owners.size ? 1 : 0);
+    if (activeLayout) {
+      if (isActive) {
+        activeLayout.owners.add(registration);
+      } else {
+        activeLayout.owners.delete(registration);
+      }
+      updateLayout(activeLayout);
+      animateAmount(activeLayout, activeLayout.owners.size ? 1 : 0);
     }
   };
   return {
-    refresh,
-    setActive(nextActive) {
-      if (!disposed && !context.editable) {
-        active = nextActive === true;
-        refresh();
+    refresh: refreshLayout,
+    setActive(shouldActivate) {
+      if (!isDisposed && !context.editable) {
+        isActive = shouldActivate === true;
+        refreshLayout();
       }
     },
     dispose() {
-      if (!disposed) {
-        disposed = true;
-        if (session) {
-          detachSession(session, owner);
+      if (!isDisposed) {
+        isDisposed = true;
+        if (activeLayout) {
+          releaseLayout(activeLayout, registration);
         }
-        session = null;
+        activeLayout = null;
       }
     }
   };

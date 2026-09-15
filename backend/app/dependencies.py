@@ -2,17 +2,25 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from display_access import active_display_device
 from fastapi import Depends, HTTPException, Request, Response, status
-from global_popups import hydrate_document_popups
-from models import DisplayDevice, HAConnection, HAEntity, LoginSession, ProjectDraft, User
-from panel.entity_refs import document_entity_ids
-from security import session_token_hash, set_display_cookie
 from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
+
+from .display_access import active_display_device
+from .global_popups import hydrate_document_popups
+from .models import (
+    DisplayDevice,
+    HAConnection,
+    HAEntity,
+    LoginSession,
+    ProjectDraft,
+    User,
+)
+from .panel.entity_refs import document_entity_ids
+from .security import session_token_hash, set_display_cookie
 
 
 def get_database_session(request: Request):
@@ -22,28 +30,29 @@ def get_database_session(request: Request):
 DatabaseSession = Annotated[Session, Depends(get_database_session)]
 
 
-def require_admin(user: User, *, detail: str = '仅管理员可以执行此操作。') -> None:
-    if user.role != 'admin':
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
-
-
 def _aware(value: datetime) -> datetime:
-    return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    return (
+        value
+        if value.tzinfo is not None
+        else value.replace(tzinfo=timezone.utc)
+    )
 
 
-def lookup_session_user(
-    database: Session,
-    *,
-    token: str,
-    account_user_id: str | None,
+def _admin_session(
+    request: Request, response: Response, database: DatabaseSession
 ) -> User | None:
-    '''Resolve an active admin user from a session cookie token (no cookie refresh).'''
-    if not token or account_user_id is None:
+    account_user_id = request.app.state.admin_account.user_id
+    if account_user_id is None:
+        return None
+    token = request.cookies.get(request.app.state.settings.cookie_name, "")
+    if not token:
         return None
     record = database.scalar(
-        select(LoginSession).where(LoginSession.id_hash == session_token_hash(token))
+        select(LoginSession).where(
+            LoginSession.id_hash == session_token_hash(token)
+        )
     )
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
     if record is None or _aware(record.expires_at) <= now:
         if record is not None:
             database.delete(record)
@@ -54,45 +63,9 @@ def lookup_session_user(
     user = database.get(User, record.user_id)
     if user is None or not user.is_active:
         return None
-    return user
-
-
-def resolve_viewer_principal(
-    database: Session,
-    *,
-    session_token: str,
-    display_token: str,
-    account_user_id: str | None,
-) -> ViewerPrincipal | None:
-    '''Build a viewer from session/display tokens without mutating cookies.'''
-    user = lookup_session_user(
-        database,
-        token=session_token,
-        account_user_id=account_user_id,
-    )
-    if user is not None:
-        return ViewerPrincipal(user=user)
-    if not display_token:
-        return None
-    device = active_display_device(database, display_token)
-    if device is None:
-        return None
-    return ViewerPrincipal(display=device)
-
-
-def _admin_session(request: Request, response: Response, database: DatabaseSession) -> User | None:
-    account_user_id = request.app.state.admin_account.user_id
-    token = request.cookies.get(request.app.state.settings.cookie_name, '')
-    user = lookup_session_user(database, token=token, account_user_id=account_user_id)
-    if user is None:
-        return None
-    record = database.scalar(
-        select(LoginSession).where(LoginSession.id_hash == session_token_hash(token))
-    )
-    now = datetime.now(UTC)
     max_age = request.app.state.settings.session_max_age_seconds
     refresh_interval = min(300, max(1, max_age // 2))
-    if record is not None and now - _aware(record.last_seen_at) >= timedelta(seconds=refresh_interval):
+    if now - _aware(record.last_seen_at) >= timedelta(seconds=refresh_interval):
         record.last_seen_at = now
         record.expires_at = now + timedelta(seconds=max_age)
         database.commit()
@@ -102,34 +75,48 @@ def _admin_session(request: Request, response: Response, database: DatabaseSessi
             max_age=max_age,
             httponly=True,
             secure=request.app.state.settings.cookie_secure,
-            samesite='lax',
-            path='/',
+            samesite="lax",
+            path="/",
         )
-    context = getattr(request.state, 'log_context', None)
+    context = getattr(request.state, "log_context", None)
     if context is not None:
-        context['actor'] = user.username
+        context["actor"] = user.username
     return user
 
 
-def authenticated_user(request: Request, response: Response, database: DatabaseSession) -> User:
+def authenticated_user(
+    request: Request, response: Response, database: DatabaseSession
+) -> User:
     user = _admin_session(request, response, database)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='登录状态已失效，请重新登录。')
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="登录状态已失效，请重新登录。",
+        )
     return user
 
 
-CurrentUser = Annotated[User, Depends(authenticated_user)]
+def authenticated_short_lived_user(
+    request: Request, response: Response
+) -> User:
+    with request.app.state.database.session_factory() as database:
+        user = authenticated_user(request, response, database)
+        database.expunge(user)
+        return user
+
+
+CurrentUser = Annotated[User, Depends(authenticated_short_lived_user)]
 
 
 def licensed_user(request: Request, user: CurrentUser) -> User:
-    if not request.app.state.license_service.allows('api'):
+    if not request.app.state.license_service.allows("api"):
         license_status = request.app.state.license_service.status()
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={
-                'code': 'LICENSE_RESTRICTED',
-                'message': '当前授权状态不允许执行此操作。',
-                'licenseStatus': license_status['status'],
+                "code": "LICENSE_RESTRICTED",
+                "message": "当前授权状态不允许执行此操作。",
+                "licenseStatus": license_status["status"],
             },
         )
     return user
@@ -152,62 +139,50 @@ class ViewerPrincipal:
         return self.user is not None
 
 
-def _display_device(request: Request, response: Response, database: DatabaseSession) -> DisplayDevice | None:
+def _display_device(
+    request: Request, response: Response, database: DatabaseSession
+) -> DisplayDevice | None:
     settings = request.app.state.settings
-    token = request.cookies.get(settings.display_cookie_name, '')
+    token = request.cookies.get(settings.display_cookie_name, "")
     if not token:
         return None
     device = active_display_device(database, token)
     if device is None:
         return None
-    now = datetime.now(UTC)
+    now = datetime.now(timezone.utc)
     if now - _aware(device.last_seen_at) >= timedelta(minutes=5):
         device.last_seen_at = now
         database.commit()
         set_display_cookie(response, settings, token)
-    context = getattr(request.state, 'log_context', None)
+    context = getattr(request.state, "log_context", None)
     if context is not None:
-        context.update(displayId=device.id, displayName=device.name, projectId=device.project_id)
+        context.update(
+            displayId=device.id,
+            displayName=device.name,
+            projectId=device.project_id,
+        )
     return device
 
 
-def authenticated_viewer(request: Request, response: Response, database: DatabaseSession) -> ViewerPrincipal:
+def authenticated_viewer(
+    request: Request, response: Response, database: DatabaseSession
+) -> ViewerPrincipal:
     user = _admin_session(request, response, database)
     if user is not None:
         return ViewerPrincipal(user=user)
     display = _display_device(request, response, database)
     if display is not None:
         return ViewerPrincipal(display=display)
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='请登录或先完成中控设备配对。')
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="请登录或先完成中控设备配对。",
+    )
 
 
-CurrentViewer = Annotated[ViewerPrincipal, Depends(authenticated_viewer)]
-
-
-def licensed_viewer(request: Request, viewer: CurrentViewer) -> ViewerPrincipal:
-    if not request.app.state.license_service.allows('api'):
-        license_status = request.app.state.license_service.status()
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                'code': 'LICENSE_RESTRICTED',
-                'message': '当前授权状态不允许执行此操作。',
-                'licenseStatus': license_status['status'],
-            },
-        )
-    return viewer
-
-
-LicensedViewer = Annotated[ViewerPrincipal, Depends(licensed_viewer)]
-
-
-def authenticated_short_lived_viewer(request: Request, response: Response) -> ViewerPrincipal:
-    '''Authenticate media requests without retaining a DB session for their lifetime.
-
-    FastAPI keeps yield-based dependencies alive until a streaming response has
-    finished. Camera streams can stay open indefinitely, so using
-    ``DatabaseSession`` for them would reserve one pooled connection per camera.
-    '''
+def authenticated_short_lived_viewer(
+    request: Request, response: Response
+) -> ViewerPrincipal:
+    """Return detached identity data, releasing authentication's DB connection."""
     with request.app.state.database.session_factory() as database:
         viewer = authenticated_viewer(request, response, database)
         if viewer.user is not None:
@@ -217,19 +192,48 @@ def authenticated_short_lived_viewer(request: Request, response: Response) -> Vi
         return viewer
 
 
-ShortLivedCurrentViewer = Annotated[ViewerPrincipal, Depends(authenticated_short_lived_viewer)]
+CurrentViewer = Annotated[ViewerPrincipal, Depends(authenticated_short_lived_viewer)]
 
 
-def licensed_short_lived_viewer(request: Request, viewer: ShortLivedCurrentViewer) -> ViewerPrincipal:
+def licensed_viewer(request: Request, viewer: CurrentViewer) -> ViewerPrincipal:
+    if not request.app.state.license_service.allows("api"):
+        license_status = request.app.state.license_service.status()
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "LICENSE_RESTRICTED",
+                "message": "当前授权状态不允许执行此操作。",
+                "licenseStatus": license_status["status"],
+            },
+        )
+    return viewer
+
+
+LicensedViewer = Annotated[ViewerPrincipal, Depends(licensed_viewer)]
+
+ShortLivedCurrentViewer = Annotated[
+    ViewerPrincipal, Depends(authenticated_short_lived_viewer)
+]
+
+
+def licensed_short_lived_viewer(
+    request: Request, viewer: ShortLivedCurrentViewer
+) -> ViewerPrincipal:
     return licensed_viewer(request, viewer)
 
 
-ShortLivedLicensedViewer = Annotated[ViewerPrincipal, Depends(licensed_short_lived_viewer)]
+ShortLivedLicensedViewer = Annotated[
+    ViewerPrincipal, Depends(licensed_short_lived_viewer)
+]
 
 
 def require_viewer_project(viewer: ViewerPrincipal, project_id: str) -> None:
     if viewer.project_id is not None and viewer.project_id != project_id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='该中控设备未绑定此仪表盘。')
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="该中控设备未绑定此仪表盘。",
+        )
+    return None
 
 
 def _display_document(database: DatabaseSession, viewer: ViewerPrincipal) -> dict:
@@ -242,14 +246,20 @@ def _display_document(database: DatabaseSession, viewer: ViewerPrincipal) -> dic
         value = json.loads(draft.document_json)
     except (TypeError, json.JSONDecodeError):
         return {}
-    return hydrate_document_popups(database, value, referenced_only=True) if isinstance(value, dict) else {}
+    return (
+        hydrate_document_popups(database, value, referenced_only=True)
+        if isinstance(value, dict)
+        else {}
+    )
 
 
 def _document_bound_values(value, suffix: str) -> set[str]:
     result = set()
     if isinstance(value, dict):
         for key, item in value.items():
-            if isinstance(item, str) and key.casefold().endswith(suffix.casefold()):
+            if isinstance(item, str) and key.casefold().endswith(
+                suffix.casefold()
+            ):
                 result.add(item)
                 continue
             result.update(_document_bound_values(item, suffix))
@@ -259,135 +269,9 @@ def _document_bound_values(value, suffix: str) -> set[str]:
     return result
 
 
-_XIAOMI_PLATFORMS = frozenset({'xiaomi_home', 'xiaomi_miot'})
-_AUTO_LIGHT_SOURCE_DOMAINS = frozenset({'fan', 'climate'})
-_WATER_HEATER_TARGET_DOMAINS = frozenset({'button', 'number', 'select', 'switch'})
-_COVER_BINARY_TARGET_DOMAINS = frozenset({'select', 'switch'})
-_COVER_POSITION_TARGET_DOMAINS = frozenset({'number', 'sensor'})
-_VACUUM_STATE_TRANSLATION_KEYS = frozenset({'state', 'status', 'task_status'})
-_AIRER_MARKERS = ('airer', 'clothes rack', 'laundry rack', '晾衣机', '晾衣架')
-_AIRER_LIGHT_MARKERS = ('light', 'lamp', '灯光', '照明', '晾衣机 灯', '晾衣架 灯')
-_AIRER_POSITION_MARKERS = (
-    'set_position',
-    'set position',
-    'target_position',
-    'target position',
-    '设定位置',
-    '设置位置',
-    '目标位置',
-    'current_position',
-    'current position',
-    '当前位置',
-    '当前高度',
-)
-_MOTION_MARKERS = ('no_motion', 'no motion', '无移动', '无人移动')
-_XIAOMI_RELATED_DOMAINS = ('climate', 'cover', 'fan', 'light', 'switch', 'select', 'number', 'sensor')
-
-
-def _entity_identity(entity: HAEntity, *, include_icon: bool = False) -> str:
-    '''Case-folded, space-joined blob of an entity's identifying fields for marker matching.'''
-    fields = [entity.entity_id, entity.name, entity.original_name, entity.translation_key]
-    if include_icon:
-        fields.append(entity.icon)
-    return ' '.join(filter(None, fields)).casefold()
-
-
-def _has_marker(text: str, markers) -> bool:
-    return any(marker in text for marker in markers)
-
-
-def _is_auto_related_entity(source: HAEntity, candidate: HAEntity) -> bool:
-    '''Whether `candidate` looks like a second entity of the same physical device as `source`.
-
-    Home Assistant integrations expose one device as several entities (a light plus its
-    switch, a vacuum plus its battery sensor, ...). A dashboard usually binds only one of
-    them, so the rest of the device is allowed automatically to keep panels intact.
-    '''
-    if source.platform in _XIAOMI_PLATFORMS and candidate.platform != source.platform:
-        return False
-    candidate_domain = candidate.domain
-    identity = _entity_identity(candidate, include_icon=True)
-    source_identity = _entity_identity(source)
-    if source.domain in _AUTO_LIGHT_SOURCE_DOMAINS and candidate_domain == 'light':
-        return True
-    if source.domain == 'water_heater' and candidate_domain in _WATER_HEATER_TARGET_DOMAINS:
-        return True
-    if source.domain == 'vacuum':
-        if candidate_domain == 'select':
-            return candidate.translation_key == 'cleaning_mode' or 'cleaning_mode' in identity
-        if candidate_domain == 'sensor':
-            return (
-                candidate.translation_key == 'battery'
-                or 'battery' in identity
-                or '电量' in identity
-            )
-        return False
-    if source.domain == 'event' and candidate_domain == 'sensor':
-        return _has_marker(identity, _MOTION_MARKERS)
-    if source.domain == 'cover':
-        # Two cover clauses are OR-ed together: a binary target may be matched by the
-        # motor_reverse marker, or by the airer heuristic for light/switch targets.
-        if candidate_domain in _COVER_BINARY_TARGET_DOMAINS and (
-            'motor_reverse' in identity or '电机反向' in identity
-        ):
-            return True
-        if not _has_marker(source_identity, _AIRER_MARKERS):
-            return False
-        if candidate_domain in ('light', 'switch'):
-            return candidate_domain == 'light' or _has_marker(identity, _AIRER_LIGHT_MARKERS)
-        if candidate_domain in _COVER_POSITION_TARGET_DOMAINS:
-            return _has_marker(identity, _AIRER_POSITION_MARKERS)
-        return False
-    if source.domain == 'sensor' and candidate_domain == 'vacuum':
-        return source.translation_key in _VACUUM_STATE_TRANSLATION_KEYS
-    return False
-
-
-def _xiaomi_related_entity_ids(
-    database: DatabaseSession, active_connection_id, allowed: set[str]
-) -> set[str]:
-    '''Every active entity of the same Xiaomi device+platform as an already-allowed entity.
-
-    Xiaomi splits one device across many entities; binding one should keep its siblings visible.
-    '''
-    xiaomi_sources = database.scalars(
-        select(HAEntity).where(
-            HAEntity.connection_id == active_connection_id,
-            HAEntity.entity_id.in_(allowed),
-            HAEntity.platform.in_(tuple(_XIAOMI_PLATFORMS)),
-            HAEntity.device_id.is_not(None),
-        )
-    ).all()
-    xiaomi_pairs = {
-        (item.device_id, item.platform)
-        for item in xiaomi_sources
-        if item.device_id and item.platform
-    }
-    if not xiaomi_pairs:
-        return set()
-    related_filter = or_(
-        *(
-            and_(
-                HAEntity.connection_id == active_connection_id,
-                HAEntity.device_id == device_id,
-                HAEntity.platform == platform,
-            )
-            for device_id, platform in xiaomi_pairs
-        )
-    )
-    return set(
-        database.scalars(
-            select(HAEntity.entity_id).where(
-                related_filter,
-                HAEntity.domain.in_(_XIAOMI_RELATED_DOMAINS),
-                HAEntity.sync_status == 'active',
-                HAEntity.disabled_by.is_(None),
-            )
-        ).all()
-    )
-
-
-def viewer_entity_ids(database: DatabaseSession, viewer: ViewerPrincipal) -> set[str] | None:
+def viewer_entity_ids(
+    database: DatabaseSession, viewer: ViewerPrincipal
+) -> set[str] | None:
     if viewer.project_id is None:
         return None
     allowed = document_entity_ids(_display_document(database, viewer))
@@ -408,48 +292,255 @@ def viewer_entity_ids(database: DatabaseSession, viewer: ViewerPrincipal) -> set
     for item in bound_sources:
         if not item.device_id:
             continue
-        sources_by_device.setdefault((item.connection_id, item.device_id), []).append(item)
+        sources_by_device.setdefault(
+            (item.connection_id, item.device_id), []
+        ).append(item)
     if sources_by_device:
         device_filter = or_(
             *(
-                and_(HAEntity.connection_id == connection_id, HAEntity.device_id == device_id)
+                and_(
+                    HAEntity.connection_id == connection_id,
+                    HAEntity.device_id == device_id,
+                )
                 for connection_id, device_id in sources_by_device
             )
         )
         candidates = database.scalars(
             select(HAEntity).where(
                 device_filter,
-                HAEntity.sync_status == 'active',
+                HAEntity.sync_status == "active",
                 HAEntity.disabled_by.is_(None),
             )
         ).all()
         for candidate in candidates:
-            sources = sources_by_device.get((candidate.connection_id, candidate.device_id), [])
-            if not sources or any(candidate.entity_id == source.entity_id for source in sources):
+            sources = sources_by_device.get(
+                (candidate.connection_id, candidate.device_id), []
+            )
+            if not sources:
                 continue
-            if any(_is_auto_related_entity(source, candidate) for source in sources):
-                allowed.add(candidate.entity_id)
-    allowed.update(_xiaomi_related_entity_ids(database, active_connection_id, allowed))
+            if any(
+                candidate.entity_id == source.entity_id for source in sources
+            ):
+                continue
+            candidate_domain = candidate.domain
+            identity = " ".join(
+                filter(
+                    None,
+                    (
+                        candidate.entity_id,
+                        candidate.name,
+                        candidate.original_name,
+                        candidate.translation_key,
+                        candidate.icon,
+                    ),
+                )
+            ).casefold()
+            automatic = any(
+                (
+                    source.platform not in {"xiaomi_home", "xiaomi_miot"}
+                    or candidate.platform == source.platform
+                )
+                and (
+                    source.domain in {"fan", "climate"}
+                    and candidate_domain == "light"
+                    or source.domain == "water_heater"
+                    and candidate_domain
+                    in {"button", "number", "select", "switch"}
+                    or source.domain == "vacuum"
+                    and (
+                        candidate_domain == "select"
+                        and (
+                            candidate.translation_key == "cleaning_mode"
+                            or "cleaning_mode" in identity
+                        )
+                        or candidate_domain == "sensor"
+                        and (
+                            candidate.translation_key == "battery"
+                            or "battery" in identity
+                            or "电量" in identity
+                        )
+                    )
+                    or source.domain == "event"
+                    and candidate_domain == "sensor"
+                    and (
+                        "no_motion" in identity
+                        or "no motion" in identity
+                        or "无移动" in identity
+                        or "无人移动" in identity
+                    )
+                    or source.domain == "cover"
+                    and candidate_domain in {"select", "switch"}
+                    and (
+                        "motor_reverse" in identity
+                        or "电机反向" in identity
+                    )
+                    or source.domain == "cover"
+                    and candidate_domain in {"light", "switch"}
+                    and any(
+                        marker
+                        in " ".join(
+                            filter(
+                                None,
+                                (
+                                    source.entity_id,
+                                    source.name,
+                                    source.original_name,
+                                    source.translation_key,
+                                ),
+                            )
+                        ).casefold()
+                        for marker in (
+                            "airer",
+                            "clothes rack",
+                            "laundry rack",
+                            "晾衣机",
+                            "晾衣架",
+                        )
+                    )
+                    and (
+                        candidate_domain == "light"
+                        or any(
+                            marker in identity
+                            for marker in (
+                                "light",
+                                "lamp",
+                                "灯光",
+                                "照明",
+                                "晾衣机 灯",
+                                "晾衣架 灯",
+                            )
+                        )
+                    )
+                    or source.domain == "cover"
+                    and candidate_domain in {"number", "sensor"}
+                    and any(
+                        marker
+                        in " ".join(
+                            filter(
+                                None,
+                                (
+                                    source.entity_id,
+                                    source.name,
+                                    source.original_name,
+                                    source.translation_key,
+                                ),
+                            )
+                        ).casefold()
+                        for marker in (
+                            "airer",
+                            "clothes rack",
+                            "laundry rack",
+                            "晾衣机",
+                            "晾衣架",
+                        )
+                    )
+                    and any(
+                        marker in identity
+                        for marker in (
+                            "set_position",
+                            "set position",
+                            "target_position",
+                            "target position",
+                            "设定位置",
+                            "设置位置",
+                            "目标位置",
+                            "current_position",
+                            "current position",
+                            "当前位置",
+                            "当前高度",
+                        )
+                    )
+                    or source.domain == "sensor"
+                    and source.translation_key
+                    in {"state", "status", "task_status"}
+                    and candidate_domain == "vacuum"
+                )
+                for source in sources
+            )
+            if not automatic:
+                continue
+            allowed.add(candidate.entity_id)
+    xiaomi_sources = database.scalars(
+        select(HAEntity).where(
+            HAEntity.connection_id == active_connection_id,
+            HAEntity.entity_id.in_(allowed),
+            HAEntity.platform.in_(("xiaomi_home", "xiaomi_miot")),
+            HAEntity.device_id.is_not(None),
+        )
+    ).all()
+    xiaomi_pairs = {
+        (item.device_id, item.platform)
+        for item in xiaomi_sources
+        if item.device_id and item.platform
+    }
+    if xiaomi_pairs:
+        related_filter = or_(
+            *(
+                and_(
+                    HAEntity.connection_id == active_connection_id,
+                    HAEntity.device_id == device_id,
+                    HAEntity.platform == platform,
+                )
+                for device_id, platform in xiaomi_pairs
+            )
+        )
+        allowed.update(
+            database.scalars(
+                select(HAEntity.entity_id).where(
+                    related_filter,
+                    HAEntity.domain.in_(
+                        (
+                            "climate",
+                            "cover",
+                            "fan",
+                            "light",
+                            "switch",
+                            "select",
+                            "number",
+                            "sensor",
+                        )
+                    ),
+                    HAEntity.sync_status == "active",
+                    HAEntity.disabled_by.is_(None),
+                )
+            ).all()
+        )
     return allowed
 
 
-def require_viewer_entity(database: DatabaseSession, viewer: ViewerPrincipal, entity_id: str) -> None:
+def require_viewer_entity(
+    database: DatabaseSession, viewer: ViewerPrincipal, entity_id: str
+) -> None:
     allowed = viewer_entity_ids(database, viewer)
     if allowed is not None and entity_id not in allowed:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='该实体不属于当前中控仪表盘。')
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="该实体不属于当前中控仪表盘。",
+        )
+    return None
 
 
-def viewer_user_asset_ids(database: DatabaseSession, viewer: ViewerPrincipal) -> set[str] | None:
+def viewer_user_asset_ids(
+    database: DatabaseSession, viewer: ViewerPrincipal
+) -> set[str] | None:
     if viewer.project_id is None:
         return None
     return {
-        item.removeprefix('user:')
-        for item in _document_bound_values(_display_document(database, viewer), 'assetId')
-        if item.startswith('user:')
+        item.removeprefix("user:")
+        for item in _document_bound_values(
+            _display_document(database, viewer), "assetId"
+        )
+        if item.startswith("user:")
     }
 
 
-def require_viewer_user_asset(database: DatabaseSession, viewer: ViewerPrincipal, asset_id: str) -> None:
+def require_viewer_user_asset(
+    database: DatabaseSession, viewer: ViewerPrincipal, asset_id: str
+) -> None:
     allowed = viewer_user_asset_ids(database, viewer)
     if allowed is not None and asset_id not in allowed:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail='该图片不属于当前中控仪表盘。')
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="该图片不属于当前中控仪表盘。",
+        )
+    return None

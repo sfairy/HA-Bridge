@@ -1,32 +1,34 @@
-import { openPresenceFocusEditor } from "./presence-focus-editor.js?v=0.5.3";
+import { openPresenceFocusEditor } from "./presence-focus-editor.js?v=20260911-security-focal-v1";
 import { mountInteraction3d } from "./runtime.js";
-import { validPresenceRoute, snapsToPresenceStart, PRESENCE_TRIGGER_MODES, presenceTriggerIsTimed } from "./presence-motion.js?v=0.5.3";
+import {
+  validPresenceRoute,
+  snapsToPresenceStart,
+  PRESENCE_TRIGGER_MODES,
+  presenceTriggerIsTimed
+} from "./presence-motion.js?v=20260911-presence-pages-v2-detection-triggers-v1";
 import { DESIGNS, createWalker, animateWalker, disposeWalker } from "./presence-character.js";
 import { randomUuid } from "/bridge-static/utils/random-id.js";
 export async function openPresenceEditor({
-  component,
-  panelDocument,
-  floors = [],
-  entities = [],
-  pickers,
-  onSave,
-  initialSelectedId = "",
-  editingFloorId = "",
-  manageBindings = true,
-  onClose
+  component: component,
+  panelDocument: panelDocument,
+  floors: floors = [],
+  entities: entities = [],
+  pickers: pickers,
+  onSave: onSave,
+  initialSelectedId: initialSelectedId = "",
+  editingFloorId: editingFloorId = "",
+  manageBindings: manageBindings = true,
+  onClose: onClose
 }) {
-  const doc = window.document;
-  const editorLabel = manageBindings ? "配置安防" : "人物与行走路线";
-  const applyLabel = manageBindings ? "保存安防配置" : "应用人物与路线";
-  const dirtyLabel = manageBindings ? "配置已修改，请保存安防配置。" : "配置已修改，请应用人物与路线。";
-  const security = structuredClone(component.properties || {});
-  security.security = {
-    ...security.security,
-    presenceSensors: structuredClone(security.security?.presenceSensors || [])
+  const editorDocument = window.document;
+  const draftProperties = structuredClone(component.properties || {});
+  draftProperties.security = {
+    ...draftProperties.security,
+    presenceSensors: structuredClone(draftProperties.security?.presenceSensors || [])
   };
-  const presenceSensors = security.security.presenceSensors;
-  const entityNames = new Map(entities.map(entity => [entity.entityId, entity.name]));
-  for (const sensor of presenceSensors) {
+  const sensorBindings = draftProperties.security.presenceSensors;
+  const sensorNamesByEntityId = new Map(entities.map(entity => [entity.entityId, entity.name]));
+  for (const sensor of sensorBindings) {
     sensor.displayPages = "all";
     Object.assign(sensor, {
       character: sensor.character ?? "traveler",
@@ -34,252 +36,313 @@ export async function openPresenceEditor({
       speed: sensor.speed ?? 0.45,
       size: sensor.size ?? 1,
       displayDuration: presenceTriggerIsTimed(sensor)
-        ? sensor.displayDuration > 0 ? sensor.displayDuration : 30
-        : sensor.displayDuration ?? 0
+        ? sensor.displayDuration > 0
+          ? sensor.displayDuration
+          : 30
+        : (sensor.displayDuration ?? 0)
     });
   }
-  const el = (tag, text, className) => {
-    const node = doc.createElement(tag);
-    if (text) {
-      node.textContent = text;
+  const createElement = (tagName, initialText, classNames) => {
+    const createdElement = editorDocument.createElement(tagName);
+    if (initialText) {
+      createdElement.textContent = initialText;
     }
-    if (className) {
-      node.className = className;
+    if (classNames) {
+      createdElement.className = classNames;
     }
-    return node;
+    return createdElement;
   };
-  const svgEl = (tag, attrs) => {
-    const node = doc.createElementNS("http://www.w3.org/2000/svg", tag);
-    for (const [name, value] of Object.entries(attrs || {})) {
-      node.setAttribute(name, value);
+  const createSvgElement = (svgTagName, attributes) => {
+    const createdSvgElement = editorDocument.createElementNS(
+      "http://www.w3.org/2000/svg",
+      svgTagName
+    );
+    for (const [attributeName, attributeValue] of Object.entries(attributes || {})) {
+      createdSvgElement.setAttribute(attributeName, attributeValue);
     }
-    return node;
+    return createdSvgElement;
   };
-  const stylesheet = el("link");
-  stylesheet.rel = "stylesheet";
-  stylesheet.href = "/api/v1/modules/interaction3d/presence-editor.css";
-  const dialog = el("dialog", "", "i3d-editor i3d-presence-editor");
-  dialog.setAttribute("aria-label", editorLabel);
-  const previousFocus = doc.activeElement;
-  let selected = presenceSensors.find(sensor => sensor.id === initialSelectedId) || presenceSensors.find(sensor => sensor.floorId === editingFloorId) || presenceSensors[0] || null;
-  let closed = false;
-  let closedRoutes = new Set(presenceSensors.filter(sensor => sensor.routeClosed !== false && validPresenceRoute(sensor.route)).map(sensor => sensor.id));
-  let dragPoint = null;
-  let box;
-  let preview = null;
-  let previewKey = "";
-  let rafId = 0;
-  let lastFrameTime = 0;
-  let walkPhase = 0;
-  let animTime = 0;
-  let focusCommand = null;
-  let presented = false;
+  const styleLinkElement = createElement("link");
+  styleLinkElement.rel = "stylesheet";
+  styleLinkElement.href =
+    "/api/v1/modules/interaction3d/presence-editor.css?v=20260911-route-redraw-v2";
+  const dialogElement = createElement("dialog", "", "i3d-editor i3d-presence-editor");
+  dialogElement.setAttribute("aria-label", manageBindings ? "配置安防" : "人物与行走路线");
+  const previouslyFocusedElement = editorDocument.activeElement;
+  let selectedSensor =
+    sensorBindings.find(sensorMatch => sensorMatch.id === initialSelectedId) ||
+    sensorBindings.find(floorProbe => floorProbe.floorId === editingFloorId) ||
+    sensorBindings[0] ||
+    null;
+  let isClosed = false;
+  let closedRouteSensorIds = new Set(
+    sensorBindings
+      .filter(
+        sensorCandidate =>
+          sensorCandidate.routeClosed !== false && validPresenceRoute(sensorCandidate.route)
+      )
+      .map(routeSensorId => routeSensorId.id)
+  );
+  let draggedPoint = null;
+  let planBox;
+  let characterPreview = null;
+  let previewSignature = "";
+  let animationFrameId = 0;
+  let lastFrameTimeMs = 0;
+  let walkDistance = 0;
+  let elapsedSeconds = 0;
+  let editorRuntime = null;
+  let isPreviewReady = false;
   let viewMode = "plan";
-  let previewWalk = false;
-  let showHitRange = false;
+  let isWalkPreviewRunning = false;
+  let isHitRangeVisible = false;
   let topViewTimer = 0;
-  let pointerPlanPoint = null;
-  let flushers = [];
-  const flushInputs = () => {
-    for (const flush of flushers) {
-      flush();
+  let hoverPoint = null;
+  let fieldCollectors = [];
+  const flushFieldCollectors = () => {
+    for (const fieldCollector of fieldCollectors) {
+      fieldCollector();
     }
   };
-  const status = el("span", "", "presence-status");
-  status.setAttribute("role", "status");
-  const button = (label, onClick) => {
-    const btn = el("button", label);
-    btn.type = "button";
-    btn.addEventListener("click", onClick);
-    return btn;
+  const statusElement = createElement("span", "", "presence-status");
+  statusElement.setAttribute("role", "status");
+  const createButton = (buttonLabel, onButtonClick) => {
+    const buttonElement = createElement("button", buttonLabel);
+    buttonElement.type = "button";
+    buttonElement.addEventListener("click", onButtonClick);
+    return buttonElement;
   };
-  function close() {
-    if (!closed) {
-      closed = true;
-      cancelAnimationFrame(rafId);
-      resizeObserver.disconnect();
+  function closeEditor() {
+    if (!isClosed) {
+      isClosed = true;
+      cancelAnimationFrame(animationFrameId);
+      routeResizeObserver.disconnect();
       clearTimeout(topViewTimer);
-      focusCommand?.();
-      doc.removeEventListener("visibilitychange", onVisibilityChange);
-      if (preview) {
-        disposeWalker(preview.root);
-        preview.renderer.dispose();
-        preview.renderer.forceContextLoss();
+      editorRuntime?.();
+      editorDocument.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (characterPreview) {
+        disposeWalker(characterPreview.root);
+        characterPreview.renderer.dispose();
+        characterPreview.renderer.forceContextLoss();
       }
-      dialog.close();
-      dialog.remove();
-      stylesheet.remove();
-      doc.dispatchEvent(new Event("hb-i3d-preview-scope"));
-      previousFocus?.focus?.();
+      dialogElement.close();
+      dialogElement.remove();
+      styleLinkElement.remove();
+      editorDocument.dispatchEvent(new Event("hb-i3d-preview-scope"));
+      previouslyFocusedElement?.focus?.();
       onClose?.();
     }
   }
-  const saveBtn = button(applyLabel, async () => {
-    flushInputs();
-    for (const sensor of presenceSensors) {
-      sensor.routeClosed = closedRoutes.has(sensor.id) && validPresenceRoute(sensor.route);
+  const saveButtonElement = createButton(
+    manageBindings ? "保存安防配置" : "应用人物与路线",
+    async () => {
+      flushFieldCollectors();
+      for (const sensorItem of sensorBindings) {
+        sensorItem.routeClosed =
+          closedRouteSensorIds.has(sensorItem.id) && validPresenceRoute(sensorItem.route);
+      }
+      saveButtonElement.disabled = true;
+      try {
+        await onSave(structuredClone(draftProperties));
+        if (!isClosed) {
+          statusElement.textContent = "已应用到编辑器，请在退出后保存仪表盘";
+        }
+      } catch (saveError) {
+        if (!isClosed) {
+          statusElement.textContent = saveError.message || "保存失败，请重试。";
+        }
+      } finally {
+        if (!isClosed) {
+          saveButtonElement.disabled = false;
+        }
+      }
     }
-    saveBtn.disabled = true;
-    try {
-      await onSave(structuredClone(security));
-      if (!closed) {
-        status.textContent = "已应用到编辑器，请在退出后保存仪表盘";
-      }
-    } catch (error) {
-      if (!closed) {
-        status.textContent = error.message || "保存失败，请重试。";
-      }
-    } finally {
-      if (!closed) {
-        saveBtn.disabled = false;
-      }
-    }
+  );
+  saveButtonElement.className = "primary";
+  dialogElement.addEventListener("input", () => {
+    statusElement.textContent = manageBindings
+      ? "配置已修改，请保存安防配置。"
+      : "配置已修改，请应用人物与路线。";
   });
-  saveBtn.className = "primary";
-  dialog.addEventListener("input", () => {
-    status.textContent = dirtyLabel;
-  });
-  const header = el("header");
-  header.append(el("strong", editorLabel), status, saveBtn, button("退出", close));
-  const body = el("div", "", "presence-body");
-  const bindingsAside = el("aside", "", "presence-bindings");
-  const controlsAside = el("aside", "", "presence-controls");
-  const planSection = el("div", "", "presence-plan");
-  const planTitle = el("strong", "行走路线");
-  const planNote = el("p", "", "presence-note");
-  const viewport = el("div", "", "presence-viewport");
-  const runtimeHost = el("div", "", "presence-plan-runtime");
-  const planSvg = svgEl("svg", {
+  const headerElement = createElement("header");
+  headerElement.append(
+    createElement("strong", manageBindings ? "配置安防" : "人物与行走路线"),
+    statusElement,
+    saveButtonElement,
+    createButton("退出", closeEditor)
+  );
+  const bodyElement = createElement("div", "", "presence-body");
+  const bindingsPanelElement = createElement("aside", "", "presence-bindings");
+  const controlsPanelElement = createElement("aside", "", "presence-controls");
+  const planPanelElement = createElement("div", "", "presence-plan");
+  const planTitleElement = createElement("strong", "行走路线");
+  const hintElement = createElement("p", "", "presence-note");
+  const viewportElement = createElement("div", "", "presence-viewport");
+  const runtimeElement = createElement("div", "", "presence-plan-runtime");
+  const routeSvgElement = createSvgElement("svg", {
     role: "img",
     "aria-label": "平面图行走路线",
     tabindex: "0"
   });
-  const underlay = svgEl("g");
-  const routeLayer = svgEl("g");
-  planSvg.append(underlay, routeLayer);
-  const routeTools = el("div", "", "presence-route-tools");
-  routeTools.append(button("闭合路线", () => {
-    if (selected && validPresenceRoute(selected.route)) {
-      closedRoutes.add(selected.id);
-      status.textContent = "";
-      redrawPlan();
-    } else {
-      status.textContent = "至少绘制三个不共线的点，才能闭合路线。";
-    }
-  }), button("撤销一点", () => {
-    if (selected) {
-      closedRoutes.delete(selected.id);
-      selected.route.pop();
-      redrawPlan();
-      syncRuntime();
-    }
-  }), button("清空并重新绘制", () => {
-    if (selected) {
-      flushInputs();
-      selected.route = [];
-      selected.routeClosed = false;
-      closedRoutes.delete(selected.id);
-      pointerPlanPoint = null;
-      dragPoint = null;
-      previewWalk = false;
-      previewWalkBtn.textContent = "预览行走";
-      status.textContent = "路径已清空，请重新绘制。";
-      redrawPlan();
-      syncRuntime();
-    }
-  }));
-  const viewTools = el("div", "", "i3d-focus-actions presence-view-tools");
-  const setViewMode = mode => {
-    viewMode = mode;
-    planSvg.toggleAttribute("hidden", mode !== "plan");
-    routeTools.hidden = mode !== "plan";
-    dragPoint = null;
-    pointerPlanPoint = null;
-    planBtn.setAttribute("aria-pressed", String(mode === "plan"));
-    view3dBtn.setAttribute("aria-pressed", String(mode === "3d"));
-    if (presented) {
-      if (mode === "plan") {
+  const pointsLayerElement = createSvgElement("g");
+  const routeLayerElement = createSvgElement("g");
+  routeSvgElement.append(pointsLayerElement, routeLayerElement);
+  const routeToolsElement = createElement("div", "", "presence-route-tools");
+  routeToolsElement.append(
+    createButton("闭合路线", () => {
+      if (selectedSensor && validPresenceRoute(selectedSensor.route)) {
+        closedRouteSensorIds.add(selectedSensor.id);
+        statusElement.textContent = "";
+        renderRoutePlan();
+      } else {
+        statusElement.textContent = "至少绘制三个不共线的点，才能闭合路线。";
+      }
+    }),
+    createButton("撤销一点", () => {
+      if (selectedSensor) {
+        closedRouteSensorIds.delete(selectedSensor.id);
+        selectedSensor.route.pop();
+        renderRoutePlan();
+        syncPreview();
+      }
+    }),
+    createButton("清空并重新绘制", () => {
+      if (selectedSensor) {
+        flushFieldCollectors();
+        selectedSensor.route = [];
+        selectedSensor.routeClosed = false;
+        closedRouteSensorIds.delete(selectedSensor.id);
+        hoverPoint = null;
+        draggedPoint = null;
+        isWalkPreviewRunning = false;
+        walkPreviewButton.textContent = "预览行走";
+        statusElement.textContent = "路径已清空，请重新绘制。";
+        renderRoutePlan();
+        syncPreview();
+      }
+    })
+  );
+  const viewToolsElement = createElement("div", "", "i3d-focus-actions presence-view-tools");
+  const setViewMode = nextViewMode => {
+    viewMode = nextViewMode;
+    routeSvgElement.toggleAttribute("hidden", nextViewMode !== "plan");
+    routeToolsElement.hidden = nextViewMode !== "plan";
+    draggedPoint = null;
+    hoverPoint = null;
+    planViewButton.setAttribute("aria-pressed", String(nextViewMode === "plan"));
+    threeDViewButton.setAttribute("aria-pressed", String(nextViewMode === "3d"));
+    if (isPreviewReady) {
+      if (nextViewMode === "plan") {
         scheduleTopView();
       } else {
-        focusCommand.focusCommand("presence-3d-view").catch(onLoadError);
+        editorRuntime.focusCommand("presence-3d-view").catch(showError);
       }
     }
-    redrawPlan();
+    renderRoutePlan();
   };
-  const planBtn = button("平面", () => setViewMode("plan"));
-  const view3dBtn = button("3D", () => setViewMode("3d"));
-  planBtn.setAttribute("aria-pressed", "true");
-  view3dBtn.setAttribute("aria-pressed", "false");
-  const previewWalkBtn = button("预览行走", () => {
-    if (!selected || !closedRoutes.has(selected.id) || !validPresenceRoute(selected.route)) {
-      status.textContent = "请先绘制路径并闭合，再预览行走。";
+  const planViewButton = createButton("平面", () => setViewMode("plan"));
+  const threeDViewButton = createButton("3D", () => setViewMode("3d"));
+  planViewButton.setAttribute("aria-pressed", "true");
+  threeDViewButton.setAttribute("aria-pressed", "false");
+  const walkPreviewButton = createButton("预览行走", () => {
+    if (
+      !selectedSensor ||
+      !closedRouteSensorIds.has(selectedSensor.id) ||
+      !validPresenceRoute(selectedSensor.route)
+    ) {
+      statusElement.textContent = "请先绘制路径并闭合，再预览行走。";
       return;
     }
-    previewWalk = !previewWalk;
-    previewWalkBtn.textContent = previewWalk ? "停止预览" : "预览行走";
-    if (presented) {
-      focusCommand.focusCommand("presence-preview-walk", "", previewWalk).catch(onLoadError);
+    isWalkPreviewRunning = !isWalkPreviewRunning;
+    walkPreviewButton.textContent = isWalkPreviewRunning ? "停止预览" : "预览行走";
+    if (isPreviewReady) {
+      editorRuntime
+        .focusCommand("presence-preview-walk", "", isWalkPreviewRunning)
+        .catch(showError);
     }
   });
-  viewTools.append(planBtn, view3dBtn, previewWalkBtn);
-  viewport.append(runtimeHost, planSvg);
-  planSection.append(planTitle, planNote, viewTools, viewport, routeTools);
-  body.append(bindingsAside, planSection, controlsAside);
-  dialog.append(header, body);
-  await new Promise((resolve, reject) => {
-    stylesheet.addEventListener("load", resolve, {
+  viewToolsElement.append(planViewButton, threeDViewButton, walkPreviewButton);
+  viewportElement.append(runtimeElement, routeSvgElement);
+  planPanelElement.append(
+    planTitleElement,
+    hintElement,
+    viewToolsElement,
+    viewportElement,
+    routeToolsElement
+  );
+  bodyElement.append(bindingsPanelElement, planPanelElement, controlsPanelElement);
+  dialogElement.append(headerElement, bodyElement);
+  await new Promise((resolveStyleLoad, rejectStyleLoad) => {
+    styleLinkElement.addEventListener("load", resolveStyleLoad, {
       once: true
     });
-    stylesheet.addEventListener("error", () => reject(new Error("安防样式加载失败，请重试。")), {
-      once: true
-    });
-    doc.head.append(stylesheet);
-  }).catch(error => {
-    stylesheet.remove();
-    throw error;
+    styleLinkElement.addEventListener(
+      "error",
+      () => rejectStyleLoad(new Error("安防样式加载失败，请重试。")),
+      {
+        once: true
+      }
+    );
+    editorDocument.head.append(styleLinkElement);
+  }).catch(styleLoadError => {
+    styleLinkElement.remove();
+    throw styleLoadError;
   });
-  doc.body.append(dialog);
-  dialog.dataset.i3dPreviewScope = "presence";
-  function onLoadError(error) {
-    if (!closed) {
-      status.textContent = error.message || String(error);
+  editorDocument.body.append(dialogElement);
+  dialogElement.dataset.i3dPreviewScope = "presence";
+  function showError(loadError) {
+    if (!isClosed) {
+      statusElement.textContent = loadError.message || String(loadError);
     }
   }
-  function activeFloor() {
-    if (selected) {
-      return floors.find(floor => floor.id === selected.floorId);
+  function currentFloor() {
+    if (selectedSensor) {
+      return floors.find(floorMatch => floorMatch.id === selectedSensor.floorId);
     } else {
-      return floors.find(floor => floor.id === (editingFloorId || security.floorSelection)) || floors[0];
+      return (
+        floors.find(
+          fallbackFloorMatch =>
+            fallbackFloorMatch.id === (editingFloorId || draftProperties.floorSelection)
+        ) || floors[0]
+      );
     }
   }
   function scheduleTopView() {
     clearTimeout(topViewTimer);
-    if (!!presented && !!activeFloor() && viewMode === "plan" && !!box) {
+    if (!!isPreviewReady && !!currentFloor() && viewMode === "plan" && !!planBox) {
       topViewTimer = setTimeout(() => {
-        const floor = activeFloor();
-        if (!closed && presented && viewMode === "plan" && floor) {
-          focusCommand.focusCommand("presence-top-view", "", {
-            floorId: floor.id,
-            box
-          }).catch(onLoadError);
+        const scheduledFloor = currentFloor();
+        if (!isClosed && isPreviewReady && viewMode === "plan" && scheduledFloor) {
+          editorRuntime
+            .focusCommand("presence-top-view", "", {
+              floorId: scheduledFloor.id,
+              box: planBox
+            })
+            .catch(showError);
         }
       }, 30);
     }
   }
-  function syncRuntime() {
-    const floorSelection = activeFloor()?.id;
-    if (!floorSelection) {
+  function syncPreview() {
+    const previewFloorId = currentFloor()?.id;
+    if (!previewFloorId) {
       return;
     }
-    const properties = {
-      ...structuredClone(security),
-      floorSelection,
-      camera: security.floorCameras?.[floorSelection] || (security.floorSelection === floorSelection ? security.camera : null),
+    const previewProperties = {
+      ...structuredClone(draftProperties),
+      floorSelection: previewFloorId,
+      camera:
+        draftProperties.floorCameras?.[previewFloorId] ||
+        (draftProperties.floorSelection === previewFloorId ? draftProperties.camera : null),
       security: {
-        presenceSensors: selected ? [{
-          ...structuredClone(selected),
-          routeClosed: closedRoutes.has(selected.id)
-        }] : []
+        presenceSensors: selectedSensor
+          ? [
+              {
+                ...structuredClone(selectedSensor),
+                routeClosed: closedRouteSensorIds.has(selectedSensor.id)
+              }
+            ]
+          : []
       },
       pageDimStrength: {
         overview: 0,
@@ -293,14 +356,14 @@ export async function openPresenceEditor({
         enabled: false
       }
     };
-    if (focusCommand) {
-      focusCommand.update(properties);
+    if (editorRuntime) {
+      editorRuntime.update(previewProperties);
       return;
     }
-    focusCommand = mountInteraction3d(runtimeHost, {
+    editorRuntime = mountInteraction3d(runtimeElement, {
       component: {
         ...component,
-        properties
+        properties: previewProperties
       },
       context: {
         document: panelDocument,
@@ -309,170 +372,228 @@ export async function openPresenceEditor({
       editing: true,
       editingModule: "security",
       onPresented: () => {
-        if (!closed) {
-          presented = true;
+        if (!isClosed) {
+          isPreviewReady = true;
           scheduleTopView();
-          focusCommand.focusCommand("presence-editor-open", "", true).catch(onLoadError);
-          if (previewWalk) {
-            focusCommand.focusCommand("presence-preview-walk", "", true).catch(onLoadError);
+          if (isWalkPreviewRunning) {
+            editorRuntime.focusCommand("presence-preview-walk", "", true).catch(showError);
           }
-          focusCommand.focusCommand("presence-show-hit-range", "", showHitRange).catch(onLoadError);
+          editorRuntime
+            .focusCommand("presence-show-hit-range", "", isHitRangeVisible)
+            .catch(showError);
         }
       },
-      onLoadError
+      onLoadError: showError
     });
-    doc.dispatchEvent(new Event("hb-i3d-preview-scope"));
+    editorDocument.dispatchEvent(new Event("hb-i3d-preview-scope"));
   }
-  function recomputeBox() {
-    const floor = activeFloor();
-    const points = [...(floor?.plan?.walls || []).flatMap(wall => [wall.start, wall.end]), ...(selected?.route || [])];
-    const xs = points.map(point => point.x);
-    const ys = points.map(point => point.y);
-    const ppm = floor?.plan?.pixelsPerMeter || 100;
-    const minX = points.length ? Math.min(...xs) : 0;
-    const minY = points.length ? Math.min(...ys) : 0;
-    const width = Math.max(ppm, points.length ? Math.max(...xs) - minX : ppm * 10);
-    const height = Math.max(ppm, points.length ? Math.max(...ys) - minY : ppm * 8);
-    const pad = Math.max(width, height) * 0.1;
-    box = {
-      x: minX - pad,
-      y: minY - pad,
-      w: width + pad * 2,
-      h: height + pad * 2
+  function fitPlanBox() {
+    const activeFloor = currentFloor();
+    const planPoints = [
+      ...(activeFloor?.plan?.walls || []).flatMap(planWall => [planWall.start, planWall.end]),
+      ...(selectedSensor?.route || [])
+    ];
+    const xCoordinates = planPoints.map(planPointX => planPointX.x);
+    const yCoordinates = planPoints.map(planPointY => planPointY.y);
+    const pixelsPerMeter = activeFloor?.plan?.pixelsPerMeter || 100;
+    const minX = planPoints.length ? Math.min(...xCoordinates) : 0;
+    const minY = planPoints.length ? Math.min(...yCoordinates) : 0;
+    const boxWidth = Math.max(
+      pixelsPerMeter,
+      planPoints.length ? Math.max(...xCoordinates) - minX : pixelsPerMeter * 10
+    );
+    const boxHeight = Math.max(
+      pixelsPerMeter,
+      planPoints.length ? Math.max(...yCoordinates) - minY : pixelsPerMeter * 8
+    );
+    const pixelMargin = Math.max(boxWidth, boxHeight) * 0.1;
+    planBox = {
+      x: minX - pixelMargin,
+      y: minY - pixelMargin,
+      w: boxWidth + pixelMargin * 2,
+      h: boxHeight + pixelMargin * 2
     };
-    redrawPlan();
+    renderRoutePlan();
   }
-  function redrawPlan(scheduleView = true) {
-    if (!box) {
+  function renderRoutePlan(scheduleTopViewAfterRender = true) {
+    if (!planBox) {
       return;
     }
-    const focusBtn = controlsAside.querySelector("[data-presence-focus]");
-    if (focusBtn) {
-      focusBtn.disabled = !selected || !closedRoutes.has(selected.id) || !validPresenceRoute(selected.route);
+    const focusButtonElement = controlsPanelElement.querySelector("[data-presence-focus]");
+    if (focusButtonElement) {
+      focusButtonElement.disabled =
+        !selectedSensor ||
+        !closedRouteSensorIds.has(selectedSensor.id) ||
+        !validPresenceRoute(selectedSensor.route);
     }
-    planSvg.setAttribute("viewBox", box.x + " " + box.y + " " + box.w + " " + box.h);
-    underlay.replaceChildren();
-    routeLayer.replaceChildren();
-    const floor = activeFloor();
-    previewWalkBtn.disabled = !selected || !closedRoutes.has(selected.id) || !validPresenceRoute(selected.route);
-    for (const btn of routeTools.querySelectorAll("button")) {
-      btn.disabled = !selected;
+    routeSvgElement.setAttribute(
+      "viewBox",
+      planBox.x + " " + planBox.y + " " + planBox.w + " " + planBox.h
+    );
+    pointsLayerElement.replaceChildren();
+    routeLayerElement.replaceChildren();
+    const renderedFloor = currentFloor();
+    walkPreviewButton.disabled =
+      !selectedSensor ||
+      !closedRouteSensorIds.has(selectedSensor.id) ||
+      !validPresenceRoute(selectedSensor.route);
+    for (const routeToolButton of routeToolsElement.querySelectorAll("button")) {
+      routeToolButton.disabled = !selectedSensor || viewMode !== "plan";
     }
-    planNote.textContent = selected ? floor ? viewMode === "3d" ? "拖动旋转、滚轮缩放；调整人物大小，再预览行走效果。" : closedRoutes.has(selected.id) ? "路线已闭合 · 可拖动圆点调整路径；切换 3D 查看人物大小。" : "请绘制行走路径：依次点击至少三个点，靠近起点可吸附闭合。" : "请选择有效楼层。" : "添加人在传感器后，在顶视图中绘制行走路径。";
-    planTitle.textContent = floor ? (floor.name || "楼层") + " · 行走路线" : "行走路线";
-    if (scheduleView !== false) {
+    hintElement.textContent = selectedSensor
+      ? renderedFloor
+        ? viewMode === "3d"
+          ? "拖动旋转、滚轮缩放；调整人物大小，再预览行走效果。"
+          : closedRouteSensorIds.has(selectedSensor.id)
+            ? "路线已闭合 · 可拖动圆点调整路径；切换 3D 查看人物大小。"
+            : "请绘制行走路径：依次点击至少三个点，靠近起点可吸附闭合。"
+        : "请选择有效楼层。"
+      : "添加人在传感器后，在顶视图中绘制行走路径。";
+    planTitleElement.textContent = renderedFloor
+      ? (renderedFloor.name || "楼层") + " · 行走路线"
+      : "行走路线";
+    if (scheduleTopViewAfterRender !== false) {
       scheduleTopView();
     }
-    if (!selected) {
+    if (!selectedSensor) {
       return;
     }
-    const stroke = selected.color === "orange" ? "#eaa044" : "#52b8b1";
-    routeLayer.append(svgEl(closedRoutes.has(selected.id) ? "polygon" : "polyline", {
-      points: selected.route.map(point => point.x + "," + point.y).join(" "),
-      fill: closedRoutes.has(selected.id) ? stroke + "14" : "none",
-      stroke,
-      "stroke-width": 3,
-      "vector-effect": "non-scaling-stroke",
-      "pointer-events": "none",
-      "stroke-linejoin": "round"
-    }));
-    const pixelScale = 1 / Math.max(0.0001, Math.abs(planSvg.getScreenCTM()?.a || 1));
-    selected.route.forEach((point, pointIndex) => {
-      routeLayer.append(svgEl("circle", {
-        cx: point.x,
-        cy: point.y,
-        r: (pointIndex === 0 ? 8 : 6) * pixelScale,
-        fill: pointIndex === 0 ? stroke : "#f7fafc",
-        stroke,
-        "stroke-width": 2,
+    const routeColor = selectedSensor.color === "orange" ? "#eaa044" : "#52b8b1";
+    routeLayerElement.append(
+      createSvgElement(closedRouteSensorIds.has(selectedSensor.id) ? "polygon" : "polyline", {
+        points: selectedSensor.route.map(routePoint => routePoint.x + "," + routePoint.y).join(" "),
+        fill: closedRouteSensorIds.has(selectedSensor.id) ? routeColor + "14" : "none",
+        stroke: routeColor,
+        "stroke-width": 3,
         "vector-effect": "non-scaling-stroke",
-        "data-point": pointIndex
-      }));
-      const label = svgEl("text", {
-        x: point.x + pixelScale * 11,
-        y: point.y - pixelScale * 9,
-        fill: "#64748b",
-        "font-size": pixelScale * 11,
-        "pointer-events": "none"
-      });
-      label.textContent = String(pointIndex + 1);
-      routeLayer.append(label);
-    });
-    if (!closedRoutes.has(selected.id) && pointerPlanPoint && selected.route.length) {
-      const snapped = snapsToPresenceStart(selected.route, pointerPlanPoint, 1 / pixelScale);
-      const hoverPoint = snapped ? selected.route[0] : pointerPlanPoint;
-      const lastPoint = selected.route.at(-1);
-      routeLayer.append(svgEl("line", {
-        x1: lastPoint.x,
-        y1: lastPoint.y,
-        x2: hoverPoint.x,
-        y2: hoverPoint.y,
-        stroke,
-        "stroke-width": 2,
-        "stroke-dasharray": "5 4",
-        "vector-effect": "non-scaling-stroke",
-        "pointer-events": "none"
-      }));
-      if (snapped) {
-        routeLayer.append(svgEl("circle", {
-          cx: hoverPoint.x,
-          cy: hoverPoint.y,
-          r: pixelScale * 16,
-          fill: stroke + "33",
-          stroke,
+        "pointer-events": "none",
+        "stroke-linejoin": "round"
+      })
+    );
+    const svgUnitsPerPixel = 1 / Math.max(0.0001, Math.abs(routeSvgElement.getScreenCTM()?.a || 1));
+    selectedSensor.route.forEach((point, pointIndex) => {
+      routeLayerElement.append(
+        createSvgElement("circle", {
+          cx: point.x,
+          cy: point.y,
+          r: (pointIndex === 0 ? 8 : 6) * svgUnitsPerPixel,
+          fill: pointIndex === 0 ? routeColor : "#f7fafc",
+          stroke: routeColor,
           "stroke-width": 2,
           "vector-effect": "non-scaling-stroke",
+          "data-point": pointIndex
+        })
+      );
+      const pointLabelElement = createSvgElement("text", {
+        x: point.x + svgUnitsPerPixel * 11,
+        y: point.y - svgUnitsPerPixel * 9,
+        fill: "#64748b",
+        "font-size": svgUnitsPerPixel * 11,
+        "pointer-events": "none"
+      });
+      pointLabelElement.textContent = String(pointIndex + 1);
+      routeLayerElement.append(pointLabelElement);
+    });
+    if (!closedRouteSensorIds.has(selectedSensor.id) && hoverPoint && selectedSensor.route.length) {
+      const snapTarget = snapsToPresenceStart(
+        selectedSensor.route,
+        hoverPoint,
+        1 / svgUnitsPerPixel
+      );
+      const closingPoint = snapTarget ? selectedSensor.route[0] : hoverPoint;
+      const lastRoutePoint = selectedSensor.route.at(-1);
+      routeLayerElement.append(
+        createSvgElement("line", {
+          x1: lastRoutePoint.x,
+          y1: lastRoutePoint.y,
+          x2: closingPoint.x,
+          y2: closingPoint.y,
+          stroke: routeColor,
+          "stroke-width": 2,
+          "stroke-dasharray": "5 4",
+          "vector-effect": "non-scaling-stroke",
           "pointer-events": "none"
-        }));
-        planNote.textContent = "已吸附起点 · 点击即可闭合路线。";
+        })
+      );
+      if (snapTarget) {
+        routeLayerElement.append(
+          createSvgElement("circle", {
+            cx: closingPoint.x,
+            cy: closingPoint.y,
+            r: svgUnitsPerPixel * 16,
+            fill: routeColor + "33",
+            stroke: routeColor,
+            "stroke-width": 2,
+            "vector-effect": "non-scaling-stroke",
+            "pointer-events": "none"
+          })
+        );
+        hintElement.textContent = "已吸附起点 · 点击即可闭合路线。";
       }
     }
   }
-  function addField(label, control) {
-    const field = el("label", "", "presence-field");
-    field.append(el("span", label), control);
-    controlsAside.append(field);
-    return control;
+  function appendField(fieldLabel, fieldControl) {
+    const fieldElement = createElement("label", "", "presence-field");
+    fieldElement.append(createElement("span", fieldLabel), fieldControl);
+    controlsPanelElement.append(fieldElement);
+    return fieldControl;
   }
-  function addNumberField(label, key, min, max, step, displayScale = 1) {
-    const input = el("input");
-    Object.assign(input, {
+  function addNumberField(
+    numberLabel,
+    propertyKey,
+    minValue,
+    maxValue,
+    stepSize,
+    displayScale = 1
+  ) {
+    const numberInputElement = createElement("input");
+    Object.assign(numberInputElement, {
       type: "number",
-      min,
-      max,
-      step,
-      value: selected[key] * displayScale
+      min: minValue,
+      max: maxValue,
+      step: stepSize,
+      value: selectedSensor[propertyKey] * displayScale
     });
-    input.setAttribute("aria-label", label);
-    const target = selected;
-    const commit = () => {
-      const n = Number(input.value);
-      if (input.value.trim() && Number.isFinite(n)) {
-        target[key] = Math.max(min, Math.min(max, n)) / displayScale;
+    numberInputElement.setAttribute("aria-label", numberLabel);
+    const sensorRef = selectedSensor;
+    const commitNumberField = () => {
+      const typedNumber = Number(numberInputElement.value);
+      if (numberInputElement.value.trim() && Number.isFinite(typedNumber)) {
+        sensorRef[propertyKey] = Math.max(minValue, Math.min(maxValue, typedNumber)) / displayScale;
       }
-      input.value = target[key] * displayScale;
+      numberInputElement.value = sensorRef[propertyKey] * displayScale;
     };
-    flushers.push(commit);
-    input.addEventListener("change", () => {
-      commit();
-      syncRuntime();
+    fieldCollectors.push(commitNumberField);
+    numberInputElement.addEventListener("change", () => {
+      commitNumberField();
+      syncPreview();
     });
-    addField(label, input).parentElement.classList.add("presence-number-field");
+    appendField(numberLabel, numberInputElement).parentElement.classList.add(
+      "presence-number-field"
+    );
   }
-  function rebuildUi() {
-    flushInputs();
-    flushers = [];
-    dragPoint = null;
-    pointerPlanPoint = null;
-    bindingsAside.replaceChildren();
-    controlsAside.replaceChildren();
-    bindingsAside.append(el("strong", "人在传感器"), el("p", "每个传感器独立设置路线和人物。", "presence-note"));
-    const addBtn = button("＋ 添加人在传感器", () => {
-      selected = {
+  function renderControls() {
+    flushFieldCollectors();
+    fieldCollectors = [];
+    draggedPoint = null;
+    hoverPoint = null;
+    bindingsPanelElement.replaceChildren();
+    controlsPanelElement.replaceChildren();
+    bindingsPanelElement.append(
+      createElement("strong", "人在传感器"),
+      createElement("p", "每个传感器独立设置路线和人物。", "presence-note")
+    );
+    const addSensorButton = createButton("＋ 添加人在传感器", () => {
+      selectedSensor = {
         id: randomUuid(),
         label: "",
         entityId: "",
-        floorId: floors.find(floor => floor.id === component.properties?.floorSelection)?.id || floors[0]?.id || "",
+        floorId:
+          floors.find(
+            defaultFloorProbe => defaultFloorProbe.id === component.properties?.floorSelection
+          )?.id ||
+          floors[0]?.id ||
+          "",
         route: [],
         speed: 0.45,
         size: 1,
@@ -482,379 +603,472 @@ export async function openPresenceEditor({
         character: "traveler",
         color: "cyan"
       };
-      presenceSensors.push(selected);
-      previewWalk = false;
-      previewWalkBtn.textContent = "预览行走";
+      sensorBindings.push(selectedSensor);
+      isWalkPreviewRunning = false;
+      walkPreviewButton.textContent = "预览行走";
       setViewMode("plan");
-      status.textContent = "选择人在传感器后，请在顶视图中绘制行走路径。";
-      rebuildUi();
+      statusElement.textContent = "选择人在传感器后，请在顶视图中绘制行走路径。";
+      renderControls();
     });
-    addBtn.disabled = presenceSensors.length >= 128 || !floors.length;
+    addSensorButton.disabled = sensorBindings.length >= 128 || !floors.length;
     if (manageBindings) {
-      bindingsAside.append(addBtn);
+      bindingsPanelElement.append(addSensorButton);
     }
-    for (const sensor of presenceSensors) {
-      const selectBtn = button(sensor.label || entityNames.get(sensor.entityId) || sensor.entityId || "未选择传感器", () => {
-        selected = sensor;
-        rebuildUi();
-      });
-      selectBtn.setAttribute("aria-pressed", String(sensor === selected));
-      bindingsAside.append(selectBtn);
+    for (const listedSensor of sensorBindings) {
+      const sensorButtonElement = createButton(
+        listedSensor.label ||
+          sensorNamesByEntityId.get(listedSensor.entityId) ||
+          listedSensor.entityId ||
+          "未选择传感器",
+        () => {
+          selectedSensor = listedSensor;
+          renderControls();
+        }
+      );
+      sensorButtonElement.setAttribute("aria-pressed", String(listedSensor === selectedSensor));
+      bindingsPanelElement.append(sensorButtonElement);
     }
-    if (!selected) {
-      controlsAside.append(el("p", "有人时走动，无人时隐藏。", "presence-note"));
-      recomputeBox();
-      syncRuntime();
+    if (!selectedSensor) {
+      controlsPanelElement.append(createElement("p", "有人时走动，无人时隐藏。", "presence-note"));
+      fitPlanBox();
+      syncPreview();
       return;
     }
-    const sensor = selected;
-    const trigger = button(entityNames.get(sensor.entityId) || sensor.entityId || "选择人在传感器", async () => {
-      try {
-        await pickers.entity({
-          trigger,
-          current: sensor.entityId,
-          deviceKind: "presence",
-          onSelect: (entityId, meta) => {
-            flushInputs();
-            flushers = [];
-            sensor.entityId = entityId;
-            if (entityId.startsWith("event.") && !(sensor.displayDuration > 0)) {
-              sensor.displayDuration = 30;
+    const activeSensor = selectedSensor;
+    const sensorPickerButton = createButton(
+      sensorNamesByEntityId.get(activeSensor.entityId) || activeSensor.entityId || "选择人在传感器",
+      async () => {
+        try {
+          await pickers.entity({
+            trigger: sensorPickerButton,
+            current: activeSensor.entityId,
+            deviceKind: "presence",
+            onSelect: (entityId, pickedEntity) => {
+              flushFieldCollectors();
+              fieldCollectors = [];
+              activeSensor.entityId = entityId;
+              if (entityId.startsWith("event.") && !(activeSensor.displayDuration > 0)) {
+                activeSensor.displayDuration = 30;
+              }
+              if (pickedEntity?.name) {
+                sensorNamesByEntityId.set(entityId, pickedEntity.name);
+              }
+              if (!activeSensor.route.length) {
+                statusElement.textContent = "已选择传感器，请在顶视图中绘制行走路径。";
+              }
+              renderControls();
             }
-            if (meta?.name) {
-              entityNames.set(entityId, meta.name);
-            }
-            if (!sensor.route.length) {
-              status.textContent = "已选择传感器，请在顶视图中绘制行走路径。";
-            }
-            rebuildUi();
-          }
-        });
-      } catch (error) {
-        status.textContent = error.message;
+          });
+        } catch (pickerError) {
+          statusElement.textContent = pickerError.message;
+        }
       }
-    });
-    trigger.setAttribute("aria-label", "选择人在传感器");
+    );
+    sensorPickerButton.setAttribute("aria-label", "选择人在传感器");
     if (manageBindings) {
-      addField("人在传感器", trigger);
+      appendField("人在传感器", sensorPickerButton);
     } else {
-      controlsAside.append(el("p", "检测设备：" + (sensor.deviceName || entityNames.get(sensor.entityId) || sensor.entityId || "未绑定") + "（在安防设置中修改）", "presence-note"));
+      controlsPanelElement.append(
+        createElement(
+          "p",
+          "检测设备：" +
+            (activeSensor.deviceName ||
+              sensorNamesByEntityId.get(activeSensor.entityId) ||
+              activeSensor.entityId ||
+              "未绑定") +
+            "（在安防设置中修改）",
+          "presence-note"
+        )
+      );
     }
-    const labelInput = el("input");
-    labelInput.value = sensor.label;
-    labelInput.maxLength = 128;
-    labelInput.placeholder = "可选，自定义名称";
-    labelInput.setAttribute("aria-label", "显示名称");
-    const commitLabel = () => {
-      sensor.label = labelInput.value.slice(0, 128);
+    const labelInputElement = createElement("input");
+    labelInputElement.value = activeSensor.label;
+    labelInputElement.maxLength = 128;
+    labelInputElement.placeholder = "可选，自定义名称";
+    labelInputElement.setAttribute("aria-label", "显示名称");
+    const commitLabelInput = () => {
+      activeSensor.label = labelInputElement.value.slice(0, 128);
     };
-    flushers.push(commitLabel);
-    labelInput.addEventListener("input", commitLabel);
-    labelInput.addEventListener("change", () => {
-      commitLabel();
-      const listBtn = bindingsAside.querySelectorAll("button")[presenceSensors.indexOf(sensor) + (manageBindings ? 1 : 0)];
-      if (listBtn) {
-        listBtn.textContent = sensor.label || entityNames.get(sensor.entityId) || sensor.entityId || "未选择传感器";
+    fieldCollectors.push(commitLabelInput);
+    labelInputElement.addEventListener("input", commitLabelInput);
+    labelInputElement.addEventListener("change", () => {
+      commitLabelInput();
+      const listedSensorButton =
+        bindingsPanelElement.querySelectorAll("button")[
+          sensorBindings.indexOf(activeSensor) + (manageBindings ? 1 : 0)
+        ];
+      if (listedSensorButton) {
+        listedSensorButton.textContent =
+          activeSensor.label ||
+          sensorNamesByEntityId.get(activeSensor.entityId) ||
+          activeSensor.entityId ||
+          "未选择传感器";
       }
     });
-    addField("显示名称", labelInput);
-    const floorSelect = el("select");
-    floorSelect.setAttribute("aria-label", "路线楼层");
-    if (!floors.some(floor => floor.id === sensor.floorId)) {
-      const missingOption = el("option", "原楼层已不存在，请重新选择");
-      missingOption.value = "";
-      floorSelect.append(missingOption);
+    appendField("显示名称", labelInputElement);
+    const floorSelectElement = createElement("select");
+    floorSelectElement.setAttribute("aria-label", "路线楼层");
+    if (!floors.some(floorCandidate => floorCandidate.id === activeSensor.floorId)) {
+      const missingFloorOption = createElement("option", "原楼层已不存在，请重新选择");
+      missingFloorOption.value = "";
+      floorSelectElement.append(missingFloorOption);
     }
-    for (const floor of floors) {
-      const option = el("option", floor.name || floor.id);
-      option.value = floor.id;
-      floorSelect.append(option);
+    for (const floorRecord of floors) {
+      const floorOptionElement = createElement("option", floorRecord.name || floorRecord.id);
+      floorOptionElement.value = floorRecord.id;
+      floorSelectElement.append(floorOptionElement);
     }
-    floorSelect.value = sensor.floorId;
-    floorSelect.addEventListener("change", () => {
-      sensor.floorId = floorSelect.value;
-      delete sensor.modelId;
-      sensor.route = [];
-      closedRoutes.delete(sensor.id);
-      rebuildUi();
+    floorSelectElement.value = activeSensor.floorId;
+    floorSelectElement.addEventListener("change", () => {
+      activeSensor.floorId = floorSelectElement.value;
+      delete activeSensor.modelId;
+      activeSensor.route = [];
+      closedRouteSensorIds.delete(activeSensor.id);
+      renderControls();
     });
-    addField("路线楼层", floorSelect);
-    floorSelect.disabled = !manageBindings;
-    sensor.displayPages = "all";
-    controlsAside.append(el("p", "显示页面：ALL（全部页面）", "presence-note"));
-    controlsAside.append(el("strong", "人物方案"));
-    const designs = el("div", "", "presence-designs");
-    for (const [character, design] of Object.entries(DESIGNS)) {
-      const designBtn = button(design.name, () => {
-        sensor.character = character;
-        rebuildUi();
+    appendField("路线楼层", floorSelectElement);
+    floorSelectElement.disabled = !manageBindings;
+    activeSensor.displayPages = "all";
+    controlsPanelElement.append(createElement("p", "显示页面：ALL（全部页面）", "presence-note"));
+    controlsPanelElement.append(createElement("strong", "人物方案"));
+    const designButtonsElement = createElement("div", "", "presence-designs");
+    for (const [designKey, design] of Object.entries(DESIGNS)) {
+      const designButtonElement = createButton(design.name, () => {
+        activeSensor.character = designKey;
+        renderControls();
       });
-      designBtn.setAttribute("aria-pressed", String(sensor.character === character));
-      designs.append(designBtn);
+      designButtonElement.setAttribute(
+        "aria-pressed",
+        String(activeSensor.character === designKey)
+      );
+      designButtonsElement.append(designButtonElement);
     }
-    controlsAside.append(designs);
-    const characterPreview = el("div", "", "presence-character-preview");
-    characterPreview.setAttribute("aria-label", "人物行走预览");
-    controlsAside.append(characterPreview);
-    if (preview) {
-      characterPreview.append(preview.renderer.domElement);
+    controlsPanelElement.append(designButtonsElement);
+    const characterPreviewElement = createElement("div", "", "presence-character-preview");
+    characterPreviewElement.setAttribute("aria-label", "人物行走预览");
+    controlsPanelElement.append(characterPreviewElement);
+    if (characterPreview) {
+      characterPreviewElement.append(characterPreview.renderer.domElement);
     }
-    controlsAside.append(el("p", DESIGNS[sensor.character]?.description || "", "presence-note"));
-    const colors = el("div", "", "presence-colors");
-    for (const [color, label] of [["cyan", "统一青色"], ["orange", "统一橙色"]]) {
-      const colorBtn = button(label, () => {
-        sensor.color = color;
-        rebuildUi();
+    controlsPanelElement.append(
+      createElement("p", DESIGNS[activeSensor.character]?.description || "", "presence-note")
+    );
+    const colorButtonsElement = createElement("div", "", "presence-colors");
+    for (const [colorKey, colorLabel] of [
+      ["cyan", "统一青色"],
+      ["orange", "统一橙色"]
+    ]) {
+      const colorButtonElement = createButton(colorLabel, () => {
+        activeSensor.color = colorKey;
+        renderControls();
       });
-      colorBtn.dataset.color = color;
-      colorBtn.setAttribute("aria-pressed", String(sensor.color === color));
-      colors.append(colorBtn);
+      colorButtonElement.dataset.color = colorKey;
+      colorButtonElement.setAttribute("aria-pressed", String(activeSensor.color === colorKey));
+      colorButtonsElement.append(colorButtonElement);
     }
-    controlsAside.append(colors);
+    controlsPanelElement.append(colorButtonsElement);
     if (manageBindings) {
-      const modeSelect = el("select");
-      modeSelect.setAttribute("aria-label", "触发方式");
-      for (const [mode, label] of PRESENCE_TRIGGER_MODES) {
-        const option = el("option", label);
-        option.value = mode;
-        modeSelect.append(option);
+      const triggerModeSelectElement = createElement("select");
+      triggerModeSelectElement.setAttribute("aria-label", "触发方式");
+      for (const [modeValue, modeLabel] of PRESENCE_TRIGGER_MODES) {
+        const modeOptionElement = createElement("option", modeLabel);
+        modeOptionElement.value = modeValue;
+        triggerModeSelectElement.append(modeOptionElement);
       }
-      modeSelect.value = sensor.triggerMode || "auto";
-      modeSelect.addEventListener("change", () => {
-        flushInputs();
-        flushers = [];
-        sensor.triggerMode = modeSelect.value;
-        if (modeSelect.value === "equals") {
-          sensor.triggerValue ||= "on";
+      triggerModeSelectElement.value = activeSensor.triggerMode || "auto";
+      triggerModeSelectElement.addEventListener("change", () => {
+        flushFieldCollectors();
+        fieldCollectors = [];
+        activeSensor.triggerMode = triggerModeSelectElement.value;
+        if (triggerModeSelectElement.value === "equals") {
+          activeSensor.triggerValue ||= "on";
         }
-        if (modeSelect.value === "threshold") {
-          sensor.triggerThreshold ??= 0;
+        if (triggerModeSelectElement.value === "threshold") {
+          activeSensor.triggerThreshold ??= 0;
         }
-        if (presenceTriggerIsTimed(sensor) && !(sensor.displayDuration > 0)) {
-          sensor.displayDuration = 30;
+        if (presenceTriggerIsTimed(activeSensor) && !(activeSensor.displayDuration > 0)) {
+          activeSensor.displayDuration = 30;
         }
-        rebuildUi();
+        renderControls();
       });
-      addField("触发方式", modeSelect);
-      if (sensor.triggerMode === "threshold") {
-        sensor.triggerThreshold ??= 0;
+      appendField("触发方式", triggerModeSelectElement);
+      if (activeSensor.triggerMode === "threshold") {
+        activeSensor.triggerThreshold ??= 0;
         addNumberField("数值大于", "triggerThreshold", -1000000, 1000000, 0.1);
       }
-      if (sensor.triggerMode === "equals") {
-        const valueInput = el("input");
-        valueInput.value = sensor.triggerValue ?? "on";
-        valueInput.maxLength = 128;
-        valueInput.setAttribute("aria-label", "触发值");
-        const commitValue = () => {
-          if (valueInput.value.trim()) {
-            sensor.triggerValue = valueInput.value.trim().slice(0, 128);
+      if (activeSensor.triggerMode === "equals") {
+        const triggerValueInputElement = createElement("input");
+        triggerValueInputElement.value = activeSensor.triggerValue ?? "on";
+        triggerValueInputElement.maxLength = 128;
+        triggerValueInputElement.setAttribute("aria-label", "触发值");
+        const commitTriggerValue = () => {
+          if (triggerValueInputElement.value.trim()) {
+            activeSensor.triggerValue = triggerValueInputElement.value.trim().slice(0, 128);
           }
         };
-        flushers.push(commitValue);
-        valueInput.addEventListener("input", commitValue);
-        addField("触发值", valueInput);
+        fieldCollectors.push(commitTriggerValue);
+        triggerValueInputElement.addEventListener("input", commitTriggerValue);
+        appendField("触发值", triggerValueInputElement);
       }
     }
-    const timed = presenceTriggerIsTimed(sensor);
-    addNumberField("每次触发显示时长（秒）", "displayDuration", timed ? 1 : 0, 3600, 1);
-    controlsAside.append(el("p", timed ? "每次满足触发条件后显示，再次触发重新计时；到时隐藏。" : "0：随有人状态显示；其他值：到时隐藏，无人立即隐藏，下次触发重新计时。", "presence-note"));
+    const isTimedTrigger = presenceTriggerIsTimed(activeSensor);
+    addNumberField("每次触发显示时长（秒）", "displayDuration", isTimedTrigger ? 1 : 0, 3600, 1);
+    controlsPanelElement.append(
+      createElement(
+        "p",
+        isTimedTrigger
+          ? "每次满足触发条件后显示，再次触发重新计时；到时隐藏。"
+          : "0：随有人状态显示；其他值：到时隐藏，无人立即隐藏，下次触发重新计时。",
+        "presence-note"
+      )
+    );
     addNumberField("行走速度（米/秒）", "speed", 0.1, 2, 0.05);
     addNumberField("人物大小（%）", "size", 25, 300, 5, 100);
-    controlsAside.append(el("p", (timed ? "事件触发后沿路线走动；计时结束或离线时隐藏。" : "有人时沿路线循环走动；无人或离线时隐藏。") + "路线是展示动画，不代表实际人员位置。", "presence-note"));
-    const focusToggle = el("input");
-    focusToggle.type = "checkbox";
-    focusToggle.checked = sensor.clickToFocus === true;
-    focusToggle.setAttribute("aria-label", "点击模型聚焦");
-    focusToggle.addEventListener("change", () => {
-      sensor.clickToFocus = focusToggle.checked;
-      rebuildUi();
+    controlsPanelElement.append(
+      createElement(
+        "p",
+        (isTimedTrigger
+          ? "事件触发后沿路线走动；计时结束或离线时隐藏。"
+          : "有人时沿路线循环走动；无人或离线时隐藏。") + "路线是展示动画，不代表实际人员位置。",
+        "presence-note"
+      )
+    );
+    const clickToFocusInputElement = createElement("input");
+    clickToFocusInputElement.type = "checkbox";
+    clickToFocusInputElement.checked = activeSensor.clickToFocus === true;
+    clickToFocusInputElement.setAttribute("aria-label", "点击模型聚焦");
+    clickToFocusInputElement.addEventListener("change", () => {
+      activeSensor.clickToFocus = clickToFocusInputElement.checked;
+      renderControls();
     });
-    const focusField = addField("点击模型聚焦", focusToggle);
-    focusField.parentElement.className = "i3d-setting-toggle";
-    if (sensor.clickToFocus) {
-      sensor.hitPadding ??= 8;
+    const clickToFocusFieldElement = appendField("点击模型聚焦", clickToFocusInputElement);
+    clickToFocusFieldElement.parentElement.className = "i3d-setting-toggle";
+    if (activeSensor.clickToFocus) {
+      activeSensor.hitPadding ??= 8;
       addNumberField("触控范围扩展（px）", "hitPadding", 0, 80, 1);
-      const hitRangeToggle = el("input");
-      hitRangeToggle.type = "checkbox";
-      hitRangeToggle.checked = showHitRange;
-      hitRangeToggle.setAttribute("aria-label", "显示触控范围");
-      hitRangeToggle.addEventListener("change", () => {
-        showHitRange = hitRangeToggle.checked;
-        if (presented) {
-          focusCommand.focusCommand("presence-show-hit-range", "", showHitRange).catch(onLoadError);
+      const hitRangeInputElement = createElement("input");
+      hitRangeInputElement.type = "checkbox";
+      hitRangeInputElement.checked = isHitRangeVisible;
+      hitRangeInputElement.setAttribute("aria-label", "显示触控范围");
+      hitRangeInputElement.addEventListener("change", () => {
+        isHitRangeVisible = hitRangeInputElement.checked;
+        if (isPreviewReady) {
+          editorRuntime
+            .focusCommand("presence-show-hit-range", "", isHitRangeVisible)
+            .catch(showError);
         }
       });
-      addField("显示触控范围", hitRangeToggle).parentElement.className = "i3d-setting-toggle";
-      controlsAside.append(el("p", "在模型周围扩展点击范围，不改变人物大小。0 表示只点击模型本身。", "presence-note"));
-      const focusCameraBtn = button(sensor.focusCamera ? "调整聚焦视角" : "设置聚焦视角", () => openPresenceFocusEditor({
-        component,
-        properties: security,
-        item: sensor,
-        panelDocument,
-        onSave: focusCamera => {
-          sensor.focusCamera = focusCamera;
-          rebuildUi();
-        }
-      }));
-      focusCameraBtn.dataset.presenceFocus = "true";
-      focusCameraBtn.disabled = !closedRoutes.has(sensor.id) || !validPresenceRoute(sensor.route);
-      controlsAside.append(focusCameraBtn);
-      if (sensor.focusCamera) {
-        controlsAside.append(button("恢复自动聚焦", () => {
-          delete sensor.focusCamera;
-          rebuildUi();
-        }));
+      appendField("显示触控范围", hitRangeInputElement).parentElement.className =
+        "i3d-setting-toggle";
+      controlsPanelElement.append(
+        createElement(
+          "p",
+          "在模型周围扩展点击范围，不改变人物大小。0 表示只点击模型本身。",
+          "presence-note"
+        )
+      );
+      const focusCameraButton = createButton(
+        activeSensor.focusCamera ? "调整聚焦视角" : "设置聚焦视角",
+        () =>
+          openPresenceFocusEditor({
+            component: component,
+            properties: draftProperties,
+            item: activeSensor,
+            panelDocument: panelDocument,
+            onSave: focusCamera => {
+              activeSensor.focusCamera = focusCamera;
+              renderControls();
+            }
+          })
+      );
+      focusCameraButton.dataset.presenceFocus = "true";
+      focusCameraButton.disabled =
+        !closedRouteSensorIds.has(activeSensor.id) || !validPresenceRoute(activeSensor.route);
+      controlsPanelElement.append(focusCameraButton);
+      if (activeSensor.focusCamera) {
+        controlsPanelElement.append(
+          createButton("恢复自动聚焦", () => {
+            delete activeSensor.focusCamera;
+            renderControls();
+          })
+        );
       }
     }
     if (manageBindings) {
-      controlsAside.append(button("删除此传感器", () => {
-        presenceSensors.splice(presenceSensors.indexOf(sensor), 1);
-        closedRoutes.delete(sensor.id);
-        selected = presenceSensors[0] || null;
-        rebuildUi();
-      }));
+      controlsPanelElement.append(
+        createButton("删除此传感器", () => {
+          sensorBindings.splice(sensorBindings.indexOf(activeSensor), 1);
+          closedRouteSensorIds.delete(activeSensor.id);
+          selectedSensor = sensorBindings[0] || null;
+          renderControls();
+        })
+      );
     }
-    recomputeBox();
-    syncRuntime();
+    fitPlanBox();
+    syncPreview();
   }
-  const clientToPlan = event => {
-    const point = planSvg.createSVGPoint();
-    point.x = event.clientX;
-    point.y = event.clientY;
-    return point.matrixTransform(planSvg.getScreenCTM().inverse());
+  const toSvgPoint = pointerEvent => {
+    const localPoint = routeSvgElement.createSVGPoint();
+    localPoint.x = pointerEvent.clientX;
+    localPoint.y = pointerEvent.clientY;
+    return localPoint.matrixTransform(routeSvgElement.getScreenCTM().inverse());
   };
-  planSvg.addEventListener("pointerdown", event => {
-    if (viewMode !== "plan" || event.button !== 0 || !selected || !floors.some(floor => floor.id === selected.floorId)) {
+  routeSvgElement.addEventListener("pointerdown", pointerDownEvent => {
+    if (
+      viewMode !== "plan" ||
+      pointerDownEvent.button !== 0 ||
+      !selectedSensor ||
+      !floors.some(originatingFloorProbe => originatingFloorProbe.id === selectedSensor.floorId)
+    ) {
       return;
     }
-    const pointAttr = event.target.getAttribute("data-point");
-    event.preventDefault();
-    planSvg.setPointerCapture(event.pointerId);
-    if (!closedRoutes.has(selected.id) && snapsToPresenceStart(selected.route, clientToPlan(event), planSvg.getScreenCTM()?.a || 1)) {
-      closedRoutes.add(selected.id);
-      pointerPlanPoint = null;
-      status.textContent = "路径已吸附闭合，可以切换 3D 预览大小和行走效果。";
-      redrawPlan();
-      syncRuntime();
+    const pointIndexAttribute = pointerDownEvent.target.getAttribute("data-point");
+    pointerDownEvent.preventDefault();
+    routeSvgElement.setPointerCapture(pointerDownEvent.pointerId);
+    if (
+      !closedRouteSensorIds.has(selectedSensor.id) &&
+      snapsToPresenceStart(
+        selectedSensor.route,
+        toSvgPoint(pointerDownEvent),
+        routeSvgElement.getScreenCTM()?.a || 1
+      )
+    ) {
+      closedRouteSensorIds.add(selectedSensor.id);
+      hoverPoint = null;
+      statusElement.textContent = "路径已吸附闭合，可以切换 3D 预览大小和行走效果。";
+      renderRoutePlan();
+      syncPreview();
       return;
     }
-    if (pointAttr !== null) {
-      if (Number(pointAttr) === 0 && !closedRoutes.has(selected.id) && validPresenceRoute(selected.route)) {
-        closedRoutes.add(selected.id);
-        redrawPlan();
+    if (pointIndexAttribute !== null) {
+      if (
+        Number(pointIndexAttribute) === 0 &&
+        !closedRouteSensorIds.has(selectedSensor.id) &&
+        validPresenceRoute(selectedSensor.route)
+      ) {
+        closedRouteSensorIds.add(selectedSensor.id);
+        renderRoutePlan();
         return;
       }
-      dragPoint = {
-        index: Number(pointAttr)
+      draggedPoint = {
+        index: Number(pointIndexAttribute)
       };
-    } else if (!closedRoutes.has(selected.id) && selected.route.length < 128) {
-      const point = clientToPlan(event);
-      selected.route.push({
-        x: point.x,
-        y: point.y
+    } else if (!closedRouteSensorIds.has(selectedSensor.id) && selectedSensor.route.length < 128) {
+      const addedRoutePoint = toSvgPoint(pointerDownEvent);
+      selectedSensor.route.push({
+        x: addedRoutePoint.x,
+        y: addedRoutePoint.y
       });
-      redrawPlan();
+      renderRoutePlan();
     }
   });
-  planSvg.addEventListener("pointermove", event => {
+  routeSvgElement.addEventListener("pointermove", pointerMoveEvent => {
     if (viewMode !== "plan") {
       return;
     }
-    const point = clientToPlan(event);
-    if (!dragPoint) {
-      if (selected && !closedRoutes.has(selected.id)) {
-        pointerPlanPoint = point;
-        redrawPlan(false);
+    const pointerSvgPoint = toSvgPoint(pointerMoveEvent);
+    if (!draggedPoint) {
+      if (selectedSensor && !closedRouteSensorIds.has(selectedSensor.id)) {
+        hoverPoint = pointerSvgPoint;
+        renderRoutePlan(false);
       }
       return;
     }
-    selected.route[dragPoint.index] = {
-      x: point.x,
-      y: point.y
+    selectedSensor.route[draggedPoint.index] = {
+      x: pointerSvgPoint.x,
+      y: pointerSvgPoint.y
     };
-    redrawPlan(false);
+    renderRoutePlan(false);
   });
-  planSvg.addEventListener("pointerleave", () => {
-    pointerPlanPoint = null;
-    if (!dragPoint) {
-      redrawPlan(false);
+  routeSvgElement.addEventListener("pointerleave", () => {
+    hoverPoint = null;
+    if (!draggedPoint) {
+      renderRoutePlan(false);
     }
   });
-  const endDrag = () => {
-    dragPoint = null;
-    syncRuntime();
+  const handlePointerEnd = () => {
+    draggedPoint = null;
+    syncPreview();
   };
   for (const eventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
-    planSvg.addEventListener(eventName, endDrag);
+    routeSvgElement.addEventListener(eventName, handlePointerEnd);
   }
-  const resizeObserver = new ResizeObserver(redrawPlan);
-  resizeObserver.observe(planSvg);
-  dialog.addEventListener("cancel", event => {
-    event.preventDefault();
-    close();
+  const routeResizeObserver = new ResizeObserver(renderRoutePlan);
+  routeResizeObserver.observe(routeSvgElement);
+  dialogElement.addEventListener("cancel", cancelEvent => {
+    cancelEvent.preventDefault();
+    closeEditor();
   });
-  function tickPreview(now) {
-    if (!closed && !doc.hidden) {
-      if (preview && selected) {
-        const key = selected.character + ":" + selected.color;
-        if (previewKey !== key) {
-          disposeWalker(preview.root);
-          preview.root = createWalker(preview.THREE, selected.color === "orange" ? 15376452 : 5421233, selected.character);
-          preview.scene.add(preview.root);
-          previewKey = key;
+  function animateCharacterPreview(timestamp) {
+    if (!isClosed && !editorDocument.hidden) {
+      if (characterPreview && selectedSensor) {
+        const previewKey = selectedSensor.character + ":" + selectedSensor.color;
+        if (previewSignature !== previewKey) {
+          disposeWalker(characterPreview.root);
+          characterPreview.root = createWalker(
+            characterPreview.THREE,
+            selectedSensor.color === "orange" ? 15376452 : 5421233,
+            selectedSensor.character
+          );
+          characterPreview.scene.add(characterPreview.root);
+          previewSignature = previewKey;
         }
-        const dt = lastFrameTime ? Math.min(0.1, (now - lastFrameTime) / 1000) : 0;
-        lastFrameTime = now;
-        animTime += dt;
-        walkPhase += dt * selected.speed * 12;
-        animateWalker(preview.root, walkPhase, 1, animTime);
-        preview.renderer.render(preview.scene, preview.camera);
+        const frameDeltaSeconds = lastFrameTimeMs
+          ? Math.min(0.1, (timestamp - lastFrameTimeMs) / 1000)
+          : 0;
+        lastFrameTimeMs = timestamp;
+        elapsedSeconds += frameDeltaSeconds;
+        walkDistance += frameDeltaSeconds * selectedSensor.speed * 12;
+        animateWalker(characterPreview.root, walkDistance, 1, elapsedSeconds);
+        characterPreview.renderer.render(characterPreview.scene, characterPreview.camera);
       }
-      rafId = requestAnimationFrame(tickPreview);
+      animationFrameId = requestAnimationFrame(animateCharacterPreview);
     }
   }
-  function onVisibilityChange() {
-    cancelAnimationFrame(rafId);
-    lastFrameTime = 0;
-    if (!doc.hidden && !closed) {
-      rafId = requestAnimationFrame(tickPreview);
+  function handleVisibilityChange() {
+    cancelAnimationFrame(animationFrameId);
+    lastFrameTimeMs = 0;
+    if (!editorDocument.hidden && !isClosed) {
+      animationFrameId = requestAnimationFrame(animateCharacterPreview);
     }
   }
-  doc.addEventListener("visibilitychange", onVisibilityChange);
-  dialog.showModal();
-  rebuildUi();
+  editorDocument.addEventListener("visibilitychange", handleVisibilityChange);
+  dialogElement.showModal();
+  renderControls();
   try {
-    const THREE = await import("/bridge-static/vendor/three/0.186.0/three.module.min.js");
-    if (closed) {
+    const threeModule = await import("/bridge-static/vendor/three/0.182.0/three.module.min.js");
+    if (isClosed) {
       return;
     }
-    const renderer = new THREE.WebGLRenderer({
+    const previewRenderer = new threeModule.WebGLRenderer({
       alpha: true,
       antialias: true
     });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.setSize(240, 160);
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(32, 1.5, 0.1, 20);
-    camera.position.set(2, 1.7, 3);
-    camera.lookAt(0, 0.7, 0);
-    scene.add(new THREE.HemisphereLight(16777215, 7831948, 2.5));
-    const keyLight = new THREE.DirectionalLight(16772824, 3);
+    previewRenderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    previewRenderer.setSize(240, 160);
+    const previewScene = new threeModule.Scene();
+    const previewCamera = new threeModule.PerspectiveCamera(32, 1.5, 0.1, 20);
+    previewCamera.position.set(2, 1.7, 3);
+    previewCamera.lookAt(0, 0.7, 0);
+    previewScene.add(new threeModule.HemisphereLight(16777215, 7831948, 2.5));
+    const keyLight = new threeModule.DirectionalLight(16772824, 3);
     keyLight.position.set(3, 5, 3);
-    scene.add(keyLight);
-    const root = createWalker(THREE);
-    scene.add(root);
-    preview = {
-      THREE,
-      renderer,
-      scene,
-      camera,
-      root
+    previewScene.add(keyLight);
+    const previewWalker = createWalker(threeModule);
+    previewScene.add(previewWalker);
+    characterPreview = {
+      THREE: threeModule,
+      renderer: previewRenderer,
+      scene: previewScene,
+      camera: previewCamera,
+      root: previewWalker
     };
-    controlsAside.querySelector(".presence-character-preview")?.append(renderer.domElement);
-    onVisibilityChange();
+    controlsPanelElement
+      .querySelector(".presence-character-preview")
+      ?.append(previewRenderer.domElement);
+    handleVisibilityChange();
   } catch {}
   return {
-    close
+    close: closeEditor
   };
 }

@@ -1,213 +1,249 @@
-import { televisionState, televisionTime, televisionPower, televisionMediaControl } from "./television-state.js";
-export function createTelevisionPanel({
-  onControl = async () => {}
-} = {}) {
-  const createEl = (tag, className) => {
-    const node = document.createElement(tag);
-    node.className = className;
-    return node;
+import {
+  televisionState,
+  televisionTime,
+  televisionPower,
+  televisionMediaControl
+} from "./television-state.js?v=20260914-tv-power-poster-v1";
+export function createTelevisionPanel({ onControl: onControl = async () => {} } = {}) {
+  const createElement = (tagName, className) => {
+    const element = document.createElement(tagName);
+    element.className = className;
+    return element;
   };
-  const root = createEl("div", "i3d-television-panel");
-  const heading = createEl("div", "i3d-nas-heading");
-  const titleEl = createEl("h3", "");
-  const statusEl = createEl("span", "i3d-tv-status");
-  const content = createEl("div", "i3d-tv-content");
-  const artworkEl = createEl("img", "i3d-tv-artwork");
-  const details = createEl("div", "i3d-tv-details");
-  const mediaTitleEl = createEl("strong", "");
-  const mediaMetaEl = createEl("span", "");
-  const progressEl = createEl("progress", "");
-  const timeEl = createEl("span", "i3d-tv-time");
-  const powerOnButton = createEl("button", "i3d-tv-power");
-  const powerOffButton = createEl("button", "i3d-tv-power");
-  const errorEl = createEl("p", "i3d-tv-error");
+  const rootElement = createElement("div", "i3d-television-panel");
+  const headingElement = createElement("div", "i3d-nas-heading");
+  const titleElement = createElement("h3", "");
+  const statusElement = createElement("span", "i3d-tv-status");
+  const contentElement = createElement("div", "i3d-tv-content");
+  const artworkElement = createElement("img", "i3d-tv-artwork");
+  const detailsElement = createElement("div", "i3d-tv-details");
+  const mediaTitleElement = createElement("strong", "");
+  const mediaMetaElement = createElement("span", "");
+  const progressElement = createElement("progress", "");
+  const timeElement = createElement("span", "i3d-tv-time");
+  const powerOnButton = createElement("button", "i3d-tv-power");
+  const powerOffButton = createElement("button", "i3d-tv-power");
+  const errorElement = createElement("p", "i3d-tv-error");
   powerOnButton.type = powerOffButton.type = "button";
-  errorEl.setAttribute("role", "status");
-  const actions = createEl("div", "i3d-tv-actions");
-  actions.setAttribute("role", "group");
-  actions.setAttribute("aria-label", "电视播放控制");
+  errorElement.setAttribute("role", "status");
+  const actionsElement = createElement("div", "i3d-tv-actions");
+  actionsElement.setAttribute("role", "group");
+  actionsElement.setAttribute("aria-label", "电视播放控制");
   const mediaButtons = ["previous", "play", "next"].map(action => {
-    const button = createEl("button", "");
-    button.type = "button";
-    button.addEventListener("click", async () => {
-      if (!current || disposed || current.editing || mediaBusy || pendingPower !== null) {
+    const createdButton = createElement("button", "");
+    createdButton.type = "button";
+    createdButton.addEventListener("click", async () => {
+      if (!viewModel || isDisposed || viewModel.editing || isBusy || pendingPower !== null) {
         return;
       }
-      const control = televisionMediaControl(current.item, current.states, action);
-      if (!control.enabled) {
+      const mediaControl = televisionMediaControl(viewModel.item, viewModel.states, action);
+      if (!mediaControl.enabled) {
         return;
       }
-      const requestToken = updateToken;
-      mediaBusy = true;
-      errorEl.textContent = "";
+      const instanceAtSend = instanceId;
+      isBusy = true;
+      errorElement.textContent = "";
       render();
       try {
-        await onControl(control.command);
+        await onControl(mediaControl.command);
       } catch (error) {
-        if (!disposed && requestToken === updateToken) {
-          errorEl.textContent = error?.message || "播放控制失败，请重试。";
+        if (!isDisposed && instanceAtSend === instanceId) {
+          errorElement.textContent = error?.message || "播放控制失败，请重试。";
         }
       } finally {
-        if (!disposed && requestToken === updateToken) {
-          mediaBusy = false;
+        if (!isDisposed && instanceAtSend === instanceId) {
+          isBusy = false;
           render();
         }
       }
     });
-    actions.append(button);
+    actionsElement.append(createdButton);
     return {
-      action,
-      button
+      action: action,
+      button: createdButton
     };
   });
-  artworkEl.hidden = true;
-  artworkEl.alt = "正在播放的内容封面";
-  artworkEl.addEventListener("error", () => {
-    artworkEl.hidden = true;
+  artworkElement.hidden = true;
+  artworkElement.alt = "正在播放的内容封面";
+  artworkElement.addEventListener("error", () => {
+    artworkElement.hidden = true;
   });
-  heading.append(titleEl, statusEl, powerOnButton, powerOffButton);
-  details.append(mediaTitleEl, mediaMetaEl, progressEl, timeEl);
-  content.append(artworkEl, details);
-  root.append(heading, content, actions, errorEl);
-  root.hidden = true;
-  let current;
-  let artworkSrc = "";
-  let progressTimer = null;
+  headingElement.append(titleElement, statusElement, powerOnButton, powerOffButton);
+  detailsElement.append(mediaTitleElement, mediaMetaElement, progressElement, timeElement);
+  contentElement.append(artworkElement, detailsElement);
+  rootElement.append(headingElement, contentElement, actionsElement, errorElement);
+  rootElement.hidden = true;
+  let viewModel;
+  let artworkUrl = "";
+  let progressTimerId = null;
   let pendingPower = null;
-  let powerTimeout = null;
-  let updateToken = 0;
-  let disposed = false;
-  let mediaBusy = false;
-  let powerCommandSent = false;
+  let powerTimeoutId = null;
+  let instanceId = 0;
+  let isDisposed = false;
+  let isBusy = false;
+  let powerConfirmed = false;
   function clearPendingPower() {
-    if (powerTimeout !== null) {
-      clearTimeout(powerTimeout);
+    if (powerTimeoutId !== null) {
+      clearTimeout(powerTimeoutId);
     }
-    powerTimeout = null;
+    powerTimeoutId = null;
     pendingPower = null;
-    powerCommandSent = false;
+    powerConfirmed = false;
   }
-  async function requestPower(wantOn) {
-    if (!current || disposed || current.editing || mediaBusy || pendingPower !== null) {
+  async function sendPower(powerOn) {
+    if (!viewModel || isDisposed || viewModel.editing || isBusy || pendingPower !== null) {
       return;
     }
-    const power = televisionPower(current.item, current.states, wantOn);
-    if (!power.available || !power.supported) {
+    const powerControl = televisionPower(viewModel.item, viewModel.states, powerOn);
+    if (!powerControl.available || !powerControl.supported) {
       return;
     }
-    const requestToken = updateToken;
-    pendingPower = wantOn;
-    powerCommandSent = false;
-    errorEl.textContent = "";
+    const powerInstanceAtSend = instanceId;
+    pendingPower = powerOn;
+    powerConfirmed = false;
+    errorElement.textContent = "";
     render();
-    powerTimeout = setTimeout(() => {
-      if (!disposed && updateToken === requestToken) {
+    powerTimeoutId = setTimeout(() => {
+      if (!isDisposed && instanceId === powerInstanceAtSend) {
         clearPendingPower();
         render();
       }
     }, 14000);
     try {
-      await onControl(power.command);
-      if (!disposed && requestToken === updateToken) {
-        powerCommandSent = true;
+      await onControl(powerControl.command);
+      if (!isDisposed && powerInstanceAtSend === instanceId) {
+        powerConfirmed = true;
         render();
       }
-    } catch (error) {
-      if (!disposed && requestToken === updateToken) {
+    } catch (powerError) {
+      if (!isDisposed && powerInstanceAtSend === instanceId) {
         clearPendingPower();
-        errorEl.textContent = error?.message || "开关机失败，请重试。";
+        errorElement.textContent = powerError?.message || "开关机失败，请重试。";
         render();
       }
     }
   }
-  powerOnButton.addEventListener("click", () => requestPower(true));
-  powerOffButton.addEventListener("click", () => requestPower(false));
+  powerOnButton.addEventListener("click", () => sendPower(true));
+  powerOffButton.addEventListener("click", () => sendPower(false));
   function render() {
-    if (!current) {
+    if (!viewModel) {
       return;
     }
-    const media = televisionState(current.item, current.states);
-    const power = televisionPower(current.item, current.states);
-    if (powerCommandSent && pendingPower !== null && pendingPower === power.on && power.available) {
+    const state = televisionState(viewModel.item, viewModel.states);
+    const powerState = televisionPower(viewModel.item, viewModel.states);
+    if (
+      powerConfirmed &&
+      pendingPower !== null &&
+      pendingPower === powerState.on &&
+      powerState.available
+    ) {
       clearPendingPower();
     }
-    for (const [button, wantOn] of [[powerOnButton, true], [powerOffButton, false]]) {
-      const capability = televisionPower(current.item, current.states, wantOn);
-      button.textContent = pendingPower === wantOn ? wantOn ? "开机中…" : "关机中…" : wantOn ? "开机" : "关机";
-      button.setAttribute("aria-label", wantOn ? "开启电视" : "关闭电视");
-      button.disabled = !!current.editing || mediaBusy || pendingPower !== null || !capability.available || !capability.supported;
-      button.title = current.editing ? "编辑预览不可控制设备" : capability.reason;
+    for (const [powerButton, desiredOn] of [
+      [powerOnButton, true],
+      [powerOffButton, false]
+    ]) {
+      const buttonControl = televisionPower(viewModel.item, viewModel.states, desiredOn);
+      powerButton.textContent =
+        pendingPower === desiredOn
+          ? desiredOn
+            ? "开机中…"
+            : "关机中…"
+          : desiredOn
+            ? "开机"
+            : "关机";
+      powerButton.setAttribute("aria-label", desiredOn ? "开启电视" : "关闭电视");
+      powerButton.disabled =
+        !!viewModel.editing ||
+        isBusy ||
+        pendingPower !== null ||
+        !buttonControl.available ||
+        !buttonControl.supported;
+      powerButton.title = viewModel.editing ? "编辑预览不可控制设备" : buttonControl.reason;
     }
-    root.setAttribute("aria-busy", String(pendingPower !== null));
-    for (const {
-      action,
-      button
-    } of mediaButtons) {
-      const control = televisionMediaControl(current.item, current.states, action);
-      button.textContent = action === "previous" ? "上一集" : action === "next" ? "下一集" : media.playing ? "暂停" : "播放";
-      button.setAttribute("aria-label", button.textContent);
-      button.disabled = !!current.editing || mediaBusy || pendingPower !== null || !control.enabled;
-      button.title = control.enabled ? "" : "当前设备状态或播放器不支持此操作";
+    rootElement.setAttribute("aria-busy", String(pendingPower !== null));
+    for (const { action: mediaAction, button: mediaButton } of mediaButtons) {
+      const mediaControlState = televisionMediaControl(
+        viewModel.item,
+        viewModel.states,
+        mediaAction
+      );
+      mediaButton.textContent =
+        mediaAction === "previous"
+          ? "上一集"
+          : mediaAction === "next"
+            ? "下一集"
+            : state.playing
+              ? "暂停"
+              : "播放";
+      mediaButton.setAttribute("aria-label", mediaButton.textContent);
+      mediaButton.disabled =
+        !!viewModel.editing || isBusy || pendingPower !== null || !mediaControlState.enabled;
+      mediaButton.title = mediaControlState.enabled ? "" : "当前设备状态或播放器不支持此操作";
     }
-    titleEl.textContent = media.name;
-    statusEl.textContent = media.status;
-    mediaTitleEl.textContent = media.on ? media.title : media.status;
-    mediaMetaEl.textContent = [media.app, media.artist].filter(Boolean).join(" · ");
-    mediaMetaEl.hidden = !media.on || media.idle || !mediaMetaEl.textContent;
-    if (media.artwork !== artworkSrc) {
-      artworkSrc = media.artwork;
-      artworkEl.hidden = !artworkSrc;
-      if (artworkSrc) {
-        artworkEl.hidden = true;
-        artworkEl.onload = () => {
-          if (current && artworkSrc === media.artwork) {
-            artworkEl.hidden = false;
+    titleElement.textContent = state.name;
+    statusElement.textContent = state.status;
+    mediaTitleElement.textContent = state.on ? state.title : state.status;
+    mediaMetaElement.textContent = [state.app, state.artist].filter(Boolean).join(" · ") || "—";
+    mediaMetaElement.hidden = false;
+    if (state.artwork !== artworkUrl) {
+      artworkUrl = state.artwork;
+      artworkElement.hidden = !artworkUrl;
+      if (artworkUrl) {
+        artworkElement.hidden = true;
+        artworkElement.onload = () => {
+          if (viewModel && artworkUrl === state.artwork) {
+            artworkElement.hidden = false;
           }
         };
-        artworkEl.src = artworkSrc;
+        artworkElement.src = artworkUrl;
       } else {
-        artworkEl.removeAttribute("src");
+        artworkElement.removeAttribute("src");
       }
     }
-    progressEl.hidden = timeEl.hidden = !media.on || media.idle || media.duration === null || media.position === null;
-    progressEl.max = media.duration || 1;
-    progressEl.value = media.position || 0;
-    timeEl.textContent = televisionTime(media.position) + " / " + televisionTime(media.duration);
-    if (!media.playing && progressTimer !== null) {
-      clearInterval(progressTimer);
-      progressTimer = null;
+    progressElement.hidden = timeElement.hidden = false;
+    progressElement.max = state.duration || 1;
+    progressElement.value = state.position || 0;
+    timeElement.textContent =
+      televisionTime(state.position) + " / " + televisionTime(state.duration);
+    if (!state.playing && progressTimerId !== null) {
+      clearInterval(progressTimerId);
+      progressTimerId = null;
     }
   }
   return {
-    root,
-    update(item) {
-      if (current?.item.id !== item.item.id) {
-        updateToken++;
-        mediaBusy = false;
+    root: rootElement,
+    update(nextViewModel) {
+      if (viewModel?.item.id !== nextViewModel.item.id) {
+        instanceId++;
+        isBusy = false;
         clearPendingPower();
-        errorEl.textContent = "";
+        errorElement.textContent = "";
       }
-      current = item;
+      viewModel = nextViewModel;
       render();
-      if (televisionState(item.item, item.states).playing && progressTimer === null) {
-        progressTimer = setInterval(render, 1000);
+      if (
+        televisionState(nextViewModel.item, nextViewModel.states).playing &&
+        progressTimerId === null
+      ) {
+        progressTimerId = setInterval(render, 1000);
       }
     },
     hide() {
-      root.hidden = true;
-      if (progressTimer !== null) {
-        clearInterval(progressTimer);
+      rootElement.hidden = true;
+      if (progressTimerId !== null) {
+        clearInterval(progressTimerId);
       }
-      progressTimer = null;
+      progressTimerId = null;
     },
     dispose() {
-      disposed = true;
-      updateToken++;
+      isDisposed = true;
+      instanceId++;
       clearPendingPower();
       this.hide();
-      current = null;
-      artworkEl.removeAttribute("src");
-      root.remove();
+      viewModel = null;
+      artworkElement.removeAttribute("src");
+      rootElement.remove();
     }
   };
 }

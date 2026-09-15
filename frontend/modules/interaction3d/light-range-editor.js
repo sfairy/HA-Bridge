@@ -1,1343 +1,1869 @@
-const SVG_NS = "http://www.w3.org/2000/svg";
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-const toFiniteNumber = (input, fallback = 0) => Number.isFinite(Number(input)) ? Number(input) : fallback;
-const cloneJson = data => JSON.parse(JSON.stringify(data || {}));
-const round = num => Math.round(num * 100) / 100;
-const makeRegionKey = (floorId, itemId) => JSON.stringify([String(floorId), String(itemId)]);
-export function resizeRegionDimensions(baseDims, nextWidth, nextDepth, handle, keepAspect = false) {
-  if (["n", "s"].includes(handle)) {
-    nextWidth = baseDims.width;
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+const clampValue = (rawValue, lowerBound, upperBound) =>
+  Math.max(lowerBound, Math.min(upperBound, rawValue));
+const toFiniteNumber = (candidateValue, fallbackNumber = 0) =>
+  Number.isFinite(Number(candidateValue)) ? Number(candidateValue) : fallbackNumber;
+const deepCloneObject = sourceObject => JSON.parse(JSON.stringify(sourceObject || {}));
+const roundToHundredth = numericInput => Math.round(numericInput * 100) / 100;
+const toRegionKey = (areaIdPart, lightIdPart) =>
+  JSON.stringify([String(areaIdPart), String(lightIdPart)]);
+export function resizeRegionDimensions(
+  sourceRegion,
+  requestedWidth,
+  requestedDepth,
+  handleName,
+  shouldKeepAspect = false
+) {
+  if (["n", "s"].includes(handleName)) {
+    requestedWidth = sourceRegion.width;
   }
-  if (["w", "e"].includes(handle)) {
-    nextDepth = baseDims.depth;
+  if (["w", "e"].includes(handleName)) {
+    requestedDepth = sourceRegion.depth;
   }
-  if (keepAspect) {
-    const widthScale = nextWidth / baseDims.width;
-    const depthScale = nextDepth / baseDims.depth;
-    let uniformScale = ["w", "e"].includes(handle) ? widthScale : ["n", "s"].includes(handle) ? depthScale : Math.abs(widthScale - 1) >= Math.abs(depthScale - 1) ? widthScale : depthScale;
-    uniformScale = clamp(uniformScale, Math.max(0.5 / baseDims.width, 0.5 / baseDims.depth), Math.min(20 / baseDims.width, 20 / baseDims.depth));
+  if (shouldKeepAspect) {
+    const widthRatio = requestedWidth / sourceRegion.width;
+    const depthRatio = requestedDepth / sourceRegion.depth;
+    let uniformScale = ["w", "e"].includes(handleName)
+      ? widthRatio
+      : ["n", "s"].includes(handleName)
+        ? depthRatio
+        : Math.abs(widthRatio - 1) >= Math.abs(depthRatio - 1)
+          ? widthRatio
+          : depthRatio;
+    uniformScale = clampValue(
+      uniformScale,
+      Math.max(0.5 / sourceRegion.width, 0.5 / sourceRegion.depth),
+      Math.min(20 / sourceRegion.width, 20 / sourceRegion.depth)
+    );
     return {
-      width: round(baseDims.width * uniformScale),
-      depth: round(baseDims.depth * uniformScale)
+      width: roundToHundredth(sourceRegion.width * uniformScale),
+      depth: roundToHundredth(sourceRegion.depth * uniformScale)
     };
   }
   return {
-    width: round(clamp(nextWidth, 0.5, 20)),
-    depth: round(clamp(nextDepth, 0.5, 20))
+    width: roundToHundredth(clampValue(requestedWidth, 0.5, 20)),
+    depth: roundToHundredth(clampValue(requestedDepth, 0.5, 20))
   };
 }
-export function regionHeightPatch(current, field, value) {
-  const patch = {
+export function regionHeightPatch(regionDescriptor, changedField, fieldValue) {
+  const heightPatch = {
     heightAbove: undefined,
     heightBelow: undefined,
-    heightMin: current.heightMin === undefined ? undefined : clamp(current.heightMin, 0, 20),
-    heightMax: current.heightMax === undefined ? undefined : clamp(current.heightMax, 0, 20),
-    [field]: value
+    heightMin:
+      regionDescriptor.heightMin === undefined
+        ? undefined
+        : clampValue(regionDescriptor.heightMin, 0, 20),
+    heightMax:
+      regionDescriptor.heightMax === undefined
+        ? undefined
+        : clampValue(regionDescriptor.heightMax, 0, 20),
+    [changedField]: fieldValue
   };
-  if (patch.heightMin !== undefined && patch.heightMax !== undefined && patch.heightMin > patch.heightMax) {
-    patch[field === "heightMin" ? "heightMax" : "heightMin"] = value;
+  if (
+    heightPatch.heightMin !== undefined &&
+    heightPatch.heightMax !== undefined &&
+    heightPatch.heightMin > heightPatch.heightMax
+  ) {
+    heightPatch[changedField === "heightMin" ? "heightMax" : "heightMin"] = fieldValue;
   }
-  return patch;
+  return heightPatch;
 }
-export function mountRegionRangeEditor(host, {
-  getConfig = () => ({}),
-  onChange = () => {},
-  onClose = () => {},
-  wake = () => {},
-  standalone = false
-} = {}) {
-  const doc = host.container.ownerDocument;
-  const win = doc.defaultView;
-  const THREE = host.THREE;
-  const editorEl = doc.createElement("section");
-  editorEl.className = "plan2-range-editor";
-  editorEl.dataset.testid = "range-editor";
-  editorEl.hidden = true;
-  editorEl.setAttribute("aria-label", "平面光区编辑");
-  editorEl.innerHTML = "\n    <svg aria-label=\"灯具与照射范围\" role=\"group\"></svg>\n    <header class=\"p2r-top\"><div class=\"p2r-title\">俯视范围编辑 · 拖动边角调整<small>拖动边角调整范围，按住 Shift 等比例缩放</small></div><span class=\"p2r-compact-caption\">自由拖动 · Shift 等比</span></header>\n    <div class=\"p2r-panel\">\n      <h3>照射范围</h3>\n      <div class=\"p2r-view-switch\" role=\"group\" aria-label=\"编辑视图\">\n        <button type=\"button\" data-action=\"view-plan\" aria-pressed=\"true\">平面编辑</button>\n        <button type=\"button\" data-action=\"view-3d\" aria-pressed=\"false\">高度预览</button>\n      </div>\n      <div class=\"p2r-selectors\">\n        <label class=\"p2r-field\">楼层<select data-field=\"floor\" aria-label=\"楼层\"></select></label>\n        <label class=\"p2r-field\">灯具<select data-field=\"fixture\" aria-label=\"灯具\"></select></label>\n      </div>\n      <div class=\"p2r-grid\">\n        <label class=\"p2r-field p2r-shape\">光区形状<select data-field=\"shape\" aria-label=\"光区形状\"><option value=\"circle\">圆形</option><option value=\"square\">方形</option></select></label>\n        <label class=\"p2r-field\"><span data-width-label>宽度（米）</span><input data-field=\"width\" aria-label=\"宽度（米）\" type=\"number\" min=\"0.5\" max=\"20\" step=\"0.1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field\"><span data-depth-label>深度（米）</span><input data-field=\"depth\" aria-label=\"深度（米）\" type=\"number\" min=\"0.5\" max=\"20\" step=\"0.1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field p2r-rotation\">旋转（度）<input data-field=\"rotation\" aria-label=\"旋转（度）\" type=\"number\" min=\"-180\" max=\"180\" step=\"1\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field p2r-soft-field\">边缘柔和度<span class=\"p2r-softness\"><input data-field=\"softness\" aria-label=\"边缘柔和度\" type=\"range\" min=\"5\" max=\"100\" step=\"1\"><output data-soft-value>35%</output></span></label>\n      </div>\n      <h3>离地照明范围</h3>\n      <div class=\"p2r-grid\">\n        <label class=\"p2r-field\">最低照到（米）<input data-field=\"heightMin\" aria-label=\"最低照到（米）\" type=\"number\" min=\"0\" max=\"20\" step=\"0.05\" placeholder=\"自动\" inputmode=\"decimal\"></label>\n        <label class=\"p2r-field\">最高照到（米）<input data-field=\"heightMax\" aria-label=\"最高照到（米）\" type=\"number\" min=\"0\" max=\"20\" step=\"0.05\" placeholder=\"自动\" inputmode=\"decimal\"></label>\n      </div>\n      <p class=\"p2r-status\" data-height-summary></p>\n      <p class=\"p2r-status\">从本层地面算起，0 米是地面；留空自动。切到“高度预览”可边调高度边看效果。</p>\n      <div class=\"p2r-options\">\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"moveCenter\" type=\"checkbox\">允许移动范围中心</label>\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"group\" type=\"checkbox\">同步本组范围</label>\n        <label class=\"p2r-check i3d-setting-toggle\"><input data-field=\"preview\" type=\"checkbox\"><span data-preview-label>仅预览当前灯</span></label>\n      </div>\n      <div class=\"p2r-actions\"><button type=\"button\" data-action=\"reset-center\">中心回到灯位</button><button type=\"button\" data-action=\"reset\">恢复模型默认</button><button type=\"button\" class=\"p2r-done\" data-action=\"close\">完成</button></div>\n      <p class=\"p2r-status\" role=\"status\" aria-live=\"polite\"></p>\n    </div>\n    <div class=\"p2r-help\">外边界为光照衰减到零的位置 · 范围不代表墙体挡光</div>";
-  editorEl.querySelector("[data-action=close]").hidden = standalone;
-  host.container.append(editorEl);
-  const svg = editorEl.querySelector("svg");
-  const panelEl = editorEl.querySelector(".p2r-panel");
-  const fields = Object.fromEntries([...editorEl.querySelectorAll("[data-field]")].map(dataset => [dataset.dataset.field, dataset]));
-  const statusEl = editorEl.querySelector(".p2r-status");
-  const softValueEl = editorEl.querySelector("[data-soft-value]");
-  const heightSummaryEl = editorEl.querySelector("[data-height-summary]");
-  const close = mountRangeFormControls(editorEl);
-  const raycaster = new THREE.Raycaster();
-  const pointerNdc = new THREE.Vector2();
-  const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-  let editorOpen = false;
-  let disposed = false;
-  let overrides = {};
+export function mountRegionRangeEditor(
+  editorHost,
+  {
+    getConfig: getConfig = () => ({}),
+    onChange: onChange = () => {},
+    onClose: onClose = () => {},
+    wake: wake = () => {},
+    standalone: standalone = false
+  } = {}
+) {
+  const editorDocument = editorHost.container.ownerDocument;
+  const editorWindow = editorDocument.defaultView;
+  const threeNamespace = editorHost.THREE;
+  const editorElement = editorDocument.createElement("section");
+  editorElement.className = "plan2-range-editor";
+  editorElement.dataset.testid = "range-editor";
+  editorElement.hidden = true;
+  editorElement.setAttribute("aria-label", "平面光区编辑");
+  editorElement.innerHTML =
+    '\n    <svg aria-label="灯具与照射范围" role="group"></svg>\n    <header class="p2r-top"><div class="p2r-title">平面光区编辑<small>拖动边角调整范围，按住 Shift 等比例缩放</small></div><span class="p2r-compact-caption">自由拖动 · Shift 等比</span></header>\n    <div class="p2r-panel">\n      <h3>照射范围</h3>\n      <div class="p2r-view-switch" role="group" aria-label="编辑视图">\n        <button type="button" data-action="view-plan" aria-pressed="true">平面编辑</button>\n        <button type="button" data-action="view-3d" aria-pressed="false">3D 预览</button>\n      </div>\n      <div class="p2r-selectors">\n        <label class="p2r-field">楼层<select data-field="floor" aria-label="楼层"></select></label>\n        <label class="p2r-field">灯具<select data-field="fixture" aria-label="灯具"></select></label>\n      </div>\n      <div class="p2r-grid">\n        <label class="p2r-field p2r-shape">光区形状<select data-field="shape" aria-label="光区形状"><option value="circle">圆形</option><option value="square">方形</option></select></label>\n        <label class="p2r-field"><span data-width-label>宽度（米）</span><input data-field="width" aria-label="宽度（米）" type="number" min="0.5" max="20" step="0.1" inputmode="decimal"></label>\n        <label class="p2r-field"><span data-depth-label>深度（米）</span><input data-field="depth" aria-label="深度（米）" type="number" min="0.5" max="20" step="0.1" inputmode="decimal"></label>\n        <label class="p2r-field p2r-rotation">旋转（度）<input data-field="rotation" aria-label="旋转（度）" type="number" min="-180" max="180" step="1" inputmode="decimal"></label>\n        <label class="p2r-field p2r-soft-field">边缘柔和度<span class="p2r-softness"><input data-field="softness" aria-label="边缘柔和度" type="range" min="5" max="100" step="1"><output data-soft-value>35%</output></span></label>\n      </div>\n      <h3>离地照明范围</h3>\n      <div class="p2r-grid">\n        <label class="p2r-field">最低照到（米）<input data-field="heightMin" aria-label="最低照到（米）" type="number" min="0" max="20" step="0.05" placeholder="自动" inputmode="decimal"></label>\n        <label class="p2r-field">最高照到（米）<input data-field="heightMax" aria-label="最高照到（米）" type="number" min="0" max="20" step="0.05" placeholder="自动" inputmode="decimal"></label>\n      </div>\n      <p class="p2r-status" data-height-summary></p>\n      <p class="p2r-status">从本层地面算起，0 米是地面；留空自动。切到“3D 预览”可边调高度边看效果。</p>\n      <div class="p2r-options">\n        <label class="p2r-check i3d-setting-toggle"><input data-field="moveCenter" type="checkbox">允许移动范围中心</label>\n        <label class="p2r-check i3d-setting-toggle"><input data-field="group" type="checkbox">同步本组范围</label>\n        <label class="p2r-check i3d-setting-toggle"><input data-field="preview" type="checkbox"><span data-preview-label>仅预览当前灯</span></label>\n      </div>\n      <div class="p2r-actions"><button type="button" data-action="reset-center">中心回到灯位</button><button type="button" data-action="reset">恢复模型默认</button><button type="button" class="p2r-done" data-action="close">完成</button></div>\n      <p class="p2r-status" role="status" aria-live="polite"></p>\n    </div>\n    <div class="p2r-help">外边界为光照衰减到零的位置 · 范围不代表墙体挡光</div>';
+  editorElement.querySelector("[data-action=close]").hidden = standalone;
+  editorHost.container.append(editorElement);
+  const svgElement = editorElement.querySelector("svg");
+  const panelElement = editorElement.querySelector(".p2r-panel");
+  const fieldElements = Object.fromEntries(
+    [...editorElement.querySelectorAll("[data-field]")].map(fieldElement => [
+      fieldElement.dataset.field,
+      fieldElement
+    ])
+  );
+  const statusElement = editorElement.querySelector(".p2r-status[role=status]");
+  const softnessOutputElement = editorElement.querySelector("[data-soft-value]");
+  const formControls = mountRangeFormControls(editorElement);
+  const raycaster = new threeNamespace.Raycaster();
+  const pointerNdc = new threeNamespace.Vector2();
+  const groundPlane = new threeNamespace.Plane(new threeNamespace.Vector3(0, 1, 0), 0);
+  let isOpen = false;
+  let isDisposed = false;
+  let overridesByRegionKey = {};
   let regions = [];
-  let selectedKey = "";
-  let selectedFloorId = "";
-  let saveError = "";
-  let savedCamera = null;
-  let savedFloorId = "";
-  let savedControlsEnabled = true;
-  let topViewCamera = null;
-  let preview3dCamera = null;
-  let heightPreview = false;
+  let selectedRegionKey = "";
+  let activeFloorId = "";
+  let saveErrorMessage = "";
+  let openedCameraState = null;
+  let requestedFloorSelection = "";
+  let previousControlsEnabled = true;
+  let topViewCameraState = null;
+  let is3dPreview = false;
+  let savedCameraState3d = null;
+  let savedCameraStatePlan = null;
   let dragState = null;
-  let redrawRaf = 0;
+  let animationFrameId = 0;
   let pendingFit = false;
-  let fittingCamera = false;
-  let unsubscribeCamera = null;
-  let lastFitWidth = 0;
-  let lastFitHeight = 0;
-  const getRegionLighting = () => host.regionLighting;
-  const selectedRegion = () => regions.find(key => key.key === selectedKey);
-  const findFloor = floorId => (host.document?.floors || []).find(id => String(id.id) === String(floorId));
-  const regionsInGroup = groupId => groupId ? regions.filter(floorId => String(floorId.floorId) === String(groupId.floorId) && (groupId.groupId ? floorId.groupId === groupId.groupId : floorId.key === groupId.key)) : [];
-  const activeEditKeys = () => fields.group.checked ? regionsInGroup(selectedRegion()).map(key => key.key) : selectedRegion() ? [selectedKey] : [];
-  function refreshRegions() {
-    regions = (getRegionLighting()?.listRegions?.() || []).map(item => {
-      const scene = findFloor(item.floorId);
-      const lightGroupId = scene?.scene?.items?.find(id => String(id.id) === String(item.id));
-      const groupId = lightGroupId?.lightGroupId || "";
-      const label = (getConfig()?.lights || []).find(floorId => String(floorId.floorId) === String(item.floorId) && floorId.groupId === groupId);
-      const name = scene?.scene?.lightGroups?.find(id => id.id === groupId);
+  let isFittingCamera = false;
+  let cameraChangeUnsubscribe = null;
+  let lastWidthPx = 0;
+  let lastHeightPx = 0;
+  const getRegionLighting = () => editorHost.regionLighting;
+  const getSelectedRegion = () =>
+    regions.find(matchingRegion => matchingRegion.key === selectedRegionKey);
+  const findFloorById = floorId =>
+    (editorHost.document?.floors || []).find(floor => String(floor.id) === String(floorId));
+  const findRegionSiblings = sourceRegionItem =>
+    sourceRegionItem
+      ? regions.filter(
+          siblingCandidate =>
+            String(siblingCandidate.floorId) === String(sourceRegionItem.floorId) &&
+            (sourceRegionItem.groupId
+              ? siblingCandidate.groupId === sourceRegionItem.groupId
+              : siblingCandidate.key === sourceRegionItem.key)
+        )
+      : [];
+  const getAffectedRegionKeys = () =>
+    fieldElements.group.checked
+      ? findRegionSiblings(getSelectedRegion()).map(groupRegion => groupRegion.key)
+      : getSelectedRegion()
+        ? [selectedRegionKey]
+        : [];
+  function reloadRegionList() {
+    regions = (getRegionLighting()?.listRegions?.() || []).map(rawRegion => {
+      const regionFloor = findFloorById(rawRegion.floorId);
+      const matchedSceneItem = regionFloor?.scene?.items?.find(
+        sceneItem => String(sceneItem.id) === String(rawRegion.id)
+      );
+      const lightGroupId = matchedSceneItem?.lightGroupId || "";
+      const lightEntry = (getConfig()?.lights || []).find(
+        lightConfig =>
+          String(lightConfig.floorId) === String(rawRegion.floorId) &&
+          lightConfig.groupId === lightGroupId
+      );
+      const lightGroupEntry = regionFloor?.scene?.lightGroups?.find(
+        lightGroup => lightGroup.id === lightGroupId
+      );
       return {
-        ...item,
-        key: item.key || makeRegionKey(item.floorId, item.id),
-        groupId,
-        label: label?.label || name?.name || lightGroupId?.name || "灯具"
+        ...rawRegion,
+        key: rawRegion.key || toRegionKey(rawRegion.floorId, rawRegion.id),
+        groupId: lightGroupId,
+        label: lightEntry?.label || lightGroupEntry?.name || matchedSceneItem?.name || "灯具"
       };
     });
-    for (const fixtureLabel of regions) {
-      const length = regionsInGroup(fixtureLabel);
-      fixtureLabel.fixtureLabel = "" + fixtureLabel.label + (length.length > 1 ? " · " + (length.findIndex(key => key.key === fixtureLabel.key) + 1) + "/" + length.length : "");
+    for (const regionItem of regions) {
+      const siblingRegions = findRegionSiblings(regionItem);
+      regionItem.fixtureLabel =
+        "" +
+        regionItem.label +
+        (siblingRegions.length > 1
+          ? " · " +
+            (siblingRegions.findIndex(siblingRegion => siblingRegion.key === regionItem.key) + 1) +
+            "/" +
+            siblingRegions.length
+          : "");
     }
-    const some = regions.filter(floorId => String(floorId.floorId) === selectedFloorId);
-    if (!some.some(key => key.key === selectedKey)) {
-      selectedKey = some[0]?.key || "";
+    const floorRegions = regions.filter(
+      floorRegion => String(floorRegion.floorId) === activeFloorId
+    );
+    if (!floorRegions.some(regionEntry => regionEntry.key === selectedRegionKey)) {
+      selectedRegionKey = floorRegions[0]?.key || "";
     }
   }
-  function createOption(element, elementCurrent) {
-    const optionEl = doc.createElement("option");
-    optionEl.value = element;
-    optionEl.textContent = elementCurrent;
-    return optionEl;
+  function createOptionElement(optionValue, optionLabel) {
+    const optionElement = editorDocument.createElement("option");
+    optionElement.value = optionValue;
+    optionElement.textContent = optionLabel;
+    return optionElement;
   }
-  function syncForm() {
-    fields.floor.replaceChildren(...(host.document?.floors || []).map(id3 => createOption(String(id3.id), id3.name || "楼层")));
-    fields.floor.value = selectedFloorId;
-    fields.fixture.replaceChildren(...regions.filter(floorId => String(floorId.floorId) === selectedFloorId).map(key => createOption(key.key, key.fixtureLabel)));
-    fields.fixture.value = selectedKey;
-    const moveCenterEnabled = selectedRegion();
-    const hasSelection = !!moveCenterEnabled;
-    const length = regionsInGroup(moveCenterEnabled);
-    for (const fieldKey of ["fixture", "shape", "width", "depth", "rotation", "softness", "preview", "moveCenter", "heightMin", "heightMax"]) {
-      fields[fieldKey].disabled = !hasSelection;
+  function syncFormState() {
+    fieldElements.floor.replaceChildren(
+      ...(editorHost.document?.floors || []).map(floorEntry =>
+        createOptionElement(String(floorEntry.id), floorEntry.name || "楼层")
+      )
+    );
+    fieldElements.floor.value = activeFloorId;
+    fieldElements.fixture.replaceChildren(
+      ...regions
+        .filter(floorRegionEntry => String(floorRegionEntry.floorId) === activeFloorId)
+        .map(selectedFloorRegion =>
+          createOptionElement(selectedFloorRegion.key, selectedFloorRegion.fixtureLabel)
+        )
+    );
+    fieldElements.fixture.value = selectedRegionKey;
+    const selectedRegion = getSelectedRegion();
+    const hasSelectedRegion = !!selectedRegion;
+    const selectedSiblings = findRegionSiblings(selectedRegion);
+    for (const fieldToDisable of [
+      "fixture",
+      "shape",
+      "width",
+      "depth",
+      "rotation",
+      "softness",
+      "preview",
+      "moveCenter",
+      "heightMin",
+      "heightMax"
+    ]) {
+      fieldElements[fieldToDisable].disabled = !hasSelectedRegion;
     }
-    fields.group.disabled = length.length < 2;
-    editorEl.querySelector("[data-preview-label]").textContent = fields.group.checked && length.length > 1 ? "仅预览当前灯组" : "仅预览当前灯";
-    editorEl.querySelector("[data-action=reset]").disabled = !hasSelection;
-    editorEl.querySelector("[data-action=reset-center]").hidden = !moveCenterEnabled || !moveCenterEnabled.offsetX && !moveCenterEnabled.offsetZ;
-    fields.moveCenter.checked = moveCenterEnabled?.moveCenterEnabled === true;
-    if (moveCenterEnabled) {
-      fields.shape.value = ["square", "strip"].includes(moveCenterEnabled.shape) ? "square" : "circle";
-      for (const numericField of ["width", "depth", "rotation"]) {
-        if (doc.activeElement !== fields[numericField]) {
-          fields[numericField].value = round(moveCenterEnabled[numericField]);
+    fieldElements.group.disabled = selectedSiblings.length < 2;
+    editorElement.querySelector("[data-preview-label]").textContent =
+      fieldElements.group.checked && selectedSiblings.length > 1
+        ? "仅预览当前灯组"
+        : "仅预览当前灯";
+    editorElement.querySelector("[data-action=reset]").disabled = !hasSelectedRegion;
+    editorElement.querySelector("[data-action=reset-center]").hidden =
+      !selectedRegion || (!selectedRegion.offsetX && !selectedRegion.offsetZ);
+    fieldElements.moveCenter.checked = selectedRegion?.moveCenterEnabled === true;
+    if (selectedRegion) {
+      fieldElements.shape.value = ["square", "strip"].includes(selectedRegion.shape)
+        ? "square"
+        : "circle";
+      for (const sizeField of ["width", "depth", "rotation"]) {
+        if (editorDocument.activeElement !== fieldElements[sizeField]) {
+          fieldElements[sizeField].value = roundToHundredth(selectedRegion[sizeField]);
         }
       }
       for (const heightField of ["heightMin", "heightMax"]) {
-        if (doc.activeElement !== fields[heightField]) {
-          fields[heightField].value = moveCenterEnabled[heightField] === undefined ? "" : round(moveCenterEnabled[heightField]);
+        if (editorDocument.activeElement !== fieldElements[heightField]) {
+          fieldElements[heightField].value =
+            selectedRegion[heightField] === undefined
+              ? ""
+              : roundToHundredth(selectedRegion[heightField]);
         }
       }
-      fields.softness.value = Math.round(moveCenterEnabled.softness * 100);
-      softValueEl.value = fields.softness.value + "%";
-      const lampHeight = Number.isFinite(moveCenterEnabled.lampHeight) ? round(moveCenterEnabled.lampHeight) : null;
-      const heightMinLabel = moveCenterEnabled.heightMin === undefined ? "自动" : moveCenterEnabled.heightMin === 0 ? "地面" : round(moveCenterEnabled.heightMin) + " 米";
-      const heightMaxLabel = moveCenterEnabled.heightMax === undefined ? "自动" : round(moveCenterEnabled.heightMax) + " 米";
-      heightSummaryEl.textContent = "灯具离地 " + (lampHeight === null ? "—" : lampHeight + " 米") + " · 照明：" + heightMinLabel + "–" + heightMaxLabel;
-      statusEl.textContent = fields.group.checked && length.length > 1 ? "本组 " + length.length + " 盏 · 修改会同步到各自灯位" : length.length > 1 ? "本组 " + length.length + " 盏 · 当前只调整这一盏" : moveCenterEnabled.moveCenterEnabled ? "拖动光区或中心十字移动范围 · 灯位不变" : "范围中心已锁定 · 可拖动边角调整大小";
+      const formatHeightText = heightLevel =>
+        heightLevel === undefined
+          ? "自动"
+          : heightLevel <= 0
+            ? "地面"
+            : roundToHundredth(heightLevel) + " 米";
+      editorElement.querySelector("[data-height-summary]").textContent =
+        "灯具离地 " +
+        roundToHundredth(selectedRegion.lampHeight || 0) +
+        " 米 · 照明：" +
+        formatHeightText(selectedRegion.heightMin) +
+        " ～ " +
+        formatHeightText(selectedRegion.heightMax);
+      fieldElements.softness.value = Math.round(selectedRegion.softness * 100);
+      softnessOutputElement.value = fieldElements.softness.value + "%";
+      statusElement.textContent =
+        fieldElements.group.checked && selectedSiblings.length > 1
+          ? "本组 " + selectedSiblings.length + " 盏 · 修改会同步到各自灯位"
+          : selectedSiblings.length > 1
+            ? "本组 " + selectedSiblings.length + " 盏 · 当前只调整这一盏"
+            : is3dPreview
+              ? "旋转或缩放查看效果 · 修改高度实时预览"
+              : selectedRegion.moveCenterEnabled
+                ? "拖动光区或中心十字移动范围 · 灯位不变"
+                : "范围中心已锁定 · 可拖动边角调整大小";
     } else {
-      heightSummaryEl.textContent = "";
-      statusEl.textContent = "当前楼层暂无可编辑灯具，请切换楼层。";
+      statusElement.textContent = "当前楼层暂无可编辑灯具，请切换楼层。";
     }
-    if (saveError) {
-      statusEl.textContent = "本次保存未成功：" + saveError + "。当前预览仍保留。";
-      statusEl.style.color = "#ffc28d";
+    if (saveErrorMessage) {
+      statusElement.textContent = "本次保存未成功：" + saveErrorMessage + "。当前预览仍保留。";
+      statusElement.style.color = "#ffc28d";
     } else {
-      statusEl.style.removeProperty("color");
+      statusElement.style.removeProperty("color");
     }
-    close.sync();
+    formControls.sync();
   }
-  function applyPreview() {
-    const previewKeys = fields.preview.checked ? activeEditKeys() : null;
+  function applyPreviewToScene() {
+    const previewKeys = fieldElements.preview.checked ? getAffectedRegionKeys() : null;
     getRegionLighting()?.setPreview?.(previewKeys);
-    host.invalidateRegionLighting?.();
+    editorHost.invalidateRegionLighting?.();
     wake();
   }
-  function applyOverrides(patch, commit = false) {
-    if (selectedRegion()) {
-      for (const editKey of activeEditKeys()) {
-        const width = regions.find(key => key.key === editKey);
-        const shape = {
-          width: width.width,
-          depth: width.depth,
-          rotation: width.rotation,
-          softness: width.softness,
-          shape: width.shape,
-          offsetX: width.offsetX || 0,
-          offsetZ: width.offsetZ || 0,
-          moveCenterEnabled: width.moveCenterEnabled === true,
-          ...(overrides[editKey] || {}),
-          ...patch
+  function applyOverride(overridePatch, shouldRefreshControls = false) {
+    if (getSelectedRegion()) {
+      for (const affectedRegionKey of getAffectedRegionKeys()) {
+        const overrideRegionEntry = regions.find(
+          overrideRegion => overrideRegion.key === affectedRegionKey
+        );
+        const patchedOverride = overridePatch.heightEdit
+          ? regionHeightPatch(
+              overrideRegionEntry,
+              overridePatch.heightEdit.field,
+              overridePatch.heightEdit.value
+            )
+          : overridePatch;
+        const nextOverride = {
+          width: overrideRegionEntry.width,
+          depth: overrideRegionEntry.depth,
+          rotation: overrideRegionEntry.rotation,
+          softness: overrideRegionEntry.softness,
+          shape: overrideRegionEntry.shape,
+          offsetX: overrideRegionEntry.offsetX || 0,
+          offsetZ: overrideRegionEntry.offsetZ || 0,
+          moveCenterEnabled: overrideRegionEntry.moveCenterEnabled === true,
+          ...(overridesByRegionKey[affectedRegionKey] || {}),
+          ...patchedOverride
         };
-        if (shape.heightMin === undefined) {
-          delete shape.heightMin;
+        if (overridePatch.shape) {
+          nextOverride.shape = ["square", "strip"].includes(nextOverride.shape)
+            ? "square"
+            : "circle";
         }
-        if (shape.heightMax === undefined) {
-          delete shape.heightMax;
+        for (const heightKey of ["heightAbove", "heightBelow", "heightMin", "heightMax"]) {
+          if (nextOverride[heightKey] === undefined) {
+            delete nextOverride[heightKey];
+          }
         }
-        delete shape.heightAbove;
-        delete shape.heightBelow;
-        shape.shape = ["square", "strip"].includes(shape.shape) ? "square" : "circle";
-        overrides[editKey] = shape;
+        overridesByRegionKey[affectedRegionKey] = nextOverride;
       }
-      getRegionLighting()?.setOverrides?.(overrides);
-      host.invalidateRegionLighting?.();
+      getRegionLighting()?.setOverrides?.(overridesByRegionKey);
+      editorHost.invalidateRegionLighting?.();
       wake();
-      refreshRegions();
-      syncForm();
-      redrawOverlay();
-      if (commit) {
-        emitChange();
+      reloadRegionList();
+      syncFormState();
+      renderSvgOverlay();
+      if (shouldRefreshControls) {
+        commitOverrides();
       }
     }
   }
-  function emitChange() {
-    overrides = cloneJson(getRegionLighting()?.getOverrides?.() || overrides);
-    onChange(cloneJson(overrides));
+  function commitOverrides() {
+    overridesByRegionKey = deepCloneObject(
+      getRegionLighting()?.getOverrides?.() || overridesByRegionKey
+    );
+    onChange(deepCloneObject(overridesByRegionKey));
   }
-  function projectWorldToEditor(worldX, worldY, worldZ) {
-    const left = host.canvas.getBoundingClientRect();
-    const rect = editorEl.getBoundingClientRect();
-    const x3 = new THREE.Vector3(worldX, worldY, worldZ).project(host.camera);
-    return [left.left - rect.left + (x3.x + 1) * left.width / 2, left.top - rect.top + (1 - x3.y) * left.height / 2];
+  function projectWorldToScreen(worldX, worldY, worldZ) {
+    const canvasRect = editorHost.canvas.getBoundingClientRect();
+    const editorRect = editorElement.getBoundingClientRect();
+    const projectedPoint = new threeNamespace.Vector3(worldX, worldY, worldZ).project(
+      editorHost.camera
+    );
+    return [
+      canvasRect.left - editorRect.left + ((projectedPoint.x + 1) * canvasRect.width) / 2,
+      canvasRect.top - editorRect.top + ((1 - projectedPoint.y) * canvasRect.height) / 2
+    ];
   }
-  function planeHeight() {
-    return toFiniteNumber(host.worldPoint?.(selectedFloorId, 0, 0, 0.065)?.y, 0.065);
+  function getLampWorldHeight() {
+    return toFiniteNumber(editorHost.worldPoint?.(activeFloorId, 0, 0, 0.065)?.y, 0.065);
   }
-  function offsetOnPlaneToEditor(center, localX, localZ, heightY) {
-    const [axisXComp, axisZComp] = center.axis;
-    return projectWorldToEditor(center.center[0] + localX * axisXComp - localZ * axisZComp, heightY, center.center[2] + localX * axisZComp + localZ * axisXComp);
+  function projectRegionOffset(region, offsetAlongX, offsetAlongZ, screenWorldY) {
+    const [axisX, axisZ] = region.axis;
+    return projectWorldToScreen(
+      region.center[0] + offsetAlongX * axisX - offsetAlongZ * axisZ,
+      screenWorldY,
+      region.center[2] + offsetAlongX * axisZ + offsetAlongZ * axisX
+    );
   }
-  function createSvgNode(tagName, attrs, append = svg) {
-    const setAttribute = doc.createElementNS(SVG_NS, tagName);
-    for (const [attrName, attrValue] of Object.entries(attrs || {})) {
-      setAttribute.setAttribute(attrName, String(attrValue));
+  function createSvgElement(tagName, attributes, parentElement = svgElement) {
+    const svgChildElement = editorDocument.createElementNS(SVG_NAMESPACE, tagName);
+    for (const [attributeName, attributeValue] of Object.entries(attributes || {})) {
+      svgChildElement.setAttribute(attributeName, String(attributeValue));
     }
-    append.append(setAttribute);
-    return setAttribute;
+    parentElement.append(svgChildElement);
+    return svgChildElement;
   }
-  function regionPathData(shape, pathHeight, scale = 1) {
-    const halfWidth = shape.width * scale / 2;
-    const halfDepth = shape.depth * scale / 2;
-    const push = [];
-    if (shape.shape === "square") {
-      return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz], pointIndex) => {
-        const value = offsetOnPlaneToEditor(shape, sx * halfWidth, sz * halfDepth, pathHeight);
-        return "" + (pointIndex ? "L" : "M") + value[0].toFixed(2) + "," + value[1].toFixed(2);
-      }).join("") + "Z";
+  function buildRegionPathData(pathRegion, pathWorldY, insetScale = 1) {
+    const halfWidth = (pathRegion.width * insetScale) / 2;
+    const halfDepth = (pathRegion.depth * insetScale) / 2;
+    const pathPoints = [];
+    if (pathRegion.shape === "square") {
+      return (
+        [
+          [-1, -1],
+          [1, -1],
+          [1, 1],
+          [-1, 1]
+        ]
+          .map(([cornerSignX, cornerSignZ], cornerIndex) => {
+            const cornerPoint = projectRegionOffset(
+              pathRegion,
+              cornerSignX * halfWidth,
+              cornerSignZ * halfDepth,
+              pathWorldY
+            );
+            return (
+              "" +
+              (cornerIndex ? "L" : "M") +
+              cornerPoint[0].toFixed(2) +
+              "," +
+              cornerPoint[1].toFixed(2)
+            );
+          })
+          .join("") + "Z"
+      );
     }
-    for (let seg = 0; seg < 64; seg += 1) {
-      const theta = seg * Math.PI * 2 / 64;
-      const cosT = Math.cos(theta);
-      const sinT = Math.sin(theta);
-      const minHalf = Math.min(halfWidth, halfDepth);
-      const ellipseX = shape.shape === "strip" ? Math.sign(cosT) * (halfWidth - minHalf) + cosT * minHalf : cosT * halfWidth;
-      const ellipseZ = shape.shape === "strip" ? Math.sign(sinT) * (halfDepth - minHalf) + sinT * minHalf : sinT * halfDepth;
-      push.push(offsetOnPlaneToEditor(shape, ellipseX, ellipseZ, pathHeight));
+    for (let stepIndex = 0; stepIndex < 64; stepIndex += 1) {
+      const angleRad = (stepIndex * Math.PI * 2) / 64;
+      const cosAngle = Math.cos(angleRad);
+      const sinAngle = Math.sin(angleRad);
+      const minHalfExtent = Math.min(halfWidth, halfDepth);
+      const localX =
+        pathRegion.shape === "strip"
+          ? Math.sign(cosAngle) * (halfWidth - minHalfExtent) + cosAngle * minHalfExtent
+          : cosAngle * halfWidth;
+      const localZ =
+        pathRegion.shape === "strip"
+          ? Math.sign(sinAngle) * (halfDepth - minHalfExtent) + sinAngle * minHalfExtent
+          : sinAngle * halfDepth;
+      pathPoints.push(projectRegionOffset(pathRegion, localX, localZ, pathWorldY));
     }
-    return push.map((pt, ptIndex) => "" + (ptIndex ? "L" : "M") + pt[0].toFixed(2) + "," + pt[1].toFixed(2)).join("") + "Z";
+    return (
+      pathPoints
+        .map(
+          (pathPoint, pathPointIndex) =>
+            "" +
+            (pathPointIndex ? "L" : "M") +
+            pathPoint[0].toFixed(2) +
+            "," +
+            pathPoint[1].toFixed(2)
+        )
+        .join("") + "Z"
+    );
   }
-  function redrawOverlay() {
-    if (!editorOpen || !host.camera || heightPreview) {
-      if (heightPreview) {
-        svg.replaceChildren();
-      }
+  function renderSvgOverlay() {
+    if (!isOpen || !editorHost.camera || is3dPreview) {
       return;
     }
-    host.camera.updateMatrixWorld();
-    const width = editorEl.getBoundingClientRect();
-    const drawHeight = planeHeight();
-    svg.setAttribute("viewBox", "0 0 " + (width.width || 1) + " " + (width.height || 1));
-    svg.replaceChildren();
-    const rangesGroup = createSvgNode("g");
-    const markersGroup = createSvgNode("g");
-    const depth = selectedRegion();
-    const has = new Set(regionsInGroup(depth).map(key => key.key));
-    const floorRegions = regions.filter(floorId => String(floorId.floorId) === selectedFloorId).sort((key, keyRight) => +(key.key === selectedKey) - +(keyRight.key === selectedKey));
-    for (const key of floorRegions) {
-      const isSelected = key.key === selectedKey;
-      const inGroup = has.has(key.key);
-      if (isSelected || inGroup) {
-        createSvgNode("path", {
-          ...(isSelected && key.moveCenterEnabled ? {
-            "data-range-handle": "move",
-            cursor: "move"
-          } : {}),
-          d: regionPathData(key, drawHeight),
-          fill: isSelected ? "#edb06012" : "none",
-          stroke: isSelected ? "#f2b768" : "#99afc0",
-          "stroke-width": isSelected ? 1.6 : 1,
-          "stroke-dasharray": isSelected ? "none" : "4 4",
-          opacity: isSelected ? 1 : 0.45
-        }, rangesGroup);
+    editorHost.camera.updateMatrixWorld();
+    const overlayRect = editorElement.getBoundingClientRect();
+    const lampHeight = getLampWorldHeight();
+    svgElement.setAttribute(
+      "viewBox",
+      "0 0 " + (overlayRect.width || 1) + " " + (overlayRect.height || 1)
+    );
+    svgElement.replaceChildren();
+    const regionLayerElement = createSvgElement("g");
+    const markerLayerElement = createSvgElement("g");
+    const activeSelectedRegion = getSelectedRegion();
+    const siblingRegionKeys = new Set(
+      findRegionSiblings(activeSelectedRegion).map(siblingRegionItem => siblingRegionItem.key)
+    );
+    const orderedRegions = regions
+      .filter(floorRegionItem => String(floorRegionItem.floorId) === activeFloorId)
+      .sort(
+        (sortFirstRegion, sortSecondRegion) =>
+          +(sortFirstRegion.key === selectedRegionKey) -
+          +(sortSecondRegion.key === selectedRegionKey)
+      );
+    for (const overlayRegion of orderedRegions) {
+      const isCurrentRegion = overlayRegion.key === selectedRegionKey;
+      const isSiblingSelected = siblingRegionKeys.has(overlayRegion.key);
+      if (isCurrentRegion || isSiblingSelected) {
+        createSvgElement(
+          "path",
+          {
+            ...(isCurrentRegion && overlayRegion.moveCenterEnabled
+              ? {
+                  "data-range-handle": "move",
+                  cursor: "move"
+                }
+              : {}),
+            d: buildRegionPathData(overlayRegion, lampHeight),
+            fill: isCurrentRegion ? "#edb06012" : "none",
+            stroke: isCurrentRegion ? "#f2b768" : "#99afc0",
+            "stroke-width": isCurrentRegion ? 1.6 : 1,
+            "stroke-dasharray": isCurrentRegion ? "none" : "4 4",
+            opacity: isCurrentRegion ? 1 : 0.45
+          },
+          regionLayerElement
+        );
       }
-      if (isSelected) {
-        createSvgNode("path", {
-          d: regionPathData(key, drawHeight, Math.max(0.05, 1 - key.softness)),
-          fill: "none",
-          stroke: "#efb56f",
-          "stroke-width": 1,
-          "stroke-dasharray": "3 5",
-          opacity: 0.42
-        }, rangesGroup);
+      if (isCurrentRegion) {
+        createSvgElement(
+          "path",
+          {
+            d: buildRegionPathData(
+              overlayRegion,
+              lampHeight,
+              Math.max(0.05, 1 - overlayRegion.softness)
+            ),
+            fill: "none",
+            stroke: "#efb56f",
+            "stroke-width": 1,
+            "stroke-dasharray": "3 5",
+            opacity: 0.42
+          },
+          regionLayerElement
+        );
       }
-      const lampPos = key.lampCenter || key.center;
-      const [cx, cy] = projectWorldToEditor(lampPos[0], drawHeight, lampPos[2]);
-      const markerGroup = createSvgNode("g", {
-        "data-region-key": key.key,
-        role: "button",
-        tabindex: "0",
-        "aria-label": "选择" + key.fixtureLabel
-      }, markersGroup);
-      createSvgNode("circle", {
-        cx,
-        cy,
-        r: 12,
-        fill: "transparent"
-      }, markerGroup);
-      createSvgNode("circle", {
-        cx,
-        cy,
-        r: isSelected ? 5 : 3.8,
-        fill: isSelected ? "#ffd498" : "#e9f0f5",
-        stroke: isSelected ? "#a87029" : "#536777",
-        "stroke-width": 1.7,
-        class: "p2r-marker"
-      }, markerGroup);
-      const textContent = createSvgNode("title", {}, markerGroup);
-      textContent.textContent = key.fixtureLabel;
+      const markerWorldCenter = overlayRegion.lampCenter || overlayRegion.center;
+      const [markerX, markerY] = projectWorldToScreen(
+        markerWorldCenter[0],
+        lampHeight,
+        markerWorldCenter[2]
+      );
+      const markerGroupElement = createSvgElement(
+        "g",
+        {
+          "data-region-key": overlayRegion.key,
+          role: "button",
+          tabindex: "0",
+          "aria-label": "选择" + overlayRegion.fixtureLabel
+        },
+        markerLayerElement
+      );
+      createSvgElement(
+        "circle",
+        {
+          cx: markerX,
+          cy: markerY,
+          r: 12,
+          fill: "transparent"
+        },
+        markerGroupElement
+      );
+      createSvgElement(
+        "circle",
+        {
+          cx: markerX,
+          cy: markerY,
+          r: isCurrentRegion ? 5 : 3.8,
+          fill: isCurrentRegion ? "#ffd498" : "#e9f0f5",
+          stroke: isCurrentRegion ? "#a87029" : "#536777",
+          "stroke-width": 1.7,
+          class: "p2r-marker"
+        },
+        markerGroupElement
+      );
+      const markerTitleElement = createSvgElement("title", {}, markerGroupElement);
+      markerTitleElement.textContent = overlayRegion.fixtureLabel;
     }
-    if (!depth) {
+    if (!activeSelectedRegion) {
       return;
     }
-    const centerScreen = offsetOnPlaneToEditor(depth, 0, 0, drawHeight);
-    const lampWorld = depth.lampCenter || depth.center;
-    const lampScreen = projectWorldToEditor(lampWorld[0], drawHeight, lampWorld[2]);
-    if (depth.offsetX || depth.offsetZ) {
-      createSvgNode("line", {
-        x1: lampScreen[0],
-        y1: lampScreen[1],
-        x2: centerScreen[0],
-        y2: centerScreen[1],
+    const regionCenterPoint = projectRegionOffset(activeSelectedRegion, 0, 0, lampHeight);
+    const regionLampCenter = activeSelectedRegion.lampCenter || activeSelectedRegion.center;
+    const lampCenterScreen = projectWorldToScreen(
+      regionLampCenter[0],
+      lampHeight,
+      regionLampCenter[2]
+    );
+    if (activeSelectedRegion.offsetX || activeSelectedRegion.offsetZ) {
+      createSvgElement("line", {
+        x1: lampCenterScreen[0],
+        y1: lampCenterScreen[1],
+        x2: regionCenterPoint[0],
+        y2: regionCenterPoint[1],
         stroke: "#e8b76e",
         "stroke-width": 1,
         "stroke-dasharray": "4 4",
         "pointer-events": "none"
       });
     }
-    if (depth.moveCenterEnabled) {
-      const [cx, cy] = centerScreen;
-      const moveHandle = createSvgNode("g", {
+    if (activeSelectedRegion.moveCenterEnabled) {
+      const [moveHandleX, moveHandleY] = regionCenterPoint;
+      const moveHandleElement = createSvgElement("g", {
         "data-range-handle": "move",
         role: "button",
         tabindex: "0",
         "aria-label": "拖动光区中心",
         cursor: "move"
       });
-      createSvgNode("circle", {
-        cx: cx,
-        cy: cy,
-        r: 14,
-        fill: "#edb06033",
-        stroke: "#f2b768"
-      }, moveHandle);
-      createSvgNode("path", {
-        d: "M" + (cx - 8) + "," + cy + "H" + (cx + 8) + "M" + cx + "," + (cy - 8) + "V" + (cy + 8),
-        stroke: "#ffe0ad",
-        "stroke-width": 2,
-        fill: "none"
-      }, moveHandle);
+      createSvgElement(
+        "circle",
+        {
+          cx: moveHandleX,
+          cy: moveHandleY,
+          r: 14,
+          fill: "#edb06033",
+          stroke: "#f2b768"
+        },
+        moveHandleElement
+      );
+      createSvgElement(
+        "path",
+        {
+          d:
+            "M" +
+            (moveHandleX - 8) +
+            "," +
+            moveHandleY +
+            "H" +
+            (moveHandleX + 8) +
+            "M" +
+            moveHandleX +
+            "," +
+            (moveHandleY - 8) +
+            "V" +
+            (moveHandleY + 8),
+          stroke: "#ffe0ad",
+          "stroke-width": 2,
+          fill: "none"
+        },
+        moveHandleElement
+      );
     }
-    const push = [["nw", -1, -1], ["ne", 1, -1], ["se", 1, 1], ["sw", -1, 1]];
-    push.push(["w", -1, 0], ["e", 1, 0], ["n", 0, -1], ["s", 0, 1]);
-    for (const [data_range_handle, hx, hz] of push) {
-      const [cx, cy] = offsetOnPlaneToEditor(depth, hx * depth.width / 2, hz * depth.depth / 2, drawHeight);
-      const resizeHandle = createSvgNode("g", {
-        "data-range-handle": data_range_handle,
+    const resizeHandleSpecs = [
+      ["nw", -1, -1],
+      ["ne", 1, -1],
+      ["se", 1, 1],
+      ["sw", -1, 1]
+    ];
+    resizeHandleSpecs.push(["w", -1, 0], ["e", 1, 0], ["n", 0, -1], ["s", 0, 1]);
+    for (const [resizeHandleName, resizeDirX, resizeDirZ] of resizeHandleSpecs) {
+      const [resizeHandleX, resizeHandleY] = projectRegionOffset(
+        activeSelectedRegion,
+        (resizeDirX * activeSelectedRegion.width) / 2,
+        (resizeDirZ * activeSelectedRegion.depth) / 2,
+        lampHeight
+      );
+      const resizeHandleElement = createSvgElement("g", {
+        "data-range-handle": resizeHandleName,
         role: "button",
         tabindex: "0",
-        "aria-label": "拖动" + {
-          nw: "左上角",
-          ne: "右上角",
-          se: "右下角",
-          sw: "左下角",
-          w: "左边调整宽度",
-          e: "右边调整宽度",
-          n: "上边调整深度",
-          s: "下边调整深度"
-        }[data_range_handle]
+        "aria-label":
+          "拖动" +
+          {
+            nw: "左上角",
+            ne: "右上角",
+            se: "右下角",
+            sw: "左下角",
+            w: "左边调整宽度",
+            e: "右边调整宽度",
+            n: "上边调整深度",
+            s: "下边调整深度"
+          }[resizeHandleName]
       });
-      createSvgNode("circle", {
-        cx: cx,
-        cy: cy,
-        r: 13,
-        fill: "transparent"
-      }, resizeHandle);
-      createSvgNode("rect", {
-        x: cx - 4.5,
-        y: cy - 4.5,
-        width: 9,
-        height: 9,
-        rx: 2,
-        fill: "#ffe0ad",
-        stroke: "#9f6e33",
-        "stroke-width": 1.2,
-        class: "p2r-handle"
-      }, resizeHandle);
+      createSvgElement(
+        "circle",
+        {
+          cx: resizeHandleX,
+          cy: resizeHandleY,
+          r: 13,
+          fill: "transparent"
+        },
+        resizeHandleElement
+      );
+      createSvgElement(
+        "rect",
+        {
+          x: resizeHandleX - 4.5,
+          y: resizeHandleY - 4.5,
+          width: 9,
+          height: 9,
+          rx: 2,
+          fill: "#ffe0ad",
+          stroke: "#9f6e33",
+          "stroke-width": 1.2,
+          class: "p2r-handle"
+        },
+        resizeHandleElement
+      );
     }
-    const rotateOrigin = offsetOnPlaneToEditor(depth, 0, 0, drawHeight);
-    const rotateEdge = offsetOnPlaneToEditor(depth, 0, -depth.depth / 2, drawHeight);
-    const rotateDx = rotateEdge[0] - rotateOrigin[0];
-    const rotateDy = rotateEdge[1] - rotateOrigin[1];
-    const rotateLen = Math.max(1, Math.hypot(rotateDx, rotateDy));
-    const rotateHandlePos = [rotateEdge[0] + rotateDx / rotateLen * 27, rotateEdge[1] + rotateDy / rotateLen * 27];
-    createSvgNode("line", {
-      x1: rotateEdge[0],
-      y1: rotateEdge[1],
-      x2: rotateHandlePos[0],
-      y2: rotateHandlePos[1],
+    const centerScreenPoint = projectRegionOffset(activeSelectedRegion, 0, 0, lampHeight);
+    const rotateAnchorPoint = projectRegionOffset(
+      activeSelectedRegion,
+      0,
+      -activeSelectedRegion.depth / 2,
+      lampHeight
+    );
+    const rotateDirX = rotateAnchorPoint[0] - centerScreenPoint[0];
+    const rotateDirZ = rotateAnchorPoint[1] - centerScreenPoint[1];
+    const rotateDirLength = Math.max(1, Math.hypot(rotateDirX, rotateDirZ));
+    const rotateHandlePoint = [
+      rotateAnchorPoint[0] + (rotateDirX / rotateDirLength) * 27,
+      rotateAnchorPoint[1] + (rotateDirZ / rotateDirLength) * 27
+    ];
+    createSvgElement("line", {
+      x1: rotateAnchorPoint[0],
+      y1: rotateAnchorPoint[1],
+      x2: rotateHandlePoint[0],
+      y2: rotateHandlePoint[1],
       stroke: "#eabc7b",
       "stroke-width": 1.2
     });
-    const rotateHandle = createSvgNode("g", {
+    const rotateHandleElement = createSvgElement("g", {
       "data-range-handle": "rotate",
       role: "button",
       tabindex: "0",
       "aria-label": "拖动旋转照射范围"
     });
-    createSvgNode("circle", {
-      cx: rotateHandlePos[0],
-      cy: rotateHandlePos[1],
-      r: 14,
-      fill: "transparent"
-    }, rotateHandle);
-    createSvgNode("circle", {
-      cx: rotateHandlePos[0],
-      cy: rotateHandlePos[1],
-      r: 5,
-      fill: "#f3c581",
-      stroke: "#956527",
-      "stroke-width": 1.2,
-      class: "p2r-handle"
-    }, rotateHandle);
+    createSvgElement(
+      "circle",
+      {
+        cx: rotateHandlePoint[0],
+        cy: rotateHandlePoint[1],
+        r: 14,
+        fill: "transparent"
+      },
+      rotateHandleElement
+    );
+    createSvgElement(
+      "circle",
+      {
+        cx: rotateHandlePoint[0],
+        cy: rotateHandlePoint[1],
+        r: 5,
+        fill: "#f3c581",
+        stroke: "#956527",
+        "stroke-width": 1.2,
+        class: "p2r-handle"
+      },
+      rotateHandleElement
+    );
   }
-  function pickGroundPoint(clientX) {
-    const width = host.canvas.getBoundingClientRect();
-    if (!width.width || !width.height) {
+  function pickGroundPoint(groundPickEvent) {
+    const pickCanvasRect = editorHost.canvas.getBoundingClientRect();
+    if (!pickCanvasRect.width || !pickCanvasRect.height) {
       return null;
     } else {
-      pointerNdc.set((clientX.clientX - width.left) / width.width * 2 - 1, 1 - (clientX.clientY - width.top) / width.height * 2);
-      raycaster.setFromCamera(pointerNdc, host.camera);
-      groundPlane.constant = -planeHeight();
-      return raycaster.ray.intersectPlane(groundPlane, new THREE.Vector3());
+      pointerNdc.set(
+        ((groundPickEvent.clientX - pickCanvasRect.left) / pickCanvasRect.width) * 2 - 1,
+        1 - ((groundPickEvent.clientY - pickCanvasRect.top) / pickCanvasRect.height) * 2
+      );
+      raycaster.setFromCamera(pointerNdc, editorHost.camera);
+      groundPlane.constant = -getLampWorldHeight();
+      return raycaster.ray.intersectPlane(groundPlane, new threeNamespace.Vector3());
     }
   }
-  function onOverlayPointerDown(target) {
-    if (target.button !== 0 || !editorOpen || heightPreview) {
+  function handlePointerDown(pointerDownEvent) {
+    if (pointerDownEvent.button !== 0 || !isOpen || is3dPreview) {
       return;
     }
-    const dataset = target.target.closest?.("[data-range-handle]");
-    if (dataset && selectedRegion()) {
-      if (dataset.dataset.rangeHandle === "move" && !selectedRegion().moveCenterEnabled) {
+    const grabHandleElement = pointerDownEvent.target.closest?.("[data-range-handle]");
+    if (grabHandleElement && getSelectedRegion()) {
+      if (
+        grabHandleElement.dataset.rangeHandle === "move" &&
+        !getSelectedRegion().moveCenterEnabled
+      ) {
         return;
       }
-      target.preventDefault();
-      target.stopPropagation();
-      dataset.focus?.();
-      const dragRegion = selectedRegion();
-      const point = pickGroundPoint(target);
-      if (!point) {
+      pointerDownEvent.preventDefault();
+      pointerDownEvent.stopPropagation();
+      grabHandleElement.focus?.();
+      const pressedRegion = getSelectedRegion();
+      const pressGroundPoint = pickGroundPoint(pointerDownEvent);
+      if (!pressGroundPoint) {
         return;
       }
       dragState = {
-        pointerId: target.pointerId,
-        handle: dataset.dataset.rangeHandle,
-        region: cloneJson(dragRegion),
-        point: point,
-        initial: cloneJson(overrides),
+        pointerId: pointerDownEvent.pointerId,
+        handle: grabHandleElement.dataset.rangeHandle,
+        region: deepCloneObject(pressedRegion),
+        point: pressGroundPoint,
+        initial: deepCloneObject(overridesByRegionKey),
         changed: false
       };
-      svg.setPointerCapture(target.pointerId);
+      svgElement.setPointerCapture(pointerDownEvent.pointerId);
     } else {
-      const dataset = target.target.closest?.("[data-region-key]");
-      if (dataset) {
-        target.preventDefault();
-        selectRegion(dataset.dataset.regionKey);
+      const regionMarkerElement = pointerDownEvent.target.closest?.("[data-region-key]");
+      if (regionMarkerElement) {
+        pointerDownEvent.preventDefault();
+        selectRegionByKey(regionMarkerElement.dataset.regionKey);
       }
     }
   }
-  function onOverlayPointerMove(shiftKey) {
-    if (!dragState || shiftKey.pointerId !== dragState.pointerId) {
+  function handlePointerMove(pointerMoveEvent) {
+    if (!dragState || pointerMoveEvent.pointerId !== dragState.pointerId) {
       return;
     }
-    const x4 = pickGroundPoint(shiftKey);
-    if (!x4) {
+    const moveGroundPoint = pickGroundPoint(pointerMoveEvent);
+    if (!moveGroundPoint) {
       return;
     }
-    shiftKey.preventDefault();
-    const center = dragState.region;
-    const [dragAxisX, dragAxisZ] = center.axis;
-    const deltaX = x4.x - center.center[0];
-    const deltaZ = x4.z - center.center[2];
+    pointerMoveEvent.preventDefault();
+    const dragRegion = dragState.region;
+    const [dragAxisX, dragAxisZ] = dragRegion.axis;
+    const deltaAlongX = moveGroundPoint.x - dragRegion.center[0];
+    const deltaAlongZ = moveGroundPoint.z - dragRegion.center[2];
     if (dragState.handle === "move") {
-      applyOverrides({
-        offsetX: round(clamp((center.offsetX || 0) + x4.x - dragState.point.x, -100, 100)),
-        offsetZ: round(clamp((center.offsetZ || 0) + x4.z - dragState.point.z, -100, 100))
+      applyOverride({
+        offsetX: roundToHundredth(
+          clampValue((dragRegion.offsetX || 0) + moveGroundPoint.x - dragState.point.x, -100, 100)
+        ),
+        offsetZ: roundToHundredth(
+          clampValue((dragRegion.offsetZ || 0) + moveGroundPoint.z - dragState.point.z, -100, 100)
+        )
       });
     } else if (dragState.handle === "rotate") {
-      const startAngle = Math.atan2(dragState.point.z - center.center[2], dragState.point.x - center.center[0]);
-      const deltaAngle = Math.atan2(deltaZ, deltaX) - startAngle;
-      let nextRotation = center.rotation + deltaAngle * 180 / Math.PI;
-      nextRotation = ((nextRotation + 180) % 360 + 360) % 360 - 180;
-      if (shiftKey.shiftKey) {
-        nextRotation = Math.round(nextRotation / 15) * 15;
+      const grabAngleRad = Math.atan2(
+        dragState.point.z - dragRegion.center[2],
+        dragState.point.x - dragRegion.center[0]
+      );
+      const rotationDeltaRad = Math.atan2(deltaAlongZ, deltaAlongX) - grabAngleRad;
+      let nextRotationDeg = dragRegion.rotation + (rotationDeltaRad * 180) / Math.PI;
+      nextRotationDeg = ((((nextRotationDeg + 180) % 360) + 360) % 360) - 180;
+      if (pointerMoveEvent.shiftKey) {
+        nextRotationDeg = Math.round(nextRotationDeg / 15) * 15;
       }
-      applyOverrides({
-        rotation: round(nextRotation)
+      applyOverride({
+        rotation: roundToHundredth(nextRotationDeg)
       });
     } else {
-      const measuredWidth = Math.abs(deltaX * dragAxisX + deltaZ * dragAxisZ) * 2;
-      const measuredDepth = Math.abs(-deltaX * dragAxisZ + deltaZ * dragAxisX) * 2;
-      applyOverrides(resizeRegionDimensions(center, measuredWidth, measuredDepth, dragState.handle, shiftKey.shiftKey));
+      const nextWidth = Math.abs(deltaAlongX * dragAxisX + deltaAlongZ * dragAxisZ) * 2;
+      const nextDepth = Math.abs(-deltaAlongX * dragAxisZ + deltaAlongZ * dragAxisX) * 2;
+      applyOverride(
+        resizeRegionDimensions(
+          dragRegion,
+          nextWidth,
+          nextDepth,
+          dragState.handle,
+          pointerMoveEvent.shiftKey
+        )
+      );
     }
     dragState.changed = true;
   }
-  function endDrag(pointerId, cancel = false) {
-    if (!dragState || pointerId && pointerId.pointerId !== dragState.pointerId) {
+  function finishDrag(endDragEvent, shouldRevert = false) {
+    if (!dragState || (endDragEvent && endDragEvent.pointerId !== dragState.pointerId)) {
       return;
     }
-    const pointerIdCurrent = dragState;
+    const finishedDrag = dragState;
     dragState = null;
-    if (svg.hasPointerCapture(pointerIdCurrent.pointerId)) {
-      svg.releasePointerCapture(pointerIdCurrent.pointerId);
+    if (svgElement.hasPointerCapture(finishedDrag.pointerId)) {
+      svgElement.releasePointerCapture(finishedDrag.pointerId);
     }
-    if (cancel) {
-      overrides = pointerIdCurrent.initial;
-      getRegionLighting()?.setOverrides?.(overrides);
-      host.invalidateRegionLighting?.();
-      refreshRegions();
-      syncForm();
-      redrawOverlay();
-    } else if (pointerIdCurrent.changed) {
-      emitChange();
+    if (shouldRevert) {
+      overridesByRegionKey = finishedDrag.initial;
+      getRegionLighting()?.setOverrides?.(overridesByRegionKey);
+      editorHost.invalidateRegionLighting?.();
+      reloadRegionList();
+      syncFormState();
+      renderSvgOverlay();
+    } else if (finishedDrag.changed) {
+      commitOverrides();
     }
   }
-  function selectRegion(regionKey) {
+  function selectRegionByKey(regionKey) {
     if (dragState) {
-      endDrag(null);
+      finishDrag(null);
     }
-    selectedKey = regionKey;
-    syncForm();
-    applyPreview();
-    redrawOverlay();
+    selectedRegionKey = regionKey;
+    syncFormState();
+    applyPreviewToScene();
+    renderSvgOverlay();
   }
-  function disableOrbitControls() {
-    if (host.controls) {
-      host.controls.enabled = false;
+  function suspendOrbitControls() {
+    if (editorHost.controls) {
+      editorHost.controls.enabled = false;
     }
   }
-  function boundsOnAxes(axisX, axisZ) {
-    const walls = findFloor(selectedFloorId)?.scene;
-    const push = [];
-    const pushCorner = (planX, planY, radius = 0) => {
-      if (!Number.isFinite(Number(planX)) || !Number.isFinite(Number(planY))) {
+  function syncCameraInteraction() {
+    editorHost.setCameraInteraction?.({
+      enabled: isOpen && is3dPreview,
+      rotationMode: "free",
+      panEnabled: is3dPreview,
+      zoomEnabled: is3dPreview
+    });
+    if (!is3dPreview) {
+      suspendOrbitControls();
+    }
+  }
+  function set3dPreviewEnabled(shouldUse3dPreview) {
+    if (!isOpen || is3dPreview === shouldUse3dPreview) {
+      return;
+    }
+    finishDrag(null);
+    if (is3dPreview) {
+      savedCameraState3d = deepCloneObject(editorHost.cameraState(true));
+    } else {
+      savedCameraStatePlan = deepCloneObject(editorHost.cameraState(true));
+    }
+    is3dPreview = shouldUse3dPreview;
+    svgElement.style.display = is3dPreview ? "none" : "";
+    editorElement
+      .querySelector("[data-action=view-plan]")
+      .setAttribute("aria-pressed", String(!is3dPreview));
+    editorElement
+      .querySelector("[data-action=view-3d]")
+      .setAttribute("aria-pressed", String(is3dPreview));
+    editorElement.querySelector(".p2r-title").textContent = is3dPreview
+      ? "3D 高度预览 · 拖动旋转，滚轮缩放"
+      : "俯视范围编辑 · 拖动边角调整";
+    editorElement.querySelector(".p2r-compact-caption").textContent = is3dPreview
+      ? "拖动旋转 · 双指缩放"
+      : "自由拖动 · Shift 等比";
+    const cameraStateToRestore = is3dPreview ? savedCameraState3d : savedCameraStatePlan;
+    if (cameraStateToRestore) {
+      editorHost.restoreCamera(cameraStateToRestore);
+    } else {
+      fitCameraToContent();
+    }
+    syncCameraInteraction();
+    syncFormState();
+    renderSvgOverlay();
+    editorHost.invalidateRegionLighting?.();
+    wake();
+  }
+  function computeGroundBounds(horizontalAxis, verticalAxis) {
+    const floorScene = findFloorById(activeFloorId)?.scene;
+    const groundSamplePoints = [];
+    const addSamplePoint = (sampleWorldX, sampleWorldY, sampleRadius = 0) => {
+      if (!Number.isFinite(Number(sampleWorldX)) || !Number.isFinite(Number(sampleWorldY))) {
         return;
       }
-      const point = host.worldPoint?.(selectedFloorId, Number(planX), Number(planY), 0.065);
-      if (point) {
-        push.push({
-          point,
-          radius
+      const samplePoint = editorHost.worldPoint?.(
+        activeFloorId,
+        Number(sampleWorldX),
+        Number(sampleWorldY),
+        0.065
+      );
+      if (samplePoint) {
+        groundSamplePoints.push({
+          point: samplePoint,
+          radius: sampleRadius
         });
       }
     };
-    for (const start of walls?.walls || []) {
-      const halfThickness = Math.max(0, toFiniteNumber(start.thickness, 0.12)) / 2;
-      pushCorner(start.start?.x, start.start?.y, halfThickness);
-      pushCorner(start.end?.x, start.end?.y, halfThickness);
+    for (const wallItem of floorScene?.walls || []) {
+      const wallHalfThickness = Math.max(0, toFiniteNumber(wallItem.thickness, 0.12)) / 2;
+      addSamplePoint(wallItem.start?.x, wallItem.start?.y, wallHalfThickness);
+      addSamplePoint(wallItem.end?.x, wallItem.end?.y, wallHalfThickness);
     }
-    if (!push.length) {
-      for (const x2 of walls?.items || []) {
-        const x = host.worldPoint?.(selectedFloorId, x2.x, x2.y, 0.065);
-        if (!x) {
+    if (!groundSamplePoints.length) {
+      for (const floorItem of floorScene?.items || []) {
+        const itemOrigin = editorHost.worldPoint?.(activeFloorId, floorItem.x, floorItem.y, 0.065);
+        if (!itemOrigin) {
           continue;
         }
-        const itemRot = toFiniteNumber(x2.rotation) * Math.PI / 180;
-        const itemCos = Math.cos(itemRot);
-        const itemSin = Math.sin(itemRot);
-        for (const signX of [-1, 1]) {
-          for (const signZ of [-1, 1]) {
-            const localOffsetX = signX * Math.max(0.1, toFiniteNumber(x2.width, 0.5)) / 2;
-            const localOffsetZ = signZ * Math.max(0.1, toFiniteNumber(x2.depth, 0.5)) / 2;
-            push.push({
-              point: new THREE.Vector3(x.x + localOffsetX * itemCos - localOffsetZ * itemSin, x.y, x.z + localOffsetX * itemSin + localOffsetZ * itemCos),
+        const itemRotationRad = (toFiniteNumber(floorItem.rotation) * Math.PI) / 180;
+        const itemCos = Math.cos(itemRotationRad);
+        const itemSin = Math.sin(itemRotationRad);
+        for (const extentSignX of [-1, 1]) {
+          for (const extentSignZ of [-1, 1]) {
+            const extentOffsetX =
+              (extentSignX * Math.max(0.1, toFiniteNumber(floorItem.width, 0.5))) / 2;
+            const extentOffsetZ =
+              (extentSignZ * Math.max(0.1, toFiniteNumber(floorItem.depth, 0.5))) / 2;
+            groundSamplePoints.push({
+              point: new threeNamespace.Vector3(
+                itemOrigin.x + extentOffsetX * itemCos - extentOffsetZ * itemSin,
+                itemOrigin.y,
+                itemOrigin.z + extentOffsetX * itemSin + extentOffsetZ * itemCos
+              ),
               radius: 0
             });
           }
         }
       }
     }
-    if (!push.length) {
-      for (const center of regions.filter(floorId => String(floorId.floorId) === selectedFloorId)) {
-        push.push({
-          point: new THREE.Vector3().fromArray(center.center),
+    if (!groundSamplePoints.length) {
+      for (const floorRegionForBounds of regions.filter(
+        groundRegionEntry => String(groundRegionEntry.floorId) === activeFloorId
+      )) {
+        groundSamplePoints.push({
+          point: new threeNamespace.Vector3().fromArray(floorRegionForBounds.center),
           radius: 0.5
         });
       }
     }
-    if (!push.length) {
-      push.push({
-        point: new THREE.Vector3(0, 0, 0),
+    if (!groundSamplePoints.length) {
+      groundSamplePoints.push({
+        point: new threeNamespace.Vector3(0, 0, 0),
         radius: 2.5
       });
     }
-    let left = Infinity;
-    let right = -Infinity;
-    let bottom = Infinity;
-    let top = -Infinity;
-    for (const {
-      point: dot,
-      radius: padRadius
-    } of push) {
-      const projX = dot.dot(axisX);
-      const projZ = dot.dot(axisZ);
-      left = Math.min(left, projX - padRadius);
-      right = Math.max(right, projX + padRadius);
-      bottom = Math.min(bottom, projZ - padRadius);
-      top = Math.max(top, projZ + padRadius);
+    let horizontalMin = Infinity;
+    let horizontalMax = -Infinity;
+    let verticalMin = Infinity;
+    let verticalMax = -Infinity;
+    for (const { point: boundsSamplePoint, radius: boundsSampleRadius } of groundSamplePoints) {
+      const pointAlongHorizontal = boundsSamplePoint.dot(horizontalAxis);
+      const pointAlongVertical = boundsSamplePoint.dot(verticalAxis);
+      horizontalMin = Math.min(horizontalMin, pointAlongHorizontal - boundsSampleRadius);
+      horizontalMax = Math.max(horizontalMax, pointAlongHorizontal + boundsSampleRadius);
+      verticalMin = Math.min(verticalMin, pointAlongVertical - boundsSampleRadius);
+      verticalMax = Math.max(verticalMax, pointAlongVertical + boundsSampleRadius);
     }
     return {
-      left: left,
-      right: right,
-      bottom,
-      top
+      left: horizontalMin,
+      right: horizontalMax,
+      bottom: verticalMin,
+      top: verticalMax
     };
   }
-  function fitTopView() {
-    if (!editorOpen || !topViewCamera || fittingCamera || heightPreview) {
+  function fitCameraToContent() {
+    if (!isOpen || !topViewCameraState || isFittingCamera) {
       return;
     }
-    const width = editorEl.getBoundingClientRect();
-    const top = panelEl.getBoundingClientRect();
-    if (!(width.width < 2) && !(width.height < 2)) {
-      fittingCamera = true;
+    const fitEditorRect = editorElement.getBoundingClientRect();
+    const fitPanelRect = panelElement.getBoundingClientRect();
+    if (!(fitEditorRect.width < 2) && !(fitEditorRect.height < 2)) {
+      isFittingCamera = true;
       try {
-        const rect = width.width <= 620 ? {
-          x: 14,
-          y: 52,
-          width: width.width - 28,
-          height: Math.max(70, top.top - width.top - 62)
-        } : {
-          x: 18,
-          y: 68,
-          width: Math.max(70, top.left - width.left - 35),
-          height: Math.max(70, width.height - 115)
-        };
-        const target = cloneJson(topViewCamera);
-        const clone = new THREE.Vector3().fromArray(topViewCamera.up || [0, 0, -1]).normalize();
-        const viewForward = new THREE.Vector3().fromArray(topViewCamera.target).sub(new THREE.Vector3().fromArray(topViewCamera.position)).normalize();
-        const normalize = new THREE.Vector3().crossVectors(viewForward, clone).normalize();
-        const right = boundsOnAxes(normalize, clone);
-        const spanX = Math.max(1, right.right - right.left);
-        const spanZ = Math.max(1, right.top - right.bottom);
-        const worldPerPixel = Math.max((spanX + 0.4) / rect.width, (spanZ + 0.4) / rect.height) * 1.08;
-        const offsetPxX = rect.x + rect.width / 2 - width.width / 2;
-        const offsetPxY = rect.y + rect.height / 2 - width.height / 2;
-        const y = normalize.clone().multiplyScalar((right.left + right.right) / 2).add(clone.clone().multiplyScalar((right.bottom + right.top) / 2));
-        y.y = planeHeight() + 0.6;
-        y.addScaledVector(normalize, -offsetPxX * worldPerPixel).addScaledVector(clone, offsetPxY * worldPerPixel);
-        target.target = y.toArray();
-        target.position = y.clone().addScaledVector(viewForward, -Math.max(20, spanX * 2, spanZ * 2)).toArray();
-        target.frameSize = worldPerPixel * Math.min(width.width, width.height);
-        target.zoom = 1;
-        host.restoreCamera(target);
-        disableOrbitControls();
-        host.invalidateRegionLighting?.();
+        const fitViewBox =
+          fitEditorRect.width <= 620
+            ? {
+                x: 14,
+                y: 52,
+                width: fitEditorRect.width - 28,
+                height: Math.max(70, fitPanelRect.top - fitEditorRect.top - 62)
+              }
+            : {
+                x: 18,
+                y: 68,
+                width: Math.max(70, fitPanelRect.left - fitEditorRect.left - 35),
+                height: Math.max(70, fitEditorRect.height - 115)
+              };
+        const nextCameraState = deepCloneObject(topViewCameraState);
+        let upVector = new threeNamespace.Vector3()
+          .fromArray(topViewCameraState.up || [0, 0, -1])
+          .normalize();
+        const viewDirection = new threeNamespace.Vector3()
+          .fromArray(topViewCameraState.target)
+          .sub(new threeNamespace.Vector3().fromArray(topViewCameraState.position))
+          .normalize();
+        if (is3dPreview) {
+          viewDirection.set(-1, -1.1, -1).normalize();
+          upVector.set(0, 1, 0);
+        }
+        const rightVector = new threeNamespace.Vector3()
+          .crossVectors(viewDirection, upVector)
+          .normalize();
+        if (is3dPreview) {
+          upVector.crossVectors(rightVector, viewDirection).normalize();
+        }
+        const groundBounds = computeGroundBounds(rightVector, upVector);
+        const contentWidthPx = Math.max(1, groundBounds.right - groundBounds.left);
+        const contentHeightPx =
+          Math.max(1, groundBounds.top - groundBounds.bottom) + (is3dPreview ? 3 : 0);
+        const fitScale =
+          Math.max(
+            (contentWidthPx + 0.4) / fitViewBox.width,
+            (contentHeightPx + 0.4) / fitViewBox.height
+          ) * 1.08;
+        const horizontalShiftPx = fitViewBox.x + fitViewBox.width / 2 - fitEditorRect.width / 2;
+        const verticalShiftPx = fitViewBox.y + fitViewBox.height / 2 - fitEditorRect.height / 2;
+        const cameraTarget = rightVector
+          .clone()
+          .multiplyScalar((groundBounds.left + groundBounds.right) / 2)
+          .add(upVector.clone().multiplyScalar((groundBounds.bottom + groundBounds.top) / 2));
+        if (is3dPreview) {
+          const fullGroundBounds = computeGroundBounds(
+            new threeNamespace.Vector3(1, 0, 0),
+            new threeNamespace.Vector3(0, 0, 1)
+          );
+          cameraTarget.set(
+            (fullGroundBounds.left + fullGroundBounds.right) / 2,
+            0,
+            (fullGroundBounds.bottom + fullGroundBounds.top) / 2
+          );
+        }
+        cameraTarget.y = getLampWorldHeight() + 0.6;
+        cameraTarget
+          .addScaledVector(rightVector, -horizontalShiftPx * fitScale)
+          .addScaledVector(upVector, verticalShiftPx * fitScale);
+        nextCameraState.target = cameraTarget.toArray();
+        if (is3dPreview) {
+          nextCameraState.up = [0, 1, 0];
+          nextCameraState.view = "free";
+        }
+        nextCameraState.position = cameraTarget
+          .clone()
+          .addScaledVector(viewDirection, -Math.max(20, contentWidthPx * 2, contentHeightPx * 2))
+          .toArray();
+        nextCameraState.frameSize = fitScale * Math.min(fitEditorRect.width, fitEditorRect.height);
+        nextCameraState.zoom = 1;
+        editorHost.restoreCamera(nextCameraState);
+        syncCameraInteraction();
+        editorHost.invalidateRegionLighting?.();
         wake();
-        lastFitWidth = width.width;
-        lastFitHeight = width.height;
-        redrawOverlay();
+        lastWidthPx = fitEditorRect.width;
+        lastHeightPx = fitEditorRect.height;
+        renderSvgOverlay();
       } finally {
-        fittingCamera = false;
+        isFittingCamera = false;
       }
     }
   }
-  function scheduleRedraw({
-    fit: fit = false
-  } = {}) {
-    if (editorOpen) {
-      pendingFit ||= fit;
-      if (redrawRaf) {
-        win.cancelAnimationFrame(redrawRaf);
+  function scheduleRender({ fit: shouldFit = false } = {}) {
+    if (isOpen) {
+      pendingFit ||= shouldFit;
+      if (animationFrameId) {
+        editorWindow.cancelAnimationFrame(animationFrameId);
       }
-      redrawRaf = win.requestAnimationFrame(() => {
-        redrawRaf = 0;
-        const shouldFit = pendingFit;
+      animationFrameId = editorWindow.requestAnimationFrame(() => {
+        animationFrameId = 0;
+        const fitRequested = pendingFit;
         pendingFit = false;
-        if (editorOpen) {
-          refreshRegions();
-          syncForm();
-          if (shouldFit) {
-            fitTopView();
+        if (isOpen) {
+          reloadRegionList();
+          syncFormState();
+          if (fitRequested && !is3dPreview) {
+            fitCameraToContent();
           } else {
-            redrawOverlay();
+            renderSvgOverlay();
           }
         }
       });
     }
   }
-  function selectFloor(floorIdValue) {
+  function setActiveFloor(floorIdToSelect) {
     if (dragState) {
-      endDrag(null);
+      finishDrag(null);
     }
-    selectedFloorId = String(floorIdValue);
-    selectedKey = "";
-    host.setFloor(selectedFloorId);
-    host.setCameraProjection("orthographic");
-    host.topView();
-    topViewCamera = cloneJson(host.cameraState(true));
-    disableOrbitControls();
-    host.invalidateRegionLighting?.();
-    refreshRegions();
-    syncForm();
-    applyPreview();
-    scheduleRedraw({
-      fit: true
-    });
+    const wasIn3dPreview = is3dPreview;
+    if (wasIn3dPreview) {
+      set3dPreviewEnabled(false);
+    }
+    activeFloorId = String(floorIdToSelect);
+    selectedRegionKey = "";
+    savedCameraStatePlan = null;
+    savedCameraState3d = null;
+    editorHost.setFloor(activeFloorId);
+    editorHost.setCameraProjection("orthographic");
+    editorHost.topView();
+    topViewCameraState = deepCloneObject(editorHost.cameraState(true));
+    suspendOrbitControls();
+    editorHost.invalidateRegionLighting?.();
+    reloadRegionList();
+    syncFormState();
+    applyPreviewToScene();
+    if (wasIn3dPreview) {
+      fitCameraToContent();
+      set3dPreviewEnabled(true);
+    } else {
+      scheduleRender({
+        fit: true
+      });
+    }
   }
-  function onFieldChange(target) {
-    const fieldEl = target.target;
-    const fieldName = fieldEl.dataset.field;
+  function handleFieldChangeEvent(fieldChangeEvent) {
+    const fieldControl = fieldChangeEvent.target;
+    const fieldName = fieldControl.dataset.field;
     if (fieldName === "floor") {
-      return selectFloor(fieldEl.value);
+      return setActiveFloor(fieldControl.value);
     }
     if (fieldName === "fixture") {
-      return selectRegion(fieldEl.value);
+      return selectRegionByKey(fieldControl.value);
     }
     if (fieldName === "group" || fieldName === "preview") {
-      syncForm();
-      applyPreview();
-      redrawOverlay();
+      syncFormState();
+      applyPreviewToScene();
+      renderSvgOverlay();
       return;
     }
     if (fieldName === "moveCenter") {
-      return applyOverrides({
-        moveCenterEnabled: fieldEl.checked
-      }, true);
+      return applyOverride(
+        {
+          moveCenterEnabled: fieldControl.checked
+        },
+        true
+      );
     }
     if (fieldName === "shape") {
-      return applyOverrides({
-        shape: fieldEl.value
-      }, true);
+      return applyOverride(
+        {
+          shape: fieldControl.value
+        },
+        true
+      );
     }
     if (fieldName === "softness") {
-      return applyOverrides({
-        softness: clamp(toFiniteNumber(fieldEl.value, 35) / 100, 0.05, 1)
-      }, true);
+      return applyOverride(
+        {
+          softness: clampValue(toFiniteNumber(fieldControl.value, 35) / 100, 0.05, 1)
+        },
+        true
+      );
+    }
+    if (["heightMin", "heightMax"].includes(fieldName)) {
+      const parsedHeightValue =
+        fieldControl.value.trim() === ""
+          ? undefined
+          : roundToHundredth(clampValue(toFiniteNumber(fieldControl.value), 0, 20));
+      fieldControl.value = parsedHeightValue ?? "";
+      return applyOverride(
+        {
+          heightEdit: {
+            field: fieldName,
+            value: parsedHeightValue
+          }
+        },
+        true
+      );
     }
     if (["width", "depth", "rotation"].includes(fieldName)) {
-      const prevFieldValue = selectedRegion()?.[fieldName];
-      const parsedFieldValue = fieldEl.value.trim() === "" ? prevFieldValue : toFiniteNumber(fieldEl.value, prevFieldValue);
-      fieldEl.value = round(clamp(parsedFieldValue, fieldName === "rotation" ? -180 : 0.5, fieldName === "rotation" ? 180 : 20));
-      applyOverrides({
-        [fieldName]: Number(fieldEl.value)
-      }, true);
-    }
-    if (fieldName === "heightMin" || fieldName === "heightMax") {
-      const region = selectedRegion();
-      if (!region) {
-        return;
-      }
-      const nextValue = fieldEl.value.trim() === "" ? undefined : clamp(toFiniteNumber(fieldEl.value, region[fieldName] ?? 0), 0, 20);
-      if (nextValue !== undefined) {
-        fieldEl.value = round(nextValue);
-      }
-      applyOverrides(regionHeightPatch(region, fieldName, nextValue === undefined ? undefined : Number(fieldEl.value)), true);
+      const currentFieldValue = getSelectedRegion()?.[fieldName];
+      const nextFieldValue =
+        fieldControl.value.trim() === ""
+          ? currentFieldValue
+          : toFiniteNumber(fieldControl.value, currentFieldValue);
+      fieldControl.value = roundToHundredth(
+        clampValue(
+          nextFieldValue,
+          fieldName === "rotation" ? -180 : 0.5,
+          fieldName === "rotation" ? 180 : 20
+        )
+      );
+      applyOverride(
+        {
+          [fieldName]: Number(fieldControl.value)
+        },
+        true
+      );
     }
   }
-  function onEditorKeyDown(key) {
-    if (!editorOpen || key.defaultPrevented) {
+  function handleEditorKeyDown(editorKeyEvent) {
+    if (!isOpen || editorKeyEvent.defaultPrevented) {
       return;
     }
-    if (key.key === "Escape") {
-      key.preventDefault();
-      key.stopPropagation();
+    if (editorKeyEvent.key === "Escape") {
+      editorKeyEvent.preventDefault();
+      editorKeyEvent.stopPropagation();
       closeEditor();
       return;
     }
-    const dataset = key.target.closest?.("[data-region-key]");
-    if (dataset && ["Enter", " "].includes(key.key)) {
-      key.preventDefault();
-      selectRegion(dataset.dataset.regionKey);
+    const regionKeyElement = editorKeyEvent.target.closest?.("[data-region-key]");
+    if (regionKeyElement && ["Enter", " "].includes(editorKeyEvent.key)) {
+      editorKeyEvent.preventDefault();
+      selectRegionByKey(regionKeyElement.dataset.regionKey);
     }
-    const datasetCurrent = key.target.closest?.("[data-range-handle]");
-    if (!datasetCurrent || !selectedRegion() || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key.key)) {
+    const rangeHandleElement = editorKeyEvent.target.closest?.("[data-range-handle]");
+    if (
+      !rangeHandleElement ||
+      !getSelectedRegion() ||
+      !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(editorKeyEvent.key)
+    ) {
       return;
     }
-    key.preventDefault();
-    const stepSign = ["ArrowUp", "ArrowRight"].includes(key.key) ? 1 : -1;
-    if (datasetCurrent.dataset.rangeHandle === "move") {
-      if (!selectedRegion().moveCenterEnabled) {
+    editorKeyEvent.preventDefault();
+    const directionSign = ["ArrowUp", "ArrowRight"].includes(editorKeyEvent.key) ? 1 : -1;
+    if (rangeHandleElement.dataset.rangeHandle === "move") {
+      if (!getSelectedRegion().moveCenterEnabled) {
         return;
       }
-      const offsetAxis = ["ArrowLeft", "ArrowRight"].includes(key.key) ? "offsetX" : "offsetZ";
-      const offsetSign = ["ArrowRight", "ArrowDown"].includes(key.key) ? 1 : -1;
-      applyOverrides({
-        [offsetAxis]: round(clamp((selectedRegion()[offsetAxis] || 0) + offsetSign * (key.shiftKey ? 0.5 : 0.1), -100, 100))
-      }, true);
-    } else if (datasetCurrent.dataset.rangeHandle === "rotate") {
-      applyOverrides({
-        rotation: clamp(selectedRegion().rotation + stepSign * (key.shiftKey ? 15 : 1), -180, 180)
-      }, true);
+      const offsetField = ["ArrowLeft", "ArrowRight"].includes(editorKeyEvent.key)
+        ? "offsetX"
+        : "offsetZ";
+      const offsetSign = ["ArrowRight", "ArrowDown"].includes(editorKeyEvent.key) ? 1 : -1;
+      applyOverride(
+        {
+          [offsetField]: roundToHundredth(
+            clampValue(
+              (getSelectedRegion()[offsetField] || 0) +
+                offsetSign * (editorKeyEvent.shiftKey ? 0.5 : 0.1),
+              -100,
+              100
+            )
+          )
+        },
+        true
+      );
+    } else if (rangeHandleElement.dataset.rangeHandle === "rotate") {
+      applyOverride(
+        {
+          rotation: clampValue(
+            getSelectedRegion().rotation + directionSign * (editorKeyEvent.shiftKey ? 15 : 1),
+            -180,
+            180
+          )
+        },
+        true
+      );
     } else {
-      const handleName = datasetCurrent.dataset.rangeHandle;
-      const dimKey = ["w", "e"].includes(handleName) ? "width" : ["n", "s"].includes(handleName) ? "depth" : ["ArrowLeft", "ArrowRight"].includes(key.key) ? "width" : "depth";
-      const width = selectedRegion();
-      const options = {
-        width: width.width,
-        depth: width.depth,
-        [dimKey]: width[dimKey] + stepSign * 0.1
+      const handleId = rangeHandleElement.dataset.rangeHandle;
+      const resizedDimensionField = ["w", "e"].includes(handleId)
+        ? "width"
+        : ["n", "s"].includes(handleId)
+          ? "depth"
+          : ["ArrowLeft", "ArrowRight"].includes(editorKeyEvent.key)
+            ? "width"
+            : "depth";
+      const keyboardRegion = getSelectedRegion();
+      const resizePatch = {
+        width: keyboardRegion.width,
+        depth: keyboardRegion.depth,
+        [resizedDimensionField]: keyboardRegion[resizedDimensionField] + directionSign * 0.1
       };
-      applyOverrides(resizeRegionDimensions(width, options.width, options.depth, dimKey === "width" ? "e" : "s", key.shiftKey), true);
+      applyOverride(
+        resizeRegionDimensions(
+          keyboardRegion,
+          resizePatch.width,
+          resizePatch.depth,
+          resizedDimensionField === "width" ? "e" : "s",
+          editorKeyEvent.shiftKey
+        ),
+        true
+      );
     }
   }
-  function onActionClick(target) {
-    const actionName = target.target.closest?.("[data-action]")?.dataset.action;
+  function handleActionClick(actionClickEvent) {
+    const actionName = actionClickEvent.target.closest?.("[data-action]")?.dataset.action;
+    if (actionName === "view-plan") {
+      set3dPreviewEnabled(false);
+    }
+    if (actionName === "view-3d") {
+      set3dPreviewEnabled(true);
+    }
     if (actionName === "close") {
       closeEditor();
     }
-    if (actionName === "view-plan") {
-      setHeightPreview(false);
-    }
-    if (actionName === "view-3d") {
-      setHeightPreview(true);
-    }
     if (actionName === "reset-center") {
-      applyOverrides({
-        offsetX: 0,
-        offsetZ: 0
-      }, true);
+      applyOverride(
+        {
+          offsetX: 0,
+          offsetZ: 0
+        },
+        true
+      );
     }
     if (actionName === "reset") {
-      for (const resetKey of activeEditKeys()) {
-        delete overrides[resetKey];
+      for (const resetRegionKey of getAffectedRegionKeys()) {
+        delete overridesByRegionKey[resetRegionKey];
       }
-      getRegionLighting()?.setOverrides?.(overrides);
-      host.invalidateRegionLighting?.();
+      getRegionLighting()?.setOverrides?.(overridesByRegionKey);
+      editorHost.invalidateRegionLighting?.();
       wake();
-      refreshRegions();
-      syncForm();
-      redrawOverlay();
-      emitChange();
+      reloadRegionList();
+      syncFormState();
+      renderSvgOverlay();
+      commitOverrides();
     }
   }
-  function syncCameraInteraction() {
-    host.setCameraInteraction?.({
-      enabled: editorOpen && heightPreview,
-      rotationMode: "free",
-      panEnabled: heightPreview,
-      zoomEnabled: heightPreview
-    });
-    if (!heightPreview) {
-      disableOrbitControls();
-    }
-  }
-  function setHeightPreview(nextPreview) {
-    if (!editorOpen || heightPreview === nextPreview) {
-      return;
-    }
-    endDrag(null);
-    if (heightPreview) {
-      preview3dCamera = cloneJson(host.cameraState(true));
-    } else {
-      topViewCamera = cloneJson(host.cameraState(true));
-    }
-    heightPreview = nextPreview;
-    editorEl.dataset.heightPreview = heightPreview ? "true" : "false";
-    editorEl.querySelector("[data-action=view-plan]").setAttribute("aria-pressed", String(!heightPreview));
-    editorEl.querySelector("[data-action=view-3d]").setAttribute("aria-pressed", String(heightPreview));
-    editorEl.querySelector(".p2r-title").innerHTML = heightPreview ? "3D 高度预览 · 拖动旋转，滚轮缩放<small>旋转或缩放查看效果 · 修改高度实时预览</small>" : "俯视范围编辑 · 拖动边角调整<small>拖动边角调整范围，按住 Shift 等比例缩放</small>";
-    editorEl.querySelector(".p2r-compact-caption").textContent = heightPreview ? "拖动旋转照射范围" : "自由拖动 · Shift 等比";
-    const cameraState = heightPreview ? preview3dCamera : topViewCamera;
-    if (cameraState) {
-      host.restoreCamera(cameraState);
-    } else if (heightPreview) {
-      host.setCameraProjection?.("perspective");
-      host.setCameraView?.("free");
-    } else {
-      host.setCameraProjection("orthographic");
-      host.topView();
-      topViewCamera = cloneJson(host.cameraState(true));
-      scheduleRedraw({
-        fit: true
+  editorElement.addEventListener("change", handleFieldChangeEvent);
+  editorElement.addEventListener("input", fieldInputEvent => {
+    if (
+      ["heightMin", "heightMax"].includes(fieldInputEvent.target.dataset.field) &&
+      fieldInputEvent.target.validity.valid
+    ) {
+      const liveHeightValue =
+        fieldInputEvent.target.value.trim() === ""
+          ? undefined
+          : clampValue(Number(fieldInputEvent.target.value), 0, 20);
+      applyOverride({
+        heightEdit: {
+          field: fieldInputEvent.target.dataset.field,
+          value: liveHeightValue
+        }
       });
     }
-    syncCameraInteraction();
-    refreshRegions();
-    syncForm();
-    redrawOverlay();
-    host.invalidateRegionLighting?.();
-    wake();
-  }
-  editorEl.addEventListener("change", onFieldChange);
-  editorEl.addEventListener("input", target => {
-    if (target.target === fields.softness) {
-      applyOverrides({
-        softness: clamp(toFiniteNumber(fields.softness.value, 35) / 100, 0.05, 1)
+    if (fieldInputEvent.target === fieldElements.softness) {
+      applyOverride({
+        softness: clampValue(toFiniteNumber(fieldElements.softness.value, 35) / 100, 0.05, 1)
       });
     }
   });
-  editorEl.addEventListener("click", onActionClick);
-  svg.addEventListener("pointerdown", onOverlayPointerDown);
-  svg.addEventListener("pointermove", onOverlayPointerMove);
-  svg.addEventListener("pointerup", pointerUpEvent => endDrag(pointerUpEvent));
-  svg.addEventListener("pointercancel", pointerCancelEvent => endDrag(pointerCancelEvent, true));
-  svg.addEventListener("lostpointercapture", lostCaptureEvent => endDrag(lostCaptureEvent));
-  const resizeObserver = new win.ResizeObserver(() => {
-    if (!editorOpen || fittingCamera) {
+  editorElement.addEventListener("click", handleActionClick);
+  svgElement.addEventListener("pointerdown", handlePointerDown);
+  svgElement.addEventListener("pointermove", handlePointerMove);
+  svgElement.addEventListener("pointerup", pointerUpEvent => finishDrag(pointerUpEvent));
+  svgElement.addEventListener("pointercancel", pointerCancelEvent =>
+    finishDrag(pointerCancelEvent, true)
+  );
+  svgElement.addEventListener("lostpointercapture", lostPointerCaptureEvent =>
+    finishDrag(lostPointerCaptureEvent)
+  );
+  const resizeObserver = new editorWindow.ResizeObserver(() => {
+    if (!isOpen || isFittingCamera) {
       return;
     }
-    const width = editorEl.getBoundingClientRect();
-    if (Math.abs(width.width - lastFitWidth) > 1 || Math.abs(width.height - lastFitHeight) > 1) {
-      scheduleRedraw({
+    const observedRect = editorElement.getBoundingClientRect();
+    if (
+      Math.abs(observedRect.width - lastWidthPx) > 1 ||
+      Math.abs(observedRect.height - lastHeightPx) > 1
+    ) {
+      scheduleRender({
         fit: true
       });
     } else {
-      scheduleRedraw();
+      scheduleRender();
     }
   });
-  resizeObserver.observe(host.container);
-  function open() {
-    if (!editorOpen && !disposed) {
+  resizeObserver.observe(editorHost.container);
+  function openEditor() {
+    if (!isOpen && !isDisposed) {
       if (!getRegionLighting()?.listRegions) {
         throw new Error("区域灯光尚未准备好，请稍后重试。");
       }
-      savedFloorId = String(getConfig()?.floorSelection || host.document?.activeFloorId || host.document?.floors?.[0]?.id || "");
-      savedControlsEnabled = host.controls?.enabled;
-      savedCamera = cloneJson(host.cameraState(true));
-      editorOpen = true;
-      heightPreview = false;
-      preview3dCamera = null;
-      editorEl.dataset.heightPreview = "false";
-      editorEl.querySelector("[data-action=view-plan]")?.setAttribute("aria-pressed", "true");
-      editorEl.querySelector("[data-action=view-3d]")?.setAttribute("aria-pressed", "false");
-      editorEl.hidden = false;
-      overrides = cloneJson(getConfig()?.lightRegionOverrides || getRegionLighting()?.getOverrides?.() || {});
-      getRegionLighting().setOverrides(overrides);
-      selectedFloorId = savedFloorId === "all" ? String(host.document?.activeFloorId || host.document?.floors?.[0]?.id || "") : savedFloorId;
-      host.setFloor(selectedFloorId);
-      host.setCameraProjection("orthographic");
-      host.topView();
-      topViewCamera = cloneJson(host.cameraState(true));
-      syncCameraInteraction();
-      doc.addEventListener("keydown", onEditorKeyDown, true);
-      unsubscribeCamera = host.onCameraChange?.(() => {
-        if (!fittingCamera) {
-          scheduleRedraw();
+      requestedFloorSelection = String(
+        getConfig()?.floorSelection ||
+          editorHost.document?.activeFloorId ||
+          editorHost.document?.floors?.[0]?.id ||
+          ""
+      );
+      is3dPreview = false;
+      savedCameraState3d = null;
+      savedCameraStatePlan = null;
+      svgElement.style.display = "";
+      editorElement.querySelector(".p2r-title").textContent = "俯视范围编辑 · 拖动边角调整";
+      editorElement.querySelector(".p2r-compact-caption").textContent = "自由拖动 · Shift 等比";
+      editorElement.querySelector("[data-action=view-plan]").setAttribute("aria-pressed", "true");
+      editorElement.querySelector("[data-action=view-3d]").setAttribute("aria-pressed", "false");
+      previousControlsEnabled = editorHost.controls?.enabled;
+      openedCameraState = deepCloneObject(editorHost.cameraState(true));
+      isOpen = true;
+      editorElement.hidden = false;
+      overridesByRegionKey = deepCloneObject(
+        getConfig()?.lightRegionOverrides || getRegionLighting()?.getOverrides?.() || {}
+      );
+      getRegionLighting().setOverrides(overridesByRegionKey);
+      activeFloorId =
+        requestedFloorSelection === "all"
+          ? String(editorHost.document?.activeFloorId || editorHost.document?.floors?.[0]?.id || "")
+          : requestedFloorSelection;
+      editorHost.setFloor(activeFloorId);
+      editorHost.setCameraProjection("orthographic");
+      editorHost.topView();
+      topViewCameraState = deepCloneObject(editorHost.cameraState(true));
+      suspendOrbitControls();
+      editorDocument.addEventListener("keydown", handleEditorKeyDown, true);
+      cameraChangeUnsubscribe = editorHost.onCameraChange?.(() => {
+        if (!isFittingCamera && !is3dPreview) {
+          scheduleRender();
         }
       });
-      host.invalidateRegionLighting?.();
-      refreshRegions();
-      syncForm();
-      applyPreview();
-      scheduleRedraw({
+      editorHost.invalidateRegionLighting?.();
+      reloadRegionList();
+      syncFormState();
+      applyPreviewToScene();
+      scheduleRender({
         fit: true
       });
-      editorEl.querySelector("[data-action=close]").focus({
+      editorElement.querySelector("[data-action=close]").focus({
         preventScroll: true
       });
     }
   }
   function closeEditor() {
-    if (editorOpen) {
-      close.close();
-      endDrag(null);
-      editorOpen = false;
-      editorEl.hidden = true;
-      if (redrawRaf) {
-        win.cancelAnimationFrame(redrawRaf);
-        redrawRaf = 0;
+    if (isOpen) {
+      formControls.close();
+      finishDrag(null);
+      isOpen = false;
+      editorElement.hidden = true;
+      if (animationFrameId) {
+        editorWindow.cancelAnimationFrame(animationFrameId);
+        animationFrameId = 0;
       }
-      unsubscribeCamera?.();
-      unsubscribeCamera = null;
-      doc.removeEventListener("keydown", onEditorKeyDown, true);
+      cameraChangeUnsubscribe?.();
+      cameraChangeUnsubscribe = null;
+      editorDocument.removeEventListener("keydown", handleEditorKeyDown, true);
       getRegionLighting()?.setPreview?.(null);
-      host.setFloor(savedFloorId);
-      host.restoreCamera(savedCamera);
-      if (host.controls) {
-        host.controls.enabled = savedControlsEnabled !== false;
+      editorHost.setFloor(requestedFloorSelection);
+      editorHost.restoreCamera(openedCameraState);
+      if (editorHost.controls) {
+        editorHost.controls.enabled = previousControlsEnabled !== false;
       }
-      host.invalidateRegionLighting?.();
+      editorHost.invalidateRegionLighting?.();
       wake();
-      topViewCamera = null;
-      preview3dCamera = null;
-      heightPreview = false;
+      topViewCameraState = null;
       onClose();
     }
   }
-  function refresh() {
-    if (editorOpen) {
-      scheduleRedraw();
+  function refreshEditor() {
+    if (isOpen) {
+      scheduleRender();
     }
   }
-  function setSaveStatus(message) {
-    saveError = message ? String(message.message || message) : "";
-    if (editorOpen) {
-      syncForm();
+  function setSaveStatus(saveError) {
+    saveErrorMessage = saveError ? String(saveError.message || saveError) : "";
+    if (isOpen) {
+      syncFormState();
     }
   }
-  function dispose() {
-    if (!disposed) {
+  function disposeEditor() {
+    if (!isDisposed) {
       closeEditor();
-      disposed = true;
-      close.dispose();
+      isDisposed = true;
+      formControls.dispose();
       resizeObserver.disconnect();
-      editorEl.remove();
+      editorElement.remove();
     }
   }
   return {
-    open,
+    open: openEditor,
     close: closeEditor,
     flush() {
-      close.close();
-      endDrag(null);
-      emitChange();
+      formControls.close();
+      finishDrag(null);
+      commitOverrides();
     },
-    isOpen: () => editorOpen,
-    refresh,
-    dispose,
-    setSaveStatus
+    isOpen: () => isOpen,
+    syncCameraInteraction: syncCameraInteraction,
+    refresh: refreshEditor,
+    dispose: disposeEditor,
+    setSaveStatus: setSaveStatus
   };
 }
-export function mountRangeFormControls(formRoot) {
-  const formDoc = formRoot.ownerDocument;
-  const formWin = formDoc.defaultView;
+export function mountRangeFormControls(editorRootElement) {
+  const formDocument = editorRootElement.ownerDocument;
+  const formWindow = formDocument.defaultView;
   const customSelects = [];
-  const numberControls = [];
-  const listenerCleanups = [];
+  const numberFieldEntries = [];
+  const eventCleanupCallbacks = [];
   let openSelect = null;
-  let stopRepeat = null;
-  const createEl = (tag, element) => {
-    const className = formDoc.createElement(tag);
-    className.className = element;
-    return className;
+  let stopStepperRepeat = null;
+  const createStyledElement = (elementTagName, className) => {
+    const createdElement = formDocument.createElement(elementTagName);
+    createdElement.className = className;
+    return createdElement;
   };
-  const listen = (addEventListener, eventName, handler, listenOpts) => {
-    addEventListener.addEventListener(eventName, handler, listenOpts);
-    listenerCleanups.push(() => addEventListener.removeEventListener(eventName, handler, listenOpts));
+  const addTrackedListener = (eventTarget, eventType, eventListener, listenerOptions) => {
+    eventTarget.addEventListener(eventType, eventListener, listenerOptions);
+    eventCleanupCallbacks.push(() =>
+      eventTarget.removeEventListener(eventType, eventListener, listenerOptions)
+    );
   };
-  function closeMenu(restoreFocus = false) {
+  function closeSelectMenu(shouldRestoreFocus = false) {
     if (!openSelect) {
       return;
     }
-    const button = openSelect;
+    const closingSelect = openSelect;
     openSelect = null;
-    button.menu.hidden = true;
-    button.button.setAttribute("aria-expanded", "false");
-    if (restoreFocus) {
-      button.button.focus({
+    closingSelect.menu.hidden = true;
+    closingSelect.button.setAttribute("aria-expanded", "false");
+    if (shouldRestoreFocus) {
+      closingSelect.button.focus({
         preventScroll: true
       });
     }
   }
-  function positionMenu() {
+  function positionSelectMenu() {
     if (!openSelect) {
       return;
     }
-    const {
-      button: getBoundingClientRect,
-      menu: style
-    } = openSelect;
-    const width = getBoundingClientRect.getBoundingClientRect();
-    const maxMenuHeight = Math.max(40, Math.min(320, formWin.innerHeight - 16));
-    Object.assign(style.style, {
-      width: width.width + "px",
-      maxHeight: maxMenuHeight + "px",
-      left: Math.max(8, Math.min(formWin.innerWidth - width.width - 8, width.left)) + "px"
+    const { button: anchorButton, menu: anchorMenu } = openSelect;
+    const anchorRect = anchorButton.getBoundingClientRect();
+    const maxMenuHeightPx = Math.max(40, Math.min(320, formWindow.innerHeight - 16));
+    Object.assign(anchorMenu.style, {
+      width: anchorRect.width + "px",
+      maxHeight: maxMenuHeightPx + "px",
+      left:
+        Math.max(8, Math.min(formWindow.innerWidth - anchorRect.width - 8, anchorRect.left)) + "px"
     });
-    const menuHeight = Math.min(style.scrollHeight, maxMenuHeight);
-    style.style.top = (width.bottom + menuHeight + 12 <= formWin.innerHeight ? width.bottom + 4 : Math.max(8, width.top - menuHeight - 4)) + "px";
+    const menuHeightPx = Math.min(anchorMenu.scrollHeight, maxMenuHeightPx);
+    anchorMenu.style.top =
+      (anchorRect.bottom + menuHeightPx + 12 <= formWindow.innerHeight
+        ? anchorRect.bottom + 4
+        : Math.max(8, anchorRect.top - menuHeightPx - 4)) + "px";
   }
-  function syncCustomSelect(signature) {
-    const {
-      select: disabled,
-      button: textContent,
-      menu: replaceChildren
-    } = signature;
-    textContent.textContent = disabled.selectedOptions[0]?.textContent || "请选择";
-    textContent.disabled = disabled.disabled;
-    textContent.setAttribute("aria-label", disabled.getAttribute("aria-label") || "打开选择菜单");
-    const stringify = JSON.stringify([...disabled.options].map(opt => [opt.value, opt.textContent, opt.disabled, opt.hidden]));
-    if (stringify !== signature.signature) {
-      signature.signature = stringify;
-      replaceChildren.replaceChildren(...[...disabled.options].filter(hidden => !hidden.hidden).map(nativeOpt => {
-        const type = createEl("button", "custom-select-option");
-        type.type = "button";
-        type.dataset.value = nativeOpt.value;
-        type.setAttribute("role", "option");
-        type.textContent = nativeOpt.textContent;
-        type.disabled = nativeOpt.disabled;
-        return type;
-      }));
+  function syncCustomSelect(selectEntry) {
+    const { select: selectElement, button: selectButton, menu: selectMenu } = selectEntry;
+    selectButton.textContent = selectElement.selectedOptions[0]?.textContent || "请选择";
+    selectButton.disabled = selectElement.disabled;
+    selectButton.setAttribute(
+      "aria-label",
+      selectElement.getAttribute("aria-label") || "打开选择菜单"
+    );
+    const optionsSignature = JSON.stringify(
+      [...selectElement.options].map(nativeOption => [
+        nativeOption.value,
+        nativeOption.textContent,
+        nativeOption.disabled,
+        nativeOption.hidden
+      ])
+    );
+    if (optionsSignature !== selectEntry.signature) {
+      selectEntry.signature = optionsSignature;
+      selectMenu.replaceChildren(
+        ...[...selectElement.options]
+          .filter(visibleOption => !visibleOption.hidden)
+          .map(optionEntry => {
+            const createdOptionButton = createStyledElement("button", "custom-select-option");
+            createdOptionButton.type = "button";
+            createdOptionButton.dataset.value = optionEntry.value;
+            createdOptionButton.setAttribute("role", "option");
+            createdOptionButton.textContent = optionEntry.textContent;
+            createdOptionButton.disabled = optionEntry.disabled;
+            return createdOptionButton;
+          })
+      );
     }
-    for (const dataset of replaceChildren.children) {
-      dataset.classList.toggle("active", dataset.dataset.value === disabled.value);
-      dataset.setAttribute("aria-selected", String(dataset.dataset.value === disabled.value));
+    for (const existingOptionButton of selectMenu.children) {
+      existingOptionButton.classList.toggle(
+        "active",
+        existingOptionButton.dataset.value === selectElement.value
+      );
+      existingOptionButton.setAttribute(
+        "aria-selected",
+        String(existingOptionButton.dataset.value === selectElement.value)
+      );
     }
-    if (disabled.disabled && openSelect === signature) {
-      closeMenu();
+    if (selectElement.disabled && openSelect === selectEntry) {
+      closeSelectMenu();
     }
   }
-  function openMenu(menu, focusOption = false) {
-    closeMenu();
-    syncCustomSelect(menu);
-    if (!menu.select.disabled) {
-      openSelect = menu;
-      menu.menu.hidden = false;
-      menu.button.setAttribute("aria-expanded", "true");
-      positionMenu();
-      if (focusOption) {
-        (menu.menu.querySelector(".active:not(:disabled)") || menu.menu.querySelector("button:not(:disabled)"))?.focus({
+  function openSelectMenu(menuSelectEntry, shouldFocusActiveOption = false) {
+    closeSelectMenu();
+    syncCustomSelect(menuSelectEntry);
+    if (!menuSelectEntry.select.disabled) {
+      openSelect = menuSelectEntry;
+      menuSelectEntry.menu.hidden = false;
+      menuSelectEntry.button.setAttribute("aria-expanded", "true");
+      positionSelectMenu();
+      if (shouldFocusActiveOption) {
+        (
+          menuSelectEntry.menu.querySelector(".active:not(:disabled)") ||
+          menuSelectEntry.menu.querySelector("button:not(:disabled)")
+        )?.focus({
           preventScroll: true
         });
       }
     }
   }
-  function chooseOption(select, disabled) {
-    if (!disabled || disabled.disabled || select.select.disabled) {
+  function chooseSelectOption(targetSelectEntry, chosenOptionButton) {
+    if (!chosenOptionButton || chosenOptionButton.disabled || targetSelectEntry.select.disabled) {
       return;
     }
-    const prevSelectValue = select.select.value;
-    select.select.value = disabled.dataset.value;
-    closeMenu(true);
-    if (prevSelectValue !== select.select.value) {
-      select.select.dispatchEvent(new Event("change", {
-        bubbles: true
-      }));
+    const previousSelectValue = targetSelectEntry.select.value;
+    targetSelectEntry.select.value = chosenOptionButton.dataset.value;
+    closeSelectMenu(true);
+    if (previousSelectValue !== targetSelectEntry.select.value) {
+      targetSelectEntry.select.dispatchEvent(
+        new formWindow.Event("change", {
+          bubbles: true
+        })
+      );
     }
-    syncCustomSelect(select);
+    syncCustomSelect(targetSelectEntry);
   }
-  for (const before of formRoot.querySelectorAll("select")) {
-    const append = createEl("span", "custom-select");
-    const setAttribute = createEl("button", "custom-select-button");
-    const id = createEl("div", "custom-select-menu");
-    before.before(append);
-    append.append(before, setAttribute);
-    formRoot.append(id);
-    before.classList.add("native-select-control");
-    before.tabIndex = -1;
-    before.setAttribute("aria-hidden", "true");
-    setAttribute.type = "button";
-    setAttribute.setAttribute("aria-haspopup", "listbox");
-    setAttribute.setAttribute("aria-expanded", "false");
-    id.id = "range-select-" + before.dataset.field + "-menu";
-    id.setAttribute("role", "listbox");
-    id.hidden = true;
-    setAttribute.setAttribute("aria-controls", id.id);
-    id.setAttribute("aria-label", before.getAttribute("aria-label") || "选项");
-    const selectUi = {
-      select: before,
-      openSelect: append,
-      button: setAttribute,
-      menu: id
+  for (const nativeSelect of editorRootElement.querySelectorAll("select")) {
+    const selectWrapper = createStyledElement("span", "custom-select");
+    const customSelectButton = createStyledElement("button", "custom-select-button");
+    const customSelectMenu = createStyledElement("div", "custom-select-menu");
+    nativeSelect.before(selectWrapper);
+    selectWrapper.append(nativeSelect, customSelectButton);
+    editorRootElement.append(customSelectMenu);
+    nativeSelect.classList.add("native-select-control");
+    nativeSelect.tabIndex = -1;
+    nativeSelect.setAttribute("aria-hidden", "true");
+    customSelectButton.type = "button";
+    customSelectButton.setAttribute("aria-haspopup", "listbox");
+    customSelectButton.setAttribute("aria-expanded", "false");
+    customSelectMenu.id = "range-select-" + nativeSelect.dataset.field + "-menu";
+    customSelectMenu.setAttribute("role", "listbox");
+    customSelectMenu.hidden = true;
+    customSelectButton.setAttribute("aria-controls", customSelectMenu.id);
+    customSelectMenu.setAttribute("aria-label", nativeSelect.getAttribute("aria-label") || "选项");
+    const selectEntryModel = {
+      select: nativeSelect,
+      wrapper: selectWrapper,
+      button: customSelectButton,
+      menu: customSelectMenu
     };
-    customSelects.push(selectUi);
-    syncCustomSelect(selectUi);
-    listen(setAttribute, "click", preventDefault => {
-      preventDefault.preventDefault();
-      if (openSelect === selectUi) {
-        closeMenu();
+    customSelects.push(selectEntryModel);
+    syncCustomSelect(selectEntryModel);
+    addTrackedListener(customSelectButton, "click", buttonClickEvent => {
+      buttonClickEvent.preventDefault();
+      if (openSelect === selectEntryModel) {
+        closeSelectMenu();
       } else {
-        openMenu(selectUi);
+        openSelectMenu(selectEntryModel);
       }
     });
-    listen(id, "click", preventDefault => {
-      preventDefault.preventDefault();
-      chooseOption(selectUi, preventDefault.target.closest(".custom-select-option"));
+    addTrackedListener(customSelectMenu, "click", menuClickEvent => {
+      menuClickEvent.preventDefault();
+      chooseSelectOption(selectEntryModel, menuClickEvent.target.closest(".custom-select-option"));
     });
-    listen(before, "change", () => syncCustomSelect(selectUi));
+    addTrackedListener(nativeSelect, "change", () => syncCustomSelect(selectEntryModel));
   }
-  function stepNumberInput(numberInput, stepDir) {
-    if (numberInput.disabled || numberInput.readOnly) {
+  function stepNumberInput(numberInputElement, stepDirection) {
+    if (numberInputElement.disabled || numberInputElement.readOnly) {
       return false;
     }
-    const prevNumberValue = numberInput.value;
+    const valueBeforeStep = numberInputElement.value;
     try {
-      if (stepDir > 0) {
-        numberInput.stepUp();
+      if (stepDirection > 0) {
+        numberInputElement.stepUp();
       } else {
-        numberInput.stepDown();
+        numberInputElement.stepDown();
       }
     } catch {
       return false;
     }
-    if (prevNumberValue === numberInput.value) {
+    if (valueBeforeStep === numberInputElement.value) {
       return false;
     } else {
-      numberInput.dispatchEvent(new Event("input", {
-        bubbles: true
-      }));
-      numberInput.dispatchEvent(new Event("change", {
-        bubbles: true
-      }));
+      numberInputElement.dispatchEvent(
+        new formWindow.Event("input", {
+          bubbles: true
+        })
+      );
+      numberInputElement.dispatchEvent(
+        new formWindow.Event("change", {
+          bubbles: true
+        })
+      );
       return true;
     }
   }
-  for (const before of formRoot.querySelectorAll("input[type=number]")) {
-    const append = createEl("span", "inspector-number-control");
-    const el = createEl("span", "inspector-number-steppers");
-    before.before(append);
-    append.append(before, el);
-    const push = [];
-    for (const [stepDelta, title, iconPath] of [[1, "增加数值", "M1 5 5 1l4 4"], [-1, "减少数值", "M1 1 5 5l4-4"]]) {
-      const type = createEl("button", "inspector-number-stepper");
-      type.type = "button";
-      type.tabIndex = -1;
-      type.setAttribute("aria-label", title);
-      type.title = title;
-      type.innerHTML = "<svg viewBox=\"0 0 10 6\" aria-hidden=\"true\"><path d=\"" + iconPath + "\"></path></svg>";
-      el.append(type);
-      push.push(type);
-      listen(type, "click", preventDefault => {
-        preventDefault.preventDefault();
-        if (preventDefault.detail === 0) {
-          stepNumberInput(before, stepDelta);
+  for (const numberInput of editorRootElement.querySelectorAll("input[type=number]")) {
+    const numberControlWrapper = createStyledElement("span", "inspector-number-control");
+    const stepperContainer = createStyledElement("span", "inspector-number-steppers");
+    numberInput.before(numberControlWrapper);
+    numberControlWrapper.append(numberInput, stepperContainer);
+    const stepperButtons = [];
+    for (const [stepperDirection, stepperLabel, stepperIconPath] of [
+      [1, "增加数值", "M1 5 5 1l4 4"],
+      [-1, "减少数值", "M1 1 5 5l4-4"]
+    ]) {
+      const stepperButton = createStyledElement("button", "inspector-number-stepper");
+      stepperButton.type = "button";
+      stepperButton.tabIndex = -1;
+      stepperButton.setAttribute("aria-label", stepperLabel);
+      stepperButton.title = stepperLabel;
+      stepperButton.innerHTML =
+        '<svg viewBox="0 0 10 6" aria-hidden="true"><path d="' +
+        stepperIconPath +
+        '"></path></svg>';
+      stepperContainer.append(stepperButton);
+      stepperButtons.push(stepperButton);
+      addTrackedListener(stepperButton, "click", stepperClickEvent => {
+        stepperClickEvent.preventDefault();
+        if (stepperClickEvent.detail === 0) {
+          stepNumberInput(numberInput, stepperDirection);
         }
       });
-      listen(type, "pointerdown", button => {
-        if (button.button !== 0 || before.disabled || before.readOnly) {
+      addTrackedListener(stepperButton, "pointerdown", stepperPointerDownEvent => {
+        if (stepperPointerDownEvent.button !== 0 || numberInput.disabled || numberInput.readOnly) {
           return;
         }
-        button.preventDefault();
-        stopRepeat?.();
-        before.focus({
+        stepperPointerDownEvent.preventDefault();
+        stopStepperRepeat?.();
+        numberInput.focus({
           preventScroll: true
         });
-        stepNumberInput(before, stepDelta);
-        let repeatTimeout;
-        let repeatInterval;
-        stopRepeat = () => {
-          formWin.clearTimeout(repeatTimeout);
-          formWin.clearInterval(repeatInterval);
-          stopRepeat = null;
+        stepNumberInput(numberInput, stepperDirection);
+        let holdDelayTimerId;
+        let holdIntervalId;
+        stopStepperRepeat = () => {
+          formWindow.clearTimeout(holdDelayTimerId);
+          formWindow.clearInterval(holdIntervalId);
+          stopStepperRepeat = null;
         };
-        repeatTimeout = formWin.setTimeout(() => {
-          repeatInterval = formWin.setInterval(() => stepNumberInput(before, stepDelta), 55);
+        holdDelayTimerId = formWindow.setTimeout(() => {
+          holdIntervalId = formWindow.setInterval(
+            () => stepNumberInput(numberInput, stepperDirection),
+            55
+          );
         }, 320);
         try {
-          type.setPointerCapture(button.pointerId);
+          stepperButton.setPointerCapture(stepperPointerDownEvent.pointerId);
         } catch {}
       });
-      for (const releaseEvent of ["pointerup", "pointercancel", "lostpointercapture"]) {
-        listen(type, releaseEvent, () => stopRepeat?.());
+      for (const pointerEndEventName of ["pointerup", "pointercancel", "lostpointercapture"]) {
+        addTrackedListener(stepperButton, pointerEndEventName, () => stopStepperRepeat?.());
       }
     }
-    listen(before, "keydown", key => {
-      if (["ArrowUp", "ArrowDown"].includes(key.key)) {
-        key.preventDefault();
-        stepNumberInput(before, key.key === "ArrowUp" ? 1 : -1);
+    addTrackedListener(numberInput, "keydown", numberKeyEvent => {
+      if (["ArrowUp", "ArrowDown"].includes(numberKeyEvent.key)) {
+        numberKeyEvent.preventDefault();
+        stepNumberInput(numberInput, numberKeyEvent.key === "ArrowUp" ? 1 : -1);
       }
     });
-    numberControls.push({
-      field: before,
-      peers: push
+    numberFieldEntries.push({
+      field: numberInput,
+      peers: stepperButtons
     });
   }
-  function onSelectKeyDown(key) {
-    const menu = customSelects.find(button => button.button === key.target || button.menu.contains(key.target));
-    if (!menu) {
+  function handleMenuKeyDown(menuKeyEvent) {
+    const activeSelectEntry = customSelects.find(
+      selectEntryRecord =>
+        selectEntryRecord.button === menuKeyEvent.target ||
+        selectEntryRecord.menu.contains(menuKeyEvent.target)
+    );
+    if (!activeSelectEntry) {
       return;
     }
-    if (key.key === "Escape" && openSelect) {
-      key.preventDefault();
-      key.stopImmediatePropagation();
-      closeMenu(true);
+    if (menuKeyEvent.key === "Escape" && openSelect) {
+      menuKeyEvent.preventDefault();
+      menuKeyEvent.stopImmediatePropagation();
+      closeSelectMenu(true);
       return;
     }
-    if (key.key === "Tab") {
-      closeMenu();
+    if (menuKeyEvent.key === "Tab") {
+      closeSelectMenu();
       return;
     }
-    if (!["ArrowUp", "ArrowDown", "Home", "End", "Enter", " "].includes(key.key)) {
+    if (!["ArrowUp", "ArrowDown", "Home", "End", "Enter", " "].includes(menuKeyEvent.key)) {
       return;
     }
-    key.preventDefault();
-    key.stopImmediatePropagation();
-    if (openSelect !== menu) {
-      openMenu(menu, true);
+    menuKeyEvent.preventDefault();
+    menuKeyEvent.stopImmediatePropagation();
+    if (openSelect !== activeSelectEntry) {
+      openSelectMenu(activeSelectEntry, true);
       return;
     }
-    if (["Enter", " "].includes(key.key)) {
-      chooseOption(menu, key.target.closest(".custom-select-option") || menu.menu.querySelector(".active"));
+    if (["Enter", " "].includes(menuKeyEvent.key)) {
+      chooseSelectOption(
+        activeSelectEntry,
+        menuKeyEvent.target.closest(".custom-select-option") ||
+          activeSelectEntry.menu.querySelector(".active")
+      );
       return;
     }
-    const length = [...menu.menu.children].filter(disabled => !disabled.disabled);
-    const activeIndex = length.indexOf(formDoc.activeElement);
-    const nextIndex = key.key === "Home" ? 0 : key.key === "End" ? length.length - 1 : (activeIndex + (key.key === "ArrowUp" ? -1 : 1) + length.length) % length.length;
-    length[nextIndex]?.focus();
+    const enabledOptions = [...activeSelectEntry.menu.children].filter(
+      enabledOptionButton => !enabledOptionButton.disabled
+    );
+    const focusedOptionIndex = enabledOptions.indexOf(formDocument.activeElement);
+    const nextOptionIndex =
+      menuKeyEvent.key === "Home"
+        ? 0
+        : menuKeyEvent.key === "End"
+          ? enabledOptions.length - 1
+          : (focusedOptionIndex +
+              (menuKeyEvent.key === "ArrowUp" ? -1 : 1) +
+              enabledOptions.length) %
+            enabledOptions.length;
+    enabledOptions[nextOptionIndex]?.focus();
   }
-  listen(formDoc, "keydown", onSelectKeyDown, true);
-  listen(formDoc, "pointerdown", target => {
-    if (openSelect && !openSelect.wrapper.contains(target.target) && !openSelect.menu.contains(target.target)) {
-      closeMenu();
+  addTrackedListener(formDocument, "keydown", handleMenuKeyDown, true);
+  addTrackedListener(
+    formDocument,
+    "pointerdown",
+    documentPointerDownEvent => {
+      if (
+        openSelect &&
+        !openSelect.wrapper.contains(documentPointerDownEvent.target) &&
+        !openSelect.menu.contains(documentPointerDownEvent.target)
+      ) {
+        closeSelectMenu();
+      }
+    },
+    true
+  );
+  addTrackedListener(formWindow, "resize", () => closeSelectMenu());
+  addTrackedListener(formWindow, "blur", () => {
+    stopStepperRepeat?.();
+    closeSelectMenu();
+  });
+  addTrackedListener(formDocument, "visibilitychange", () => {
+    if (formDocument.hidden) {
+      stopStepperRepeat?.();
+      closeSelectMenu();
     }
-  }, true);
-  listen(formWin, "resize", () => closeMenu());
-  listen(formWin, "blur", () => {
-    stopRepeat?.();
-    closeMenu();
   });
-  listen(formDoc, "visibilitychange", () => {
-    if (formDoc.hidden) {
-      stopRepeat?.();
-      closeMenu();
+  addTrackedListener(
+    editorRootElement.querySelector(".p2r-panel"),
+    "scroll",
+    () => closeSelectMenu(),
+    {
+      passive: true
     }
-  });
-  listen(formRoot.querySelector(".p2r-panel"), "scroll", () => closeMenu(), {
-    passive: true
-  });
+  );
   return {
     sync() {
       customSelects.forEach(syncCustomSelect);
-      for (const {
-        field: disabledCurrent,
-        peers: stepperButtons
-      } of numberControls) {
-        for (const disabled of stepperButtons) {
-          disabled.disabled = disabledCurrent.disabled || disabledCurrent.readOnly;
+      for (const { field: syncedNumberInput, peers: peerButtons } of numberFieldEntries) {
+        for (const peerButton of peerButtons) {
+          peerButton.disabled = syncedNumberInput.disabled || syncedNumberInput.readOnly;
         }
       }
     },
     close() {
-      closeMenu();
-      stopRepeat?.();
+      closeSelectMenu();
+      stopStepperRepeat?.();
     },
     dispose() {
-      closeMenu();
-      stopRepeat?.();
-      listenerCleanups.forEach(cleanup => cleanup());
-      customSelects.forEach(menu => menu.menu.remove());
+      closeSelectMenu();
+      stopStepperRepeat?.();
+      eventCleanupCallbacks.forEach(cleanupCallback => cleanupCallback());
+      customSelects.forEach(disposalSelectEntry => disposalSelectEntry.menu.remove());
     }
   };
 }

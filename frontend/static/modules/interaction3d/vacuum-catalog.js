@@ -1,21 +1,43 @@
-export function vacuumProfiles(filter = [], find = []) {
-  const list = filter.filter(disabledBy => disabledBy.disabledBy == null && disabledBy.disabled_by == null && disabledBy.enabled !== false && !["missing", "disabled"].includes(disabledBy.status));
-  const map = new Map();
-  for (const entityId5 of list.filter(entityId => /^vacuum\.[a-z0-9_]+$/.test(entityId.entityId))) {
-    const value = entityId5.deviceId || entityId5.device_id || "";
-    const deviceId = value || entityId5.entityId;
-    if (!map.has(deviceId)) {
-      const nameByUser = find.find(id => (id.id || id.deviceId) === value);
-      const filter = value ? list.filter(deviceId => (deviceId.deviceId || deviceId.device_id) === value) : [entityId5];
-      map.set(deviceId, {
-        deviceId: deviceId,
-        name: nameByUser?.nameByUser || nameByUser?.name || entityId5.name || entityId5.entityId,
+export function vacuumProfiles(entities = [], devices = []) {
+  const enabledEntities = entities.filter(
+    entity =>
+      entity.disabledBy == null &&
+      entity.disabled_by == null &&
+      entity.enabled !== false &&
+      !["missing", "disabled"].includes(entity.status)
+  );
+  const profilesByDeviceId = new Map();
+  for (const vacuumEntity of enabledEntities.filter(rawEntity =>
+    /^vacuum\.[a-z0-9_]+$/.test(rawEntity.entityId)
+  )) {
+    const entityDeviceId = vacuumEntity.deviceId || vacuumEntity.device_id || "";
+    const deviceKey = entityDeviceId || vacuumEntity.entityId;
+    if (!profilesByDeviceId.has(deviceKey)) {
+      const deviceEntry = devices.find(
+        registryDevice => (registryDevice.id || registryDevice.deviceId) === entityDeviceId
+      );
+      const deviceEntities = entityDeviceId
+        ? enabledEntities.filter(
+            deviceEntity => (deviceEntity.deviceId || deviceEntity.device_id) === entityDeviceId
+          )
+        : [vacuumEntity];
+      profilesByDeviceId.set(deviceKey, {
+        deviceId: deviceKey,
+        name:
+          deviceEntry?.nameByUser ||
+          deviceEntry?.name ||
+          vacuumEntity.name ||
+          vacuumEntity.entityId,
         entities: [],
-        maps: filter.filter(entityId => /^(camera|image)\./.test(entityId.entityId)),
-        relatedEntityIds: filter.filter(entityId => /^(sensor|binary_sensor|select|number|switch|button)\./.test(entityId.entityId)).map(entityId => entityId.entityId)
+        maps: deviceEntities.filter(mapEntity => /^(camera|image)\./.test(mapEntity.entityId)),
+        relatedEntityIds: deviceEntities
+          .filter(candidateEntity =>
+            /^(sensor|binary_sensor|select|number|switch|button)\./.test(candidateEntity.entityId)
+          )
+          .map(relatedEntity => relatedEntity.entityId)
       });
     }
-    map.get(deviceId).entities.push(entityId5);
+    profilesByDeviceId.get(deviceKey).entities.push(vacuumEntity);
   }
-  return [...map.values()];
+  return [...profilesByDeviceId.values()];
 }

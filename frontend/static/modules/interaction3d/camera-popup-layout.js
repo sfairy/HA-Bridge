@@ -1,20 +1,35 @@
-const previewRatios = new Map();
-
-export function cameraPreviewRatio(entityId, ratio) {
-  if (Number.isFinite(ratio) && ratio > 0) {
-    previewRatios.set(entityId, ratio);
+const previewRatiosByCameraId = new Map();
+export function cameraPreviewRatio(cameraId, aspectRatio) {
+  if (Number.isFinite(aspectRatio) && aspectRatio > 0) {
+    previewRatiosByCameraId.set(cameraId, aspectRatio);
   }
-  return previewRatios.get(entityId) || 16 / 9;
+  return previewRatiosByCameraId.get(cameraId) || 16 / 9;
 }
-
-export function cameraPopupLayout(viewportWidth, viewportHeight, ratio = 16 / 9, headingHeight = 58) {
-  const maxPanelHeight = Math.max(1, (viewportHeight - 24) / 2 - 26 - headingHeight);
+export function cameraPopupLayout(
+  containerWidth,
+  containerHeight,
+  mediaAspectRatio = 16 / 9,
+  chromeHeight = 58
+) {
+  const maxPanelHeight = Math.max(1, (containerHeight - 24) / 2 - 26 - chromeHeight);
   const panelWidth = Math.max(
     27,
-    Math.min(viewportWidth * 0.3, (viewportWidth - 32) / 2, maxPanelHeight * ratio + 26),
+    Math.min(
+      containerWidth * 0.3,
+      (containerWidth - 32) / 2,
+      maxPanelHeight * mediaAspectRatio + 26
+    )
   );
-  const mediaHeight = (panelWidth - 26) / ratio;
-  const panelHeight = 26 + headingHeight + mediaHeight;
-  const top = Math.max(12, Math.min(viewportHeight * 0.56 - panelHeight, viewportHeight - panelHeight * 2 - 12));
-  return { panelWidth, mediaHeight, panelHeight, top };
+  const mediaHeight = (panelWidth - 26) / mediaAspectRatio;
+  const panelHeight = 26 + chromeHeight + mediaHeight;
+  const top = Math.max(
+    12,
+    Math.min(containerHeight * 0.56 - panelHeight, containerHeight - panelHeight * 2 - 12)
+  );
+  return {
+    panelWidth: panelWidth,
+    mediaHeight: mediaHeight,
+    panelHeight: panelHeight,
+    top: top
+  };
 }

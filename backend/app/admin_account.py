@@ -6,12 +6,13 @@ import secrets
 from dataclasses import dataclass
 from pathlib import Path
 
-from database import Database
-from models import LoginSession, User
 from sqlalchemy import delete, select
 
+from .database import Database
+from .models import LoginSession, User
+
 ACCOUNT_FILE_SCHEMA_VERSION = 1
-EXTERNAL_PASSWORD_SENTINEL = '!external-admin-account-v1!'
+EXTERNAL_PASSWORD_SENTINEL = "!external-admin-account-v1!"
 
 
 @dataclass(frozen=True)
@@ -59,60 +60,71 @@ class AdminAccountStore:
         return (
             json.dumps(
                 {
-                    'schemaVersion': ACCOUNT_FILE_SCHEMA_VERSION,
-                    'userId': credentials.user_id,
-                    'username': credentials.username,
-                    'passwordHash': credentials.password_hash,
+                    "schemaVersion": ACCOUNT_FILE_SCHEMA_VERSION,
+                    "userId": credentials.user_id,
+                    "username": credentials.username,
+                    "passwordHash": credentials.password_hash,
                 },
                 ensure_ascii=False,
                 indent=2,
                 sort_keys=True,
             )
-            + '\n'
-        ).encode('utf-8')
+            + "\n"
+        ).encode("utf-8")
 
     def _read(self) -> AdminAccountCredentials:
         try:
             if not self.path.is_file() or self.path.stat().st_size > 16384:
-                raise ValueError('invalid file')
-            payload = json.loads(self.path.read_text(encoding='utf-8'))
-            if not isinstance(payload, dict) or payload.get('schemaVersion') != ACCOUNT_FILE_SCHEMA_VERSION:
-                raise ValueError('unsupported schema')
-            user_id = str(payload.get('userId') or '')
-            username = str(payload.get('username') or '')
-            password_hash = str(payload.get('passwordHash') or '')
+                raise ValueError("invalid file")
+            payload = json.loads(self.path.read_text(encoding="utf-8"))
+            if (
+                not isinstance(payload, dict)
+                or payload.get("schemaVersion") != ACCOUNT_FILE_SCHEMA_VERSION
+            ):
+                raise ValueError("unsupported schema")
+            user_id = str(payload.get("userId") or "")
+            username = str(payload.get("username") or "")
+            password_hash = str(payload.get("passwordHash") or "")
             if not user_id or len(user_id) > 128:
-                raise ValueError('invalid user id')
+                raise ValueError("invalid user id")
             if len(username) < 3 or len(username) > 64:
-                raise ValueError('invalid username')
+                raise ValueError("invalid username")
             if not password_hash or len(password_hash) > 512:
-                raise ValueError('invalid password hash')
+                raise ValueError("invalid password hash")
         except (OSError, UnicodeError, ValueError, TypeError, json.JSONDecodeError) as error:
             raise RuntimeError(
-                f'管理员账号文件 {self.path} 无法读取；请修复该文件，或删除它后重启以重新设置账号。'
+                f"管理员账号文件 {self.path} 无法读取；请修复该文件，或删除它后重启以重新设置账号。"
             ) from error
+
         try:
-            os.chmod(self.path, 384)
+            os.chmod(self.path, 0o600)
         except OSError as error:
-            raise RuntimeError(f'无法保护管理员账号文件 {self.path} 的访问权限。') from error
-        return AdminAccountCredentials(user_id=user_id, username=username, password_hash=password_hash)
+            raise RuntimeError(f"无法保护管理员账号文件 {self.path} 的访问权限。") from error
+
+        return AdminAccountCredentials(
+            user_id=user_id, username=username, password_hash=password_hash
+        )
 
     def _write(self, credentials: AdminAccountCredentials) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True, mode=448)
-        os.chmod(self.path.parent, 448)
+        self.path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        os.chmod(self.path.parent, 0o700)
         if self.path.exists():
-            raise RuntimeError(f'管理员账号文件 {self.path} 已存在，拒绝覆盖。')
-        temporary_path = self.path.with_name(f'.{self.path.name}.{secrets.token_hex(8)}.tmp')
+            raise RuntimeError(f"管理员账号文件 {self.path} 已存在，拒绝覆盖。")
+        temporary_path = self.path.with_name(
+            f".{self.path.name}.{secrets.token_hex(8)}.tmp"
+        )
         final_path_created = False
         try:
-            descriptor = os.open(temporary_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 384)
-            with os.fdopen(descriptor, 'wb') as output:
+            descriptor = os.open(
+                temporary_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+            )
+            with os.fdopen(descriptor, "wb") as output:
                 output.write(self._encoded(credentials))
                 output.flush()
                 os.fsync(output.fileno())
             os.replace(temporary_path, self.path)
             final_path_created = True
-            os.chmod(self.path, 384)
+            os.chmod(self.path, 0o600)
             directory_descriptor = os.open(self.path.parent, os.O_RDONLY)
             try:
                 os.fsync(directory_descriptor)
@@ -127,7 +139,9 @@ class AdminAccountStore:
 
     def _discard(self, credentials: AdminAccountCredentials) -> None:
         try:
-            if self.path.is_file() and self.path.read_bytes() == self._encoded(credentials):
+            if self.path.is_file() and self.path.read_bytes() == self._encoded(
+                credentials
+            ):
                 self.path.unlink()
         except OSError:
             pass
@@ -135,8 +149,10 @@ class AdminAccountStore:
     @staticmethod
     def _admin_user(database_session) -> User | None:
         return database_session.scalar(
-            select(User).where(User.role == 'admin').order_by(User.created_at, User.id)
-        ) or database_session.scalar(select(User).order_by(User.created_at, User.id))
+            select(User).where(User.role == "admin").order_by(User.created_at, User.id)
+        ) or database_session.scalar(
+            select(User).order_by(User.created_at, User.id)
+        )
 
     def initialize(self, database: Database) -> str:
         self._credentials = None
@@ -146,30 +162,33 @@ class AdminAccountStore:
                 credentials = self._read()
                 user = session.get(User, credentials.user_id)
                 if user is None:
-                    raise RuntimeError('管理员账号文件引用的内部账号不存在；请删除账号文件后重新设置。')
+                    raise RuntimeError(
+                        "管理员账号文件引用的内部账号不存在；请删除账号文件后重新设置。"
+                    )
                 conflict = session.scalar(
-                    select(User).where(User.username == credentials.username, User.id != credentials.user_id)
+                    select(User).where(
+                        User.username == credentials.username,
+                        User.id != credentials.user_id,
+                    )
                 )
                 if conflict is not None:
-                    raise RuntimeError('管理员账号文件中的账号名与现有内部账号冲突。')
+                    raise RuntimeError("管理员账号文件中的账号名与现有内部账号冲突。")
                 user.username = credentials.username
                 user.password_hash = EXTERNAL_PASSWORD_SENTINEL
                 user.auth_externalized = True
                 session.commit()
                 self._credentials = credentials
-                return 'ready'
+                return "ready"
             user = self._admin_user(session)
             if user is None:
-                return 'empty'
+                return "empty"
             if user.auth_externalized:
                 session.execute(delete(LoginSession))
                 session.commit()
                 self._recovery_user_id = user.id
-                return 'reset_required'
+                return "reset_required"
             credentials = AdminAccountCredentials(
-                user_id=user.id,
-                username=user.username,
-                password_hash=user.password_hash,
+                user_id=user.id, username=user.username, password_hash=user.password_hash
             )
             self._write(credentials)
             try:
@@ -181,12 +200,14 @@ class AdminAccountStore:
                 self._discard(credentials)
                 raise
             self._credentials = credentials
-            return 'migrated'
+            return "migrated"
 
     def stage(self, user: User, password_hash: str) -> AdminAccountCredentials:
         if self.initialized:
-            raise RuntimeError('系统已经完成管理员账号设置。')
-        credentials = AdminAccountCredentials(user_id=user.id, username=user.username, password_hash=password_hash)
+            raise RuntimeError("系统已经完成管理员账号设置。")
+        credentials = AdminAccountCredentials(
+            user_id=user.id, username=user.username, password_hash=password_hash
+        )
         self._write(credentials)
         return credentials
 

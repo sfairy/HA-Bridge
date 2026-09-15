@@ -1,785 +1,1243 @@
-import { PRESENCE_TRIGGER_MODES, presenceTriggerIsTimed } from './presence-motion.js?v=0.5.3';
-import { mountInteraction3d } from './runtime.js?v=0.5.3';
-import { openPresenceEditor } from './presence-editor.js?v=0.5.3';
-import { randomUuid } from '/bridge-static/utils/random-id.js';
-import { requestInteraction3dAccess, subscribeInteraction3dAccess } from '/bridge-static/modules/interaction3d/bridge.js?v=0.5.3';
-import { interaction3dPreviewSize } from '/bridge-static/modules/interaction3d/preview-layout.js';
-import { cameraPopupLayout, cameraPreviewRatio } from '/bridge-static/modules/interaction3d/camera-popup-layout.js';
+import {
+  PRESENCE_TRIGGER_MODES,
+  presenceTriggerIsTimed
+} from "./presence-motion.js?v=20260914-detection-triggers-v1";
+import { mountInteraction3d } from "./runtime.js?v=20260909-preview-sleep-v1";
+import { openPresenceEditor } from "./presence-editor.js?v=20260911-security-focal-v1-detection-triggers-v1";
+import { randomUuid } from "/bridge-static/utils/random-id.js";
+import {
+  requestInteraction3dAccess,
+  subscribeInteraction3dAccess
+} from "/bridge-static/modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1";
+import { interaction3dPreviewSize } from "/bridge-static/modules/interaction3d/preview-layout.js";
 export async function openSecurityEditor({
-  component,
-  panelDocument,
-  entities = [],
-  pickers,
-  onSave
+  component: component,
+  panelDocument: documentApi,
+  entities: entities = [],
+  pickers: pickers,
+  onSave: onSaveConfig
 }) {
   await requestInteraction3dAccess();
-  const draft = structuredClone(component['properties'] || {});
-  draft['security'] = {
-    ...draft['security'],
-    'cameras': draft['security']?.['cameras'] || [],
-    'presenceSensors': draft['security']?.['presenceSensors'] || []
+  const draftProperties = structuredClone(component.properties || {});
+  draftProperties.security = {
+    ...draftProperties.security,
+    cameras: draftProperties.security?.cameras || [],
+    presenceSensors: draftProperties.security?.presenceSensors || []
   };
-  for (const camera of draft['security']['cameras']) {
-    delete camera['buttonHidden'];
-    delete camera["hiddenClickable"];
+  for (const cameraItem of draftProperties.security.cameras) {
+    delete cameraItem.buttonHidden;
+    delete cameraItem.hiddenClickable;
   }
-  const createEl = (tag, className = '', text = '') => {
-    const node = document['createElement'](tag);
-    node['className'] = className;
-    node['textContent'] = text;
-    return node;
+  const createElement = (tagName, classNames = "", initialText = "") => {
+    const createdElement = document.createElement(tagName);
+    createdElement.className = classNames;
+    createdElement.textContent = initialText;
+    return createdElement;
   };
-  const createButton = (label, onClick) => {
-    const button = createEl("button", '', label);
-    button["type"] = 'button';
-    button["addEventListener"]("click", onClick);
-    return button;
+  const createButton = (buttonLabel, onButtonClick) => {
+    const buttonElement = createElement("button", "", buttonLabel);
+    buttonElement.type = "button";
+    buttonElement.addEventListener("click", onButtonClick);
+    return buttonElement;
   };
-  const stylesheetLink = createEl("link");
-  stylesheetLink['rel'] = 'stylesheet';
-  stylesheetLink['href'] = '/api/v1/modules/interaction3d/runtime.css?v=0.5.3';
-  const dialog = createEl('dialog', 'i3d-editor');
-  dialog['setAttribute']('aria-label', '3D 安防配置');
-  dialog['dataset']['i3dPreviewScope'] = 'security';
-  const header = createEl('header');
-  const body = createEl("div", "i3d-editor-body");
-  const view = createEl("div", 'i3d-editor-view');
-  const aside = createEl('aside');
-  let container = aside;
-  const aspect = createEl('div', 'i3d-editor-aspect');
-  const stage = createEl('div', 'i3d-editor-stage');
-  const statusEl = createEl('p', 'i3d-error');
-  statusEl['setAttribute']('role', 'status');
-  aspect['append'](stage);
-  view['append'](aspect);
-  body['append'](view, aside);
-  let previewState = null;
-  let floorSelection = draft['floorSelection'] === 'all' ? '' : draft["floorSelection"] || '';
-  let kind = 'camera';
-  let selectedId = '';
-  let preview = null;
-  let closed = false;
-  let allowed = true;
-  let busy = false;
-  let focusEditing = false;
-  let focusCamera = null;
-  let focusQueue = Promise['resolve']();
-  const openSections = new Set();
-  let pickerDialog = null;
-  let pickerSeq = 0;
-  let presenceEditor = null;
-  let presenceOpen = false;
-  const previousFocus = document['activeElement'];
-  const deviceEntities = new Map();
-  let popupPreview = null;
-  function updatePopupPreview() {
-    if (!focusEditing || kind !== 'camera' || closed || !allowed) {
-      popupPreview?.['layer']['remove']();
-      popupPreview = null;
-      return;
-    }
-    if (!popupPreview) {
-      const layer = createEl('div', 'hb-renderer-runtime-dialog-layer i3d-vacuum-dialog-layer');
-      const frame = createEl('dialog', "hb-camera-preview-dialog fit-media-ratio i3d-vacuum-details i3d-camera-details");
-      const card = createEl('div', 'hb-camera-preview-card');
-      const heading = createEl('div', 'hb-camera-preview-heading');
-      const headingText = createEl('div');
-      const labelEl = createEl('strong');
-      const statusSpan = createEl('span', "hb-camera-preview-status", '弹窗位置预览');
-      headingText["append"](labelEl, statusSpan);
-      heading['append'](headingText);
-      const media = createEl('div', "hb-camera-preview-stage");
-      media['append'](createEl('span', '', '视频区域 · 高度随实际画面比例适配'));
-      card["append"](heading, media);
-      frame['append'](card);
-      layer["append"](frame);
-      aspect['append'](layer);
-      layer['setAttribute']("aria-hidden", 'true');
-      frame["style"]['pointerEvents'] = 'none';
-      frame['style']['animation'] = 'none';
-      frame["show"]();
-      popupPreview = {
-        'layer': layer,
-        'frame': frame,
-        'heading': heading,
-        'label': labelEl,
-        'media': media
-      };
-    }
-    const item = currentItem();
-    const baseBounds = draft['layoutMode'] === 'fill' ? panelDocument?.['canvas'] : component['position'];
-    const baseWidth = preview?.['presentationLayout']?.['width'] || Number(baseBounds?.['width']) || aspect['clientWidth'];
-    const baseHeight = preview?.['presentationLayout']?.['height'] || Number(baseBounds?.["height"]) || aspect['clientHeight'];
-    const scaleX = aspect['clientWidth'] / baseWidth;
-    const scaleY = aspect["clientHeight"] / baseHeight;
-    const ratio = cameraPreviewRatio(item?.['entityId']);
-    const {
-      panelWidth,
-      mediaHeight,
-      top
-    } = cameraPopupLayout(baseWidth, baseHeight, ratio, popupPreview['heading']["offsetHeight"] || 58);
-    popupPreview['label']['textContent'] = item?.['label'] || '摄像头';
-    Object['assign'](popupPreview['frame']['style'], {
-      'width': panelWidth + 'px',
-      'top': top * scaleY + 'px',
-      'right': 16 * scaleX + 'px',
-      'transform': "scale(" + 2 * scaleX + ',' + 2 * scaleY + ')'
-    });
-    popupPreview['frame']['style']['setProperty']('--i3d-panel-opacity', String((draft["popupOpacity"] ?? 74) / 100));
-    popupPreview['media']['style']['height'] = mediaHeight + 'px';
-    popupPreview['media']['style']['aspectRatio'] = String(ratio);
-  }
-  const listKey = () => kind === 'camera' ? 'cameras' : 'presenceSensors';
-  const kindLabel = () => kind === "camera" ? "摄像头" : '人体传感器';
-  const currentList = () => draft['security'][listKey()];
-  const currentItem = () => currentList()['find'](entry => entry['id'] === selectedId && entry['floorId'] === floorSelection);
-  const currentFloor = () => previewState?.['floors']['find'](floor => floor['id'] === floorSelection);
-  const floorModels = () => currentFloor()?.[listKey()] || [];
-  const itemKey = item => kind + ':' + item['id'];
-  const buildProperties = () => ({
-    ...draft,
-    'floorSelection': floorSelection,
-    'camera': draft['floorCameras']?.[floorSelection] || (draft['floorSelection'] === floorSelection ? draft['camera'] : null)
+  const styleSheetLinkElement = createElement("link");
+  styleSheetLinkElement.rel = "stylesheet";
+  styleSheetLinkElement.href =
+    "/api/v1/modules/interaction3d/runtime.css?v=20260911-security-layout-v2";
+  const editorDialogElement = createElement("dialog", "i3d-editor");
+  editorDialogElement.setAttribute("aria-label", "3D 安防配置");
+  editorDialogElement.dataset.i3dPreviewScope = "security";
+  const headerElement = createElement("header");
+  const bodyElement = createElement("div", "i3d-editor-body");
+  const viewElement = createElement("div", "i3d-editor-view");
+  const panelElement = createElement("aside");
+  let currentContainerElement = panelElement;
+  const aspectBoxElement = createElement("div", "i3d-editor-aspect");
+  const stageHostElement = createElement("div", "i3d-editor-stage");
+  const errorMessageElement = createElement("p", "i3d-error");
+  errorMessageElement.setAttribute("role", "status");
+  aspectBoxElement.append(stageHostElement);
+  viewElement.append(aspectBoxElement);
+  bodyElement.append(viewElement, panelElement);
+  let sceneMetadata = null;
+  let selectedFloorId =
+    draftProperties.floorSelection === "all" ? "" : draftProperties.floorSelection || "";
+  let securityKind = "camera";
+  let selectedItemId = "";
+  let editorRuntime = null;
+  let isDisposed = false;
+  let isAccessAllowed = true;
+  let isSaving = false;
+  let isCameraEditing = false;
+  let pendingCameraDraft = null;
+  let cameraCommandQueue = Promise.resolve();
+  const expandedDisclosureKeySet = new Set();
+  let activePickerHandle = null;
+  let pickerGeneration = 0;
+  let presenceEditorHandle = null;
+  let isPresenceEditorOpen = false;
+  const previouslyFocusedElement = document.activeElement;
+  const deviceEntitiesByItemId = new Map();
+  const getCollectionKey = () => (securityKind === "camera" ? "cameras" : "presenceSensors");
+  const getKindLabel = () => (securityKind === "camera" ? "摄像头" : "人体传感器");
+  const getItemList = () => draftProperties.security[getCollectionKey()];
+  const findSelectedItem = () =>
+    getItemList().find(
+      candidateItem =>
+        candidateItem.id === selectedItemId && candidateItem.floorId === selectedFloorId
+    );
+  const findSelectedFloor = () =>
+    sceneMetadata?.floors.find(candidateFloor => candidateFloor.id === selectedFloorId);
+  const getFloorModelList = () => findSelectedFloor()?.[getCollectionKey()] || [];
+  const toItemKey = item => securityKind + ":" + item.id;
+  const buildEditorProperties = () => ({
+    ...draftProperties,
+    floorSelection: selectedFloorId,
+    camera:
+      draftProperties.floorCameras?.[selectedFloorId] ||
+      (draftProperties.floorSelection === selectedFloorId ? draftProperties.camera : null)
   });
   const showError = error => {
-    closed || (statusEl['textContent'] = error?.['message'] || String(error));
-  };
-  function syncPreview() {
-    !closed && !presenceOpen && allowed && preview?.["update"](buildProperties(), selectedId ? kind + ':' + selectedId : '');
-  }
-  function markDirty() {
-    statusEl['textContent'] = '配置已修改，请保存配置。';
-    syncPreview();
-  }
-  function closePicker() {
-    pickerSeq++;
-    pickerDialog?.['close']();
-    pickerDialog = null;
-  }
-  function addSelect(label, options, value, onChange) {
-    const select = createEl("select");
-    select['setAttribute']('aria-label', label);
-    options['length'] || (options = [['', previewState ? '暂无可选项' : '正在加载…']]);
-    for (const [optionValue, optionLabel] of options) {
-      const option = createEl('option', '', optionLabel);
-      option['value'] = optionValue;
-      select['append'](option);
+    if (!isDisposed) {
+      errorMessageElement.textContent = error?.message || String(error);
     }
-    select['value'] = value;
-    select['addEventListener']("change", () => onChange(select["value"]));
-    const field = createEl('label');
-    field['append'](createEl("span", '', label), select);
-    container['append'](field);
-    return select;
+  };
+  function syncEditorRuntime() {
+    if (!isDisposed && !isPresenceEditorOpen && isAccessAllowed) {
+      editorRuntime?.update(
+        buildEditorProperties(),
+        selectedItemId ? securityKind + ":" + selectedItemId : ""
+      );
+    }
   }
-  function addNumberField(label, value, min, max, onChange, step = 0.1, live = false) {
-    const input = createEl('input');
-    Object['assign'](input, {
-      'type': 'number',
-      'value': value,
-      'min': min,
-      'max': max,
-      'step': step
+  function markPropertiesDirty() {
+    errorMessageElement.textContent = "配置已修改，请保存配置。";
+    syncEditorRuntime();
+  }
+  function closeActivePicker() {
+    pickerGeneration++;
+    activePickerHandle?.close();
+    activePickerHandle = null;
+  }
+  function createSelectField(labelText, optionEntries, selectedValue, onValueChange) {
+    const selectElement = createElement("select");
+    selectElement.setAttribute("aria-label", labelText);
+    if (!optionEntries.length) {
+      optionEntries = [["", sceneMetadata ? "暂无可选项" : "正在加载…"]];
+    }
+    for (const [optionValue, optionLabel] of optionEntries) {
+      const optionElement = createElement("option", "", optionLabel);
+      optionElement.value = optionValue;
+      selectElement.append(optionElement);
+    }
+    selectElement.value = selectedValue;
+    selectElement.addEventListener("change", () => onValueChange(selectElement.value));
+    const labelElement = createElement("label");
+    labelElement.append(createElement("span", "", labelText), selectElement);
+    currentContainerElement.append(labelElement);
+    return selectElement;
+  }
+  function createNumberField(
+    fieldLabel,
+    currentValue,
+    minValue,
+    maxValue,
+    onValueCommit,
+    stepSize = 0.1,
+    shouldCommitWhileTyping = false
+  ) {
+    const inputElement = createElement("input");
+    Object.assign(inputElement, {
+      type: "number",
+      value: currentValue,
+      min: minValue,
+      max: maxValue,
+      step: stepSize
     });
-    input["setAttribute"]('aria-label', label);
-    if (live) {
-      input['addEventListener']('input', () => {
-        const parsed = Number(input['value']);
-        if (input['value']['trim']() && Number['isFinite'](parsed) && parsed >= min && parsed <= max) {
-          value = parsed;
-          onChange(parsed);
-          markDirty();
+    inputElement.setAttribute("aria-label", fieldLabel);
+    if (shouldCommitWhileTyping) {
+      inputElement.addEventListener("input", () => {
+        const typedValue = Number(inputElement.value);
+        if (
+          inputElement.value.trim() &&
+          Number.isFinite(typedValue) &&
+          typedValue >= minValue &&
+          typedValue <= maxValue
+        ) {
+          currentValue = typedValue;
+          onValueCommit(typedValue);
+          markPropertiesDirty();
         }
       });
     }
-    input['addEventListener']('change', () => {
-      const parsed = Number(input['value']);
-      if (!input['value']["trim"]() || !Number["isFinite"](parsed) || parsed < min || parsed > max) {
-        input['value'] = value;
+    inputElement.addEventListener("change", () => {
+      const changedValue = Number(inputElement.value);
+      if (
+        !inputElement.value.trim() ||
+        !Number.isFinite(changedValue) ||
+        changedValue < minValue ||
+        changedValue > maxValue
+      ) {
+        inputElement.value = currentValue;
         return;
       }
-      value = parsed;
-      onChange(parsed);
-      markDirty();
+      currentValue = changedValue;
+      onValueCommit(changedValue);
+      markPropertiesDirty();
     });
-    const field = createEl('label');
-    field["append"](createEl("span", '', label), input);
-    container['append'](field);
+    const fieldLabelElement = createElement("label");
+    fieldLabelElement.append(createElement("span", "", fieldLabel), inputElement);
+    currentContainerElement.append(fieldLabelElement);
   }
-  const saveBtn = createButton('保存配置', async () => {
-    if (!(busy || !allowed || focusEditing || presenceOpen)) {
-      busy = true;
+  const saveButtonElement = createButton("保存配置", async () => {
+    if (!isSaving && !!isAccessAllowed && !isCameraEditing && !isPresenceEditorOpen) {
+      isSaving = true;
       renderPanel();
       try {
         await requestInteraction3dAccess();
-        if (closed || !allowed) {
+        if (isDisposed || !isAccessAllowed) {
           return;
         }
-        await onSave(structuredClone(draft));
-        closed || (statusEl['textContent'] = '已应用到编辑器，请保存仪表盘。');
-      } catch (error) {
-        showError(error);
+        await onSaveConfig(structuredClone(draftProperties));
+        if (!isDisposed) {
+          errorMessageElement.textContent = "已应用到编辑器，请保存仪表盘。";
+        }
+      } catch (saveError) {
+        showError(saveError);
       } finally {
-        busy = false;
-        closed || renderPanel();
+        isSaving = false;
+        if (!isDisposed) {
+          renderPanel();
+        }
       }
     }
   });
-  saveBtn['className'] = "primary";
-  function close() {
-    closed || (closed = true, updatePopupPreview(), closePicker(), presenceEditor?.['close'](), preview?.(), resizeObserver['disconnect'](), unsubscribeAccess(), dialog['close'](), dialog['remove'](), stylesheetLink['remove'](), document['dispatchEvent'](new Event("hb-i3d-preview-scope")), previousFocus?.['focus']?.());
+  saveButtonElement.className = "primary";
+  function closeEditor() {
+    if (!isDisposed) {
+      isDisposed = true;
+      closeActivePicker();
+      presenceEditorHandle?.close();
+      editorRuntime?.();
+      previewResizeObserver.disconnect();
+      unsubscribeAccessChange();
+      editorDialogElement.close();
+      editorDialogElement.remove();
+      styleSheetLinkElement.remove();
+      document.dispatchEvent(new Event("hb-i3d-preview-scope"));
+      previouslyFocusedElement?.focus?.();
+    }
   }
-  header['append'](createEl('strong', '', "3D 安防配置"), saveBtn, createButton('退出', close));
-  dialog['append'](header, body);
-  dialog['addEventListener']("cancel", event => {
-    event["preventDefault"]();
-    close();
+  headerElement.append(
+    createElement("strong", "", "3D 安防配置"),
+    saveButtonElement,
+    createButton("退出", closeEditor)
+  );
+  editorDialogElement.append(headerElement, bodyElement);
+  editorDialogElement.addEventListener("cancel", cancelEvent => {
+    cancelEvent.preventDefault();
+    closeEditor();
   });
-  function resizeEditor() {
-    const size = interaction3dPreviewSize(component, panelDocument, view['clientWidth'], view['clientHeight']);
-    aspect["style"]['width'] = size['width'] + 'px';
-    aspect['style']['height'] = size["height"] + 'px';
-    updatePopupPreview();
+  function updatePreviewSize() {
+    const previewSize = interaction3dPreviewSize(
+      component,
+      documentApi,
+      viewElement.clientWidth,
+      viewElement.clientHeight
+    );
+    aspectBoxElement.style.width = previewSize.width + "px";
+    aspectBoxElement.style.height = previewSize.height + "px";
   }
-  const resizeObserver = new ResizeObserver(resizeEditor);
-  resizeObserver['observe'](view);
-  const unsubscribeAccess = subscribeInteraction3dAccess(accessState => {
-    const nextAllowed = accessState['allowed'] === true;
-    nextAllowed !== allowed && (allowed = nextAllowed, allowed || (focusEditing = false, closePicker(), presenceEditor?.['close'](), preview?.(), preview = null, statusEl['textContent'] = accessState["message"] || '3D 使用权限已失效。'), closed || (renderPanel(), allowed && dialog['open'] && mountPreview()));
+  const previewResizeObserver = new ResizeObserver(updatePreviewSize);
+  previewResizeObserver.observe(viewElement);
+  const unsubscribeAccessChange = subscribeInteraction3dAccess(accessState => {
+    const isAllowed = accessState.allowed === true;
+    if (isAllowed !== isAccessAllowed) {
+      isAccessAllowed = isAllowed;
+      if (!isAccessAllowed) {
+        isCameraEditing = false;
+        closeActivePicker();
+        presenceEditorHandle?.close();
+        editorRuntime?.();
+        editorRuntime = null;
+        errorMessageElement.textContent = accessState.message || "3D 使用权限已失效。";
+      }
+      if (!isDisposed) {
+        renderPanel();
+        if (isAccessAllowed && editorDialogElement.open) {
+          mountEditorRuntime();
+        }
+      }
+    }
   });
-  async function runFocusCommand(command, payload) {
-    const target = currentItem();
-    if (!target || busy || !allowed || closed) {
+  async function runCameraCommand(commandName, commandPayload) {
+    const commandTargetItem = findSelectedItem();
+    if (!commandTargetItem || isSaving || !isAccessAllowed || isDisposed) {
       return;
     }
-    const isFocal = command === "focus-focal-length";
-    const previous = focusQueue;
-    let release;
-    focusQueue = new Promise(resolve => {
-      release = resolve;
+    const isFocalLengthCommand = commandName === "focus-focal-length";
+    const previousQueuePromise = cameraCommandQueue;
+    let releaseQueueGate;
+    cameraCommandQueue = new Promise(resolveQueueGate => {
+      releaseQueueGate = resolveQueueGate;
     });
-    isFocal || (busy = true, renderPanel());
+    if (!isFocalLengthCommand) {
+      isSaving = true;
+      renderPanel();
+    }
     try {
-      await previous;
-      if (closed || !allowed || currentItem() !== target) {
+      await previousQueuePromise;
+      if (isDisposed || !isAccessAllowed || findSelectedItem() !== commandTargetItem) {
         return;
       }
-      const result = await preview['focusCommand'](command, itemKey(target), payload);
-      if (closed || !allowed || currentItem() !== target) {
+      const commandResult = await editorRuntime.focusCommand(
+        commandName,
+        toItemKey(commandTargetItem),
+        commandPayload
+      );
+      if (isDisposed || !isAccessAllowed || findSelectedItem() !== commandTargetItem) {
         return;
       }
-      result?.['camera'] && (focusCamera = result['camera']);
-      command === 'save-light-camera' ? (target['focusCamera'] = result['camera'], focusEditing = false, markDirty()) : command === 'cancel-light-camera' ? (focusEditing = false, focusCamera = null) : command === 'edit-light-camera' && (focusEditing = true);
-    } catch (error) {
-      closed || showError(error);
+      if (commandResult?.camera) {
+        pendingCameraDraft = commandResult.camera;
+      }
+      if (commandName === "save-light-camera") {
+        commandTargetItem.focusCamera = commandResult.camera;
+        isCameraEditing = false;
+        markPropertiesDirty();
+      } else if (commandName === "cancel-light-camera") {
+        isCameraEditing = false;
+        pendingCameraDraft = null;
+      } else if (commandName === "edit-light-camera") {
+        isCameraEditing = true;
+      }
+    } catch (commandError) {
+      if (!isDisposed) {
+        showError(commandError);
+      }
     } finally {
-      release();
-      isFocal || (busy = false, closed || renderPanel());
+      releaseQueueGate();
+      if (!isFocalLengthCommand) {
+        isSaving = false;
+        if (!isDisposed) {
+          renderPanel();
+        }
+      }
     }
   }
-  async function openPersonEditor() {
-    if (!(busy || focusEditing || presenceOpen || !allowed)) {
-      presenceOpen = true;
-      preview?.();
-      preview = null;
+  async function openPresenceSubEditor() {
+    if (!isSaving && !isCameraEditing && !isPresenceEditorOpen && !!isAccessAllowed) {
+      isPresenceEditorOpen = true;
+      editorRuntime?.();
+      editorRuntime = null;
       try {
-        const handle = await openPresenceEditor({
-          'component': {
+        const openedPresenceEditor = await openPresenceEditor({
+          component: {
             ...component,
-            'properties': structuredClone(draft)
+            properties: structuredClone(draftProperties)
           },
-          'panelDocument': panelDocument,
-          'floors': previewState?.['floors'] || [],
-          'entities': entities,
-          'pickers': pickers,
-          'initialSelectedId': selectedId,
-          'editingFloorId': floorSelection,
-          'manageBindings': false,
-          'onSave': async nextProperties => {
-            !closed && allowed && (draft['security'] = structuredClone(nextProperties['security']), statusEl['textContent'] = "路线已应用，请保存配置。");
+          panelDocument: documentApi,
+          floors: sceneMetadata?.floors || [],
+          entities: entities,
+          pickers: pickers,
+          initialSelectedId: selectedItemId,
+          editingFloorId: selectedFloorId,
+          manageBindings: false,
+          onSave: async presenceDraft => {
+            if (!isDisposed && isAccessAllowed) {
+              draftProperties.security = structuredClone(presenceDraft.security);
+              errorMessageElement.textContent = "路线已应用，请保存配置。";
+            }
           },
-          'onClose': () => {
-            presenceEditor = null;
-            presenceOpen = false;
-            !closed && allowed && (mountPreview(), renderPanel());
+          onClose: () => {
+            presenceEditorHandle = null;
+            isPresenceEditorOpen = false;
+            if (!isDisposed && isAccessAllowed) {
+              mountEditorRuntime();
+              renderPanel();
+            }
           }
         });
-        closed || !allowed || !presenceOpen ? handle?.['close']() : presenceEditor = handle;
-      } catch (error) {
-        presenceOpen = false;
-        showError(error);
-        !closed && allowed && mountPreview();
+        if (isDisposed || !isAccessAllowed || !isPresenceEditorOpen) {
+          openedPresenceEditor?.close();
+        } else {
+          presenceEditorHandle = openedPresenceEditor;
+        }
+      } catch (presenceEditorError) {
+        isPresenceEditorOpen = false;
+        showError(presenceEditorError);
+        if (!isDisposed && isAccessAllowed) {
+          mountEditorRuntime();
+        }
       }
     }
   }
-  function addSection(title) {
-    const section = createEl('section', "i3d-focus-settings i3d-security-settings");
-    section['append'](createEl('h4', '', title));
-    aside['append'](section);
-    container = section;
-    return section;
+  function createSectionHeading(sectionTitle) {
+    const sectionElement = createElement("section", "i3d-focus-settings i3d-security-settings");
+    sectionElement.append(createElement("h4", "", sectionTitle));
+    panelElement.append(sectionElement);
+    currentContainerElement = sectionElement;
+    return sectionElement;
   }
-  function addDisclosure(title, key, parent = container) {
-    const details = createEl('details', 'i3d-security-disclosure');
-    details['open'] = openSections['has'](key);
-    details['append'](createEl('summary', '', title));
-    details['addEventListener']('toggle', () => {
-      details['open'] ? openSections["add"](key) : openSections['delete'](key);
+  function createDisclosure(summaryText, disclosureKey, hostElement = currentContainerElement) {
+    const detailsElement = createElement("details", "i3d-security-disclosure");
+    detailsElement.open = expandedDisclosureKeySet.has(disclosureKey);
+    detailsElement.append(createElement("summary", "", summaryText));
+    detailsElement.addEventListener("toggle", () => {
+      if (detailsElement.open) {
+        expandedDisclosureKeySet.add(disclosureKey);
+      } else {
+        expandedDisclosureKeySet.delete(disclosureKey);
+      }
     });
-    const detailsBody = createEl('div', 'i3d-security-disclosure-body');
-    details['append'](detailsBody);
-    parent['append'](details);
-    return detailsBody;
+    const disclosureBodyElement = createElement("div", "i3d-security-disclosure-body");
+    detailsElement.append(disclosureBodyElement);
+    hostElement.append(detailsElement);
+    return disclosureBodyElement;
   }
   function renderPanel() {
-    updatePopupPreview();
-    aside['replaceChildren']();
-    saveBtn['disabled'] = busy || focusEditing || !allowed || !previewState || presenceOpen;
-    const scopeSection = addSection('配置范围');
-    const scopeGrid = createEl('div', 'i3d-security-scope-grid');
-    scopeSection['append'](scopeGrid);
-    container = scopeGrid;
-    addSelect('配置楼层', (previewState?.['floors'] || [])['map'](floor => [floor['id'], floor['name']]), floorSelection, nextFloorId => {
-      closePicker();
-      floorSelection = nextFloorId;
-      selectedId = '';
-      syncPreview();
-      renderPanel();
-    });
-    addSelect('安防类别', [['camera', '摄像头'], ['presence', "人体传感器"]], kind, nextKind => {
-      closePicker();
-      kind = nextKind;
-      selectedId = '';
-      syncPreview();
-      renderPanel();
-    });
-    const modelSection = addSection('模型列表');
-    modelSection['className'] += ' i3d-security-model-list';
-    container = modelSection;
-    const placedItems = currentList()['filter'](entry => entry['floorId'] === floorSelection);
-    placedItems['some'](entry => entry['id'] === selectedId) || (selectedId = placedItems[0]?.['id'] || '');
-    addSelect(kindLabel() + '列表', placedItems['map'](entry => [entry['id'], entry['label'] || entry['entityId'] || kindLabel()]), selectedId, nextId => {
-      closePicker();
-      selectedId = nextId;
-      syncPreview();
-      renderPanel();
-    });
-    container = addDisclosure('添加' + kindLabel(), 'add:' + kind + ':' + floorSelection, modelSection);
-    const availableModels = floorModels()['filter'](model => !currentList()['some'](entry => entry['floorId'] === floorSelection && entry['modelId'] === model['id']));
-    const modelSelect = addSelect('待添加' + kindLabel() + '模型', availableModels['map'](model => [model['id'], model['name']]), availableModels[0]?.['id'] || '', () => {});
-    const addBtn = createButton('添加' + kindLabel(), () => {
-      const model = floorModels()["find"](entry => entry['id'] === modelSelect['value']);
-      if (!model || currentList()["length"] >= 128 || currentList()['some'](entry => entry['floorId'] === floorSelection && entry["modelId"] === model['id'])) {
+    panelElement.replaceChildren();
+    saveButtonElement.disabled =
+      isSaving || isCameraEditing || !isAccessAllowed || !sceneMetadata || isPresenceEditorOpen;
+    const scopeSectionElement = createSectionHeading("配置范围");
+    const scopeGridElement = createElement("div", "i3d-security-scope-grid");
+    scopeSectionElement.append(scopeGridElement);
+    currentContainerElement = scopeGridElement;
+    createSelectField(
+      "配置楼层",
+      (sceneMetadata?.floors || []).map(floorItem => [floorItem.id, floorItem.name]),
+      selectedFloorId,
+      nextFloorId => {
+        closeActivePicker();
+        selectedFloorId = nextFloorId;
+        selectedItemId = "";
+        syncEditorRuntime();
+        renderPanel();
+      }
+    );
+    createSelectField(
+      "安防类别",
+      [
+        ["camera", "摄像头"],
+        ["presence", "人体传感器"]
+      ],
+      securityKind,
+      nextSecurityKind => {
+        closeActivePicker();
+        securityKind = nextSecurityKind;
+        selectedItemId = "";
+        syncEditorRuntime();
+        renderPanel();
+      }
+    );
+    const modelListSectionElement = createSectionHeading("模型列表");
+    modelListSectionElement.className += " i3d-security-model-list";
+    currentContainerElement = modelListSectionElement;
+    const itemsInSelectedFloor = getItemList().filter(
+      floorBoundItem => floorBoundItem.floorId === selectedFloorId
+    );
+    if (!itemsInSelectedFloor.some(itemProbe => itemProbe.id === selectedItemId)) {
+      selectedItemId = itemsInSelectedFloor[0]?.id || "";
+    }
+    createSelectField(
+      getKindLabel() + "列表",
+      itemsInSelectedFloor.map(itemOption => [
+        itemOption.id,
+        itemOption.label || itemOption.entityId || getKindLabel()
+      ]),
+      selectedItemId,
+      nextSelectedItemId => {
+        closeActivePicker();
+        selectedItemId = nextSelectedItemId;
+        syncEditorRuntime();
+        renderPanel();
+      }
+    );
+    currentContainerElement = createDisclosure(
+      "添加" + getKindLabel(),
+      "add:" + securityKind + ":" + selectedFloorId,
+      modelListSectionElement
+    );
+    const addableModelList = getFloorModelList().filter(
+      modelProbe =>
+        !getItemList().some(
+          boundItemProbe =>
+            boundItemProbe.floorId === selectedFloorId && boundItemProbe.modelId === modelProbe.id
+        )
+    );
+    const addModelSelectElement = createSelectField(
+      "待添加" + getKindLabel() + "模型",
+      addableModelList.map(modelOption => [modelOption.id, modelOption.name]),
+      addableModelList[0]?.id || "",
+      () => {}
+    );
+    const addItemButtonElement = createButton("添加" + getKindLabel(), () => {
+      const addableModel = getFloorModelList().find(
+        candidateModel => candidateModel.id === addModelSelectElement.value
+      );
+      if (
+        !addableModel ||
+        getItemList().length >= 128 ||
+        getItemList().some(
+          existingItemProbe =>
+            existingItemProbe.floorId === selectedFloorId &&
+            existingItemProbe.modelId === addableModel.id
+        )
+      ) {
         return;
       }
-      const item = {
-        'id': randomUuid(),
-        'floorId': floorSelection,
-        'modelId': model['id'],
-        'entityId': '',
-        'label': model["name"] || kindLabel(),
-        ...(kind === 'camera' ? {
-          'size': 44,
-          'visible': true,
-          'icon': 'mdi:cctv'
-        } : {
-          'route': [],
-          'routeClosed': false,
-          'size': 1,
-          'speed': 0.45,
-          'displayDuration': 0,
-          'character': 'traveler',
-          'color': 'cyan',
-          'clickToFocus': false,
-          'hitPadding': 8
-        })
+      const newItem = {
+        id: randomUuid(),
+        floorId: selectedFloorId,
+        modelId: addableModel.id,
+        entityId: "",
+        label: addableModel.name || getKindLabel(),
+        ...(securityKind === "camera"
+          ? {
+              size: 44,
+              visible: true,
+              icon: "mdi:cctv"
+            }
+          : {
+              route: [],
+              routeClosed: false,
+              size: 1,
+              speed: 0.45,
+              displayDuration: 0,
+              character: "traveler",
+              color: "cyan",
+              clickToFocus: false,
+              hitPadding: 8
+            })
       };
-      currentList()['push'](item);
-      selectedId = item['id'];
-      openSections['delete']("add:" + kind + ':' + floorSelection);
-      markDirty();
+      getItemList().push(newItem);
+      selectedItemId = newItem.id;
+      expandedDisclosureKeySet.delete("add:" + securityKind + ":" + selectedFloorId);
+      markPropertiesDirty();
       renderPanel();
     });
-    addBtn['disabled'] = !availableModels['length'] || currentList()['length'] >= 128;
-    container['append'](addBtn);
-    floorModels()['length'] || container["append"](createEl('p', 'i3d-note', "本层没有" + kindLabel() + "模型，请先在 3D 工作台模型库放置。"));
-    container = modelSection;
-    const item = currentItem();
-    if (item) {
-      const bindingSection = addSection('基础绑定');
-      const bindingGrid = createEl('div', 'i3d-security-scope-grid');
-      bindingSection["append"](bindingGrid);
-      container = bindingGrid;
-      const labelInput = createEl('input');
-      labelInput["value"] = item['label'] || '';
-      labelInput['maxLength'] = 128;
-      labelInput['setAttribute']('aria-label', '名称');
-      labelInput['addEventListener']('input', () => {
-        item['label'] = labelInput['value'];
-        markDirty();
+    addItemButtonElement.disabled = !addableModelList.length || getItemList().length >= 128;
+    currentContainerElement.append(addItemButtonElement);
+    if (!getFloorModelList().length) {
+      currentContainerElement.append(
+        createElement(
+          "p",
+          "i3d-note",
+          "本层没有" + getKindLabel() + "模型，请先在 3D 户型图绘制中增加模型。"
+        )
+      );
+    }
+    currentContainerElement = modelListSectionElement;
+    const selectedItem = findSelectedItem();
+    if (selectedItem) {
+      const bindingSectionElement = createSectionHeading("基础绑定");
+      const bindingGridElement = createElement("div", "i3d-security-scope-grid");
+      bindingSectionElement.append(bindingGridElement);
+      currentContainerElement = bindingGridElement;
+      const nameInputElement = createElement("input");
+      nameInputElement.value = selectedItem.label || "";
+      nameInputElement.maxLength = 128;
+      nameInputElement.setAttribute("aria-label", "名称");
+      nameInputElement.addEventListener("input", () => {
+        selectedItem.label = nameInputElement.value;
+        markPropertiesDirty();
       });
-      const nameField = createEl('label');
-      nameField['append'](createEl('span', '', '名称'), labelInput);
-      container['append'](nameField);
-      const availableModels = floorModels()["filter"](model => !currentList()['some'](entry => entry !== item && entry['floorId'] === floorSelection && entry['modelId'] === model['id']));
-      const modelOptions = availableModels['map'](model => [model['id'], model["name"]]);
-      availableModels['some'](model => model['id'] === item["modelId"]) || modelOptions['unshift']([item['modelId'] || '', item['modelId'] ? '原模型已移除，请重新选择' : '未关联模型（保留原人在路线）']);
-      addSelect('关联' + kindLabel() + '模型', modelOptions, item['modelId'] || '', nextModelId => {
-        nextModelId ? item['modelId'] = nextModelId : delete item['modelId'];
-        kind === 'camera' && delete item['focusCamera'];
-        markDirty();
-        renderPanel();
-      });
-      container = bindingSection;
-      let detectionBody = null;
-      if (kind === 'presence') {
-        const deviceBtn = createButton(item['deviceName'] || '选择人体传感器设备', async () => {
-          const seq = ++pickerSeq;
-          pickerDialog?.["close"]();
+      const nameFieldElement = createElement("label");
+      nameFieldElement.append(createElement("span", "", "名称"), nameInputElement);
+      currentContainerElement.append(nameFieldElement);
+      const modelChoices = getFloorModelList().filter(
+        modelCandidate =>
+          !getItemList().some(
+            otherBoundItem =>
+              otherBoundItem !== selectedItem &&
+              otherBoundItem.floorId === selectedFloorId &&
+              otherBoundItem.modelId === modelCandidate.id
+          )
+      );
+      const modelOptionList = modelChoices.map(availableModel => [
+        availableModel.id,
+        availableModel.name
+      ]);
+      if (!modelChoices.some(matchedModel => matchedModel.id === selectedItem.modelId)) {
+        modelOptionList.unshift([
+          selectedItem.modelId || "",
+          selectedItem.modelId ? "原模型已移除，请重新选择" : "未关联模型（保留原人在路线）"
+        ]);
+      }
+      createSelectField(
+        "关联" + getKindLabel() + "模型",
+        modelOptionList,
+        selectedItem.modelId || "",
+        nextModelId => {
+          if (nextModelId) {
+            selectedItem.modelId = nextModelId;
+          } else {
+            delete selectedItem.modelId;
+          }
+          if (securityKind === "camera") {
+            delete selectedItem.focusCamera;
+          }
+          markPropertiesDirty();
+          renderPanel();
+        }
+      );
+      currentContainerElement = bindingSectionElement;
+      let detectionSourceBodyElement = null;
+      if (securityKind === "presence") {
+        const sensorPickerButtonElement = createButton(
+          selectedItem.deviceName || "选择人体传感器设备",
+          async () => {
+            const pickerRequestGeneration = ++pickerGeneration;
+            activePickerHandle?.close();
+            try {
+              const sensorPickerHandle = await pickers.presence({
+                trigger: sensorPickerButtonElement,
+                current: selectedItem.deviceId || "",
+                onSelect(selectedSensor) {
+                  if (
+                    !isDisposed &&
+                    !!isAccessAllowed &&
+                    pickerRequestGeneration === pickerGeneration &&
+                    findSelectedItem() === selectedItem
+                  ) {
+                    if (selectedSensor) {
+                      selectedItem.deviceId = selectedSensor.deviceId;
+                      selectedItem.deviceName = selectedSensor.name;
+                      deviceEntitiesByItemId.set(selectedItem.id, selectedSensor.entities);
+                      if (
+                        !selectedSensor.entities.some(
+                          entityProbe => entityProbe.entityId === selectedItem.entityId
+                        )
+                      ) {
+                        selectedItem.entityId = selectedSensor.entities[0]?.entityId || "";
+                      }
+                      if (
+                        selectedItem.entityId.startsWith("event.") &&
+                        !(selectedItem.displayDuration > 0)
+                      ) {
+                        selectedItem.displayDuration = 30;
+                      }
+                    } else {
+                      delete selectedItem.deviceId;
+                      delete selectedItem.deviceName;
+                      selectedItem.entityId = "";
+                      deviceEntitiesByItemId.delete(selectedItem.id);
+                    }
+                    markPropertiesDirty();
+                    renderPanel();
+                  }
+                }
+              });
+              if (isDisposed || pickerRequestGeneration !== pickerGeneration) {
+                sensorPickerHandle?.close();
+              } else {
+                activePickerHandle = sensorPickerHandle;
+              }
+            } catch (sensorPickerError) {
+              showError(sensorPickerError);
+            }
+          }
+        );
+        sensorPickerButtonElement.className = "i3d-picker-button";
+        sensorPickerButtonElement.setAttribute("aria-label", "选择人体传感器设备");
+        const deviceFieldElement = createElement("label");
+        deviceFieldElement.append(createElement("span", "", "绑定设备"), sensorPickerButtonElement);
+        currentContainerElement.append(deviceFieldElement);
+        currentContainerElement.append(
+          createElement("p", "i3d-note", "选择设备后自动关联检测来源，通常无需再设置。")
+        );
+        detectionSourceBodyElement = createDisclosure(
+          "检测来源（高级）",
+          "detection:" + selectedItem.id
+        );
+        const previousContainerElement = currentContainerElement;
+        currentContainerElement = detectionSourceBodyElement;
+        if (selectedItem.deviceId) {
+          const entityOptionList = (
+            deviceEntitiesByItemId.get(selectedItem.id) ||
+            pickers.presenceEntities?.(selectedItem.deviceId) ||
+            []
+          ).map(detectionEntity => [
+            detectionEntity.entityId,
+            detectionEntity.name || detectionEntity.entityId
+          ]);
+          if (
+            selectedItem.entityId &&
+            !entityOptionList.some(([optionEntityId]) => optionEntityId === selectedItem.entityId)
+          ) {
+            entityOptionList.unshift([
+              selectedItem.entityId,
+              selectedItem.entityId + "（当前绑定）"
+            ]);
+          }
+          if (entityOptionList.length > 1) {
+            createSelectField(
+              "有人状态来源",
+              entityOptionList,
+              selectedItem.entityId || "",
+              nextEntityId => {
+                selectedItem.entityId = nextEntityId;
+                if (nextEntityId.startsWith("event.") && !(selectedItem.displayDuration > 0)) {
+                  selectedItem.displayDuration = 30;
+                }
+                markPropertiesDirty();
+              }
+            );
+          } else {
+            currentContainerElement.append(
+              createElement(
+                "p",
+                "i3d-note",
+                entityOptionList.length
+                  ? "检测实体：" + entityOptionList[0][1]
+                  : "设备暂无可用检测实体，请重新选择设备。"
+              )
+            );
+          }
+        }
+        currentContainerElement = previousContainerElement;
+      }
+      const entityPickerButtonElement = createButton(
+        entities.find(entityMatch => entityMatch.entityId === selectedItem.entityId)?.name ||
+          selectedItem.entityId ||
+          "选择" + getKindLabel() + "实体",
+        async () => {
+          const entityPickerGeneration = ++pickerGeneration;
+          activePickerHandle?.close();
           try {
-            const pickerHandle = await pickers['presence']({
-              'trigger': deviceBtn,
-              'current': item['deviceId'] || '',
-              'onSelect'(selection) {
-                closed || !allowed || seq !== pickerSeq || currentItem() !== item || (selection ? (item["deviceId"] = selection['deviceId'], item['deviceName'] = selection['name'], deviceEntities['set'](item['id'], selection['entities']), selection['entities']['some'](entity => entity['entityId'] === item['entityId']) || (item['entityId'] = selection['entities'][0]?.['entityId'] || ''), item['entityId']['startsWith']('event.') && !(item['displayDuration'] > 0) && (item['displayDuration'] = 30)) : (delete item['deviceId'], delete item['deviceName'], item['entityId'] = '', deviceEntities["delete"](item['id'])), markDirty(), renderPanel());
+            const entityPickerHandle = await pickers.entity({
+              trigger: entityPickerButtonElement,
+              current: selectedItem.entityId,
+              deviceKind: securityKind,
+              onSelect(pickedEntityId) {
+                if (
+                  !isDisposed &&
+                  !!isAccessAllowed &&
+                  entityPickerGeneration === pickerGeneration &&
+                  findSelectedItem() === selectedItem
+                ) {
+                  selectedItem.entityId = pickedEntityId;
+                  if (securityKind === "presence") {
+                    delete selectedItem.deviceId;
+                    delete selectedItem.deviceName;
+                    deviceEntitiesByItemId.delete(selectedItem.id);
+                  }
+                  if (
+                    securityKind === "presence" &&
+                    pickedEntityId.startsWith("event.") &&
+                    !(selectedItem.displayDuration > 0)
+                  ) {
+                    selectedItem.displayDuration = 30;
+                  }
+                  markPropertiesDirty();
+                  renderPanel();
+                }
               }
             });
-            closed || seq !== pickerSeq ? pickerHandle?.["close"]() : pickerDialog = pickerHandle;
-          } catch (error) {
-            showError(error);
+            if (isDisposed || entityPickerGeneration !== pickerGeneration) {
+              entityPickerHandle?.close();
+            } else {
+              activePickerHandle = entityPickerHandle;
+            }
+          } catch (entityPickerError) {
+            showError(entityPickerError);
           }
-        });
-        deviceBtn['className'] = 'i3d-picker-button';
-        deviceBtn['setAttribute']('aria-label', '选择人体传感器设备');
-        const deviceField = createEl('label');
-        deviceField['append'](createEl('span', '', '绑定设备'), deviceBtn);
-        container['append'](deviceField);
-        container['append'](createEl('p', "i3d-note", "选择设备后自动关联检测来源，通常无需再设置。"));
-        detectionBody = addDisclosure('检测来源（高级）', 'detection:' + item['id']);
-        const previousContainer = container;
-        container = detectionBody;
-        if (item['deviceId']) {
-          const entityOptions = (deviceEntities['get'](item['id']) || pickers['presenceEntities']?.(item['deviceId']) || [])['map'](entity => [entity['entityId'], entity['name'] || entity["entityId"]]);
-          item['entityId'] && !entityOptions['some'](([entityId]) => entityId === item['entityId']) && entityOptions['unshift']([item['entityId'], item["entityId"] + '（当前绑定）']);
-          entityOptions["length"] > 1 ? addSelect('有人状态来源', entityOptions, item["entityId"] || '', nextEntityId => {
-            item["entityId"] = nextEntityId;
-            nextEntityId['startsWith']("event.") && !(item['displayDuration'] > 0) && (item['displayDuration'] = 30);
-            markDirty();
-          }) : container['append'](createEl('p', 'i3d-note', entityOptions['length'] ? '检测实体：' + entityOptions[0][1] : '设备暂无可用检测实体，请重新选择设备。'));
         }
-        container = previousContainer;
+      );
+      if (securityKind === "presence") {
+        entityPickerButtonElement.textContent = selectedItem.entityId
+          ? "手动绑定：" + selectedItem.entityId
+          : "手动选择实体（无设备归属）";
       }
-      const entityBtn = createButton(entities['find'](entity => entity['entityId'] === item['entityId'])?.['name'] || item["entityId"] || '选择' + kindLabel() + '实体', async () => {
-        const seq = ++pickerSeq;
-        pickerDialog?.['close']();
-        try {
-          const pickerHandle = await pickers['entity']({
-            'trigger': entityBtn,
-            'current': item["entityId"],
-            'deviceKind': kind,
-            'onSelect'(nextEntityId) {
-              closed || !allowed || seq !== pickerSeq || currentItem() !== item || (item['entityId'] = nextEntityId, kind === 'presence' && (delete item["deviceId"], delete item['deviceName'], deviceEntities['delete'](item['id'])), kind === "presence" && nextEntityId['startsWith']('event.') && !(item['displayDuration'] > 0) && (item['displayDuration'] = 30), markDirty(), renderPanel());
+      const entityLabelText = entityPickerButtonElement.textContent;
+      entityPickerButtonElement.textContent = "";
+      const entityLabelElement = createElement(
+        "span",
+        "i3d-security-entity-label",
+        entityLabelText
+      );
+      entityPickerButtonElement.append(entityLabelElement);
+      entityPickerButtonElement.title = entityLabelText;
+      entityPickerButtonElement.className = "i3d-picker-button";
+      entityPickerButtonElement.setAttribute("aria-label", "选择" + getKindLabel() + "实体");
+      if (securityKind === "presence") {
+        detectionSourceBodyElement.append(
+          createElement(
+            "p",
+            "i3d-note",
+            "可选择摄像头检测、人体传感器或自定义实体，按检测结果触发。"
+          ),
+          entityPickerButtonElement
+        );
+        currentContainerElement = detectionSourceBodyElement;
+        createSelectField(
+          "触发方式",
+          PRESENCE_TRIGGER_MODES,
+          selectedItem.triggerMode || "auto",
+          nextTriggerMode => {
+            selectedItem.triggerMode = nextTriggerMode;
+            if (nextTriggerMode === "equals") {
+              selectedItem.triggerValue ||= "on";
+            }
+            if (nextTriggerMode === "threshold") {
+              selectedItem.triggerThreshold ??= 0;
+            }
+            if (presenceTriggerIsTimed(selectedItem) && !(selectedItem.displayDuration > 0)) {
+              selectedItem.displayDuration = 30;
+            }
+            markPropertiesDirty();
+            renderPanel();
+          }
+        );
+        if (selectedItem.triggerMode === "threshold") {
+          createNumberField(
+            "数值大于",
+            selectedItem.triggerThreshold ?? 0,
+            -1000000,
+            1000000,
+            nextThreshold => {
+              selectedItem.triggerThreshold = nextThreshold;
+            },
+            0.1,
+            true
+          );
+        }
+        if (selectedItem.triggerMode === "equals") {
+          const triggerValueInputElement = createElement("input");
+          triggerValueInputElement.value = selectedItem.triggerValue ?? "on";
+          triggerValueInputElement.maxLength = 128;
+          triggerValueInputElement.setAttribute("aria-label", "触发值");
+          triggerValueInputElement.addEventListener("input", () => {
+            if (triggerValueInputElement.value.trim()) {
+              selectedItem.triggerValue = triggerValueInputElement.value.trim().slice(0, 128);
+              markPropertiesDirty();
             }
           });
-          closed || seq !== pickerSeq ? pickerHandle?.['close']() : pickerDialog = pickerHandle;
-        } catch (error) {
-          showError(error);
-        }
-      });
-      kind === 'presence' && (entityBtn['textContent'] = item['entityId'] ? '手动绑定：' + item['entityId'] : "手动选择实体（无设备归属）");
-      const entityLabel = entityBtn['textContent'];
-      entityBtn['textContent'] = '';
-      const entityLabelSpan = createEl('span', 'i3d-security-entity-label', entityLabel);
-      entityBtn['append'](entityLabelSpan);
-      entityBtn['title'] = entityLabel;
-      entityBtn['className'] = "i3d-picker-button";
-      entityBtn['setAttribute']('aria-label', '选择' + kindLabel() + '实体');
-      if (kind === 'presence') {
-        detectionBody['append'](createEl('p', 'i3d-note', '可选择摄像头检测、人体传感器或自定义实体，按检测结果触发。'), entityBtn);
-        container = detectionBody;
-        addSelect('触发方式', PRESENCE_TRIGGER_MODES, item['triggerMode'] || 'auto', nextMode => {
-          item['triggerMode'] = nextMode;
-          if (nextMode === 'equals') {
-            item['triggerValue'] ||= 'on';
-          }
-          if (nextMode === 'threshold') {
-            item['triggerThreshold'] ??= 0;
-          }
-          if (presenceTriggerIsTimed(item) && !(item['displayDuration'] > 0)) {
-            item['displayDuration'] = 30;
-          }
-          markDirty();
-          renderPanel();
-        });
-        if (item['triggerMode'] === 'threshold') {
-          addNumberField('数值大于', item['triggerThreshold'] ?? 0, -1000000, 1000000, nextThreshold => {
-            item['triggerThreshold'] = nextThreshold;
-          }, 0.1, true);
-        }
-        if (item['triggerMode'] === 'equals') {
-          const valueInput = createEl('input');
-          valueInput['value'] = item['triggerValue'] ?? 'on';
-          valueInput['maxLength'] = 128;
-          valueInput['setAttribute']('aria-label', '触发值');
-          valueInput['addEventListener']('input', () => {
-            if (valueInput['value']['trim']()) {
-              item['triggerValue'] = valueInput['value']['trim']().slice(0, 128);
-              markDirty();
-            }
+          triggerValueInputElement.addEventListener("change", () => {
+            triggerValueInputElement.value = selectedItem.triggerValue ?? "on";
           });
-          valueInput['addEventListener']('change', () => {
-            valueInput['value'] = item['triggerValue'] ?? 'on';
-          });
-          const valueField = createEl('label');
-          valueField['append'](createEl('span', '', '触发值'), valueInput);
-          container['append'](valueField);
+          const triggerValueFieldElement = createElement("label");
+          triggerValueFieldElement.append(
+            createElement("span", "", "触发值"),
+            triggerValueInputElement
+          );
+          currentContainerElement.append(triggerValueFieldElement);
         }
-        const timed = presenceTriggerIsTimed(item);
-        addNumberField('触发后显示（秒）', item['displayDuration'] ?? (timed ? 30 : 0), timed ? 1 : 0, 3600, nextDuration => {
-          item['displayDuration'] = nextDuration;
-        }, 1, true);
-        container['append'](createEl('p', 'i3d-note', item['triggerMode'] === 'change' || item['triggerMode'] === 'equals'
-          ? '只比较状态值，属性刷新不触发；首次加载和离线恢复不触发。再次触发重新计时。'
-          : timed
-            ? '按检测事件发生时间计时，再次检测重新计时；到时隐藏。'
-            : '0 秒：满足条件时持续显示，不满足时隐藏。其他值：达到时长后隐藏。自动识别开关状态、检测事件及名称明确的人数；其他数值请设置阈值。'));
-        container = bindingSection;
-        container['append'](createEl('p', 'i3d-note', '配置时点击标签选择传感器；正式页面仅展示模型和感应效果。'));
+        const isTimedTrigger = presenceTriggerIsTimed(selectedItem);
+        createNumberField(
+          "触发后显示（秒）",
+          selectedItem.displayDuration ?? (isTimedTrigger ? 30 : 0),
+          isTimedTrigger ? 1 : 0,
+          3600,
+          nextDisplayDuration => {
+            selectedItem.displayDuration = nextDisplayDuration;
+          },
+          1,
+          true
+        );
+        currentContainerElement.append(
+          createElement(
+            "p",
+            "i3d-note",
+            selectedItem.triggerMode === "change" || selectedItem.triggerMode === "equals"
+              ? "只比较状态值，属性刷新不触发；首次加载和离线恢复不触发。再次触发重新计时。"
+              : isTimedTrigger
+                ? "按检测事件发生时间计时，再次检测重新计时；到时隐藏。"
+                : "0 秒：满足条件时持续显示，不满足时隐藏。其他值：达到时长后隐藏。自动识别开关状态、检测事件及名称明确的人数；其他数值请设置阈值。"
+          )
+        );
+        currentContainerElement = bindingSectionElement;
+        currentContainerElement.append(
+          createElement("p", "i3d-note", "配置时点击标签选择传感器；正式页面仅展示模型和感应效果。")
+        );
       } else {
-        container['append'](entityBtn);
+        currentContainerElement.append(entityPickerButtonElement);
       }
-      if (kind === "camera") {
-        container['append'](createEl('p', 'i3d-note', '标签显示设备状态；仅点击聚焦后连接视频，退出时断开。可拖动标签调整位置。'));
-        const labelSection = addSection('标签设置');
-        const labelGrid = createEl('div', "i3d-security-scope-grid");
-        labelSection['append'](labelGrid);
-        container = labelGrid;
-        const iconBtn = createButton(item['icon'] || 'mdi:cctv', async () => {
-          const seq = ++pickerSeq;
-          pickerDialog?.['close']();
+      if (securityKind === "camera") {
+        currentContainerElement.append(
+          createElement(
+            "p",
+            "i3d-note",
+            "标签显示设备状态；仅点击聚焦后连接视频，退出时断开。可拖动标签调整位置。"
+          )
+        );
+        const labelSettingsSectionElement = createSectionHeading("标签设置");
+        const labelSettingsGridElement = createElement("div", "i3d-security-scope-grid");
+        labelSettingsSectionElement.append(labelSettingsGridElement);
+        currentContainerElement = labelSettingsGridElement;
+        const iconPickerButtonElement = createButton(selectedItem.icon || "mdi:cctv", async () => {
+          const iconPickerGeneration = ++pickerGeneration;
+          activePickerHandle?.close();
           try {
-            const pickerHandle = await pickers['icon']({
-              'trigger': iconBtn,
-              'current': item["icon"] || 'mdi:cctv',
-              'deviceKind': "camera",
-              'onSelect'(nextIcon) {
-                closed || !allowed || seq !== pickerSeq || currentItem() !== item || (item['icon'] = nextIcon, markDirty(), renderPanel());
+            const iconPickerHandle = await pickers.icon({
+              trigger: iconPickerButtonElement,
+              current: selectedItem.icon || "mdi:cctv",
+              deviceKind: "camera",
+              onSelect(pickedIconId) {
+                if (
+                  !isDisposed &&
+                  !!isAccessAllowed &&
+                  iconPickerGeneration === pickerGeneration &&
+                  findSelectedItem() === selectedItem
+                ) {
+                  selectedItem.icon = pickedIconId;
+                  markPropertiesDirty();
+                  renderPanel();
+                }
               }
             });
-            closed || seq !== pickerSeq ? pickerHandle?.['close']() : pickerDialog = pickerHandle;
-          } catch (error) {
-            showError(error);
+            if (isDisposed || iconPickerGeneration !== pickerGeneration) {
+              iconPickerHandle?.close();
+            } else {
+              activePickerHandle = iconPickerHandle;
+            }
+          } catch (iconPickerError) {
+            showError(iconPickerError);
           }
         });
-        iconBtn['className'] = 'i3d-picker-button i3d-icon-picker-button';
-        const iconEl = createEl('i');
-        iconEl['style']['maskImage'] = 'url(\'/bridge-static/vendor/mdi/7.4.47/svg/' + (item['icon'] || 'mdi:cctv')['slice'](4) + '.svg\')';
-        iconEl['style']['webkitMaskImage'] = iconEl['style']['maskImage'];
-        iconBtn["textContent"] = '';
-        iconBtn['append'](iconEl, createEl('span', '', item['icon'] || 'mdi:cctv'));
-        iconBtn["setAttribute"]('aria-label', '摄像头图标');
-        const iconField = createEl('label');
-        iconField["append"](createEl('span', '', '图标'), iconBtn);
-        container["append"](iconField);
-        addNumberField('标签缩放（%）', Math['round']((item['size'] ?? 44) / 44 * 100), 10, 500, nextSize => {
-          item['size'] = nextSize / 100 * 44;
-        }, 1);
-        const sizesBody = addDisclosure("更多尺寸设置", 'camera-sizes', labelSection);
-        const sizeGrid = createEl('div', 'i3d-coordinate-grid i3d-security-size-grid');
-        sizesBody['append'](sizeGrid);
-        container = sizeGrid;
-        addNumberField('图标大小（px）', item["iconSize"] ?? 26, 4, 200, nextIconSize => {
-          item['iconSize'] = nextIconSize;
-        }, 1);
-        addNumberField("文字大小（px）", item['fontSize'] ?? 12, 8, 100, nextFontSize => {
-          item['fontSize'] = nextFontSize;
-        }, 1);
-        addNumberField('触控范围（px）', item['hitSize'] ?? 44, 1, 1000, nextHitSize => {
-          item['hitSize'] = nextHitSize;
-        }, 1);
-        const positionSection = addSection('标签位置');
-        const positionGrid = createEl('div', 'i3d-coordinate-grid');
-        positionSection['append'](positionGrid);
-        container = positionGrid;
-        const model = floorModels()['find'](entry => entry['id'] === item['modelId']);
-        for (const axis of ['x', 'y']) {
-          addNumberField('位置 ' + axis['toUpperCase'](), item[axis] ?? model?.[axis] ?? 0, -1000000, 1000000, nextValue => {
-            item[axis] = nextValue;
-          });
+        iconPickerButtonElement.className = "i3d-picker-button i3d-icon-picker-button";
+        const iconMaskElement = createElement("i");
+        iconMaskElement.style.maskImage =
+          "url('/bridge-static/vendor/mdi/7.4.47/svg/" +
+          (selectedItem.icon || "mdi:cctv").slice(4) +
+          ".svg')";
+        iconMaskElement.style.webkitMaskImage = iconMaskElement.style.maskImage;
+        iconPickerButtonElement.textContent = "";
+        iconPickerButtonElement.append(
+          iconMaskElement,
+          createElement("span", "", selectedItem.icon || "mdi:cctv")
+        );
+        iconPickerButtonElement.setAttribute("aria-label", "摄像头图标");
+        const iconFieldElement = createElement("label");
+        iconFieldElement.append(createElement("span", "", "图标"), iconPickerButtonElement);
+        currentContainerElement.append(iconFieldElement);
+        createNumberField(
+          "标签缩放（%）",
+          Math.round(((selectedItem.size ?? 44) / 44) * 100),
+          10,
+          500,
+          nextScalePercent => {
+            selectedItem.size = (nextScalePercent / 100) * 44;
+          },
+          1
+        );
+        const sizeDisclosureBodyElement = createDisclosure(
+          "更多尺寸设置",
+          "camera-sizes",
+          labelSettingsSectionElement
+        );
+        const sizeGridElement = createElement("div", "i3d-coordinate-grid i3d-security-size-grid");
+        sizeDisclosureBodyElement.append(sizeGridElement);
+        currentContainerElement = sizeGridElement;
+        createNumberField(
+          "图标大小（px）",
+          selectedItem.iconSize ?? 26,
+          4,
+          200,
+          nextIconSize => {
+            selectedItem.iconSize = nextIconSize;
+          },
+          1
+        );
+        createNumberField(
+          "文字大小（px）",
+          selectedItem.fontSize ?? 12,
+          8,
+          100,
+          nextFontSize => {
+            selectedItem.fontSize = nextFontSize;
+          },
+          1
+        );
+        createNumberField(
+          "触控范围（px）",
+          selectedItem.hitSize ?? 44,
+          1,
+          1000,
+          nextHitSize => {
+            selectedItem.hitSize = nextHitSize;
+          },
+          1
+        );
+        const labelPositionSectionElement = createSectionHeading("标签位置");
+        const labelPositionGridElement = createElement("div", "i3d-coordinate-grid");
+        labelPositionSectionElement.append(labelPositionGridElement);
+        currentContainerElement = labelPositionGridElement;
+        const modelDefaults = getFloorModelList().find(
+          modelMatch => modelMatch.id === selectedItem.modelId
+        );
+        for (const axisName of ["x", "y"]) {
+          createNumberField(
+            "位置 " + axisName.toUpperCase(),
+            selectedItem[axisName] ?? modelDefaults?.[axisName] ?? 0,
+            -1000000,
+            1000000,
+            nextAxisValue => {
+              selectedItem[axisName] = nextAxisValue;
+            }
+          );
         }
-        addNumberField('离地高度（米）', item['height'] ?? model?.['height'] ?? 0.15, -1000, 1000, nextHeight => {
-          item['height'] = nextHeight;
-        });
-        container = positionSection;
-        const resetBtn = createButton('恢复跟随模型', () => {
-          delete item['x'];
-          delete item['y'];
-          delete item['height'];
-          markDirty();
+        createNumberField(
+          "离地高度（米）",
+          selectedItem.height ?? modelDefaults?.height ?? 0.15,
+          -1000,
+          1000,
+          nextHeight => {
+            selectedItem.height = nextHeight;
+          }
+        );
+        currentContainerElement = labelPositionSectionElement;
+        const resetToModelButtonElement = createButton("恢复跟随模型", () => {
+          delete selectedItem.x;
+          delete selectedItem.y;
+          delete selectedItem.height;
+          markPropertiesDirty();
           renderPanel();
         });
-        resetBtn['disabled'] = !['x', 'y', 'height']['some'](axis => Number['isFinite'](item[axis]));
-        resetBtn['className'] = 'i3d-focus-reset';
-        container['append'](resetBtn);
-        container['append'](createEl('p', 'i3d-note', "仅调整标签，不移动摄像头模型。也可在预览中拖动标签。"));
-        addSection('聚焦视角');
-        const focusActions = createEl('div', 'i3d-focus-actions');
-        focusEditing ? focusActions['append'](createButton('保存摄像头视角', () => runFocusCommand('save-light-camera')), createButton("取消调整", () => runFocusCommand('cancel-light-camera'))) : focusActions['append'](createButton(item['focusCamera'] ? '调整视角' : '设置视角', () => runFocusCommand('edit-light-camera')), createButton('预览聚焦', () => runFocusCommand('preview-light-camera')));
-        container['append'](focusActions);
-        if (focusEditing) {
-          const projectionGroup = createEl('div', "i3d-focus-actions");
-          projectionGroup['setAttribute']('role', 'group');
-          projectionGroup['setAttribute']('aria-label', '聚焦投影');
-          for (const [mode, modeLabel] of [['orthographic', '正交'], ['perspective', '透视']]) {
-            const modeBtn = createButton(modeLabel, () => runFocusCommand("focus-projection", mode));
-            modeBtn['setAttribute']('aria-pressed', String((focusCamera?.["mode"] || 'orthographic') === mode));
-            projectionGroup['append'](modeBtn);
+        resetToModelButtonElement.disabled = !["x", "y", "height"].some(axisKey =>
+          Number.isFinite(selectedItem[axisKey])
+        );
+        resetToModelButtonElement.className = "i3d-focus-reset";
+        currentContainerElement.append(resetToModelButtonElement);
+        currentContainerElement.append(
+          createElement("p", "i3d-note", "仅调整标签，不移动摄像头模型。也可在预览中拖动标签。")
+        );
+        createSectionHeading("聚焦视角");
+        const focusActionsElement = createElement("div", "i3d-focus-actions");
+        if (isCameraEditing) {
+          focusActionsElement.append(
+            createButton("保存摄像头视角", () => runCameraCommand("save-light-camera")),
+            createButton("取消调整", () => runCameraCommand("cancel-light-camera"))
+          );
+        } else {
+          focusActionsElement.append(
+            createButton(selectedItem.focusCamera ? "调整视角" : "设置视角", () =>
+              runCameraCommand("edit-light-camera")
+            ),
+            createButton("预览聚焦", () => runCameraCommand("preview-light-camera"))
+          );
+        }
+        currentContainerElement.append(focusActionsElement);
+        if (isCameraEditing) {
+          const projectionGroupElement = createElement("div", "i3d-focus-actions");
+          projectionGroupElement.setAttribute("role", "group");
+          projectionGroupElement.setAttribute("aria-label", "聚焦投影");
+          for (const [projectionMode, projectionLabel] of [
+            ["orthographic", "正交"],
+            ["perspective", "透视"]
+          ]) {
+            const projectionButtonElement = createButton(projectionLabel, () =>
+              runCameraCommand("focus-projection", projectionMode)
+            );
+            projectionButtonElement.setAttribute(
+              "aria-pressed",
+              String((pendingCameraDraft?.mode || "orthographic") === projectionMode)
+            );
+            projectionGroupElement.append(projectionButtonElement);
           }
-          const focalInput = createEl('input');
-          Object['assign'](focalInput, {
-            'type': "number",
-            'min': '18',
-            'max': '120',
-            'step': '1',
-            'value': String(Math['round'](focusCamera?.["focalLength"] || 50))
+          const focalLengthInputElement = createElement("input");
+          Object.assign(focalLengthInputElement, {
+            type: "number",
+            min: "18",
+            max: "120",
+            step: "1",
+            value: String(Math.round(pendingCameraDraft?.focalLength || 50))
           });
-          focalInput["setAttribute"]('aria-label', "焦段（mm）");
-          focalInput['dataset']['focusFocal'] = 'true';
-          focalInput['addEventListener']("change", () => {
-            const parsed = Number(focalInput['value']);
-            if (!focalInput['value']["trim"]() || !Number['isFinite'](parsed)) {
-              focalInput['value'] = String(focusCamera?.["focalLength"] || 50);
+          focalLengthInputElement.setAttribute("aria-label", "焦段（mm）");
+          focalLengthInputElement.dataset.focusFocal = "true";
+          focalLengthInputElement.addEventListener("change", () => {
+            const nextFocalLength = Number(focalLengthInputElement.value);
+            if (!focalLengthInputElement.value.trim() || !Number.isFinite(nextFocalLength)) {
+              focalLengthInputElement.value = String(pendingCameraDraft?.focalLength || 50);
               return;
             }
-            focalInput['value'] = String(Math['max'](18, Math['min'](120, parsed)));
-            runFocusCommand("focus-focal-length", Number(focalInput['value']));
+            focalLengthInputElement.value = String(Math.max(18, Math.min(120, nextFocalLength)));
+            runCameraCommand("focus-focal-length", Number(focalLengthInputElement.value));
           });
-          const focalField = createEl('label');
-          focalField["append"](createEl('span', '', '焦段（mm）'), focalInput);
-          container['append'](projectionGroup, focalField);
+          const focalLengthFieldElement = createElement("label");
+          focalLengthFieldElement.append(
+            createElement("span", "", "焦段（mm）"),
+            focalLengthInputElement
+          );
+          currentContainerElement.append(projectionGroupElement, focalLengthFieldElement);
         }
-        if (!focusEditing) {
-          const resetFocusBtn = createButton("恢复自动聚焦", async () => {
-            if (!(busy || !allowed)) {
-              busy = true;
+        if (!isCameraEditing) {
+          const resetFocusButtonElement = createButton("恢复自动聚焦", async () => {
+            if (!isSaving && !!isAccessAllowed) {
+              isSaving = true;
               renderPanel();
               try {
-                await preview['focusCommand']("cancel-light-camera", itemKey(item));
-                if (closed || !allowed) {
+                await editorRuntime.focusCommand("cancel-light-camera", toItemKey(selectedItem));
+                if (isDisposed || !isAccessAllowed) {
                   return;
                 }
-                delete item['focusCamera'];
-                markDirty();
-              } catch (error) {
-                showError(error);
+                delete selectedItem.focusCamera;
+                markPropertiesDirty();
+              } catch (resetFocusError) {
+                showError(resetFocusError);
               } finally {
-                busy = false;
-                closed || renderPanel();
+                isSaving = false;
+                if (!isDisposed) {
+                  renderPanel();
+                }
               }
             }
           });
-          resetFocusBtn['disabled'] = !item['focusCamera'];
-          resetFocusBtn['className'] = 'i3d-focus-reset';
-          container['append'](resetFocusBtn);
+          resetFocusButtonElement.disabled = !selectedItem.focusCamera;
+          resetFocusButtonElement.className = "i3d-focus-reset";
+          currentContainerElement.append(resetFocusButtonElement);
         }
       }
-      if (kind === 'presence') {
-        if (item['modelId']) {
-          const waveSection = addSection('感应光圈');
-          addSelect('显示光圈', [['on', '开启'], ['off', '关闭']], item['waveEnabled'] === false ? "off" : 'on', nextValue => {
-            item['waveEnabled'] = nextValue === 'on';
-            markDirty();
-            renderPanel();
-          });
-          const waveGrid = createEl('div', 'i3d-security-scope-grid');
-          waveSection['append'](waveGrid);
-          container = waveGrid;
-          addNumberField('光圈大小（%）', Math['round']((item['waveScale'] ?? 1) * 100), 25, 300, nextScale => {
-            item['waveScale'] = nextScale / 100;
-          }, 1);
-          addNumberField('光圈透明度（%）', 100 - (item['waveOpacity'] ?? 68), 0, 100, nextOpacity => {
-            item['waveOpacity'] = 100 - nextOpacity;
-          }, 1);
-          if (item['waveEnabled'] === false) {
-            for (const input of waveGrid['querySelectorAll']('input')) {
-              input['disabled'] = true;
+      if (securityKind === "presence") {
+        if (selectedItem.modelId) {
+          const waveSectionElement = createSectionHeading("感应光圈");
+          createSelectField(
+            "显示光圈",
+            [
+              ["on", "开启"],
+              ["off", "关闭"]
+            ],
+            selectedItem.waveEnabled === false ? "off" : "on",
+            nextWaveEnabled => {
+              selectedItem.waveEnabled = nextWaveEnabled === "on";
+              markPropertiesDirty();
+              renderPanel();
+            }
+          );
+          const waveGridElement = createElement("div", "i3d-security-scope-grid");
+          waveSectionElement.append(waveGridElement);
+          currentContainerElement = waveGridElement;
+          createNumberField(
+            "光圈大小（%）",
+            Math.round((selectedItem.waveScale ?? 1) * 100),
+            25,
+            300,
+            nextWaveScalePercent => {
+              selectedItem.waveScale = nextWaveScalePercent / 100;
+            },
+            1
+          );
+          createNumberField(
+            "光圈透明度（%）",
+            100 - (selectedItem.waveOpacity ?? 68),
+            0,
+            100,
+            nextWaveOpacityPercent => {
+              selectedItem.waveOpacity = 100 - nextWaveOpacityPercent;
+            },
+            1
+          );
+          if (selectedItem.waveEnabled === false) {
+            for (const waveInputElement of waveGridElement.querySelectorAll("input")) {
+              waveInputElement.disabled = true;
             }
           }
         }
-        addSection('人物展示');
-        container['append'](createButton("配置人物与行走路线", openPersonEditor));
-        container['append'](createEl('p', 'i3d-note', '按需设置人物、显示时长与行走路线。设备绑定在上方统一管理。'));
+        createSectionHeading("人物展示");
+        currentContainerElement.append(createButton("配置人物与行走路线", openPresenceSubEditor));
+        currentContainerElement.append(
+          createElement(
+            "p",
+            "i3d-note",
+            "按需设置人物、显示时长与行走路线。设备绑定在上方统一管理。"
+          )
+        );
       }
-      const bindingMgmtSection = addSection("绑定管理");
-      const removeBtn = createButton('移除' + kindLabel() + '绑定', () => {
-        closePicker();
-        draft['security'][listKey()] = currentList()['filter'](entry => entry !== item);
-        selectedId = '';
-        markDirty();
+      const bindingManagementSectionElement = createSectionHeading("绑定管理");
+      const removeBindingButtonElement = createButton("移除" + getKindLabel() + "绑定", () => {
+        closeActivePicker();
+        draftProperties.security[getCollectionKey()] = getItemList().filter(
+          remainingItem => remainingItem !== selectedItem
+        );
+        selectedItemId = "";
+        markPropertiesDirty();
         renderPanel();
       });
-      removeBtn['className'] = "i3d-remove-light";
-      bindingMgmtSection['append'](removeBtn);
+      removeBindingButtonElement.className = "i3d-remove-light";
+      bindingManagementSectionElement.append(removeBindingButtonElement);
     }
-    container = aside;
-    container["append"](statusEl);
-    if (busy || focusEditing || !allowed || presenceOpen) {
-      for (const control of aside['querySelectorAll']('button,input,select')) {
-        control['disabled'] = true;
+    currentContainerElement = panelElement;
+    currentContainerElement.append(errorMessageElement);
+    if (isSaving || isCameraEditing || !isAccessAllowed || isPresenceEditorOpen) {
+      for (const disabledControlElement of panelElement.querySelectorAll("button,input,select")) {
+        disabledControlElement.disabled = true;
       }
-      if (focusEditing && !busy && allowed) {
-        for (const btn of aside["querySelectorAll"]('.i3d-focus-actions button')) {
-          btn['disabled'] = false;
+      if (isCameraEditing && !isSaving && isAccessAllowed) {
+        for (const focusActionButtonElement of panelElement.querySelectorAll(
+          ".i3d-focus-actions button"
+        )) {
+          focusActionButtonElement.disabled = false;
         }
       }
-      for (const input of aside['querySelectorAll']("input")) {
-        input['dataset']["focusFocal"] && (input['disabled'] = busy || !allowed || focusCamera?.['mode'] !== 'perspective');
+      for (const panelInputElement of panelElement.querySelectorAll("input")) {
+        if (panelInputElement.dataset.focusFocal) {
+          panelInputElement.disabled =
+            isSaving || !isAccessAllowed || pendingCameraDraft?.mode !== "perspective";
+        }
       }
     }
   }
-  function mountPreview() {
-    closed || !allowed || preview || presenceOpen || (preview = mountInteraction3d(stage, {
-      'component': {
-        ...component,
-        'properties': buildProperties()
-      },
-      'context': {
-        'document': panelDocument,
-        'editable': true
-      },
-      'editing': true,
-      'editingModule': 'security',
-      'onReady'(state) {
-        previewState = state;
-        previewState['floors']['some'](floor => floor['id'] === floorSelection) || (floorSelection = previewState['floors'][0]?.['id'] || '');
-        renderPanel();
-        syncPreview();
-      },
-      'onEdit'(event) {
-        if (!(closed || !allowed)) {
-          if (event['action'] === "position" && event['id']?.['startsWith']('camera:')) {
-            const camera = draft['security']['cameras']['find'](entry => "camera:" + entry['id'] === event['id']);
-            camera && Number["isFinite"](event['x']) && Number['isFinite'](event['y']) && (camera['x'] = event['x'], camera['y'] = event['y'], markDirty());
+  function mountEditorRuntime() {
+    if (!isDisposed && !!isAccessAllowed && !editorRuntime && !isPresenceEditorOpen) {
+      editorRuntime = mountInteraction3d(stageHostElement, {
+        component: {
+          ...component,
+          properties: buildEditorProperties()
+        },
+        context: {
+          document: documentApi,
+          editable: true
+        },
+        editing: true,
+        editingModule: "security",
+        onReady(readyMetadata) {
+          sceneMetadata = readyMetadata;
+          if (!sceneMetadata.floors.some(floorMatch => floorMatch.id === selectedFloorId)) {
+            selectedFloorId = sceneMetadata.floors[0]?.id || "";
           }
-          event['action'] === "focus-exited" && (focusEditing = false, renderPanel());
-          if (event["action"] === "select" && /^(camera|presence):/['test'](event['id'] || '')) {
-            const colonIndex = event['id']['indexOf'](':');
-            kind = event['id']['slice'](0, colonIndex);
-            selectedId = event['id']['slice'](colonIndex + 1);
-            renderPanel();
+          renderPanel();
+          syncEditorRuntime();
+        },
+        onEdit(editEvent) {
+          if (!isDisposed && !!isAccessAllowed) {
+            if (editEvent.action === "position" && editEvent.id?.startsWith("camera:")) {
+              const editedCameraItem = draftProperties.security.cameras.find(
+                cameraMatch => "camera:" + cameraMatch.id === editEvent.id
+              );
+              if (
+                editedCameraItem &&
+                Number.isFinite(editEvent.x) &&
+                Number.isFinite(editEvent.y)
+              ) {
+                editedCameraItem.x = editEvent.x;
+                editedCameraItem.y = editEvent.y;
+                markPropertiesDirty();
+              }
+            }
+            if (editEvent.action === "focus-exited") {
+              isCameraEditing = false;
+              renderPanel();
+            }
+            if (editEvent.action === "select" && /^(camera|presence):/.test(editEvent.id || "")) {
+              const separatorIndex = editEvent.id.indexOf(":");
+              securityKind = editEvent.id.slice(0, separatorIndex);
+              selectedItemId = editEvent.id.slice(separatorIndex + 1);
+              renderPanel();
+            }
           }
-        }
-      },
-      'onLoadError': showError
-    }), document['dispatchEvent'](new Event('hb-i3d-preview-scope')));
+        },
+        onLoadError: showError
+      });
+      document.dispatchEvent(new Event("hb-i3d-preview-scope"));
+    }
   }
-  document["head"]['append'](stylesheetLink);
-  document['body']['append'](dialog);
-  dialog["showModal"]();
+  document.head.append(styleSheetLinkElement);
+  document.body.append(editorDialogElement);
+  editorDialogElement.showModal();
   renderPanel();
-  resizeEditor();
-  mountPreview();
+  updatePreviewSize();
+  mountEditorRuntime();
   return {
-    'close': close
+    close: closeEditor
   };
 }

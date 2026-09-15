@@ -1,28 +1,45 @@
-const onOffDomains = new Set(["light", "switch", "input_boolean", "fan", "humidifier", "siren"]);
-const climateLikeDomains = new Set(["climate", "water_heater"]);
-function entityDomain(metadata) {
-  const entityId = typeof metadata == "string" ? metadata : String(metadata?.entityId || metadata?.entity_id || "");
-  return String(typeof metadata == "string" ? "" : metadata?.domain || "").trim().toLowerCase() || entityId.split(".", 1)[0].toLowerCase();
+const ON_OFF_DOMAINS_SET = new Set([
+  "light",
+  "switch",
+  "input_boolean",
+  "fan",
+  "humidifier",
+  "siren"
+]);
+const RUNNING_STATE_DOMAINS_SET = new Set(["climate", "water_heater"]);
+function resolveEntityDomain(entityDescriptor) {
+  const entityId =
+    typeof entityDescriptor == "string"
+      ? entityDescriptor
+      : String(entityDescriptor?.entityId || entityDescriptor?.entity_id || "");
+  return (
+    String(typeof entityDescriptor == "string" ? "" : entityDescriptor?.domain || "")
+      .trim()
+      .toLowerCase() || entityId.split(".", 1)[0].toLowerCase()
+  );
 }
-export function lightStatisticsEntitySupport(entity) {
-  const entityId = typeof entity == "string" ? entity : String(entity?.entityId || entity?.entity_id || "");
-  const domain = entityDomain(entity);
-  if (domain === "virtual" || entity?.virtual) {
+export function lightStatisticsEntitySupport(entityLike) {
+  const targetEntityId =
+    typeof entityLike == "string"
+      ? entityLike
+      : String(entityLike?.entityId || entityLike?.entity_id || "");
+  const entityDomain = resolveEntityDomain(entityLike);
+  if (entityDomain === "virtual" || entityLike?.virtual) {
     return {
       supported: true,
       message: "虚拟实体按当前显示状态统计。"
     };
-  } else if (domain === "group") {
+  } else if (entityDomain === "group") {
     return {
       supported: true,
       message: "群组将作为 1 个实体统计。"
     };
-  } else if (onOffDomains.has(domain)) {
+  } else if (ON_OFF_DOMAINS_SET.has(entityDomain)) {
     return {
       supported: true,
       message: "按开启/关闭状态统计。"
     };
-  } else if (climateLikeDomains.has(domain)) {
+  } else if (RUNNING_STATE_DOMAINS_SET.has(entityDomain)) {
     return {
       supported: true,
       message: "按关闭/运行状态统计。"
@@ -34,72 +51,95 @@ export function lightStatisticsEntitySupport(entity) {
     };
   }
 }
-export function lightStatisticsEntityStateStatus(entity, stateOrRecord) {
-  if (!lightStatisticsEntitySupport(entity).supported) {
+export function lightStatisticsEntityStateStatus(entityInput, stateLike) {
+  if (!lightStatisticsEntitySupport(entityInput).supported) {
     return "abnormal";
   }
-  const domain = entityDomain(entity);
-  const state = String(stateOrRecord?.state ?? stateOrRecord ?? "").trim().toLowerCase();
-  if (!state || ["unknown", "unavailable"].includes(state)) {
+  const domainName = resolveEntityDomain(entityInput);
+  const normalizedState = String(stateLike?.state ?? stateLike ?? "")
+    .trim()
+    .toLowerCase();
+  if (!normalizedState || ["unknown", "unavailable"].includes(normalizedState)) {
     return "abnormal";
-  } else if (state === "off") {
+  } else if (normalizedState === "off") {
     return "off";
-  } else if (state === "on" || climateLikeDomains.has(domain)) {
+  } else if (normalizedState === "on" || RUNNING_STATE_DOMAINS_SET.has(domainName)) {
     return "on";
   } else {
     return "abnormal";
   }
 }
-function metadataGet(metadata, entityId) {
-  if (typeof metadata?.get == "function") {
-    return metadata.get(entityId) || null;
+function readFromMapOrRecord(source, key) {
+  if (typeof source?.get == "function") {
+    return source.get(key) || null;
   } else {
-    return metadata && typeof metadata == "object" && metadata[entityId] || null;
+    return (source && typeof source == "object" && source[key]) || null;
   }
 }
-function readEntityState(states, entityId) {
-  const record = typeof states?.get == "function" ? states.get(entityId) : states?.[entityId];
-  if (record && typeof record == "object" && Object.prototype.hasOwnProperty.call(record, "newState")) {
-    return record.newState || null;
+function unwrapStateChange(statesByEntityId, entityIdKey) {
+  const stateOrChange =
+    typeof statesByEntityId?.get == "function"
+      ? statesByEntityId.get(entityIdKey)
+      : statesByEntityId?.[entityIdKey];
+  if (
+    stateOrChange &&
+    typeof stateOrChange == "object" &&
+    Object.prototype.hasOwnProperty.call(stateOrChange, "newState")
+  ) {
+    return stateOrChange.newState || null;
   } else {
-    return record || null;
+    return stateOrChange || null;
   }
 }
-export function lightStatisticsSummary(lightStatistics, states = new Map(), entityMetadata = new Map()) {
-  const entityIds = [];
-  const seen = new Set();
-  for (const rawId of Array.isArray(lightStatistics) ? lightStatistics : []) {
-    const entityId = String(rawId || "").trim();
-    if (!!entityId && !seen.has(entityId)) {
-      seen.add(entityId);
-      entityIds.push(entityId);
+export function lightStatisticsSummary(
+  entityIds,
+  liveStatesByEntityId = new Map(),
+  descriptorsByEntityId = new Map()
+) {
+  const orderedEntityIds = [];
+  const seenEntityIds = new Set();
+  for (const entityIdEntry of Array.isArray(entityIds) ? entityIds : []) {
+    const normalizedEntityId = String(entityIdEntry || "").trim();
+    if (!!normalizedEntityId && !seenEntityIds.has(normalizedEntityId)) {
+      seenEntityIds.add(normalizedEntityId);
+      orderedEntityIds.push(normalizedEntityId);
     }
   }
-  const items = entityIds.map(entityId => {
-    const metadata = metadataGet(entityMetadata, entityId) || {};
-    const entityState = readEntityState(states, entityId);
-    const state = String(entityState?.state || "").trim().toLowerCase();
+  const items = orderedEntityIds.map(currentEntityId => {
+    const descriptor = readFromMapOrRecord(descriptorsByEntityId, currentEntityId) || {};
+    const stateChange = unwrapStateChange(liveStatesByEntityId, currentEntityId);
+    const normalizedStateEntry = String(stateChange?.state || "")
+      .trim()
+      .toLowerCase();
     const support = lightStatisticsEntitySupport({
-      ...metadata,
-      entityId
+      ...descriptor,
+      entityId: currentEntityId
     });
-    const status = lightStatisticsEntityStateStatus({
-      ...metadata,
-      entityId
-    }, entityState);
+    const status = lightStatisticsEntityStateStatus(
+      {
+        ...descriptor,
+        entityId: currentEntityId
+      },
+      stateChange
+    );
     return {
-      entityId,
-      label: String(entityState?.attributes?.friendly_name || metadata.name || metadata.originalName || entityId),
-      state,
-      status,
+      entityId: currentEntityId,
+      label: String(
+        stateChange?.attributes?.friendly_name ||
+          descriptor.name ||
+          descriptor.originalName ||
+          currentEntityId
+      ),
+      state: normalizedStateEntry,
+      status: status,
       message: status === "abnormal" && support.supported ? "当前状态无法判断" : support.message
     };
   });
   return {
     total: items.length,
-    on: items.filter(on => on.status === "on").length,
-    off: items.filter(off => off.status === "off").length,
-    abnormal: items.filter(abnormal => abnormal.status === "abnormal").length,
-    items
+    on: items.filter(item => item.status === "on").length,
+    off: items.filter(entry => entry.status === "off").length,
+    abnormal: items.filter(candidate => candidate.status === "abnormal").length,
+    items: items
   };
 }

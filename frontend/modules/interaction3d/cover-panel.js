@@ -1,129 +1,200 @@
-import { coverState, coverControl, coverStateLabel } from "./cover-state.js?v=0.5.3";
+import {
+  coverState,
+  coverControl,
+  coverStateLabel,
+  coverCanAdjustBlades
+} from "./cover-state.js?v=20260914-cover-live-drag-v6";
 export function createCoverPanel({
-  element: host,
-  onControl = async () => {},
-  onPreview = () => {}
+  element: hostElement,
+  onControl: onControl = async () => {},
+  onPreview: onPreview = () => {}
 } = {}) {
-  const doc = host?.ownerDocument || globalThis.document;
-  const createEl = (tag, className = "", text = "") => {
-    const node = doc.createElement(tag);
-    node.className = className;
-    node.textContent = text;
-    return node;
+  const ownerDocument = hostElement?.ownerDocument || globalThis.document;
+  const createElement = (tagName, className = "", textContent = "") => {
+    const element = ownerDocument.createElement(tagName);
+    element.className = className;
+    element.textContent = textContent;
+    return element;
   };
-  const setChildren = (parent, ...children) => {
-    if (typeof parent.replaceChildren == "function") {
-      parent.replaceChildren(...children);
+  const replaceChildren = (containerElement, ...childNodes) => {
+    if (typeof containerElement.replaceChildren == "function") {
+      containerElement.replaceChildren(...childNodes);
     } else {
-      for (const child of [...(parent.children || [])]) {
+      for (const child of [...(containerElement.children || [])]) {
         child.remove?.();
       }
-      parent.append(...children);
+      containerElement.append(...childNodes);
     }
   };
-  const panel = host || createEl("section");
-  panel.classList.add("i3d-cover-panel");
-  const heading = createEl("div", "i3d-cover-heading");
-  const titleEl = createEl("h3", "", "窗帘");
-  const statusEl = createEl("p", "", "尚未绑定设备");
-  heading.append(titleEl, statusEl);
-  const controlsSlot = createEl("div", "i3d-cover-controls-slot");
-  const controlsSection = createEl("section", "hb-cover-details-controls");
-  const positionLabel = createEl("label", "hb-cover-details-position");
-  const positionHeading = createEl("span", "hb-cover-details-position-heading");
-  const positionOutput = createEl("output");
-  positionOutput.setAttribute("aria-label", "当前开合位置");
-  positionHeading.append(positionOutput);
-  const positionSlider = createEl("input");
-  positionSlider.type = "range";
-  positionSlider.min = "0";
-  positionSlider.max = "100";
-  positionSlider.step = "1";
-  positionSlider.setAttribute("aria-label", "目标开合位置");
-  const positionLegend = createEl("span", "hb-cover-details-position-legend");
-  positionLegend.append(createEl("small", "", "关闭"), createEl("small", "", "打开"));
-  positionLabel.append(positionHeading, positionSlider, positionLegend);
-  const actionsRow = createEl("div", "hb-cover-details-actions");
+  const rootElement = hostElement || createElement("section");
+  rootElement.classList.add("i3d-cover-panel");
+  const headingElement = createElement("div", "i3d-cover-heading");
+  const titleElement = createElement("h3", "", "窗帘");
+  const statusElement = createElement("p", "", "尚未绑定设备");
+  headingElement.append(titleElement, statusElement);
+  const bladeHintElement = createElement("p", "i3d-cover-blade-hint", "叶片角度 · 50% 为 90°打开");
+  bladeHintElement.hidden = true;
+  const controlsSlotElement = createElement("div", "i3d-cover-controls-slot");
+  const controlsElement = createElement("section", "hb-cover-details-controls");
+  const positionLabelElement = createElement("label", "hb-cover-details-position");
+  const positionHeadingElement = createElement("span", "hb-cover-details-position-heading");
+  const positionOutputElement = createElement("output");
+  positionOutputElement.setAttribute("aria-label", "当前开合位置");
+  positionHeadingElement.append(positionOutputElement);
+  const positionSliderElement = createElement("input");
+  positionSliderElement.type = "range";
+  positionSliderElement.min = "0";
+  positionSliderElement.max = "100";
+  positionSliderElement.step = "1";
+  positionSliderElement.setAttribute("aria-label", "目标开合位置");
+  const positionLegendElement = createElement("span", "hb-cover-details-position-legend");
+  positionLegendElement.append(
+    createElement("small", "", "关闭"),
+    createElement("small", "", "打开")
+  );
+  positionLabelElement.append(positionHeadingElement, positionSliderElement, positionLegendElement);
+  const actionsElement = createElement("div", "hb-cover-details-actions");
   const actionButtons = [];
-  for (const [label, service, capability] of [["关闭", "close_cover", "closeSupported"], ["暂停", "stop_cover", "stopSupported"], ["打开", "open_cover", "openSupported"]]) {
-    const button = createEl("button");
-    button.type = "button";
-    button.dataset.coverAction = service;
-    button.setAttribute("aria-label", label);
-    button.append(createEl("strong", "", label));
-    button.addEventListener("click", () => invokeControl(service));
+  for (const [actionLabel, controlService, capabilityKey] of [
+    ["关闭", "close_cover", "closeSupported"],
+    ["暂停", "stop_cover", "stopSupported"],
+    ["打开", "open_cover", "openSupported"]
+  ]) {
+    const buttonElement = createElement("button");
+    buttonElement.type = "button";
+    buttonElement.dataset.coverAction = controlService;
+    buttonElement.setAttribute("aria-label", actionLabel);
+    buttonElement.append(createElement("strong", "", actionLabel));
+    buttonElement.addEventListener("click", () => requestControl(controlService));
     actionButtons.push({
-      button,
-      service,
-      capability
+      button: buttonElement,
+      service: controlService,
+      capability: capabilityKey
     });
-    actionsRow.append(button);
+    actionsElement.append(buttonElement);
   }
-  controlsSection.append(positionLabel, actionsRow);
-  controlsSlot.append(controlsSection);
-  const feedbackEl = createEl("p", "i3d-cover-feedback");
-  feedbackEl.hidden = true;
-  feedbackEl.setAttribute("role", "status");
-  feedbackEl.setAttribute("aria-live", "polite");
-  setChildren(panel, heading, controlsSlot, feedbackEl);
-  let item = {};
-  let cover = coverState("", null);
-  let disposed = false;
-  let generation = 0;
-  let ticketSeq = 0;
-  let target = null;
-  let confirmTimeout = null;
+  controlsElement.append(positionLabelElement, actionsElement);
+  controlsSlotElement.append(controlsElement);
+  const feedbackElement = createElement("p", "i3d-cover-feedback");
+  feedbackElement.hidden = true;
+  feedbackElement.setAttribute("role", "status");
+  feedbackElement.setAttribute("aria-live", "polite");
+  replaceChildren(
+    rootElement,
+    headingElement,
+    bladeHintElement,
+    controlsSlotElement,
+    feedbackElement
+  );
+  let viewModel = {};
+  let deviceState = coverState("", null);
+  let isDisposed = false;
+  let instanceId = 0;
+  let ticketCounter = 0;
+  let railUnconfirmed = false;
+  let pendingIntent = null;
+  let intentTimeoutId = null;
   let draftPosition = null;
-  let sliderActive = false;
-  let localError = "";
-  let revision = 0;
-  let stateFingerprint = "";
-  const canControl = () => !disposed && !item.editing && item.item?.modelAvailable !== false && cover.available;
-  const displayPosition = () => draftPosition ?? item.presentation?.position ?? (target?.confirmed ? cover.position : target?.target ?? cover.position);
-  const displayState = () => item.presentation || (target && !target.confirmed ? {
-    ...cover,
-    opening: target.target !== null && target.target > (cover.position ?? 0),
-    closing: target.target !== null && target.target < (cover.position ?? 100),
-    state: target.service === "stop_cover" ? cover.position === 0 ? "closed" : "open" : target.target > (cover.position ?? 0) ? "opening" : "closing"
-  } : cover);
-  function clearPendingTarget() {
-    if (confirmTimeout !== null) {
-      clearTimeout(confirmTimeout);
+  let isDragging = false;
+  let errorMessage = "";
+  let stateRevision = 0;
+  let stateSignature = "";
+  const canControl = () =>
+    !isDisposed &&
+    !viewModel.editing &&
+    viewModel.item?.modelAvailable !== false &&
+    deviceState.available;
+  const resolveTargetPosition = () =>
+    draftPosition ??
+    viewModel.presentation?.targetPosition ??
+    viewModel.presentation?.position ??
+    (pendingIntent?.confirmed
+      ? deviceState.position
+      : (pendingIntent?.target ?? deviceState.position));
+  const resolvePresentation = () =>
+    viewModel.presentation || {
+      ...deviceState,
+      closedConfirmed: deviceState.closedConfirmed && !railUnconfirmed
+    };
+  const canAdjustSlider = () =>
+    canControl() &&
+    (viewModel.item?.coverKind === "dream"
+      ? coverCanAdjustBlades(deviceState, resolvePresentation()) &&
+        (!!viewModel.presentation || !pendingIntent || !!pendingIntent.blade)
+      : deviceState.positionSupported);
+  function clearPendingIntent() {
+    if (intentTimeoutId !== null) {
+      clearTimeout(intentTimeoutId);
     }
-    confirmTimeout = null;
-    target = null;
+    intentTimeoutId = null;
+    pendingIntent = null;
   }
   function syncSlider() {
-    const sliderValue = displayPosition();
-    positionSlider.value = String(sliderValue ?? 0);
-    positionSlider.style.setProperty("--hb-cover-position-progress", (sliderValue ?? 0) + "%");
-    positionSlider.setAttribute("aria-valuetext", sliderValue === null ? "当前位置未知，滑动设置目标" : "目标 " + Math.round(sliderValue) + "%，当前位置" + (cover.position === null ? "未知" : Math.round(cover.position) + "%"));
-    panel.setAttribute("aria-invalid", String(!!item.error || !!localError));
+    const isDream = viewModel.item?.coverKind === "dream";
+    const sliderPosition = isDream
+      ? (draftPosition ??
+        viewModel.presentation?.tiltTarget ??
+        viewModel.presentation?.tiltPosition ??
+        deviceState.tiltPosition)
+      : resolveTargetPosition();
+    positionSliderElement.value = String(sliderPosition ?? 0);
+    positionSliderElement.style.setProperty(
+      "--hb-cover-position-progress",
+      (sliderPosition ?? 0) + "%"
+    );
+    positionSliderElement.setAttribute(
+      "aria-valuetext",
+      sliderPosition === null
+        ? "当前位置未知，滑动设置目标"
+        : isDream
+          ? "叶片角度 " + Math.round(sliderPosition) + "%，50% 为 90°打开"
+          : "目标 " +
+            Math.round(sliderPosition) +
+            "%，当前位置" +
+            (deviceState.position === null ? "未知" : Math.round(deviceState.position) + "%")
+    );
+    rootElement.setAttribute("aria-invalid", String(!!viewModel.error || !!errorMessage));
   }
   async function sendControl(command) {
-    const expectedGeneration = generation;
-    const ticket = ++ticketSeq;
-    const hadPresentation = !!item.presentation;
-    clearPendingTarget();
+    const instanceAtSend = instanceId;
+    const ticket = ++ticketCounter;
+    const hasPresentation = !!viewModel.presentation;
+    clearPendingIntent();
     draftPosition = null;
-    sliderActive = false;
-    localError = "";
-    target = {
-      ticket,
-      revision,
-      initialState: cover.state,
-      initialPosition: cover.position,
+    isDragging = false;
+    errorMessage = "";
+    if (
+      deviceState.dream &&
+      ["open_cover", "close_cover", "stop_cover"].includes(command.service)
+    ) {
+      railUnconfirmed ||= command.service === "open_cover" || !deviceState.closedConfirmed;
+    }
+    pendingIntent = {
+      blade:
+        viewModel.item?.coverKind === "dream" &&
+        ["set_cover_position", "set_cover_tilt_position"].includes(command.service),
+      ticket: ticket,
+      revision: stateRevision,
+      initialState: deviceState.state,
+      initialPosition: deviceState.position,
       confirmed: false,
       wasMoving: false,
       service: command.service,
-      target: command.service === "set_cover_position" ? command.data.position : command.service === "open_cover" ? 100 : command.service === "close_cover" ? 0 : null,
+      target:
+        command.service === "set_cover_position"
+          ? command.data.position
+          : command.service === "open_cover"
+            ? 100
+            : command.service === "close_cover"
+              ? 0
+              : null,
       sending: true
     };
-    if (!hadPresentation) {
-      confirmTimeout = setTimeout(() => {
-        if (!disposed && generation === expectedGeneration && target?.ticket === ticket) {
-          confirmTimeout = null;
-          target = null;
+    if (!hasPresentation) {
+      intentTimeoutId = setTimeout(() => {
+        if (!isDisposed && instanceId === instanceAtSend && pendingIntent?.ticket === ticket) {
+          intentTimeoutId = null;
+          pendingIntent = null;
           render();
         }
       }, 15000);
@@ -132,189 +203,350 @@ export function createCoverPanel({
     try {
       await onControl(command);
     } catch (error) {
-      if (!disposed && generation === expectedGeneration && target?.ticket === ticket) {
-        clearPendingTarget();
-        localError = error?.message || "窗帘控制失败，请重试。";
+      if (!isDisposed && instanceId === instanceAtSend && ticketCounter === ticket) {
+        clearPendingIntent();
+        errorMessage = error?.message || "窗帘控制失败，请重试。";
         render();
       }
     } finally {
-      if (!disposed && generation === expectedGeneration && target?.ticket === ticket) {
-        if (hadPresentation) {
-          clearPendingTarget();
-        } else {
-          target.sending = false;
+      if (!isDisposed && instanceId === instanceAtSend && ticketCounter === ticket) {
+        if (hasPresentation) {
+          clearPendingIntent();
+        } else if (pendingIntent) {
+          pendingIntent.sending = false;
         }
         render();
       }
     }
   }
-  function invokeControl(service, positionArg) {
+  function requestControl(requestedService, controlValue) {
     if (canControl()) {
       try {
-        return sendControl(coverControl(cover, service, positionArg));
-      } catch (error) {
-        localError = error.message;
+        return sendControl(
+          coverControl(
+            {
+              ...deviceState,
+              ...resolvePresentation()
+            },
+            requestedService,
+            controlValue
+          )
+        );
+      } catch (controlError) {
+        errorMessage = controlError.message;
         render();
       }
     }
   }
-  positionSlider.addEventListener("pointerdown", () => {
-    if (canControl() && cover.positionSupported) {
-      sliderActive = true;
+  positionSliderElement.addEventListener("pointerdown", () => {
+    if (canAdjustSlider()) {
+      isDragging = true;
     }
   });
-  positionSlider.addEventListener("input", () => {
-    if (!canControl() || !cover.positionSupported) {
+  positionSliderElement.addEventListener("input", () => {
+    if (!canAdjustSlider()) {
       return;
     }
-    const rawValue = Number(positionSlider.value);
-    if (!Number.isFinite(rawValue)) {
+    const sliderValue = Number(positionSliderElement.value);
+    if (!Number.isFinite(sliderValue)) {
       return;
     }
-    sliderActive = true;
-    draftPosition = Math.max(0, Math.min(100, Math.round(rawValue)));
-    const presentation = onPreview(item.item?.entityId, draftPosition);
-    if (presentation) {
-      item = {
-        ...item,
-        presentation
+    isDragging = true;
+    draftPosition = Math.max(0, Math.min(100, Math.round(sliderValue)));
+    const previewPresentation = onPreview(viewModel.item?.entityId, draftPosition);
+    if (previewPresentation) {
+      viewModel = {
+        ...viewModel,
+        presentation: previewPresentation
       };
     }
     render();
   });
-  positionSlider.addEventListener("change", () => {
+  positionSliderElement.addEventListener("change", () => {
     if (draftPosition === null) {
-      sliderActive = false;
+      isDragging = false;
       syncSlider();
       return;
     }
-    const pendingPosition = draftPosition;
+    const committedPosition = draftPosition;
     draftPosition = null;
-    sliderActive = false;
-    if (canControl() && cover.positionSupported) {
-      return invokeControl("set_cover_position", pendingPosition);
+    isDragging = false;
+    if (canAdjustSlider()) {
+      return requestControl(
+        viewModel.item?.coverKind === "dream" && deviceState.tiltSupported
+          ? "set_cover_tilt_position"
+          : "set_cover_position",
+        committedPosition
+      );
     }
     syncSlider();
   });
-  function cancelDraft() {
+  function cancelPreview() {
     draftPosition = null;
-    sliderActive = false;
-    const presentation = onPreview(item.item?.entityId, null);
-    if (presentation) {
-      item = {
-        ...item,
-        presentation
+    isDragging = false;
+    const clearedPreview = onPreview(viewModel.item?.entityId, null);
+    if (clearedPreview) {
+      viewModel = {
+        ...viewModel,
+        presentation: clearedPreview
       };
     }
     render();
   }
-  positionSlider.addEventListener("pointercancel", cancelDraft);
-  positionSlider.addEventListener("blur", () => {
+  positionSliderElement.addEventListener("pointercancel", cancelPreview);
+  positionSliderElement.addEventListener("blur", () => {
     if (draftPosition !== null) {
-      cancelDraft();
+      cancelPreview();
     }
   });
   function render() {
-    if (disposed) {
+    if (isDisposed) {
       return;
     }
-    titleEl.textContent = item.item?.label || cover.name || "窗帘";
-    titleEl.title = titleEl.textContent;
-    const view = displayState();
-    statusEl.textContent = item.editing ? "控制预览" : item.item?.entityId ? cover.available ? coverStateLabel(view.state) : "设备不可用" : "尚未绑定设备";
-    positionOutput.textContent = view.position === null ? "未知" : Math.round(view.position) + "%";
-    positionSlider.disabled = !canControl() || !cover.positionSupported;
-    for (const {
-      button,
-      service,
-      capability
-    } of actionButtons) {
-      button.disabled = !canControl() || !cover[capability];
-      const isBusy = !!target && !target.confirmed && target.service === service;
-      button.setAttribute("aria-busy", String(isBusy));
-      button.classList.toggle("is-active", service === "open_cover" && view.opening || service === "close_cover" && view.closing);
+    titleElement.textContent = viewModel.item?.label || deviceState.name || "窗帘";
+    titleElement.title = titleElement.textContent;
+    const presentation = resolvePresentation();
+    statusElement.textContent = viewModel.editing
+      ? "控制预览"
+      : viewModel.item?.entityId
+        ? deviceState.available
+          ? coverStateLabel(presentation.state)
+          : "设备不可用"
+        : "尚未绑定设备";
+    const isDreamCover = viewModel.item?.coverKind === "dream";
+    rootElement.classList.toggle("is-dream", isDreamCover);
+    bladeHintElement.hidden = !isDreamCover;
+    if (isDreamCover && !viewModel.editing && deviceState.available) {
+      statusElement.textContent =
+        {
+          open: "整体已开启",
+          closed: "整体已关闭",
+          opening: "整体正在开启",
+          closing: "整体正在关闭"
+        }[presentation.state] || statusElement.textContent;
     }
-    const feedback = item.error || localError || "";
-    feedbackEl.textContent = feedback;
-    feedbackEl.hidden = !feedback;
-    feedbackEl.classList.toggle("is-error", !!feedback);
-    panel.setAttribute("aria-busy", String(!!(item.presentation ? item.presentation.preview : target && !target.confirmed)));
+    if (
+      !viewModel.editing &&
+      deviceState.available &&
+      presentation.state === "open" &&
+      presentation.position > 0 &&
+      presentation.position < 100
+    ) {
+      statusElement.textContent = isDreamCover ? "整体部分开启" : "部分开启";
+    }
+    positionSliderElement.setAttribute(
+      "aria-label",
+      isDreamCover ? "目标叶片角度" : "目标开合位置"
+    );
+    positionLegendElement.children[0].textContent = isDreamCover ? "一侧闭合" : "关闭";
+    positionLegendElement.children[1].textContent = isDreamCover ? "反向闭合" : "打开";
+    const displayPosition =
+      draftPosition ??
+      (isDreamCover
+        ? deviceState.tiltPosition
+        : presentation.estimated
+          ? deviceState.position
+          : presentation.position);
+    positionOutputElement.textContent =
+      displayPosition === null ? "未知" : Math.round(displayPosition) + "%";
+    positionOutputElement.title =
+      draftPosition !== null
+        ? isDreamCover
+          ? "目标叶片角度预览"
+          : "目标开合位置预览"
+        : isDreamCover
+          ? "叶片角度：50% 为 90°打开"
+          : "整体开合位置";
+    positionOutputElement.setAttribute(
+      "aria-label",
+      isDreamCover ? "当前叶片角度" : "当前开合位置"
+    );
+    positionSliderElement.disabled = !canAdjustSlider();
+    if (
+      !viewModel.editing &&
+      deviceState.available &&
+      presentation.estimated &&
+      !presentation.moving
+    ) {
+      statusElement.textContent = "在线";
+    }
+    if (
+      isDreamCover &&
+      !viewModel.editing &&
+      deviceState.available &&
+      (!deviceState.overallFeedbackAvailable ||
+        presentation.awaitingArrival ||
+        presentation.estimated) &&
+      !presentation.moving
+    ) {
+      statusElement.textContent = "在线";
+    }
+    bladeHintElement.textContent = "叶片角度";
+    positionSliderElement.title =
+      isDreamCover && !canAdjustSlider() && deviceState.available
+        ? deviceState.overallFeedbackAvailable
+          ? "关闭到位后可调节叶片"
+          : "暂不可调节叶片"
+        : "";
+    for (const {
+      button: actionButton,
+      service: actionService,
+      capability: capability
+    } of actionButtons) {
+      actionButton.children[0].textContent =
+        actionService === "stop_cover"
+          ? "暂停"
+          : isDreamCover
+            ? actionService === "open_cover"
+              ? "开启"
+              : "关闭"
+            : actionService === "open_cover"
+              ? "打开"
+              : "关闭";
+      actionButton.title = isDreamCover
+        ? "整体" + actionButton.children[0].textContent
+        : actionButton.children[0].textContent;
+      actionButton.setAttribute("aria-label", actionButton.title);
+      actionButton.disabled = !canControl() || !deviceState[capability];
+      const isActiveAction =
+        !!pendingIntent && !pendingIntent.confirmed && pendingIntent.service === actionService;
+      actionButton.setAttribute("aria-busy", String(isActiveAction));
+      actionButton.classList.toggle(
+        "is-active",
+        (actionService === "open_cover" && presentation.opening) ||
+          (actionService === "close_cover" && presentation.closing)
+      );
+    }
+    const feedbackMessage = viewModel.error || errorMessage || "";
+    feedbackElement.textContent = feedbackMessage;
+    feedbackElement.hidden = !feedbackMessage;
+    feedbackElement.classList.toggle("is-error", !!feedbackMessage);
+    rootElement.setAttribute(
+      "aria-busy",
+      String(
+        !!(viewModel.presentation
+          ? viewModel.presentation.preview
+          : pendingIntent && !pendingIntent.confirmed)
+      )
+    );
     syncSlider();
   }
-  function update(state = {}) {
-    if (disposed) {
+  function update(nextViewModel = {}) {
+    if (isDisposed) {
       return;
     }
-    const entityId = state.item?.entityId || "";
-    if (entityId !== cover.entityId || state.item?.id !== item.item?.id) {
-      if (sliderActive) {
-        onPreview(item.item?.entityId, null);
+    const nextEntityId = nextViewModel.item?.entityId || "";
+    if (nextEntityId !== deviceState.entityId || nextViewModel.item?.id !== viewModel.item?.id) {
+      if (isDragging) {
+        onPreview(viewModel.item?.entityId, null);
       }
-      generation++;
-      clearPendingTarget();
+      instanceId++;
+      railUnconfirmed = false;
+      clearPendingIntent();
       draftPosition = null;
-      sliderActive = false;
-      localError = "";
-      revision = 0;
-      stateFingerprint = "";
+      isDragging = false;
+      errorMessage = "";
+      stateRevision = 0;
+      stateSignature = "";
     }
-    item = state;
-    cover = state.state?.entityId === entityId && typeof state.state?.positionKnown == "boolean" ? state.state : coverState(entityId, state.state);
-    const nextFingerprint = JSON.stringify([cover.state, cover.position, cover.raw.updatedAt ?? cover.raw.last_updated, cover.raw.lastChanged ?? cover.raw.last_changed]);
-    if (stateFingerprint !== nextFingerprint) {
-      stateFingerprint = nextFingerprint;
-      revision++;
+    const previousState = deviceState;
+    viewModel = nextViewModel;
+    deviceState =
+      nextViewModel.state?.entityId === nextEntityId &&
+      typeof nextViewModel.state?.positionKnown == "boolean"
+        ? nextViewModel.state
+        : coverState(nextEntityId, nextViewModel.state, nextViewModel.item);
+    if (
+      deviceState.overallFeedbackAvailable &&
+      (deviceState.position !== previousState.position || deviceState.state !== previousState.state)
+    ) {
+      railUnconfirmed = false;
+    }
+    if (!canAdjustSlider() && isDragging) {
+      draftPosition = null;
+      isDragging = false;
+      onPreview(nextEntityId, null);
+    }
+    const nextSignature = JSON.stringify([
+      deviceState.state,
+      deviceState.position,
+      deviceState.raw.updatedAt ?? deviceState.raw.last_updated,
+      deviceState.raw.lastChanged ?? deviceState.raw.last_changed
+    ]);
+    if (stateSignature !== nextSignature) {
+      stateSignature = nextSignature;
+      stateRevision++;
     }
     if (!canControl()) {
       draftPosition = null;
-      sliderActive = false;
-      clearPendingTarget();
+      isDragging = false;
+      clearPendingIntent();
     }
-    if (target && revision > target.revision) {
-      if (!item.presentation) {
-        const reachedTarget = target.target !== null && cover.position !== null && Math.abs(cover.position - target.target) <= 0.5;
-        const stopSettled = target.service === "stop_cover" && !cover.moving;
-        const openConfirmed = target.service === "open_cover" && cover.position === null && cover.state === "open" && target.initialState !== "open";
-        const finishedMoving = target.confirmed && target.wasMoving && !cover.moving;
-        if (reachedTarget || stopSettled || openConfirmed || finishedMoving) {
-          clearPendingTarget();
-        } else if (target.target !== null) {
-          const direction = target.initialPosition === null ? target.service === "open_cover" ? 1 : target.service === "close_cover" ? -1 : 0 : Math.sign(target.target - target.initialPosition);
-          const movedTowardTarget = direction !== 0 && cover.position !== null && target.initialPosition !== null && (cover.position - target.initialPosition) * direction > 0.5;
-          const stateChangedToward = cover.state !== target.initialState && (direction > 0 && cover.opening || direction < 0 && cover.closing);
-          if (movedTowardTarget || stateChangedToward) {
-            target.confirmed = true;
-            if (confirmTimeout !== null) {
-              clearTimeout(confirmTimeout);
-            }
-            confirmTimeout = null;
+    if (!viewModel.presentation && pendingIntent && stateRevision > pendingIntent.revision) {
+      const reachedTarget =
+        pendingIntent.target !== null &&
+        deviceState.position !== null &&
+        Math.abs(deviceState.position - pendingIntent.target) <= 0.5;
+      const stoppedConfirmed = pendingIntent.service === "stop_cover" && !deviceState.moving;
+      const openedConfirmed =
+        pendingIntent.service === "open_cover" &&
+        deviceState.position === null &&
+        deviceState.state === "open" &&
+        pendingIntent.initialState !== "open";
+      const settledAfterMove =
+        pendingIntent.confirmed && pendingIntent.wasMoving && !deviceState.moving;
+      if (reachedTarget || stoppedConfirmed || openedConfirmed || settledAfterMove) {
+        clearPendingIntent();
+      } else if (pendingIntent.target !== null) {
+        const expectedDirection =
+          pendingIntent.initialPosition === null
+            ? pendingIntent.service === "open_cover"
+              ? 1
+              : pendingIntent.service === "close_cover"
+                ? -1
+                : 0
+            : Math.sign(pendingIntent.target - pendingIntent.initialPosition);
+        const movedAlongDirection =
+          expectedDirection !== 0 &&
+          deviceState.position !== null &&
+          pendingIntent.initialPosition !== null &&
+          (deviceState.position - pendingIntent.initialPosition) * expectedDirection > 0.5;
+        const stateFlippedInDirection =
+          deviceState.state !== pendingIntent.initialState &&
+          ((expectedDirection > 0 && deviceState.opening) ||
+            (expectedDirection < 0 && deviceState.closing));
+        if (movedAlongDirection || stateFlippedInDirection) {
+          pendingIntent.confirmed = true;
+          if (intentTimeoutId !== null) {
+            clearTimeout(intentTimeoutId);
           }
-          if (target.confirmed && cover.moving) {
-            target.wasMoving = true;
-          }
+          intentTimeoutId = null;
+        }
+        if (pendingIntent.confirmed && deviceState.moving) {
+          pendingIntent.wasMoving = true;
         }
       }
     }
-    if (!sliderActive) {
+    if (!isDragging) {
       draftPosition = null;
     }
     render();
   }
   function dispose() {
-    if (!disposed) {
-      disposed = true;
-      if (sliderActive) {
-        onPreview(item.item?.entityId, null);
+    if (!isDisposed) {
+      isDisposed = true;
+      if (isDragging) {
+        onPreview(viewModel.item?.entityId, null);
       }
-      generation++;
-      clearPendingTarget();
-      setChildren(panel);
+      instanceId++;
+      clearPendingIntent();
+      replaceChildren(rootElement);
     }
   }
   render();
   return {
-    root: panel,
-    update,
-    dispose
+    root: rootElement,
+    update: update,
+    dispose: dispose
   };
 }

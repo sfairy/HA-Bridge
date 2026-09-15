@@ -1,0 +1,178 @@
+"""授权服务器侧的加密传输与租约签名。
+
+必须与客户端 `backend/app/license/crypto.py` **逐字节对齐**：
+
+- HKDF info = ``PROTOCOL + 0x00 + keyId + 0x00 + path``（salt=None, SHA-256, 32 字节）
+- AES-GCM AAD = ``PROTOCOL + 0x00 + b"request"|b"response" + 0x00 + path + 0x00 + keyId``
+- 所有二进制字段使用 **base64url 无填充**
+- 租约 = ``b64url(payload_json_bytes) + "." + b64url(ed25519_signature)``
+"""
+
+from __future__ import annotations
+
+import base64
+import json
+import os
+from pathlib import Path
+from typing import Any
+
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PublicKey
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+
+from store.licensing import keys
+
+PROTOCOL = b"ha-bridge-license-transport-v1"
+PRODUCT = "ha-bridge"
+
+
+class LicenseServerError(Exception):
+    """授权端点错误。``revoked`` 为真时表示这是客户端的「确认吊销」语义。"""
+
+    def __init__(self, detail: str, *, status_code: int = 400, revoked: bool = False) -> None:
+        super().__init__(detail)
+        self.detail = detail
+        self.status_code = status_code
+        self.revoked = revoked
+
+    def as_body(self) -> dict[str, str]:
+        return {"detail": self.detail}
+
+
+def b64url_encode(value: bytes) -> str:
+    return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
+
+
+def b64url_decode(value: str) -> bytes:
+    if not isinstance(value, str):
+        raise LicenseServerError("授权请求编码无效。", status_code=400)
+    try:
+        return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
+    except (ValueError, TypeError) as error:
+        raise LicenseServerError("授权请求编码无效。", status_code=400) from error
+
+
+def _canonical(payload: dict[str, Any]) -> bytes:
+    return json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+
+
+class TransportCipher:
+    """服务端静态 X25519 私钥 + 客户端每次请求的临时公钥协商出一次性密钥。"""
+
+    def __init__(self, private_key_path: Path, key_id: str) -> None:
+        self._private = keys.load_x25519_private(private_key_path)
+        self.key_id = key_id
+
+    def _derive(self, shared: bytes, path: str) -> bytes:
+        return HKDF(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=None,
+            info=PROTOCOL + b"\x00" + self.key_id.encode("ascii") + b"\x00" + path.encode("ascii"),
+        ).derive(shared)
+
+    def decrypt_request(self, envelope: Any, path: str) -> tuple[dict[str, Any], bytes]:
+        if not isinstance(envelope, dict):
+            raise LicenseServerError("授权请求格式无效。", status_code=400)
+        if envelope.get("keyId") != self.key_id:
+            raise LicenseServerError("授权传输 keyId 不匹配。", status_code=400)
+        raw_public = b64url_decode(envelope.get("ephemeralPublicKey", ""))
+        if len(raw_public) != 32:
+            raise LicenseServerError("授权传输临时公钥长度无效。", status_code=400)
+        try:
+            peer = X25519PublicKey.from_public_bytes(raw_public)
+            shared = self._private.exchange(peer)
+        except ValueError as error:
+            raise LicenseServerError("授权传输临时公钥无效。", status_code=400) from error
+        key = self._derive(shared, path)
+        iv = b64url_decode(envelope.get("iv", ""))
+        if len(iv) != 12:
+            raise LicenseServerError("授权传输 IV 长度无效。", status_code=400)
+        ciphertext = b64url_decode(envelope.get("ciphertext", ""))
+        aad = (
+            PROTOCOL
+            + b"\x00request\x00"
+            + path.encode("ascii")
+            + b"\x00"
+            + self.key_id.encode("ascii")
+        )
+        try:
+            plaintext = AESGCM(key).decrypt(iv, ciphertext, aad)
+            payload = json.loads(plaintext)
+        except Exception as error:  # noqa: BLE001 - 解密失败一律视为非法请求
+            raise LicenseServerError("授权请求无法解密或已被篡改。", status_code=400) from error
+        if not isinstance(payload, dict):
+            raise LicenseServerError("授权请求内容无效。", status_code=400)
+        return payload, key
+
+    def encrypt_response(self, payload: dict[str, Any], path: str, key: bytes) -> dict[str, str]:
+        iv = os.urandom(12)
+        aad = (
+            PROTOCOL
+            + b"\x00response\x00"
+            + path.encode("ascii")
+            + b"\x00"
+            + self.key_id.encode("ascii")
+        )
+        ciphertext = AESGCM(key).encrypt(iv, _canonical(payload), aad)
+        return {
+            "keyId": self.key_id,
+            "iv": b64url_encode(iv),
+            "ciphertext": b64url_encode(ciphertext),
+        }
+
+
+class LeaseSigner:
+    """用 Ed25519 私钥签发租约，公钥交给客户端做指纹校验。"""
+
+    def __init__(self, private_key_path: Path, key_id: str, product: str = PRODUCT) -> None:
+        self._private = keys.load_ed25519_private(private_key_path)
+        self.key_id = key_id
+        self.product = product
+
+    def sign(self, payload: dict[str, Any]) -> str:
+        payload_bytes = _canonical(payload)
+        signature = self._private.sign(payload_bytes)
+        return f"{b64url_encode(payload_bytes)}.{b64url_encode(signature)}"
+
+    def public_key_pem(self) -> bytes:
+        return self._private.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+
+
+def verify_lease(signed_lease: str, public_key_pem: bytes, *, product: str = PRODUCT) -> dict[str, Any]:
+    """自检用：按客户端逻辑校验租约。"""
+    try:
+        encoded_payload, encoded_signature = signed_lease.split(".", 1)
+    except ValueError as error:
+        raise LicenseServerError("签名租约格式无效。") from error
+    payload_bytes = b64url_decode(encoded_payload)
+    payload = json.loads(payload_bytes)
+    key = serialization.load_pem_public_key(public_key_pem)
+    if not isinstance(key, Ed25519PublicKey):
+        raise LicenseServerError("授权公钥必须是 Ed25519。")
+    try:
+        key.verify(b64url_decode(encoded_signature), payload_bytes)
+    except InvalidSignature as error:
+        raise LicenseServerError("租约签名无效。") from error
+    required = {
+        "leaseId",
+        "features",
+        "issuedAt",
+        "expiresAt",
+        "sessionId",
+        "leaseSequence",
+        "activationCodeId",
+    }
+    if not required.issubset(payload):
+        raise LicenseServerError("租约缺少必要字段。")
+    if payload.get("product") != product:
+        raise LicenseServerError("租约产品标识不匹配。")
+    return payload

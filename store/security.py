@@ -1,0 +1,129 @@
+"""口令哈希、会话令牌与验证码工具。"""
+
+from __future__ import annotations
+
+import base64
+import hashlib
+import hmac
+import secrets
+from datetime import datetime, timedelta, timezone
+
+PBKDF2_ITERATIONS = 240_000
+PBKDF2_ALGORITHM = "sha256"
+
+
+def utcnow() -> datetime:
+    """返回 naive UTC 时间，便于 SQLite 存储与比较。"""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def iso(value: datetime | None) -> str | None:
+    """序列化为参考站风格的无时区 ISO 字符串。"""
+    if value is None:
+        return None
+    if value.tzinfo is not None:
+        value = value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value.strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def iso_micro(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is not None:
+        value = value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value.strftime("%Y-%m-%dT%H:%M:%S.%f")
+
+
+def iso_z(value: datetime | None) -> str | None:
+    """带 Z 后缀的 ISO 字符串，授权协议要求。"""
+    text = iso_micro(value)
+    return None if text is None else f"{text}Z"
+
+
+def parse_iso(value: str) -> datetime:
+    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed
+
+
+def hash_password(password: str) -> str:
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac(
+        PBKDF2_ALGORITHM, password.encode("utf-8"), salt, PBKDF2_ITERATIONS
+    )
+    return "$".join(
+        (
+            "pbkdf2",
+            PBKDF2_ALGORITHM,
+            str(PBKDF2_ITERATIONS),
+            base64.b64encode(salt).decode("ascii"),
+            base64.b64encode(digest).decode("ascii"),
+        )
+    )
+
+
+def verify_password(password: str, encoded: str | None) -> bool:
+    if not encoded:
+        return False
+    try:
+        scheme, algorithm, iterations, salt_b64, digest_b64 = encoded.split("$")
+        if scheme != "pbkdf2":
+            return False
+        expected = base64.b64decode(digest_b64)
+        actual = hashlib.pbkdf2_hmac(
+            algorithm,
+            password.encode("utf-8"),
+            base64.b64decode(salt_b64),
+            int(iterations),
+        )
+    except (ValueError, TypeError):
+        return False
+    return hmac.compare_digest(actual, expected)
+
+
+def new_token(length: int = 32) -> str:
+    return secrets.token_urlsafe(length)
+
+
+def token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def new_verification_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def new_activation_code() -> str:
+    """生成 HB-XXXX-XXXX-XXXX-XXXX-XXXX-XXXX 形式的激活码。"""
+    alphabet = "0123456789ABCDEF"
+    groups = ["".join(secrets.choice(alphabet) for _ in range(4)) for _ in range(6)]
+    return "HB-" + "-".join(groups)
+
+
+def activation_code_hint(code: str) -> str:
+    return code[-9:]
+
+
+def code_hash(code: str) -> str:
+    """验证码在库里只存哈希。"""
+    return hashlib.sha256(f"hb-store-verification:{code}".encode("utf-8")).hexdigest()
+
+
+def new_order_no(prefix_email: str, *, now: datetime | None = None) -> str:
+    """参考站格式：HB-20260906224517-156120718（本地时间 + 邮箱 @ 前缀）。"""
+    moment = now or (datetime.now(timezone.utc) + timedelta(hours=8))
+    local_prefix = "".join(ch for ch in (prefix_email or "").split("@")[0] if ch.isalnum())
+    if not local_prefix:
+        local_prefix = "customer"
+    return f"HB-{moment.strftime('%Y%m%d%H%M%S')}-{local_prefix}"
+
+
+def new_referral_code() -> str:
+    return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def new_uuid() -> str:
+    import uuid
+
+    return str(uuid.uuid4())

@@ -10,27 +10,22 @@ databases may already be stamped at revision 0011. Retaining the revision and
 normalising the harmless column lets both older and already-upgraded databases
 start without restoring any of the 0.3.3 editor behaviour.
 '''
-import sqlalchemy as sa
 from alembic import op
-
+import sqlalchemy as sa
 revision = '0011'
 down_revision = '0010'
 branch_labels = None
 depends_on = None
 
-
 def _users_columns() -> set[str]:
     return {column['name'] for column in sa.inspect(op.get_bind()).get_columns('users')}
 
-
 def upgrade() -> None:
     if 'editor_theme_mode' not in _users_columns():
-        op.add_column(
-            'users',
-            sa.Column('editor_theme_mode', sa.String(length=16), nullable=False, server_default='dark'),
-        )
-
+        op.add_column('users', sa.Column('editor_theme_mode', sa.String(length = 16), nullable = False, server_default = 'dark'))
+    return None
 
 def downgrade() -> None:
     if 'editor_theme_mode' in _users_columns():
         op.drop_column('users', 'editor_theme_mode')
+    return None

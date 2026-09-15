@@ -8,11 +8,12 @@ from datetime import datetime
 from typing import Annotated
 from urllib.parse import urlsplit
 
-from dependencies import CurrentUser, CurrentViewer, DatabaseSession, authenticated_viewer
 from fastapi import APIRouter, HTTPException, Query, Request, Response, status
 from fastapi.responses import PlainTextResponse
-from global_log import event_context, safe_context
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+
+from ..dependencies import CurrentUser, CurrentViewer, DatabaseSession, authenticated_viewer
+from ..global_log import event_context, safe_context
 
 router = APIRouter(prefix='/logs', tags=['global-logs'])
 
@@ -24,10 +25,7 @@ class ClientLogEvent(BaseModel):
     category: str = Field(default='界面', min_length=1, max_length=64)
     message: str = Field(min_length=1, max_length=1000)
     details: str | None = Field(default=None, max_length=8000)
-    context: dict[str, Annotated[str, StringConstraints(max_length=512)] | int | float | bool | None] = Field(
-        default_factory=dict,
-        max_length=20,
-    )
+    context: dict[str, Annotated[str, StringConstraints(max_length=512)] | int | float | bool | None] = Field(default_factory=dict, max_length=20)
     clientTimestamp: datetime | None = None
 
 
@@ -60,7 +58,7 @@ PUBLIC_PAGES = {
 
 
 class ClientLogLimiter:
-    '''Bound anonymous reporting without growing one entry per arbitrary IP.'''
+    """Bound anonymous reporting without growing one entry per arbitrary IP."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -75,8 +73,12 @@ class ClientLogLimiter:
             while len(self._clients) > 512:
                 self._clients.popitem(last=False)
             for queue in (bucket, self._all):
-                while queue and queue[0] <= now - 60:
+                if not queue:
+                    continue
+                while queue[0] <= now - 60:
                     queue.popleft()
+                    if not queue:
+                        break
             if len(bucket) >= (30 if anonymous else 120) or len(self._all) >= 600:
                 return False
             bucket.append(now)
@@ -92,11 +94,7 @@ def _limit_client_log(request: Request, *, anonymous: bool) -> None:
         limiter = store.client_limiter
     peer = request.client.host if request.client else 'unknown'
     if not limiter.allow(peer, anonymous=anonymous):
-        raise HTTPException(
-            status_code=429,
-            detail='日志上报过于频繁，请稍后重试。',
-            headers={'Retry-After': '60'},
-        )
+        raise HTTPException(status_code=429, detail='日志上报过于频繁，请稍后重试。', headers={'Retry-After': '60'})
 
 
 def _append_client_event(payload: ClientLogEvent, request: Request, viewer=None) -> None:
@@ -138,65 +136,44 @@ def _append_client_event(payload: ClientLogEvent, request: Request, viewer=None)
 def export_global_logs(
     request: Request,
     _user: CurrentUser,
-    level: str | None = Query(default=None, pattern='^(info|success|warning|error)$'),
-    category: str | None = Query(default=None, max_length=64),
-    search: str | None = Query(default=None, max_length=128),
+    level: str | None = Query(None, pattern='^(info|success|warning|error)$'),
+    category: str | None = Query(None, max_length=64),
+    search: str | None = Query(None, max_length=128),
 ) -> PlainTextResponse:
-    items = list(
-        reversed(
-            request.app.state.global_log.list_events(
-                limit=None,
-                level=level,
-                category=category,
-                search=search,
+    items = list(reversed(request.app.state.global_log.list_events(limit=None, level=level, category=category, search=search)))
+    level_labels = {'info': '信息', 'success': '成功', 'warning': '警告', 'error': '错误'}
+    content = '\n'.join(
+        ' | '.join(
+            (
+                str(item.get('timestamp') or ''),
+                str(level_labels.get(str(item.get('level') or ''), '信息')),
+                str(item.get('source') or '系统后台'),
+                str(item.get('category') or '系统'),
+                str(item.get('message') or ''),
+                f"次数={item.get('repeatCount', 1)}",
+                f"最近发生={item.get('lastTimestamp') or item.get('timestamp') or ''}",
+                f"客户端发生时间={item.get('clientTimestamp') or ''}",
+                f"客户端最近发生={item.get('lastClientTimestamp') or item.get('clientTimestamp') or ''}",
+                json.dumps(item.get('context') or {}, ensure_ascii=False, separators=(',', ':')),
+                str(item.get('details') or ''),
             )
         )
-    )
-    level_labels = {
-        'info': '信息',
-        'success': '成功',
-        'warning': '警告',
-        'error': '错误',
-    }
-    content = '\n'.join(
-        ' | '.join((
-            str(item.get('timestamp') or ''),
-            level_labels.get(str(item.get('level') or ''), '信息'),
-            str(item.get('source') or '系统后台'),
-            str(item.get('category') or '系统'),
-            str(item.get('message') or ''),
-            f"次数={item.get('repeatCount', 1)}",
-            f"最近发生={item.get('lastTimestamp') or item.get('timestamp') or ''}",
-            f"客户端发生时间={item.get('clientTimestamp') or ''}",
-            f"客户端最近发生={item.get('lastClientTimestamp') or item.get('clientTimestamp') or ''}",
-            json.dumps(item.get('context') or {}, ensure_ascii=False, separators=(',', ':')),
-            str(item.get('details') or ''),
-        ))
         for item in items
     )
-    return PlainTextResponse(
-        content,
-        media_type='text/plain; charset=utf-8',
-        headers={'Content-Disposition': 'attachment; filename="ha-bridge-global-log.txt"'},
-    )
+    return PlainTextResponse(content, media_type='text/plain; charset=utf-8', headers={'Content-Disposition': 'attachment; filename="ha-bridge-global-log.txt"'})
 
 
 @router.get('')
 def list_global_logs(
     request: Request,
     _user: CurrentUser,
-    level: str | None = Query(default=None, pattern='^(info|success|warning|error)$'),
-    category: str | None = Query(default=None, max_length=64),
-    search: str | None = Query(default=None, max_length=128),
-    limit: int = Query(default=500, ge=1, le=2000),
-    offset: int = Query(default=0, ge=0, le=1000000),
+    level: str | None = Query(None, pattern='^(info|success|warning|error)$'),
+    category: str | None = Query(None, max_length=64),
+    search: str | None = Query(None, max_length=128),
+    limit: int = Query(500, ge=1, le=2000),
+    offset: int = Query(0, ge=0, le=1000000),
 ) -> dict:
-    matching = request.app.state.global_log.list_events(
-        level=level,
-        category=category,
-        search=search,
-        limit=None,
-    )
+    matching = request.app.state.global_log.list_events(level=level, category=category, search=search, limit=None)
     items = matching[offset:offset + limit]
     all_items = request.app.state.global_log.list_events(limit=None)
     categories = sorted({
@@ -218,23 +195,14 @@ def list_global_logs(
 
 
 @router.post('/events', status_code=status.HTTP_204_NO_CONTENT)
-def create_client_log_event(
-    payload: ClientLogEvent,
-    request: Request,
-    viewer: CurrentViewer,
-) -> Response:
+def create_client_log_event(payload: ClientLogEvent, request: Request, viewer: CurrentViewer) -> Response:
     _limit_client_log(request, anonymous=False)
     _append_client_event(payload, request, viewer)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post('/public-events', status_code=status.HTTP_204_NO_CONTENT)
-def create_public_client_log_event(
-    payload: ClientLogEvent,
-    request: Request,
-    response: Response,
-    database: DatabaseSession,
-) -> Response:
+def create_public_client_log_event(payload: ClientLogEvent, request: Request, response: Response, database: DatabaseSession) -> Response:
     origin = urlsplit(request.headers.get('origin', ''))
     if origin.scheme not in frozenset({'http', 'https'}) or origin.netloc.casefold() != request.headers.get('host', '').casefold():
         raise HTTPException(status_code=403, detail='日志只允许同源页面上报。')

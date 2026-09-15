@@ -1,21 +1,23 @@
 from __future__ import annotations
 
-from admin_account import EXTERNAL_PASSWORD_SENTINEL
-from dependencies import CurrentUser, DatabaseSession
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, HTTPException, Request, Response, status
-from models import LoginSession, User
-from schemas import LoginRequest, SetupAdminRequest, SetupStatusResponse, UserResponse
-from security import (
-    DUMMY_PASSWORD_HASH,
+from sqlalchemy import delete, select, text
+
+from ..admin_account import EXTERNAL_PASSWORD_SENTINEL
+from ..dependencies import CurrentUser, DatabaseSession
+from ..models import LoginSession, User
+from ..schemas import LoginRequest, SetupAdminRequest, SetupStatusResponse, UserResponse
+from ..security import (
     hash_password,
     new_session_token,
     session_expiry,
     session_token_hash,
     verify_password,
 )
-from sqlalchemy import delete, select, text
 
-router = APIRouter(tags=['authentication'])
+router = APIRouter(tags=["authentication"])
 
 
 def public_user(user: User) -> UserResponse:
@@ -23,14 +25,14 @@ def public_user(user: User) -> UserResponse:
 
 
 def request_metadata(request: Request) -> tuple[str, str]:
-    ip_address = request.client.host if request.client else ''
-    return (ip_address[:64], request.headers.get('user-agent', '')[:512])
+    ip_address = request.client.host if request.client else ""
+    return (ip_address[:64], request.headers.get("user-agent", "")[:512])
 
 
 def create_login_session(request: Request, database: DatabaseSession, user: User) -> str:
     settings = request.app.state.settings
     token = new_session_token()
-    (ip_address, user_agent) = request_metadata(request)
+    ip_address, user_agent = request_metadata(request)
     database.add(
         LoginSession(
             id_hash=session_token_hash(token),
@@ -51,12 +53,12 @@ def set_session_cookie(request: Request, response: Response, token: str) -> None
         max_age=settings.session_max_age_seconds,
         httponly=True,
         secure=settings.cookie_secure,
-        samesite='lax',
-        path='/',
+        samesite="lax",
+        path="/",
     )
 
 
-@router.get('/setup/status', response_model=SetupStatusResponse)
+@router.get("/setup/status", response_model=SetupStatusResponse)
 def setup_status(request: Request, database: DatabaseSession) -> SetupStatusResponse:
     return SetupStatusResponse(
         initialized=request.app.state.admin_account.initialized,
@@ -64,7 +66,11 @@ def setup_status(request: Request, database: DatabaseSession) -> SetupStatusResp
     )
 
 
-@router.post('/setup/admin', response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/setup/admin",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def setup_admin(
     payload: SetupAdminRequest,
     request: Request,
@@ -74,13 +80,18 @@ def setup_admin(
     password_hash = hash_password(payload.password)
     account_store = request.app.state.admin_account
     staged_credentials = None
+    database.execute(text("BEGIN IMMEDIATE"))
     try:
-        database.execute(text('BEGIN IMMEDIATE'))
         if account_store.initialized:
             database.rollback()
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='系统已经完成初始化。')
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="系统已经完成初始化。",
+            )
         recovery_user = (
-            database.get(User, account_store.recovery_user_id) if account_store.recovery_user_id else None
+            database.get(User, account_store.recovery_user_id)
+            if account_store.recovery_user_id
+            else None
         )
         if recovery_user is not None:
             conflict = database.scalar(
@@ -91,22 +102,25 @@ def setup_admin(
             )
             if conflict is not None:
                 database.rollback()
-                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='这个账号名已被使用。')
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="这个账号名已被使用。",
+                )
             user = recovery_user
             user.username = payload.username
-            user.role = 'admin'
+            user.role = "admin"
             user.is_active = True
         else:
             if database.scalar(select(User.id).limit(1)) is not None:
                 database.rollback()
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail='现有账号无法安全重置，请检查账号文件。',
+                    detail="现有账号无法安全重置，请检查账号文件。",
                 )
             user = User(
                 username=payload.username,
                 password_hash=EXTERNAL_PASSWORD_SENTINEL,
-                role='admin',
+                role="admin",
                 auth_externalized=True,
             )
             database.add(user)
@@ -117,6 +131,13 @@ def setup_admin(
         user.auth_externalized = True
         token = create_login_session(request, database, user)
         database.commit()
+        account_store.activate(staged_credentials)
+        set_session_cookie(request, response, token)
+        action = "重新设置" if recovery_user else "首次初始化"
+        request.app.state.global_log.append(
+            "success", "系统后台", "账号", f"管理员 {user.username} 完成{action}"
+        )
+        return public_user(user)
     except HTTPException:
         raise
     except Exception:
@@ -124,19 +145,9 @@ def setup_admin(
         if staged_credentials is not None:
             account_store.abort(staged_credentials)
         raise
-    account_store.activate(staged_credentials)
-    set_session_cookie(request, response, token)
-    action = '重新设置' if recovery_user is not None else '首次初始化'
-    request.app.state.global_log.append(
-        'success',
-        '系统后台',
-        '账号',
-        f'管理员 {user.username} 完成{action}',
-    )
-    return public_user(user)
 
 
-@router.post('/auth/login', response_model=UserResponse)
+@router.post("/auth/login", response_model=UserResponse)
 def login(
     payload: LoginRequest,
     request: Request,
@@ -144,63 +155,74 @@ def login(
     database: DatabaseSession,
 ) -> UserResponse:
     username = payload.username.strip()
-    (ip_address, _user_agent) = request_metadata(request)
-    limiter_keys = (f'ip:{ip_address}', f'account:{ip_address}:{username.casefold()}')
+    ip_address, _user_agent = request_metadata(request)
+    limiter_keys = (
+        f"ip:{ip_address}",
+        f"account:{ip_address}:{username.casefold()}",
+    )
     limiter = request.app.state.login_limiter
     if any(limiter.blocked(key) for key in limiter_keys):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail='登录失败次数过多，请稍后再试。',
-            headers={'Retry-After': str(limiter.block_seconds)},
+            detail="登录失败次数过多，请稍后再试。",
+            headers={"Retry-After": str(limiter.block_seconds)},
         )
     credentials = request.app.state.admin_account.credentials
-    user = database.get(User, credentials.user_id) if credentials is not None else None
-    # Always run one argon2 verify (against a dummy hash when the account or username does not
-    # match) so the response time does not leak whether the username exists.
-    stored_hash = credentials.password_hash if credentials is not None else DUMMY_PASSWORD_HASH
-    password_ok = verify_password(stored_hash, payload.password)
-    identity_ok = (
+    user = database.get(User, credentials.user_id) if credentials else None
+    if not (
         credentials is not None
         and username == credentials.username
         and user is not None
         and user.is_active
-    )
-    if not (identity_ok and password_ok):
+        and verify_password(credentials.password_hash, payload.password)
+    ):
         for key in limiter_keys:
             limiter.record_failure(key)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='账号或密码错误。')
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="账号或密码错误。",
+        )
     for key in limiter_keys:
         limiter.reset(key)
     token = create_login_session(request, database, user)
     database.commit()
     set_session_cookie(request, response, token)
     request.app.state.global_log.append(
-        'success',
-        '系统后台',
-        '账号',
-        f'管理员 {user.username} 已登录',
+        "success", "系统后台", "账号", f"管理员 {user.username} 已登录"
     )
     return public_user(user)
 
 
-@router.post('/auth/logout', status_code=status.HTTP_204_NO_CONTENT)
-def logout(request: Request, response: Response, database: DatabaseSession) -> None:
-    token = request.cookies.get(request.app.state.settings.cookie_name, '')
-    username = '管理员'
+@router.post("/auth/logout", status_code=status.HTTP_204_NO_CONTENT)
+def logout(
+    request: Request,
+    response: Response,
+    database: DatabaseSession,
+) -> None:
+    token = request.cookies.get(request.app.state.settings.cookie_name, "")
+    username = "管理员"
     if token:
         record = database.scalar(
-            select(LoginSession).where(LoginSession.id_hash == session_token_hash(token))
+            select(LoginSession).where(
+                LoginSession.id_hash == session_token_hash(token)
+            )
         )
         if record is not None:
             user = database.get(User, record.user_id)
             if user is not None:
                 username = user.username
-        database.execute(delete(LoginSession).where(LoginSession.id_hash == session_token_hash(token)))
+        database.execute(
+            delete(LoginSession).where(
+                LoginSession.id_hash == session_token_hash(token)
+            )
+        )
         database.commit()
-    request.app.state.global_log.append('info', '系统后台', '账号', f'{username} 已退出登录')
-    response.delete_cookie(request.app.state.settings.cookie_name, path='/')
+    request.app.state.global_log.append(
+        "info", "系统后台", "账号", f"{username} 已退出登录"
+    )
+    response.delete_cookie(request.app.state.settings.cookie_name, path="/")
 
 
-@router.get('/auth/me', response_model=UserResponse)
+@router.get("/auth/me", response_model=UserResponse)
 def me(user: CurrentUser) -> UserResponse:
     return public_user(user)

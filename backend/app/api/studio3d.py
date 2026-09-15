@@ -1,24 +1,23 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import os
 import shutil
 import tempfile
 import zipfile
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from threading import RLock
 from urllib.parse import unquote
 from uuid import uuid4
 
-from dependencies import DatabaseSession, LicensedUser
 from fastapi import APIRouter, HTTPException, Request, Response, status
-from global_popups import global_popups
-from models import Project, ProjectDraft
-from panel.document_walk import any_leaf
-from schemas import Studio3DDraftUpdate
 from sqlalchemy import select
+
+from ..dependencies import DatabaseSession, LicensedUser
+from ..global_popups import global_popups
+from ..models import Project, ProjectDraft
+from ..schemas import Studio3DDraftUpdate
 
 router = APIRouter(prefix='/studio3d', tags=['studio3d'])
 MAX_DRAFT_BYTES = 33554432
@@ -30,7 +29,7 @@ _storage_lock = RLock()
 
 
 def _utc_now() -> str:
-    return datetime.now(UTC).isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 
 def _atomic_json_write(path: Path, payload: dict) -> None:
@@ -46,12 +45,9 @@ def _atomic_json_write(path: Path, payload: dict) -> None:
             os.fsync(output.fileno())
         temporary_path.chmod(384)
         os.replace(temporary_path, path)
-    except BaseException:
+    finally:
         if temporary_path.exists():
             temporary_path.unlink()
-        raise
-    if temporary_path.exists():
-        temporary_path.unlink()
 
 
 def _read_draft(path: Path) -> dict | None:
@@ -103,8 +99,8 @@ def _folder_name(request: Request) -> str:
         or name in frozenset({'.', '..'})
         or name.startswith('.')
         or name.endswith(('.', ' '))
-        or any((character in invalid_characters) for character in name)
-        or any((ord(character) < 32 or ord(character) == 127) for character in name)
+        or any((character in invalid_characters for character in name))
+        or any((ord(character) < 32 or ord(character) == 127 for character in name))
         or len(name.encode('utf-8')) > 180
         or Path(name).name != name
     ):
@@ -113,7 +109,11 @@ def _folder_name(request: Request) -> str:
 
 
 def _document_uses_asset_prefix(value, prefix: str) -> bool:
-    return any_leaf(value, lambda leaf: isinstance(leaf, str) and leaf.startswith(prefix))
+    if isinstance(value, dict):
+        return any((_document_uses_asset_prefix(item, prefix) for item in value.values()))
+    if isinstance(value, list):
+        return any((_document_uses_asset_prefix(item, prefix) for item in value))
+    return isinstance(value, str) and value.startswith(prefix)
 
 
 def _validate_archive(archive_path: Path) -> list[zipfile.ZipInfo]:
@@ -144,23 +144,25 @@ def _validate_archive(archive_path: Path) -> list[zipfile.ZipInfo]:
             expanded_size += entry.file_size
             if expanded_size > MAX_EXPORT_EXPANDED_BYTES:
                 raise HTTPException(status_code=413, detail='导出内容超过 NAS 保存上限。')
-        for json_name in (name for name in names if name.lower().endswith('.json')):
+        for json_name in [name for name in names if name.lower().endswith('.json')]:
             try:
                 value = json.loads(archive.read(json_name))
             except (UnicodeDecodeError, json.JSONDecodeError, KeyError) as error:
                 raise HTTPException(status_code=422, detail=f'{json_name} 内容无效。') from error
-            if not isinstance(value, dict):
-                raise HTTPException(status_code=422, detail=f'{json_name} 内容无效。')
-        for image_name in (name for name in names if Path(name).suffix.lower() in frozenset({'.png', '.webp'})):
+            if isinstance(value, dict):
+                continue
+            raise HTTPException(status_code=422, detail=f'{json_name} 内容无效。')
+        for image_name in [name for name in names if Path(name).suffix.lower() in frozenset({'.png', '.webp'})]:
             image_data = archive.read(image_name)
             suffix = Path(image_name).suffix.lower()
             if suffix == '.png':
                 valid = image_data.startswith(b'\x89PNG\r\n\x1a\n')
             else:
                 valid = len(image_data) >= 12 and image_data[:4] == b'RIFF' and image_data[8:12] == b'WEBP'
-            if not valid:
-                format_name = 'PNG' if suffix == '.png' else 'WebP'
-                raise HTTPException(status_code=422, detail=f'{image_name} 不是有效的 {format_name} 文件。')
+            if valid:
+                continue
+            format_name = 'PNG' if suffix == '.png' else 'WebP'
+            raise HTTPException(status_code=422, detail=f'{image_name} 不是有效的 {format_name} 文件。')
         return entries
 
 
@@ -179,26 +181,16 @@ def update_studio3d_draft(payload: Studio3DDraftUpdate, request: Request, _user:
         current = _read_draft(request.app.state.settings.studio3d_draft_path)
         current_revision = current['revision'] if current else 0
         if payload.revision != current_revision:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail={
-                    'code': 'STUDIO3D_REVISION_CONFLICT',
-                    'message': '户型图草稿已在其他页面更新。',
-                    'currentRevision': current_revision,
-                },
-            )
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={
+                'code': 'STUDIO3D_REVISION_CONFLICT',
+                'message': '户型图草稿已在其他页面更新。',
+                'currentRevision': current_revision})
         updated = {
             'revision': current_revision + 1,
             'scene': payload.scene,
-            'updatedAt': _utc_now(),
-        }
+            'updatedAt': _utc_now()}
         _atomic_json_write(request.app.state.settings.studio3d_draft_path, updated)
-        request.app.state.global_log.append(
-            'success',
-            '3D户型图编辑器',
-            '配置',
-            f'3D 户型图草稿已保存（修订 {updated["revision"]}）',
-        )
+        request.app.state.global_log.append('success', '3D户型图编辑器', '配置', f"3D 户型图草稿已保存（修订 {updated['revision']}）")
         return updated
 
 
@@ -208,59 +200,6 @@ def check_studio3d_export(request: Request, _user: LicensedUser) -> dict:
     target = request.app.state.settings.studio3d_exports_dir / folder_name
     with _storage_lock:
         return {'folderName': folder_name, 'exists': target.exists()}
-
-
-def _materialize_export(
-    *,
-    temporary_archive: Path,
-    target: Path,
-    exports_dir: Path,
-    folder_name: str,
-    overwrite: bool,
-) -> tuple[list, bool]:
-    '''Validate the archive and swap the export folder into place. Runs off the event loop.'''
-    entries = _validate_archive(temporary_archive)
-    with _storage_lock:
-        target_exists = target.exists()
-        if target_exists and not overwrite:
-            raise HTTPException(
-                status_code=409,
-                detail={
-                    'code': 'STUDIO3D_EXPORT_EXISTS',
-                    'message': '该文件夹已存在，请确认覆盖或换一个文件夹名。',
-                    'folderName': folder_name,
-                },
-            )
-        staging = exports_dir / f'.export-{uuid4().hex}'
-        staging.mkdir(mode=448)
-        try:
-            with zipfile.ZipFile(temporary_archive) as archive:
-                for entry in entries:
-                    output_path = staging / entry.filename
-                    with archive.open(entry) as source, output_path.open('xb') as output:
-                        shutil.copyfileobj(source, output)
-                    output_path.chmod(384)
-            archive_name = f'{folder_name}.zip'
-            shutil.copyfile(temporary_archive, staging / archive_name)
-            (staging / archive_name).chmod(384)
-            if target_exists:
-                backup = exports_dir / f'.previous-{uuid4().hex}'
-                os.replace(target, backup)
-                try:
-                    os.replace(staging, target)
-                    shutil.rmtree(backup, ignore_errors=True)
-                except Exception:
-                    os.replace(backup, target)
-                    raise
-            else:
-                os.replace(staging, target)
-        except BaseException:
-            if staging.exists():
-                shutil.rmtree(staging)
-            raise
-        if staging.exists():
-            shutil.rmtree(staging)
-    return entries, target_exists
 
 
 @router.post('/exports', status_code=status.HTTP_201_CREATED)
@@ -285,33 +224,56 @@ async def save_studio3d_export(request: Request, _user: LicensedUser) -> dict:
         temporary_archive.chmod(384)
         if written == 0:
             raise HTTPException(status_code=422, detail='导出 ZIP 为空。')
-        entries, target_exists = await asyncio.to_thread(
-            _materialize_export,
-            temporary_archive=temporary_archive,
-            target=target,
-            exports_dir=settings.studio3d_exports_dir,
-            folder_name=folder_name,
-            overwrite=overwrite,
-        )
+        entries = _validate_archive(temporary_archive)
+        with _storage_lock:
+            target_exists = target.exists()
+            if target_exists and not overwrite:
+                raise HTTPException(status_code=409, detail={
+                    'code': 'STUDIO3D_EXPORT_EXISTS',
+                    'message': '该文件夹已存在，请确认覆盖或换一个文件夹名。',
+                    'folderName': folder_name})
+            staging = settings.studio3d_exports_dir / f'.export-{uuid4().hex}'
+            staging.mkdir(mode=448)
+            try:
+                with zipfile.ZipFile(temporary_archive) as archive:
+                    for entry in entries:
+                        output_path = staging / entry.filename
+                        with archive.open(entry) as source:
+                            with output_path.open('xb') as output:
+                                shutil.copyfileobj(source, output)
+                        output_path.chmod(384)
+                archive_name = f'{folder_name}.zip'
+                shutil.copyfile(temporary_archive, staging / archive_name)
+                (staging / archive_name).chmod(384)
+                if target_exists:
+                    backup = settings.studio3d_exports_dir / f'.previous-{uuid4().hex}'
+                    os.replace(target, backup)
+                    try:
+                        os.replace(staging, target)
+                        shutil.rmtree(backup, ignore_errors=True)
+                    except Exception:
+                        os.replace(backup, target)
+                        raise
+                else:
+                    os.replace(staging, target)
+            finally:
+                if staging.exists():
+                    shutil.rmtree(staging)
         catalog = getattr(request.app.state, 'asset_catalog', None)
         if catalog is not None:
             for entry in entries:
                 if Path(entry.filename).suffix.lower() in frozenset({'.png', '.webp'}):
                     catalog.register_studio3d_export(folder_name, target / entry.filename)
         request.app.state.global_log.append('success', '3D户型图编辑器', '导出', f'3D 户型图已导出到：{folder_name}')
-        result = {
+        return {
             'folderName': folder_name,
             'relativePath': f'exports/{folder_name}',
             'overwritten': target_exists,
-            'files': sorted([entry.filename for entry in entries] + [f'{folder_name}.zip']),
+            'files': sorted([entry.filename for entry in entries]) + [f'{folder_name}.zip'],
         }
-    except BaseException:
+    finally:
         if temporary_archive.exists():
             temporary_archive.unlink()
-        raise
-    if temporary_archive.exists():
-        temporary_archive.unlink()
-    return result
 
 
 @router.delete('/exports', status_code=status.HTTP_204_NO_CONTENT)
@@ -340,15 +302,11 @@ def delete_studio3d_export_folder(request: Request, database: DatabaseSession, _
             usages.append('户型图绘制')
     if usages:
         unique_usages = list(dict.fromkeys(usages))
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={
-                'code': 'STUDIO3D_EXPORT_IN_USE',
-                'message': f'该文件夹中的图片正在被“{"、".join(unique_usages)}”使用，请先替换或移除后再删除。',
-                'folderName': folder_name,
-                'projects': unique_usages,
-            },
-        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail={
+            'code': 'STUDIO3D_EXPORT_IN_USE',
+            'message': f'该文件夹中的图片正在被“{"、".join(unique_usages)}”使用，请先替换或移除后再删除。',
+            'folderName': folder_name,
+            'projects': unique_usages})
     settings = request.app.state.settings
     root = settings.studio3d_exports_dir.resolve()
     target = (root / folder_name).resolve()

@@ -1,104 +1,149 @@
-import { coverComponentIsDream } from "./registry.js?v=0.5.3";
-import { entityMetadataIsAvailable } from "./entity-metadata.js?v=0.5.3";
-export function runtimeEntityStateIsActive(entityOrEvent) {
-  const state = String(entityOrEvent?.newState?.state ?? entityOrEvent?.state ?? "").trim().toLowerCase();
-  return ["on", "open", "true", "home"].includes(state);
+import { coverComponentIsDream } from "./registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-vacuum-map-background-v1-20260901-renderer-date-time-runtime-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1";
+import { entityMetadataIsAvailable } from "./entity-metadata.js?v=20260901-renderer-entity-metadata-v1";
+export function runtimeEntityStateIsActive(eventState) {
+  const normalizedState = String(eventState?.newState?.state ?? eventState?.state ?? "")
+    .trim()
+    .toLowerCase();
+  return ["on", "open", "true", "home"].includes(normalizedState);
 }
-const COVER_CLOSED_POSITION_EPSILON = 1;
-function readCurrentPosition(entityOrEvent) {
-  const stateEntry = entityOrEvent?.newState || entityOrEvent || {};
-  const numeric = Number(stateEntry.attributes?.current_position);
-  if (Number.isFinite(numeric)) {
-    return Math.max(0, Math.min(100, numeric));
+const PERCENT_EPSILON = 1;
+function coverPositionPercent(positionStateInput) {
+  const positionStateObject = positionStateInput?.newState || positionStateInput || {};
+  const currentPositionAttribute = Number(positionStateObject.attributes?.current_position);
+  if (Number.isFinite(currentPositionAttribute)) {
+    return Math.max(0, Math.min(100, currentPositionAttribute));
   } else {
     return null;
   }
 }
 export function coverPositionReachedTarget(currentPosition, targetPosition, direction) {
-  const clampedCurrent = Math.max(0, Math.min(100, Number(currentPosition) || 0));
+  const clampedReported = Math.max(0, Math.min(100, Number(currentPosition) || 0));
   const clampedTarget = Math.max(0, Math.min(100, Number(targetPosition) || 0));
   if (direction < 0) {
-    return clampedCurrent <= clampedTarget + 0.5;
+    return clampedReported <= clampedTarget + 0.5;
   } else {
-    return clampedCurrent >= clampedTarget - 0.5;
+    return clampedReported >= clampedTarget - 0.5;
   }
 }
-export function coverPendingDisplayPosition(currentPosition, targetPosition, direction) {
-  if (direction < 0) {
-    return Math.min(currentPosition, targetPosition);
+export function coverPendingDisplayPosition(fromPosition, toPosition, moveDirection) {
+  if (moveDirection < 0) {
+    return Math.min(fromPosition, toPosition);
   } else {
-    return Math.max(currentPosition, targetPosition);
+    return Math.max(fromPosition, toPosition);
   }
 }
-export function runtimeCoverStateIsActive(entityOrEvent) {
-  const stateEntry = entityOrEvent?.newState || entityOrEvent || {};
-  const state = String(stateEntry.state || "").trim().toLowerCase();
-  if (state === "opening") {
+export function runtimeCoverStateIsActive(coverEventState) {
+  const coverState = coverEventState?.newState || coverEventState || {};
+  const rawCoverState = String(coverState.state || "")
+    .trim()
+    .toLowerCase();
+  if (rawCoverState === "opening") {
     return true;
   }
-  if (state === "closing") {
+  if (rawCoverState === "closing") {
     return false;
   }
-  const currentPosition = readCurrentPosition(stateEntry);
-  if (currentPosition !== null) {
-    return currentPosition > COVER_CLOSED_POSITION_EPSILON;
+  const resolvedPositionAttribute = coverPositionPercent(coverState);
+  if (resolvedPositionAttribute !== null) {
+    return resolvedPositionAttribute > PERCENT_EPSILON;
   } else {
-    return runtimeEntityStateIsActive(stateEntry);
+    return runtimeEntityStateIsActive(coverState);
   }
 }
-export function relatedDeviceEntity(entityMetadata, entityId, domain, translationKey, preferredEntityId = "") {
-  const source = entityMetadata.get(entityId);
-  if (!source?.deviceId) {
+export function relatedDeviceEntity(
+  entitiesById,
+  entityId,
+  domain,
+  translationKey,
+  preferredEntityId = ""
+) {
+  const sourceEntity = entitiesById.get(entityId);
+  if (!sourceEntity?.deviceId) {
     return null;
   }
-  const matches = [...entityMetadata.values()].filter(candidate => candidate.deviceId === source.deviceId && candidate.domain === domain && candidate.translationKey === translationKey && entityMetadataIsAvailable(candidate));
-  matches.sort((left, right) => {
-    const leftId = String(left.entityId || "");
-    const rightId = String(right.entityId || "");
-    if (leftId === preferredEntityId) {
+  const relatedEntities = [...entitiesById.values()].filter(
+    candidateEntity =>
+      candidateEntity.deviceId === sourceEntity.deviceId &&
+      candidateEntity.domain === domain &&
+      candidateEntity.translationKey === translationKey &&
+      entityMetadataIsAvailable(candidateEntity)
+  );
+  relatedEntities.sort((leftEntity, rightEntity) => {
+    const leftEntityId = String(leftEntity.entityId || "");
+    const rightEntityId = String(rightEntity.entityId || "");
+    if (leftEntityId === preferredEntityId) {
       return -1;
     }
-    if (rightId === preferredEntityId) {
+    if (rightEntityId === preferredEntityId) {
       return 1;
     }
-    const leftIsRoom = /_room_\d+_/.test(leftId);
-    const rightIsRoom = /_room_\d+_/.test(rightId);
-    if (leftIsRoom !== rightIsRoom) {
-      if (leftIsRoom) {
+    const leftIsRoomEntity = /_room_\d+_/.test(leftEntityId);
+    const rightIsRoomEntity = /_room_\d+_/.test(rightEntityId);
+    if (leftIsRoomEntity !== rightIsRoomEntity) {
+      if (leftIsRoomEntity) {
         return 1;
       } else {
         return -1;
       }
     } else {
-      return leftId.length - rightId.length || leftId.localeCompare(rightId);
+      return (
+        leftEntityId.length - rightEntityId.length || leftEntityId.localeCompare(rightEntityId)
+      );
     }
   });
-  return matches[0] || null;
+  return relatedEntities[0] || null;
 }
-export function relatedDeviceDomainEntity(entityMetadata, entityId, domain) {
-  const source = entityMetadata.get(entityId);
-  if (!source?.deviceId) {
+export function relatedDeviceDomainEntity(domainEntitiesById, domainEntityId, matchDomain) {
+  const domainSourceEntity = domainEntitiesById.get(domainEntityId);
+  if (!domainSourceEntity?.deviceId) {
     return null;
   }
-  const matches = [...entityMetadata.values()].filter(candidate => candidate.deviceId === source.deviceId && candidate.domain === domain && entityMetadataIsAvailable(candidate));
-  matches.sort((left, right) => {
-    const leftLightScore = /灯|照明|light/i.test((left.name || "") + " " + (left.entityId || "")) ? 0 : 1;
-    const rightLightScore = /灯|照明|light/i.test((right.name || "") + " " + (right.entityId || "")) ? 0 : 1;
-    return leftLightScore - rightLightScore || String(left.entityId || "").length - String(right.entityId || "").length || String(left.entityId || "").localeCompare(String(right.entityId || ""));
+  const domainRelatedEntities = [...domainEntitiesById.values()].filter(
+    domainCandidate =>
+      domainCandidate.deviceId === domainSourceEntity.deviceId &&
+      domainCandidate.domain === matchDomain &&
+      entityMetadataIsAvailable(domainCandidate)
+  );
+  domainRelatedEntities.sort((leftDomainEntity, rightDomainEntity) => {
+    const leftLooksLikeLight = /灯|照明|light/i.test(
+      (leftDomainEntity.name || "") + " " + (leftDomainEntity.entityId || "")
+    )
+      ? 0
+      : 1;
+    const rightLooksLikeLight = /灯|照明|light/i.test(
+      (rightDomainEntity.name || "") + " " + (rightDomainEntity.entityId || "")
+    )
+      ? 0
+      : 1;
+    return (
+      leftLooksLikeLight - rightLooksLikeLight ||
+      String(leftDomainEntity.entityId || "").length -
+        String(rightDomainEntity.entityId || "").length ||
+      String(leftDomainEntity.entityId || "").localeCompare(
+        String(rightDomainEntity.entityId || "")
+      )
+    );
   });
-  return matches[0] || null;
+  return domainRelatedEntities[0] || null;
 }
-const AIRER_PATTERN = /airer|clothes.?rack|laundry.?rack|晾衣机|晾衣架/i;
-const LIGHT_PATTERN = /light|lamp|灯光|照明|灯(?:$|[\s_-])/i;
-const SET_POSITION_PATTERN = /set[_\s-]?position|target[_\s-]?position|设定位置|设置位置|目标位置/i;
-const CURRENT_POSITION_PATTERN = /current[_\s-]?position|当前位置|当前高度/i;
-const MOTOR_SPEED_PATTERN = /motor[_\s-]?speed|电机速度/i;
+const AIRER_NAME_PATTERN = /airer|clothes.?rack|laundry.?rack|晾衣机|晾衣架/i;
+const LIGHT_NAME_PATTERN = /light|lamp|灯光|照明|灯(?:$|[\s_-])/i;
+const SET_POSITION_NAME_PATTERN =
+  /set[_\s-]?position|target[_\s-]?position|设定位置|设置位置|目标位置/i;
+const CURRENT_POSITION_NAME_PATTERN = /current[_\s-]?position|当前位置|当前高度/i;
+const MOTOR_SPEED_NAME_PATTERN = /motor[_\s-]?speed|电机速度/i;
 const MOTOR_CONTROL_PATTERNS = {
   up: /motor[_\s-]?control[_\s-]?up|晾杆控制[^\n]*(?:上升|升起)/i,
   down: /motor[_\s-]?control[_\s-]?down|晾杆控制[^\n]*下降/i,
   pause: /motor[_\s-]?control[_\s-]?(?:pause|stop)|晾杆控制[^\n]*(?:停止|暂停)/i
 };
-export function coverComponentIsAirer(component, entityId = "", entityOrEvent = null, entityMetadata = new Map(), devices = new Map()) {
+export function coverComponentIsAirer(
+  component,
+  airerComponentEntityId = "",
+  componentState = null,
+  airerEntitiesById = new Map(),
+  devicesById = new Map()
+) {
   const coverKind = component?.properties?.coverKind;
   if (coverKind === "airer") {
     return true;
@@ -106,64 +151,117 @@ export function coverComponentIsAirer(component, entityId = "", entityOrEvent = 
   if (["standard", "dream"].includes(coverKind)) {
     return false;
   }
-  const stateEntry = entityOrEvent?.newState || entityOrEvent || {};
-  const metadata = entityMetadata.get(entityId) || {};
-  const device = metadata.deviceId ? devices.get(metadata.deviceId) || {} : {};
-  return AIRER_PATTERN.test([entityId, stateEntry.attributes?.friendly_name, metadata.name, metadata.originalName, metadata.translationKey, metadata.uniqueId, device.name, device.model].filter(Boolean).join(" "));
+  const airerStateObject = componentState?.newState || componentState || {};
+  const airerEntityMetadata = airerEntitiesById.get(airerComponentEntityId) || {};
+  const airerDeviceMetadata = airerEntityMetadata.deviceId
+    ? devicesById.get(airerEntityMetadata.deviceId) || {}
+    : {};
+  return AIRER_NAME_PATTERN.test(
+    [
+      airerComponentEntityId,
+      airerStateObject.attributes?.friendly_name,
+      airerEntityMetadata.name,
+      airerEntityMetadata.originalName,
+      airerEntityMetadata.translationKey,
+      airerEntityMetadata.uniqueId,
+      airerDeviceMetadata.name,
+      airerDeviceMetadata.model
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
 }
-function extractPointIndices(entityId) {
-  return new Set([...String(entityId || "").matchAll(/_(?:s|p)_(\d+)(?:_|$)/gi)].map(match => match[1]));
+function collectAirerSlotNumbers(slotSourceEntityId) {
+  return new Set(
+    [...String(slotSourceEntityId || "").matchAll(/_(?:s|p)_(\d+)(?:_|$)/gi)].map(
+      slotMatch => slotMatch[1]
+    )
+  );
 }
-export function relatedAirerLightEntity(entityMetadata, entityId) {
-  const metadata = entityMetadata.get(entityId);
-  if (!metadata?.deviceId) {
+export function relatedAirerLightEntity(lightEntitiesById, lightSourceEntityId) {
+  const lightSourceEntity = lightEntitiesById.get(lightSourceEntityId);
+  if (!lightSourceEntity?.deviceId) {
     return null;
   }
-  const sourcePointIndices = extractPointIndices(metadata.entityId);
-  return [...entityMetadata.values()].filter(candidate => candidate.entityId !== entityId && candidate.deviceId === metadata.deviceId && ["light", "switch"].includes(String(candidate.domain || "")) && entityMetadataIsAvailable(candidate)).map(candidate => {
-    const searchText = (candidate.entityId || "") + " " + (candidate.name || "") + " " + (candidate.originalName || "") + " " + (candidate.translationKey || "");
-    if (candidate.domain === "switch" && !LIGHT_PATTERN.test(searchText)) {
-      return null;
-    }
-    const candidatePointIndices = extractPointIndices(candidate.entityId);
-    const sharesPointIndex = [...sourcePointIndices].some(pointIndex => candidatePointIndices.has(pointIndex));
-    let score = candidate.domain === "light" ? 180 : 80;
-    if (sharesPointIndex) {
-      score += 360;
-    }
-    if (AIRER_PATTERN.test(searchText)) {
-      score += 180;
-    }
-    if (LIGHT_PATTERN.test(searchText)) {
-      score += 90;
-    }
-    if (/night.?light|夜灯/i.test(searchText)) {
-      score -= 60;
-    }
-    return {
-      item: candidate,
-      score
-    };
-  }).filter(Boolean).sort((left, right) => right.score - left.score || String(left.item.entityId || "").length - String(right.item.entityId || "").length || String(left.item.entityId || "").localeCompare(String(right.item.entityId || "")))[0]?.item || null;
-}
-function findRelatedAirerEntity(entityMetadata, entityId, domain, pattern) {
-  const metadata = entityMetadata.get(entityId);
-  if (!metadata?.deviceId) {
-    const hydMatch = String(entityId || "").match(/^cover\.(hyd_cn_[a-z0-9]+_pro2)_s_\d+_airer$/i);
-    if (hydMatch) {
-      if (domain === "number" && pattern === SET_POSITION_PATTERN) {
+  const lightSourceSlots = collectAirerSlotNumbers(lightSourceEntity.entityId);
+  return (
+    [...lightEntitiesById.values()]
+      .filter(
+        candidateLightEntity =>
+          candidateLightEntity.entityId !== lightSourceEntityId &&
+          candidateLightEntity.deviceId === lightSourceEntity.deviceId &&
+          ["light", "switch"].includes(String(candidateLightEntity.domain || "")) &&
+          entityMetadataIsAvailable(candidateLightEntity)
+      )
+      .map(lightCandidate => {
+        const lightSearchText =
+          (lightCandidate.entityId || "") +
+          " " +
+          (lightCandidate.name || "") +
+          " " +
+          (lightCandidate.originalName || "") +
+          " " +
+          (lightCandidate.translationKey || "");
+        if (lightCandidate.domain === "switch" && !LIGHT_NAME_PATTERN.test(lightSearchText)) {
+          return null;
+        }
+        const candidateSlots = collectAirerSlotNumbers(lightCandidate.entityId);
+        const sharesSlot = [...lightSourceSlots].some(slotNumber => candidateSlots.has(slotNumber));
+        let lightScore = lightCandidate.domain === "light" ? 180 : 80;
+        if (sharesSlot) {
+          lightScore += 360;
+        }
+        if (AIRER_NAME_PATTERN.test(lightSearchText)) {
+          lightScore += 180;
+        }
+        if (LIGHT_NAME_PATTERN.test(lightSearchText)) {
+          lightScore += 90;
+        }
+        if (/night.?light|夜灯/i.test(lightSearchText)) {
+          lightScore -= 60;
+        }
         return {
-          entityId: "number." + hydMatch[1] + "_set_position_p_4_9",
+          item: lightCandidate,
+          score: lightScore
+        };
+      })
+      .filter(Boolean)
+      .sort(
+        (leftLightScore, rightLightScore) =>
+          rightLightScore.score - leftLightScore.score ||
+          String(leftLightScore.item.entityId || "").length -
+            String(rightLightScore.item.entityId || "").length ||
+          String(leftLightScore.item.entityId || "").localeCompare(
+            String(rightLightScore.item.entityId || "")
+          )
+      )[0]?.item || null
+  );
+}
+function findAirerEntityByPattern(
+  airerLookupEntitiesById,
+  airerEntityId,
+  patternDomain,
+  namePattern
+) {
+  const airerSourceEntity = airerLookupEntitiesById.get(airerEntityId);
+  if (!airerSourceEntity?.deviceId) {
+    const entityIdMatch = String(airerEntityId || "").match(
+      /^cover\.(hyd_cn_[a-z0-9]+_pro2)_s_\d+_airer$/i
+    );
+    if (entityIdMatch) {
+      if (patternDomain === "number" && namePattern === SET_POSITION_NAME_PATTERN) {
+        return {
+          entityId: "number." + entityIdMatch[1] + "_set_position_p_4_9",
           domain: "number"
         };
-      } else if (domain === "sensor" && pattern === CURRENT_POSITION_PATTERN) {
+      } else if (patternDomain === "sensor" && namePattern === CURRENT_POSITION_NAME_PATTERN) {
         return {
-          entityId: "sensor." + hydMatch[1] + "_current_position_p_4_11",
+          entityId: "sensor." + entityIdMatch[1] + "_current_position_p_4_11",
           domain: "sensor"
         };
-      } else if (domain === "sensor" && pattern === MOTOR_SPEED_PATTERN) {
+      } else if (patternDomain === "sensor" && namePattern === MOTOR_SPEED_NAME_PATTERN) {
         return {
-          entityId: "sensor." + hydMatch[1] + "_motor_speed_p_4_12",
+          entityId: "sensor." + entityIdMatch[1] + "_motor_speed_p_4_12",
           domain: "sensor"
         };
       } else {
@@ -173,70 +271,167 @@ function findRelatedAirerEntity(entityMetadata, entityId, domain, pattern) {
       return null;
     }
   }
-  return [...entityMetadata.values()].filter(candidate => candidate.entityId !== entityId && candidate.deviceId === metadata.deviceId && candidate.domain === domain && entityMetadataIsAvailable(candidate)).map(item => {
-    const searchText = (item.entityId || "") + " " + (item.name || "") + " " + (item.originalName || "") + " " + (item.translationKey || "");
-    if (!pattern.test(searchText)) {
-      return null;
-    }
-    let score = 0;
-    if (pattern.test(String(item.translationKey || ""))) {
-      score += 300;
-    }
-    if (pattern.test(String(item.entityId || ""))) {
-      score += 180;
-    }
-    if (AIRER_PATTERN.test(searchText)) {
-      score += 90;
-    }
-    return {
-      item,
-      score
-    };
-  }).filter(Boolean).sort((left, right) => right.score - left.score || String(left.item.entityId || "").length - String(right.item.entityId || "").length || String(left.item.entityId || "").localeCompare(String(right.item.entityId || "")))[0]?.item || null;
+  return (
+    [...airerLookupEntitiesById.values()]
+      .filter(
+        candidate =>
+          candidate.entityId !== airerEntityId &&
+          candidate.deviceId === airerSourceEntity.deviceId &&
+          candidate.domain === patternDomain &&
+          entityMetadataIsAvailable(candidate)
+      )
+      .map(scoredCandidate => {
+        const candidateSearchText =
+          (scoredCandidate.entityId || "") +
+          " " +
+          (scoredCandidate.name || "") +
+          " " +
+          (scoredCandidate.originalName || "") +
+          " " +
+          (scoredCandidate.translationKey || "");
+        if (!namePattern.test(candidateSearchText)) {
+          return null;
+        }
+        let candidateScore = 0;
+        if (namePattern.test(String(scoredCandidate.translationKey || ""))) {
+          candidateScore += 300;
+        }
+        if (namePattern.test(String(scoredCandidate.entityId || ""))) {
+          candidateScore += 180;
+        }
+        if (AIRER_NAME_PATTERN.test(candidateSearchText)) {
+          candidateScore += 90;
+        }
+        return {
+          item: scoredCandidate,
+          score: candidateScore
+        };
+      })
+      .filter(Boolean)
+      .sort(
+        (leftAirerScore, rightAirerScore) =>
+          rightAirerScore.score - leftAirerScore.score ||
+          String(leftAirerScore.item.entityId || "").length -
+            String(rightAirerScore.item.entityId || "").length ||
+          String(leftAirerScore.item.entityId || "").localeCompare(
+            String(rightAirerScore.item.entityId || "")
+          )
+      )[0]?.item || null
+  );
 }
-export function relatedAirerPositionNumberEntity(entityMetadata, entityId) {
-  return findRelatedAirerEntity(entityMetadata, entityId, "number", SET_POSITION_PATTERN);
+export function relatedAirerPositionNumberEntity(positionEntitiesById, positionEntityId) {
+  return findAirerEntityByPattern(
+    positionEntitiesById,
+    positionEntityId,
+    "number",
+    SET_POSITION_NAME_PATTERN
+  );
 }
-export function relatedAirerCurrentPositionSensor(entityMetadata, entityId) {
-  return findRelatedAirerEntity(entityMetadata, entityId, "sensor", CURRENT_POSITION_PATTERN);
+export function relatedAirerCurrentPositionSensor(
+  currentPositionEntitiesById,
+  currentPositionEntityId
+) {
+  return findAirerEntityByPattern(
+    currentPositionEntitiesById,
+    currentPositionEntityId,
+    "sensor",
+    CURRENT_POSITION_NAME_PATTERN
+  );
 }
-export function relatedAirerMotorSpeedSensor(entityMetadata, entityId) {
-  return findRelatedAirerEntity(entityMetadata, entityId, "sensor", MOTOR_SPEED_PATTERN);
+export function relatedAirerMotorSpeedSensor(motorSpeedEntitiesById, motorSpeedEntityId) {
+  return findAirerEntityByPattern(
+    motorSpeedEntitiesById,
+    motorSpeedEntityId,
+    "sensor",
+    MOTOR_SPEED_NAME_PATTERN
+  );
 }
-export function relatedAirerMotorActionEntities(entityMetadata, entityId) {
-  const metadata = entityMetadata.get(entityId);
-  if (!metadata?.deviceId) {
+export function relatedAirerMotorActionEntities(actionEntitiesById, actionEntityId) {
+  const actionSourceEntity = actionEntitiesById.get(actionEntityId);
+  if (!actionSourceEntity?.deviceId) {
     return {
       up: null,
       down: null,
       pause: null
     };
   }
-  const buttons = [...entityMetadata.values()].filter(candidate => candidate.entityId !== entityId && candidate.deviceId === metadata.deviceId && candidate.domain === "button" && entityMetadataIsAvailable(candidate));
-  return Object.fromEntries(Object.entries(MOTOR_CONTROL_PATTERNS).map(([action, pattern]) => {
-    const match = buttons.find(button => pattern.test((button.entityId || "") + " " + (button.name || "") + " " + (button.originalName || "") + " " + (button.translationKey || "")));
-    return [action, match || null];
-  }));
+  const motorActionButtons = [...actionEntitiesById.values()].filter(
+    motorButtonCandidate =>
+      motorButtonCandidate.entityId !== actionEntityId &&
+      motorButtonCandidate.deviceId === actionSourceEntity.deviceId &&
+      motorButtonCandidate.domain === "button" &&
+      entityMetadataIsAvailable(motorButtonCandidate)
+  );
+  return Object.fromEntries(
+    Object.entries(MOTOR_CONTROL_PATTERNS).map(([actionKey, actionPattern]) => {
+      const matchedButton = motorActionButtons.find(buttonCandidate =>
+        actionPattern.test(
+          (buttonCandidate.entityId || "") +
+            " " +
+            (buttonCandidate.name || "") +
+            " " +
+            (buttonCandidate.originalName || "") +
+            " " +
+            (buttonCandidate.translationKey || "")
+        )
+      );
+      return [actionKey, matchedButton || null];
+    })
+  );
 }
-export function airerVisualDrop(position, coverState = "", calibration = {}) {
-  if (coverState === "open") {
+export function airerVisualDrop(positionPercent, airerStateName = "", visualCalibration = {}) {
+  if (airerStateName === "open") {
     return 2;
   }
-  if (coverState === "closed") {
+  if (airerStateName === "closed") {
     return 40;
   }
-  const clamped = Math.max(0, Math.min(100, Number(position) || 0));
-  const raised = calibration.raised === null || calibration.raised === undefined ? Number.NaN : Number(calibration.raised);
-  const lowered = calibration.lowered === null || calibration.lowered === undefined ? Number.NaN : Number(calibration.lowered);
-  const raisedBaseline = Number.isFinite(raised) ? raised : Number.isFinite(lowered) && lowered >= 50 ? 0 : 100;
-  const travel = (Number.isFinite(lowered) ? lowered : raisedBaseline < 50 ? 100 : 0) - raisedBaseline;
-  return 2 + (Math.abs(travel) < 0.5 ? 0 : Math.max(0, Math.min(1, (clamped - raisedBaseline) / travel))) * 38;
+  const visualClampedPosition = Math.max(0, Math.min(100, Number(positionPercent) || 0));
+  const visualRaised =
+    visualCalibration.raised === null || visualCalibration.raised === undefined
+      ? Number.NaN
+      : Number(visualCalibration.raised);
+  const visualLowered =
+    visualCalibration.lowered === null || visualCalibration.lowered === undefined
+      ? Number.NaN
+      : Number(visualCalibration.lowered);
+  const visualCommandRaised = Number.isFinite(visualRaised)
+    ? visualRaised
+    : Number.isFinite(visualLowered) && visualLowered >= 50
+      ? 0
+      : 100;
+  const visualCommandSpan =
+    (Number.isFinite(visualLowered) ? visualLowered : visualCommandRaised < 50 ? 100 : 0) -
+    visualCommandRaised;
+  return (
+    2 +
+    (Math.abs(visualCommandSpan) < 0.5
+      ? 0
+      : Math.max(
+          0,
+          Math.min(1, (visualClampedPosition - visualCommandRaised) / visualCommandSpan)
+        )) *
+      38
+  );
 }
-export function airerPositionCalibration(entityMetadata, devices, entityId) {
-  const metadata = entityMetadata.get(entityId);
-  const device = metadata?.deviceId ? devices.get(metadata.deviceId) : null;
-  const searchText = (device?.model || "") + " " + (device?.name || "") + " " + (metadata?.entityId || "") + " " + (entityId || "");
-  if (/hyd\.airer\.pro2|hyd_cn_[a-z0-9_]*_pro2(?:_|$)/i.test(searchText)) {
+export function airerPositionCalibration(
+  calibrationEntitiesById,
+  calibrationDevicesById,
+  calibrationEntityId
+) {
+  const calibrationEntityMetadata = calibrationEntitiesById.get(calibrationEntityId);
+  const calibrationDeviceMetadata = calibrationEntityMetadata?.deviceId
+    ? calibrationDevicesById.get(calibrationEntityMetadata.deviceId)
+    : null;
+  const calibrationSearchText =
+    (calibrationDeviceMetadata?.model || "") +
+    " " +
+    (calibrationDeviceMetadata?.name || "") +
+    " " +
+    (calibrationEntityMetadata?.entityId || "") +
+    " " +
+    (calibrationEntityId || "");
+  if (/hyd\.airer\.pro2|hyd_cn_[a-z0-9_]*_pro2(?:_|$)/i.test(calibrationSearchText)) {
     return {
       raised: null,
       lowered: null,
@@ -252,184 +447,334 @@ export function airerPositionCalibration(entityMetadata, devices, entityId) {
     };
   }
 }
-export function learnAirerPositionCalibration(calibration = {}, reportedPosition, commandPosition, motorSpeed) {
-  const reported = Number(reportedPosition);
-  const commanded = Number(commandPosition);
-  const speed = Number(motorSpeed);
-  const commandRaised = calibration.commandRaised === null || calibration.commandRaised === undefined ? Number.NaN : Number(calibration.commandRaised);
-  const commandLowered = calibration.commandLowered === null || calibration.commandLowered === undefined ? Number.NaN : Number(calibration.commandLowered);
-  if (!!Number.isFinite(reported) && !!Number.isFinite(commanded) && !!Number.isFinite(speed) && !(Math.abs(speed) >= 0.5)) {
-    if (Number.isFinite(commandRaised) && Math.abs(commanded - commandRaised) <= 0.5) {
-      calibration.raised = Math.max(0, Math.min(100, reported));
+export function learnAirerPositionCalibration(
+  calibration = {},
+  reportedPosition,
+  commandPosition,
+  motorSpeed
+) {
+  const reportedValue = Number(reportedPosition);
+  const commandValue = Number(commandPosition);
+  const motorSpeedValue = Number(motorSpeed);
+  const commandRaisedPosition =
+    calibration.commandRaised === null || calibration.commandRaised === undefined
+      ? Number.NaN
+      : Number(calibration.commandRaised);
+  const commandLoweredPosition =
+    calibration.commandLowered === null || calibration.commandLowered === undefined
+      ? Number.NaN
+      : Number(calibration.commandLowered);
+  if (
+    !!Number.isFinite(reportedValue) &&
+    !!Number.isFinite(commandValue) &&
+    !!Number.isFinite(motorSpeedValue) &&
+    !(Math.abs(motorSpeedValue) >= 0.5)
+  ) {
+    if (
+      Number.isFinite(commandRaisedPosition) &&
+      Math.abs(commandValue - commandRaisedPosition) <= 0.5
+    ) {
+      calibration.raised = Math.max(0, Math.min(100, reportedValue));
     }
-    if (Number.isFinite(commandLowered) && Math.abs(commanded - commandLowered) <= 0.5) {
-      calibration.lowered = Math.max(0, Math.min(100, reported));
+    if (
+      Number.isFinite(commandLoweredPosition) &&
+      Math.abs(commandValue - commandLoweredPosition) <= 0.5
+    ) {
+      calibration.lowered = Math.max(0, Math.min(100, reportedValue));
     }
   }
   return calibration;
 }
-export function airerPresentationPosition(position, calibration = {}) {
-  const clamped = Math.max(0, Math.min(100, Number(position) || 0));
-  const raised = calibration.raised === null || calibration.raised === undefined ? Number.NaN : Number(calibration.raised);
-  const lowered = calibration.lowered === null || calibration.lowered === undefined ? Number.NaN : Number(calibration.lowered);
-  if (!Number.isFinite(raised) && !Number.isFinite(lowered)) {
-    return clamped;
+export function airerPresentationPosition(airerPosition, presentationCalibration = {}) {
+  const clampedPosition = Math.max(0, Math.min(100, Number(airerPosition) || 0));
+  const raisedPosition =
+    presentationCalibration.raised === null || presentationCalibration.raised === undefined
+      ? Number.NaN
+      : Number(presentationCalibration.raised);
+  const loweredPosition =
+    presentationCalibration.lowered === null || presentationCalibration.lowered === undefined
+      ? Number.NaN
+      : Number(presentationCalibration.lowered);
+  if (!Number.isFinite(raisedPosition) && !Number.isFinite(loweredPosition)) {
+    return clampedPosition;
   }
-  const raisedBaseline = Number.isFinite(raised) ? raised : 0;
-  const loweredBaseline = Number.isFinite(lowered) ? lowered : 100;
-  if (Math.abs(loweredBaseline - raisedBaseline) < 0.5) {
-    return clamped;
+  const effectiveRaised = Number.isFinite(raisedPosition) ? raisedPosition : 0;
+  const effectiveLowered = Number.isFinite(loweredPosition) ? loweredPosition : 100;
+  if (Math.abs(effectiveLowered - effectiveRaised) < 0.5) {
+    return clampedPosition;
   } else {
-    return Math.max(0, Math.min(100, (loweredBaseline - clamped) / (loweredBaseline - raisedBaseline) * 100));
+    return Math.max(
+      0,
+      Math.min(
+        100,
+        ((effectiveLowered - clampedPosition) / (effectiveLowered - effectiveRaised)) * 100
+      )
+    );
   }
 }
-export function airerPresentationPositionForState(position, coverState, calibration = {}, motorReversed = false) {
-  const physicalState = physicalCoverState(coverState, motorReversed);
+export function airerPresentationPositionForState(
+  statePosition,
+  coverStateInput,
+  stateCalibration = {},
+  isReversed = false
+) {
+  const physicalState = physicalCoverState(coverStateInput, isReversed);
   if (physicalState === "open") {
     return 100;
   } else if (physicalState === "closed") {
     return 0;
   } else {
-    return airerPresentationPosition(position, calibration);
+    return airerPresentationPosition(statePosition, stateCalibration);
   }
 }
-export function airerReportedPosition(sensorState, coverState, calibration = {}) {
-  const sensorNumeric = Number(sensorState?.state);
-  const coverNumeric = Number(coverState?.attributes?.current_position);
-  const hasRaised = calibration.raised !== null && calibration.raised !== undefined && Number.isFinite(Number(calibration.raised));
-  const hasLowered = calibration.lowered !== null && calibration.lowered !== undefined && Number.isFinite(Number(calibration.lowered));
-  if (hasRaised && hasLowered && Math.abs(Number(calibration.lowered) - Number(calibration.raised)) >= 0.5 && Number.isFinite(sensorNumeric)) {
-    return sensorNumeric;
-  } else if (Number.isFinite(coverNumeric)) {
-    return coverNumeric;
+export function airerReportedPosition(entityState, entityAttributes, reportedCalibration = {}) {
+  const stateNumber = Number(entityState?.state);
+  const attributePosition = Number(entityAttributes?.attributes?.current_position);
+  const hasRaisedPosition =
+    reportedCalibration.raised !== null &&
+    reportedCalibration.raised !== undefined &&
+    Number.isFinite(Number(reportedCalibration.raised));
+  const hasLoweredPosition =
+    reportedCalibration.lowered !== null &&
+    reportedCalibration.lowered !== undefined &&
+    Number.isFinite(Number(reportedCalibration.lowered));
+  if (
+    hasRaisedPosition &&
+    hasLoweredPosition &&
+    Math.abs(Number(reportedCalibration.lowered) - Number(reportedCalibration.raised)) >= 0.5 &&
+    Number.isFinite(stateNumber)
+  ) {
+    return stateNumber;
+  } else if (Number.isFinite(attributePosition)) {
+    return attributePosition;
   } else {
-    return sensorNumeric;
+    return stateNumber;
   }
 }
-export function airerDevicePosition(presentationPosition, calibration = {}) {
-  const clamped = Math.max(0, Math.min(100, Number(presentationPosition) || 0));
-  const raisedCommand = calibration.commandRaised === null || calibration.commandRaised === undefined ? Number(calibration.raised) : Number(calibration.commandRaised);
-  const loweredCommand = calibration.commandLowered === null || calibration.commandLowered === undefined ? Number(calibration.lowered) : Number(calibration.commandLowered);
-  if (!Number.isFinite(raisedCommand) || !Number.isFinite(loweredCommand) || Math.abs(loweredCommand - raisedCommand) < 0.5) {
-    return clamped;
+export function airerDevicePosition(reportedPercent, deviceCalibration = {}) {
+  const clampedDevicePosition = Math.max(0, Math.min(100, Number(reportedPercent) || 0));
+  const commandRaised =
+    deviceCalibration.commandRaised === null || deviceCalibration.commandRaised === undefined
+      ? Number(deviceCalibration.raised)
+      : Number(deviceCalibration.commandRaised);
+  const commandLowered =
+    deviceCalibration.commandLowered === null || deviceCalibration.commandLowered === undefined
+      ? Number(deviceCalibration.lowered)
+      : Number(deviceCalibration.commandLowered);
+  if (
+    !Number.isFinite(commandRaised) ||
+    !Number.isFinite(commandLowered) ||
+    Math.abs(commandLowered - commandRaised) < 0.5
+  ) {
+    return clampedDevicePosition;
   }
-  const raised = raisedCommand;
-  const lowered = loweredCommand;
-  return lowered - clamped / 100 * (lowered - raised);
+  const spanStart = commandRaised;
+  const spanEnd = commandLowered;
+  return spanEnd - (clampedDevicePosition / 100) * (spanEnd - spanStart);
 }
-const WATER_HEATER_RELATED_DOMAINS = new Set(["switch", "select", "number", "button"]);
-export function relatedWaterHeaterEntities(entityMetadata, entityId) {
-  const metadata = entityMetadata.get(entityId);
-  if (!metadata?.deviceId) {
+const WATER_HEATER_DOMAINS = new Set(["switch", "select", "number", "button"]);
+export function relatedWaterHeaterEntities(waterHeaterEntitiesById, waterHeaterEntityId) {
+  const waterHeaterSourceEntity = waterHeaterEntitiesById.get(waterHeaterEntityId);
+  if (!waterHeaterSourceEntity?.deviceId) {
     return [];
   }
-  const DOMAIN_ORDER = new Map([["switch", 0], ["select", 1], ["number", 2], ["button", 3]]);
-  return [...entityMetadata.values()].filter(candidate => candidate.entityId !== entityId && candidate.deviceId === metadata.deviceId && WATER_HEATER_RELATED_DOMAINS.has(String(candidate.domain || "")) && entityMetadataIsAvailable(candidate)).sort((left, right) => (DOMAIN_ORDER.get(left.domain) ?? 99) - (DOMAIN_ORDER.get(right.domain) ?? 99) || String(left.entityId || "").localeCompare(String(right.entityId || "")));
+  const domainOrder = new Map([
+    ["switch", 0],
+    ["select", 1],
+    ["number", 2],
+    ["button", 3]
+  ]);
+  return [...waterHeaterEntitiesById.values()]
+    .filter(
+      waterHeaterCandidate =>
+        waterHeaterCandidate.entityId !== waterHeaterEntityId &&
+        waterHeaterCandidate.deviceId === waterHeaterSourceEntity.deviceId &&
+        WATER_HEATER_DOMAINS.has(String(waterHeaterCandidate.domain || "")) &&
+        entityMetadataIsAvailable(waterHeaterCandidate)
+    )
+    .sort(
+      (leftWaterHeaterEntity, rightWaterHeaterEntity) =>
+        (domainOrder.get(leftWaterHeaterEntity.domain) ?? 99) -
+          (domainOrder.get(rightWaterHeaterEntity.domain) ?? 99) ||
+        String(leftWaterHeaterEntity.entityId || "").localeCompare(
+          String(rightWaterHeaterEntity.entityId || "")
+        )
+    );
 }
-export function waterHeaterRelatedEntityLabel(sourceEntity, relatedEntity) {
-  let label = String(relatedEntity?.name || relatedEntity?.originalName || "").replace(/\s+/g, " ").trim();
-  const prefixes = [...new Set([sourceEntity?.originalName, sourceEntity?.name].map(name => String(name || "").replace(/\s+/g, " ").trim()).filter(Boolean))].sort((left, right) => right.length - left.length);
-  for (const prefix of prefixes) {
-    while (label !== prefix && label.startsWith(prefix + " ")) {
-      label = label.slice(prefix.length).trim();
+export function waterHeaterRelatedEntityLabel(labelComponent, entityMetadata) {
+  let label = String(entityMetadata?.name || entityMetadata?.originalName || "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const parentNameCandidates = [
+    ...new Set(
+      [labelComponent?.originalName, labelComponent?.name]
+        .map(nameCandidate =>
+          String(nameCandidate || "")
+            .replace(/\s+/g, " ")
+            .trim()
+        )
+        .filter(Boolean)
+    )
+  ].sort((leftParentName, rightParentName) => rightParentName.length - leftParentName.length);
+  for (const parentName of parentNameCandidates) {
+    while (label !== parentName && label.startsWith(parentName + " ")) {
+      label = label.slice(parentName.length).trim();
     }
   }
-  return label || (String(relatedEntity?.entityId || "").split(".", 2)[1] || "扩展功能").replace(/_/g, " ");
+  return (
+    label ||
+    (String(entityMetadata?.entityId || "").split(".", 2)[1] || "扩展功能").replace(/_/g, " ")
+  );
 }
-export function relatedCoverMotorReverseEntity(entityMetadata, entityId) {
-  const metadata = entityMetadata.get(entityId);
-  return metadata?.deviceId && [...entityMetadata.values()].find(candidate => candidate.deviceId === metadata.deviceId && ["switch", "select"].includes(String(candidate.domain || "")) && /motor_reverse|电机反向/i.test((candidate.entityId || "") + " " + (candidate.name || "")) && entityMetadataIsAvailable(candidate)) || null;
+export function relatedCoverMotorReverseEntity(motorReverseEntitiesById, reverseEntityId) {
+  const motorReverseSourceEntity = motorReverseEntitiesById.get(reverseEntityId);
+  return (
+    (motorReverseSourceEntity?.deviceId &&
+      [...motorReverseEntitiesById.values()].find(
+        motorReverseCandidate =>
+          motorReverseCandidate.deviceId === motorReverseSourceEntity.deviceId &&
+          ["switch", "select"].includes(String(motorReverseCandidate.domain || "")) &&
+          /motor_reverse|电机反向/i.test(
+            (motorReverseCandidate.entityId || "") + " " + (motorReverseCandidate.name || "")
+          ) &&
+          entityMetadataIsAvailable(motorReverseCandidate)
+      )) ||
+    null
+  );
 }
-function stateLooksEnabled(stateEntry) {
-  const state = String(stateEntry?.newState?.state ?? stateEntry?.state ?? "").trim().toLowerCase();
-  return ["on", "true", "1", "enabled", "开启", "打开"].includes(state);
+function stateIsTruthy(truthyStateInput) {
+  const lowercasedState = String(truthyStateInput?.newState?.state ?? truthyStateInput?.state ?? "")
+    .trim()
+    .toLowerCase();
+  return ["on", "true", "1", "enabled", "开启", "打开"].includes(lowercasedState);
 }
-function isCoverMotorReversed(entityMetadata, states, entityId) {
-  const reverseEntity = relatedCoverMotorReverseEntity(entityMetadata, entityId);
-  return !!reverseEntity?.entityId && !!stateLooksEnabled(states.get(reverseEntity.entityId));
+function isCoverMotorReversed(motorEntitiesById, coverStateByEntityId, motorEntityId) {
+  const motorReverseEntity = relatedCoverMotorReverseEntity(motorEntitiesById, motorEntityId);
+  return (
+    !!motorReverseEntity?.entityId &&
+    !!stateIsTruthy(coverStateByEntityId.get(motorReverseEntity.entityId))
+  );
 }
-export function coverMotorIsReversedForComponent(component, entityMetadata, states, entityId) {
-  const coverMotorDirection = component?.properties?.coverMotorDirection;
-  if (coverMotorDirection === "normal") {
+export function coverMotorIsReversedForComponent(
+  directionComponent,
+  componentStatesByEntityId,
+  componentEntitiesById,
+  componentTargetEntityId
+) {
+  const motorDirection = directionComponent?.properties?.coverMotorDirection;
+  if (motorDirection === "normal") {
     return false;
   } else {
-    return coverMotorDirection === "reversed";
+    return motorDirection === "reversed";
   }
 }
-export function physicalCoverState(state, motorReversed = false) {
-  const text = String(state || "");
-  return motorReversed && {
-    open: "closed",
-    closed: "open",
-    opening: "closing",
-    closing: "opening"
-  }[text] || text;
+export function physicalCoverState(stateInput, reverseOverride = false) {
+  const stateName = String(stateInput || "");
+  return (
+    (reverseOverride &&
+      {
+        open: "closed",
+        closed: "open",
+        opening: "closing",
+        closing: "opening"
+      }[stateName]) ||
+    stateName
+  );
 }
-export function coverPresentationState(entityOrEvent, motorReversed = false) {
-  const stateEntry = entityOrEvent?.newState || entityOrEvent || {};
-  const physicalState = physicalCoverState(stateEntry.state, motorReversed);
-  if (physicalState === "opening" || physicalState === "closing") {
-    return physicalState;
+export function coverPresentationState(presentationStateInput, isReversedOverride = false) {
+  const stateObject = presentationStateInput?.newState || presentationStateInput || {};
+  const presentedState = physicalCoverState(stateObject.state, isReversedOverride);
+  if (presentedState === "opening" || presentedState === "closing") {
+    return presentedState;
   }
-  const currentPosition = readCurrentPosition(stateEntry);
-  if (currentPosition === null) {
-    return physicalState;
-  } else if ((motorReversed ? 100 - currentPosition : currentPosition) <= COVER_CLOSED_POSITION_EPSILON) {
+  const statePositionPercent = coverPositionPercent(stateObject);
+  if (statePositionPercent === null) {
+    return presentedState;
+  } else if (
+    (isReversedOverride ? 100 - statePositionPercent : statePositionPercent) <= PERCENT_EPSILON
+  ) {
     return "closed";
   } else {
     return "open";
   }
 }
-function coverPhysicalPresentationState(entityOrEvent, motorReversed = false) {
-  const stateEntry = entityOrEvent?.newState || entityOrEvent || {};
-  return physicalCoverState(stateEntry.state, motorReversed);
+function resolvedCoverState(physicalStateInput, motorReversed = false) {
+  const coverStateObject = physicalStateInput?.newState || physicalStateInput || {};
+  return physicalCoverState(coverStateObject.state, motorReversed);
 }
-export function dreamCurtainBladeLabel(position) {
-  const clamped = Math.max(0, Math.min(100, Number(position) || 0));
-  if (clamped <= COVER_CLOSED_POSITION_EPSILON) {
+export function dreamCurtainBladeLabel(bladePosition) {
+  const clampedBladePosition = Math.max(0, Math.min(100, Number(bladePosition) || 0));
+  if (clampedBladePosition <= PERCENT_EPSILON) {
     return "一侧闭合";
-  } else if (clamped >= 100 - COVER_CLOSED_POSITION_EPSILON) {
+  } else if (clampedBladePosition >= 100 - PERCENT_EPSILON) {
     return "反向闭合";
-  } else if (Math.abs(clamped - 50) <= 2) {
+  } else if (Math.abs(clampedBladePosition - 50) <= 2) {
     return "90°打开";
   } else {
-    return Math.round(clamped * 1.8) + "°";
+    return Math.round(clampedBladePosition * 1.8) + "°";
   }
 }
-export function dreamCurtainStatusText(coverState, bladePosition, motorReversed = false) {
-  const physicalState = physicalCoverState(coverState, motorReversed);
-  return "整体：" + ({
-    open: "开启",
-    closed: "关闭",
-    opening: "正在开启",
-    closing: "正在关闭"
-  }[physicalState] || "未知") + " · 叶片：" + dreamCurtainBladeLabel(bladePosition);
+export function dreamCurtainStatusText(coverStateName, bladeAngle, reverseFlag = false) {
+  const resolvedPhysicalState = physicalCoverState(coverStateName, reverseFlag);
+  return (
+    "整体：" +
+    ({
+      open: "开启",
+      closed: "关闭",
+      opening: "正在开启",
+      closing: "正在关闭"
+    }[resolvedPhysicalState] || "未知") +
+    " · 叶片：" +
+    dreamCurtainBladeLabel(bladeAngle)
+  );
 }
-export function dreamCurtainStatusFromRetraction(isRetracted, isMoving, bladePosition) {
-  return "整体：" + (isMoving ? isRetracted ? "正在开启" : "正在关闭" : isRetracted ? "开启" : "关闭") + " · 叶片：" + dreamCurtainBladeLabel(bladePosition);
+export function dreamCurtainStatusFromRetraction(isRetracting, isMoving, bladePercent) {
+  return (
+    "整体：" +
+    (isMoving ? (isRetracting ? "正在开启" : "正在关闭") : isRetracting ? "开启" : "关闭") +
+    " · 叶片：" +
+    dreamCurtainBladeLabel(bladePercent)
+  );
 }
-export function dreamCurtainIsRetracted(coverState, motorReversed = false) {
-  const physicalState = physicalCoverState(coverState, motorReversed);
-  return physicalState === "open" || physicalState === "opening";
+export function dreamCurtainIsRetracted(retractionStateInput, retractionReversed = false) {
+  const retractedState = physicalCoverState(retractionStateInput, retractionReversed);
+  return retractedState === "open" || retractedState === "opening";
 }
-export function dreamCurtainToggleService(isRetracted, retractService, extendService) {
+export function dreamCurtainToggleService(isRetracted, openService, closeService) {
   if (isRetracted) {
-    return extendService;
+    return closeService;
   } else {
-    return retractService;
+    return openService;
   }
 }
-export function coverToggleServiceForComponent(component, entityMetadata, states, entityId) {
-  const stateEntry = states.get(entityId);
-  const motorReversed = coverMotorIsReversedForComponent(component, entityMetadata, states, entityId);
-  const presentationState = coverComponentIsDream(component, entityId, stateEntry, entityMetadata) ? coverPhysicalPresentationState(stateEntry, motorReversed) : coverPresentationState(stateEntry, motorReversed);
+export function coverToggleServiceForComponent(
+  toggleComponent,
+  stateByEntityId,
+  componentEntitiesByIdLookup,
+  componentEntityId
+) {
+  const componentEntity = componentEntitiesByIdLookup.get(componentEntityId);
+  const isMotorReversed = coverMotorIsReversedForComponent(
+    toggleComponent,
+    stateByEntityId,
+    componentEntitiesByIdLookup,
+    componentEntityId
+  );
+  const presentationState = coverComponentIsDream(
+    toggleComponent,
+    componentEntityId,
+    componentEntity,
+    stateByEntityId
+  )
+    ? resolvedCoverState(componentEntity, isMotorReversed)
+    : coverPresentationState(componentEntity, isMotorReversed);
   if (presentationState === "open" || presentationState === "opening") {
-    if (motorReversed) {
+    if (isMotorReversed) {
       return "open_cover";
     } else {
       return "close_cover";
     }
-  } else if (motorReversed) {
+  } else if (isMotorReversed) {
     return "close_cover";
   } else {
     return "open_cover";

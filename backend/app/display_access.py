@@ -3,13 +3,14 @@ from __future__ import annotations
 import secrets
 from uuid import uuid4
 
-from config import Settings
-from database import Database
-from ha.crypto import CredentialCipher
-from models import DisplayDevice, DisplayPairingCode, User
-from security import session_token_hash
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
+
+from .config import Settings
+from .database import Database
+from .ha.crypto import CredentialCipher
+from .models import DisplayDevice, DisplayPairingCode, User
+from .security import session_token_hash
 
 
 def active_display_device(database: Session, token: str) -> DisplayDevice | None:
@@ -22,7 +23,10 @@ def active_display_device(database: Session, token: str) -> DisplayDevice | None
         return None
     return database.scalar(
         select(DisplayDevice)
-        .outerjoin(DisplayPairingCode, DisplayPairingCode.id == DisplayDevice.pairing_code_id)
+        .outerjoin(
+            DisplayPairingCode,
+            DisplayPairingCode.id == DisplayDevice.pairing_code_id,
+        )
         .where(
             DisplayDevice.token_hash == session_token_hash(token),
             DisplayDevice.revoked_at.is_(None),
@@ -48,19 +52,21 @@ def backfill_persistent_display_pairings(settings: Settings, database: Database)
         )
         if not devices:
             return 0
-        owner = session.scalar(select(User).where(User.is_active.is_(True)).order_by(User.created_at))
+        owner = session.scalar(
+            select(User).where(User.is_active.is_(True)).order_by(User.created_at)
+        )
         if owner is None:
             return 0
         existing_hashes = set(session.scalars(select(DisplayPairingCode.code_hash)))
         created = 0
         for device in devices:
             for _attempt in range(100):
-                code = f'{secrets.randbelow(1000000):06d}'
+                code = f"{secrets.randbelow(1000000):06d}"
                 code_hash = session_token_hash(code)
                 if code_hash not in existing_hashes:
                     break
             else:
-                raise RuntimeError('无法为旧中控生成唯一固定配对码。')
+                raise RuntimeError("无法为旧中控生成唯一固定配对码。")
             pairing = DisplayPairingCode(
                 id=str(uuid4()),
                 code_hash=code_hash,

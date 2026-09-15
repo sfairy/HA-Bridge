@@ -1,8 +1,12 @@
-export function normalizeGroundReflection(o = {}) {
-  o = o && typeof o == "object" ? o : {};
-  return {
-    mode: ["off", "inside", "outside", "all"].includes(o.mode) ? o.mode : "off",
-    resolution: [256, 512, 768].includes(o.resolution) ? o.resolution : 512,
-    strength: Number.isFinite(o.strength) ? Math.max(0, Math.min(0.45, o.strength)) : 0.18
-  };
+export function normalizeGroundReflection(settings = {}) {
+  return (
+    (settings = settings && typeof settings == "object" ? settings : {}),
+    {
+      mode: ["off", "inside", "outside", "all"].includes(settings.mode) ? settings.mode : "off",
+      resolution: [256, 512, 768].includes(settings.resolution) ? settings.resolution : 512,
+      strength: Number.isFinite(settings.strength)
+        ? Math.max(0, Math.min(0.45, settings.strength))
+        : 0.18
+    }
+  );
 }

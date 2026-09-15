@@ -3,8 +3,9 @@ from __future__ import annotations
 import os
 import pwd
 import sys
-from collections.abc import Mapping, MutableMapping, Sequence
 from pathlib import Path
+from typing import Mapping, MutableMapping, Sequence
+
 
 RUN_AS_USER = "ha-bridge"
 

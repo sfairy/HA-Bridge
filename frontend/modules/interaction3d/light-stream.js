@@ -1,212 +1,269 @@
 export function createLightStream({
-  onStates = () => {},
-  onPatch = null,
-  createSocket = url => new window.WebSocket(url),
-  socketURL = () => {
-    const endpoint = new URL("/api/v1/ws/runtime", location.origin);
-    endpoint.protocol = endpoint.protocol === "https:" ? "wss:" : "ws:";
-    return endpoint.href;
+  onStates: onStates = () => {},
+  onPatch: onPatch = null,
+  createSocket: createSocket = socketUrl => new window.WebSocket(socketUrl),
+  socketURL: resolveSocketUrl = () => {
+    const endpointUrl = new URL("/api/v1/ws/runtime", location.origin);
+    endpointUrl.protocol = endpointUrl.protocol === "https:" ? "wss:" : "ws:";
+    return endpointUrl.href;
   },
-  setTimer = (callback, delay) => setTimeout(callback, delay),
-  clearTimer = timerId => clearTimeout(timerId)
+  setTimer: setTimer = (timerCallback, timerDelayMs) => setTimeout(timerCallback, timerDelayMs),
+  clearTimer: clearTimer = pendingTimerId => clearTimeout(pendingTimerId)
 } = {}) {
-  let entityIds = [];
-  let entityIdSet = new Set();
-  let stateByEntityId = new Map();
-  let active = false;
-  let disposed = false;
+  let subscribedEntityIds = [];
+  let subscribedEntityIdSet = new Set();
+  let statesByEntityId = new Map();
+  let isStreamActive = false;
+  let isDisposed = false;
   let hasSnapshot = false;
-  let socket = null;
+  let activeSocket = null;
   let removeSocketListeners = null;
   let connectionGeneration = 0;
   let reconnectAttempt = 0;
-  let reconnectTimer = null;
-  let idleTimer = null;
-  const unavailableState = entityId => ({
-    entityId,
+  let reconnectTimerId = null;
+  let heartbeatTimerId = null;
+  const unavailableState = unavailableEntityId => ({
+    entityId: unavailableEntityId,
     state: "unavailable",
     available: false,
     attributes: {}
   });
-  const emitStates = () => onStates(hasSnapshot ? Object.fromEntries(entityIds.map(entityId => [entityId, structuredClone(stateByEntityId.get(entityId) || unavailableState(entityId))])) : {});
-  const emitEntityPatch = entityId => typeof onPatch == "function" ? onPatch({
-    [entityId]: structuredClone(stateByEntityId.get(entityId) || unavailableState(entityId))
-  }) : emitStates();
-  function clearStates() {
-    stateByEntityId = new Map();
+  const emitStates = () =>
+    onStates(
+      hasSnapshot
+        ? Object.fromEntries(
+            subscribedEntityIds.map(clonedEntityId => [
+              clonedEntityId,
+              structuredClone(
+                statesByEntityId.get(clonedEntityId) || unavailableState(clonedEntityId)
+              )
+            ])
+          )
+        : {}
+    );
+  const emitPatch = patchedEntityId =>
+    typeof onPatch == "function"
+      ? onPatch({
+          [patchedEntityId]: structuredClone(
+            statesByEntityId.get(patchedEntityId) || unavailableState(patchedEntityId)
+          )
+        })
+      : emitStates();
+  function resetStates() {
+    statesByEntityId = new Map();
     hasSnapshot = false;
     emitStates();
   }
   function clearTimers() {
-    if (reconnectTimer !== null) {
-      clearTimer(reconnectTimer);
+    if (reconnectTimerId !== null) {
+      clearTimer(reconnectTimerId);
     }
-    if (idleTimer !== null) {
-      clearTimer(idleTimer);
+    if (heartbeatTimerId !== null) {
+      clearTimer(heartbeatTimerId);
     }
-    reconnectTimer = idleTimer = null;
+    reconnectTimerId = heartbeatTimerId = null;
   }
-  function closeSocket() {
+  function closeActiveSocket() {
     connectionGeneration += 1;
     clearTimers();
-    const previousSocket = socket;
-    socket = null;
+    const socketToClose = activeSocket;
+    activeSocket = null;
     removeSocketListeners?.();
     removeSocketListeners = null;
     try {
-      previousSocket?.close();
+      socketToClose?.close();
     } catch {}
   }
   function scheduleReconnect() {
-    if (disposed || !active || !entityIds.length || reconnectTimer !== null) {
+    if (isDisposed || !isStreamActive || !subscribedEntityIds.length || reconnectTimerId !== null) {
       return;
     }
-    const delay = Math.min(15000, 2 ** Math.min(reconnectAttempt++, 5) * 500);
-    reconnectTimer = setTimer(() => {
-      reconnectTimer = null;
-      connect();
-    }, delay);
+    const reconnectDelayMs = Math.min(15000, 2 ** Math.min(reconnectAttempt++, 5) * 500);
+    reconnectTimerId = setTimer(() => {
+      reconnectTimerId = null;
+      openSocket();
+    }, reconnectDelayMs);
   }
-  function connect() {
-    if (disposed || !active || !entityIds.length || socket) {
+  function openSocket() {
+    if (isDisposed || !isStreamActive || !subscribedEntityIds.length || activeSocket) {
       return;
     }
-    const generation = ++connectionGeneration;
+    const socketGeneration = ++connectionGeneration;
     let nextSocket;
     try {
-      nextSocket = createSocket(typeof socketURL == "function" ? socketURL() : socketURL);
+      nextSocket = createSocket(
+        typeof resolveSocketUrl == "function" ? resolveSocketUrl() : resolveSocketUrl
+      );
     } catch {
-      clearStates();
+      resetStates();
       scheduleReconnect();
       return;
     }
-    socket = nextSocket;
-    const isCurrent = () => !disposed && active && generation === connectionGeneration && socket === nextSocket;
-    const fail = (closeCode = 0) => {
-      if (isCurrent()) {
-        closeSocket();
-        clearStates();
+    activeSocket = nextSocket;
+    const isCurrentSocket = () =>
+      !isDisposed &&
+      isStreamActive &&
+      socketGeneration === connectionGeneration &&
+      activeSocket === nextSocket;
+    const handleSocketFailure = (closeCode = 0) => {
+      if (isCurrentSocket()) {
+        closeActiveSocket();
+        resetStates();
         if (![4400, 4401, 4403].includes(closeCode)) {
           scheduleReconnect();
         }
       }
     };
-    function armIdleTimeout(delay) {
-      if (idleTimer !== null) {
-        clearTimer(idleTimer);
+    function scheduleHeartbeatTimeout(heartbeatTimeoutMs) {
+      if (heartbeatTimerId !== null) {
+        clearTimer(heartbeatTimerId);
       }
-      idleTimer = setTimer(() => fail(), delay);
+      heartbeatTimerId = setTimer(() => handleSocketFailure(), heartbeatTimeoutMs);
     }
-    const handlers = {
+    const socketHandlers = {
       open() {
-        if (isCurrent()) {
+        if (isCurrentSocket()) {
           try {
-            nextSocket.send(JSON.stringify({
-              type: "subscribe",
-              entityIds
-            }));
+            nextSocket.send(
+              JSON.stringify({
+                type: "subscribe",
+                entityIds: subscribedEntityIds
+              })
+            );
           } catch {
-            fail();
+            handleSocketFailure();
           }
         }
       },
-      message(event) {
-        if (!isCurrent()) {
+      message(messageEvent) {
+        if (!isCurrentSocket()) {
           return;
         }
-        let message;
+        let messagePayload;
         try {
-          message = JSON.parse(event.data);
+          messagePayload = JSON.parse(messageEvent.data);
         } catch {
           return;
         }
-        if (!!message && typeof message == "object") {
-          if (message.type === "resync_required") {
-            closeSocket();
-            clearStates();
-            connect();
+        if (!!messagePayload && typeof messagePayload == "object") {
+          if (messagePayload.type === "resync_required") {
+            closeActiveSocket();
+            resetStates();
+            openSocket();
             return;
           }
-          if (message.type === "snapshot" && Array.isArray(message.states)) {
-            const nextStates = new Map();
-            for (const state of message.states) {
-              if (entityIdSet.has(state?.entityId) && typeof state.state == "string") {
-                nextStates.set(state.entityId, structuredClone(state));
+          if (messagePayload.type === "snapshot" && Array.isArray(messagePayload.states)) {
+            const snapshotStates = new Map();
+            for (const snapshotState of messagePayload.states) {
+              if (
+                subscribedEntityIdSet.has(snapshotState?.entityId) &&
+                typeof snapshotState.state == "string"
+              ) {
+                snapshotStates.set(snapshotState.entityId, structuredClone(snapshotState));
               }
             }
-            stateByEntityId = nextStates;
+            statesByEntityId = snapshotStates;
             hasSnapshot = true;
             reconnectAttempt = 0;
-            armIdleTimeout(65000);
+            scheduleHeartbeatTimeout(65000);
             emitStates();
-          } else if (hasSnapshot && message.type === "state_changed" && entityIdSet.has(message.entityId) && typeof message.state == "string") {
-            stateByEntityId.set(message.entityId, structuredClone(message));
-            armIdleTimeout(65000);
-            emitEntityPatch(message.entityId);
-          } else if (hasSnapshot && message.type === "state_removed" && entityIdSet.has(message.entityId)) {
-            stateByEntityId.delete(message.entityId);
-            armIdleTimeout(65000);
-            emitEntityPatch(message.entityId);
-          } else if (hasSnapshot && message.type === "ping") {
-            armIdleTimeout(65000);
+          } else if (
+            hasSnapshot &&
+            messagePayload.type === "state_changed" &&
+            subscribedEntityIdSet.has(messagePayload.entityId) &&
+            typeof messagePayload.state == "string"
+          ) {
+            statesByEntityId.set(messagePayload.entityId, structuredClone(messagePayload));
+            scheduleHeartbeatTimeout(65000);
+            emitPatch(messagePayload.entityId);
+          } else if (
+            hasSnapshot &&
+            messagePayload.type === "state_removed" &&
+            subscribedEntityIdSet.has(messagePayload.entityId)
+          ) {
+            statesByEntityId.delete(messagePayload.entityId);
+            scheduleHeartbeatTimeout(65000);
+            emitPatch(messagePayload.entityId);
+          } else if (hasSnapshot && messagePayload.type === "ping") {
+            scheduleHeartbeatTimeout(65000);
           }
         }
       },
-      close(event) {
-        fail(event.code);
+      close(closeEvent) {
+        handleSocketFailure(closeEvent.code);
       },
       error() {
-        fail();
+        handleSocketFailure();
       }
     };
-    for (const [eventName, handler] of Object.entries(handlers)) {
-      nextSocket.addEventListener(eventName, handler);
+    for (const [addedHandlerName, addedHandler] of Object.entries(socketHandlers)) {
+      nextSocket.addEventListener(addedHandlerName, addedHandler);
     }
     removeSocketListeners = () => {
-      for (const [eventName, handler] of Object.entries(handlers)) {
-        nextSocket.removeEventListener(eventName, handler);
+      for (const [removedHandlerName, removedHandler] of Object.entries(socketHandlers)) {
+        nextSocket.removeEventListener(removedHandlerName, removedHandler);
       }
     };
-    armIdleTimeout(12000);
+    scheduleHeartbeatTimeout(12000);
   }
   return {
-    configure(nextEntityIds = [], {
-      additionalEntityIds = []
-    } = {}) {
-      if (disposed) {
+    configure(entityIds = [], { additionalEntityIds: additionalEntityIds = [] } = {}) {
+      if (isDisposed) {
         return;
       }
-      const allowedAdditional = new Set(additionalEntityIds.filter(entityId => typeof entityId == "string" && /^[a-z_]+\.[a-z0-9_]+$/.test(entityId)));
-      const normalizedEntityIds = [...new Set(nextEntityIds.filter(entityId => typeof entityId == "string" && (allowedAdditional.has(entityId) || /^(light|switch|climate|cover|binary_sensor|event|input_boolean|sensor|media_player|vacuum|camera|image|script|button)\.[a-z0-9_]+$/.test(entityId))))].sort();
-      if (normalizedEntityIds.length !== entityIds.length || !normalizedEntityIds.every((entityId, index) => entityId === entityIds[index])) {
-        closeSocket();
-        entityIds = normalizedEntityIds;
-        entityIdSet = new Set(entityIds);
+      const additionalEntityIdSet = new Set(
+        additionalEntityIds.filter(
+          additionalCandidateId =>
+            typeof additionalCandidateId == "string" &&
+            /^[a-z_]+\.[a-z0-9_]+$/.test(additionalCandidateId)
+        )
+      );
+      const nextSubscribedEntityIds = [
+        ...new Set(
+          entityIds.filter(
+            candidateEntityId =>
+              typeof candidateEntityId == "string" &&
+              (additionalEntityIdSet.has(candidateEntityId) ||
+                /^(light|switch|climate|cover|binary_sensor|event|input_boolean|sensor|media_player|vacuum|camera|image|script|button)\.[a-z0-9_]+$/.test(
+                  candidateEntityId
+                ))
+          )
+        )
+      ].sort();
+      if (
+        nextSubscribedEntityIds.length !== subscribedEntityIds.length ||
+        !nextSubscribedEntityIds.every(
+          (sortedEntityId, entityIdIndex) => sortedEntityId === subscribedEntityIds[entityIdIndex]
+        )
+      ) {
+        closeActiveSocket();
+        subscribedEntityIds = nextSubscribedEntityIds;
+        subscribedEntityIdSet = new Set(subscribedEntityIds);
         reconnectAttempt = 0;
-        clearStates();
-        connect();
+        resetStates();
+        openSocket();
       }
     },
-    setActive(nextActive) {
-      if (!disposed && active !== (nextActive === true)) {
-        active = nextActive === true;
+    setActive(isActiveNext) {
+      if (!isDisposed && isStreamActive !== (isActiveNext === true)) {
+        isStreamActive = isActiveNext === true;
         reconnectAttempt = 0;
-        if (active) {
-          connect();
+        if (isStreamActive) {
+          openSocket();
         } else {
-          closeSocket();
-          clearStates();
+          closeActiveSocket();
+          resetStates();
         }
       }
     },
     dispose() {
-      if (!disposed) {
-        disposed = true;
-        active = false;
-        closeSocket();
-        entityIds = [];
-        entityIdSet.clear();
-        stateByEntityId.clear();
+      if (!isDisposed) {
+        isDisposed = true;
+        isStreamActive = false;
+        closeActiveSocket();
+        subscribedEntityIds = [];
+        subscribedEntityIdSet.clear();
+        statesByEntityId.clear();
       }
     }
   };

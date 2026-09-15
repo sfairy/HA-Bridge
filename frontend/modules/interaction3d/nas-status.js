@@ -1,119 +1,160 @@
-export function nasState(entityId, newState) {
-  const state = newState?.newState || newState || {};
-  const rawState = String(state.state || "").trim().toLowerCase();
-  const available = /^(binary_sensor|switch|input_boolean)\.[a-z0-9_]+$/.test(entityId || "") && state.available !== false && ["on", "off"].includes(rawState);
+export function nasState(entityId, state) {
+  const stateObject = state?.newState || state || {};
+  const stateValue = String(stateObject.state || "")
+    .trim()
+    .toLowerCase();
+  const available =
+    /^(binary_sensor|switch|input_boolean)\.[a-z0-9_]+$/.test(entityId || "") &&
+    stateObject.available !== false &&
+    ["on", "off"].includes(stateValue);
   return {
-    available,
-    on: available && rawState === "on",
-    name: state.attributes?.friendly_name || entityId || "NAS"
+    available: available,
+    on: available && stateValue === "on",
+    name: stateObject.attributes?.friendly_name || entityId || "NAS"
   };
 }
-export function nasDeviceState(binding, states = {}) {
-  const lookup = entityId => states instanceof Map ? states.get(entityId) : states[entityId];
-  if (binding.entityId) {
-    return nasState(binding.entityId, lookup(binding.entityId));
+export function nasDeviceState(item, stateSources = {}) {
+  const readState = stateEntityId =>
+    stateSources instanceof Map ? stateSources.get(stateEntityId) : stateSources[stateEntityId];
+  if (item.entityId) {
+    return nasState(item.entityId, readState(item.entityId));
   }
-  const primaryEntityId = binding.statusSource?.primaryEntityId;
-  const state = lookup(primaryEntityId)?.newState || lookup(primaryEntityId);
-  const available = !!primaryEntityId && state?.available !== false && state?.state != null && !["", "unknown", "unavailable", "none"].includes(String(state.state).trim().toLowerCase());
+  const hasActiveMetric = [
+    ...new Set([
+      item.statusSource?.primaryEntityId,
+      ...(item.statusSource?.metrics || []).map(metricSource => metricSource.entityId)
+    ])
+  ].some(metricEntityId => {
+    const metricState = readState(metricEntityId)?.newState || readState(metricEntityId);
+    return (
+      !!metricEntityId &&
+      metricState?.available !== false &&
+      metricState?.state != null &&
+      !["", "unknown", "unavailable", "none"].includes(
+        String(metricState.state).trim().toLowerCase()
+      )
+    );
+  });
   return {
-    available,
-    on: available,
-    name: binding.statusSource?.name || "NAS"
+    available: hasActiveMetric,
+    on: hasActiveMetric,
+    name: item.statusSource?.name || "NAS"
   };
 }
-export function createNasStatus({
-  THREE,
-  requestFrame = () => {}
-}) {
-  const entries = new Map();
-  const sharedGeometry = new THREE.PlaneGeometry(1, 1);
-  let root;
-  let sceneRevision;
-  let bindingsSignature;
-  let disposed = false;
-  let hasVisible = false;
-  let lastPulseAt = -Infinity;
-  const prefersReducedMotion = () => globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true || globalThis.window?.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
-  const modelKey = (floorId, modelId) => JSON.stringify([floorId || "", modelId || ""]);
-  function disposeEntry(entry) {
+export function createNasStatus({ THREE: THREE, requestFrame: requestFrame = () => {} }) {
+  const meshesByBindingId = new Map();
+  const planeGeometry = new THREE.PlaneGeometry(1, 1);
+  let syncedRoot;
+  let syncedRevision;
+  let syncedBindingsSignature;
+  let isDisposed = false;
+  let hasVisibleIndicator = false;
+  let lastTickMs = -Infinity;
+  const prefersReducedMotion = () =>
+    globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true ||
+    globalThis.window?.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+  const locationKey = (floorId, modelId) => JSON.stringify([floorId || "", modelId || ""]);
+  function releaseEntry(entry) {
     for (const [indicator, wasVisible] of entry.indicators) {
       indicator.visible = wasVisible;
     }
     entry.mesh.removeFromParent();
     entry.mesh.material.dispose();
   }
-  function modelBounds(modelNode) {
-    const box = new THREE.Box3();
-    function accumulate(node, worldMatrix) {
-      if (!node.userData?.environmentEffect && (node === modelNode || node.userData?.environmentModelId == null)) {
-        if (node.isMesh && node.geometry) {
-          if (!node.geometry.boundingBox) {
-            node.geometry.computeBoundingBox();
+  function computeModelBounds(model) {
+    const bounds = new THREE.Box3();
+    function unionMeshBounds(object, matrix) {
+      if (
+        !object.userData?.environmentEffect &&
+        (object === model || object.userData?.environmentModelId == null)
+      ) {
+        if (object.isMesh && object.geometry) {
+          if (!object.geometry.boundingBox) {
+            object.geometry.computeBoundingBox();
           }
-          if (node.geometry.boundingBox) {
-            box.union(node.geometry.boundingBox.clone().applyMatrix4(worldMatrix));
+          if (object.geometry.boundingBox) {
+            bounds.union(object.geometry.boundingBox.clone().applyMatrix4(matrix));
           }
         }
-        for (const child of node.children || []) {
-          if (child.matrixAutoUpdate) {
-            child.updateMatrix();
+        for (const descendant of object.children || []) {
+          if (descendant.matrixAutoUpdate) {
+            descendant.updateMatrix();
           }
-          accumulate(child, new THREE.Matrix4().multiplyMatrices(worldMatrix, child.matrix));
+          unionMeshBounds(
+            descendant,
+            new THREE.Matrix4().multiplyMatrices(matrix, descendant.matrix)
+          );
         }
       }
     }
-    accumulate(modelNode, new THREE.Matrix4());
-    return box;
+    unionMeshBounds(model, new THREE.Matrix4());
+    return bounds;
   }
   function sync({
-    root: nextRoot,
-    revision,
-    bindings = [],
-    states = {},
-    enabled = false,
-    sizeScale = 1,
-    brightness = 1
+    root: root,
+    revision: revision,
+    bindings: bindings = [],
+    states: states = {},
+    enabled: enabled = false,
+    sizeScale: sizeScale = 1,
+    brightness: brightness = 1
   }) {
-    if (disposed) {
+    if (isDisposed) {
       return;
     }
-    const nextBindingsSignature = JSON.stringify(bindings.map(binding => [binding.id, binding.floorId, binding.modelId]));
-    if (root !== nextRoot || sceneRevision !== revision || bindingsSignature !== nextBindingsSignature) {
-      root = nextRoot;
-      sceneRevision = revision;
-      bindingsSignature = nextBindingsSignature;
-      const modelNodes = new Map();
-      root?.traverse(node => {
-        if (node.userData?.environmentModelType !== "nas") {
+    const bindingsSignature = JSON.stringify(
+      bindings.map(bindingConfig => [
+        bindingConfig.id,
+        bindingConfig.floorId,
+        bindingConfig.modelId
+      ])
+    );
+    if (
+      syncedRoot !== root ||
+      syncedRevision !== revision ||
+      syncedBindingsSignature !== bindingsSignature
+    ) {
+      syncedRoot = root;
+      syncedRevision = revision;
+      syncedBindingsSignature = bindingsSignature;
+      const modelsByLocation = new Map();
+      syncedRoot?.traverse(sceneObject => {
+        if (sceneObject.userData?.environmentModelType !== "nas") {
           return;
         }
-        let floorId = node.userData.environmentFloorId;
-        for (let parent = node.parent; floorId == null && parent; parent = parent.parent) {
-          floorId = parent.userData.environmentFloorId;
+        let ancestorFloorId = sceneObject.userData.environmentFloorId;
+        for (
+          let ancestor = sceneObject.parent;
+          ancestorFloorId == null && ancestor;
+          ancestor = ancestor.parent
+        ) {
+          ancestorFloorId = ancestor.userData.environmentFloorId;
         }
-        modelNodes.set(modelKey(floorId, node.userData.environmentModelId), node);
+        modelsByLocation.set(
+          locationKey(ancestorFloorId, sceneObject.userData.environmentModelId),
+          sceneObject
+        );
       });
-      const activeIds = new Set();
+      const activeBindingIds = new Set();
       for (const binding of bindings) {
-        const modelNode = modelNodes.get(modelKey(binding.floorId, binding.modelId));
-        if (!modelNode) {
+        const matchedModel = modelsByLocation.get(locationKey(binding.floorId, binding.modelId));
+        if (!matchedModel) {
           continue;
         }
-        activeIds.add(binding.id);
-        let entry = entries.get(binding.id);
-        if (entry?.model !== modelNode) {
-          if (entry) {
-            disposeEntry(entry);
+        activeBindingIds.add(binding.id);
+        let existing = meshesByBindingId.get(binding.id);
+        if (existing?.model !== matchedModel) {
+          if (existing) {
+            releaseEntry(existing);
           }
-          const bounds = modelBounds(modelNode);
-          if (bounds.isEmpty()) {
-            entries.delete(binding.id);
+          const modelBounds = computeModelBounds(matchedModel);
+          if (modelBounds.isEmpty()) {
+            meshesByBindingId.delete(binding.id);
             continue;
           }
-          const size = bounds.getSize(new THREE.Vector3());
-          const center = bounds.getCenter(new THREE.Vector3());
-          const material = new THREE.ShaderMaterial({
+          const modelSize = modelBounds.getSize(new THREE.Vector3());
+          const modelCenter = modelBounds.getCenter(new THREE.Vector3());
+          const ledMaterial = new THREE.ShaderMaterial({
             transparent: true,
             depthTest: false,
             depthWrite: false,
@@ -132,109 +173,125 @@ export function createNasStatus({
                 value: 1
               }
             },
-            vertexShader: "varying vec2 ledUv; uniform float viewportHeight; uniform float sizeScale; void main(){ledUv=uv;vec4 center=modelViewMatrix*vec4(0.0,0.0,0.0,1.0);vec4 clip=projectionMatrix*center;float physicalSize=length(modelMatrix[0].xyz);float minimumSize=24.0*clip.w/(max(viewportHeight,1.0)*projectionMatrix[1][1]);center.xy+=position.xy*max(physicalSize,minimumSize)*sizeScale;gl_Position=projectionMatrix*center;}",
-            fragmentShader: "varying vec2 ledUv; uniform float pulse; uniform float brightness; void main(){float r=length(ledUv-0.5)*2.0;float core=1.0-smoothstep(0.28,0.50,r);float halo=pow(max(0.0,1.0-r),1.7)*0.8;float a=min((core+halo)*pulse,1.0)*brightness;if(a<0.005)discard;gl_FragColor=vec4(mix(vec3(0.06,1.0,0.20),vec3(0.48,1.0,0.60),core),a);}"
+            vertexShader:
+              "varying vec2 ledUv; uniform float viewportHeight; uniform float sizeScale; void main(){ledUv=uv;vec4 center=modelViewMatrix*vec4(0.0,0.0,0.0,1.0);vec4 clip=projectionMatrix*center;float physicalSize=length(modelMatrix[0].xyz);float minimumSize=24.0*clip.w/(max(viewportHeight,1.0)*projectionMatrix[1][1]);center.xy+=position.xy*max(physicalSize,minimumSize)*sizeScale;gl_Position=projectionMatrix*center;}",
+            fragmentShader:
+              "varying vec2 ledUv; uniform float pulse; uniform float brightness; void main(){float r=length(ledUv-0.5)*2.0;float core=1.0-smoothstep(0.28,0.50,r);float halo=pow(max(0.0,1.0-r),1.7)*0.8;float a=min((core+halo)*pulse,1.0)*brightness;if(a<0.005)discard;gl_FragColor=vec4(mix(vec3(0.06,1.0,0.20),vec3(0.48,1.0,0.60),core),a);}"
           });
-          const mesh = new THREE.Mesh(sharedGeometry, material);
-          mesh.name = "nas-status-" + binding.id;
-          Object.assign(mesh.userData, {
+          const ledMesh = new THREE.Mesh(planeGeometry, ledMaterial);
+          ledMesh.name = "nas-status-" + binding.id;
+          Object.assign(ledMesh.userData, {
             environmentEffect: true,
             nasStatus: true,
             externalModelSharedGeometry: true,
             externalModelSharedMaterial: true
           });
-          mesh.raycast = () => {};
-          mesh.renderOrder = 100;
+          ledMesh.raycast = () => {};
+          ledMesh.renderOrder = 100;
           const viewportSize = new THREE.Vector2();
-          mesh.onBeforeRender = renderer => {
-            material.uniforms.viewportHeight.value = renderer.getSize(viewportSize).y;
+          ledMesh.onBeforeRender = renderer => {
+            ledMaterial.uniforms.viewportHeight.value = renderer.getSize(viewportSize).y;
           };
-          const ledScale = Math.max(0.025, Math.min(0.075, size.x * 0.22));
-          mesh.scale.set(ledScale, ledScale, ledScale);
-          mesh.position.set(center.x + size.x * 0.36, bounds.min.y + size.y * 0.26, bounds.max.z + 0.003);
-          const indicators = new Map();
-          modelNode.traverse(child => {
-            if (!child.isMesh || child === mesh || child.userData?.environmentEffect) {
+          const indicatorSize = Math.max(0.025, Math.min(0.075, modelSize.x * 0.22));
+          ledMesh.scale.set(indicatorSize, indicatorSize, indicatorSize);
+          ledMesh.position.set(
+            modelCenter.x + modelSize.x * 0.36,
+            modelBounds.min.y + modelSize.y * 0.26,
+            modelBounds.max.z + 0.003
+          );
+          const suppressedIndicators = new Map();
+          matchedModel.traverse(child => {
+            if (!child.isMesh || child === ledMesh || child.userData?.environmentEffect) {
               return;
             }
-            if ((Array.isArray(child.material) ? child.material : [child.material]).some(mat => /nas-material-4$/.test(mat?.name || "") || mat?.emissive?.getHex() > 0)) {
-              indicators.set(child, child.visible);
+            if (
+              (Array.isArray(child.material) ? child.material : [child.material]).some(
+                childMaterial =>
+                  /nas-material-4$/.test(childMaterial?.name || "") ||
+                  childMaterial?.emissive?.getHex() > 0
+              )
+            ) {
+              suppressedIndicators.set(child, child.visible);
               child.visible = false;
             }
           });
-          modelNode.add(mesh);
-          entry = {
-            model: modelNode,
-            mesh,
-            indicators
+          matchedModel.add(ledMesh);
+          existing = {
+            model: matchedModel,
+            mesh: ledMesh,
+            indicators: suppressedIndicators
           };
-          entries.set(binding.id, entry);
+          meshesByBindingId.set(binding.id, existing);
         }
       }
-      for (const [id, entry] of entries) {
-        if (!activeIds.has(id)) {
-          disposeEntry(entry);
-          entries.delete(id);
+      for (const [bindingId, staleEntry] of meshesByBindingId) {
+        if (!activeBindingIds.has(bindingId)) {
+          releaseEntry(staleEntry);
+          meshesByBindingId.delete(bindingId);
         }
       }
     }
-    hasVisible = false;
-    let visibilityChanged = false;
-    for (const binding of bindings) {
-      const entry = entries.get(binding.id);
-      if (!entry) {
+    hasVisibleIndicator = false;
+    let needsRender = false;
+    for (const activeBinding of bindings) {
+      const bindingEntry = meshesByBindingId.get(activeBinding.id);
+      if (!bindingEntry) {
         continue;
       }
-      const uniforms = entry.mesh.material.uniforms;
-      visibilityChanged ||= uniforms.sizeScale.value !== sizeScale || uniforms.brightness.value !== brightness;
+      const uniforms = bindingEntry.mesh.material.uniforms;
+      needsRender ||=
+        uniforms.sizeScale.value !== sizeScale || uniforms.brightness.value !== brightness;
       uniforms.sizeScale.value = sizeScale;
       uniforms.brightness.value = brightness;
-      const deviceState = nasDeviceState(binding, states);
-      const visible = enabled && deviceState.on;
-      visibilityChanged ||= entry.mesh.visible !== visible;
-      entry.mesh.visible = visible;
-      if (visible) {
-        hasVisible = true;
+      const deviceState = nasDeviceState(activeBinding, states);
+      const shouldShow = enabled && deviceState.on;
+      needsRender ||= bindingEntry.mesh.visible !== shouldShow;
+      bindingEntry.mesh.visible = shouldShow;
+      if (shouldShow) {
+        hasVisibleIndicator = true;
       }
     }
-    if (visibilityChanged || hasVisible) {
+    if (needsRender || hasVisibleIndicator) {
       requestFrame();
     }
   }
   function tick(nowMs) {
-    if (disposed || !hasVisible) {
+    if (isDisposed || !hasVisibleIndicator) {
       return false;
     }
     const reducedMotion = prefersReducedMotion();
-    if (!reducedMotion && nowMs - lastPulseAt < 1000 / 30) {
+    if (!reducedMotion && nowMs - lastTickMs < 1000 / 30) {
       return true;
     }
-    lastPulseAt = nowMs;
-    const pulse = reducedMotion ? 1 : 0.14 + (0.5 - Math.cos(nowMs / 1400 * Math.PI * 2) * 0.5) * 0.86;
-    let pulseChanged = false;
-    for (const entry of entries.values()) {
-      if (entry.mesh.visible) {
-        pulseChanged ||= entry.mesh.material.uniforms.pulse.value !== pulse;
-        entry.mesh.material.uniforms.pulse.value = pulse;
+    lastTickMs = nowMs;
+    const pulse = reducedMotion
+      ? 1
+      : 0.14 + (0.5 - Math.cos((nowMs / 1400) * Math.PI * 2) * 0.5) * 0.86;
+    let changed = false;
+    for (const meshEntry of meshesByBindingId.values()) {
+      if (meshEntry.mesh.visible) {
+        changed ||= meshEntry.mesh.material.uniforms.pulse.value !== pulse;
+        meshEntry.mesh.material.uniforms.pulse.value = pulse;
       }
     }
-    if (pulseChanged) {
+    if (changed) {
       requestFrame();
     }
     return !reducedMotion;
   }
   return {
-    sync,
-    tick,
-    nextDelay: () => !disposed && hasVisible && !prefersReducedMotion() ? 1000 / 30 : Infinity,
+    sync: sync,
+    tick: tick,
+    nextDelay: () =>
+      !isDisposed && hasVisibleIndicator && !prefersReducedMotion() ? 1000 / 30 : Infinity,
     dispose() {
-      if (!disposed) {
-        disposed = true;
-        for (const entry of entries.values()) {
-          disposeEntry(entry);
+      if (!isDisposed) {
+        isDisposed = true;
+        for (const disposedEntry of meshesByBindingId.values()) {
+          releaseEntry(disposedEntry);
         }
-        entries.clear();
-        sharedGeometry.dispose();
+        meshesByBindingId.clear();
+        planeGeometry.dispose();
       }
     }
   };

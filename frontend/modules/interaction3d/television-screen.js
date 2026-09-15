@@ -1,140 +1,133 @@
-import { televisionState } from "./television-state.js";
-
-const posterModuleUrl = import.meta.url.startsWith("file:")
-  ? new URL("../../static/3d-studio/studio-television-poster.js?v=0.5.3", import.meta.url)
-  : "/bridge-static/3d-studio/studio-television-poster.js?v=0.5.3";
-const { drawTelevisionPoster } = await import(posterModuleUrl);
-
-export function createTelevisionScreens({
-  THREE,
-  requestFrame = () => {}
-}) {
-  let root;
-  let sceneRevision;
-  let items = new Map();
-  let screenNodes = new Map();
-  let disposed = false;
-  const bindingKey = binding => JSON.stringify([binding.floorId, binding.modelId]);
-  function collectGlows(modelNode) {
-    const glows = [];
-    modelNode.traverse(child => {
-      if (child.userData?.televisionGlow) {
-        glows.push([child, child.visible]);
-        child.visible = false;
+import { televisionState } from "./television-state.js?v=20260914-tv-power-poster-v1";
+const { drawTelevisionPoster: drawTelevisionPoster } = await (import.meta.url.startsWith("file:")
+  ? import(
+      new URL(
+        "../../static/3d-studio/studio-television-poster.js?v=20260914-tv-power-poster-v1",
+        import.meta.url
+      )
+    )
+  : import("/bridge-static/3d-studio/studio-television-poster.js?v=20260914-tv-power-poster-v1"));
+export function createTelevisionScreens({ THREE: THREE, requestFrame: requestFrame = () => {} }) {
+  let syncedRoot;
+  let syncedRevision;
+  let screensByLocation = new Map();
+  let modelsByLocation = new Map();
+  let isDisposed = false;
+  const locationKey = bindingConfig =>
+    JSON.stringify([bindingConfig.floorId, bindingConfig.modelId]);
+  function releaseScreen(targetEntry) {
+    if (!targetEntry.removed) {
+      targetEntry.removed = true;
+      targetEntry.screen.geometry.removeEventListener("dispose", targetEntry.onGeometryDispose);
+      targetEntry.generation++;
+      if (targetEntry.screen.material === targetEntry.materials) {
+        targetEntry.screen.material = targetEntry.original;
       }
-    });
-    return glows;
-  }
-  function restoreGlows(entry) {
-    for (const [glowNode, wasVisible] of entry.glows) {
-      glowNode.visible = wasVisible;
+      for (const [glow, wasVisible] of targetEntry.glows) {
+        glow.visible = wasVisible;
+      }
+      targetEntry.texture.dispose();
+      targetEntry.material.dispose();
     }
   }
-  function attachMaterials(entry, screenMesh) {
-    const original = screenMesh.material;
-    const materials = Array.from({
-      length: 6
-    }, (_slot, faceIndex) => faceIndex === 4 ? entry.material : Array.isArray(original) ? original[faceIndex] : original);
-    entry.screen = screenMesh;
-    entry.original = original;
-    entry.materials = materials;
-    screenMesh.material = materials;
-  }
-  function disposeEntry(entry) {
-    entry.generation++;
-    if (entry.screen.material === entry.materials) {
-      entry.screen.material = entry.original;
-    }
-    restoreGlows(entry);
-    entry.texture.dispose();
-    entry.material.dispose();
-  }
-  function paintEntry(entry) {
-    if (disposed) {
+  function renderScreen(entry) {
+    if (isDisposed) {
       return;
     }
-    const {
-      canvas,
-      context,
-      state,
-      image
-    } = entry;
+    const { canvas: canvas, context: context, state: state, image: image } = entry;
+    context.fillStyle = "#050609";
+    if (!state.on) {
+      const offGradient = context.createLinearGradient(0, 0, canvas.width * 0.35, canvas.height);
+      offGradient.addColorStop(0, "#2a2c2f");
+      offGradient.addColorStop(0.45, "#222427");
+      offGradient.addColorStop(1, "#181a1d");
+      context.fillStyle = offGradient;
+    }
+    context.fillRect(0, 0, canvas.width, canvas.height);
     if (state.on && image) {
-      context.fillStyle = "#050609";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      const scale = Math.min(canvas.width / image.naturalWidth, canvas.height / image.naturalHeight);
-      const drawWidth = image.naturalWidth * scale;
-      const drawHeight = image.naturalHeight * scale;
-      context.drawImage(image, (canvas.width - drawWidth) / 2, (canvas.height - drawHeight) / 2, drawWidth, drawHeight);
+      const fitScale = Math.min(
+        canvas.width / image.naturalWidth,
+        canvas.height / image.naturalHeight
+      );
+      const drawWidth = image.naturalWidth * fitScale;
+      const drawHeight = image.naturalHeight * fitScale;
+      context.drawImage(
+        image,
+        (canvas.width - drawWidth) / 2,
+        (canvas.height - drawHeight) / 2,
+        drawWidth,
+        drawHeight
+      );
     } else if (state.on) {
       drawTelevisionPoster(canvas, context);
-    } else {
-      context.fillStyle = "#050609";
-      context.fillRect(0, 0, canvas.width, canvas.height);
     }
     entry.texture.needsUpdate = true;
     requestFrame([entry.floorId]);
   }
   return {
     sync({
-      root: nextRoot,
-      revision,
-      bindings = [],
-      states = {},
-      focusedModel = "",
-      dimStrength = 70
+      root: root,
+      revision: revision,
+      bindings: bindings = [],
+      states: states = {},
+      focusedModel: focusedModel = "",
+      dimStrength: dimStrength = 70
     }) {
-      if (disposed) {
+      if (isDisposed) {
         return;
       }
-      if (root !== nextRoot || sceneRevision !== revision) {
-        root = nextRoot;
-        sceneRevision = revision;
-        screenNodes = new Map();
-        root?.traverse(node => {
-          if (node.userData?.environmentModelType === "tv") {
-            screenNodes.set(JSON.stringify([node.userData.environmentFloorId, node.userData.environmentModelId]), node);
+      if (syncedRoot !== root || syncedRevision !== revision) {
+        syncedRoot = root;
+        syncedRevision = revision;
+        modelsByLocation = new Map();
+        syncedRoot?.traverse(sceneObject => {
+          if (sceneObject.userData?.environmentModelType === "tv") {
+            modelsByLocation.set(
+              JSON.stringify([
+                sceneObject.userData.environmentFloorId,
+                sceneObject.userData.environmentModelId
+              ]),
+              sceneObject
+            );
           }
         });
       }
-      const activeKeys = new Set();
+      const activeLocations = new Set();
       for (const binding of bindings) {
-        if (binding.visible === false || !binding.entityId) {
+        if (binding.visible === false || (!binding.entityId && !binding.powerEntityId)) {
           continue;
         }
-        const key = bindingKey(binding);
-        const modelNode = screenNodes.get(key);
-        if (!modelNode) {
+        const location = locationKey(binding);
+        const model = modelsByLocation.get(location);
+        activeLocations.add(location);
+        if (!model) {
           continue;
         }
         let screenMesh;
-        modelNode.traverse(child => {
-          if (child.userData?.televisionScreen) {
-            screenMesh = child;
+        model.traverse(candidate => {
+          if (candidate.userData?.televisionScreen) {
+            screenMesh = candidate;
           }
         });
         if (!screenMesh) {
           continue;
         }
-        activeKeys.add(key);
-        let entry = items.get(key);
-        if (entry && entry.screen !== screenMesh) {
-          if (entry.screen.material === entry.materials) {
-            entry.screen.material = entry.original;
-          }
-          restoreGlows(entry);
-          attachMaterials(entry, screenMesh);
-          entry.glows = collectGlows(modelNode);
+        activeLocations.add(location);
+        let screenEntry = screensByLocation.get(location);
+        if (screenEntry && screenEntry.screen !== screenMesh) {
+          releaseScreen(screenEntry);
+          screensByLocation.delete(location);
+          screenEntry = null;
         }
-        if (!entry) {
-          const canvas = document.createElement("canvas");
-          canvas.width = 512;
-          canvas.height = 288;
-          const context = canvas.getContext("2d");
-          if (!context) {
+        if (!screenEntry) {
+          const canvasElement = document.createElement("canvas");
+          canvasElement.width = 512;
+          canvasElement.height = 288;
+          const canvasContext = canvasElement.getContext("2d");
+          if (!canvasContext) {
             continue;
           }
-          const texture = new THREE.CanvasTexture(canvas);
+          const texture = new THREE.CanvasTexture(canvasElement);
           texture.colorSpace = THREE.SRGBColorSpace;
           const material = new THREE.MeshBasicMaterial({
             map: texture,
@@ -143,76 +136,117 @@ export function createTelevisionScreens({
             polygonOffsetFactor: -2,
             polygonOffsetUnits: -2
           });
-          entry = {
+          const originalMaterial = screenMesh.material;
+          const materials = Array.from(
+            {
+              length: 6
+            },
+            (element, index) =>
+              index === 4
+                ? material
+                : Array.isArray(originalMaterial)
+                  ? originalMaterial[index]
+                  : originalMaterial
+          );
+          const glows = [];
+          model.traverse(childObject => {
+            if (childObject.userData?.televisionGlow) {
+              glows.push([childObject, childObject.visible]);
+              childObject.visible = false;
+            }
+          });
+          screenEntry = {
             floorId: binding.floorId,
             screen: screenMesh,
-            original: screenMesh.material,
-            materials: null,
-            material,
-            canvas,
-            context,
-            texture,
-            glows: collectGlows(modelNode),
+            original: originalMaterial,
+            materials: materials,
+            material: material,
+            canvas: canvasElement,
+            context: canvasContext,
+            texture: texture,
+            glows: glows,
             generation: 0,
             artwork: "",
             signature: "",
-            image: null,
-            state: televisionState(binding, states)
+            image: null
           };
-          paintEntry(entry);
-          attachMaterials(entry, screenMesh);
-          items.set(key, entry);
+          const createdEntry = screenEntry;
+          screenEntry.onGeometryDispose = () => {
+            releaseScreen(createdEntry);
+            if (screensByLocation.get(location) === createdEntry) {
+              screensByLocation.delete(location);
+            }
+          };
+          screenMesh.geometry.addEventListener("dispose", screenEntry.onGeometryDispose);
+          screenMesh.material = materials;
+          screensByLocation.set(location, screenEntry);
         }
-        const mediaState = televisionState(binding, states);
-        const signature = JSON.stringify([mediaState.on, mediaState.status, mediaState.title, mediaState.app, mediaState.name, mediaState.artwork]);
-        entry.state = mediaState;
-        const dimFactor = focusedModel && focusedModel !== key ? Math.max(0.1, 1 - dimStrength / 100) : 1;
-        if (entry.material.color.r !== dimFactor) {
-          entry.material.color.setRGB(dimFactor, dimFactor, dimFactor);
-          requestFrame([entry.floorId]);
+        const deviceState = televisionState(binding, states);
+        const signature = JSON.stringify([
+          deviceState.on,
+          deviceState.status,
+          deviceState.title,
+          deviceState.app,
+          deviceState.name,
+          deviceState.artwork
+        ]);
+        screenEntry.state = deviceState;
+        const colorLevel =
+          focusedModel && focusedModel !== location ? Math.max(0.1, 1 - dimStrength / 100) : 1;
+        if (screenEntry.material.color.r !== colorLevel) {
+          screenEntry.material.color.setRGB(colorLevel, colorLevel, colorLevel);
+          requestFrame([screenEntry.floorId]);
         }
-        if (entry.signature !== signature) {
-          entry.signature = signature;
-          if (entry.artwork !== mediaState.artwork) {
-            entry.artwork = mediaState.artwork;
-            entry.image = null;
-            const generation = ++entry.generation;
-            if (mediaState.artwork) {
-              const img = new Image();
-              img.onload = () => {
-                if (!disposed && generation === entry.generation && items.get(key) === entry) {
-                  entry.image = img;
-                  paintEntry(entry);
+        if (screenEntry.signature !== signature) {
+          screenEntry.signature = signature;
+          if (screenEntry.artwork !== deviceState.artwork) {
+            screenEntry.artwork = deviceState.artwork;
+            screenEntry.image = null;
+            const generation = ++screenEntry.generation;
+            if (deviceState.artwork) {
+              const loadedImage = new Image();
+              loadedImage.onload = () => {
+                if (
+                  !isDisposed &&
+                  generation === screenEntry.generation &&
+                  screensByLocation.get(location) === screenEntry
+                ) {
+                  screenEntry.image = loadedImage;
+                  renderScreen(screenEntry);
                 }
               };
-              img.onerror = () => {
-                if (!disposed && generation === entry.generation && items.get(key) === entry) {
-                  entry.image = null;
-                  paintEntry(entry);
+              loadedImage.onerror = () => {
+                if (
+                  !isDisposed &&
+                  generation === screenEntry.generation &&
+                  screensByLocation.get(location) === screenEntry
+                ) {
+                  screenEntry.image = null;
+                  renderScreen(screenEntry);
                 }
               };
-              img.src = mediaState.artwork;
+              loadedImage.src = deviceState.artwork;
             }
           }
-          paintEntry(entry);
+          renderScreen(screenEntry);
         }
       }
-      for (const [key, entry] of items) {
-        if (!activeKeys.has(key)) {
-          disposeEntry(entry);
-          items.delete(key);
-          requestFrame([entry.floorId]);
+      for (const [staleLocation, staleEntry] of screensByLocation) {
+        if (!activeLocations.has(staleLocation)) {
+          releaseScreen(staleEntry);
+          screensByLocation.delete(staleLocation);
+          requestFrame([staleEntry.floorId]);
         }
       }
     },
     dispose() {
-      disposed = true;
-      for (const entry of items.values()) {
-        disposeEntry(entry);
+      isDisposed = true;
+      for (const disposedEntry of screensByLocation.values()) {
+        releaseScreen(disposedEntry);
       }
-      items.clear();
-      screenNodes.clear();
-      root = null;
+      screensByLocation.clear();
+      modelsByLocation.clear();
+      syncedRoot = null;
     }
   };
 }

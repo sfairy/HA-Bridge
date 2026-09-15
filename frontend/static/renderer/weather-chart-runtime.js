@@ -1,4 +1,4 @@
-const WEATHER_ICON_MAP = {
+const WEATHER_VISUALS_BY_CONDITION = {
   sunny: ["clear-day", "晴"],
   "clear-night": ["clear-night", "晴"],
   partlycloudy: ["partly-cloudy-day", "多云"],
@@ -16,102 +16,128 @@ const WEATHER_ICON_MAP = {
   exceptional: ["code-red", "异常天气"]
 };
 export function weatherVisual(condition, sunState = "") {
-  let conditionKey = String(condition || "").trim().toLowerCase();
-  const belowHorizon = sunState === "below_horizon";
-  if (belowHorizon && conditionKey === "sunny") {
-    conditionKey = "clear-night";
+  let normalizedCondition = String(condition || "")
+    .trim()
+    .toLowerCase();
+  const isBelowHorizon = sunState === "below_horizon";
+  if (isBelowHorizon && normalizedCondition === "sunny") {
+    normalizedCondition = "clear-night";
   }
-  if (belowHorizon && conditionKey === "partlycloudy") {
+  if (isBelowHorizon && normalizedCondition === "partlycloudy") {
     return ["partly-cloudy-night", "多云"];
   } else {
-    return WEATHER_ICON_MAP[conditionKey] || ["code-red", conditionKey && !["unknown", "unavailable"].includes(conditionKey) ? conditionKey : "天气不可用"];
+    return (
+      WEATHER_VISUALS_BY_CONDITION[normalizedCondition] || [
+        "code-red",
+        normalizedCondition && !["unknown", "unavailable"].includes(normalizedCondition)
+          ? normalizedCondition
+          : "天气不可用"
+      ]
+    );
   }
 }
 export function meteoconUrl(iconName) {
-  const name = String(iconName || "").trim();
-  if (/^[a-z0-9-]+$/.test(name)) {
-    return "/bridge-static/vendor/meteocons/fill/" + name + ".svg";
+  const normalizedIconName = String(iconName || "").trim();
+  if (/^[a-z0-9-]+$/.test(normalizedIconName)) {
+    return "/bridge-static/vendor/meteocons/fill/" + normalizedIconName + ".svg";
   } else {
     return "/bridge-static/vendor/meteocons/fill/code-red.svg";
   }
 }
-function safeCssColor(color, fallback) {
-  const trimmed = String(color || "").trim();
-  if (/^(#[\da-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%]+\))$/i.test(trimmed)) {
-    return trimmed;
+function sanitizeCssColor(color, fallbackColor) {
+  const trimmedColor = String(color || "").trim();
+  if (/^(#[\da-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%]+\))$/i.test(trimmedColor)) {
+    return trimmedColor;
   } else {
-    return fallback;
+    return fallbackColor;
   }
 }
-const ALERT_LEVEL_COLORS = ["#ddffc2", "#68cc3e", "#ff8e52", "#ff1a1a"];
-function percentile(sortedValues, quantile) {
-  if (!sortedValues.length) {
+const THRESHOLD_GRADIENT_COLORS = ["#ddffc2", "#68cc3e", "#ff8e52", "#ff1a1a"];
+function sampleArrayAtRatio(values, ratio) {
+  if (!values.length) {
     return NaN;
   }
-  const rank = (sortedValues.length - 1) * quantile;
-  const lowerIndex = Math.floor(rank);
-  const upperIndex = Math.ceil(rank);
+  const scaledIndex = (values.length - 1) * ratio;
+  const lowerIndex = Math.floor(scaledIndex);
+  const upperIndex = Math.ceil(scaledIndex);
   if (lowerIndex === upperIndex) {
-    return sortedValues[lowerIndex];
+    return values[lowerIndex];
   } else {
-    return sortedValues[lowerIndex] + (sortedValues[upperIndex] - sortedValues[lowerIndex]) * (rank - lowerIndex);
+    return (
+      values[lowerIndex] + (values[upperIndex] - values[lowerIndex]) * (scaledIndex - lowerIndex)
+    );
   }
 }
 export function normalizedThresholds(thresholds) {
-  return (Array.isArray(thresholds) ? thresholds : []).filter(element => Number.isFinite(Number(element?.value))).map(element => ({
-    value: Number(element.value),
-    color: safeCssColor(element.color, "#68cc3e")
-  })).sort((element, elementRight) => element.value - elementRight.value);
+  return (Array.isArray(thresholds) ? thresholds : [])
+    .filter(entry => Number.isFinite(Number(entry?.value)))
+    .map(threshold => ({
+      value: Number(threshold.value),
+      color: sanitizeCssColor(threshold.color, "#68cc3e")
+    }))
+    .sort((leftEntry, rightEntry) => leftEntry.value - rightEntry.value);
 }
-export function automaticThresholds(samples) {
-  const sorted = (Array.isArray(samples) ? samples : []).map(element => Number(element?.value ?? element)).filter(sample => Number.isFinite(sample)).sort((left, right) => left - right);
-  if (!sorted.length) {
+export function automaticThresholds(series) {
+  const sortedValues = (Array.isArray(series) ? series : [])
+    .map(seriesValue => Number(seriesValue?.value ?? seriesValue))
+    .filter(numericSeriesValue => Number.isFinite(numericSeriesValue))
+    .sort((leftValue, rightValue) => leftValue - rightValue);
+  if (!sortedValues.length) {
     return [];
   }
-  let low = percentile(sorted, sorted.length >= 5 ? 0.05 : 0);
-  let high = percentile(sorted, sorted.length >= 5 ? 0.95 : 1);
-  if (!Number.isFinite(low) || !Number.isFinite(high)) {
+  let minimumValue = sampleArrayAtRatio(sortedValues, sortedValues.length >= 5 ? 0.05 : 0);
+  let maximumValue = sampleArrayAtRatio(sortedValues, sortedValues.length >= 5 ? 0.95 : 1);
+  if (!Number.isFinite(minimumValue) || !Number.isFinite(maximumValue)) {
     return [];
   }
-  if (high < low) {
-    [low, high] = [high, low];
+  if (maximumValue < minimumValue) {
+    [minimumValue, maximumValue] = [maximumValue, minimumValue];
   }
-  const span = high - low;
-  const epsilon = Math.max(Math.abs(low), Math.abs(high), 1) * 1e-9;
-  if (span <= epsilon) {
-    const step = Math.max(Math.abs(low) * 0.01, 0.01);
-    return [{
-      value: low - step,
-      color: ALERT_LEVEL_COLORS[0]
-    }, {
-      value: low,
-      color: ALERT_LEVEL_COLORS[1]
-    }, {
-      value: low + step,
-      color: ALERT_LEVEL_COLORS[2]
-    }, {
-      value: low + step * 2,
-      color: ALERT_LEVEL_COLORS[3]
-    }];
+  const valueSpan = maximumValue - minimumValue;
+  const spanEpsilon = Math.max(Math.abs(minimumValue), Math.abs(maximumValue), 1) * 1e-9;
+  if (valueSpan <= spanEpsilon) {
+    const padding = Math.max(Math.abs(minimumValue) * 0.01, 0.01);
+    return [
+      {
+        value: minimumValue - padding,
+        color: THRESHOLD_GRADIENT_COLORS[0]
+      },
+      {
+        value: minimumValue,
+        color: THRESHOLD_GRADIENT_COLORS[1]
+      },
+      {
+        value: minimumValue + padding,
+        color: THRESHOLD_GRADIENT_COLORS[2]
+      },
+      {
+        value: minimumValue + padding * 2,
+        color: THRESHOLD_GRADIENT_COLORS[3]
+      }
+    ];
   }
-  const step = span / (ALERT_LEVEL_COLORS.length - 1);
-  return ALERT_LEVEL_COLORS.map((color, index) => ({
-    value: low + step * index,
-    color
+  const step = valueSpan / (THRESHOLD_GRADIENT_COLORS.length - 1);
+  return THRESHOLD_GRADIENT_COLORS.map((colorScaleColor, colorIndex) => ({
+    value: minimumValue + step * colorIndex,
+    color: colorScaleColor
   }));
 }
-export function resolvedThresholds(configured, samples, mode = "") {
-  const manual = normalizedThresholds(configured);
-  if (mode === "auto") {
-    return automaticThresholds(samples);
-  } else if (mode === "manual" || manual.length) {
-    return manual;
+export function resolvedThresholds(manualThresholds, seriesValues, thresholdMode = "") {
+  const normalizedManualThresholds = normalizedThresholds(manualThresholds);
+  if (thresholdMode === "auto") {
+    return automaticThresholds(seriesValues);
+  } else if (thresholdMode === "manual" || normalizedManualThresholds.length) {
+    return normalizedManualThresholds;
   } else {
-    return automaticThresholds(samples);
+    return automaticThresholds(seriesValues);
   }
 }
-export function thresholdColor(thresholds, sampleValue) {
-  return thresholds.filter(element => sampleValue >= element.value).at(-1)?.color || thresholds[0]?.color || "#68cc3e";
+export function thresholdColor(sortedThresholds, value) {
+  return (
+    sortedThresholds.filter(candidate => value >= candidate.value).at(-1)?.color ||
+    sortedThresholds[0]?.color ||
+    "#68cc3e"
+  );
 }
 export function smoothChartPath(points) {
   if (!points.length) {
@@ -122,15 +148,27 @@ export function smoothChartPath(points) {
   }
   let path = "M" + points[0].x.toFixed(3) + " " + points[0].y.toFixed(3);
   for (let index = 0; index < points.length - 1; index += 1) {
-    const current = points[index];
-    const next = points[index + 1];
-    const previous = points[index - 1] || current;
-    const afterNext = points[index + 2] || next;
-    const control1X = current.x + (next.x - previous.x) / 6;
-    const control1Y = current.y + (next.y - previous.y) / 6;
-    const control2X = next.x - (afterNext.x - current.x) / 6;
-    const control2Y = next.y - (afterNext.y - current.y) / 6;
-    path += " C" + control1X.toFixed(3) + " " + control1Y.toFixed(3) + " " + control2X.toFixed(3) + " " + control2Y.toFixed(3) + " " + next.x.toFixed(3) + " " + next.y.toFixed(3);
+    const currentPoint = points[index];
+    const nextPoint = points[index + 1];
+    const previousPoint = points[index - 1] || currentPoint;
+    const afterNextPoint = points[index + 2] || nextPoint;
+    const control1X = currentPoint.x + (nextPoint.x - previousPoint.x) / 6;
+    const control1Y = currentPoint.y + (nextPoint.y - previousPoint.y) / 6;
+    const control2X = nextPoint.x - (afterNextPoint.x - currentPoint.x) / 6;
+    const control2Y = nextPoint.y - (afterNextPoint.y - currentPoint.y) / 6;
+    path +=
+      " C" +
+      control1X.toFixed(3) +
+      " " +
+      control1Y.toFixed(3) +
+      " " +
+      control2X.toFixed(3) +
+      " " +
+      control2Y.toFixed(3) +
+      " " +
+      nextPoint.x.toFixed(3) +
+      " " +
+      nextPoint.y.toFixed(3);
   }
   return path;
 }

@@ -1,339 +1,366 @@
 export const BACKGROUND_THEMES = [
-  ['grid', '经典网格'],
-  ['dots', '微光星尘']
+  ["grid", "经典网格"],
+  ["dots", "微光星尘"]
 ];
-
-export const normalizeBackgroundTheme = theme => (
-  theme === 'dots' || theme === 'contours' ? 'dots' : 'grid'
-);
-
-const GROUND_THEME_UNIFORMS = `
-varying vec2 vHbGround;
-uniform float hbGroundTheme;
-uniform float hbGroundSpan;
-uniform float hbGroundCoverage;
-uniform float hbGroundFallback;
-uniform vec2 hbGroundCenter;
-uniform vec3 hbGroundDeep;
-uniform float hbGroundActivity;
-uniform vec3 hbGroundPulse;
-uniform vec3 hbGroundInk;
-uniform vec3 hbGroundAccent;
-`;
-
-const GROUND_THEME_FRAGMENT = `
-if (hbGroundTheme > 0.5) {
-diffuseColor.a = (hbGroundFallback >= 0.0 ? hbGroundFallback : diffuseColor.a) / hbGroundCoverage;
-vec2 bgP = vHbGround - hbGroundCenter;
-vec2 bgUV = bgP / hbGroundSpan;
-float bgR2 = dot(bgUV, bgUV);
-float bgHalo = exp(-bgR2 * 0.55);
-float bgCore = exp(-bgR2 * 2.4);
-float bgFade = 1.0 - smoothstep(2.2, 4.2, length(bgUV));
-float bgAge = hbGroundPulse.z;
-// A broad, quiet response; never a sharp concentric ring.
-vec2 bgTouch = (vHbGround - hbGroundPulse.xy) / (hbGroundSpan * 0.38);
-float bgFeedback = exp(-dot(bgTouch, bgTouch) * 0.6)
-  * max(0.0, 1.0 - bgAge / 1.25);
-vec3 bgBase = mix(diffuseColor.rgb * 0.34, hbGroundDeep, 0.84);
-bgBase *= mix(1.0, 0.62, smoothstep(0.65, 2.8, length(bgUV)));
-vec3 bgLight = hbGroundInk * bgHalo * 0.085 + hbGroundAccent * bgCore * 0.014;
-  // Uneven, widely separated motes. Fixed world size and pixel coverage keep
-  // far points from turning into a dense, equally bright dotted wallpaper.
-  vec2 bgCellP = bgUV / 0.44;
-  vec2 bgCell = floor(bgCellP);
-  float bgSeed = fract(sin(dot(bgCell, vec2(127.1, 311.7))) * 43758.5453);
-  float bgSeed2 = fract(sin(dot(bgCell, vec2(269.5, 183.3))) * 43758.5453);
-  vec2 bgOffset = vec2(bgSeed, bgSeed2) * 0.64 + 0.18;
-  float bgDistance = length(fract(bgCellP) - bgOffset);
-  float bgAA = max(length(fwidth(bgCellP)), 0.0001);
-  float bgRadius = mix(0.004, 0.012, bgSeed2);
-  float bgPoint = (1.0 - smoothstep(bgRadius, bgRadius + bgAA * 0.75, bgDistance))
-    * min(1.0, bgRadius / bgAA) * step(0.66, bgSeed);
-  float bgVeil = (0.2 + 0.8 * exp(-bgR2 * 0.22)) * bgFade;
-  bgLight += hbGroundAccent * bgPoint * bgVeil * (0.32 + hbGroundActivity * 0.06);
-diffuseColor.rgb = bgBase + bgLight * (1.0 + hbGroundActivity * 0.12)
-  + hbGroundAccent * bgFeedback * bgFade * 0.009;
-}
-`;
-
-export function createBackgroundTheme(stage, requestFrame = () => {}, now = () => performance.now()) {
-  const { THREE } = stage;
-  const themedMaterials = new Map();
+export const normalizeBackgroundTheme = themeName =>
+  themeName === "dots" || themeName === "contours" ? "dots" : "grid";
+const GROUND_THEME_UNIFORM_CHUNK =
+  "\nvarying vec2 vHbGround;\nuniform float hbGroundTheme;\nuniform float hbGroundSpan;\nuniform float hbGroundCoverage;\nuniform float hbGroundFallback;\nuniform vec2 hbGroundCenter;\nuniform vec3 hbGroundDeep;\nuniform float hbGroundActivity;\nuniform vec3 hbGroundPulse;\nuniform vec3 hbGroundInk;\nuniform vec3 hbGroundAccent;\n";
+const GROUND_THEME_FRAGMENT_CHUNK =
+  "\nif (hbGroundTheme > 0.5) {\ndiffuseColor.a = (hbGroundFallback >= 0.0 ? hbGroundFallback : diffuseColor.a) / hbGroundCoverage;\nvec2 bgP = vHbGround - hbGroundCenter;\nvec2 bgUV = bgP / hbGroundSpan;\nfloat bgR2 = dot(bgUV, bgUV);\nfloat bgHalo = exp(-bgR2 * 0.55);\nfloat bgCore = exp(-bgR2 * 2.4);\nfloat bgFade = 1.0 - smoothstep(2.2, 4.2, length(bgUV));\nfloat bgAge = hbGroundPulse.z;\n// A broad, quiet response; never a sharp concentric ring.\nvec2 bgTouch = (vHbGround - hbGroundPulse.xy) / (hbGroundSpan * 0.38);\nfloat bgFeedback = exp(-dot(bgTouch, bgTouch) * 0.6)\n  * max(0.0, 1.0 - bgAge / 1.25);\nvec3 bgBase = mix(diffuseColor.rgb * 0.34, hbGroundDeep, 0.84);\nbgBase *= mix(1.0, 0.62, smoothstep(0.65, 2.8, length(bgUV)));\nvec3 bgLight = hbGroundInk * bgHalo * 0.085 + hbGroundAccent * bgCore * 0.014;\n  // Uneven, widely separated motes. Fixed world size and pixel coverage keep\n  // far points from turning into a dense, equally bright dotted wallpaper.\n  vec2 bgCellP = bgUV / 0.44;\n  vec2 bgCell = floor(bgCellP);\n  float bgSeed = fract(sin(dot(bgCell, vec2(127.1, 311.7))) * 43758.5453);\n  float bgSeed2 = fract(sin(dot(bgCell, vec2(269.5, 183.3))) * 43758.5453);\n  vec2 bgOffset = vec2(bgSeed, bgSeed2) * 0.64 + 0.18;\n  float bgDistance = length(fract(bgCellP) - bgOffset);\n  float bgAA = max(length(fwidth(bgCellP)), 0.0001);\n  float bgRadius = mix(0.004, 0.012, bgSeed2);\n  float bgPoint = (1.0 - smoothstep(bgRadius, bgRadius + bgAA * 0.75, bgDistance))\n    * min(1.0, bgRadius / bgAA) * step(0.66, bgSeed);\n  float bgVeil = (0.2 + 0.8 * exp(-bgR2 * 0.22)) * bgFade;\n  bgLight += hbGroundAccent * bgPoint * bgVeil * (0.32 + hbGroundActivity * 0.06);\ndiffuseColor.rgb = bgBase + bgLight * (1.0 + hbGroundActivity * 0.12)\n  + hbGroundAccent * bgFeedback * bgFade * 0.009;\n}\n";
+export function createBackgroundTheme(
+  stageOptions,
+  requestFrame = () => {},
+  now = () => performance.now()
+) {
+  const { THREE: THREE } = stageOptions;
+  const entriesByObject = new Map();
   const gridObjects = new Set();
   const raycaster = new THREE.Raycaster();
   const pointerNdc = new THREE.Vector2();
-  const inkColor = new THREE.Color('#6b8199');
-  const accentColor = new THREE.Color('#b5cbd8');
-  const deepColor = new THREE.Color('#182431');
-  const reducedMotion = globalThis.window?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true;
-  let theme = 'grid';
-  let enabled = true;
-  let disposed = false;
-  let frameActive = false;
-  let lastInteractAt = -Infinity;
-  let lastPulseAt = -Infinity;
-  let pulseObject = null;
-  let coverageAnchor = null;
-  const pulseLocal = new THREE.Vector2();
-  const blendKeys = [
-    'blending',
-    'blendEquation',
-    'blendSrc',
-    'blendDst',
-    'blendEquationAlpha',
-    'blendSrcAlpha',
-    'blendDstAlpha'
+  const inkColor = new THREE.Color("#6b8199");
+  const accentColor = new THREE.Color("#b5cbd8");
+  const deepColor = new THREE.Color("#182431");
+  const prefersReducedMotion =
+    globalThis.window?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+  let activeTheme = "grid";
+  let isSyncEnabled = true;
+  let isDisposed = false;
+  let isAnimating = false;
+  let lastInteractionMs = -Infinity;
+  let lastPulseMs = -Infinity;
+  let pulsingObject = null;
+  let lastOpaqueObject = null;
+  const pulseNdc = new THREE.Vector2();
+  const BLEND_PROPERTY_KEYS = [
+    "blending",
+    "blendEquation",
+    "blendSrc",
+    "blendDst",
+    "blendEquationAlpha",
+    "blendSrcAlpha",
+    "blendDstAlpha"
   ];
-  const isVisibleBackground = object => !(
-    object.userData.floorBackgroundHidden && !object.userData.backgroundThemeKeepVisible
-  );
-
-  function detachTheme(entry) {
-    const { material, beforeCompile, programKey } = entry;
+  const shouldRemainVisible = candidateObject =>
+    !candidateObject.userData.floorBackgroundHidden ||
+    !!candidateObject.userData.backgroundThemeKeepVisible;
+  function restoreMaterial(entry) {
+    const {
+      material: entryMaterial,
+      beforeCompile: originalBeforeCompile,
+      programKey: originalProgramKey
+    } = entry;
     entry.uniforms.hbGroundTheme.value = 0;
     delete entry.object.userData.backgroundThemeKeepVisible;
-    for (const key of blendKeys) {
-      material[key] = entry.blend[key];
+    for (const blendProperty of BLEND_PROPERTY_KEYS) {
+      entryMaterial[blendProperty] = entry.blend[blendProperty];
     }
-    if (material.onBeforeCompile === entry.compile) {
-      material.onBeforeCompile = beforeCompile;
+    if (entryMaterial.onBeforeCompile === entry.compile) {
+      entryMaterial.onBeforeCompile = originalBeforeCompile;
     }
-    if (material.customProgramCacheKey === entry.key) {
-      material.customProgramCacheKey = programKey;
+    if (entryMaterial.customProgramCacheKey === entry.key) {
+      entryMaterial.customProgramCacheKey = originalProgramKey;
     }
-    material.needsUpdate = true;
+    entryMaterial.needsUpdate = true;
   }
-
-  function attachTheme(object) {
-    const material = object.material;
-    if (!material?.isMeshBasicMaterial || !object.geometry?.parameters?.width) {
+  function applyGroundTheme(meshObject) {
+    const meshMaterial = meshObject.material;
+    if (!meshMaterial?.isMeshBasicMaterial || !meshObject.geometry?.parameters?.width) {
       return;
     }
-    const entry = {
-      object,
-      material,
-      beforeCompile: material.onBeforeCompile,
-      programKey: material.customProgramCacheKey,
-      blend: Object.fromEntries(blendKeys.map(key => [key, material[key]])),
+    const groundThemeEntry = {
+      object: meshObject,
+      material: meshMaterial,
+      beforeCompile: meshMaterial.onBeforeCompile,
+      programKey: meshMaterial.customProgramCacheKey,
+      blend: Object.fromEntries(
+        BLEND_PROPERTY_KEYS.map(blendPropertyKey => [
+          blendPropertyKey,
+          meshMaterial[blendPropertyKey]
+        ])
+      ),
       uniforms: {
-        hbGroundTheme: { value: theme === 'dots' ? 1 : 0 },
-        hbGroundCoverage: { value: 1 },
-        hbGroundFallback: { value: -1 },
-        hbGroundSpan: { value: Math.max(6, object.geometry.parameters.width / 16 * 0.7) },
-        hbGroundCenter: { value: new THREE.Vector2() },
-        hbGroundDeep: { value: deepColor },
-        hbGroundActivity: { value: 0 },
-        hbGroundPulse: { value: new THREE.Vector3(0, 0, 2) },
-        hbGroundInk: { value: inkColor },
-        hbGroundAccent: { value: accentColor }
+        hbGroundTheme: {
+          value: activeTheme === "dots" ? 1 : 0
+        },
+        hbGroundCoverage: {
+          value: 1
+        },
+        hbGroundFallback: {
+          value: -1
+        },
+        hbGroundSpan: {
+          value: Math.max(6, (meshObject.geometry.parameters.width / 16) * 0.7)
+        },
+        hbGroundCenter: {
+          value: new THREE.Vector2()
+        },
+        hbGroundDeep: {
+          value: deepColor
+        },
+        hbGroundActivity: {
+          value: 0
+        },
+        hbGroundPulse: {
+          value: new THREE.Vector3(0, 0, 2)
+        },
+        hbGroundInk: {
+          value: inkColor
+        },
+        hbGroundAccent: {
+          value: accentColor
+        }
       }
     };
-    const baseCacheKey = entry.programKey.call(material).replace(/:hb-ground-theme-v[0-9]+/g, '');
-    entry.compile = function (shader, renderer) {
-      entry.beforeCompile.call(this, shader, renderer);
-      Object.assign(shader.uniforms, entry.uniforms);
-      if (!shader.fragmentShader.includes('uniform float hbGroundTheme;')) {
+    const baseProgramKey = groundThemeEntry.programKey
+      .call(meshMaterial)
+      .replace(/:hb-ground-theme-v[0-9]+/g, "");
+    groundThemeEntry.compile = function (shader, renderer) {
+      groundThemeEntry.beforeCompile.call(this, shader, renderer);
+      Object.assign(shader.uniforms, groundThemeEntry.uniforms);
+      if (!shader.fragmentShader.includes("uniform float hbGroundTheme;")) {
         shader.vertexShader = shader.vertexShader
-          .replace('#include <common>', '#include <common>\nvarying vec2 vHbGround;')
-          .replace('#include <begin_vertex>', '#include <begin_vertex>\nvHbGround = vec2(position.x, -position.y);');
+          .replace("#include <common>", "#include <common>\nvarying vec2 vHbGround;")
+          .replace(
+            "#include <begin_vertex>",
+            "#include <begin_vertex>\nvHbGround = vec2(position.x, -position.y);"
+          );
         shader.fragmentShader = shader.fragmentShader
-          .replace('#include <common>', '#include <common>\n' + GROUND_THEME_UNIFORMS)
-          .replace('#include <color_fragment>', '#include <color_fragment>\n' + GROUND_THEME_FRAGMENT);
+          .replace("#include <common>", "#include <common>\n" + GROUND_THEME_UNIFORM_CHUNK)
+          .replace(
+            "#include <color_fragment>",
+            "#include <color_fragment>\n" + GROUND_THEME_FRAGMENT_CHUNK
+          );
       }
     };
-    entry.key = () => baseCacheKey + ':hb-ground-theme-v5';
-    material.onBeforeCompile = entry.compile;
-    material.customProgramCacheKey = entry.key;
-    material.needsUpdate = true;
-    themedMaterials.set(object, entry);
+    groundThemeEntry.key = () => baseProgramKey + ":hb-ground-theme-v5";
+    meshMaterial.onBeforeCompile = groundThemeEntry.compile;
+    meshMaterial.customProgramCacheKey = groundThemeEntry.key;
+    meshMaterial.needsUpdate = true;
+    entriesByObject.set(meshObject, groundThemeEntry);
   }
-
-  function clearActivity() {
-    lastInteractAt = lastPulseAt = -Infinity;
-    pulseObject = null;
-    for (const entry of themedMaterials.values()) {
-      entry.uniforms.hbGroundActivity.value = 0;
-      entry.uniforms.hbGroundPulse.value.z = 2;
+  function resetInteraction() {
+    lastInteractionMs = lastPulseMs = -Infinity;
+    pulsingObject = null;
+    for (const entryToReset of entriesByObject.values()) {
+      entryToReset.uniforms.hbGroundActivity.value = 0;
+      entryToReset.uniforms.hbGroundPulse.value.z = 2;
     }
-    if (frameActive) {
-      frameActive = false;
-      stage.backgroundFrame?.(false);
+    if (isAnimating) {
+      isAnimating = false;
+      stageOptions.backgroundFrame?.(false);
     }
   }
-
   return {
     get theme() {
-      return theme;
+      return activeTheme;
     },
     get active() {
-      return frameActive;
+      return isAnimating;
     },
     get materialCount() {
-      return themedMaterials.size;
+      return entriesByObject.size;
     },
-    configure(nextTheme) {
-      const normalized = normalizeBackgroundTheme(nextTheme);
-      if (disposed || normalized === theme) {
+    configure(configuredTheme) {
+      const normalizedTheme = normalizeBackgroundTheme(configuredTheme);
+      if (isDisposed || normalizedTheme === activeTheme) {
         return false;
       }
-      clearActivity();
-      theme = normalized;
-      for (const entry of themedMaterials.values()) {
-        entry.uniforms.hbGroundTheme.value = normalized === 'dots' ? 1 : 0;
+      resetInteraction();
+      activeTheme = normalizedTheme;
+      for (const themeEntry of entriesByObject.values()) {
+        themeEntry.uniforms.hbGroundTheme.value = normalizedTheme === "dots" ? 1 : 0;
       }
       requestFrame();
       return true;
     },
-    sync(objects, nextEnabled) {
-      if (disposed) {
+    sync(sceneObjects, isBackgroundEnabled) {
+      if (isDisposed) {
         return;
       }
-      enabled = nextEnabled !== false;
-      if (!enabled) {
-        clearActivity();
+      isSyncEnabled = isBackgroundEnabled !== false;
+      if (!isSyncEnabled) {
+        resetInteraction();
       }
-      const keep = new Set();
-      for (const object of objects) {
-        if (object.userData.exportRole === 'grid') {
-          object.userData.backgroundThemeHidden = theme !== 'grid';
-          gridObjects.add(object);
-          continue;
-        }
-        if (object.userData.exportRole === 'background' && theme !== 'grid') {
-          keep.add(object);
-          const existing = themedMaterials.get(object);
-          if (existing && existing.material !== object.material) {
-            detachTheme(existing);
-            themedMaterials.delete(object);
+      const themedObjects = new Set();
+      for (const themedObject of sceneObjects) {
+        if (themedObject.userData.exportRole === "grid") {
+          themedObject.userData.backgroundThemeHidden = activeTheme !== "grid";
+          gridObjects.add(themedObject);
+        } else if (themedObject.userData.exportRole === "background" && activeTheme !== "grid") {
+          themedObjects.add(themedObject);
+          const staleMaterialEntry = entriesByObject.get(themedObject);
+          if (staleMaterialEntry && staleMaterialEntry.material !== themedObject.material) {
+            restoreMaterial(staleMaterialEntry);
+            entriesByObject.delete(themedObject);
           }
-          if (!themedMaterials.has(object)) {
-            attachTheme(object);
+          if (!entriesByObject.has(themedObject)) {
+            applyGroundTheme(themedObject);
           }
-          const entry = themedMaterials.get(object);
-          const orbitCenter = stage.getOrbitCenter?.();
-          if (entry && orbitCenter?.length === 3 && orbitCenter.every(Number.isFinite)) {
-            object.updateWorldMatrix(true, false);
-            const local = object.worldToLocal(new THREE.Vector3(...orbitCenter));
-            entry.uniforms.hbGroundCenter.value.set(local.x, -local.y);
+          const entryForObject = entriesByObject.get(themedObject);
+          const orbitCenter = stageOptions.getOrbitCenter?.();
+          if (entryForObject && orbitCenter?.length === 3 && orbitCenter.every(Number.isFinite)) {
+            themedObject.updateWorldMatrix(true, false);
+            const localOrbitCenter = themedObject.worldToLocal(new THREE.Vector3(...orbitCenter));
+            entryForObject.uniforms.hbGroundCenter.value.set(
+              localOrbitCenter.x,
+              -localOrbitCenter.y
+            );
           }
         }
       }
-      for (const [object, entry] of themedMaterials) {
-        if (!keep.has(object) || entry.material !== object.material) {
-          detachTheme(entry);
-          themedMaterials.delete(object);
+      for (const [trackedObject, trackedEntry] of entriesByObject) {
+        if (!themedObjects.has(trackedObject) || trackedEntry.material !== trackedObject.material) {
+          restoreMaterial(trackedEntry);
+          entriesByObject.delete(trackedObject);
         }
       }
-      for (const object of gridObjects) {
-        if (!objects.includes(object)) {
-          delete object.userData.backgroundThemeHidden;
-          gridObjects.delete(object);
+      for (const staleGridObject of gridObjects) {
+        if (!sceneObjects.includes(staleGridObject)) {
+          delete staleGridObject.userData.backgroundThemeHidden;
+          gridObjects.delete(staleGridObject);
         }
       }
-      for (const entry of themedMaterials.values()) {
-        delete entry.object.userData.backgroundThemeKeepVisible;
-        entry.uniforms.hbGroundFallback.value = -1;
+      for (const resetEntry of entriesByObject.values()) {
+        delete resetEntry.object.userData.backgroundThemeKeepVisible;
+        resetEntry.uniforms.hbGroundFallback.value = -1;
       }
-      const visibleEntries = [...themedMaterials.values()].filter(entry => isVisibleBackground(entry.object));
-      let coverage = visibleEntries.reduce((sum, entry) => sum + entry.material.opacity, 0);
-      const anchored = themedMaterials.get(coverageAnchor);
-      const fallbackCandidate = anchored?.material.transparent
-        && !visibleEntries.includes(anchored)
-        && anchored.material.opacity > 0
-        ? anchored
-        : [...themedMaterials.values()]
-          .filter(entry => entry.material.transparent && !visibleEntries.includes(entry))
-          .sort((a, b) => b.material.opacity - a.material.opacity)[0];
-      if (fallbackCandidate?.material.transparent && !visibleEntries.includes(fallbackCandidate) && coverage < 1) {
-        fallbackCandidate.object.userData.backgroundThemeKeepVisible = true;
-        fallbackCandidate.uniforms.hbGroundFallback.value = 1 - coverage;
-        coverage = 1;
+      const visibleEntries = [...entriesByObject.values()].filter(visibleEntry =>
+        shouldRemainVisible(visibleEntry.object)
+      );
+      let totalOpacity = visibleEntries.reduce(
+        (opacityAccumulator, contributingEntry) =>
+          opacityAccumulator + contributingEntry.material.opacity,
+        0
+      );
+      const previousFallbackEntry = entriesByObject.get(lastOpaqueObject);
+      const fallbackEntry =
+        previousFallbackEntry?.material.transparent &&
+        !visibleEntries.includes(previousFallbackEntry) &&
+        previousFallbackEntry.material.opacity > 0
+          ? previousFallbackEntry
+          : [...entriesByObject.values()]
+              .filter(
+                transparentEntry =>
+                  transparentEntry.material.transparent &&
+                  !visibleEntries.includes(transparentEntry)
+              )
+              .sort(
+                (firstEntry, secondEntry) =>
+                  secondEntry.material.opacity - firstEntry.material.opacity
+              )[0];
+      if (
+        fallbackEntry?.material.transparent &&
+        !visibleEntries.includes(fallbackEntry) &&
+        totalOpacity < 1
+      ) {
+        fallbackEntry.object.userData.backgroundThemeKeepVisible = true;
+        fallbackEntry.uniforms.hbGroundFallback.value = 1 - totalOpacity;
+        totalOpacity = 1;
       } else if (visibleEntries.length === 1 && visibleEntries[0].material.opacity > 0.999) {
-        coverageAnchor = visibleEntries[0].object;
+        lastOpaqueObject = visibleEntries[0].object;
       }
-      coverage = Math.max(1, coverage);
-      for (const entry of themedMaterials.values()) {
-        const { material, uniforms } = entry;
-        uniforms.hbGroundCoverage.value = material.transparent ? coverage : 1;
-        if (material.transparent) {
-          material.blending = THREE.CustomBlending;
-          material.blendEquation = material.blendEquationAlpha = THREE.AddEquation;
-          material.blendSrc = material.premultipliedAlpha ? THREE.OneFactor : THREE.SrcAlphaFactor;
-          material.blendDst = material.blendSrcAlpha = material.blendDstAlpha = THREE.OneFactor;
+      totalOpacity = Math.max(1, totalOpacity);
+      for (const blendTargetEntry of entriesByObject.values()) {
+        const { material: targetMaterial, uniforms: targetUniforms } = blendTargetEntry;
+        targetUniforms.hbGroundCoverage.value = targetMaterial.transparent ? totalOpacity : 1;
+        if (targetMaterial.transparent) {
+          targetMaterial.blending = THREE.CustomBlending;
+          targetMaterial.blendEquation = targetMaterial.blendEquationAlpha = THREE.AddEquation;
+          targetMaterial.blendSrc = targetMaterial.premultipliedAlpha
+            ? THREE.OneFactor
+            : THREE.SrcAlphaFactor;
+          targetMaterial.blendDst =
+            targetMaterial.blendSrcAlpha =
+            targetMaterial.blendDstAlpha =
+              THREE.OneFactor;
         }
       }
     },
-    interact(event, hitTest = false) {
-      if (disposed || !enabled || theme === 'grid' || reducedMotion || !themedMaterials.size) {
+    interact(pointerEvent, shouldRaycast = false) {
+      if (
+        isDisposed ||
+        !isSyncEnabled ||
+        activeTheme === "grid" ||
+        prefersReducedMotion ||
+        !entriesByObject.size
+      ) {
         return;
       }
-      const timestamp = now();
-      lastInteractAt = timestamp;
-      if (hitTest) {
-        const rect = stage.canvas.getBoundingClientRect();
-        if (rect.width && rect.height) {
+      const interactionTimestampMs = now();
+      lastInteractionMs = interactionTimestampMs;
+      if (shouldRaycast) {
+        const canvasRect = stageOptions.canvas.getBoundingClientRect();
+        if (canvasRect.width && canvasRect.height) {
           pointerNdc.set(
-            (event.clientX - rect.left) / rect.width * 2 - 1,
-            1 - (event.clientY - rect.top) / rect.height * 2
+            ((pointerEvent.clientX - canvasRect.left) / canvasRect.width) * 2 - 1,
+            1 - ((pointerEvent.clientY - canvasRect.top) / canvasRect.height) * 2
           );
-          raycaster.setFromCamera(pointerNdc, stage.camera);
-          const targets = [...themedMaterials.keys()].filter(object => {
-            for (let node = object; node; node = node.parent) {
-              if (!node.visible) {
+          raycaster.setFromCamera(pointerNdc, stageOptions.camera);
+          const raycastTargets = [...entriesByObject.keys()].filter(candidateMeshObject => {
+            for (
+              let visibilityAncestor = candidateMeshObject;
+              visibilityAncestor;
+              visibilityAncestor = visibilityAncestor.parent
+            ) {
+              if (!visibilityAncestor.visible) {
                 return false;
               }
             }
-            object.updateWorldMatrix(true, false);
+            candidateMeshObject.updateWorldMatrix(true, false);
             return true;
           });
-          const hit = raycaster.intersectObjects(targets, false)[0];
-          if (hit) {
-            const local = hit.object.worldToLocal(hit.point);
-            pulseLocal.set(local.x, -local.y);
-            pulseObject = hit.object;
-            lastPulseAt = timestamp;
+          const firstHit = raycaster.intersectObjects(raycastTargets, false)[0];
+          if (firstHit) {
+            const localHitPoint = firstHit.object.worldToLocal(firstHit.point);
+            pulseNdc.set(localHitPoint.x, -localHitPoint.y);
+            pulsingObject = firstHit.object;
+            lastPulseMs = interactionTimestampMs;
           }
         }
       }
       requestFrame();
     },
-    tick(timestamp) {
-      if (disposed || !enabled || theme === 'grid' || reducedMotion) {
-        clearActivity();
+    tick(frameTimestampMs) {
+      if (isDisposed || !isSyncEnabled || activeTheme === "grid" || prefersReducedMotion) {
+        resetInteraction();
         return Infinity;
       }
-      const activity = Math.max(0, 1 - (timestamp - lastInteractAt) / 400);
-      const pulseAge = Math.min(2, Math.max(0, (timestamp - lastPulseAt) / 1000));
-      const keepFrame = activity > 0 || pulseAge < 1.25;
-      if (!keepFrame && !frameActive) {
+      const interactionStrength = Math.max(0, 1 - (frameTimestampMs - lastInteractionMs) / 400);
+      const pulseAgeSeconds = Math.min(2, Math.max(0, (frameTimestampMs - lastPulseMs) / 1000));
+      const isInteractionActive = interactionStrength > 0 || pulseAgeSeconds < 1.25;
+      if (!isInteractionActive && !isAnimating) {
         return Infinity;
       }
-      for (const [object, entry] of themedMaterials) {
-        entry.uniforms.hbGroundActivity.value = activity;
-        entry.uniforms.hbGroundPulse.value.set(
-          pulseLocal.x,
-          pulseLocal.y,
-          object === pulseObject ? pulseAge : 2
+      for (const [uniformTargetObject, uniformTargetEntry] of entriesByObject) {
+        uniformTargetEntry.uniforms.hbGroundActivity.value = interactionStrength;
+        uniformTargetEntry.uniforms.hbGroundPulse.value.set(
+          pulseNdc.x,
+          pulseNdc.y,
+          uniformTargetObject === pulsingObject ? pulseAgeSeconds : 2
         );
       }
-      frameActive = keepFrame;
-      stage.backgroundFrame?.(keepFrame);
-      return keepFrame ? 1000 / 30 : Infinity;
+      isAnimating = isInteractionActive;
+      stageOptions.backgroundFrame?.(isInteractionActive);
+      if (isInteractionActive) {
+        return 1000 / 30;
+      } else {
+        return Infinity;
+      }
     },
     suspend() {
-      clearActivity();
+      resetInteraction();
     },
     dispose() {
-      clearActivity();
-      disposed = true;
-      for (const entry of themedMaterials.values()) {
-        detachTheme(entry);
+      resetInteraction();
+      isDisposed = true;
+      for (const disposeEntry of entriesByObject.values()) {
+        restoreMaterial(disposeEntry);
       }
-      for (const object of gridObjects) {
-        delete object.userData.backgroundThemeHidden;
+      for (const hiddenGridObject of gridObjects) {
+        delete hiddenGridObject.userData.backgroundThemeHidden;
       }
-      themedMaterials.clear();
+      entriesByObject.clear();
       gridObjects.clear();
     }
   };

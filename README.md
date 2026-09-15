@@ -1,69 +1,109 @@
 # HA Bridge
 
-面向 [Home Assistant](https://www.home-assistant.io/) 的本机仪表盘与中控平台，当前版本 **0.5.3**。
+面向 [Home Assistant](https://www.home-assistant.io/) 的本机仪表盘与中控平台，当前版本 **0.5.4**（见 `VERSION`）。
 
-提供可视化编辑器、3D 户型工作室、全屏展示页和中控配对。后端是 FastAPI，前端是原生 HTML / CSS / JavaScript，数据默认落在本机 SQLite。
+提供可视化编辑器、3D 户型工作室、全屏展示页和中控配对；后端是 FastAPI，前端是原生 HTML / CSS / JavaScript，数据默认落在本机 SQLite。
 
-本仓库是可本地运行的源码树。授权校验仍然开启，激活只走仓库内的本机授权店。
+本仓库是可本地运行的源码树。**授权校验始终开启**，激活走仓库自带的自建授权商店与授权服务器（`store/`），不连接任何外部厂商节点。仓库中的后端 Python 与前端 JavaScript 均已从发布包完整还原为可读源码，详见 [RESTORE-REPORT.md](RESTORE-REPORT.md)。
 
 ## 功能
 
 - 仪表盘编辑：页面、控件、实体绑定、弹窗、主题（默认 `ui.base`）
 - 正式展示：`/display/{项目ID}` 或 `/habridge/{项目名称}` 打开全屏中控页
-- 中控配对：6 位固定配对码，适合墙面平板或独立浏览器
-- 3D 户型：建模、导入、按楼层或全楼自动导图并回写到仪表盘
-- 3D 交互：仪表盘控件嵌入户型舞台；从工作室草稿快照场景，在舞台里开关已绑定的灯和开关；展示页用 iframe 打开同一舞台
+- 中控配对：6 位配对码，适合墙面平板或独立浏览器
+- 3D 户型：建模、导入、按楼层或全楼自动导图并回写到仪表盘；灯光按「区域」归类，墙体与灯光属性可批量应用
+- 3D 交互：仪表盘控件嵌入户型舞台；从工作室草稿快照场景，在舞台里开关已绑定的灯、开关、窗帘、空调、电视等；展示页用 iframe 打开同一舞台
 - Home Assistant：HTTP / WebSocket 同步实体与状态，代理摄像头和媒体
 - 全局日志：按级别、分类和关键词筛选，导出时遮盖敏感信息
-- 本机授权店：邮箱领取激活码，签发含全部基础能力的本地租约
+- 授权商店：账号注册 / 登录、邮箱验证码、商品与优惠码、邀请返利与提现、订单查询、设备自助解绑
+- 授权服务器：Ed25519 签名租约 + X25519 加密传输，心跳续租与启动联网确认
+- 运营后台：`/admin` 管理商品、订单、授权、绑定、优惠码、提现、站点配置、版本与审计日志
+
+## 组件
+
+仓库根目录下同时运行两个服务，二者共享 `.venv-store` 虚拟环境：
+
+```text
+HA-Bridge/app
+├── backend + frontend        主应用         http://127.0.0.1:18081
+└── store/                    授权商店与授权服务器  http://127.0.0.1:18082
+```
+
+### 主应用
+
+`backend/app/`（FastAPI）+ `frontend/`（HTML / 原生 JS）。负责仪表盘编辑、展示、中控配对、Home Assistant 连接、3D 户型工作室与 3D 交互舞台。启动时自动执行 Alembic 迁移。
+
+### 授权商店与授权服务器（`store/`）
+
+一个独立的 FastAPI 应用，在 **18082** 端口同时提供三件事：
+
+1. **授权商店**：1:1 复刻 `https://pay.habridge.cn/` 的多页前台与 `/store/v1/*` API（账号、商品、订单、优惠码、邀请、账号中心）。
+2. **授权服务器**：`/v2/activate`、`/v2/heartbeat`、`/v2/recover`，签发 Ed25519 租约并使用 X25519 加密传输。
+3. **运营后台**：`/admin` + `/store-admin/v1/*`（参考站没有公开管理台，为本项目自建）。
+
+商店与授权服务器共用同一个 SQLite 库 —— 这正是「支付后自动发码并可立即激活」的原因。支付渠道默认 `mock`（本地收银台），可切换为支付宝当面付。完整说明见 [store/README.md](store/README.md)。
 
 ## 仓库结构
 
 工程在仓库根目录，不再套一层 `app/`。
 
 ```text
-HA-Bridge/
+HA-Bridge/app/
 ├── backend/app/            # FastAPI 应用（PYTHONPATH 指向这里）
-│   ├── api/                # 认证、项目、HA、资源、3D、日志、中控
+│   ├── api/                # 认证、项目、HA、资源、UI Pack、3D、日志、图标、中控、更新
 │   ├── ha/                 # HA 客户端、同步、状态推送
 │   ├── panel/              # 仪表盘文档与校验
 │   ├── modules/            # 增量能力（3D 交互）
-│   ├── license/            # 授权校验（本机店租约）
+│   ├── license/            # 客户端授权：租约验签、心跳、能力门禁
 │   └── main.py
 ├── frontend/               # 页面与静态资源
-│   ├── *.html
+│   ├── *.html              # index / display / license / login / pair / setup / 3d-studio
+│   ├── NAMING.md           # 前端标识符命名规范
 │   ├── modules/            # 3D 交互舞台与配置编辑器（经 /api/v1/modules/interaction3d 下发）
 │   └── static/             # 挂载为 /bridge-static
-│       ├── js/             # auth / editor / display / shared
-│       ├── css/
-│       ├── assets/         # 品牌图、manifest
+│       ├── *.js / *.css    # 入口脚本与样式（扁平目录）
 │       ├── renderer/       # 仪表盘运行时
-│       ├── 3d-studio/
+│       ├── 3d-studio/      # 户型工作室
 │       ├── modules/        # 3D 交互编辑器桥接、封面、定义
 │       ├── utils/          # 户型工作室与 3D 交互共用工具
-│       └── vendor/         # three.js、hls.js、MDI
-├── register/               # 本机授权店（默认 18082）
-├── migrations/             # Alembic 迁移 0001–0013
-├── image/                  # 内置素材目录（当前为空，可自行放入）
-├── data/                   # 运行时数据（不入库）
-├── requirements.txt
-├── alembic.ini
-├── VERSION
-├── start.py                # 本地一键启动
-└── container_entrypoint.py
+│       ├── templates/      # 控件模板
+│       ├── ui-packs/       # UI Pack 资源
+│       ├── component-thumbnails/  audio/  vendor/（three.js、hls.js、MDI）
+├── store/                  # 授权商店 + 授权服务器 + 运营后台
+│   ├── app.py run.py config.py models.py schemas.py serializers.py
+│   ├── api/                # store.py(/store/v1) license.py(/v2) admin.py alipay.py pages.py
+│   ├── licensing/          # 服务端传输加密 + 租约签发 + 三端点业务
+│   ├── payments/           # base / mock / alipay（签名·下单·验签·查单）/ 统一入账
+│   ├── fulfill.py referrals.py site_settings.py mailer.py security.py
+│   ├── templates/          # store.html（复刻参考站）+ admin.html
+│   ├── static/             # theme.css / admin.css + 复用参考站的 CSS·字体·图标·jQuery·JS
+│   ├── tools/              # gen_keys / seed / smoke / e2e
+│   ├── keys/local/         # 授权私钥（不入库）
+│   └── data/               # 商店 SQLite 与商品图（不入库）
+├── keys/                   # 客户端默认读取的公钥镜像（由 gen_keys 自动同步）
+├── migrations/             # Alembic 迁移 0001–0014
+├── image/v1/               # 内置素材与示例户型图
+├── dashboard_templates/    # 内置仪表盘模板
+├── tools/                  # 还原与校验工具链（见「源码还原与工具链」）
+├── HA-Bridge/              # 0.5.2.1 原始参考树（未纳入版本库，可自行删除）
+├── data/                   # 主应用运行时数据（不入库）
+├── .env.example            # 本地密钥与配置模板（复制为 .env）
+├── alembic.ini  VERSION  start.py  container_entrypoint.py
+├── release-manifest.json  sbom.cdx.json
+└── .prettierrc.json  .prettierignore
 ```
 
-不要删除 `frontend/`。内置素材目录 `image/` 可为空，编辑器里可改用用户上传图片。
+不要删除 `frontend/`。内置素材目录 `image/` 可自行增删，编辑器里也可改用用户上传图片。
 
-`data/`、`register/data/`、`.venv/`、`*.db`、`原项目/` 已写入 `.gitignore`。
+以下内容已写入 `.gitignore`：`data/`、`store/data/`、`store/keys/`、`.env*`、`.venv-store/`、`*.pem.key`、`tools/reference/.extracted/`。
 
 ## 环境
 
 - Python 3.11+（本地已在 3.14 验证）
-- 本机同时跑两个进程：主应用 **18081**、授权店 **18082**
+- 本机同时跑两个进程：主应用 **18081**、授权商店 **18082**
 - 连接 Home Assistant 时，主应用需要能访问 HA 的 HTTP 与 WebSocket
 
-依赖见 [requirements.txt](requirements.txt)：FastAPI、SQLAlchemy、Alembic、httpx、Pillow、argon2、cryptography 等。
+依赖见 [store/requirements.txt](store/requirements.txt)：FastAPI、Uvicorn、SQLAlchemy、Pydantic、httpx、cryptography、Jinja2、python-multipart。主应用与商店共用同一份依赖。
 
 ## 本地启动
 
@@ -73,7 +113,25 @@ HA-Bridge/
 python3 start.py
 ```
 
-首次运行会自动创建 `.venv` 并安装依赖。之后会同时拉起主应用 **18081** 和授权店 **18082**。打开 <http://127.0.0.1:18081/setup>。
+`start.py` 会：
+
+1. 缺失时创建 `.venv-store` 并按 `store/requirements.txt` 安装依赖；
+2. 读取根目录 `.env`（已存在的真实环境变量优先）；
+3. 依次拉起授权商店 **18082** 与主应用 **18081**（主应用带 `--reload`）。
+
+首次启动前，建议先把商店的密钥与初始数据准备好：
+
+```bash
+# 生成授权密钥；公钥会自动镜像到仓库根 keys/（客户端信任锚）
+.venv-store/bin/python -m store.tools.gen_keys
+
+# 初始化管理员、3 条商品（基础 / 3D 交互包 / 套餐）与版本记录
+.venv-store/bin/python -m store.tools.seed
+```
+
+> 公钥镜像 `keys/` 与 `store/keys/local/` 必须**逐字节一致**：客户端按 PEM 文件字节校验 sha256。若直接跳过 `gen_keys`，`store/` 首次启动会自动生成私钥，但**不会**更新 `keys/` 镜像，激活会因指纹不匹配而失败。
+
+主应用打开 <http://127.0.0.1:18081/setup>，商店打开 <http://127.0.0.1:18082/>。
 
 数据库迁移在主应用启动时自动执行。需要手工升级时：
 
@@ -84,47 +142,201 @@ APP_DATA_DIR=./data PYTHONPATH=backend/app alembic upgrade head
 ## 首次使用
 
 1. 打开 `/setup`，创建管理员（用户名 3–64 个字符，密码至少 8 位）。
-2. 登录后进入 `/license`。另开 <http://127.0.0.1:18082/>，用邮箱领取激活码，再回到授权页激活。
-3. 在编辑器里配置 Home Assistant 的地址和长期访问令牌，然后创建空白仪表盘。
-4. 使用 3D 交互：先在 `/3d-studio` 保存户型，再在编辑器添加「3D 交互」控件并载入户型快照，绑定 `light.*` / `switch.*` 后即可在舞台里开关。
-5. 墙面中控：在编辑器生成 6 位配对码，设备打开 `/pair` 完成配对。
+2. 打开 <http://127.0.0.1:18082/>，注册商店账号（本地联调默认 `STORE_MAIL_MODE=echo`，验证码直接回显），选择商品并用模拟收银台完成支付，账号中心会发放激活码。
+3. 回到主应用登录后进入 `/license`，用「激活码 + 购买邮箱」激活。未激活时编辑器会跳到 `/license`，展示页和受保护静态资源返回 401 / 403。
+4. 在编辑器里配置 Home Assistant 的地址和长期访问令牌，然后创建空白仪表盘。
+5. 使用 3D 交互：先在 `/3d-studio` 保存户型，再在编辑器添加「3D 交互」控件并载入户型快照，绑定 `light.*` / `switch.*` 等实体后即可在舞台里控制。
+6. 墙面中控：在编辑器生成 6 位配对码，设备打开 `/pair` 完成配对。
 
-未初始化时任意页面都会跳到 `/setup`。未激活时编辑器跳到 `/license`，展示页和受保护静态资源返回 401 / 403。
+未初始化时任意页面都会跳到 `/setup`。
 
-忘记管理员账号或密码：停掉进程，删除 `data/admin-account.json` 再启动。系统回到设置页。户型、HA 配置、授权和中控配对不会被删。
+忘记主应用管理员账号或密码：停掉进程，删除 `data/admin-account.json` 再启动，系统回到设置页。户型、HA 配置、授权和中控配对不会被删。
 
-本机店签发的租约包含：`api`、`assets`、`editor`、`display`、`ha.sync`、`ha.configure`、`ha.control`、`projects.write`、`runtime.websocket`、`ui.base`、`module.3d_interaction`。已开通编辑器的本地租约即可使用 3D 交互，不必重新领取激活码。不连接官方授权云。
+## 授权体系
+
+### 零配置指向自建授权服务器
+
+客户端默认值写在 `backend/app/config.py`：端点 `http://127.0.0.1:18082`、密钥 id `hb-local-2026` / `hb-local-transport-2026`、公钥镜像 `keys/` 及其 sha256。**不设任何环境变量**，起服务后即可在 `/license` 激活。厂商生产节点与生产公钥已从代码中彻底移除，`store.tools.smoke` 用断言锁住「零配置指向自建」与「生产残留为零」。
+
+整个体系是「服务端签发 Ed25519 签名租约 → 客户端离线验签 → 定期心跳续租」：租约 7 天有效，客户端每 300 秒续租一次；传输层为 X25519 ECDH → HKDF-SHA256 → AES-256-GCM，端点路径本身也参与派生与认证。
+
+需要把授权服务器部署到别处时才用环境变量覆盖，例如：
+
+```bash
+export APP_LICENSE_SERVER_URL=https://license.example.com
+export APP_LICENSE_KEY_ID=hb-local-2026
+export APP_LICENSE_PUBLIC_KEY_FILE=/path/to/license-public.pem
+export APP_LICENSE_PUBLIC_KEY_SHA256=<gen_keys 打印的签名公钥 sha256>
+export APP_LICENSE_TRANSPORT_KEY_ID=hb-local-transport-2026
+export APP_LICENSE_TRANSPORT_PUBLIC_KEY_FILE=/path/to/license-transport-public.pem
+export APP_LICENSE_TRANSPORT_PUBLIC_KEY_SHA256=<gen_keys 打印的传输公钥 sha256>
+```
+
+- 只设 `APP_LICENSE_SERVER_URL` 时，客户端会把批次收敛为单条 `direct`，不会散到其它节点。
+- 需要多批次时用 `APP_LICENSE_SERVER_BATCHES='esa=;eo=;direct=http://127.0.0.1:18082|http://127.0.0.1:18083'`（`;` 分隔批次，`|` 分隔组内地址，空组表示禁用）。
+- `APP_LICENSE_TRUSTED_PUBLIC_KEYS='keyId:公钥路径:sha256|keyId2:路径:sha256'` 可整体替换可信公钥表。
+
+### 能力码
+
+租约携带的能力码决定主应用各部分是否可用（`LicenseService.allows`）：
+
+`api`、`assets`、`editor`、`display`、`ha.sync`、`ha.configure`、`ha.control`、`projects.write`、`runtime.websocket`、`ui.base`、`module.3d_interaction`。
+
+`store.tools.seed` 写入的三条商品与能力码对应关系：
+
+| 商品 | 类型 | 能力码 |
+| --- | --- | --- |
+| 编辑器+栖光UI+绘制工具 | `base` | 上表除 `module.3d_interaction` 外的全部 |
+| 3D交互包 | `module` | `module.3d_interaction` |
+| 编辑器+栖光UI+绘制工具+3D交互 | `package` | 基础能力 + `module.3d_interaction` |
+
+### 重启时的联网确认
+
+客户端启动时会先做一次 `recover` 联网确认，失败按性质分流：
+
+- **确认吊销**（403 命中吊销短语）→ 保持拦截，清空本地授权，状态 `REVOKED`。
+- **其余失败**（网络不可达、服务端 5xx）→ 不锁死：租约未过期则 `CONNECTION_WARNING`（门禁放行），已过期则 `LEASE_EXPIRED`（拦截）。
+
+心跳循环持续重试，服务器恢复后自动续租回到 `ACTIVE`。
+
+### 吊销语义（客户端契约）
+
+运营后台「停用设备绑定 / 停用授权」后，端点返回 `403 {"detail": "..."}`，文案必须命中以下之一，客户端才判定为确认吊销并清空本地授权：
+
+`实例绑定已停用`、`客户授权或激活码已停用`、`客户、激活码或实例绑定已停用`、`商品授权有效期已结束`。
+
+其余 401/403 视为瞬时故障（保留本地授权继续重试）。改文案前先看 `backend/app/license/service.py` 的 `is_confirmed_revocation`。
+
+## 3D 户型工作室
+
+打开 `/3d-studio`。左侧是模型库与检查器，右侧是平面图画布。工作室只编辑草稿，不会直接改动仪表盘；户型和场景要另外导出，或生成 3D 交互快照后供仪表盘与展示页使用。
+
+### 平面图工具
+
+画布上方工具栏提供以下工具，悬停会显示对应提示：
+
+| 工具 | 说明 |
+| --- | --- |
+| 选择 | 单击精确选择，空白处拖拽框选；移动时 `Shift` 锁轴，缩放时 `Shift` 等比例，`Option`/`Alt` 拖动复制，`⌘`/`Ctrl+C`、`V` 复制粘贴 |
+| 平移 | 按住左键拖动平移画布 |
+| 参考线 | 依次单击两个端点，用于确定真实比例；按住 `Shift` 强制锁定水平或垂直轴线 |
+| 墙体 | 逐点绘制并回到起点闭合空间；未闭合不会生成地面，按住 `Shift` 锁轴，`Esc` 结束 |
+| 窗户 | 靠近墙体单击，窗户自动吸附并生成真实窗洞 |
+| 门 | 靠近墙体单击，门自动吸附并生成门洞；选中后可翻转开启方向 |
+| 栏杆 | 靠近墙体单击，玻璃栏杆吸附到墙段并替换对应的实体墙 |
+| 铭牌 | 单击画布放置户型铭牌；选中后可修改文字、拖动、缩放和旋转 |
+| 楼板洞口 | 位于工具栏右侧，拖出矩形洞口；仅切除当前层楼板 |
+
+「平移」只改变画布视角，不修改户型，因此既不写入草稿也不会进入撤销栈。它与既有操作共用同一套平移逻辑：滚轮缩放、中键拖动、按住空格拖动在任何工具下都可用。
+
+切到「灯光」分类后户型会锁定，只能使用「选择」工具，点击其他工具会提示先切回家居或电器，避免在灯光编辑中误改墙体。
+
+### 灯光区域与灯组
+
+「灯光」分类下会出现图层面板，顶部有三个操作：`全关`、`新建区域`、`新建灯组`。
+
+- **区域**用于按房间或空间给灯组分类，只有名称（最长 16 字，同层不可重名），可随时重命名或删除。
+- **灯组**包含名称（最长 24 字）、启用状态和所属区域。未归入任何区域的灯组显示为「未分类」。
+- **拖入区域**：直接拖动灯组行到目标区域标题上即可移入，标题会高亮提示；拖到另一个灯组行上则是在区域内调整顺序。
+- **右键菜单**：灯组行右键可选 `设置区域` / `重命名` / `复制灯组` / `删除`；区域标题右键可选 `重命名区域` / `删除区域`。`设置区域` 弹窗里除了选择已有区域，也可以直接输入新名称就地新建区域，选「未分类」则移出区域。
+- **删除区域不会删除灯组**，组内灯组会回到「未分类」。
+
+面板本身是一棵两级树：区域 → 区域内灯组。区域标题带折叠箭头和成员数量，未分类的灯组排在最外层，空区域显示「暂无灯组」。区域和归属按楼层保存，展开／收起状态只在当前会话内有效。
+
+### 模型库：壁画、背景墙与柱子
+
+| 模型 | 分类 | 默认尺寸 | 可选样式 |
+| --- | --- | --- | --- |
+| 壁画 | 客厅常用 | 1.20 × 0.80 m，离地 0.90 m | 画面风格：包豪斯几何、柔和色域、极简线条、硬边色块、水墨意象、水磨石纹 |
+| 背景墙 | 客厅常用 | 3.00 × 2.40 m | 墙面材质：大理石、木纹、格栅条、岩板、微水泥、布纹、金属拉丝 |
+
+两者都由程序化生成（画布纹理加几何体），不依赖外部模型文件，因此不会出现模型加载失败。背景墙的「格栅条」样式会额外出真实 3D 格栅。
+
+柱子位于「结构与特殊物件」分类，默认 0.45 × 0.45 m：
+
+- **形状**：方形、圆形、半圆形、1/4 圆形、1/4 圆形（内弧）。
+- **布置方向**：垂直（站立）或水平（躺放）。躺放时平面占位改为「宽 × 长」，平面符号改用内轮廓表示，3D 中绕轴旋转 90° 后重新贴地，检查器里的「高（m）」相应改名为「长（m）」。
+- **轻量 GLB**：非方形柱子使用轻量模型 `pillar-*-lite.glb`，加载失败时自动回退到完整模型；方形柱子回退到程序化几何体。轻量与完整的选择是自动的，界面没有开关。
+
+### 墙体属性与「应用到所有」
+
+选中墙体后，检查器里每一项都可以单独修改，其中四项各自带一个 `应用到所有` 按钮：
+
+| 字段 | 取值范围 | 说明 |
+| --- | --- | --- |
+| 墙长 | 只读 | 由两端点决定 |
+| 墙高（m） | 0.01–6 | 同时成为本层新画墙体的默认值 |
+| 厚度（m） | 0.01–3 | 同时成为本层新画墙体的默认值 |
+| 透明度设置 | 跟随通用 / 单独设置 | 选择「跟随通用」即清除该墙的单独设置 |
+| 透明度（%） | 0–100 | 仅在「单独设置」下生效 |
+| 开放端点提醒 | 自动判断 / 允许开放端点 | — |
+
+点击 `应用到所有` 会打开「应用墙体属性」弹窗（`APPLY TO WALLS`）：上方显示将要应用的值，下方是带复选框的墙体列表，每行标注该墙的当前值，当前选中的那面墙会标出「当前墙」；可以 `全选` / `取消全选`，确认按钮为 `应用所选`。
+
+- 作用范围是**当前楼层**，不会影响其他楼层。
+- 只改所选的这一项属性，其他属性保持不变。
+- 整批应用只产生一次撤销快照。
+- 应用墙高 / 厚度时，本层的默认墙高 / 墙厚也会同步更新，之后新画的墙会继承新值。
+
+灯光的色温、亮度、照射范围、照射角度、离地使用同一套批量入口。此外，左侧顶部的「墙体」卡片（高 / 厚 / 透明度）是另一种更直接的方式：它不弹选择框，会直接覆盖当前楼层的所有墙体。
+
+### 草稿保存
+
+编辑是自动保存的：停止操作约 650 ms 后写入草稿，状态依次为「有未保存修改」、「正在保存…」、「已自动保存」，失败会提示 `3D 草稿保存失败。`。草稿落在 `data/studio3d/draft.json`。
+
+如果同一份草稿已在另一个页面被修改，会弹出版本冲突提示（「其他页面已经修改了户型」），此时自动保存暂停，需要选择 `加载服务器版本` 或 `使用当前页面覆盖`。
 
 ## 页面与接口
+
+### 主应用（18081）
 
 | 路径 | 说明 |
 | --- | --- |
 | `/setup` | 首次安装或重置管理员 |
 | `/login` | 管理员登录 |
-| `/license` | 用本机店激活码激活 |
+| `/license` | 用激活码 + 购买邮箱激活 |
 | `/` | 仪表盘编辑器 |
-| `/3d-studio` | 3D 户型工作室 |
+| `/3d-studio` | 3D 户型工作室（`/projects/{id}/3d-studio` 308 重定向到此） |
 | `/pair` | 中控设备配对 |
 | `/display/{project_id}` | 按项目 ID 打开展示页 |
 | `/habridge/{project_name}` | 按项目名称打开展示页 |
-| `/health/live` | 进程存活 |
-| `/health/ready` | 数据库就绪 |
-| `/api/v1/*` | 业务 API |
+| `/health/live` · `/health/ready` | 进程存活 · 数据库就绪 |
+| `/api/v1/auth/*` | 初始化、登录、登出、当前用户 |
+| `/api/v1/projects/*` | 仪表盘项目与草稿（`projects.write`） |
+| `/api/v1/ha/*` | HA 连接、实体、翻译、历史、区域、设备、同步、健康、服务调用、媒体浏览 |
+| `/api/v1/ha/*` 子集 | `ha.configure` / `ha.sync` / `ha.control` 分别门禁 |
+| `/api/v1/displays/*` | 中控设备与配对码 |
+| `/api/v1/assets/*` | 内置素材、用户图片、UI Pack、灯光效果变体、户型导出 |
+| `/api/v1/ui-packs/*` | UI Pack 列表与运行时脚本 |
+| `/api/v1/icons` | 图标目录 |
+| `/api/v1/studio3d/*` | 3D 草稿与导出 |
 | `/api/v1/modules/interaction3d/*` | 3D 交互：场景快照、舞台页、灯光缓存、配置编辑脚本 |
-| `/api/v1/ws/runtime` | 实时状态 WebSocket |
-| `/bridge-static/*` | 前端静态资源 |
+| `/api/v1/logs` | 全局日志（列表、导出、上报、清空） |
+| `/api/v1/license/status` · `/api/v1/license/activate` | 授权状态与激活 |
+| `/api/v1/updates` | 版本更新检查 |
+| `/api/v1/ws/runtime` | 实时状态 WebSocket（需 `runtime.websocket`） |
+| `/api/camera_hls/*`、`/api/camera_proxy/*`、`/api/hls/*` 等 | 摄像头与媒体代理（反向代理需一并转发） |
+| `/bridge-static/*` | 前端静态资源（静态目录扁平：`/bridge-static/home.js`、`/bridge-static/app.css`） |
+| `/assets/builtin/*` | 需登录或已配对，且授权允许 `assets` |
+| `/component-lab`、`/template-assets/*` | 有意保留的 404 占位路由 |
 
-授权店（18082）：
+登录、设置、配对、授权页的脚本和样式可匿名访问。编辑器、展示页、3D 工作室和大部分静态资源需要登录或已配对，并且当前授权允许对应能力。
+
+### 授权商店与授权服务器（18082）
 
 | 路径 | 说明 |
 | --- | --- |
-| `/` | 领取激活码 |
-| `/lookup` | 按邮箱查询激活码 |
-| `/api/v1/store/register` | 注册订单 |
-| `/api/v1/store/activate` | 为主应用签发租约 |
-| `/api/v1/store/public-key` | 本机店验签公钥 |
-
-登录、设置、配对、授权页的脚本和样式可匿名访问。编辑器、展示页、3D 工作室和大部分静态资源需要登录或已配对，并且当前授权允许对应能力。
+| `/` · `/products` · `/item/{product_id}` | 商店首页、商品列表、商品详情 |
+| `/user/authentication/login` · `register` · `forget` | 登录、注册、找回密码 |
+| `/user/dashboard/index` · `/user/index/query` · `/user/referrals` | 账号中心、订单查询、邀请返利 |
+| `/admin` | 运营后台 |
+| `/store/v1/*` | 商店 API：验证码、账号、商品、订单、优惠码、邀请、提现 |
+| `/v2/activate` · `/v2/heartbeat` · `/v2/recover` | 授权服务器端点（加密封套） |
+| `/store-admin/v1/*` | 运营后台 API |
+| `/store/v1/payments/alipay/notify` · `/store/payment/return` | 支付宝异步通知与同步跳转 |
+| `/store/mock/pay/{order_no}` | 模拟收银台（仅 `mock` 渠道） |
+| `/store-static/*` · `/fonts/*` | 商店静态资源与图标字体 |
+| `/healthz` · `/store-api-docs` | 存活检查 · OpenAPI 文档 |
 
 ## 运行时数据
 
@@ -132,10 +344,11 @@ APP_DATA_DIR=./data PYTHONPATH=backend/app alembic upgrade head
 
 | 路径 | 说明 |
 | --- | --- |
-| `app.db` | SQLite 主库 |
+| `app.db` | 主应用 SQLite 主库 |
 | `admin-account.json` | 独立管理员账号 |
 | `instance-id` | 安装 UUID |
-| `secrets/` | HA、配对、授权、本机店公钥缓存 |
+| `hardware-fallback-id` | 硬件指纹回退标识 |
+| `secrets/` | HA、配对、授权密钥 |
 | `assets/` | 用户上传图片 |
 | `studio3d/` | 3D 草稿 |
 | `modules/interaction3d/` | 3D 交互场景快照与灯光渲染缓存 |
@@ -144,9 +357,13 @@ APP_DATA_DIR=./data PYTHONPATH=backend/app alembic upgrade head
 | `cache/effect-variants/` | 灯光效果变体缓存 |
 | `upgrade-backups/` | 升级前数据库备份 |
 
-授权店数据在 `register/data/`：`license-store.db` 和自动生成的 Ed25519 密钥。不要提交这些文件。
+授权商店数据在 `store/data/`：`store.db` 与商品图。授权私钥在 `store/keys/local/`。**不要提交这些文件。**
 
 ## 环境变量
+
+主应用、商店与还原工具的变量可以统一写进仓库根目录的 `.env`（见 [.env.example](.env.example)，已 gitignore）。优先级：**真实环境变量 > `.env` > 代码 / `start.py` 默认值**。
+
+### 主应用
 
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
@@ -155,19 +372,45 @@ APP_DATA_DIR=./data PYTHONPATH=backend/app alembic upgrade head
 | `APP_PORT` | `18081` | 容器监听端口 |
 | `APP_SESSION_MAX_AGE_SECONDS` | `28800` | 登录会话时长 |
 | `APP_COOKIE_SECURE` | `false` | HTTPS 下设为 `true` |
-| `APP_DISPLAY_COOKIE_MAX_AGE_SECONDS` | `15552000`（180 天） | 中控配对 cookie 时长 |
+| `APP_UPDATE_CHANNEL` | `docker` | 更新检查渠道 |
 | `APP_HA_REQUEST_TIMEOUT_SECONDS` | `10` | 调用 HA 的超时 |
 | `APP_HA_RECONCILE_INTERVAL_SECONDS` | `1800` | HA 全量对账间隔 |
 | `APP_HA_WEBSOCKET_MAX_SIZE_BYTES` | `67108864` | HA WebSocket 最大消息 |
-| `APP_LICENSE_STORE_URL` | `http://127.0.0.1:18082` | 本机授权店地址，仅允许本机 host |
+| `APP_LICENSE_SERVER_URL` | `http://127.0.0.1:18082` | 授权服务器地址 |
+| `APP_LICENSE_SERVER_BATCHES` | 单条 `direct` | 多批次授权服务器覆盖项 |
 | `APP_LICENSE_REQUEST_TIMEOUT_SECONDS` | `10` | 授权请求超时 |
-| `APP_LICENSE_CLOCK_SKEW_SECONDS` | `300` | 授权时钟偏斜容差 |
+| `APP_LICENSE_KEY_ID` | `hb-local-2026` | 签名公钥的 keyId |
+| `APP_LICENSE_PUBLIC_KEY_FILE` · `_SHA256` | 仓库 `keys/` | 签名公钥路径与文件字节 sha256 |
+| `APP_LICENSE_TRANSPORT_KEY_ID` | `hb-local-transport-2026` | 传输公钥的 keyId |
+| `APP_LICENSE_TRANSPORT_PUBLIC_KEY_FILE` · `_SHA256` | 仓库 `keys/` | 传输公钥路径与 sha256 |
 | `APP_HA_CREDENTIAL_FILE` | 数据目录内默认路径 | HA 凭据密钥文件 |
 | `APP_DISPLAY_PAIRING_KEY_FILE` | 数据目录内默认路径 | 中控配对密钥文件 |
 | `APP_LICENSE_CREDENTIAL_FILE` | 数据目录内默认路径 | 授权密钥文件 |
-| `REGISTER_DATA_DIR` | `register/data` | 授权店数据库和密钥目录 |
 
-授权校验始终开启，不能通过环境变量关闭。激活只连接本机授权店，不再访问官方授权云。
+授权校验始终开启（`license_required=True`），不能通过环境变量关闭。激活只连接自建授权服务器。
+
+### 授权商店（`store/`）
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `STORE_HOST` / `STORE_PORT` | `0.0.0.0` / `18082` | 监听地址（`start.py` 下为 `127.0.0.1`） |
+| `STORE_DATA_DIR` | `store/data` | SQLite 与商品图目录 |
+| `STORE_BASE_URL` | 由请求推导 | 生成支付二维码、回调链接用的外部基址 |
+| `STORE_LICENSE_KEYS_DIR` | `store/keys/local` | 授权密钥目录 |
+| `STORE_MAIL_MODE` | `log`（`start.py` 下为 `echo`） | `log` \| `echo` \| `smtp` |
+| `STORE_EXPOSE_VERIFICATION_CODE` | `false` | 是否在接口响应回显验证码（生产必须 false） |
+| `STORE_SMTP_HOST` / `_PORT` / `_USERNAME` / `_PASSWORD` / `_USE_SSL` / `_STARTTLS` | — | SMTP 发信（`_PASSWORD` 填授权码） |
+| `STORE_PAYMENT_PROVIDER` | `mock` | `mock` \| `alipay`（后台站点配置优先） |
+| `STORE_ALIPAY_*` | — | APPID、密钥路径 / 内联、网关、卖家号、回调地址等 |
+| `STORE_LEASE_TTL_SECONDS` | `604800` | 租约有效期（7 天） |
+| `STORE_HEARTBEAT_INTERVAL_SECONDS` | `300` | 下发给客户端的 `heartbeatIn` |
+| `STORE_ORDER_TTL_SECONDS` | `120` | 订单有效期（真实收款必须调大） |
+| `STORE_DEVICE_RELEASE_COOLDOWN_SECONDS` | `28800` | 自助解绑冷却（8 小时） |
+| `STORE_VERIFICATION_TTL_SECONDS` / `_COOLDOWN_SECONDS` | `600` / `60` | 验证码有效期 / 重发冷却 |
+| `STORE_SESSION_MAX_AGE_SECONDS` | `2592000` | 商店会话有效期 |
+| `STORE_ADMIN_EMAIL` / `STORE_ADMIN_PASSWORD` | 代码内置开发默认值 | `seed` 初始化管理员（生产务必覆盖） |
+
+站点名、公告、客服邮箱、维护模式、邀请比例、提现手续费、解绑冷却等**运行时配置**存在数据库里，直接在 `/admin` 的「站点配置」里改，不需要重启。支付渠道是「后台站点配置优先于 `.env`」。完整的商店变量、支付宝接入步骤与排障表见 [store/README.md](store/README.md)。
 
 ## Docker
 
@@ -194,47 +437,84 @@ docker cp ha-bridge:/tmp/app.tar.gz ~/Desktop/
 docker exec ha-bridge rm /tmp/app.tar.gz
 ```
 
+## 源码还原与工具链
+
+本仓库的后端与前端源码由发布包还原而来，全过程、依据与验证结果见 [RESTORE-REPORT.md](RESTORE-REPORT.md)：
+
+- 后端：PyArmor 加固产物（`.1shot.seq` / `.1shot.das` / `.1shot.cdc.py`）→ 66 个可读 `.py` 文件，以 `.das` 反汇编为唯一真相来源。
+- 迁移：`alembic_runtime/` 壳（`sourceless = true`）→ `migrations/` 下 14 个真实脚本（`0001 → 0014` 线性链）。
+- 前端：`webcrack` 反混淆 → 导入别名还原 → 作用域感知局部重命名 → 语义化重命名，共 165 个文件、27 748 个机械名 / 短名全部替换。
+
+一键校验：
+
+```bash
+tools/verify_all.sh
+```
+
+覆盖 16 项断言：PyArmor 残留、Python 语法、导入与 `.das` 一致、标识符 / 字符串常量一致、JS 可解析、混淆残留、模块图、字符串保真、应用启动与请求流、残留机械名、格式敏感契约、前端公共 API 冻结、命名分类器自检、经典脚本全局耦合、Prettier 格式。
+
+前端标识符命名规范见 [frontend/NAMING.md](frontend/NAMING.md)：只允许改动词法绑定名，导出名冻结，映射文件保留在 `tools/rename-maps/`，可用 `tools/replay_frontend_rename.sh` 独立重放。
+
+> 还原参考包在 `tools/reference/`（`.das` 参考包与原始混淆前端），首次运行校验脚本时自动解压到 `tools/reference/.extracted/`（可安全删除，会按需重建）。仓库根 `HA-Bridge/` 是 0.5.2.1 原始参考树，未纳入版本库，可自行删除。
+
 ## 开发注意
 
-- 修改业务 JavaScript 后，保留 HTML / `import` 里的 `?v=` 缓存标记。优先使用单一 `releaseId` / `VERSION`（例如 `?v=0.5.3`），避免把功能 changelog 拼进查询串。`home.js` 与 `renderer.js` 必须使用同一条 `registry.js?v=`，否则会出现两份控件注册表。
+- 修改业务 JavaScript 后，保留 HTML / `import` 里的 `?v=` 缓存标记。`home.js` 与 `renderer.js` 必须使用同一条 `registry.js?v=`，否则会出现两份控件注册表。
+- 前端 JS / CSS / HTML 遵循 [.prettierrc.json](.prettierrc.json)（`printWidth=100`，HTML 为 120），`verify_all.sh` 第 15 项会守住格式。`frontend/static/vendor/` 与 `tools/reference/` 不参与格式化。
 - 不要改 `frontend/static/vendor/` 下的 three.js、hls.js、OrbitControls 等第三方文件。
-- 界面中文文案保持原词。
-- `migrations/env.py` 必须从 `backend/app` 导入 `database` 和 `models`，不要写成 `from backend.app import models`，否则会重复注册表。
-- 旧扁平静态路径（如 `/bridge-static/home.js`）已改为 `js/`、`css/`、`assets/`。户型工作室与 3D 交互还会引用 `/bridge-static/utils/`（与 dump 0.4.8 一致）。
-- 3D 交互舞台脚本由 `/api/v1/modules/interaction3d/{filename}` 下发，需要已登录或已配对，且当前授权允许编辑器。
-- **3D 目录职责（勿合并）：**
-  - `frontend/static/3d-studio/` — 户型工作室引擎（`studio-app.js`）；舞台嵌入模式复用同一引擎。
-  - `frontend/modules/interaction3d/` — 授权门控的舞台运行时（灯光/设备面板、`stage.js` 等），经 API 白名单下发，不是公开静态资源。
-  - `frontend/static/modules/interaction3d/` — 编辑器桥接、控件定义、frame-loop / render-cache 等公开辅助模块。
-- **JavaScript 标识符：** 禁止 1–2 字母变量名（循环下标除外）；禁止无配对语义的 `Current` 后缀；DOM 绑定按职责命名；禁止同一绑定换类型复用。
-- 本地护栏：`pip install -r requirements-dev.txt` 后可运行 `ruff check`、`pytest`、`bash scripts/check-js.sh`。
+- 界面中文文案保持原词；前端改名时字符串与 `?v=` 缓存串逐字节保留。
+- 静态资源是扁平目录：`/bridge-static/home.js`、`/bridge-static/app.css`；子目录为 `renderer/`、`3d-studio/`、`modules/`、`utils/`、`templates/`、`ui-packs/`、`component-thumbnails/`、`audio/`、`vendor/`。
+- `migrations/env.py` 必须从 `backend/app` 导入 `database` 和 `models`（`from backend.app.database import Base`），不要写成相对导入，否则会重复注册表。
+- 3D 交互舞台脚本由 `/api/v1/modules/interaction3d/{filename}` 下发，需要已登录或已配对，且当前授权允许编辑器或 `module.3d_interaction`。
+- 商店的 `theme.css` 必须最后加载，令牌值与 `frontend/static/app.css` 对齐（`smoke.py` 会比对，主程序改色而商店没跟就会 FAIL）。详见 [store/README.md](store/README.md) 的「界面主题」。
+- 改动商店授权端点错误文案前，先核对客户端 `is_confirmed_revocation` 的吊销短语表。
 
 ## 更新日志
 
-### v0.5.3
+### v0.5.4
 
 新增
 
-- 编辑器增加「开发计划与更新日志」入口（位于「使用教程」后方），默认打开更新日志；发现新版本时显示「有更新」标记，约 6 小时检测一次。
-- 人体检测支持摄像头检测、人数计数及自定义实体，可选择自动识别、数值阈值、指定状态或状态变化触发，并设置触发后显示时长。
-- 窗帘增加布帘、纱帘外观；未绑定实体时也可设置关闭、半开或全开。
-- 轻量柔光支持照射高度范围，并可切换平面编辑与 3D 预览。
-- 多层总览增加等比例叠加开关，支持调整楼层间距。
-- 3D 背景新增「微光星尘」主题，保留经典网格可选。
+- 仓库自带完整的**授权商店 + 授权服务器 + 运营后台**（`store/`），取代原 `register/` 本机店：
+    - 商店前台复刻 `pay.habridge.cn` 的多页结构与 `/store/v1/*` 契约：账号注册 / 登录 / 找回密码、邮箱验证码、商品列表与详情、优惠码、订单查询与归档、邀请返利与提现、账号中心与设备自助解绑。
+    - 授权服务器提供 `/v2/activate`、`/v2/heartbeat`、`/v2/recover`：Ed25519 签名租约、X25519 + HKDF-SHA256 + AES-256-GCM 加密传输，租约 7 天、心跳 300 秒续租。
+    - 运营后台 `/admin` + `/store-admin/v1/*`：概览、商品、订单、授权、设备绑定、优惠码、提现审核、账号、站点配置、版本发布与审计日志；暗色 + 琥珀统一主题。
+    - 支付渠道 `mock`（本地收银台）与 `alipay`（当面付扫码）可切换；异步通知验签 + 主动查单兜底，统一入账且重复通知只发一次码。
+- 客户端默认零配置指向自建授权服务器（`backend/app/config.py` 内置端点、keyId 与公钥 sha256），厂商生产节点与生产公钥已彻底移除。
+- 仓库根 `keys/` 作为客户端信任锚公钥镜像，由 `store.tools.gen_keys` 从 `store/keys/local/` 自动同步，二者逐字节一致。
+- 新增 `.env` / `.env.example` 本地配置（SMTP 授权码、支付宝私钥等不进版本库）与 `store/env.py` 极简加载器。
+- 新增还原与校验工具链 `tools/`（`verify_all.sh` 16 项断言、`restore_backend.py`、前端反混淆与重命名脚本、`rename-maps/` 映射与重放脚本、`reference/` 参考包）。
+- 新增 [RESTORE-REPORT.md](RESTORE-REPORT.md) 还原报告与 [frontend/NAMING.md](frontend/NAMING.md) 前端命名规范。
+- 新增 `release-manifest.json`、`sbom.cdx.json`、`.prettierrc.json` / `.prettierignore`。
 
-优化与修复
+优化
 
-- 对齐 0.5.3：减少编辑连带刷新相关行为、实体绑定放宽、电视电源海报/黑屏、扫地机基站滞留与家具参照、柜体背板、相机俯视约束、独立仪表盘 HLS 依赖等。
-- 保留 0.5.2.1 独有能力：本机授权店、壁画/背景墙、多种柱截面、本地使用教程等。
-- 授权仍使用本机 `register` 商店（`APP_LICENSE_STORE_URL`），不接入官方授权云。
+- 后端与前端源码从发布包完整还原为可读源码：66 个 Python 文件零 PyArmor 残留，165 个前端 JS 文件零混淆残留，27 748 个机械名 / 短名全部替换为语义名。
+- Alembic 迁移改为 `migrations/` 下的 14 个真实脚本（`0001 → 0014`），移除 `sourceless = true` 运行时壳。
+- 依赖收敛到 `store/requirements.txt`，主应用与商店共用一个虚拟环境 `.venv-store`。
+
+说明
+
+- 授权校验始终开启，激活只连接自建授权服务器，不接入官方授权云。
+- 本版本为源码还原版，功能面与 0.5.2.1 保持一致，主要差异在授权体系与可读性 / 可验证性。
 
 ### v0.5.2.1
 
 新增
 
-- 3D 工作室灯光「区域」：可新建区域、将灯组拖入区域，图层归属更清晰。
-- 模型库新增壁画、背景墙；柱子支持多种截面形状与立 / 卧布置，并附带轻量 GLB。
-- 平面图新增「平移」工具；墙高、厚度、透明度支持「应用到所有」。
+- 3D 工作室灯光「区域」：灯光分类下新增图层面板，可 `新建区域` 并按房间或空间归类灯组。
+    - 灯组行支持拖拽：拖到区域标题上即移入该区域，拖到另一个灯组行上则在区域内调整顺序。
+    - 右键灯组可 `设置区域`，可选择已有区域、就地新建，或选「未分类」移出区域；右键区域标题可 `重命名区域` / `删除区域`。
+    - 面板按「区域 → 灯组」两级展示，区域标题带折叠箭头与成员数量；删除区域不会删除灯组，组内灯组回到「未分类」。
+    - 区域与归属按楼层保存，加载时非法归属会自动回落到「未分类」。
+- 模型库新增壁画与背景墙：壁画提供 6 种画面风格（包豪斯几何、柔和色域、极简线条、硬边色块、水墨意象、水磨石纹），背景墙提供 7 种墙面材质（大理石、木纹、格栅条、岩板、微水泥、布纹、金属拉丝）。两者均为程序化生成，不依赖外部模型文件；背景墙的「格栅条」会额外出真实 3D 格栅。
+- 柱子支持多种截面形状与立 / 卧布置：形状可选方形、圆形、半圆形、1/4 圆形、1/4 圆形（内弧）；`布置方向` 可选垂直（站立）或水平（躺放）。躺放时平面占位改为「宽 × 长」、平面符号改用内轮廓、3D 姿态旋转 90° 后重新贴地，检查器的「高（m）」相应变为「长（m）」。
+    - 非方形柱子附带轻量 GLB（`pillar-*-lite.glb`），加载失败时自动回退到完整模型；方形柱子回退到程序化几何体，界面无需手动切换。
+- 平面图新增「平移」工具：按住左键拖动即可平移画布。它只改变画布视角，不修改户型，也不触发保存与撤销；滚轮缩放、中键拖动与按住空格拖动仍然可用。
+- 墙高、厚度、透明度支持「应用到所有」：选中墙体后，检查器的墙高 / 厚度 / 透明度设置 / 透明度各有 `应用到所有` 按钮，弹窗中可按复选框挑选目标墙体（默认全选，可 `全选` / `取消全选`），确认后一次应用所选。
+    - 作用范围为当前楼层，仅修改这一项属性，整批应用只记一次撤销。
+    - 应用墙高 / 厚度会同时更新本层默认值，之后新画的墙继承新值；透明度按单墙覆盖，选择「跟随通用」即清除覆盖。
+    - 灯光的色温、亮度、照射范围、照射角度、离地采用同一套批量入口。
 
 优化
 
@@ -251,8 +531,7 @@ docker exec ha-bridge rm /tmp/app.tar.gz
 
 说明
 
-- 授权仍使用本机 `register` 商店（`APP_LICENSE_STORE_URL`），不接入官方授权云。
-- 本版本为 0.5.2 修订版，以工作室功能补齐与运行时 / 安全加固为主。
+- 上述工作室功能的使用说明见 [3D 户型工作室](#3d-户型工作室)。
 
 ### v0.5.2
 
@@ -274,7 +553,6 @@ docker exec ha-bridge rm /tmp/app.tar.gz
 
 说明
 
-- 授权仍使用本机 `register` 商店（`APP_LICENSE_STORE_URL`），不接入官方授权云。
 - 本版本以 0.5.2 参考实现对齐展示页开屏，并补齐上述 3D 修复。
 
 ### v0.5.1
@@ -290,8 +568,7 @@ docker exec ha-bridge rm /tmp/app.tar.gz
 
 说明
 
-- 授权仍使用本机 `register` 商店（`APP_LICENSE_STORE_URL`），不接入官方授权云。
-- 本版本以 0.5.1 参考实现对齐前后端功能，保留本仓库既有改造（静态目录 `js/`、`css/`、`assets/`，`help.html`，three.js 0.186.0，hls.js 1.7.2，端口 18081）。
+- 本版本以 0.5.1 参考实现对齐前后端功能，保留本仓库既有改造（静态目录、`help.html`、three.js 0.186.0、hls.js 1.7.2、端口 18081）。
 
 ### v0.5.0
 
@@ -306,10 +583,6 @@ docker exec ha-bridge rm /tmp/app.tar.gz
 
 - 3D `/control` 按模型绑定与 HA 能力校验窗帘、空调、电视控制。
 - 控件配置契约扩展环境、设备、反射、楼层与页面行为字段。
-
-说明
-
-- 授权仍使用本机 `register` 商店（`APP_LICENSE_STORE_URL`），不接入官方授权云。
 
 ### v0.4.8
 

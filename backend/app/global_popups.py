@@ -4,20 +4,20 @@ import json
 from copy import deepcopy
 from uuid import uuid4
 
-from models import GlobalCustomPopupState, Project, ProjectDraft
-from panel.document_walk import walk
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .models import GlobalCustomPopupState, Project, ProjectDraft
+
 
 def _canonical(value) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
 def global_popup_state(database: Session) -> GlobalCustomPopupState:
     state = database.get(GlobalCustomPopupState, 1)
     if state is None:
-        state = GlobalCustomPopupState(id=1, revision=1, popups_json='[]')
+        state = GlobalCustomPopupState(id=1, revision=1, popups_json="[]")
         database.add(state)
         database.flush()
     return state
@@ -34,19 +34,21 @@ def global_popups(database: Session) -> list[dict]:
 
 def popup_reference_ids(value) -> set[str]:
     result = set()
-
-    def visit(node) -> None:
-        if isinstance(node, dict) and node.get('popupSource') == 'custom' and isinstance(node.get('popupId'), str):
-            result.add(node['popupId'])
-
-    walk(value, visit)
+    if isinstance(value, dict):
+        if value.get("popupSource") == "custom" and isinstance(value.get("popupId"), str):
+            result.add(value["popupId"])
+        for item in value.values():
+            result.update(popup_reference_ids(item))
+    elif isinstance(value, list):
+        for item in value:
+            result.update(popup_reference_ids(item))
     return result
 
 
 def remap_popup_references(value, replacements: dict[str, str]) -> None:
     if isinstance(value, dict):
-        if value.get('popupSource') == 'custom' and value.get('popupId') in replacements:
-            value['popupId'] = replacements[value['popupId']]
+        if value.get("popupSource") == "custom" and value.get("popupId") in replacements:
+            value["popupId"] = replacements[value["popupId"]]
         for item in value.values():
             remap_popup_references(item, replacements)
     elif isinstance(value, list):
@@ -55,17 +57,19 @@ def remap_popup_references(value, replacements: dict[str, str]) -> None:
 
 
 def clear_popup_references(value, popup_ids: set[str]) -> int:
-    '''Turn actions targeting deleted global popups into explicit no-op actions.'''
+    """Turn actions targeting deleted global popups into explicit no-op actions."""
     if not popup_ids:
         return 0
     if isinstance(value, dict):
-        data = value.get('data')
-        if value.get('type') == 'more-info' and isinstance(data, dict) and data.get('popupSource') == 'custom' and data.get('popupId') in popup_ids:
+        data = value.get("data")
+        if (
+            value.get("type") == "more-info"
+            and isinstance(data, dict)
+            and data.get("popupSource") == "custom"
+            and data.get("popupId") in popup_ids
+        ):
             value.clear()
-            value.update({
-                'type': 'none',
-                'data': {},
-            })
+            value.update({"type": "none", "data": {}})
             return 1
         return sum(clear_popup_references(item, popup_ids) for item in value.values())
     if isinstance(value, list):
@@ -73,37 +77,47 @@ def clear_popup_references(value, popup_ids: set[str]) -> int:
     return 0
 
 
-def hydrate_document_popups(database: Session, document: dict, *, referenced_only: bool = False) -> dict:
+def hydrate_document_popups(
+    database: Session,
+    document: dict,
+    *,
+    referenced_only: bool = False,
+) -> dict:
     hydrated = deepcopy(document)
     popups = global_popups(database)
     if referenced_only:
         referenced = popup_reference_ids(hydrated)
-        popups = [popup for popup in popups if popup.get('id') in referenced]
-    hydrated['customPopups'] = deepcopy(popups)
+        popups = [popup for popup in popups if popup.get("id") in referenced]
+    hydrated["customPopups"] = deepcopy(popups)
     return hydrated
 
 
 def strip_document_popups(document: dict) -> dict:
     stored = deepcopy(document)
-    stored['customPopups'] = []
+    stored["customPopups"] = []
     return stored
 
 
-def merge_document_popups(database: Session, document: dict, *, updated_by: str | None = None) -> dict:
+def merge_document_popups(
+    database: Session,
+    document: dict,
+    *,
+    updated_by: str | None = None,
+) -> dict:
     state = global_popup_state(database)
     current = global_popups(database)
-    by_id = {popup.get('id'): popup for popup in current if isinstance(popup, dict)}
+    by_id = {popup.get("id"): popup for popup in current if isinstance(popup, dict)}
     replacements = {}
     changed = False
-    for source in document.get('customPopups') or []:
-        if not isinstance(source, dict) or not isinstance(source.get('id'), str):
+    for source in document.get("customPopups") or []:
+        if not (isinstance(source, dict) and isinstance(source.get("id"), str)):
             continue
         popup = deepcopy(source)
-        popup_id = popup['id']
+        popup_id = popup["id"]
         existing = by_id.get(popup_id)
         if existing is not None and _canonical(existing) != _canonical(popup):
-            replacement = f'custom-popup-global-{uuid4()}'
-            popup['id'] = replacement
+            replacement = f"custom-popup-global-{uuid4()}"
+            popup["id"] = replacement
             replacements[popup_id] = replacement
             popup_id = replacement
             existing = None
@@ -115,7 +129,7 @@ def merge_document_popups(database: Session, document: dict, *, updated_by: str 
     merged = deepcopy(document)
     if replacements:
         remap_popup_references(merged, replacements)
-    merged['customPopups'] = deepcopy(current)
+    merged["customPopups"] = deepcopy(current)
     if changed:
         state.popups_json = _canonical(current)
         state.revision += 1
@@ -123,7 +137,12 @@ def merge_document_popups(database: Session, document: dict, *, updated_by: str 
     return merged
 
 
-def popup_reference_projects(database: Session, popup_ids: set[str], *, exclude_project_id: str | None = None) -> list[str]:
+def popup_reference_projects(
+    database: Session,
+    popup_ids: set[str],
+    *,
+    exclude_project_id: str | None = None,
+) -> list[str]:
     if not popup_ids:
         return []
     names = {project.id: project.name for project in database.scalars(select(Project))}

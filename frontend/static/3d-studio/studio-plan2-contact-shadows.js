@@ -1,76 +1,132 @@
-function findUserData(object, key) {
-  for (let userData = object; userData; userData = userData.parent) {
-    if (userData.userData?.[key] !== undefined) {
-      return userData.userData[key];
+function findUserDataInAncestors(startObject3d, userDataKey) {
+  for (
+    let ancestorObject3d = startObject3d;
+    ancestorObject3d;
+    ancestorObject3d = ancestorObject3d.parent
+  ) {
+    if (ancestorObject3d.userData?.[userDataKey] !== undefined) {
+      return ancestorObject3d.userData[userDataKey];
     }
   }
 }
-function isVisibleInHierarchy(node) {
-  for (let parent = node; parent; parent = parent.parent) {
-    if (!parent.visible) {
+function isVisibleWithAncestors(rootObject3d) {
+  for (let ancestorNode = rootObject3d; ancestorNode; ancestorNode = ancestorNode.parent) {
+    if (!ancestorNode.visible) {
       return false;
     }
   }
   return true;
 }
 export function isContactCasterMaterial(material) {
-  return !!material && material.visible !== false && !!(material.opacity >= 0.98) && !(material.transmission > 0) && (!material.transparent || !!(material.alphaTest > 0));
+  return (
+    !!material &&
+    material.visible !== false &&
+    !!(material.opacity >= 0.98) &&
+    !(material.transmission > 0) &&
+    (!material.transparent || !!(material.alphaTest > 0))
+  );
 }
-export function surfaceBakeLevels(THREE, meshes, floorY, maxLevels = 32) {
-  const items = new Map();
-  const fromBufferAttribute = new THREE.Vector3();
-  const vector = new THREE.Vector3();
-  const fromBufferAttributeCurrent = new THREE.Vector3();
-  const subVectors = new THREE.Vector3();
-  const subVectorsCurrent = new THREE.Vector3();
-  const crossVectors = new THREE.Vector3();
-  const copy = new THREE.Matrix4();
-  const instanceMatrix = new THREE.Matrix4();
-  for (const isInstancedMesh of meshes) {
-    const drawRange = isInstancedMesh.geometry;
-    const count = drawRange?.attributes?.position;
-    if (!count) {
+export function surfaceBakeLevels(three, meshes, baseY, maxLevels = 32) {
+  return computeSurfaceLevels(three, meshes, baseY, maxLevels).map(level => level.height);
+}
+function computeSurfaceLevels(threeLib, meshList, floorY, levelLimit = 32) {
+  const levelsByHeightKey = new Map();
+  const vertexA = new threeLib.Vector3();
+  const vertexB = new threeLib.Vector3();
+  const vertexC = new threeLib.Vector3();
+  const edgeAB = new threeLib.Vector3();
+  const edgeAC = new threeLib.Vector3();
+  const faceNormal = new threeLib.Vector3();
+  const meshMatrix = new threeLib.Matrix4();
+  const instanceMatrix = new threeLib.Matrix4();
+  for (const mesh of meshList) {
+    const materialList = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    if (
+      materialList.length &&
+      materialList.every(materialEntry => materialEntry?.userData?.plan2SurfaceContact === false)
+    ) {
       continue;
     }
-    const getX = drawRange.index;
-    const indexCount = getX?.count ?? count.count;
-    const drawStart = drawRange.drawRange.start;
-    const drawEnd = Math.min(indexCount, drawStart + drawRange.drawRange.count);
-    for (let instanceIndex = 0; instanceIndex < (isInstancedMesh.isInstancedMesh ? isInstancedMesh.count : 1); instanceIndex++) {
-      copy.copy(isInstancedMesh.matrixWorld);
-      if (isInstancedMesh.isInstancedMesh) {
-        isInstancedMesh.getMatrixAt(instanceIndex, instanceMatrix);
-        copy.multiply(instanceMatrix);
+    const geometry = mesh.geometry;
+    const positionAttribute = geometry?.attributes?.position;
+    if (!positionAttribute) {
+      continue;
+    }
+    const indexAttribute = geometry.index;
+    const vertexCount = indexAttribute?.count ?? positionAttribute.count;
+    const drawStart = geometry.drawRange.start;
+    const drawEnd = Math.min(vertexCount, drawStart + geometry.drawRange.count);
+    for (
+      let instanceIndex = 0;
+      instanceIndex < (mesh.isInstancedMesh ? mesh.count : 1);
+      instanceIndex++
+    ) {
+      meshMatrix.copy(mesh.matrixWorld);
+      if (mesh.isInstancedMesh) {
+        mesh.getMatrixAt(instanceIndex, instanceMatrix);
+        meshMatrix.multiply(instanceMatrix);
       }
-      for (let triIndex = drawStart; triIndex + 2 < drawEnd; triIndex += 3) {
-        fromBufferAttribute.fromBufferAttribute(count, getX ? getX.getX(triIndex) : triIndex).applyMatrix4(copy);
-        vector.fromBufferAttribute(count, getX ? getX.getX(triIndex + 1) : triIndex + 1).applyMatrix4(copy);
-        fromBufferAttributeCurrent.fromBufferAttribute(count, getX ? getX.getX(triIndex + 2) : triIndex + 2).applyMatrix4(copy);
-        crossVectors.crossVectors(subVectors.subVectors(vector, fromBufferAttribute), subVectorsCurrent.subVectors(fromBufferAttributeCurrent, fromBufferAttribute));
-        const area = crossVectors.length() * 0.5;
-        const heightAboveFloor = (fromBufferAttribute.y + vector.y + fromBufferAttributeCurrent.y) / 3 - floorY;
-        if (area < 0.004 || crossVectors.y < area * 1.98 || heightAboveFloor <= 0.12) {
+      for (let vertexCursor = drawStart; vertexCursor + 2 < drawEnd; vertexCursor += 3) {
+        vertexA
+          .fromBufferAttribute(
+            positionAttribute,
+            indexAttribute ? indexAttribute.getX(vertexCursor) : vertexCursor
+          )
+          .applyMatrix4(meshMatrix);
+        vertexB
+          .fromBufferAttribute(
+            positionAttribute,
+            indexAttribute ? indexAttribute.getX(vertexCursor + 1) : vertexCursor + 1
+          )
+          .applyMatrix4(meshMatrix);
+        vertexC
+          .fromBufferAttribute(
+            positionAttribute,
+            indexAttribute ? indexAttribute.getX(vertexCursor + 2) : vertexCursor + 2
+          )
+          .applyMatrix4(meshMatrix);
+        faceNormal.crossVectors(
+          edgeAB.subVectors(vertexB, vertexA),
+          edgeAC.subVectors(vertexC, vertexA)
+        );
+        const triangleArea = faceNormal.length() * 0.5;
+        const surfaceHeight = (vertexA.y + vertexB.y + vertexC.y) / 3 - floorY;
+        if (triangleArea < 0.004 || faceNormal.y < triangleArea * 1.98 || surfaceHeight <= 0.12) {
           continue;
         }
-        const heightBucket = Math.round(heightAboveFloor * 100);
-        const height = items.get(heightBucket) || {
+        const heightKey = Math.round(surfaceHeight * 100);
+        const bundledLevel = levelsByHeightKey.get(heightKey) || {
           height: 0,
-          area: 0
+          area: 0,
+          top: -Infinity
         };
-        height.height += heightAboveFloor * area;
-        height.area += area;
-        items.set(heightBucket, height);
+        bundledLevel.height += surfaceHeight * triangleArea;
+        bundledLevel.area += triangleArea;
+        bundledLevel.top = Math.max(
+          bundledLevel.top,
+          vertexA.y - floorY,
+          vertexB.y - floorY,
+          vertexC.y - floorY
+        );
+        levelsByHeightKey.set(heightKey, bundledLevel);
       }
     }
   }
-  return [...items.values()].sort((area, areaRight) => areaRight.area - area.area).slice(0, maxLevels).map(height => height.height / height.area).sort((heightA, heightB) => heightA - heightB);
+  return [...levelsByHeightKey.values()]
+    .sort((levelA, levelB) => levelB.area - levelA.area)
+    .slice(0, levelLimit)
+    .map(levelEntry => ({
+      height: levelEntry.height / levelEntry.area,
+      top: levelEntry.top
+    }))
+    .sort((levelLeft, levelRight) => levelLeft.height - levelRight.height);
 }
 export function createContactShadowController({
-  THREE,
-  renderer,
-  getRoot,
-  canBuild = () => true,
-  requestFrame = () => {}
+  THREE: THREE,
+  renderer: renderer,
+  getRoot: getRoot,
+  canBuild: canBuild = () => true,
+  requestFrame: requestFrame = () => {}
 }) {
   const settings = {
     enabled: true,
@@ -82,7 +138,7 @@ export function createContactShadowController({
     offsetX: 0.28,
     offsetZ: -0.22,
     surfaceEnabled: true,
-    surfaceOpacity: 0.28,
+    surfaceOpacity: 0.55,
     surfaceResolution: 256,
     maxSurfaceLevels: 32
   };
@@ -100,49 +156,55 @@ export function createContactShadowController({
     cachedBytes: 0,
     disposed: false
   };
-  const floorsById = new Map();
-  const depthMaterialCache = new Map();
-  const geometryKeyCache = new WeakMap();
-  const boundsCache = new WeakMap();
-  const contentCache = new Map();
-  const blackTexture = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
-  blackTexture.needsUpdate = true;
-  let dirtyAll = true;
-  let disposed = false;
-  let suspended = false;
-  let inMotion = false;
-  let visibleFloorId = null;
-  const matchesVisibleFloor = floorId => visibleFloorId === null || floorId === visibleFloorId;
-  let lastRoot = null;
+  const floorStatesById = new Map();
+  const depthMaterialsByKey = new Map();
+  const geometryCacheEntryByGeometry = new WeakMap();
+  const receiverBoundsCacheByGeometry = new WeakMap();
+  const cachedLayoutsByKey = new Map();
+  const placeholderTexture = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+  placeholderTexture.needsUpdate = true;
+  let needsRebuild = true;
+  let isDisposed = false;
+  let isSuspended = false;
+  let isMotionSuspended = false;
+  let lastRootObject = null;
   let frameProvider = null;
-  let staggeredRebuild = false;
-  let preferCache = false;
-  const dirtyFloors = new Set();
+  let isIncrementalUpdate = false;
+  let shouldReuseLayout = false;
+  const pendingFloorIds = new Set();
+  let visibleFloorId = null;
+  const matchesVisibleFloor = candidateFloorId =>
+    visibleFloorId === null || candidateFloorId === visibleFloorId;
   const blurScene = new THREE.Scene();
   const blurCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
   const blurMaterial = new THREE.ShaderMaterial({
     uniforms: {
       source: {
-        value: blackTexture
+        value: placeholderTexture
       },
       stepSize: {
         value: new THREE.Vector2()
+      },
+      spread: {
+        value: 0
       }
     },
     depthTest: false,
     depthWrite: false,
     toneMapped: false,
-    vertexShader: "varying vec2 shadowUv; void main() { shadowUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }",
-    fragmentShader: "uniform sampler2D source; uniform vec2 stepSize; varying vec2 shadowUv;\n      void main() {\n        float value = texture2D(source, shadowUv).r * 0.227027;\n        value += texture2D(source, shadowUv + stepSize * 1.384615).r * 0.316216;\n        value += texture2D(source, shadowUv - stepSize * 1.384615).r * 0.316216;\n        value += texture2D(source, shadowUv + stepSize * 3.230769).r * 0.070270;\n        value += texture2D(source, shadowUv - stepSize * 3.230769).r * 0.070270;\n        gl_FragColor = vec4(vec3(value), 1.0);\n      }"
+    vertexShader:
+      "varying vec2 shadowUv; void main() { shadowUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }",
+    fragmentShader:
+      "uniform sampler2D source; uniform vec2 stepSize; uniform float spread; varying vec2 shadowUv;\n      void main() {\n        float center = texture2D(source, shadowUv).r;\n        float nearA = texture2D(source, shadowUv + stepSize * 1.384615).r;\n        float nearB = texture2D(source, shadowUv - stepSize * 1.384615).r;\n        float farA = texture2D(source, shadowUv + stepSize * 3.230769).r;\n        float farB = texture2D(source, shadowUv - stepSize * 3.230769).r;\n        float value = mix(center * 0.227027 + (nearA + nearB) * 0.316216 + (farA + farB) * 0.070270,\n          max(center, max(max(nearA, nearB), max(farA, farB))), spread);\n        gl_FragColor = vec4(vec3(value), 1.0);\n      }"
   });
   const blurQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), blurMaterial);
   blurQuad.frustumCulled = false;
   blurScene.add(blurQuad);
-  function ensureFloor(floorId) {
-    const id = String(floorId);
-    if (!floorsById.has(id)) {
-      floorsById.set(id, {
-        id: id,
+  function getFloorState(floorId) {
+    const floorIdKey = String(floorId);
+    if (!floorStatesById.has(floorIdKey)) {
+      floorStatesById.set(floorIdKey, {
+        id: floorIdKey,
         target: null,
         ping: null,
         surface: null,
@@ -155,7 +217,7 @@ export function createContactShadowController({
             value: new THREE.Matrix4()
           },
           plan2ContactMap: {
-            value: blackTexture
+            value: placeholderTexture
           },
           plan2ContactBounds: {
             value: new THREE.Vector4(0, 0, 1, 1)
@@ -167,13 +229,13 @@ export function createContactShadowController({
             value: 0
           },
           plan2SurfaceMap: {
-            value: blackTexture
+            value: placeholderTexture
           },
           plan2SurfaceBounds: {
             value: new THREE.Vector4()
           },
           plan2SurfaceLookup: {
-            value: blackTexture
+            value: placeholderTexture
           },
           plan2SurfaceLayout: {
             value: new THREE.Vector2(1, 1)
@@ -184,343 +246,456 @@ export function createContactShadowController({
         }
       });
     }
-    return floorsById.get(id);
+    return floorStatesById.get(floorIdKey);
   }
-  function invalidate(floorIds, keepCache = false) {
-    if (!disposed) {
-      if (!keepCache) {
-        preferCache = false;
-        const has = floorIds == null ? null : new Set(typeof floorIds == "string" ? [floorIds] : floorIds);
-        for (const [cacheEntryKey, id] of contentCache) {
-          if (!has || has.has(id.id)) {
-            disposeFloorTargets(id);
-            contentCache.delete(cacheEntryKey);
+  function invalidate(floorIds, keepLayoutCache = false) {
+    if (!isDisposed) {
+      if (!keepLayoutCache) {
+        shouldReuseLayout = false;
+        const targetFloorIdSet =
+          floorIds == null ? null : new Set(typeof floorIds == "string" ? [floorIds] : floorIds);
+        for (const [iteratedLayoutKey, detachedState] of cachedLayoutsByKey) {
+          if (!targetFloorIdSet || targetFloorIdSet.has(detachedState.id)) {
+            disposeFloorState(detachedState);
+            cachedLayoutsByKey.delete(iteratedLayoutKey);
           }
         }
       }
       if (floorIds == null) {
-        dirtyAll = true;
-        dirtyFloors.clear();
-      } else if (!dirtyAll) {
-        const ids = typeof floorIds == "string" ? [floorIds] : floorIds;
-        for (const id of ids) {
-          if (id != null) {
-            dirtyFloors.add(String(id));
+        needsRebuild = true;
+        pendingFloorIds.clear();
+      } else if (!needsRebuild) {
+        const floorIdList = typeof floorIds == "string" ? [floorIds] : floorIds;
+        for (const floorIdValue of floorIdList) {
+          if (floorIdValue != null) {
+            pendingFloorIds.add(String(floorIdValue));
           }
         }
       }
-      if (dirtyAll || dirtyFloors.size) {
+      if (needsRebuild || pendingFloorIds.size) {
         requestFrame();
       }
     }
   }
-  function setEnabled(nextEnabled) {
-    settings.enabled = !!nextEnabled;
-    for (const uniforms of floorsById.values()) {
-      uniforms.fade = null;
-      uniforms.uniforms.plan2ContactOpacity.value = settings.enabled && !suspended && uniforms.target ? settings.opacity : 0;
-      uniforms.uniforms.plan2SurfaceOpacity.value = settings.enabled && !suspended && settings.surfaceEnabled && uniforms.surface ? settings.surfaceOpacity : 0;
+  function setEnabled(enabled) {
+    settings.enabled = !!enabled;
+    for (const enabledFloor of floorStatesById.values()) {
+      enabledFloor.fade = null;
+      enabledFloor.uniforms.plan2ContactOpacity.value =
+        settings.enabled &&
+        !isSuspended &&
+        !isMotionSuspended &&
+        matchesVisibleFloor(enabledFloor.id) &&
+        enabledFloor.target
+          ? settings.opacity
+          : 0;
+      enabledFloor.uniforms.plan2SurfaceOpacity.value =
+        settings.enabled &&
+        !isSuspended &&
+        !isMotionSuspended &&
+        matchesVisibleFloor(enabledFloor.id) &&
+        settings.surfaceEnabled &&
+        enabledFloor.surface
+          ? settings.surfaceOpacity
+          : 0;
     }
     requestFrame();
   }
-  function setSuspended(nextSuspended) {
-    const nextSuspendedFlag = nextSuspended === true;
-    if (nextSuspendedFlag !== suspended) {
-      suspended = nextSuspendedFlag;
-      for (const uniforms of floorsById.values()) {
-        uniforms.uniforms.plan2ContactOpacity.value = 0;
-        uniforms.uniforms.plan2SurfaceOpacity.value = 0;
+  function setSuspended(suspended) {
+    const nextSuspended = suspended === true;
+    if (nextSuspended !== isSuspended) {
+      isSuspended = nextSuspended;
+      for (const suspendedFloor of floorStatesById.values()) {
+        suspendedFloor.uniforms.plan2ContactOpacity.value = 0;
+        suspendedFloor.uniforms.plan2SurfaceOpacity.value = 0;
       }
       invalidate();
     }
   }
-  function setMotion(nextMotion) {
-    if (inMotion !== (nextMotion === true)) {
-      inMotion = nextMotion === true;
-      if (!inMotion) {
-        staggeredRebuild = true;
-        preferCache = true;
+  function setMotion(motionEnabled) {
+    if (isMotionSuspended !== (motionEnabled === true)) {
+      isMotionSuspended = motionEnabled === true;
+      if (isMotionSuspended) {
+        for (const resumedFloor of floorStatesById.values()) {
+          resumedFloor.fade = {
+            started: performance.now(),
+            from: resumedFloor.uniforms.plan2ContactOpacity.value,
+            fromSurface: resumedFloor.uniforms.plan2SurfaceOpacity.value,
+            to: 0,
+            toSurface: 0
+          };
+        }
+      }
+      if (!isMotionSuspended) {
+        for (const clearedFloor of floorStatesById.values()) {
+          clearedFloor.fade = null;
+        }
+        isIncrementalUpdate = true;
+        shouldReuseLayout = true;
       }
       invalidate(null, true);
     }
   }
-  function updateTransforms() {
-    for (const uniforms of floorsById.values()) {
-      if (!uniforms.bakedFrame) {
+  function updateBakedTransforms() {
+    for (const bakedFloorState of floorStatesById.values()) {
+      if (!bakedFloorState.bakedFrame) {
         continue;
       }
-      uniforms.anchor?.updateWorldMatrix(true, false);
-      const providerFrame = frameProvider?.(uniforms.id);
-      const frameMatrix = providerFrame || uniforms.anchor?.matrixWorld;
-      if (frameMatrix) {
-        uniforms.uniforms.plan2ContactTransform.value.copy(frameMatrix).invert().premultiply(uniforms.bakedFrame);
-      }
-      if (inMotion && uniforms.target && frameMatrix && !uniforms.fade && uniforms.uniforms.plan2ContactOpacity.value === 0) {
-        let anchorInRoot = false;
-        for (let parent = uniforms.anchor; parent; parent = parent.parent) {
-          if (parent === getRoot()) {
-            anchorInRoot = true;
-            break;
-          }
-        }
-        if (providerFrame || anchorInRoot) {
-          uniforms.uniforms.plan2ContactOpacity.value = settings.enabled ? settings.opacity : 0;
-          uniforms.uniforms.plan2SurfaceOpacity.value = settings.enabled && settings.surfaceEnabled && uniforms.surface ? settings.surfaceOpacity : 0;
-        }
+      bakedFloorState.anchor?.updateWorldMatrix(true, false);
+      const anchorMatrix =
+        frameProvider?.(bakedFloorState.id) || bakedFloorState.anchor?.matrixWorld;
+      if (anchorMatrix) {
+        bakedFloorState.uniforms.plan2ContactTransform.value
+          .copy(anchorMatrix)
+          .invert()
+          .premultiply(bakedFloorState.bakedFrame);
       }
     }
   }
-  function depthMaterialFor(map, forSurface = false) {
-    const materialCacheKey = JSON.stringify([forSurface, map.map?.uuid, map.alphaMap?.uuid, map.alphaTest, map.displacementMap?.uuid, map.displacementScale, map.displacementBias, settings.maxHeight, settings.heightFalloff, settings.offsetX, settings.offsetZ]);
-    if (depthMaterialCache.has(materialCacheKey)) {
-      const cachedMaterial = depthMaterialCache.get(materialCacheKey);
-      depthMaterialCache.delete(materialCacheKey);
-      depthMaterialCache.set(materialCacheKey, cachedMaterial);
-      return cachedMaterial;
+  function getDepthMaterial(sourceMaterial, isSurfaceBake = false) {
+    const materialCacheKey = JSON.stringify([
+      isSurfaceBake,
+      sourceMaterial.map?.uuid,
+      sourceMaterial.alphaMap?.uuid,
+      sourceMaterial.alphaTest,
+      sourceMaterial.displacementMap?.uuid,
+      sourceMaterial.displacementScale,
+      sourceMaterial.displacementBias,
+      settings.maxHeight,
+      settings.heightFalloff,
+      settings.offsetX,
+      settings.offsetZ
+    ]);
+    if (depthMaterialsByKey.has(materialCacheKey)) {
+      const reusedMaterial = depthMaterialsByKey.get(materialCacheKey);
+      depthMaterialsByKey.delete(materialCacheKey);
+      depthMaterialsByKey.set(materialCacheKey, reusedMaterial);
+      return reusedMaterial;
     }
-    const onBeforeCompile = new THREE.MeshDepthMaterial({
+    const depthMaterial = new THREE.MeshDepthMaterial({
       depthPacking: THREE.BasicDepthPacking,
       side: THREE.DoubleSide,
-      map: map.map ?? null,
-      alphaMap: map.alphaMap ?? null,
-      alphaTest: map.alphaTest ?? 0,
-      displacementMap: map.displacementMap ?? null,
-      displacementScale: map.displacementScale ?? 1,
-      displacementBias: map.displacementBias ?? 0
+      map: sourceMaterial.map ?? null,
+      alphaMap: sourceMaterial.alphaMap ?? null,
+      alphaTest: sourceMaterial.alphaTest ?? 0,
+      displacementMap: sourceMaterial.displacementMap ?? null,
+      displacementScale: sourceMaterial.displacementScale ?? 1,
+      displacementBias: sourceMaterial.displacementBias ?? 0
     });
-    onBeforeCompile.onBeforeCompile = vertexShader => {
-      vertexShader.uniforms.contactNear = {
+    depthMaterial.onBeforeCompile = shader => {
+      shader.uniforms.contactNear = {
         value: 0.001
       };
-      vertexShader.uniforms.contactFar = {
-        value: forSurface ? 1.5 : settings.maxHeight + 0.06
+      shader.uniforms.contactFar = {
+        value: isSurfaceBake ? 1.5 : settings.maxHeight + 0.06
       };
-      vertexShader.uniforms.contactFalloff = {
-        value: forSurface ? 0.5 : settings.heightFalloff
+      shader.uniforms.contactFalloff = {
+        value: isSurfaceBake ? 0.5 : settings.heightFalloff
       };
-      vertexShader.uniforms.contactOffset = {
+      shader.uniforms.contactOffset = {
         value: new THREE.Vector2(settings.offsetX, settings.offsetZ)
       };
-      vertexShader.vertexShader = "uniform vec2 contactOffset;\n" + vertexShader.vertexShader;
-      const projectVertexInclude = "#include <project_vertex>";
-      if (!vertexShader.vertexShader.includes(projectVertexInclude)) {
+      shader.vertexShader = "uniform vec2 contactOffset;\n" + shader.vertexShader;
+      const projectVertexChunk = "#include <project_vertex>";
+      if (!shader.vertexShader.includes(projectVertexChunk)) {
         throw new Error("接触阴影材质缺少 project_vertex");
       }
-      vertexShader.vertexShader = vertexShader.vertexShader.replace(projectVertexInclude, projectVertexInclude + "\n        // The capture looks up from 6cm below this floor. project_vertex has\n        // already applied instancing, skinning and the mesh world transform.\n        // Ground contact stays fixed; elevated surfaces reveal a short shadow\n        // beside the furniture using the same cached map and depth falloff.\n        float contactHeight = max(-mvPosition.z - " + (forSurface ? "0.0" : "0.06") + ", 0.0);\n        gl_Position.xy += vec2(projectionMatrix[0][0], projectionMatrix[1][1]) * contactHeight * contactOffset;");
-      vertexShader.fragmentShader = "uniform float contactNear, contactFar, contactFalloff;\n" + vertexShader.fragmentShader;
-      vertexShader.fragmentShader = vertexShader.fragmentShader.replace("gl_FragColor = vec4( vec3( 1.0 - fragCoordZ ), opacity );", "float height = max(mix(contactNear, contactFar, fragCoordZ) - " + (forSurface ? "0.0" : "0.06") + ", 0.0);\n         float density = exp(-height / contactFalloff) * (1.0 - smoothstep(" + (forSurface ? 0.8 : 1.8) + ", " + (forSurface ? 1.5 : 2.5) + ", height));\n         gl_FragColor = vec4(vec3(density), 1.0);");
+      shader.vertexShader = shader.vertexShader.replace(
+        projectVertexChunk,
+        projectVertexChunk +
+          "\n        // The capture looks up from 6cm below this floor. project_vertex has\n        // already applied instancing, skinning and the mesh world transform.\n        // Ground contact stays fixed; elevated surfaces reveal a short shadow\n        // beside the furniture using the same cached map and depth falloff.\n        float contactHeight = max(-mvPosition.z - " +
+          (isSurfaceBake ? "0.0" : "0.06") +
+          ", 0.0);\n        gl_Position.xy += vec2(projectionMatrix[0][0], projectionMatrix[1][1]) * contactHeight * contactOffset;"
+      );
+      shader.fragmentShader =
+        "uniform float contactNear, contactFar, contactFalloff;\n" + shader.fragmentShader;
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "gl_FragColor = vec4( vec3( 1.0 - fragCoordZ ), opacity );",
+        "float height = max(mix(contactNear, contactFar, fragCoordZ) - " +
+          (isSurfaceBake ? "0.0" : "0.06") +
+          ", 0.0);\n         float density = exp(-height / contactFalloff) * (1.0 - smoothstep(" +
+          (isSurfaceBake ? 0.8 : 1.8) +
+          ", " +
+          (isSurfaceBake ? 1.5 : 2.5) +
+          ", height));\n         gl_FragColor = vec4(vec3(density), 1.0);"
+      );
     };
-    onBeforeCompile.customProgramCacheKey = () => forSurface ? "plan2-surface-bake-v1" : "plan2-contact-depth-v2-short-shadow";
-    depthMaterialCache.set(materialCacheKey, onBeforeCompile);
-    return onBeforeCompile;
+    depthMaterial.customProgramCacheKey = () =>
+      isSurfaceBake ? "plan2-surface-bake-v1" : "plan2-contact-depth-v2-short-shadow";
+    depthMaterialsByKey.set(materialCacheKey, depthMaterial);
+    return depthMaterial;
   }
-  function trimDepthMaterials() {
-    while (depthMaterialCache.size > 64) {
-      const oldestMaterialKey = depthMaterialCache.keys().next().value;
-      depthMaterialCache.get(oldestMaterialKey).dispose();
-      depthMaterialCache.delete(oldestMaterialKey);
+  function trimMaterialCache() {
+    while (depthMaterialsByKey.size > 64) {
+      const oldestMaterialKey = depthMaterialsByKey.keys().next().value;
+      depthMaterialsByKey.get(oldestMaterialKey).dispose();
+      depthMaterialsByKey.delete(oldestMaterialKey);
     }
   }
-  function disposeFloorTargets(uniforms) {
-    uniforms.fade = null;
-    uniforms.anchor = null;
-    uniforms.bakedFrame = null;
-    uniforms.target?.dispose();
-    uniforms.ping?.dispose();
-    uniforms.surface?.dispose();
-    uniforms.lookup?.dispose();
-    uniforms.target = null;
-    uniforms.ping = null;
-    uniforms.surface = null;
-    uniforms.lookup = null;
-    uniforms.uniforms.plan2ContactMap.value = blackTexture;
-    uniforms.uniforms.plan2ContactOpacity.value = 0;
-    uniforms.uniforms.plan2SurfaceMap.value = blackTexture;
-    uniforms.uniforms.plan2SurfaceLookup.value = blackTexture;
-    uniforms.uniforms.plan2SurfaceOpacity.value = 0;
+  function disposeFloorState(targetState) {
+    targetState.fade = null;
+    targetState.anchor = null;
+    targetState.bakedFrame = null;
+    targetState.target?.dispose();
+    targetState.ping?.dispose();
+    targetState.surface?.dispose();
+    targetState.lookup?.dispose();
+    targetState.target = null;
+    targetState.ping = null;
+    targetState.surface = null;
+    targetState.lookup = null;
+    targetState.uniforms.plan2ContactMap.value = placeholderTexture;
+    targetState.uniforms.plan2ContactOpacity.value = 0;
+    targetState.uniforms.plan2SurfaceMap.value = placeholderTexture;
+    targetState.uniforms.plan2SurfaceLookup.value = placeholderTexture;
+    targetState.uniforms.plan2SurfaceOpacity.value = 0;
   }
-  function ensureContactTargets(target, size) {
-    if (target.target?.width !== size || target.target?.height !== size) {
-      disposeFloorTargets(target);
-      target.target = new THREE.WebGLRenderTarget(size, size, {
+  function ensureRenderTargets(floorEntry, sizePx) {
+    if (floorEntry.target?.width !== sizePx || floorEntry.target?.height !== sizePx) {
+      disposeFloorState(floorEntry);
+      floorEntry.target = new THREE.WebGLRenderTarget(sizePx, sizePx, {
         format: THREE.RedFormat,
         generateMipmaps: false
       });
     }
-    target.ping ||= new THREE.WebGLRenderTarget(size, size, {
+    floorEntry.ping ||= new THREE.WebGLRenderTarget(sizePx, sizePx, {
       format: THREE.RedFormat,
       depthBuffer: false,
       generateMipmaps: false
     });
     return {
-      target: target.target,
-      ping: target.ping
+      target: floorEntry.target,
+      ping: floorEntry.ping
     };
   }
-  function bakeSurfaceShadows(surface, casterMeshes, forEach, captureScene, clone, floorHeight, hiddenMaterial) {
-    const length = surfaceBakeLevels(THREE, casterMeshes, floorHeight, settings.maxSurfaceLevels);
-    surface.uniforms.plan2SurfaceOpacity.value = 0;
-    if (!length.length) {
-      surface.surface?.dispose();
-      surface.lookup?.dispose();
-      surface.surface = surface.lookup = null;
-      surface.uniforms.plan2SurfaceMap.value = blackTexture;
-      surface.uniforms.plan2SurfaceLookup.value = blackTexture;
+  function bakeSurfaceLevels(
+    surfaceEntry,
+    casterMeshes,
+    overrideByCaster,
+    renderScene,
+    casterBounds,
+    floorBaseY,
+    fallbackMaterial
+  ) {
+    const levels = computeSurfaceLevels(THREE, casterMeshes, floorBaseY, settings.maxSurfaceLevels);
+    const levelHeights = levels.map(levelInfo => levelInfo.height);
+    surfaceEntry.uniforms.plan2SurfaceOpacity.value = 0;
+    if (!levelHeights.length) {
+      surfaceEntry.surface?.dispose();
+      surfaceEntry.lookup?.dispose();
+      surfaceEntry.surface = surfaceEntry.lookup = null;
+      surfaceEntry.uniforms.plan2SurfaceMap.value = placeholderTexture;
+      surfaceEntry.uniforms.plan2SurfaceLookup.value = placeholderTexture;
       return;
     }
-    const gridSide = Math.ceil(Math.sqrt(length.length));
-    const tileSize = Math.min(settings.surfaceResolution, Math.floor(renderer.capabilities.maxTextureSize / gridSide));
-    const atlasSize = gridSide * tileSize;
-    if (surface.surface?.width !== atlasSize) {
-      surface.surface?.dispose();
-      surface.surface = new THREE.WebGLRenderTarget(atlasSize, atlasSize, {
+    const atlasColumns = Math.ceil(Math.sqrt(levelHeights.length));
+    const tileSizePx = Math.min(
+      settings.surfaceResolution,
+      Math.floor(renderer.capabilities.maxTextureSize / atlasColumns)
+    );
+    const atlasSizePx = atlasColumns * tileSizePx;
+    if (surfaceEntry.surface?.width !== atlasSizePx) {
+      surfaceEntry.surface?.dispose();
+      surfaceEntry.surface = new THREE.WebGLRenderTarget(atlasSizePx, atlasSizePx, {
         format: THREE.RedFormat,
         depthBuffer: false,
         generateMipmaps: false
       });
     }
-    const min2 = clone.clone();
-    min2.expandByVector(new THREE.Vector3(0.5, 0, 0.5));
-    const surfaceWidth = min2.max.x - min2.min.x;
-    const surfaceDepth = min2.max.z - min2.min.z;
-    const surfaceCenterX = (min2.min.x + min2.max.x) / 2;
-    const surfaceCenterZ = (min2.min.z + min2.max.z) / 2;
-    const position = new THREE.OrthographicCamera(-surfaceWidth / 2, surfaceWidth / 2, surfaceDepth / 2, -surfaceDepth / 2, 0.001, 1.5);
-    position.up.set(0, 0, 1);
-    const dispose = new THREE.WebGLRenderTarget(tileSize, tileSize, {
+    const paddedBounds = casterBounds.clone();
+    paddedBounds.expandByVector(new THREE.Vector3(0.5, 0, 0.5));
+    const surfaceWidth = paddedBounds.max.x - paddedBounds.min.x;
+    const surfaceDepth = paddedBounds.max.z - paddedBounds.min.z;
+    const surfaceCenterX = (paddedBounds.min.x + paddedBounds.max.x) / 2;
+    const surfaceCenterZ = (paddedBounds.min.z + paddedBounds.max.z) / 2;
+    const bakeCamera = new THREE.OrthographicCamera(
+      -surfaceWidth / 2,
+      surfaceWidth / 2,
+      surfaceDepth / 2,
+      -surfaceDepth / 2,
+      0.001,
+      1.5
+    );
+    bakeCamera.up.set(0, 0, 1);
+    const bakeTarget = new THREE.WebGLRenderTarget(tileSizePx, tileSizePx, {
       format: THREE.RedFormat,
       generateMipmaps: false
     });
-    const renderTarget = new THREE.WebGLRenderTarget(tileSize, tileSize, {
+    const blurTarget = new THREE.WebGLRenderTarget(tileSizePx, tileSizePx, {
       format: THREE.RedFormat,
       depthBuffer: false,
       generateMipmaps: false
     });
-    const has = new Map();
-    const resolveSurfaceMaterial = material => isContactCasterMaterial(material) ? (has.has(material) || has.set(material, depthMaterialFor(material, true)), has.get(material)) : hiddenMaterial;
+    const surfaceMaterialsByCaster = new Map();
+    const toSurfaceMaterial = surfaceSourceMaterial =>
+      isContactCasterMaterial(surfaceSourceMaterial)
+        ? (surfaceMaterialsByCaster.has(surfaceSourceMaterial) ||
+            surfaceMaterialsByCaster.set(
+              surfaceSourceMaterial,
+              getDepthMaterial(surfaceSourceMaterial, true)
+            ),
+          surfaceMaterialsByCaster.get(surfaceSourceMaterial))
+        : fallbackMaterial;
     try {
-      forEach.forEach((material, index) => {
-        const map = casterMeshes[index].material;
-        material.material = Array.isArray(map) ? map.map(resolveSurfaceMaterial) : resolveSurfaceMaterial(map);
+      overrideByCaster.forEach((overrideMaterial, casterIndex) => {
+        const originalMaterial = casterMeshes[casterIndex].material;
+        overrideMaterial.material = Array.isArray(originalMaterial)
+          ? originalMaterial.map(toSurfaceMaterial)
+          : toSurfaceMaterial(originalMaterial);
       });
-      for (let levelIndex = 0; levelIndex < length.length; levelIndex++) {
-        position.position.set(surfaceCenterX, floorHeight + length[levelIndex] + 0.025, surfaceCenterZ);
-        position.lookAt(surfaceCenterX, position.position.y + 1, surfaceCenterZ);
-        position.updateMatrixWorld(true);
+      for (let levelIndex = 0; levelIndex < levelHeights.length; levelIndex++) {
+        bakeCamera.position.set(
+          surfaceCenterX,
+          floorBaseY + levels[levelIndex].top + 0.003,
+          surfaceCenterZ
+        );
+        bakeCamera.lookAt(surfaceCenterX, bakeCamera.position.y + 1, surfaceCenterZ);
+        bakeCamera.updateMatrixWorld(true);
         renderer.autoClear = true;
         renderer.setClearColor(0, 1);
-        renderer.setRenderTarget(dispose);
-        renderer.render(captureScene, position);
+        renderer.setRenderTarget(bakeTarget);
+        renderer.render(renderScene, bakeCamera);
         stats.surfacePasses++;
-        const copyBlur = (texture, destination, stepX, stepY) => {
-          blurMaterial.uniforms.source.value = texture.texture;
+        const blurPass = (sourceTarget, destTarget, stepX, stepY, spread = 0) => {
+          blurMaterial.uniforms.source.value = sourceTarget.texture;
           blurMaterial.uniforms.stepSize.value.set(stepX, stepY);
-          renderer.setRenderTarget(destination);
+          blurMaterial.uniforms.spread.value = spread;
+          renderer.setRenderTarget(destTarget);
           renderer.render(blurScene, blurCamera);
         };
-        copyBlur(dispose, renderTarget, 0.045 / surfaceWidth, 0);
-        copyBlur(renderTarget, dispose, 0, 0.045 / surfaceDepth);
-        copyBlur(dispose, renderTarget, 0.02 / surfaceWidth, 0);
-        copyBlur(renderTarget, dispose, 0, 0.02 / surfaceDepth);
-        surface.surface.viewport.set(levelIndex % gridSide * tileSize, Math.floor(levelIndex / gridSide) * tileSize, tileSize, tileSize);
+        blurPass(bakeTarget, blurTarget, 0.006 / surfaceWidth, 0, 1);
+        blurPass(blurTarget, bakeTarget, 0, 0.006 / surfaceDepth, 1);
+        blurPass(bakeTarget, blurTarget, 0.012 / surfaceWidth, 0);
+        blurPass(blurTarget, bakeTarget, 0, 0.012 / surfaceDepth);
+        surfaceEntry.surface.viewport.set(
+          (levelIndex % atlasColumns) * tileSizePx,
+          Math.floor(levelIndex / atlasColumns) * tileSizePx,
+          tileSizePx,
+          tileSizePx
+        );
         renderer.autoClear = false;
-        copyBlur(dispose, surface.surface, 0, 0);
+        blurPass(bakeTarget, surfaceEntry.surface, 0, 0);
       }
-      surface.surface.viewport.set(0, 0, atlasSize, atlasSize);
-      const lookupRange = length.at(-1) + 0.05;
-      const lookupWidth = 2048;
-      const lookupData = new Uint8Array(lookupWidth * 4);
-      for (let lookupIndex = 0; lookupIndex < lookupWidth; lookupIndex++) {
-        const sampleHeight = (lookupIndex + 0.5) / lookupWidth * lookupRange;
-        let bestIndex = -1;
-        let bestDist = 0.018;
-        length.forEach((levelHeight, levelIndex) => {
-          const dist = Math.abs(levelHeight - sampleHeight);
-          if (dist < bestDist) {
-            bestDist = dist;
-            bestIndex = levelIndex;
+      surfaceEntry.surface.viewport.set(0, 0, atlasSizePx, atlasSizePx);
+      const maxLookupHeight = levelHeights.at(-1) + 0.05;
+      const lookupSize = 2048;
+      const lookupTextureData = new Uint8Array(lookupSize * 4);
+      for (let lookupIndex = 0; lookupIndex < lookupSize; lookupIndex++) {
+        const lookupHeight = ((lookupIndex + 0.5) / lookupSize) * maxLookupHeight;
+        let nearestLevelIndex = -1;
+        let nearestLevelDistance = 0.018;
+        levelHeights.forEach((height, heightIndex) => {
+          const heightDistance = Math.abs(height - lookupHeight);
+          if (heightDistance < nearestLevelDistance) {
+            nearestLevelDistance = heightDistance;
+            nearestLevelIndex = heightIndex;
           }
         });
-        if (!(bestIndex < 0)) {
-          lookupData[lookupIndex * 4] = bestIndex % gridSide;
-          lookupData[lookupIndex * 4 + 1] = Math.floor(bestIndex / gridSide);
-          lookupData[lookupIndex * 4 + 2] = 255;
-          lookupData[lookupIndex * 4 + 3] = 255;
+        if (!(nearestLevelIndex < 0)) {
+          lookupTextureData[lookupIndex * 4] = nearestLevelIndex % atlasColumns;
+          lookupTextureData[lookupIndex * 4 + 1] = Math.floor(nearestLevelIndex / atlasColumns);
+          lookupTextureData[lookupIndex * 4 + 2] = 255;
+          lookupTextureData[lookupIndex * 4 + 3] = 255;
         }
       }
-      surface.lookup?.dispose();
-      surface.lookup = new THREE.DataTexture(lookupData, lookupWidth, 1);
-      surface.lookup.needsUpdate = true;
-      surface.uniforms.plan2SurfaceMap.value = surface.surface.texture;
-      surface.uniforms.plan2SurfaceLookup.value = surface.lookup;
-      surface.uniforms.plan2SurfaceLayout.value.set(gridSide, lookupRange);
-      surface.uniforms.plan2SurfaceBounds.value.set(min2.min.x, min2.min.z, surfaceWidth, surfaceDepth);
-      surface.uniforms.plan2SurfaceOpacity.value = settings.enabled ? settings.surfaceOpacity : 0;
+      surfaceEntry.lookup?.dispose();
+      surfaceEntry.lookup = new THREE.DataTexture(lookupTextureData, lookupSize, 1);
+      surfaceEntry.lookup.needsUpdate = true;
+      surfaceEntry.uniforms.plan2SurfaceMap.value = surfaceEntry.surface.texture;
+      surfaceEntry.uniforms.plan2SurfaceLookup.value = surfaceEntry.lookup;
+      surfaceEntry.uniforms.plan2SurfaceLayout.value.set(atlasColumns, maxLookupHeight);
+      surfaceEntry.uniforms.plan2SurfaceBounds.value.set(
+        paddedBounds.min.x,
+        paddedBounds.min.z,
+        surfaceWidth,
+        surfaceDepth
+      );
+      surfaceEntry.uniforms.plan2SurfaceOpacity.value = settings.enabled
+        ? settings.surfaceOpacity
+        : 0;
       stats.surfaceCaptures++;
     } finally {
-      dispose.dispose();
-      renderTarget.dispose();
-      trimDepthMaterials();
-      blurMaterial.uniforms.source.value = blackTexture;
+      bakeTarget.dispose();
+      blurTarget.dispose();
+      trimMaterialCache();
+      blurMaterial.uniforms.source.value = placeholderTexture;
+      blurMaterial.uniforms.spread.value = 0;
     }
   }
-  function bakeFloorShadows(uniforms, receiverMeshes, length) {
-    const min3 = new THREE.Box3();
-    for (const receiver of receiverMeshes) {
-      min3.union(new THREE.Box3().setFromObject(receiver));
+  function buildContactMap(contactEntry, receivers, casters) {
+    const boundsBox = new THREE.Box3();
+    for (const receiverMesh of receivers) {
+      boundsBox.union(new THREE.Box3().setFromObject(receiverMesh));
     }
-    if (min3.isEmpty() || !length.length) {
-      disposeFloorTargets(uniforms);
+    if (boundsBox.isEmpty() || !casters.length) {
+      disposeFloorState(contactEntry);
       return;
     }
-    const element = min3.max.y;
-    min3.min.x -= 0.25;
-    min3.min.z -= 0.25;
-    min3.max.x += 0.25;
-    min3.max.z += 0.25;
-    const boundsWidth = Math.max(min3.max.x - min3.min.x, 0.1);
-    const boundsDepth = Math.max(min3.max.z - min3.min.z, 0.1);
-    const mapSize = Math.min(settings.resolution, renderer.capabilities.maxTextureSize);
-    const {
-      target: texture,
-      ping: targets
-    } = ensureContactTargets(uniforms, mapSize);
-    const position = new THREE.OrthographicCamera(-boundsWidth / 2, boundsWidth / 2, boundsDepth / 2, -boundsDepth / 2, 0.001, settings.maxHeight + 0.06);
-    const centerX = (min3.min.x + min3.max.x) / 2;
-    const centerZ = (min3.min.z + min3.max.z) / 2;
-    position.position.set(centerX, element - 0.06, centerZ);
-    position.up.set(0, 0, 1);
-    position.lookAt(centerX, element + 1, centerZ);
-    position.updateMatrixWorld(true);
-    const add = new THREE.Scene();
-    const has = new Map();
-    const push = [];
-    const visible = new THREE.MeshDepthMaterial();
-    visible.visible = false;
-    const resolveDepthMaterial = material => isContactCasterMaterial(material) ? (has.has(material) || has.set(material, depthMaterialFor(material)), has.get(material)) : visible;
-    for (const material of length) {
-      const clone = material.clone(false);
-      clone.material = Array.isArray(material.material) ? material.material.map(resolveDepthMaterial) : resolveDepthMaterial(material.material);
-      clone.matrix.copy(material.matrixWorld);
-      clone.matrixWorld.copy(material.matrixWorld);
-      clone.matrixAutoUpdate = false;
-      clone.matrixWorldAutoUpdate = true;
-      clone.castShadow = false;
-      clone.receiveShadow = false;
-      clone.layers.set(0);
-      clone.frustumCulled = false;
-      add.add(clone);
-      push.push(clone);
+    const floorTopY = boundsBox.max.y;
+    boundsBox.min.x -= 0.25;
+    boundsBox.min.z -= 0.25;
+    boundsBox.max.x += 0.25;
+    boundsBox.max.z += 0.25;
+    const boundsWidth = Math.max(boundsBox.max.x - boundsBox.min.x, 0.1);
+    const boundsDepth = Math.max(boundsBox.max.z - boundsBox.min.z, 0.1);
+    const captureSizePx = Math.min(settings.resolution, renderer.capabilities.maxTextureSize);
+    const { target: contactTarget, ping: contactPingTarget } = ensureRenderTargets(
+      contactEntry,
+      captureSizePx
+    );
+    const captureCamera = new THREE.OrthographicCamera(
+      -boundsWidth / 2,
+      boundsWidth / 2,
+      boundsDepth / 2,
+      -boundsDepth / 2,
+      0.001,
+      settings.maxHeight + 0.06
+    );
+    const centerX = (boundsBox.min.x + boundsBox.max.x) / 2;
+    const centerZ = (boundsBox.min.z + boundsBox.max.z) / 2;
+    captureCamera.position.set(centerX, floorTopY - 0.06, centerZ);
+    captureCamera.up.set(0, 0, 1);
+    captureCamera.lookAt(centerX, floorTopY + 1, centerZ);
+    captureCamera.updateMatrixWorld(true);
+    const captureScene = new THREE.Scene();
+    const depthMaterialsByCaster = new Map();
+    const clonedCasters = [];
+    const fallbackDepthMaterial = new THREE.MeshDepthMaterial();
+    fallbackDepthMaterial.visible = false;
+    const toDepthMaterial = casterMaterialForClone =>
+      isContactCasterMaterial(casterMaterialForClone)
+        ? (depthMaterialsByCaster.has(casterMaterialForClone) ||
+            depthMaterialsByCaster.set(
+              casterMaterialForClone,
+              getDepthMaterial(casterMaterialForClone)
+            ),
+          depthMaterialsByCaster.get(casterMaterialForClone))
+        : fallbackDepthMaterial;
+    for (const casterSource of casters) {
+      const casterClone = casterSource.clone(false);
+      casterClone.material = Array.isArray(casterSource.material)
+        ? casterSource.material.map(toDepthMaterial)
+        : toDepthMaterial(casterSource.material);
+      casterClone.matrix.copy(casterSource.matrixWorld);
+      casterClone.matrixWorld.copy(casterSource.matrixWorld);
+      casterClone.matrixAutoUpdate = false;
+      casterClone.matrixWorldAutoUpdate = true;
+      casterClone.castShadow = false;
+      casterClone.receiveShadow = false;
+      casterClone.layers.set(0);
+      casterClone.frustumCulled = false;
+      captureScene.add(casterClone);
+      clonedCasters.push(casterClone);
     }
-    const viewport = {
+    const renderState = {
       target: renderer.getRenderTarget(),
       face: renderer.getActiveCubeFace(),
       mip: renderer.getActiveMipmapLevel(),
-      dirtyFloors: renderer.getClearColor(new THREE.Color()),
+      clear: renderer.getClearColor(new THREE.Color()),
       alpha: renderer.getClearAlpha(),
       autoClear: renderer.autoClear,
       shadows: renderer.shadowMap.enabled,
-      webxrEnabled: renderer.xr.enabled,
+      xr: renderer.xr.enabled,
       viewport: renderer.getViewport(new THREE.Vector4()),
       scissor: renderer.getScissor(new THREE.Vector4()),
       scissorTest: renderer.getScissorTest()
@@ -531,404 +706,585 @@ export function createContactShadowController({
       renderer.autoClear = true;
       renderer.setScissorTest(false);
       renderer.setClearColor(0, 1);
-      renderer.setRenderTarget(texture);
-      renderer.render(add, position);
+      renderer.setRenderTarget(contactTarget);
+      renderer.render(captureScene, captureCamera);
       stats.capturePasses += 1;
-      const blurPass = blurScale => {
-        blurMaterial.uniforms.source.value = texture.texture;
-        blurMaterial.uniforms.stepSize.value.set(settings.blurMeters * blurScale / boundsWidth, 0);
-        renderer.setRenderTarget(targets);
+      const blurOnce = blurScale => {
+        blurMaterial.uniforms.source.value = contactTarget.texture;
+        blurMaterial.uniforms.stepSize.value.set(
+          (settings.blurMeters * blurScale) / boundsWidth,
+          0
+        );
+        renderer.setRenderTarget(contactPingTarget);
         renderer.render(blurScene, blurCamera);
-        blurMaterial.uniforms.source.value = targets.texture;
-        blurMaterial.uniforms.stepSize.value.set(0, settings.blurMeters * blurScale / boundsDepth);
-        renderer.setRenderTarget(texture);
+        blurMaterial.uniforms.source.value = contactPingTarget.texture;
+        blurMaterial.uniforms.stepSize.value.set(
+          0,
+          (settings.blurMeters * blurScale) / boundsDepth
+        );
+        renderer.setRenderTarget(contactTarget);
         renderer.render(blurScene, blurCamera);
       };
-      blurPass(1);
-      blurPass(0.4);
+      blurOnce(1);
+      blurOnce(0.4);
       if (settings.surfaceEnabled) {
-        bakeSurfaceShadows(uniforms, length, push, add, min3, element, visible);
+        bakeSurfaceLevels(
+          contactEntry,
+          casters,
+          clonedCasters,
+          captureScene,
+          boundsBox,
+          floorTopY,
+          fallbackDepthMaterial
+        );
       } else {
-        uniforms.uniforms.plan2SurfaceOpacity.value = 0;
+        contactEntry.uniforms.plan2SurfaceOpacity.value = 0;
       }
-      uniforms.uniforms.plan2ContactMap.value = texture.texture;
-      uniforms.uniforms.plan2ContactBounds.value.set(min3.min.x, min3.min.z, boundsWidth, boundsDepth);
-      uniforms.uniforms.plan2ContactY.value = element;
-      uniforms.uniforms.plan2ContactOpacity.value = settings.enabled ? settings.opacity : 0;
-    } catch (error) {
-      disposeFloorTargets(uniforms);
-      throw error;
+      contactEntry.uniforms.plan2ContactMap.value = contactTarget.texture;
+      contactEntry.uniforms.plan2ContactBounds.value.set(
+        boundsBox.min.x,
+        boundsBox.min.z,
+        boundsWidth,
+        boundsDepth
+      );
+      contactEntry.uniforms.plan2ContactY.value = floorTopY;
+      contactEntry.uniforms.plan2ContactOpacity.value = settings.enabled ? settings.opacity : 0;
+    } catch (caughtError) {
+      disposeFloorState(contactEntry);
+      throw caughtError;
     } finally {
-      renderer.setViewport(viewport.viewport);
-      renderer.setScissor(viewport.scissor);
-      renderer.setScissorTest(viewport.scissorTest);
-      renderer.setRenderTarget(viewport.target, viewport.face, viewport.mip);
-      renderer.setClearColor(viewport.dirtyFloors, viewport.alpha);
-      renderer.autoClear = viewport.autoClear;
-      renderer.shadowMap.enabled = viewport.shadows;
-      renderer.xr.enabled = viewport.webxrEnabled;
-      visible.dispose();
-      trimDepthMaterials();
-      for (const dispose of push) {
-        if (dispose.isInstancedMesh) {
-          dispose.dispose();
+      renderer.setViewport(renderState.viewport);
+      renderer.setScissor(renderState.scissor);
+      renderer.setScissorTest(renderState.scissorTest);
+      renderer.setRenderTarget(renderState.target, renderState.face, renderState.mip);
+      renderer.setClearColor(renderState.clear, renderState.alpha);
+      renderer.autoClear = renderState.autoClear;
+      renderer.shadowMap.enabled = renderState.shadows;
+      renderer.xr.enabled = renderState.xr;
+      fallbackDepthMaterial.dispose();
+      trimMaterialCache();
+      for (const disposableCaster of clonedCasters) {
+        if (disposableCaster.isInstancedMesh) {
+          disposableCaster.dispose();
         }
-        if (dispose.isBatchedMesh) {
-          dispose.dispose();
+        if (disposableCaster.isBatchedMesh) {
+          disposableCaster.dispose();
         }
       }
-      add.clear();
-      blurMaterial.uniforms.source.value = blackTexture;
+      captureScene.clear();
+      blurMaterial.uniforms.source.value = placeholderTexture;
     }
   }
-  function geometryContentKey(attributes) {
-    const version = attributes.attributes.position?.version + ":" + attributes.index?.version;
-    const entry = geometryKeyCache.get(attributes);
-    if (entry?.version === version && entry.position === attributes.attributes.position && entry.index === attributes.index) {
-      return entry.key;
+  function computeGeometryKey(bufferGeometry) {
+    const attributeVersions =
+      bufferGeometry.attributes.position?.version + ":" + bufferGeometry.index?.version;
+    const cachedGeometryKey = geometryCacheEntryByGeometry.get(bufferGeometry);
+    if (
+      cachedGeometryKey?.version === attributeVersions &&
+      cachedGeometryKey.position === bufferGeometry.attributes.position &&
+      cachedGeometryKey.index === bufferGeometry.index
+    ) {
+      return cachedGeometryKey.key;
     }
-    let key;
-    if (attributes.parameters && attributes.attributes.position?.version === 0 && !(attributes.index?.version > 0)) {
+    let geometryKey;
+    if (
+      bufferGeometry.parameters &&
+      bufferGeometry.attributes.position?.version === 0 &&
+      !(bufferGeometry.index?.version > 0)
+    ) {
       try {
-        key = JSON.stringify([attributes.type, attributes.parameters], (jsonKey, jsonValue) => jsonKey === "uuid" ? undefined : jsonValue);
+        geometryKey = JSON.stringify(
+          [bufferGeometry.type, bufferGeometry.parameters],
+          (jsonKey, jsonValue) => (jsonKey === "uuid" ? undefined : jsonValue)
+        );
       } catch {}
     }
-    if (!key) {
-      const hashAttribute = data => {
-        if (!data) {
+    if (!geometryKey) {
+      const hashAttribute = attribute => {
+        if (!attribute) {
           return null;
         }
-        const buffer = data.array || data.data?.array;
-        if (!buffer) {
-          return [data.count, data.version];
+        const attributeArray = attribute.array || attribute.data?.array;
+        if (!attributeArray) {
+          return [attribute.count, attribute.version];
         }
-        const bytesView = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+        const attributeBytes = new Uint8Array(
+          attributeArray.buffer,
+          attributeArray.byteOffset,
+          attributeArray.byteLength
+        );
         let hashA = 2166136261;
         let hashB = 3339675911;
-        for (const byte of bytesView) {
+        for (const byte of attributeBytes) {
           hashA = Math.imul(hashA ^ byte, 16777619);
           hashB = Math.imul(hashB ^ byte, 2246822519);
         }
-        return [data.itemSize, data.count, data.offset, data.data?.stride, hashA >>> 0, hashB >>> 0];
+        return [
+          attribute.itemSize,
+          attribute.count,
+          attribute.offset,
+          attribute.data?.stride,
+          hashA >>> 0,
+          hashB >>> 0
+        ];
       };
-      key = JSON.stringify([hashAttribute(attributes.attributes.position), hashAttribute(attributes.index), (attributes.morphAttributes.position || []).map(hashAttribute), attributes.groups, attributes.drawRange]);
+      geometryKey = JSON.stringify([
+        hashAttribute(bufferGeometry.attributes.position),
+        hashAttribute(bufferGeometry.index),
+        (bufferGeometry.morphAttributes.position || []).map(hashAttribute),
+        bufferGeometry.groups,
+        bufferGeometry.drawRange
+      ]);
     }
-    geometryKeyCache.set(attributes, {
-      version: version,
-      key,
-      position: attributes.attributes.position,
-      index: attributes.index
+    geometryCacheEntryByGeometry.set(bufferGeometry, {
+      version: attributeVersions,
+      key: geometryKey,
+      position: bufferGeometry.attributes.position,
+      index: bufferGeometry.index
     });
-    return key;
+    return geometryKey;
   }
-  function floorContentKey(receivers, clone) {
-    const invert = clone.clone().invert();
-    const relativeMatrices = matrixWorld => {
-      const localMatrix = invert.clone().multiply(matrixWorld.matrixWorld);
-      const roundElements = elements => elements.elements.map(element => Math.round(element * 10000));
-      if (!matrixWorld.isInstancedMesh) {
-        return roundElements(localMatrix);
+  function computeLayoutKey(layout, bakeFrame) {
+    const bakeFrameInverse = bakeFrame.clone().invert();
+    const describeObjectMatrix = object => {
+      const objectMatrix = bakeFrameInverse.clone().multiply(object.matrixWorld);
+      const roundMatrixElements = matrix =>
+        matrix.elements.map(element => Math.round(element * 10000));
+      if (!object.isInstancedMesh) {
+        return roundMatrixElements(objectMatrix);
       }
-      const premultiply = new THREE.Matrix4();
-      const push = [];
-      for (let instanceIndex = 0; instanceIndex < matrixWorld.count; instanceIndex++) {
-        matrixWorld.getMatrixAt(instanceIndex, premultiply);
-        push.push(roundElements(premultiply.premultiply(localMatrix)));
+      const instanceWorldMatrix = new THREE.Matrix4();
+      const instancedMatrices = [];
+      for (let instanceCursor = 0; instanceCursor < object.count; instanceCursor++) {
+        object.getMatrixAt(instanceCursor, instanceWorldMatrix);
+        instancedMatrices.push(roundMatrixElements(instanceWorldMatrix.premultiply(objectMatrix)));
       }
-      return push;
+      return instancedMatrices;
     };
-    const sortedJson = map => map.map(item => JSON.stringify(item)).sort();
-    return JSON.stringify([settings, sortedJson(receivers.receivers.map(geometry => {
-      const attributes = geometry.geometry;
-      const version = attributes.attributes.position;
-      const position = boundsCache.get(attributes);
-      if (!position || position.position !== version || position.version !== version?.version) {
-        attributes.computeBoundingBox();
-        boundsCache.set(attributes, {
-          position: version,
-          version: version?.version,
-          box: attributes.boundingBox?.clone()
-        });
-      }
-      const min = boundsCache.get(attributes).box?.clone().applyMatrix4(invert.clone().multiply(geometry.matrixWorld));
-      if (min) {
-        return [...min.min.toArray(), ...min.max.toArray()].map(coord => Math.round(coord * 10000));
-      } else {
-        return null;
-      }
-    })), sortedJson(receivers.casters.map(material => {
-      const every = (Array.isArray(material.material) ? material.material : [material.material]).map(alphaTest => {
-        const alphaTestValue = alphaTest.alphaTest || 0;
-        const displacementMap = alphaTest.displacementMap;
-        const textureSig = texture => texture ? [texture.uuid, texture.version] : null;
-        return [isContactCasterMaterial(alphaTest), alphaTestValue, alphaTestValue > 0 ? textureSig(alphaTest.map) : null, alphaTestValue > 0 ? textureSig(alphaTest.alphaMap) : null, textureSig(displacementMap), displacementMap ? alphaTest.displacementScale ?? 1 : 0, displacementMap ? alphaTest.displacementBias ?? 0 : 0];
-      });
-      const uniformMaterials = every.every(sample => JSON.stringify(sample) === JSON.stringify(every[0]));
-      return [geometryContentKey(material.geometry), material.isInstancedMesh ? material.count : null, material.morphTargetInfluences, relativeMatrices(material), uniformMaterials ? every.slice(0, 1) : every];
-    }))]);
+    const normalizeEntries = matrixEntries =>
+      matrixEntries.map(matrixValues => JSON.stringify(matrixValues)).sort();
+    return JSON.stringify([
+      settings,
+      normalizeEntries(
+        layout.receivers.map(receiver => {
+          const receiverGeometry = receiver.geometry;
+          const receiverPositionAttribute = receiverGeometry.attributes.position;
+          const cachedEntry = receiverBoundsCacheByGeometry.get(receiverGeometry);
+          if (
+            !cachedEntry ||
+            cachedEntry.position !== receiverPositionAttribute ||
+            cachedEntry.version !== receiverPositionAttribute?.version
+          ) {
+            receiverGeometry.computeBoundingBox();
+            receiverBoundsCacheByGeometry.set(receiverGeometry, {
+              position: receiverPositionAttribute,
+              version: receiverPositionAttribute?.version,
+              box: receiverGeometry.boundingBox?.clone()
+            });
+          }
+          const receiverBounds = receiverBoundsCacheByGeometry
+            .get(receiverGeometry)
+            .box?.clone()
+            .applyMatrix4(bakeFrameInverse.clone().multiply(receiver.matrixWorld));
+          if (receiverBounds) {
+            return [...receiverBounds.min.toArray(), ...receiverBounds.max.toArray()].map(
+              boundValue => Math.round(boundValue * 10000)
+            );
+          } else {
+            return null;
+          }
+        })
+      ),
+      normalizeEntries(
+        layout.casters.map(caster => {
+          const casterMaterialSignatures = (
+            Array.isArray(caster.material) ? caster.material : [caster.material]
+          ).map(casterMaterial => {
+            const materialAlphaTest = casterMaterial.alphaTest || 0;
+            const displacementMap = casterMaterial.displacementMap;
+            const describeTexture = texture => (texture ? [texture.uuid, texture.version] : null);
+            return [
+              isContactCasterMaterial(casterMaterial),
+              materialAlphaTest,
+              materialAlphaTest > 0 ? describeTexture(casterMaterial.map) : null,
+              materialAlphaTest > 0 ? describeTexture(casterMaterial.alphaMap) : null,
+              describeTexture(displacementMap),
+              displacementMap ? (casterMaterial.displacementScale ?? 1) : 0,
+              displacementMap ? (casterMaterial.displacementBias ?? 0) : 0
+            ];
+          });
+          const hasUniformMaterial = casterMaterialSignatures.every(
+            materialSignature =>
+              JSON.stringify(materialSignature) === JSON.stringify(casterMaterialSignatures[0])
+          );
+          return [
+            computeGeometryKey(caster.geometry),
+            caster.isInstancedMesh ? caster.count : null,
+            caster.morphTargetInfluences,
+            describeObjectMatrix(caster),
+            hasUniformMaterial ? casterMaterialSignatures.slice(0, 1) : casterMaterialSignatures
+          ];
+        })
+      )
+    ]);
   }
-  const estimateTargetBytes = target => (target.target ? target.target.width * target.target.height * (target.target.texture.format === THREE.RedFormat ? 5 : 8) : 0) + (target.ping ? target.ping.width * target.ping.height * (target.ping.texture.format === THREE.RedFormat ? 1 : 4) : 0) + (target.surface ? target.surface.width * target.surface.height * (target.surface.texture.format === THREE.RedFormat ? 1 : 4) : 0) + (target.lookup?.image?.data?.byteLength || 0);
-  function stashFloorCache(ping) {
-    if (!ping.target || !ping.contentKey) {
+  const estimateStateBytes = cachedFloorState =>
+    (cachedFloorState.target
+      ? cachedFloorState.target.width *
+        cachedFloorState.target.height *
+        (cachedFloorState.target.texture.format === THREE.RedFormat ? 5 : 8)
+      : 0) +
+    (cachedFloorState.ping
+      ? cachedFloorState.ping.width *
+        cachedFloorState.ping.height *
+        (cachedFloorState.ping.texture.format === THREE.RedFormat ? 1 : 4)
+      : 0) +
+    (cachedFloorState.surface
+      ? cachedFloorState.surface.width *
+        cachedFloorState.surface.height *
+        (cachedFloorState.surface.texture.format === THREE.RedFormat ? 1 : 4)
+      : 0) +
+    (cachedFloorState.lookup?.image?.data?.byteLength || 0);
+  function storeCachedLayout(builtEntry) {
+    if (!builtEntry.target || !builtEntry.contentKey) {
       return;
     }
-    const cacheKey = JSON.stringify([ping.id, ping.contentKey]);
-    const existingCache = contentCache.get(cacheKey);
-    if (existingCache) {
-      disposeFloorTargets(existingCache);
+    const layoutKey = JSON.stringify([builtEntry.id, builtEntry.contentKey]);
+    const displacedEntry = cachedLayoutsByKey.get(layoutKey);
+    if (displacedEntry) {
+      disposeFloorState(displacedEntry);
     }
-    ping.ping?.dispose();
-    ping.ping = null;
-    const cachedEntry = {
-      id: ping.id,
-      contentKey: ping.contentKey,
-      bakedFrame: ping.bakedFrame,
-      target: ping.target,
-      ping: ping.ping,
-      surface: ping.surface,
-      lookup: ping.lookup,
-      uniforms: Object.fromEntries(Object.entries(ping.uniforms).map(([uniformName, uniformState]) => [uniformName, {
-        value: uniformState.value?.clone && !uniformState.value.isTexture ? uniformState.value.clone() : uniformState.value
-      }]))
+    builtEntry.ping?.dispose();
+    builtEntry.ping = null;
+    const storedEntry = {
+      id: builtEntry.id,
+      contentKey: builtEntry.contentKey,
+      bakedFrame: builtEntry.bakedFrame,
+      target: builtEntry.target,
+      ping: builtEntry.ping,
+      surface: builtEntry.surface,
+      lookup: builtEntry.lookup,
+      uniforms: Object.fromEntries(
+        Object.entries(builtEntry.uniforms).map(([uniformName, uniform]) => [
+          uniformName,
+          {
+            value:
+              uniform.value?.clone && !uniform.value.isTexture
+                ? uniform.value.clone()
+                : uniform.value
+          }
+        ])
+      )
     };
-    contentCache.delete(cacheKey);
-    contentCache.set(cacheKey, cachedEntry);
-    ping.target = ping.ping = ping.surface = ping.lookup = null;
-    ping.uniforms.plan2ContactOpacity.value = ping.uniforms.plan2SurfaceOpacity.value = 0;
-    ping.fade = null;
+    cachedLayoutsByKey.delete(layoutKey);
+    cachedLayoutsByKey.set(layoutKey, storedEntry);
+    builtEntry.target = builtEntry.ping = builtEntry.surface = builtEntry.lookup = null;
+    builtEntry.uniforms.plan2ContactOpacity.value =
+      builtEntry.uniforms.plan2SurfaceOpacity.value = 0;
+    builtEntry.fade = null;
   }
-  function restoreFloorCache(uniforms, contentKey) {
-    const cacheKey = JSON.stringify([uniforms.id, contentKey]);
-    const entry = contentCache.get(cacheKey);
-    if (!entry) {
+  function restoreCachedLayout(restoredEntry, contentKey) {
+    const restoreKey = JSON.stringify([restoredEntry.id, contentKey]);
+    const restoredLayout = cachedLayoutsByKey.get(restoreKey);
+    if (!restoredLayout) {
       return false;
     }
-    contentCache.delete(cacheKey);
-    stashFloorCache(uniforms);
-    for (const prop of ["target", "ping", "surface", "lookup", "contentKey", "bakedFrame"]) {
-      uniforms[prop] = entry[prop];
+    cachedLayoutsByKey.delete(restoreKey);
+    storeCachedLayout(restoredEntry);
+    for (const propertyName of [
+      "target",
+      "ping",
+      "surface",
+      "lookup",
+      "contentKey",
+      "bakedFrame"
+    ]) {
+      restoredEntry[propertyName] = restoredLayout[propertyName];
     }
-    for (const [uniformKey, uniformValue] of Object.entries(entry.uniforms)) {
-      uniforms.uniforms[uniformKey].value = uniformValue.value;
+    for (const [cachedUniformName, cachedUniform] of Object.entries(restoredLayout.uniforms)) {
+      restoredEntry.uniforms[cachedUniformName].value = cachedUniform.value;
     }
-    uniforms.uniforms.plan2ContactOpacity.value = uniforms.uniforms.plan2SurfaceOpacity.value = 0;
+    restoredEntry.uniforms.plan2ContactOpacity.value =
+      restoredEntry.uniforms.plan2SurfaceOpacity.value = 0;
     return true;
   }
-  function pruneCache(has) {
-    const idleFloors = [...floorsById.values()].filter(target => target.target && !has.has(target.id)).sort((lastUsed, lastUsedRight) => (lastUsedRight.lastUsed || 0) - (lastUsed.lastUsed || 0));
-    let activeCacheBytes = 0;
-    let cachedFloors = 0;
-    for (const ping of idleFloors) {
-      ping.ping?.dispose();
-      ping.ping = null;
-      const bytes = estimateTargetBytes(ping);
-      if (cachedFloors >= 2 || activeCacheBytes + bytes > 33554432) {
-        disposeFloorTargets(ping);
+  function evictCaches(protectedIds) {
+    const evictionCandidates = [...floorStatesById.values()]
+      .filter(candidateState => candidateState.target && !protectedIds.has(candidateState.id))
+      .sort((stateA, stateB) => (stateB.lastUsed || 0) - (stateA.lastUsed || 0));
+    let retainedBytes = 0;
+    let retainedFloorCount = 0;
+    for (const evictedFloor of evictionCandidates) {
+      evictedFloor.ping?.dispose();
+      evictedFloor.ping = null;
+      const stateBytes = estimateStateBytes(evictedFloor);
+      if (retainedBytes + stateBytes > 33554432) {
+        disposeFloorState(evictedFloor);
       } else {
-        activeCacheBytes += bytes;
-        cachedFloors++;
+        retainedBytes += stateBytes;
+        retainedFloorCount++;
       }
     }
-    let cacheBytes = [...contentCache.values()].reduce((total, entry) => total + estimateTargetBytes(entry), 0);
-    while (contentCache.size > 8 || activeCacheBytes + cacheBytes > 33554432) {
-      const oldestKey = contentCache.keys().next().value;
-      const evicted = contentCache.get(oldestKey);
-      if (!evicted) {
+    let layoutCacheBytes = [...cachedLayoutsByKey.values()].reduce(
+      (totalBytes, cachedState) => totalBytes + estimateStateBytes(cachedState),
+      0
+    );
+    while (cachedLayoutsByKey.size > 8 || retainedBytes + layoutCacheBytes > 33554432) {
+      const evictedLayoutKey = cachedLayoutsByKey.keys().next().value;
+      const evictedLayout = cachedLayoutsByKey.get(evictedLayoutKey);
+      if (!evictedLayout) {
         break;
       }
-      cacheBytes -= estimateTargetBytes(evicted);
-      disposeFloorTargets(evicted);
-      contentCache.delete(oldestKey);
+      layoutCacheBytes -= estimateStateBytes(evictedLayout);
+      disposeFloorState(evictedLayout);
+      cachedLayoutsByKey.delete(evictedLayoutKey);
     }
-    stats.cachedFloors = cachedFloors;
-    stats.cachedLayouts = contentCache.size;
-    stats.cachedBytes = activeCacheBytes + cacheBytes;
+    stats.cachedFloors = retainedFloorCount;
+    stats.cachedLayouts = cachedLayoutsByKey.size;
+    stats.cachedBytes = retainedBytes + layoutCacheBytes;
   }
-  function sync() {
-    if (disposed || suspended) {
+  function syncFloors() {
+    if (isDisposed || isSuspended) {
       return;
     }
-    for (const fade of floorsById.values()) {
-      if (fade.fade) {
-        const fadeT = Math.min(1, Math.max(0, (performance.now() - fade.fade.started) / 240));
-        fade.uniforms.plan2ContactOpacity.value = fade.fade.from + (fade.fade.to - fade.fade.from) * fadeT;
-        fade.uniforms.plan2SurfaceOpacity.value = fade.fade.fromSurface + (fade.fade.toSurface - fade.fade.fromSurface) * fadeT;
-        if (fadeT === 1) {
-          fade.fade = null;
+    for (const fadingFloor of floorStatesById.values()) {
+      if (fadingFloor.fade) {
+        const fadeProgress = Math.min(
+          1,
+          Math.max(0, (performance.now() - fadingFloor.fade.started) / 240)
+        );
+        fadingFloor.uniforms.plan2ContactOpacity.value =
+          fadingFloor.fade.from + (fadingFloor.fade.to - fadingFloor.fade.from) * fadeProgress;
+        fadingFloor.uniforms.plan2SurfaceOpacity.value =
+          fadingFloor.fade.fromSurface +
+          (fadingFloor.fade.toSurface - fadingFloor.fade.fromSurface) * fadeProgress;
+        if (fadeProgress === 1) {
+          fadingFloor.fade = null;
         } else {
           requestFrame();
         }
       }
     }
-    updateTransforms();
-    const updateWorldMatrix = getRoot();
-    if (updateWorldMatrix !== lastRoot) {
-      for (const cached of contentCache.values()) {
-        disposeFloorTargets(cached);
+    updateBakedTransforms();
+    const rootObject = getRoot();
+    if (rootObject !== lastRootObject) {
+      for (const staleLayout of cachedLayoutsByKey.values()) {
+        disposeFloorState(staleLayout);
       }
-      contentCache.clear();
-      lastRoot = updateWorldMatrix;
-      preferCache = false;
-      dirtyAll = true;
-      dirtyFloors.clear();
+      cachedLayoutsByKey.clear();
+      lastRootObject = rootObject;
+      shouldReuseLayout = false;
+      needsRebuild = true;
+      pendingFloorIds.clear();
     }
-    if (!dirtyAll && !dirtyFloors.size || inMotion || !canBuild() || !updateWorldMatrix) {
+    if (
+      (!needsRebuild && !pendingFloorIds.size) ||
+      isMotionSuspended ||
+      !canBuild() ||
+      !rootObject
+    ) {
       return;
     }
-    const rebuildAll = dirtyAll;
-    const has = new Set(dirtyFloors);
-    updateWorldMatrix.updateWorldMatrix(true, true);
-    const map = new Map();
-    updateWorldMatrix.traverse(material => {
-      if (!material.isMesh || !isVisibleInHierarchy(material) || findUserData(material, "floorTransitionLeaving")) {
+    const rebuildAllFloors = needsRebuild;
+    const pendingFloorIdSnapshot = new Set(pendingFloorIds);
+    rootObject.updateWorldMatrix(true, true);
+    const sceneGroupsById = new Map();
+    rootObject.traverse(sceneNode => {
+      if (
+        !sceneNode.isMesh ||
+        !isVisibleWithAncestors(sceneNode) ||
+        findUserDataInAncestors(sceneNode, "floorTransitionLeaving")
+      ) {
         return;
       }
-      const meshFloorId = String(findUserData(material, "regionFloorId") ?? findUserData(material, "floorId") ?? "default");
-      if (!rebuildAll && !has.has(meshFloorId)) {
+      const groupFloorId = String(
+        findUserDataInAncestors(sceneNode, "regionFloorId") ??
+          findUserDataInAncestors(sceneNode, "floorId") ??
+          "default"
+      );
+      if (
+        !matchesVisibleFloor(groupFloorId) ||
+        (!rebuildAllFloors && !pendingFloorIdSnapshot.has(groupFloorId))
+      ) {
         return;
       }
-      const isReceiver = material.userData?.regionReceiverKind === "floor";
-      const isCaster = material.castShadow && findUserData(material, "modelLayer") === "items" && (Array.isArray(material.material) ? material.material : [material.material]).some(isContactCasterMaterial);
-      if (!!isReceiver || !!isCaster) {
-        if (!map.has(meshFloorId)) {
-          map.set(meshFloorId, {
+      const isFloorReceiver = sceneNode.userData?.regionReceiverKind === "floor";
+      const isContactCaster =
+        sceneNode.castShadow &&
+        findUserDataInAncestors(sceneNode, "modelLayer") === "items" &&
+        (Array.isArray(sceneNode.material) ? sceneNode.material : [sceneNode.material]).some(
+          isContactCasterMaterial
+        );
+      if (!!isFloorReceiver || !!isContactCaster) {
+        if (!sceneGroupsById.has(groupFloorId)) {
+          sceneGroupsById.set(groupFloorId, {
             receivers: [],
             casters: []
           });
         }
-        if (isReceiver) {
-          map.get(meshFloorId).receivers.push(material);
+        if (isFloorReceiver) {
+          sceneGroupsById.get(groupFloorId).receivers.push(sceneNode);
         }
-        if (isCaster) {
-          map.get(meshFloorId).casters.push(material);
+        if (isContactCaster) {
+          sceneGroupsById.get(groupFloorId).casters.push(sceneNode);
         }
       }
     });
-    for (const id of floorsById.values()) {
-      if (!inMotion && (rebuildAll || has.has(id.id)) && !map.has(id.id)) {
-        if (preferCache) {
-          id.uniforms.plan2ContactOpacity.value = 0;
-          id.uniforms.plan2SurfaceOpacity.value = 0;
-          id.fade = null;
+    for (const staleFloorState of floorStatesById.values()) {
+      if (
+        !isMotionSuspended &&
+        (rebuildAllFloors || pendingFloorIdSnapshot.has(staleFloorState.id)) &&
+        !sceneGroupsById.has(staleFloorState.id)
+      ) {
+        if (shouldReuseLayout) {
+          staleFloorState.uniforms.plan2ContactOpacity.value = 0;
+          staleFloorState.uniforms.plan2SurfaceOpacity.value = 0;
+          staleFloorState.fade = null;
         } else {
-          disposeFloorTargets(id);
+          disposeFloorState(staleFloorState);
         }
-        id.casters = id.instancedCasters = id.receivers = 0;
+        staleFloorState.casters = staleFloorState.instancedCasters = staleFloorState.receivers = 0;
       }
     }
-    const push = [];
-    let buildsThisPass = 0;
-    for (const [floorKey, receivers] of map) {
-      const uniforms = ensureFloor(floorKey);
-      const matrixWorld = receivers.receivers[0] || null;
-      const bakedFrame = frameProvider?.(floorKey)?.clone() || matrixWorld?.matrixWorld.clone();
-      const contentKey = bakedFrame ? floorContentKey(receivers, bakedFrame) : null;
-      if (preferCache && contentKey && uniforms.contentKey !== contentKey) {
-        restoreFloorCache(uniforms, contentKey);
+    const deferredFloorIds = [];
+    let buildCount = 0;
+    for (const [groupId, group] of sceneGroupsById) {
+      const floorState = getFloorState(groupId);
+      const anchorObject = group.receivers[0] || null;
+      const anchorFrame = frameProvider?.(groupId)?.clone() || anchorObject?.matrixWorld.clone();
+      const layoutHash = anchorFrame ? computeLayoutKey(group, anchorFrame) : null;
+      if (shouldReuseLayout && layoutHash && floorState.contentKey !== layoutHash) {
+        restoreCachedLayout(floorState, layoutHash);
       }
-      const cacheHit = preferCache && contentKey && uniforms.target && uniforms.contentKey === contentKey && uniforms.bakedFrame;
-      if (!cacheHit && staggeredRebuild && buildsThisPass >= 1) {
-        push.push(floorKey);
+      const canReuseLayout =
+        shouldReuseLayout &&
+        layoutHash &&
+        floorState.target &&
+        floorState.contentKey === layoutHash &&
+        floorState.bakedFrame;
+      if (!canReuseLayout && isIncrementalUpdate && buildCount >= 1) {
+        deferredFloorIds.push(groupId);
         continue;
       }
-      uniforms.lastUsed = performance.now();
-      const element = uniforms.uniforms.plan2ContactOpacity.value;
-      const value = uniforms.uniforms.plan2SurfaceOpacity.value;
-      if (cacheHit) {
+      floorState.lastUsed = performance.now();
+      const previousContactOpacity = floorState.uniforms.plan2ContactOpacity.value;
+      const previousSurfaceOpacity = floorState.uniforms.plan2SurfaceOpacity.value;
+      if (canReuseLayout) {
         stats.cacheHits++;
-        uniforms.uniforms.plan2ContactOpacity.value = settings.enabled ? settings.opacity : 0;
-        uniforms.uniforms.plan2SurfaceOpacity.value = settings.enabled && settings.surfaceEnabled && uniforms.surface ? settings.surfaceOpacity : 0;
+        floorState.uniforms.plan2ContactOpacity.value = settings.enabled ? settings.opacity : 0;
+        floorState.uniforms.plan2SurfaceOpacity.value =
+          settings.enabled && settings.surfaceEnabled && floorState.surface
+            ? settings.surfaceOpacity
+            : 0;
       } else {
-        buildsThisPass++;
-        if (preferCache) {
-          stashFloorCache(uniforms);
+        buildCount++;
+        if (shouldReuseLayout) {
+          storeCachedLayout(floorState);
         }
-        bakeFloorShadows(uniforms, receivers.receivers, receivers.casters);
-        uniforms.contentKey = contentKey;
-        uniforms.bakedFrame = bakedFrame;
-        uniforms.uniforms.plan2ContactTransform.value.identity();
+        buildContactMap(floorState, group.receivers, group.casters);
+        floorState.contentKey = layoutHash;
+        floorState.bakedFrame = anchorFrame;
+        floorState.uniforms.plan2ContactTransform.value.identity();
       }
-      if (uniforms.fade) {
-        uniforms.fade.to = uniforms.uniforms.plan2ContactOpacity.value;
-        uniforms.fade.toSurface = uniforms.uniforms.plan2SurfaceOpacity.value;
-        uniforms.uniforms.plan2ContactOpacity.value = element;
-        uniforms.uniforms.plan2SurfaceOpacity.value = value;
+      if (floorState.fade) {
+        floorState.fade.to = floorState.uniforms.plan2ContactOpacity.value;
+        floorState.fade.toSurface = floorState.uniforms.plan2SurfaceOpacity.value;
+        floorState.uniforms.plan2ContactOpacity.value = previousContactOpacity;
+        floorState.uniforms.plan2SurfaceOpacity.value = previousSurfaceOpacity;
         requestFrame();
-      } else if (staggeredRebuild && element === 0 && uniforms.uniforms.plan2ContactOpacity.value > 0) {
-        uniforms.fade = {
+      } else if (
+        isIncrementalUpdate &&
+        previousContactOpacity < floorState.uniforms.plan2ContactOpacity.value
+      ) {
+        floorState.fade = {
           started: performance.now(),
-          from: element,
-          fromSurface: value,
-          to: uniforms.uniforms.plan2ContactOpacity.value,
-          toSurface: uniforms.uniforms.plan2SurfaceOpacity.value
+          from: previousContactOpacity,
+          fromSurface: previousSurfaceOpacity,
+          to: floorState.uniforms.plan2ContactOpacity.value,
+          toSurface: floorState.uniforms.plan2SurfaceOpacity.value
         };
-        uniforms.uniforms.plan2ContactOpacity.value = element;
-        uniforms.uniforms.plan2SurfaceOpacity.value = value;
+        floorState.uniforms.plan2ContactOpacity.value = previousContactOpacity;
+        floorState.uniforms.plan2SurfaceOpacity.value = previousSurfaceOpacity;
         requestFrame();
       }
-      uniforms.anchor = matrixWorld;
-      uniforms.casters = receivers.casters.length;
-      uniforms.receivers = receivers.receivers.length;
-      uniforms.instancedCasters = receivers.casters.filter(isInstancedMesh => isInstancedMesh.isInstancedMesh).length;
+      floorState.anchor = anchorObject;
+      floorState.casters = group.casters.length;
+      floorState.receivers = group.receivers.length;
+      floorState.instancedCasters = group.casters.filter(
+        casterObject => casterObject.isInstancedMesh
+      ).length;
     }
-    updateTransforms();
-    pruneCache(rebuildAll ? map : new Map([...floorsById.values()].filter(receivers => receivers.receivers > 0).map(id => [id.id, true])));
+    updateBakedTransforms();
+    evictCaches(
+      rebuildAllFloors
+        ? sceneGroupsById
+        : new Map(
+            [...floorStatesById.values()]
+              .filter(stateWithReceivers => stateWithReceivers.receivers > 0)
+              .map(stateWithTarget => [stateWithTarget.id, true])
+          )
+    );
     stats.casters = stats.instancedCasters = stats.receivers = 0;
-    for (const casters of floorsById.values()) {
-      stats.casters += casters.casters;
-      stats.instancedCasters += casters.instancedCasters;
-      stats.receivers += casters.receivers;
+    for (const stateForStats of floorStatesById.values()) {
+      stats.casters += stateForStats.casters;
+      stats.instancedCasters += stateForStats.instancedCasters;
+      stats.receivers += stateForStats.receivers;
     }
-    stats.floors = [...floorsById.values()].filter(target => target.target && target.uniforms.plan2ContactOpacity.value > 0).length;
+    stats.floors = [...floorStatesById.values()].filter(
+      stateWithVisibleTarget =>
+        stateWithVisibleTarget.target &&
+        stateWithVisibleTarget.uniforms.plan2ContactOpacity.value > 0
+    ).length;
     stats.builds += 1;
-    dirtyAll = false;
-    dirtyFloors.clear();
-    push.forEach(pendingFloorId => dirtyFloors.add(pendingFloorId));
-    staggeredRebuild = push.length > 0;
-    if (staggeredRebuild) {
+    needsRebuild = false;
+    pendingFloorIds.clear();
+    deferredFloorIds.forEach(deferredId => pendingFloorIds.add(deferredId));
+    isIncrementalUpdate = deferredFloorIds.length > 0;
+    if (isIncrementalUpdate) {
       requestFrame();
     }
   }
-  function disposeController() {
-    if (!disposed) {
-      disposed = true;
+  function disposeAll() {
+    if (!isDisposed) {
+      isDisposed = true;
       stats.disposed = true;
-      for (const floorEntry of floorsById.values()) {
-        disposeFloorTargets(floorEntry);
+      for (const disposedFloorState of floorStatesById.values()) {
+        disposeFloorState(disposedFloorState);
       }
-      for (const cachedFloor of contentCache.values()) {
-        disposeFloorTargets(cachedFloor);
+      for (const disposedLayout of cachedLayoutsByKey.values()) {
+        disposeFloorState(disposedLayout);
       }
-      contentCache.clear();
-      dirtyFloors.clear();
-      lastRoot = null;
-      floorsById.clear();
-      for (const dispose of depthMaterialCache.values()) {
-        dispose.dispose();
+      cachedLayoutsByKey.clear();
+      pendingFloorIds.clear();
+      lastRootObject = null;
+      floorStatesById.clear();
+      for (const disposedDepthMaterial of depthMaterialsByKey.values()) {
+        disposedDepthMaterial.dispose();
       }
-      depthMaterialCache.clear();
-      blackTexture.dispose();
+      depthMaterialsByKey.clear();
+      placeholderTexture.dispose();
       blurQuad.geometry.dispose();
       blurMaterial.dispose();
     }
   }
-  const __plan2Contact = {
-    sync,
-    invalidate,
-    dispose: disposeController,
-    stats,
-    settings,
-    setEnabled,
-    setSuspended,
-    setMotion,
-    setVisibleFloor(floorId) {
-      const next = floorId == null ? null : String(floorId);
-      if (next !== visibleFloorId) {
-        visibleFloorId = next;
-        for (const entry of floorsById.values()) {
-          if (!suspended && !matchesVisibleFloor(entry.id)) {
-            entry.fade = null;
-            entry.uniforms.plan2ContactOpacity.value = entry.uniforms.plan2SurfaceOpacity.value = 0;
+  const controller = {
+    sync: syncFloors,
+    invalidate: invalidate,
+    dispose: disposeAll,
+    stats: stats,
+    settings: settings,
+    setEnabled: setEnabled,
+    setSuspended: setSuspended,
+    setMotion: setMotion,
+    setVisibleFloor(floorIdInput) {
+      const nextVisibleFloorId = floorIdInput == null ? null : String(floorIdInput);
+      if (nextVisibleFloorId !== visibleFloorId) {
+        visibleFloorId = nextVisibleFloorId;
+        for (const floorStateToHide of floorStatesById.values()) {
+          if (!isMotionSuspended && !matchesVisibleFloor(floorStateToHide.id)) {
+            floorStateToHide.fade = null;
+            floorStateToHide.uniforms.plan2ContactOpacity.value =
+              floorStateToHide.uniforms.plan2SurfaceOpacity.value = 0;
           }
         }
         invalidate(null, true);
@@ -938,10 +1294,10 @@ export function createContactShadowController({
       frameProvider = provider;
       invalidate();
     },
-    getUniforms: id => ensureFloor(id).uniforms
+    getUniforms: floorKey => getFloorState(floorKey).uniforms
   };
   if (typeof window !== "undefined") {
-    window.__plan2Contact = __plan2Contact;
+    window.__plan2Contact = controller;
   }
-  return __plan2Contact;
+  return controller;
 }

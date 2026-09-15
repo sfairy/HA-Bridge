@@ -1,11 +1,11 @@
-const MAX_HISTORY_CACHE_ENTRIES = 512;
+const MAX_HISTORY_SERIES_CACHE_SIZE = 512;
 export const HISTORY_FETCH_TIMEOUT_MS = 12000;
-export function historySeriesCacheKey(entityKey, hours) {
-  return String(entityKey || "") + ":" + (Number(hours) || 0);
+export function historySeriesCacheKey(cacheEntityId, hours) {
+  return String(cacheEntityId || "") + ":" + (Number(hours) || 0);
 }
-export function cacheHistorySeries(cache, entityKey, series) {
+export function cacheHistorySeries(cache, entityId, series) {
   if (!!Array.isArray(series?.points) && series.points.length !== 0) {
-    for (cache.set(historySeriesCacheKey(entityKey, series.hours), series); cache.size > 512;) {
+    for (cache.set(historySeriesCacheKey(entityId, series.hours), series); cache.size > 512;) {
       const oldestKey = cache.keys().next().value;
       if (!oldestKey) {
         break;
@@ -21,20 +21,20 @@ export class HistoryRefreshCoordinator {
     this.pendingKey = null;
     this.pendingRun = null;
   }
-  request(key, run) {
+  request(requestKey, run) {
     if (this.running) {
-      if (key === this.currentKey) {
+      if (requestKey === this.currentKey) {
         this.pendingKey = null;
         this.pendingRun = null;
-      } else if (key !== this.pendingKey) {
-        this.pendingKey = key;
+      } else if (requestKey !== this.pendingKey) {
+        this.pendingKey = requestKey;
         this.pendingRun = run;
       }
       return this.running;
     }
-    this.pendingKey = key;
+    this.pendingKey = requestKey;
     this.pendingRun = run;
-    const runQueue = async () => {
+    const drainPendingRuns = async () => {
       while (this.pendingRun) {
         const pendingRun = this.pendingRun;
         this.currentKey = this.pendingKey;
@@ -43,7 +43,7 @@ export class HistoryRefreshCoordinator {
         await pendingRun();
       }
     };
-    this.running = runQueue().finally(() => {
+    this.running = drainPendingRuns().finally(() => {
       this.running = null;
       this.currentKey = null;
     });
@@ -52,13 +52,13 @@ export class HistoryRefreshCoordinator {
 }
 export class RuntimeStaticImageCache {
   constructor({
-    maxConcurrent = 2,
-    maxDecoded = 32,
-    idleDelay = 120,
-    loadTimeout = 15000,
-    createImage = () => new Image(),
-    setTimer = (callback, delayMs) => globalThis.setTimeout(callback, delayMs),
-    clearTimer = timerId => globalThis.clearTimeout(timerId)
+    maxConcurrent: maxConcurrent = 2,
+    maxDecoded: maxDecoded = 32,
+    idleDelay: idleDelay = 120,
+    loadTimeout: loadTimeout = 15000,
+    createImage: createImage = () => new Image(),
+    setTimer: setTimer = (timerCallback, delayMs) => globalThis.setTimeout(timerCallback, delayMs),
+    clearTimer: clearTimer = timerHandle => globalThis.clearTimeout(timerHandle)
   } = {}) {
     this.maxConcurrent = Math.max(1, Number(maxConcurrent) || 1);
     this.maxDecoded = Math.max(1, Number(maxDecoded) || 1);
@@ -78,77 +78,89 @@ export class RuntimeStaticImageCache {
     this.sequence = 0;
     this.stopped = false;
   }
-  setSources(sources = [], priority = []) {
+  setSources(sources = [], prioritySources = []) {
     if (!this.stopped) {
-      this.desiredSources = new Set((sources || []).map(source => String(source || "")).filter(Boolean));
-      this.prioritySources = new Set((priority || []).map(source => String(source || "")).filter(source => this.desiredSources.has(source)));
-      this.queue = this.queue.filter(({
-        source
-      }) => this.desiredSources.has(source));
-      for (const [source, {
-        image,
-        cancel: cancelLoad
-      }] of [...this.activeLoads]) {
-        if (!this.desiredSources.has(source)) {
-          image.removeAttribute?.("src");
-          cancelLoad();
+      this.desiredSources = new Set(
+        (sources || []).map(desiredSource => String(desiredSource || "")).filter(Boolean)
+      );
+      this.prioritySources = new Set(
+        (prioritySources || [])
+          .map(prioritySource => String(prioritySource || ""))
+          .filter(isDesiredSource => this.desiredSources.has(isDesiredSource))
+      );
+      this.queue = this.queue.filter(({ source: removedSource }) =>
+        this.desiredSources.has(removedSource)
+      );
+      for (const [activeSource, { image: activeImage, cancel: cancelActiveLoad }] of [
+        ...this.activeLoads
+      ]) {
+        if (!this.desiredSources.has(activeSource)) {
+          activeImage.removeAttribute?.("src");
+          cancelActiveLoad();
         }
       }
-      for (const source of [...this.loadedSources]) {
-        if (!this.desiredSources.has(source)) {
-          this.loadedSources.delete(source);
+      for (const loadedSource of [...this.loadedSources]) {
+        if (!this.desiredSources.has(loadedSource)) {
+          this.loadedSources.delete(loadedSource);
         }
       }
-      for (const source of [...this.decodedImages.keys()]) {
-        if (!this.desiredSources.has(source)) {
-          this.decodedImages.delete(source);
+      for (const decodedSourceKey of [...this.decodedImages.keys()]) {
+        if (!this.desiredSources.has(decodedSourceKey)) {
+          this.decodedImages.delete(decodedSourceKey);
         }
       }
-      for (const source of this.prioritySources) {
-        if (this.decodedImages.has(source)) {
-          const image = this.decodedImages.get(source);
-          this.decodedImages.delete(source);
-          this.decodedImages.set(source, image);
+      for (const retainedPrioritySource of this.prioritySources) {
+        if (this.decodedImages.has(retainedPrioritySource)) {
+          const retainedImage = this.decodedImages.get(retainedPrioritySource);
+          this.decodedImages.delete(retainedPrioritySource);
+          this.decodedImages.set(retainedPrioritySource, retainedImage);
         } else {
-          this.enqueue(source, {
+          this.enqueue(retainedPrioritySource, {
             active: true
           });
         }
       }
-      for (const source of this.desiredSources) {
-        this.enqueue(source);
+      for (const nextDesiredSource of this.desiredSources) {
+        this.enqueue(nextDesiredSource);
       }
       this.trimDecodedImages();
     }
   }
-  enqueue(rawSource, {
-    active = false
-  } = {}) {
-    const source = String(rawSource || "");
-    if (this.stopped || !source || !this.desiredSources.has(source) || this.decodedImages.has(source) || this.activeLoads.has(source) || this.loadedSources.has(source) && !active) {
+  enqueue(source, { active: isActive = false } = {}) {
+    const normalizedSource = String(source || "");
+    if (
+      this.stopped ||
+      !normalizedSource ||
+      !this.desiredSources.has(normalizedSource) ||
+      this.decodedImages.has(normalizedSource) ||
+      this.activeLoads.has(normalizedSource) ||
+      (this.loadedSources.has(normalizedSource) && !isActive)
+    ) {
       return false;
     }
-    const existing = this.queue.find(item => item.source === source);
-    if (existing) {
-      existing.active = existing.active || !!active;
-      this.schedule(existing.active ? 0 : this.idleDelay);
+    const staticQueuedEntry = this.queue.find(
+      staticQueueCandidate => staticQueueCandidate.source === normalizedSource
+    );
+    if (staticQueuedEntry) {
+      staticQueuedEntry.active = staticQueuedEntry.active || !!isActive;
+      this.schedule(staticQueuedEntry.active ? 0 : this.idleDelay);
       return false;
     } else {
       this.queue.push({
-        source,
-        active: !!active,
+        source: normalizedSource,
+        active: !!isActive,
         sequence: this.sequence++
       });
-      this.schedule(active ? 0 : this.idleDelay);
+      this.schedule(isActive ? 0 : this.idleDelay);
       return true;
     }
   }
-  schedule(delay = 0) {
+  schedule(staticScheduleDelayMs = 0) {
     if (this.stopped) {
       return;
     }
-    const count = Math.max(0, Number(delay) || 0);
-    const dueAt = Date.now() + count;
+    const normalizedDelay = Math.max(0, Number(staticScheduleDelayMs) || 0);
+    const dueAt = Date.now() + normalizedDelay;
     if (this.timer === null || !(dueAt >= this.timerDueAt)) {
       if (this.timer !== null) {
         this.clearTimer(this.timer);
@@ -158,53 +170,60 @@ export class RuntimeStaticImageCache {
         this.timer = null;
         this.timerDueAt = 0;
         this.drain();
-      }, count);
+      }, normalizedDelay);
     }
   }
   drain() {
     if (!this.stopped) {
-      for (this.queue.sort((left, right) => Number(right.active) - Number(left.active) || left.sequence - right.sequence); this.activeLoads.size < this.maxConcurrent && this.queue.length;) {
-        const item = this.queue.shift();
-        if (!!this.desiredSources.has(item.source) && !this.decodedImages.has(item.source)) {
-          this.start(item);
+      for (
+        this.queue.sort(
+          (leftQueuedEntry, rightQueuedEntry) =>
+            Number(rightQueuedEntry.active) - Number(leftQueuedEntry.active) ||
+            leftQueuedEntry.sequence - rightQueuedEntry.sequence
+        );
+        this.activeLoads.size < this.maxConcurrent && this.queue.length;
+      ) {
+        const drainEntry = this.queue.shift();
+        if (
+          !!this.desiredSources.has(drainEntry.source) &&
+          !this.decodedImages.has(drainEntry.source)
+        ) {
+          this.start(drainEntry);
         }
       }
     }
   }
-  start({
-    source,
-    active
-  }) {
-    if (this.stopped || !source) {
+  start({ source: loadingSource, active: activeRequest }) {
+    if (this.stopped || !loadingSource) {
       return;
     }
     const image = this.createImage();
-    let settled = false;
-    let loadHandled = false;
-    let timeoutId = null;
-    const finish = success => {
-      if (!settled) {
-        settled = true;
-        if (timeoutId !== null) {
-          this.clearTimer(timeoutId);
+    let isSettled = false;
+    let hasDecodeStarted = false;
+    let timeoutHandle = null;
+    const finishStaticLoad = loaded => {
+      if (!isSettled) {
+        isSettled = true;
+        if (timeoutHandle !== null) {
+          this.clearTimer(timeoutHandle);
         }
-        image.removeEventListener?.("load", onLoad);
-        image.removeEventListener?.("error", onError);
-        this.activeLoads.delete(source);
-        if (success && this.desiredSources.has(source)) {
-          this.loadedSources.add(source);
-          this.decodedImages.delete(source);
-          this.decodedImages.set(source, image);
+        image.removeEventListener?.("load", handleStaticLoad);
+        image.removeEventListener?.("error", handleStaticError);
+        this.activeLoads.delete(loadingSource);
+        if (loaded && this.desiredSources.has(loadingSource)) {
+          this.loadedSources.add(loadingSource);
+          this.decodedImages.delete(loadingSource);
+          this.decodedImages.set(loadingSource, image);
           this.trimDecodedImages();
         }
         this.drain();
       }
     };
-    const onLoad = () => {
-      if (loadHandled) {
+    const handleStaticLoad = () => {
+      if (hasDecodeStarted) {
         return;
       }
-      loadHandled = true;
+      hasDecodeStarted = true;
       let decodePromise = null;
       try {
         decodePromise = typeof image.decode == "function" ? image.decode() : null;
@@ -212,40 +231,45 @@ export class RuntimeStaticImageCache {
         decodePromise = null;
       }
       if (decodePromise?.then) {
-        Promise.resolve(decodePromise).catch(() => {}).finally(() => finish(true));
+        Promise.resolve(decodePromise)
+          .catch(() => {})
+          .finally(() => finishStaticLoad(true));
       } else {
-        finish(true);
+        finishStaticLoad(true);
       }
     };
-    const onError = () => finish(false);
+    const handleStaticError = () => finishStaticLoad(false);
     image.decoding = "async";
-    image.fetchPriority = active ? "high" : "low";
-    image.addEventListener?.("load", onLoad, {
+    image.fetchPriority = activeRequest ? "high" : "low";
+    image.addEventListener?.("load", handleStaticLoad, {
       once: true
     });
-    image.addEventListener?.("error", onError, {
+    image.addEventListener?.("error", handleStaticError, {
       once: true
     });
-    this.activeLoads.set(source, {
-      image,
-      cancel: () => finish(false)
+    this.activeLoads.set(loadingSource, {
+      image: image,
+      cancel: () => finishStaticLoad(false)
     });
-    image.src = source;
-    timeoutId = this.setTimer(() => {
+    image.src = loadingSource;
+    timeoutHandle = this.setTimer(() => {
       image.removeAttribute?.("src");
-      finish(false);
+      finishStaticLoad(false);
     }, this.loadTimeout);
     if (image.complete && Number(image.naturalWidth || 0) > 0) {
-      Promise.resolve().then(onLoad);
+      Promise.resolve().then(handleStaticLoad);
     }
   }
   trimDecodedImages() {
     while (this.decodedImages.size > this.maxDecoded) {
-      const evictionKey = [...this.decodedImages.keys()].find(key => !this.prioritySources.has(key)) || this.decodedImages.keys().next().value;
-      if (!evictionKey) {
+      const evictedSource =
+        [...this.decodedImages.keys()].find(
+          candidateDecodedSource => !this.prioritySources.has(candidateDecodedSource)
+        ) || this.decodedImages.keys().next().value;
+      if (!evictedSource) {
         break;
       }
-      this.decodedImages.delete(evictionKey);
+      this.decodedImages.delete(evictedSource);
     }
   }
   reset() {
@@ -259,12 +283,11 @@ export class RuntimeStaticImageCache {
     this.timer = null;
     this.timerDueAt = 0;
     this.queue.length = 0;
-    for (const {
-      image,
-      cancel: cancelLoad
-    } of [...this.activeLoads.values()]) {
-      image.removeAttribute?.("src");
-      cancelLoad();
+    for (const { image: stoppedImage, cancel: cancelLoadedImage } of [
+      ...this.activeLoads.values()
+    ]) {
+      stoppedImage.removeAttribute?.("src");
+      cancelLoadedImage();
     }
     this.activeLoads.clear();
     this.desiredSources.clear();
@@ -275,17 +298,18 @@ export class RuntimeStaticImageCache {
 }
 export class RuntimeEffectImageLoader {
   constructor({
-    maxConcurrent = 4,
-    idleDelay = 160,
-    loadTimeout = 15000,
-    setTimer = (callback, delayMs) => globalThis.setTimeout(callback, delayMs),
-    clearTimer = timerId => globalThis.clearTimeout(timerId)
+    maxConcurrent: effectMaxConcurrent = 4,
+    idleDelay: effectIdleDelay = 160,
+    loadTimeout: effectLoadTimeout = 15000,
+    setTimer: effectSetTimer = (effectTimerCallback, effectDelayMs) =>
+      globalThis.setTimeout(effectTimerCallback, effectDelayMs),
+    clearTimer: effectClearTimer = effectTimerHandle => globalThis.clearTimeout(effectTimerHandle)
   } = {}) {
-    this.maxConcurrent = Math.max(1, Number(maxConcurrent) || 1);
-    this.idleDelay = Math.max(0, Number(idleDelay) || 0);
-    this.loadTimeout = Math.max(1000, Number(loadTimeout) || 15000);
-    this.setTimer = setTimer;
-    this.clearTimer = clearTimer;
+    this.maxConcurrent = Math.max(1, Number(effectMaxConcurrent) || 1);
+    this.idleDelay = Math.max(0, Number(effectIdleDelay) || 0);
+    this.loadTimeout = Math.max(1000, Number(effectLoadTimeout) || 15000);
+    this.setTimer = effectSetTimer;
+    this.clearTimer = effectClearTimer;
     this.queue = [];
     this.inFlight = 0;
     this.sequence = 0;
@@ -295,142 +319,157 @@ export class RuntimeEffectImageLoader {
     this.loadedSources = new Set();
     this.stopped = false;
   }
-  enqueue(image, rawSource, {
-    active = false
-  } = {}) {
-    const source = String(rawSource || "");
-    if (this.stopped || !image || !source) {
+  enqueue(imageElement, requestedSource, { active: isPriority = false } = {}) {
+    const effectSource = String(requestedSource || "");
+    if (this.stopped || !imageElement || !effectSource) {
       return;
     }
-    image.dataset ||= {};
-    image.dataset.effectPendingSource = source;
-    if (image.dataset.effectLoadedSource === source) {
-      delete image.dataset.effectPendingSource;
+    imageElement.dataset ||= {};
+    imageElement.dataset.effectPendingSource = effectSource;
+    if (imageElement.dataset.effectLoadedSource === effectSource) {
+      delete imageElement.dataset.effectPendingSource;
       return;
     }
-    if (this.loadedSources.has(source)) {
-      image.dataset.effectLoadedSource = source;
-      delete image.dataset.effectPendingSource;
-      image.src = source;
+    if (this.loadedSources.has(effectSource)) {
+      imageElement.dataset.effectLoadedSource = effectSource;
+      delete imageElement.dataset.effectPendingSource;
+      imageElement.src = effectSource;
       return;
     }
-    const existing = this.queue.find(item => item.image === image && item.source === source);
-    if (existing) {
-      existing.active = existing.active || !!active;
+    const effectQueuedEntry = this.queue.find(
+      effectQueueCandidate =>
+        effectQueueCandidate.image === imageElement && effectQueueCandidate.source === effectSource
+    );
+    if (effectQueuedEntry) {
+      effectQueuedEntry.active = effectQueuedEntry.active || !!isPriority;
     } else {
       this.queue.push({
-        image,
-        source,
-        active: !!active,
+        image: imageElement,
+        source: effectSource,
+        active: !!isPriority,
         sequence: this.sequence++
       });
     }
-    if (active) {
+    if (isPriority) {
       this.drain(true);
     } else {
       this.schedule(this.idleDelay);
     }
   }
-  schedule(delay = 0) {
+  schedule(effectScheduleDelayMs = 0) {
     if (this.stopped) {
       return;
     }
-    const count = Math.max(0, Number(delay) || 0);
-    const dueAt = Date.now() + count;
-    if (this.timer === null || !(dueAt >= this.timerDueAt)) {
+    const effectNormalizedDelay = Math.max(0, Number(effectScheduleDelayMs) || 0);
+    const effectDueAt = Date.now() + effectNormalizedDelay;
+    if (this.timer === null || !(effectDueAt >= this.timerDueAt)) {
       if (this.timer !== null) {
         this.clearTimer(this.timer);
       }
-      this.timerDueAt = dueAt;
+      this.timerDueAt = effectDueAt;
       this.timer = this.setTimer(() => {
         this.timer = null;
         this.timerDueAt = 0;
         this.drain();
-      }, count);
+      }, effectNormalizedDelay);
     }
   }
   drain(activeOnly = false) {
     if (!this.stopped) {
-      for (this.queue.sort((left, right) => Number(right.active) - Number(left.active) || left.sequence - right.sequence); this.inFlight < this.maxConcurrent;) {
-        const index = this.queue.findIndex(({
-          image,
-          source,
-          active
-        }) => image && image.dataset?.effectPendingSource === source && !image.dataset?.effectLoadingSource && (!activeOnly || active) && (image.isConnected === undefined || image.isConnected));
-        if (index < 0) {
+      for (
+        this.queue.sort(
+          (leftPendingEntry, rightPendingEntry) =>
+            Number(rightPendingEntry.active) - Number(leftPendingEntry.active) ||
+            leftPendingEntry.sequence - rightPendingEntry.sequence
+        );
+        this.inFlight < this.maxConcurrent;
+      ) {
+        const queueIndex = this.queue.findIndex(
+          ({ image: drainImage, source: entrySource, active: entryActive }) =>
+            drainImage &&
+            drainImage.dataset?.effectPendingSource === entrySource &&
+            !drainImage.dataset?.effectLoadingSource &&
+            (!activeOnly || entryActive) &&
+            (drainImage.isConnected === undefined || drainImage.isConnected)
+        );
+        if (queueIndex < 0) {
           break;
         }
-        const [item] = this.queue.splice(index, 1);
-        this.start(item);
+        const [queueEntry] = this.queue.splice(queueIndex, 1);
+        this.start(queueEntry);
       }
     }
   }
-  start({
-    image,
-    source
-  }) {
-    if (this.stopped || !image || image.dataset?.effectPendingSource !== source) {
+  start({ image: pendingImage, source: pendingSource }) {
+    if (
+      this.stopped ||
+      !pendingImage ||
+      pendingImage.dataset?.effectPendingSource !== pendingSource
+    ) {
       return;
     }
     this.inFlight += 1;
-    image.dataset.effectLoadingSource = source;
-    let settled = false;
-    let timeoutId = null;
-    const finish = success => {
-      if (!settled) {
-        settled = true;
-        if (timeoutId !== null) {
-          this.clearTimer(timeoutId);
+    pendingImage.dataset.effectLoadingSource = pendingSource;
+    let isEffectSettled = false;
+    let effectTimeoutHandle = null;
+    const finishEffectLoad = effectLoaded => {
+      if (!isEffectSettled) {
+        isEffectSettled = true;
+        if (effectTimeoutHandle !== null) {
+          this.clearTimer(effectTimeoutHandle);
         }
-        image.removeEventListener?.("load", onLoad);
-        image.removeEventListener?.("error", onError);
-        this.activeLoads.delete(image);
-        if (image.dataset?.effectLoadingSource === source) {
-          delete image.dataset.effectLoadingSource;
+        pendingImage.removeEventListener?.("load", handleEffectLoad);
+        pendingImage.removeEventListener?.("error", handleEffectError);
+        this.activeLoads.delete(pendingImage);
+        if (pendingImage.dataset?.effectLoadingSource === pendingSource) {
+          delete pendingImage.dataset.effectLoadingSource;
         }
-        if (success && image.dataset?.effectPendingSource === source) {
-          image.dataset.effectLoadedSource = source;
-          delete image.dataset.effectPendingSource;
-          this.loadedSources.add(source);
+        if (effectLoaded && pendingImage.dataset?.effectPendingSource === pendingSource) {
+          pendingImage.dataset.effectLoadedSource = pendingSource;
+          delete pendingImage.dataset.effectPendingSource;
+          this.loadedSources.add(pendingSource);
         }
         this.inFlight = Math.max(0, this.inFlight - 1);
         this.drain();
       }
     };
-    const onLoad = () => finish(true);
-    const onError = () => finish(false);
-    image.addEventListener?.("load", onLoad, {
+    const handleEffectLoad = () => finishEffectLoad(true);
+    const handleEffectError = () => finishEffectLoad(false);
+    pendingImage.addEventListener?.("load", handleEffectLoad, {
       once: true
     });
-    image.addEventListener?.("error", onError, {
+    pendingImage.addEventListener?.("error", handleEffectError, {
       once: true
     });
-    this.activeLoads.set(image, () => finish(false));
-    image.src = source;
-    timeoutId = this.setTimer(() => {
-      image.removeAttribute?.("src");
-      finish(false);
+    this.activeLoads.set(pendingImage, () => finishEffectLoad(false));
+    pendingImage.src = pendingSource;
+    effectTimeoutHandle = this.setTimer(() => {
+      pendingImage.removeAttribute?.("src");
+      finishEffectLoad(false);
     }, this.loadTimeout);
-    if (image.complete && Number(image.naturalWidth || 0) > 0) {
-      Promise.resolve().then(onLoad);
+    if (pendingImage.complete && Number(pendingImage.naturalWidth || 0) > 0) {
+      Promise.resolve().then(handleEffectLoad);
     }
   }
-  promote(image) {
-    const source = image?.dataset?.effectPendingSource || image?.dataset?.effectSource || "";
-    if (source) {
-      this.enqueue(image, source, {
+  promote(promotedImage) {
+    const promotedSource =
+      promotedImage?.dataset?.effectPendingSource || promotedImage?.dataset?.effectSource || "";
+    if (promotedSource) {
+      this.enqueue(promotedImage, promotedSource, {
         active: true
       });
     }
   }
   pruneDisconnected() {
-    this.queue = this.queue.filter(({
-      image,
-      source
-    }) => image && image.dataset?.effectPendingSource === source && (image.isConnected === undefined || image.isConnected));
-    for (const [image, cancelLoad] of [...this.activeLoads]) {
-      if (image.isConnected === false) {
-        cancelLoad();
+    this.queue = this.queue.filter(
+      ({ image: queuedImage, source: prunedSource }) =>
+        queuedImage &&
+        queuedImage.dataset?.effectPendingSource === prunedSource &&
+        (queuedImage.isConnected === undefined || queuedImage.isConnected)
+    );
+    for (const [prunedImage, cancelEffectLoad] of [...this.activeLoads]) {
+      if (prunedImage.isConnected === false) {
+        cancelEffectLoad();
       }
     }
   }
@@ -453,8 +492,8 @@ export class RuntimeEffectImageLoader {
     this.timer = null;
     this.timerDueAt = 0;
     this.queue.length = 0;
-    for (const cancelLoad of [...this.activeLoads.values()]) {
-      cancelLoad();
+    for (const cancelStoppedLoad of [...this.activeLoads.values()]) {
+      cancelStoppedLoad();
     }
     this.activeLoads.clear();
     this.inFlight = 0;
@@ -463,14 +502,14 @@ export class RuntimeEffectImageLoader {
 }
 export class RuntimeVacuumMapImagePreloader {
   constructor({
-    maxConcurrent = 1,
-    retryDelay = 15000,
-    createImage = () => new Image(),
-    now = () => Date.now()
+    maxConcurrent: vacuumMaxConcurrent = 1,
+    retryDelay: retryDelay = 15000,
+    createImage: vacuumCreateImage = () => new Image(),
+    now: now = () => Date.now()
   } = {}) {
-    this.maxConcurrent = Math.max(1, Number(maxConcurrent) || 1);
+    this.maxConcurrent = Math.max(1, Number(vacuumMaxConcurrent) || 1);
     this.retryDelay = Math.max(1000, Number(retryDelay) || 15000);
-    this.createImage = createImage;
+    this.createImage = vacuumCreateImage;
     this.now = now;
     this.queue = [];
     this.queuedSources = new Set();
@@ -480,93 +519,96 @@ export class RuntimeVacuumMapImagePreloader {
     this.activeLoads = new Map();
     this.stopped = false;
   }
-  enqueue(rawSource) {
-    const source = String(rawSource || "");
-    const key = source.split("?", 1)[0];
-    if (this.stopped || !source || this.loadedSources.has(source) || this.queuedSources.has(source) || this.activeLoads.has(source)) {
+  enqueue(candidateSource) {
+    const vacuumSource = String(candidateSource || "");
+    const sourceKey = vacuumSource.split("?", 1)[0];
+    if (
+      this.stopped ||
+      !vacuumSource ||
+      this.loadedSources.has(vacuumSource) ||
+      this.queuedSources.has(vacuumSource) ||
+      this.activeLoads.has(vacuumSource)
+    ) {
       return false;
     }
-    const numeric = Number(this.failedAt.get(source) || 0);
-    if (numeric && this.now() - numeric < this.retryDelay) {
+    const failedAt = Number(this.failedAt.get(vacuumSource) || 0);
+    if (failedAt && this.now() - failedAt < this.retryDelay) {
       return false;
     }
     for (const failedSource of this.failedAt.keys()) {
-      if (failedSource !== source && failedSource.split("?", 1)[0] === key) {
+      if (failedSource !== vacuumSource && failedSource.split("?", 1)[0] === sourceKey) {
         this.failedAt.delete(failedSource);
       }
     }
-    const existingIndex = this.queue.findIndex(item => item.key === key);
-    if (existingIndex >= 0) {
-      this.queuedSources.delete(this.queue[existingIndex].source);
-      this.queue[existingIndex] = {
-        key,
-        source
+    const queuedIndex = this.queue.findIndex(queuedEntry => queuedEntry.key === sourceKey);
+    if (queuedIndex >= 0) {
+      this.queuedSources.delete(this.queue[queuedIndex].source);
+      this.queue[queuedIndex] = {
+        key: sourceKey,
+        source: vacuumSource
       };
     } else {
       this.queue.push({
-        key,
-        source
+        key: sourceKey,
+        source: vacuumSource
       });
     }
-    this.queuedSources.add(source);
+    this.queuedSources.add(vacuumSource);
     this.drain();
     return true;
   }
   drain() {
     if (!this.stopped) {
       while (this.activeLoads.size < this.maxConcurrent && this.queue.length) {
-        const {
-          key,
-          source
-        } = this.queue.shift();
-        this.queuedSources.delete(source);
-        this.start(key, source);
+        const { key: entryKey, source: drainSource } = this.queue.shift();
+        this.queuedSources.delete(drainSource);
+        this.start(entryKey, drainSource);
       }
     }
   }
-  start(key, source) {
-    if (this.stopped || !source) {
+  start(loadKey, preloadSource) {
+    if (this.stopped || !preloadSource) {
       return;
     }
-    const image = this.createImage();
-    let settled = false;
-    const finish = success => {
-      if (!settled) {
-        settled = true;
-        image.removeEventListener?.("load", onLoad);
-        image.removeEventListener?.("error", onError);
-        this.activeLoads.delete(source);
-        if (success) {
-          const previousSource = this.loadedSourceByKey.get(key);
-          if (previousSource && previousSource !== source) {
+    const preloaderImage = this.createImage();
+    let isVacuumSettled = false;
+    const finishVacuumLoad = vacuumLoaded => {
+      if (!isVacuumSettled) {
+        isVacuumSettled = true;
+        preloaderImage.removeEventListener?.("load", handleVacuumLoad);
+        preloaderImage.removeEventListener?.("error", handleVacuumError);
+        this.activeLoads.delete(preloadSource);
+        if (vacuumLoaded) {
+          const previousSource = this.loadedSourceByKey.get(loadKey);
+          if (previousSource && previousSource !== preloadSource) {
             this.loadedSources.delete(previousSource);
           }
-          this.loadedSourceByKey.set(key, source);
-          this.loadedSources.add(source);
-          this.failedAt.delete(source);
+          this.loadedSourceByKey.set(loadKey, preloadSource);
+          this.loadedSources.add(preloadSource);
+          this.failedAt.delete(preloadSource);
         } else {
-          this.failedAt.set(source, this.now());
+          this.failedAt.set(preloadSource, this.now());
         }
         this.drain();
       }
     };
-    const onLoad = () => finish(true);
-    const onError = () => finish(false);
-    image.decoding = "async";
-    image.fetchPriority = "low";
-    image.addEventListener?.("load", onLoad, {
+    const handleVacuumLoad = () => finishVacuumLoad(true);
+    const handleVacuumError = () => finishVacuumLoad(false);
+    preloaderImage.decoding = "async";
+    preloaderImage.fetchPriority = "low";
+    preloaderImage.addEventListener?.("load", handleVacuumLoad, {
       once: true
     });
-    image.addEventListener?.("error", onError, {
+    preloaderImage.addEventListener?.("error", handleVacuumError, {
       once: true
     });
-    this.activeLoads.set(source, {
-      image,
-      cancel: () => finish(false)
+    this.activeLoads.set(preloadSource, {
+      image: preloaderImage,
+      cancel: () => finishVacuumLoad(false)
     });
-    image.src = source;
-    if (image.complete && Number(image.naturalWidth || 0) > 0) {
-      Promise.resolve().then(onLoad);
+    preloaderImage.src = preloadSource;
+    if (preloaderImage.complete && Number(preloaderImage.naturalWidth || 0) > 0) {
+      Promise.resolve().then(handleVacuumLoad);
     }
   }
   reset() {
@@ -579,12 +621,11 @@ export class RuntimeVacuumMapImagePreloader {
     this.stopped = true;
     this.queue.length = 0;
     this.queuedSources.clear();
-    for (const {
-      image,
-      cancel: cancelLoad
-    } of [...this.activeLoads.values()]) {
-      image.removeAttribute?.("src");
-      cancelLoad();
+    for (const { image: loadingImage, cancel: cancelVacuumLoad } of [
+      ...this.activeLoads.values()
+    ]) {
+      loadingImage.removeAttribute?.("src");
+      cancelVacuumLoad();
     }
     this.activeLoads.clear();
     this.loadedSources.clear();
@@ -592,12 +633,19 @@ export class RuntimeVacuumMapImagePreloader {
     this.failedAt.clear();
   }
 }
-export function historyRequestStillRelevant(request, current) {
-  if (request.documentGeneration !== current.documentGeneration) {
+export function historyRequestStillRelevant(requestContext, currentContext) {
+  if (requestContext.documentGeneration !== currentContext.documentGeneration) {
     return false;
-  } else if (request.shared || request.pagePath !== null && request.pagePath === current.pagePath) {
+  } else if (
+    requestContext.shared ||
+    (requestContext.pagePath !== null && requestContext.pagePath === currentContext.pagePath)
+  ) {
     return true;
   } else {
-    return request.popupId !== null && request.popupId === current.popupId && request.popupGeneration === current.popupGeneration;
+    return (
+      requestContext.popupId !== null &&
+      requestContext.popupId === currentContext.popupId &&
+      requestContext.popupGeneration === currentContext.popupGeneration
+    );
   }
 }

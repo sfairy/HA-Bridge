@@ -1,0 +1,1604 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#151a1f">
+<title>HA Bridge 授权商店 · 管理后台</title>
+<link rel="icon" type="image/png" href="/store-static/favicon-rounded.png">
+<link rel="stylesheet" href="/store-static/bootstrap.min.css">
+<link rel="stylesheet" href="/store-static/theme.css?v=20260915-unified-theme-v7">
+<link rel="stylesheet" href="/store-static/admin.css?v=20260915-premium-v10">
+</head>
+<body>
+
+<div id="admin-login" class="login-wrap">
+  <div class="login-card">
+    <div class="login-card__head">
+      <span class="login-card__mark"><img src="/store-static/ha-bridge-mark-light.svg" alt=""></span>
+      <div>
+        <strong>HA Bridge 授权商店</strong>
+        <small>管理后台 · 请使用管理员账号登录</small>
+      </div>
+    </div>
+    <form id="admin-login-form">
+      <label class="form-label">管理员邮箱</label>
+      <input class="form-control mb-2" type="email" name="email" autocomplete="username" required>
+      <label class="form-label">密码</label>
+      <input class="form-control mb-3" type="password" name="password" autocomplete="current-password" required>
+      <button class="btn btn-success w-100" type="submit">登录后台</button>
+    </form>
+    <div id="admin-login-error" class="alert alert-danger py-2 small mt-3 mb-0" hidden></div>
+  </div>
+</div>
+
+<div id="admin-app" class="admin-shell" hidden>
+  <aside class="admin-side">
+    <div class="brand">
+      <span class="brand__mark"><img src="/store-static/ha-bridge-mark-light.svg" alt=""></span>
+      <div class="brand__text">
+        <strong>HA Bridge</strong>
+        <small>授权商店后台</small>
+      </div>
+    </div>
+    <nav class="admin-nav" id="admin-nav">
+      <div class="nav-group">
+        <p class="nav-group__label">运营</p>
+        <a class="nav-link active" href="#overview" data-admin-page="overview">
+          <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.4" height="7.4" rx="2.1"/><rect x="13.6" y="3" width="7.4" height="7.4" rx="2.1"/><rect x="3" y="13.6" width="7.4" height="7.4" rx="2.1"/><rect x="13.6" y="13.6" width="7.4" height="7.4" rx="2.1"/></svg>
+          <span class="nav-label">概览</span>
+          <span class="nav-badge" data-nav-badge="overview"></span>
+        </a>
+        <a class="nav-link" href="#orders" data-admin-page="orders">
+          <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2.6"/><path d="M9 8.5h6M9 12.5h6M9 16.5h3.5"/></svg>
+          <span class="nav-label">订单</span>
+          <span class="nav-badge" data-nav-badge="orders"></span>
+        </a>
+        <a class="nav-link" href="#withdrawals" data-admin-page="withdrawals">
+          <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.2A2.7 2.7 0 0 1 5.7 5.5H18a2 2 0 0 1 2 2v1"/><rect x="3" y="8.2" width="18" height="10.8" rx="2.6"/><circle cx="16.6" cy="13.6" r="1.2"/></svg>
+          <span class="nav-label">提现审核</span>
+          <span class="nav-badge" data-nav-badge="withdrawals"></span>
+        </a>
+      </div>
+      <div class="nav-group">
+        <p class="nav-group__label">商品与营销</p>
+        <a class="nav-link" href="#products" data-admin-page="products">
+          <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2 20.3 7.5v9L12 20.8 3.7 16.5v-9z"/><path d="M3.7 7.5 12 11.8l8.3-4.3M12 11.8v9"/></svg>
+          <span class="nav-label">商品</span>
+          <span class="nav-badge" data-nav-badge="products"></span>
+        </a>
+        <a class="nav-link" href="#coupons" data-admin-page="coupons">
+          <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 12.7V4.7a1.1 1.1 0 0 1 1.1-1.1h8l7.7 7.7a1.6 1.6 0 0 1 0 2.2l-6.7 6.7a1.6 1.6 0 0 1-2.2 0z"/><circle cx="8.1" cy="8.1" r="1.4"/></svg>
+          <span class="nav-label">优惠码</span>
+          <span class="nav-badge" data-nav-badge="coupons"></span>
+        </a>
+        <a class="nav-link" href="#releases" data-admin-page="releases">
+          <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15.8V4.6"/><path d="m7.6 9 4.4-4.4L16.4 9"/><path d="M4.6 15v3.6A1.4 1.4 0 0 0 6 20h12a1.4 1.4 0 0 0 1.4-1.4V15"/></svg>
+          <span class="nav-label">版本发布</span>
+          <span class="nav-badge" data-nav-badge="releases"></span>
+        </a>
+      </div>
+      <div class="nav-group">
+        <p class="nav-group__label">授权与用户</p>
+        <a class="nav-link" href="#licenses" data-admin-page="licenses">
+          <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.2" cy="12" r="4.3"/><path d="M12.5 12H20M17.4 12v3.3M20 12v2.5"/></svg>
+          <span class="nav-label">激活码</span>
+          <span class="nav-badge" data-nav-badge="licenses"></span>
+        </a>
+        <a class="nav-link" href="#bindings" data-admin-page="bindings">
+          <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.6" width="18" height="12" rx="2.6"/><path d="M9 20h6M12 16.6V20"/></svg>
+          <span class="nav-label">设备绑定</span>
+          <span class="nav-badge" data-nav-badge="bindings"></span>
+        </a>
+        <a class="nav-link" href="#accounts" data-admin-page="accounts">
+          <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.4" cy="8.4" r="3.5"/><path d="M3.5 19.6c0-3.3 2.6-5.5 5.9-5.5s5.9 2.2 5.9 5.5"/><path d="M16.6 5.3a3.5 3.5 0 0 1 0 6.2M17.6 14.3c2 .8 3.4 2.5 3.4 4.7"/></svg>
+          <span class="nav-label">账号</span>
+          <span class="nav-badge" data-nav-badge="accounts"></span>
+        </a>
+      </div>
+      <div class="nav-group">
+        <p class="nav-group__label">系统</p>
+        <a class="nav-link" href="#settings" data-admin-page="settings">
+          <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h9M18.4 7H20M4 12h3.6M13 12h7M4 17h8M17.6 17H20"/><circle cx="15.7" cy="7" r="2.1"/><circle cx="10.4" cy="12" r="2.1"/><circle cx="15" cy="17" r="2.1"/></svg>
+          <span class="nav-label">站点配置</span>
+          <span class="nav-badge" data-nav-badge="settings"></span>
+        </a>
+        <a class="nav-link" href="#audits" data-admin-page="audits">
+          <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="16" rx="2.6"/><path d="M9 5V3.9A1.4 1.4 0 0 1 10.4 2.5h3.2A1.4 1.4 0 0 1 15 3.9V5"/><path d="M9 11.2h6M9 15.2h4"/></svg>
+          <span class="nav-label">审计日志</span>
+          <span class="nav-badge" data-nav-badge="audits"></span>
+        </a>
+      </div>
+    </nav>
+    <div class="admin-side__foot">
+      <div class="who">
+        <span class="who__avatar" id="admin-avatar">A</span>
+        <span class="who__email" id="admin-identity"></span>
+      </div>
+      <a class="btn btn-sm btn-outline-light w-100" href="/" target="_blank" rel="noreferrer">查看商店</a>
+      <button class="btn btn-sm btn-outline-secondary w-100 mt-2" id="admin-logout">退出登录</button>
+    </div>
+  </aside>
+
+  <main class="admin-main">
+    <!-- 概览 -->
+    <section class="admin-panel active" id="panel-overview">
+      <header class="panel-head">
+        <div class="panel-head__text">
+          <h2>运营概览</h2>
+          <p>账号、订单与授权的一眼总览</p>
+        </div>
+        <div class="panel-head__actions">
+          <button class="btn btn-sm btn-outline-secondary" id="overview-refresh">刷新</button>
+        </div>
+      </header>
+      <div class="stat-grid" id="overview-stats"></div>
+      <div class="card mt-3"><div class="card-body">
+        <div class="setting-row">
+          <div>
+            <strong>维护模式</strong>
+            <p>开启后商店前台显示维护遮罩，下单会被拒绝。</p>
+          </div>
+          <button class="btn btn-sm btn-outline-danger" id="overview-toggle-maintenance">切换维护模式</button>
+        </div>
+      </div></div>
+    </section>
+
+    <!-- 商品 -->
+    <section class="admin-panel" id="panel-products">
+      <header class="panel-head">
+        <div class="panel-head__text">
+          <h2>商品</h2>
+          <p>定价、有效期与库存；有历史授权或订单的商品只能下架</p>
+        </div>
+        <div class="panel-head__actions">
+          <button class="btn btn-sm btn-outline-secondary" id="product-refresh">刷新</button>
+          <button class="btn btn-sm btn-success" id="product-new">新增商品</button>
+        </div>
+      </header>
+      <div class="table-wrap">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>名称</th><th>类型</th><th class="nowrap">价格</th><th class="nowrap">有效期</th><th>功能码</th><th class="nowrap">库存</th><th class="nowrap">状态</th><th class="nowrap">操作</th></tr></thead>
+          <tbody id="product-rows"></tbody>
+        </table>
+      </div>
+      <div class="card mt-3" id="product-editor" hidden><div class="card-body">
+        <h6 id="product-editor-title">新增商品</h6>
+        <form id="product-form" class="row g-2">
+          <input type="hidden" name="id">
+          <div class="col-md-4"><label class="form-label">名称</label><input class="form-control form-control-sm" name="name" required></div>
+          <div class="col-md-2"><label class="form-label">类型</label>
+            <select class="form-select form-select-sm" name="productType">
+              <option value="base">base</option><option value="module">module</option><option value="package">package</option>
+            </select>
+          </div>
+          <div class="col-md-2"><label class="form-label">价格（分）</label><input class="form-control form-control-sm" name="priceCents" type="number" min="0" value="0"></div>
+          <div class="col-md-2"><label class="form-label">有效期（天）</label><input class="form-control form-control-sm" name="validityDays" type="number" min="1"></div>
+          <div class="col-md-2"><label class="form-label">排序</label><input class="form-control form-control-sm" name="sortOrder" type="number" value="100"></div>
+          <div class="col-12"><label class="form-label">功能码（逗号分隔）</label><input class="form-control form-control-sm mono" name="featureCodes"></div>
+          <div class="col-12"><label class="form-label">套餐包含商品 ID（逗号分隔）</label><input class="form-control form-control-sm mono" name="includedProductIds"></div>
+          <div class="col-md-6"><label class="form-label">角标文案</label><input class="form-control form-control-sm" name="badgeText"></div>
+          <div class="col-md-2"><label class="form-label">库存</label><input class="form-control form-control-sm" name="stockQuantity" type="number" min="0"></div>
+          <div class="col-md-2"><label class="form-label">履约</label>
+            <select class="form-select form-select-sm" name="fulfillmentMode">
+              <option value="automatic">automatic</option><option value="manual">manual</option>
+            </select>
+          </div>
+          <div class="col-md-2 d-flex align-items-end gap-3">
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="active" id="product-active" checked><label class="form-check-label" for="product-active">上架</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="featured" id="product-featured"><label class="form-check-label" for="product-featured">推荐</label></div>
+          </div>
+          <div class="col-12"><label class="form-label">展示描述</label><textarea class="form-control form-control-sm" name="displayDescription" rows="2"></textarea></div>
+          <div class="col-12 d-flex gap-2">
+            <button class="btn btn-sm btn-success" type="submit">保存</button>
+            <button class="btn btn-sm btn-outline-secondary" type="button" id="product-cancel">取消</button>
+          </div>
+        </form>
+      </div></div>
+    </section>
+
+    <!-- 订单 -->
+    <section class="admin-panel" id="panel-orders">
+      <header class="panel-head">
+        <div class="panel-head__text">
+          <h2>订单</h2>
+          <p>待支付可取消；已支付请走退款；已取消/已过期且未发码的订单可删除</p>
+        </div>
+      </header>
+      <div class="panel-toolbar">
+        <select class="form-select form-select-sm" id="order-status">
+          <option value="">全部状态</option><option value="pending">pending</option><option value="fulfilled">fulfilled</option>
+          <option value="paid">paid</option><option value="cancelled">cancelled</option><option value="expired">expired</option><option value="refunded">refunded</option>
+        </select>
+        <input class="form-control form-control-sm" id="order-keyword" placeholder="订单号 / 邮箱">
+        <button class="btn btn-sm btn-outline-secondary" id="order-refresh">查询</button>
+      </div>
+      <div class="table-wrap">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>订单号</th><th class="nowrap">邮箱</th><th>商品</th><th>类型</th><th class="nowrap">金额</th><th class="nowrap">状态</th><th class="nowrap">创建</th><th class="nowrap">操作</th></tr></thead>
+          <tbody id="order-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 激活码 -->
+    <section class="admin-panel" id="panel-licenses">
+      <header class="panel-head">
+        <div class="panel-head__text">
+          <h2>激活码</h2>
+          <p>停用后客户端下次心跳即转吊销；彻底删除需先停用且无活跃绑定</p>
+        </div>
+        <div class="panel-head__actions">
+          <button class="btn btn-sm btn-success" id="license-issue">手动签发</button>
+        </div>
+      </header>
+      <div class="panel-toolbar">
+        <input class="form-control form-control-sm" id="license-keyword" placeholder="激活码 / 提示码">
+        <button class="btn btn-sm btn-outline-secondary" id="license-refresh">查询</button>
+      </div>
+      <div class="table-wrap">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>激活码</th><th>客户</th><th>商品</th><th class="nowrap">有效期</th><th class="nowrap">来源</th><th class="nowrap">状态</th><th class="nowrap">操作</th></tr></thead>
+          <tbody id="license-rows"></tbody>
+        </table>
+      </div>
+      <div class="card mt-3" id="license-editor" hidden><div class="card-body">
+        <h6>手动签发激活码</h6>
+        <form id="license-form" class="row g-2">
+          <div class="col-md-4"><label class="form-label">账号邮箱</label><input class="form-control form-control-sm" type="email" name="email" required></div>
+          <div class="col-md-5"><label class="form-label">商品</label><select class="form-select form-select-sm" name="productId" id="license-product"></select></div>
+          <div class="col-md-3"><label class="form-label">有效期（天，留空取商品默认）</label><input class="form-control form-control-sm" type="number" min="1" name="validityDays"></div>
+          <div class="col-12 d-flex gap-2">
+            <button class="btn btn-sm btn-success" type="submit">签发</button>
+            <button class="btn btn-sm btn-outline-secondary" type="button" id="license-cancel">取消</button>
+          </div>
+        </form>
+      </div></div>
+    </section>
+
+    <!-- 设备绑定 -->
+    <section class="admin-panel" id="panel-bindings">
+      <header class="panel-head">
+        <div class="panel-head__text">
+          <h2>设备绑定</h2>
+          <p>强制解绑后客户端下次心跳转吊销，冷却期内无法重绑</p>
+        </div>
+      </header>
+      <div class="panel-toolbar">
+        <div class="form-check form-switch mb-0"><input class="form-check-input" type="checkbox" id="binding-active-only"><label class="form-check-label small" for="binding-active-only">仅有效</label></div>
+        <button class="btn btn-sm btn-outline-secondary" id="binding-refresh">刷新</button>
+      </div>
+      <div class="table-wrap">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>实例 ID</th><th>激活码</th><th class="nowrap">客户端版本</th><th class="nowrap">最近心跳</th><th class="nowrap">状态</th><th class="nowrap">操作</th></tr></thead>
+          <tbody id="binding-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 优惠码 -->
+    <section class="admin-panel" id="panel-coupons">
+      <header class="panel-head">
+        <div class="panel-head__text">
+          <h2>优惠码</h2>
+          <p>未被使用的优惠码可以删除；已核销的只能停用，以保留核销记录</p>
+        </div>
+        <div class="panel-head__actions">
+          <button class="btn btn-sm btn-success" id="coupon-new">新增优惠码</button>
+        </div>
+      </header>
+      <div class="table-wrap">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>码</th><th>说明</th><th class="nowrap">折扣</th><th class="nowrap">门槛</th><th class="nowrap">已用/上限</th><th class="nowrap">状态</th><th class="nowrap">操作</th></tr></thead>
+          <tbody id="coupon-rows"></tbody>
+        </table>
+      </div>
+      <div class="card mt-3" id="coupon-editor" hidden><div class="card-body">
+        <h6>新增优惠码</h6>
+        <form id="coupon-form" class="row g-2">
+          <div class="col-md-3"><label class="form-label">码</label><input class="form-control form-control-sm mono" name="code" required></div>
+          <div class="col-md-3"><label class="form-label">说明</label><input class="form-control form-control-sm" name="description"></div>
+          <div class="col-md-2"><label class="form-label">类型</label>
+            <select class="form-select form-select-sm" name="discountType"><option value="percent">percent</option><option value="fixed">fixed</option></select>
+          </div>
+          <div class="col-md-1"><label class="form-label">百分比</label><input class="form-control form-control-sm" type="number" step="0.01" name="percent" value="0"></div>
+          <div class="col-md-1"><label class="form-label">减免(分)</label><input class="form-control form-control-sm" type="number" name="amountCents" value="0"></div>
+          <div class="col-md-2"><label class="form-label">门槛(分)</label><input class="form-control form-control-sm" type="number" name="minAmountCents" value="0"></div>
+          <div class="col-md-2"><label class="form-label">总量上限</label><input class="form-control form-control-sm" type="number" name="maxRedemptions"></div>
+          <div class="col-md-2"><label class="form-label">每账号</label><input class="form-control form-control-sm" type="number" name="perAccountLimit" value="1"></div>
+          <div class="col-md-2 d-flex align-items-end">
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="active" id="coupon-active" checked><label class="form-check-label" for="coupon-active">启用</label></div>
+          </div>
+          <div class="col-12 d-flex gap-2">
+            <button class="btn btn-sm btn-success" type="submit">保存</button>
+            <button class="btn btn-sm btn-outline-secondary" type="button" id="coupon-cancel">取消</button>
+          </div>
+        </form>
+      </div></div>
+    </section>
+
+    <!-- 提现审核 -->
+    <section class="admin-panel" id="panel-withdrawals">
+      <header class="panel-head">
+        <div class="panel-head__text">
+          <h2>提现审核</h2>
+          <p>待审申请必须通过或驳回以释放冻结积分；已结算的记录可删除</p>
+        </div>
+      </header>
+      <div class="panel-toolbar">
+        <select class="form-select form-select-sm" id="withdrawal-status">
+          <option value="">全部</option><option value="pending">待审核</option><option value="paid">已提现</option><option value="rejected">已驳回</option>
+        </select>
+        <button class="btn btn-sm btn-outline-secondary" id="withdrawal-refresh">刷新</button>
+      </div>
+      <div class="table-wrap">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>账号</th><th class="nowrap">积分</th><th class="nowrap">手续费</th><th class="nowrap">到账</th><th class="nowrap">QQ</th><th class="nowrap">状态</th><th class="nowrap">申请时间</th><th class="nowrap">操作</th></tr></thead>
+          <tbody id="withdrawal-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 账号 -->
+    <section class="admin-panel" id="panel-accounts">
+      <header class="panel-head">
+        <div class="panel-head__text">
+          <h2>账号</h2>
+          <p>账号承载授权与钱包账本，只提供停用/启用，不提供删除</p>
+        </div>
+      </header>
+      <div class="panel-toolbar">
+        <input class="form-control form-control-sm" id="account-keyword" placeholder="邮箱关键字">
+        <button class="btn btn-sm btn-outline-secondary" id="account-refresh">查询</button>
+      </div>
+      <div class="table-wrap">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>邮箱</th><th class="nowrap">角色</th><th class="nowrap">授权数</th><th class="nowrap">余额</th><th class="nowrap">邀请码</th><th class="nowrap">状态</th><th class="nowrap">操作</th></tr></thead>
+          <tbody id="account-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 站点配置 -->
+    <section class="admin-panel" id="panel-settings">
+      <header class="panel-head">
+        <div class="panel-head__text">
+          <h2>站点配置</h2>
+          <p>站点信息、支付渠道、维护模式与邀请规则</p>
+        </div>
+      </header>
+      <div class="card"><div class="card-body">
+        <form id="settings-form" class="row g-3">
+          <div class="col-md-4"><label class="form-label">站点名</label><input class="form-control form-control-sm" name="siteName"></div>
+          <div class="col-md-4"><label class="form-label">站点标题</label><input class="form-control form-control-sm" name="siteTitle"></div>
+          <div class="col-md-4"><label class="form-label">客服邮箱</label><input class="form-control form-control-sm" name="supportEmail"></div>
+          <div class="col-12"><label class="form-label">站点描述</label><input class="form-control form-control-sm" name="description"></div>
+          <div class="col-12"><label class="form-label">公告（前台 toast 展示）</label><input class="form-control form-control-sm" name="announcement"></div>
+          <div class="col-md-3"><label class="form-label">支付渠道</label>
+            <select class="form-select form-select-sm" name="paymentProvider"><option value="">跟随环境变量</option><option value="mock">mock</option><option value="alipay">alipay</option></select>
+          </div>
+          <div class="col-md-3"><label class="form-label">支付显示名</label><input class="form-control form-control-sm" name="paymentDisplayName"></div>
+          <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="paymentEnabled" id="setting-payment-enabled"><label class="form-check-label" for="setting-payment-enabled">启用支付</label></div>
+          </div>
+          <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="maintenanceMode" id="setting-maintenance"><label class="form-check-label" for="setting-maintenance">维护模式</label></div>
+          </div>
+          <div class="col-12"><label class="form-label">维护文案</label><input class="form-control form-control-sm" name="maintenanceMessage"></div>
+          <hr>
+          <div class="col-md-2 d-flex align-items-end">
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="referralEnabled" id="setting-referral"><label class="form-check-label" for="setting-referral">邀请有礼</label></div>
+          </div>
+          <div class="col-md-2"><label class="form-label">奖励比例 %</label><input class="form-control form-control-sm" type="number" step="0.01" name="referralRatePercent"></div>
+          <div class="col-md-2"><label class="form-label">提现手续费 %</label><input class="form-control form-control-sm" type="number" step="0.01" name="referralWithdrawalFeePercent"></div>
+          <div class="col-md-2"><label class="form-label">最低提现积分</label><input class="form-control form-control-sm" type="number" step="0.01" name="referralWithdrawalMinPoints"></div>
+          <div class="col-md-2"><label class="form-label">QQ 群</label><input class="form-control form-control-sm" name="referralQqGroup"></div>
+          <div class="col-md-2"><label class="form-label">解绑冷却（秒）</label><input class="form-control form-control-sm" type="number" name="deviceReleaseCooldownSeconds"></div>
+          <div class="col-12"><button class="btn btn-sm btn-success" type="submit">保存配置</button></div>
+        </form>
+      </div></div>
+    </section>
+
+    <!-- 版本发布 -->
+    <section class="admin-panel" id="panel-releases">
+      <header class="panel-head">
+        <div class="panel-head__text">
+          <h2>版本发布</h2>
+          <p>客户端「检查更新」取最新一条；删除后会自动回退到次新记录</p>
+        </div>
+      </header>
+      <div class="card"><div class="card-body">
+        <form id="release-form" class="row g-2 align-items-end">
+          <div class="col-md-2"><label class="form-label">产品</label><input class="form-control form-control-sm" name="product" value="ha-bridge"></div>
+          <div class="col-md-2"><label class="form-label">渠道</label><input class="form-control form-control-sm" name="channel" value="docker"></div>
+          <div class="col-md-2"><label class="form-label">版本</label><input class="form-control form-control-sm" name="version" required></div>
+          <div class="col-md-2"><label class="form-label">发布日期</label><input class="form-control form-control-sm" type="date" name="releaseDate"></div>
+          <div class="col-md-3"><label class="form-label">更新说明</label><input class="form-control form-control-sm" name="upgradeNotes"></div>
+          <div class="col-md-1"><button class="btn btn-sm btn-success w-100" type="submit">发布</button></div>
+        </form>
+      </div></div>
+      <div class="table-wrap mt-3">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>产品</th><th>渠道</th><th>版本</th><th>发布日期</th><th>说明</th><th class="nowrap">操作</th></tr></thead>
+          <tbody id="release-rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 审计日志 -->
+    <section class="admin-panel" id="panel-audits">
+      <header class="panel-head">
+        <div class="panel-head__text">
+          <h2>审计日志</h2>
+          <p>后台所有写操作的追溯记录，可单条删除或按时间批量清理</p>
+        </div>
+        <div class="panel-head__actions">
+          <button class="btn btn-sm btn-outline-secondary" id="audit-refresh">刷新</button>
+        </div>
+      </header>
+      <div class="table-wrap">
+        <table class="table table-sm mb-0">
+          <thead><tr><th class="nowrap">时间</th><th>操作人</th><th>动作</th><th>对象</th><th>详情</th><th class="nowrap">操作</th></tr></thead>
+          <tbody id="audit-rows"></tbody>
+        </table>
+      </div>
+
+      <div class="danger-zone">
+        <h3>批量清理</h3>
+        <p>
+          按天数清理历史审计日志，用于控制表体积。<strong>清理动作本身也会被记录</strong>，
+          但被清掉的记录无法恢复，请先确认天数再执行。
+        </p>
+        <div class="danger-zone__row">
+          <div>
+            <label class="form-label" for="audit-purge-days">清理多少天之前的记录</label>
+            <input class="form-control form-control-sm purge-days" id="audit-purge-days" type="number" min="1" value="90">
+          </div>
+          <button class="btn btn-sm btn-outline-danger" id="audit-purge">执行清理</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- 主题化确认弹窗：替代原生 confirm，可展示影响面与守卫原因 -->
+<dialog class="confirm-dialog" id="confirm-dialog">
+  <div class="confirm-dialog__body">
+    <div class="confirm-dialog__icon" id="confirm-icon">!</div>
+    <h2 id="confirm-title">确认操作</h2>
+    <p id="confirm-message"></p>
+    <div class="confirm-dialog__impact" id="confirm-impact" hidden></div>
+  </div>
+  <div class="confirm-dialog__actions">
+    <button class="btn btn-sm btn-outline-secondary" type="button" id="confirm-cancel">取消</button>
+    <button class="btn btn-sm btn-danger" type="button" id="confirm-ok">确认</button>
+  </div>
+</dialog>
+
+<div id="admin-toast"></div>
+
+<script>
+'use strict';
+const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+const state = { account: null, products: [], orders: [], licenses: [], bindings: [], coupons: [], withdrawals: [], accounts: [], settings: null };
+
+function toast(message, kind = 'success') {
+  const box = document.createElement('div');
+  box.className = `alert alert-${kind} shadow-sm`;
+  box.textContent = message;
+  $('#admin-toast').appendChild(box);
+  setTimeout(() => box.remove(), 3600);
+}
+
+async function api(path, options = {}) {
+  const response = await fetch(`/store-admin/v1${path}`, {
+    credentials: 'same-origin',
+    headers: options.body ? { 'Content-Type': 'application/json' } : {},
+    ...options,
+  });
+  if (response.status === 401 || response.status === 403) {
+    showLogin();
+    throw new Error('未登录后台或无权限。');
+  }
+  if (options.raw) return response;
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.detail || '请求失败。');
+  return data;
+}
+
+async function storeApi(path, options = {}) {
+  const response = await fetch(`/store/v1${path}`, {
+    credentials: 'same-origin',
+    headers: options.body ? { 'Content-Type': 'application/json' } : {},
+    ...options,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.detail || '请求失败。');
+  return data;
+}
+
+function money(cents) { return `¥${(Number(cents || 0) / 100).toFixed(2)}`; }
+function esc(value) {
+  return String(value === null || value === undefined ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function dt(value) { return value ? String(value).replace('T', ' ').slice(0, 19) : '—'; }
+
+// 只到日期。到期时间、发布日期这类字段精确到秒只会挤占列宽，没有信息价值。
+function d(value) { return value ? String(value).replace('T', ' ').slice(0, 10) : '—'; }
+
+// 空态：图标 + 文案，避免只剩一行灰字显得像加载失败
+function emptyRow(columns, text) {
+  return `<tr><td colspan="${columns}"><div class="table-empty"><span>◌</span>${esc(text)}</div></td></tr>`;
+}
+
+// 状态胶囊：柔和底色 + 同色文字 + 发光小点，替代 Bootstrap 的实心 badge。
+// 实心色块在暗色底上又亮又散，一屏里几十个徽标会把视线拉走。
+function pill(text, tone = 'muted') {
+  return `<span class="pill pill--${tone}">${esc(text)}</span>`;
+}
+
+// 订单/提现状态 → 胶囊语气
+const STATUS_TONES = {
+  fulfilled: 'success', paid: 'success', active: 'success', paid_out: 'success',
+  pending: 'warning',
+  cancelled: 'muted', expired: 'muted',
+  refunded: 'danger', rejected: 'danger',
+};
+
+function statusBadge(status, labels = ORDER_STATUS) {
+  return pill(labels[status] || status, STATUS_TONES[status] || 'muted');
+}
+
+// 订单状态中文口径与前台账号中心完全一致（见 store/static/store.js 的订单状态映射），
+// 后台不要另造一套说法。顺带解决宽度问题：payment_failed 这类 snake_case 比中文宽一倍多。
+const ORDER_STATUS = {
+  pending: '待付款', paid: '已付款', fulfilled: '已完成',
+  cancelled: '已取消', expired: '已过期',
+  payment_failed: '下单失败', fulfillment_failed: '处理中', refunded: '已退款',
+};
+
+// 订单类型 / 授权动作：原始值是 base|addon 与 issue|patch，直接显示英文
+// 在中文界面里很突兀，且 addon/issue 这种拼接串很占列宽。
+const ORDER_TYPE = { base: '基础', addon: '增购', upgrade: '升级', renewal: '续期' };
+const LICENSE_ACTION = { issue: '签发', patch: '补发', extend: '延期', upgrade: '升级', none: '不变' };
+
+// 授权来源
+const LICENSE_SOURCE = {
+  payment_automatic: '支付自动', manual: '手动签发',
+  trial: '试用', migration: '迁移', compensation: '补偿',
+};
+
+// 商品类型：前台 store.js 用的口径是「全授权 / 自定义套餐 / 功能增量包」，
+// 后台列窄，取等价的短说法，含义保持一致。
+const PRODUCT_TYPE = {
+  base: '基础授权', bundle: '全授权', package: '套餐',
+  module: '增量包', template: '模板', addon: '增量包',
+};
+
+// 提现状态：与前台钱包流水（store/static/referrals.js）同一套说法。
+// pending/paid 在订单里另有含义，不能共用 ORDER_STATUS。
+const WITHDRAWAL_STATUS = { pending: '待审核', paid: '已提现', rejected: '已驳回' };
+
+// 表格内统一的操作按钮组
+function actions(...buttons) {
+  return `<div class="row-actions">${buttons.filter(Boolean).join('')}</div>`;
+}
+
+// 「主操作 + ⋯ 菜单」：把低频/破坏性操作收进菜单。
+// 订单行原来最多堆 5 个按钮（标记支付/履约/退款/取消/删除），把表格撑到 1095px，
+// 在 1180px 视口下横向溢出 201px，最右侧按钮要拖着看。
+// 菜单项仍是 <button data-xxx>，沿用各表已有的事件委托，处理函数一行都不用改。
+function rowMenu(title, ...items) {
+  const body = items.filter(Boolean).join('');
+  if (!body) return '';
+  return `<div class="menu">
+      <button type="button" class="btn btn-sm btn-outline-secondary menu__toggle" data-menu-toggle aria-haspopup="menu" aria-label="${esc(title)}">⋯</button>
+      <div class="menu__pop" hidden>${body}</div>
+    </div>`;
+}
+
+// 菜单项（破坏性操作加 is-danger，红字而非红底，避免满屏红色按钮）
+function menuItem(label, attrs, { danger = false } = {}) {
+  return `<button type="button" class="menu__item${danger ? ' is-danger' : ''}" ${attrs}>${esc(label)}</button>`;
+}
+
+// 长内容只在单元格里附带完整值（title），截断交给「固定列宽 + td 省略号」。
+// 之前想用 max-width + nowrap 在单元格内部截断，结果反而把表格的最小内容宽度顶大了
+// （自动布局按内容定列宽，nowrap 让每列都不可压缩），表格照样溢出。
+function cell(value) {
+  const text = value === null || value === undefined || value === '' ? '—' : String(value);
+  if (text === '—') return '—';
+  return `<span title="${esc(text)}">${esc(text)}</span>`;
+}
+
+// --------------------------------------------------------------------------- //
+// 确认弹窗（替代原生 confirm，可展示影响面）
+// --------------------------------------------------------------------------- //
+const confirmDialog = $('#confirm-dialog');
+let confirmResolver = null;
+
+// 三种语气：danger=不可恢复的删除，warning=会降级成可恢复的停用/下架，
+// success=正向确认（如通过提现）。图标与按钮配色都跟着语气走。
+const CONFIRM_TONES = {
+  danger: { icon: '!', button: 'danger' },
+  warning: { icon: '!', button: 'warning' },
+  success: { icon: '?', button: 'success' },
+};
+
+function askConfirm({ title, message, impact = '', tone = 'danger', okText = '确认' }) {
+  const skin = CONFIRM_TONES[tone] || CONFIRM_TONES.danger;
+  $('#confirm-title').textContent = title;
+  $('#confirm-message').textContent = message;
+  $('#confirm-icon').textContent = skin.icon;
+  $('#confirm-ok').textContent = okText;
+  $('#confirm-ok').className = `btn btn-sm btn-${skin.button}`;
+  confirmDialog.classList.toggle('is-danger', tone === 'danger');
+  confirmDialog.classList.toggle('is-warning', tone === 'warning');
+  const impactBox = $('#confirm-impact');
+  if (impact) { impactBox.innerHTML = impact; impactBox.hidden = false; }
+  else { impactBox.hidden = true; impactBox.innerHTML = ''; }
+  confirmDialog.showModal();
+  return new Promise((resolve) => { confirmResolver = resolve; });
+}
+
+function settleConfirm(value) {
+  if (confirmDialog.open) confirmDialog.close();
+  const resolve = confirmResolver;
+  confirmResolver = null;
+  if (resolve) resolve(value);
+}
+
+$('#confirm-ok').addEventListener('click', () => settleConfirm(true));
+$('#confirm-cancel').addEventListener('click', () => settleConfirm(false));
+// 点遮罩或按 Esc 都视为取消
+confirmDialog.addEventListener('cancel', (event) => { event.preventDefault(); settleConfirm(false); });
+confirmDialog.addEventListener('click', (event) => { if (event.target === confirmDialog) settleConfirm(false); });
+
+// --------------------------------------------------------------------------- //
+// 行内「⋯」菜单
+// --------------------------------------------------------------------------- //
+// 后台没有引入 Bootstrap JS，这里手写最小实现：
+//   · 同一时刻只开一个；点外部 / Esc / 滚动 / 改窗口大小都会收起
+//   · 菜单节点留在单元格里（#xxx-rows 上的事件委托才收得到点击），但弹出层打开时是
+//     position: fixed，用「⋯」按钮的位置现算坐标——.table-wrap 在窄屏下带着
+//     overflow-y: hidden，absolute 的菜单会被它切掉一截，表格只有一行时上下都放不下，
+//     「翻转」也救不回来；fixed 的包含块是视口，压根不参与祖先裁剪。
+const MENU_GAP = 5;
+const MENU_MARGIN = 8;
+
+function closeRowMenus() {
+  $$('.menu.is-open').forEach((menu) => {
+    menu.classList.remove('is-open');
+    const pop = $('.menu__pop', menu);
+    if (pop) pop.hidden = true;
+  });
+}
+
+function placeRowMenu(menu) {
+  const pop = $('.menu__pop', menu);
+  const toggle = $('[data-menu-toggle]', menu);
+  if (!toggle) return;
+  // 先挪到原点量真实尺寸；此时已经是 fixed，量到的就是最终尺寸，不用等下一帧
+  pop.style.top = '0px';
+  pop.style.left = '0px';
+  const size = pop.getBoundingClientRect();
+  const anchor = toggle.getBoundingClientRect();
+  // 默认向下弹，下方放不下就翻到按钮上方；末尾再整体夹进视口，因为按钮自身可能就贴着
+  // 视口边（例如在视口外半格），翻上去也仍然越界；菜单比视口还高时至少保住顶部。
+  let top = anchor.bottom + MENU_GAP;
+  if (top + size.height > window.innerHeight - MENU_MARGIN) {
+    top = anchor.top - MENU_GAP - size.height;
+  }
+  top = Math.min(
+    Math.max(MENU_MARGIN, top),
+    Math.max(MENU_MARGIN, window.innerHeight - MENU_MARGIN - size.height),
+  );
+  // 右边缘与「⋯」对齐，同样夹进视口
+  const left = Math.min(
+    Math.max(MENU_MARGIN, anchor.right - size.width),
+    Math.max(MENU_MARGIN, window.innerWidth - MENU_MARGIN - size.width),
+  );
+  pop.style.top = `${Math.round(top)}px`;
+  pop.style.left = `${Math.round(left)}px`;
+}
+
+function openRowMenu(menu) {
+  const pop = $('.menu__pop', menu);
+  if (!pop) return;
+  closeRowMenus();
+  pop.hidden = false;
+  menu.classList.add('is-open');
+  placeRowMenu(menu);
+}
+
+// 挂在 .admin-main 上：菜单项点击仍会先冒泡到各表的委托处理（层级更深），
+// 处理完再冒泡到这里收起菜单。
+$('.admin-main').addEventListener('click', (event) => {
+  const toggle = event.target.closest('[data-menu-toggle]');
+  if (toggle) {
+    const menu = toggle.closest('.menu');
+    const wasOpen = menu.classList.contains('is-open');
+    closeRowMenus();
+    if (!wasOpen) openRowMenu(menu);
+    return;
+  }
+  closeRowMenus();
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape') closeRowMenus();
+});
+
+// 用捕获阶段监听：菜单坐标是按按钮位置算死的，任何祖先滚动都会让它错位，而 scroll
+// 不冒泡——窄屏下 .table-wrap 自己会横滚，那些 scroll 事件只有捕获阶段才经过这里。
+$('.admin-main').addEventListener('scroll', closeRowMenus, { passive: true, capture: true });
+window.addEventListener('resize', closeRowMenus, { passive: true });
+
+// --------------------------------------------------------------------------- //
+// 导航待办计数
+// --------------------------------------------------------------------------- //
+function setNavBadge(page, count) {
+  const node = $(`[data-nav-badge="${page}"]`);
+  if (node) node.textContent = count ? String(count) : '';
+}
+
+// --------------------------------------------------------------------------- //
+// 登录/会话
+// --------------------------------------------------------------------------- //
+function showLogin() {
+  $('#admin-login').hidden = false;
+  $('#admin-app').hidden = true;
+}
+
+function showApp() {
+  $('#admin-login').hidden = true;
+  $('#admin-app').hidden = false;
+}
+
+async function bootstrap() {
+  try {
+    const me = await storeApi('/auth/me');
+    if (!me.account) return showLogin();
+    const account = me.account;
+    // /auth/me 不返回 isAdmin，用后台 overview 探测
+    await api('/overview');
+    state.account = account;
+    $('#admin-identity').textContent = `${account.email}`;
+    $('#admin-avatar').textContent = (account.email || 'A').trim().charAt(0);
+    showApp();
+    await Promise.all([loadOverview(), loadProducts()]);
+  } catch (error) {
+    showLogin();
+  }
+}
+
+$('#admin-login-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.target;
+  const errorBox = $('#admin-login-error');
+  errorBox.hidden = true;
+  try {
+    await storeApi('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email: form.elements.email.value.trim(), password: form.elements.password.value }),
+    });
+    await api('/overview');
+    form.reset();
+    await bootstrap();
+    toast('已登录后台');
+  } catch (error) {
+    errorBox.textContent = error.message;
+    errorBox.hidden = false;
+  }
+});
+
+$('#admin-logout').addEventListener('click', async () => {
+  await storeApi('/auth/logout', { method: 'DELETE' }).catch(() => {});
+  showLogin();
+});
+
+// --------------------------------------------------------------------------- //
+// 导航
+// --------------------------------------------------------------------------- //
+const loaders = {
+  overview: loadOverview, products: loadProducts, orders: loadOrders, licenses: loadLicenses,
+  bindings: loadBindings, coupons: loadCoupons, withdrawals: loadWithdrawals,
+  accounts: loadAccounts, settings: loadSettings, releases: loadReleases, audits: loadAudits,
+};
+
+function activate(page) {
+  closeRowMenus();
+  $$('#admin-nav a').forEach(link => link.classList.toggle('active', link.dataset.adminPage === page));
+  $$('.admin-panel').forEach(panel => panel.classList.toggle('active', panel.id === `panel-${page}`));
+  // 主区是唯一滚动容器，切面板时要把滚动位置复位，
+  // 否则从长列表切到短面板会停在半空。
+  $('.admin-main').scrollTop = 0;
+  (loaders[page] || (() => {}))();
+}
+
+$('#admin-nav').addEventListener('click', (event) => {
+  const link = event.target.closest('a[data-admin-page]');
+  if (!link) return;
+  event.preventDefault();
+  location.hash = link.dataset.adminPage;
+  activate(link.dataset.adminPage);
+});
+
+// --------------------------------------------------------------------------- //
+// 概览
+// --------------------------------------------------------------------------- //
+async function loadOverview() {
+  const data = await api('/overview');
+  // tone: alert = 有积压需要处理，danger = 需要关注
+  const cards = [
+    ['账号', data.accounts, ''],
+    ['商品', data.products, ''],
+    ['有效授权', `${data.activeLicenses}/${data.licenses}`, ''],
+    ['待支付订单', data.pendingOrders, data.pendingOrders ? 'is-alert' : ''],
+    ['已履约订单', data.fulfilledOrders, ''],
+    ['营收', money(data.revenueCents), ''],
+    ['在线设备', data.deviceBindings, ''],
+    ['待审提现', data.pendingWithdrawals, data.pendingWithdrawals ? 'is-alert' : ''],
+    ['维护模式', data.maintenanceMode ? '开启' : '关闭', data.maintenanceMode ? 'is-danger' : ''],
+  ];
+  $('#overview-stats').innerHTML = cards.map(([label, value, tone]) =>
+    `<div class="stat ${tone}"><span class="stat__label">${esc(label)}</span><strong class="stat__value">${esc(value)}</strong></div>`
+  ).join('');
+  setNavBadge('orders', data.pendingOrders);
+  setNavBadge('withdrawals', data.pendingWithdrawals);
+}
+
+$('#overview-refresh').addEventListener('click', () => loadOverview().catch(error => toast(error.message, 'danger')));
+
+$('#overview-toggle-maintenance').addEventListener('click', async () => {
+  try {
+    const current = await api('/settings');
+    const next = !current.store.maintenanceMode;
+    await api('/settings', { method: 'PUT', body: JSON.stringify({ maintenanceMode: next }) });
+    toast(next ? '已开启维护模式' : '已关闭维护模式');
+    await loadOverview();
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+// --------------------------------------------------------------------------- //
+// 商品
+// --------------------------------------------------------------------------- //
+function productFormPayload(form) {
+  const list = (value) => String(value || '').split(',').map(item => item.trim()).filter(Boolean);
+  const number = (value) => (value === '' || value === null ? null : Number(value));
+  return {
+    name: form.elements.name.value.trim(),
+    productType: form.elements.productType.value,
+    priceCents: Number(form.elements.priceCents.value || 0),
+    validityDays: number(form.elements.validityDays.value),
+    sortOrder: Number(form.elements.sortOrder.value || 100),
+    featureCodes: list(form.elements.featureCodes.value),
+    includedProductIds: list(form.elements.includedProductIds.value),
+    badgeText: form.elements.badgeText.value.trim() || null,
+    stockQuantity: number(form.elements.stockQuantity.value),
+    fulfillmentMode: form.elements.fulfillmentMode.value,
+    displayDescription: form.elements.displayDescription.value.trim() || null,
+    active: form.elements.active.checked,
+    featured: form.elements.featured.checked,
+  };
+}
+
+function openProductEditor(product) {
+  const form = $('#product-form');
+  form.reset();
+  form.elements.id.value = product ? product.id : '';
+  $('#product-editor-title').textContent = product ? `编辑商品 · ${product.name}` : '新增商品';
+  if (product) {
+    form.elements.name.value = product.name;
+    form.elements.productType.value = product.productType;
+    form.elements.priceCents.value = product.priceCents;
+    form.elements.validityDays.value = product.validityDays ?? '';
+    form.elements.sortOrder.value = product.sortOrder ?? 100;
+    form.elements.featureCodes.value = (product.featureCodes || []).join(',');
+    form.elements.includedProductIds.value = (product.includedProductIds || []).join(',');
+    form.elements.badgeText.value = product.badgeText || '';
+    form.elements.stockQuantity.value = product.stockQuantity ?? '';
+    form.elements.fulfillmentMode.value = product.fulfillmentMode || 'automatic';
+    form.elements.displayDescription.value = product.displayDescription || '';
+    form.elements.active.checked = Boolean(product.active);
+    form.elements.featured.checked = Boolean(product.featured);
+  } else {
+    form.elements.active.checked = true;
+  }
+  $('#product-editor').hidden = false;
+  form.elements.name.focus();
+}
+
+async function loadProducts() {
+  const data = await api('/products');
+  state.products = data.items;
+  $('#license-product').innerHTML = state.products
+    .map(product => `<option value="${esc(product.id)}">${esc(product.name)}</option>`).join('');
+  $('#product-rows').innerHTML = state.products.length ? state.products.map(product => `
+    <tr>
+      <td>${cell(product.name)}${product.featured ? ` ${pill('推荐', 'warning')}` : ''}</td>
+      <td>${esc(PRODUCT_TYPE[product.productType] || product.productType)}</td>
+      <td class="nowrap">${money(product.priceCents)}</td>
+      <td class="nowrap">${product.validityDays ? `${product.validityDays} 天` : '永久'}</td>
+      <td class="mono">${cell((product.featureCodes || []).join(', '))}</td>
+      <td class="nowrap">${product.stockQuantity === null ? '不限' : `${product.availableStock}/${product.stockQuantity}`}</td>
+      <td class="nowrap">${product.active ? pill('上架', 'success') : pill('下架', 'muted')}</td>
+      <td class="nowrap">${actions(
+        `<button class="btn btn-sm btn-outline-secondary" data-product-edit="${esc(product.id)}">编辑</button>`,
+        rowMenu('更多操作',
+          menuItem('删除', `data-product-delete="${esc(product.id)}"`, { danger: true }),
+        ),
+      )}</td>
+    </tr>`).join('') : emptyRow(8, '暂无商品');
+}
+
+$('#product-new').addEventListener('click', () => openProductEditor(null));
+$('#product-refresh').addEventListener('click', loadProducts);
+$('#product-cancel').addEventListener('click', () => { $('#product-editor').hidden = true; });
+
+$('#product-rows').addEventListener('click', async (event) => {
+  const editId = event.target.dataset.productEdit;
+  const deleteId = event.target.dataset.productDelete;
+  if (editId) openProductEditor(state.products.find(item => item.id === editId));
+  if (deleteId) {
+    const product = state.products.find(item => item.id === deleteId);
+    // 用后端给的 licenseCount / orderCount（与删除守卫同口径）如实预告结果，
+    // 避免管理员以为会真删、结果只是下架。
+    const refs = [];
+    if (product?.licenseCount) refs.push(`<b>${product.licenseCount}</b> 条授权`);
+    if (product?.orderCount) refs.push(`<b>${product.orderCount}</b> 笔订单`);
+    const ok = await askConfirm({
+      title: '删除商品',
+      message: `将删除「${product ? product.name : deleteId}」。`,
+      impact: refs.length
+        ? `该商品已被 ${refs.join('、')}引用，为避免历史数据悬空，系统只会把它<b>下架</b>而不是删除。`
+        : '该商品没有产生过授权或订单，将被<b>彻底删除</b>（含商品图文件）。',
+      okText: refs.length ? '下架' : '删除',
+      tone: refs.length ? 'warning' : 'danger',
+    });
+    if (!ok) return;
+    try {
+      const result = await api(`/products/${deleteId}`, { method: 'DELETE' });
+      toast(result.deleted ? '商品已删除' : `商品已下架（${result.reason || '存在历史引用'}）`, result.deleted ? 'success' : 'warning');
+      await loadProducts();
+    } catch (error) { toast(error.message, 'danger'); }
+  }
+});
+
+$('#product-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.target;
+  const payload = productFormPayload(form);
+  try {
+    if (form.elements.id.value) {
+      await api(`/products/${form.elements.id.value}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      toast('商品已更新');
+    } else {
+      await api('/products', { method: 'POST', body: JSON.stringify(payload) });
+      toast('商品已创建');
+    }
+    $('#product-editor').hidden = true;
+    await loadProducts();
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+// --------------------------------------------------------------------------- //
+// 订单
+// --------------------------------------------------------------------------- //
+async function loadOrders() {
+  const params = new URLSearchParams();
+  const status = $('#order-status').value;
+  const keyword = $('#order-keyword').value.trim();
+  if (status) params.set('status_filter', status);
+  if (keyword) params.set('keyword', keyword);
+  const data = await api(`/orders?${params.toString()}`);
+  $('#order-rows').innerHTML = data.items.length ? data.items.map(order => {
+    // 保留原有的全部动作与出现条件，只重新分层：
+    //   主操作 = 推进流程的那一步；其余收进 ⋯ 菜单。
+    const canMarkPaid = ['pending', 'payment_failed'].includes(order.status);
+    const canFulfill = order.status !== 'fulfilled' && order.status !== 'expired';
+    const canRefund = ['paid', 'fulfilled'].includes(order.status);
+    const canCancel = order.status === 'pending';
+    const canDelete = ['cancelled', 'expired'].includes(order.status) && !order.licenseId && !order.targetLicenseId;
+    const primaryPaid = canMarkPaid;
+    const primary = primaryPaid
+      ? `<button class="btn btn-sm btn-outline-primary" data-order-paid="${esc(order.orderNo)}">标记支付</button>`
+      : canFulfill
+        ? `<button class="btn btn-sm btn-outline-secondary" data-order-fulfill="${esc(order.orderNo)}">履约</button>`
+        : '';
+    return `
+    <tr>
+      <td class="mono">${cell(order.orderNo)}</td>
+      <td class="nowrap">${cell(order.email)}</td>
+      <td>${cell(order.productName)}</td>
+      <td class="nowrap">${esc(ORDER_TYPE[order.orderType] || order.orderType)} · ${esc(LICENSE_ACTION[order.licenseAction] || order.licenseAction)}</td>
+      <td class="nowrap">${money(order.amountCents)}</td>
+      <td class="nowrap">${statusBadge(order.status)}</td>
+      <td class="nowrap">${dt(order.createdAt)}</td>
+      <td class="nowrap">${actions(
+        primary,
+        rowMenu('更多操作',
+          canFulfill && primaryPaid
+            ? menuItem('履约', `data-order-fulfill="${esc(order.orderNo)}"`) : '',
+          canRefund
+            ? menuItem('退款', `data-order-refund="${esc(order.orderNo)}"`, { danger: true }) : '',
+          canCancel
+            ? menuItem('取消订单', `data-order-cancel="${esc(order.orderNo)}"`) : '',
+          canDelete
+            ? menuItem('删除订单', `data-order-delete="${esc(order.orderNo)}"`, { danger: true }) : '',
+        ),
+      )}</td>
+    </tr>`;
+  }).join('') : emptyRow(8, '暂无订单');
+}
+
+$('#order-refresh').addEventListener('click', loadOrders);
+$('#order-status').addEventListener('change', loadOrders);
+$('#order-rows').addEventListener('click', async (event) => {
+  const { orderPaid, orderFulfill, orderRefund, orderCancel, orderDelete } = event.target.dataset;
+  const orderNo = orderPaid || orderFulfill || orderRefund || orderCancel || orderDelete;
+  if (!orderNo) return;
+
+  if (orderDelete) {
+    const ok = await askConfirm({
+      title: '删除订单',
+      message: `将彻底删除订单 ${orderNo}。仅限已取消/已过期且没有产生授权的订单。`,
+      okText: '删除',
+    });
+    if (!ok) return;
+    try {
+      await api(`/orders/${orderNo}`, { method: 'DELETE' });
+      toast('订单已删除');
+      await Promise.all([loadOrders(), loadOverview()]);
+    } catch (error) { toast(error.message, 'danger'); }
+    return;
+  }
+
+  if (orderCancel) {
+    const ok = await askConfirm({
+      title: '取消订单',
+      message: `确认取消订单 ${orderNo}？取消后会释放占用的库存。`,
+      impact: '取消后该订单才会变成可<b>删除</b>的终态。',
+      okText: '取消订单',
+    });
+    if (!ok) return;
+    try {
+      await api(`/orders/${orderNo}/cancel`, { method: 'POST', body: JSON.stringify({ note: '后台操作' }) });
+      toast('订单已取消');
+      await Promise.all([loadOrders(), loadOverview()]);
+    } catch (error) { toast(error.message, 'danger'); }
+    return;
+  }
+
+  const action = orderPaid ? 'mark-paid' : orderFulfill ? 'fulfill' : 'refund';
+  if (action === 'refund') {
+    const ok = await askConfirm({
+      title: '订单退款',
+      message: `确认对订单 ${orderNo} 退款？`,
+      impact: '将同时<b>停用</b>该订单产生的激活码与权益，并退回邀请奖励。',
+      okText: '确认退款',
+    });
+    if (!ok) return;
+  }
+  try {
+    await api(`/orders/${orderNo}/${action}`, { method: 'POST', body: JSON.stringify({ note: '后台操作' }) });
+    toast(`订单已${action === 'mark-paid' ? '标记支付' : action === 'fulfill' ? '履约' : '退款'}`);
+    await Promise.all([loadOrders(), loadOverview()]);
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+// --------------------------------------------------------------------------- //
+// 激活码
+// --------------------------------------------------------------------------- //
+async function loadLicenses() {
+  const keyword = $('#license-keyword').value.trim();
+  const data = await api(`/licenses${keyword ? `?keyword=${encodeURIComponent(keyword)}` : ''}`);
+  state.licenses = data.items;
+  $('#license-rows').innerHTML = data.items.length ? data.items.map(license => `
+    <tr>
+      <td class="mono">${cell(license.activationCode)}</td>
+      <td class="nowrap">${cell(license.customerName)}</td>
+      <td>${cell(license.productName)}</td>
+      <td class="nowrap">${license.accessExpiresAt ? d(license.accessExpiresAt) : '永久'}</td>
+      <td class="nowrap">${esc(LICENSE_SOURCE[license.issuanceSource] || license.issuanceSource)}</td>
+      <td class="nowrap">${license.active ? pill('有效', 'success') : pill('已停用', 'muted')}</td>
+      <td class="nowrap">${actions(
+        license.active
+          ? `<button class="btn btn-sm btn-outline-danger" data-license-off="${esc(license.activationCodeId)}">停用</button>`
+          : `<button class="btn btn-sm btn-outline-success" data-license-on="${esc(license.activationCodeId)}">启用</button>`,
+        rowMenu('更多操作',
+          menuItem('彻底删除', `data-license-delete="${esc(license.activationCodeId)}" data-license-code="${esc(license.activationCode)}" title="${license.active ? '需先停用' : '彻底删除该授权'}"`, { danger: true }),
+        ),
+      )}</td>
+    </tr>`).join('') : emptyRow(7, '暂无激活码');
+}
+
+$('#license-refresh').addEventListener('click', loadLicenses);
+$('#license-issue').addEventListener('click', () => { $('#license-editor').hidden = false; });
+$('#license-cancel').addEventListener('click', () => { $('#license-editor').hidden = true; });
+
+$('#license-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.target;
+  try {
+    const result = await api('/licenses', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: form.elements.email.value.trim(),
+        productId: form.elements.productId.value,
+        validityDays: form.elements.validityDays.value ? Number(form.elements.validityDays.value) : null,
+      }),
+    });
+    toast(`已签发：${result.activationCode}`);
+    form.reset();
+    $('#license-editor').hidden = true;
+    await Promise.all([loadLicenses(), loadOverview()]);
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+$('#license-rows').addEventListener('click', async (event) => {
+  const off = event.target.dataset.licenseOff;
+  const on = event.target.dataset.licenseOn;
+  const del = event.target.dataset.licenseDelete;
+
+  if (del) {
+    const code = event.target.dataset.licenseCode || del;
+    const ok = await askConfirm({
+      title: '彻底删除授权',
+      message: `将永久删除激活码 ${code}，无法恢复。`,
+      impact: '会连带删除该授权的<b>权益、设备绑定、租约与会话</b>；相关订单会保留但不再指向它。<br>若该授权仍在生效，请先「停用」并强制解绑。',
+      okText: '永久删除',
+    });
+    if (!ok) return;
+    try {
+      const result = await api(`/licenses/${del}`, { method: 'DELETE' });
+      toast(`授权已删除（连带清理 ${result.bindings ?? 0} 条绑定记录）`);
+      await Promise.all([loadLicenses(), loadOverview()]);
+    } catch (error) { toast(error.message, 'danger'); }
+    return;
+  }
+
+  if (!off && !on) return;
+  if (off) {
+    const ok = await askConfirm({
+      title: '停用授权',
+      message: '停用后该激活码将立即失效。',
+      impact: '客户端<b>下次心跳</b>会转为吊销状态；已有设备绑定也会被释放。',
+      okText: '停用',
+    });
+    if (!ok) return;
+  }
+  try {
+    await api(`/licenses/${off || on}/${off ? 'deactivate' : 'activate'}`, {
+      method: 'POST', body: JSON.stringify({ note: '后台操作' }),
+    });
+    toast(off ? '授权已停用（客户端下次心跳将转为吊销）' : '授权已启用');
+    await loadLicenses();
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+// --------------------------------------------------------------------------- //
+// 设备绑定
+// --------------------------------------------------------------------------- //
+async function loadBindings() {
+  const activeOnly = $('#binding-active-only').checked;
+  const data = await api(`/bindings${activeOnly ? '?active_only=true' : ''}`);
+  state.bindings = data.items;
+  $('#binding-rows').innerHTML = data.items.length ? data.items.map(binding => `
+    <tr>
+      <td class="mono">${cell(binding.instanceId)}</td>
+      <td class="mono">${cell(binding.activationCodeHint)}</td>
+      <td class="nowrap">${esc(binding.clientVersion || '—')}</td>
+      <td class="nowrap">${dt(binding.lastHeartbeatAt)}</td>
+      <td class="nowrap">${binding.active ? pill('绑定中', 'success') : pill('已解绑', 'muted')}</td>
+      <td class="nowrap">${binding.active
+        ? actions(`<button class="btn btn-sm btn-outline-danger" data-binding-release="${esc(binding.bindingId)}">强制解绑</button>`)
+        : '—'}</td>
+    </tr>`).join('') : emptyRow(6, '暂无设备绑定');
+}
+
+$('#binding-refresh').addEventListener('click', loadBindings);
+$('#binding-active-only').addEventListener('change', loadBindings);
+$('#binding-rows').addEventListener('click', async (event) => {
+  const bindingId = event.target.dataset.bindingRelease;
+  if (!bindingId) return;
+  const ok = await askConfirm({
+    title: '强制解绑设备',
+    message: '确认强制解绑该设备？',
+    impact: '该客户端下次心跳将转为<b>吊销</b>，且在冷却期内无法重新绑定。',
+    okText: '强制解绑',
+  });
+  if (!ok) return;
+  try {
+    await api(`/bindings/${bindingId}/release`, { method: 'POST', body: JSON.stringify({ note: '后台强制解绑' }) });
+    toast('已强制解绑');
+    await Promise.all([loadBindings(), loadOverview()]);
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+// --------------------------------------------------------------------------- //
+// 优惠码
+// --------------------------------------------------------------------------- //
+async function loadCoupons() {
+  const data = await api('/coupons');
+  state.coupons = data.items;
+  $('#coupon-rows').innerHTML = data.items.length ? data.items.map(coupon => `
+    <tr>
+      <td class="mono">${cell(coupon.code)}</td>
+      <td>${cell(coupon.description)}</td>
+      <td class="nowrap">${coupon.discountType === 'fixed' ? money(coupon.amountCents) : `${coupon.percent}%`}</td>
+      <td class="nowrap">${coupon.minAmountCents ? money(coupon.minAmountCents) : '无'}</td>
+      <td class="nowrap">${coupon.redeemedCount}/${coupon.maxRedemptions ?? '∞'}</td>
+      <td class="nowrap">${coupon.active ? pill('启用', 'success') : pill('停用', 'muted')}</td>
+      <td class="nowrap">${actions(
+        `<button class="btn btn-sm btn-outline-secondary" data-coupon-toggle="${esc(coupon.id)}" data-coupon-active="${coupon.active ? '1' : '0'}">${coupon.active ? '停用' : '启用'}</button>`,
+        rowMenu('更多操作',
+          menuItem('删除', `data-coupon-delete="${esc(coupon.id)}" data-coupon-code="${esc(coupon.code)}" data-coupon-used="${coupon.redeemedCount || 0}"`, { danger: true }),
+        ),
+      )}</td>
+    </tr>`).join('') : emptyRow(7, '暂无优惠码');
+}
+
+$('#coupon-new').addEventListener('click', () => { $('#coupon-editor').hidden = false; });
+$('#coupon-cancel').addEventListener('click', () => { $('#coupon-editor').hidden = true; });
+
+$('#coupon-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.target;
+  try {
+    await api('/coupons', {
+      method: 'POST',
+      body: JSON.stringify({
+        code: form.elements.code.value.trim(),
+        description: form.elements.description.value.trim(),
+        discountType: form.elements.discountType.value,
+        percent: Number(form.elements.percent.value || 0),
+        amountCents: Number(form.elements.amountCents.value || 0),
+        minAmountCents: Number(form.elements.minAmountCents.value || 0),
+        maxRedemptions: form.elements.maxRedemptions.value ? Number(form.elements.maxRedemptions.value) : null,
+        perAccountLimit: Number(form.elements.perAccountLimit.value || 0),
+        active: form.elements.active.checked,
+      }),
+    });
+    toast('优惠码已创建');
+    form.reset();
+    form.elements.active.checked = true;
+    $('#coupon-editor').hidden = true;
+    await loadCoupons();
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+$('#coupon-rows').addEventListener('click', async (event) => {
+  const couponId = event.target.dataset.couponDelete;
+  const toggleId = event.target.dataset.couponToggle;
+
+  // 启用 / 停用：不影响核销记录
+  if (toggleId) {
+    const next = event.target.dataset.couponActive !== '1';
+    try {
+      await api(`/coupons/${toggleId}`, { method: 'PATCH', body: JSON.stringify({ active: next }) });
+      toast(next ? '优惠码已启用' : '优惠码已停用');
+      await loadCoupons();
+    } catch (error) { toast(error.message, 'danger'); }
+    return;
+  }
+
+  if (!couponId) return;
+  const code = event.target.dataset.couponCode || couponId;
+  const used = Number(event.target.dataset.couponUsed || 0);
+  const ok = await askConfirm({
+    title: '删除优惠码',
+    message: `将删除优惠码 ${code}。`,
+    impact: used
+      ? `该码已被核销 <b>${used}</b> 次，为保留核销记录，系统只会把它<b>停用</b>而不是删除。`
+      : '该码尚未被使用，将被<b>彻底删除</b>。',
+    okText: used ? '停用' : '删除',
+    tone: used ? 'warning' : 'danger',
+  });
+  if (!ok) return;
+  try {
+    const result = await api(`/coupons/${couponId}`, { method: 'DELETE' });
+    toast(result.deleted ? '优惠码已删除' : `优惠码已停用（${result.reason || '已有核销记录'}）`, result.deleted ? 'success' : 'warning');
+    await loadCoupons();
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+// --------------------------------------------------------------------------- //
+// 提现
+// --------------------------------------------------------------------------- //
+async function loadWithdrawals() {
+  const status = $('#withdrawal-status').value;
+  const data = await api(`/withdrawals${status ? `?status_filter=${status}` : ''}`);
+  $('#withdrawal-rows').innerHTML = data.items.length ? data.items.map(item => `
+    <tr>
+      <td class="nowrap">${cell(item.email || item.accountId)}</td>
+      <td class="nowrap">${esc(item.points)}</td>
+      <td class="nowrap">${esc(item.feePoints)}</td>
+      <td class="nowrap">${esc(item.netPoints)}</td>
+      <td class="nowrap">${esc(item.qq)}</td>
+      <td class="nowrap">${statusBadge(item.status, WITHDRAWAL_STATUS)}</td>
+      <td class="nowrap">${dt(item.createdAt)}</td>
+      <td class="nowrap">${actions(
+        // 通过/驳回是「提现审核」这个面板的核心决策，保留为同级主操作
+        item.status === 'pending'
+          ? `<button class="btn btn-sm btn-outline-success" data-withdrawal-ok="${esc(item.id)}">通过</button>`
+          : '',
+        item.status === 'pending'
+          ? `<button class="btn btn-sm btn-outline-danger" data-withdrawal-no="${esc(item.id)}">驳回</button>`
+          : '',
+        rowMenu('更多操作',
+          item.status !== 'pending'
+            ? menuItem('删除', `data-withdrawal-delete="${esc(item.id)}" data-withdrawal-email="${esc(item.email || item.accountId)}"`, { danger: true }) : '',
+        ),
+      )}</td>
+    </tr>`).join('') : emptyRow(8, '暂无提现申请');
+}
+
+$('#withdrawal-refresh').addEventListener('click', loadWithdrawals);
+$('#withdrawal-status').addEventListener('change', loadWithdrawals);
+$('#withdrawal-rows').addEventListener('click', async (event) => {
+  const ok = event.target.dataset.withdrawalOk;
+  const no = event.target.dataset.withdrawalNo;
+  const del = event.target.dataset.withdrawalDelete;
+
+  if (del) {
+    const who = event.target.dataset.withdrawalEmail || del;
+    const confirmed = await askConfirm({
+      title: '删除提现记录',
+      message: `将删除 ${who} 的这条提现申请记录。`,
+      impact: '积分流水（账本）<b>仍然保留</b>，财务审计不受影响。',
+      okText: '删除',
+    });
+    if (!confirmed) return;
+    try {
+      await api(`/withdrawals/${del}`, { method: 'DELETE' });
+      toast('提现记录已删除');
+      await Promise.all([loadWithdrawals(), loadOverview()]);
+    } catch (error) { toast(error.message, 'danger'); }
+    return;
+  }
+
+  if (!ok && !no) return;
+  const approve = Boolean(ok);
+  const confirmed = await askConfirm({
+    title: approve ? '通过提现' : '驳回提现',
+    message: approve ? '确认通过该提现申请？' : '确认驳回该提现申请？',
+    impact: approve
+      ? '将按申请金额结算，冻结积分转为已支出。'
+      : '驳回后会<b>退回冻结积分</b>到账号余额。',
+    tone: approve ? 'success' : 'danger',
+    okText: approve ? '通过' : '驳回',
+  });
+  if (!confirmed) return;
+  try {
+    await api(`/withdrawals/${ok || no}/resolve`, {
+      method: 'POST', body: JSON.stringify({ approve, note: approve ? '后台通过' : '后台驳回' }),
+    });
+    toast(approve ? '已通过提现' : '已驳回并退回积分');
+    await Promise.all([loadWithdrawals(), loadOverview()]);
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+// --------------------------------------------------------------------------- //
+// 账号
+// --------------------------------------------------------------------------- //
+async function loadAccounts() {
+  const keyword = $('#account-keyword').value.trim();
+  const data = await api(`/accounts${keyword ? `?keyword=${encodeURIComponent(keyword)}` : ''}`);
+  state.accounts = data.items;
+  $('#account-rows').innerHTML = data.items.length ? data.items.map(account => `
+    <tr>
+      <td class="nowrap">${cell(account.email)}</td>
+      <td class="nowrap">${account.isAdmin ? '管理员' : '用户'}</td>
+      <td class="nowrap">${account.licenseCount}</td>
+      <td class="nowrap">${esc(account.balance)}</td>
+      <td class="nowrap mono">${esc(account.referralCode || '—')}</td>
+      <td class="nowrap">${account.isActive ? pill('正常', 'success') : pill('已停用', 'danger')}</td>
+      <td class="nowrap">${actions(account.isActive
+        ? `<button class="btn btn-sm btn-outline-danger" data-account-off="${esc(account.id)}">停用</button>`
+        : `<button class="btn btn-sm btn-outline-success" data-account-on="${esc(account.id)}">启用</button>`)}</td>
+    </tr>`).join('') : emptyRow(7, '暂无账号');
+}
+
+$('#account-refresh').addEventListener('click', loadAccounts);
+$('#account-rows').addEventListener('click', async (event) => {
+  const off = event.target.dataset.accountOff;
+  const on = event.target.dataset.accountOn;
+  if (!off && !on) return;
+  if (off) {
+    const ok = await askConfirm({
+      title: '停用账号',
+      message: '停用后该账号将无法登录商店，已有授权也会一并失效。',
+      impact: '账号与其授权、钱包账本都会保留，随时可以再启用。',
+      okText: '停用',
+    });
+    if (!ok) return;
+  }
+  try {
+    await api(`/accounts/${off || on}/${off ? 'deactivate' : 'activate'}`, { method: 'POST', body: JSON.stringify({}) });
+    toast(off ? '账号已停用' : '账号已启用');
+    await loadAccounts();
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+// --------------------------------------------------------------------------- //
+// 站点配置
+// --------------------------------------------------------------------------- //
+async function loadSettings() {
+  const data = await api('/settings');
+  state.settings = data;
+  const form = $('#settings-form');
+  const store = data.store || {};
+  const payment = data.payment || {};
+  const referral = data.referral || {};
+  form.elements.siteName.value = store.siteName || '';
+  form.elements.siteTitle.value = store.siteTitle || '';
+  form.elements.supportEmail.value = store.supportEmail || '';
+  form.elements.description.value = store.description || '';
+  form.elements.announcement.value = data.announcement || '';
+  form.elements.paymentProvider.value = payment.provider || 'mock';
+  form.elements.paymentDisplayName.value = payment.displayName || '';
+  form.elements.paymentEnabled.checked = Boolean(payment.enabled);
+  form.elements.maintenanceMode.checked = Boolean(store.maintenanceMode);
+  form.elements.maintenanceMessage.value = store.maintenanceMessage || '';
+  form.elements.referralEnabled.checked = Boolean(referral.enabled);
+  form.elements.referralRatePercent.value = referral.ratePercent ?? 0;
+  form.elements.referralWithdrawalFeePercent.value = referral.withdrawalFeePercent ?? 0;
+  form.elements.referralWithdrawalMinPoints.value = referral.withdrawalMinPoints ?? 0;
+  form.elements.referralQqGroup.value = referral.qqGroup || '';
+  form.elements.deviceReleaseCooldownSeconds.value = data.deviceReleaseCooldownSeconds ?? 28800;
+}
+
+$('#settings-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.target;
+  try {
+    await api('/settings', {
+      method: 'PUT',
+      body: JSON.stringify({
+        siteName: form.elements.siteName.value.trim(),
+        siteTitle: form.elements.siteTitle.value.trim(),
+        supportEmail: form.elements.supportEmail.value.trim(),
+        description: form.elements.description.value.trim(),
+        announcement: form.elements.announcement.value.trim(),
+        paymentProvider: form.elements.paymentProvider.value,
+        paymentDisplayName: form.elements.paymentDisplayName.value.trim(),
+        paymentEnabled: form.elements.paymentEnabled.checked,
+        maintenanceMode: form.elements.maintenanceMode.checked,
+        maintenanceMessage: form.elements.maintenanceMessage.value.trim(),
+        referralEnabled: form.elements.referralEnabled.checked,
+        referralRatePercent: Number(form.elements.referralRatePercent.value || 0),
+        referralWithdrawalFeePercent: Number(form.elements.referralWithdrawalFeePercent.value || 0),
+        referralWithdrawalMinPoints: Number(form.elements.referralWithdrawalMinPoints.value || 0),
+        referralQqGroup: form.elements.referralQqGroup.value.trim(),
+        deviceReleaseCooldownSeconds: Number(form.elements.deviceReleaseCooldownSeconds.value || 0),
+      }),
+    });
+    toast('站点配置已保存');
+    await Promise.all([loadSettings(), loadOverview()]);
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+// --------------------------------------------------------------------------- //
+// 版本发布
+// --------------------------------------------------------------------------- //
+async function loadReleases() {
+  const data = await api('/releases');
+  $('#release-rows').innerHTML = data.items.length ? data.items.map(release => `
+    <tr>
+      <td>${esc(release.product)}</td><td>${esc(release.channel)}</td>
+      <td class="mono">${esc(release.version)}</td><td class="nowrap">${esc(release.releaseDate || '—')}</td>
+      <td>${cell(release.upgradeNotes)}</td>
+      <td class="nowrap">${actions(
+        `<button class="btn btn-sm btn-outline-danger" data-release-delete="${esc(release.id)}" data-release-label="${esc(`${release.product}/${release.channel} ${release.version}`)}">删除</button>`,
+      )}</td>
+    </tr>`).join('') : emptyRow(6, '暂无版本记录');
+}
+
+$('#release-rows').addEventListener('click', async (event) => {
+  const releaseId = event.target.dataset.releaseDelete;
+  if (!releaseId) return;
+  const label = event.target.dataset.releaseLabel || releaseId;
+  const ok = await askConfirm({
+    title: '删除版本记录',
+    message: `将删除版本「${label}」。`,
+    impact: '客户端「检查更新」会自动回退到<b>次新</b>的版本记录。',
+    okText: '删除',
+  });
+  if (!ok) return;
+  try {
+    await api(`/releases/${releaseId}`, { method: 'DELETE' });
+    toast('版本记录已删除');
+    await loadReleases();
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+$('#release-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.target;
+  try {
+    await api('/releases', {
+      method: 'POST',
+      body: JSON.stringify({
+        product: form.elements.product.value.trim() || 'ha-bridge',
+        channel: form.elements.channel.value.trim() || 'docker',
+        version: form.elements.version.value.trim(),
+        releaseDate: form.elements.releaseDate.value || '',
+        upgradeNotes: form.elements.upgradeNotes.value.trim(),
+      }),
+    });
+    toast('版本已发布');
+    form.reset();
+    form.elements.product.value = 'ha-bridge';
+    form.elements.channel.value = 'docker';
+    await loadReleases();
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+// --------------------------------------------------------------------------- //
+// 审计日志
+// --------------------------------------------------------------------------- //
+async function loadAudits() {
+  const data = await api('/audit-logs');
+  $('#audit-rows').innerHTML = data.items.length ? data.items.map(item => `
+    <tr>
+      <td class="nowrap">${dt(item.createdAt)}</td>
+      <td class="nowrap">${cell(item.actor)}</td>
+      <td class="nowrap">${esc(item.action)}</td>
+      <td class="mono">${cell(item.target)}</td>
+      <td>${cell(item.detail)}</td>
+      <td class="nowrap">${actions(
+        `<button class="btn btn-sm btn-outline-danger" data-audit-delete="${esc(item.id)}" data-audit-label="${esc(`${item.action} ${item.target}`.trim())}">删除</button>`,
+      )}</td>
+    </tr>`).join('') : emptyRow(6, '暂无审计记录');
+}
+
+$('#audit-refresh').addEventListener('click', loadAudits);
+
+$('#audit-rows').addEventListener('click', async (event) => {
+  const logId = event.target.dataset.auditDelete;
+  if (!logId) return;
+  const label = event.target.dataset.auditLabel || logId;
+  const ok = await askConfirm({
+    title: '删除审计记录',
+    message: `将删除这条审计记录（${label}）。`,
+    impact: '删除操作<b>不可恢复</b>，本次删除本身会写入一条新的审计记录。',
+    okText: '删除',
+  });
+  if (!ok) return;
+  try {
+    await api(`/audit-logs/${logId}`, { method: 'DELETE' });
+    toast('审计记录已删除');
+    await loadAudits();
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+$('#audit-purge').addEventListener('click', async () => {
+  const days = Number($('#audit-purge-days').value || 0);
+  if (!Number.isFinite(days) || days < 1) { toast('请填写至少 1 天。', 'warning'); return; }
+  const ok = await askConfirm({
+    title: '批量清理审计日志',
+    message: `将删除 ${days} 天之前的所有审计记录。`,
+    impact: '记录一旦清理<b>无法恢复</b>；本次清理会留下一条 <code>audit.purge</code> 记录作为凭据。',
+    okText: '执行清理',
+  });
+  if (!ok) return;
+  try {
+    const result = await api(`/audit-logs?older_than_days=${encodeURIComponent(days)}`, { method: 'DELETE' });
+    toast(result.deleted ? `已清理 ${result.deleted} 条审计记录` : '没有需要清理的记录', result.deleted ? 'success' : 'warning');
+    await Promise.all([loadAudits(), loadOverview()]);
+  } catch (error) { toast(error.message, 'danger'); }
+});
+
+// --------------------------------------------------------------------------- //
+// 启动
+// --------------------------------------------------------------------------- //
+const initialPage = (location.hash || '#overview').replace('#', '');
+bootstrap().then(() => {
+  if (loaders[initialPage]) activate(initialPage);
+});
+</script>
+</body>
+</html>

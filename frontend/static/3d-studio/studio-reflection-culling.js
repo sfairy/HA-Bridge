@@ -1,130 +1,197 @@
 export function createReflectionCulling(THREE) {
-  const geometryBoundsCache = new WeakMap();
-  const worldBoxCache = new WeakMap();
-  const entryCache = new WeakMap();
-  const candidates = [];
-  const hidden = [];
-  const corner = new THREE.Vector4();
-  const cropMatrix = new THREE.Matrix4();
-  const projection = new THREE.Matrix4();
-  const frustum = new THREE.Frustum();
+  const boundsCacheByGeometry = new WeakMap();
+  const boxCacheByMesh = new WeakMap();
+  const entryCacheByMesh = new WeakMap();
+  const candidateEntries = [];
+  const hiddenMeshes = [];
+  const scratchClipVector = new THREE.Vector4();
+  const scratchNdcMatrix = new THREE.Matrix4();
+  const scratchProjectionMatrix = new THREE.Matrix4();
+  const scratchFrustum = new THREE.Frustum();
   const stats = {
     tested: 0,
     culled: 0,
     skippedCaptures: 0
   };
-  const skipsCulling = material => !material || material.isShaderMaterial || material.displacementMap;
-  function ensureGeometryBounds(geometry) {
-    const position = geometry.attributes.position;
-    const cached = geometryBoundsCache.get(geometry);
-    if (!cached || cached.attribute !== position || cached.version !== position?.version || cached.dataVersion !== position?.data?.version) {
+  const isUnsupportedMaterial = material =>
+    !material || material.isShaderMaterial || material.displacementMap;
+  function getGeometryBounds(geometry) {
+    const positionAttribute = geometry.attributes.position;
+    const cachedBounds = boundsCacheByGeometry.get(geometry);
+    if (
+      !cachedBounds ||
+      cachedBounds.attribute !== positionAttribute ||
+      cachedBounds.version !== positionAttribute?.version ||
+      cachedBounds.dataVersion !== positionAttribute?.data?.version
+    ) {
       geometry.computeBoundingBox();
-      geometryBoundsCache.set(geometry, {
-        attribute: position,
-        version: position?.version,
-        dataVersion: position?.data?.version
+      boundsCacheByGeometry.set(geometry, {
+        attribute: positionAttribute,
+        version: positionAttribute?.version,
+        dataVersion: positionAttribute?.data?.version
       });
     }
     return geometry.boundingBox;
   }
-  function worldBounds(object) {
-    const localBox = ensureGeometryBounds(object.geometry);
-    if (!localBox || localBox.isEmpty()) {
+  function getWorldBounds(mesh) {
+    const localBounds = getGeometryBounds(mesh.geometry);
+    if (!localBounds || localBounds.isEmpty()) {
       return null;
     }
-    let box = worldBoxCache.get(object);
-    if (!box) {
-      box = new THREE.Box3();
-      worldBoxCache.set(object, box);
+    let cachedBox = boxCacheByMesh.get(mesh);
+    if (!cachedBox) {
+      cachedBox = {
+        box: new THREE.Box3(),
+        local: new THREE.Box3(),
+        matrix: new THREE.Matrix4(),
+        ready: false
+      };
+      boxCacheByMesh.set(mesh, cachedBox);
     }
-    return box.copy(localBox).applyMatrix4(object.matrixWorld);
+    if (
+      !cachedBox.ready ||
+      !cachedBox.local.equals(localBounds) ||
+      !cachedBox.matrix.equals(mesh.matrixWorld)
+    ) {
+      cachedBox.local.copy(localBounds);
+      cachedBox.matrix.copy(mesh.matrixWorld);
+      cachedBox.box.copy(localBounds).applyMatrix4(mesh.matrixWorld);
+      cachedBox.ready = true;
+    }
+    return cachedBox.box;
   }
   function reset() {
     restore();
-    candidates.length = 0;
+    candidateEntries.length = 0;
     stats.tested = stats.culled = stats.skippedCaptures = 0;
   }
-  function add(object, skipShadowCasters = false) {
-    if (!object.isMesh || !object.visible || !object.frustumCulled || skipShadowCasters && object.castShadow || object.children.length || object.isSkinnedMesh || object.isInstancedMesh || object.morphTargetInfluences?.length || !object.geometry?.attributes.position || (Array.isArray(object.material) ? object.material.some(skipsCulling) : skipsCulling(object.material))) {
+  function add(candidateMesh, skipShadowCasters = false) {
+    if (
+      !candidateMesh.isMesh ||
+      !candidateMesh.visible ||
+      !candidateMesh.frustumCulled ||
+      (skipShadowCasters && candidateMesh.castShadow) ||
+      candidateMesh.children.length ||
+      candidateMesh.isSkinnedMesh ||
+      candidateMesh.isInstancedMesh ||
+      candidateMesh.morphTargetInfluences?.length ||
+      !candidateMesh.geometry?.attributes.position ||
+      (Array.isArray(candidateMesh.material)
+        ? candidateMesh.material.some(isUnsupportedMaterial)
+        : isUnsupportedMaterial(candidateMesh.material))
+    ) {
       return;
     }
-    const box = worldBounds(object);
-    if (box && Number.isFinite(box.min.x + box.min.y + box.min.z + box.max.x + box.max.y + box.max.z)) {
-      let entry = entryCache.get(object);
+    const worldBounds = getWorldBounds(candidateMesh);
+    if (
+      worldBounds &&
+      Number.isFinite(
+        worldBounds.min.x +
+          worldBounds.min.y +
+          worldBounds.min.z +
+          worldBounds.max.x +
+          worldBounds.max.y +
+          worldBounds.max.z
+      )
+    ) {
+      let entry = entryCacheByMesh.get(candidateMesh);
       if (!entry) {
         entry = {
-          object,
-          box
+          object: candidateMesh,
+          box: worldBounds
         };
-        entryCache.set(object, entry);
+        entryCacheByMesh.set(candidateMesh, entry);
       }
-      candidates.push(entry);
+      candidateEntries.push(entry);
     }
   }
-  function begin(source, camera) {
+  function begin(capture, camera) {
     restore();
-    const sourceBox = worldBounds(source.source);
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    let cropValid = !!sourceBox;
-    if (sourceBox) {
+    const sourceBounds = getWorldBounds(capture.source);
+    let minU = Infinity;
+    let minV = Infinity;
+    let maxU = -Infinity;
+    let maxV = -Infinity;
+    let isInsideFrustum = !!sourceBounds;
+    if (sourceBounds) {
       for (let cornerIndex = 0; cornerIndex < 8; cornerIndex++) {
-        corner.set(cornerIndex & 1 ? sourceBox.max.x : sourceBox.min.x, cornerIndex & 2 ? sourceBox.max.y : sourceBox.min.y, cornerIndex & 4 ? sourceBox.max.z : sourceBox.min.z, 1).applyMatrix4(source.matrix);
-        if (corner.w <= 0.00001) {
-          cropValid = false;
+        scratchClipVector
+          .set(
+            cornerIndex & 1 ? sourceBounds.max.x : sourceBounds.min.x,
+            cornerIndex & 2 ? sourceBounds.max.y : sourceBounds.min.y,
+            cornerIndex & 4 ? sourceBounds.max.z : sourceBounds.min.z,
+            1
+          )
+          .applyMatrix4(capture.matrix);
+        if (scratchClipVector.w <= 0.00001) {
+          isInsideFrustum = false;
           break;
         }
-        const ndcX = corner.x / corner.w;
-        const ndcY = corner.y / corner.w;
-        minX = Math.min(minX, ndcX);
-        maxX = Math.max(maxX, ndcX);
-        minY = Math.min(minY, ndcY);
-        maxY = Math.max(maxY, ndcY);
+        const projectedX = scratchClipVector.x / scratchClipVector.w;
+        const projectedY = scratchClipVector.y / scratchClipVector.w;
+        minU = Math.min(minU, projectedX);
+        maxU = Math.max(maxU, projectedX);
+        minV = Math.min(minV, projectedY);
+        maxV = Math.max(maxV, projectedY);
       }
     }
-    projection.copy(camera.projectionMatrix);
-    if (cropValid) {
-      const padding = 0.013671875 + 2 / source.map.width;
-      minX = Math.max(0, minX - padding);
-      minY = Math.max(0, minY - padding);
-      maxX = Math.min(1, maxX + padding);
-      maxY = Math.min(1, maxY + padding);
-      if (maxX <= minX || maxY <= minY) {
+    scratchProjectionMatrix.copy(camera.projectionMatrix);
+    if (isInsideFrustum) {
+      const edgePadding = 0.013671875 + 2 / capture.map.width;
+      minU = Math.max(0, minU - edgePadding);
+      minV = Math.max(0, minV - edgePadding);
+      maxU = Math.min(1, maxU + edgePadding);
+      maxV = Math.min(1, maxV + edgePadding);
+      if (maxU <= minU || maxV <= minV) {
         stats.skippedCaptures++;
         return false;
       }
-      const width = maxX - minX;
-      const height = maxY - minY;
-      cropMatrix.set(1 / width, 0, 0, -(minX + maxX - 1) / width, 0, 1 / height, 0, -(minY + maxY - 1) / height, 0, 0, 1, 0, 0, 0, 0, 1);
-      projection.premultiply(cropMatrix);
+      const uSpan = maxU - minU;
+      const vSpan = maxV - minV;
+      scratchNdcMatrix.set(
+        1 / uSpan,
+        0,
+        0,
+        -(minU + maxU - 1) / uSpan,
+        0,
+        1 / vSpan,
+        0,
+        -(minV + maxV - 1) / vSpan,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      );
+      scratchProjectionMatrix.premultiply(scratchNdcMatrix);
     }
-    frustum.setFromProjectionMatrix(projection.multiply(camera.matrixWorldInverse));
-    for (const {
-      object: mesh,
-      box: meshBox
-    } of candidates) {
+    scratchFrustum.setFromProjectionMatrix(
+      scratchProjectionMatrix.multiply(camera.matrixWorldInverse)
+    );
+    for (const { object: entryObject, box: entryBounds } of candidateEntries) {
       stats.tested++;
-      if (!frustum.intersectsBox(meshBox)) {
-        hidden.push(mesh);
-        mesh.visible = false;
+      if (!scratchFrustum.intersectsBox(entryBounds)) {
+        hiddenMeshes.push(entryObject);
+        entryObject.visible = false;
         stats.culled++;
       }
     }
     return true;
   }
   function restore() {
-    for (const mesh of hidden) {
-      mesh.visible = true;
+    for (const hiddenMesh of hiddenMeshes) {
+      hiddenMesh.visible = true;
     }
-    hidden.length = 0;
+    hiddenMeshes.length = 0;
   }
   return {
-    reset,
-    add,
-    begin,
-    restore,
-    stats
+    reset: reset,
+    add: add,
+    begin: begin,
+    restore: restore,
+    stats: stats
   };
 }

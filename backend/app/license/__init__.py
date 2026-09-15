@@ -1,6 +1,4 @@
-from license.service import LicenseClientError, LicenseService
-
+from .service import LicenseClientError, LicenseService
 __all__ = [
     'LicenseClientError',
-    'LicenseService',
-]
+    'LicenseService']
