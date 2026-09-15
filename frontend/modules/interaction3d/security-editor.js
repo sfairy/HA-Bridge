@@ -1,14 +1,18 @@
 import {
   PRESENCE_TRIGGER_MODES,
   presenceTriggerIsTimed
-} from "./presence-motion.js?v=20260915104327";
-import { mountInteraction3d } from "./runtime.js?v=20260915104327";
-import { openPresenceEditor } from "./presence-editor.js?v=20260915104327";
+} from "./presence-motion.js?v=20260915152715";
+import { mountInteraction3d } from "./runtime.js?v=20260915152715";
+import { openPresenceEditor } from "./presence-editor.js?v=20260915152715";
+import {
+  EDITOR_SAVE_STATUS,
+  serializeEditorDraft
+} from "./editor-save-status.js?v=20260915152715";
 import { randomUuid } from "/bridge-static/utils/random-id.js";
 import {
   requestInteraction3dAccess,
   subscribeInteraction3dAccess
-} from "/bridge-static/modules/interaction3d/bridge.js?v=20260915104327";
+} from "/bridge-static/modules/interaction3d/bridge.js?v=20260915152715";
 import { interaction3dPreviewSize } from "/bridge-static/modules/interaction3d/preview-layout.js";
 export async function openSecurityEditor({
   component: component,
@@ -28,6 +32,7 @@ export async function openSecurityEditor({
     delete cameraItem.buttonHidden;
     delete cameraItem.hiddenClickable;
   }
+  let savedDraftSignature = serializeEditorDraft(draftProperties);
   const createElement = (tagName, classNames = "", initialText = "") => {
     const createdElement = document.createElement(tagName);
     createdElement.className = classNames;
@@ -43,7 +48,7 @@ export async function openSecurityEditor({
   const styleSheetLinkElement = createElement("link");
   styleSheetLinkElement.rel = "stylesheet";
   styleSheetLinkElement.href =
-    "/api/v1/modules/interaction3d/runtime.css?v=20260915104327";
+    "/api/v1/modules/interaction3d/runtime.css?v=20260915152715";
   const editorDialogElement = createElement("dialog", "i3d-editor");
   editorDialogElement.setAttribute("aria-label", "3D 安防配置");
   editorDialogElement.dataset.i3dPreviewScope = "security";
@@ -56,6 +61,9 @@ export async function openSecurityEditor({
   const stageHostElement = createElement("div", "i3d-editor-stage");
   const errorMessageElement = createElement("p", "i3d-error");
   errorMessageElement.setAttribute("role", "status");
+  const saveStatusElement = createElement("span", "i3d-save-status");
+  saveStatusElement.setAttribute("role", "status");
+  let isDirty = false;
   aspectBoxElement.append(stageHostElement);
   viewElement.append(aspectBoxElement);
   bodyElement.append(viewElement, panelElement);
@@ -99,7 +107,9 @@ export async function openSecurityEditor({
   });
   const showError = error => {
     if (!isDisposed) {
-      errorMessageElement.textContent = error?.message || String(error);
+      setSaveResultMessage(error?.message || String(error), {
+        isError: true
+      });
     }
   };
   function syncEditorRuntime() {
@@ -111,8 +121,39 @@ export async function openSecurityEditor({
     }
   }
   function markPropertiesDirty() {
-    errorMessageElement.textContent = "配置已修改，请保存配置。";
+    syncDraftDirtyState();
+    errorMessageElement.textContent = "";
     syncEditorRuntime();
+  }
+  function syncDraftDirtyState() {
+    isDirty = serializeEditorDraft(draftProperties) !== savedDraftSignature;
+    if (!isSaving) {
+      saveStatusElement.textContent = isDirty ? EDITOR_SAVE_STATUS.dirty : "";
+    }
+    syncSaveButtonState();
+  }
+  function syncSaveButtonState() {
+    if (!isDisposed) {
+      saveButtonElement.disabled =
+        isSaving ||
+        !isDirty ||
+        isCameraEditing ||
+        !isAccessAllowed ||
+        !sceneMetadata ||
+        isPresenceEditorOpen;
+    }
+  }
+  function setSaveResultMessage(messageText, { isError = false } = {}) {
+    if (isDisposed) {
+      return;
+    }
+    if (isError) {
+      saveStatusElement.textContent = "";
+      errorMessageElement.textContent = messageText;
+      return;
+    }
+    errorMessageElement.textContent = "";
+    saveStatusElement.textContent = messageText;
   }
   function closeActivePicker() {
     pickerGeneration++;
@@ -190,31 +231,56 @@ export async function openSecurityEditor({
     currentContainerElement.append(fieldLabelElement);
   }
   const saveButtonElement = createButton("保存配置", async () => {
-    if (!isSaving && !!isAccessAllowed && !isCameraEditing && !isPresenceEditorOpen) {
-      isSaving = true;
-      renderPanel();
-      try {
-        await requestInteraction3dAccess();
-        if (isDisposed || !isAccessAllowed) {
-          return;
+    if (isSaving || !isDirty || !isAccessAllowed || isCameraEditing || isPresenceEditorOpen) {
+      if (!isAccessAllowed && !isDisposed) {
+        setSaveResultMessage(EDITOR_SAVE_STATUS.accessDenied, {
+          isError: true
+        });
+      }
+      return;
+    }
+    isSaving = true;
+    saveStatusElement.textContent = EDITOR_SAVE_STATUS.saving;
+    errorMessageElement.textContent = "";
+    renderPanel();
+    try {
+      await requestInteraction3dAccess();
+      if (isDisposed) {
+        return;
+      }
+      if (!isAccessAllowed) {
+        setSaveResultMessage(EDITOR_SAVE_STATUS.accessDenied, {
+          isError: true
+        });
+        return;
+      }
+      await onSaveConfig(structuredClone(draftProperties));
+      if (!isDisposed) {
+        savedDraftSignature = serializeEditorDraft(draftProperties);
+        isDirty = false;
+        setSaveResultMessage(EDITOR_SAVE_STATUS.saved);
+      }
+    } catch (saveError) {
+      setSaveResultMessage(saveError?.message || EDITOR_SAVE_STATUS.failed, {
+        isError: true
+      });
+    } finally {
+      isSaving = false;
+      if (!isDisposed) {
+        if (saveStatusElement.textContent === EDITOR_SAVE_STATUS.saving) {
+          saveStatusElement.textContent = "";
         }
-        await onSaveConfig(structuredClone(draftProperties));
-        if (!isDisposed) {
-          errorMessageElement.textContent = "已应用到编辑器，请保存仪表盘。";
-        }
-      } catch (saveError) {
-        showError(saveError);
-      } finally {
-        isSaving = false;
-        if (!isDisposed) {
-          renderPanel();
-        }
+        renderPanel();
       }
     }
   });
   saveButtonElement.className = "primary";
+  saveButtonElement.disabled = true;
   function closeEditor() {
     if (!isDisposed) {
+      if (isDirty && !window.confirm(EDITOR_SAVE_STATUS.dirtyExitConfirm)) {
+        return;
+      }
       isDisposed = true;
       closeActivePicker();
       presenceEditorHandle?.close();
@@ -230,6 +296,7 @@ export async function openSecurityEditor({
   }
   headerElement.append(
     createElement("strong", "", "3D 安防配置"),
+    saveStatusElement,
     saveButtonElement,
     createButton("退出", closeEditor)
   );
@@ -260,7 +327,9 @@ export async function openSecurityEditor({
         presenceEditorHandle?.close();
         editorRuntime?.();
         editorRuntime = null;
-        errorMessageElement.textContent = accessState.message || "3D 使用权限已失效。";
+        setSaveResultMessage(accessState.message || "3D 使用权限已失效。", {
+          isError: true
+        });
       }
       if (!isDisposed) {
         renderPanel();
@@ -346,7 +415,11 @@ export async function openSecurityEditor({
           onSave: async presenceDraft => {
             if (!isDisposed && isAccessAllowed) {
               draftProperties.security = structuredClone(presenceDraft.security);
-              errorMessageElement.textContent = "路线已应用，请保存配置。";
+              syncDraftDirtyState();
+              if (isDirty) {
+                errorMessageElement.textContent = "";
+                saveStatusElement.textContent = "路线已应用，请保存配置";
+              }
             }
           },
           onClose: () => {
@@ -397,8 +470,7 @@ export async function openSecurityEditor({
   }
   function renderPanel() {
     panelElement.replaceChildren();
-    saveButtonElement.disabled =
-      isSaving || isCameraEditing || !isAccessAllowed || !sceneMetadata || isPresenceEditorOpen;
+    syncSaveButtonState();
     const scopeSectionElement = createSectionHeading("配置范围");
     const scopeGridElement = createElement("div", "i3d-security-scope-grid");
     scopeSectionElement.append(scopeGridElement);
@@ -1005,8 +1077,12 @@ export async function openSecurityEditor({
         createSectionHeading("聚焦视角");
         const focusActionsElement = createElement("div", "i3d-focus-actions");
         if (isCameraEditing) {
+          const saveCameraButtonElement = createButton("保存摄像头视角", () =>
+            runCameraCommand("save-light-camera")
+          );
+          saveCameraButtonElement.className = "primary";
           focusActionsElement.append(
-            createButton("保存摄像头视角", () => runCameraCommand("save-light-camera")),
+            saveCameraButtonElement,
             createButton("取消调整", () => runCameraCommand("cancel-light-camera"))
           );
         } else {

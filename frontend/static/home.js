@@ -1,14 +1,14 @@
-import { showDisplayPairingQr } from "./display-pairing-qr.js?v=20260915104327";
+import { showDisplayPairingQr } from "./display-pairing-qr.js?v=20260915152715";
 import {
   PanelRenderer,
   airflowCanvasOffsetBounds,
   setBuiltinAssetVersions,
   syncedLineChartProperties
-} from "./renderer/renderer.js?v=20260915104327";
+} from "./renderer/renderer.js?v=20260915152715";
 import {
   lightStatisticsEntityStateStatus,
   lightStatisticsEntitySupport
-} from "./renderer/registry.js?v=20260915104327";
+} from "./renderer/registry.js?v=20260915152715";
 import {
   applyUiPackToDocument,
   createComponentFromTemplate,
@@ -17,7 +17,7 @@ import {
   listComponentTemplates,
   timeComponentDimensions,
   weatherComponentDimensions
-} from "./ui-packs/loader.js?v=20260915104327";
+} from "./ui-packs/loader.js?v=20260915152715";
 import {
   clone,
   newId,
@@ -29,21 +29,21 @@ import {
   roundField,
   clampNumber,
   normalizedFontWeight
-} from "./editor-utils.js?v=20260915104327";
+} from "./editor-utils.js?v=20260915152715";
 import {
   packPopupModules,
   popupLayoutColumns,
   popupLayoutMetrics
-} from "./popup-layout.js?v=20260915104327";
+} from "./popup-layout.js?v=20260915152715";
 import {
   countComponentsOutsideCanvas,
   resizeDashboardDocument
-} from "./dashboard-resize.js?v=20260915104327";
+} from "./dashboard-resize.js?v=20260915152715";
 import {
   copyComponentsAcrossDocuments,
   copyComponentTargets,
   copyComponentsToTarget
-} from "./component-page-copy.js?v=20260915104327";
+} from "./component-page-copy.js?v=20260915152715";
 import {
   RELATED_ENTITY_DOMAIN_LABELS,
   legacyRelatedEntityIds,
@@ -55,24 +55,24 @@ import {
   relatedPopupContext,
   relatedPopupSelectionLimit,
   selectedRelatedEntityIds
-} from "./related-entities.js?v=20260915104327";
-import { createIconVisibilityVirtualEntity } from "./virtual-entities.js?v=20260915104327";
-import { createButtonSound } from "./sound-effects.js?v=20260915104327";
+} from "./related-entities.js?v=20260915152715";
+import { createIconVisibilityVirtualEntity } from "./virtual-entities.js?v=20260915152715";
+import { createButtonSound } from "./sound-effects.js?v=20260915152715";
 import {
   deferHiddenEditorDialogs,
   installSettingsDialogBackdropGuard
-} from "./editor-dialogs.js?v=20260915104327";
-import { createEditorPickerElements } from "./editor-picker-elements.js?v=20260915104327";
+} from "./editor-dialogs.js?v=20260915152715";
+import { createEditorPickerElements } from "./editor-picker-elements.js?v=20260915152715";
 import {
   EDITOR_PICKER_PAGE_SIZES,
   editorEntityPickerInitialPage,
   editorEntityPickerPage
-} from "./editor-picker-pagination.js?v=20260915104327";
-import { createEditorPickerQueries } from "./editor-picker-queries.js?v=20260915104327";
-import { createEditorAssetMatcher } from "./editor-asset-queries.js?v=20260915104327";
-import { createEditorPickerLifecycle } from "./editor-picker-lifecycle.js?v=20260915104327";
-import { createInteraction3dEditorPickers } from "./modules/interaction3d/editor-pickers.js?v=20260915104327";
-import { createEditorAssetToolbar } from "./editor-asset-toolbar.js?v=20260915104327";
+} from "./editor-picker-pagination.js?v=20260915152715";
+import { createEditorPickerQueries } from "./editor-picker-queries.js?v=20260915152715";
+import { createEditorAssetMatcher } from "./editor-asset-queries.js?v=20260915152715";
+import { createEditorPickerLifecycle } from "./editor-picker-lifecycle.js?v=20260915152715";
+import { createInteraction3dEditorPickers } from "./modules/interaction3d/editor-pickers.js?v=20260915152715";
+import { createEditorAssetToolbar } from "./editor-asset-toolbar.js?v=20260915152715";
 import {
   ACTION_TYPES,
   TOGGLE_ENTITY_DOMAINS,
@@ -80,13 +80,13 @@ import {
   actionPopupData,
   componentActionIsSupported,
   entityIdSupportsToggle
-} from "./action-rules.js?v=20260915104327";
+} from "./action-rules.js?v=20260915152715";
 import {
   componentDirectLocation,
   findComponent,
   findComponentInItems,
   findComponentLocation
-} from "./component-tree.js?v=20260915104327";
+} from "./component-tree.js?v=20260915152715";
 import {
   applyCollectionLayerOrder,
   componentLabel,
@@ -96,13 +96,13 @@ import {
   nextTemplateInstanceName,
   refreshComponentIds,
   syncSharedComponentReferenceOrder
-} from "./editor-component-collections.js?v=20260915104327";
+} from "./editor-component-collections.js?v=20260915152715";
 import {
   fitInspectorComponentToDimensions,
   iconButtonEffectInspectorLayer,
   inspectorComponentMetrics,
   setInspectorToggle
-} from "./editor-basic-inspectors.js?v=20260915104327";
+} from "./editor-basic-inspectors.js?v=20260915152715";
 import {
   clonePageWithFreshIds,
   findCustomPopup,
@@ -113,7 +113,7 @@ import {
   popupModuleTypeLabel,
   reorderedPopupModules,
   uniquePagePath
-} from "./editor-document-management.js?v=20260915104327";
+} from "./editor-document-management.js?v=20260915152715";
 import {
   createRecoveryWriter,
   documentSignature,
@@ -121,18 +121,18 @@ import {
   editorComponentStructure,
   editorDocumentFrameSignature,
   recoveryStorageKey
-} from "./editor-history.js?v=20260915104327";
+} from "./editor-history.js?v=20260915152715";
 import {
   DEFAULT_BASE_LIGHTING,
   normalizeBaseLighting
-} from "./3d-studio/studio-normalization.js?v=20260915104327";
-import { createLicenseCard } from "./license-card.js?v=20260915104327";
+} from "./3d-studio/studio-normalization.js?v=20260915152715";
+import { createLicenseCard } from "./license-card.js?v=20260915152715";
 import {
   guardInteraction3dChanges,
   renderInteraction3dThumbnail,
   updateInteraction3dCard,
   renderInteraction3dInspector
-} from "./modules/interaction3d/editor.js?v=20260915104327";
+} from "./modules/interaction3d/editor.js?v=20260915152715";
 const findElement = selector => document.querySelector(selector);
 installSettingsDialogBackdropGuard();
 const EDITOR_DESIGN_WIDTH = 1020;
@@ -3847,7 +3847,7 @@ function renderComponentTemplates() {
         templateThumbnailElement.src =
           "/bridge-static/component-thumbnails/" +
           encodeURIComponent(templateThumbnailId) +
-          ".jpg?v=20260915104327";
+          ".jpg?v=20260915152715";
         templateThumbnailElement.alt = "";
         templatePreviewElement.append(templateThumbnailElement);
       }

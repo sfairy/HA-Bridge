@@ -30,9 +30,10 @@
   overflow-wrap: anywhere;
 }
 .i3d-presence-editor button[aria-pressed="true"] {
-  border-color: var(--accent, #f2a20d);
-  color: var(--accent-bright, #f5bd53);
-  background: var(--accent-soft, #f2a20d18);
+  border-color: #f2a20d7a;
+  color: #fff4dc;
+  background: #f2a20d29;
+  box-shadow: inset 0 0 0 1px #f2a20d7a;
 }
 .presence-note {
   margin: 0;
@@ -159,12 +160,17 @@
 }
 .presence-view-tools {
   display: flex;
+  align-items: center;
   margin: 0;
 }
-.presence-view-tools button {
-  min-width: 65px;
+.presence-view-tools .i3d-focus-actions[role="group"] {
+  flex: 0 0 auto;
+  grid-template-columns: repeat(2, minmax(70px, 1fr));
+  margin: 0;
+  width: auto;
 }
-.presence-view-tools button:last-child {
+.presence-view-tools > button {
+  min-width: 65px;
   margin-left: auto;
 }
 .presence-plan [hidden] {
@@ -175,12 +181,13 @@
   flex-wrap: nowrap;
   gap: 8px;
 }
-.i3d-editor .presence-view-tools button {
+.i3d-editor .presence-view-tools .i3d-focus-actions[role="group"] {
+  flex: 0 0 auto;
+}
+.i3d-editor .presence-view-tools > button {
   width: auto;
   flex: 0 0 auto;
   min-width: 70px;
-}
-.i3d-editor .presence-view-tools button:last-child {
   margin-left: auto;
 }
 .i3d-editor .presence-field {

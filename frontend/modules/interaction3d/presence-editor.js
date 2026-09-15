@@ -1,13 +1,14 @@
-import { openPresenceFocusEditor } from "./presence-focus-editor.js?v=20260915104327";
+import { openPresenceFocusEditor } from "./presence-focus-editor.js?v=20260915152715";
 import { mountInteraction3d } from "./runtime.js";
 import {
   validPresenceRoute,
   snapsToPresenceStart,
   PRESENCE_TRIGGER_MODES,
   presenceTriggerIsTimed
-} from "./presence-motion.js?v=20260915104327";
+} from "./presence-motion.js?v=20260915152715";
 import { DESIGNS, createWalker, animateWalker, disposeWalker } from "./presence-character.js";
 import { randomUuid } from "/bridge-static/utils/random-id.js";
+import { serializeEditorDraft } from "./editor-save-status.js?v=20260915152715";
 export async function openPresenceEditor({
   component: component,
   panelDocument: panelDocument,
@@ -65,7 +66,7 @@ export async function openPresenceEditor({
   const styleLinkElement = createElement("link");
   styleLinkElement.rel = "stylesheet";
   styleLinkElement.href =
-    "/api/v1/modules/interaction3d/presence-editor.css?v=20260915104327";
+    "/api/v1/modules/interaction3d/presence-editor.css?v=20260915152715";
   const dialogElement = createElement("dialog", "", "i3d-editor i3d-presence-editor");
   dialogElement.setAttribute("aria-label", manageBindings ? "配置安防" : "人物与行走路线");
   const previouslyFocusedElement = editorDocument.activeElement;
@@ -83,6 +84,12 @@ export async function openPresenceEditor({
       )
       .map(routeSensorId => routeSensorId.id)
   );
+  const presencePersistState = () =>
+    sensorBindings.map(sensorItem => ({
+      ...sensorItem,
+      routeClosed: closedRouteSensorIds.has(sensorItem.id) && validPresenceRoute(sensorItem.route)
+    }));
+  let savedPresenceSignature = serializeEditorDraft(presencePersistState());
   let draggedPoint = null;
   let planBox;
   let characterPreview = null;
@@ -99,6 +106,7 @@ export async function openPresenceEditor({
   let topViewTimer = 0;
   let hoverPoint = null;
   let fieldCollectors = [];
+  let isDirty = false;
   const flushFieldCollectors = () => {
     for (const fieldCollector of fieldCollectors) {
       fieldCollector();
@@ -136,33 +144,62 @@ export async function openPresenceEditor({
   const saveButtonElement = createButton(
     manageBindings ? "保存安防配置" : "应用人物与路线",
     async () => {
+      if (!isDirty) {
+        return;
+      }
       flushFieldCollectors();
       for (const sensorItem of sensorBindings) {
         sensorItem.routeClosed =
           closedRouteSensorIds.has(sensorItem.id) && validPresenceRoute(sensorItem.route);
       }
+      isDirty = serializeEditorDraft(presencePersistState()) !== savedPresenceSignature;
+      if (!isDirty) {
+        saveButtonElement.disabled = true;
+        return;
+      }
       saveButtonElement.disabled = true;
       try {
         await onSave(structuredClone(draftProperties));
         if (!isClosed) {
-          statusElement.textContent = "已应用到编辑器，请在退出后保存仪表盘";
+          savedPresenceSignature = serializeEditorDraft(presencePersistState());
+          isDirty = false;
+          saveButtonElement.disabled = true;
+          statusElement.textContent = manageBindings
+            ? "已应用到编辑器，请在退出后保存仪表盘"
+            : "已应用，请返回后点击「保存配置」";
         }
       } catch (saveError) {
         if (!isClosed) {
           statusElement.textContent = saveError.message || "保存失败，请重试。";
-        }
-      } finally {
-        if (!isClosed) {
           saveButtonElement.disabled = false;
         }
       }
     }
   );
   saveButtonElement.className = "primary";
+  saveButtonElement.disabled = true;
+  const markPresenceDirty = dirtyMessage => {
+    flushFieldCollectors();
+    isDirty = serializeEditorDraft(presencePersistState()) !== savedPresenceSignature;
+    saveButtonElement.disabled = !isDirty;
+    if (isDirty) {
+      if (dirtyMessage) {
+        statusElement.textContent = dirtyMessage;
+      }
+      return;
+    }
+    if (
+      dirtyMessage ||
+      statusElement.textContent === "配置已修改，请保存安防配置。" ||
+      statusElement.textContent === "配置已修改，请应用人物与路线。"
+    ) {
+      statusElement.textContent = "";
+    }
+  };
   dialogElement.addEventListener("input", () => {
-    statusElement.textContent = manageBindings
-      ? "配置已修改，请保存安防配置。"
-      : "配置已修改，请应用人物与路线。";
+    markPresenceDirty(
+      manageBindings ? "配置已修改，请保存安防配置。" : "配置已修改，请应用人物与路线。"
+    );
   });
   const headerElement = createElement("header");
   headerElement.append(
@@ -192,6 +229,7 @@ export async function openPresenceEditor({
     createButton("闭合路线", () => {
       if (selectedSensor && validPresenceRoute(selectedSensor.route)) {
         closedRouteSensorIds.add(selectedSensor.id);
+        markPresenceDirty();
         statusElement.textContent = "";
         renderRoutePlan();
       } else {
@@ -202,6 +240,7 @@ export async function openPresenceEditor({
       if (selectedSensor) {
         closedRouteSensorIds.delete(selectedSensor.id);
         selectedSensor.route.pop();
+        markPresenceDirty();
         renderRoutePlan();
         syncPreview();
       }
@@ -216,13 +255,16 @@ export async function openPresenceEditor({
         draggedPoint = null;
         isWalkPreviewRunning = false;
         walkPreviewButton.textContent = "预览行走";
-        statusElement.textContent = "路径已清空，请重新绘制。";
+        markPresenceDirty("路径已清空，请重新绘制。");
         renderRoutePlan();
         syncPreview();
       }
     })
   );
   const viewToolsElement = createElement("div", "", "i3d-focus-actions presence-view-tools");
+  const viewModeGroupElement = createElement("div", "", "i3d-focus-actions");
+  viewModeGroupElement.setAttribute("role", "group");
+  viewModeGroupElement.setAttribute("aria-label", "编辑视图");
   const setViewMode = nextViewMode => {
     viewMode = nextViewMode;
     routeSvgElement.toggleAttribute("hidden", nextViewMode !== "plan");
@@ -261,7 +303,8 @@ export async function openPresenceEditor({
         .catch(showError);
     }
   });
-  viewToolsElement.append(planViewButton, threeDViewButton, walkPreviewButton);
+  viewModeGroupElement.append(planViewButton, threeDViewButton);
+  viewToolsElement.append(viewModeGroupElement, walkPreviewButton);
   viewportElement.append(runtimeElement, routeSvgElement);
   planPanelElement.append(
     planTitleElement,
@@ -607,7 +650,7 @@ export async function openPresenceEditor({
       isWalkPreviewRunning = false;
       walkPreviewButton.textContent = "预览行走";
       setViewMode("plan");
-      statusElement.textContent = "选择人在传感器后，请在顶视图中绘制行走路径。";
+      markPresenceDirty("选择人在传感器后，请在顶视图中绘制行走路径。");
       renderControls();
     });
     addSensorButton.disabled = sensorBindings.length >= 128 || !floors.length;
@@ -653,6 +696,7 @@ export async function openPresenceEditor({
               if (pickedEntity?.name) {
                 sensorNamesByEntityId.set(entityId, pickedEntity.name);
               }
+              markPresenceDirty();
               if (!activeSensor.route.length) {
                 statusElement.textContent = "已选择传感器，请在顶视图中绘制行走路径。";
               }
@@ -724,6 +768,7 @@ export async function openPresenceEditor({
       delete activeSensor.modelId;
       activeSensor.route = [];
       closedRouteSensorIds.delete(activeSensor.id);
+      markPresenceDirty();
       renderControls();
     });
     appendField("路线楼层", floorSelectElement);
@@ -735,6 +780,7 @@ export async function openPresenceEditor({
     for (const [designKey, design] of Object.entries(DESIGNS)) {
       const designButtonElement = createButton(design.name, () => {
         activeSensor.character = designKey;
+        markPresenceDirty();
         renderControls();
       });
       designButtonElement.setAttribute(
@@ -760,6 +806,7 @@ export async function openPresenceEditor({
     ]) {
       const colorButtonElement = createButton(colorLabel, () => {
         activeSensor.color = colorKey;
+        markPresenceDirty();
         renderControls();
       });
       colorButtonElement.dataset.color = colorKey;
@@ -877,6 +924,7 @@ export async function openPresenceEditor({
             panelDocument: panelDocument,
             onSave: focusCamera => {
               activeSensor.focusCamera = focusCamera;
+              markPresenceDirty();
               renderControls();
             }
           })
@@ -889,6 +937,7 @@ export async function openPresenceEditor({
         controlsPanelElement.append(
           createButton("恢复自动聚焦", () => {
             delete activeSensor.focusCamera;
+            markPresenceDirty();
             renderControls();
           })
         );
@@ -900,6 +949,7 @@ export async function openPresenceEditor({
           sensorBindings.splice(sensorBindings.indexOf(activeSensor), 1);
           closedRouteSensorIds.delete(activeSensor.id);
           selectedSensor = sensorBindings[0] || null;
+          markPresenceDirty();
           renderControls();
         })
       );
@@ -935,7 +985,7 @@ export async function openPresenceEditor({
     ) {
       closedRouteSensorIds.add(selectedSensor.id);
       hoverPoint = null;
-      statusElement.textContent = "路径已吸附闭合，可以切换 3D 预览大小和行走效果。";
+      markPresenceDirty("路径已吸附闭合，可以切换 3D 预览大小和行走效果。");
       renderRoutePlan();
       syncPreview();
       return;
@@ -947,6 +997,7 @@ export async function openPresenceEditor({
         validPresenceRoute(selectedSensor.route)
       ) {
         closedRouteSensorIds.add(selectedSensor.id);
+        markPresenceDirty();
         renderRoutePlan();
         return;
       }
@@ -959,6 +1010,7 @@ export async function openPresenceEditor({
         x: addedRoutePoint.x,
         y: addedRoutePoint.y
       });
+      markPresenceDirty();
       renderRoutePlan();
     }
   });
@@ -987,6 +1039,9 @@ export async function openPresenceEditor({
     }
   });
   const handlePointerEnd = () => {
+    if (draggedPoint) {
+      markPresenceDirty();
+    }
     draggedPoint = null;
     syncPreview();
   };

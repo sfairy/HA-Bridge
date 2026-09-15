@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import Mapping
 from dataclasses import dataclass
 from time import monotonic
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request, status
@@ -54,6 +54,7 @@ RESPONSE_HEADERS_TO_DROP = {
 }
 CAMERA_SNAPSHOT_CACHE_TTL_SECONDS = 8
 CAMERA_SNAPSHOT_CACHE_MAX_ENTRIES = 64
+CAMERA_FEATURE_STREAM = 2
 
 
 @dataclass
@@ -95,7 +96,30 @@ def rewrite_location(value: str, base_url: str) -> str:
         return '/'
     if value.startswith(f'{normalized_base}/'):
         return value[len(normalized_base):]
+    parsed_url = urlparse(value)
+    if parsed_url.scheme in {'http', 'https'} and parsed_url.path:
+        rewritten_path = parsed_url.path + (f'?{parsed_url.query}' if parsed_url.query else '')
+        if allowed_media_proxy_path(parsed_url.path):
+            return rewritten_path
     return value
+
+
+def camera_supports_hls(entity_state: dict | None) -> bool | None:
+    if not isinstance(entity_state, dict):
+        return None
+    attributes = entity_state.get('attributes')
+    if not isinstance(attributes, dict):
+        attributes = {}
+    stream_type = str(attributes.get('frontend_stream_type') or '').strip().lower()
+    if stream_type and stream_type != 'hls':
+        return False
+    try:
+        supported_features = int(attributes.get('supported_features') or 0)
+    except (TypeError, ValueError):
+        supported_features = 0
+    if stream_type == 'hls':
+        return True
+    return bool(supported_features & CAMERA_FEATURE_STREAM)
 
 
 def versioned_image_proxy_cache_control(path: str, query: str, status_code: int) -> str | None:
@@ -295,26 +319,43 @@ async def camera_hls_stream(
     )
     if connection is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail='请先配置 Home Assistant 连接。')
+    mjpeg_fallback = JSONResponse({'url': None, 'fallback': 'mjpeg'})
     try:
         client = request.app.state.ha_connector.client_for(connection)
+        entity_states = await client.fetch_states({entity_id})
+        if camera_supports_hls(entity_states[0] if entity_states else None) is False:
+            return mjpeg_fallback
         websocket = await client.connect_websocket()
         try:
-            result = await client.command(websocket, 1, 'camera/stream', entity_id, format='hls')
+            result = await client.command(
+                websocket, 1, 'camera/stream', entity_id=entity_id, format='hls'
+            )
         finally:
             await websocket.close()
-    except (HAClientError, CredentialCipherError) as error:
+    except CredentialCipherError as error:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f'无法启动摄像头实时流：{error}',
         ) from error
+    except HAClientError as error:
+        error_text = str(error)
+        if any(
+            marker in error_text
+            for marker in ('无法建立 Home Assistant WebSocket', '鉴权失败', '无法连接 Home Assistant', 'Token')
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f'无法启动摄像头实时流：{error}',
+            ) from error
+        return JSONResponse({'url': None, 'fallback': 'mjpeg', 'detail': error_text})
     stream_url = str(
         result.get('url') if isinstance(result, dict) else result or ''
     ).strip()
     if not stream_url:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail='Home Assistant 未返回摄像头流地址。')
+        return mjpeg_fallback
     stream_url = rewrite_location(stream_url, client.base_url)
     if not allowed_media_proxy_path(stream_url.split('?', 1)[0]):
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail='Home Assistant 返回了无效的摄像头流地址。')
+        return mjpeg_fallback
     return JSONResponse({'url': stream_url})
 
 

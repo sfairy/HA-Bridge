@@ -1,7 +1,7 @@
-@import "/bridge-static/modules/interaction3d/controls.css?v=20260915104327";
-@import "./nas-panel.css?v=20260915104327";
-@import "./climate-panel.css?v=20260915104327";
-@import "./cover-panel.css?v=20260915104327";
+@import "/bridge-static/modules/interaction3d/controls.css?v=20260915152715";
+@import "./nas-panel.css?v=20260915152715";
+@import "./climate-panel.css?v=20260915152715";
+@import "./cover-panel.css?v=20260915152715";
 html:has(body.interaction3d-stage),
 body.interaction3d-stage {
   width: 100%;
@@ -2094,7 +2094,8 @@ body.interaction3d-stage.is-background-hidden,
   font-size: 11px;
 }
 .plan2-range-editor .p2r-view-switch button[aria-pressed="true"] {
-  background: #dba45a;
-  color: #181c23;
-  border-color: #dba45a;
+  color: #fff4dc;
+  background: #f2a20d29;
+  border-color: #f2a20d7a;
+  box-shadow: inset 0 0 0 1px #f2a20d7a;
 }

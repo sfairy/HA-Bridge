@@ -169,6 +169,9 @@ export function createOverviewStack({
     }
   }
   renderer.render = function (renderScene, layerCamera, ...renderRest) {
+    if (renderer.userData?.suppressOverviewStack) {
+      return originalRender.call(this, renderScene, layerCamera, ...renderRest);
+    }
     const previousLayerCamera = stackedLayerCamera;
     const isStackedLayer = renderScene === scene && layerCamera === getCamera();
     const originalOnBeforeRender = scene.onBeforeRender;
@@ -223,7 +226,16 @@ export function createOverviewStack({
     object,
     group
   ) {
-    if (stackedLayerCamera === drawCamera && drawScene === scene) {
+    // Shadow / depth passes can hand us disposed or missing materials; Three.js
+    // then crashes reading properties.get(material).state.
+    if (!material || !geometry) {
+      return;
+    }
+    if (
+      !renderer.userData?.suppressOverviewStack &&
+      stackedLayerCamera === drawCamera &&
+      drawScene === scene
+    ) {
       syncFloorCameras(drawCamera);
       drawCamera = stackByFloorId.get(overviewFloorId(object))?.camera || drawCamera;
     }

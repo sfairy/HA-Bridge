@@ -1,4 +1,4 @@
-import { mapCorners, mapSource } from "./vacuum-map.js?v=20260915104327";
+import { mapCorners, mapSource } from "./vacuum-map.js?v=20260915152715";
 export function planFurniture(plan = {}) {
   const pixelsPerMeter = Number(plan.pixelsPerMeter) > 0 ? Number(plan.pixelsPerMeter) : 1;
   const excludedFurnitureTypes = new Set([

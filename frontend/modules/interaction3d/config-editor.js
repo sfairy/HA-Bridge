@@ -1,17 +1,26 @@
-import { vacuumMapIdentity } from "./vacuum-map.js?v=20260915104327";
-import { openInteraction3dRangeEditor } from "./range-dialog.js?v=20260915104327";
-import { mountInteraction3d } from "./runtime.js?v=20260915104327";
-import { lightState } from "./light-state.js?v=20260915104327";
-import { openVacuumMapEditor } from "./vacuum-map-editor.js?v=20260915104327";
+import { vacuumMapIdentity } from "./vacuum-map.js?v=20260915152715";
+import { openInteraction3dRangeEditor } from "./range-dialog.js?v=20260915152715";
+import { mountInteraction3d } from "./runtime.js?v=20260915152715";
+import { lightState } from "./light-state.js?v=20260915152715";
+import { openVacuumMapEditor } from "./vacuum-map-editor.js?v=20260915152715";
 import { nasGroups } from "./nas-panel.js";
-import { randomUuid } from "/bridge-static/utils/random-id.js?v=20260915104327";
-import { interaction3dPreviewSize } from "/bridge-static/modules/interaction3d/preview-layout.js?v=20260915104327";
+import { randomUuid } from "/bridge-static/utils/random-id.js?v=20260915152715";
+import { interaction3dPreviewSize } from "/bridge-static/modules/interaction3d/preview-layout.js?v=20260915152715";
 import {
   requestInteraction3dAccess,
   getInteraction3dEditorView,
   subscribeInteraction3dAccess
-} from "/bridge-static/modules/interaction3d/bridge.js?v=20260915104327";
-import { normalizeInteraction3dLightingMode } from "/bridge-static/modules/interaction3d/definition.js?v=20260915104327";
+} from "/bridge-static/modules/interaction3d/bridge.js?v=20260915152715";
+import { normalizeInteraction3dLightingMode } from "/bridge-static/modules/interaction3d/definition.js?v=20260915152715";
+import {
+  DEFAULT_BASE_LIGHTING,
+  normalizeBaseLighting
+} from "/bridge-static/3d-studio/studio-normalization.js?v=20260915152715";
+import {
+  EDITOR_SAVE_STATUS,
+  editorDraftHasChanges,
+  serializeEditorDraft
+} from "./editor-save-status.js?v=20260915152715";
 const APPEARANCE_GROUPS = [
   [
     "整体",
@@ -153,7 +162,7 @@ export async function openInteraction3dEditor({
   const styleSheetLinkElement = document.createElement("link");
   styleSheetLinkElement.rel = "stylesheet";
   styleSheetLinkElement.href =
-    "/api/v1/modules/interaction3d/runtime.css?v=20260915104327";
+    "/api/v1/modules/interaction3d/runtime.css?v=20260915152715";
   document.head.append(styleSheetLinkElement);
   const createElement = (tagName, classNames, initialText) => {
     const createdElement = document.createElement(tagName);
@@ -208,6 +217,7 @@ export async function openInteraction3dEditor({
   let pickerGeneration = 0;
   let isEffectDetailsOpen = false;
   let isSaving = false;
+  let isDirty = false;
   let changeRevisionCount = 0;
   let latestStates = null;
   let refreshEffectSettings = () => {};
@@ -315,6 +325,7 @@ export async function openInteraction3dEditor({
     );
   }
   ensureItemCollections();
+  let savedDraftSignature = serializeEditorDraft(draftProperties);
   const buildEditableFieldList = () =>
     usesModelBinding
       ? [
@@ -619,7 +630,7 @@ export async function openInteraction3dEditor({
       closeAuxDialog();
       refreshEditorPreview();
       renderPanel();
-      saveStatusElement.textContent = "显示内容已调整，待保存配置";
+      saveStatusElement.textContent = "显示内容已调整，请保存配置";
     });
     confirmMetricsButton.className = "primary";
     metricsDialogActionsElement.append(createButton("取消", closeAuxDialog), confirmMetricsButton);
@@ -904,7 +915,7 @@ export async function openInteraction3dEditor({
         refreshEditorPreview();
         renderPanel();
         saveStatusElement.textContent =
-          "已应用到 " + updatedTargetItems.length + " 个" + itemKindLabel + "，待保存配置";
+          "已应用到 " + updatedTargetItems.length + " 个" + itemKindLabel + "，请保存配置";
       } catch (batchApplyError) {
         if (auxDialogElement === batchDialogElement) {
           batchMessageElement.textContent = batchApplyError.message;
@@ -977,53 +988,81 @@ export async function openInteraction3dEditor({
       document.dispatchEvent(new Event("hb-i3d-preview-scope"));
     }
   };
+  const requestCloseEditor = () => {
+    if (isDirty && !window.confirm(EDITOR_SAVE_STATUS.dirtyExitConfirm)) {
+      return;
+    }
+    disposeEditor();
+  };
   const saveStatusElement = createElement("span", "i3d-save-status");
   saveStatusElement.setAttribute("role", "status");
   const saveButtonElement = createButton("保存配置", async () => {
-    if (isSaving || isDisposed || !isAccessAllowed || isCameraEditing || isCameraCommandPending) {
+    if (
+      isSaving ||
+      isDisposed ||
+      !isDirty ||
+      !isAccessAllowed ||
+      isCameraEditing ||
+      isCameraCommandPending
+    ) {
+      if (!isAccessAllowed && !isDisposed) {
+        saveStatusElement.textContent = "";
+        errorMessageElement.textContent = EDITOR_SAVE_STATUS.accessDenied;
+      }
       return;
     }
     const propertiesSnapshot = structuredClone(draftProperties);
-    const savedRevision = changeRevisionCount;
     isSaving = true;
-    saveStatusElement.textContent = "保存中…";
-    saveButtonElement.disabled = true;
+    saveStatusElement.textContent = EDITOR_SAVE_STATUS.saving;
+    syncSaveButtonState();
     errorMessageElement.textContent = "";
     try {
       await requestInteraction3dAccess();
       if (isDisposed) {
         return;
       }
+      if (!isAccessAllowed) {
+        errorMessageElement.textContent = EDITOR_SAVE_STATUS.accessDenied;
+        saveStatusElement.textContent = "";
+        return;
+      }
       await onSaveConfig(propertiesSnapshot);
       if (!isDisposed) {
-        saveStatusElement.textContent =
-          savedRevision === changeRevisionCount ? "已保存" : "已保存，另有新修改";
+        savedDraftSignature = serializeEditorDraft(propertiesSnapshot);
+        isDirty = editorDraftHasChanges(draftProperties, propertiesSnapshot);
+        saveStatusElement.textContent = isDirty
+          ? EDITOR_SAVE_STATUS.savedWithMoreChanges
+          : EDITOR_SAVE_STATUS.saved;
       }
     } catch (saveError) {
       if (!isDisposed) {
-        errorMessageElement.textContent = saveError.message;
+        errorMessageElement.textContent = saveError.message || EDITOR_SAVE_STATUS.failed;
         saveStatusElement.textContent = "";
       }
     } finally {
       isSaving = false;
       if (!isDisposed) {
-        saveButtonElement.disabled = !isAccessAllowed || isCameraEditing || isCameraCommandPending;
+        if (saveStatusElement.textContent === EDITOR_SAVE_STATUS.saving) {
+          saveStatusElement.textContent = "";
+        }
+        syncSaveButtonState();
       }
     }
   });
   saveButtonElement.className = "primary";
+  saveButtonElement.disabled = true;
   headerElement.append(
     createElement("strong", "", "3D " + editorKindTitle + "配置"),
     saveStatusElement,
     saveButtonElement,
-    createButton("退出", disposeEditor)
+    createButton("退出", requestCloseEditor)
   );
   bodyElement.append(viewElement, panelElement);
   editorDialogElement.append(headerElement, bodyElement);
   document.body.append(editorDialogElement);
   editorDialogElement.addEventListener("cancel", editorCancelEvent => {
     editorCancelEvent.preventDefault();
-    disposeEditor();
+    requestCloseEditor();
   });
   const buildRuntimeProperties = () => {
     const runtimeFloorId =
@@ -1041,10 +1080,10 @@ export async function openInteraction3dEditor({
           })
     };
   };
-  function refreshEditorPreview() {
-    changeRevisionCount++;
-    if (!isSaving) {
-      saveStatusElement.textContent = "";
+  function refreshEditorPreview({ markDirty = true } = {}) {
+    if (markDirty) {
+      changeRevisionCount++;
+      syncDraftDirtyState();
     }
     editorRuntime?.update(
       buildRuntimeProperties(),
@@ -1057,6 +1096,26 @@ export async function openInteraction3dEditor({
       }
     );
     refreshBatchButtons();
+    if (!markDirty) {
+      syncSaveButtonState();
+    }
+  }
+  function syncDraftDirtyState() {
+    isDirty = serializeEditorDraft(draftProperties) !== savedDraftSignature;
+    if (!isSaving) {
+      saveStatusElement.textContent = isDirty ? EDITOR_SAVE_STATUS.dirty : "";
+    }
+    syncSaveButtonState();
+  }
+  function syncSaveButtonState() {
+    if (!isDisposed) {
+      saveButtonElement.disabled =
+        isSaving ||
+        !isDirty ||
+        !isAccessAllowed ||
+        isCameraEditing ||
+        isCameraCommandPending;
+    }
   }
   function createSettingRow(rowContainer, rowLabel, rowControl) {
     rowControl.name = "i3d-" + deviceKind + "-" + (selectedItemId || "scene") + "-" + rowLabel;
@@ -1389,7 +1448,9 @@ export async function openInteraction3dEditor({
       );
     errorMessageElement.textContent = "";
     renderPanel();
-    refreshEditorPreview();
+    refreshEditorPreview({
+      markDirty: false
+    });
     panelElement.scrollTop = savedKindSession?.scrollTop || 0;
     if (shouldOpenAddDialog) {
       openAddDialog();
@@ -1679,7 +1740,9 @@ export async function openInteraction3dEditor({
         selectedItemId = "";
         baselineItemsById.clear();
         renderPanel();
-        refreshEditorPreview();
+        refreshEditorPreview({
+          markDirty: false
+        });
       }
     );
     const shortcutSectionElement = createConfigSection("快捷按钮");
@@ -1712,7 +1775,9 @@ export async function openInteraction3dEditor({
         pickerGeneration++;
         pickerHandle?.close();
         renderPanel();
-        refreshEditorPreview();
+        refreshEditorPreview({
+          markDirty: false
+        });
       }
     );
     const selectedShortcut = getItemList().find(
@@ -1947,7 +2012,9 @@ export async function openInteraction3dEditor({
         selectedFloorId,
         pickedFloorId => {
           selectedFloorId = pickedFloorId;
-          refreshEditorPreview();
+          refreshEditorPreview({
+            markDirty: false
+          });
           renderPanel();
         }
       );
@@ -2088,7 +2155,9 @@ export async function openInteraction3dEditor({
             pickerGeneration++;
             pickerHandle?.close();
             selectedItemId = pickedItemId;
-            refreshEditorPreview();
+            refreshEditorPreview({
+              markDirty: false
+            });
             renderPanel();
           }
         );
@@ -3197,8 +3266,7 @@ export async function openInteraction3dEditor({
       }
     }
     panelElement.append(errorMessageElement);
-    saveButtonElement.disabled =
-      isSaving || !isAccessAllowed || isCameraEditing || isCameraCommandPending;
+    syncSaveButtonState();
     if (isCameraEditing || isCameraCommandPending) {
       for (const focusLockedControl of panelElement.querySelectorAll("input, select, button")) {
         if (!focusLockedControl.closest(".i3d-focus-settings")) {
@@ -3259,7 +3327,9 @@ export async function openInteraction3dEditor({
           selectedFloorId = sceneMetadata.floors[0]?.id || "";
         }
         renderPanel();
-        refreshEditorPreview();
+        refreshEditorPreview({
+          markDirty: false
+        });
         if (shouldStartAdding) {
           shouldStartAdding = false;
           queueMicrotask(openAddDialog);
@@ -3270,9 +3340,7 @@ export async function openInteraction3dEditor({
           if (editEvent.action === "light-region-overrides") {
             draftProperties.lightRegionOverrides = structuredClone(editEvent.overrides || {});
             changeRevisionCount++;
-            if (!isSaving) {
-              saveStatusElement.textContent = "";
-            }
+            syncDraftDirtyState();
           }
           if (isVacuumShortcutMode) {
             const roomShortcut = getItemList().find(
@@ -3288,7 +3356,9 @@ export async function openInteraction3dEditor({
               }
               renderPanel();
               if (editEvent.action === "select") {
-                refreshEditorPreview();
+                refreshEditorPreview({
+                  markDirty: false
+                });
               }
             }
             return;
@@ -3327,7 +3397,9 @@ export async function openInteraction3dEditor({
           if (editEvent.action === "select") {
             selectedItemId = editEvent.id;
             renderPanel();
-            refreshEditorPreview();
+            refreshEditorPreview({
+              markDirty: false
+            });
           }
           if (editEvent.action === "position") {
             const positionedItem = getItemList().find(
@@ -3347,7 +3419,11 @@ export async function openInteraction3dEditor({
             if (selectedFloorId === draftProperties.floorSelection) {
               draftProperties.camera = editEvent.camera;
             }
-            errorMessageElement.textContent = "默认视角已记录，保存配置后生效。";
+            changeRevisionCount++;
+            syncDraftDirtyState();
+            errorMessageElement.textContent = isDirty
+              ? "默认视角已记录，保存配置后生效。"
+              : "";
           }
         }
       }
@@ -3356,8 +3432,7 @@ export async function openInteraction3dEditor({
   const accessUnsubscribe = subscribeInteraction3dAccess(accessState => {
     if (!isDisposed) {
       isAccessAllowed = accessState.allowed;
-      saveButtonElement.disabled =
-        isSaving || !isAccessAllowed || isCameraEditing || isCameraCommandPending;
+      syncSaveButtonState();
       panelElement.inert = !isAccessAllowed;
       statusElement.hidden =
         isAccessAllowed || (!!editorRuntime && accessState.status !== "denied");
@@ -3408,18 +3483,22 @@ export async function openInteraction3dAppearanceEditor({
   const appearanceProperties = structuredClone(appearanceComponent.properties || {});
   const isRegionLighting =
     normalizeInteraction3dLightingMode(appearanceProperties.lightingMode) === "region";
-  let baseLightingDraft = {
+  const sourceBaseLighting = {
     ...editorView.metadata.defaults,
-    ...structuredClone(appearanceProperties.baseLighting || editorView.metadata.baseLighting)
+    ...structuredClone(appearanceProperties.baseLighting || editorView.metadata.baseLighting || {})
   };
-  let isAppearanceClosed = false;
-  if (isRegionLighting) {
-    baseLightingDraft.floorBrightness ??= 100;
+  if (isRegionLighting && sourceBaseLighting.floorBrightness === undefined) {
+    sourceBaseLighting.floorBrightness =
+      editorView.metadata.baseLighting?.floorBrightness ?? 100;
   }
+  let baseLightingDraft = normalizeBaseLighting(sourceBaseLighting);
+  const openLightingSnapshot = structuredClone(baseLightingDraft);
+  let isAppearanceClosed = false;
+  let isAppearanceDirty = false;
   const appearanceStyleLinkElement = document.createElement("link");
   appearanceStyleLinkElement.rel = "stylesheet";
   appearanceStyleLinkElement.href =
-    "/api/v1/modules/interaction3d/runtime.css?v=20260915104327";
+    "/api/v1/modules/interaction3d/runtime.css?v=20260915152715";
   document.head.append(appearanceStyleLinkElement);
   const createPlainElement = (plainTagName, plainText = "") => {
     const plainElement = document.createElement(plainTagName);
@@ -3480,16 +3559,27 @@ export async function openInteraction3dAppearanceEditor({
     });
   }
   window.addEventListener("resize", repositionAppearanceDialog);
-  const applyAppearanceLighting = () =>
+  const syncAppearanceSaveButton = () => {
+    if (!isAppearanceClosed) {
+      appearanceSaveButton.disabled = !isAppearanceDirty;
+    }
+  };
+  const applyAppearanceLighting = () => {
+    isAppearanceDirty = editorDraftHasChanges(baseLightingDraft, openLightingSnapshot);
+    syncAppearanceSaveButton();
     editorView.update({
       ...appearanceProperties,
       baseLighting: baseLightingDraft
     });
+  };
   const closeAppearanceEditor = (shouldKeepLighting = false) => {
     if (!isAppearanceClosed) {
       isAppearanceClosed = true;
       if (!shouldKeepLighting) {
-        editorView.update(appearanceProperties);
+        editorView.update({
+          ...appearanceProperties,
+          baseLighting: structuredClone(openLightingSnapshot)
+        });
       }
       window.removeEventListener("resize", repositionAppearanceDialog);
       appearanceDialogElement.close();
@@ -3499,20 +3589,27 @@ export async function openInteraction3dAppearanceEditor({
   };
   const appearanceSaveButton = createPlainElement("button", "完成");
   appearanceSaveButton.type = "button";
+  appearanceSaveButton.className = "primary";
+  appearanceSaveButton.disabled = true;
   appearanceSaveButton.addEventListener("click", async () => {
-    if (!isAppearanceClosed && !appearanceSaveButton.disabled) {
+    if (!isAppearanceClosed && isAppearanceDirty && !appearanceSaveButton.disabled) {
       appearanceSaveButton.disabled = true;
+      appearanceErrorElement.textContent = "";
       try {
         await requestInteraction3dAccess();
         if (isAppearanceClosed) {
           return;
         }
-        await onAppearanceSave(baseLightingDraft);
+        const normalizedLighting = normalizeBaseLighting(baseLightingDraft);
+        await onAppearanceSave(normalizedLighting);
+        baseLightingDraft = normalizedLighting;
+        isAppearanceDirty = false;
         closeAppearanceEditor(true);
       } catch (appearanceSaveError) {
         if (!isAppearanceClosed) {
-          appearanceErrorElement.textContent = appearanceSaveError.message;
-          appearanceSaveButton.disabled = false;
+          appearanceErrorElement.textContent =
+            appearanceSaveError.message || "保存失败，请重试。";
+          syncAppearanceSaveButton();
         }
       }
     }
@@ -3647,11 +3744,15 @@ export async function openInteraction3dAppearanceEditor({
   const restoreDefaultsButton = createPlainElement("button", "恢复默认");
   restoreDefaultsButton.type = "button";
   restoreDefaultsButton.addEventListener("click", () => {
+    baseLightingDraft = normalizeBaseLighting({
+      ...DEFAULT_BASE_LIGHTING,
+      ...(isRegionLighting
+        ? {
+            floorBrightness: 100
+          }
+        : {})
+    });
     for (const [defaultSettingName, appearanceInputElement] of appearanceInputsByKey) {
-      baseLightingDraft[defaultSettingName] =
-        defaultSettingName === "floorBrightness"
-          ? 100
-          : editorView.metadata.defaults[defaultSettingName];
       appearanceInputElement.value = String(baseLightingDraft[defaultSettingName]);
     }
     floorBrightnessResetters.forEach(resetFloorBrightness => resetFloorBrightness());

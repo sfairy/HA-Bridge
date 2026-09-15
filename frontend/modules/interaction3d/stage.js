@@ -1,71 +1,71 @@
 const { popupPlacement: computePopupPlacement } = await (import.meta.url.startsWith("file:")
   ? import(
       new URL(
-        "../../static/modules/interaction3d/popup-placement.js?v=20260915104327",
+        "../../static/modules/interaction3d/popup-placement.js?v=20260915152715",
         import.meta.url
       )
     )
-  : import("/bridge-static/modules/interaction3d/popup-placement.js?v=20260915104327"));
+  : import("/bridge-static/modules/interaction3d/popup-placement.js?v=20260915152715"));
 import {
   createPresenceScene,
   createPresenceWaves
-} from "./presence-scene.js?v=20260915104327";
-import { createBackgroundTheme } from "./background-theme.js?v=20260915104327";
-import { floorNavigationChoices } from "./floor-navigation.js?v=20260915104327";
+} from "./presence-scene.js?v=20260915152715";
+import { createBackgroundTheme } from "./background-theme.js?v=20260915152715";
+import { floorNavigationChoices } from "./floor-navigation.js?v=20260915152715";
 import {
   createVacuumMotion,
   vacuumQuip,
   createVacuumFollowCamera,
   vacuumBirdCamera,
   vacuumFollowPose
-} from "./vacuum-motion.js?v=20260915104327";
+} from "./vacuum-motion.js?v=20260915152715";
 import {
   createVacuumMaps,
   vacuumStatusPresentation,
   vacuumBindingsForMap
-} from "./vacuum-map.js?v=20260915104327";
-import { televisionState } from "./television-state.js?v=20260915104327";
-import { createTelevisionPanel } from "./television-panel.js?v=20260915104327";
-import { createTelevisionScreens } from "./television-screen.js?v=20260915104327";
+} from "./vacuum-map.js?v=20260915152715";
+import { televisionState } from "./television-state.js?v=20260915152715";
+import { createTelevisionPanel } from "./television-panel.js?v=20260915152715";
+import { createTelevisionScreens } from "./television-screen.js?v=20260915152715";
 import { createNasPanel } from "./nas-panel.js";
-import { createNasStatus, nasDeviceState } from "./nas-status.js?v=20260915104327";
+import { createNasStatus, nasDeviceState } from "./nas-status.js?v=20260915152715";
 import { createCameraStatus, cameraOnline } from "./camera-status.js";
 import {
   coverState,
   coverIconIsOn,
   coverCanAdjustBlades
-} from "./cover-state.js?v=20260915104327";
-import { createCoverFeedback } from "./cover-feedback.js?v=20260915104327";
-import { createCoverPanel } from "./cover-panel.js?v=20260915104327";
-import { createCurtainMotion } from "./curtain-motion.js?v=20260915104327";
-import { createEnvironmentAirflow } from "./environment-airflow.js?v=20260915104327";
-import { createScreenOutlines } from "./environment-halos.js?v=20260915104327";
-import { mountRegionRangeEditor } from "./light-range-editor.js?v=20260915104327";
-import { climateState } from "./climate-state.js?v=20260915104327";
-import { createClimatePanel } from "./climate-panel.js?v=20260915104327";
+} from "./cover-state.js?v=20260915152715";
+import { createCoverFeedback } from "./cover-feedback.js?v=20260915152715";
+import { createCoverPanel } from "./cover-panel.js?v=20260915152715";
+import { createCurtainMotion } from "./curtain-motion.js?v=20260915152715";
+import { createEnvironmentAirflow } from "./environment-airflow.js?v=20260915152715";
+import { createScreenOutlines } from "./environment-halos.js?v=20260915152715";
+import { mountRegionRangeEditor } from "./light-range-editor.js?v=20260915152715";
+import { climateState } from "./climate-state.js?v=20260915152715";
+import { createClimatePanel } from "./climate-panel.js?v=20260915152715";
 import {
   createEnvironmentScene,
   pageDimming,
   pageModelBindings
-} from "./environment-scene.js?v=20260915104327";
-import { startSceneSync } from "./scene-sync.js?v=20260915104327";
+} from "./environment-scene.js?v=20260915152715";
+import { startSceneSync } from "./scene-sync.js?v=20260915152715";
 import {
   lightCommand,
   createLightPreview,
   createLightStateCache,
   lightRenderState
-} from "./light-state.js?v=20260915104327";
+} from "./light-state.js?v=20260915152715";
 import {
   createDampedCameraMotion,
   automaticLightCamera,
   automaticAirConditionerCamera
-} from "./camera-motion.js?v=20260915104327";
+} from "./camera-motion.js?v=20260915152715";
 import {
   resolvePageBehavior,
   createIdleRotation,
   createIdleIconVisibility,
   createIdleFocusExit
-} from "./idle-rotation.js?v=20260915104327";
+} from "./idle-rotation.js?v=20260915152715";
 const DEFAULT_MARKER_ICON_SVG =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M8 15c0-2-3-3-3-7a7 7 0 0 1 14 0c0 4-3 5-3 7l-1 3H9l-1-3Z"/><path d="M9 21h6M9 15h6"/></svg>';
 const LIGHT_PRESETS = [
@@ -123,7 +123,7 @@ export function mountStage(stageOptions) {
   let isPresented = false;
   let configRevisionCount = 0;
   let pageBehavior = resolvePageBehavior();
-  // 总览 is the landing module: it shows every configured device on the active floor at once.
+  // 总览 is the landing module: it shows the house without device buttons.
   let activeModule = "overview";
   let editingVacuumId = "";
   let pendingFloorId = "";
@@ -1583,8 +1583,8 @@ export function mountStage(stageOptions) {
     return [...(config.lights || []), ...collectAllDeviceBindings()];
   }
   function resolveModuleBindings() {
-    if (!isEditing && isAllFloorsMode()) {
-      // 全部楼层 keeps its own presentation pass instead of drawing every device marker.
+    if (!isEditing && isOverviewMode()) {
+      // 总览 / 全部楼层 show the house only; device buttons stay on their own tabs.
       return [];
     } else if (activeModule === "overview") {
       return collectOverviewBindings();

@@ -1,6 +1,6 @@
-import { PanelRenderer } from "./renderer/renderer.js?v=20260915104327";
-import { ensureUiPackRuntime } from "./ui-packs/loader.js?v=20260915104327";
-import { createButtonSound } from "./sound-effects.js?v=20260915104327";
+import { PanelRenderer } from "./renderer/renderer.js?v=20260915152715";
+import { ensureUiPackRuntime } from "./ui-packs/loader.js?v=20260915152715";
+import { createButtonSound } from "./sound-effects.js?v=20260915152715";
 const displayRootElement = document.querySelector("#display-root");
 const displayShellElement = document.querySelector("#display-shell");
 const isCapturePreview = new URLSearchParams(window.location.search).get("capturePreview") === "1";

@@ -1,4 +1,4 @@
-@import "/bridge-static/modules/interaction3d/controls.css?v=20260915104327";
+@import "/bridge-static/modules/interaction3d/controls.css?v=20260915152715";
 .hb-interaction3d-runtime {
   position: relative;
   width: 100%;
@@ -386,10 +386,35 @@
   min-height: 30px;
   padding: 4px;
 }
-.i3d-focus-actions button[aria-pressed="true"] {
-  border-color: var(--accent, #f2a20d);
-  color: var(--accent-bright, #f5bd53);
-  background: var(--accent-soft, #f2a20d18);
+.i3d-focus-actions[role="group"] {
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid #343d45;
+  border-radius: 4px;
+  background: var(--field, #171d22);
+}
+.i3d-focus-actions[role="group"] button {
+  border: 0;
+  border-radius: 3px;
+  color: #7f8a91;
+  background: transparent;
+}
+.i3d-focus-actions[role="group"] button:hover:not(:disabled) {
+  color: #dce2e6;
+  background: #ffffff0b;
+}
+.i3d-focus-actions button[aria-pressed="true"],
+.i3d-focus-actions[role="group"] button[aria-pressed="true"] {
+  border-color: #f2a20d7a;
+  color: #fff4dc;
+  background: #f2a20d29;
+  box-shadow: inset 0 0 0 1px #f2a20d7a;
+}
+.i3d-editor button.primary {
+  border-color: #f4a719;
+  color: #1e1607;
+  background: linear-gradient(180deg, #ffb82e, #ef9900);
+  font-weight: 700;
 }
 .i3d-focus-settings .i3d-focus-reset {
   width: 100%;
@@ -510,7 +535,7 @@
   width: 0;
   min-width: 64px;
   padding: 0;
-  accent-color: var(--accent, #4d99ff);
+  accent-color: var(--accent, #f2a20d);
 }
 .i3d-floor-brightness input[type="number"] {
   width: 100%;

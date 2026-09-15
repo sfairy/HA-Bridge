@@ -1,4 +1,4 @@
-import { createEnvironmentHalos } from "./environment-halos.js?v=20260915104327";
+import { createEnvironmentHalos } from "./environment-halos.js?v=20260915152715";
 export function pageDimming(config, activeModule, isFocusMode = false) {
   const moduleKey =
     {

@@ -1,4 +1,4 @@
-import { createRenderLightIndex } from "../modules/interaction3d/render-light-index.js?v=20260915104327";
+import { createRenderLightIndex } from "../modules/interaction3d/render-light-index.js?v=20260915152715";
 const DEFAULT_TILE_GUTTER = 1;
 function toPositiveInt(input, fallback = 0) {
   const parsed = Math.floor(Number(input));
@@ -206,6 +206,24 @@ export function createSpotShadowAtlasController({
   const scratchVector4 = new three.Vector4();
   const lightIndex = syncBeforeRender ? createRenderLightIndex() : null;
   let lastIndexSignature = "";
+  // Mesh onBeforeRender fires during the color pass, after Three.js has a live
+  // currentRenderState. scene.onBeforeRender is too early in r182 (state is still
+  // null), which is why forced shadowMap.render() must not run from that hook.
+  const bakeProbeMesh = new three.Mesh(
+    new three.BufferGeometry().setAttribute(
+      "position",
+      new three.Float32BufferAttribute([], 3)
+    ),
+    new three.MeshBasicMaterial({
+      colorWrite: false,
+      depthWrite: false,
+      depthTest: false
+    })
+  );
+  bakeProbeMesh.name = "spot-shadow-atlas-bake-probe";
+  bakeProbeMesh.frustumCulled = false;
+  bakeProbeMesh.layers.enableAll();
+  bakeProbeMesh.onBeforeRender = () => {};
   function setAtlasEnabled(enabled) {
     uniforms.userSpotShadowAtlasEnabled.value = enabled && isEnabled && entryByLightKey.size ? 1 : 0;
   }
@@ -431,6 +449,9 @@ export function createSpotShadowAtlasController({
       castShadow: capturedLight.castShadow
     }));
     isBuilding = true;
+    const previousSuppressOverviewStack = renderer.userData?.suppressOverviewStack;
+    renderer.userData = renderer.userData || {};
+    renderer.userData.suppressOverviewStack = true;
     try {
       prepareRoot(buildRoot);
       nextAtlasTarget = createAtlasTarget(layout.size);
@@ -476,16 +497,60 @@ export function createSpotShadowAtlasController({
         activeLight.shadow.autoUpdate = false;
         activeLight.shadow.needsUpdate = true;
         renderer.shadowMap.needsUpdate = true;
-        renderer.setRenderTarget(scratchTarget);
-        renderer.render(scene, camera);
-        let shadowTexture = activeLight.shadow?.map?.texture;
-        if (!shadowTexture) {
-          // A light can also miss the shadow pass when the renderer never adds
-          // it to the shadow list (hidden ancestor, layer mismatch). Bake that
-          // light's map directly instead of relying on the scene traversal.
-          renderer.shadowMap.render([activeLight], scene, camera);
-          shadowTexture = activeLight.shadow?.map?.texture;
+        // CollectShadowLights may include lights whose parents are hidden.
+        // Three.js only puts visible-in-hierarchy lights into the shadow list.
+        const restoredVisibility = [];
+        for (let visibilityNode = activeLight; visibilityNode; visibilityNode = visibilityNode.parent) {
+          if (visibilityNode.visible === false) {
+            restoredVisibility.push(visibilityNode);
+            visibilityNode.visible = true;
+          }
         }
+        activeLight.visible = true;
+        activeLight.target?.updateWorldMatrix(true, false);
+        activeLight.updateWorldMatrix(true, false);
+        // Force-bake from the probe mesh's onBeforeRender so currentRenderState
+        // is live (see bakeProbeMesh note above). An explicit light list also
+        // covers spots that projectObject would skip (layer / hierarchy edge
+        // cases). The stock shadow pass may bake the same light first; a second
+        // pass here is cheap and keeps the atlas path deterministic.
+        let forcedShadowBake = false;
+        let shadowBakeError = null;
+        bakeProbeMesh.onBeforeRender = () => {
+          if (forcedShadowBake) {
+            return;
+          }
+          forcedShadowBake = true;
+          try {
+            activeLight.shadow.needsUpdate = true;
+            renderer.shadowMap.needsUpdate = true;
+            renderer.shadowMap.render([activeLight], scene, camera);
+          } catch (shadowError) {
+            shadowBakeError = shadowError;
+          }
+        };
+        if (!bakeProbeMesh.parent) {
+          scene.add(bakeProbeMesh);
+        }
+        renderer.setRenderTarget(scratchTarget);
+        try {
+          renderer.render(scene, camera);
+        } catch (renderError) {
+          shadowBakeError ||= renderError;
+        } finally {
+          bakeProbeMesh.onBeforeRender = () => {};
+          for (const visibilityNode of restoredVisibility) {
+            visibilityNode.visible = false;
+          }
+        }
+        if (shadowBakeError) {
+          console.warn(
+            "阴影图集: 单灯阴影烘焙失败，已按无阴影处理。",
+            spotLightKey(activeLight),
+            shadowBakeError
+          );
+        }
+        const shadowTexture = activeLight.shadow?.map?.texture;
         if (shadowTexture) {
           renderer.copyTextureToTexture(
             shadowTexture,
@@ -542,6 +607,7 @@ export function createSpotShadowAtlasController({
         );
       }
     } finally {
+      renderer.userData.suppressOverviewStack = previousSuppressOverviewStack;
       renderer.setRenderTarget(previousRenderTarget);
       renderer.shadowMap.enabled = previousShadowMapEnabled;
       renderer.shadowMap.needsUpdate = previousShadowMapNeedsUpdate;
@@ -675,12 +741,21 @@ export function createSpotShadowAtlasController({
           refreshLight.shadow.autoUpdate = false;
           refreshLight.shadow.needsUpdate = true;
           renderer.shadowMap.needsUpdate = true;
+          // Safe here: refreshGeometry runs from an onBeforeRender probe while
+          // WebGLRenderer still has a live currentRenderState.
           renderer.shadowMap.render([refreshLight], scene, camera);
           if (!refreshLight.shadow.map?.texture) {
             return false;
           }
           update.texture = refreshLight.shadow.map.texture;
           update.matrix.copy(refreshLight.shadow.matrix);
+        } catch (refreshError) {
+          console.warn(
+            "阴影图集: 几何刷新烘焙失败。",
+            spotLightKey(refreshLight),
+            refreshError
+          );
+          return false;
         } finally {
           refreshLight.castShadow = update.cast;
           refreshLight.visible = update.visible;
@@ -757,6 +832,10 @@ export function createSpotShadowAtlasController({
       syncedEntries = [];
       previousLights = [];
       previousEntries = [];
+      bakeProbeMesh.onBeforeRender = () => {};
+      bakeProbeMesh.removeFromParent();
+      bakeProbeMesh.geometry.dispose();
+      bakeProbeMesh.material.dispose();
       if (!isBuilding) {
         disposeAtlases();
       }

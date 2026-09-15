@@ -1,4 +1,4 @@
-import { randomUuid } from "../utils/random-id.js?v=20260915104327";
+import { randomUuid } from "../utils/random-id.js?v=20260915152715";
 import {
   climateDefaultIcon,
   climateEffectMode,
@@ -7,10 +7,10 @@ import {
   climatePresentationMode,
   normalizeClimateCapabilities,
   resolveClimateDeviceType
-} from "./climate.js?v=20260915104327";
-import { entityPowerIsOn } from "./entity-power.js?v=20260915104327";
-import { lightRealtimeCapabilities } from "./light-runtime.js?v=20260915104327";
-import { renderInteraction3d } from "../modules/interaction3d/bridge.js?v=20260915104327";
+} from "./climate.js?v=20260915152715";
+import { entityPowerIsOn } from "./entity-power.js?v=20260915152715";
+import { lightRealtimeCapabilities } from "./light-runtime.js?v=20260915152715";
+import { renderInteraction3d } from "../modules/interaction3d/bridge.js?v=20260915152715";
 const componentsByType = new Map();
 registerComponent("interaction3d", {
   render: renderInteraction3d
@@ -409,18 +409,18 @@ import {
   lightStatisticsEntityStateStatus,
   lightStatisticsEntitySupport,
   lightStatisticsSummary
-} from "./light-statistics-runtime.js?v=20260915104327";
+} from "./light-statistics-runtime.js?v=20260915152715";
 import {
   automaticNumericPrecision,
   formatLineChartValue,
   formatNumericValue,
   lineChartGeometry,
   normalizedStatePrecision
-} from "./line-chart-runtime.js?v=20260915104327";
+} from "./line-chart-runtime.js?v=20260915152715";
 import {
   doorWindowPerspectiveCorners,
   doorWindowPerspectiveMatrix
-} from "./door-window-runtime.js?v=20260915104327";
+} from "./door-window-runtime.js?v=20260915152715";
 import {
   automaticThresholds,
   meteoconUrl,
@@ -429,12 +429,12 @@ import {
   smoothChartPath,
   thresholdColor,
   weatherVisual
-} from "./weather-chart-runtime.js?v=20260915104327";
+} from "./weather-chart-runtime.js?v=20260915152715";
 import {
   formatLocalDate,
   formatLocalTime,
   formatLunarDate
-} from "./date-time-runtime.js?v=20260915104327";
+} from "./date-time-runtime.js?v=20260915152715";
 export {
   lightStatisticsEntityStateStatus as lightStatisticsEntityStateStatus,
   lightStatisticsEntitySupport as lightStatisticsEntitySupport,
@@ -464,7 +464,7 @@ import {
   presenceMotionEventConfig,
   presenceSensorPresentation,
   presenceStateTimestamp
-} from "./presence-runtime.js?v=20260915104327";
+} from "./presence-runtime.js?v=20260915152715";
 export {
   formatPresenceDuration as formatPresenceDuration,
   presenceAnimationPhase as presenceAnimationPhase,
@@ -3193,17 +3193,23 @@ async function fetchCameraHlsSource(cameraEntityId) {
   if (inflightSourcePromise) {
     return inflightSourcePromise;
   }
-  const pendingSourcePromise = (async () => {
+    const pendingSourcePromise = (async () => {
     const hlsFetchResponse = await fetch(
       "/api/camera_hls/" + encodeURIComponent(normalizedCameraEntityId)
     );
+    const hlsPayload = await hlsFetchResponse.json().catch(() => ({}));
     if (!hlsFetchResponse.ok) {
-      throw new Error("Camera HLS request failed: " + hlsFetchResponse.status);
+      throw new Error(
+        hlsPayload?.detail || "Camera HLS request failed: " + hlsFetchResponse.status
+      );
     }
-    const hlsPayload = await hlsFetchResponse.json();
     const hlsProxyUrl = typeof hlsPayload?.url == "string" ? hlsPayload.url.trim() : "";
     if (!hlsProxyUrl.startsWith("/")) {
-      throw new Error("Camera HLS response has no proxy URL");
+      cameraSourceCache.set(normalizedCameraEntityId, {
+        source: "",
+        createdAt: Date.now()
+      });
+      return "";
     }
     cameraSourceCache.set(normalizedCameraEntityId, {
       source: hlsProxyUrl,
@@ -3503,6 +3509,10 @@ export function mountCameraMedia({
       if (isMediaDisposed || isMediaSuspended || playbackGeneration !== mediaGeneration) {
         return;
       }
+      if (!hlsSourceUrl) {
+        useLegacyCameraStream(playbackGeneration);
+        return;
+      }
       mediaContainer.dataset.cameraHlsSource = hlsSourceUrl;
       mediaContainer.dataset.cameraTransport = "hls";
       if (window.Hls?.isSupported?.()) {
@@ -3565,20 +3575,8 @@ export function mountCameraMedia({
       if (isMediaDisposed || isMediaSuspended || playbackGeneration !== mediaGeneration) {
         return;
       }
-      mediaContainer.dataset.cameraState = "setup-failed";
+      mediaContainer.dataset.cameraState = "setup-fallback";
       mediaContainer.dataset.cameraError = String(hlsError);
-      window.HABridgeLog?.error(
-        hlsError,
-        {
-          entityId: mediaEntityId,
-          phase: "hls-setup"
-        },
-        "摄像头连接失败：" + (hlsError?.message || hlsError)
-      );
-      console.warn("[HA Bridge camera] HLS setup failed", {
-        entityId: mediaEntityId,
-        error: String(hlsError)
-      });
       useLegacyCameraStream(playbackGeneration);
     }
   };
