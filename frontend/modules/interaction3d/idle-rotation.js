@@ -1,7 +1,7 @@
 const pageBehaviorModuleUrl = new URL(
   import.meta.url.startsWith("file:")
-    ? "../../static/modules/interaction3d/page-behavior.js?v=20260911-page-behavior-light-v2"
-    : "/bridge-static/modules/interaction3d/page-behavior.js?v=20260911-page-behavior-light-v2",
+    ? "../../static/modules/interaction3d/page-behavior.js?v=20260915104327"
+    : "/bridge-static/modules/interaction3d/page-behavior.js?v=20260915104327",
   import.meta.url
 );
 export const { resolvePageBehavior } = await import(pageBehaviorModuleUrl.href);

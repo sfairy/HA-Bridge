@@ -1,4 +1,4 @@
-import { DRACOLoader } from "/bridge-static/vendor/three/0.182.0/DRACOLoader.js?v=20260903-three-0182-draco-module-path-v1";
+import { DRACOLoader } from "/bridge-static/vendor/three/0.182.0/DRACOLoader.js?v=20260915104327";
 function normalizeWorkerError(cause) {
   const errorMessage = String(cause?.message || "").trim();
   return new Error(errorMessage || "Draco 同源解码 Worker 启动失败");

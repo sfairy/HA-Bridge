@@ -5,7 +5,7 @@ import {
   closedPath,
   sampleClosedPath,
   presenceVisibleOnPage
-} from "./presence-motion.js?v=20260911-presence-pages-v2-detection-triggers-v1";
+} from "./presence-motion.js?v=20260915104327";
 export function createPresenceScene(sceneOptions, wakeFrameLoop = () => {}, nowProvider) {
   const actorsByBindingId = new Map();
   const progressByBindingId = new Map();

@@ -2,7 +2,7 @@ import {
   climateIsPoweredOn,
   climatePowerCommand,
   resolveClimateDeviceType
-} from "./climate.js?v=20260812-presence-phase-v79";
+} from "./climate.js?v=20260915104327";
 function unwrapStateChange(stateOrChange) {
   return (
     stateOrChange?.newState ||

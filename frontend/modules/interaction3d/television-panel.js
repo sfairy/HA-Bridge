@@ -3,7 +3,7 @@ import {
   televisionTime,
   televisionPower,
   televisionMediaControl
-} from "./television-state.js?v=20260914-tv-power-poster-v1";
+} from "./television-state.js?v=20260915104327";
 export function createTelevisionPanel({ onControl: onControl = async () => {} } = {}) {
   const createElement = (tagName, className) => {
     const element = document.createElement(tagName);

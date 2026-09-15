@@ -1,8 +1,8 @@
 import {
   createPopupLayoutPreview,
   createFocusDevicePopup
-} from "./popup-preview.js?v=20260914-popup-preview-v1";
-import { createLightStream } from "./light-stream.js?v=20260909-preview-sleep-v1";
+} from "./popup-preview.js?v=20260915104327";
+import { createLightStream } from "./light-stream.js?v=20260915104327";
 const INTERACTION3D_API_BASE = "/api/v1/modules/interaction3d";
 export function mountInteraction3d(
   hostElement,

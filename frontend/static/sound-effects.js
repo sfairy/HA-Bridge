@@ -1,5 +1,5 @@
 const SOUND_ENABLED_STORAGE_KEY = "ha-bridge-dashboard-sound-enabled",
-  BUTTON_CLICK_SOUND_URL = "/bridge-static/audio/button-click.mp3?v=20260826-button-sound-v1";
+  BUTTON_CLICK_SOUND_URL = "/bridge-static/audio/button-click.mp3?v=20260915104327";
 function isSoundEnabled() {
   try {
     const storedValue = window.localStorage.getItem(SOUND_ENABLED_STORAGE_KEY);

@@ -1,4 +1,4 @@
-import { newId } from "./editor-utils.js?v=20260831-editor-utils-v1";
+import { newId } from "./editor-utils.js?v=20260915104327";
 export function componentLabel(component) {
   const typeLabel =
     component.type === "image"

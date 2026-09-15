@@ -1,4 +1,4 @@
-import { clampNumber, roundField } from "./editor-utils.js?v=20260831-editor-utils-v1";
+import { clampNumber, roundField } from "./editor-utils.js?v=20260915104327";
 export function setInspectorToggle(toggleElement, isPressed) {
   toggleElement.setAttribute("aria-pressed", String(isPressed));
   toggleElement.textContent = isPressed ? "隐藏" : "显示";

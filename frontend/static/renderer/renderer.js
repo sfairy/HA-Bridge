@@ -1,4 +1,4 @@
-import { popupPlacement } from "../modules/interaction3d/popup-placement.js?v=20260914-popup-placement-v1";
+import { popupPlacement } from "../modules/interaction3d/popup-placement.js?v=20260915104327";
 import {
   cameraPopupLayout,
   cameraPreviewRatio
@@ -24,9 +24,9 @@ import {
   setBuiltinAssetVersions,
   staticAssetImageSource,
   vacuumMapImageSource
-} from "./registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-vacuum-map-background-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-v2-20260901-renderer-date-time-runtime-v1-20260901-camera-prewarm-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-light-effect-layering-v2-20260901-light-effect-color-cache-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260905-client-log-v1-20260906-i3d-complete-v6-20260827-runtime-hydration-retry-v1-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1";
-import { randomUuid } from "../utils/random-id.js?v=20260724-revert-hold-popup-shield-v324";
-import { popupLayoutMetrics } from "../popup-layout.js?v=20260821-electric-bed-combo-v2";
+} from "./registry.js?v=20260915104327";
+import { randomUuid } from "../utils/random-id.js?v=20260915104327";
+import { popupLayoutMetrics } from "../popup-layout.js?v=20260915104327";
 import {
   bathHeaterModeUsesAirflow,
   climateControlStructureKey,
@@ -45,11 +45,11 @@ import {
   reconcileClimateTargetTemperature,
   resolveClimateDeviceType,
   waterHeaterStatusLabel
-} from "./climate.js?v=20260812-presence-phase-v79-20260904-climate-capability-options-v6";
+} from "./climate.js?v=20260915104327";
 import {
   applyXiaomiDeviceProfile,
   resolveXiaomiDeviceProfile
-} from "./device-profiles.js?v=20260821-electric-bed-sync-v4";
+} from "./device-profiles.js?v=20260915104327";
 import {
   relatedEntityLabel,
   relatedEntityNeedsConfirmation,
@@ -58,25 +58,25 @@ import {
   relatedPopupContext,
   selectedRelatedEntities,
   selectedRelatedEntityIds
-} from "../related-entities.js?v=20260825-bath-heater-primary-v1";
+} from "../related-entities.js?v=20260915104327";
 import {
   entityPowerIsOn,
   entityPowerTarget,
   entityToggleCommand,
   optimisticToggleState
-} from "./entity-power.js?v=20260813-generic-device-power-v2";
+} from "./entity-power.js?v=20260915104327";
 import {
   ICON_VISIBILITY_VIRTUAL_KIND,
   isVirtualEntityId,
   parseVirtualEntityId
-} from "../virtual-entities.js?v=20260822-icon-visibility-v1";
-import { componentActionIsSupported } from "../action-rules.js?v=20260831-action-rules-v1";
+} from "../virtual-entities.js?v=20260915104327";
+import { componentActionIsSupported } from "../action-rules.js?v=20260915104327";
 import {
   airflowCanvasOffsetBounds,
   airflowLayerGeometry,
   groupedComponentLocalDelta,
   rotateMultiSelectionTransforms
-} from "./transform-geometry.js?v=20260901-renderer-transform-geometry-v1";
+} from "./transform-geometry.js?v=20260915104327";
 import {
   componentHostZIndex,
   effectCropRectangle,
@@ -86,7 +86,7 @@ import {
   effectReferenceImageTransform,
   effectSourceDimensions,
   normalizeIconButtonEffectComponent
-} from "./effect-geometry.js?v=20260901-renderer-effect-geometry-v2";
+} from "./effect-geometry.js?v=20260915104327";
 import {
   LIGHT_DETAIL_PRESET_DEFINITIONS,
   LIGHT_PRESET_MAXIMUM_HOLD_MS,
@@ -105,14 +105,14 @@ import {
   lightVisualValueForCapability,
   relativeLightColorTemperature,
   rgbToHsColor
-} from "./light-runtime.js?v=20260901-renderer-light-runtime-v1";
-import { entityMetadataIsAvailable } from "./entity-metadata.js?v=20260901-renderer-entity-metadata-v1";
+} from "./light-runtime.js?v=20260915104327";
+import { entityMetadataIsAvailable } from "./entity-metadata.js?v=20260915104327";
 import {
   relatedVacuumBatteryEntity,
   vacuumActionService,
   vacuumBatteryPercent,
   vacuumSupportedActions
-} from "./vacuum-runtime.js?v=20260901-renderer-vacuum-runtime-v1";
+} from "./vacuum-runtime.js?v=20260915104327";
 import {
   airerDevicePosition,
   airerPositionCalibration,
@@ -145,13 +145,13 @@ import {
   runtimeCoverStateIsActive,
   runtimeEntityStateIsActive,
   waterHeaterRelatedEntityLabel
-} from "./cover-runtime.js?v=20260901-renderer-cover-runtime-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1";
+} from "./cover-runtime.js?v=20260915104327";
 import {
   playFixedDeviceDropEntrance,
   playMediaSpeakerEntrance,
   playStableRuntimeDialogEntrance,
   runtimeDialogUsesStableMotion
-} from "./runtime-dialog-motion.js?v=20260901-renderer-dialog-motion-v1";
+} from "./runtime-dialog-motion.js?v=20260915104327";
 import {
   HISTORY_FETCH_TIMEOUT_MS,
   HistoryRefreshCoordinator,
@@ -161,13 +161,13 @@ import {
   cacheHistorySeries,
   historyRequestStillRelevant,
   historySeriesCacheKey
-} from "./runtime-caches.js?v=20260901-renderer-runtime-caches-v1";
+} from "./runtime-caches.js?v=20260915104327";
 import {
   collectComponents,
   collectEntityIds,
   lineChartRuntimeStateNeedsHydration,
   syncedLineChartProperties
-} from "./runtime-document.js?v=20260901-renderer-runtime-document-v1";
+} from "./runtime-document.js?v=20260915104327";
 export { setBuiltinAssetVersions as setBuiltinAssetVersions };
 export {
   airflowCanvasOffsetBounds as airflowCanvasOffsetBounds,

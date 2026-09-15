@@ -1,4 +1,4 @@
-import { setupGlobalLog } from "./global-log.js?v=20260905-global-log-v2";
+import { setupGlobalLog } from "./global-log.js?v=20260915104327";
 async function requestJson(path, init = {}) {
   const response = await fetch("/api/v1" + path, {
     cache: "no-store",

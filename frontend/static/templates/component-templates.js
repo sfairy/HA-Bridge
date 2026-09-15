@@ -1,4 +1,4 @@
-import { interaction3dTemplate } from "../modules/interaction3d/definition.js?v=20260911-page-dimming-defaults-v1";
+import { interaction3dTemplate } from "../modules/interaction3d/definition.js?v=20260915104327";
 const templatesByKey = new Map();
 registerComponentTemplate(interaction3dTemplate);
 const uiPackDefinitionsById = new Map();

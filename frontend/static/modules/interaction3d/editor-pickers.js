@@ -2,8 +2,8 @@ import {
   EDITOR_PICKER_PAGE_SIZES,
   editorEntityPickerInitialPage,
   editorEntityPickerPage
-} from "../../editor-picker-pagination.js?v=20260830-editor-picker-pagination-v1";
-import { createEditorPickerQueries } from "../../editor-picker-queries.js?v=20260830-editor-picker-queries-v1";
+} from "../../editor-picker-pagination.js?v=20260915104327";
+import { createEditorPickerQueries } from "../../editor-picker-queries.js?v=20260915104327";
 import { vacuumProfiles } from "./vacuum-catalog.js";
 import { nasProfiles } from "./nas-catalog.js";
 const DEFAULT_LIGHT_ICON = "mdi:lightbulb-outline";

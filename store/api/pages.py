@@ -106,7 +106,7 @@ def _cashier_html(order: Order, product: Product | None) -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>模拟收银台 · {payload['orderNo']}</title>
 <link rel="stylesheet" href="/store-static/bootstrap.min.css">
-<link rel="stylesheet" href="/store-static/theme.css?v=20260915-unified-theme-v1">
+<link rel="stylesheet" href="/store-static/theme.css?v=20260915104327">
 <link rel="icon" href="/store-static/favicon-rounded.png">
 <style>
   /* 统一主题已在 theme.css 里给出暗色画布与 Bootstrap 皮肤，

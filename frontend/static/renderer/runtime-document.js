@@ -1,5 +1,5 @@
-import { selectedRelatedEntityIds } from "../related-entities.js?v=20260825-bath-heater-primary-v1";
-import { isVirtualEntityId } from "../virtual-entities.js?v=20260822-icon-visibility-v1";
+import { selectedRelatedEntityIds } from "../related-entities.js?v=20260915104327";
+import { isVirtualEntityId } from "../virtual-entities.js?v=20260915104327";
 export function lineChartRuntimeStateNeedsHydration(stateOrChange) {
   const stateObject = stateOrChange?.newState || stateOrChange;
   if (!stateObject) {

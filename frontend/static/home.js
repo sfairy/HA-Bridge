@@ -1,14 +1,14 @@
-import { showDisplayPairingQr } from "./display-pairing-qr.js?v=20260914-unified-v3";
+import { showDisplayPairingQr } from "./display-pairing-qr.js?v=20260915104327";
 import {
   PanelRenderer,
   airflowCanvasOffsetBounds,
   setBuiltinAssetVersions,
   syncedLineChartProperties
-} from "./renderer/renderer.js?v=20260909-curtain-action-v15-20260911-navigation-light-v14-20260911-security-camera-popup-v6-quiet-feedback-v1-stage-retain-v1-edit-isolation-v1-20260914-group-canvas-drag-v1";
+} from "./renderer/renderer.js?v=20260915104327";
 import {
   lightStatisticsEntityStateStatus,
   lightStatisticsEntitySupport
-} from "./renderer/registry.js?v=20260814-tablet-resolution-v84-20260818-airer-v1-20260822-light-feedback-controls-v1-20260822-icon-visibility-v3-20260822-line-chart-performance-v3-20260822-unsupported-light-effect-v1-20260823-hidden-content-clickable-v1-20260823-effect-variant-v1-20260823-navigation-current-page-v1-20260824-light-statistics-v6-20260825-effect-load-queue-v1-20260825-vacuum-map-preload-v1-20260825-static-image-cache-v1-20260825-editor-media-preview-v1-20260828-count-statistics-v1-20260831-background-media-v1-20260831-vacuum-map-background-v1-20260901-renderer-presence-runtime-v1-20260901-renderer-light-statistics-runtime-v1-20260901-renderer-line-chart-runtime-v1-20260901-renderer-door-window-runtime-v1-20260901-renderer-weather-chart-v2-20260901-renderer-date-time-runtime-v1-20260901-camera-prewarm-v1-20260901-vacuum-map-retry-v1-20260901-light-effect-first-frame-v1-20260901-light-effect-toggle-confirm-v1-20260901-light-effect-layering-v2-20260901-light-effect-color-cache-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260905-client-log-v1-20260906-i3d-complete-v6-20260827-runtime-hydration-retry-v1-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1";
+} from "./renderer/registry.js?v=20260915104327";
 import {
   applyUiPackToDocument,
   createComponentFromTemplate,
@@ -17,7 +17,7 @@ import {
   listComponentTemplates,
   timeComponentDimensions,
   weatherComponentDimensions
-} from "./ui-packs/loader.js?v=20260811-water-heater-popup-v44-20260815-component-thumbnails-v2-20260822-light-feedback-controls-v1-20260824-light-statistics-v6-20260828-count-statistics-v1-20260902-camera-popup-ready-v1-20260902-floorplan-auto-diagram-v12-20260904-auto-diagram-floor-v1-20260908-environment-v1-20260908-lighting-mode-v1";
+} from "./ui-packs/loader.js?v=20260915104327";
 import {
   clone,
   newId,
@@ -29,21 +29,21 @@ import {
   roundField,
   clampNumber,
   normalizedFontWeight
-} from "./editor-utils.js?v=20260831-editor-utils-v1";
+} from "./editor-utils.js?v=20260915104327";
 import {
   packPopupModules,
   popupLayoutColumns,
   popupLayoutMetrics
-} from "./popup-layout.js?v=20260821-electric-bed-combo-v2";
+} from "./popup-layout.js?v=20260915104327";
 import {
   countComponentsOutsideCanvas,
   resizeDashboardDocument
-} from "./dashboard-resize.js?v=20260820-dashboard-resize-v439";
+} from "./dashboard-resize.js?v=20260915104327";
 import {
   copyComponentsAcrossDocuments,
   copyComponentTargets,
   copyComponentsToTarget
-} from "./component-page-copy.js?v=20260826-cross-dashboard-copy-v4";
+} from "./component-page-copy.js?v=20260915104327";
 import {
   RELATED_ENTITY_DOMAIN_LABELS,
   legacyRelatedEntityIds,
@@ -55,24 +55,24 @@ import {
   relatedPopupContext,
   relatedPopupSelectionLimit,
   selectedRelatedEntityIds
-} from "./related-entities.js?v=20260825-bath-heater-primary-v1";
-import { createIconVisibilityVirtualEntity } from "./virtual-entities.js?v=20260822-icon-visibility-v1";
-import { createButtonSound } from "./sound-effects.js?v=20260826-button-sound-v2";
+} from "./related-entities.js?v=20260915104327";
+import { createIconVisibilityVirtualEntity } from "./virtual-entities.js?v=20260915104327";
+import { createButtonSound } from "./sound-effects.js?v=20260915104327";
 import {
   deferHiddenEditorDialogs,
   installSettingsDialogBackdropGuard
-} from "./editor-dialogs.js?v=20260830-editor-dialogs-v1";
-import { createEditorPickerElements } from "./editor-picker-elements.js?v=20260902-asset-display-name-v1";
+} from "./editor-dialogs.js?v=20260915104327";
+import { createEditorPickerElements } from "./editor-picker-elements.js?v=20260915104327";
 import {
   EDITOR_PICKER_PAGE_SIZES,
   editorEntityPickerInitialPage,
   editorEntityPickerPage
-} from "./editor-picker-pagination.js?v=20260830-editor-picker-pagination-v1";
-import { createEditorPickerQueries } from "./editor-picker-queries.js?v=20260830-editor-picker-queries-v1";
-import { createEditorAssetMatcher } from "./editor-asset-queries.js?v=20260830-editor-asset-queries-v1";
-import { createEditorPickerLifecycle } from "./editor-picker-lifecycle.js?v=20260831-editor-picker-lifecycle-v1";
-import { createInteraction3dEditorPickers } from "./modules/interaction3d/editor-pickers.js?v=20260910-presence-v9-20260906-i3d-buttons-v1-20260908-environment-v1-20260908-curtains-v1-20260908-nas-v1-20260908-devices-entry-v1-20260908-nas-status-panel-v1-television-v1-20260908-vacuum-v1-20260911-device-room-integration-v3-light-all-entities-v1-entity-picker-all-v1";
-import { createEditorAssetToolbar } from "./editor-asset-toolbar.js?v=20260902-asset-folder-delete-v1";
+} from "./editor-picker-pagination.js?v=20260915104327";
+import { createEditorPickerQueries } from "./editor-picker-queries.js?v=20260915104327";
+import { createEditorAssetMatcher } from "./editor-asset-queries.js?v=20260915104327";
+import { createEditorPickerLifecycle } from "./editor-picker-lifecycle.js?v=20260915104327";
+import { createInteraction3dEditorPickers } from "./modules/interaction3d/editor-pickers.js?v=20260915104327";
+import { createEditorAssetToolbar } from "./editor-asset-toolbar.js?v=20260915104327";
 import {
   ACTION_TYPES,
   TOGGLE_ENTITY_DOMAINS,
@@ -80,13 +80,13 @@ import {
   actionPopupData,
   componentActionIsSupported,
   entityIdSupportsToggle
-} from "./action-rules.js?v=20260831-action-rules-v1";
+} from "./action-rules.js?v=20260915104327";
 import {
   componentDirectLocation,
   findComponent,
   findComponentInItems,
   findComponentLocation
-} from "./component-tree.js?v=20260831-component-tree-v1";
+} from "./component-tree.js?v=20260915104327";
 import {
   applyCollectionLayerOrder,
   componentLabel,
@@ -96,13 +96,13 @@ import {
   nextTemplateInstanceName,
   refreshComponentIds,
   syncSharedComponentReferenceOrder
-} from "./editor-component-collections.js?v=20260831-editor-component-collections-v1";
+} from "./editor-component-collections.js?v=20260915104327";
 import {
   fitInspectorComponentToDimensions,
   iconButtonEffectInspectorLayer,
   inspectorComponentMetrics,
   setInspectorToggle
-} from "./editor-basic-inspectors.js?v=20260901-editor-basic-inspectors-v4";
+} from "./editor-basic-inspectors.js?v=20260915104327";
 import {
   clonePageWithFreshIds,
   findCustomPopup,
@@ -113,7 +113,7 @@ import {
   popupModuleTypeLabel,
   reorderedPopupModules,
   uniquePagePath
-} from "./editor-document-management.js?v=20260901-editor-document-management-v1";
+} from "./editor-document-management.js?v=20260915104327";
 import {
   createRecoveryWriter,
   documentSignature,
@@ -121,18 +121,18 @@ import {
   editorComponentStructure,
   editorDocumentFrameSignature,
   recoveryStorageKey
-} from "./editor-history.js?v=20260909-preview-sleep-v1-edit-isolation-v1";
+} from "./editor-history.js?v=20260915104327";
 import {
   DEFAULT_BASE_LIGHTING,
   normalizeBaseLighting
-} from "./3d-studio/studio-normalization.js?v=20260903-studio-normalization-v2";
-import { createLicenseCard } from "./license-card.js?v=20260905-custom-packages-v1";
+} from "./3d-studio/studio-normalization.js?v=20260915104327";
+import { createLicenseCard } from "./license-card.js?v=20260915104327";
 import {
   guardInteraction3dChanges,
   renderInteraction3dThumbnail,
   updateInteraction3dCard,
   renderInteraction3dInspector
-} from "./modules/interaction3d/editor.js?v=20260911-unified-device-settings-v3-navigation-scale-v1-stage-retain-v1-uniform-stack-v7-inspector-note-v1-furniture-plan-v1-background-theme-v2-edit-isolation-v1";
+} from "./modules/interaction3d/editor.js?v=20260915104327";
 const findElement = selector => document.querySelector(selector);
 installSettingsDialogBackdropGuard();
 const EDITOR_DESIGN_WIDTH = 1020;
@@ -3847,7 +3847,7 @@ function renderComponentTemplates() {
         templateThumbnailElement.src =
           "/bridge-static/component-thumbnails/" +
           encodeURIComponent(templateThumbnailId) +
-          ".jpg?v=20260902-component-thumbnails-v3";
+          ".jpg?v=20260915104327";
         templateThumbnailElement.alt = "";
         templatePreviewElement.append(templateThumbnailElement);
       }

@@ -1,17 +1,17 @@
-import { vacuumMapIdentity } from "./vacuum-map.js?v=20260909-curtain-action-v15";
-import { openInteraction3dRangeEditor } from "./range-dialog.js?v=20260912-height-preview-v2";
-import { mountInteraction3d } from "./runtime.js?v=20260911-workspace-switch-v1";
-import { lightState } from "./light-state.js?v=20260906-i3d-render-recovery-v1";
-import { openVacuumMapEditor } from "./vacuum-map-editor.js?v=20260909-curtain-action-v15-furniture-plan-v1";
+import { vacuumMapIdentity } from "./vacuum-map.js?v=20260915104327";
+import { openInteraction3dRangeEditor } from "./range-dialog.js?v=20260915104327";
+import { mountInteraction3d } from "./runtime.js?v=20260915104327";
+import { lightState } from "./light-state.js?v=20260915104327";
+import { openVacuumMapEditor } from "./vacuum-map-editor.js?v=20260915104327";
 import { nasGroups } from "./nas-panel.js";
-import { randomUuid } from "/bridge-static/utils/random-id.js?v=20260724-revert-hold-popup-shield-v324";
-import { interaction3dPreviewSize } from "/bridge-static/modules/interaction3d/preview-layout.js?v=20260906-i3d-preview-layout-v1-20260908-curtains-v1";
+import { randomUuid } from "/bridge-static/utils/random-id.js?v=20260915104327";
+import { interaction3dPreviewSize } from "/bridge-static/modules/interaction3d/preview-layout.js?v=20260915104327";
 import {
   requestInteraction3dAccess,
   getInteraction3dEditorView,
   subscribeInteraction3dAccess
-} from "/bridge-static/modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1";
-import { normalizeInteraction3dLightingMode } from "/bridge-static/modules/interaction3d/definition.js?v=20260909-curtain-action-v15";
+} from "/bridge-static/modules/interaction3d/bridge.js?v=20260915104327";
+import { normalizeInteraction3dLightingMode } from "/bridge-static/modules/interaction3d/definition.js?v=20260915104327";
 const APPEARANCE_GROUPS = [
   [
     "整体",
@@ -153,7 +153,7 @@ export async function openInteraction3dEditor({
   const styleSheetLinkElement = document.createElement("link");
   styleSheetLinkElement.rel = "stylesheet";
   styleSheetLinkElement.href =
-    "/api/v1/modules/interaction3d/runtime.css?v=20260912-config-empty-layout-v2";
+    "/api/v1/modules/interaction3d/runtime.css?v=20260915104327";
   document.head.append(styleSheetLinkElement);
   const createElement = (tagName, classNames, initialText) => {
     const createdElement = document.createElement(tagName);
@@ -3419,7 +3419,7 @@ export async function openInteraction3dAppearanceEditor({
   const appearanceStyleLinkElement = document.createElement("link");
   appearanceStyleLinkElement.rel = "stylesheet";
   appearanceStyleLinkElement.href =
-    "/api/v1/modules/interaction3d/runtime.css?v=20260909-curtain-action-v15";
+    "/api/v1/modules/interaction3d/runtime.css?v=20260915104327";
   document.head.append(appearanceStyleLinkElement);
   const createPlainElement = (plainTagName, plainText = "") => {
     const plainElement = document.createElement(plainTagName);

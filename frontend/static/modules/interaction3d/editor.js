@@ -1,26 +1,26 @@
-import { resolvePageBehavior } from "./page-behavior.js?v=20260911-page-behavior-light-v2";
+import { resolvePageBehavior } from "./page-behavior.js?v=20260915104327";
 import {
   performanceWarnings,
   confirmPerformanceWarning
-} from "./performance-warning.js?v=20260908-performance-warning-v1-motion-resolution-v1";
-import { normalizeGroundReflection } from "./reflection-settings.js?v=20260908-reflections-v1";
+} from "./performance-warning.js?v=20260915104327";
+import { normalizeGroundReflection } from "./reflection-settings.js?v=20260915104327";
 import {
   requestInteraction3dAccess,
   getInteraction3dEditorView,
   waitInteraction3dEditorView,
   cancelOtherInteraction3dViews
-} from "./bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1";
+} from "./bridge.js?v=20260915104327";
 import {
   createInteraction3dCover,
   updateInteraction3dCoverMessage
-} from "./cover.js?v=20260905-interaction3d-cover-v1-20260908-access-lock-v1";
-import { withRequestTimeout } from "../../utils/request-timeout.js?v=20260907-browser-compat-v1";
+} from "./cover.js?v=20260915104327";
+import { withRequestTimeout } from "../../utils/request-timeout.js?v=20260915104327";
 import {
   INTERACTION3D_LIGHTING_MODES,
   normalizeInteraction3dLightingMode,
   BACKGROUND_THEMES,
   normalizeBackgroundTheme
-} from "./definition.js?v=20260905-interaction3d-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-background-theme-v2";
+} from "./definition.js?v=20260915104327";
 export function interaction3dEntries(componentTree, pathSegments = [], entriesByPath = new Map()) {
   if (Array.isArray(componentTree)) {
     componentTree.forEach((arrayItem, arrayIndex) =>
@@ -420,7 +420,7 @@ export function renderInteraction3dInspector(hostElement, targetComponent, edito
       }
       await requestInteraction3dAccess();
       const { openInteraction3dAppearanceEditor: openAppearanceEditor } =
-        await import("/api/v1/modules/interaction3d/config-editor.js?v=20260911-unified-device-settings-v2-furniture-plan-v1-20260912-model-hints-v1-tv-power-poster-v1-entity-picker-all-v1");
+        await import("/api/v1/modules/interaction3d/config-editor.js?v=20260915104327");
       await openAppearanceEditor({
         component: targetComponent,
         onSave: savedBaseLighting =>
@@ -452,7 +452,7 @@ export function renderInteraction3dInspector(hostElement, targetComponent, edito
     configureDevicesButton.disabled = true;
     try {
       const { openInteraction3dEditor: openDevicesEditor } =
-        await import("/api/v1/modules/interaction3d/config-editor.js?v=20260911-unified-device-settings-v2-furniture-plan-v1-20260912-model-hints-v1-tv-power-poster-v1-entity-picker-all-v1");
+        await import("/api/v1/modules/interaction3d/config-editor.js?v=20260915104327");
       await openDevicesEditor({
         component: targetComponent,
         deviceKind: "devices",
@@ -485,7 +485,7 @@ export function renderInteraction3dInspector(hostElement, targetComponent, edito
     try {
       await requestInteraction3dAccess();
       const { openSecurityEditor: openSecurityEditor } =
-        await import("/api/v1/modules/interaction3d/security-editor.js?v=20260911-security-focal-v1-wave-settings-v1-20260912-model-hint-v1-detection-triggers-v1");
+        await import("/api/v1/modules/interaction3d/security-editor.js?v=20260915104327");
       await openSecurityEditor({
         component: targetComponent,
         panelDocument: editorOptions.document,
@@ -513,7 +513,7 @@ export function renderInteraction3dInspector(hostElement, targetComponent, edito
     configureVacuumButton.disabled = true;
     try {
       const { openInteraction3dEditor: openVacuumEditor } =
-        await import("/api/v1/modules/interaction3d/config-editor.js?v=20260911-unified-device-settings-v2-furniture-plan-v1-20260912-model-hints-v1-tv-power-poster-v1-entity-picker-all-v1");
+        await import("/api/v1/modules/interaction3d/config-editor.js?v=20260915104327");
       await openVacuumEditor({
         component: targetComponent,
         deviceKind: "vacuum",
@@ -582,7 +582,7 @@ export function renderInteraction3dInspector(hostElement, targetComponent, edito
     try {
       await requestInteraction3dAccess();
       const { openInteraction3dEditor: openLightingEditor } =
-        await import("/api/v1/modules/interaction3d/config-editor.js?v=20260911-unified-device-settings-v2-furniture-plan-v1-20260912-model-hints-v1-tv-power-poster-v1-entity-picker-all-v1");
+        await import("/api/v1/modules/interaction3d/config-editor.js?v=20260915104327");
       await openLightingEditor({
         component: targetComponent,
         document: editorOptions.document,
@@ -610,7 +610,7 @@ export function renderInteraction3dInspector(hostElement, targetComponent, edito
     try {
       await requestInteraction3dAccess();
       const { openInteraction3dEditor: openEnvironmentEditor } =
-        await import("/api/v1/modules/interaction3d/config-editor.js?v=20260911-unified-device-settings-v2-furniture-plan-v1-20260912-model-hints-v1-tv-power-poster-v1-entity-picker-all-v1");
+        await import("/api/v1/modules/interaction3d/config-editor.js?v=20260915104327");
       await openEnvironmentEditor({
         component: targetComponent,
         deviceKind: "environment",

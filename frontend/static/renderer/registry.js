@@ -1,4 +1,4 @@
-import { randomUuid } from "../utils/random-id.js?v=20260724-revert-hold-popup-shield-v324";
+import { randomUuid } from "../utils/random-id.js?v=20260915104327";
 import {
   climateDefaultIcon,
   climateEffectMode,
@@ -7,10 +7,10 @@ import {
   climatePresentationMode,
   normalizeClimateCapabilities,
   resolveClimateDeviceType
-} from "./climate.js?v=20260812-presence-phase-v79-20260904-climate-capability-options-v3";
-import { entityPowerIsOn } from "./entity-power.js?v=20260813-generic-device-power-v2";
-import { lightRealtimeCapabilities } from "./light-runtime.js?v=20260901-renderer-light-runtime-v1";
-import { renderInteraction3d } from "../modules/interaction3d/bridge.js?v=20260906-i3d-complete-v6-20260908-access-lock-v1-20260908-environment-v1-20260908-lighting-mode-v1-20260908-curtains-v1-20260908-range-dialog-v3-20260908-range-controls-v1-20260908-batch-center-v1-20260908-add-device-dialog-v1-20260911-navigation-light-v14-stage-retain-v1";
+} from "./climate.js?v=20260915104327";
+import { entityPowerIsOn } from "./entity-power.js?v=20260915104327";
+import { lightRealtimeCapabilities } from "./light-runtime.js?v=20260915104327";
+import { renderInteraction3d } from "../modules/interaction3d/bridge.js?v=20260915104327";
 const componentsByType = new Map();
 registerComponent("interaction3d", {
   render: renderInteraction3d
@@ -409,18 +409,18 @@ import {
   lightStatisticsEntityStateStatus,
   lightStatisticsEntitySupport,
   lightStatisticsSummary
-} from "./light-statistics-runtime.js?v=20260901-renderer-light-statistics-runtime-v1";
+} from "./light-statistics-runtime.js?v=20260915104327";
 import {
   automaticNumericPrecision,
   formatLineChartValue,
   formatNumericValue,
   lineChartGeometry,
   normalizedStatePrecision
-} from "./line-chart-runtime.js?v=20260901-renderer-line-chart-runtime-v1";
+} from "./line-chart-runtime.js?v=20260915104327";
 import {
   doorWindowPerspectiveCorners,
   doorWindowPerspectiveMatrix
-} from "./door-window-runtime.js?v=20260901-renderer-door-window-runtime-v1";
+} from "./door-window-runtime.js?v=20260915104327";
 import {
   automaticThresholds,
   meteoconUrl,
@@ -429,12 +429,12 @@ import {
   smoothChartPath,
   thresholdColor,
   weatherVisual
-} from "./weather-chart-runtime.js?v=20260901-renderer-weather-chart-runtime-v2";
+} from "./weather-chart-runtime.js?v=20260915104327";
 import {
   formatLocalDate,
   formatLocalTime,
   formatLunarDate
-} from "./date-time-runtime.js?v=20260901-renderer-date-time-runtime-v1";
+} from "./date-time-runtime.js?v=20260915104327";
 export {
   lightStatisticsEntityStateStatus as lightStatisticsEntityStateStatus,
   lightStatisticsEntitySupport as lightStatisticsEntitySupport,
@@ -464,7 +464,7 @@ import {
   presenceMotionEventConfig,
   presenceSensorPresentation,
   presenceStateTimestamp
-} from "./presence-runtime.js?v=20260901-renderer-presence-runtime-v1";
+} from "./presence-runtime.js?v=20260915104327";
 export {
   formatPresenceDuration as formatPresenceDuration,
   presenceAnimationPhase as presenceAnimationPhase,

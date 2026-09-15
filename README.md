@@ -4,7 +4,7 @@
 
 提供可视化编辑器、3D 户型工作室、全屏展示页和中控配对；后端是 FastAPI，前端是原生 HTML / CSS / JavaScript，数据默认落在本机 SQLite。
 
-本仓库是可本地运行的源码树。**授权校验始终开启**，激活走仓库自带的自建授权商店与授权服务器（`store/`），不连接任何外部厂商节点。仓库中的后端 Python 与前端 JavaScript 均已从发布包完整还原为可读源码，详见 [RESTORE-REPORT.md](RESTORE-REPORT.md)。
+本仓库是可本地运行的源码树。**授权校验始终开启**，激活走仓库自带的自建授权商店与授权服务器（`store/`），不连接任何外部厂商节点。
 
 ## 功能
 
@@ -84,8 +84,7 @@ HA-Bridge/app/
 ├── migrations/             # Alembic 迁移 0001–0014
 ├── image/v1/               # 内置素材与示例户型图
 ├── dashboard_templates/    # 内置仪表盘模板
-├── tools/                  # 还原与校验工具链（见「源码还原与工具链」）
-├── HA-Bridge/              # 0.5.2.1 原始参考树（未纳入版本库，可自行删除）
+├── tools/                  # bump_static_cache_versions.mjs（静态资源 ?v=）
 ├── data/                   # 主应用运行时数据（不入库）
 ├── .env.example            # 本地密钥与配置模板（复制为 .env）
 ├── alembic.ini  VERSION  start.py  container_entrypoint.py
@@ -95,7 +94,7 @@ HA-Bridge/app/
 
 不要删除 `frontend/`。内置素材目录 `image/` 可自行增删，编辑器里也可改用用户上传图片。
 
-以下内容已写入 `.gitignore`：`data/`、`store/data/`、`store/keys/`、`.env*`、`.venv-store/`、`*.pem.key`、`tools/reference/.extracted/`。
+以下内容已写入 `.gitignore`：`data/`、`store/data/`、`store/keys/`、`.env*`、`.venv-store/`、`*.pem.key`。
 
 ## 环境
 
@@ -361,7 +360,7 @@ export APP_LICENSE_TRANSPORT_PUBLIC_KEY_SHA256=<gen_keys 打印的传输公钥 s
 
 ## 环境变量
 
-主应用、商店与还原工具的变量可以统一写进仓库根目录的 `.env`（见 [.env.example](.env.example)，已 gitignore）。优先级：**真实环境变量 > `.env` > 代码 / `start.py` 默认值**。
+主应用与商店的变量可以统一写进仓库根目录的 `.env`（见 [.env.example](.env.example)，已 gitignore）。优先级：**真实环境变量 > `.env` > 代码 / `start.py` 默认值**。
 
 ### 主应用
 
@@ -437,32 +436,22 @@ docker cp ha-bridge:/tmp/app.tar.gz ~/Desktop/
 docker exec ha-bridge rm /tmp/app.tar.gz
 ```
 
-## 源码还原与工具链
+## 开发工具
 
-本仓库的后端与前端源码由发布包还原而来，全过程、依据与验证结果见 [RESTORE-REPORT.md](RESTORE-REPORT.md)：
-
-- 后端：PyArmor 加固产物（`.1shot.seq` / `.1shot.das` / `.1shot.cdc.py`）→ 66 个可读 `.py` 文件，以 `.das` 反汇编为唯一真相来源。
-- 迁移：`alembic_runtime/` 壳（`sourceless = true`）→ `migrations/` 下 14 个真实脚本（`0001 → 0014` 线性链）。
-- 前端：`webcrack` 反混淆 → 导入别名还原 → 作用域感知局部重命名 → 语义化重命名，共 165 个文件、27 748 个机械名 / 短名全部替换。
-
-一键校验：
+改 JS / CSS / HTML 后统一 bump 静态资源缓存戳：
 
 ```bash
-tools/verify_all.sh
+node tools/bump_static_cache_versions.mjs
 ```
 
-覆盖 16 项断言：PyArmor 残留、Python 语法、导入与 `.das` 一致、标识符 / 字符串常量一致、JS 可解析、混淆残留、模块图、字符串保真、应用启动与请求流、残留机械名、格式敏感契约、前端公共 API 冻结、命名分类器自检、经典脚本全局耦合、Prettier 格式。
-
-前端标识符命名规范见 [frontend/NAMING.md](frontend/NAMING.md)：只允许改动词法绑定名，导出名冻结，映射文件保留在 `tools/rename-maps/`，可用 `tools/replay_frontend_rename.sh` 独立重放。
-
-> 还原参考包在 `tools/reference/`（`.das` 参考包与原始混淆前端），首次运行校验脚本时自动解压到 `tools/reference/.extracted/`（可安全删除，会按需重建）。仓库根 `HA-Bridge/` 是 0.5.2.1 原始参考树，未纳入版本库，可自行删除。
+前端标识符约定见 [frontend/NAMING.md](frontend/NAMING.md)。
 
 ## 开发注意
 
-- 修改业务 JavaScript 后，保留 HTML / `import` 里的 `?v=` 缓存标记。`home.js` 与 `renderer.js` 必须使用同一条 `registry.js?v=`，否则会出现两份控件注册表。
-- 前端 JS / CSS / HTML 遵循 [.prettierrc.json](.prettierrc.json)（`printWidth=100`，HTML 为 120），`verify_all.sh` 第 15 项会守住格式。`frontend/static/vendor/` 与 `tools/reference/` 不参与格式化。
+- 静态资源缓存标记统一为 `?v=YYYYMMDDHHMMSS`（14 位本地时间，例如 `?v=20260915103715`），不要再拼接 feature-label 长串。改 JS / CSS / HTML 后执行 `node tools/bump_static_cache_versions.mjs` 全局同戳 bump；`home.js` 与 `renderer.js` 必须使用同一条 `registry.js?v=`，否则会出现两份控件注册表。
+- 前端 JS / CSS / HTML 遵循 [.prettierrc.json](.prettierrc.json)（`printWidth=100`，HTML 为 120）。`frontend/static/vendor/` 不参与格式化。
 - 不要改 `frontend/static/vendor/` 下的 three.js、hls.js、OrbitControls 等第三方文件。
-- 界面中文文案保持原词；前端改名时字符串与 `?v=` 缓存串逐字节保留。
+- 界面中文文案保持原词；缓存戳改动请用 `tools/bump_static_cache_versions.mjs`。
 - 静态资源是扁平目录：`/bridge-static/home.js`、`/bridge-static/app.css`；子目录为 `renderer/`、`3d-studio/`、`modules/`、`utils/`、`templates/`、`ui-packs/`、`component-thumbnails/`、`audio/`、`vendor/`。
 - `migrations/env.py` 必须从 `backend/app` 导入 `database` 和 `models`（`from backend.app.database import Base`），不要写成相对导入，否则会重复注册表。
 - 3D 交互舞台脚本由 `/api/v1/modules/interaction3d/{filename}` 下发，需要已登录或已配对，且当前授权允许编辑器或 `module.3d_interaction`。
@@ -483,20 +472,19 @@ tools/verify_all.sh
 - 客户端默认零配置指向自建授权服务器（`backend/app/config.py` 内置端点、keyId 与公钥 sha256），厂商生产节点与生产公钥已彻底移除。
 - 仓库根 `keys/` 作为客户端信任锚公钥镜像，由 `store.tools.gen_keys` 从 `store/keys/local/` 自动同步，二者逐字节一致。
 - 新增 `.env` / `.env.example` 本地配置（SMTP 授权码、支付宝私钥等不进版本库）与 `store/env.py` 极简加载器。
-- 新增还原与校验工具链 `tools/`（`verify_all.sh` 16 项断言、`restore_backend.py`、前端反混淆与重命名脚本、`rename-maps/` 映射与重放脚本、`reference/` 参考包）。
-- 新增 [RESTORE-REPORT.md](RESTORE-REPORT.md) 还原报告与 [frontend/NAMING.md](frontend/NAMING.md) 前端命名规范。
+- 新增 `tools/bump_static_cache_versions.mjs`（统一静态资源 `?v=YYYYMMDDHHMMSS`）。
+- 新增 [frontend/NAMING.md](frontend/NAMING.md) 前端命名规范。
 - 新增 `release-manifest.json`、`sbom.cdx.json`、`.prettierrc.json` / `.prettierignore`。
 
 优化
 
-- 后端与前端源码从发布包完整还原为可读源码：66 个 Python 文件零 PyArmor 残留，165 个前端 JS 文件零混淆残留，27 748 个机械名 / 短名全部替换为语义名。
-- Alembic 迁移改为 `migrations/` 下的 14 个真实脚本（`0001 → 0014`），移除 `sourceless = true` 运行时壳。
+- 后端与前端源码可读性与命名规范化；Alembic 迁移为 `migrations/` 下 14 个真实脚本（`0001 → 0014`）。
 - 依赖收敛到 `store/requirements.txt`，主应用与商店共用一个虚拟环境 `.venv-store`。
 
 说明
 
 - 授权校验始终开启，激活只连接自建授权服务器，不接入官方授权云。
-- 本版本为源码还原版，功能面与 0.5.2.1 保持一致，主要差异在授权体系与可读性 / 可验证性。
+- 功能面与 0.5.2.1 保持一致，主要差异在授权体系。
 
 ### v0.5.2.1
 

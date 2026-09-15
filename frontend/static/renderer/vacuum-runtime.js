@@ -1,4 +1,4 @@
-import { entityMetadataIsAvailable } from "./entity-metadata.js?v=20260901-renderer-entity-metadata-v1";
+import { entityMetadataIsAvailable } from "./entity-metadata.js?v=20260915104327";
 const VACUUM_FEATURE_FLAGS = Object.freeze({
   turn_on: 1,
   turn_off: 2,

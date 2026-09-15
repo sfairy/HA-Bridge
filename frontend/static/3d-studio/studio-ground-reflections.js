@@ -1,5 +1,5 @@
 import { normalizeGroundReflection } from "../modules/interaction3d/reflection-settings.js";
-import { createReflectionCulling } from "./studio-reflection-culling.js?v=20260910-reflection-shared-v20";
+import { createReflectionCulling } from "./studio-reflection-culling.js?v=20260915104327";
 export function createGroundReflections({
   THREE: THREE,
   renderer: renderer,

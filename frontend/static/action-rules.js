@@ -1,4 +1,4 @@
-import { isVirtualEntityId } from "./virtual-entities.js?v=20260822-icon-visibility-v1";
+import { isVirtualEntityId } from "./virtual-entities.js?v=20260915104327";
 export const ACTION_TYPES = Object.freeze(["toggle", "more-info", "navigate"]);
 export const POPUP_SOURCES = Object.freeze(["current", "entity", "custom"]);
 export const TOGGLE_ENTITY_DOMAINS = new Set([
