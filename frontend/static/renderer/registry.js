@@ -1,4 +1,4 @@
-import { randomUuid } from "../utils/random-id.js?v=20260915152715";
+import { randomUuid } from "../utils/random-id.js?v=20260915153337";
 import {
   climateDefaultIcon,
   climateEffectMode,
@@ -7,10 +7,10 @@ import {
   climatePresentationMode,
   normalizeClimateCapabilities,
   resolveClimateDeviceType
-} from "./climate.js?v=20260915152715";
-import { entityPowerIsOn } from "./entity-power.js?v=20260915152715";
-import { lightRealtimeCapabilities } from "./light-runtime.js?v=20260915152715";
-import { renderInteraction3d } from "../modules/interaction3d/bridge.js?v=20260915152715";
+} from "./climate.js?v=20260915153337";
+import { entityPowerIsOn } from "./entity-power.js?v=20260915153337";
+import { lightRealtimeCapabilities } from "./light-runtime.js?v=20260915153337";
+import { renderInteraction3d } from "../modules/interaction3d/bridge.js?v=20260915153337";
 const componentsByType = new Map();
 registerComponent("interaction3d", {
   render: renderInteraction3d
@@ -409,18 +409,18 @@ import {
   lightStatisticsEntityStateStatus,
   lightStatisticsEntitySupport,
   lightStatisticsSummary
-} from "./light-statistics-runtime.js?v=20260915152715";
+} from "./light-statistics-runtime.js?v=20260915153337";
 import {
   automaticNumericPrecision,
   formatLineChartValue,
   formatNumericValue,
   lineChartGeometry,
   normalizedStatePrecision
-} from "./line-chart-runtime.js?v=20260915152715";
+} from "./line-chart-runtime.js?v=20260915153337";
 import {
   doorWindowPerspectiveCorners,
   doorWindowPerspectiveMatrix
-} from "./door-window-runtime.js?v=20260915152715";
+} from "./door-window-runtime.js?v=20260915153337";
 import {
   automaticThresholds,
   meteoconUrl,
@@ -429,12 +429,12 @@ import {
   smoothChartPath,
   thresholdColor,
   weatherVisual
-} from "./weather-chart-runtime.js?v=20260915152715";
+} from "./weather-chart-runtime.js?v=20260915153337";
 import {
   formatLocalDate,
   formatLocalTime,
   formatLunarDate
-} from "./date-time-runtime.js?v=20260915152715";
+} from "./date-time-runtime.js?v=20260915153337";
 export {
   lightStatisticsEntityStateStatus as lightStatisticsEntityStateStatus,
   lightStatisticsEntitySupport as lightStatisticsEntitySupport,
@@ -464,7 +464,7 @@ import {
   presenceMotionEventConfig,
   presenceSensorPresentation,
   presenceStateTimestamp
-} from "./presence-runtime.js?v=20260915152715";
+} from "./presence-runtime.js?v=20260915153337";
 export {
   formatPresenceDuration as formatPresenceDuration,
   presenceAnimationPhase as presenceAnimationPhase,
@@ -1172,32 +1172,52 @@ function attachChartTooltip(
     const isInsideDialogLayer =
       dialogLayerElement && tooltipElement.parentElement === dialogLayerElement;
     const dialogRect = isInsideDialogLayer ? dialogLayerElement.getBoundingClientRect() : null;
-    const dialogOffsetX = isInsideDialogLayer ? pageX - dialogRect.left : pageX;
-    const dialogOffsetY = isInsideDialogLayer ? pageY - dialogRect.top : pageY;
+    const chartScale =
+      tooltipParentElement === chartContainerElement
+        ? rootRect.width /
+          Math.max(1, chartRootElement.viewBox?.baseVal?.width || chartRootElement.clientWidth)
+        : containerRect.width / Math.max(1, chartContainerElement.offsetWidth);
+    const scaleParentElement = isInsideContainer
+      ? chartContainerElement
+      : isInsideDialogLayer
+        ? dialogLayerElement
+        : null;
+    const scaleParentRect = isInsideContainer ? containerRect : dialogRect;
+    const parentScaleX = scaleParentElement
+      ? scaleParentRect.width / Math.max(1, scaleParentElement.offsetWidth)
+      : 1;
+    const parentScaleY = scaleParentElement
+      ? scaleParentRect.height / Math.max(1, scaleParentElement.offsetHeight)
+      : 1;
+    const dialogOffsetX = isInsideDialogLayer ? (pageX - dialogRect.left) / parentScaleX : pageX;
+    const dialogOffsetY = isInsideDialogLayer ? (pageY - dialogRect.top) / parentScaleY : pageY;
     tooltipElement.textContent =
       formatHistoryTimestamp(closestSample.timestamp) +
       "  " +
       formatLineChartValue(closestSample.value, valuePrecision) +
       valueSuffix;
     tooltipElement.style.position = isInsideContainer || isInsideDialogLayer ? "absolute" : "fixed";
-    tooltipElement.style.left = (isInsideContainer ? offsetX : dialogOffsetX) + "px";
-    tooltipElement.style.top = (isInsideContainer ? offsetY : dialogOffsetY) + "px";
-    const tooltipX = isInsideContainer ? offsetX : dialogOffsetX;
-    const tooltipBoundWidth = isInsideContainer
-      ? containerRect.width
-      : isInsideDialogLayer
-        ? dialogRect.width
-        : window.innerWidth;
+    tooltipElement.style.left =
+      (isInsideContainer ? offsetX / parentScaleX : dialogOffsetX) + "px";
+    tooltipElement.style.top =
+      (isInsideContainer ? offsetY / parentScaleY : dialogOffsetY) + "px";
+    tooltipElement.style.transformOrigin = "0 0";
+    tooltipElement.hidden = false;
+    const scaledTooltipWidth = tooltipElement.offsetWidth * chartScale;
+    const boundLeft = scaleParentRect?.left ?? 0;
+    const boundRight = scaleParentRect?.right ?? window.innerWidth;
+    const translateX =
+      pageX - scaledTooltipWidth / 2 < boundLeft
+        ? "0"
+        : pageX + scaledTooltipWidth / 2 > boundRight
+          ? "-100%"
+          : "-50%";
     tooltipElement.style.transform =
-      tooltipX < 110
-        ? "translate(0, calc(-100% - 9px))"
-        : tooltipX > tooltipBoundWidth - 110
-          ? "translate(-100%, calc(-100% - 9px))"
-          : "translate(-50%, calc(-100% - 9px))";
+      `scale(${chartScale / parentScaleX}, ${chartScale / parentScaleY}) ` +
+      `translate(${translateX}, calc(-100% - 9px))`;
     hoverGuideElement.style.left = percentX + "%";
     hoverDotElement.style.left = percentX + "%";
     hoverDotElement.style.top = percentY + "%";
-    tooltipElement.hidden = false;
     hoverGuideElement.hidden = false;
     hoverDotElement.hidden = false;
   };

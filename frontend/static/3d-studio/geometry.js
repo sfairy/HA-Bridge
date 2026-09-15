@@ -1426,7 +1426,12 @@ function simplifyPolygon(polygonPoints, simplifyTolerance) {
 export function subtractPolygonLoops(baseLoops, holeLoops, loopTolerance = 0.000001) {
   return unionPolygonLoops(baseLoops, loopTolerance, holeLoops);
 }
-export function unionPolygonLoops(loops, loopMergeTolerance = 0.000001, holesToSubtract = []) {
+export function unionPolygonLoops(
+  loops,
+  loopMergeTolerance = 0.000001,
+  holesToSubtract = [],
+  requireCompleteWalks = false
+) {
   const epsilon = Math.max(Number(loopMergeTolerance) || 0, 1e-7);
   const normalizedLoops = (loops || [])
     .filter(rawLoop => Array.isArray(rawLoop) && rawLoop.length >= 3)
@@ -1645,6 +1650,9 @@ export function unionPolygonLoops(loops, loopMergeTolerance = 0.000001, holesToS
         .sort((candidateLeft, candidateRight) => candidateRight.turn - candidateLeft.turn)[0].index;
     }
     if (!isClosed) {
+      if (requireCompleteWalks) {
+        return [];
+      }
       continue;
     }
     const walkPolygon = simplifyPolygon(walkPoints, epsilon * 8);
@@ -1664,7 +1672,7 @@ export function validatedUnionPolygonLoops(inputLoops, validationTolerance = 0.0
   if (!validLoops.length) {
     return [];
   }
-  const mergedLoops = unionPolygonLoops(validLoops, epsilonValue);
+  const mergedLoops = unionPolygonLoops(validLoops, epsilonValue, [], true);
   if (!mergedLoops.length) {
     return [];
   }

@@ -1,14 +1,14 @@
-import { openPresenceFocusEditor } from "./presence-focus-editor.js?v=20260915152715";
+import { openPresenceFocusEditor } from "./presence-focus-editor.js?v=20260915153337";
 import { mountInteraction3d } from "./runtime.js";
 import {
   validPresenceRoute,
   snapsToPresenceStart,
   PRESENCE_TRIGGER_MODES,
   presenceTriggerIsTimed
-} from "./presence-motion.js?v=20260915152715";
+} from "./presence-motion.js?v=20260915153337";
 import { DESIGNS, createWalker, animateWalker, disposeWalker } from "./presence-character.js";
 import { randomUuid } from "/bridge-static/utils/random-id.js";
-import { serializeEditorDraft } from "./editor-save-status.js?v=20260915152715";
+import { serializeEditorDraft } from "./editor-save-status.js?v=20260915153337";
 export async function openPresenceEditor({
   component: component,
   panelDocument: panelDocument,
@@ -66,7 +66,7 @@ export async function openPresenceEditor({
   const styleLinkElement = createElement("link");
   styleLinkElement.rel = "stylesheet";
   styleLinkElement.href =
-    "/api/v1/modules/interaction3d/presence-editor.css?v=20260915152715";
+    "/api/v1/modules/interaction3d/presence-editor.css?v=20260915153337";
   const dialogElement = createElement("dialog", "", "i3d-editor i3d-presence-editor");
   dialogElement.setAttribute("aria-label", manageBindings ? "配置安防" : "人物与行走路线");
   const previouslyFocusedElement = editorDocument.activeElement;

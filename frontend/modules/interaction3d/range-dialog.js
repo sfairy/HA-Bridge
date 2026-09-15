@@ -1,8 +1,8 @@
-import { mountInteraction3d } from "./runtime.js?v=20260915152715";
+import { mountInteraction3d } from "./runtime.js?v=20260915153337";
 import {
   requestInteraction3dAccess,
   subscribeInteraction3dAccess
-} from "/bridge-static/modules/interaction3d/bridge.js?v=20260915152715";
+} from "/bridge-static/modules/interaction3d/bridge.js?v=20260915153337";
 export async function openInteraction3dRangeEditor({
   component: component,
   document: panelDocument,
@@ -27,7 +27,7 @@ export async function openInteraction3dRangeEditor({
   };
   const stylesheetLink = createElement("link");
   stylesheetLink.rel = "stylesheet";
-  stylesheetLink.href = "/api/v1/modules/interaction3d/runtime.css?v=20260915152715";
+  stylesheetLink.href = "/api/v1/modules/interaction3d/runtime.css?v=20260915153337";
   document.head.append(stylesheetLink);
   const dialogElement = createElement("dialog", "i3d-editor i3d-range-dialog");
   dialogElement.setAttribute("aria-label", "照射范围");

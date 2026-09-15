@@ -1,6 +1,7 @@
-import { PanelRenderer } from "./renderer/renderer.js?v=20260915152715";
-import { ensureUiPackRuntime } from "./ui-packs/loader.js?v=20260915152715";
-import { createButtonSound } from "./sound-effects.js?v=20260915152715";
+import { PanelRenderer } from "./renderer/renderer.js?v=20260915153337";
+import { ensureUiPackRuntime } from "./ui-packs/loader.js?v=20260915153337";
+import { createButtonSound } from "./sound-effects.js?v=20260915153337";
+import { syncAppleDisplaySurface } from "./display-surface.js?v=20260915153337";
 const displayRootElement = document.querySelector("#display-root");
 const displayShellElement = document.querySelector("#display-shell");
 const isCapturePreview = new URLSearchParams(window.location.search).get("capturePreview") === "1";
@@ -301,6 +302,7 @@ async function refreshDisplay() {
           return;
         }
         window.HABridgeDisplayBoot?.setDocument(draftResponse.document);
+        syncAppleDisplaySurface(draftResponse.document);
         buttonSound.setEnabled(draftResponse.document?.soundEnabled !== false);
         await resolveUiPack(draftResponse.document);
         let targetAssetsVersion = assetsVersion;

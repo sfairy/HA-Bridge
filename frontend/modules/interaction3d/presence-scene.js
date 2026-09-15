@@ -5,7 +5,7 @@ import {
   closedPath,
   sampleClosedPath,
   presenceVisibleOnPage
-} from "./presence-motion.js?v=20260915152715";
+} from "./presence-motion.js?v=20260915153337";
 export function createPresenceScene(sceneOptions, wakeFrameLoop = () => {}, nowProvider) {
   const actorsByBindingId = new Map();
   const progressByBindingId = new Map();

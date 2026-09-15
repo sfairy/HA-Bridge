@@ -2,11 +2,92 @@ export function createCoverFeedback({
   now: now = () => performance.now(),
   smoothingTime: smoothingTime = 180,
   commandPreview: commandPreview = false,
-  travelTime: travelTime = 6000
+  travelTime: travelTime = 6000,
+  storage,
+  scope,
+  wallNow: wallNow = () => Date.now()
 } = {}) {
   const feedbackByEntityId = new Map();
   const readLastUpdated = state =>
     Date.parse(state.raw?.last_updated ?? state.raw?.updatedAt ?? "");
+  const storageKeyFor = entityId =>
+    scope ? `hb-cover-presentation:v1:${scope}:${entityId}` : null;
+  const shouldPersist = entry =>
+    commandPreview &&
+    entry.actual.dream &&
+    entry.actual.overallFeedbackAvailable === false;
+  function clearPresentation(entityId) {
+    try {
+      const storageKey = storageKeyFor(entityId);
+      if (storageKey) {
+        storage?.removeItem(storageKey);
+      }
+    } catch {}
+  }
+  function savePresentation(entityId, entry) {
+    if (!shouldPersist(entry) || !entry.estimated || entry.position === null) {
+      return;
+    }
+    const activeMotion = entry.motion;
+    const payload = {
+      position: entry.position,
+      savedAt: wallNow(),
+      motion: activeMotion
+        ? {
+            to: activeMotion.to,
+            duration: Math.max(0, activeMotion.duration - (now() - activeMotion.start))
+          }
+        : null
+    };
+    try {
+      const storageKey = storageKeyFor(entityId);
+      if (storageKey) {
+        storage?.setItem(storageKey, JSON.stringify(payload));
+      }
+    } catch {}
+  }
+  function restorePresentation(entityId, entry) {
+    if (!shouldPersist(entry)) {
+      clearPresentation(entityId);
+      return;
+    }
+    try {
+      const storageKey = storageKeyFor(entityId);
+      const stored = storageKey && JSON.parse(storage?.getItem(storageKey) || "null");
+      const isValidPosition = value =>
+        typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
+      if (!stored || !isValidPosition(stored.position) || !Number.isFinite(stored.savedAt)) {
+        return;
+      }
+      const elapsedMs = Math.max(0, wallNow() - stored.savedAt);
+      const storedMotion = stored.motion;
+      if (
+        storedMotion &&
+        (!isValidPosition(storedMotion.to) ||
+          !Number.isFinite(storedMotion.duration) ||
+          storedMotion.duration < 0 ||
+          storedMotion.duration > travelTime)
+      ) {
+        return;
+      }
+      entry.position = stored.position;
+      if (storedMotion) {
+        const progress =
+          storedMotion.duration > 0 ? Math.min(1, elapsedMs / storedMotion.duration) : 1;
+        entry.position += (storedMotion.to - entry.position) * progress;
+        if (progress < 1) {
+          entry.motion = {
+            from: entry.position,
+            to: storedMotion.to,
+            start: now(),
+            duration: storedMotion.duration - elapsedMs
+          };
+        }
+      }
+      entry.estimated = true;
+      entry.railUnconfirmed = true;
+    } catch {}
+  }
   function advanceMotion(trackedEntry, timeMs) {
     if (!trackedEntry.motion) {
       return false;
@@ -27,7 +108,7 @@ export function createCoverFeedback({
   function sync(entityId, nextState) {
     let entry = feedbackByEntityId.get(entityId);
     if (!entry) {
-      feedbackByEntityId.set(entityId, {
+      entry = {
         actual: nextState,
         position: nextState.position,
         motion: null,
@@ -35,11 +116,14 @@ export function createCoverFeedback({
         token: null,
         error: "",
         draft: null,
+        bladeHold: null,
         railUnconfirmed: false,
         estimated: false,
         lastAvailable: nextState.available ? nextState : null,
         lastTimestamp: readLastUpdated(nextState)
-      });
+      };
+      restorePresentation(entityId, entry);
+      feedbackByEntityId.set(entityId, entry);
       return;
     }
     const previousState = entry.actual;
@@ -69,10 +153,23 @@ export function createCoverFeedback({
       entry.motion = null;
       entry.intent = null;
       entry.draft = null;
+      entry.bladeHold = null;
       entry.railUnconfirmed = !!nextState.dream;
+      savePresentation(entityId, entry);
       return;
     }
     entry.lastAvailable = nextState;
+    if (entry.bladeHold !== null) {
+      if (nextState.position !== entry.bladeHold) {
+        return;
+      }
+      entry.position = nextState.position;
+      entry.motion = null;
+      entry.estimated = false;
+      entry.bladeHold = null;
+      entry.intent = null;
+      return;
+    }
     if (
       positionChanged ||
       (entry.estimated &&
@@ -131,6 +228,7 @@ export function createCoverFeedback({
     commandEntry.token = token;
     const draftPosition = commandEntry.draft;
     commandEntry.draft = null;
+    commandEntry.bladeHold = null;
     const intentTarget =
       command.service === "open_cover"
         ? 100
@@ -148,6 +246,9 @@ export function createCoverFeedback({
       commandEntry.position = draftPosition;
       commandEntry.motion = null;
       commandEntry.estimated = true;
+      if (commandEntry.actual.axis === "blade") {
+        commandEntry.bladeHold = intentTarget;
+      }
     }
     if (command.service === "stop_cover" || defer) {
       commandEntry.motion = null;
@@ -170,6 +271,7 @@ export function createCoverFeedback({
         command.service === "open_cover" ||
         !commandEntry.actual.closedConfirmed;
     }
+    savePresentation(command.entityId, commandEntry);
   }
   function startPreview(previewEntityId, previewToken) {
     const previewEntry = feedbackByEntityId.get(previewEntityId);
@@ -198,24 +300,26 @@ export function createCoverFeedback({
             start: now(),
             duration: Math.max(180, (Math.abs(targetPosition - startPosition) / 100) * travelTime)
           };
+    savePresentation(previewEntityId, previewEntry);
     return true;
   }
   function fail(failedEntityId, failedToken, message) {
     const failedEntry = feedbackByEntityId.get(failedEntityId);
     if (!failedEntry || failedEntry.token !== failedToken) {
       return false;
-    } else {
-      advanceMotion(failedEntry, now());
-      failedEntry.motion = null;
-      failedEntry.intent = null;
-      failedEntry.draft = null;
-      failedEntry.error = message;
-      if (failedEntry.actual.position !== null) {
-        failedEntry.position = failedEntry.actual.position;
-        failedEntry.estimated = false;
-      }
-      return true;
     }
+    advanceMotion(failedEntry, now());
+    failedEntry.motion = null;
+    failedEntry.intent = null;
+    failedEntry.draft = null;
+    failedEntry.bladeHold = null;
+    failedEntry.error = message;
+    if (failedEntry.actual.position !== null) {
+      failedEntry.position = failedEntry.actual.position;
+      failedEntry.estimated = false;
+    }
+    clearPresentation(failedEntityId);
+    return true;
   }
   function read(readEntityId, fallbackState) {
     const snapshotEntry = feedbackByEntityId.get(readEntityId);
@@ -238,6 +342,11 @@ export function createCoverFeedback({
       opening: opening,
       closing: closing,
       moving: opening || closing,
+      on:
+        snapshotEntry.actual.available &&
+        (shouldPersist(snapshotEntry) && snapshotEntry.estimated
+          ? snapshotEntry.position > 0
+          : snapshotEntry.actual.on),
       closedConfirmed:
         !!snapshotEntry.actual.closedConfirmed &&
         !snapshotEntry.railUnconfirmed &&
@@ -260,6 +369,7 @@ export function createCoverFeedback({
           tickEntry.motion = null;
           tickEntry.position = tickEntry.actual.position;
           tickEntry.estimated = false;
+          tickEntry.bladeHold = null;
         }
       }
       changed = advanceMotion(tickEntry, nowMs) || changed;

@@ -2,7 +2,7 @@ import {
   mapSource,
   vacuumStatusPresentation,
   vacuumBindingsForMap
-} from "./vacuum-map.js?v=20260915152715";
+} from "./vacuum-map.js?v=20260915153337";
 const isFiniteNumber = candidateValue =>
   typeof candidateValue == "number" && Number.isFinite(candidateValue);
 const asValidMapPoint = pointCandidate =>

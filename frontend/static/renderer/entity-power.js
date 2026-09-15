@@ -2,7 +2,7 @@ import {
   climateIsPoweredOn,
   climatePowerCommand,
   resolveClimateDeviceType
-} from "./climate.js?v=20260915152715";
+} from "./climate.js?v=20260915153337";
 function unwrapStateChange(stateOrChange) {
   return (
     stateOrChange?.newState ||

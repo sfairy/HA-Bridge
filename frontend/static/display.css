@@ -1,6 +1,6 @@
 :root {
   color-scheme: dark;
-  background: #070b0e;
+  background: var(--display-surface-background, #070b0e);
 }
 * {
   box-sizing: border-box;
@@ -17,7 +17,7 @@ body {
   overflow: hidden;
   border: 0;
   outline: 0;
-  background: #070b0e;
+  background: var(--display-surface-background, #070b0e);
 }
 body {
   position: relative;
@@ -34,7 +34,7 @@ body {
   overflow: hidden;
   border: 0;
   outline: 0;
-  background: #070b0e;
+  background: var(--display-surface-background, #070b0e);
 }
 #display-root {
   position: absolute;
@@ -47,7 +47,7 @@ body {
   overflow: hidden;
   border: 0;
   outline: 0;
-  background: #070b0e;
+  background: var(--display-surface-background, #070b0e);
   place-items: center;
   touch-action: manipulation;
 }
