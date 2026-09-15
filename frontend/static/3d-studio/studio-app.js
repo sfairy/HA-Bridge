@@ -25,14 +25,14 @@ import { compactRuntimeFurniture } from "./studio-runtime-furniture.js?v=2026091
 import { createReflectionDetail } from "./studio-reflection-detail.js?v=20260915153337";
 import { createFloorTransition } from "./studio-floor-transition.js?v=20260915153337";
 import { floorOpeningPolygon } from "./studio-floor-openings.js?v=20260915153337";
-import { createGroundReflections } from "./studio-ground-reflections.js?v=20260915153337";
+import { createGroundReflections } from "./studio-ground-reflections.js?v=20260915161527";
 import { createMotionPresentation } from "./studio-motion-presentation.js?v=20260915153337";
 import {
   createWallSideMaterial,
   setWallGradientHeight,
   setWallCornerDistances,
   mergeWallBands
-} from "./studio-wall-materials.js?v=20260915153337";
+} from "./studio-wall-materials.js?v=20260915161527";
 import {
   RENDER_CACHE_VERSION,
   createRenderCache,
@@ -21470,6 +21470,10 @@ function buildPolygonShapes(polygonLoops) {
 function makeWallSideMaterial(sideColor, sideOpacity, wallSideMaterialOptions = {}) {
   const isSideOpaque = sideOpacity >= 0.999;
   const isAlphaBand = isRegionLightingEnabled && !isSideOpaque;
+  // Studio preview does not use the dedicated front-face wall shader. DoubleSide +
+  // transmission on translucent extrusions shows the opposite face and corner
+  // overlaps through the nearer surface (shredded seams). Match the stage shader:
+  // front faces only, depth write on, no transmission.
   const createdWallSideMaterial = createWallSideMaterial(
     threeModuleMin,
     {
@@ -21478,26 +21482,26 @@ function makeWallSideMaterial(sideColor, sideOpacity, wallSideMaterialOptions = 
       metalness: 0,
       clearcoat: 0.05,
       clearcoatRoughness: 0.82,
-      transmission: isSideOpaque || isAlphaBand ? 0 : 0.012,
+      transmission: 0,
       thickness: 0.1,
       ior: 1.22,
       transparent: !isSideOpaque,
       opacity: sideOpacity,
-      depthWrite: wallSideMaterialOptions.depthWrite ?? isSideOpaque,
+      depthWrite: wallSideMaterialOptions.depthWrite ?? true,
       depthFunc:
         wallSideMaterialOptions.depthFunc ??
         (isSideOpaque ? threeModuleMin.LessEqualDepth : threeModuleMin.LessDepth),
       polygonOffset: wallSideMaterialOptions.polygonOffset === true,
       polygonOffsetFactor: wallSideMaterialOptions.polygonOffsetFactor ?? -2,
       polygonOffsetUnits: wallSideMaterialOptions.polygonOffsetUnits ?? -4,
-      side: threeModuleMin.DoubleSide,
+      side: threeModuleMin.FrontSide,
       emissive: wallSideMaterialOptions.emissive ?? sideColor,
       emissiveIntensity: wallSideMaterialOptions.emissiveIntensity ?? 0.025
     },
     wallSideMaterialOptions.polygonOffset !== true,
     isRegionLightingEnabled && typeof window !== "undefined"
       ? (new URLSearchParams(window.location.search).get("wall-trial") ?? WALL_RUNTIME_PROFILE)
-      : ""
+      : "single,depth"
   );
   createdWallSideMaterial.userData.alphaWallBand = isAlphaBand;
   return createdWallSideMaterial;
@@ -21519,13 +21523,15 @@ function createWallTopMaterial(topBaseColor, topOpacity, topMaterialOptions = {}
     metalness: 0,
     transparent: !isTopOpaque,
     opacity: topMaterialOptions.topOpacity ?? (isTopOpaque ? 1 : Math.min(topOpacity * 1.08, 0.42)),
-    depthWrite: topMaterialOptions.depthWrite ?? isTopOpaque,
+    depthWrite: topMaterialOptions.depthWrite ?? true,
     depthFunc:
       topMaterialOptions.depthFunc ??
       (isTopOpaque ? threeModuleMin.LessEqualDepth : threeModuleMin.LessDepth),
     polygonOffset: topMaterialOptions.polygonOffset === true,
     polygonOffsetFactor: topMaterialOptions.polygonOffsetFactor ?? -2,
     polygonOffsetUnits: topMaterialOptions.polygonOffsetUnits ?? -4,
+    // ShapeGeometry is rotated onto the XZ plane with normals pointing down; keep
+    // DoubleSide so the top band stays visible from the usual overhead camera.
     side: threeModuleMin.DoubleSide,
     emissive: topMaterialOptions.emissive ?? topMaterialOptions.topColor ?? topBaseColor,
     emissiveIntensity: topMaterialOptions.emissiveIntensity

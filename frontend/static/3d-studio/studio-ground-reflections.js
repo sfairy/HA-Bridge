@@ -42,12 +42,38 @@ export function createGroundReflections({
   const scratchPlaneVector = new THREE.Vector4();
   const scratchSignVector = new THREE.Vector4();
   const scratchProjectionMatrix = new THREE.Matrix4();
+  function cloneMaterialSharingRenderTargets(material) {
+    const renderTargetUniforms = [];
+    const uniforms = material.uniforms;
+    if (uniforms) {
+      for (const uniformName of Object.keys(uniforms)) {
+        const uniform = uniforms[uniformName];
+        const texture = uniform?.value;
+        if (texture?.isTexture && texture.isRenderTargetTexture) {
+          renderTargetUniforms.push([uniformName, texture]);
+          uniform.value = null;
+        }
+      }
+    }
+    let clonedMaterial;
+    try {
+      clonedMaterial = material.clone();
+    } finally {
+      for (const [uniformName, texture] of renderTargetUniforms) {
+        uniforms[uniformName].value = texture;
+        if (clonedMaterial?.uniforms?.[uniformName]) {
+          clonedMaterial.uniforms[uniformName].value = texture;
+        }
+      }
+    }
+    return clonedMaterial;
+  }
   function getRefractionFreeMaterial(material) {
     if (!material || (!(material.transmission > 0) && !material.userData.alphaWallBand)) {
       return material;
     }
     if (!refractionFreeMaterialBySource.has(material)) {
-      const refractionFreeMaterial = material.clone();
+      const refractionFreeMaterial = cloneMaterialSharingRenderTargets(material);
       refractionFreeMaterial.transmission = 0;
       refractionFreeMaterial.forceSinglePass = true;
       refractionFreeMaterial.onBeforeCompile = material.onBeforeCompile;

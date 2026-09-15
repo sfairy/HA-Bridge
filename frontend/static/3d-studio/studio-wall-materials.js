@@ -19,12 +19,18 @@ export function createWallSideMaterial(THREE, materialParams, enhance = true, wa
         "#include <begin_vertex>\nvHbWallHeight = hbWallHeight;"
       );
       shaderObject.fragmentShader = "varying float vHbWallHeight;\n" + shaderObject.fragmentShader;
+      // Closed translucent volumes: discard the opposite face so it cannot show
+      // through the nearer surface when side is left as DoubleSide by a caller.
+      shaderObject.fragmentShader = shaderObject.fragmentShader.replace(
+        "#include <clipping_planes_fragment>",
+        "#include <clipping_planes_fragment>\nif (!gl_FrontFacing) discard;"
+      );
       shaderObject.fragmentShader = shaderObject.fragmentShader.replace(
         "#include <opaque_fragment>",
         "\n      float wallHeightBlend = smoothstep(0.0, 0.65, vHbWallHeight);\n      outgoingLight *= mix(0.70, 1.0, wallHeightBlend);\n      diffuseColor.a += diffuseColor.a * (1.0 - diffuseColor.a) * 0.65 * (1.0 - wallHeightBlend);\n      #include <opaque_fragment>"
       );
     };
-    material.customProgramCacheKey = () => "hb-wall-height-gradient-v3";
+    material.customProgramCacheKey = () => "hb-wall-height-gradient-v4-frontface";
   }
   return material;
 }
