@@ -9,7 +9,7 @@ export function drawTelevisionPoster(canvasSize, context) {
   context.fillRect(54, 54, 12, 54);
   context.fillStyle = "#f4f8fb";
   context.font = "700 42px Arial, sans-serif";
-  context.fillText("HA BRIDGE", 88, 92);
+  context.fillText("HomeOS", 88, 92);
   context.fillStyle = "#7f93a6";
   context.font = "600 15px Arial, sans-serif";
   context.fillText("SMART HOME, SIMPLY CONNECTED", 88, 119);
